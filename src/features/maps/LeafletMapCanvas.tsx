@@ -315,6 +315,7 @@ export function LeafletMapCanvas({
 
     const groups = new Map<string, CharacterPin[]>()
     for (const pin of pins) {
+      if (typeof pin.x !== 'number' || typeof pin.y !== 'number') continue
       const key = `${Math.round(pin.x)},${Math.round(pin.y)}`
       const g = groups.get(key) ?? []
       g.push(pin)
@@ -594,8 +595,8 @@ export function LeafletMapCanvas({
           />
         )}
 
-        {/* Location markers */}
-        {markers.map((marker) => (
+        {/* Location markers — guard against markers with missing coordinates (data integrity) */}
+        {markers.filter((m) => typeof m.x === 'number' && typeof m.y === 'number').map((marker) => (
           <Marker
             key={marker.id}
             position={[marker.y, marker.x]}

@@ -1354,9 +1354,10 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           />
         )}
 
-        {/* Map canvas */}
+        {/* Map canvas — keyed by layerId so Leaflet remounts cleanly on layer switch */}
         <div className="flex-1 overflow-hidden">
           <LeafletMapCanvas
+            key={layerId}
             layer={layer}
             imageUrl={imageUrl}
             markers={displayedMarkers}
