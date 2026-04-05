@@ -16,17 +16,24 @@ export function CreateWorldDialog({ open, onOpenChange, onCreated }: CreateWorld
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) return
     setSaving(true)
-    const world = await createWorld({ name: name.trim(), description: description.trim() })
-    setSaving(false)
-    setName('')
-    setDescription('')
-    onOpenChange(false)
-    onCreated?.(world.id)
+    setError(null)
+    try {
+      const world = await createWorld({ name: name.trim(), description: description.trim() })
+      setName('')
+      setDescription('')
+      onOpenChange(false)
+      onCreated?.(world.id)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create world')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -56,6 +63,9 @@ export function CreateWorldDialog({ open, onOpenChange, onCreated }: CreateWorld
               rows={3}
             />
           </div>
+          {error && (
+            <p className="text-xs text-red-400">{error}</p>
+          )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel

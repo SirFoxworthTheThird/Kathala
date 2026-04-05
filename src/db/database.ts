@@ -110,3 +110,15 @@ class PlotWeaveDB extends Dexie {
 }
 
 export const db = new PlotWeaveDB()
+
+// When another tab/window holds an older version open and blocks the upgrade,
+// close this connection and reload so the version change can proceed.
+db.on('blocked', () => {
+  db.close()
+  window.location.reload()
+})
+
+db.on('versionchange', () => {
+  db.close()
+  window.location.reload()
+})
