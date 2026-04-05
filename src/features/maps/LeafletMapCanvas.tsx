@@ -198,6 +198,8 @@ export interface PinAnimation {
   from: Record<string, { x: number; y: number }>
   to: Record<string, { x: number; y: number }>
   duration: number
+  /** Character IDs with no known from-position: fade in at their destination instead of popping */
+  fadeIn?: string[]
 }
 
 export interface MovementLine {
@@ -244,10 +246,13 @@ export function LeafletMapCanvas({
 }: LeafletMapCanvasProps) {
   const internalMapRef = useRef<L.Map | null>(null)
   const mapRef         = externalMapRef ?? internalMapRef
-  // Refs to individual single-character Leaflet markers for imperative animation
-  const markerRefs = useRef<Map<string, L.Marker>>(new Map())
-  const animFrameRef = useRef<number | null>(null)
+  // Imperative character marker management — bypasses react-leaflet's position-prop mechanism
+  const charMarkersRef  = useRef<Map<string, L.Marker>>(new Map()) // per-char, during animation
+  const groupMarkersRef = useRef<Map<string, L.Marker>>(new Map()) // per-pos-group, when idle
+  const animFrameRef    = useRef<number | null>(null)
   const [mapZoom, setMapZoom]         = useState(0)
+  const charPinsRef     = useRef(charPins)   // always-fresh snapshot for RAF callbacks
+  const mapZoomRef      = useRef(mapZoom)
   const [addMode, setAddMode]         = useState(false)
   const addModeRef                    = useRef(false)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
@@ -258,26 +263,18 @@ export function LeafletMapCanvas({
   const markersRef         = useRef(markers)
 
   const onCharacterDropOnEmptyRef = useRef(onCharacterDropOnEmpty)
+  const onCharacterClickRef       = useRef(onCharacterClick)
   onMarkerClickRef.current          = onMarkerClick
   onCharacterDropRef.current        = onCharacterDrop
   onCharacterDropOnEmptyRef.current = onCharacterDropOnEmpty
+  onCharacterClickRef.current       = onCharacterClick
+  charPinsRef.current               = charPins
+  mapZoomRef.current                = mapZoom
   markersRef.current                = markers
 
   const w      = layer.imageWidth
   const h      = layer.imageHeight
   const bounds = useMemo<L.LatLngBoundsExpression>(() => [[0, 0], [h, w]], [h, w])
-
-  // Group charPins by map position so co-located characters share one marker
-  const pinGroups = useMemo<CharacterPin[][]>(() => {
-    const groups = new Map<string, CharacterPin[]>()
-    for (const pin of charPins) {
-      const key = `${Math.round(pin.x)},${Math.round(pin.y)}`
-      const g   = groups.get(key) ?? []
-      g.push(pin)
-      groups.set(key, g)
-    }
-    return Array.from(groups.values())
-  }, [charPins])
 
   onMapClickRef.current = (latlng: L.LatLng) => {
     if (scaleMode) {
@@ -306,27 +303,199 @@ export function LeafletMapCanvas({
     if (!scaleMode) setScalePoint1(null)
   }, [scaleMode])
 
-  // Imperative pin animation — drives markers directly via setLatLng(), zero React re-renders
-  useEffect(() => {
-    if (animFrameRef.current) { cancelAnimationFrame(animFrameRef.current); animFrameRef.current = null }
-    if (!pinAnimation) return
-    const { from, to, duration } = pinAnimation
-    const start = performance.now()
-    function tick() {
-      const t = Math.min((performance.now() - start) / duration, 1)
-      const eased = -(Math.cos(Math.PI * t) - 1) / 2 // ease-in-out sine
-      for (const [id, toPos] of Object.entries(to)) {
-        const fromPos = from[id] ?? toPos
-        const x = fromPos.x + (toPos.x - fromPos.x) * eased
-        const y = fromPos.y + (toPos.y - fromPos.y) * eased
-        markerRefs.current.get(id)?.setLatLng([y, x])
-      }
-      if (t < 1) animFrameRef.current = requestAnimationFrame(tick)
-      else animFrameRef.current = null
+  // ── Imperative character marker helpers ──────────────────────────────────────
+
+  // (Re)build group markers from scratch. Called when not animating or when an
+  // animation finishes. Always removes all existing group markers first so each
+  // call produces a fully up-to-date set with the correct icons and drag state.
+  function buildGroupMarkers(map: L.Map, pins: CharacterPin[], zoom: number) {
+    for (const [, m] of groupMarkersRef.current) m.remove()
+    groupMarkersRef.current.clear()
+
+    const groups = new Map<string, CharacterPin[]>()
+    for (const pin of pins) {
+      const key = `${Math.round(pin.x)},${Math.round(pin.y)}`
+      const g = groups.get(key) ?? []
+      g.push(pin)
+      groups.set(key, g)
     }
-    animFrameRef.current = requestAnimationFrame(tick)
-    return () => { if (animFrameRef.current) { cancelAnimationFrame(animFrameRef.current); animFrameRef.current = null } }
-  }, [pinAnimation])
+
+    for (const [key, group] of groups) {
+      const first = group[0]
+      const isSingle = group.length === 1
+      const marker = L.marker([first.y, first.x], {
+        icon: makeCharacterGroupIcon(group, zoom),
+        zIndexOffset: 1000,
+        draggable: isSingle && !first.inSubMap,
+      }).addTo(map)
+
+      if (isSingle) {
+        marker.on('click', () => onCharacterClickRef.current?.(first.character.id))
+        marker.on('dragend', (e) => {
+          const lm = e.target as L.Marker
+          const latlng = lm.getLatLng()
+          const m2 = mapRef.current
+          if (!m2) { lm.setLatLng([first.y, first.x]); return }
+          const dropPt = m2.latLngToContainerPoint(latlng)
+          let nearest: LocationMarker | null = null
+          let minDist = Infinity
+          for (const loc of markersRef.current) {
+            const pt = m2.latLngToContainerPoint([loc.y, loc.x])
+            const dist = Math.hypot(dropPt.x - pt.x, dropPt.y - pt.y)
+            if (dist < minDist) { minDist = dist; nearest = loc }
+          }
+          if (nearest && minDist < 60) {
+            onCharacterDropRef.current(first.character.id, nearest.id)
+            lm.setLatLng([nearest.y, nearest.x])
+          } else {
+            lm.setLatLng([first.y, first.x])
+            onCharacterDropOnEmptyRef.current?.(first.character.id, latlng.lng, latlng.lat)
+          }
+        })
+      } else {
+        const content = document.createElement('div')
+        content.style.minWidth = '110px'
+        const title = document.createElement('p')
+        title.style.cssText = `font-size:11px;font-weight:bold;margin-bottom:4px;color:hsl(var(--ring));font-family:var(--font-body);`
+        title.textContent = 'At this location:'
+        content.appendChild(title)
+        for (const pin of group) {
+          const btn = document.createElement('button')
+          btn.style.cssText = `display:block;width:100%;text-align:left;padding:2px 4px;font-size:12px;cursor:pointer;border-radius:3px;background:none;border:none;font-family:var(--font-body);`
+          btn.textContent = pin.character.name + (pin.inSubMap ? ' (sub-map)' : '')
+          btn.addEventListener('click', () => onCharacterClickRef.current?.(pin.character.id))
+          btn.addEventListener('mouseenter', () => { btn.style.background = 'hsl(var(--accent))' })
+          btn.addEventListener('mouseleave', () => { btn.style.background = 'none' })
+          content.appendChild(btn)
+        }
+        marker.bindPopup(content)
+      }
+
+      groupMarkersRef.current.set(key, marker)
+    }
+  }
+
+  // Main imperative marker effect — manages all character markers without JSX
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current)
+      animFrameRef.current = null
+    }
+
+    if (pinAnimation) {
+      const { from, to, duration, fadeIn } = pinAnimation
+
+      // Switch from group markers to per-character animation markers
+      for (const [, m] of groupMarkersRef.current) m.remove()
+      groupMarkersRef.current.clear()
+
+      // Remove markers for characters that are no longer on this layer
+      const pinIds = new Set(charPins.map(p => p.character.id))
+      for (const [id, m] of charMarkersRef.current) {
+        if (!pinIds.has(id)) { m.remove(); charMarkersRef.current.delete(id) }
+      }
+
+      // Create / reposition per-character markers at their FROM positions
+      for (const pin of charPins) {
+        const id = pin.character.id
+        const fromPos = from[id] ?? to[id]
+        if (!fromPos) continue
+
+        const icon = makeCharacterGroupIcon([pin], mapZoomRef.current)
+        let marker = charMarkersRef.current.get(id)
+        if (!marker) {
+          marker = L.marker([fromPos.y, fromPos.x], {
+            icon, zIndexOffset: 1000, interactive: true,
+          }).addTo(map)
+          marker.on('click', () => onCharacterClickRef.current?.(id))
+          charMarkersRef.current.set(id, marker)
+        } else {
+          marker.setIcon(icon)
+          marker.setLatLng([fromPos.y, fromPos.x])
+        }
+
+        if (fadeIn?.includes(id)) {
+          const el = marker.getElement()
+          if (el) el.style.opacity = '0'
+        }
+      }
+
+      // RAF loop
+      const start = performance.now()
+      function tick() {
+        const t = Math.min((performance.now() - start) / duration, 1)
+        const eased = -(Math.cos(Math.PI * t) - 1) / 2 // ease-in-out sine
+
+        for (const [id, marker] of charMarkersRef.current) {
+          const toPos = to[id]
+          if (!toPos) continue
+          const fromPos = from[id] ?? toPos
+          marker.setLatLng([
+            fromPos.y + (toPos.y - fromPos.y) * eased,
+            fromPos.x + (toPos.x - fromPos.x) * eased,
+          ])
+          if (fadeIn?.includes(id)) {
+            const el = marker.getElement()
+            if (el) el.style.opacity = String(eased)
+          }
+        }
+
+        if (t < 1) {
+          animFrameRef.current = requestAnimationFrame(tick)
+        } else {
+          for (const id of (fadeIn ?? [])) {
+            const el = charMarkersRef.current.get(id)?.getElement()
+            if (el) el.style.opacity = ''
+          }
+          animFrameRef.current = null
+          // Animation complete — switch back to group markers
+          for (const [, m] of charMarkersRef.current) m.remove()
+          charMarkersRef.current.clear()
+          const currentMap = mapRef.current
+          if (currentMap) buildGroupMarkers(currentMap, charPinsRef.current, mapZoomRef.current)
+        }
+      }
+
+      tick()
+
+    } else {
+      // Not animating — use stable group markers
+      for (const [, m] of charMarkersRef.current) m.remove()
+      charMarkersRef.current.clear()
+      buildGroupMarkers(map, charPins, mapZoom)
+    }
+
+    return () => {
+      if (animFrameRef.current) { cancelAnimationFrame(animFrameRef.current); animFrameRef.current = null }
+    }
+  }, [pinAnimation, charPins]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Update icon sizes when zoom changes, without interrupting any running animation
+  useEffect(() => {
+    const zoom = mapZoom
+    for (const [id, marker] of charMarkersRef.current) {
+      const pin = charPinsRef.current.find(p => p.character.id === id)
+      if (pin) marker.setIcon(makeCharacterGroupIcon([pin], zoom))
+    }
+    for (const [key, marker] of groupMarkersRef.current) {
+      const [xs, ys] = key.split(',')
+      const rx = parseInt(xs), ry = parseInt(ys)
+      const group = charPinsRef.current.filter(p => Math.round(p.x) === rx && Math.round(p.y) === ry)
+      if (group.length > 0) marker.setIcon(makeCharacterGroupIcon(group, zoom))
+    }
+  }, [mapZoom]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Remove all character markers when the component unmounts
+  useEffect(() => {
+    return () => {
+      if (animFrameRef.current) { cancelAnimationFrame(animFrameRef.current); animFrameRef.current = null }
+      charMarkersRef.current.forEach(m => { try { m.remove() } catch { /* map may be gone */ } })
+      groupMarkersRef.current.forEach(m => { try { m.remove() } catch { /* map may be gone */ } })
+    }
+  }, [])
 
   function findNearestMarker(clientX: number, clientY: number, el: HTMLElement): LocationMarker | null {
     const map = mapRef.current
@@ -454,77 +623,7 @@ export function LeafletMapCanvas({
           </Marker>
         ))}
 
-        {/* Character markers */}
-        {pinGroups.map((group) => {
-          const first = group[0]
-          const key   = `grp-${Math.round(first.x)}-${Math.round(first.y)}`
-
-          if (group.length === 1) {
-            return (
-              <Marker
-                key={first.character.id}
-                ref={(m) => { if (m) markerRefs.current.set(first.character.id, m); else markerRefs.current.delete(first.character.id) }}
-                position={[first.y, first.x]}
-                icon={makeCharacterGroupIcon(group, mapZoom)}
-                zIndexOffset={1000}
-                draggable={!first.inSubMap}
-                eventHandlers={{
-                  click: () => onCharacterClick?.(first.character.id),
-                  dragend: (e) => {
-                    const leafletMarker = e.target as L.Marker
-                    const latlng = leafletMarker.getLatLng()
-                    const map = mapRef.current
-                    if (!map) { leafletMarker.setLatLng([first.y, first.x]); return }
-                    const dropPt = map.latLngToContainerPoint(latlng)
-                    let nearest: LocationMarker | null = null
-                    let minDist = Infinity
-                    for (const m of markersRef.current) {
-                      const pt = map.latLngToContainerPoint([m.y, m.x])
-                      const dist = Math.hypot(dropPt.x - pt.x, dropPt.y - pt.y)
-                      if (dist < minDist) { minDist = dist; nearest = m }
-                    }
-                    if (nearest && minDist < 60) {
-                      onCharacterDropRef.current(first.character.id, nearest.id)
-                      leafletMarker.setLatLng([nearest.y, nearest.x])
-                    } else {
-                      leafletMarker.setLatLng([first.y, first.x])
-                      onCharacterDropOnEmptyRef.current?.(first.character.id, latlng.lng, latlng.lat)
-                    }
-                  },
-                }}
-              />
-            )
-          }
-
-          return (
-            <Marker
-              key={key}
-              position={[first.y, first.x]}
-              icon={makeCharacterGroupIcon(group, mapZoom)}
-              zIndexOffset={1000}
-            >
-              <Popup>
-                <div style={{ minWidth: 110 }}>
-                  <p style={{ fontSize: 11, fontWeight: 'bold', marginBottom: 4, color: 'hsl(var(--ring))', fontFamily: 'var(--font-body)' }}>
-                    At this location:
-                  </p>
-                  {group.map((pin) => (
-                    <button
-                      key={pin.character.id}
-                      onClick={() => onCharacterClick?.(pin.character.id)}
-                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '2px 4px', fontSize: 12, cursor: 'pointer', borderRadius: 3, background: 'none', border: 'none', fontFamily: 'var(--font-body)' }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = 'hsl(var(--accent))')}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
-                    >
-                      {pin.character.name}
-                      {pin.inSubMap && <span style={{ fontSize: 10, opacity: 0.6, marginLeft: 4 }}>(sub-map)</span>}
-                    </button>
-                  ))}
-                </div>
-              </Popup>
-            </Marker>
-          )
-        })}
+        {/* Character markers are managed imperatively by the useEffect above — no JSX here */}
       </MapContainer>
 
       {/* Right-click context menu */}

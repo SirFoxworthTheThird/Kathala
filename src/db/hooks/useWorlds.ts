@@ -32,8 +32,10 @@ export async function updateWorld(id: string, data: Partial<Omit<World, 'id' | '
 export async function deleteWorld(id: string) {
   await db.transaction('rw', [
     db.worlds, db.mapLayers, db.locationMarkers, db.characters,
-    db.items, db.characterSnapshots, db.relationships, db.relationshipSnapshots,
-    db.timelines, db.chapters, db.events, db.blobs,
+    db.items, db.characterSnapshots, db.characterMovements, db.itemPlacements,
+    db.locationSnapshots, db.itemSnapshots,
+    db.relationships, db.relationshipSnapshots, db.timelines,
+    db.chapters, db.events, db.blobs, db.travelModes,
   ], async () => {
     await db.worlds.delete(id)
     await db.mapLayers.where('worldId').equals(id).delete()
@@ -41,11 +43,16 @@ export async function deleteWorld(id: string) {
     await db.characters.where('worldId').equals(id).delete()
     await db.items.where('worldId').equals(id).delete()
     await db.characterSnapshots.where('worldId').equals(id).delete()
+    await db.characterMovements.where('worldId').equals(id).delete()
+    await db.itemPlacements.where('worldId').equals(id).delete()
+    await db.locationSnapshots.where('worldId').equals(id).delete()
+    await db.itemSnapshots.where('worldId').equals(id).delete()
     await db.relationships.where('worldId').equals(id).delete()
     await db.relationshipSnapshots.where('worldId').equals(id).delete()
     await db.timelines.where('worldId').equals(id).delete()
     await db.chapters.where('worldId').equals(id).delete()
     await db.events.where('worldId').equals(id).delete()
     await db.blobs.where('worldId').equals(id).delete()
+    await db.travelModes.where('worldId').equals(id).delete()
   })
 }
