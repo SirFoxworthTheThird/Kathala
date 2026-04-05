@@ -2,8 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { ChevronLeft, ChevronRight, Play, Pause, Square, GitCompareArrows } from 'lucide-react'
 import { useActiveWorldId, useActiveChapterId, useAppStore, type PlaybackSpeed } from '@/store'
 import { useTimelines, useChapters } from '@/db/hooks/useTimeline'
-
-const SPEED_MS: Record<PlaybackSpeed, number> = { slow: 8000, normal: 5000, fast: 3000 }
+import { readingHoldMs } from '@/lib/playbackTiming'
 const SPEED_NEXT: Record<PlaybackSpeed, PlaybackSpeed> = { slow: 'normal', normal: 'fast', fast: 'slow' }
 const SPEED_LABEL: Record<PlaybackSpeed, string> = { slow: '1×', normal: '2×', fast: '3×' }
 
@@ -214,6 +213,10 @@ export function ChapterTimelineBar() {
     const idx = chapters.findIndex((c) => c.id === activeChapterId)
     if (idx === -1) return
 
+    const chapter = chapters[idx]
+    const chapterText = [chapter.title, chapter.synopsis ?? ''].join(' ')
+    const holdMs = readingHoldMs(chapterText, playbackSpeed)
+
     const t = setTimeout(() => {
       if (idx >= chapters.length - 1) {
         // Last chapter — let the full hold time pass first, then stop
@@ -221,7 +224,7 @@ export function ChapterTimelineBar() {
       } else {
         setActiveChapterId(chapters[idx + 1].id)
       }
-    }, SPEED_MS[playbackSpeed])
+    }, holdMs)
 
     return () => clearTimeout(t)
   }, [isPlayingStory, activeChapterId, chapters, playbackSpeed, setActiveChapterId, setIsPlayingStory])

@@ -7,7 +7,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { WorldCard } from './WorldCard'
 import { CreateWorldDialog } from './CreateWorldDialog'
 import { useNavigate } from 'react-router-dom'
-import { importWorld } from '@/lib/exportImport'
+import { importWorld, importWorldImages } from '@/lib/exportImport'
 
 export default function WorldSelectorView() {
   const worlds = useWorlds()
@@ -18,13 +18,34 @@ export default function WorldSelectorView() {
   const navigate = useNavigate()
 
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const files = Array.from(e.target.files ?? [])
+    if (files.length === 0) return
     setImporting(true)
     setImportError(null)
     try {
-      const worldId = await importWorld(file)
-      navigate(`/worlds/${worldId}`)
+      if (files.length === 1) {
+        // Single file: full export OR data-only file OR images-only file
+        const text = await files[0].text()
+        const parsed = JSON.parse(text) as Record<string, unknown>
+        if (parsed.type === 'images') {
+          // Images-only: add images to an already-imported world
+          const worldId = await importWorldImages(files[0])
+          navigate(`/worlds/${worldId}`)
+        } else {
+          const worldId = await importWorld(files[0])
+          navigate(`/worlds/${worldId}`)
+        }
+      } else {
+        // Two files: one data file + one images file (order doesn't matter)
+        const texts = await Promise.all(files.map((f) => f.text()))
+        const parsed = texts.map((t) => JSON.parse(t) as Record<string, unknown>)
+        const imagesIdx = parsed.findIndex((p) => p.type === 'images')
+        const dataIdx   = parsed.findIndex((_, i) => i !== imagesIdx)
+        if (dataIdx === -1) throw new Error('No data file found. Select the .pwk data file.')
+        const worldId = await importWorld(files[dataIdx])
+        if (imagesIdx !== -1) await importWorldImages(files[imagesIdx])
+        navigate(`/worlds/${worldId}`)
+      }
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Import failed')
     } finally {
@@ -56,7 +77,8 @@ export default function WorldSelectorView() {
             <input
               ref={importRef}
               type="file"
-              accept=".pwk,application/json"
+              accept=".pwk,.pwb,application/json"
+              multiple
               className="hidden"
               onChange={handleImport}
             />
@@ -68,6 +90,12 @@ export default function WorldSelectorView() {
         </div>
         {importError && (
           <p className="mt-2 text-xs text-red-400">{importError}</p>
+        )}
+        {!importError && (
+          <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">
+            Select a <code className="font-mono">.pwk</code> file to import.
+            If you exported with split files, select both the <code className="font-mono">.pwk</code> and the <code className="font-mono">.pwb</code> images file together.
+          </p>
         )}
       </header>
 

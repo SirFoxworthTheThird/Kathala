@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, type MutableRefObject } from 'react'
 import L from 'leaflet'
 import { useParams } from 'react-router-dom'
 import {
@@ -38,6 +38,131 @@ import { pixelDist, pathPixelLength, formatDistance } from '@/lib/mapScale'
 
 /** How long character pins animate across the map per playback speed (ms) */
 const PIN_TRAVEL_MS: Record<PlaybackSpeed, number> = { slow: 6500, normal: 4000, fast: 2200 }
+
+/** One stop in the ordered playback map-navigation queue */
+interface PlaybackStep {
+  mapLayerId: string
+  pinAnimation: PinAnimation
+}
+
+/**
+ * Build the PinAnimation for a specific map layer given two sets of chapter snapshots.
+ * Mirrors the logic in MapView but is generalized to any target layer.
+ */
+function buildLayerPinAnimation(
+  prevSnaps: CharacterSnapshot[],
+  currSnaps: CharacterSnapshot[],
+  targetLayerId: string,
+  allLayers: MapLayer[],
+  allMarkers: LocationMarker[],
+  duration: number,
+  keyRef: MutableRefObject<number>,
+): PinAnimation | null {
+  // Resolve prev-chapter pins visible from targetLayerId
+  const prevPins: Array<{ charId: string; x: number; y: number }> = []
+  for (const snap of prevSnaps) {
+    const pin = resolveCharacterPin(snap, targetLayerId, allLayers, allMarkers)
+    if (pin) prevPins.push({ charId: snap.characterId, x: pin.x, y: pin.y })
+  }
+
+  // Resolve curr-chapter pins visible from targetLayerId
+  const currPins: Array<{ charId: string; x: number; y: number; inSubMap: boolean }> = []
+  for (const snap of currSnaps) {
+    const pin = resolveCharacterPin(snap, targetLayerId, allLayers, allMarkers)
+    if (pin) currPins.push({ charId: snap.characterId, x: pin.x, y: pin.y, inSubMap: pin.inSubMap })
+  }
+
+  const from: Record<string, { x: number; y: number }> = {}
+  for (const p of prevPins) from[p.charId] = { x: p.x, y: p.y }
+
+  // Back-fill portal entry for characters arriving from a different map
+  for (const cp of currPins) {
+    const { charId } = cp
+    if (from[charId] !== undefined || cp.inSubMap) continue
+    const prevSnap = prevSnaps.find((s) => s.characterId === charId)
+    if (!prevSnap?.currentMapLayerId || prevSnap.currentMapLayerId === targetLayerId) continue
+    const link = allMarkers.find(
+      (m) => m.mapLayerId === targetLayerId && m.linkedMapLayerId === prevSnap.currentMapLayerId,
+    )
+    if (link) from[charId] = { x: link.x, y: link.y }
+  }
+
+  const to: Record<string, { x: number; y: number }> = {}
+  const fadeIn: string[] = []
+  for (const cp of currPins) {
+    to[cp.charId] = { x: cp.x, y: cp.y }
+    if (from[cp.charId] === undefined) fadeIn.push(cp.charId)
+  }
+
+  // Skip this layer if nothing actually moves or appears
+  const hasMovement =
+    fadeIn.length > 0 ||
+    Object.keys(from).some((id) => {
+      if (!to[id]) return true // character left this layer's view
+      return from[id].x !== to[id].x || from[id].y !== to[id].y
+    })
+  if (!hasMovement) return null
+
+  keyRef.current += 1
+  return { from, to, fadeIn, duration, key: keyRef.current }
+}
+
+/**
+ * Build an ordered list of map-layer steps for playback.
+ * Cross-map departure layers come first (follow the journey), then arrival layers,
+ * then any remaining layers that have within-map movement only.
+ */
+function buildPlaybackQueue(
+  prevSnaps: CharacterSnapshot[],
+  currSnaps: CharacterSnapshot[],
+  allLayers: MapLayer[],
+  allMarkers: LocationMarker[],
+  duration: number,
+  keyRef: MutableRefObject<number>,
+): PlaybackStep[] {
+  const queue: PlaybackStep[] = []
+  const seen = new Set<string>()
+
+  function tryAdd(mapLayerId: string) {
+    if (seen.has(mapLayerId)) return
+    seen.add(mapLayerId)
+    const anim = buildLayerPinAnimation(prevSnaps, currSnaps, mapLayerId, allLayers, allMarkers, duration, keyRef)
+    if (anim) queue.push({ mapLayerId, pinAnimation: anim })
+  }
+
+  // 1. Departure layers first (character's from-map for cross-map moves)
+  for (const curr of currSnaps) {
+    if (!curr.currentMapLayerId) continue
+    const prev = prevSnaps.find((s) => s.characterId === curr.characterId)
+    if (prev?.currentMapLayerId && prev.currentMapLayerId !== curr.currentMapLayerId) {
+      tryAdd(prev.currentMapLayerId)
+    }
+  }
+
+  // 2. Arrival layers (character's to-map for cross-map moves)
+  for (const curr of currSnaps) {
+    if (!curr.currentMapLayerId) continue
+    const prev = prevSnaps.find((s) => s.characterId === curr.characterId)
+    if (prev?.currentMapLayerId && prev.currentMapLayerId !== curr.currentMapLayerId) {
+      tryAdd(curr.currentMapLayerId)
+    }
+  }
+
+  // 3. Same-map movement layers
+  for (const curr of currSnaps) {
+    if (!curr.currentMapLayerId) continue
+    const prev = prevSnaps.find((s) => s.characterId === curr.characterId)
+    if (prev?.currentMapLayerId === curr.currentMapLayerId) tryAdd(curr.currentMapLayerId)
+  }
+
+  // 4. Layers where characters disappeared (moved off-world / died)
+  for (const prev of prevSnaps) {
+    if (!prev.currentMapLayerId) continue
+    tryAdd(prev.currentMapLayerId)
+  }
+
+  return queue
+}
 
 const MOVEMENT_COLORS = [
   '#60a5fa', '#34d399', '#fbbf24', '#f87171', '#a78bfa',
@@ -876,7 +1001,9 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const chapterLocSnaps = useChapterLocationSnapshots(activeChapterId)
 
   const [isDraggingCharacter, setIsDraggingCharacter] = useState(false)
-  const pinAnimationKeyRef = useRef(0)
+  const pinAnimationKeyRef  = useRef(0)
+  const [playbackQueue, setPlaybackQueue]     = useState<PlaybackStep[]>([])
+  const [playbackStepIdx, setPlaybackStepIdx] = useState(0)
   const [pendingPos, setPendingPos] = useState<{ x: number; y: number } | null>(null)
   const [addLocationOpen, setAddLocationOpen] = useState(false)
   const [pendingDropCharacterId, setPendingDropCharacterId] = useState<string | null>(null)
@@ -978,57 +1105,48 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     })
   }
 
-  // Resolve character pins for the previous chapter (used for animation from-positions)
-  const prevCharPins: CharacterPin[] = []
-  for (const snap of prevSnapshots) {
-    const char = characters.find((c) => c.id === snap.characterId)
-    if (!char) continue
-    const pin = resolveCharacterPin(snap, layerId, allLayers, allMarkers)
-    if (pin) prevCharPins.push({ ...pin, character: char, portraitUrl: null, locationName: null })
+  // ── Playback map-navigation queue ──────────────────────────────────────────
+  // When a chapter advances during playback, build an ordered list of map layers to
+  // visit (departure maps first, then arrival maps, then same-map-only maps).
+  // Each step carries its own PinAnimation; we navigate the active layer to match.
+  useEffect(() => {
+    if (!isPlayingStory || !activeChapterId) {
+      setPlaybackQueue([])
+      setPlaybackStepIdx(0)
+      return
+    }
+    if (prevSnapshots.length === 0 && snapshots.length === 0) return
+
+    const queue = buildPlaybackQueue(
+      prevSnapshots, snapshots, allLayers, allMarkers,
+      PIN_TRAVEL_MS[playbackSpeed], pinAnimationKeyRef,
+    )
+    setPlaybackQueue(queue)
+    setPlaybackStepIdx(0)
+
+    // Navigate immediately to the first map in the queue (if different from current)
+    if (queue.length > 0 && queue[0].mapLayerId !== layerId) {
+      setActiveMapLayerId(queue[0].mapLayerId)
+    }
+  }, [activeChapterId, isPlayingStory]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When the step index advances, navigate to that step's map layer
+  useEffect(() => {
+    if (playbackQueue.length === 0) return
+    const step = playbackQueue[playbackStepIdx]
+    if (step && step.mapLayerId !== layerId) {
+      setActiveMapLayerId(step.mapLayerId)
+    }
+  }, [playbackStepIdx]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Derive the active pin animation: only animate if we're on the right map for this step
+  const currentStep = playbackQueue[playbackStepIdx] ?? null
+  const pinAnimation: PinAnimation | null =
+    currentStep && currentStep.mapLayerId === layerId ? currentStep.pinAnimation : null
+
+  function handlePlaybackAnimationEnd() {
+    setPlaybackStepIdx((i) => i + 1)
   }
-
-  // ── Pin animation during playback ───────────────────────────────────────────
-  // Computed during render (not in an effect) so the animation spec reaches the canvas
-  // in the same render as activeChapterId changes. This prevents react-leaflet from
-  // visually jumping markers to their destination before the animation can take over.
-  const pinAnimation = useMemo<PinAnimation | null>(() => {
-    if (!isPlayingStory || !activeChapterId) return null
-
-    // Build from-positions from the previous chapter's resolved pins
-    const from: Record<string, { x: number; y: number }> = {}
-    for (const pin of prevCharPins) {
-      from[pin.character.id] = { x: pin.x, y: pin.y }
-    }
-
-    // For characters newly appearing on this layer that weren't visible before (not in prevCharPins),
-    // try to start them at the sub-map link marker they came from so they "walk out" of the portal.
-    for (const pin of charPins) {
-      const charId = pin.character.id
-      if (from[charId] !== undefined) continue  // already have a from-position
-      if (pin.inSubMap) continue                // already projected to a link marker
-
-      const prevSnap = prevSnapshots.find((s) => s.characterId === charId)
-      if (!prevSnap?.currentMapLayerId || prevSnap.currentMapLayerId === layerId) continue
-
-      const linkMarker = allMarkers.find(
-        (m) => m.mapLayerId === layerId && m.linkedMapLayerId === prevSnap.currentMapLayerId
-      )
-      if (linkMarker) from[charId] = { x: linkMarker.x, y: linkMarker.y }
-    }
-
-    if (Object.keys(from).length === 0) return null
-
-    // Characters with no from-position will fade in at their destination
-    const fadeIn: string[] = []
-    const to: Record<string, { x: number; y: number }> = {}
-    for (const pin of charPins) {
-      to[pin.character.id] = { x: pin.x, y: pin.y }
-      if (from[pin.character.id] === undefined) fadeIn.push(pin.character.id)
-    }
-
-    pinAnimationKeyRef.current += 1
-    return { from, to, fadeIn, duration: PIN_TRAVEL_MS[playbackSpeed], key: pinAnimationKeyRef.current }
-  }, [activeChapterId, isPlayingStory, playbackSpeed]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Build in-chapter waypoint lines — one segment per consecutive waypoint pair
   const movementLines: MovementLine[] = []
@@ -1232,6 +1350,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             playbackSpeed={playbackSpeed}
             chapterNumber={activeChapter.number}
             chapterTitle={activeChapter.title}
+            synopsis={activeChapter.synopsis}
           />
         )}
 
@@ -1247,6 +1366,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             locationStatuses={locationStatusMap}
             isDraggingCharacter={isDraggingCharacter}
             pinAnimation={pinAnimation}
+            onAnimationEnd={handlePlaybackAnimationEnd}
             onMarkerClick={handleMarkerClick}
             onMapClick={(x, y) => { setPendingPos({ x, y }); setAddLocationOpen(true) }}
             onDrillDown={pushMapLayer}

@@ -17,6 +17,8 @@ interface BlobExport {
 
 export interface WorldExportFile {
   version: typeof EXPORT_VERSION
+  /** 'full' = single file with blobs, 'data' = split data file (no blobs). Absent in legacy exports — treat as 'full'. */
+  type?: 'full' | 'data'
   exportedAt: number
   world: World
   mapLayers: MapLayer[]
@@ -36,6 +38,16 @@ export interface WorldExportFile {
   blobs: BlobExport[]
   travelModes: TravelMode[]
   relationshipPositions?: Record<string, { x: number; y: number }>
+}
+
+/** Companion file produced by exportWorldSplit — contains only the binary blobs. */
+export interface WorldImagesFile {
+  version: typeof EXPORT_VERSION
+  type: 'images'
+  worldId: string
+  worldName: string
+  exportedAt: number
+  blobs: BlobExport[]
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
@@ -118,6 +130,7 @@ export async function exportWorld(worldId: string): Promise<void> {
 
   const exportData: WorldExportFile = {
     version: EXPORT_VERSION,
+    type: 'full',
     exportedAt: Date.now(),
     world,
     mapLayers,
@@ -139,14 +152,161 @@ export async function exportWorld(worldId: string): Promise<void> {
     relationshipPositions,
   }
 
-  const json = JSON.stringify(exportData)
+  triggerDownload(JSON.stringify(exportData), `${world.name.replace(/[^a-z0-9]/gi, '_')}.pwk`)
+}
+
+function triggerDownload(json: string, filename: string): void {
   const blob = new Blob([json], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `${world.name.replace(/[^a-z0-9]/gi, '_')}.pwk`
+  a.download = filename
   a.click()
   URL.revokeObjectURL(url)
+}
+
+/**
+ * Export a world as two separate files:
+ *  - `WorldName.pwk`        — all story data, no images (fast to open/share)
+ *  - `WorldName.images.pwk` — binary blobs only (maps, portraits, etc.)
+ *
+ * Both files are needed for a complete round-trip import.
+ * The images file can also be imported independently to restore images
+ * for an already-imported world.
+ */
+export async function exportWorldSplit(worldId: string): Promise<void> {
+  const [
+    world,
+    mapLayers,
+    locationMarkers,
+    characters,
+    items,
+    characterSnapshots,
+    characterMovements,
+    itemPlacements,
+    locationSnapshots,
+    itemSnapshots,
+    relationships,
+    relationshipSnapshots,
+    timelines,
+    chapters,
+    events,
+    rawBlobs,
+    travelModes,
+  ] = await Promise.all([
+    db.worlds.get(worldId),
+    db.mapLayers.where('worldId').equals(worldId).toArray(),
+    db.locationMarkers.where('worldId').equals(worldId).toArray(),
+    db.characters.where('worldId').equals(worldId).toArray(),
+    db.items.where('worldId').equals(worldId).toArray(),
+    db.characterSnapshots.where('worldId').equals(worldId).toArray(),
+    db.characterMovements.where('worldId').equals(worldId).toArray(),
+    db.itemPlacements.where('worldId').equals(worldId).toArray(),
+    db.locationSnapshots.where('worldId').equals(worldId).toArray(),
+    db.itemSnapshots.where('worldId').equals(worldId).toArray(),
+    db.relationships.where('worldId').equals(worldId).toArray(),
+    db.relationshipSnapshots.where('worldId').equals(worldId).toArray(),
+    db.timelines.where('worldId').equals(worldId).toArray(),
+    db.chapters.where('worldId').equals(worldId).toArray(),
+    db.events.where('worldId').equals(worldId).toArray(),
+    db.blobs.where('worldId').equals(worldId).toArray(),
+    db.travelModes.where('worldId').equals(worldId).toArray(),
+  ])
+
+  if (!world) throw new Error('World not found')
+
+  const blobs: BlobExport[] = await Promise.all(
+    rawBlobs.map(async (b) => ({
+      id: b.id,
+      worldId: b.worldId,
+      mimeType: b.mimeType,
+      dataBase64: await blobToBase64(b.data),
+      createdAt: b.createdAt,
+    }))
+  )
+
+  let relationshipPositions: Record<string, { x: number; y: number }> | undefined
+  try {
+    const raw = localStorage.getItem(`wb-rel-pos-${worldId}`)
+    if (raw) relationshipPositions = JSON.parse(raw)
+  } catch { /* ignore */ }
+
+  const safeName = world.name.replace(/[^a-z0-9]/gi, '_')
+  const exportedAt = Date.now()
+
+  // ── File 1: data (no blobs) ──────────────────────────────────────────────
+  const dataFile: WorldExportFile = {
+    version: EXPORT_VERSION,
+    type: 'data',
+    exportedAt,
+    world,
+    mapLayers,
+    locationMarkers,
+    characters,
+    items,
+    characterSnapshots,
+    characterMovements,
+    itemPlacements,
+    locationSnapshots,
+    itemSnapshots,
+    relationships,
+    relationshipSnapshots,
+    timelines,
+    chapters,
+    events,
+    blobs: [],
+    travelModes,
+    relationshipPositions,
+  }
+  triggerDownload(JSON.stringify(dataFile), `${safeName}.pwk`)
+
+  // ── File 2: images ───────────────────────────────────────────────────────
+  const imagesFile: WorldImagesFile = {
+    version: EXPORT_VERSION,
+    type: 'images',
+    worldId,
+    worldName: world.name,
+    exportedAt,
+    blobs,
+  }
+  // Small delay so browsers don't block the second download as a popup
+  await new Promise((r) => setTimeout(r, 200))
+  triggerDownload(JSON.stringify(imagesFile), `${safeName}.pwb`)
+}
+
+/**
+ * Import only the images companion file (`.images.pwk`) for an already-imported world.
+ * Safe to run multiple times — uses bulkPut so existing blobs are overwritten.
+ */
+export async function importWorldImages(file: File): Promise<string> {
+  const text = await file.text()
+  let data: unknown
+  try { data = JSON.parse(text) } catch { throw new Error('Invalid file: could not parse JSON') }
+
+  if (typeof data !== 'object' || data === null) throw new Error('Invalid images file')
+  const d = data as Record<string, unknown>
+  if (d.type !== 'images') throw new Error('Not an images export file (.images.pwk)')
+  if (typeof d.worldId !== 'string') throw new Error('Invalid images file: missing worldId')
+  if (!Array.isArray(d.blobs)) throw new Error('Invalid images file: missing blobs array')
+
+  const worldId = d.worldId as string
+  const world = await db.worlds.get(worldId)
+  if (!world) throw new Error('World not found — import the data file (.pwk) first.')
+
+  const blobs = d.blobs as BlobExport[]
+  await db.transaction('rw', [db.blobs], async () => {
+    for (const b of blobs) {
+      await db.blobs.put({
+        id: b.id,
+        worldId: b.worldId,
+        mimeType: b.mimeType,
+        data: base64ToBlob(b.dataBase64, b.mimeType),
+        createdAt: b.createdAt,
+      })
+    }
+  })
+
+  return worldId
 }
 
 function validateImport(data: unknown): asserts data is WorldExportFile {

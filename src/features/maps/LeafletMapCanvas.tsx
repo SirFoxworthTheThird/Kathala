@@ -229,6 +229,7 @@ interface LeafletMapCanvasProps {
   onCharacterDropOnEmpty?: (characterId: string, x: number, y: number) => void
   onCharacterClick?: (characterId: string) => void
   pinAnimation?: PinAnimation | null
+  onAnimationEnd?: () => void
   mapRef?: React.RefObject<L.Map | null>
   scaleMode?: boolean
   onScalePoints?: (p1: ScaleCalibrationPoint, p2: ScaleCalibrationPoint) => void
@@ -242,7 +243,7 @@ export function LeafletMapCanvas({
   isDraggingCharacter, onMarkerClick, onMapClick, onDrillDown,
   onCharacterDrop, onCharacterDropOnEmpty, onCharacterClick, mapRef: externalMapRef,
   scaleMode, onScalePoints, showSubMapLinks = true, locationStatuses = {},
-  pinAnimation,
+  pinAnimation, onAnimationEnd,
 }: LeafletMapCanvasProps) {
   const internalMapRef = useRef<L.Map | null>(null)
   const mapRef         = externalMapRef ?? internalMapRef
@@ -456,6 +457,7 @@ export function LeafletMapCanvas({
           charMarkersRef.current.clear()
           const currentMap = mapRef.current
           if (currentMap) buildGroupMarkers(currentMap, charPinsRef.current, mapZoomRef.current)
+          onAnimationEnd?.()
         }
       }
 

@@ -2,9 +2,9 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useChapterSnapshots } from '@/db/hooks/useSnapshots'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import type { PlaybackSpeed } from '@/store'
+import { readingHoldMs } from '@/lib/playbackTiming'
 
 const FADE_OUT_BEFORE_MS = 1400
-const SPEED_MS: Record<PlaybackSpeed, number> = { slow: 8000, normal: 5000, fast: 3000 }
 
 interface Props {
   chapterId: string
@@ -12,16 +12,24 @@ interface Props {
   playbackSpeed: PlaybackSpeed
   chapterNumber: number
   chapterTitle: string
+  synopsis?: string
 }
 
-export function StoryNotesOverlay({ chapterId, worldId, playbackSpeed, chapterNumber, chapterTitle }: Props) {
+export function StoryNotesOverlay({ chapterId, worldId, playbackSpeed, chapterNumber, chapterTitle, synopsis }: Props) {
   const snapshots  = useChapterSnapshots(chapterId)
   const characters = useCharacters(worldId)
   const [phase, setPhase] = useState<'hidden' | 'chapter' | 'notes' | 'fading'>('hidden')
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const notedSnaps = snapshots.filter((s) => s.statusNotes?.trim())
-  const holdMs = SPEED_MS[playbackSpeed]
+
+  // Compute hold time from all text shown in this overlay:
+  // title + synopsis + every character's status note for this chapter
+  const notesText = notedSnaps.map((s) => s.statusNotes ?? '').join(' ')
+  const holdMs = readingHoldMs(
+    [chapterTitle, synopsis ?? '', notesText].join(' '),
+    playbackSpeed,
+  )
 
   useEffect(() => {
     setPhase('hidden')
