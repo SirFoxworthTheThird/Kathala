@@ -17,6 +17,7 @@ import type {
   Chapter,
   WorldEvent,
   BlobEntry,
+  TravelMode,
 } from '@/types'
 
 class PlotWeaveDB extends Dexie {
@@ -37,6 +38,7 @@ class PlotWeaveDB extends Dexie {
   blobs!: EntityTable<BlobEntry, 'id'>
   locationSnapshots!: EntityTable<LocationSnapshot, 'id'>
   itemSnapshots!: EntityTable<ItemSnapshot, 'id'>
+  travelModes!: EntityTable<TravelMode, 'id'>
 
   constructor() {
     super('PlotWeaveDB')
@@ -91,6 +93,17 @@ class PlotWeaveDB extends Dexie {
     this.version(8).stores({}).upgrade((tx) => {
       return tx.table('chapters').toCollection().modify((ch) => {
         if (ch.notes === undefined) ch.notes = ''
+      })
+    })
+
+    this.version(9).stores({
+      travelModes: 'id, worldId',
+    }).upgrade((tx) => {
+      tx.table('chapters').toCollection().modify((ch) => {
+        if (ch.travelDays === undefined) ch.travelDays = null
+      })
+      return tx.table('characterSnapshots').toCollection().modify((s) => {
+        if (s.travelModeId === undefined) s.travelModeId = null
       })
     })
   }

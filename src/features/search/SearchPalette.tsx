@@ -66,37 +66,37 @@ export function SearchPalette() {
     const out: SearchResult[] = []
 
     for (const c of (characters ?? [])) {
-      if (c.name.toLowerCase().includes(q) || c.aliases?.some((a) => a.toLowerCase().includes(q))) {
+      if (c.name?.toLowerCase().includes(q) || c.aliases?.some((a) => a.toLowerCase().includes(q))) {
         out.push({ id: c.id, type: 'character', label: c.name, sublabel: c.description ? c.description.slice(0, 60) : undefined, path: `/worlds/${worldId}/characters/${c.id}` })
       }
     }
     for (const i of (items ?? [])) {
-      if (i.name.toLowerCase().includes(q)) {
+      if (i.name?.toLowerCase().includes(q)) {
         out.push({ id: i.id, type: 'item', label: i.name, sublabel: i.description ? i.description.slice(0, 60) : undefined, path: `/worlds/${worldId}/items/${i.id}` })
       }
     }
     for (const m of (markers ?? [])) {
-      if (m.name.toLowerCase().includes(q) || m.description?.toLowerCase().includes(q)) {
+      if (m.name?.toLowerCase().includes(q) || m.description?.toLowerCase().includes(q)) {
         out.push({ id: m.id, type: 'location', label: m.name, sublabel: m.description ? m.description.slice(0, 60) : undefined, path: `/worlds/${worldId}/maps` })
       }
     }
     for (const ch of (chapters ?? [])) {
-      if (ch.title.toLowerCase().includes(q) || ch.synopsis?.toLowerCase().includes(q)) {
+      if (ch.title?.toLowerCase().includes(q) || ch.synopsis?.toLowerCase().includes(q)) {
         out.push({ id: ch.id, type: 'chapter', label: `Ch. ${ch.number} — ${ch.title}`, sublabel: ch.synopsis ? ch.synopsis.slice(0, 60) : undefined, path: `/worlds/${worldId}/timeline/${ch.id}` })
       }
     }
     for (const ev of (events ?? [])) {
-      if (ev.title.toLowerCase().includes(q) || ev.description?.toLowerCase().includes(q)) {
+      if (ev.title?.toLowerCase().includes(q) || ev.description?.toLowerCase().includes(q)) {
         out.push({ id: ev.id, type: 'event', label: ev.title, sublabel: ev.description ? ev.description.slice(0, 60) : undefined, path: `/worlds/${worldId}/timeline/${ev.chapterId}` })
       }
     }
     for (const tl of (timelines ?? [])) {
-      if (tl.name.toLowerCase().includes(q)) {
+      if (tl.name?.toLowerCase().includes(q)) {
         out.push({ id: tl.id, type: 'timeline', label: tl.name, sublabel: tl.description ? tl.description.slice(0, 60) : undefined, path: `/worlds/${worldId}/timeline` })
       }
     }
     for (const r of (relationships ?? [])) {
-      if (r.label.toLowerCase().includes(q) || r.description?.toLowerCase().includes(q)) {
+      if (r.label?.toLowerCase().includes(q) || r.description?.toLowerCase().includes(q)) {
         out.push({ id: r.id, type: 'relationship', label: r.label, sublabel: `${r.sentiment} · ${r.strength}`, path: `/worlds/${worldId}/relationships` })
       }
     }

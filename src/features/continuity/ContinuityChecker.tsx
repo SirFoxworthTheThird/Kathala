@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, ChevronRight } from 'lucide-react'
+import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, ChevronRight, Footprints } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store'
 import { useWorldChapters } from '@/db/hooks/useTimeline'
@@ -7,9 +7,11 @@ import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
 import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
+import { useTravelModes } from '@/db/hooks/useTravelModes'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { cn } from '@/lib/utils'
+import { pathPixelLength } from '@/lib/mapScale'
 
 // ── types ─────────────────────────────────────────────────────────────────────
 

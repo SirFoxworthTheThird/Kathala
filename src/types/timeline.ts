@@ -15,6 +15,7 @@ export interface Chapter {
   title: string
   synopsis: string
   notes: string
+  travelDays: number | null
   createdAt: number
   updatedAt: number
 }

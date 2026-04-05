@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { MapPin, Package, Plus, X, Heart, Skull } from 'lucide-react'
+import { MapPin, Package, Plus, X, Heart, Skull, Footprints } from 'lucide-react'
 import type { Character } from '@/types'
 import { useSnapshot, useChapterSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { removeItemPlacement } from '@/db/hooks/useItemPlacements'
 import { useItems, createItem } from '@/db/hooks/useItems'
 import { useLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useRootMapLayers } from '@/db/hooks/useMapLayers'
+import { useTravelModes } from '@/db/hooks/useTravelModes'
 import { useActiveChapterId } from '@/store'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -26,12 +27,14 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
   const maps = useRootMapLayers(character.worldId)
   const firstMapId = maps[0]?.id ?? null
   const locationMarkers = useLocationMarkers(firstMapId)
+  const travelModes = useTravelModes(character.worldId)
 
   const [isAlive, setIsAlive] = useState(true)
   const [locationId, setLocationId] = useState<string>('')
   const [inventoryIds, setInventoryIds] = useState<string[]>([])
   const [statusNotes, setStatusNotes] = useState('')
   const [inventoryNotes, setInventoryNotes] = useState('')
+  const [travelModeId, setTravelModeId] = useState<string>('')
   const [newItemName, setNewItemName] = useState('')
   const [dirty, setDirty] = useState(false)
 
@@ -42,6 +45,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
       setInventoryIds(snapshot.inventoryItemIds)
       setStatusNotes(snapshot.statusNotes)
       setInventoryNotes(snapshot.inventoryNotes)
+      setTravelModeId(snapshot.travelModeId ?? '')
       setDirty(false)
     } else {
       setIsAlive(true)
@@ -49,6 +53,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
       setInventoryIds([])
       setStatusNotes('')
       setInventoryNotes('')
+      setTravelModeId('')
       setDirty(false)
     }
   }, [snapshot])
@@ -87,6 +92,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
       inventoryItemIds: inventoryIds,
       inventoryNotes,
       statusNotes,
+      travelModeId: travelModeId || null,
     })
     setDirty(false)
   }
@@ -151,6 +157,26 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Travel mode — how did the character get here? */}
+      {travelModes.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <Label className="flex items-center gap-1.5">
+            <Footprints className="h-3.5 w-3.5" /> Arrived by
+          </Label>
+          <Select value={travelModeId} onValueChange={(v) => mark(() => setTravelModeId(v === 'none' ? '' : v))}>
+            <SelectTrigger>
+              <SelectValue placeholder="Unknown / not specified" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Unknown / not specified</SelectItem>
+              {travelModes.map((m) => (
+                <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Status notes */}
       <div className="flex flex-col gap-1.5">

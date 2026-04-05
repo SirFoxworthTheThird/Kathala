@@ -43,6 +43,7 @@ export interface CharacterSnapshot {
   inventoryItemIds: string[]
   inventoryNotes: string
   statusNotes: string
+  travelModeId: string | null
   createdAt: number
   updatedAt: number
 }

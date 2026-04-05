@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Users, Network, StickyNote } from 'lucide-react'
+import { ArrowLeft, Plus, Users, Network, StickyNote, Clock } from 'lucide-react'
 import { useChapter, useEvents, updateChapter } from '@/db/hooks/useTimeline'
 import { useChapterSnapshots } from '@/db/hooks/useSnapshots'
 import { useChapterRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
@@ -56,11 +56,29 @@ export default function ChapterDetailView() {
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <div>
+        <div className="min-w-0 flex-1">
           <h2 className="text-base font-semibold">Ch. {chapter.number} — {chapter.title}</h2>
           {chapter.synopsis && (
             <p className="text-xs text-[hsl(var(--muted-foreground))]">{chapter.synopsis}</p>
           )}
+        </div>
+        {/* Travel days — how many in-world days of travel are available before this chapter */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Clock className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" />
+          <span className="text-xs text-[hsl(var(--muted-foreground))]">Travel days:</span>
+          <input
+            type="number"
+            min="0"
+            step="any"
+            placeholder="—"
+            defaultValue={chapter.travelDays ?? ''}
+            className="w-16 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 py-0.5 text-xs text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--ring))] transition-colors"
+            onBlur={(e) => {
+              const val = e.target.value === '' ? null : parseFloat(e.target.value)
+              if (chapterId) updateChapter(chapterId, { travelDays: isNaN(val as number) ? null : val })
+            }}
+          />
+          <span className="text-xs text-[hsl(var(--muted-foreground))]">days</span>
         </div>
       </div>
 

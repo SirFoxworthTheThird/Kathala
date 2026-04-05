@@ -2,7 +2,7 @@ import { db } from '@/db/database'
 import type {
   World, MapLayer, LocationMarker, Character, Item,
   CharacterSnapshot, CharacterMovement, ItemPlacement, LocationSnapshot, ItemSnapshot,
-  Relationship, RelationshipSnapshot, Timeline, Chapter, WorldEvent,
+  Relationship, RelationshipSnapshot, Timeline, Chapter, WorldEvent, TravelMode,
 } from '@/types'
 
 const EXPORT_VERSION = 1
@@ -34,6 +34,7 @@ export interface WorldExportFile {
   chapters: Chapter[]
   events: WorldEvent[]
   blobs: BlobExport[]
+  travelModes: TravelMode[]
   relationshipPositions?: Record<string, { x: number; y: number }>
 }
 
@@ -76,6 +77,7 @@ export async function exportWorld(worldId: string): Promise<void> {
     chapters,
     events,
     rawBlobs,
+    travelModes,
   ] = await Promise.all([
     db.worlds.get(worldId),
     db.mapLayers.where('worldId').equals(worldId).toArray(),
@@ -93,6 +95,7 @@ export async function exportWorld(worldId: string): Promise<void> {
     db.chapters.where('worldId').equals(worldId).toArray(),
     db.events.where('worldId').equals(worldId).toArray(),
     db.blobs.where('worldId').equals(worldId).toArray(),
+    db.travelModes.where('worldId').equals(worldId).toArray(),
   ])
 
   if (!world) throw new Error('World not found')
@@ -132,6 +135,7 @@ export async function exportWorld(worldId: string): Promise<void> {
     chapters,
     events,
     blobs,
+    travelModes,
     relationshipPositions,
   }
 
@@ -178,6 +182,10 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
     throw new Error('Invalid file: itemSnapshots is not an array')
   }
   if (!d.itemSnapshots) (d as Record<string, unknown>).itemSnapshots = []
+  if (d.travelModes !== undefined && !Array.isArray(d.travelModes)) {
+    throw new Error('Invalid file: travelModes is not an array')
+  }
+  if (!d.travelModes) (d as Record<string, unknown>).travelModes = []
 }
 
 function normalizeImport(data: WorldExportFile): void {
@@ -196,13 +204,22 @@ function normalizeImport(data: WorldExportFile): void {
       (layer as unknown as Record<string, unknown>).scaleUnit = null
     }
   }
-  // Backfill synopsis and notes on chapters exported before they were added
+  // Backfill synopsis, notes, and travelDays on chapters exported before they were added
   for (const ch of data.chapters) {
     if ((ch as unknown as Record<string, unknown>).synopsis === undefined) {
       (ch as unknown as Record<string, unknown>).synopsis = ''
     }
     if ((ch as unknown as Record<string, unknown>).notes === undefined) {
       (ch as unknown as Record<string, unknown>).notes = ''
+    }
+    if ((ch as unknown as Record<string, unknown>).travelDays === undefined) {
+      (ch as unknown as Record<string, unknown>).travelDays = null
+    }
+  }
+  // Backfill travelModeId on snapshots exported before it was added
+  for (const snap of data.characterSnapshots) {
+    if ((snap as unknown as Record<string, unknown>).travelModeId === undefined) {
+      (snap as unknown as Record<string, unknown>).travelModeId = null
     }
   }
 }
@@ -223,7 +240,7 @@ export async function importWorld(file: File): Promise<string> {
     db.items, db.characterSnapshots, db.characterMovements, db.itemPlacements,
     db.locationSnapshots, db.itemSnapshots,
     db.relationships, db.relationshipSnapshots, db.timelines,
-    db.chapters, db.events, db.blobs,
+    db.chapters, db.events, db.blobs, db.travelModes,
   ], async () => {
     await db.worlds.put(data.world)
     await db.mapLayers.bulkPut(data.mapLayers)
@@ -240,6 +257,7 @@ export async function importWorld(file: File): Promise<string> {
     await db.timelines.bulkPut(data.timelines)
     await db.chapters.bulkPut(data.chapters)
     await db.events.bulkPut(data.events)
+    await db.travelModes.bulkPut(data.travelModes)
 
     for (const b of data.blobs) {
       await db.blobs.put({
