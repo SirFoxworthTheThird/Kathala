@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useItems } from '@/db/hooks/useItems'
+import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
+import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { db } from '@/db/database'
 import type { Chapter, WorldEvent, CharacterSnapshot } from '@/types'
 
@@ -27,6 +29,8 @@ function buildPrompt(
   existingChapters: Chapter[],
   characters: ReturnType<typeof useCharacters>,
   items: ReturnType<typeof useItems>,
+  locationMarkers: ReturnType<typeof useAllLocationMarkers>,
+  mapLayers: ReturnType<typeof useMapLayers>,
 ): string {
   const ts = Date.now()
 
@@ -41,6 +45,17 @@ function buildPrompt(
   const itemList = items.length > 0
     ? items.map((it) => `  - "${it.name}" (id: "${it.id}")${it.description ? ` — ${it.description.slice(0, 100)}` : ''}`).join('\n')
     : '  (none)'
+
+  const layerById = new Map(mapLayers.map((l) => [l.id, l]))
+  const locationList = locationMarkers.length > 0
+    ? locationMarkers.map((m) => {
+        const layer = layerById.get(m.mapLayerId)
+        const layerHint = layer ? ` [map: "${layer.name}", mapLayerId: "${m.mapLayerId}"]` : ''
+        return `  - "${m.name}" (markerId: "${m.id}")${layerHint}${m.description ? ` — ${m.description.slice(0, 80)}` : ''}`
+      }).join('\n')
+    : '  (none — leave currentLocationMarkerId and currentMapLayerId as null)'
+
+  const hasLocations = locationMarkers.length > 0
 
   return `You are helping me add a new chapter to my story in PlotWeave, a story-tracking app.
 Read the chapter content I provide, then output a single JSON object I can import directly.
@@ -63,6 +78,9 @@ ${characterList}
 
 ── Items — USE THESE EXACT IDs (if relevant) ──
 ${itemList}
+
+── Locations — USE THESE EXACT IDs to place characters on the map ──
+${locationList}
 
 ═══════════════════════════════════════════════
 OUTPUT FORMAT
@@ -89,7 +107,7 @@ OUTPUT FORMAT
       "timelineId": "${timelineId}",
       "title": "<short event title>",
       "description": "<detailed description of what happens>",
-      "locationMarkerId": null,
+      "locationMarkerId": ${hasLocations ? '"<markerId from location list, or null if unclear>"' : 'null'},
       "involvedCharacterIds": ["<use existing char id from list above>"],
       "involvedItemIds": [],
       "tags": ["<thematic tag>"],
@@ -107,8 +125,11 @@ OUTPUT FORMAT
       "characterId": "<use existing char id from list above>",
       "chapterId": "<same as chapter.id above>",
       "isAlive": true,
-      "currentLocationMarkerId": null,
-      "currentMapLayerId": null,
+${hasLocations
+  ? `      "currentLocationMarkerId": "<markerId from location list where this character is, or null if unknown>",
+      "currentMapLayerId": "<mapLayerId that corresponds to the chosen markerId, or null>",`
+  : `      "currentLocationMarkerId": null,
+      "currentMapLayerId": null,`}
       "inventoryItemIds": [],
       "inventoryNotes": "",
       "statusNotes": "<1–2 sentences: what this character is doing or experiencing this chapter>",
@@ -128,8 +149,12 @@ RULES
 3. Every itemId in involvedItemIds MUST be one of the item ids listed above.
 4. Write a characterSnapshot for EVERY character in the list, even minor ones.
 5. Set isAlive: false in the snapshot if the character dies in this chapter.
-6. sortOrder in events starts at 0 and increments by 1.
-7. Output ONLY the JSON object, starting with { and ending with }.
+6. sortOrder in events starts at 0 and increments by 1.${hasLocations ? `
+7. For character snapshots: set currentLocationMarkerId to the markerId of the location where the character is at the END of this chapter. Set currentMapLayerId to the matching mapLayerId shown next to that location. If their location is unclear from the text, use null.
+8. For events: set locationMarkerId to the markerId where the event takes place, or null if it spans multiple locations or is unclear.
+9. Do NOT invent new location IDs — only use the markerId values listed above.` : `
+7. No locations are defined in this world yet — leave currentLocationMarkerId and currentMapLayerId as null.`}
+10. Output ONLY the JSON object, starting with { and ending with }.
 
 ═══════════════════════════════════════════════
 MY CHAPTER CONTENT
@@ -146,6 +171,7 @@ function validateResponse(
   timelineId: string,
   characterIds: Set<string>,
   itemIds: Set<string>,
+  markerIds: Set<string>,
 ): ChapterAIResponse {
   let parsed: unknown
   try { parsed = JSON.parse(raw) } catch { throw new Error('Could not parse JSON. Make sure you copied the full response.') }
@@ -168,6 +194,9 @@ function validateResponse(
     if (typeof ev.id !== 'string') throw new Error('Each event must have an id string.')
     if (ev.worldId !== worldId) throw new Error(`Event "${ev.title}" has wrong worldId.`)
     if (ev.chapterId !== ch.id) throw new Error(`Event "${ev.title}" chapterId must match chapter.id.`)
+    if (ev.locationMarkerId != null && !markerIds.has(ev.locationMarkerId as string)) {
+      throw new Error(`Event "${ev.title}" references unknown locationMarkerId "${ev.locationMarkerId}".`)
+    }
     if (Array.isArray(ev.involvedCharacterIds)) {
       for (const cid of ev.involvedCharacterIds as string[]) {
         if (!characterIds.has(cid)) throw new Error(`Event "${ev.title}" references unknown characterId "${cid}".`)
@@ -188,6 +217,9 @@ function validateResponse(
     if (snap.chapterId !== ch.id) throw new Error('A snapshot chapterId must match chapter.id.')
     if (typeof snap.characterId !== 'string' || !characterIds.has(snap.characterId as string)) {
       throw new Error(`Snapshot references unknown characterId "${snap.characterId}".`)
+    }
+    if (snap.currentLocationMarkerId != null && !markerIds.has(snap.currentLocationMarkerId as string)) {
+      throw new Error(`Snapshot for character "${snap.characterId}" references unknown locationMarkerId "${snap.currentLocationMarkerId}".`)
     }
   }
 
@@ -224,6 +256,8 @@ export function ChapterAIDialog({
   const navigate = useNavigate()
   const characters = useCharacters(worldId)
   const items = useItems(worldId)
+  const locationMarkers = useAllLocationMarkers(worldId)
+  const mapLayers = useMapLayers(worldId)
 
   const [step, setStep] = useState<'prompt' | 'paste'>('prompt')
   const [copied, setCopied] = useState(false)
@@ -231,10 +265,11 @@ export function ChapterAIDialog({
   const [error, setError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
 
-  const prompt = buildPrompt(worldId, worldName, timelineId, timelineName, nextNumber, existingChapters, characters, items)
+  const prompt = buildPrompt(worldId, worldName, timelineId, timelineName, nextNumber, existingChapters, characters, items, locationMarkers, mapLayers)
 
   const characterIds = new Set(characters.map((c) => c.id))
   const itemIds = new Set(items.map((it) => it.id))
+  const markerIds = new Set(locationMarkers.map((m) => m.id))
 
   function handleClose(v: boolean) {
     if (!v) {
@@ -256,7 +291,7 @@ export function ChapterAIDialog({
     setError(null)
     setImporting(true)
     try {
-      const data = validateResponse(pasteValue.trim(), worldId, timelineId, characterIds, itemIds)
+      const data = validateResponse(pasteValue.trim(), worldId, timelineId, characterIds, itemIds, markerIds)
       const chapterId = await importChapter(data)
       handleClose(false)
       navigate(`/worlds/${worldId}/timeline/${chapterId}`)
