@@ -3,10 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { Copy, Check, Sparkles, ArrowRight, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
+import { useEvents } from '@/db/hooks/useTimeline'
+import { useChapterSnapshots } from '@/db/hooks/useSnapshots'
 import { db } from '@/db/database'
 import type { Chapter, WorldEvent, CharacterSnapshot } from '@/types'
 
@@ -31,12 +34,31 @@ function buildPrompt(
   items: ReturnType<typeof useItems>,
   locationMarkers: ReturnType<typeof useAllLocationMarkers>,
   mapLayers: ReturnType<typeof useMapLayers>,
+  chapterToUpdate?: { chapter: Chapter; events: WorldEvent[]; snapshots: CharacterSnapshot[] },
 ): string {
   const ts = Date.now()
+  const isUpdate = !!chapterToUpdate
 
-  const chapterList = existingChapters.length > 0
-    ? existingChapters.map((c) => `  - Ch.${c.number} "${c.title}"${c.synopsis ? ` — ${c.synopsis}` : ''}`).join('\n')
+  const contextChapters = isUpdate
+    ? existingChapters.filter((c) => c.id !== chapterToUpdate!.chapter.id)
+    : existingChapters
+  const chapterList = contextChapters.length > 0
+    ? contextChapters.map((c) => `  - Ch.${c.number} "${c.title}"${c.synopsis ? ` — ${c.synopsis}` : ''}`).join('\n')
     : '  (none yet)'
+
+  const existingEventsText = isUpdate && chapterToUpdate!.events.length > 0
+    ? chapterToUpdate!.events
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((e) => `  - [${e.sortOrder}] "${e.title}": ${e.description}`)
+        .join('\n')
+    : '  (none)'
+
+  const existingSnapshotsText = isUpdate && chapterToUpdate!.snapshots.length > 0
+    ? chapterToUpdate!.snapshots.map((s) => {
+        const char = characters.find((c) => c.id === s.characterId)
+        return `  - ${char?.name ?? s.characterId}: ${s.statusNotes || '(no notes)'}`
+      }).join('\n')
+    : '  (none)'
 
   const characterList = characters.length > 0
     ? characters.map((c) => `  - "${c.name}" (id: "${c.id}")${c.description ? ` — ${c.description.slice(0, 120)}` : ''}${!c.isAlive ? ' [deceased]' : ''}`).join('\n')
@@ -57,8 +79,8 @@ function buildPrompt(
 
   const hasLocations = locationMarkers.length > 0
 
-  return `You are helping me add a new chapter to my story in PlotWeave, a story-tracking app.
-Read the chapter content I provide, then output a single JSON object I can import directly.
+  return `You are helping me ${isUpdate ? 'rewrite an existing chapter' : 'add a new chapter'} in PlotWeave, a story-tracking app.
+Read the ${isUpdate ? 'rewritten chapter content' : 'chapter content'} I provide, then output a single JSON object I can import directly.
 Output ONLY the raw JSON — no explanation, no markdown fences.
 
 ═══════════════════════════════════════════════
@@ -67,11 +89,22 @@ WORLD CONTEXT  (copy these IDs exactly)
 
 World:    "${worldName}"  (worldId: "${worldId}")
 Timeline: "${timelineName}"  (timelineId: "${timelineId}")
-New chapter number: ${nextNumber}
+${isUpdate
+  ? `Chapter being rewritten: Ch.${chapterToUpdate!.chapter.number} — "${chapterToUpdate!.chapter.title}"
+IMPORTANT: Use this exact chapter id: "${chapterToUpdate!.chapter.id}"`
+  : `New chapter number: ${nextNumber}`}
 Use this timestamp for all createdAt / updatedAt fields: ${ts}
 
-── Existing chapters (for narrative context only, do not recreate) ──
-${chapterList}
+── Other chapters (for narrative context only, do not recreate) ──
+${chapterList}${isUpdate ? `
+
+── Current chapter content (being replaced — use as context for what changes) ──
+Current title: "${chapterToUpdate!.chapter.title}"
+Current synopsis: ${chapterToUpdate!.chapter.synopsis || '(none)'}
+Current events:
+${existingEventsText}
+Current character snapshots:
+${existingSnapshotsText}` : ''}
 
 ── Characters — USE THESE EXACT IDs ──
 ${characterList}
@@ -88,10 +121,10 @@ OUTPUT FORMAT
 
 {
   "chapter": {
-    "id": "<new uuid v4>",
+    "id": "${isUpdate ? chapterToUpdate!.chapter.id : '<new uuid v4>'}",
     "worldId": "${worldId}",
     "timelineId": "${timelineId}",
-    "number": ${nextNumber},
+    "number": ${isUpdate ? chapterToUpdate!.chapter.number : nextNumber},
     "title": "<chapter title>",
     "synopsis": "<2–4 sentence summary of what happens>",
     "notes": "",
@@ -144,7 +177,8 @@ ${hasLocations
 RULES
 ═══════════════════════════════════════════════
 
-1. Use proper UUID v4 format for every new id (xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx).
+${isUpdate ? `1. The chapter.id MUST be exactly "${chapterToUpdate!.chapter.id}" — do not change it.` : '1. Use proper UUID v4 format for every new id (xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx).'}
+   All event ids and snapshot ids must be new UUIDs (v4 format).
 2. Every characterId in events and snapshots MUST be one of the ids listed above.
 3. Every itemId in involvedItemIds MUST be one of the item ids listed above.
 4. Write a characterSnapshot for EVERY character in the list, even minor ones.
@@ -179,7 +213,6 @@ function validateResponse(
   if (typeof parsed !== 'object' || parsed === null) throw new Error('Response is not a JSON object.')
   const d = parsed as Record<string, unknown>
 
-  // chapter
   if (typeof d.chapter !== 'object' || d.chapter === null) throw new Error('Missing "chapter" field.')
   const ch = d.chapter as Record<string, unknown>
   if (typeof ch.id !== 'string') throw new Error('chapter.id must be a string.')
@@ -188,7 +221,6 @@ function validateResponse(
   if (typeof ch.number !== 'number') throw new Error('chapter.number must be a number.')
   if (typeof ch.title !== 'string' || !ch.title.trim()) throw new Error('chapter.title is required.')
 
-  // events
   if (!Array.isArray(d.events)) throw new Error('Missing "events" array.')
   for (const ev of d.events as Record<string, unknown>[]) {
     if (typeof ev.id !== 'string') throw new Error('Each event must have an id string.')
@@ -209,7 +241,6 @@ function validateResponse(
     }
   }
 
-  // characterSnapshots
   if (!Array.isArray(d.characterSnapshots)) throw new Error('Missing "characterSnapshots" array.')
   for (const snap of d.characterSnapshots as Record<string, unknown>[]) {
     if (typeof snap.id !== 'string') throw new Error('Each snapshot must have an id string.')
@@ -226,8 +257,12 @@ function validateResponse(
   return parsed as unknown as ChapterAIResponse
 }
 
-async function importChapter(data: ChapterAIResponse): Promise<string> {
+async function importChapter(data: ChapterAIResponse, replacing: boolean): Promise<string> {
   await db.transaction('rw', [db.chapters, db.events, db.characterSnapshots], async () => {
+    if (replacing) {
+      await db.events.where('chapterId').equals(data.chapter.id).delete()
+      await db.characterSnapshots.where('chapterId').equals(data.chapter.id).delete()
+    }
     await db.chapters.put(data.chapter)
     if (data.events.length) await db.events.bulkPut(data.events)
     if (data.characterSnapshots.length) await db.characterSnapshots.bulkPut(data.characterSnapshots)
@@ -259,13 +294,30 @@ export function ChapterAIDialog({
   const locationMarkers = useAllLocationMarkers(worldId)
   const mapLayers = useMapLayers(worldId)
 
+  const [mode, setMode] = useState<'create' | 'update'>('create')
+  const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null)
   const [step, setStep] = useState<'prompt' | 'paste'>('prompt')
   const [copied, setCopied] = useState(false)
   const [pasteValue, setPasteValue] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
 
-  const prompt = buildPrompt(worldId, worldName, timelineId, timelineName, nextNumber, existingChapters, characters, items, locationMarkers, mapLayers)
+  // Always call hooks unconditionally; data is only used when mode === 'update'
+  const selectedChapterEvents = useEvents(selectedChapterId)
+  const selectedChapterSnapshots = useChapterSnapshots(selectedChapterId)
+
+  const selectedChapter = existingChapters.find((c) => c.id === selectedChapterId) ?? null
+
+  const chapterToUpdate = mode === 'update' && selectedChapter
+    ? { chapter: selectedChapter, events: selectedChapterEvents, snapshots: selectedChapterSnapshots }
+    : undefined
+
+  const isUpdate = mode === 'update'
+  const canProceed = mode === 'create' || selectedChapter !== null
+
+  const prompt = canProceed
+    ? buildPrompt(worldId, worldName, timelineId, timelineName, nextNumber, existingChapters, characters, items, locationMarkers, mapLayers, chapterToUpdate)
+    : ''
 
   const characterIds = new Set(characters.map((c) => c.id))
   const itemIds = new Set(items.map((it) => it.id))
@@ -273,12 +325,23 @@ export function ChapterAIDialog({
 
   function handleClose(v: boolean) {
     if (!v) {
+      setMode('create')
+      setSelectedChapterId(null)
       setStep('prompt')
       setPasteValue('')
       setError(null)
       setCopied(false)
     }
     onOpenChange(v)
+  }
+
+  function handleModeChange(newMode: 'create' | 'update') {
+    setMode(newMode)
+    setSelectedChapterId(null)
+    setStep('prompt')
+    setPasteValue('')
+    setError(null)
+    setCopied(false)
   }
 
   async function handleCopy() {
@@ -292,7 +355,7 @@ export function ChapterAIDialog({
     setImporting(true)
     try {
       const data = validateResponse(pasteValue.trim(), worldId, timelineId, characterIds, itemIds, markerIds)
-      const chapterId = await importChapter(data)
+      const chapterId = await importChapter(data, isUpdate)
       handleClose(false)
       navigate(`/worlds/${worldId}/timeline/${chapterId}`)
     } catch (err) {
@@ -308,33 +371,85 @@ export function ChapterAIDialog({
         <DialogHeader className="shrink-0 border-b border-[hsl(var(--border))] px-6 py-4">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-[hsl(var(--ring))]" />
-            Generate Chapter {nextNumber} with AI
+            Generate with AI
           </DialogTitle>
         </DialogHeader>
 
-        {/* Step indicator */}
-        <div className="flex shrink-0 items-center gap-0 border-b border-[hsl(var(--border))]">
-          {(['prompt', 'paste'] as const).map((s, i) => (
+        {/* Mode toggle */}
+        <div className="flex shrink-0 items-center gap-2 border-b border-[hsl(var(--border))] px-6 py-3">
+          <div className="flex rounded-md border border-[hsl(var(--border))] p-0.5">
             <button
-              key={s}
-              onClick={() => setStep(s)}
-              className={`flex flex-1 items-center justify-center gap-2 py-2.5 text-xs font-medium transition-colors ${
-                step === s
-                  ? 'border-b-2 border-[hsl(var(--ring))] text-[hsl(var(--foreground))]'
+              onClick={() => handleModeChange('create')}
+              className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+                mode === 'create'
+                  ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
                   : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
               }`}
             >
-              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[10px]">{i + 1}</span>
-              {s === 'prompt' ? 'Copy prompt' : 'Paste response'}
+              New Chapter
             </button>
-          ))}
+            <button
+              onClick={() => handleModeChange('update')}
+              className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+                mode === 'update'
+                  ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                  : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
+              }`}
+            >
+              Update Existing
+            </button>
+          </div>
+          {mode === 'update' && (
+            <Select
+              value={selectedChapterId ?? ''}
+              onValueChange={(v) => { setSelectedChapterId(v || null); setStep('prompt'); setPasteValue(''); setError(null) }}
+            >
+              <SelectTrigger className="h-7 flex-1 text-xs">
+                <SelectValue placeholder="Select chapter to rewrite…" />
+              </SelectTrigger>
+              <SelectContent>
+                {existingChapters.map((c) => (
+                  <SelectItem key={c.id} value={c.id} className="text-xs">
+                    Ch. {c.number} — {c.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
-        {step === 'prompt' && (
+        {/* Step tabs — only shown once ready to proceed */}
+        {canProceed && (
+          <div className="flex shrink-0 items-center gap-0 border-b border-[hsl(var(--border))]">
+            {(['prompt', 'paste'] as const).map((s, i) => (
+              <button
+                key={s}
+                onClick={() => setStep(s)}
+                className={`flex flex-1 items-center justify-center gap-2 py-2.5 text-xs font-medium transition-colors ${
+                  step === s
+                    ? 'border-b-2 border-[hsl(var(--ring))] text-[hsl(var(--foreground))]'
+                    : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
+                }`}
+              >
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[10px]">{i + 1}</span>
+                {s === 'prompt' ? 'Copy prompt' : 'Paste response'}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {!canProceed && (
+          <div className="flex flex-1 items-center justify-center text-sm text-[hsl(var(--muted-foreground))]">
+            Select a chapter above to continue.
+          </div>
+        )}
+
+        {canProceed && step === 'prompt' && (
           <>
             <div className="shrink-0 px-6 py-3 text-xs text-[hsl(var(--muted-foreground))]">
-              This prompt includes your world's real character and item IDs so the AI can reference them correctly.
-              Copy it, paste into any AI assistant, then add your chapter text at the end.
+              {isUpdate
+                ? 'This prompt includes the current chapter content and your world\'s IDs. Paste it into any AI assistant along with your rewritten chapter text.'
+                : 'This prompt includes your world\'s real character and item IDs so the AI can reference them correctly. Copy it, paste into any AI assistant, then add your chapter text at the end.'}
             </div>
             <div className="min-h-0 flex-1 overflow-hidden">
               <pre className="h-full overflow-y-auto px-6 py-2 font-mono text-[10.5px] leading-relaxed text-[hsl(var(--muted-foreground))] whitespace-pre-wrap">
@@ -352,10 +467,10 @@ export function ChapterAIDialog({
           </>
         )}
 
-        {step === 'paste' && (
+        {canProceed && step === 'paste' && (
           <>
             <div className="shrink-0 px-6 py-3 text-xs text-[hsl(var(--muted-foreground))]">
-              Paste the AI's JSON response below. The chapter, events, and character snapshots will be added to your world.
+              Paste the AI's JSON response below. The chapter, events, and character snapshots will be {isUpdate ? 'updated in' : 'added to'} your world.
             </div>
             <div className="min-h-0 flex-1 overflow-hidden px-6 pb-3">
               <textarea
@@ -382,7 +497,7 @@ export function ChapterAIDialog({
                 onClick={handleImport}
               >
                 <Sparkles className="h-4 w-4" />
-                {importing ? 'Importing...' : 'Import Chapter'}
+                {importing ? (isUpdate ? 'Updating...' : 'Importing...') : (isUpdate ? 'Update Chapter' : 'Import Chapter')}
               </Button>
             </div>
           </>
