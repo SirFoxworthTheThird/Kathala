@@ -152,7 +152,7 @@ export function CharacterSnapshotPanel({
   }
 
   return (
-    <div className="flex w-72 shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+    <div className="flex h-full w-72 shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl">
 
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-3">

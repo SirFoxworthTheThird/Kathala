@@ -180,15 +180,25 @@ function ZoomTracker({ onZoomChange }: { onZoomChange: (zoom: number) => void })
   return null
 }
 
-function FitBounds({ bounds }: { bounds: L.LatLngBoundsExpression }) {
+function FitBounds({ bounds, initialCenter }: { bounds: L.LatLngBoundsExpression; initialCenter?: [number, number] | null }) {
   const map = useMapEvents({})
   useEffect(() => {
-    map.invalidateSize()
-    const prevSnap = map.options.zoomSnap
-    map.options.zoomSnap = 0
-    map.fitBounds(bounds, { padding: [0, 0], animate: false })
-    map.options.zoomSnap = prevSnap ?? 0.25
-  }, [map, bounds]) // eslint-disable-line react-hooks/exhaustive-deps
+    // Defer to a macro-task so react-leaflet's ResizeObserver callback (which fires
+    // asynchronously and calls invalidateSize) runs first. Without this, the observer
+    // fires after our effect and resets the map's center back to [0,0].
+    const center = initialCenter // capture before async gap
+    const id = setTimeout(() => {
+      map.invalidateSize()
+      const prevSnap = map.options.zoomSnap
+      map.options.zoomSnap = 0
+      map.fitBounds(bounds, { padding: [0, 0], animate: false })
+      map.options.zoomSnap = prevSnap ?? 0.25
+      if (center && typeof center[0] === 'number' && typeof center[1] === 'number') {
+        map.panTo(center, { animate: false })
+      }
+    }, 0)
+    return () => clearTimeout(id)
+  }, [map, bounds]) // eslint-disable-line react-hooks/exhaustive-deps — initialCenter intentionally read only at mount
   return null
 }
 
@@ -235,6 +245,8 @@ interface LeafletMapCanvasProps {
   onScalePoints?: (p1: ScaleCalibrationPoint, p2: ScaleCalibrationPoint) => void
   showSubMapLinks?: boolean
   locationStatuses?: Record<string, string>
+  /** When set, pan to this [y, x] position after FitBounds on mount (used for cross-layer character focus) */
+  initialCenter?: [number, number] | null
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -243,7 +255,7 @@ export function LeafletMapCanvas({
   isDraggingCharacter, onMarkerClick, onMapClick, onDrillDown,
   onCharacterDrop, onCharacterDropOnEmpty, onCharacterClick, mapRef: externalMapRef,
   scaleMode, onScalePoints, showSubMapLinks = true, locationStatuses = {},
-  pinAnimation, onAnimationEnd,
+  pinAnimation, onAnimationEnd, initialCenter,
 }: LeafletMapCanvasProps) {
   const internalMapRef = useRef<L.Map | null>(null)
   const mapRef         = externalMapRef ?? internalMapRef
@@ -559,7 +571,7 @@ export function LeafletMapCanvas({
         maxBounds={[[-h * 0.2, -w * 0.2], [h * 1.2, w * 1.2]]}
         minZoom={-3} maxZoom={4} zoomSnap={0.25}
       >
-        <FitBounds bounds={bounds} />
+        <FitBounds bounds={bounds} initialCenter={initialCenter} />
         <ZoomTracker onZoomChange={setMapZoom} />
         <ImageOverlay url={imageUrl} bounds={bounds} />
         <ClickHandler onMapClickRef={onMapClickRef} />

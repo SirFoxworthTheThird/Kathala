@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, BookOpen, Layers } from 'lucide-react'
+import { Plus, BookOpen, Layers, Sparkles } from 'lucide-react'
 import { useTimelines, useChapters, createTimeline } from '@/db/hooks/useTimeline'
+import { useWorld } from '@/db/hooks/useWorlds'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/EmptyState'
 import { ChapterRow } from './ChapterRow'
 import { AddChapterDialog } from './AddChapterDialog'
+import { ChapterAIDialog } from './ChapterAIDialog'
 
 export default function TimelineView() {
   const { worldId } = useParams<{ worldId: string }>()
@@ -13,7 +15,10 @@ export default function TimelineView() {
   const [activeTimelineId, setActiveTimelineId] = useState<string | null>(null)
   const currentTimelineId = activeTimelineId ?? timelines[0]?.id ?? null
   const chapters = useChapters(currentTimelineId)
+  const world = useWorld(worldId ?? null)
+  const currentTimeline = timelines.find((t) => t.id === currentTimelineId)
   const [addChapterOpen, setAddChapterOpen] = useState(false)
+  const [aiChapterOpen, setAiChapterOpen] = useState(false)
 
   async function handleCreateTimeline() {
     if (!worldId) return
@@ -71,9 +76,14 @@ export default function TimelineView() {
           </span>
           <span className="text-xs text-[hsl(var(--muted-foreground))]">({chapters.length} chapters)</span>
         </div>
-        <Button size="sm" onClick={() => setAddChapterOpen(true)} disabled={!currentTimelineId}>
-          <Plus className="h-4 w-4" /> Add Chapter
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setAiChapterOpen(true)} disabled={!currentTimelineId}>
+            <Sparkles className="h-4 w-4" /> Generate with AI
+          </Button>
+          <Button size="sm" onClick={() => setAddChapterOpen(true)} disabled={!currentTimelineId}>
+            <Plus className="h-4 w-4" /> Add Chapter
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto p-4">
@@ -104,6 +114,18 @@ export default function TimelineView() {
           worldId={worldId}
           timelineId={currentTimelineId}
           nextNumber={chapters.length + 1}
+        />
+      )}
+      {worldId && currentTimelineId && currentTimeline && (
+        <ChapterAIDialog
+          open={aiChapterOpen}
+          onOpenChange={setAiChapterOpen}
+          worldId={worldId}
+          worldName={world?.name ?? worldId}
+          timelineId={currentTimelineId}
+          timelineName={currentTimeline.name}
+          nextNumber={chapters.length + 1}
+          existingChapters={chapters}
         />
       )}
     </div>

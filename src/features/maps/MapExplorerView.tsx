@@ -1001,6 +1001,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const chapterLocSnaps = useChapterLocationSnapshots(activeChapterId)
 
   const [isDraggingCharacter, setIsDraggingCharacter] = useState(false)
+  const crossLayerPanTargetRef = useRef<[number, number] | null>(null)
   const pinAnimationKeyRef  = useRef(0)
   const [playbackQueue, setPlaybackQueue]     = useState<PlaybackStep[]>([])
   const [playbackStepIdx, setPlaybackStepIdx] = useState(0)
@@ -1038,19 +1039,17 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       return
     }
 
-    // Navigate to the layer the character is actually on, then pan to their marker
+    // Navigate to the layer the character is actually on.
+    // Pass the target position as initialCenter so FitBounds applies it
+    // synchronously after fitting — no setTimeout race condition.
     const snap = snapshots.find((s) => s.characterId === characterId)
     if (!snap?.currentMapLayerId) return
 
     const targetMarker = allMarkers.find((m) => m.id === snap.currentLocationMarkerId)
-    pushMapLayer(snap.currentMapLayerId)
-
     if (targetMarker) {
-      // Delay pan until after FitBounds has settled on the new layer
-      setTimeout(() => {
-        mapRef.current?.panTo([targetMarker.y, targetMarker.x])
-      }, 150)
+      crossLayerPanTargetRef.current = [targetMarker.y, targetMarker.x]
     }
+    pushMapLayer(snap.currentMapLayerId)
   }
 
   function focusOnItem(itemId: string) {
@@ -1138,6 +1137,11 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       setActiveMapLayerId(step.mapLayerId)
     }
   }, [playbackStepIdx]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Clear the cross-layer pan target once the new layer has mounted and consumed it
+  useEffect(() => {
+    crossLayerPanTargetRef.current = null
+  }, [layerId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Derive the active pin animation: only animate if we're on the right map for this step
   const currentStep = playbackQueue[playbackStepIdx] ?? null
@@ -1354,12 +1358,13 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           />
         )}
 
-        {/* Map canvas — keyed by layerId so Leaflet remounts cleanly on layer switch */}
-        <div className="flex-1 overflow-hidden">
+        {/* Map canvas — relative so detail panels can overlay without resizing the Leaflet container */}
+        <div className="relative flex-1 overflow-hidden">
           <LeafletMapCanvas
             key={layerId}
             layer={layer}
             imageUrl={imageUrl}
+            initialCenter={crossLayerPanTargetRef.current}
             markers={displayedMarkers}
             charPins={displayedCharPins}
             movementLines={displayedMovementLines}
@@ -1382,6 +1387,37 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             scaleMode={scaleMode}
             onScalePoints={handleScalePoints}
           />
+
+          {/* ── Detail panels (absolute overlay — keeps map container size stable) ── */}
+          {selectedLocationMarkerId && (
+            <div className="absolute inset-y-0 right-0 z-[500] flex">
+              <LocationDetailPanel
+                markerId={selectedLocationMarkerId}
+                worldId={worldId}
+                onClose={() => setSelectedLocationMarkerId(null)}
+                onDrillDown={pushMapLayer}
+              />
+            </div>
+          )}
+          {selectedCharacterId && (() => {
+            const char = characters.find((c) => c.id === selectedCharacterId)
+            const snap = snapshots.find((s) => s.characterId === selectedCharacterId)
+            if (!char) return null
+            return (
+              <div className="absolute inset-y-0 right-0 z-[500] flex">
+                <CharacterSnapshotPanel
+                  character={char}
+                  snapshot={snap}
+                  allMarkers={allMarkers}
+                  allLayers={allLayers}
+                  allCharacters={characters}
+                  activeChapterTitle={activeChapterTitle}
+                  worldId={worldId}
+                  onClose={() => setSelectedCharacterId(null)}
+                />
+              </div>
+            )
+          })()}
         </div>
 
         {scaleDialog && (
@@ -1394,33 +1430,6 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
         )}
 
       </div>
-
-      {/* ── Right: detail panel ── */}
-      {selectedLocationMarkerId && (
-        <LocationDetailPanel
-          markerId={selectedLocationMarkerId}
-          worldId={worldId}
-          onClose={() => setSelectedLocationMarkerId(null)}
-          onDrillDown={pushMapLayer}
-        />
-      )}
-      {selectedCharacterId && (() => {
-        const char = characters.find((c) => c.id === selectedCharacterId)
-        const snap = snapshots.find((s) => s.characterId === selectedCharacterId)
-        if (!char) return null
-        return (
-          <CharacterSnapshotPanel
-            character={char}
-            snapshot={snap}
-            allMarkers={allMarkers}
-            allLayers={allLayers}
-            allCharacters={characters}
-            activeChapterTitle={activeChapterTitle}
-            worldId={worldId}
-            onClose={() => setSelectedCharacterId(null)}
-          />
-        )
-      })()}
 
       {/* Dialogs */}
       {pendingPos && (

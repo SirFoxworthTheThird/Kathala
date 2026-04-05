@@ -1,5 +1,6 @@
-const { app, BrowserWindow, shell } = require('electron')
+const { app, BrowserWindow, shell, ipcMain, dialog } = require('electron')
 const path = require('path')
+const fs = require('fs')
 
 const isDev = !app.isPackaged
 
@@ -12,6 +13,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      preload: path.join(__dirname, 'preload.cjs'),
     },
     icon: path.join(__dirname, isDev ? '../public/favicon.png' : '../dist/favicon.png'),
     title: 'PlotWeave',
@@ -33,6 +35,24 @@ function createWindow() {
     win.loadFile(path.join(__dirname, '../dist/index.html'))
   }
 }
+
+ipcMain.handle('dialog:open-files', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile', 'multiSelections'],
+    filters: [
+      { name: 'PlotWeave Files', extensions: ['pwk', 'pwb'] },
+      { name: 'All Files', extensions: ['*'] },
+    ],
+  })
+  if (result.canceled || result.filePaths.length === 0) return null
+  const files = await Promise.all(
+    result.filePaths.map(async (p) => ({
+      name: path.basename(p),
+      content: await fs.promises.readFile(p, 'utf-8'),
+    }))
+  )
+  return files
+})
 
 app.whenReady().then(() => {
   createWindow()

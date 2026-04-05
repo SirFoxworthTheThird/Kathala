@@ -1,22 +1,78 @@
 import { useState, useRef } from 'react'
 import faviconUrl from '/favicon.png'
-import { Plus, Scroll, Upload } from 'lucide-react'
+import { Plus, Scroll, Upload, Sparkles } from 'lucide-react'
 import { useWorlds } from '@/db/hooks/useWorlds'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/EmptyState'
 import { WorldCard } from './WorldCard'
 import { CreateWorldDialog } from './CreateWorldDialog'
+import { LLMPromptDialog } from './LLMPromptDialog'
 import { useNavigate } from 'react-router-dom'
 import { importWorld, importWorldImages } from '@/lib/exportImport'
 import { TutorialWelcome } from '@/features/tutorial/TutorialWizard'
 
+declare global {
+  interface Window {
+    electronAPI?: {
+      openFiles: () => Promise<Array<{ name: string; content: string }> | null>
+    }
+  }
+}
+
 export default function WorldSelectorView() {
   const worlds = useWorlds()
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [promptOpen, setPromptOpen] = useState(false)
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
   const importRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
+
+  const isElectron = typeof window.electronAPI !== 'undefined'
+
+  async function processFiles(files: File[]) {
+    if (files.length === 1) {
+      const text = await files[0].text()
+      const parsed = JSON.parse(text) as Record<string, unknown>
+      if (parsed.type === 'images') {
+        const worldId = await importWorldImages(files[0])
+        navigate(`/worlds/${worldId}`)
+      } else {
+        const worldId = await importWorld(files[0])
+        navigate(`/worlds/${worldId}`)
+      }
+    } else {
+      // Two files: one data file + one images file (order doesn't matter)
+      const texts = await Promise.all(files.map((f) => f.text()))
+      const parsed = texts.map((t) => JSON.parse(t) as Record<string, unknown>)
+      const imagesIdx = parsed.findIndex((p) => p.type === 'images')
+      const dataIdx   = parsed.findIndex((_, i) => i !== imagesIdx)
+      if (dataIdx === -1) throw new Error('No data file found. Select the .pwk data file.')
+      const worldId = await importWorld(files[dataIdx])
+      if (imagesIdx !== -1) await importWorldImages(files[imagesIdx])
+      navigate(`/worlds/${worldId}`)
+    }
+  }
+
+  async function handleImportClick() {
+    if (isElectron) {
+      // Use Electron's native file dialog — avoids hidden-input unreliability
+      setImporting(true)
+      setImportError(null)
+      try {
+        const results = await window.electronAPI!.openFiles()
+        if (!results || results.length === 0) return
+        const files = results.map((r) => new File([r.content], r.name, { type: 'application/json' }))
+        await processFiles(files)
+      } catch (err) {
+        setImportError(err instanceof Error ? err.message : 'Import failed')
+      } finally {
+        setImporting(false)
+      }
+    } else {
+      importRef.current?.click()
+    }
+  }
 
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
@@ -24,29 +80,7 @@ export default function WorldSelectorView() {
     setImporting(true)
     setImportError(null)
     try {
-      if (files.length === 1) {
-        // Single file: full export OR data-only file OR images-only file
-        const text = await files[0].text()
-        const parsed = JSON.parse(text) as Record<string, unknown>
-        if (parsed.type === 'images') {
-          // Images-only: add images to an already-imported world
-          const worldId = await importWorldImages(files[0])
-          navigate(`/worlds/${worldId}`)
-        } else {
-          const worldId = await importWorld(files[0])
-          navigate(`/worlds/${worldId}`)
-        }
-      } else {
-        // Two files: one data file + one images file (order doesn't matter)
-        const texts = await Promise.all(files.map((f) => f.text()))
-        const parsed = texts.map((t) => JSON.parse(t) as Record<string, unknown>)
-        const imagesIdx = parsed.findIndex((p) => p.type === 'images')
-        const dataIdx   = parsed.findIndex((_, i) => i !== imagesIdx)
-        if (dataIdx === -1) throw new Error('No data file found. Select the .pwk data file.')
-        const worldId = await importWorld(files[dataIdx])
-        if (imagesIdx !== -1) await importWorldImages(files[imagesIdx])
-        navigate(`/worlds/${worldId}`)
-      }
+      await processFiles(files)
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Import failed')
     } finally {
@@ -69,7 +103,14 @@ export default function WorldSelectorView() {
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
-              onClick={() => importRef.current?.click()}
+              onClick={() => setPromptOpen(true)}
+            >
+              <Sparkles className="h-4 w-4" />
+              Generate from AI
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleImportClick}
               disabled={importing}
             >
               <Upload className="h-4 w-4" />
@@ -108,7 +149,7 @@ export default function WorldSelectorView() {
             description="Create your first world or story to start tracking characters, locations, and events."
             action={
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => importRef.current?.click()}>
+                <Button variant="outline" onClick={handleImportClick}>
                   <Upload className="h-4 w-4" />
                   Import World
                 </Button>
@@ -140,6 +181,7 @@ export default function WorldSelectorView() {
         onOpenChange={setDialogOpen}
         onCreated={(id) => navigate(`/worlds/${id}`)}
       />
+      <LLMPromptDialog open={promptOpen} onOpenChange={setPromptOpen} />
       <TutorialWelcome />
     </div>
   )
