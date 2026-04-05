@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, Trash2, Map, Link, Upload, Users, Plus, UserMinus, Package, BookOpen } from 'lucide-react'
+import { X, Trash2, Map, Link, Upload, Users, Plus, UserMinus, Package, BookOpen, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,9 +13,101 @@ import { useTimelines, useChapters, createTimeline, createChapter } from '@/db/h
 import { useItems } from '@/db/hooks/useItems'
 import { useLocationItemPlacements, useWorldItemPlacements, placeItemAtLocation, removeItemPlacement } from '@/db/hooks/useItemPlacements'
 import { useLocationSnapshot, upsertLocationSnapshot } from '@/db/hooks/useLocationSnapshots'
+import { useItemSnapshot, upsertItemSnapshot } from '@/db/hooks/useItemSnapshots'
 import { useAppStore } from '@/store'
 import { UploadMapDialog } from './UploadMapDialog'
 import { PortraitImage } from '@/components/PortraitImage'
+import type { Item } from '@/types'
+
+const ITEM_CONDITIONS = ['intact', 'damaged', 'broken', 'lost', 'used', 'depleted']
+const CONDITION_COLORS: Record<string, string> = {
+  intact: '#34d399', damaged: '#fbbf24', broken: '#f87171',
+  lost: '#94a3b8', used: '#fb923c', depleted: '#94a3b8',
+}
+
+function LocationItemRow({ item, chapterId, worldId, onRemove }: {
+  item: Item
+  chapterId: string
+  worldId: string
+  onRemove: () => void
+}) {
+  const snap = useItemSnapshot(item.id, chapterId)
+  const [expanded, setExpanded] = useState(false)
+  const condition = snap?.condition ?? 'intact'
+
+  return (
+    <div className="rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
+      <div className="flex items-center gap-2 px-2 py-1.5">
+        <PortraitImage
+          imageId={item.imageId}
+          fallbackIcon={Package}
+          className="h-5 w-5 rounded object-cover shrink-0"
+          fallbackClassName="h-5 w-5 rounded shrink-0"
+        />
+        <span className="flex-1 truncate text-xs font-medium">{item.name}</span>
+        <span
+          className="h-1.5 w-1.5 shrink-0 rounded-full"
+          style={{ background: CONDITION_COLORS[condition] ?? '#94a3b8' }}
+          title={condition}
+        />
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+          title="Edit item state"
+        >
+          <ChevronDown className={`h-3 w-3 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        </button>
+        <button
+          onClick={onRemove}
+          className="text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
+          title="Remove from location"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="flex flex-col gap-1.5 border-t border-[hsl(var(--border))] px-2 pb-2 pt-1.5">
+          <div className="flex items-center gap-1.5">
+            <span className="w-16 shrink-0 text-[10px] font-medium text-[hsl(var(--muted-foreground))]">Condition</span>
+            <select
+              className="flex-1 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-1.5 py-0.5 text-[10px] text-[hsl(var(--foreground))]"
+              value={condition}
+              onChange={(e) =>
+                upsertItemSnapshot({
+                  worldId,
+                  itemId: item.id,
+                  chapterId,
+                  condition: e.target.value,
+                  notes: snap?.notes ?? '',
+                })
+              }
+            >
+              {ITEM_CONDITIONS.map((c) => (
+                <option key={c} value={c} className="capitalize">{c}</option>
+              ))}
+            </select>
+          </div>
+          <textarea
+            className="w-full resize-none rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-1.5 py-1 text-[10px] text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]"
+            rows={2}
+            placeholder="Chapter notes..."
+            value={snap?.notes ?? ''}
+            onChange={(e) =>
+              upsertItemSnapshot({
+                worldId,
+                itemId: item.id,
+                chapterId,
+                condition: snap?.condition ?? 'intact',
+                notes: e.target.value,
+              })
+            }
+          />
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface LocationDetailPanelProps {
   markerId: string
@@ -279,25 +371,15 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
               <div className="flex flex-col gap-1">
                 {itemsHere.map((placement) => {
                   const item = allItems.find((i) => i.id === placement.itemId)
+                  if (!item) return null
                   return (
-                    <div key={placement.id} className="flex items-center gap-2 rounded-md bg-[hsl(var(--muted))] px-2 py-1.5">
-                      <PortraitImage
-                        imageId={item?.imageId ?? null}
-                        fallbackIcon={Package}
-                        className="h-5 w-5 rounded object-cover shrink-0"
-                        fallbackClassName="h-5 w-5 rounded shrink-0"
-                      />
-                      <span className="flex-1 truncate text-xs font-medium">{item?.name ?? placement.itemId}</span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-5 w-5 hover:text-red-400"
-                        title="Remove from location"
-                        onClick={() => removeItemPlacement(placement.itemId, activeChapterId)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
+                    <LocationItemRow
+                      key={placement.id}
+                      item={item}
+                      chapterId={activeChapterId!}
+                      worldId={worldId}
+                      onRemove={() => removeItemPlacement(placement.itemId, activeChapterId)}
+                    />
                   )
                 })}
               </div>

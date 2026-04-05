@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Pencil } from 'lucide-react'
 import type { Character } from '@/types'
-import { useCharacterRelationships, createRelationship, deleteRelationship } from '@/db/hooks/useRelationships'
+import { useCharacterRelationships, createRelationship, updateRelationship, deleteRelationship } from '@/db/hooks/useRelationships'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useWorldChapters } from '@/db/hooks/useTimeline'
 import { useActiveChapterId } from '@/store'
@@ -20,61 +20,75 @@ const SENTIMENT_COLORS: Record<RelationshipSentiment, string> = {
   complex: 'text-yellow-400',
 }
 
-interface AddRelationshipDialogProps {
+import type { Relationship } from '@/types'
+
+interface RelationshipDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   character: Character
   otherCharacters: Character[]
   startChapterId: string | null
   startChapterLabel: string | null
+  /** When set, the dialog is in edit mode for this relationship */
+  editing?: Relationship
 }
 
-function AddRelationshipDialog({ open, onOpenChange, character, otherCharacters, startChapterId, startChapterLabel }: AddRelationshipDialogProps) {
-  const [targetId, setTargetId] = useState('')
-  const [label, setLabel] = useState('')
-  const [strength, setStrength] = useState<RelationshipStrength>('moderate')
-  const [sentiment, setSentiment] = useState<RelationshipSentiment>('neutral')
-  const [description, _setDescription] = useState('')
+function RelationshipDialog({ open, onOpenChange, character, otherCharacters, startChapterId, startChapterLabel, editing }: RelationshipDialogProps) {
+  const [targetId, setTargetId] = useState(editing?.characterAId === character.id ? (editing?.characterBId ?? '') : (editing?.characterAId ?? ''))
+  const [label, setLabel] = useState(editing?.label ?? '')
+  const [strength, setStrength] = useState<RelationshipStrength>(editing?.strength ?? 'moderate')
+  const [sentiment, setSentiment] = useState<RelationshipSentiment>(editing?.sentiment ?? 'neutral')
+  const [description, setDescription] = useState(editing?.description ?? '')
   const [saving, setSaving] = useState(false)
+
+  // Reset fields when dialog opens for a different relationship
+  const key = editing?.id ?? 'new'
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!targetId || !label.trim()) return
+    if (!label.trim()) return
     setSaving(true)
-    await createRelationship({
-      worldId: character.worldId,
-      characterAId: character.id,
-      characterBId: targetId,
-      label: label.trim(),
-      strength,
-      sentiment,
-      description,
-      isBidirectional: true,
-      startChapterId,
-    })
+    if (editing) {
+      await updateRelationship(editing.id, { label: label.trim(), strength, sentiment, description })
+    } else {
+      if (!targetId) return
+      await createRelationship({
+        worldId: character.worldId,
+        characterAId: character.id,
+        characterBId: targetId,
+        label: label.trim(),
+        strength,
+        sentiment,
+        description,
+        isBidirectional: true,
+        startChapterId,
+      })
+    }
     setSaving(false)
-    setTargetId('')
-    setLabel('')
     onOpenChange(false)
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Add Relationship</DialogTitle></DialogHeader>
+      <DialogContent key={key}>
+        <DialogHeader>
+          <DialogTitle>{editing ? 'Edit Relationship' : 'Add Relationship'}</DialogTitle>
+        </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <Label>With Character</Label>
-            <Select value={targetId} onValueChange={setTargetId}>
-              <SelectTrigger><SelectValue placeholder="Select character..." /></SelectTrigger>
-              <SelectContent>
-                {otherCharacters.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+          {!editing && (
+            <div className="flex flex-col gap-1.5">
+              <Label>With Character</Label>
+              <Select value={targetId} onValueChange={setTargetId}>
+                <SelectTrigger><SelectValue placeholder="Select character..." /></SelectTrigger>
+                <SelectContent>
+                  {otherCharacters.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="flex flex-col gap-1.5">
             <Label>Relationship Label</Label>
-            <Input placeholder="e.g. mentor, rival, sibling" value={label} onChange={(e) => setLabel(e.target.value)} />
+            <Input placeholder="e.g. mentor, rival, sibling" value={label} onChange={(e) => setLabel(e.target.value)} autoFocus={!!editing} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
@@ -100,15 +114,19 @@ function AddRelationshipDialog({ open, onOpenChange, character, otherCharacters,
               </Select>
             </div>
           </div>
-          {startChapterLabel && (
+          <div className="flex flex-col gap-1.5">
+            <Label>Description</Label>
+            <Input placeholder="Optional description..." value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          {!editing && startChapterLabel && (
             <p className="text-xs text-[hsl(var(--muted-foreground))]">
               This relationship will start at <span className="font-medium text-[hsl(var(--foreground))]">{startChapterLabel}</span> and won't appear in earlier chapters.
             </p>
           )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={!targetId || !label.trim() || saving}>
-              {saving ? 'Saving...' : 'Add'}
+            <Button type="submit" disabled={(!editing && !targetId) || !label.trim() || saving}>
+              {saving ? 'Saving...' : editing ? 'Save' : 'Add'}
             </Button>
           </DialogFooter>
         </form>
@@ -127,6 +145,7 @@ export function RelationshipsTab({ character }: RelationshipsTabProps) {
   const allChapters = useWorldChapters(character.worldId)
   const activeChapterId = useActiveChapterId()
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [editingRel, setEditingRel] = useState<Relationship | null>(null)
 
   const chapterById = new Map(allChapters.map((c) => [c.id, c]))
   const activeChapter = activeChapterId ? chapterById.get(activeChapterId) : undefined
@@ -134,7 +153,6 @@ export function RelationshipsTab({ character }: RelationshipsTabProps) {
 
   const otherChars = allChars.filter((c) => c.id !== character.id)
 
-  // When a chapter is active, hide relationships that haven't started yet
   const visibleRelationships = activeChapterNum === null
     ? relationships
     : relationships.filter((r) => {
@@ -168,7 +186,7 @@ export function RelationshipsTab({ character }: RelationshipsTabProps) {
           const startCh = rel.startChapterId ? chapterById.get(rel.startChapterId) : undefined
           return (
             <div key={rel.id} className="flex items-start justify-between rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3">
-              <div>
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-medium text-sm">{other?.name ?? 'Unknown'}</span>
                   <span className={cn('text-xs capitalize font-medium', SENTIMENT_COLORS[rel.sentiment])}>
@@ -187,20 +205,30 @@ export function RelationshipsTab({ character }: RelationshipsTabProps) {
                   <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">{rel.description}</p>
                 )}
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 hover:text-red-400"
-                onClick={() => deleteRelationship(rel.id)}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setEditingRel(rel)}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 hover:text-red-400"
+                  onClick={() => deleteRelationship(rel.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </div>
           )
         })
       )}
 
-      <AddRelationshipDialog
+      <RelationshipDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         character={character}
@@ -208,6 +236,17 @@ export function RelationshipsTab({ character }: RelationshipsTabProps) {
         startChapterId={activeChapterId}
         startChapterLabel={startChapterLabel}
       />
+      {editingRel && (
+        <RelationshipDialog
+          open
+          onOpenChange={(open) => { if (!open) setEditingRel(null) }}
+          character={character}
+          otherCharacters={otherChars}
+          startChapterId={activeChapterId}
+          startChapterLabel={startChapterLabel}
+          editing={editingRel}
+        />
+      )}
     </div>
   )
 }

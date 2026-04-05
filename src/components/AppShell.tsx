@@ -7,6 +7,7 @@ import { SearchPalette } from '@/features/search/SearchPalette'
 import { WritersBriefPanel } from '@/features/brief/WritersBriefPanel'
 import { ChapterDiffModal } from '@/features/diff/ChapterDiffModal'
 import { ContinuityChecker } from '@/features/continuity/ContinuityChecker'
+import { TutorialWizard } from '@/features/tutorial/TutorialWizard'
 
 export function AppShell() {
   const { worldId } = useParams<{ worldId: string }>()
@@ -40,6 +41,7 @@ export function AppShell() {
       <WritersBriefPanel />
       <ChapterDiffModal />
       <ContinuityChecker />
+      <TutorialWizard />
     </div>
   )
 }

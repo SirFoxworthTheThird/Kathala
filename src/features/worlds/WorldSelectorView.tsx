@@ -8,6 +8,7 @@ import { WorldCard } from './WorldCard'
 import { CreateWorldDialog } from './CreateWorldDialog'
 import { useNavigate } from 'react-router-dom'
 import { importWorld, importWorldImages } from '@/lib/exportImport'
+import { TutorialWelcome } from '@/features/tutorial/TutorialWizard'
 
 export default function WorldSelectorView() {
   const worlds = useWorlds()
@@ -139,6 +140,7 @@ export default function WorldSelectorView() {
         onOpenChange={setDialogOpen}
         onCreated={(id) => navigate(`/worlds/${id}`)}
       />
+      <TutorialWelcome />
     </div>
   )
 }
