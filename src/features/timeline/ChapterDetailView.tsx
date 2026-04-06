@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus, Users, Network, StickyNote, Clock } from 'lucide-react'
-import { useChapter, useEvents, updateChapter } from '@/db/hooks/useTimeline'
+import { useChapter, useEvents, updateChapter, updateEvent } from '@/db/hooks/useTimeline'
 import { useChapterSnapshots } from '@/db/hooks/useSnapshots'
 import { useChapterRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
 import { useCharacters } from '@/db/hooks/useCharacters'
@@ -22,6 +22,21 @@ export default function ChapterDetailView() {
   const relationships = useRelationships(worldId ?? null)
   const [addEventOpen, setAddEventOpen] = useState(false)
   const [notes, setNotes] = useState('')
+
+  const sortedEvents = [...events].sort((a, b) => a.sortOrder - b.sortOrder)
+
+  async function moveEvent(eventId: string, direction: 'up' | 'down') {
+    const idx = sortedEvents.findIndex((e) => e.id === eventId)
+    if (direction === 'up' && idx === 0) return
+    if (direction === 'down' && idx === sortedEvents.length - 1) return
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+    const a = sortedEvents[idx]
+    const b = sortedEvents[swapIdx]
+    await Promise.all([
+      updateEvent(a.id, { sortOrder: b.sortOrder }),
+      updateEvent(b.id, { sortOrder: a.sortOrder }),
+    ])
+  }
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Sync local notes state when chapter loads
@@ -95,7 +110,16 @@ export default function ChapterDetailView() {
             {events.length === 0 ? (
               <p className="py-4 text-center text-sm text-[hsl(var(--muted-foreground))]">No events yet.</p>
             ) : (
-              events.map((e) => <EventCard key={e.id} event={e} />)
+              sortedEvents.map((e, i) => (
+                <EventCard
+                  key={e.id}
+                  event={e}
+                  isFirst={i === 0}
+                  isLast={i === sortedEvents.length - 1}
+                  onMoveUp={() => moveEvent(e.id, 'up')}
+                  onMoveDown={() => moveEvent(e.id, 'down')}
+                />
+              ))
             )}
           </div>
         </div>

@@ -1064,6 +1064,17 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     }
   }
 
+  // Listen for map-focus requests dispatched from the chapter timeline bar
+  useEffect(() => {
+    function handler(e: Event) {
+      const markerId = (e as CustomEvent<{ markerId: string }>).detail.markerId
+      const marker = allMarkers.find((m) => m.id === markerId)
+      if (marker) focusOnLocation(marker)
+    }
+    window.addEventListener('wb:map:focusMarker', handler)
+    return () => window.removeEventListener('wb:map:focusMarker', handler)
+  }, [allMarkers]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const timelines = useTimelines(worldId)
   const chapters = useChapters(timelines[0]?.id ?? null)
   const activeChapter = activeChapterId ? chapters.find((c) => c.id === activeChapterId) : null

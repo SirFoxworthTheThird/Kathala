@@ -152,6 +152,17 @@ export function useEvents(chapterId: string | null) {
   )
 }
 
+export function useTimelineEvents(timelineId: string | null) {
+  return useLiveQuery(
+    () =>
+      timelineId
+        ? db.events.where('timelineId').equals(timelineId).toArray()
+        : [],
+    [timelineId],
+    []
+  )
+}
+
 export async function createEvent(data: Omit<WorldEvent, 'id' | 'createdAt' | 'updatedAt'>): Promise<WorldEvent> {
   const now = Date.now()
   const event: WorldEvent = {

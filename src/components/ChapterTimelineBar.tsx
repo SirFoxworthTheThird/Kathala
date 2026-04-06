@@ -1,41 +1,17 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { ChevronLeft, ChevronRight, Play, Pause, Square, GitCompareArrows } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Play, Pause, Square, GitCompareArrows, MapPin } from 'lucide-react'
 import { useActiveWorldId, useActiveChapterId, useAppStore, type PlaybackSpeed } from '@/store'
-import { useTimelines, useChapters } from '@/db/hooks/useTimeline'
+import { useTimelines, useChapters, useTimelineEvents } from '@/db/hooks/useTimeline'
 import { readingHoldMs } from '@/lib/playbackTiming'
+
 const SPEED_NEXT: Record<PlaybackSpeed, PlaybackSpeed> = { slow: 'normal', normal: 'fast', fast: 'slow' }
 const SPEED_LABEL: Record<PlaybackSpeed, string> = { slow: '1×', normal: '2×', fast: '3×' }
 
-// ─── Shared inline-style helpers ────────────────────────────────────────────
+export const BAR_H = '3.25rem'
 
-const BAR_H = '3.25rem'
+// ─── Style helpers ────────────────────────────────────────────────────────────
 
-const barStyle: CSSProperties = {
-  height: BAR_H,
-  background: 'var(--tl-bg)',
-  borderTop: '1px solid var(--tl-border)',
-  backdropFilter: 'var(--tl-backdrop)',
-  WebkitBackdropFilter: 'var(--tl-backdrop)' as string,
-  display: 'flex',
-  alignItems: 'center',
-  overflow: 'hidden',
-  fontFamily: 'var(--font-body)',
-}
-
-const trackScrollerStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  flex: 1,
-  overflowX: 'auto',
-  overflowY: 'visible',
-  scrollbarWidth: 'none',
-  paddingLeft: '0.75rem',
-  paddingRight: '0.75rem',
-  height: '100%',
-  gap: '0',
-}
-
-function dotStyle(isActive: boolean): CSSProperties {
+function chapterDotStyle(isActive: boolean): CSSProperties {
   return {
     width: isActive ? '0.8rem' : '0.55rem',
     height: isActive ? '0.8rem' : '0.55rem',
@@ -44,59 +20,38 @@ function dotStyle(isActive: boolean): CSSProperties {
     border: `2px solid ${isActive ? 'var(--tl-accent)' : 'var(--tl-border)'}`,
     flexShrink: 0,
     transition: 'all 0.2s ease',
-    position: 'relative',
+    position: 'relative' as const,
     zIndex: 1,
   }
 }
 
-function markerBtnStyle(isActive: boolean): CSSProperties {
+function eventDotStyle(isParentActive: boolean, hasLocation: boolean): CSSProperties {
   return {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '3px',
-    padding: '0 0.5rem',
-    minWidth: '2rem',
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
+    width: '0.35rem',
+    height: '0.35rem',
+    borderRadius: '50%',
+    background: isParentActive
+      ? (hasLocation ? 'var(--tl-accent)' : 'var(--tl-text-muted)')
+      : 'var(--tl-border)',
     flexShrink: 0,
-    position: 'relative',
+    transition: 'all 0.2s ease',
+    position: 'relative' as const,
     zIndex: 1,
-    opacity: isActive ? 1 : 0.7,
-    transition: 'opacity 0.2s',
   }
 }
-
-function markerLabelStyle(isActive: boolean): CSSProperties {
-  return {
-    fontSize: '0.58rem',
-    lineHeight: 1,
-    letterSpacing: '0.04em',
-    color: isActive ? 'var(--tl-accent)' : 'var(--tl-text-muted)',
-    fontWeight: isActive ? 700 : 400,
-    whiteSpace: 'nowrap',
-    fontFamily: 'var(--font-body)',
-    transition: 'color 0.2s',
-  }
-}
-
-// ─── Callout ─────────────────────────────────────────────────────────────────
 
 function navBtnStyle(disabled: boolean): CSSProperties {
   return {
-    background: 'none',
-    border: 'none',
+    background: 'none', border: 'none',
     cursor: disabled ? 'default' : 'pointer',
     color: disabled ? 'var(--tl-text-muted)' : 'var(--tl-accent)',
-    padding: '0.25rem',
-    opacity: disabled ? 0.3 : 1,
-    display: 'flex',
-    alignItems: 'center',
-    transition: 'opacity 0.15s',
-    flexShrink: 0,
+    padding: '0.25rem', opacity: disabled ? 0.3 : 1,
+    display: 'flex', alignItems: 'center',
+    transition: 'opacity 0.15s', flexShrink: 0,
   }
 }
+
+// ─── Callout ──────────────────────────────────────────────────────────────────
 
 interface CalloutProps {
   left: number
@@ -110,120 +65,84 @@ interface CalloutProps {
 }
 
 function Callout({ left, chapterNum, title, synopsis, hasPrev, hasNext, onPrev, onNext }: CalloutProps) {
-  const calloutStyle: CSSProperties = {
-    position: 'absolute',
-    bottom: `calc(${BAR_H} + 0.5rem)`,
-    left,
-    transform: 'translateX(-50%)',
-    background: 'var(--tl-callout-bg)',
-    border: '1px solid var(--tl-border)',
-    boxShadow: 'var(--tl-callout-shadow)',
-    borderRadius: 'var(--radius)',
-    width: 'min(340px, 88vw)',
-    fontFamily: 'var(--font-body)',
-    pointerEvents: 'auto',
-    zIndex: 10,
-  }
-
   return (
-    <div style={calloutStyle}>
-      {/* Content row */}
+    <div style={{
+      position: 'absolute',
+      bottom: `calc(${BAR_H} + 0.5rem)`,
+      left,
+      transform: 'translateX(-50%)',
+      background: 'var(--tl-callout-bg)',
+      border: '1px solid var(--tl-border)',
+      boxShadow: 'var(--tl-callout-shadow)',
+      borderRadius: 'var(--radius)',
+      width: 'min(340px, 88vw)',
+      fontFamily: 'var(--font-body)',
+      pointerEvents: 'auto',
+      zIndex: 10,
+    }}>
       <div style={{ display: 'flex', alignItems: 'center', padding: '0.625rem 0.5rem', gap: '0.25rem' }}>
-        {/* Prev */}
         <button style={navBtnStyle(!hasPrev)} onClick={onPrev} disabled={!hasPrev} aria-label="Previous chapter">
           <ChevronLeft size={18} />
         </button>
-
-        {/* Center */}
         <div style={{ flex: 1, minWidth: 0, textAlign: 'center', padding: '0 0.25rem' }}>
-          <div style={{
-            fontSize: '0.6rem',
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-            color: 'var(--tl-accent)',
-            marginBottom: '0.2rem',
-            fontWeight: 600,
-          }}>
+          <div style={{ fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--tl-accent)', marginBottom: '0.2rem', fontWeight: 600 }}>
             Chapter {chapterNum}
           </div>
-          <div style={{
-            fontSize: '0.875rem',
-            fontWeight: 700,
-            color: 'var(--tl-text)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}>
+          <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--tl-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {title}
           </div>
           {synopsis && (
-            <div style={{
-              fontSize: '0.68rem',
-              color: 'var(--tl-text-muted)',
-              marginTop: '0.2rem',
-              overflow: 'hidden',
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical' as const,
-              lineHeight: 1.4,
-            }}>
+            <div style={{ fontSize: '0.68rem', color: 'var(--tl-text-muted)', marginTop: '0.2rem', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, lineHeight: 1.4 }}>
               {synopsis}
             </div>
           )}
         </div>
-
-        {/* Next */}
         <button style={navBtnStyle(!hasNext)} onClick={onNext} disabled={!hasNext} aria-label="Next chapter">
           <ChevronRight size={18} />
         </button>
       </div>
-
-      {/* Caret */}
       <div className="tl-caret" />
     </div>
   )
 }
 
-// ─── Main component ──────────────────────────────────────────────────────────
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export function ChapterTimelineBar() {
   const worldId         = useActiveWorldId()
   const activeChapterId = useActiveChapterId()
   const { setActiveChapterId, isPlayingStory, setIsPlayingStory, playbackSpeed, setPlaybackSpeed, setDiffOpen } = useAppStore()
 
-  const timelines        = useTimelines(worldId)
-  const firstTimelineId  = timelines[0]?.id ?? null
-  const chapters         = useChapters(firstTimelineId)
+  const timelines       = useTimelines(worldId)
+  const firstTimelineId = timelines[0]?.id ?? null
+  const chapters        = useChapters(firstTimelineId)
+  const allEvents       = useTimelineEvents(firstTimelineId)
 
-  const activeIndex  = chapters.findIndex((c) => c.id === activeChapterId)
+  // Group events by chapterId, sorted by sortOrder
+  const eventsByChapter = new Map<string, typeof allEvents>()
+  for (const ch of chapters) {
+    eventsByChapter.set(ch.id, allEvents.filter(e => e.chapterId === ch.id).sort((a, b) => a.sortOrder - b.sortOrder))
+  }
+
+  const activeIndex   = chapters.findIndex(c => c.id === activeChapterId)
   const activeChapter = activeIndex >= 0 ? chapters[activeIndex] : null
   const prevChapter   = activeIndex > 0 ? chapters[activeIndex - 1] : null
   const nextChapter   = activeIndex < chapters.length - 1 ? chapters[activeIndex + 1] : null
 
-  // ── Playback timer ──────────────────────────────────────────────────────────
+  // ── Playback ────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isPlayingStory || !chapters.length) return
+    if (!activeChapterId) { setActiveChapterId(chapters[0].id); return }
 
-    // If no chapter is selected, start at the first one
-    if (!activeChapterId) {
-      setActiveChapterId(chapters[0].id)
-      return
-    }
-
-    const idx = chapters.findIndex((c) => c.id === activeChapterId)
+    const idx = chapters.findIndex(c => c.id === activeChapterId)
     if (idx === -1) return
 
     const chapter = chapters[idx]
-    const chapterText = [chapter.title, chapter.synopsis ?? ''].join(' ')
-    const holdMs = readingHoldMs(chapterText, playbackSpeed)
+    const holdMs  = readingHoldMs([chapter.title, chapter.synopsis ?? ''].join(' '), playbackSpeed)
 
     const t = setTimeout(() => {
-      if (idx >= chapters.length - 1) {
-        // Last chapter — let the full hold time pass first, then stop
-        setIsPlayingStory(false)
-      } else {
-        setActiveChapterId(chapters[idx + 1].id)
-      }
+      if (idx >= chapters.length - 1) setIsPlayingStory(false)
+      else setActiveChapterId(chapters[idx + 1].id)
     }, holdMs)
 
     return () => clearTimeout(t)
@@ -233,23 +152,15 @@ export function ChapterTimelineBar() {
     if (isPlayingStory) {
       setIsPlayingStory(false)
     } else {
-      // If we're at the last chapter, restart from the beginning
-      if (activeIndex >= chapters.length - 1) {
-        setActiveChapterId(chapters[0]?.id ?? null)
-      }
+      if (activeIndex >= chapters.length - 1) setActiveChapterId(chapters[0]?.id ?? null)
       setIsPlayingStory(true)
     }
   }
 
-  function handleStop() {
-    setIsPlayingStory(false)
-    setActiveChapterId(null)
-  }
-
-  // Track ref for measuring marker positions
+  // ── Callout positioning ─────────────────────────────────────────────────────
   const scrollerRef     = useRef<HTMLDivElement>(null)
   const activeMarkerRef = useRef<HTMLButtonElement>(null)
-  const [calloutLeft, setCalloutLeft] = useState<number | null>(null)
+  const [calloutLeft, setCalloutLeft]       = useState<number | null>(null)
   const [calloutVisible, setCalloutVisible] = useState(true)
 
   useEffect(() => {
@@ -261,18 +172,12 @@ export function ChapterTimelineBar() {
   useEffect(() => {
     const marker = activeMarkerRef.current
     if (!marker) { setCalloutLeft(null); return }
-
-    // Scroll the active marker into view within the track
     marker.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
-
-    // Measure after scroll settles (rAF gives layout time to update)
     const id = requestAnimationFrame(() => {
       const rect    = marker.getBoundingClientRect()
       const center  = rect.left + rect.width / 2
-      // Clamp so callout stays inside the viewport with margin
       const half    = 170
-      const clamped = Math.max(half + 12, Math.min(window.innerWidth - half - 12, center))
-      setCalloutLeft(clamped)
+      setCalloutLeft(Math.max(half + 12, Math.min(window.innerWidth - half - 12, center)))
     })
     return () => cancelAnimationFrame(id)
   }, [activeChapterId, chapters])
@@ -280,10 +185,9 @@ export function ChapterTimelineBar() {
   if (!timelines.length || !chapters.length) return null
 
   return (
-    /* Root: fixed overlay at the bottom — overflow visible so callout extends above */
     <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1000, overflow: 'visible' }}>
 
-      {/* Callout floats above the bar */}
+      {/* Callout */}
       {activeChapter && calloutLeft !== null && calloutVisible && (
         <Callout
           left={calloutLeft}
@@ -298,121 +202,149 @@ export function ChapterTimelineBar() {
       )}
 
       {/* Bar */}
-      <div style={barStyle}>
+      <div style={{
+        height: BAR_H,
+        background: 'var(--tl-bg)',
+        borderTop: '1px solid var(--tl-border)',
+        backdropFilter: 'var(--tl-backdrop)',
+        WebkitBackdropFilter: 'var(--tl-backdrop)' as string,
+        display: 'flex', alignItems: 'center',
+        overflow: 'hidden',
+        fontFamily: 'var(--font-body)',
+      }}>
+
         {/* Playback controls */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '0.125rem',
-          padding: '0 0.5rem', height: '100%', flexShrink: 0,
-          borderRight: '1px solid var(--tl-border)',
-        }}>
-          <button
-            onClick={handlePlayPause}
-            title={isPlayingStory ? 'Pause' : 'Play story'}
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: 'var(--tl-accent)', padding: '0.25rem',
-              display: 'flex', alignItems: 'center', borderRadius: '3px',
-            }}
-          >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.125rem', padding: '0 0.5rem', height: '100%', flexShrink: 0, borderRight: '1px solid var(--tl-border)' }}>
+          <button onClick={handlePlayPause} title={isPlayingStory ? 'Pause' : 'Play story'}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tl-accent)', padding: '0.25rem', display: 'flex', alignItems: 'center', borderRadius: '3px' }}>
             {isPlayingStory ? <Pause size={14} /> : <Play size={14} />}
           </button>
           {isPlayingStory && (
-            <button
-              onClick={handleStop}
-              title="Stop"
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: 'var(--tl-text-muted)', padding: '0.25rem',
-                display: 'flex', alignItems: 'center', borderRadius: '3px',
-              }}
-            >
+            <button onClick={() => { setIsPlayingStory(false); setActiveChapterId(null) }} title="Stop"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tl-text-muted)', padding: '0.25rem', display: 'flex', alignItems: 'center', borderRadius: '3px' }}>
               <Square size={11} />
             </button>
           )}
-          <button
-            onClick={() => setPlaybackSpeed(SPEED_NEXT[playbackSpeed])}
-            title="Playback speed"
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: isPlayingStory ? 'var(--tl-accent)' : 'var(--tl-text-muted)',
-              fontSize: '0.6rem', fontWeight: 700, fontFamily: 'var(--font-body)',
-              padding: '0.25rem 0.125rem', lineHeight: 1, borderRadius: '3px',
-            }}
-          >
+          <button onClick={() => setPlaybackSpeed(SPEED_NEXT[playbackSpeed])} title="Playback speed"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: isPlayingStory ? 'var(--tl-accent)' : 'var(--tl-text-muted)', fontSize: '0.6rem', fontWeight: 700, fontFamily: 'var(--font-body)', padding: '0.25rem 0.125rem', lineHeight: 1, borderRadius: '3px' }}>
             {SPEED_LABEL[playbackSpeed]}
           </button>
           {activeChapterId && (
-            <button
-              onClick={() => setDiffOpen(true)}
-              title="Compare chapters"
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: 'var(--tl-text-muted)', padding: '0.25rem',
-                display: 'flex', alignItems: 'center', borderRadius: '3px',
-              }}
-            >
+            <button onClick={() => setDiffOpen(true)} title="Compare chapters"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tl-text-muted)', padding: '0.25rem', display: 'flex', alignItems: 'center', borderRadius: '3px' }}>
               <GitCompareArrows size={13} />
             </button>
           )}
         </div>
 
-        {/* "All time" deselect */}
+        {/* "All" deselect */}
         <button
           onClick={() => { setIsPlayingStory(false); setActiveChapterId(null) }}
           style={{
-            flexShrink: 0,
-            padding: '0 0.875rem',
-            height: '100%',
-            background: 'none',
-            border: 'none',
-            borderRight: '1px solid var(--tl-border)',
-            cursor: 'pointer',
-            fontSize: '0.7rem',
+            flexShrink: 0, padding: '0 0.875rem', height: '100%',
+            background: 'none', border: 'none', borderRight: '1px solid var(--tl-border)',
+            cursor: 'pointer', fontSize: '0.7rem', letterSpacing: '0.06em',
+            textTransform: 'uppercase' as const,
             fontWeight: !activeChapterId ? 700 : 400,
             color: !activeChapterId ? 'var(--tl-accent)' : 'var(--tl-text-muted)',
-            fontFamily: 'var(--font-body)',
-            letterSpacing: '0.06em',
-            textTransform: 'uppercase',
-            transition: 'color 0.2s',
+            fontFamily: 'var(--font-body)', transition: 'color 0.2s',
           }}
         >
           All
         </button>
 
-        {/* Scrollable track */}
-        <div ref={scrollerRef} style={trackScrollerStyle}>
-          {/* Connecting line — sits behind the markers */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
-            {/* The line */}
+        {/* Scrollable track — chapters + events interleaved */}
+        <div ref={scrollerRef} style={{
+          display: 'flex', alignItems: 'center', flex: 1,
+          overflowX: 'auto', overflowY: 'visible',
+          scrollbarWidth: 'none', paddingLeft: '0.75rem', paddingRight: '0.75rem',
+          height: '100%', gap: 0,
+        }}>
+          <div style={{
+            position: 'relative', display: 'flex', alignItems: 'center',
+            width: '100%', justifyContent: 'space-between',
+          }}>
+            {/* Connecting line */}
             <div style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              top: '50%',
-              height: '1px',
+              position: 'absolute', left: 0, right: 0, top: '50%', height: '1px',
               background: 'var(--tl-border)',
-              transform: 'translateY(calc(-50% - 5px))', // shift up to align with dot centers
+              transform: 'translateY(calc(-50% - 5px))',
               zIndex: 0,
             }} />
 
-            {/* Chapter markers */}
             {chapters.map((ch) => {
-              const isActive = ch.id === activeChapterId
+              const isActive    = ch.id === activeChapterId
+              const chEvents    = eventsByChapter.get(ch.id) ?? []
+
               return (
-                <button
-                  key={ch.id}
-                  ref={isActive ? activeMarkerRef : undefined}
-                  style={markerBtnStyle(isActive)}
-                  onClick={() => setActiveChapterId(ch.id)}
-                >
-                  <div
-                    style={dotStyle(isActive)}
-                    className={isActive ? 'tl-dot-active' : ''}
-                  />
-                  <span style={markerLabelStyle(isActive)}>
-                    {ch.number}
-                  </span>
-                </button>
+                <div key={ch.id} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                  {/* Chapter marker */}
+                  <button
+                    ref={isActive ? activeMarkerRef : undefined}
+                    style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
+                      padding: '0 0.4rem', minWidth: '2rem',
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      flexShrink: 0, position: 'relative', zIndex: 1,
+                      opacity: isActive ? 1 : 0.7, transition: 'opacity 0.2s',
+                    }}
+                    onClick={() => setActiveChapterId(ch.id)}
+                  >
+                    <div style={chapterDotStyle(isActive)} className={isActive ? 'tl-dot-active' : ''} />
+                    <span style={{
+                      fontSize: '0.58rem', lineHeight: 1, letterSpacing: '0.04em',
+                      color: isActive ? 'var(--tl-accent)' : 'var(--tl-text-muted)',
+                      fontWeight: isActive ? 700 : 400, whiteSpace: 'nowrap',
+                      fontFamily: 'var(--font-body)', transition: 'color 0.2s',
+                    }}>
+                      {ch.number}
+                    </span>
+                  </button>
+
+                  {/* Event markers for this chapter */}
+                  {chEvents.map((ev, i) => (
+                    <button
+                      key={ev.id}
+                      title={ev.title}
+                      onClick={() => {
+                        setActiveChapterId(ch.id)
+                        if (ev.locationMarkerId) {
+                          window.dispatchEvent(new CustomEvent('wb:map:focusMarker', { detail: { markerId: ev.locationMarkerId } }))
+                        }
+                      }}
+                      style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
+                        padding: '0 0.35rem', minWidth: '1.5rem',
+                        background: 'none', border: 'none',
+                        cursor: 'pointer', flexShrink: 0,
+                        position: 'relative', zIndex: 1,
+                        opacity: isActive ? 1 : 0.5, transition: 'opacity 0.2s',
+                      }}
+                    >
+                      <div style={eventDotStyle(isActive, !!ev.locationMarkerId)}>
+                        {ev.locationMarkerId && isActive && (
+                          <MapPin
+                            size={6}
+                            style={{
+                              position: 'absolute', top: '50%', left: '50%',
+                              transform: 'translate(-50%, -50%)',
+                              color: 'var(--tl-bg)',
+                              pointerEvents: 'none',
+                            }}
+                          />
+                        )}
+                      </div>
+                      <span style={{
+                        fontSize: '0.5rem', lineHeight: 1, letterSpacing: '0.02em',
+                        color: isActive ? 'var(--tl-text-muted)' : 'var(--tl-border)',
+                        whiteSpace: 'nowrap', fontFamily: 'var(--font-body)',
+                        transition: 'color 0.2s',
+                      }}>
+                        {ch.number}.{i + 1}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               )
             })}
           </div>
