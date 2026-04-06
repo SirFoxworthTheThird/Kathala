@@ -70,7 +70,19 @@
       "Bash(Select-Object -First 30)",
       "Bash(powershell.exe -Command \"Get-Content 'c:\\\\Projects\\\\mine\\\\PlotWeave\\\\test-results\\\\maps-Map-management-assigns-a-character-to-a-location-chromium\\\\error-context.md' | Select-String -Pattern 'combobox|option|Aragorn|button.*Add character|Choose' | Select-Object -First 40\")",
       "Bash(powershell.exe -Command \"Get-Content 'c:\\\\Projects\\\\mine\\\\PlotWeave\\\\test-results\\\\maps-Map-management-assigns-a-character-to-a-location-chromium\\\\error-context.md' | Select-String -Pattern 'option|listbox|Aragorn|Choose|combobox' | Select-Object -First 30\")",
-      "Bash(powershell.exe -Command \"Get-Content 'c:\\\\Projects\\\\mine\\\\PlotWeave\\\\package.json' | Select-String -Pattern 'radix|select'\")"
+      "Bash(powershell.exe -Command \"Get-Content 'c:\\\\Projects\\\\mine\\\\PlotWeave\\\\package.json' | Select-String -Pattern 'radix|select'\")",
+      "Bash(npx playwright:*)",
+      "Bash(npx @playwright/test --version)",
+      "Bash(npx @playwright/test e2e/worlds.spec.ts)",
+      "Bash(npx @playwright/test)",
+      "Bash(npx @playwright/test test)",
+      "Bash(npx @playwright/test test e2e/maps.spec.ts)",
+      "Bash(npx @playwright/test test e2e/maps.spec.ts:77 --reporter=line)",
+      "Bash(npx @playwright/test test e2e/maps.spec.ts:172 --reporter=line)",
+      "Bash(npx @playwright/test test e2e/maps.spec.ts:139 e2e/maps.spec.ts:172 --reporter=line)",
+      "Bash(npx @playwright/test test e2e/maps.spec.ts --reporter=line)",
+      "Bash(npx @playwright/test test --reporter=line)",
+      "Bash(npx vitest:*)"
     ]
   }
 }

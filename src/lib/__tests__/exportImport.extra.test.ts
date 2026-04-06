@@ -327,6 +327,161 @@ describe('importWorld — characterMovements', () => {
   })
 })
 
+// ── travelModes round-trip ────────────────────────────────────────────────────
+
+describe('importWorld — travelModes', () => {
+  it('imports travel modes and preserves all fields', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      travelModes: [{
+        id: 'tm-1',
+        worldId: 'world-extra',
+        name: 'Walking',
+        speedPerDay: 30,
+        createdAt: 1000,
+        updatedAt: 1000,
+      }],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.travelModes.get('tm-1')
+    expect(stored).toBeDefined()
+    expect(stored!.name).toBe('Walking')
+    expect(stored!.speedPerDay).toBe(30)
+    expect(stored!.worldId).toBe('world-extra')
+  })
+
+  it('defaults travelModes to [] when absent from export', async () => {
+    await db.delete()
+    await db.open()
+
+    const { travelModes: _tm, ...without } = makeExport()
+    await importWorld(makeFile(without))
+
+    const modes = await db.travelModes.where('worldId').equals('world-extra').toArray()
+    expect(modes).toHaveLength(0)
+  })
+
+  it('rejects when travelModes is present but not an array', async () => {
+    const bad = { ...makeExport(), travelModes: 'bad' }
+    await expect(importWorld(makeFile(bad))).rejects.toThrow('travelModes is not an array')
+  })
+
+  it('backfills travelDays to null on chapters that lack it', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      chapters: [{
+        id: 'ch-travel',
+        worldId: 'world-extra',
+        timelineId: 'tl-1',
+        number: 1,
+        title: 'Old Chapter',
+        synopsis: '',
+        notes: '',
+        // deliberately omit travelDays — simulates pre-feature export
+        createdAt: 1000,
+        updatedAt: 1000,
+      } as never],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.chapters.get('ch-travel')
+    expect(stored).toBeDefined()
+    expect((stored as unknown as Record<string, unknown>).travelDays).toBeNull()
+  })
+
+  it('preserves travelDays when already set', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      chapters: [{
+        id: 'ch-days',
+        worldId: 'world-extra',
+        timelineId: 'tl-1',
+        number: 1,
+        title: 'Journey Chapter',
+        synopsis: '',
+        notes: '',
+        travelDays: 7,
+        createdAt: 1000,
+        updatedAt: 1000,
+      }],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.chapters.get('ch-days')
+    expect(stored!.travelDays).toBe(7)
+  })
+
+  it('backfills travelModeId to null on snapshots that lack it', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      characterSnapshots: [{
+        id: 'snap-1',
+        worldId: 'world-extra',
+        characterId: 'char-1',
+        chapterId: 'ch-1',
+        isAlive: true,
+        currentLocationMarkerId: null,
+        currentMapLayerId: null,
+        inventoryItemIds: [],
+        inventoryNotes: '',
+        statusNotes: '',
+        // deliberately omit travelModeId — simulates pre-feature export
+        createdAt: 1000,
+        updatedAt: 1000,
+      } as never],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.characterSnapshots.get('snap-1')
+    expect(stored).toBeDefined()
+    expect((stored as unknown as Record<string, unknown>).travelModeId).toBeNull()
+  })
+
+  it('preserves travelModeId when already set', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      travelModes: [{
+        id: 'tm-horse',
+        worldId: 'world-extra',
+        name: 'Horse',
+        speedPerDay: 60,
+        createdAt: 1000,
+        updatedAt: 1000,
+      }],
+      characterSnapshots: [{
+        id: 'snap-2',
+        worldId: 'world-extra',
+        characterId: 'char-2',
+        chapterId: 'ch-2',
+        isAlive: true,
+        currentLocationMarkerId: null,
+        currentMapLayerId: null,
+        inventoryItemIds: [],
+        inventoryNotes: '',
+        statusNotes: '',
+        travelModeId: 'tm-horse',
+        createdAt: 1000,
+        updatedAt: 1000,
+      }],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.characterSnapshots.get('snap-2')
+    expect(stored!.travelModeId).toBe('tm-horse')
+  })
+})
+
 // ── full round-trip with all optional arrays populated ────────────────────────
 
 describe('importWorld — full optional arrays', () => {

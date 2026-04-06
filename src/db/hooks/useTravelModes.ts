@@ -32,7 +32,7 @@ export async function deleteTravelMode(id: string) {
     await db.travelModes.delete(id)
     // Clear the reference from any snapshots that used this mode
     await db.characterSnapshots
-      .where('travelModeId').equals(id)
+      .filter((s) => s.travelModeId === id)
       .modify({ travelModeId: null })
   })
 }

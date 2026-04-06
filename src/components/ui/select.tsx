@@ -142,10 +142,13 @@ function SelectContent({ children, className }: SelectContentProps) {
           }}
           onMouseDown={(e) => e.stopPropagation()}
         >
-          <div className={cn(
-            'max-h-64 overflow-auto rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--popover))] p-1 shadow-lg',
-            className
-          )}>
+          <div
+            role="listbox"
+            className={cn(
+              'max-h-64 overflow-auto rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--popover))] p-1 shadow-lg',
+              className
+            )}
+          >
             {children}
           </div>
         </div>,
@@ -173,6 +176,8 @@ function SelectItem({ value, children, className, disabled }: SelectItemProps) {
 
   return (
     <div
+      role="option"
+      aria-selected={isSelected}
       className={cn(
         'relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none',
         disabled ? 'pointer-events-none opacity-50' : 'hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]',

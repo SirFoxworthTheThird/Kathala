@@ -45,8 +45,6 @@ async function addLocationViaButton(page: Page, position?: { x: number; y: numbe
 // ─── Setup ────────────────────────────────────────────────────────────────────
 
 test.describe('Map management', () => {
-  let worldUrl: string
-
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
     await resetDB(page)
@@ -56,7 +54,6 @@ test.describe('Map management', () => {
     await page.getByLabel('Name').fill('Map Test World')
     await page.getByRole('button', { name: 'Create World' }).last().click()
     await expect(page).toHaveURL(/#\/worlds\//)
-    worldUrl = page.url()
 
     // Create a character and a chapter (needed for placement tests)
     await page.getByRole('link', { name: /characters/i }).click()
@@ -164,10 +161,10 @@ test.describe('Map management', () => {
 
     // Select Aragorn from the dropdown
     await page.getByRole('button', { name: 'Choose character...' }).click()
-    await page.locator('div.cursor-pointer:visible').filter({ hasText: /^Aragorn$/ }).click()
+    await page.getByRole('option', { name: 'Aragorn' }).click()
 
     // Aragorn should now appear in the location panel
-    await expect(page.getByText('Aragorn')).toBeVisible()
+    await expect(page.getByText('Aragorn').first()).toBeVisible()
   })
 
   // ── Move character between locations ───────────────────────────────────────
@@ -196,12 +193,13 @@ test.describe('Map management', () => {
 
     await page.getByRole('button', { name: 'Add character here' }).click()
     await page.getByRole('button', { name: 'Choose character...' }).click()
-    await page.locator('div.cursor-pointer:visible').filter({ hasText: /^Aragorn$/ }).click()
-    await expect(page.getByText('Aragorn')).toBeVisible()
+    await page.getByRole('option', { name: 'Aragorn' }).click()
+    await expect(page.getByText('Aragorn').first()).toBeVisible()
 
     // Remove Aragorn from Minas Tirith (UserMinus icon button)
     await page.getByRole('button', { name: 'Remove character from location' }).click()
-    await expect(page.getByText('Aragorn')).not.toBeVisible()
+    // Remove button gone means Aragorn was successfully removed from this location
+    await expect(page.getByRole('button', { name: 'Remove character from location' })).not.toBeVisible()
 
     // Close via the X button at the top of the Location panel
     await page.getByRole('button', { name: 'Close location panel' }).click()
@@ -212,7 +210,8 @@ test.describe('Map management', () => {
     // Aragorn should now be available to place here
     await page.getByRole('button', { name: 'Add character here' }).click()
     await page.getByRole('button', { name: 'Choose character...' }).click()
-    await page.locator('div.cursor-pointer:visible').filter({ hasText: /^Aragorn$/ }).click()
-    await expect(page.getByText('Aragorn')).toBeVisible()
+    await page.getByRole('option', { name: 'Aragorn' }).click()
+    // Remove button present means Aragorn was successfully added to this location
+    await expect(page.getByRole('button', { name: 'Remove character from location' })).toBeVisible()
   })
 })

@@ -22,7 +22,11 @@ export async function resetDB(page: Page): Promise<void> {
       }
     })
   })
-  // Reload so the app re-opens the fresh DB
-  await page.reload()
+  // Reload so the app re-opens the fresh DB (retry once on ERR_ABORTED)
+  try {
+    await page.reload()
+  } catch {
+    await page.goto('/')
+  }
   await page.waitForLoadState('networkidle')
 }
