@@ -1,4 +1,4 @@
-import { useState, useRef, KeyboardEvent } from 'react'
+import { useState, useRef, type KeyboardEvent } from 'react'
 import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package } from 'lucide-react'
 import type { WorldEvent } from '@/types'
 import { deleteEvent, updateEvent } from '@/db/hooks/useTimeline'

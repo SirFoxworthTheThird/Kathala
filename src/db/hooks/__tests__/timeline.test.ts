@@ -116,7 +116,7 @@ describe('deleteChapter', () => {
     await db.characterSnapshots.add({
       id: 'snap-1', worldId: 'w', characterId: 'char-1', chapterId: ch.id,
       isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
-      inventoryItemIds: [], inventoryNotes: '', statusNotes: '',
+      inventoryItemIds: [], inventoryNotes: '', statusNotes: '', travelModeId: null,
       createdAt: Date.now(), updatedAt: Date.now(),
     })
     await deleteChapter(ch.id)

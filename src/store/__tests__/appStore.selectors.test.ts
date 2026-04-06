@@ -11,17 +11,14 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import {
   useAppStore,
   // Importing these names causes the module lines to be instrumented/covered.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  useActiveWorldId,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  useActiveChapterId,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  useActiveMapLayerId,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  useMapLayerHistory,
+  useActiveWorldId as _useActiveWorldId,
+  useActiveChapterId as _useActiveChapterId,
+  useActiveMapLayerId as _useActiveMapLayerId,
+  useMapLayerHistory as _useMapLayerHistory,
 } from '@/store'
 
-const INITIAL: Parameters<typeof useAppStore.setState>[0] = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const INITIAL = {
   activeWorldId: null,
   activeChapterId: null,
   activeMapLayerId: null,
@@ -34,7 +31,8 @@ const INITIAL: Parameters<typeof useAppStore.setState>[0] = {
 }
 
 beforeEach(() => {
-  useAppStore.setState(INITIAL)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  useAppStore.setState(INITIAL as any)
 })
 
 // The selectors are thin wrappers around useAppStore state slices.

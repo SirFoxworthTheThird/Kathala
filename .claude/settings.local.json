@@ -31,7 +31,24 @@
       "Bash(cd /f)",
       "Bash(python3)",
       "Bash(node)",
-      "Bash(node -e ':*)"
+      "Bash(node -e ':*)",
+      "Read(//usr/local/**)",
+      "Read(//c/Users/rpaiva/.nvm/versions/**)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Users/rpaiva/AppData/Roaming/**)",
+      "Read(//c/ProgramData/**)",
+      "Read(//c/Users/rpaiva/AppData/Local/Programs/**)",
+      "Read(//c/Users/rpaiva/**)",
+      "Read(//c//**)",
+      "Bash(cmd.exe /c \"node --version && npm --version\")",
+      "Bash(cmd.exe /c \"where node\")",
+      "Bash(cmd.exe /c \"where npm\")",
+      "Bash(cmd.exe /c \"where node 2>&1 & where npm 2>&1 & node --version 2>&1 & npm --version 2>&1\")",
+      "Bash(powershell.exe -Command \"Get-Command node,npm -ErrorAction SilentlyContinue | Select-Object Name,Source; node --version; npm --version\")",
+      "Bash(powershell.exe -Command \"cd 'c:\\\\Projects\\\\mine\\\\PlotWeave'; npm run build 2>&1\")",
+      "Bash(powershell.exe -Command \"cd 'c:\\\\Projects\\\\mine\\\\PlotWeave'; cat package.json | Select-String 'zustand'\")",
+      "Bash(powershell.exe -Command \"cat 'c:\\\\Projects\\\\mine\\\\PlotWeave\\\\node_modules\\\\dexie-react-hooks\\\\dist\\\\dexie-react-hooks.d.ts' | Select-String 'useLiveQuery' -Context 0,5\")",
+      "Bash(powershell.exe -Command \"cat 'c:\\\\Projects\\\\mine\\\\PlotWeave\\\\node_modules\\\\dexie-react-hooks\\\\dist\\\\useLiveQuery.d.ts'\")"
     ]
   }
 }

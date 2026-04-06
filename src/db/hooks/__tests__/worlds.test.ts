@@ -72,8 +72,8 @@ describe('deleteWorld', () => {
     const world = await createWorld({ name: 'W', description: '' })
     await db.mapLayers.add({
       id: 'layer-1', worldId: world.id, parentMapId: null,
-      name: 'Root', imageWidth: 100, imageHeight: 100,
-      createdAt: Date.now(), updatedAt: Date.now(),
+      name: 'Root', description: '', imageId: 'img-1', imageWidth: 100, imageHeight: 100,
+      scalePixelsPerUnit: null, scaleUnit: null, createdAt: Date.now(), updatedAt: Date.now(),
     })
     await deleteWorld(world.id)
     expect(await db.mapLayers.where('worldId').equals(world.id).count()).toBe(0)
@@ -102,7 +102,7 @@ describe('deleteWorld', () => {
     await db.characterSnapshots.add({
       id: 'snap-1', worldId: world.id, characterId: 'char-1', chapterId: 'ch-1',
       isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
-      inventoryItemIds: [], inventoryNotes: '', statusNotes: '',
+      inventoryItemIds: [], inventoryNotes: '', statusNotes: '', travelModeId: null,
       createdAt: Date.now(), updatedAt: Date.now(),
     })
     await deleteWorld(world.id)
@@ -114,7 +114,7 @@ describe('deleteWorld', () => {
     await db.relationships.add({
       id: 'rel-1', worldId: world.id, characterAId: 'c1', characterBId: 'c2',
       label: 'Friends', strength: 'strong', sentiment: 'positive',
-      description: '', isBidirectional: true, createdAt: Date.now(), updatedAt: Date.now(),
+      description: '', isBidirectional: true, startChapterId: null, createdAt: Date.now(), updatedAt: Date.now(),
     })
     await deleteWorld(world.id)
     expect(await db.relationships.where('worldId').equals(world.id).count()).toBe(0)

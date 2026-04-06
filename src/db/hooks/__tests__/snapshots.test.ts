@@ -17,6 +17,7 @@ function makeSnap(overrides: Partial<CharacterSnapshot> = {}): Omit<CharacterSna
     inventoryItemIds: [],
     inventoryNotes: '',
     statusNotes: '',
+    travelModeId: null,
     ...overrides,
   }
 }

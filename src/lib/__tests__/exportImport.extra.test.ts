@@ -9,7 +9,7 @@ function makeExport(overrides: Partial<WorldExportFile> = {}): WorldExportFile {
   return {
     version: 1,
     exportedAt: Date.now(),
-    world: { id: 'world-extra', name: 'Extra World', description: '', createdAt: 1000, updatedAt: 1000 },
+    world: { id: 'world-extra', name: 'Extra World', description: '', coverImageId: null, createdAt: 1000, updatedAt: 1000 },
     mapLayers: [],
     locationMarkers: [],
     characters: [],
@@ -17,11 +17,15 @@ function makeExport(overrides: Partial<WorldExportFile> = {}): WorldExportFile {
     characterSnapshots: [],
     characterMovements: [],
     itemPlacements: [],
+    locationSnapshots: [],
+    itemSnapshots: [],
     relationships: [],
+    relationshipSnapshots: [],
     timelines: [],
     chapters: [],
     events: [],
     blobs: [],
+    travelModes: [],
     ...overrides,
   }
 }
@@ -103,7 +107,7 @@ describe('importWorld — normalizeImport backfills', () => {
     const stored = await db.relationships.get('rel-old')
     expect(stored).toBeDefined()
     // normalizeImport should have backfilled startChapterId to null
-    expect((stored as Record<string, unknown>).startChapterId).toBeNull()
+    expect((stored as unknown as Record<string, unknown>).startChapterId).toBeNull()
   })
 
   it('backfills scalePixelsPerUnit and scaleUnit on old map layers', async () => {
@@ -129,8 +133,8 @@ describe('importWorld — normalizeImport backfills', () => {
 
     const stored = await db.mapLayers.get('layer-old')
     expect(stored).toBeDefined()
-    expect((stored as Record<string, unknown>).scalePixelsPerUnit).toBeNull()
-    expect((stored as Record<string, unknown>).scaleUnit).toBeNull()
+    expect((stored as unknown as Record<string, unknown>).scalePixelsPerUnit).toBeNull()
+    expect((stored as unknown as Record<string, unknown>).scaleUnit).toBeNull()
   })
 
   it('backfills synopsis on chapters that lack it', async () => {
@@ -153,7 +157,7 @@ describe('importWorld — normalizeImport backfills', () => {
 
     const stored = await db.chapters.get('ch-old')
     expect(stored).toBeDefined()
-    expect((stored as Record<string, unknown>).synopsis).toBe('')
+    expect(stored!.synopsis).toBe('')
   })
 
   it('backfills notes on chapters that lack it', async () => {
@@ -177,7 +181,7 @@ describe('importWorld — normalizeImport backfills', () => {
 
     const stored = await db.chapters.get('ch-notes')
     expect(stored).toBeDefined()
-    expect((stored as Record<string, unknown>).notes).toBe('')
+    expect(stored!.notes).toBe('')
   })
 
   it('preserves existing notes when already set', async () => {
@@ -193,6 +197,7 @@ describe('importWorld — normalizeImport backfills', () => {
         title: 'Chapter with Notes',
         synopsis: '',
         notes: 'Remember to foreshadow the betrayal here.',
+        travelDays: null,
         createdAt: 1000,
         updatedAt: 1000,
       }],
@@ -200,7 +205,7 @@ describe('importWorld — normalizeImport backfills', () => {
     await importWorld(makeFile(data))
 
     const stored = await db.chapters.get('ch-withnotes')
-    expect((stored as Record<string, unknown>).notes).toBe('Remember to foreshadow the betrayal here.')
+    expect(stored!.notes).toBe('Remember to foreshadow the betrayal here.')
   })
 
   it('preserves existing synopsis when it is already set', async () => {
@@ -215,6 +220,8 @@ describe('importWorld — normalizeImport backfills', () => {
         number: 1,
         title: 'New Chapter',
         synopsis: 'The hero sets off.',
+        notes: '',
+        travelDays: null,
         createdAt: 1000,
         updatedAt: 1000,
       }],
@@ -333,7 +340,7 @@ describe('importWorld — full optional arrays', () => {
       }],
       chapters: [{
         id: 'ch-1', worldId: 'world-extra', timelineId: 'tl-1', number: 1,
-        title: 'Chapter One', synopsis: '', createdAt: 1000, updatedAt: 1000,
+        title: 'Chapter One', synopsis: '', notes: '', travelDays: null, createdAt: 1000, updatedAt: 1000,
       }],
       events: [{
         id: 'ev-1', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1',

@@ -85,7 +85,7 @@ describe('deleteCharacter', () => {
     await db.characterSnapshots.add({
       id: 'snap-1', worldId: 'w', characterId: char.id, chapterId: 'ch-1',
       isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
-      inventoryItemIds: [], inventoryNotes: '', statusNotes: '',
+      inventoryItemIds: [], inventoryNotes: '', statusNotes: '', travelModeId: null,
       createdAt: Date.now(), updatedAt: Date.now(),
     })
     await deleteCharacter(char.id)
@@ -97,12 +97,12 @@ describe('deleteCharacter', () => {
     await db.relationships.add({
       id: 'rel-a', worldId: 'w', characterAId: char.id, characterBId: 'other',
       label: 'Ally', strength: 'moderate', sentiment: 'positive',
-      description: '', isBidirectional: true, createdAt: Date.now(), updatedAt: Date.now(),
+      description: '', isBidirectional: true, startChapterId: null, createdAt: Date.now(), updatedAt: Date.now(),
     })
     await db.relationships.add({
       id: 'rel-b', worldId: 'w', characterAId: 'other', characterBId: char.id,
       label: 'Enemy', strength: 'strong', sentiment: 'negative',
-      description: '', isBidirectional: false, createdAt: Date.now(), updatedAt: Date.now(),
+      description: '', isBidirectional: false, startChapterId: null, createdAt: Date.now(), updatedAt: Date.now(),
     })
     await deleteCharacter(char.id)
     expect(await db.relationships.count()).toBe(0)
@@ -113,7 +113,7 @@ describe('deleteCharacter', () => {
     await db.relationships.add({
       id: 'rel-unrelated', worldId: 'w', characterAId: 'other-1', characterBId: 'other-2',
       label: 'Rival', strength: 'weak', sentiment: 'neutral',
-      description: '', isBidirectional: false, createdAt: Date.now(), updatedAt: Date.now(),
+      description: '', isBidirectional: false, startChapterId: null, createdAt: Date.now(), updatedAt: Date.now(),
     })
     await deleteCharacter(char.id)
     expect(await db.relationships.count()).toBe(1)

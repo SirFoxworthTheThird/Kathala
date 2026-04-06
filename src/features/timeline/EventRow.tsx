@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ChevronDown, ChevronRight, Trash2, ArrowUp, ArrowDown, MapPin, ExternalLink, Circle } from 'lucide-react'
+import { ChevronDown, ChevronRight, Trash2, ArrowUp, ArrowDown, MapPin, ExternalLink } from 'lucide-react'
 import type { WorldEvent } from '@/types'
 import { deleteEvent } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
@@ -58,9 +58,9 @@ export function EventRow({ event, isFirst, isLast, onMoveUp, onMoveDown }: Event
                 <PortraitImage
                   key={c.id}
                   imageId={c.portraitImageId}
+                  alt={c.name}
                   className="h-4 w-4 rounded-full object-cover"
                   fallbackClassName="h-4 w-4 rounded-full opacity-60"
-                  title={c.name}
                 />
               ))}
               {involvedChars.length > 2 && (

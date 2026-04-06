@@ -166,6 +166,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
       inventoryItemIds: existing?.inventoryItemIds ?? [],
       inventoryNotes: existing?.inventoryNotes ?? '',
       statusNotes: existing?.statusNotes ?? '',
+      travelModeId: existing?.travelModeId ?? null,
     })
     setAddingChar(false)
   }

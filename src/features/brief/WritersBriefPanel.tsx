@@ -72,7 +72,7 @@ export function WritersBriefPanel() {
       if (!charA || !charB) return null
       return { rs, rel, charA, charB }
     })
-    .filter(Boolean) as NonNullable<{ rs: typeof relSnaps[0]; rel: typeof rels[0]; charA: ReturnType<typeof charById.get>; charB: ReturnType<typeof charById.get> }>[]
+    .filter(Boolean) as NonNullable<{ rs: typeof relSnaps[0]; rel: typeof rels[0]; charA: NonNullable<ReturnType<typeof charById.get>>; charB: NonNullable<ReturnType<typeof charById.get>> }>[]
 
   // Items in play this chapter
   const placedItems = itemPlacements

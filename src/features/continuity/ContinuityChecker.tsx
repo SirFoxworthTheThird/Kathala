@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, ChevronRight, Footprints } from 'lucide-react'
+import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, ChevronRight } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store'
 import { useWorldChapters } from '@/db/hooks/useTimeline'
@@ -7,11 +7,10 @@ import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
 import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
-import { useTravelModes } from '@/db/hooks/useTravelModes'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { cn } from '@/lib/utils'
-import { pathPixelLength } from '@/lib/mapScale'
+import type { CharacterSnapshot, ItemPlacement } from '@/types'
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -112,7 +111,7 @@ export function ContinuityChecker() {
     // ── Character checks ────────────────────────────────────────────────────
 
     // Group snapshots by character
-    const snapsByChar = new Map<string, typeof snapshots>()
+    const snapsByChar = new Map<string, CharacterSnapshot[]>()
     for (const snap of snapshots) {
       if (!snapsByChar.has(snap.characterId)) snapsByChar.set(snap.characterId, [])
       snapsByChar.get(snap.characterId)!.push(snap)
@@ -168,14 +167,14 @@ export function ContinuityChecker() {
     // ── Item checks ─────────────────────────────────────────────────────────
 
     // Group item placements by chapterId then itemId
-    const placementsByChap = new Map<string, typeof allItemPlacements>()
+    const placementsByChap = new Map<string, ItemPlacement[]>()
     for (const p of (allItemPlacements ?? [])) {
       if (!placementsByChap.has(p.chapterId)) placementsByChap.set(p.chapterId, [])
       placementsByChap.get(p.chapterId)!.push(p)
     }
 
     // Group snapshots by chapter to check inventory duplication
-    const snapsByChap = new Map<string, typeof snapshots>()
+    const snapsByChap = new Map<string, CharacterSnapshot[]>()
     for (const snap of snapshots) {
       if (!snapsByChap.has(snap.chapterId)) snapsByChap.set(snap.chapterId, [])
       snapsByChap.get(snap.chapterId)!.push(snap)

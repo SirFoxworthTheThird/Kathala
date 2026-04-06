@@ -52,7 +52,7 @@ describe('placeItemAtLocation', () => {
       worldId: W, characterId: 'char-1', chapterId: CH,
       isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
       inventoryItemIds: ['item-1', 'item-2'],
-      inventoryNotes: '', statusNotes: '',
+      inventoryNotes: '', statusNotes: '', travelModeId: null,
     })
 
     await placeItemAtLocation(W, 'item-1', CH, 'loc-1')
@@ -66,12 +66,12 @@ describe('placeItemAtLocation', () => {
     await upsertSnapshot({
       worldId: W, characterId: 'char-1', chapterId: CH,
       isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
-      inventoryItemIds: ['item-1'], inventoryNotes: '', statusNotes: '',
+      inventoryItemIds: ['item-1'], inventoryNotes: '', statusNotes: '', travelModeId: null,
     })
     await upsertSnapshot({
       worldId: W, characterId: 'char-2', chapterId: CH,
       isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
-      inventoryItemIds: ['item-1', 'item-3'], inventoryNotes: '', statusNotes: '',
+      inventoryItemIds: ['item-1', 'item-3'], inventoryNotes: '', statusNotes: '', travelModeId: null,
     })
 
     await placeItemAtLocation(W, 'item-1', CH, 'loc-5')

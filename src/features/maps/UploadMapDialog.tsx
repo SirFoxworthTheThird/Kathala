@@ -43,6 +43,8 @@ export function UploadMapDialog({ open, onOpenChange, worldId, parentMapId = nul
       imageId: blob.id,
       imageWidth: blob.width,
       imageHeight: blob.height,
+      scalePixelsPerUnit: null,
+      scaleUnit: null,
     })
     setSaving(false)
     setName('')

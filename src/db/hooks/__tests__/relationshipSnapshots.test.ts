@@ -27,8 +27,6 @@ function makeSnap(overrides: Partial<RelationshipSnapshot> & {
   return {
     id: `snap-${Math.random()}`,
     worldId: 'world-1',
-    relationshipId: overrides.relationshipId,
-    chapterId: overrides.chapterId,
     label: 'Friends',
     strength: 'moderate',
     sentiment: 'positive',

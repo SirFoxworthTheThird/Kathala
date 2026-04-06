@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useAppStore } from '@/store'
 
-const INITIAL: Parameters<typeof useAppStore.setState>[0] = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const INITIAL = {
   activeWorldId: null,
   activeChapterId: null,
   activeMapLayerId: null,
@@ -20,7 +21,8 @@ const INITIAL: Parameters<typeof useAppStore.setState>[0] = {
 }
 
 beforeEach(() => {
-  useAppStore.setState(INITIAL)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  useAppStore.setState(INITIAL as any)
 })
 
 // ── WorldSlice ────────────────────────────────────────────────────────────────

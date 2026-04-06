@@ -1230,8 +1230,9 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       inventoryItemIds: existingInDb?.inventoryItemIds ?? existing?.inventoryItemIds ?? [],
       inventoryNotes: existingInDb?.inventoryNotes ?? existing?.inventoryNotes ?? '',
       statusNotes: existingInDb?.statusNotes ?? existing?.statusNotes ?? '',
+      travelModeId: existingInDb?.travelModeId ?? existing?.travelModeId ?? null,
     })
-    await appendWaypoint(worldId, characterId, activeChapterId, marker.id, fromMarkerId)
+    await appendWaypoint(worldId, characterId, activeChapterId, marker.id, fromMarkerId ?? undefined)
   }
 
   async function handleCharacterDrop(characterId: string, markerId: string) {

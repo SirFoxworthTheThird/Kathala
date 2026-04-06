@@ -30,7 +30,7 @@ describe('createChapter — inherits state from previous chapter', () => {
     await upsertSnapshot({
       worldId: 'w', characterId: 'char-1', chapterId: ch1.id,
       isAlive: true, currentLocationMarkerId: 'loc-1', currentMapLayerId: null,
-      inventoryItemIds: [], inventoryNotes: '', statusNotes: 'healthy',
+      inventoryItemIds: [], inventoryNotes: '', statusNotes: 'healthy', travelModeId: null,
     })
 
     const ch2 = await createChapter({ worldId: 'w', timelineId: tl.id, number: 2, title: 'Ch 2', synopsis: '' })
@@ -110,12 +110,12 @@ describe('createChapter — inherits state from previous chapter', () => {
     await upsertSnapshot({
       worldId: 'w', characterId: 'char-x', chapterId: ch1.id,
       isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
-      inventoryItemIds: [], inventoryNotes: '', statusNotes: 'ch1 state',
+      inventoryItemIds: [], inventoryNotes: '', statusNotes: 'ch1 state', travelModeId: null,
     })
     await upsertSnapshot({
       worldId: 'w', characterId: 'char-x', chapterId: ch2.id,
       isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
-      inventoryItemIds: [], inventoryNotes: '', statusNotes: 'ch2 state',
+      inventoryItemIds: [], inventoryNotes: '', statusNotes: 'ch2 state', travelModeId: null,
     })
 
     // ch3 should inherit from ch2, not ch1
