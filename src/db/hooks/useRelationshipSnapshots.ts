@@ -3,31 +3,34 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import type { RelationshipSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
-import { useWorldChapters } from './useTimeline'
+import { useWorldChapters, useWorldEvents } from './useTimeline'
 
-export function useRelationshipSnapshot(relationshipId: string | null, chapterId: string | null) {
+export function useRelationshipSnapshot(relationshipId: string | null, eventId: string | null) {
   return useLiveQuery(
     () =>
-      relationshipId && chapterId
+      relationshipId && eventId
         ? db.relationshipSnapshots
-            .where('[relationshipId+chapterId]')
-            .equals([relationshipId, chapterId])
+            .where('[relationshipId+eventId]')
+            .equals([relationshipId, eventId])
             .first()
         : undefined,
-    [relationshipId, chapterId]
+    [relationshipId, eventId]
   )
 }
 
-export function useChapterRelationshipSnapshots(chapterId: string | null) {
+export function useEventRelationshipSnapshots(eventId: string | null) {
   return useLiveQuery(
     () =>
-      chapterId
-        ? db.relationshipSnapshots.where('chapterId').equals(chapterId).toArray()
+      eventId
+        ? db.relationshipSnapshots.where('eventId').equals(eventId).toArray()
         : [],
-    [chapterId],
+    [eventId],
     []
   )
 }
+
+/** @deprecated use useEventRelationshipSnapshots */
+export const useChapterRelationshipSnapshots = useEventRelationshipSnapshots
 
 export function useWorldRelationshipSnapshots(worldId: string | null) {
   return useLiveQuery(
@@ -40,18 +43,33 @@ export function useWorldRelationshipSnapshots(worldId: string | null) {
   )
 }
 
+type EventStub = { id: string; chapterId: string; sortOrder: number }
 type ChapterStub = { id: string; number: number }
+
+/** Compute a globally comparable sort key for an event.
+ *  Ordering: chapter.number (primary) → event.sortOrder (secondary). */
+function globalEventOrder(
+  eventId: string,
+  eventById: Map<string, EventStub>,
+  chapterNumberById: Map<string, number>
+): number {
+  const ev = eventById.get(eventId)
+  if (!ev) return -1
+  const chapNum = chapterNumberById.get(ev.chapterId) ?? -1
+  return chapNum * 10_000 + ev.sortOrder
+}
 
 /** Pure selection logic — exported for testing. */
 export function selectBestSnapshots(
   all: RelationshipSnapshot[],
-  activeChapterId: string | null,
+  activeEventId: string | null,
+  allEvents: EventStub[],
   allChapters: ChapterStub[]
 ): RelationshipSnapshot[] {
   if (!all.length) return all
 
-  if (!activeChapterId) {
-    // No chapter active — most recently updated snapshot per relationship
+  if (!activeEventId) {
+    // No event active — most recently updated snapshot per relationship
     const byRel = new Map<string, RelationshipSnapshot>()
     for (const snap of all) {
       const current = byRel.get(snap.relationshipId)
@@ -62,20 +80,23 @@ export function selectBestSnapshots(
     return Array.from(byRel.values())
   }
 
-  const activeChapter = allChapters.find((c) => c.id === activeChapterId)
-  if (!activeChapter) {
-    // Chapters not loaded yet — exact match only
-    return all.filter((s) => s.chapterId === activeChapterId)
-  }
-
+  const eventById = new Map(allEvents.map((e) => [e.id, e]))
   const chapterNumberById = new Map(allChapters.map((c) => [c.id, c.number]))
 
-  // For each relationship, pick the snapshot from the highest chapter number
-  // that is still ≤ the active chapter (the most recent known state).
+  const getOrder = (eventId: string) => globalEventOrder(eventId, eventById, chapterNumberById)
+  const activeOrder = getOrder(activeEventId)
+
+  if (activeOrder === -1) {
+    // Active event not loaded yet — fall back to exact match only
+    return all.filter((s) => s.eventId === activeEventId)
+  }
+
+  // For each relationship, pick the snapshot from the event with the highest global
+  // order that is still ≤ the active event's order (most recent known state).
   const byRel = new Map<string, RelationshipSnapshot>()
   for (const snap of all) {
-    const snapChapterNum = chapterNumberById.get(snap.chapterId)
-    if (snapChapterNum === undefined || snapChapterNum > activeChapter.number) continue
+    const snapOrder = getOrder(snap.eventId)
+    if (snapOrder === -1 || snapOrder > activeOrder) continue
 
     const current = byRel.get(snap.relationshipId)
     if (!current) {
@@ -83,11 +104,11 @@ export function selectBestSnapshots(
       continue
     }
 
-    const currentChapterNum = chapterNumberById.get(current.chapterId) ?? -Infinity
-    // Exact match for current chapter always wins; otherwise pick highest chapter number
-    if (snap.chapterId === activeChapterId) {
+    const currentOrder = getOrder(current.eventId)
+    // Exact match for the active event always wins; otherwise prefer higher order
+    if (snap.eventId === activeEventId) {
       byRel.set(snap.relationshipId, snap)
-    } else if (current.chapterId !== activeChapterId && snapChapterNum > currentChapterNum) {
+    } else if (current.eventId !== activeEventId && snapOrder > currentOrder) {
       byRel.set(snap.relationshipId, snap)
     }
   }
@@ -95,26 +116,30 @@ export function selectBestSnapshots(
   return Array.from(byRel.values())
 }
 
-/** Returns the best snapshot per relationship for the active chapter.
- *  When a chapter is active: uses that chapter's snapshot if it exists, otherwise
- *  inherits the most recent snapshot from any earlier chapter (by chapter number).
- *  When no chapter is active: returns the most recently updated snapshot per relationship.
- *  Memoized to keep array reference stable and avoid infinite effect loops. */
+/** Returns the best snapshot per relationship for the active event.
+ *  When an event is active: uses that event's snapshot if it exists, otherwise
+ *  inherits the most recent snapshot from any earlier event (by global order).
+ *  When no event is active: returns the most recently updated snapshot per relationship.
+ *  Memoized to keep the array reference stable. */
 export function useBestRelationshipSnapshots(
   worldId: string | null,
-  activeChapterId: string | null
+  activeEventId: string | null
 ): RelationshipSnapshot[] {
   const all = useWorldRelationshipSnapshots(worldId)
+  const allEvents = useWorldEvents(worldId)
   const allChapters = useWorldChapters(worldId)
-  return useMemo(() => selectBestSnapshots(all, activeChapterId, allChapters), [all, activeChapterId, allChapters])
+  return useMemo(
+    () => selectBestSnapshots(all, activeEventId, allEvents, allChapters),
+    [all, activeEventId, allEvents, allChapters]
+  )
 }
 
 export async function upsertRelationshipSnapshot(
   data: Omit<RelationshipSnapshot, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<RelationshipSnapshot> {
   const existing = await db.relationshipSnapshots
-    .where('[relationshipId+chapterId]')
-    .equals([data.relationshipId, data.chapterId])
+    .where('[relationshipId+eventId]')
+    .equals([data.relationshipId, data.eventId])
     .first()
 
   const now = Date.now()

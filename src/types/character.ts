@@ -25,7 +25,7 @@ export interface ItemPlacement {
   id: string
   worldId: string
   itemId: string
-  chapterId: string
+  eventId: string
   locationMarkerId: string
   notes: string
   createdAt: number
@@ -36,7 +36,7 @@ export interface CharacterSnapshot {
   id: string
   worldId: string
   characterId: string
-  chapterId: string
+  eventId: string
   isAlive: boolean
   currentLocationMarkerId: string | null
   currentMapLayerId: string | null
@@ -52,7 +52,7 @@ export interface LocationSnapshot {
   id: string
   worldId: string
   locationMarkerId: string
-  chapterId: string
+  eventId: string
   status: string
   notes: string
   createdAt: number
@@ -63,7 +63,7 @@ export interface ItemSnapshot {
   id: string
   worldId: string
   itemId: string
-  chapterId: string
+  eventId: string
   condition: string
   notes: string
   createdAt: number

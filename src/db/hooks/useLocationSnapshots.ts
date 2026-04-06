@@ -3,29 +3,32 @@ import { db } from '@/db/database'
 import type { LocationSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
 
-export function useLocationSnapshot(locationMarkerId: string | null, chapterId: string | null) {
+export function useLocationSnapshot(locationMarkerId: string | null, eventId: string | null) {
   return useLiveQuery(
     () =>
-      locationMarkerId && chapterId
+      locationMarkerId && eventId
         ? db.locationSnapshots
-            .where('[locationMarkerId+chapterId]')
-            .equals([locationMarkerId, chapterId])
+            .where('[locationMarkerId+eventId]')
+            .equals([locationMarkerId, eventId])
             .first()
         : undefined,
-    [locationMarkerId, chapterId]
+    [locationMarkerId, eventId]
   )
 }
 
-export function useChapterLocationSnapshots(chapterId: string | null) {
+export function useEventLocationSnapshots(eventId: string | null) {
   return useLiveQuery(
     () =>
-      chapterId
-        ? db.locationSnapshots.where('chapterId').equals(chapterId).toArray()
+      eventId
+        ? db.locationSnapshots.where('eventId').equals(eventId).toArray()
         : [],
-    [chapterId],
+    [eventId],
     []
   )
 }
+
+/** @deprecated use useEventLocationSnapshots */
+export const useChapterLocationSnapshots = useEventLocationSnapshots
 
 export function useMarkerSnapshots(locationMarkerId: string | null) {
   return useLiveQuery(
@@ -42,8 +45,8 @@ export async function upsertLocationSnapshot(
   data: Omit<LocationSnapshot, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<LocationSnapshot> {
   const existing = await db.locationSnapshots
-    .where('[locationMarkerId+chapterId]')
-    .equals([data.locationMarkerId, data.chapterId])
+    .where('[locationMarkerId+eventId]')
+    .equals([data.locationMarkerId, data.eventId])
     .first()
   const now = Date.now()
   if (existing) {

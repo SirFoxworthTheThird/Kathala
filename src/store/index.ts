@@ -6,9 +6,9 @@ interface WorldSlice {
   setActiveWorldId: (id: string | null) => void
 }
 
-interface ChapterSlice {
-  activeChapterId: string | null
-  setActiveChapterId: (id: string | null) => void
+interface EventSlice {
+  activeEventId: string | null
+  setActiveEventId: (id: string | null) => void
 }
 
 interface MapSlice {
@@ -52,18 +52,18 @@ interface UISlice {
   setCheckerOpen: (open: boolean) => void
 }
 
-type AppStore = WorldSlice & ChapterSlice & MapSlice & UISlice & PlaybackSlice
+type AppStore = WorldSlice & EventSlice & MapSlice & UISlice & PlaybackSlice
 
 export const useAppStore = create<AppStore>()(
   persist(
     (set, _get) => ({
       // World
       activeWorldId: null,
-      setActiveWorldId: (id) => set({ activeWorldId: id, activeChapterId: null }),
+      setActiveWorldId: (id) => set({ activeWorldId: id, activeEventId: null }),
 
-      // Chapter (the global time cursor)
-      activeChapterId: null,
-      setActiveChapterId: (id) => set({ activeChapterId: id }),
+      // Event (the global time cursor — replaces activeChapterId)
+      activeEventId: null,
+      setActiveEventId: (id) => set({ activeEventId: id }),
 
       // Map
       activeMapLayerId: null,
@@ -116,7 +116,7 @@ export const useAppStore = create<AppStore>()(
       name: 'plotweave-ui',
       partialize: (state) => ({
         activeWorldId: state.activeWorldId,
-        activeChapterId: state.activeChapterId,
+        activeEventId: state.activeEventId,
         sidebarOpen: state.sidebarOpen,
         theme: state.theme,
       }),
@@ -126,6 +126,11 @@ export const useAppStore = create<AppStore>()(
 
 // Convenience selectors
 export const useActiveWorldId = () => useAppStore((s) => s.activeWorldId)
-export const useActiveChapterId = () => useAppStore((s) => s.activeChapterId)
+export const useActiveEventId = () => useAppStore((s) => s.activeEventId)
 export const useActiveMapLayerId = () => useAppStore((s) => s.activeMapLayerId)
 export const useMapLayerHistory = () => useAppStore((s) => s.mapLayerHistory)
+
+/** @deprecated use useActiveEventId */
+export const useActiveChapterId = () => useAppStore((s) => s.activeEventId)
+/** @deprecated use setActiveEventId from useAppStore */
+export const useSetActiveChapterId = () => useAppStore((s) => s.setActiveEventId)

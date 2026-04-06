@@ -106,11 +106,10 @@ describe('deleteTravelMode', () => {
   it('clears travelModeId from snapshots that referenced the deleted mode', async () => {
     const mode = await createTravelMode({ worldId: 'w', name: 'Walk', speedPerDay: 30 })
 
-    // Create a snapshot that references the mode
     await upsertSnapshot({
       worldId: 'w',
       characterId: 'char-1',
-      chapterId: 'ch-1',
+      eventId: 'ev-1',
       isAlive: true,
       currentLocationMarkerId: null,
       currentMapLayerId: null,
@@ -121,15 +120,13 @@ describe('deleteTravelMode', () => {
     })
 
     const before = await db.characterSnapshots
-      .where({ characterId: 'char-1', chapterId: 'ch-1' })
-      .first()
+      .where('[characterId+eventId]').equals(['char-1', 'ev-1']).first()
     expect(before!.travelModeId).toBe(mode.id)
 
     await deleteTravelMode(mode.id)
 
     const after = await db.characterSnapshots
-      .where({ characterId: 'char-1', chapterId: 'ch-1' })
-      .first()
+      .where('[characterId+eventId]').equals(['char-1', 'ev-1']).first()
     expect(after!.travelModeId).toBeNull()
   })
 
@@ -140,7 +137,7 @@ describe('deleteTravelMode', () => {
     await upsertSnapshot({
       worldId: 'w',
       characterId: 'char-1',
-      chapterId: 'ch-1',
+      eventId: 'ev-1',
       isAlive: true,
       currentLocationMarkerId: null,
       currentMapLayerId: null,
@@ -152,7 +149,7 @@ describe('deleteTravelMode', () => {
     await upsertSnapshot({
       worldId: 'w',
       characterId: 'char-2',
-      chapterId: 'ch-1',
+      eventId: 'ev-1',
       isAlive: true,
       currentLocationMarkerId: null,
       currentMapLayerId: null,
@@ -164,8 +161,8 @@ describe('deleteTravelMode', () => {
 
     await deleteTravelMode(modeA.id)
 
-    const snap1 = await db.characterSnapshots.where({ characterId: 'char-1', chapterId: 'ch-1' }).first()
-    const snap2 = await db.characterSnapshots.where({ characterId: 'char-2', chapterId: 'ch-1' }).first()
+    const snap1 = await db.characterSnapshots.where('[characterId+eventId]').equals(['char-1', 'ev-1']).first()
+    const snap2 = await db.characterSnapshots.where('[characterId+eventId]').equals(['char-2', 'ev-1']).first()
 
     expect(snap1!.travelModeId).toBeNull()
     expect(snap2!.travelModeId).toBe(modeB.id)
@@ -178,7 +175,7 @@ describe('deleteTravelMode', () => {
       await upsertSnapshot({
         worldId: 'w',
         characterId: `char-${i}`,
-        chapterId: 'ch-1',
+        eventId: 'ev-1',
         isAlive: true,
         currentLocationMarkerId: null,
         currentMapLayerId: null,
@@ -192,7 +189,7 @@ describe('deleteTravelMode', () => {
     await deleteTravelMode(mode.id)
 
     for (let i = 1; i <= 3; i++) {
-      const snap = await db.characterSnapshots.where({ characterId: `char-${i}`, chapterId: 'ch-1' }).first()
+      const snap = await db.characterSnapshots.where('[characterId+eventId]').equals([`char-${i}`, 'ev-1']).first()
       expect(snap!.travelModeId).toBeNull()
     }
   })

@@ -3,16 +3,16 @@ import { db } from '@/db/database'
 import type { CharacterSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
 
-export function useSnapshot(characterId: string | null, chapterId: string | null) {
+export function useSnapshot(characterId: string | null, eventId: string | null) {
   return useLiveQuery(
     () =>
-      characterId && chapterId
+      characterId && eventId
         ? db.characterSnapshots
-            .where('[characterId+chapterId]')
-            .equals([characterId, chapterId])
+            .where('[characterId+eventId]')
+            .equals([characterId, eventId])
             .first()
         : undefined,
-    [characterId, chapterId]
+    [characterId, eventId]
   )
 }
 
@@ -27,16 +27,19 @@ export function useCharacterSnapshots(characterId: string | null) {
   )
 }
 
-export function useChapterSnapshots(chapterId: string | null) {
+export function useEventSnapshots(eventId: string | null) {
   return useLiveQuery(
     () =>
-      chapterId
-        ? db.characterSnapshots.where('chapterId').equals(chapterId).toArray()
+      eventId
+        ? db.characterSnapshots.where('eventId').equals(eventId).toArray()
         : [],
-    [chapterId],
+    [eventId],
     []
   )
 }
+
+/** @deprecated use useEventSnapshots */
+export const useChapterSnapshots = useEventSnapshots
 
 export function useWorldSnapshots(worldId: string | null) {
   return useLiveQuery(
@@ -49,18 +52,17 @@ export function useWorldSnapshots(worldId: string | null) {
   )
 }
 
-/** Returns snapshots for the active chapter only. When no chapter is selected, returns the most recent snapshot per character. */
-export function useBestSnapshots(worldId: string | null, activeChapterId: string | null): CharacterSnapshot[] {
+/** Returns snapshots for the active event only. When no event is selected,
+ *  returns the most recently updated snapshot per character. */
+export function useBestSnapshots(worldId: string | null, activeEventId: string | null): CharacterSnapshot[] {
   const all = useWorldSnapshots(worldId)
   if (!all.length) return []
 
-  if (activeChapterId) {
-    // Only return snapshots that explicitly belong to this chapter.
-    // A snapshot from a different chapter must never bleed into this one.
-    return all.filter((s) => s.chapterId === activeChapterId)
+  if (activeEventId) {
+    return all.filter((s) => s.eventId === activeEventId)
   }
 
-  // No chapter selected: show the most recently updated snapshot per character.
+  // No event selected: show the most recently updated snapshot per character.
   const byChar = new Map<string, CharacterSnapshot>()
   for (const snap of all) {
     const current = byChar.get(snap.characterId)
@@ -71,10 +73,10 @@ export function useBestSnapshots(worldId: string | null, activeChapterId: string
   return Array.from(byChar.values())
 }
 
-export async function fetchSnapshot(characterId: string, chapterId: string): Promise<CharacterSnapshot | undefined> {
+export async function fetchSnapshot(characterId: string, eventId: string): Promise<CharacterSnapshot | undefined> {
   return db.characterSnapshots
-    .where('[characterId+chapterId]')
-    .equals([characterId, chapterId])
+    .where('[characterId+eventId]')
+    .equals([characterId, eventId])
     .first()
 }
 
@@ -82,8 +84,8 @@ export async function upsertSnapshot(
   data: Omit<CharacterSnapshot, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<CharacterSnapshot> {
   const existing = await db.characterSnapshots
-    .where('[characterId+chapterId]')
-    .equals([data.characterId, data.chapterId])
+    .where('[characterId+eventId]')
+    .equals([data.characterId, data.eventId])
     .first()
 
   const now = Date.now()

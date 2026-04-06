@@ -17,7 +17,7 @@ function makeLocSnapData(overrides: Partial<Omit<LocationSnapshot, 'id' | 'creat
   return {
     worldId: 'world-1',
     locationMarkerId: 'loc-1',
-    chapterId: 'ch-1',
+    eventId: 'ev-1',
     status: 'active',
     notes: '',
     ...overrides,
@@ -53,8 +53,8 @@ describe('upsertLocationSnapshot', () => {
   })
 
   it('stores distinct snapshots for different chapters', async () => {
-    await upsertLocationSnapshot(makeLocSnapData({ chapterId: 'ch-1' }))
-    await upsertLocationSnapshot(makeLocSnapData({ chapterId: 'ch-2' }))
+    await upsertLocationSnapshot(makeLocSnapData({ eventId: 'ev-1' }))
+    await upsertLocationSnapshot(makeLocSnapData({ eventId: 'ev-2' }))
 
     const all = await db.locationSnapshots.toArray()
     expect(all).toHaveLength(2)
@@ -78,7 +78,7 @@ describe('upsertLocationSnapshot', () => {
     expect(stored!.status).toBe('ruined')
     expect(stored!.notes).toBe('Burned down in the war')
     expect(stored!.worldId).toBe('world-1')
-    expect(stored!.chapterId).toBe('ch-1')
+    expect(stored!.eventId).toBe('ev-1')
   })
 
   it('only updates the targeted marker+chapter combination', async () => {

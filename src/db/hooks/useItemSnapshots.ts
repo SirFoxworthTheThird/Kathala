@@ -3,36 +3,39 @@ import { db } from '@/db/database'
 import type { ItemSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
 
-export function useItemSnapshot(itemId: string | null, chapterId: string | null) {
+export function useItemSnapshot(itemId: string | null, eventId: string | null) {
   return useLiveQuery(
     () =>
-      itemId && chapterId
+      itemId && eventId
         ? db.itemSnapshots
-            .where('[itemId+chapterId]')
-            .equals([itemId, chapterId])
+            .where('[itemId+eventId]')
+            .equals([itemId, eventId])
             .first()
         : undefined,
-    [itemId, chapterId]
+    [itemId, eventId]
   )
 }
 
-export function useChapterItemSnapshots(chapterId: string | null) {
+export function useEventItemSnapshots(eventId: string | null) {
   return useLiveQuery(
     () =>
-      chapterId
-        ? db.itemSnapshots.where('chapterId').equals(chapterId).toArray()
+      eventId
+        ? db.itemSnapshots.where('eventId').equals(eventId).toArray()
         : [],
-    [chapterId],
+    [eventId],
     []
   )
 }
+
+/** @deprecated use useEventItemSnapshots */
+export const useChapterItemSnapshots = useEventItemSnapshots
 
 export async function upsertItemSnapshot(
   data: Omit<ItemSnapshot, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<ItemSnapshot> {
   const existing = await db.itemSnapshots
-    .where('[itemId+chapterId]')
-    .equals([data.itemId, data.chapterId])
+    .where('[itemId+eventId]')
+    .equals([data.itemId, data.eventId])
     .first()
   const now = Date.now()
   if (existing) {

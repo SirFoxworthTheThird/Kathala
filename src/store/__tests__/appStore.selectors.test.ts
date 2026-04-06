@@ -12,7 +12,7 @@ import {
   useAppStore,
   // Importing these names causes the module lines to be instrumented/covered.
   useActiveWorldId as _useActiveWorldId,
-  useActiveChapterId as _useActiveChapterId,
+  useActiveEventId as _useActiveEventId,
   useActiveMapLayerId as _useActiveMapLayerId,
   useMapLayerHistory as _useMapLayerHistory,
 } from '@/store'
@@ -20,7 +20,7 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const INITIAL = {
   activeWorldId: null,
-  activeChapterId: null,
+  activeEventId: null,
   activeMapLayerId: null,
   mapLayerHistory: [],
   sidebarOpen: true,
@@ -56,20 +56,20 @@ describe('activeWorldId state (backing useActiveWorldId)', () => {
   })
 })
 
-describe('activeChapterId state (backing useActiveChapterId)', () => {
+describe('activeEventId state (backing useActiveEventId)', () => {
   it('starts as null', () => {
-    expect(useAppStore.getState().activeChapterId).toBeNull()
+    expect(useAppStore.getState().activeEventId).toBeNull()
   })
 
-  it('is updated by setActiveChapterId', () => {
-    useAppStore.getState().setActiveChapterId('ch-sel')
-    expect(useAppStore.getState().activeChapterId).toBe('ch-sel')
+  it('is updated by setActiveEventId', () => {
+    useAppStore.getState().setActiveEventId('ev-sel')
+    expect(useAppStore.getState().activeEventId).toBe('ev-sel')
   })
 
   it('is cleared when world changes', () => {
-    useAppStore.getState().setActiveChapterId('ch-sel')
+    useAppStore.getState().setActiveEventId('ev-sel')
     useAppStore.getState().setActiveWorldId('world-new')
-    expect(useAppStore.getState().activeChapterId).toBeNull()
+    expect(useAppStore.getState().activeEventId).toBeNull()
   })
 })
 

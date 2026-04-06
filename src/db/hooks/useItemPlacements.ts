@@ -3,40 +3,43 @@ import { db } from '@/db/database'
 import type { ItemPlacement } from '@/types'
 import { generateId } from '@/lib/id'
 
-export function useItemPlacement(itemId: string | null, chapterId: string | null) {
+export function useItemPlacement(itemId: string | null, eventId: string | null) {
   return useLiveQuery(
     () =>
-      itemId && chapterId
-        ? db.itemPlacements.where('[itemId+chapterId]').equals([itemId, chapterId]).first()
+      itemId && eventId
+        ? db.itemPlacements.where('[itemId+eventId]').equals([itemId, eventId]).first()
         : undefined,
-    [itemId, chapterId]
+    [itemId, eventId]
   )
 }
 
-export function useLocationItemPlacements(locationMarkerId: string | null, chapterId: string | null) {
+export function useLocationItemPlacements(locationMarkerId: string | null, eventId: string | null) {
   return useLiveQuery(
     () =>
-      locationMarkerId && chapterId
+      locationMarkerId && eventId
         ? db.itemPlacements
             .where('locationMarkerId').equals(locationMarkerId)
-            .filter((p) => p.chapterId === chapterId)
+            .filter((p) => p.eventId === eventId)
             .toArray()
         : [],
-    [locationMarkerId, chapterId],
+    [locationMarkerId, eventId],
     []
   )
 }
 
-export function useChapterItemPlacements(chapterId: string | null) {
+export function useEventItemPlacements(eventId: string | null) {
   return useLiveQuery(
     () =>
-      chapterId
-        ? db.itemPlacements.where('chapterId').equals(chapterId).toArray()
+      eventId
+        ? db.itemPlacements.where('eventId').equals(eventId).toArray()
         : [],
-    [chapterId],
+    [eventId],
     []
   )
 }
+
+/** @deprecated use useEventItemPlacements */
+export const useChapterItemPlacements = useEventItemPlacements
 
 export function useWorldItemPlacements(worldId: string | null) {
   return useLiveQuery(
@@ -49,19 +52,19 @@ export function useWorldItemPlacements(worldId: string | null) {
   )
 }
 
-/** Place an item at a location for a chapter.
- *  Automatically removes it from any character's inventory in that chapter. */
+/** Place an item at a location for an event.
+ *  Automatically removes it from any character's inventory in that event. */
 export async function placeItemAtLocation(
   worldId: string,
   itemId: string,
-  chapterId: string,
+  eventId: string,
   locationMarkerId: string,
   notes = '',
 ): Promise<void> {
   await db.transaction('rw', [db.itemPlacements, db.characterSnapshots], async () => {
-    // Remove from any character's inventory in this chapter
+    // Remove from any character's inventory in this event
     const snapshotsWithItem = await db.characterSnapshots
-      .where('chapterId').equals(chapterId)
+      .where('eventId').equals(eventId)
       .filter((s) => s.inventoryItemIds.includes(itemId))
       .toArray()
     for (const snap of snapshotsWithItem) {
@@ -73,7 +76,7 @@ export async function placeItemAtLocation(
 
     // Upsert the placement
     const existing = await db.itemPlacements
-      .where('[itemId+chapterId]').equals([itemId, chapterId]).first()
+      .where('[itemId+eventId]').equals([itemId, eventId]).first()
     const now = Date.now()
     if (existing) {
       await db.itemPlacements.update(existing.id, { locationMarkerId, notes, updatedAt: now })
@@ -82,7 +85,7 @@ export async function placeItemAtLocation(
         id: generateId(),
         worldId,
         itemId,
-        chapterId,
+        eventId,
         locationMarkerId,
         notes,
         createdAt: now,
@@ -94,6 +97,6 @@ export async function placeItemAtLocation(
 }
 
 /** Remove an item's location placement (item becomes "nowhere" / untracked). */
-export async function removeItemPlacement(itemId: string, chapterId: string): Promise<void> {
-  await db.itemPlacements.where('[itemId+chapterId]').equals([itemId, chapterId]).delete()
+export async function removeItemPlacement(itemId: string, eventId: string): Promise<void> {
+  await db.itemPlacements.where('[itemId+eventId]').equals([itemId, eventId]).delete()
 }
