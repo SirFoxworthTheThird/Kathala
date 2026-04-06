@@ -228,7 +228,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
     <div className="flex h-full w-72 shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl">
       <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-3">
         <span className="text-sm font-semibold text-[hsl(var(--foreground))]">Location</span>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+        <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Close location panel" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
       </div>
@@ -326,6 +326,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
                       variant="ghost"
                       size="icon"
                       className="h-5 w-5 hover:text-red-400"
+                      aria-label="Remove character from location"
                       onClick={() => removeCharacter(c.id)}
                     >
                       <UserMinus className="h-3 w-3" />
