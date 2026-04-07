@@ -104,7 +104,10 @@
       "Bash(powershell.exe -Command \"Set-Location 'c:\\\\Projects\\\\mine\\\\PlotWeave'; npx playwright test --reporter=list 2>&1\")",
       "Bash(powershell.exe -Command \"Set-Location 'c:\\\\Projects\\\\mine\\\\PlotWeave'; npm run build 2>&1 | tail -5\")",
       "Bash(powershell.exe -Command \"Set-Location 'c:\\\\Projects\\\\mine\\\\PlotWeave'; npm run build 2>&1 | tail -8\")",
-      "Bash(powershell.exe -Command \"Set-Location 'c:\\\\Projects\\\\mine\\\\PlotWeave'; npm run build 2>&1 | tail -4\")"
+      "Bash(powershell.exe -Command \"Set-Location 'c:\\\\Projects\\\\mine\\\\PlotWeave'; npm run build 2>&1 | tail -4\")",
+      "Bash(cmd /c \"npm run build 2>&1\")",
+      "Bash(/c/Users/rpaiva/AppData/Roaming/nvm/v22.14.0/npm.cmd run:*)",
+      "Bash(\"/c/Users/rpaiva/AppData/Local/mise/installs/node/20.20.0/npm.cmd\" run:*)"
     ]
   }
 }

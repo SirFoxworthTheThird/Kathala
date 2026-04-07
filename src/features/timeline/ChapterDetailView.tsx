@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus, Users, Network, StickyNote } from 'lucide-react'
 import { useChapter, useEvents, updateChapter, updateEvent } from '@/db/hooks/useTimeline'
-import { useChapterSnapshots } from '@/db/hooks/useSnapshots'
-import { useChapterRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
+import { useEventSnapshots } from '@/db/hooks/useSnapshots'
+import { useEventRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { Button } from '@/components/ui/button'
@@ -16,14 +16,16 @@ export default function ChapterDetailView() {
   const navigate = useNavigate()
   const chapter = useChapter(chapterId ?? null)
   const events = useEvents(chapterId ?? null)
-  const snapshots = useChapterSnapshots(chapterId ?? null)
-  const relSnapshots = useChapterRelationshipSnapshots(chapterId ?? null)
   const characters = useCharacters(worldId ?? null)
   const relationships = useRelationships(worldId ?? null)
   const [addEventOpen, setAddEventOpen] = useState(false)
   const [notes, setNotes] = useState('')
 
   const sortedEvents = [...events].sort((a, b) => a.sortOrder - b.sortOrder)
+  const lastEventId = sortedEvents.length > 0 ? sortedEvents[sortedEvents.length - 1].id : null
+
+  const snapshots = useEventSnapshots(lastEventId)
+  const relSnapshots = useEventRelationshipSnapshots(lastEventId)
 
   async function moveEvent(eventId: string, direction: 'up' | 'down') {
     const idx = sortedEvents.findIndex((e) => e.id === eventId)
