@@ -114,7 +114,7 @@ export default function ChapterDetailView() {
         <div className="min-w-0 flex-1">
           <h2 className="text-base font-semibold">Ch. {chapter.number} — {chapter.title}</h2>
           {chapter.synopsis && (
-            <p className="text-xs text-[hsl(var(--muted-foreground))]">{chapter.synopsis}</p>
+            <p className="text-xs text-[hsl(var(--muted-foreground))] line-clamp-2" title={chapter.synopsis}>{chapter.synopsis}</p>
           )}
         </div>
       </div>
