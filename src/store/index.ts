@@ -50,6 +50,8 @@ interface UISlice {
   setDiffOpen: (open: boolean) => void
   checkerOpen: boolean
   setCheckerOpen: (open: boolean) => void
+  suppressedIssueIds: string[]
+  toggleSuppressIssue: (id: string) => void
 }
 
 type AppStore = WorldSlice & EventSlice & MapSlice & UISlice & PlaybackSlice
@@ -111,6 +113,12 @@ export const useAppStore = create<AppStore>()(
       setDiffOpen: (open) => set({ diffOpen: open }),
       checkerOpen: false,
       setCheckerOpen: (open) => set({ checkerOpen: open }),
+      suppressedIssueIds: [],
+      toggleSuppressIssue: (id) => set((s) => ({
+        suppressedIssueIds: s.suppressedIssueIds.includes(id)
+          ? s.suppressedIssueIds.filter((x) => x !== id)
+          : [...s.suppressedIssueIds, id],
+      })),
     }),
     {
       name: 'plotweave-ui',
@@ -119,6 +127,7 @@ export const useAppStore = create<AppStore>()(
         activeEventId: state.activeEventId,
         sidebarOpen: state.sidebarOpen,
         theme: state.theme,
+        suppressedIssueIds: state.suppressedIssueIds,
       }),
     }
   )
