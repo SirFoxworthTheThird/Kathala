@@ -319,6 +319,8 @@ describe('importWorld — characterMovements', () => {
         characterId: 'char-1',
         eventId: 'ev-1',
         waypoints: ['loc-a', 'loc-b', 'loc-c'],
+        travelModeId: null,
+        notes: '',
         createdAt: 1000,
         updatedAt: 1000,
       }],
@@ -338,9 +340,9 @@ describe('importWorld — characterMovements', () => {
 
     const data = makeExport({
       characterMovements: [
-        { id: 'mov-1', worldId: 'world-extra', characterId: 'char-1', eventId: 'ev-1', waypoints: ['loc-a', 'loc-b'], createdAt: 1000, updatedAt: 1000 },
-        { id: 'mov-2', worldId: 'world-extra', characterId: 'char-2', eventId: 'ev-1', waypoints: ['loc-c'], createdAt: 1000, updatedAt: 1000 },
-        { id: 'mov-3', worldId: 'world-extra', characterId: 'char-1', eventId: 'ev-2', waypoints: ['loc-d', 'loc-e', 'loc-f'], createdAt: 1000, updatedAt: 1000 },
+        { id: 'mov-1', worldId: 'world-extra', characterId: 'char-1', eventId: 'ev-1', waypoints: ['loc-a', 'loc-b'], travelModeId: null, notes: '', createdAt: 1000, updatedAt: 1000 },
+        { id: 'mov-2', worldId: 'world-extra', characterId: 'char-2', eventId: 'ev-1', waypoints: ['loc-c'], travelModeId: null, notes: '', createdAt: 1000, updatedAt: 1000 },
+        { id: 'mov-3', worldId: 'world-extra', characterId: 'char-1', eventId: 'ev-2', waypoints: ['loc-d', 'loc-e', 'loc-f'], travelModeId: null, notes: '', createdAt: 1000, updatedAt: 1000 },
       ],
     })
     await importWorld(makeFile(data))
