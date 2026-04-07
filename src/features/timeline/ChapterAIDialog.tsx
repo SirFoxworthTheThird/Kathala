@@ -151,25 +151,26 @@ OUTPUT FORMAT
     // ... 2–5 events total, sortOrder increments by 1
   ],
   "characterSnapshots": [
-    // One entry for EVERY character listed above, keyed to the LAST event's id
+    // One entry per character PER EVENT — repeat for every event × character combination
     {
       "id": "<new uuid>",
       "worldId": "${worldId}",
       "characterId": "<use existing char id from list above>",
-      "eventId": "<id of the last event in your events array above>",
+      "eventId": "<id of the specific event this snapshot belongs to>",
       "isAlive": true,
 ${hasLocations
-  ? `      "currentLocationMarkerId": "<markerId from location list where this character is, or null if unknown>",
+  ? `      "currentLocationMarkerId": "<markerId where this character is during this specific event, or null if unknown>",
       "currentMapLayerId": "<mapLayerId that corresponds to the chosen markerId, or null>",`
   : `      "currentLocationMarkerId": null,
       "currentMapLayerId": null,`}
       "inventoryItemIds": [],
       "inventoryNotes": "",
-      "statusNotes": "<1–2 sentences: what this character is doing or experiencing during the last event>",
+      "statusNotes": "<1–2 sentences: what this character is doing or experiencing during this specific event>",
       "travelModeId": null,
       "createdAt": ${ts},
       "updatedAt": ${ts}
     }
+    // Repeat for every character × event combination
   ]
 }
 
@@ -181,11 +182,11 @@ ${isUpdate ? `1. The chapter.id MUST be exactly "${chapterToUpdate!.chapter.id}"
    All event ids and snapshot ids must be new UUIDs (v4 format).
 2. Every characterId in events and snapshots MUST be one of the ids listed above.
 3. Every itemId in involvedItemIds MUST be one of the item ids listed above.
-4. Write a characterSnapshot for EVERY character in the list, even minor ones.
-5. Set isAlive: false in the snapshot if the character dies in this chapter.
-6. Set eventId in every snapshot to the id of the LAST event in the events array.
+4. Write a characterSnapshot for EVERY character × EVERY event combination. If a character is not present at an event, still include a snapshot (carry their last known state forward).
+5. Set isAlive: false in any snapshot after the event where the character dies.
+6. Set eventId in each snapshot to the id of the specific event it belongs to.
 7. sortOrder in events starts at 0 and increments by 1.${hasLocations ? `
-8. For character snapshots: set currentLocationMarkerId to the markerId of the location where the character is during the last event. Set currentMapLayerId to the matching mapLayerId shown next to that location. If their location is unclear from the text, use null.
+8. For character snapshots: set currentLocationMarkerId to the markerId of the location where the character is during that specific event. Set currentMapLayerId to the matching mapLayerId. If unclear, use null.
 9. For events: set locationMarkerId to the markerId where the event takes place, or null if it spans multiple locations or is unclear.
 10. Do NOT invent new location IDs — only use the markerId values listed above.` : `
 8. No locations are defined in this world yet — leave currentLocationMarkerId and currentMapLayerId as null.`}

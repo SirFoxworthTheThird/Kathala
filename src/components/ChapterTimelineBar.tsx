@@ -56,15 +56,16 @@ function navBtnStyle(disabled: boolean): CSSProperties {
 interface CalloutProps {
   left: number
   chapterNum: number
-  title: string
-  synopsis: string
+  chapterTitle: string
+  eventTitle: string
+  eventDescription: string
   hasPrev: boolean
   hasNext: boolean
   onPrev: () => void
   onNext: () => void
 }
 
-function Callout({ left, chapterNum, title, synopsis, hasPrev, hasNext, onPrev, onNext }: CalloutProps) {
+function Callout({ left, chapterNum, chapterTitle, eventTitle, eventDescription, hasPrev, hasNext, onPrev, onNext }: CalloutProps) {
   return (
     <div style={{
       position: 'absolute',
@@ -81,23 +82,23 @@ function Callout({ left, chapterNum, title, synopsis, hasPrev, hasNext, onPrev, 
       zIndex: 10,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', padding: '0.625rem 0.5rem', gap: '0.25rem' }}>
-        <button style={navBtnStyle(!hasPrev)} onClick={onPrev} disabled={!hasPrev} aria-label="Previous chapter">
+        <button style={navBtnStyle(!hasPrev)} onClick={onPrev} disabled={!hasPrev} aria-label="Previous event">
           <ChevronLeft size={18} />
         </button>
         <div style={{ flex: 1, minWidth: 0, textAlign: 'center', padding: '0 0.25rem' }}>
-          <div style={{ fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--tl-accent)', marginBottom: '0.2rem', fontWeight: 600 }}>
-            Chapter {chapterNum}
+          <div style={{ fontSize: '0.6rem', letterSpacing: '0.08em', color: 'var(--tl-text-muted)', marginBottom: '0.2rem' }}>
+            Ch. {chapterNum} — {chapterTitle}
           </div>
           <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--tl-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {title}
+            {eventTitle}
           </div>
-          {synopsis && (
+          {eventDescription && (
             <div style={{ fontSize: '0.68rem', color: 'var(--tl-text-muted)', marginTop: '0.2rem', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, lineHeight: 1.4 }}>
-              {synopsis}
+              {eventDescription}
             </div>
           )}
         </div>
-        <button style={navBtnStyle(!hasNext)} onClick={onNext} disabled={!hasNext} aria-label="Next chapter">
+        <button style={navBtnStyle(!hasNext)} onClick={onNext} disabled={!hasNext} aria-label="Next event">
           <ChevronRight size={18} />
         </button>
       </div>
@@ -140,9 +141,11 @@ export function ChapterTimelineBar() {
   // Derive active chapter from active event
   const activeEvent   = activeEventId ? allEvents.find(e => e.id === activeEventId) ?? null : null
   const activeChapter = activeEvent ? chapters.find(c => c.id === activeEvent.chapterId) ?? null : null
-  const chapterIndex  = activeChapter ? chapters.findIndex(c => c.id === activeChapter.id) : -1
-  const prevChapter   = chapterIndex > 0 ? chapters[chapterIndex - 1] : null
-  const nextChapter   = chapterIndex < chapters.length - 1 ? chapters[chapterIndex + 1] : null
+
+  // Prev/next event in global order
+  const activeEventIndex = activeEventId ? orderedEvents.findIndex(e => e.id === activeEventId) : -1
+  const prevEvent = activeEventIndex > 0 ? orderedEvents[activeEventIndex - 1] : null
+  const nextEvent = activeEventIndex < orderedEvents.length - 1 ? orderedEvents[activeEventIndex + 1] : null
 
   /** Select the first event of a chapter, or null if the chapter has no events. */
   function selectChapter(chapterId: string) {
@@ -164,8 +167,7 @@ export function ChapterTimelineBar() {
     if (idx === -1) return
 
     const ev = orderedEvents[idx]
-    const chapter = chapters.find(c => c.id === ev.chapterId)
-    const holdMs = readingHoldMs([ev.title, chapter?.synopsis ?? ''].join(' '), playbackSpeed)
+    const holdMs = readingHoldMs([ev.title, ev.description ?? ''].join(' '), playbackSpeed)
 
     const t = setTimeout(() => {
       if (idx >= orderedEvents.length - 1) setIsPlayingStory(false)
@@ -173,7 +175,7 @@ export function ChapterTimelineBar() {
     }, holdMs)
 
     return () => clearTimeout(t)
-  }, [isPlayingStory, activeEventId, orderedEvents, chapters, playbackSpeed, setActiveEventId, setIsPlayingStory])
+  }, [isPlayingStory, activeEventId, orderedEvents, playbackSpeed, setActiveEventId, setIsPlayingStory])
 
   function handlePlayPause() {
     if (isPlayingStory) {
@@ -217,16 +219,17 @@ export function ChapterTimelineBar() {
     <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1000, overflow: 'visible' }}>
 
       {/* Callout */}
-      {activeChapter && calloutLeft !== null && calloutVisible && (
+      {activeEvent && activeChapter && calloutLeft !== null && calloutVisible && (
         <Callout
           left={calloutLeft}
           chapterNum={activeChapter.number}
-          title={activeChapter.title}
-          synopsis={activeChapter.synopsis ?? ''}
-          hasPrev={!!prevChapter}
-          hasNext={!!nextChapter}
-          onPrev={() => prevChapter && selectChapter(prevChapter.id)}
-          onNext={() => nextChapter && selectChapter(nextChapter.id)}
+          chapterTitle={activeChapter.title}
+          eventTitle={activeEvent.title}
+          eventDescription={activeEvent.description ?? ''}
+          hasPrev={!!prevEvent}
+          hasNext={!!nextEvent}
+          onPrev={() => prevEvent && setActiveEventId(prevEvent.id)}
+          onNext={() => nextEvent && setActiveEventId(nextEvent.id)}
         />
       )}
 
