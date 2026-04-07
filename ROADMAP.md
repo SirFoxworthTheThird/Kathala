@@ -18,7 +18,7 @@ The ChapterDetailView critical bug (character/relationship state panels always e
 
 - [x] **SearchPalette event navigation** — selecting an event result now calls `setActiveEventId` before navigating, so the timeline cursor jumps to that exact event.
 
-- [ ] **ChapterAIDialog snapshot review UI** — after AI generates a chapter, show a diff/preview of the incoming snapshots before importing so the user can spot errors before committing.
+- [x] **ChapterAIDialog snapshot review UI** — added a 3rd "Review" step between paste and import; shows chapter summary, each event with its location, and all character snapshots (name, alive status, location, status notes) grouped by event.
 
 ---
 

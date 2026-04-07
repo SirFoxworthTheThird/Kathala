@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Copy, Check, Sparkles, ArrowRight, AlertCircle } from 'lucide-react'
+import { Copy, Check, Sparkles, ArrowRight, AlertCircle, Heart, Skull, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -281,6 +281,112 @@ async function importChapter(data: ChapterAIResponse, replacing: boolean): Promi
   return data.chapter.id
 }
 
+// ── Review step ───────────────────────────────────────────────────────────────
+
+interface ReviewStepProps {
+  preview: ChapterAIResponse
+  characters: ReturnType<typeof useCharacters>
+  locationMarkers: ReturnType<typeof useAllLocationMarkers>
+  isUpdate: boolean
+  importing: boolean
+  error: string | null
+  onBack: () => void
+  onImport: () => void
+}
+
+function ReviewStep({ preview, characters, locationMarkers, isUpdate, importing, error, onBack, onImport }: ReviewStepProps) {
+  const charById = new Map(characters.map((c) => [c.id, c]))
+  const markerById = new Map(locationMarkers.map((m) => [m.id, m]))
+  const sortedEvents = [...preview.events].sort((a, b) => a.sortOrder - b.sortOrder)
+
+  return (
+    <>
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-5">
+        {/* Chapter summary */}
+        <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] mb-1">Chapter</p>
+          <p className="text-sm font-semibold">Ch. {preview.chapter.number} — {preview.chapter.title}</p>
+          {preview.chapter.synopsis && (
+            <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{preview.chapter.synopsis}</p>
+          )}
+          <p className="mt-2 text-[10px] text-[hsl(var(--muted-foreground))]">
+            {preview.events.length} event{preview.events.length !== 1 ? 's' : ''} · {preview.characterSnapshots.length} snapshot{preview.characterSnapshots.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+
+        {/* Events + snapshots */}
+        {sortedEvents.map((ev) => {
+          const evSnapshots = preview.characterSnapshots.filter((s) => s.eventId === ev.id)
+          const location = ev.locationMarkerId ? markerById.get(ev.locationMarkerId) : null
+          return (
+            <div key={ev.id} className="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
+              {/* Event header */}
+              <div className="bg-[hsl(var(--muted)/0.4)] px-4 py-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-xs font-semibold">{ev.title}</p>
+                  {location && (
+                    <span className="flex items-center gap-1 text-[10px] text-[hsl(var(--muted-foreground))] shrink-0">
+                      <MapPin className="h-2.5 w-2.5" />{location.name}
+                    </span>
+                  )}
+                </div>
+                {ev.description && (
+                  <p className="mt-0.5 text-[11px] text-[hsl(var(--muted-foreground))] line-clamp-2">{ev.description}</p>
+                )}
+              </div>
+
+              {/* Snapshots for this event */}
+              {evSnapshots.length > 0 && (
+                <div className="divide-y divide-[hsl(var(--border))]">
+                  {evSnapshots.map((snap) => {
+                    const char = charById.get(snap.characterId)
+                    const loc = snap.currentLocationMarkerId ? markerById.get(snap.currentLocationMarkerId) : null
+                    return (
+                      <div key={snap.id} className="flex items-start gap-3 px-4 py-2">
+                        <div className="flex items-center gap-1.5 w-28 shrink-0">
+                          {snap.isAlive
+                            ? <Heart className="h-2.5 w-2.5 text-green-400 shrink-0" />
+                            : <Skull className="h-2.5 w-2.5 text-red-400 shrink-0" />}
+                          <span className="text-xs font-medium truncate">{char?.name ?? snap.characterId}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          {loc && (
+                            <span className="flex items-center gap-1 text-[10px] text-[hsl(var(--muted-foreground))] mb-0.5">
+                              <MapPin className="h-2.5 w-2.5" />{loc.name}
+                            </span>
+                          )}
+                          {snap.statusNotes && (
+                            <p className="text-[11px] text-[hsl(var(--muted-foreground))] line-clamp-2">{snap.statusNotes}</p>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {error && (
+        <div className="mx-6 mb-3 flex items-start gap-2 rounded-md bg-red-950/30 px-3 py-2 text-xs text-red-400">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      <div className="shrink-0 flex gap-2 border-t border-[hsl(var(--border))] px-6 py-3">
+        <Button variant="outline" onClick={onBack}>Back</Button>
+        <Button className="flex-1 gap-2" disabled={importing} onClick={onImport}>
+          <Sparkles className="h-4 w-4" />
+          {importing ? (isUpdate ? 'Updating...' : 'Importing...') : (isUpdate ? 'Update Chapter' : 'Import Chapter')}
+        </Button>
+      </div>
+    </>
+  )
+}
+
 // ── Dialog ────────────────────────────────────────────────────────────────────
 
 interface ChapterAIDialogProps {
@@ -307,9 +413,10 @@ export function ChapterAIDialog({
 
   const [mode, setMode] = useState<'create' | 'update'>('create')
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null)
-  const [step, setStep] = useState<'prompt' | 'paste'>('prompt')
+  const [step, setStep] = useState<'prompt' | 'paste' | 'review'>('prompt')
   const [copied, setCopied] = useState(false)
   const [pasteValue, setPasteValue] = useState('')
+  const [preview, setPreview] = useState<ChapterAIResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
 
@@ -343,6 +450,7 @@ export function ChapterAIDialog({
       setSelectedChapterId(null)
       setStep('prompt')
       setPasteValue('')
+      setPreview(null)
       setError(null)
       setCopied(false)
     }
@@ -354,8 +462,20 @@ export function ChapterAIDialog({
     setSelectedChapterId(null)
     setStep('prompt')
     setPasteValue('')
+    setPreview(null)
     setError(null)
     setCopied(false)
+  }
+
+  function handlePreview() {
+    setError(null)
+    try {
+      const data = validateResponse(pasteValue.trim(), worldId, timelineId, characterIds, itemIds, markerIds)
+      setPreview(data)
+      setStep('review')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Validation failed.')
+    }
   }
 
   async function handleCopy() {
@@ -435,20 +555,25 @@ export function ChapterAIDialog({
         {/* Step tabs — only shown once ready to proceed */}
         {canProceed && (
           <div className="flex shrink-0 items-center gap-0 border-b border-[hsl(var(--border))]">
-            {(['prompt', 'paste'] as const).map((s, i) => (
-              <button
-                key={s}
-                onClick={() => setStep(s)}
-                className={`flex flex-1 items-center justify-center gap-2 py-2.5 text-xs font-medium transition-colors ${
-                  step === s
-                    ? 'border-b-2 border-[hsl(var(--ring))] text-[hsl(var(--foreground))]'
-                    : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
-                }`}
-              >
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[10px]">{i + 1}</span>
-                {s === 'prompt' ? 'Copy prompt' : 'Paste response'}
-              </button>
-            ))}
+            {(['prompt', 'paste', 'review'] as const).map((s, i) => {
+              const labels = { prompt: 'Copy prompt', paste: 'Paste response', review: 'Review' }
+              const canClick = s !== 'review' || preview !== null
+              return (
+                <button
+                  key={s}
+                  onClick={() => canClick && setStep(s)}
+                  disabled={!canClick}
+                  className={`flex flex-1 items-center justify-center gap-2 py-2.5 text-xs font-medium transition-colors disabled:opacity-40 ${
+                    step === s
+                      ? 'border-b-2 border-[hsl(var(--ring))] text-[hsl(var(--foreground))]'
+                      : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
+                  }`}
+                >
+                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[10px]">{i + 1}</span>
+                  {labels[s]}
+                </button>
+              )
+            })}
           </div>
         )}
 
@@ -484,14 +609,14 @@ export function ChapterAIDialog({
         {canProceed && step === 'paste' && (
           <>
             <div className="shrink-0 px-6 py-3 text-xs text-[hsl(var(--muted-foreground))]">
-              Paste the AI's JSON response below. The chapter, events, and character snapshots will be {isUpdate ? 'updated in' : 'added to'} your world.
+              Paste the AI's JSON response below, then click Preview to review before saving.
             </div>
             <div className="min-h-0 flex-1 overflow-hidden px-6 pb-3">
               <textarea
                 className="h-full w-full resize-none rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))] p-3 font-mono text-[11px] text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
                 placeholder={'{\n  "chapter": { ... },\n  "events": [ ... ],\n  "characterSnapshots": [ ... ]\n}'}
                 value={pasteValue}
-                onChange={(e) => { setPasteValue(e.target.value); setError(null) }}
+                onChange={(e) => { setPasteValue(e.target.value); setError(null); setPreview(null) }}
                 spellCheck={false}
               />
             </div>
@@ -507,14 +632,27 @@ export function ChapterAIDialog({
               </Button>
               <Button
                 className="flex-1 gap-2"
-                disabled={!pasteValue.trim() || importing}
-                onClick={handleImport}
+                disabled={!pasteValue.trim()}
+                onClick={handlePreview}
               >
-                <Sparkles className="h-4 w-4" />
-                {importing ? (isUpdate ? 'Updating...' : 'Importing...') : (isUpdate ? 'Update Chapter' : 'Import Chapter')}
+                <ArrowRight className="h-4 w-4" />
+                Preview
               </Button>
             </div>
           </>
+        )}
+
+        {canProceed && step === 'review' && preview && (
+          <ReviewStep
+            preview={preview}
+            characters={characters}
+            locationMarkers={locationMarkers}
+            isUpdate={isUpdate}
+            importing={importing}
+            error={error}
+            onBack={() => setStep('paste')}
+            onImport={handleImport}
+          />
         )}
       </DialogContent>
     </Dialog>
