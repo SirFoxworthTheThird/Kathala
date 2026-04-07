@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Heart, Skull, MapPin, Minus } from 'lucide-react'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
@@ -12,6 +13,7 @@ import { BookOpen } from 'lucide-react'
 export default function CharacterArcView() {
   const { worldId } = useParams<{ worldId: string }>()
   const { activeEventId, setActiveEventId } = useAppStore()
+  const [viewMode, setViewMode] = useState<'chapter' | 'event'>('chapter')
 
   const timelines  = useTimelines(worldId ?? null)
   const chapters   = useWorldChapters(worldId ?? null)
@@ -27,13 +29,24 @@ export default function CharacterArcView() {
     return tlDiff !== 0 ? tlDiff : a.number - b.number
   })
 
-  const markerById = new Map(markers.map((m) => [m.id, m]))
+  const chapterById = new Map(chapters.map((c) => [c.id, c]))
+  const markerById  = new Map(markers.map((m) => [m.id, m]))
 
   // Derive active chapter from active event
   const activeEvent = allEvents.find((e) => e.id === activeEventId) ?? null
   const activeChapterId = activeEvent?.chapterId ?? null
 
-  // Map chapter → last event ID (the "final state" snapshot to show per chapter column)
+  // Events sorted by chapter order then sortOrder
+  const sortedEvents = [...allEvents].sort((a, b) => {
+    const chA = chapterById.get(a.chapterId)
+    const chB = chapterById.get(b.chapterId)
+    const tlDiff = (timelineOrder.get(chA?.timelineId ?? '') ?? 0) - (timelineOrder.get(chB?.timelineId ?? '') ?? 0)
+    if (tlDiff !== 0) return tlDiff
+    const chDiff = (chA?.number ?? 0) - (chB?.number ?? 0)
+    return chDiff !== 0 ? chDiff : a.sortOrder - b.sortOrder
+  })
+
+  // Map chapter → last event ID (for chapter-view columns)
   const lastEventByChapter = new Map<string, string>()
   for (const ev of allEvents) {
     const cur = lastEventByChapter.get(ev.chapterId)
@@ -45,7 +58,7 @@ export default function CharacterArcView() {
     }
   }
 
-  // First event per chapter (for click-to-select)
+  // First event per chapter (for click-to-select in chapter view)
   const firstEventByChapter = new Map<string, string>()
   for (const ev of allEvents) {
     const cur = firstEventByChapter.get(ev.chapterId)
@@ -75,18 +88,106 @@ export default function CharacterArcView() {
     )
   }
 
+  const colWidth = viewMode === 'event' ? 100 : 110
+
+  function SnapCell({ snap, isActive, colKey }: {
+    snap: typeof snapshots[0] | undefined
+    isActive: boolean
+    colKey: string
+  }) {
+    if (!snap) {
+      return (
+        <td
+          key={colKey}
+          style={{ minWidth: colWidth, maxWidth: colWidth }}
+          className={cn(
+            'border-b border-r border-[hsl(var(--border))] px-2 py-1.5 text-center',
+            isActive && 'bg-[hsl(var(--accent)/0.15)]'
+          )}
+        >
+          <Minus className="mx-auto h-3 w-3 text-[hsl(var(--border))]" />
+        </td>
+      )
+    }
+    const location = snap.currentLocationMarkerId ? markerById.get(snap.currentLocationMarkerId) : null
+    return (
+      <td
+        key={colKey}
+        style={{ minWidth: colWidth, maxWidth: colWidth }}
+        className={cn(
+          'border-b border-r border-[hsl(var(--border))] px-2 py-1.5',
+          isActive && 'bg-[hsl(var(--accent)/0.15)]',
+          !snap.isAlive && 'opacity-50'
+        )}
+      >
+        <div className="flex items-center gap-1">
+          {snap.isAlive
+            ? <Heart className="h-2.5 w-2.5 shrink-0 text-green-400" />
+            : <Skull className="h-2.5 w-2.5 shrink-0 text-red-400" />
+          }
+          <span className={cn(
+            'truncate',
+            snap.isAlive ? 'text-[hsl(var(--foreground))]' : 'line-through text-[hsl(var(--muted-foreground))]'
+          )}>
+            {snap.isAlive ? 'Alive' : 'Dead'}
+          </span>
+        </div>
+        {location && (
+          <div className="mt-0.5 flex items-center gap-1 text-[hsl(var(--muted-foreground))]">
+            <MapPin className="h-2.5 w-2.5 shrink-0" />
+            <span className="truncate text-[10px]">{location.name}</span>
+          </div>
+        )}
+        {snap.statusNotes && (
+          <p className="mt-0.5 truncate text-[10px] italic text-[hsl(var(--muted-foreground))]" title={snap.statusNotes}>
+            {snap.statusNotes}
+          </p>
+        )}
+      </td>
+    )
+  }
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2.5">
         <span className="text-sm font-semibold">Character Arc</span>
-        <span className="text-xs text-[hsl(var(--muted-foreground))]">{characters.length} characters · {sortedChapters.length} chapters</span>
+        <span className="text-xs text-[hsl(var(--muted-foreground))]">
+          {characters.length} characters · {viewMode === 'chapter' ? `${sortedChapters.length} chapters` : `${sortedEvents.length} events`}
+        </span>
+
+        {/* View toggle */}
+        <div className="ml-2 flex rounded-md border border-[hsl(var(--border))] overflow-hidden text-xs">
+          <button
+            className={cn(
+              'px-2.5 py-1 transition-colors',
+              viewMode === 'chapter'
+                ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
+            )}
+            onClick={() => setViewMode('chapter')}
+          >
+            Chapters
+          </button>
+          <button
+            className={cn(
+              'px-2.5 py-1 border-l border-[hsl(var(--border))] transition-colors',
+              viewMode === 'event'
+                ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
+            )}
+            onClick={() => setViewMode('event')}
+          >
+            Events
+          </button>
+        </div>
+
         {activeEventId && (
           <button
             className="ml-auto text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] underline"
             onClick={() => setActiveEventId(null)}
           >
-            Clear chapter filter
+            Clear filter
           </button>
         )}
       </div>
@@ -96,17 +197,18 @@ export default function CharacterArcView() {
         <table className="border-collapse text-xs" style={{ tableLayout: 'fixed' }}>
           <thead className="sticky top-0 z-10 bg-[hsl(var(--card))]">
             <tr>
-              {/* Sticky name column header */}
               <th className="sticky left-0 z-20 min-w-[160px] max-w-[160px] border-b border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-2 text-left font-semibold text-[hsl(var(--muted-foreground))]">
                 Character
               </th>
-              {sortedChapters.map((ch) => {
+
+              {viewMode === 'chapter' && sortedChapters.map((ch) => {
                 const isActive = ch.id === activeChapterId
                 return (
                   <th
                     key={ch.id}
+                    style={{ minWidth: colWidth, maxWidth: colWidth }}
                     className={cn(
-                      'min-w-[110px] max-w-[110px] cursor-pointer border-b border-r border-[hsl(var(--border))] px-2 py-2 text-center font-medium transition-colors',
+                      'cursor-pointer border-b border-r border-[hsl(var(--border))] px-2 py-2 text-center font-medium transition-colors',
                       isActive
                         ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
                         : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
@@ -120,6 +222,31 @@ export default function CharacterArcView() {
                   >
                     <div className="truncate font-semibold">Ch. {ch.number}</div>
                     <div className="truncate text-[10px] opacity-75">{ch.title}</div>
+                  </th>
+                )
+              })}
+
+              {viewMode === 'event' && sortedEvents.map((ev) => {
+                const ch = chapterById.get(ev.chapterId)
+                const isActive = ev.id === activeEventId
+                return (
+                  <th
+                    key={ev.id}
+                    style={{ minWidth: colWidth, maxWidth: colWidth }}
+                    className={cn(
+                      'cursor-pointer border-b border-r border-[hsl(var(--border))] px-2 py-2 text-center font-medium transition-colors',
+                      isActive
+                        ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                        : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
+                    )}
+                    onClick={() => {
+                      if (isActive) { setActiveEventId(null); return }
+                      setActiveEventId(ev.id)
+                    }}
+                    title={`Ch. ${ch?.number ?? '?'} — ${ev.title}`}
+                  >
+                    <div className="truncate text-[10px] opacity-60">Ch. {ch?.number ?? '?'}</div>
+                    <div className="truncate font-semibold">{ev.title || <span className="italic opacity-50">untitled</span>}</div>
                   </th>
                 )
               })}
@@ -137,68 +264,19 @@ export default function CharacterArcView() {
                       : 'bg-[hsl(var(--card))]'
                   )}
                 >
-                  {/* Sticky character name */}
                   <td className="sticky left-0 z-10 min-w-[160px] max-w-[160px] border-b border-r border-[hsl(var(--border))] bg-inherit px-3 py-2 font-medium">
                     <span className="block truncate">{char.name}</span>
                   </td>
 
-                  {sortedChapters.map((ch) => {
+                  {viewMode === 'chapter' && sortedChapters.map((ch) => {
                     const lastEvId = lastEventByChapter.get(ch.id)
                     const snap = lastEvId ? charSnaps?.get(lastEvId) : undefined
-                    const isActive = ch.id === activeChapterId
+                    return <SnapCell key={ch.id} colKey={ch.id} snap={snap} isActive={ch.id === activeChapterId} />
+                  })}
 
-                    if (!snap) {
-                      return (
-                        <td
-                          key={ch.id}
-                          className={cn(
-                            'min-w-[110px] max-w-[110px] border-b border-r border-[hsl(var(--border))] px-2 py-1.5 text-center',
-                            isActive && 'bg-[hsl(var(--accent)/0.15)]'
-                          )}
-                        >
-                          <Minus className="mx-auto h-3 w-3 text-[hsl(var(--border))]" />
-                        </td>
-                      )
-                    }
-
-                    const location = snap.currentLocationMarkerId
-                      ? markerById.get(snap.currentLocationMarkerId)
-                      : null
-
-                    return (
-                      <td
-                        key={ch.id}
-                        className={cn(
-                          'min-w-[110px] max-w-[110px] border-b border-r border-[hsl(var(--border))] px-2 py-1.5',
-                          isActive && 'bg-[hsl(var(--accent)/0.15)]',
-                          !snap.isAlive && 'opacity-50'
-                        )}
-                      >
-                        <div className="flex items-center gap-1">
-                          {snap.isAlive
-                            ? <Heart className="h-2.5 w-2.5 shrink-0 text-green-400" />
-                            : <Skull className="h-2.5 w-2.5 shrink-0 text-red-400" />
-                          }
-                          <span className={cn(
-                            'truncate',
-                            snap.isAlive ? 'text-[hsl(var(--foreground))]' : 'line-through text-[hsl(var(--muted-foreground))]'
-                          )}>
-                            {snap.isAlive ? 'Alive' : 'Dead'}
-                          </span>
-                        </div>
-                        {location && (
-                          <div className="mt-0.5 flex items-center gap-1 text-[hsl(var(--muted-foreground))]">
-                            <MapPin className="h-2.5 w-2.5 shrink-0" />
-                            <span className="truncate text-[10px]">{location.name}</span>
-                          </div>
-                        )}
-                        {snap.statusNotes && (
-                          <p className="mt-0.5 truncate text-[10px] italic text-[hsl(var(--muted-foreground))]" title={snap.statusNotes}>
-                            {snap.statusNotes}
-                          </p>
-                        )}
-                      </td>
-                    )
+                  {viewMode === 'event' && sortedEvents.map((ev) => {
+                    const snap = charSnaps?.get(ev.id)
+                    return <SnapCell key={ev.id} colKey={ev.id} snap={snap} isActive={ev.id === activeEventId} />
                   })}
                 </tr>
               )
@@ -212,7 +290,7 @@ export default function CharacterArcView() {
         <div className="flex items-center gap-1"><Heart className="h-2.5 w-2.5 text-green-400" /> Alive</div>
         <div className="flex items-center gap-1"><Skull className="h-2.5 w-2.5 text-red-400" /> Dead</div>
         <div className="flex items-center gap-1"><Minus className="h-2.5 w-2.5 text-[hsl(var(--border))]" /> No snapshot</div>
-        <div className="ml-auto">Click a chapter column to set it as the active chapter cursor</div>
+        <div className="ml-auto">Click a column to set the active time cursor</div>
       </div>
     </div>
   )

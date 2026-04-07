@@ -130,7 +130,3 @@ export const useActiveEventId = () => useAppStore((s) => s.activeEventId)
 export const useActiveMapLayerId = () => useAppStore((s) => s.activeMapLayerId)
 export const useMapLayerHistory = () => useAppStore((s) => s.mapLayerHistory)
 
-/** @deprecated use useActiveEventId */
-export const useActiveChapterId = () => useAppStore((s) => s.activeEventId)
-/** @deprecated use setActiveEventId from useAppStore */
-export const useSetActiveChapterId = () => useAppStore((s) => s.setActiveEventId)

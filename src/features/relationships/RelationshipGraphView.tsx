@@ -18,7 +18,7 @@ import 'reactflow/dist/style.css'
 import { X, Trash2, Network, Plus, Check } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useCharacters } from '@/db/hooks/useCharacters'
-import { useRelationships, deleteRelationship } from '@/db/hooks/useRelationships'
+import { useRelationships, deleteRelationship, updateRelationship } from '@/db/hooks/useRelationships'
 import { useBestRelationshipSnapshots, upsertRelationshipSnapshot } from '@/db/hooks/useRelationshipSnapshots'
 import { useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useActiveEventId } from '@/store'
@@ -312,6 +312,39 @@ export default function RelationshipGraphView() {
               </p>
               <p className="font-semibold">{charB?.name}</p>
             </div>
+
+            {/* Started-in event picker */}
+            {worldId && (() => {
+              const chapterNumberById = new Map(allChapters.map((c) => [c.id, c.number]))
+              const sortedEvents = [...allEvents].sort((a, b) => {
+                const cn = (chapterNumberById.get(a.chapterId) ?? 0) - (chapterNumberById.get(b.chapterId) ?? 0)
+                return cn !== 0 ? cn : a.sortOrder - b.sortOrder
+              })
+              return (
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-xs">Started in</Label>
+                  <Select
+                    value={selectedRel.startEventId ?? '__beginning__'}
+                    onValueChange={async (v) => {
+                      await updateRelationship(selectedRel.id, { startEventId: v === '__beginning__' ? null : v })
+                    }}
+                  >
+                    <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__beginning__">Beginning (always visible)</SelectItem>
+                      {sortedEvents.map((ev) => {
+                        const ch = allChapters.find((c) => c.id === ev.chapterId)
+                        return (
+                          <SelectItem key={ev.id} value={ev.id}>
+                            Ch. {ch?.number ?? '?'} — {ev.title}
+                          </SelectItem>
+                        )
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )
+            })()}
 
             {/* Inherited / base info */}
             {!editingSnapshot && (

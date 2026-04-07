@@ -13,63 +13,54 @@ The core refactor is complete and stable:
 
 ---
 
+## Completed
+
+- **#1 IndexedDB Live-Data Migration** — implemented as `database.ts` v10; migrates all snapshot tables and relationships from `chapterId` to `eventId`
+- **#2 Travel Distance Continuity Check** — implemented in `ContinuityChecker.tsx`
+- **#4 Relationship Graph `startEventId` UI** — added "Started in" event picker to graph side panel; edge visibility already used correct `globalOrder`
+- **#5 CharacterArcView Event-Level Granularity** — added Chapters/Events toggle; event view shows one column per event
+- **#6 WritersBriefPanel Active Event Header** — chapter card now shows active event title/description; Events list highlights the active event
+- **#7 Deprecated Alias Cleanup** — removed `useActiveChapterId` / `useSetActiveChapterId` from store; updated `CharacterCard.tsx`
+- **#RelationshipsTab bugs** — fixed event/chapter lookup using `eventById` map and proper `globalOrder`
+
+---
+
 ## Remaining Work
 
-### 1. IndexedDB Live-Data Migration (High Priority)
+### 1. IndexedDB Live-Data Migration ✓ DONE
 
-Users running the app against existing IndexedDB data (created before the refactor) need an **in-app schema migration**, not just an import migration.
+Implemented as `database.ts` `.version(10)`. Handles:
+- Creates synthetic events for chapters with no events (so snapshot records have a valid `eventId`)
+- Re-keys all snapshot/movement/placement tables: `chapterId → eventId`
+- Migrates `Relationship.startChapterId → startEventId`
+- Transfers `travelDays` from chapters to first events; strips it from chapters
 
-- Add a new `.version(N)` block in `src/db/database.ts`
-- For each world's snapshots/movements: read records with `chapterId`, find the first event of that chapter, write a new record with `eventId`, delete the old one
-- For relationships: rename `startChapterId` → `startEventId`
-- This is separate from the `importWorld` v1→v2 migration (which handles exported `.pwk` files)
+### 2. Travel Distance Continuity Check ✓ DONE
 
-### 2. Travel Distance Continuity Check
+Implemented in `ContinuityChecker.tsx`. Flags warning when character's consecutive location change requires more travel days than the event's `travelDays`, given `TravelMode.speedPerDay` and map layer scale.
 
-`ContinuityChecker.tsx` was updated to use correct event/chapter lookups, but the **actual travel distance validation** is not yet implemented.
+### 3. ChapterDetailView — Event Reordering UX ✓ VERIFIED
 
-- `WorldEvent.travelDays` encodes the days of travel before each event
-- Use `TravelMode.speedPerDay` and map layer `scalePixelsPerUnit`/`scaleUnit`
-- Check: if a character moves between two locations across consecutive events, is the distance feasible given the travel days on the event?
-- Flag as a warning if the character would need more days than are available
+All three points confirmed correct:
+- `moveEvent` swaps `sortOrder` between adjacent events
+- `createEvent` inherits from previous sibling in same chapter, falls back to last event of previous chapter
+- `deleteEvent` cascades all snapshot/placement/movement/relationship-snapshot tables
 
-### 3. ChapterDetailView — Event Reordering UX
+### 4. Relationship Graph — `startEventId` UI ✓ DONE
 
-`src/features/timeline/ChapterDetailView.tsx` renders events within a chapter. Review and verify:
-- Drag-to-reorder events updates `sortOrder` correctly
-- Creating a new event correctly inherits snapshots from the previous event in the same chapter (not from the chapter's position — that inheritance logic is in `createEvent`)
-- Deleting an event cascades snapshots correctly
+Added "Started in" event picker to the graph side panel. Saves `startEventId` via `updateRelationship`. Edge visibility already used correct `globalOrder`.
 
-### 4. Relationship Graph — `startEventId` UI
+### 5. CharacterArcView — Event-Level Granularity ✓ DONE
 
-`src/features/relationships/RelationshipGraphView.tsx` has a `SnapshotEditor` that lets users set when a relationship started. Verify:
-- The "started in" picker shows events (not chapters)
-- Saving writes `startEventId` (not `startChapterId`)
-- The graph edge visibility correctly uses global event order
+Added a Chapters/Events toggle in the header. Event view shows one column per event sorted by chapter order then `sortOrder`; clicking sets the exact event as the active cursor.
 
-### 5. CharacterArcView — Event-Level Granularity (Optional)
+### 6. WritersBriefPanel — Active Event Header ✓ DONE
 
-Currently the arc table shows one column per **chapter**, displaying the last event's snapshot. Consider:
-- Optionally expanding a chapter column to show individual event columns
-- Or adding a toggle: "chapter view" vs "event view"
+The chapter header card now shows an "Active Event" sub-section with the event title and description. The Events list also highlights the active event with an accent background.
 
-This is a product decision — the current per-chapter view is usable as-is.
+### 7. Deprecated Alias Cleanup ✓ DONE
 
-### 6. WritersBriefPanel — Active Event Header
-
-`WritersBriefPanel.tsx` shows the chapter header (number + title + synopsis). Since the active cursor is now an event, consider also showing the active event's title so the brief reflects where in the chapter the writer is.
-
-### 7. Deprecated Alias Cleanup (Low Priority)
-
-Once all call-sites are confirmed working, remove the deprecated bridge in `src/store/index.ts`:
-
-```typescript
-// These can be removed once no component uses them:
-export const useActiveChapterId = () => useAppStore((s) => s.activeEventId)
-export const setActiveChapterId = ...
-```
-
-Search for `useActiveChapterId` / `setActiveChapterId` in the codebase before removing.
+Removed `useActiveChapterId` / `useSetActiveChapterId` from `src/store/index.ts`. Updated `CharacterCard.tsx` (only consumer).
 
 ### 8. E2E Tests
 

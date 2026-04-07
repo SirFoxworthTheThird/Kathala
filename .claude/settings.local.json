@@ -84,7 +84,20 @@
       "Bash(npx @playwright/test test --reporter=line)",
       "Bash(npx vitest:*)",
       "Bash(echo \"EXIT:$?\")",
-      "Bash(echo \"exit: $?\")"
+      "Bash(echo \"exit: $?\")",
+      "Bash(powershell.exe -Command \"npx playwright test --reporter=list 2>&1\")",
+      "Bash(powershell.exe -Command \"Select-String -Path 'c:\\\\Projects\\\\mine\\\\PlotWeave\\\\src\\\\*\\\\*\\\\*.ts','c:\\\\Projects\\\\mine\\\\PlotWeave\\\\src\\\\*\\\\*\\\\*.tsx','c:\\\\Projects\\\\mine\\\\PlotWeave\\\\src\\\\*.ts' -Pattern 'useActiveChapterId|setActiveChapterId' -Recurse | Select-Object Filename, LineNumber, Line | Format-Table -AutoSize\")",
+      "Bash(powershell.exe -Command \"Select-String -Path 'c:\\\\Projects\\\\mine\\\\PlotWeave\\\\src\\\\features\\\\relationships\\\\RelationshipGraphView.tsx' -Pattern 'startEvent|startChapter' | Format-List\")",
+      "Bash(powershell.exe -Command \"Select-String -Path 'c:\\\\Projects\\\\mine\\\\PlotWeave\\\\src\\\\features\\\\relationships\\\\RelationshipGraphView.tsx' -Pattern 'startEvent|updateRel|Started in' | Format-List LineNumber, Line\")",
+      "Bash(powershell.exe -Command \"Select-String -Path 'c:\\\\Projects\\\\mine\\\\PlotWeave\\\\src\\\\features\\\\relationships\\\\RelationshipGraphView.tsx' -Pattern 'started|Since|Begin|when' | Format-List LineNumber, Line\")",
+      "Bash(powershell.exe -Command \"\\(Get-Content 'c:\\\\Projects\\\\mine\\\\PlotWeave\\\\src\\\\features\\\\relationships\\\\RelationshipGraphView.tsx'\\).Count\")",
+      "Bash(powershell.exe -Command \"npx tsc --noEmit 2>&1\")",
+      "Bash(cmd.exe /c \"cd c:\\\\Projects\\\\mine\\\\PlotWeave && npm run build 2>&1\")",
+      "Bash(cmd.exe /c \"cd /d c:\\\\Projects\\\\mine\\\\PlotWeave && npm run build\")",
+      "Bash(cmd /c \"cd /d c:\\\\Projects\\\\mine\\\\PlotWeave && npm run build\")",
+      "Bash(powershell.exe -Command \"Set-Location 'c:\\\\Projects\\\\mine\\\\PlotWeave'; npm run build\")",
+      "Bash(Select-String -Pattern \"error|warning|built\")",
+      "Bash(powershell.exe -Command \"Set-Location 'c:\\\\Projects\\\\mine\\\\PlotWeave'; npm run build 2>&1\")"
     ]
   }
 }

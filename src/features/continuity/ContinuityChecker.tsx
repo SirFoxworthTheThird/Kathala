@@ -7,9 +7,13 @@ import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
 import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
+import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
+import { useMapLayers } from '@/db/hooks/useMapLayers'
+import { useTravelModes } from '@/db/hooks/useTravelModes'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { cn } from '@/lib/utils'
+import { pixelDist } from '@/lib/mapScale'
 import type { CharacterSnapshot, ItemPlacement } from '@/types'
 
 // ── types ─────────────────────────────────────────────────────────────────────
@@ -83,12 +87,15 @@ export function ContinuityChecker() {
   const navigate = useNavigate()
   const { checkerOpen, setCheckerOpen, setActiveEventId } = useAppStore()
 
-  const chapters   = useWorldChapters(worldId ?? null)
-  const allEvents  = useWorldEvents(worldId ?? null)
-  const characters = useCharacters(worldId ?? null)
-  const rels       = useRelationships(worldId ?? null)
-  const items      = useItems(worldId ?? null)
-  const snapshots  = useWorldSnapshots(worldId ?? null)
+  const chapters    = useWorldChapters(worldId ?? null)
+  const allEvents   = useWorldEvents(worldId ?? null)
+  const characters  = useCharacters(worldId ?? null)
+  const rels        = useRelationships(worldId ?? null)
+  const items       = useItems(worldId ?? null)
+  const snapshots   = useWorldSnapshots(worldId ?? null)
+  const allMarkers  = useAllLocationMarkers(worldId ?? null)
+  const allLayers   = useMapLayers(worldId ?? null)
+  const travelModes = useTravelModes(worldId ?? null)
   const allRelSnaps = useLiveQuery(
     () => worldId ? db.relationshipSnapshots.where('worldId').equals(worldId).toArray() : [],
     [worldId], []
@@ -258,8 +265,69 @@ export function ContinuityChecker() {
       }
     }
 
+    // ── Travel distance checks ───────────────────────────────────────────────
+
+    const markerById    = new Map(allMarkers.map((m) => [m.id, m]))
+    const layerById     = new Map(allLayers.map((l) => [l.id, l]))
+    const travelModeById = new Map(travelModes.map((t) => [t.id, t]))
+
+    for (const [charId, charSnaps] of snapsByChar) {
+      const char = charById.get(charId)
+      if (!char) continue
+
+      // For each snapshot where the character has a location, find the preceding snapshot
+      const snapsWithLocation = charSnaps
+        .filter((s) => s.currentLocationMarkerId && s.currentMapLayerId)
+        .sort((a, b) => eventOrder(a.eventId) - eventOrder(b.eventId))
+
+      for (let i = 1; i < snapsWithLocation.length; i++) {
+        const prev = snapsWithLocation[i - 1]
+        const curr = snapsWithLocation[i]
+
+        // Only check when location changed
+        if (prev.currentLocationMarkerId === curr.currentLocationMarkerId &&
+            prev.currentMapLayerId === curr.currentMapLayerId) continue
+
+        const currEvent = eventById.get(curr.eventId)
+        if (!currEvent || currEvent.travelDays === null || currEvent.travelDays <= 0) continue
+
+        const travelMode = curr.travelModeId ? travelModeById.get(curr.travelModeId) : undefined
+        if (!travelMode) continue
+
+        // Markers and layers must be on the same map layer to compute distance
+        const fromMarker = prev.currentLocationMarkerId ? markerById.get(prev.currentLocationMarkerId) : undefined
+        const toMarker   = curr.currentLocationMarkerId ? markerById.get(curr.currentLocationMarkerId) : undefined
+        if (!fromMarker || !toMarker || fromMarker.mapLayerId !== toMarker.mapLayerId) continue
+
+        const layer = layerById.get(fromMarker.mapLayerId)
+        if (!layer?.scalePixelsPerUnit || !layer.scaleUnit) continue
+
+        const distPx = pixelDist(fromMarker.x, fromMarker.y, toMarker.x, toMarker.y)
+        const distUnits = distPx / layer.scalePixelsPerUnit
+        const daysNeeded = distUnits / travelMode.speedPerDay
+
+        if (daysNeeded > currEvent.travelDays) {
+          const fromMarkerName = fromMarker.name
+          const toMarkerName   = toMarker.name
+          const currCh = chapById.get(currEvent.chapterId)
+          const dist = distUnits < 10
+            ? distUnits.toFixed(1)
+            : Math.round(distUnits).toString()
+          out.push({
+            id: `travel-dist-${charId}-${curr.eventId}`,
+            severity: 'warning',
+            category: 'character',
+            message: `${char.name} can't reach ${toMarkerName} in time`,
+            detail: `${fromMarkerName} → ${toMarkerName} is ~${dist} ${layer.scaleUnit} at ${travelMode.speedPerDay} ${layer.scaleUnit}/day — needs ${daysNeeded.toFixed(1)} days but only ${currEvent.travelDays} available (Ch. ${currCh?.number ?? '?'})`,
+            navigatePath: `/worlds/${worldId}/timeline/${curr.eventId}`,
+            eventId: curr.eventId,
+          })
+        }
+      }
+    }
+
     return out
-  }, [chapters, allEvents, characters, rels, items, snapshots, allRelSnaps, allItemPlacements, worldId])
+  }, [chapters, allEvents, characters, rels, items, snapshots, allRelSnaps, allItemPlacements, allMarkers, allLayers, travelModes, worldId])
 
   function handleNavigate(issue: Issue) {
     if (!issue.navigatePath || !issue.eventId) return
