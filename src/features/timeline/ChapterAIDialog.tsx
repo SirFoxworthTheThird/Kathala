@@ -9,7 +9,7 @@ import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { useEvents } from '@/db/hooks/useTimeline'
-import { useChapterSnapshots } from '@/db/hooks/useSnapshots'
+import { useEventSnapshots } from '@/db/hooks/useSnapshots'
 import { db } from '@/db/database'
 import type { Chapter, WorldEvent, CharacterSnapshot } from '@/types'
 
@@ -128,7 +128,6 @@ OUTPUT FORMAT
     "title": "<chapter title>",
     "synopsis": "<2–4 sentence summary of what happens>",
     "notes": "",
-    "travelDays": null,
     "createdAt": ${ts},
     "updatedAt": ${ts}
   },
@@ -145,18 +144,19 @@ OUTPUT FORMAT
       "involvedItemIds": [],
       "tags": ["<thematic tag>"],
       "sortOrder": 0,
+      "travelDays": null,
       "createdAt": ${ts},
       "updatedAt": ${ts}
     }
-    // ... 2–5 events total
+    // ... 2–5 events total, sortOrder increments by 1
   ],
   "characterSnapshots": [
-    // One entry for EVERY character listed above
+    // One entry for EVERY character listed above, keyed to the LAST event's id
     {
       "id": "<new uuid>",
       "worldId": "${worldId}",
       "characterId": "<use existing char id from list above>",
-      "chapterId": "<same as chapter.id above>",
+      "eventId": "<id of the last event in your events array above>",
       "isAlive": true,
 ${hasLocations
   ? `      "currentLocationMarkerId": "<markerId from location list where this character is, or null if unknown>",
@@ -165,7 +165,7 @@ ${hasLocations
       "currentMapLayerId": null,`}
       "inventoryItemIds": [],
       "inventoryNotes": "",
-      "statusNotes": "<1–2 sentences: what this character is doing or experiencing this chapter>",
+      "statusNotes": "<1–2 sentences: what this character is doing or experiencing during the last event>",
       "travelModeId": null,
       "createdAt": ${ts},
       "updatedAt": ${ts}
@@ -183,12 +183,13 @@ ${isUpdate ? `1. The chapter.id MUST be exactly "${chapterToUpdate!.chapter.id}"
 3. Every itemId in involvedItemIds MUST be one of the item ids listed above.
 4. Write a characterSnapshot for EVERY character in the list, even minor ones.
 5. Set isAlive: false in the snapshot if the character dies in this chapter.
-6. sortOrder in events starts at 0 and increments by 1.${hasLocations ? `
-7. For character snapshots: set currentLocationMarkerId to the markerId of the location where the character is at the END of this chapter. Set currentMapLayerId to the matching mapLayerId shown next to that location. If their location is unclear from the text, use null.
-8. For events: set locationMarkerId to the markerId where the event takes place, or null if it spans multiple locations or is unclear.
-9. Do NOT invent new location IDs — only use the markerId values listed above.` : `
-7. No locations are defined in this world yet — leave currentLocationMarkerId and currentMapLayerId as null.`}
-10. Output ONLY the JSON object, starting with { and ending with }.
+6. Set eventId in every snapshot to the id of the LAST event in the events array.
+7. sortOrder in events starts at 0 and increments by 1.${hasLocations ? `
+8. For character snapshots: set currentLocationMarkerId to the markerId of the location where the character is during the last event. Set currentMapLayerId to the matching mapLayerId shown next to that location. If their location is unclear from the text, use null.
+9. For events: set locationMarkerId to the markerId where the event takes place, or null if it spans multiple locations or is unclear.
+10. Do NOT invent new location IDs — only use the markerId values listed above.` : `
+8. No locations are defined in this world yet — leave currentLocationMarkerId and currentMapLayerId as null.`}
+11. Output ONLY the JSON object, starting with { and ending with }.
 
 ═══════════════════════════════════════════════
 MY CHAPTER CONTENT
@@ -241,11 +242,15 @@ function validateResponse(
     }
   }
 
+  const responseEventIds = new Set((d.events as Record<string, unknown>[]).map((ev) => ev.id as string))
+
   if (!Array.isArray(d.characterSnapshots)) throw new Error('Missing "characterSnapshots" array.')
   for (const snap of d.characterSnapshots as Record<string, unknown>[]) {
     if (typeof snap.id !== 'string') throw new Error('Each snapshot must have an id string.')
     if (snap.worldId !== worldId) throw new Error('A snapshot has the wrong worldId.')
-    if (snap.chapterId !== ch.id) throw new Error('A snapshot chapterId must match chapter.id.')
+    if (typeof snap.eventId !== 'string' || !responseEventIds.has(snap.eventId as string)) {
+      throw new Error(`A snapshot eventId must match one of the event ids in the response.`)
+    }
     if (typeof snap.characterId !== 'string' || !characterIds.has(snap.characterId as string)) {
       throw new Error(`Snapshot references unknown characterId "${snap.characterId}".`)
     }
@@ -260,8 +265,13 @@ function validateResponse(
 async function importChapter(data: ChapterAIResponse, replacing: boolean): Promise<string> {
   await db.transaction('rw', [db.chapters, db.events, db.characterSnapshots], async () => {
     if (replacing) {
+      // Get existing event IDs for this chapter before deleting them
+      const existingEventIds = (await db.events.where('chapterId').equals(data.chapter.id).toArray()).map((e) => e.id)
       await db.events.where('chapterId').equals(data.chapter.id).delete()
-      await db.characterSnapshots.where('chapterId').equals(data.chapter.id).delete()
+      // Delete snapshots by eventId — chapterId is no longer indexed on characterSnapshots
+      if (existingEventIds.length > 0) {
+        await db.characterSnapshots.where('eventId').anyOf(existingEventIds).delete()
+      }
     }
     await db.chapters.put(data.chapter)
     if (data.events.length) await db.events.bulkPut(data.events)
@@ -304,7 +314,10 @@ export function ChapterAIDialog({
 
   // Always call hooks unconditionally; data is only used when mode === 'update'
   const selectedChapterEvents = useEvents(selectedChapterId)
-  const selectedChapterSnapshots = useChapterSnapshots(selectedChapterId)
+  // Load snapshots from the last event of the selected chapter (end-of-chapter state)
+  const sortedSelectedEvents = [...selectedChapterEvents].sort((a, b) => a.sortOrder - b.sortOrder)
+  const lastSelectedEventId = sortedSelectedEvents.length > 0 ? sortedSelectedEvents[sortedSelectedEvents.length - 1].id : null
+  const selectedChapterSnapshots = useEventSnapshots(lastSelectedEventId)
 
   const selectedChapter = existingChapters.find((c) => c.id === selectedChapterId) ?? null
 

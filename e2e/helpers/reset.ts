@@ -22,11 +22,8 @@ export async function resetDB(page: Page): Promise<void> {
       }
     })
   })
-  // Reload so the app re-opens the fresh DB (retry once on ERR_ABORTED)
-  try {
-    await page.reload()
-  } catch {
-    await page.goto('/')
-  }
-  await page.waitForLoadState('networkidle')
+  // Navigate to / so the app re-opens the fresh DB.
+  // Use goto instead of reload to avoid conflicts when a prior test's import
+  // navigation is still in flight (which would cause reload to be interrupted).
+  await page.goto('/', { waitUntil: 'networkidle' })
 }

@@ -20,6 +20,7 @@ The core refactor is complete and stable:
 - **#4 Relationship Graph `startEventId` UI** — added "Started in" event picker to graph side panel; edge visibility already used correct `globalOrder`
 - **#5 CharacterArcView Event-Level Granularity** — added Chapters/Events toggle; event view shows one column per event
 - **#6 WritersBriefPanel Active Event Header** — chapter card now shows active event title/description; Events list highlights the active event
+- **#8 E2E Tests** — added `timeline.spec.ts` event tests + `importExport.spec.ts` (v1 migration, round-trip); all 12 tests pass
 - **#7 Deprecated Alias Cleanup** — removed `useActiveChapterId` / `useSetActiveChapterId` from store; updated `CharacterCard.tsx`
 - **#RelationshipsTab bugs** — fixed event/chapter lookup using `eventById` map and proper `globalOrder`
 
@@ -62,11 +63,9 @@ The chapter header card now shows an "Active Event" sub-section with the event t
 
 Removed `useActiveChapterId` / `useSetActiveChapterId` from `src/store/index.ts`. Updated `CharacterCard.tsx` (only consumer).
 
-### 8. E2E Tests
+### 8. E2E Tests ✓ DONE
 
-`npm run electron:dev` — manually verify the full user flow:
-- Create world → create timeline → create chapter → create event
-- Set character snapshot at event
-- Navigate between events with the timeline bar
-- Export world → import world (round-trip check)
-- Import an old v1 `.pwk` file (v1→v2 migration check)
+Added automated Playwright tests covering:
+- `e2e/timeline.spec.ts` — event creation within a chapter, title required, event cursor via timeline bar
+- `e2e/importExport.spec.ts` — v1→v2 migration (snapshots re-keyed to `eventId`, `startChapterId` removed), export + re-import round-trip
+- `e2e/fixtures/v1_world.pwk` — minimal v1 fixture with characters, snapshots (chapterId), and a relationship (startChapterId)

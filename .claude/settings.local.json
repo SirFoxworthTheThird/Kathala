@@ -97,7 +97,14 @@
       "Bash(cmd /c \"cd /d c:\\\\Projects\\\\mine\\\\PlotWeave && npm run build\")",
       "Bash(powershell.exe -Command \"Set-Location 'c:\\\\Projects\\\\mine\\\\PlotWeave'; npm run build\")",
       "Bash(Select-String -Pattern \"error|warning|built\")",
-      "Bash(powershell.exe -Command \"Set-Location 'c:\\\\Projects\\\\mine\\\\PlotWeave'; npm run build 2>&1\")"
+      "Bash(powershell.exe -Command \"Set-Location 'c:\\\\Projects\\\\mine\\\\PlotWeave'; npm run build 2>&1\")",
+      "Bash(powershell.exe -Command \"Set-Location 'c:\\\\Projects\\\\mine\\\\PlotWeave'; npx playwright test e2e/timeline.spec.ts e2e/importExport.spec.ts --reporter=line 2>&1\")",
+      "Bash(powershell.exe -Command \"Set-Location 'c:\\\\Projects\\\\mine\\\\PlotWeave'; npx playwright test e2e/importExport.spec.ts --reporter=line 2>&1\")",
+      "Bash(powershell.exe -Command \"Set-Location 'c:\\\\Projects\\\\mine\\\\PlotWeave'; npx playwright test e2e/importExport.spec.ts --reporter=list 2>&1\")",
+      "Bash(powershell.exe -Command \"Set-Location 'c:\\\\Projects\\\\mine\\\\PlotWeave'; npx playwright test --reporter=list 2>&1\")",
+      "Bash(powershell.exe -Command \"Set-Location 'c:\\\\Projects\\\\mine\\\\PlotWeave'; npm run build 2>&1 | tail -5\")",
+      "Bash(powershell.exe -Command \"Set-Location 'c:\\\\Projects\\\\mine\\\\PlotWeave'; npm run build 2>&1 | tail -8\")",
+      "Bash(powershell.exe -Command \"Set-Location 'c:\\\\Projects\\\\mine\\\\PlotWeave'; npm run build 2>&1 | tail -4\")"
     ]
   }
 }

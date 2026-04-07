@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "exportedAt": 1700000000000,
+  "world": {
+    "id": "v1-fixture-world",
+    "name": "V1 Migration World",
+    "description": "A world exported before the Option-A refactor.",
+    "coverImageId": null,
+    "createdAt": 1700000000000,
+    "updatedAt": 1700000000000
+  },
+  "mapLayers": [],
+  "locationMarkers": [],
+  "characters": [
+    {
+      "id": "v1-char-1",
+      "worldId": "v1-fixture-world",
+      "name": "Gandalf",
+      "description": "A wizard",
+      "portraitImageId": null,
+      "createdAt": 1700000000000,
+      "updatedAt": 1700000000000
+    },
+    {
+      "id": "v1-char-2",
+      "worldId": "v1-fixture-world",
+      "name": "Frodo",
+      "description": "A hobbit",
+      "portraitImageId": null,
+      "createdAt": 1700000000000,
+      "updatedAt": 1700000000000
+    }
+  ],
+  "items": [],
+  "characterSnapshots": [
+    {
+      "id": "v1-snap-1",
+      "worldId": "v1-fixture-world",
+      "characterId": "v1-char-1",
+      "chapterId": "v1-ch-1",
+      "isAlive": true,
+      "currentLocationMarkerId": null,
+      "currentMapLayerId": null,
+      "inventoryItemIds": [],
+      "statusNotes": "Arrived at Rivendell",
+      "travelModeId": null,
+      "createdAt": 1700000000000,
+      "updatedAt": 1700000000000
+    },
+    {
+      "id": "v1-snap-2",
+      "worldId": "v1-fixture-world",
+      "characterId": "v1-char-2",
+      "chapterId": "v1-ch-1",
+      "isAlive": true,
+      "currentLocationMarkerId": null,
+      "currentMapLayerId": null,
+      "inventoryItemIds": [],
+      "statusNotes": "",
+      "travelModeId": null,
+      "createdAt": 1700000000000,
+      "updatedAt": 1700000000000
+    }
+  ],
+  "characterMovements": [],
+  "itemPlacements": [],
+  "locationSnapshots": [],
+  "itemSnapshots": [],
+  "relationships": [
+    {
+      "id": "v1-rel-1",
+      "worldId": "v1-fixture-world",
+      "characterAId": "v1-char-1",
+      "characterBId": "v1-char-2",
+      "label": "mentor",
+      "strength": "strong",
+      "sentiment": "positive",
+      "description": "Gandalf guides Frodo",
+      "isBidirectional": true,
+      "startChapterId": "v1-ch-1",
+      "createdAt": 1700000000000,
+      "updatedAt": 1700000000000
+    }
+  ],
+  "relationshipSnapshots": [],
+  "timelines": [
+    {
+      "id": "v1-tl-1",
+      "worldId": "v1-fixture-world",
+      "name": "Main Timeline",
+      "createdAt": 1700000000000,
+      "updatedAt": 1700000000000
+    }
+  ],
+  "chapters": [
+    {
+      "id": "v1-ch-1",
+      "worldId": "v1-fixture-world",
+      "timelineId": "v1-tl-1",
+      "number": 1,
+      "title": "The Fellowship",
+      "synopsis": "The fellowship is formed.",
+      "notes": "",
+      "travelDays": 3,
+      "createdAt": 1700000000000,
+      "updatedAt": 1700000000000
+    }
+  ],
+  "events": [
+    {
+      "id": "v1-ev-1",
+      "worldId": "v1-fixture-world",
+      "chapterId": "v1-ch-1",
+      "timelineId": "v1-tl-1",
+      "title": "Council of Elrond",
+      "description": "The ring-bearers are chosen.",
+      "locationMarkerId": null,
+      "involvedCharacterIds": ["v1-char-1", "v1-char-2"],
+      "involvedItemIds": [],
+      "tags": ["council", "fellowship"],
+      "sortOrder": 0,
+      "createdAt": 1700000000000,
+      "updatedAt": 1700000000000
+    }
+  ],
+  "blobs": [],
+  "travelModes": []
+}
