@@ -67,7 +67,15 @@ export function MapTimeline({ worldId }: { worldId: string }) {
   const chapters = useChapters(firstTimeline?.id ?? null)
   const allEvents = useTimelineEvents(firstTimeline?.id ?? null)
 
-  if (!firstTimeline || chapters.length === 0) return null
+  if (!firstTimeline || chapters.length === 0) {
+    return (
+      <div className="shrink-0 border-t border-[hsl(var(--border))] bg-[hsl(var(--background))] px-4 py-3">
+        <p className="text-xs text-[hsl(var(--muted-foreground))] italic">
+          No chapters yet — add chapters in the Timeline view to navigate the map by event.
+        </p>
+      </div>
+    )
+  }
 
   // Derive active chapter from active event
   const activeEvent = activeEventId ? allEvents.find(e => e.id === activeEventId) ?? null : null

@@ -24,14 +24,16 @@ The ChapterDetailView critical bug (character/relationship state panels always e
 
 ## Feature Work
 
-- [ ] **Maps** — travel modes, distance calculations, `LeafletMapCanvas` improvements
-- [ ] **Arc visualization** — richer character arc view (emotion/status curves, multi-character overlay)
-- [ ] **Continuity checker expansion** — flag dead characters appearing in later events, items used before acquired, etc.
-- [ ] **Timeline multi-select** — select multiple events to bulk-move, delete, or export
+Detailed specs live in `docs/features/`:
+
+- [ ] **[Maps](docs/features/maps.md)** — waypoint editing, movement annotations, travel mode per movement, distance measurement tool
+- [ ] **[Arc visualization](docs/features/arc-visualization.md)** — per-character color, inventory sparkline, cell expand, character filter, export to image
+- [ ] **[Continuity checker expansion](docs/features/continuity-checker.md)** — issue suppression, location-destroyed check, item-before-acquired check, keyboard navigation
+- [ ] **[Timeline multi-select](docs/features/timeline-multi-select.md)** — checkboxes, shift-click range, bulk delete/move/tag, drag-to-reorder chapters
 
 ---
 
 ## Polish
 
 - [ ] **End-to-end UX review** — walk through the app with events as the primary unit; identify rough edges introduced by the Option-A refactor
-- [ ] **Empty-state improvements** — new worlds/chapters/events should guide the user toward the next action more clearly
+- [ ] **[Empty-state improvements](docs/features/empty-states.md)** — migrate inline empties to `EmptyState` component; context-aware messaging; zero-data vs. filtered-to-zero distinction

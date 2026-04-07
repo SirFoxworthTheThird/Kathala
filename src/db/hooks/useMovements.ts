@@ -20,6 +20,14 @@ export function useEventMovements(worldId: string | null, eventId: string | null
 /** @deprecated use useEventMovements */
 export const useChapterMovements = useEventMovements
 
+export function useWorldMovements(worldId: string | null): CharacterMovement[] {
+  return useLiveQuery(
+    () => worldId ? db.characterMovements.where('worldId').equals(worldId).toArray() : [],
+    [worldId],
+    []
+  )
+}
+
 export function useCharacterMovement(characterId: string | null, eventId: string | null): CharacterMovement | undefined {
   return useLiveQuery(
     () =>
@@ -69,11 +77,26 @@ export async function appendWaypoint(
       characterId,
       eventId,
       waypoints,
+      travelModeId: null,
+      notes: '',
       createdAt: now,
       updatedAt: now,
     }
     await db.characterMovements.add(movement)
   }
+}
+
+export async function updateMovement(
+  characterId: string,
+  eventId: string,
+  patch: Partial<Pick<CharacterMovement, 'waypoints' | 'travelModeId' | 'notes'>>,
+): Promise<void> {
+  const existing = await db.characterMovements
+    .where('[characterId+eventId]')
+    .equals([characterId, eventId])
+    .first()
+  if (!existing) return
+  await db.characterMovements.update(existing.id, { ...patch, updatedAt: Date.now() })
 }
 
 export async function clearMovement(characterId: string, eventId: string): Promise<void> {

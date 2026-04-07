@@ -4,6 +4,8 @@ export interface CharacterMovement {
   characterId: string
   eventId: string
   waypoints: string[]  // ordered locationMarkerIds
+  travelModeId: string | null
+  notes: string
   createdAt: number
   updatedAt: number
 }

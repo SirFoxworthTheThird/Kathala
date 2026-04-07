@@ -10,6 +10,7 @@ import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
+import { useWorldMovements } from '@/db/hooks/useMovements'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { cn } from '@/lib/utils'
@@ -96,6 +97,7 @@ export function ContinuityChecker() {
   const allMarkers  = useAllLocationMarkers(worldId ?? null)
   const allLayers   = useMapLayers(worldId ?? null)
   const travelModes = useTravelModes(worldId ?? null)
+  const allMovements = useWorldMovements(worldId ?? null)
   const allRelSnaps = useLiveQuery(
     () => worldId ? db.relationshipSnapshots.where('worldId').equals(worldId).toArray() : [],
     [worldId], []
@@ -270,6 +272,9 @@ export function ContinuityChecker() {
     const markerById    = new Map(allMarkers.map((m) => [m.id, m]))
     const layerById     = new Map(allLayers.map((l) => [l.id, l]))
     const travelModeById = new Map(travelModes.map((t) => [t.id, t]))
+    // movement lookup: key = `${characterId}:${eventId}`
+    const movementKey = (charId: string, eventId: string) => `${charId}:${eventId}`
+    const movementByKey = new Map(allMovements.map((m) => [movementKey(m.characterId, m.eventId), m]))
 
     for (const [charId, charSnaps] of snapsByChar) {
       const char = charById.get(charId)
@@ -291,7 +296,10 @@ export function ContinuityChecker() {
         const currEvent = eventById.get(curr.eventId)
         if (!currEvent || currEvent.travelDays === null || currEvent.travelDays <= 0) continue
 
-        const travelMode = curr.travelModeId ? travelModeById.get(curr.travelModeId) : undefined
+        // Prefer travelModeId on the movement record; fall back to snapshot
+        const mov = movementByKey.get(movementKey(charId, curr.eventId))
+        const travelModeId = mov?.travelModeId ?? curr.travelModeId
+        const travelMode = travelModeId ? travelModeById.get(travelModeId) : undefined
         if (!travelMode) continue
 
         // Markers and layers must be on the same map layer to compute distance
@@ -327,7 +335,7 @@ export function ContinuityChecker() {
     }
 
     return out
-  }, [chapters, allEvents, characters, rels, items, snapshots, allRelSnaps, allItemPlacements, allMarkers, allLayers, travelModes, worldId])
+  }, [chapters, allEvents, characters, rels, items, snapshots, allRelSnaps, allItemPlacements, allMarkers, allLayers, travelModes, allMovements, worldId])
 
   function handleNavigate(issue: Issue) {
     if (!issue.navigatePath || !issue.eventId) return

@@ -228,6 +228,14 @@ class PlotWeaveDB extends Dexie {
         delete ch.travelDays
       })
     })
+
+    // v11: add travelModeId and notes to characterMovements (backfill nulls)
+    this.version(11).stores({}).upgrade(async (tx) => {
+      await tx.table('characterMovements').toCollection().modify((m: Record<string, unknown>) => {
+        if (!('travelModeId' in m)) m.travelModeId = null
+        if (!('notes' in m)) m.notes = ''
+      })
+    })
   }
 }
 
