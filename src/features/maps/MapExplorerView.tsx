@@ -1012,6 +1012,8 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null)
   const [scaleMode, setScaleMode] = useState(false)
   const [scaleDialog, setScaleDialog] = useState<{ pixelDist: number } | null>(null)
+  const [measureMode, setMeasureMode] = useState(false)
+  const [measureResult, setMeasureResult] = useState<{ distPx: number; p1: ScaleCalibrationPoint; p2: ScaleCalibrationPoint } | null>(null)
   const [mapFilters, setMapFilters] = useState<MapFilters>(DEFAULT_MAP_FILTERS)
   const { setSelectedLocationMarkerId, selectedLocationMarkerId, pushMapLayer, setActiveMapLayerId, isPlayingStory, playbackSpeed } = useAppStore()
   const mapRef = useRef<L.Map | null>(null)
@@ -1020,6 +1022,12 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     const dist = pixelDist(p1.x, p1.y, p2.x, p2.y)
     setScaleMode(false)
     setScaleDialog({ pixelDist: dist })
+  }
+
+  function handleMeasurePoints(p1: ScaleCalibrationPoint, p2: ScaleCalibrationPoint) {
+    const dist = pixelDist(p1.x, p1.y, p2.x, p2.y)
+    setMeasureMode(false)
+    setMeasureResult({ distPx: dist, p1, p2 })
   }
 
   function focusOnLocation(marker: LocationMarker) {
@@ -1327,7 +1335,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               size="sm"
               variant={scaleMode ? 'default' : 'outline'}
               className="gap-1.5 text-xs"
-              onClick={() => setScaleMode((v) => !v)}
+              onClick={() => { setScaleMode((v) => !v); setMeasureMode(false); setMeasureResult(null) }}
               title={layer.scalePixelsPerUnit ? 'Recalibrate scale' : 'Set map scale'}
             >
               <Ruler className="h-3.5 w-3.5" />
@@ -1342,6 +1350,18 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
                 </button>
               )}
             </Button>
+            {layer.scalePixelsPerUnit && layer.scaleUnit && (
+              <Button
+                size="sm"
+                variant={measureMode ? 'default' : 'outline'}
+                className="gap-1.5 text-xs"
+                onClick={() => { setMeasureMode((v) => !v); setScaleMode(false); setMeasureResult(null) }}
+                title="Measure distance between two points"
+              >
+                <Route className="h-3.5 w-3.5" />
+                Measure
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
@@ -1407,9 +1427,31 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             }}
             onCharacterClick={handleCharacterClick}
             mapRef={mapRef}
-            scaleMode={scaleMode}
-            onScalePoints={handleScalePoints}
+            scaleMode={scaleMode || measureMode}
+            onScalePoints={measureMode ? handleMeasurePoints : handleScalePoints}
           />
+
+          {/* ── Measure result overlay ── */}
+          {measureResult && layer.scalePixelsPerUnit && layer.scaleUnit && (
+            <div className="absolute bottom-4 left-1/2 z-[600] -translate-x-1/2">
+              <div className="flex items-center gap-2 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2.5 shadow-xl text-sm">
+                <Route className="h-4 w-4 text-[hsl(var(--muted-foreground))] shrink-0" />
+                <span className="font-semibold">
+                  {formatDistance(measureResult.distPx, layer.scalePixelsPerUnit, layer.scaleUnit)}
+                </span>
+                <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                  ({Math.round(measureResult.distPx)} px)
+                </span>
+                <button
+                  onClick={() => setMeasureResult(null)}
+                  className="ml-1 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+                  title="Dismiss"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* ── Detail panels (absolute overlay — keeps map container size stable) ── */}
           {selectedLocationMarkerId && (
