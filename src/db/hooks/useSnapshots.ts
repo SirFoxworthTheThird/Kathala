@@ -41,6 +41,20 @@ export function useEventSnapshots(eventId: string | null) {
 /** @deprecated use useEventSnapshots */
 export const useChapterSnapshots = useEventSnapshots
 
+/** Returns all snapshots for a list of event ids (all events in a chapter). */
+export function useChapterEventSnapshots(eventIds: string[]) {
+  const key = eventIds.join(',')
+  return useLiveQuery(
+    () =>
+      eventIds.length > 0
+        ? db.characterSnapshots.where('eventId').anyOf(eventIds).toArray()
+        : [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [key],
+    []
+  )
+}
+
 export function useWorldSnapshots(worldId: string | null) {
   return useLiveQuery(
     () =>

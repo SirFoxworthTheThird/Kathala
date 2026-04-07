@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Users, Network, StickyNote } from 'lucide-react'
+import { ArrowLeft, Plus, Users, Network, StickyNote, ChevronDown, ChevronRight } from 'lucide-react'
 import { useChapter, useEvents, updateChapter, updateEvent } from '@/db/hooks/useTimeline'
-import { useEventSnapshots } from '@/db/hooks/useSnapshots'
+import { useChapterEventSnapshots } from '@/db/hooks/useSnapshots'
 import { useEventRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
@@ -10,6 +10,44 @@ import { Button } from '@/components/ui/button'
 import { EventCard } from './EventCard'
 import { SnapshotCard } from './SnapshotCard'
 import { AddEventDialog } from './AddEventDialog'
+import type { WorldEvent } from '@/types'
+
+// Collapsible section for one event's character snapshots
+function EventSnapshotSection({
+  event,
+  snapshots,
+}: {
+  event: WorldEvent
+  snapshots: ReturnType<typeof useChapterEventSnapshots>
+}) {
+  const [open, setOpen] = useState(true)
+  const eventSnapshots = snapshots.filter((s) => s.eventId === event.id)
+
+  if (eventSnapshots.length === 0) return null
+
+  return (
+    <div className="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium hover:bg-[hsl(var(--muted)/0.5)] transition-colors"
+      >
+        {open
+          ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))]" />
+          : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))]" />
+        }
+        <span className="truncate flex-1">{event.title}</span>
+        <span className="shrink-0 text-[hsl(var(--muted-foreground))]">{eventSnapshots.length}</span>
+      </button>
+      {open && (
+        <div className="flex flex-col gap-2 border-t border-[hsl(var(--border))] p-2">
+          {eventSnapshots.map((s) => (
+            <SnapshotCard key={s.id} snapshot={s} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function ChapterDetailView() {
   const { worldId, chapterId } = useParams<{ worldId: string; chapterId: string }>()
@@ -22,9 +60,10 @@ export default function ChapterDetailView() {
   const [notes, setNotes] = useState('')
 
   const sortedEvents = [...events].sort((a, b) => a.sortOrder - b.sortOrder)
-  const lastEventId = sortedEvents.length > 0 ? sortedEvents[sortedEvents.length - 1].id : null
+  const eventIds = sortedEvents.map((e) => e.id)
+  const lastEventId = eventIds.length > 0 ? eventIds[eventIds.length - 1] : null
 
-  const snapshots = useEventSnapshots(lastEventId)
+  const allSnapshots = useChapterEventSnapshots(eventIds)
   const relSnapshots = useEventRelationshipSnapshots(lastEventId)
 
   async function moveEvent(eventId: string, direction: 'up' | 'down') {
@@ -41,7 +80,6 @@ export default function ChapterDetailView() {
   }
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Sync local notes state when chapter loads
   useEffect(() => {
     if (chapter) setNotes(chapter.notes ?? '')
   }, [chapter?.id])  // eslint-disable-line react-hooks/exhaustive-deps
@@ -62,8 +100,8 @@ export default function ChapterDetailView() {
     )
   }
 
-  // Characters without a snapshot in this chapter
-  const snapshotCharIds = new Set(snapshots.map((s) => s.characterId))
+  // Characters with no snapshot in the entire chapter
+  const snapshotCharIds = new Set(allSnapshots.map((s) => s.characterId))
   const missingSnapshots = characters.filter((c) => !snapshotCharIds.has(c.id))
 
   return (
@@ -109,26 +147,35 @@ export default function ChapterDetailView() {
           </div>
         </div>
 
-        {/* Character snapshots */}
+        {/* Character snapshots — per-event breakdown */}
         <div className="flex w-80 shrink-0 flex-col overflow-hidden">
           <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] px-4 py-2">
             <Users className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
             <span className="text-sm font-medium">Character States</span>
           </div>
-          <div className="flex-1 overflow-auto p-4 flex flex-col gap-3">
-            {snapshots.length === 0 && missingSnapshots.length === 0 && (
+          <div className="flex-1 overflow-auto p-3 flex flex-col gap-2">
+            {events.length === 0 && (
               <p className="py-4 text-center text-sm text-[hsl(var(--muted-foreground))]">
-                No characters in this world yet.
+                No events yet.
               </p>
             )}
-            {snapshots.map((s) => <SnapshotCard key={s.id} snapshot={s} />)}
+
+            {sortedEvents.map((ev) => (
+              <EventSnapshotSection
+                key={ev.id}
+                event={ev}
+                snapshots={allSnapshots}
+              />
+            ))}
+
+            {/* Characters with no snapshot anywhere in this chapter */}
             {missingSnapshots.length > 0 && (
-              <div className="mt-2">
-                <p className="mb-2 text-xs text-[hsl(var(--muted-foreground))]">
-                  {missingSnapshots.length} character{missingSnapshots.length !== 1 ? 's' : ''} without state:
+              <div className="mt-1">
+                <p className="mb-1.5 text-xs text-[hsl(var(--muted-foreground))]">
+                  {missingSnapshots.length} character{missingSnapshots.length !== 1 ? 's' : ''} not in any event:
                 </p>
                 {missingSnapshots.map((c) => (
-                  <div key={c.id} className="mb-1.5 flex items-center gap-2 rounded border border-dashed border-[hsl(var(--border))] px-3 py-2 text-xs text-[hsl(var(--muted-foreground))]">
+                  <div key={c.id} className="mb-1 flex items-center gap-2 rounded border border-dashed border-[hsl(var(--border))] px-3 py-2 text-xs text-[hsl(var(--muted-foreground))]">
                     {c.name}
                     <span className="ml-auto italic">no snapshot</span>
                   </div>
@@ -136,15 +183,16 @@ export default function ChapterDetailView() {
               </div>
             )}
 
-            {/* Relationship snapshots */}
+            {/* Relationship snapshots (end of chapter state) */}
             {relationships.length > 0 && (
-              <div className="mt-2 border-t border-[hsl(var(--border))] pt-3">
+              <div className="mt-1 border-t border-[hsl(var(--border))] pt-3">
                 <div className="flex items-center gap-2 mb-2">
                   <Network className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" />
                   <span className="text-xs font-medium text-[hsl(var(--muted-foreground))]">Relationship States</span>
+                  <span className="ml-auto text-[10px] text-[hsl(var(--muted-foreground))]">end of chapter</span>
                 </div>
                 {relSnapshots.length === 0 ? (
-                  <p className="text-xs italic text-[hsl(var(--muted-foreground))]">No relationship states for this chapter.</p>
+                  <p className="text-xs italic text-[hsl(var(--muted-foreground))]">No relationship states recorded.</p>
                 ) : (
                   relSnapshots.map((rs) => {
                     const rel = relationships.find((r) => r.id === rs.relationshipId)
