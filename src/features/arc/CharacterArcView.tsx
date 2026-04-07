@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom'
 import { Heart, Skull, MapPin, Minus } from 'lucide-react'
-import { useTimelines, useWorldChapters } from '@/db/hooks/useTimeline'
+import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
@@ -15,6 +15,7 @@ export default function CharacterArcView() {
 
   const timelines  = useTimelines(worldId ?? null)
   const chapters   = useWorldChapters(worldId ?? null)
+  const allEvents  = useWorldEvents(worldId ?? null)
   const characters = useCharacters(worldId ?? null)
   const snapshots  = useWorldSnapshots(worldId ?? null)
   const markers    = useAllLocationMarkers(worldId ?? null)
@@ -28,7 +29,35 @@ export default function CharacterArcView() {
 
   const markerById = new Map(markers.map((m) => [m.id, m]))
 
-  // Build lookup: snapByCharAndChap[characterId][eventId]
+  // Derive active chapter from active event
+  const activeEvent = allEvents.find((e) => e.id === activeEventId) ?? null
+  const activeChapterId = activeEvent?.chapterId ?? null
+
+  // Map chapter → last event ID (the "final state" snapshot to show per chapter column)
+  const lastEventByChapter = new Map<string, string>()
+  for (const ev of allEvents) {
+    const cur = lastEventByChapter.get(ev.chapterId)
+    if (cur === undefined) {
+      lastEventByChapter.set(ev.chapterId, ev.id)
+    } else {
+      const curEv = allEvents.find((e) => e.id === cur)
+      if (curEv && ev.sortOrder > curEv.sortOrder) lastEventByChapter.set(ev.chapterId, ev.id)
+    }
+  }
+
+  // First event per chapter (for click-to-select)
+  const firstEventByChapter = new Map<string, string>()
+  for (const ev of allEvents) {
+    const cur = firstEventByChapter.get(ev.chapterId)
+    if (cur === undefined) {
+      firstEventByChapter.set(ev.chapterId, ev.id)
+    } else {
+      const curEv = allEvents.find((e) => e.id === cur)
+      if (curEv && ev.sortOrder < curEv.sortOrder) firstEventByChapter.set(ev.chapterId, ev.id)
+    }
+  }
+
+  // Build lookup: snapMap[characterId][eventId] → snapshot
   const snapMap = new Map<string, Map<string, typeof snapshots[0]>>()
   for (const snap of snapshots) {
     if (!snapMap.has(snap.characterId)) snapMap.set(snap.characterId, new Map())
@@ -72,7 +101,7 @@ export default function CharacterArcView() {
                 Character
               </th>
               {sortedChapters.map((ch) => {
-                const isActive = ch.id === activeEventId
+                const isActive = ch.id === activeChapterId
                 return (
                   <th
                     key={ch.id}
@@ -82,7 +111,11 @@ export default function CharacterArcView() {
                         ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
                         : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
                     )}
-                    onClick={() => setActiveEventId(isActive ? null : ch.id)}
+                    onClick={() => {
+                      if (isActive) { setActiveEventId(null); return }
+                      const firstEv = firstEventByChapter.get(ch.id)
+                      if (firstEv) setActiveEventId(firstEv)
+                    }}
                     title={`Ch. ${ch.number} — ${ch.title}`}
                   >
                     <div className="truncate font-semibold">Ch. {ch.number}</div>
@@ -110,8 +143,9 @@ export default function CharacterArcView() {
                   </td>
 
                   {sortedChapters.map((ch) => {
-                    const snap = charSnaps?.get(ch.id)
-                    const isActive = ch.id === activeEventId
+                    const lastEvId = lastEventByChapter.get(ch.id)
+                    const snap = lastEvId ? charSnaps?.get(lastEvId) : undefined
+                    const isActive = ch.id === activeChapterId
 
                     if (!snap) {
                       return (

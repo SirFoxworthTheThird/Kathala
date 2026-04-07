@@ -1,7 +1,7 @@
 import { X, BookOpen, Users, Network, Package, Scroll, MapPin, Heart, Skull, ChevronRight } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import { useAppStore } from '@/store'
-import { useChapter, useEvents } from '@/db/hooks/useTimeline'
+import { useChapter, useEvent, useEvents } from '@/db/hooks/useTimeline'
 import { useChapterSnapshots } from '@/db/hooks/useSnapshots'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
@@ -36,8 +36,9 @@ export function WritersBriefPanel() {
   const { worldId } = useParams<{ worldId: string }>()
   const { briefOpen, setBriefOpen, activeEventId } = useAppStore()
 
-  const chapter    = useChapter(activeEventId)
-  const events     = useEvents(activeEventId)
+  const activeEvent = useEvent(activeEventId)
+  const chapter    = useChapter(activeEvent?.chapterId ?? null)
+  const events     = useEvents(activeEvent?.chapterId ?? null)
   const snapshots  = useChapterSnapshots(activeEventId)
   const characters = useCharacters(worldId ?? null)
   const rels       = useRelationships(worldId ?? null)
