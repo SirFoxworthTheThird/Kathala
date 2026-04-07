@@ -5,13 +5,15 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useCharacters } from '@/db/hooks/useCharacters'
+import { useRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { useEvents } from '@/db/hooks/useTimeline'
 import { useEventSnapshots } from '@/db/hooks/useSnapshots'
+import { useEventRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
 import { db } from '@/db/database'
-import type { Chapter, WorldEvent, CharacterSnapshot } from '@/types'
+import type { Chapter, WorldEvent, CharacterSnapshot, RelationshipSnapshot } from '@/types'
 
 // ── Types for the LLM response ────────────────────────────────────────────────
 
@@ -19,6 +21,7 @@ interface ChapterAIResponse {
   chapter: Chapter
   events: WorldEvent[]
   characterSnapshots: CharacterSnapshot[]
+  relationshipSnapshots: RelationshipSnapshot[]
 }
 
 // ── Prompt builder ────────────────────────────────────────────────────────────
@@ -31,10 +34,16 @@ function buildPrompt(
   nextNumber: number,
   existingChapters: Chapter[],
   characters: ReturnType<typeof useCharacters>,
+  relationships: ReturnType<typeof useRelationships>,
   items: ReturnType<typeof useItems>,
   locationMarkers: ReturnType<typeof useAllLocationMarkers>,
   mapLayers: ReturnType<typeof useMapLayers>,
-  chapterToUpdate?: { chapter: Chapter; events: WorldEvent[]; snapshots: CharacterSnapshot[] },
+  chapterToUpdate?: {
+    chapter: Chapter
+    events: WorldEvent[]
+    snapshots: CharacterSnapshot[]
+    relSnapshots: RelationshipSnapshot[]
+  },
 ): string {
   const ts = Date.now()
   const isUpdate = !!chapterToUpdate
@@ -60,13 +69,37 @@ function buildPrompt(
       }).join('\n')
     : '  (none)'
 
+  const existingRelSnapsText = isUpdate && chapterToUpdate!.relSnapshots.length > 0
+    ? chapterToUpdate!.relSnapshots.map((rs) => {
+        const rel = relationships.find((r) => r.id === rs.relationshipId)
+        const charA = characters.find((c) => c.id === rel?.characterAId)
+        const charB = characters.find((c) => c.id === rel?.characterBId)
+        const names = charA && charB ? `${charA.name} ↔ ${charB.name}` : rs.relationshipId
+        return `  - ${names}: ${rs.isActive ? 'active' : 'ended'} · ${rs.sentiment} · ${rs.strength} — "${rs.label}"${rs.description ? ` — ${rs.description.slice(0, 80)}` : ''}`
+      }).join('\n')
+    : '  (none)'
+
   const characterList = characters.length > 0
     ? characters.map((c) => `  - "${c.name}" (id: "${c.id}")${c.description ? ` — ${c.description.slice(0, 120)}` : ''}${!c.isAlive ? ' [deceased]' : ''}`).join('\n')
     : '  (none)'
 
+  const charById = new Map(characters.map((c) => [c.id, c]))
+  const relationshipList = relationships.length > 0
+    ? relationships.map((r) => {
+        const a = charById.get(r.characterAId)?.name ?? r.characterAId
+        const b = charById.get(r.characterBId)?.name ?? r.characterBId
+        const dir = r.isBidirectional ? '↔' : '→'
+        return `  - "${a} ${dir} ${b}" (id: "${r.id}") — "${r.label}" · ${r.sentiment} · ${r.strength}`
+      }).join('\n')
+    : '  (none — omit relationshipSnapshots array or leave it empty)'
+
+  const hasRelationships = relationships.length > 0
+
   const itemList = items.length > 0
     ? items.map((it) => `  - "${it.name}" (id: "${it.id}")${it.description ? ` — ${it.description.slice(0, 100)}` : ''}`).join('\n')
     : '  (none)'
+
+  const hasItems = items.length > 0
 
   const layerById = new Map(mapLayers.map((l) => [l.id, l]))
   const locationList = locationMarkers.length > 0
@@ -104,12 +137,17 @@ Current synopsis: ${chapterToUpdate!.chapter.synopsis || '(none)'}
 Current events:
 ${existingEventsText}
 Current character snapshots:
-${existingSnapshotsText}` : ''}
+${existingSnapshotsText}
+Current relationship snapshots:
+${existingRelSnapsText}` : ''}
 
 ── Characters — USE THESE EXACT IDs ──
 ${characterList}
 
-── Items — USE THESE EXACT IDs (if relevant) ──
+── Relationships — USE THESE EXACT IDs ──
+${relationshipList}
+
+── Items — USE THESE EXACT IDs ──
 ${itemList}
 
 ── Locations — USE THESE EXACT IDs to place characters on the map ──
@@ -139,9 +177,9 @@ OUTPUT FORMAT
       "timelineId": "${timelineId}",
       "title": "<short event title>",
       "description": "<detailed description of what happens>",
-      "locationMarkerId": ${hasLocations ? '"<markerId from location list, or null if unclear>"' : 'null'},
-      "involvedCharacterIds": ["<use existing char id from list above>"],
-      "involvedItemIds": [],
+      "locationMarkerId": ${hasLocations ? '"<markerId from location list, or null>"' : 'null'},
+      "involvedCharacterIds": ["<char id from list>"],
+      "involvedItemIds": ${hasItems ? '["<item id if this event involves an item, otherwise []>"]' : '[]'},
       "tags": ["<thematic tag>"],
       "sortOrder": 0,
       "travelDays": null,
@@ -151,27 +189,44 @@ OUTPUT FORMAT
     // ... 2–5 events total, sortOrder increments by 1
   ],
   "characterSnapshots": [
-    // One entry per character PER EVENT — repeat for every event × character combination
+    // One entry per character PER EVENT
     {
       "id": "<new uuid>",
       "worldId": "${worldId}",
-      "characterId": "<use existing char id from list above>",
-      "eventId": "<id of the specific event this snapshot belongs to>",
+      "characterId": "<char id from list>",
+      "eventId": "<id of the specific event>",
       "isAlive": true,
 ${hasLocations
-  ? `      "currentLocationMarkerId": "<markerId where this character is during this specific event, or null if unknown>",
-      "currentMapLayerId": "<mapLayerId that corresponds to the chosen markerId, or null>",`
+  ? `      "currentLocationMarkerId": "<markerId where this character is, or null>",
+      "currentMapLayerId": "<mapLayerId matching the markerId, or null>",`
   : `      "currentLocationMarkerId": null,
       "currentMapLayerId": null,`}
-      "inventoryItemIds": [],
+      "inventoryItemIds": ${hasItems ? '["<item id if this character is carrying this item during this event, otherwise []>"]' : '[]'},
       "inventoryNotes": "",
-      "statusNotes": "<1–2 sentences: what this character is doing or experiencing during this specific event>",
+      "statusNotes": "<1–2 sentences: what this character is doing or experiencing>",
       "travelModeId": null,
       "createdAt": ${ts},
       "updatedAt": ${ts}
     }
     // Repeat for every character × event combination
-  ]
+  ]${hasRelationships ? `,
+  "relationshipSnapshots": [
+    // One entry per relationship PER EVENT where the relationship is active or changes
+    {
+      "id": "<new uuid>",
+      "worldId": "${worldId}",
+      "relationshipId": "<id from relationship list>",
+      "eventId": "<id of the specific event>",
+      "isActive": true,
+      "sentiment": "<positive|neutral|negative|complex>",
+      "strength": "<weak|moderate|strong|bond>",
+      "label": "<brief label for this relationship at this point>",
+      "description": "<1–2 sentences: how this relationship stands during this event>",
+      "createdAt": ${ts},
+      "updatedAt": ${ts}
+    }
+    // Include for each relationship that is relevant to this chapter
+  ]` : ''}
 }
 
 ═══════════════════════════════════════════════
@@ -179,18 +234,21 @@ RULES
 ═══════════════════════════════════════════════
 
 ${isUpdate ? `1. The chapter.id MUST be exactly "${chapterToUpdate!.chapter.id}" — do not change it.` : '1. Use proper UUID v4 format for every new id (xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx).'}
-   All event ids and snapshot ids must be new UUIDs (v4 format).
+   All event ids, snapshot ids and relationship snapshot ids must be new UUIDs (v4 format).
 2. Every characterId in events and snapshots MUST be one of the ids listed above.
-3. Every itemId in involvedItemIds MUST be one of the item ids listed above.
-4. Write a characterSnapshot for EVERY character × EVERY event combination. If a character is not present at an event, still include a snapshot (carry their last known state forward).
+3. Every itemId in involvedItemIds and inventoryItemIds MUST be one of the item ids listed above.
+4. Write a characterSnapshot for EVERY character × EVERY event combination. Carry forward last known state if a character is not present.
 5. Set isAlive: false in any snapshot after the event where the character dies.
 6. Set eventId in each snapshot to the id of the specific event it belongs to.
 7. sortOrder in events starts at 0 and increments by 1.${hasLocations ? `
-8. For character snapshots: set currentLocationMarkerId to the markerId of the location where the character is during that specific event. Set currentMapLayerId to the matching mapLayerId. If unclear, use null.
-9. For events: set locationMarkerId to the markerId where the event takes place, or null if it spans multiple locations or is unclear.
+8. Character snapshots: set currentLocationMarkerId + currentMapLayerId to where the character is. Use null if unknown.
+9. Events: set locationMarkerId to where the event takes place, or null.
 10. Do NOT invent new location IDs — only use the markerId values listed above.` : `
-8. No locations are defined in this world yet — leave currentLocationMarkerId and currentMapLayerId as null.`}
-11. Output ONLY the JSON object, starting with { and ending with }.
+8. No locations defined yet — leave currentLocationMarkerId and currentMapLayerId as null.`}${hasItems ? `
+${hasLocations ? '11' : '9'}. Set inventoryItemIds on character snapshots to the items each character is carrying at that event. Use only item ids from the list above.` : ''}${hasRelationships ? `
+${hasLocations ? (hasItems ? '12' : '11') : (hasItems ? '10' : '9')}. Every relationshipId in relationshipSnapshots MUST be one of the ids listed above.
+${hasLocations ? (hasItems ? '13' : '12') : (hasItems ? '11' : '10')}. Include a relationshipSnapshot for each relationship that plays a role in this chapter, for each relevant event. Omit relationships with no bearing on this chapter.` : ''}
+${hasLocations ? (hasItems ? (hasRelationships ? '14' : '12') : (hasRelationships ? '12' : '11')) : (hasItems ? (hasRelationships ? '11' : '10') : (hasRelationships ? '10' : '9'))}. Output ONLY the JSON object, starting with { and ending with }.
 
 ═══════════════════════════════════════════════
 MY CHAPTER CONTENT
@@ -208,6 +266,7 @@ function validateResponse(
   characterIds: Set<string>,
   itemIds: Set<string>,
   markerIds: Set<string>,
+  relationshipIds: Set<string>,
 ): ChapterAIResponse {
   let parsed: unknown
   try { parsed = JSON.parse(raw) } catch { throw new Error('Could not parse JSON. Make sure you copied the full response.') }
@@ -260,11 +319,29 @@ function validateResponse(
     }
   }
 
+  // Validate relationshipSnapshots (optional — only present when relationships exist)
+  if (d.relationshipSnapshots !== undefined) {
+    if (!Array.isArray(d.relationshipSnapshots)) throw new Error('"relationshipSnapshots" must be an array.')
+    for (const rs of d.relationshipSnapshots as Record<string, unknown>[]) {
+      if (typeof rs.id !== 'string') throw new Error('Each relationshipSnapshot must have an id string.')
+      if (rs.worldId !== worldId) throw new Error('A relationshipSnapshot has the wrong worldId.')
+      if (typeof rs.relationshipId !== 'string' || !relationshipIds.has(rs.relationshipId as string)) {
+        throw new Error(`RelationshipSnapshot references unknown relationshipId "${rs.relationshipId}".`)
+      }
+      if (typeof rs.eventId !== 'string' || !responseEventIds.has(rs.eventId as string)) {
+        throw new Error('A relationshipSnapshot eventId must match one of the event ids in the response.')
+      }
+    }
+  } else {
+    // Ensure the field is always present on the parsed result
+    ;(d as Record<string, unknown>).relationshipSnapshots = []
+  }
+
   return parsed as unknown as ChapterAIResponse
 }
 
 async function importChapter(data: ChapterAIResponse, replacing: boolean): Promise<string> {
-  await db.transaction('rw', [db.chapters, db.events, db.characterSnapshots], async () => {
+  await db.transaction('rw', [db.chapters, db.events, db.characterSnapshots, db.relationshipSnapshots], async () => {
     if (replacing) {
       // Get existing event IDs for this chapter before deleting them
       const existingEventIds = (await db.events.where('chapterId').equals(data.chapter.id).toArray()).map((e) => e.id)
@@ -272,11 +349,13 @@ async function importChapter(data: ChapterAIResponse, replacing: boolean): Promi
       // Delete snapshots by eventId — chapterId is no longer indexed on characterSnapshots
       if (existingEventIds.length > 0) {
         await db.characterSnapshots.where('eventId').anyOf(existingEventIds).delete()
+        await db.relationshipSnapshots.where('eventId').anyOf(existingEventIds).delete()
       }
     }
     await db.chapters.put(data.chapter)
     if (data.events.length) await db.events.bulkPut(data.events)
     if (data.characterSnapshots.length) await db.characterSnapshots.bulkPut(data.characterSnapshots)
+    if (data.relationshipSnapshots?.length) await db.relationshipSnapshots.bulkPut(data.relationshipSnapshots)
   })
   return data.chapter.id
 }
@@ -286,6 +365,7 @@ async function importChapter(data: ChapterAIResponse, replacing: boolean): Promi
 interface ReviewStepProps {
   preview: ChapterAIResponse
   characters: ReturnType<typeof useCharacters>
+  relationships: ReturnType<typeof useRelationships>
   locationMarkers: ReturnType<typeof useAllLocationMarkers>
   isUpdate: boolean
   importing: boolean
@@ -294,10 +374,12 @@ interface ReviewStepProps {
   onImport: () => void
 }
 
-function ReviewStep({ preview, characters, locationMarkers, isUpdate, importing, error, onBack, onImport }: ReviewStepProps) {
+function ReviewStep({ preview, characters, relationships, locationMarkers, isUpdate, importing, error, onBack, onImport }: ReviewStepProps) {
   const charById = new Map(characters.map((c) => [c.id, c]))
+  const relById = new Map(relationships.map((r) => [r.id, r]))
   const markerById = new Map(locationMarkers.map((m) => [m.id, m]))
   const sortedEvents = [...preview.events].sort((a, b) => a.sortOrder - b.sortOrder)
+  const relSnapshots = preview.relationshipSnapshots ?? []
 
   return (
     <>
@@ -310,13 +392,14 @@ function ReviewStep({ preview, characters, locationMarkers, isUpdate, importing,
             <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{preview.chapter.synopsis}</p>
           )}
           <p className="mt-2 text-[10px] text-[hsl(var(--muted-foreground))]">
-            {preview.events.length} event{preview.events.length !== 1 ? 's' : ''} · {preview.characterSnapshots.length} snapshot{preview.characterSnapshots.length !== 1 ? 's' : ''}
+            {preview.events.length} event{preview.events.length !== 1 ? 's' : ''} · {preview.characterSnapshots.length} character snapshot{preview.characterSnapshots.length !== 1 ? 's' : ''}{relSnapshots.length > 0 ? ` · ${relSnapshots.length} relationship snapshot${relSnapshots.length !== 1 ? 's' : ''}` : ''}
           </p>
         </div>
 
         {/* Events + snapshots */}
         {sortedEvents.map((ev) => {
           const evSnapshots = preview.characterSnapshots.filter((s) => s.eventId === ev.id)
+          const evRelSnapshots = relSnapshots.filter((rs) => rs.eventId === ev.id)
           const location = ev.locationMarkerId ? markerById.get(ev.locationMarkerId) : null
           return (
             <div key={ev.id} className="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
@@ -335,7 +418,7 @@ function ReviewStep({ preview, characters, locationMarkers, isUpdate, importing,
                 )}
               </div>
 
-              {/* Snapshots for this event */}
+              {/* Character snapshots for this event */}
               {evSnapshots.length > 0 && (
                 <div className="divide-y divide-[hsl(var(--border))]">
                   {evSnapshots.map((snap) => {
@@ -357,6 +440,35 @@ function ReviewStep({ preview, characters, locationMarkers, isUpdate, importing,
                           )}
                           {snap.statusNotes && (
                             <p className="text-[11px] text-[hsl(var(--muted-foreground))] line-clamp-2">{snap.statusNotes}</p>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Relationship snapshots for this event */}
+              {evRelSnapshots.length > 0 && (
+                <div className="border-t border-[hsl(var(--border))] divide-y divide-[hsl(var(--border)/0.5)]">
+                  {evRelSnapshots.map((rs) => {
+                    const rel = relById.get(rs.relationshipId)
+                    const nameA = rel ? (charById.get(rel.characterAId)?.name ?? rel.characterAId) : rs.relationshipId
+                    const nameB = rel ? (charById.get(rel.characterBId)?.name ?? rel.characterBId) : ''
+                    return (
+                      <div key={rs.id} className="flex items-start gap-3 px-4 py-2 bg-[hsl(var(--muted)/0.15)]">
+                        <div className="w-28 shrink-0">
+                          <p className="text-[10px] font-medium text-[hsl(var(--muted-foreground))] truncate">
+                            {nameA}{nameB ? ` ↔ ${nameB}` : ''}
+                          </p>
+                          <p className="text-[9px] text-[hsl(var(--muted-foreground)/0.7)]">
+                            {rs.isActive ? 'active' : 'ended'} · {rs.sentiment} · {rs.strength}
+                          </p>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-medium text-[hsl(var(--foreground)/0.8)]">{rs.label}</p>
+                          {rs.description && (
+                            <p className="text-[10px] text-[hsl(var(--muted-foreground))] line-clamp-2">{rs.description}</p>
                           )}
                         </div>
                       </div>
@@ -407,6 +519,7 @@ export function ChapterAIDialog({
 }: ChapterAIDialogProps) {
   const navigate = useNavigate()
   const characters = useCharacters(worldId)
+  const relationships = useRelationships(worldId)
   const items = useItems(worldId)
   const locationMarkers = useAllLocationMarkers(worldId)
   const mapLayers = useMapLayers(worldId)
@@ -426,23 +539,25 @@ export function ChapterAIDialog({
   const sortedSelectedEvents = [...selectedChapterEvents].sort((a, b) => a.sortOrder - b.sortOrder)
   const lastSelectedEventId = sortedSelectedEvents.length > 0 ? sortedSelectedEvents[sortedSelectedEvents.length - 1].id : null
   const selectedChapterSnapshots = useEventSnapshots(lastSelectedEventId)
+  const selectedChapterRelSnapshots = useEventRelationshipSnapshots(lastSelectedEventId)
 
   const selectedChapter = existingChapters.find((c) => c.id === selectedChapterId) ?? null
 
   const chapterToUpdate = mode === 'update' && selectedChapter
-    ? { chapter: selectedChapter, events: selectedChapterEvents, snapshots: selectedChapterSnapshots }
+    ? { chapter: selectedChapter, events: selectedChapterEvents, snapshots: selectedChapterSnapshots, relSnapshots: selectedChapterRelSnapshots }
     : undefined
 
   const isUpdate = mode === 'update'
   const canProceed = mode === 'create' || selectedChapter !== null
 
   const prompt = canProceed
-    ? buildPrompt(worldId, worldName, timelineId, timelineName, nextNumber, existingChapters, characters, items, locationMarkers, mapLayers, chapterToUpdate)
+    ? buildPrompt(worldId, worldName, timelineId, timelineName, nextNumber, existingChapters, characters, relationships, items, locationMarkers, mapLayers, chapterToUpdate)
     : ''
 
   const characterIds = new Set(characters.map((c) => c.id))
   const itemIds = new Set(items.map((it) => it.id))
   const markerIds = new Set(locationMarkers.map((m) => m.id))
+  const relationshipIds = new Set(relationships.map((r) => r.id))
 
   function handleClose(v: boolean) {
     if (!v) {
@@ -470,7 +585,7 @@ export function ChapterAIDialog({
   function handlePreview() {
     setError(null)
     try {
-      const data = validateResponse(pasteValue.trim(), worldId, timelineId, characterIds, itemIds, markerIds)
+      const data = validateResponse(pasteValue.trim(), worldId, timelineId, characterIds, itemIds, markerIds, relationshipIds)
       setPreview(data)
       setStep('review')
     } catch (err) {
@@ -488,7 +603,7 @@ export function ChapterAIDialog({
     setError(null)
     setImporting(true)
     try {
-      const data = validateResponse(pasteValue.trim(), worldId, timelineId, characterIds, itemIds, markerIds)
+      const data = validateResponse(pasteValue.trim(), worldId, timelineId, characterIds, itemIds, markerIds, relationshipIds)
       const chapterId = await importChapter(data, isUpdate)
       handleClose(false)
       navigate(`/worlds/${worldId}/timeline/${chapterId}`)
@@ -646,6 +761,7 @@ export function ChapterAIDialog({
           <ReviewStep
             preview={preview}
             characters={characters}
+            relationships={relationships}
             locationMarkers={locationMarkers}
             isUpdate={isUpdate}
             importing={importing}

@@ -67,9 +67,9 @@ A "Compare" mode toggle: user picks two characters via dropdowns, then the table
 
 ## Tasks
 
-- [ ] **Per-character color** — add `color` field to `Character` type + Dexie migration; tint row left border in arc; color picker in character edit form
-- [ ] **Inventory sparkline** — compute item count per event per character; render inline mini bar chart in name cell
-- [ ] **Cell expand on click** — replace `line-clamp-2` with click-to-expand popover showing full status notes
-- [ ] **Character filter** — search input above arc table; filters rows by character name
-- [ ] **Export to image** — "Export PNG" button using `html2canvas`; captures full arc table width
+- [x] **Per-character color** — `color: string | null` on `Character` type + Dexie v12 migration; left-border tint in arc rows; native color picker + clear button in OverviewTab edit form
+- [x] **Inventory sparkline** — item count per event per character; inline SVG polyline in name cell
+- [x] **Cell expand on click** — click any cell with status notes to toggle expand/collapse; truncated by default
+- [x] **Character filter** — search input in arc header; filters rows by name; shows match count; clear button
+- [x] **Export to image** — "PNG" button using `html2canvas` (scale×2); captures full scroll width of arc table
 - [ ] **Side-by-side comparison mode** — two-character focused view with full status notes visible (low priority)

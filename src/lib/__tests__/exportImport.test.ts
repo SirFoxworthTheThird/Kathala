@@ -102,7 +102,7 @@ describe('importWorld — successful import', () => {
     const data = makeExport({
       characters: [{
         id: 'char-1', worldId: 'world-test', name: 'Aria',
-        aliases: [], description: '', portraitImageId: null, tags: [], isAlive: true,
+        aliases: [], description: '', portraitImageId: null, color: null, tags: [], isAlive: true,
         createdAt: 1000, updatedAt: 1000,
       }],
     })

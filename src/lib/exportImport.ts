@@ -353,6 +353,11 @@ function normalizeImport(data: WorldExportFile): void {
 
   // ── Common backfills (apply to all versions) ────────────────────────────────
 
+  // Backfill color on characters exported before it was added
+  for (const char of data.characters) {
+    const c = char as unknown as Rec
+    if (c.color === undefined) c.color = null
+  }
   // Backfill scale fields on map layers exported before they were added
   for (const layer of data.mapLayers) {
     const l = layer as unknown as Rec

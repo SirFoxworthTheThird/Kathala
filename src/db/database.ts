@@ -236,6 +236,13 @@ class PlotWeaveDB extends Dexie {
         if (!('notes' in m)) m.notes = ''
       })
     })
+
+    // v12: add color to characters (backfill null)
+    this.version(12).stores({}).upgrade(async (tx) => {
+      await tx.table('characters').toCollection().modify((c: Record<string, unknown>) => {
+        if (!('color' in c)) c.color = null
+      })
+    })
   }
 }
 

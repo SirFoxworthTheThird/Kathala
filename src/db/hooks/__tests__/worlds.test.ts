@@ -83,7 +83,7 @@ describe('deleteWorld', () => {
     const world = await createWorld({ name: 'W', description: '' })
     await db.characters.add({
       id: 'char-1', worldId: world.id, name: 'Hero',
-      aliases: [], description: '', portraitImageId: null,
+      aliases: [], description: '', portraitImageId: null, color: null,
       tags: [], isAlive: true, createdAt: Date.now(), updatedAt: Date.now(),
     })
     await deleteWorld(world.id)
@@ -125,7 +125,7 @@ describe('deleteWorld', () => {
     const b = await createWorld({ name: 'B', description: '' })
     await db.characters.add({
       id: 'char-b', worldId: b.id, name: 'Survivor',
-      aliases: [], description: '', portraitImageId: null,
+      aliases: [], description: '', portraitImageId: null, color: null,
       tags: [], isAlive: true, createdAt: Date.now(), updatedAt: Date.now(),
     })
     await deleteWorld(a.id)

@@ -7,6 +7,8 @@ export interface Character {
   portraitImageId: string | null
   tags: string[]
   isAlive: boolean
+  /** Optional hex color for arc-view row tinting and other visual cues */
+  color: string | null
   createdAt: number
   updatedAt: number
 }

@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
-import { Heart, Skull, MapPin, Minus } from 'lucide-react'
+import { Heart, Skull, MapPin, Minus, Search, Download, X } from 'lucide-react'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
@@ -9,11 +9,56 @@ import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/EmptyState'
 import { BookOpen } from 'lucide-react'
+import type { Character } from '@/types'
+
+// ── Colour helpers ────────────────────────────────────────────────────────────
+
+/** Deterministic hue from character id — used as fallback when no explicit color set */
+function idToHue(id: string): number {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) & 0xffff
+  return h % 360
+}
+
+function charColor(char: Character): string {
+  return char.color ?? `hsl(${idToHue(char.id)}, 60%, 55%)`
+}
+
+// ── Inventory sparkline (pure SVG, no library) ────────────────────────────────
+
+function InventorySparkline({ counts }: { counts: number[] }) {
+  if (counts.length < 2) return null
+  const max = Math.max(...counts, 1)
+  const W = 48, H = 16, pad = 1
+  const points = counts.map((v, i) => {
+    const x = pad + (i / (counts.length - 1)) * (W - pad * 2)
+    const y = H - pad - ((v / max) * (H - pad * 2))
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  }).join(' ')
+
+  return (
+    <svg width={W} height={H} className="block opacity-60" aria-hidden>
+      <polyline
+        points={points}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 export default function CharacterArcView() {
   const { worldId } = useParams<{ worldId: string }>()
   const { activeEventId, setActiveEventId } = useAppStore()
-  const [viewMode, setViewMode] = useState<'chapter' | 'event'>('chapter')
+  const [viewMode, setViewMode]           = useState<'chapter' | 'event'>('chapter')
+  const [filterText, setFilterText]       = useState('')
+  const [expandedKey, setExpandedKey]     = useState<string | null>(null) // `${charId}:${colId}`
+  const tableRef = useRef<HTMLDivElement>(null)
 
   const timelines  = useTimelines(worldId ?? null)
   const chapters   = useWorldChapters(worldId ?? null)
@@ -23,7 +68,7 @@ export default function CharacterArcView() {
   const markers    = useAllLocationMarkers(worldId ?? null)
 
   // Sort chapters by timeline order then chapter number
-  const timelineOrder = new Map(timelines.map((tl, i) => [tl.id, i]))
+  const timelineOrder  = new Map(timelines.map((tl, i) => [tl.id, i]))
   const sortedChapters = [...chapters].sort((a, b) => {
     const tlDiff = (timelineOrder.get(a.timelineId) ?? 0) - (timelineOrder.get(b.timelineId) ?? 0)
     return tlDiff !== 0 ? tlDiff : a.number - b.number
@@ -33,7 +78,7 @@ export default function CharacterArcView() {
   const markerById  = new Map(markers.map((m) => [m.id, m]))
 
   // Derive active chapter from active event
-  const activeEvent = allEvents.find((e) => e.id === activeEventId) ?? null
+  const activeEvent     = allEvents.find((e) => e.id === activeEventId) ?? null
   const activeChapterId = activeEvent?.chapterId ?? null
 
   // Events sorted by chapter order then sortOrder
@@ -46,43 +91,72 @@ export default function CharacterArcView() {
     return chDiff !== 0 ? chDiff : a.sortOrder - b.sortOrder
   })
 
-  // Map chapter → last event ID (for chapter-view columns)
-  const lastEventByChapter = new Map<string, string>()
-  for (const ev of allEvents) {
-    const cur = lastEventByChapter.get(ev.chapterId)
-    if (cur === undefined) {
-      lastEventByChapter.set(ev.chapterId, ev.id)
-    } else {
-      const curEv = allEvents.find((e) => e.id === cur)
-      if (curEv && ev.sortOrder > curEv.sortOrder) lastEventByChapter.set(ev.chapterId, ev.id)
-    }
-  }
-
-  // First event per chapter (for click-to-select in chapter view)
+  // Map chapter → last / first event ID
+  const lastEventByChapter  = new Map<string, string>()
   const firstEventByChapter = new Map<string, string>()
   for (const ev of allEvents) {
-    const cur = firstEventByChapter.get(ev.chapterId)
-    if (cur === undefined) {
-      firstEventByChapter.set(ev.chapterId, ev.id)
-    } else {
-      const curEv = allEvents.find((e) => e.id === cur)
-      if (curEv && ev.sortOrder < curEv.sortOrder) firstEventByChapter.set(ev.chapterId, ev.id)
-    }
+    const curLast  = lastEventByChapter.get(ev.chapterId)
+    const curFirst = firstEventByChapter.get(ev.chapterId)
+    const curLastEv  = curLast  ? allEvents.find((e) => e.id === curLast)  : undefined
+    const curFirstEv = curFirst ? allEvents.find((e) => e.id === curFirst) : undefined
+    if (!curLastEv  || ev.sortOrder > curLastEv.sortOrder)  lastEventByChapter.set(ev.chapterId, ev.id)
+    if (!curFirstEv || ev.sortOrder < curFirstEv.sortOrder) firstEventByChapter.set(ev.chapterId, ev.id)
   }
 
-  // Build lookup: snapMap[characterId][eventId] → snapshot
+  // snapMap[characterId][eventId] → snapshot
   const snapMap = new Map<string, Map<string, typeof snapshots[0]>>()
   for (const snap of snapshots) {
     if (!snapMap.has(snap.characterId)) snapMap.set(snap.characterId, new Map())
     snapMap.get(snap.characterId)!.set(snap.eventId, snap)
   }
 
+  // Inventory count series per character (across sortedEvents order)
+  const sparklineData = new Map<string, number[]>()
+  for (const char of characters) {
+    const charSnaps = snapMap.get(char.id)
+    if (!charSnaps) { sparklineData.set(char.id, []); continue }
+    sparklineData.set(char.id, sortedEvents.map((ev) => charSnaps.get(ev.id)?.inventoryItemIds.length ?? 0))
+  }
+
+  // Filtered character list
+  const q = filterText.trim().toLowerCase()
+  const displayedChars = q
+    ? characters.filter((c) => c.name.toLowerCase().includes(q))
+    : characters
+
+  // Export to PNG
+  const handleExport = useCallback(async () => {
+    const el = tableRef.current
+    if (!el) return
+    const html2canvas = (await import('html2canvas')).default
+    const canvas = await html2canvas(el, {
+      backgroundColor: null,
+      scale: 2,
+      useCORS: true,
+      // Capture full scroll width
+      width: el.scrollWidth,
+      height: el.scrollHeight,
+      windowWidth: el.scrollWidth,
+      windowHeight: el.scrollHeight,
+    })
+    const link = document.createElement('a')
+    link.download = 'character-arc.png'
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+  }, [])
+
   if (characters.length === 0 || sortedChapters.length === 0) {
     return (
       <EmptyState
         icon={BookOpen}
         title="Nothing to show"
-        description="Add characters and chapters to see the arc view."
+        description={
+          characters.length === 0
+            ? 'Add characters to get started.'
+            : sortedChapters.length === 0
+              ? 'Add chapters to your timeline to see the arc.'
+              : 'No snapshots recorded yet. Select an event to start tracking character states.'
+        }
         className="h-full"
       />
     )
@@ -90,15 +164,23 @@ export default function CharacterArcView() {
 
   const colWidth = viewMode === 'event' ? 100 : 110
 
-  function SnapCell({ snap, isActive, colKey }: {
+  function toggleExpand(charId: string, colId: string) {
+    const key = `${charId}:${colId}`
+    setExpandedKey((prev) => (prev === key ? null : key))
+  }
+
+  function SnapCell({ snap, isActive, charId, colId }: {
     snap: typeof snapshots[0] | undefined
     isActive: boolean
-    colKey: string
+    charId: string
+    colId: string
   }) {
+    const key = `${charId}:${colId}`
+    const isExpanded = expandedKey === key
+
     if (!snap) {
       return (
         <td
-          key={colKey}
           style={{ minWidth: colWidth, maxWidth: colWidth }}
           className={cn(
             'border-b border-r border-[hsl(var(--border))] px-2 py-1.5 text-center',
@@ -109,16 +191,21 @@ export default function CharacterArcView() {
         </td>
       )
     }
+
     const location = snap.currentLocationMarkerId ? markerById.get(snap.currentLocationMarkerId) : null
+    const hasNotes = !!snap.statusNotes
+
     return (
       <td
-        key={colKey}
         style={{ minWidth: colWidth, maxWidth: colWidth }}
         className={cn(
           'border-b border-r border-[hsl(var(--border))] px-2 py-1.5',
           isActive && 'bg-[hsl(var(--accent)/0.15)]',
-          !snap.isAlive && 'opacity-50'
+          !snap.isAlive && 'opacity-50',
+          hasNotes && 'cursor-pointer hover:bg-[hsl(var(--accent)/0.08)]'
         )}
+        onClick={() => hasNotes && toggleExpand(charId, colId)}
+        title={hasNotes && !isExpanded ? snap.statusNotes : undefined}
       >
         <div className="flex items-center gap-1">
           {snap.isAlive
@@ -139,7 +226,10 @@ export default function CharacterArcView() {
           </div>
         )}
         {snap.statusNotes && (
-          <p className="mt-0.5 truncate text-[10px] italic text-[hsl(var(--muted-foreground))]" title={snap.statusNotes}>
+          <p className={cn(
+            'mt-0.5 text-[10px] italic text-[hsl(var(--muted-foreground))]',
+            isExpanded ? 'whitespace-pre-wrap break-words' : 'truncate'
+          )}>
             {snap.statusNotes}
           </p>
         )}
@@ -150,14 +240,15 @@ export default function CharacterArcView() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2.5">
+      <div className="flex shrink-0 items-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2.5">
         <span className="text-sm font-semibold">Character Arc</span>
         <span className="text-xs text-[hsl(var(--muted-foreground))]">
-          {characters.length} characters · {viewMode === 'chapter' ? `${sortedChapters.length} chapters` : `${sortedEvents.length} events`}
+          {displayedChars.length}{q ? `/${characters.length}` : ''} chars ·{' '}
+          {viewMode === 'chapter' ? `${sortedChapters.length} ch` : `${sortedEvents.length} ev`}
         </span>
 
         {/* View toggle */}
-        <div className="ml-2 flex rounded-md border border-[hsl(var(--border))] overflow-hidden text-xs">
+        <div className="ml-1 flex rounded-md border border-[hsl(var(--border))] overflow-hidden text-xs">
           <button
             className={cn(
               'px-2.5 py-1 transition-colors',
@@ -182,22 +273,52 @@ export default function CharacterArcView() {
           </button>
         </div>
 
-        {activeEventId && (
+        {/* Character filter */}
+        <div className="relative ml-1 flex items-center">
+          <Search className="pointer-events-none absolute left-2 h-3 w-3 text-[hsl(var(--muted-foreground))]" />
+          <input
+            type="text"
+            value={filterText}
+            onChange={(e) => setFilterText(e.target.value)}
+            placeholder="Filter characters…"
+            className="h-7 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] pl-6 pr-6 text-xs text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
+          />
+          {filterText && (
+            <button
+              className="absolute right-1.5 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+              onClick={() => setFilterText('')}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+
+        <div className="ml-auto flex items-center gap-2">
+          {activeEventId && (
+            <button
+              className="text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] underline"
+              onClick={() => setActiveEventId(null)}
+            >
+              Clear filter
+            </button>
+          )}
           <button
-            className="ml-auto text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] underline"
-            onClick={() => setActiveEventId(null)}
+            onClick={handleExport}
+            className="flex items-center gap-1 rounded-md border border-[hsl(var(--border))] px-2 py-1 text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent)/0.4)] transition-colors"
+            title="Export arc as PNG"
           >
-            Clear filter
+            <Download className="h-3 w-3" />
+            PNG
           </button>
-        )}
+        </div>
       </div>
 
       {/* Scrollable table */}
-      <div className="flex-1 overflow-auto">
+      <div ref={tableRef} className="flex-1 overflow-auto">
         <table className="border-collapse text-xs" style={{ tableLayout: 'fixed' }}>
           <thead className="sticky top-0 z-10 bg-[hsl(var(--card))]">
             <tr>
-              <th className="sticky left-0 z-20 min-w-[160px] max-w-[160px] border-b border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-2 text-left font-semibold text-[hsl(var(--muted-foreground))]">
+              <th className="sticky left-0 z-20 min-w-[180px] max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-2 text-left font-semibold text-[hsl(var(--muted-foreground))]">
                 Character
               </th>
 
@@ -239,10 +360,7 @@ export default function CharacterArcView() {
                         ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
                         : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
                     )}
-                    onClick={() => {
-                      if (isActive) { setActiveEventId(null); return }
-                      setActiveEventId(ev.id)
-                    }}
+                    onClick={() => setActiveEventId(isActive ? null : ev.id)}
                     title={`Ch. ${ch?.number ?? '?'} — ${ev.title}`}
                   >
                     <div className="truncate text-[10px] opacity-60">Ch. {ch?.number ?? '?'}</div>
@@ -253,34 +371,49 @@ export default function CharacterArcView() {
             </tr>
           </thead>
           <tbody>
-            {characters.map((char, rowIdx) => {
-              const charSnaps = snapMap.get(char.id)
+            {displayedChars.map((char, rowIdx) => {
+              const charSnaps  = snapMap.get(char.id)
+              const color      = charColor(char)
+              const sparkline  = sparklineData.get(char.id) ?? []
+
               return (
                 <tr
                   key={char.id}
                   className={cn(
-                    rowIdx % 2 === 0
-                      ? 'bg-[hsl(var(--background))]'
-                      : 'bg-[hsl(var(--card))]'
+                    rowIdx % 2 === 0 ? 'bg-[hsl(var(--background))]' : 'bg-[hsl(var(--card))]'
                   )}
                 >
-                  <td className="sticky left-0 z-10 min-w-[160px] max-w-[160px] border-b border-r border-[hsl(var(--border))] bg-inherit px-3 py-2 font-medium">
-                    <span className="block truncate">{char.name}</span>
+                  {/* Name cell — left colour border + sparkline */}
+                  <td
+                    className="sticky left-0 z-10 min-w-[180px] max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-inherit px-3 py-2"
+                    style={{ borderLeft: `3px solid ${color}` }}
+                  >
+                    <span className="block truncate font-medium">{char.name}</span>
+                    <div className="mt-1 text-[hsl(var(--muted-foreground))]">
+                      <InventorySparkline counts={sparkline} />
+                    </div>
                   </td>
 
                   {viewMode === 'chapter' && sortedChapters.map((ch) => {
                     const lastEvId = lastEventByChapter.get(ch.id)
                     const snap = lastEvId ? charSnaps?.get(lastEvId) : undefined
-                    return <SnapCell key={ch.id} colKey={ch.id} snap={snap} isActive={ch.id === activeChapterId} />
+                    return <SnapCell key={ch.id} colId={ch.id} charId={char.id} snap={snap} isActive={ch.id === activeChapterId} />
                   })}
 
                   {viewMode === 'event' && sortedEvents.map((ev) => {
                     const snap = charSnaps?.get(ev.id)
-                    return <SnapCell key={ev.id} colKey={ev.id} snap={snap} isActive={ev.id === activeEventId} />
+                    return <SnapCell key={ev.id} colId={ev.id} charId={char.id} snap={snap} isActive={ev.id === activeEventId} />
                   })}
                 </tr>
               )
             })}
+            {displayedChars.length === 0 && (
+              <tr>
+                <td colSpan={99} className="py-8 text-center text-xs text-[hsl(var(--muted-foreground))] italic">
+                  No characters match "{filterText}"
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -290,7 +423,7 @@ export default function CharacterArcView() {
         <div className="flex items-center gap-1"><Heart className="h-2.5 w-2.5 text-green-400" /> Alive</div>
         <div className="flex items-center gap-1"><Skull className="h-2.5 w-2.5 text-red-400" /> Dead</div>
         <div className="flex items-center gap-1"><Minus className="h-2.5 w-2.5 text-[hsl(var(--border))]" /> No snapshot</div>
-        <div className="ml-auto">Click a column to set the active time cursor</div>
+        <div className="ml-auto">Click a column to set cursor · Click a notes cell to expand</div>
       </div>
     </div>
   )
