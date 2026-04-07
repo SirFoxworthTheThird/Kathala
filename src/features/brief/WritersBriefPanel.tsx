@@ -34,19 +34,19 @@ function Section({ title, icon: Icon, count, children }: {
 
 export function WritersBriefPanel() {
   const { worldId } = useParams<{ worldId: string }>()
-  const { briefOpen, setBriefOpen, activeChapterId } = useAppStore()
+  const { briefOpen, setBriefOpen, activeEventId } = useAppStore()
 
-  const chapter    = useChapter(activeChapterId)
-  const events     = useEvents(activeChapterId)
-  const snapshots  = useChapterSnapshots(activeChapterId)
+  const chapter    = useChapter(activeEventId)
+  const events     = useEvents(activeEventId)
+  const snapshots  = useChapterSnapshots(activeEventId)
   const characters = useCharacters(worldId ?? null)
   const rels       = useRelationships(worldId ?? null)
-  const relSnaps   = useChapterRelationshipSnapshots(activeChapterId)
+  const relSnaps   = useChapterRelationshipSnapshots(activeEventId)
   const items      = useItems(worldId ?? null)
   const markers    = useAllLocationMarkers(worldId ?? null)
   const itemPlacements = useLiveQuery(
-    () => activeChapterId ? db.itemPlacements.where('chapterId').equals(activeChapterId).toArray() : [],
-    [activeChapterId],
+    () => activeEventId ? db.itemPlacements.where('eventId').equals(activeEventId).toArray() : [],
+    [activeEventId],
     []
   )
 
@@ -110,7 +110,7 @@ export function WritersBriefPanel() {
 
         {/* Content */}
         <div className="flex-1 overflow-auto px-4 py-3">
-          {!activeChapterId ? (
+          {!activeEventId ? (
             <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">
               Select a chapter from the timeline bar to see the brief.
             </p>

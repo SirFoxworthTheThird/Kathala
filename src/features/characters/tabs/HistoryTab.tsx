@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 
 function SnapshotRow({
   snapshotId: _snapshotId,
-  chapterId,
+  eventId,
   isAlive,
   locationMarkerId,
   inventoryItemIds,
@@ -19,7 +19,7 @@ function SnapshotRow({
   onClick,
 }: {
   snapshotId: string
-  chapterId: string
+  eventId: string
   isAlive: boolean
   locationMarkerId: string | null
   inventoryItemIds: string[]
@@ -28,7 +28,7 @@ function SnapshotRow({
   isActive: boolean
   onClick: () => void
 }) {
-  const chapter = useChapter(chapterId)
+  const chapter = useChapter(eventId)
   const location = useLocationMarker(locationMarkerId)
   const items = useItems(worldId)
 
@@ -46,7 +46,7 @@ function SnapshotRow({
         <div className="flex items-center gap-2">
           <BookOpen className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" />
           <span className="text-sm font-medium">
-            {chapter ? `Ch. ${chapter.number} — ${chapter.title}` : chapterId}
+            {chapter ? `Ch. ${chapter.number} — ${chapter.title}` : eventId}
           </span>
         </div>
         {isAlive ? (
@@ -80,7 +80,7 @@ interface HistoryTabProps {
 
 export function HistoryTab({ character }: HistoryTabProps) {
   const snapshots = useCharacterSnapshots(character.id)
-  const { activeChapterId, setActiveChapterId } = useAppStore()
+  const { activeEventId, setActiveEventId } = useAppStore()
 
   if (snapshots.length === 0) {
     return (
@@ -96,14 +96,14 @@ export function HistoryTab({ character }: HistoryTabProps) {
         <SnapshotRow
           key={snap.id}
           snapshotId={snap.id}
-          chapterId={snap.chapterId}
+          eventId={snap.eventId}
           isAlive={snap.isAlive}
           locationMarkerId={snap.currentLocationMarkerId}
           inventoryItemIds={snap.inventoryItemIds}
           statusNotes={snap.statusNotes}
           worldId={character.worldId}
-          isActive={snap.chapterId === activeChapterId}
-          onClick={() => setActiveChapterId(snap.chapterId)}
+          isActive={snap.eventId === activeEventId}
+          onClick={() => setActiveEventId(snap.eventId)}
         />
       ))}
     </div>

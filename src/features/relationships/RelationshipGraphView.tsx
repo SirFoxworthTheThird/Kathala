@@ -20,8 +20,8 @@ import { useNavigate } from 'react-router-dom'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships, deleteRelationship } from '@/db/hooks/useRelationships'
 import { useBestRelationshipSnapshots, upsertRelationshipSnapshot } from '@/db/hooks/useRelationshipSnapshots'
-import { useChapter, useWorldChapters } from '@/db/hooks/useTimeline'
-import { useActiveChapterId } from '@/store'
+import { useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
+import { useActiveEventId } from '@/store'
 import { PortraitImage } from '@/components/PortraitImage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -95,12 +95,12 @@ const edgeTypes: EdgeTypes = { relationship: RelationshipEdge }
 // ─── Snapshot Editor ─────────────────────────────────────────────────────────
 
 function SnapshotEditor({
-  worldId, relationshipId, chapterId, base, existing,
+  worldId, relationshipId, eventId, base, existing,
   onSaved,
 }: {
   worldId: string
   relationshipId: string
-  chapterId: string
+  eventId: string
   base: { label: string; strength: RelationshipStrength; sentiment: RelationshipSentiment; description: string }
   existing: RelationshipSnapshot | undefined
   onSaved: () => void
@@ -113,7 +113,7 @@ function SnapshotEditor({
 
   async function save() {
     setSaving(true)
-    await upsertRelationshipSnapshot({ worldId, relationshipId, chapterId, label, strength, sentiment, description, isActive: true })
+    await upsertRelationshipSnapshot({ worldId, relationshipId, eventId, label, strength, sentiment, description, isActive: true })
     setSaving(false)
     onSaved()
   }
@@ -162,12 +162,12 @@ function SnapshotEditor({
 export default function RelationshipGraphView() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
-  const activeChapterId = useActiveChapterId()
-  const activeChapter = useChapter(activeChapterId)
+  const activeEventId = useActiveEventId()
   const allChapters = useWorldChapters(worldId ?? null)
+  const allEvents = useWorldEvents(worldId ?? null)
   const characters = useCharacters(worldId ?? null)
   const relationships = useRelationships(worldId ?? null)
-  const snapshots = useBestRelationshipSnapshots(worldId ?? null, activeChapterId)
+  const snapshots = useBestRelationshipSnapshots(worldId ?? null, activeEventId)
   const [selectedRelId, setSelectedRelId] = useState<string | null>(null)
   const [editingSnapshot, setEditingSnapshot] = useState(false)
   const [nodes, setNodes, onNodesChange] = useNodesState([])
@@ -192,23 +192,31 @@ export default function RelationshipGraphView() {
     })
   }, [characters, setNodes])
 
-  // Sync edges — filter by startChapterId, hide inactive, use snapshot data when available
+  // Sync edges — filter by startEventId, hide inactive, use snapshot data when available
   useEffect(() => {
     const snapshotMap = new Map(snapshots.map((s) => [s.relationshipId, s]))
     const chapterNumberById = new Map(allChapters.map((c) => [c.id, c.number]))
-    const activeChapterNum = activeChapterId ? (chapterNumberById.get(activeChapterId) ?? null) : null
+    const eventById = new Map(allEvents.map((e) => [e.id, e]))
+
+    function globalOrder(eventId: string) {
+      const ev = eventById.get(eventId)
+      if (!ev) return -1
+      return (chapterNumberById.get(ev.chapterId) ?? -1) * 10_000 + ev.sortOrder
+    }
+
+    const activeOrder = activeEventId ? globalOrder(activeEventId) : null
 
     const edges = relationships.flatMap((r) => {
-      // Hide relationships that haven't started yet in the active chapter
-      if (activeChapterNum !== null && r.startChapterId) {
-        const startNum = chapterNumberById.get(r.startChapterId)
-        if (startNum !== undefined && activeChapterNum < startNum) return []
+      // Hide relationships that haven't started yet in the active event
+      if (activeOrder !== null && r.startEventId) {
+        const startOrder = globalOrder(r.startEventId)
+        if (startOrder !== -1 && activeOrder < startOrder) return []
       }
 
       const snap = snapshotMap.get(r.id)
       const isActive = snap?.isActive ?? true
       // Hide relationships explicitly ended via a snapshot
-      if (activeChapterId && !isActive) return []
+      if (activeEventId && !isActive) return []
 
       return [{
         id: r.id,
@@ -218,21 +226,21 @@ export default function RelationshipGraphView() {
         data: {
           label:       snap?.label     ?? r.label,
           sentiment:   snap?.sentiment ?? r.sentiment,
-          isInherited: !!snap && !!activeChapterId && snap.chapterId !== activeChapterId,
+          isInherited: !!snap && !!activeEventId && snap.eventId !== activeEventId,
           onSelect:    (id: string) => {
             setSelectedRelId(id)
-            setEditingSnapshot(!!activeChapterId && !snapshotMap.has(id))
+            setEditingSnapshot(!!activeEventId && !snapshotMap.has(id))
           },
         },
       }]
     })
     setEdges(edges)
-  }, [relationships, snapshots, setEdges, activeChapterId, allChapters])
+  }, [relationships, snapshots, setEdges, activeEventId, allChapters, allEvents])
 
   const selectedRel      = relationships.find((r) => r.id === selectedRelId)
   const selectedSnap     = snapshots.find((s) => s.relationshipId === selectedRelId)
-  const isSnapInherited  = !!selectedSnap && !!activeChapterId && selectedSnap.chapterId !== activeChapterId
-  const inheritedChapter = isSnapInherited ? allChapters.find((c) => c.id === selectedSnap!.chapterId) : undefined
+  const isSnapInherited  = !!selectedSnap && !!activeEventId && selectedSnap.eventId !== activeEventId
+  const inheritedEvent   = isSnapInherited ? allEvents.find((e) => e.id === selectedSnap!.eventId) : undefined
   const charA            = characters.find((c) => c.id === selectedRel?.characterAId)
   const charB            = characters.find((c) => c.id === selectedRel?.characterBId)
 
@@ -284,9 +292,9 @@ export default function RelationshipGraphView() {
           <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-3">
             <div>
               <span className="text-sm font-semibold">Relationship</span>
-              {activeChapter && (
+              {activeEventId && (
                 <p className="text-[10px] text-[hsl(var(--muted-foreground))] leading-tight">
-                  Ch. {activeChapter.number} — {activeChapter.title}
+                  Event active
                 </p>
               )}
             </div>
@@ -308,9 +316,9 @@ export default function RelationshipGraphView() {
             {/* Inherited / base info */}
             {!editingSnapshot && (
               <>
-                {isSnapInherited && inheritedChapter && (
+                {isSnapInherited && inheritedEvent && (
                   <p className="text-[10px] italic text-[hsl(var(--muted-foreground))] text-center">
-                    Inherited from Ch. {inheritedChapter.number} — {inheritedChapter.title}
+                    Inherited from event: {inheritedEvent.title}
                   </p>
                 )}
                 <div className="text-xs text-[hsl(var(--muted-foreground))] space-y-1">
@@ -323,27 +331,27 @@ export default function RelationshipGraphView() {
               </>
             )}
 
-            {/* Chapter snapshot editor */}
-            {activeChapterId && editingSnapshot && worldId && (
+            {/* Event snapshot editor */}
+            {activeEventId && editingSnapshot && worldId && (
               <SnapshotEditor
                 worldId={worldId}
                 relationshipId={selectedRel.id}
-                chapterId={activeChapterId}
+                eventId={activeEventId}
                 base={selectedRel}
                 existing={isSnapInherited ? undefined : selectedSnap}
                 onSaved={() => setEditingSnapshot(false)}
               />
             )}
 
-            {activeChapterId && !editingSnapshot && (
+            {activeEventId && !editingSnapshot && (
               <Button size="sm" variant="outline" onClick={() => setEditingSnapshot(true)}>
-                {!selectedSnap ? 'Set for this chapter' : isSnapInherited ? 'Override for this chapter' : 'Edit chapter state'}
+                {!selectedSnap ? 'Set for this event' : isSnapInherited ? 'Override for this event' : 'Edit event state'}
               </Button>
             )}
           </div>
 
           <div className="border-t border-[hsl(var(--border))] p-3 flex flex-col gap-2">
-            {activeChapterId && worldId && (
+            {activeEventId && worldId && (
               <Button
                 variant="outline"
                 size="sm"
@@ -352,7 +360,7 @@ export default function RelationshipGraphView() {
                   await upsertRelationshipSnapshot({
                     worldId,
                     relationshipId: selectedRel.id,
-                    chapterId: activeChapterId,
+                    eventId: activeEventId,
                     label:       selectedSnap?.label       ?? selectedRel.label,
                     strength:    selectedSnap?.strength    ?? selectedRel.strength,
                     sentiment:   selectedSnap?.sentiment   ?? selectedRel.sentiment,
@@ -363,10 +371,10 @@ export default function RelationshipGraphView() {
                   setEditingSnapshot(false)
                 }}
               >
-                <Trash2 className="h-3.5 w-3.5" /> End in this chapter
+                <Trash2 className="h-3.5 w-3.5" /> End in this event
               </Button>
             )}
-            {!activeChapterId && (
+            {!activeEventId && (
               <Button
                 variant="destructive"
                 size="sm"

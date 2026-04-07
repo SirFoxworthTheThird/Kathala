@@ -10,7 +10,7 @@ import { useCharacterRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
 import { useChapterSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
-import { useActiveChapterId } from '@/store'
+import { useActiveEventId } from '@/store'
 import type { Character, CharacterSnapshot, LocationMarker, MapLayer, Relationship } from '@/types'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -69,11 +69,11 @@ export function CharacterSnapshotPanel({
   worldId,
   onClose,
 }: CharacterSnapshotPanelProps) {
-  const activeChapterId = useActiveChapterId()
+  const activeEventId = useActiveEventId()
   const relationships = useCharacterRelationships(character.id)
   const items = useItems(worldId)
   const travelModes = useTravelModes(worldId)
-  const chapterSnapshots = useChapterSnapshots(activeChapterId)
+  const chapterSnapshots = useChapterSnapshots(activeEventId)
   const navigate = useNavigate()
 
   // Local state for text fields (save on blur to avoid cursor jumping)
@@ -84,7 +84,7 @@ export function CharacterSnapshotPanel({
   useEffect(() => {
     setStatusNotes(snapshot?.statusNotes ?? '')
     setInventoryNotes(snapshot?.inventoryNotes ?? '')
-  }, [character.id, activeChapterId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [character.id, activeEventId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const locationMarker = snapshot?.currentLocationMarkerId
     ? allMarkers.find((m) => m.id === snapshot.currentLocationMarkerId)
@@ -108,7 +108,7 @@ export function CharacterSnapshotPanel({
     return {
       worldId,
       characterId: character.id,
-      chapterId: activeChapterId!,
+      eventId: activeEventId!,
       isAlive: snapshot?.isAlive ?? true,
       currentLocationMarkerId: snapshot?.currentLocationMarkerId ?? null,
       currentMapLayerId: snapshot?.currentMapLayerId ?? null,
@@ -119,8 +119,8 @@ export function CharacterSnapshotPanel({
     }
   }
 
-  async function saveField(patch: Partial<Omit<CharacterSnapshot, 'id' | 'worldId' | 'characterId' | 'chapterId' | 'createdAt' | 'updatedAt'>>) {
-    if (!activeChapterId) return
+  async function saveField(patch: Partial<Omit<CharacterSnapshot, 'id' | 'worldId' | 'characterId' | 'eventId' | 'createdAt' | 'updatedAt'>>) {
+    if (!activeEventId) return
     await upsertSnapshot({ ...baseData(), ...patch })
   }
 
@@ -181,13 +181,13 @@ export function CharacterSnapshotPanel({
         <div className="flex flex-col gap-4 p-4">
 
           {/* No chapter selected */}
-          {!activeChapterId && (
+          {!activeEventId && (
             <p className="text-xs italic text-[hsl(var(--muted-foreground))]">
               Select a chapter from the timeline bar to view and edit state.
             </p>
           )}
 
-          {activeChapterId && (
+          {activeEventId && (
             <>
               {/* Alive toggle */}
               <button

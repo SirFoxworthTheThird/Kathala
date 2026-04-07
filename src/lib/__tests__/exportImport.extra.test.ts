@@ -7,7 +7,7 @@ import { db } from '@/db/database'
 
 function makeExport(overrides: Partial<WorldExportFile> = {}): WorldExportFile {
   return {
-    version: 1,
+    version: 2,
     exportedAt: Date.now(),
     world: { id: 'world-extra', name: 'Extra World', description: '', coverImageId: null, createdAt: 1000, updatedAt: 1000 },
     mapLayers: [],
@@ -82,11 +82,12 @@ describe('importWorld — normalizeImport backfills', () => {
     expect(snaps).toHaveLength(0)
   })
 
-  it('backfills startChapterId on relationships that lack it', async () => {
+  it('backfills startEventId to null on v1 relationships that lack startChapterId', async () => {
     await db.delete()
     await db.open()
 
     const data = makeExport({
+      version: 1,
       relationships: [{
         id: 'rel-old',
         worldId: 'world-extra',
@@ -106,8 +107,35 @@ describe('importWorld — normalizeImport backfills', () => {
 
     const stored = await db.relationships.get('rel-old')
     expect(stored).toBeDefined()
-    // normalizeImport should have backfilled startChapterId to null
-    expect((stored as unknown as Record<string, unknown>).startChapterId).toBeNull()
+    // v1 migration: startChapterId (absent) → startEventId: null
+    expect((stored as unknown as Record<string, unknown>).startEventId).toBeNull()
+  })
+
+  it('backfills startEventId to null on v2 relationships that lack it', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      relationships: [{
+        id: 'rel-v2',
+        worldId: 'world-extra',
+        characterAId: 'c1',
+        characterBId: 'c2',
+        label: 'Bond',
+        strength: 'strong',
+        sentiment: 'positive',
+        description: '',
+        isBidirectional: true,
+        createdAt: 1000,
+        updatedAt: 1000,
+        // deliberately omit startEventId — simulates early v2 export
+      } as never],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.relationships.get('rel-v2')
+    expect(stored).toBeDefined()
+    expect((stored as unknown as Record<string, unknown>).startEventId).toBeNull()
   })
 
   it('backfills scalePixelsPerUnit and scaleUnit on old map layers', async () => {
@@ -197,7 +225,6 @@ describe('importWorld — normalizeImport backfills', () => {
         title: 'Chapter with Notes',
         synopsis: '',
         notes: 'Remember to foreshadow the betrayal here.',
-        travelDays: null,
         createdAt: 1000,
         updatedAt: 1000,
       }],
@@ -221,7 +248,6 @@ describe('importWorld — normalizeImport backfills', () => {
         title: 'New Chapter',
         synopsis: 'The hero sets off.',
         notes: '',
-        travelDays: null,
         createdAt: 1000,
         updatedAt: 1000,
       }],
@@ -291,7 +317,7 @@ describe('importWorld — characterMovements', () => {
         id: 'mov-1',
         worldId: 'world-extra',
         characterId: 'char-1',
-        chapterId: 'ch-1',
+        eventId: 'ev-1',
         waypoints: ['loc-a', 'loc-b', 'loc-c'],
         createdAt: 1000,
         updatedAt: 1000,
@@ -303,18 +329,18 @@ describe('importWorld — characterMovements', () => {
     expect(stored).toBeDefined()
     expect(stored!.waypoints).toEqual(['loc-a', 'loc-b', 'loc-c'])
     expect(stored!.characterId).toBe('char-1')
-    expect(stored!.chapterId).toBe('ch-1')
+    expect(stored!.eventId).toBe('ev-1')
   })
 
-  it('imports multiple movements for different characters and chapters', async () => {
+  it('imports multiple movements for different characters and events', async () => {
     await db.delete()
     await db.open()
 
     const data = makeExport({
       characterMovements: [
-        { id: 'mov-1', worldId: 'world-extra', characterId: 'char-1', chapterId: 'ch-1', waypoints: ['loc-a', 'loc-b'], createdAt: 1000, updatedAt: 1000 },
-        { id: 'mov-2', worldId: 'world-extra', characterId: 'char-2', chapterId: 'ch-1', waypoints: ['loc-c'], createdAt: 1000, updatedAt: 1000 },
-        { id: 'mov-3', worldId: 'world-extra', characterId: 'char-1', chapterId: 'ch-2', waypoints: ['loc-d', 'loc-e', 'loc-f'], createdAt: 1000, updatedAt: 1000 },
+        { id: 'mov-1', worldId: 'world-extra', characterId: 'char-1', eventId: 'ev-1', waypoints: ['loc-a', 'loc-b'], createdAt: 1000, updatedAt: 1000 },
+        { id: 'mov-2', worldId: 'world-extra', characterId: 'char-2', eventId: 'ev-1', waypoints: ['loc-c'], createdAt: 1000, updatedAt: 1000 },
+        { id: 'mov-3', worldId: 'world-extra', characterId: 'char-1', eventId: 'ev-2', waypoints: ['loc-d', 'loc-e', 'loc-f'], createdAt: 1000, updatedAt: 1000 },
       ],
     })
     await importWorld(makeFile(data))
@@ -369,19 +395,23 @@ describe('importWorld — travelModes', () => {
     await expect(importWorld(makeFile(bad))).rejects.toThrow('travelModes is not an array')
   })
 
-  it('backfills travelDays to null on chapters that lack it', async () => {
+  it('backfills travelDays to null on events that lack it', async () => {
     await db.delete()
     await db.open()
 
     const data = makeExport({
-      chapters: [{
-        id: 'ch-travel',
+      events: [{
+        id: 'ev-travel',
         worldId: 'world-extra',
+        chapterId: 'ch-1',
         timelineId: 'tl-1',
-        number: 1,
-        title: 'Old Chapter',
-        synopsis: '',
-        notes: '',
+        title: 'Old Event',
+        description: '',
+        locationMarkerId: null,
+        involvedCharacterIds: [],
+        involvedItemIds: [],
+        tags: [],
+        sortOrder: 0,
         // deliberately omit travelDays — simulates pre-feature export
         createdAt: 1000,
         updatedAt: 1000,
@@ -389,24 +419,28 @@ describe('importWorld — travelModes', () => {
     })
     await importWorld(makeFile(data))
 
-    const stored = await db.chapters.get('ch-travel')
+    const stored = await db.events.get('ev-travel')
     expect(stored).toBeDefined()
     expect((stored as unknown as Record<string, unknown>).travelDays).toBeNull()
   })
 
-  it('preserves travelDays when already set', async () => {
+  it('preserves travelDays when already set on an event', async () => {
     await db.delete()
     await db.open()
 
     const data = makeExport({
-      chapters: [{
-        id: 'ch-days',
+      events: [{
+        id: 'ev-days',
         worldId: 'world-extra',
+        chapterId: 'ch-1',
         timelineId: 'tl-1',
-        number: 1,
-        title: 'Journey Chapter',
-        synopsis: '',
-        notes: '',
+        title: 'Journey Event',
+        description: '',
+        locationMarkerId: null,
+        involvedCharacterIds: [],
+        involvedItemIds: [],
+        tags: [],
+        sortOrder: 0,
         travelDays: 7,
         createdAt: 1000,
         updatedAt: 1000,
@@ -414,7 +448,7 @@ describe('importWorld — travelModes', () => {
     })
     await importWorld(makeFile(data))
 
-    const stored = await db.chapters.get('ch-days')
+    const stored = await db.events.get('ev-days')
     expect(stored!.travelDays).toBe(7)
   })
 
@@ -427,7 +461,7 @@ describe('importWorld — travelModes', () => {
         id: 'snap-1',
         worldId: 'world-extra',
         characterId: 'char-1',
-        chapterId: 'ch-1',
+        eventId: 'ev-1',
         isAlive: true,
         currentLocationMarkerId: null,
         currentMapLayerId: null,
@@ -463,7 +497,7 @@ describe('importWorld — travelModes', () => {
         id: 'snap-2',
         worldId: 'world-extra',
         characterId: 'char-2',
-        chapterId: 'ch-2',
+        eventId: 'ev-2',
         isAlive: true,
         currentLocationMarkerId: null,
         currentMapLayerId: null,
@@ -482,6 +516,140 @@ describe('importWorld — travelModes', () => {
   })
 })
 
+// ── v1 → v2 migration ────────────────────────────────────────────────────────
+
+describe('importWorld — v1 → v2 migration', () => {
+  it('remaps snapshot chapterId to eventId using first event in that chapter', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      version: 1,
+      chapters: [{ id: 'ch-1', worldId: 'world-extra', timelineId: 'tl-1', number: 1, title: 'Ch1', synopsis: '', notes: '', createdAt: 1000, updatedAt: 1000 }],
+      events: [
+        { id: 'ev-b', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'B', description: '', locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 10, travelDays: null, createdAt: 1000, updatedAt: 1000 },
+        { id: 'ev-a', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'A', description: '', locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, createdAt: 1000, updatedAt: 1000 },
+      ],
+      characterSnapshots: [{
+        id: 'snap-v1',
+        worldId: 'world-extra',
+        characterId: 'char-1',
+        chapterId: 'ch-1', // v1 format
+        isAlive: true,
+        currentLocationMarkerId: null,
+        currentMapLayerId: null,
+        inventoryItemIds: [],
+        inventoryNotes: '',
+        statusNotes: '',
+        travelModeId: null,
+        createdAt: 1000,
+        updatedAt: 1000,
+      } as never],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.characterSnapshots.get('snap-v1')
+    expect(stored).toBeDefined()
+    // should be mapped to first event (sortOrder 0 = ev-a)
+    expect(stored!.eventId).toBe('ev-a')
+    expect((stored as unknown as Record<string, unknown>).chapterId).toBeUndefined()
+  })
+
+  it('creates synthetic event for v1 chapters with no events', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      version: 1,
+      chapters: [{ id: 'ch-noev', worldId: 'world-extra', timelineId: 'tl-1', number: 1, title: 'Ch No Ev', synopsis: '', notes: '', createdAt: 1000, updatedAt: 1000 }],
+      events: [], // no events for this chapter
+      characterSnapshots: [{
+        id: 'snap-noev',
+        worldId: 'world-extra',
+        characterId: 'char-1',
+        chapterId: 'ch-noev',
+        isAlive: true,
+        currentLocationMarkerId: null,
+        currentMapLayerId: null,
+        inventoryItemIds: [],
+        inventoryNotes: '',
+        statusNotes: '',
+        travelModeId: null,
+        createdAt: 1000,
+        updatedAt: 1000,
+      } as never],
+    })
+    await importWorld(makeFile(data))
+
+    // A synthetic event should have been created for ch-noev
+    const events = await db.events.where('worldId').equals('world-extra').toArray()
+    expect(events).toHaveLength(1)
+    expect(events[0].chapterId).toBe('ch-noev')
+
+    // The snapshot should be keyed to that synthetic event
+    const stored = await db.characterSnapshots.get('snap-noev')
+    expect(stored!.eventId).toBe(events[0].id)
+  })
+
+  it('remaps startChapterId to startEventId on v1 relationships', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      version: 1,
+      chapters: [{ id: 'ch-rel', worldId: 'world-extra', timelineId: 'tl-1', number: 1, title: 'Ch', synopsis: '', notes: '', createdAt: 1000, updatedAt: 1000 }],
+      events: [{ id: 'ev-rel', worldId: 'world-extra', chapterId: 'ch-rel', timelineId: 'tl-1', title: 'Ev', description: '', locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, createdAt: 1000, updatedAt: 1000 }],
+      relationships: [{
+        id: 'rel-v1',
+        worldId: 'world-extra',
+        characterAId: 'c1',
+        characterBId: 'c2',
+        label: 'Friends',
+        strength: 'strong',
+        sentiment: 'positive',
+        description: '',
+        isBidirectional: true,
+        startChapterId: 'ch-rel', // v1 format
+        createdAt: 1000,
+        updatedAt: 1000,
+      } as never],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.relationships.get('rel-v1')
+    expect(stored).toBeDefined()
+    expect((stored as unknown as Record<string, unknown>).startEventId).toBe('ev-rel')
+    expect((stored as unknown as Record<string, unknown>).startChapterId).toBeUndefined()
+  })
+
+  it('sets startEventId to null when v1 startChapterId was null', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      version: 1,
+      relationships: [{
+        id: 'rel-null',
+        worldId: 'world-extra',
+        characterAId: 'c1',
+        characterBId: 'c2',
+        label: 'Neutral',
+        strength: 'weak',
+        sentiment: 'neutral',
+        description: '',
+        isBidirectional: false,
+        startChapterId: null,
+        createdAt: 1000,
+        updatedAt: 1000,
+      } as never],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.relationships.get('rel-null')
+    expect((stored as unknown as Record<string, unknown>).startEventId).toBeNull()
+  })
+})
+
 // ── full round-trip with all optional arrays populated ────────────────────────
 
 describe('importWorld — full optional arrays', () => {
@@ -495,13 +663,13 @@ describe('importWorld — full optional arrays', () => {
       }],
       chapters: [{
         id: 'ch-1', worldId: 'world-extra', timelineId: 'tl-1', number: 1,
-        title: 'Chapter One', synopsis: '', notes: '', travelDays: null, createdAt: 1000, updatedAt: 1000,
+        title: 'Chapter One', synopsis: '', notes: '', createdAt: 1000, updatedAt: 1000,
       }],
       events: [{
         id: 'ev-1', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1',
         title: 'Battle Begins', description: '', locationMarkerId: null,
         involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0,
-        createdAt: 1000, updatedAt: 1000,
+        travelDays: null, createdAt: 1000, updatedAt: 1000,
       }],
     })
 

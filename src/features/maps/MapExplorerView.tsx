@@ -5,15 +5,15 @@ import {
   Plus, Upload, Users, Map as MapIcon, Trash2, Undo2,
   ChevronRight, ChevronDown, MapPin, Package, Layers, Ruler, X, Route, Search,
 } from 'lucide-react'
-import { useAppStore, useActiveMapLayerId, useActiveChapterId, useMapLayerHistory, type PlaybackSpeed } from '@/store'
+import { useAppStore, useActiveMapLayerId, useActiveEventId, useMapLayerHistory, type PlaybackSpeed } from '@/store'
 import { useRootMapLayers, useMapLayer, useMapLayers, deleteMapLayer, updateMapLayer } from '@/db/hooks/useMapLayers'
-import { useChapters, useTimelines } from '@/db/hooks/useTimeline'
+import { useChapters, useTimelines, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useLocationMarkers, useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useBestSnapshots, useWorldSnapshots, upsertSnapshot, fetchSnapshot } from '@/db/hooks/useSnapshots'
-import { useChapterMovements, appendWaypoint, clearMovement, removeLastWaypoint } from '@/db/hooks/useMovements'
+import { useEventMovements, appendWaypoint, clearMovement, removeLastWaypoint } from '@/db/hooks/useMovements'
 import { useItems } from '@/db/hooks/useItems'
-import { useChapterItemPlacements } from '@/db/hooks/useItemPlacements'
+import { useEventItemPlacements } from '@/db/hooks/useItemPlacements'
 import { useItemSnapshot, upsertItemSnapshot } from '@/db/hooks/useItemSnapshots'
 import { useChapterLocationSnapshots } from '@/db/hooks/useLocationSnapshots'
 import type { CharacterPin, MovementLine, PinAnimation, ScaleCalibrationPoint } from './LeafletMapCanvas'
@@ -395,7 +395,7 @@ function CharactersSection({
   characters,
   snapshots,
   allMarkers,
-  activeChapterId,
+  activeEventId,
   worldId,
   scalePixelsPerUnit,
   scaleUnit,
@@ -406,7 +406,7 @@ function CharactersSection({
   characters: Character[]
   snapshots: CharacterSnapshot[]
   allMarkers: LocationMarker[]
-  activeChapterId: string | null
+  activeEventId: string | null
   worldId: string
   scalePixelsPerUnit: number | null
   scaleUnit: string | null
@@ -414,7 +414,7 @@ function CharactersSection({
   onDragEnd: () => void
   onFocus: (characterId: string) => void
 }) {
-  const movements = useChapterMovements(worldId, activeChapterId)
+  const movements = useEventMovements(worldId, activeEventId)
   const [search, setSearch] = useState('')
   const filtered = search.trim()
     ? characters.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
@@ -422,7 +422,7 @@ function CharactersSection({
 
   return (
     <SidebarSection title="Characters" icon={Users} count={characters.length}>
-      {!activeChapterId && (
+      {!activeEventId && (
         <p className="px-3 pb-2 text-[10px] italic text-[hsl(var(--muted-foreground))]">
           Select a chapter to place characters.
         </p>
@@ -444,7 +444,7 @@ function CharactersSection({
             return (
               <div key={c.id} className="flex flex-col gap-0.5">
                 <div
-                  draggable={!!activeChapterId}
+                  draggable={!!activeEventId}
                   onDragStart={(e) => {
                     e.dataTransfer.setData('characterId', c.id)
                     e.dataTransfer.effectAllowed = 'move'
@@ -453,7 +453,7 @@ function CharactersSection({
                   onDragEnd={onDragEnd}
                   onClick={() => onFocus(c.id)}
                   className={`flex items-center gap-2 rounded-md border bg-[hsl(var(--muted))] px-2 py-1.5 select-none cursor-pointer ${
-                    activeChapterId ? 'hover:border-[hsl(var(--ring))]' : 'opacity-60'
+                    activeEventId ? 'hover:border-[hsl(var(--ring))]' : 'opacity-60'
                   }`}
                   style={{ borderColor: movement ? color : 'hsl(var(--border))' }}
                 >
@@ -470,7 +470,7 @@ function CharactersSection({
                   </div>
                 </div>
 
-                {movement && movement.waypoints.length >= 2 && activeChapterId && (
+                {movement && movement.waypoints.length >= 2 && activeEventId && (
                   <div className="flex items-center gap-1 pl-2">
                     <span className="h-1 w-3 rounded-full shrink-0" style={{ background: color }} />
                     <p className="flex-1 truncate text-[10px] text-[hsl(var(--muted-foreground))]">
@@ -487,14 +487,14 @@ function CharactersSection({
                     <button
                       title="Undo last stop"
                       className="rounded p-0.5 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
-                      onClick={() => removeLastWaypoint(c.id, activeChapterId)}
+                      onClick={() => removeLastWaypoint(c.id, activeEventId)}
                     >
                       <Undo2 className="h-3 w-3" />
                     </button>
                     <button
                       title="Clear path"
                       className="rounded p-0.5 text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
-                      onClick={() => clearMovement(c.id, activeChapterId)}
+                      onClick={() => clearMovement(c.id, activeEventId)}
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
@@ -577,18 +577,18 @@ const CONDITION_COLORS: Record<string, string> = {
 
 function ItemRow({
   item,
-  activeChapterId,
+  activeEventId,
   worldId,
   locationName,
   onFocus,
 }: {
   item: Item
-  activeChapterId: string | null
+  activeEventId: string | null
   worldId: string
   locationName: string | null
   onFocus: () => void
 }) {
-  const snap = useItemSnapshot(item.id, activeChapterId)
+  const snap = useItemSnapshot(item.id, activeEventId)
   const [expanded, setExpanded] = useState(false)
   const condition = snap?.condition ?? 'intact'
 
@@ -610,19 +610,19 @@ function ItemRow({
             <p className="truncate text-[10px] opacity-60">{locationName}</p>
           )}
         </div>
-        {activeChapterId && (
+        {activeEventId && (
           <span
             className="h-1.5 w-1.5 shrink-0 rounded-full"
             style={{ background: CONDITION_COLORS[condition] ?? '#94a3b8' }}
             title={condition}
           />
         )}
-        {activeChapterId && (
+        {activeEventId && (
           <ChevronDown className={`h-3 w-3 shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`} />
         )}
       </div>
 
-      {expanded && activeChapterId && (
+      {expanded && activeEventId && (
         <div className="flex flex-col gap-1.5 border-t border-[hsl(var(--border))] px-2 pb-2 pt-1.5">
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] font-medium text-[hsl(var(--muted-foreground))] w-16 shrink-0">Condition</span>
@@ -633,7 +633,7 @@ function ItemRow({
                 upsertItemSnapshot({
                   worldId,
                   itemId: item.id,
-                  chapterId: activeChapterId,
+                  eventId: activeEventId,
                   condition: e.target.value,
                   notes: snap?.notes ?? '',
                 })
@@ -653,7 +653,7 @@ function ItemRow({
               upsertItemSnapshot({
                 worldId,
                 itemId: item.id,
-                chapterId: activeChapterId,
+                eventId: activeEventId,
                 condition: snap?.condition ?? 'intact',
                 notes: e.target.value,
               })
@@ -667,19 +667,19 @@ function ItemRow({
 
 function ItemsSection({
   worldId,
-  activeChapterId,
+  activeEventId,
   allMarkers,
   snapshots,
   onFocus,
 }: {
   worldId: string
-  activeChapterId: string | null
+  activeEventId: string | null
   allMarkers: LocationMarker[]
   snapshots: CharacterSnapshot[]
   onFocus: (itemId: string) => void
 }) {
   const items = useItems(worldId)
-  const placements = useChapterItemPlacements(activeChapterId)
+  const placements = useEventItemPlacements(activeEventId)
   const [search, setSearch] = useState('')
   const filtered = search.trim()
     ? items.filter((i) => i.name.toLowerCase().includes(search.toLowerCase()))
@@ -713,7 +713,7 @@ function ItemsSection({
             <ItemRow
               key={item.id}
               item={item}
-              activeChapterId={activeChapterId}
+              activeEventId={activeEventId}
               worldId={worldId}
               locationName={getItemLocation(item.id)}
               onFocus={() => onFocus(item.id)}
@@ -992,13 +992,13 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const allLayers = useMapLayers(worldId)
   const allMarkers = useAllLocationMarkers(worldId)
   const characters = useCharacters(worldId)
-  const activeChapterId = useActiveChapterId()
-  const snapshots = useBestSnapshots(worldId, activeChapterId)
+  const activeEventId = useActiveEventId()
+  const snapshots = useBestSnapshots(worldId, activeEventId)
   const allSnapshots = useWorldSnapshots(worldId)
   const blobUrls = useWorldBlobUrls(worldId)
-  const movements = useChapterMovements(worldId, activeChapterId)
-  const chapterPlacements = useChapterItemPlacements(activeChapterId)
-  const chapterLocSnaps = useChapterLocationSnapshots(activeChapterId)
+  const movements = useEventMovements(worldId, activeEventId)
+  const chapterPlacements = useEventItemPlacements(activeEventId)
+  const chapterLocSnaps = useChapterLocationSnapshots(activeEventId)
 
   const [isDraggingCharacter, setIsDraggingCharacter] = useState(false)
   const crossLayerPanTargetRef = useRef<[number, number] | null>(null)
@@ -1077,16 +1077,27 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
 
   const timelines = useTimelines(worldId)
   const chapters = useChapters(timelines[0]?.id ?? null)
-  const activeChapter = activeChapterId ? chapters.find((c) => c.id === activeChapterId) : null
+  const allWorldEvents = useWorldEvents(worldId)
+  // Derive active chapter from the active event's chapterId
+  const activeEvent   = activeEventId ? allWorldEvents.find((e) => e.id === activeEventId) ?? null : null
+  const activeChapter = activeEvent ? chapters.find((c) => c.id === activeEvent.chapterId) ?? null : null
   const activeChapterTitle = activeChapter ? `Ch.${activeChapter.number} — ${activeChapter.title}` : null
   const prevChapter = activeChapter
     ? chapters.find((c) => c.timelineId === activeChapter.timelineId && c.number === activeChapter.number - 1)
     : null
+  // Derive previous chapter's last event to find snapshots for snapshot inheritance display
+  const prevChapterEvents = useMemo(
+    () => prevChapter
+      ? allWorldEvents.filter((e) => e.chapterId === prevChapter.id).sort((a, b) => b.sortOrder - a.sortOrder)
+      : [],
+    [allWorldEvents, prevChapter?.id], // eslint-disable-line react-hooks/exhaustive-deps
+  )
+  const prevChapterLastEventId = prevChapterEvents[0]?.id ?? null
   // Derive previous chapter snapshots synchronously from world-level data (same cache as current
-  // chapter) so they are available in the same render that activeChapterId changes.
+  // event) so they are available in the same render that activeEventId changes.
   const prevSnapshots = useMemo(
-    () => prevChapter ? allSnapshots.filter((s) => s.chapterId === prevChapter.id) : [],
-    [allSnapshots, prevChapter?.id], // eslint-disable-line react-hooks/exhaustive-deps
+    () => prevChapterLastEventId ? allSnapshots.filter((s) => s.eventId === prevChapterLastEventId) : [],
+    [allSnapshots, prevChapterLastEventId], // eslint-disable-line react-hooks/exhaustive-deps
   )
 
   function handleMarkerClick(markerId: string) {
@@ -1120,7 +1131,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   // visit (departure maps first, then arrival maps, then same-map-only maps).
   // Each step carries its own PinAnimation; we navigate the active layer to match.
   useEffect(() => {
-    if (!isPlayingStory || !activeChapterId) {
+    if (!isPlayingStory || !activeEventId) {
       setPlaybackQueue([])
       setPlaybackStepIdx(0)
       return
@@ -1138,7 +1149,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     if (queue.length > 0 && queue[0].mapLayerId !== layerId) {
       setActiveMapLayerId(queue[0].mapLayerId)
     }
-  }, [activeChapterId, isPlayingStory]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeEventId, isPlayingStory]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // When the step index advances, navigate to that step's map layer
   useEffect(() => {
@@ -1212,18 +1223,18 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   }
 
   async function placeCharacterAtMarker(characterId: string, marker: LocationMarker) {
-    if (!activeChapterId) return
+    if (!activeEventId) return
     // Read from DB directly to avoid stale React state
-    const existingInDb = await fetchSnapshot(characterId, activeChapterId)
+    const existingInDb = await fetchSnapshot(characterId, activeEventId)
     const fromMarkerId = existingInDb?.currentLocationMarkerId
     // Use React state for non-location fields (isAlive, inventory, etc.)
     const existing = allSnapshots.find(
-      (s) => s.characterId === characterId && s.chapterId === activeChapterId
+      (s) => s.characterId === characterId && s.eventId === activeEventId
     )
     await upsertSnapshot({
       worldId,
       characterId,
-      chapterId: activeChapterId,
+      eventId: activeEventId,
       isAlive: existingInDb?.isAlive ?? existing?.isAlive ?? true,
       currentLocationMarkerId: marker.id,
       currentMapLayerId: marker.mapLayerId,
@@ -1232,7 +1243,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       statusNotes: existingInDb?.statusNotes ?? existing?.statusNotes ?? '',
       travelModeId: existingInDb?.travelModeId ?? existing?.travelModeId ?? null,
     })
-    await appendWaypoint(worldId, characterId, activeChapterId, marker.id, fromMarkerId ?? undefined)
+    await appendWaypoint(worldId, characterId, activeEventId, marker.id, fromMarkerId ?? undefined)
   }
 
   async function handleCharacterDrop(characterId: string, markerId: string) {
@@ -1276,7 +1287,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           characters={characters}
           snapshots={snapshots}
           allMarkers={allMarkers}
-          activeChapterId={activeChapterId}
+          activeEventId={activeEventId}
           worldId={worldId}
           scalePixelsPerUnit={layer.scalePixelsPerUnit ?? null}
           scaleUnit={layer.scaleUnit ?? null}
@@ -1292,7 +1303,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
         />
         <ItemsSection
           worldId={worldId}
-          activeChapterId={activeChapterId}
+          activeEventId={activeEventId}
           allMarkers={allMarkers}
           snapshots={snapshots}
           onFocus={focusOnItem}
@@ -1358,10 +1369,10 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
         </div>
 
         {/* Story playback notes overlay */}
-        {isPlayingStory && activeChapterId && activeChapter && worldId && (
+        {isPlayingStory && activeEventId && activeChapter && worldId && (
           <StoryNotesOverlay
-            key={activeChapterId}
-            chapterId={activeChapterId}
+            key={activeEventId}
+            eventId={activeEventId}
             worldId={worldId}
             playbackSpeed={playbackSpeed}
             chapterNumber={activeChapter.number}

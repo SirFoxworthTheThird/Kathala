@@ -4,7 +4,7 @@ import type { Character } from '@/types'
 import { useCharacterRelationships, createRelationship, updateRelationship, deleteRelationship } from '@/db/hooks/useRelationships'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useWorldChapters } from '@/db/hooks/useTimeline'
-import { useActiveChapterId } from '@/store'
+import { useActiveEventId } from '@/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -27,13 +27,13 @@ interface RelationshipDialogProps {
   onOpenChange: (open: boolean) => void
   character: Character
   otherCharacters: Character[]
-  startChapterId: string | null
+  startEventId: string | null
   startChapterLabel: string | null
   /** When set, the dialog is in edit mode for this relationship */
   editing?: Relationship
 }
 
-function RelationshipDialog({ open, onOpenChange, character, otherCharacters, startChapterId, startChapterLabel, editing }: RelationshipDialogProps) {
+function RelationshipDialog({ open, onOpenChange, character, otherCharacters, startEventId, startChapterLabel, editing }: RelationshipDialogProps) {
   const [targetId, setTargetId] = useState(editing?.characterAId === character.id ? (editing?.characterBId ?? '') : (editing?.characterAId ?? ''))
   const [label, setLabel] = useState(editing?.label ?? '')
   const [strength, setStrength] = useState<RelationshipStrength>(editing?.strength ?? 'moderate')
@@ -61,7 +61,7 @@ function RelationshipDialog({ open, onOpenChange, character, otherCharacters, st
         sentiment,
         description,
         isBidirectional: true,
-        startChapterId,
+        startEventId,
       })
     }
     setSaving(false)
@@ -143,12 +143,12 @@ export function RelationshipsTab({ character }: RelationshipsTabProps) {
   const relationships = useCharacterRelationships(character.id)
   const allChars = useCharacters(character.worldId)
   const allChapters = useWorldChapters(character.worldId)
-  const activeChapterId = useActiveChapterId()
+  const activeEventId = useActiveEventId()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingRel, setEditingRel] = useState<Relationship | null>(null)
 
   const chapterById = new Map(allChapters.map((c) => [c.id, c]))
-  const activeChapter = activeChapterId ? chapterById.get(activeChapterId) : undefined
+  const activeChapter = activeEventId ? chapterById.get(activeEventId) : undefined
   const activeChapterNum = activeChapter?.number ?? null
 
   const otherChars = allChars.filter((c) => c.id !== character.id)
@@ -156,8 +156,8 @@ export function RelationshipsTab({ character }: RelationshipsTabProps) {
   const visibleRelationships = activeChapterNum === null
     ? relationships
     : relationships.filter((r) => {
-        if (!r.startChapterId) return true
-        const startChapter = chapterById.get(r.startChapterId)
+        if (!r.startEventId) return true
+        const startChapter = chapterById.get(r.startEventId)
         return startChapter ? startChapter.number <= activeChapterNum : true
       })
 
@@ -183,7 +183,7 @@ export function RelationshipsTab({ character }: RelationshipsTabProps) {
       ) : (
         visibleRelationships.map((rel) => {
           const other = getOtherChar(rel)
-          const startCh = rel.startChapterId ? chapterById.get(rel.startChapterId) : undefined
+          const startCh = rel.startEventId ? chapterById.get(rel.startEventId) : undefined
           return (
             <div key={rel.id} className="flex items-start justify-between rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3">
               <div className="min-w-0 flex-1">
@@ -233,7 +233,7 @@ export function RelationshipsTab({ character }: RelationshipsTabProps) {
         onOpenChange={setDialogOpen}
         character={character}
         otherCharacters={otherChars}
-        startChapterId={activeChapterId}
+        startEventId={activeEventId}
         startChapterLabel={startChapterLabel}
       />
       {editingRel && (
@@ -242,7 +242,7 @@ export function RelationshipsTab({ character }: RelationshipsTabProps) {
           onOpenChange={(open) => { if (!open) setEditingRel(null) }}
           character={character}
           otherCharacters={otherChars}
-          startChapterId={activeChapterId}
+          startEventId={activeEventId}
           startChapterLabel={startChapterLabel}
           editing={editingRel}
         />

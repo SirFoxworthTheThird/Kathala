@@ -7,7 +7,7 @@ import { db } from '@/db/database'
 
 function makeExport(overrides: Partial<WorldExportFile> = {}): WorldExportFile {
   return {
-    version: 1,
+    version: 2,
     exportedAt: Date.now(),
     world: { id: 'world-test', name: 'Test World', description: '', coverImageId: null, createdAt: 1000, updatedAt: 1000 },
     mapLayers: [],

@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, ChevronRight } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store'
-import { useWorldChapters } from '@/db/hooks/useTimeline'
+import { useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
@@ -23,7 +23,7 @@ interface Issue {
   message: string
   detail?: string
   navigatePath?: string
-  chapterId?: string
+  eventId?: string
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -81,9 +81,10 @@ function CategorySection({ title, icon: Icon, issues, onNavigate }: {
 export function ContinuityChecker() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
-  const { checkerOpen, setCheckerOpen, setActiveChapterId } = useAppStore()
+  const { checkerOpen, setCheckerOpen, setActiveEventId } = useAppStore()
 
   const chapters   = useWorldChapters(worldId ?? null)
+  const allEvents  = useWorldEvents(worldId ?? null)
   const characters = useCharacters(worldId ?? null)
   const rels       = useRelationships(worldId ?? null)
   const items      = useItems(worldId ?? null)
@@ -103,10 +104,15 @@ export function ContinuityChecker() {
     const chapById  = new Map(chapters.map((c) => [c.id, c]))
     const charById  = new Map(characters.map((c) => [c.id, c]))
     const itemById  = new Map(items.map((i) => [i.id, i]))
+    const eventById = new Map(allEvents.map((e) => [e.id, e]))
 
-    // Sort chapters by number for ordering comparisons
-    const chapsSorted = [...chapters].sort((a, b) => a.number - b.number)
-    const chapNumById = new Map(chapsSorted.map((c) => [c.id, c.number]))
+    // Global event order: chapter.number * 10_000 + event.sortOrder
+    const chapNumById = new Map(chapters.map((c) => [c.id, c.number]))
+    function eventOrder(eventId: string): number {
+      const ev = eventById.get(eventId)
+      if (!ev) return -1
+      return (chapNumById.get(ev.chapterId) ?? 0) * 10_000 + ev.sortOrder
+    }
 
     // ── Character checks ────────────────────────────────────────────────────
 
@@ -121,44 +127,45 @@ export function ContinuityChecker() {
       const char = charById.get(charId)
       if (!char) continue
 
-      // Find the first "dead" snapshot
+      // Find the earliest "dead" snapshot
       const deathSnap = charSnaps
         .filter((s) => !s.isAlive)
-        .sort((a, b) => (chapNumById.get(a.chapterId) ?? 0) - (chapNumById.get(b.chapterId) ?? 0))[0]
+        .sort((a, b) => eventOrder(a.eventId) - eventOrder(b.eventId))[0]
 
       if (!deathSnap) continue
 
-      const deathChapNum = chapNumById.get(deathSnap.chapterId) ?? 0
+      const deathOrder = eventOrder(deathSnap.eventId)
+      const deathChapNum = chapNumById.get(eventById.get(deathSnap.eventId)?.chapterId ?? '') ?? 0
 
-      // Any alive snapshot AFTER the death chapter
+      // Any alive snapshot AFTER the death event
       const aliveAfterDeath = charSnaps.filter((s) => {
         if (s.isAlive === false) return false
-        const num = chapNumById.get(s.chapterId) ?? 0
-        return num > deathChapNum
+        return eventOrder(s.eventId) > deathOrder
       })
 
       for (const snap of aliveAfterDeath) {
-        const ch = chapById.get(snap.chapterId)
+        const ev = eventById.get(snap.eventId)
+        const ch = ev ? chapById.get(ev.chapterId) : undefined
         out.push({
-          id: `dead-then-alive-${charId}-${snap.chapterId}`,
+          id: `dead-then-alive-${charId}-${snap.eventId}`,
           severity: 'error',
           category: 'character',
           message: `${char.name} is alive in Ch. ${ch?.number ?? '?'} after dying in Ch. ${deathChapNum}`,
-          detail: `Death recorded in Ch. ${deathChapNum} — ${chapById.get(deathSnap.chapterId)?.title ?? ''}`,
-          navigatePath: `/worlds/${worldId}/timeline/${snap.chapterId}`,
-          chapterId: snap.chapterId,
+          detail: `Death recorded in Ch. ${deathChapNum} — ${chapById.get(eventById.get(deathSnap.eventId)?.chapterId ?? '')?.title ?? ''}`,
+          navigatePath: `/worlds/${worldId}/timeline/${snap.eventId}`,
+          eventId: snap.eventId,
         })
       }
 
-      // Snapshot referencing a deleted chapter
+      // Snapshot referencing a deleted event
       for (const snap of charSnaps) {
-        if (!chapById.has(snap.chapterId)) {
+        if (!eventById.has(snap.eventId)) {
           out.push({
             id: `orphan-snap-${snap.id}`,
             severity: 'warning',
             category: 'character',
-            message: `${char.name} has a snapshot for a deleted chapter`,
-            detail: `Snapshot ID ${snap.id} — chapter no longer exists`,
+            message: `${char.name} has a snapshot for a deleted event`,
+            detail: `Snapshot ID ${snap.id} — event no longer exists`,
           })
         }
       }
@@ -166,27 +173,28 @@ export function ContinuityChecker() {
 
     // ── Item checks ─────────────────────────────────────────────────────────
 
-    // Group item placements by chapterId then itemId
-    const placementsByChap = new Map<string, ItemPlacement[]>()
+    // Group item placements by eventId
+    const placementsByEvent = new Map<string, ItemPlacement[]>()
     for (const p of (allItemPlacements ?? [])) {
-      if (!placementsByChap.has(p.chapterId)) placementsByChap.set(p.chapterId, [])
-      placementsByChap.get(p.chapterId)!.push(p)
+      if (!placementsByEvent.has(p.eventId)) placementsByEvent.set(p.eventId, [])
+      placementsByEvent.get(p.eventId)!.push(p)
     }
 
-    // Group snapshots by chapter to check inventory duplication
-    const snapsByChap = new Map<string, CharacterSnapshot[]>()
+    // Group snapshots by eventId to check inventory duplication
+    const snapsByEvent = new Map<string, CharacterSnapshot[]>()
     for (const snap of snapshots) {
-      if (!snapsByChap.has(snap.chapterId)) snapsByChap.set(snap.chapterId, [])
-      snapsByChap.get(snap.chapterId)!.push(snap)
+      if (!snapsByEvent.has(snap.eventId)) snapsByEvent.set(snap.eventId, [])
+      snapsByEvent.get(snap.eventId)!.push(snap)
     }
 
-    for (const [chapId, chSnaps] of snapsByChap) {
-      const ch = chapById.get(chapId)
+    for (const [evId, evSnaps] of snapsByEvent) {
+      const ev = eventById.get(evId)
+      const ch = ev ? chapById.get(ev.chapterId) : undefined
       if (!ch) continue
 
-      // Build a count of each item across all inventories in this chapter
+      // Build a count of each item across all inventories in this event
       const itemOwnerCount = new Map<string, string[]>()
-      for (const snap of chSnaps) {
+      for (const snap of evSnaps) {
         for (const itemId of snap.inventoryItemIds) {
           if (!itemOwnerCount.has(itemId)) itemOwnerCount.set(itemId, [])
           itemOwnerCount.get(itemId)!.push(snap.characterId)
@@ -194,8 +202,8 @@ export function ContinuityChecker() {
       }
 
       // Also count items placed at locations
-      const chapPlacements = placementsByChap.get(chapId) ?? []
-      for (const p of chapPlacements) {
+      const evPlacements = placementsByEvent.get(evId) ?? []
+      for (const p of evPlacements) {
         if (!itemOwnerCount.has(p.itemId)) itemOwnerCount.set(p.itemId, [])
         itemOwnerCount.get(p.itemId)!.push(`location:${p.locationMarkerId}`)
       }
@@ -208,13 +216,13 @@ export function ContinuityChecker() {
             return charById.get(o)?.name ?? 'unknown'
           })
           out.push({
-            id: `dup-item-${itemId}-${chapId}`,
+            id: `dup-item-${itemId}-${evId}`,
             severity: 'error',
             category: 'item',
             message: `"${item?.name ?? itemId}" appears in multiple places in Ch. ${ch.number}`,
             detail: `Held by: ${ownerNames.join(', ')}`,
-            navigatePath: `/worlds/${worldId}/timeline/${chapId}`,
-            chapterId: chapId,
+            navigatePath: `/worlds/${worldId}/timeline/${evId}`,
+            eventId: evId,
           })
         }
       }
@@ -223,18 +231,19 @@ export function ContinuityChecker() {
     // ── Relationship checks ──────────────────────────────────────────────────
 
     for (const rel of rels) {
-      if (!rel.startChapterId) continue
-      const startNum = chapNumById.get(rel.startChapterId) ?? 0
+      if (!rel.startEventId) continue
+      const startOrder = eventOrder(rel.startEventId)
+      const startChapNum = chapNumById.get(eventById.get(rel.startEventId)?.chapterId ?? '') ?? 0
 
-      // Any snapshot for a chapter BEFORE the relationship started
+      // Any snapshot for an event BEFORE the relationship started
       const earlySnaps = (allRelSnaps ?? []).filter((rs) => {
         if (rs.relationshipId !== rel.id) return false
-        const num = chapNumById.get(rs.chapterId) ?? 0
-        return num < startNum
+        return eventOrder(rs.eventId) < startOrder
       })
 
       for (const rs of earlySnaps) {
-        const ch = chapById.get(rs.chapterId)
+        const rsEv = eventById.get(rs.eventId)
+        const rsCh = rsEv ? chapById.get(rsEv.chapterId) : undefined
         const charA = charById.get(rel.characterAId)
         const charB = charById.get(rel.characterBId)
         out.push({
@@ -242,19 +251,19 @@ export function ContinuityChecker() {
           severity: 'warning',
           category: 'relationship',
           message: `Relationship snapshot exists before it started`,
-          detail: `${charA?.name ?? '?'} ↔ ${charB?.name ?? '?'} — snapshot in Ch. ${ch?.number ?? '?'} but relationship starts in Ch. ${startNum}`,
-          navigatePath: `/worlds/${worldId}/timeline/${rs.chapterId}`,
-          chapterId: rs.chapterId,
+          detail: `${charA?.name ?? '?'} ↔ ${charB?.name ?? '?'} — snapshot in Ch. ${rsCh?.number ?? '?'} but relationship starts in Ch. ${startChapNum}`,
+          navigatePath: `/worlds/${worldId}/timeline/${rs.eventId}`,
+          eventId: rs.eventId,
         })
       }
     }
 
     return out
-  }, [chapters, characters, rels, items, snapshots, allRelSnaps, allItemPlacements, worldId])
+  }, [chapters, allEvents, characters, rels, items, snapshots, allRelSnaps, allItemPlacements, worldId])
 
   function handleNavigate(issue: Issue) {
-    if (!issue.navigatePath || !issue.chapterId) return
-    setActiveChapterId(issue.chapterId)
+    if (!issue.navigatePath || !issue.eventId) return
+    setActiveEventId(issue.eventId)
     navigate(issue.navigatePath)
     setCheckerOpen(false)
   }

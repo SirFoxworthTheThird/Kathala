@@ -83,7 +83,8 @@
       "Bash(npx @playwright/test test e2e/maps.spec.ts --reporter=line)",
       "Bash(npx @playwright/test test --reporter=line)",
       "Bash(npx vitest:*)",
-      "Bash(echo \"EXIT:$?\")"
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(echo \"exit: $?\")"
     ]
   }
 }

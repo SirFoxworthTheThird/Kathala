@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useAppStore } from '@/store'
-import { useWorldChapters } from '@/db/hooks/useTimeline'
+import { useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
@@ -45,7 +45,7 @@ function SectionHeader({ title, icon: Icon }: { title: string; icon: React.Eleme
 
 export function ChapterDiffModal() {
   const { worldId } = useParams<{ worldId: string }>()
-  const { diffOpen, setDiffOpen, activeChapterId } = useAppStore()
+  const { diffOpen, setDiffOpen, activeEventId } = useAppStore()
   const [compareChapterId, setCompareChapterId] = useState<string>('')
 
   const chapters   = useWorldChapters(worldId ?? null)
@@ -56,27 +56,27 @@ export function ChapterDiffModal() {
 
   // Snapshots for both chapters
   const snapsA = useLiveQuery(
-    () => activeChapterId ? db.characterSnapshots.where('chapterId').equals(activeChapterId).toArray() : [],
-    [activeChapterId], []
+    () => activeEventId ? db.characterSnapshots.where('eventId').equals(activeEventId).toArray() : [],
+    [activeEventId], []
   )
   const snapsB = useLiveQuery(
-    () => compareChapterId ? db.characterSnapshots.where('chapterId').equals(compareChapterId).toArray() : [],
+    () => compareChapterId ? db.characterSnapshots.where('eventId').equals(compareChapterId).toArray() : [],
     [compareChapterId], []
   )
   const relSnapsA = useLiveQuery(
-    () => activeChapterId ? db.relationshipSnapshots.where('chapterId').equals(activeChapterId).toArray() : [],
-    [activeChapterId], []
+    () => activeEventId ? db.relationshipSnapshots.where('eventId').equals(activeEventId).toArray() : [],
+    [activeEventId], []
   )
   const relSnapsB = useLiveQuery(
-    () => compareChapterId ? db.relationshipSnapshots.where('chapterId').equals(compareChapterId).toArray() : [],
+    () => compareChapterId ? db.relationshipSnapshots.where('eventId').equals(compareChapterId).toArray() : [],
     [compareChapterId], []
   )
   const itemPlacementsA = useLiveQuery(
-    () => activeChapterId ? db.itemPlacements.where('chapterId').equals(activeChapterId).toArray() : [],
-    [activeChapterId], []
+    () => activeEventId ? db.itemPlacements.where('eventId').equals(activeEventId).toArray() : [],
+    [activeEventId], []
   )
   const itemPlacementsB = useLiveQuery(
-    () => compareChapterId ? db.itemPlacements.where('chapterId').equals(compareChapterId).toArray() : [],
+    () => compareChapterId ? db.itemPlacements.where('eventId').equals(compareChapterId).toArray() : [],
     [compareChapterId], []
   )
 
@@ -85,7 +85,7 @@ export function ChapterDiffModal() {
   const itemById   = useMemo(() => new Map(items.map((i) => [i.id, i])), [items])
   const chapById   = useMemo(() => new Map(chapters.map((c) => [c.id, c])), [chapters])
 
-  const chapterA = chapById.get(activeChapterId ?? '')
+  const chapterA = chapById.get(activeEventId ?? '')
   const chapterB = chapById.get(compareChapterId)
 
   // ── character diffs ────────────────────────────────────────────────────────
@@ -167,7 +167,7 @@ export function ChapterDiffModal() {
 
   if (!diffOpen) return null
 
-  const otherChapters = chapters.filter((c) => c.id !== activeChapterId).sort((a, b) => a.number - b.number)
+  const otherChapters = chapters.filter((c) => c.id !== activeEventId).sort((a, b) => a.number - b.number)
 
   const totalChanges = charDiffs.filter((d) => d.changes.length > 0 || !d.a || !d.b).length
     + relDiffs.length
@@ -219,7 +219,7 @@ export function ChapterDiffModal() {
 
         {/* Body */}
         <div className="flex-1 overflow-auto px-5 py-2">
-          {!activeChapterId ? (
+          {!activeEventId ? (
             <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">Select a chapter from the timeline bar first.</p>
           ) : !compareChapterId ? (
             <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">Choose a chapter to compare against.</p>

@@ -156,7 +156,7 @@ export function useEvent(id: string | null) {
 /** Creates an event and inherits snapshot state from the previous event.
  *  Looks for a prior event in the same chapter (by sortOrder), then falls back
  *  to the last event of the previous chapter in the same timeline. */
-export async function createEvent(data: Omit<WorldEvent, 'id' | 'createdAt' | 'updatedAt'>): Promise<WorldEvent> {
+export async function createEvent(data: Omit<WorldEvent, 'id' | 'createdAt' | 'updatedAt' | 'travelDays'> & { travelDays?: number | null }): Promise<WorldEvent> {
   const now = Date.now()
   const event: WorldEvent = {
     id: generateId(),

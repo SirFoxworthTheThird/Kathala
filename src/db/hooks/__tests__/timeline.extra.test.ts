@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
-import { createTimeline, createChapter, deleteChapter } from '@/db/hooks/useTimeline'
+import { createTimeline, createChapter, createEvent, deleteChapter, deleteEvent } from '@/db/hooks/useTimeline'
 import { upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { placeItemAtLocation } from '@/db/hooks/useItemPlacements'
 import { upsertLocationSnapshot } from '@/db/hooks/useLocationSnapshots'
@@ -20,146 +20,252 @@ async function makeTl() {
   return createTimeline({ worldId: 'w', name: 'Main', description: '', color: '#000' })
 }
 
-// ── createChapter — state inheritance ────────────────────────────────────────
+async function makeCh(tl: { id: string }, number: number) {
+  return createChapter({ worldId: 'w', timelineId: tl.id, number, title: `Ch ${number}`, synopsis: '' })
+}
 
-describe('createChapter — inherits state from previous chapter', () => {
-  it('copies characterSnapshots from the previous chapter', async () => {
+async function makeEv(tl: { id: string }, ch: { id: string }, sortOrder: number) {
+  return createEvent({
+    worldId: 'w',
+    timelineId: tl.id,
+    chapterId: ch.id,
+    title: `Event ${sortOrder}`,
+    description: '',
+    locationMarkerId: null,
+    involvedCharacterIds: [],
+    involvedItemIds: [],
+    tags: [],
+    sortOrder,
+  })
+}
+
+// ── createEvent — state inheritance ──────────────────────────────────────────
+
+describe('createEvent — inherits state from previous event in same chapter', () => {
+  it('copies characterSnapshots from the previous event', async () => {
     const tl = await makeTl()
-    const ch1 = await createChapter({ worldId: 'w', timelineId: tl.id, number: 1, title: 'Ch 1', synopsis: '' })
+    const ch = await makeCh(tl, 1)
+    const ev1 = await makeEv(tl, ch, 0)
 
     await upsertSnapshot({
-      worldId: 'w', characterId: 'char-1', chapterId: ch1.id,
+      worldId: 'w', characterId: 'char-1', eventId: ev1.id,
       isAlive: true, currentLocationMarkerId: 'loc-1', currentMapLayerId: null,
       inventoryItemIds: [], inventoryNotes: '', statusNotes: 'healthy', travelModeId: null,
     })
 
-    const ch2 = await createChapter({ worldId: 'w', timelineId: tl.id, number: 2, title: 'Ch 2', synopsis: '' })
+    const ev2 = await makeEv(tl, ch, 1)
 
-    const ch2Snaps = await db.characterSnapshots.where('chapterId').equals(ch2.id).toArray()
-    expect(ch2Snaps).toHaveLength(1)
-    expect(ch2Snaps[0].characterId).toBe('char-1')
-    expect(ch2Snaps[0].statusNotes).toBe('healthy')
-    // New snapshot should have a different id
-    expect(ch2Snaps[0].id).not.toBe((await db.characterSnapshots.where('chapterId').equals(ch1.id).first())!.id)
+    const ev2Snaps = await db.characterSnapshots.where('eventId').equals(ev2.id).toArray()
+    expect(ev2Snaps).toHaveLength(1)
+    expect(ev2Snaps[0].characterId).toBe('char-1')
+    expect(ev2Snaps[0].statusNotes).toBe('healthy')
+    expect(ev2Snaps[0].id).not.toBe((await db.characterSnapshots.where('eventId').equals(ev1.id).first())!.id)
   })
 
-  it('copies itemPlacements from the previous chapter', async () => {
+  it('copies itemPlacements from the previous event', async () => {
     const tl = await makeTl()
-    const ch1 = await createChapter({ worldId: 'w', timelineId: tl.id, number: 1, title: 'Ch 1', synopsis: '' })
+    const ch = await makeCh(tl, 1)
+    const ev1 = await makeEv(tl, ch, 0)
 
-    await placeItemAtLocation('w', 'item-1', ch1.id, 'loc-A')
+    await placeItemAtLocation('w', 'item-1', ev1.id, 'loc-A')
 
-    const ch2 = await createChapter({ worldId: 'w', timelineId: tl.id, number: 2, title: 'Ch 2', synopsis: '' })
+    const ev2 = await makeEv(tl, ch, 1)
 
-    const ch2Placements = await db.itemPlacements.where('chapterId').equals(ch2.id).toArray()
-    expect(ch2Placements).toHaveLength(1)
-    expect(ch2Placements[0].itemId).toBe('item-1')
-    expect(ch2Placements[0].locationMarkerId).toBe('loc-A')
+    const ev2Placements = await db.itemPlacements.where('eventId').equals(ev2.id).toArray()
+    expect(ev2Placements).toHaveLength(1)
+    expect(ev2Placements[0].itemId).toBe('item-1')
+    expect(ev2Placements[0].locationMarkerId).toBe('loc-A')
   })
 
-  it('copies locationSnapshots from the previous chapter', async () => {
+  it('copies locationSnapshots from the previous event', async () => {
     const tl = await makeTl()
-    const ch1 = await createChapter({ worldId: 'w', timelineId: tl.id, number: 1, title: 'Ch 1', synopsis: '' })
+    const ch = await makeCh(tl, 1)
+    const ev1 = await makeEv(tl, ch, 0)
 
     await upsertLocationSnapshot({
-      worldId: 'w', locationMarkerId: 'loc-1', chapterId: ch1.id,
+      worldId: 'w', locationMarkerId: 'loc-1', eventId: ev1.id,
       status: 'thriving', notes: 'All is well',
     })
 
-    const ch2 = await createChapter({ worldId: 'w', timelineId: tl.id, number: 2, title: 'Ch 2', synopsis: '' })
+    const ev2 = await makeEv(tl, ch, 1)
 
-    const ch2LocSnaps = await db.locationSnapshots.where('chapterId').equals(ch2.id).toArray()
-    expect(ch2LocSnaps).toHaveLength(1)
-    expect(ch2LocSnaps[0].locationMarkerId).toBe('loc-1')
-    expect(ch2LocSnaps[0].status).toBe('thriving')
+    const ev2LocSnaps = await db.locationSnapshots.where('eventId').equals(ev2.id).toArray()
+    expect(ev2LocSnaps).toHaveLength(1)
+    expect(ev2LocSnaps[0].locationMarkerId).toBe('loc-1')
+    expect(ev2LocSnaps[0].status).toBe('thriving')
   })
 
-  it('copies itemSnapshots from the previous chapter', async () => {
+  it('copies itemSnapshots from the previous event', async () => {
     const tl = await makeTl()
-    const ch1 = await createChapter({ worldId: 'w', timelineId: tl.id, number: 1, title: 'Ch 1', synopsis: '' })
+    const ch = await makeCh(tl, 1)
+    const ev1 = await makeEv(tl, ch, 0)
 
     await upsertItemSnapshot({
-      worldId: 'w', itemId: 'item-1', chapterId: ch1.id,
+      worldId: 'w', itemId: 'item-1', eventId: ev1.id,
       condition: 'shiny', notes: 'Freshly polished',
     })
 
-    const ch2 = await createChapter({ worldId: 'w', timelineId: tl.id, number: 2, title: 'Ch 2', synopsis: '' })
+    const ev2 = await makeEv(tl, ch, 1)
 
-    const ch2ItemSnaps = await db.itemSnapshots.where('chapterId').equals(ch2.id).toArray()
-    expect(ch2ItemSnaps).toHaveLength(1)
-    expect(ch2ItemSnaps[0].itemId).toBe('item-1')
-    expect(ch2ItemSnaps[0].condition).toBe('shiny')
+    const ev2ItemSnaps = await db.itemSnapshots.where('eventId').equals(ev2.id).toArray()
+    expect(ev2ItemSnaps).toHaveLength(1)
+    expect(ev2ItemSnaps[0].itemId).toBe('item-1')
+    expect(ev2ItemSnaps[0].condition).toBe('shiny')
   })
 
-  it('does not copy anything when there is no previous chapter', async () => {
+  it('does not copy anything when there is no previous event', async () => {
     const tl = await makeTl()
-    // Chapter number 1 has no predecessor
-    const ch1 = await createChapter({ worldId: 'w', timelineId: tl.id, number: 1, title: 'First', synopsis: '' })
+    const ch = await makeCh(tl, 1)
+    // First event in first chapter — no predecessor
+    const ev1 = await makeEv(tl, ch, 0)
 
-    const snaps = await db.characterSnapshots.where('chapterId').equals(ch1.id).toArray()
-    const placements = await db.itemPlacements.where('chapterId').equals(ch1.id).toArray()
+    const snaps = await db.characterSnapshots.where('eventId').equals(ev1.id).toArray()
+    const placements = await db.itemPlacements.where('eventId').equals(ev1.id).toArray()
     expect(snaps).toHaveLength(0)
     expect(placements).toHaveLength(0)
   })
 
-  it('inherits from the immediately preceding chapter, not a further one', async () => {
+  it('inherits from the immediately preceding event, not a further one', async () => {
     const tl = await makeTl()
-    const ch1 = await createChapter({ worldId: 'w', timelineId: tl.id, number: 1, title: 'Ch 1', synopsis: '' })
-    const ch2 = await createChapter({ worldId: 'w', timelineId: tl.id, number: 2, title: 'Ch 2', synopsis: '' })
+    const ch = await makeCh(tl, 1)
+    const ev1 = await makeEv(tl, ch, 0)
+    const ev2 = await makeEv(tl, ch, 1)
 
     await upsertSnapshot({
-      worldId: 'w', characterId: 'char-x', chapterId: ch1.id,
+      worldId: 'w', characterId: 'char-x', eventId: ev1.id,
       isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
-      inventoryItemIds: [], inventoryNotes: '', statusNotes: 'ch1 state', travelModeId: null,
+      inventoryItemIds: [], inventoryNotes: '', statusNotes: 'ev1 state', travelModeId: null,
     })
     await upsertSnapshot({
-      worldId: 'w', characterId: 'char-x', chapterId: ch2.id,
+      worldId: 'w', characterId: 'char-x', eventId: ev2.id,
       isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
-      inventoryItemIds: [], inventoryNotes: '', statusNotes: 'ch2 state', travelModeId: null,
+      inventoryItemIds: [], inventoryNotes: '', statusNotes: 'ev2 state', travelModeId: null,
     })
 
-    // ch3 should inherit from ch2, not ch1
-    const ch3 = await createChapter({ worldId: 'w', timelineId: tl.id, number: 3, title: 'Ch 3', synopsis: '' })
+    // ev3 should inherit from ev2, not ev1
+    const ev3 = await makeEv(tl, ch, 2)
 
-    const ch3Snaps = await db.characterSnapshots.where('chapterId').equals(ch3.id).toArray()
-    expect(ch3Snaps).toHaveLength(1)
-    expect(ch3Snaps[0].statusNotes).toBe('ch2 state')
+    const ev3Snaps = await db.characterSnapshots.where('eventId').equals(ev3.id).toArray()
+    expect(ev3Snaps).toHaveLength(1)
+    expect(ev3Snaps[0].statusNotes).toBe('ev2 state')
   })
 })
 
-// ── deleteChapter — extended cascades ────────────────────────────────────────
+describe('createEvent — inherits from last event of previous chapter', () => {
+  it('falls back to previous chapter last event when first event in new chapter', async () => {
+    const tl = await makeTl()
+    const ch1 = await makeCh(tl, 1)
+    const ch2 = await makeCh(tl, 2)
 
-describe('deleteChapter — cascades to itemPlacements, locationSnapshots, itemSnapshots', () => {
+    const ev1 = await makeEv(tl, ch1, 0)
+
+    await upsertSnapshot({
+      worldId: 'w', characterId: 'char-1', eventId: ev1.id,
+      isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
+      inventoryItemIds: [], inventoryNotes: '', statusNotes: 'from ch1', travelModeId: null,
+    })
+
+    // First event in ch2 — should inherit from ev1 (last event in ch1)
+    const ev2 = await makeEv(tl, ch2, 0)
+
+    const ev2Snaps = await db.characterSnapshots.where('eventId').equals(ev2.id).toArray()
+    expect(ev2Snaps).toHaveLength(1)
+    expect(ev2Snaps[0].statusNotes).toBe('from ch1')
+  })
+})
+
+// ── deleteEvent — cascades ────────────────────────────────────────────────────
+
+describe('deleteEvent — cascades to snapshots', () => {
+  it('cascades to characterSnapshots', async () => {
+    const tl = await makeTl()
+    const ch = await makeCh(tl, 1)
+    const ev = await makeEv(tl, ch, 0)
+
+    await upsertSnapshot({
+      worldId: 'w', characterId: 'char-1', eventId: ev.id,
+      isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
+      inventoryItemIds: [], inventoryNotes: '', statusNotes: '', travelModeId: null,
+    })
+
+    await deleteEvent(ev.id)
+    expect(await db.characterSnapshots.where('eventId').equals(ev.id).count()).toBe(0)
+  })
+
   it('cascades to itemPlacements', async () => {
     const tl = await makeTl()
-    const ch = await createChapter({ worldId: 'w', timelineId: tl.id, number: 1, title: 'Ch', synopsis: '' })
-    await placeItemAtLocation('w', 'item-1', ch.id, 'loc-1')
+    const ch = await makeCh(tl, 1)
+    const ev = await makeEv(tl, ch, 0)
+    await placeItemAtLocation('w', 'item-1', ev.id, 'loc-1')
 
-    await deleteChapter(ch.id)
-    expect(await db.itemPlacements.where('chapterId').equals(ch.id).count()).toBe(0)
+    await deleteEvent(ev.id)
+    expect(await db.itemPlacements.where('eventId').equals(ev.id).count()).toBe(0)
   })
 
   it('cascades to locationSnapshots', async () => {
     const tl = await makeTl()
-    const ch = await createChapter({ worldId: 'w', timelineId: tl.id, number: 1, title: 'Ch', synopsis: '' })
+    const ch = await makeCh(tl, 1)
+    const ev = await makeEv(tl, ch, 0)
     await upsertLocationSnapshot({
-      worldId: 'w', locationMarkerId: 'loc-1', chapterId: ch.id,
+      worldId: 'w', locationMarkerId: 'loc-1', eventId: ev.id,
       status: 'active', notes: '',
     })
 
-    await deleteChapter(ch.id)
-    expect(await db.locationSnapshots.where('chapterId').equals(ch.id).count()).toBe(0)
+    await deleteEvent(ev.id)
+    expect(await db.locationSnapshots.where('eventId').equals(ev.id).count()).toBe(0)
   })
 
   it('cascades to itemSnapshots', async () => {
     const tl = await makeTl()
-    const ch = await createChapter({ worldId: 'w', timelineId: tl.id, number: 1, title: 'Ch', synopsis: '' })
+    const ch = await makeCh(tl, 1)
+    const ev = await makeEv(tl, ch, 0)
     await upsertItemSnapshot({
-      worldId: 'w', itemId: 'item-1', chapterId: ch.id,
+      worldId: 'w', itemId: 'item-1', eventId: ev.id,
+      condition: 'good', notes: '',
+    })
+
+    await deleteEvent(ev.id)
+    expect(await db.itemSnapshots.where('eventId').equals(ev.id).count()).toBe(0)
+  })
+})
+
+// ── deleteChapter — cascades through events to snapshots ─────────────────────
+
+describe('deleteChapter — cascades to events and their snapshots', () => {
+  it('cascades to itemPlacements via events', async () => {
+    const tl = await makeTl()
+    const ch = await makeCh(tl, 1)
+    const ev = await makeEv(tl, ch, 0)
+    await placeItemAtLocation('w', 'item-1', ev.id, 'loc-1')
+
+    await deleteChapter(ch.id)
+    expect(await db.itemPlacements.where('eventId').equals(ev.id).count()).toBe(0)
+    expect(await db.events.where('chapterId').equals(ch.id).count()).toBe(0)
+  })
+
+  it('cascades to locationSnapshots via events', async () => {
+    const tl = await makeTl()
+    const ch = await makeCh(tl, 1)
+    const ev = await makeEv(tl, ch, 0)
+    await upsertLocationSnapshot({
+      worldId: 'w', locationMarkerId: 'loc-1', eventId: ev.id,
+      status: 'active', notes: '',
+    })
+
+    await deleteChapter(ch.id)
+    expect(await db.locationSnapshots.where('eventId').equals(ev.id).count()).toBe(0)
+  })
+
+  it('cascades to itemSnapshots via events', async () => {
+    const tl = await makeTl()
+    const ch = await makeCh(tl, 1)
+    const ev = await makeEv(tl, ch, 0)
+    await upsertItemSnapshot({
+      worldId: 'w', itemId: 'item-1', eventId: ev.id,
       condition: 'good', notes: '',
     })
 
     await deleteChapter(ch.id)
-    expect(await db.itemSnapshots.where('chapterId').equals(ch.id).count()).toBe(0)
+    expect(await db.itemSnapshots.where('eventId').equals(ev.id).count()).toBe(0)
   })
 })

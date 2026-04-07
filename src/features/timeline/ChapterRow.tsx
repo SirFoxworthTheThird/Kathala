@@ -16,12 +16,12 @@ interface ChapterRowProps {
 export function ChapterRow({ chapter }: ChapterRowProps) {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
-  const { activeChapterId, setActiveChapterId } = useAppStore()
+  const { activeEventId, setActiveEventId } = useAppStore()
   const [expanded, setExpanded] = useState(false)
   const [addEventOpen, setAddEventOpen] = useState(false)
   const events = useEvents(expanded ? chapter.id : null)
 
-  const isActive = chapter.id === activeChapterId
+  const isActive = chapter.id === activeEventId
   const sortedEvents = [...events].sort((a, b) => a.sortOrder - b.sortOrder)
 
   async function moveEvent(eventId: string, direction: 'up' | 'down') {
@@ -69,7 +69,7 @@ export function ChapterRow({ chapter }: ChapterRowProps) {
           size="sm"
           variant={isActive ? 'secondary' : 'ghost'}
           className="h-7 px-2 text-xs shrink-0"
-          onClick={() => setActiveChapterId(isActive ? null : chapter.id)}
+          onClick={() => setActiveEventId(isActive ? null : chapter.id)}
         >
           {isActive ? 'Active' : 'Set Active'}
         </Button>

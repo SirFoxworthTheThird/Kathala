@@ -25,13 +25,13 @@ const CONDITION_COLORS: Record<string, string> = {
   lost: '#94a3b8', used: '#fb923c', depleted: '#94a3b8',
 }
 
-function LocationItemRow({ item, chapterId, worldId, onRemove }: {
+function LocationItemRow({ item, eventId, worldId, onRemove }: {
   item: Item
-  chapterId: string
+  eventId: string
   worldId: string
   onRemove: () => void
 }) {
-  const snap = useItemSnapshot(item.id, chapterId)
+  const snap = useItemSnapshot(item.id, eventId)
   const [expanded, setExpanded] = useState(false)
   const condition = snap?.condition ?? 'intact'
 
@@ -77,7 +77,7 @@ function LocationItemRow({ item, chapterId, worldId, onRemove }: {
                 upsertItemSnapshot({
                   worldId,
                   itemId: item.id,
-                  chapterId,
+                  eventId,
                   condition: e.target.value,
                   notes: snap?.notes ?? '',
                 })
@@ -97,7 +97,7 @@ function LocationItemRow({ item, chapterId, worldId, onRemove }: {
               upsertItemSnapshot({
                 worldId,
                 itemId: item.id,
-                chapterId,
+                eventId,
                 condition: snap?.condition ?? 'intact',
                 notes: e.target.value,
               })
@@ -124,11 +124,11 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
   const timelines = useTimelines(worldId)
   const firstTimelineId = timelines[0]?.id ?? null
   const chapters = useChapters(firstTimelineId)
-  const { setSelectedLocationMarkerId, activeChapterId, setActiveChapterId } = useAppStore()
+  const { setSelectedLocationMarkerId, activeEventId, setActiveEventId } = useAppStore()
   const allItems = useItems(worldId)
-  const itemsHere = useLocationItemPlacements(markerId, activeChapterId)
+  const itemsHere = useLocationItemPlacements(markerId, activeEventId)
   const allPlacements = useWorldItemPlacements(worldId)
-  const locationSnap = useLocationSnapshot(markerId, activeChapterId)
+  const locationSnap = useLocationSnapshot(markerId, activeEventId)
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -141,8 +141,8 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
 
   // Characters currently at this location for the active chapter (or most recent snapshot)
   const charsHere = characters.filter((c) => {
-    const snap = activeChapterId
-      ? allSnapshots.find((s) => s.characterId === c.id && s.chapterId === activeChapterId)
+    const snap = activeEventId
+      ? allSnapshots.find((s) => s.characterId === c.id && s.eventId === activeEventId)
       : allSnapshots
           .filter((s) => s.characterId === c.id)
           .sort((a, b) => b.updatedAt - a.updatedAt)[0]
@@ -152,14 +152,14 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
   const charsElsewhere = characters.filter((c) => !charsHere.find((h) => h.id === c.id))
 
   async function assignCharacter(characterId: string) {
-    if (!activeChapterId) return
+    if (!activeEventId) return
     const existing = allSnapshots.find(
-      (s) => s.characterId === characterId && s.chapterId === activeChapterId
+      (s) => s.characterId === characterId && s.eventId === activeEventId
     )
     await upsertSnapshot({
       worldId,
       characterId,
-      chapterId: activeChapterId,
+      eventId: activeEventId,
       isAlive: existing?.isAlive ?? true,
       currentLocationMarkerId: markerId,
       currentMapLayerId: marker!.mapLayerId,
@@ -172,9 +172,9 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
   }
 
   async function removeCharacter(characterId: string) {
-    if (!activeChapterId) return
+    if (!activeEventId) return
     const existing = allSnapshots.find(
-      (s) => s.characterId === characterId && s.chapterId === activeChapterId
+      (s) => s.characterId === characterId && s.eventId === activeEventId
     )
     if (!existing) return
     await upsertSnapshot({ ...existing, currentLocationMarkerId: null, currentMapLayerId: null })
@@ -194,7 +194,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
       title: newChapterTitle.trim(),
       synopsis: '',
     })
-    setActiveChapterId(ch.id)
+    setActiveEventId(ch.id)
     setCreatingChapter(false)
     setNewChapterTitle('')
   }
@@ -271,13 +271,13 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
           </Label>
 
           {/* No chapter selected → prompt */}
-          {!activeChapterId && (
+          {!activeEventId && (
             <div className="rounded-md border border-dashed border-[hsl(var(--border))] p-3 flex flex-col gap-2">
               <p className="text-xs text-[hsl(var(--muted-foreground))]">
                 Select a chapter to place characters, or create one now:
               </p>
               {chapters.length > 0 && (
-                <Select onValueChange={setActiveChapterId}>
+                <Select onValueChange={setActiveEventId}>
                   <SelectTrigger className="text-xs h-8">
                     <SelectValue placeholder="Select chapter..." />
                   </SelectTrigger>
@@ -321,7 +321,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
                     fallbackClassName="h-6 w-6 rounded-full"
                   />
                   <span className="flex-1 text-xs font-medium truncate">{c.name}</span>
-                  {activeChapterId && (
+                  {activeEventId && (
                     <Button
                       variant="ghost"
                       size="icon"
@@ -338,7 +338,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
           )}
 
           {/* Add a character */}
-          {activeChapterId && charsElsewhere.length > 0 && (
+          {activeEventId && charsElsewhere.length > 0 && (
             addingChar ? (
               <Select onValueChange={assignCharacter}>
                 <SelectTrigger className="text-xs h-8">
@@ -357,13 +357,13 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
             )
           )}
 
-          {activeChapterId && characters.length === 0 && (
+          {activeEventId && characters.length === 0 && (
             <p className="text-xs text-[hsl(var(--muted-foreground))]">No characters in this world yet.</p>
           )}
         </div>
 
         {/* ── Items ── */}
-        {activeChapterId && (
+        {activeEventId && (
           <div className="flex flex-col gap-2">
             <Label className="flex items-center gap-1.5">
               <Package className="h-3.5 w-3.5" /> Items here
@@ -378,9 +378,9 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
                     <LocationItemRow
                       key={placement.id}
                       item={item}
-                      chapterId={activeChapterId!}
+                      eventId={activeEventId!}
                       worldId={worldId}
-                      onRemove={() => removeItemPlacement(placement.itemId, activeChapterId)}
+                      onRemove={() => removeItemPlacement(placement.itemId, activeEventId)}
                     />
                   )
                 })}
@@ -392,19 +392,19 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
               const hereIds = new Set(itemsHere.map((p) => p.itemId))
               const inInventory = new Set(
                 allSnapshots
-                  .filter((s) => s.chapterId === activeChapterId)
+                  .filter((s) => s.eventId === activeEventId)
                   .flatMap((s) => s.inventoryItemIds)
               )
               const elsewhereIds = new Set(
                 allPlacements
-                  .filter((p) => p.chapterId === activeChapterId && p.locationMarkerId !== markerId)
+                  .filter((p) => p.eventId === activeEventId && p.locationMarkerId !== markerId)
                   .map((p) => p.itemId)
               )
               const free = allItems.filter((i) => !hereIds.has(i.id) && !inInventory.has(i.id) && !elsewhereIds.has(i.id))
               const elsewhere = allItems.filter((i) => !hereIds.has(i.id) && (inInventory.has(i.id) || elsewhereIds.has(i.id)))
               if (allItems.length === 0) return <p className="text-xs italic text-[hsl(var(--muted-foreground))]">No items in this world yet.</p>
               return (
-                <Select onValueChange={(v) => placeItemAtLocation(worldId, v, activeChapterId, markerId)}>
+                <Select onValueChange={(v) => placeItemAtLocation(worldId, v, activeEventId, markerId)}>
                   <SelectTrigger className="text-xs h-8">
                     <SelectValue placeholder="Place item here..." />
                   </SelectTrigger>
@@ -425,7 +425,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
         )}
 
         {/* ── Chapter State ── */}
-        {activeChapterId && (
+        {activeEventId && (
           <div className="flex flex-col gap-2">
             <Label className="flex items-center gap-1.5">
               <BookOpen className="h-3.5 w-3.5" /> Chapter State
@@ -436,7 +436,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
                 upsertLocationSnapshot({
                   worldId,
                   locationMarkerId: markerId,
-                  chapterId: activeChapterId,
+                  eventId: activeEventId,
                   status: v,
                   notes: locationSnap?.notes ?? '',
                 })
@@ -460,7 +460,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
                 upsertLocationSnapshot({
                   worldId,
                   locationMarkerId: markerId,
-                  chapterId: activeChapterId,
+                  eventId: activeEventId,
                   status: locationSnap?.status ?? 'active',
                   notes: e.target.value,
                 })

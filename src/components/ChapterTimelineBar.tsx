@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, useMemo, type CSSProperties } from 'react'
 import { ChevronLeft, ChevronRight, Play, Pause, Square, GitCompareArrows, MapPin } from 'lucide-react'
-import { useActiveWorldId, useActiveChapterId, useAppStore, type PlaybackSpeed } from '@/store'
+import { useActiveWorldId, useActiveEventId, useAppStore, type PlaybackSpeed } from '@/store'
 import { useTimelines, useChapters, useTimelineEvents } from '@/db/hooks/useTimeline'
 import { readingHoldMs } from '@/lib/playbackTiming'
 
@@ -25,12 +25,12 @@ function chapterDotStyle(isActive: boolean): CSSProperties {
   }
 }
 
-function eventDotStyle(isParentActive: boolean, hasLocation: boolean): CSSProperties {
+function eventDotStyle(isActive: boolean, hasLocation: boolean): CSSProperties {
   return {
     width: '0.35rem',
     height: '0.35rem',
     borderRadius: '50%',
-    background: isParentActive
+    background: isActive
       ? (hasLocation ? 'var(--tl-accent)' : 'var(--tl-text-muted)')
       : 'var(--tl-border)',
     flexShrink: 0,
@@ -109,50 +109,79 @@ function Callout({ left, chapterNum, title, synopsis, hasPrev, hasNext, onPrev, 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function ChapterTimelineBar() {
-  const worldId         = useActiveWorldId()
-  const activeChapterId = useActiveChapterId()
-  const { setActiveChapterId, isPlayingStory, setIsPlayingStory, playbackSpeed, setPlaybackSpeed, setDiffOpen } = useAppStore()
+  const worldId        = useActiveWorldId()
+  const activeEventId  = useActiveEventId()
+  const { setActiveEventId, isPlayingStory, setIsPlayingStory, playbackSpeed, setPlaybackSpeed, setDiffOpen } = useAppStore()
 
   const timelines       = useTimelines(worldId)
   const firstTimelineId = timelines[0]?.id ?? null
   const chapters        = useChapters(firstTimelineId)
   const allEvents       = useTimelineEvents(firstTimelineId)
 
-  // Group events by chapterId, sorted by sortOrder
-  const eventsByChapter = new Map<string, typeof allEvents>()
-  for (const ch of chapters) {
-    eventsByChapter.set(ch.id, allEvents.filter(e => e.chapterId === ch.id).sort((a, b) => a.sortOrder - b.sortOrder))
+  // All events in global order: chapter.number (primary) → sortOrder (secondary)
+  const orderedEvents = useMemo(() => {
+    const chapterNumberById = new Map(chapters.map(c => [c.id, c.number]))
+    return [...allEvents].sort((a, b) => {
+      const aN = (chapterNumberById.get(a.chapterId) ?? 0) * 10_000 + a.sortOrder
+      const bN = (chapterNumberById.get(b.chapterId) ?? 0) * 10_000 + b.sortOrder
+      return aN - bN
+    })
+  }, [allEvents, chapters])
+
+  // Events grouped by chapter, sorted by sortOrder
+  const eventsByChapter = useMemo(() => {
+    const map = new Map<string, typeof allEvents>()
+    for (const ch of chapters) {
+      map.set(ch.id, allEvents.filter(e => e.chapterId === ch.id).sort((a, b) => a.sortOrder - b.sortOrder))
+    }
+    return map
+  }, [allEvents, chapters])
+
+  // Derive active chapter from active event
+  const activeEvent   = activeEventId ? allEvents.find(e => e.id === activeEventId) ?? null : null
+  const activeChapter = activeEvent ? chapters.find(c => c.id === activeEvent.chapterId) ?? null : null
+  const chapterIndex  = activeChapter ? chapters.findIndex(c => c.id === activeChapter.id) : -1
+  const prevChapter   = chapterIndex > 0 ? chapters[chapterIndex - 1] : null
+  const nextChapter   = chapterIndex < chapters.length - 1 ? chapters[chapterIndex + 1] : null
+
+  /** Select the first event of a chapter, or null if the chapter has no events. */
+  function selectChapter(chapterId: string) {
+    const events = eventsByChapter.get(chapterId) ?? []
+    if (events.length > 0) setActiveEventId(events[0].id)
+    // If no events yet, do nothing (can't set a valid event ID)
   }
 
-  const activeIndex   = chapters.findIndex(c => c.id === activeChapterId)
-  const activeChapter = activeIndex >= 0 ? chapters[activeIndex] : null
-  const prevChapter   = activeIndex > 0 ? chapters[activeIndex - 1] : null
-  const nextChapter   = activeIndex < chapters.length - 1 ? chapters[activeIndex + 1] : null
-
-  // ── Playback ────────────────────────────────────────────────────────────────
+  // ── Playback — advance through events in global order ───────────────────────
   useEffect(() => {
-    if (!isPlayingStory || !chapters.length) return
-    if (!activeChapterId) { setActiveChapterId(chapters[0].id); return }
+    if (!isPlayingStory || !orderedEvents.length) return
 
-    const idx = chapters.findIndex(c => c.id === activeChapterId)
+    if (!activeEventId) {
+      setActiveEventId(orderedEvents[0].id)
+      return
+    }
+
+    const idx = orderedEvents.findIndex(e => e.id === activeEventId)
     if (idx === -1) return
 
-    const chapter = chapters[idx]
-    const holdMs  = readingHoldMs([chapter.title, chapter.synopsis ?? ''].join(' '), playbackSpeed)
+    const ev = orderedEvents[idx]
+    const chapter = chapters.find(c => c.id === ev.chapterId)
+    const holdMs = readingHoldMs([ev.title, chapter?.synopsis ?? ''].join(' '), playbackSpeed)
 
     const t = setTimeout(() => {
-      if (idx >= chapters.length - 1) setIsPlayingStory(false)
-      else setActiveChapterId(chapters[idx + 1].id)
+      if (idx >= orderedEvents.length - 1) setIsPlayingStory(false)
+      else setActiveEventId(orderedEvents[idx + 1].id)
     }, holdMs)
 
     return () => clearTimeout(t)
-  }, [isPlayingStory, activeChapterId, chapters, playbackSpeed, setActiveChapterId, setIsPlayingStory])
+  }, [isPlayingStory, activeEventId, orderedEvents, chapters, playbackSpeed, setActiveEventId, setIsPlayingStory])
 
   function handlePlayPause() {
     if (isPlayingStory) {
       setIsPlayingStory(false)
     } else {
-      if (activeIndex >= chapters.length - 1) setActiveChapterId(chapters[0]?.id ?? null)
+      if (!activeEventId || orderedEvents.findIndex(e => e.id === activeEventId) >= orderedEvents.length - 1) {
+        setActiveEventId(orderedEvents[0]?.id ?? null)
+      }
       setIsPlayingStory(true)
     }
   }
@@ -167,7 +196,7 @@ export function ChapterTimelineBar() {
     setCalloutVisible(true)
     const t = setTimeout(() => setCalloutVisible(false), 4000)
     return () => clearTimeout(t)
-  }, [activeChapterId])
+  }, [activeEventId])
 
   useEffect(() => {
     const marker = activeMarkerRef.current
@@ -180,7 +209,7 @@ export function ChapterTimelineBar() {
       setCalloutLeft(Math.max(half + 12, Math.min(window.innerWidth - half - 12, center)))
     })
     return () => cancelAnimationFrame(id)
-  }, [activeChapterId, chapters])
+  }, [activeEventId, chapters])
 
   if (!timelines.length || !chapters.length) return null
 
@@ -196,8 +225,8 @@ export function ChapterTimelineBar() {
           synopsis={activeChapter.synopsis ?? ''}
           hasPrev={!!prevChapter}
           hasNext={!!nextChapter}
-          onPrev={() => prevChapter && setActiveChapterId(prevChapter.id)}
-          onNext={() => nextChapter && setActiveChapterId(nextChapter.id)}
+          onPrev={() => prevChapter && selectChapter(prevChapter.id)}
+          onNext={() => nextChapter && selectChapter(nextChapter.id)}
         />
       )}
 
@@ -220,7 +249,7 @@ export function ChapterTimelineBar() {
             {isPlayingStory ? <Pause size={14} /> : <Play size={14} />}
           </button>
           {isPlayingStory && (
-            <button onClick={() => { setIsPlayingStory(false); setActiveChapterId(null) }} title="Stop"
+            <button onClick={() => { setIsPlayingStory(false); setActiveEventId(null) }} title="Stop"
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tl-text-muted)', padding: '0.25rem', display: 'flex', alignItems: 'center', borderRadius: '3px' }}>
               <Square size={11} />
             </button>
@@ -229,7 +258,7 @@ export function ChapterTimelineBar() {
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: isPlayingStory ? 'var(--tl-accent)' : 'var(--tl-text-muted)', fontSize: '0.6rem', fontWeight: 700, fontFamily: 'var(--font-body)', padding: '0.25rem 0.125rem', lineHeight: 1, borderRadius: '3px' }}>
             {SPEED_LABEL[playbackSpeed]}
           </button>
-          {activeChapterId && (
+          {activeEventId && (
             <button onClick={() => setDiffOpen(true)} title="Compare chapters"
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tl-text-muted)', padding: '0.25rem', display: 'flex', alignItems: 'center', borderRadius: '3px' }}>
               <GitCompareArrows size={13} />
@@ -239,14 +268,14 @@ export function ChapterTimelineBar() {
 
         {/* "All" deselect */}
         <button
-          onClick={() => { setIsPlayingStory(false); setActiveChapterId(null) }}
+          onClick={() => { setIsPlayingStory(false); setActiveEventId(null) }}
           style={{
             flexShrink: 0, padding: '0 0.875rem', height: '100%',
             background: 'none', border: 'none', borderRight: '1px solid var(--tl-border)',
             cursor: 'pointer', fontSize: '0.7rem', letterSpacing: '0.06em',
             textTransform: 'uppercase' as const,
-            fontWeight: !activeChapterId ? 700 : 400,
-            color: !activeChapterId ? 'var(--tl-accent)' : 'var(--tl-text-muted)',
+            fontWeight: !activeEventId ? 700 : 400,
+            color: !activeEventId ? 'var(--tl-accent)' : 'var(--tl-text-muted)',
             fontFamily: 'var(--font-body)', transition: 'color 0.2s',
           }}
         >
@@ -273,77 +302,81 @@ export function ChapterTimelineBar() {
             }} />
 
             {chapters.map((ch) => {
-              const isActive    = ch.id === activeChapterId
-              const chEvents    = eventsByChapter.get(ch.id) ?? []
+              const isChapterActive = activeChapter?.id === ch.id
+              const chEvents        = eventsByChapter.get(ch.id) ?? []
 
               return (
                 <div key={ch.id} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                  {/* Chapter marker */}
+                  {/* Chapter marker — selects first event of the chapter */}
                   <button
-                    ref={isActive ? activeMarkerRef : undefined}
+                    ref={isChapterActive && !activeEvent ? activeMarkerRef : undefined}
                     style={{
                       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
                       padding: '0 0.4rem', minWidth: '2rem',
                       background: 'none', border: 'none', cursor: 'pointer',
                       flexShrink: 0, position: 'relative', zIndex: 1,
-                      opacity: isActive ? 1 : 0.7, transition: 'opacity 0.2s',
+                      opacity: isChapterActive ? 1 : 0.7, transition: 'opacity 0.2s',
                     }}
-                    onClick={() => setActiveChapterId(ch.id)}
+                    onClick={() => selectChapter(ch.id)}
                   >
-                    <div style={chapterDotStyle(isActive)} className={isActive ? 'tl-dot-active' : ''} />
+                    <div style={chapterDotStyle(isChapterActive)} className={isChapterActive ? 'tl-dot-active' : ''} />
                     <span style={{
                       fontSize: '0.58rem', lineHeight: 1, letterSpacing: '0.04em',
-                      color: isActive ? 'var(--tl-accent)' : 'var(--tl-text-muted)',
-                      fontWeight: isActive ? 700 : 400, whiteSpace: 'nowrap',
+                      color: isChapterActive ? 'var(--tl-accent)' : 'var(--tl-text-muted)',
+                      fontWeight: isChapterActive ? 700 : 400, whiteSpace: 'nowrap',
                       fontFamily: 'var(--font-body)', transition: 'color 0.2s',
                     }}>
                       {ch.number}
                     </span>
                   </button>
 
-                  {/* Event markers for this chapter */}
-                  {chEvents.map((ev, i) => (
-                    <button
-                      key={ev.id}
-                      title={ev.title}
-                      onClick={() => {
-                        setActiveChapterId(ch.id)
-                        if (ev.locationMarkerId) {
-                          window.dispatchEvent(new CustomEvent('wb:map:focusMarker', { detail: { markerId: ev.locationMarkerId } }))
-                        }
-                      }}
-                      style={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
-                        padding: '0 0.35rem', minWidth: '1.5rem',
-                        background: 'none', border: 'none',
-                        cursor: 'pointer', flexShrink: 0,
-                        position: 'relative', zIndex: 1,
-                        opacity: isActive ? 1 : 0.5, transition: 'opacity 0.2s',
-                      }}
-                    >
-                      <div style={eventDotStyle(isActive, !!ev.locationMarkerId)}>
-                        {ev.locationMarkerId && isActive && (
-                          <MapPin
-                            size={6}
-                            style={{
-                              position: 'absolute', top: '50%', left: '50%',
-                              transform: 'translate(-50%, -50%)',
-                              color: 'var(--tl-bg)',
-                              pointerEvents: 'none',
-                            }}
-                          />
-                        )}
-                      </div>
-                      <span style={{
-                        fontSize: '0.5rem', lineHeight: 1, letterSpacing: '0.02em',
-                        color: isActive ? 'var(--tl-text-muted)' : 'var(--tl-border)',
-                        whiteSpace: 'nowrap', fontFamily: 'var(--font-body)',
-                        transition: 'color 0.2s',
-                      }}>
-                        {ch.number}.{i + 1}
-                      </span>
-                    </button>
-                  ))}
+                  {/* Individual event markers */}
+                  {chEvents.map((ev, i) => {
+                    const isEvActive = ev.id === activeEventId
+                    return (
+                      <button
+                        key={ev.id}
+                        ref={isEvActive ? activeMarkerRef : undefined}
+                        title={ev.title}
+                        onClick={() => {
+                          setActiveEventId(ev.id)
+                          if (ev.locationMarkerId) {
+                            window.dispatchEvent(new CustomEvent('wb:map:focusMarker', { detail: { markerId: ev.locationMarkerId } }))
+                          }
+                        }}
+                        style={{
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
+                          padding: '0 0.35rem', minWidth: '1.5rem',
+                          background: 'none', border: 'none',
+                          cursor: 'pointer', flexShrink: 0,
+                          position: 'relative', zIndex: 1,
+                          opacity: isChapterActive ? 1 : 0.5, transition: 'opacity 0.2s',
+                        }}
+                      >
+                        <div style={eventDotStyle(isEvActive, !!ev.locationMarkerId)}>
+                          {ev.locationMarkerId && isEvActive && (
+                            <MapPin
+                              size={6}
+                              style={{
+                                position: 'absolute', top: '50%', left: '50%',
+                                transform: 'translate(-50%, -50%)',
+                                color: 'var(--tl-bg)',
+                                pointerEvents: 'none',
+                              }}
+                            />
+                          )}
+                        </div>
+                        <span style={{
+                          fontSize: '0.5rem', lineHeight: 1, letterSpacing: '0.02em',
+                          color: isEvActive ? 'var(--tl-accent)' : isChapterActive ? 'var(--tl-text-muted)' : 'var(--tl-border)',
+                          whiteSpace: 'nowrap', fontFamily: 'var(--font-body)',
+                          transition: 'color 0.2s',
+                        }}>
+                          {ch.number}.{i + 1}
+                        </span>
+                      </button>
+                    )
+                  })}
                 </div>
               )
             })}

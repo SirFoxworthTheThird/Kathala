@@ -100,7 +100,7 @@ describe('deleteWorld', () => {
   it('cascades to character snapshots', async () => {
     const world = await createWorld({ name: 'W', description: '' })
     await db.characterSnapshots.add({
-      id: 'snap-1', worldId: world.id, characterId: 'char-1', chapterId: 'ch-1',
+      id: 'snap-1', worldId: world.id, characterId: 'char-1', eventId: 'ch-1',
       isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
       inventoryItemIds: [], inventoryNotes: '', statusNotes: '', travelModeId: null,
       createdAt: Date.now(), updatedAt: Date.now(),
@@ -114,7 +114,7 @@ describe('deleteWorld', () => {
     await db.relationships.add({
       id: 'rel-1', worldId: world.id, characterAId: 'c1', characterBId: 'c2',
       label: 'Friends', strength: 'strong', sentiment: 'positive',
-      description: '', isBidirectional: true, startChapterId: null, createdAt: Date.now(), updatedAt: Date.now(),
+      description: '', isBidirectional: true, startEventId: null, createdAt: Date.now(), updatedAt: Date.now(),
     })
     await deleteWorld(world.id)
     expect(await db.relationships.where('worldId').equals(world.id).count()).toBe(0)

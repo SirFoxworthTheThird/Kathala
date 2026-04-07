@@ -11,7 +11,7 @@ import { BookOpen } from 'lucide-react'
 
 export default function CharacterArcView() {
   const { worldId } = useParams<{ worldId: string }>()
-  const { activeChapterId, setActiveChapterId } = useAppStore()
+  const { activeEventId, setActiveEventId } = useAppStore()
 
   const timelines  = useTimelines(worldId ?? null)
   const chapters   = useWorldChapters(worldId ?? null)
@@ -28,11 +28,11 @@ export default function CharacterArcView() {
 
   const markerById = new Map(markers.map((m) => [m.id, m]))
 
-  // Build lookup: snapByCharAndChap[characterId][chapterId]
+  // Build lookup: snapByCharAndChap[characterId][eventId]
   const snapMap = new Map<string, Map<string, typeof snapshots[0]>>()
   for (const snap of snapshots) {
     if (!snapMap.has(snap.characterId)) snapMap.set(snap.characterId, new Map())
-    snapMap.get(snap.characterId)!.set(snap.chapterId, snap)
+    snapMap.get(snap.characterId)!.set(snap.eventId, snap)
   }
 
   if (characters.length === 0 || sortedChapters.length === 0) {
@@ -52,10 +52,10 @@ export default function CharacterArcView() {
       <div className="flex items-center gap-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2.5">
         <span className="text-sm font-semibold">Character Arc</span>
         <span className="text-xs text-[hsl(var(--muted-foreground))]">{characters.length} characters · {sortedChapters.length} chapters</span>
-        {activeChapterId && (
+        {activeEventId && (
           <button
             className="ml-auto text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] underline"
-            onClick={() => setActiveChapterId(null)}
+            onClick={() => setActiveEventId(null)}
           >
             Clear chapter filter
           </button>
@@ -72,7 +72,7 @@ export default function CharacterArcView() {
                 Character
               </th>
               {sortedChapters.map((ch) => {
-                const isActive = ch.id === activeChapterId
+                const isActive = ch.id === activeEventId
                 return (
                   <th
                     key={ch.id}
@@ -82,7 +82,7 @@ export default function CharacterArcView() {
                         ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
                         : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
                     )}
-                    onClick={() => setActiveChapterId(isActive ? null : ch.id)}
+                    onClick={() => setActiveEventId(isActive ? null : ch.id)}
                     title={`Ch. ${ch.number} — ${ch.title}`}
                   >
                     <div className="truncate font-semibold">Ch. {ch.number}</div>
@@ -111,7 +111,7 @@ export default function CharacterArcView() {
 
                   {sortedChapters.map((ch) => {
                     const snap = charSnaps?.get(ch.id)
-                    const isActive = ch.id === activeChapterId
+                    const isActive = ch.id === activeEventId
 
                     if (!snap) {
                       return (

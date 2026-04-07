@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Users, Network, StickyNote, Clock } from 'lucide-react'
+import { ArrowLeft, Plus, Users, Network, StickyNote } from 'lucide-react'
 import { useChapter, useEvents, updateChapter, updateEvent } from '@/db/hooks/useTimeline'
 import { useChapterSnapshots } from '@/db/hooks/useSnapshots'
 import { useChapterRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
@@ -76,23 +76,6 @@ export default function ChapterDetailView() {
           {chapter.synopsis && (
             <p className="text-xs text-[hsl(var(--muted-foreground))]">{chapter.synopsis}</p>
           )}
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <Clock className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" />
-          <span className="text-xs text-[hsl(var(--muted-foreground))]">Travel days:</span>
-          <input
-            type="number"
-            min="0"
-            step="any"
-            placeholder="—"
-            defaultValue={chapter.travelDays ?? ''}
-            className="w-16 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 py-0.5 text-xs text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--ring))] transition-colors"
-            onBlur={(e) => {
-              const val = e.target.value === '' ? null : parseFloat(e.target.value)
-              if (chapterId) updateChapter(chapterId, { travelDays: isNaN(val as number) ? null : val })
-            }}
-          />
-          <span className="text-xs text-[hsl(var(--muted-foreground))]">days</span>
         </div>
       </div>
 

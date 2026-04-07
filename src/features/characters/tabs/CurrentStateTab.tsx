@@ -7,7 +7,7 @@ import { useItems, createItem } from '@/db/hooks/useItems'
 import { useLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useRootMapLayers } from '@/db/hooks/useMapLayers'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
-import { useActiveChapterId } from '@/store'
+import { useActiveEventId } from '@/store'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -20,9 +20,9 @@ interface CurrentStateTabProps {
 }
 
 export function CurrentStateTab({ character }: CurrentStateTabProps) {
-  const activeChapterId = useActiveChapterId()
-  const snapshot = useSnapshot(character.id, activeChapterId)
-  const chapterSnapshots = useChapterSnapshots(activeChapterId)
+  const activeEventId = useActiveEventId()
+  const snapshot = useSnapshot(character.id, activeEventId)
+  const chapterSnapshots = useChapterSnapshots(activeEventId)
   const items = useItems(character.worldId)
   const maps = useRootMapLayers(character.worldId)
   const firstMapId = maps[0]?.id ?? null
@@ -58,7 +58,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     }
   }, [snapshot])
 
-  if (!activeChapterId) {
+  if (!activeEventId) {
     return (
       <div className="flex flex-col items-center gap-2 py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">
         <p>Select a chapter from the top bar to view and edit state.</p>
@@ -80,12 +80,12 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
       )
     )
     // Also remove any location placements for these items in this chapter
-    await Promise.all(inventoryIds.map((id) => removeItemPlacement(id, activeChapterId!)))
+    await Promise.all(inventoryIds.map((id) => removeItemPlacement(id, activeEventId!)))
 
     await upsertSnapshot({
       worldId: character.worldId,
       characterId: character.id,
-      chapterId: activeChapterId!,
+      eventId: activeEventId!,
       isAlive,
       currentLocationMarkerId: locationId || null,
       currentMapLayerId: firstMapId,
