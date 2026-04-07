@@ -225,6 +225,12 @@ export interface MovementLine {
 
 export interface ScaleCalibrationPoint { x: number; y: number }
 
+export interface MeasureLine {
+  p1: ScaleCalibrationPoint
+  p2: ScaleCalibrationPoint
+  label: string
+}
+
 interface LeafletMapCanvasProps {
   layer: MapLayer
   imageUrl: string
@@ -247,6 +253,8 @@ interface LeafletMapCanvasProps {
   locationStatuses?: Record<string, string>
   /** When set, pan to this [y, x] position after FitBounds on mount (used for cross-layer character focus) */
   initialCenter?: [number, number] | null
+  /** When set, draws a measurement line between two points with a distance label */
+  measureLine?: MeasureLine | null
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -255,7 +263,7 @@ export function LeafletMapCanvas({
   isDraggingCharacter, onMarkerClick, onMapClick, onDrillDown,
   onCharacterDrop, onCharacterDropOnEmpty, onCharacterClick, mapRef: externalMapRef,
   scaleMode, onScalePoints, showSubMapLinks = true, locationStatuses = {},
-  pinAnimation, onAnimationEnd, initialCenter,
+  pinAnimation, onAnimationEnd, initialCenter, measureLine,
 }: LeafletMapCanvasProps) {
   const internalMapRef = useRef<L.Map | null>(null)
   const mapRef         = externalMapRef ?? internalMapRef
@@ -605,6 +613,30 @@ export function LeafletMapCanvas({
             radius={6}
             pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 1, weight: 2 }}
           />
+        )}
+
+        {/* Distance measurement line */}
+        {measureLine && (
+          <>
+            <Polyline
+              positions={[[measureLine.p1.y, measureLine.p1.x], [measureLine.p2.y, measureLine.p2.x]]}
+              pathOptions={{ color: '#22d3ee', weight: 2, opacity: 0.9, dashArray: '6 4' }}
+            >
+              <Tooltip permanent direction="center" className="movement-distance-tooltip">
+                {measureLine.label}
+              </Tooltip>
+            </Polyline>
+            <CircleMarker
+              center={[measureLine.p1.y, measureLine.p1.x]}
+              radius={5}
+              pathOptions={{ color: '#22d3ee', fillColor: '#22d3ee', fillOpacity: 1, weight: 2 }}
+            />
+            <CircleMarker
+              center={[measureLine.p2.y, measureLine.p2.x]}
+              radius={5}
+              pathOptions={{ color: '#22d3ee', fillColor: '#22d3ee', fillOpacity: 1, weight: 2 }}
+            />
+          </>
         )}
 
         {/* Location markers — guard against markers with missing coordinates (data integrity) */}

@@ -81,5 +81,5 @@ A Leaflet draw-like tool: on activation, click two points on the canvas and comp
 - [x] **Waypoint reorder UI** — up/down buttons on each waypoint in the Journey section of `CharacterSnapshotPanel`; calls `updateMovement`
 - [x] **Movement annotations** — `notes: string` added to `CharacterMovement` type + Dexie v11 migration + textarea in Journey section
 - [x] **Travel mode per movement** — `travelModeId` added to `CharacterMovement`; dropdown in Journey section; continuity checker now prefers `movement.travelModeId` over `snapshot.travelModeId`
-- [ ] **Distance measurement tool** — click-two-points tool on canvas; shows distance readout; no DB writes
+- [x] **Distance measurement tool** — click-two-points tool on canvas; shows distance readout; draws cyan dashed polyline with label on canvas; no DB writes
 - [x] **Empty state for MapTimeline** — shows a guidance message when no chapters exist instead of rendering nothing

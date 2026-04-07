@@ -16,7 +16,7 @@ import { useItems } from '@/db/hooks/useItems'
 import { useEventItemPlacements } from '@/db/hooks/useItemPlacements'
 import { useItemSnapshot, upsertItemSnapshot } from '@/db/hooks/useItemSnapshots'
 import { useChapterLocationSnapshots } from '@/db/hooks/useLocationSnapshots'
-import type { CharacterPin, MovementLine, PinAnimation, ScaleCalibrationPoint } from './LeafletMapCanvas'
+import type { CharacterPin, MovementLine, PinAnimation, ScaleCalibrationPoint, MeasureLine } from './LeafletMapCanvas'
 import { useBlobUrl, useWorldBlobUrls } from '@/db/hooks/useBlobs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -1429,6 +1429,11 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             mapRef={mapRef}
             scaleMode={scaleMode || measureMode}
             onScalePoints={measureMode ? handleMeasurePoints : handleScalePoints}
+            measureLine={
+              measureResult && layer.scalePixelsPerUnit && layer.scaleUnit
+                ? { p1: measureResult.p1, p2: measureResult.p2, label: formatDistance(measureResult.distPx, layer.scalePixelsPerUnit, layer.scaleUnit) } satisfies MeasureLine
+                : null
+            }
           />
 
           {/* ── Measure result overlay ── */}
