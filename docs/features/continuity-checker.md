@@ -78,8 +78,8 @@ Add `onKeyDown` to the modal container: ArrowDown/ArrowUp navigates between issu
 
 ## Tasks
 
-- [ ] **Issue suppression** — "Suppress" button per issue; store in Zustand (persisted); "Show suppressed" toggle
-- [ ] **Location destroyed check** — warn when character snapshot places a character at a destroyed/ruined location
-- [ ] **Item before acquired check** — warn when an event's `involvedItemIds` references an item before the character's first inventory snapshot containing it
-- [ ] **Dead character in relationship snapshot** — warn when a relationship snapshot references a character whose `isAlive` is false at that event
-- [ ] **Keyboard navigation** — ArrowUp/Down to move between issues; Enter to navigate; visible focus ring
+- [x] **Issue suppression** — "Suppress" button per issue; store in Zustand (persisted); "Show suppressed" toggle
+- [x] **Location destroyed check** — warn when character snapshot places a character at a destroyed/ruined location
+- [x] **Item before acquired check** — warn when an event's `involvedItemIds` references an item before the character's first inventory snapshot containing it
+- [x] **Dead character in relationship snapshot** — warn when a relationship snapshot references a character whose `isAlive` is false at that event
+- [x] **Keyboard navigation** — ArrowUp/Down to move between issues; Enter to navigate; visible focus ring
