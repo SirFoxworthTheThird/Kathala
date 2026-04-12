@@ -81,6 +81,39 @@ function buildSequentialQueue(
     return pts.length >= 2 ? pts : null
   }
 
+  /**
+   * First waypoint on `layerId` in the character's movement — used as the
+   * entry point when entering a sub-map (no reverse portal marker exists).
+   */
+  function firstWaypointOnLayer(charId: string, layerId: string): { x: number; y: number } | null {
+    const mov = movements.find((mv) => mv.characterId === charId)
+    if (!mov) return null
+    for (const wId of mov.waypoints) {
+      const m = markerById.get(wId)
+      if (m && m.mapLayerId === layerId && Number.isFinite(m.x) && Number.isFinite(m.y)) {
+        return { x: m.x, y: m.y }
+      }
+    }
+    return null
+  }
+
+  /**
+   * Last waypoint on `layerId` in the character's movement — used as the
+   * exit point when leaving a sub-map (no reverse portal marker exists).
+   */
+  function lastWaypointOnLayer(charId: string, layerId: string): { x: number; y: number } | null {
+    const mov = movements.find((mv) => mv.characterId === charId)
+    if (!mov) return null
+    let last: { x: number; y: number } | null = null
+    for (const wId of mov.waypoints) {
+      const m = markerById.get(wId)
+      if (m && m.mapLayerId === layerId && Number.isFinite(m.x) && Number.isFinite(m.y)) {
+        last = { x: m.x, y: m.y }
+      }
+    }
+    return last
+  }
+
   // ── Step 1: collect every character move that actually changed position ──────
   interface CharMove {
     charId: string
@@ -156,6 +189,17 @@ function buildSequentialQueue(
       })
     } else {
       // ── Cross-layer move: departure step then arrival step ─────────────────
+      //
+      // `linkedMapLayerId` is ONE-DIRECTIONAL: a marker on the PARENT layer
+      // links to a child layer — there is never a reverse link on the child.
+      //
+      // portalOnPrev: parent→child transition — portal is on prevLayerId (parent).
+      //               Works when character exits parent to enter sub-map.
+      // portalOnCurr: child→parent transition — portal is on currLayerId (parent).
+      //               Works when character exits sub-map to enter parent.
+      //
+      // When there is no portal marker we fall back to waypoint-based entry/exit
+      // points: firstWaypointOnLayer for arrival, lastWaypointOnLayer for departure.
       const prevMarker = prevMarkerId ? markerById.get(prevMarkerId) : undefined
       const portalOnPrev = allMarkers.find(
         (m) => m.mapLayerId === prevLayerId && m.linkedMapLayerId === currLayerId,
@@ -164,34 +208,50 @@ function buildSequentialQueue(
         (m) => m.mapLayerId === currLayerId && m.linkedMapLayerId === prevLayerId,
       )
 
-      // Departure step — only if we have valid source and portal positions
-      if (validCoords(prevMarker) && validCoords(portalOnPrev)) {
-        const from: Record<string, { x: number; y: number }> = {}
-        const to: Record<string, { x: number; y: number }> = {}
-        const waypoints: Record<string, Array<{ x: number; y: number }>> = {}
+      // ── Departure step ────────────────────────────────────────────────────
+      // Exit point priority: explicit portal on prevLayerId → last waypoint on
+      // prevLayerId → skip departure (character vanishes from prev layer).
+      const departureTo: Record<string, { x: number; y: number }> = {}
+      const departureFrom: Record<string, { x: number; y: number }> = {}
+      const departureWp: Record<string, Array<{ x: number; y: number }>> = {}
+      let hasDeparture = false
 
+      if (validCoords(prevMarker)) {
         for (const { charId } of group) {
-          from[charId] = { x: prevMarker.x, y: prevMarker.y }
-          to[charId] = { x: portalOnPrev.x, y: portalOnPrev.y }
-          const pts = trailPts(charId, prevLayerId)
-          if (pts) waypoints[charId] = pts
+          let exitPt: { x: number; y: number } | null = null
+          if (validCoords(portalOnPrev)) {
+            exitPt = { x: portalOnPrev.x, y: portalOnPrev.y }
+          } else {
+            exitPt = lastWaypointOnLayer(charId, prevLayerId)
+          }
+          if (exitPt) {
+            departureFrom[charId] = { x: prevMarker.x, y: prevMarker.y }
+            departureTo[charId] = exitPt
+            const pts = trailPts(charId, prevLayerId)
+            if (pts) departureWp[charId] = pts
+            hasDeparture = true
+          }
         }
+      }
 
+      if (hasDeparture) {
         keyRef.current += 1
         steps.push({
           mapLayerId: prevLayerId,
           pinAnimation: {
             key: keyRef.current,
-            from,
-            to,
-            waypoints: Object.keys(waypoints).length > 0 ? waypoints : undefined,
+            from: departureFrom,
+            to: departureTo,
+            waypoints: Object.keys(departureWp).length > 0 ? departureWp : undefined,
             duration: duration * 0.5,
             cameraFollow: true,
           },
         })
       }
 
-      // Arrival step
+      // ── Arrival step ──────────────────────────────────────────────────────
+      // Entry point priority: explicit portal on currLayerId → first waypoint on
+      // currLayerId → fade-in at destination.
       const from2: Record<string, { x: number; y: number }> = {}
       const to2: Record<string, { x: number; y: number }> = {}
       const waypoints2: Record<string, Array<{ x: number; y: number }>> = {}
@@ -199,8 +259,14 @@ function buildSequentialQueue(
 
       for (const { charId } of group) {
         to2[charId] = { x: currMarker.x, y: currMarker.y }
+        let entryPt: { x: number; y: number } | null = null
         if (validCoords(portalOnCurr)) {
-          from2[charId] = { x: portalOnCurr.x, y: portalOnCurr.y }
+          entryPt = { x: portalOnCurr.x, y: portalOnCurr.y }
+        } else {
+          entryPt = firstWaypointOnLayer(charId, currLayerId)
+        }
+        if (entryPt) {
+          from2[charId] = entryPt
           const pts = trailPts(charId, currLayerId)
           if (pts) waypoints2[charId] = pts
         } else {

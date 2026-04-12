@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, useMemo, useCallback, type CSSProperties } from 'react'
 import { ChevronLeft, ChevronRight, Play, Pause, Square, GitCompareArrows, MapPin } from 'lucide-react'
 import { useActiveWorldId, useActiveEventId, useAppStore, type PlaybackSpeed } from '@/store'
 import { useTimelines, useChapters, useTimelineEvents } from '@/db/hooks/useTimeline'
@@ -196,11 +196,48 @@ export function ChapterTimelineBar() {
     }
   }
 
-  // ── Callout positioning ─────────────────────────────────────────────────────
+  // ── Callout positioning + scroll state ─────────────────────────────────────
   const scrollerRef     = useRef<HTMLDivElement>(null)
   const activeMarkerRef = useRef<HTMLButtonElement>(null)
   const [calloutLeft, setCalloutLeft]       = useState<number | null>(null)
   const [calloutVisible, setCalloutVisible] = useState(true)
+  const [canScrollLeft, setCanScrollLeft]   = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
+  const updateScrollArrows = useCallback(() => {
+    const el = scrollerRef.current
+    if (!el) return
+    setCanScrollLeft(el.scrollLeft > 2)
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2)
+  }, [])
+
+  // Recalculate arrow visibility whenever scroll position or content changes
+  useEffect(() => {
+    const el = scrollerRef.current
+    if (!el) return
+    updateScrollArrows()
+    el.addEventListener('scroll', updateScrollArrows, { passive: true })
+    const ro = new ResizeObserver(updateScrollArrows)
+    ro.observe(el)
+    return () => { el.removeEventListener('scroll', updateScrollArrows); ro.disconnect() }
+  }, [chapters, updateScrollArrows])
+
+  // Convert vertical wheel to horizontal scroll
+  useEffect(() => {
+    const el = scrollerRef.current
+    if (!el) return
+    function onWheel(e: WheelEvent) {
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return // already horizontal
+      e.preventDefault()
+      el!.scrollBy({ left: e.deltaY, behavior: 'auto' })
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
+
+  function scrollBy(amount: number) {
+    scrollerRef.current?.scrollBy({ left: amount, behavior: 'smooth' })
+  }
 
   useEffect(() => {
     setCalloutVisible(true)
@@ -294,15 +331,44 @@ export function ChapterTimelineBar() {
         </button>
 
         {/* Scrollable track — chapters + events interleaved */}
-        <div ref={scrollerRef} style={{
-          display: 'flex', alignItems: 'center', flex: 1,
-          overflowX: 'auto', overflowY: 'visible',
-          scrollbarWidth: 'none', paddingLeft: '0.75rem', paddingRight: '0.75rem',
-          height: '100%', gap: 0,
-        }}>
+        <div style={{ position: 'relative', flex: 1, height: '100%', minWidth: 0 }}>
+          {/* Left scroll arrow */}
+          {canScrollLeft && (
+            <button
+              onClick={() => scrollBy(-200)}
+              style={{
+                position: 'absolute', left: 0, top: 0, bottom: 0, zIndex: 5,
+                display: 'flex', alignItems: 'center', paddingInline: '0.25rem',
+                background: 'linear-gradient(to right, var(--tl-bg) 60%, transparent)',
+                border: 'none', cursor: 'pointer', color: 'var(--tl-accent)',
+              }}
+            >
+              <ChevronLeft size={14} />
+            </button>
+          )}
+          {/* Right scroll arrow */}
+          {canScrollRight && (
+            <button
+              onClick={() => scrollBy(200)}
+              style={{
+                position: 'absolute', right: 0, top: 0, bottom: 0, zIndex: 5,
+                display: 'flex', alignItems: 'center', paddingInline: '0.25rem',
+                background: 'linear-gradient(to left, var(--tl-bg) 60%, transparent)',
+                border: 'none', cursor: 'pointer', color: 'var(--tl-accent)',
+              }}
+            >
+              <ChevronRight size={14} />
+            </button>
+          )}
+          <div ref={scrollerRef} style={{
+            display: 'flex', alignItems: 'center',
+            overflowX: 'auto', overflowY: 'visible',
+            scrollbarWidth: 'none', paddingLeft: '0.75rem', paddingRight: '0.75rem',
+            height: '100%', gap: 0,
+          }}>
           <div style={{
             position: 'relative', display: 'flex', alignItems: 'center',
-            width: '100%', justifyContent: 'space-between',
+            minWidth: 'max-content', gap: 0,
           }}>
             {/* Connecting line */}
             <div style={{
@@ -391,6 +457,7 @@ export function ChapterTimelineBar() {
                 </div>
               )
             })}
+          </div>
           </div>
         </div>
       </div>

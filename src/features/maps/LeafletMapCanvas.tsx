@@ -202,6 +202,9 @@ function FitBounds({ bounds, initialCenter }: { bounds: L.LatLngBoundsExpression
       const prevSnap = map.options.zoomSnap
       map.options.zoomSnap = 0
       map.fitBounds(bounds, { padding: [0, 0], animate: false })
+      const minZoom = map.getBoundsZoom(bounds, false)
+      map.setMinZoom(minZoom)
+      map.setMaxBounds(bounds)
       map.options.zoomSnap = prevSnap ?? 0.25
       if (center && typeof center[0] === 'number' && typeof center[1] === 'number') {
         map.panTo(center, { animate: false })
@@ -667,8 +670,7 @@ export function LeafletMapCanvas({
         center={[h / 2, w / 2]}
         zoom={0}
         style={{ height: '100%', width: '100%' }}
-        maxBounds={[[-h * 0.2, -w * 0.2], [h * 1.2, w * 1.2]]}
-        minZoom={-3} maxZoom={4} zoomSnap={0.25}
+        maxZoom={4} zoomSnap={0.25}
       >
         <MapInstanceTracker onReady={(m) => { mapRef.current = m; setLeafletMap(m) }} />
         <FitBounds bounds={bounds} initialCenter={initialCenter} />
