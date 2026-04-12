@@ -70,47 +70,75 @@ function buildSequentialQueue(
     return !!m && Number.isFinite(m.x) && Number.isFinite(m.y)
   }
 
-  // All characters that have a current location, sorted by ID
+  /** Collect per-character trail waypoints on a specific layer. */
+  function trailPts(charId: string, layerId: string): Array<{ x: number; y: number }> | null {
+    const mov = movements.find((mv) => mv.characterId === charId)
+    if (!mov || mov.waypoints.length < 2) return null
+    const pts = mov.waypoints
+      .map((id) => markerById.get(id))
+      .filter((m): m is LocationMarker => !!m && m.mapLayerId === layerId && Number.isFinite(m.x) && Number.isFinite(m.y))
+      .map((m) => ({ x: m.x, y: m.y }))
+    return pts.length >= 2 ? pts : null
+  }
+
+  // ── Step 1: collect every character move that actually changed position ──────
+  interface CharMove {
+    charId: string
+    prevLayerId: string | null
+    currLayerId: string
+    prevMarkerId: string | null
+    currMarkerId: string
+  }
+  const allMoves: CharMove[] = []
   const sortedCharIds = [...new Set([...prevByCharId.keys(), ...currByCharId.keys()])].sort()
 
   for (const charId of sortedCharIds) {
     const currSnap = currByCharId.get(charId)
     const prevSnap = prevByCharId.get(charId)
-
     if (!currSnap?.currentLocationMarkerId || !currSnap.currentMapLayerId) continue
-
-    const prevLayerId = prevSnap?.currentMapLayerId ?? null
-    const currLayerId = currSnap.currentMapLayerId
     const prevMarkerId = prevSnap?.currentLocationMarkerId ?? null
+    if (prevMarkerId === currSnap.currentLocationMarkerId && prevSnap?.currentMapLayerId === currSnap.currentMapLayerId) continue
+    allMoves.push({
+      charId,
+      prevLayerId: prevSnap?.currentMapLayerId ?? null,
+      currLayerId: currSnap.currentMapLayerId,
+      prevMarkerId,
+      currMarkerId: currSnap.currentLocationMarkerId,
+    })
+  }
 
-    // Skip if position hasn't changed
-    if (prevMarkerId === currSnap.currentLocationMarkerId) continue
+  // ── Step 2: group by identical (prevLayerId, prevMarkerId, currLayerId, currMarkerId) ──
+  // Characters sharing the exact same source and destination animate in the same step.
+  const groups = new Map<string, CharMove[]>()
+  for (const move of allMoves) {
+    const key = `${move.prevLayerId ?? ''}|${move.prevMarkerId ?? ''}|${move.currLayerId}|${move.currMarkerId}`
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(move)
+  }
 
-    const movement = movements.find((mv) => mv.characterId === charId)
+  // ── Step 3: build one PlaybackStep per group ──────────────────────────────
+  for (const [, group] of groups) {
+    const { prevLayerId, currLayerId, prevMarkerId, currMarkerId } = group[0]
+    const currMarker = markerById.get(currMarkerId)
+    if (!validCoords(currMarker)) continue
 
     if (!prevLayerId || prevLayerId === currLayerId) {
       // ── Same-layer move (or first appearance) ──────────────────────────────
       const prevMarker = prevMarkerId ? markerById.get(prevMarkerId) : undefined
-      const currMarker = markerById.get(currSnap.currentLocationMarkerId)
-      if (!validCoords(currMarker)) continue
-
       const from: Record<string, { x: number; y: number }> = {}
-      const to: Record<string, { x: number; y: number }> = { [charId]: { x: currMarker.x, y: currMarker.y } }
+      const to: Record<string, { x: number; y: number }> = {}
       const waypoints: Record<string, Array<{ x: number; y: number }>> = {}
       const fadeIn: string[] = []
 
-      if (validCoords(prevMarker)) {
-        from[charId] = { x: prevMarker.x, y: prevMarker.y }
-        // Follow drawn trail if available
-        if (movement && movement.waypoints.length >= 2) {
-          const pts = movement.waypoints
-            .map((id) => markerById.get(id))
-            .filter((m): m is LocationMarker => !!m && m.mapLayerId === currLayerId && Number.isFinite(m.x) && Number.isFinite(m.y))
-            .map((m) => ({ x: m.x, y: m.y }))
-          if (pts.length >= 2) waypoints[charId] = pts
+      for (const { charId } of group) {
+        to[charId] = { x: currMarker.x, y: currMarker.y }
+        if (validCoords(prevMarker)) {
+          from[charId] = { x: prevMarker.x, y: prevMarker.y }
+          const pts = trailPts(charId, currLayerId)
+          if (pts) waypoints[charId] = pts
+        } else {
+          fadeIn.push(charId)
         }
-      } else {
-        fadeIn.push(charId)
       }
 
       keyRef.current += 1
@@ -129,34 +157,24 @@ function buildSequentialQueue(
     } else {
       // ── Cross-layer move: departure step then arrival step ─────────────────
       const prevMarker = prevMarkerId ? markerById.get(prevMarkerId) : undefined
-      const currMarker = markerById.get(currSnap.currentLocationMarkerId)
-      if (!validCoords(currMarker)) continue
-
-      // Portal on departure layer that links to arrival layer
       const portalOnPrev = allMarkers.find(
         (m) => m.mapLayerId === prevLayerId && m.linkedMapLayerId === currLayerId,
       )
-      // Portal on arrival layer that links back to departure layer
       const portalOnCurr = allMarkers.find(
         (m) => m.mapLayerId === currLayerId && m.linkedMapLayerId === prevLayerId,
       )
 
-      // Step 1: move to portal on departure layer
+      // Departure step — only if we have valid source and portal positions
       if (validCoords(prevMarker) && validCoords(portalOnPrev)) {
-        const from: Record<string, { x: number; y: number }> = {
-          [charId]: { x: prevMarker.x, y: prevMarker.y },
-        }
-        const to: Record<string, { x: number; y: number }> = {
-          [charId]: { x: portalOnPrev.x, y: portalOnPrev.y },
-        }
+        const from: Record<string, { x: number; y: number }> = {}
+        const to: Record<string, { x: number; y: number }> = {}
         const waypoints: Record<string, Array<{ x: number; y: number }>> = {}
 
-        if (movement && movement.waypoints.length >= 2) {
-          const pts = movement.waypoints
-            .map((id) => markerById.get(id))
-            .filter((m): m is LocationMarker => !!m && m.mapLayerId === prevLayerId && Number.isFinite(m.x) && Number.isFinite(m.y))
-            .map((m) => ({ x: m.x, y: m.y }))
-          if (pts.length >= 2) waypoints[charId] = pts
+        for (const { charId } of group) {
+          from[charId] = { x: prevMarker.x, y: prevMarker.y }
+          to[charId] = { x: portalOnPrev.x, y: portalOnPrev.y }
+          const pts = trailPts(charId, prevLayerId)
+          if (pts) waypoints[charId] = pts
         }
 
         keyRef.current += 1
@@ -173,22 +191,21 @@ function buildSequentialQueue(
         })
       }
 
-      // Step 2: move from portal to destination on arrival layer
+      // Arrival step
       const from2: Record<string, { x: number; y: number }> = {}
-      const fadeIn2: string[] = []
+      const to2: Record<string, { x: number; y: number }> = {}
       const waypoints2: Record<string, Array<{ x: number; y: number }>> = {}
+      const fadeIn2: string[] = []
 
-      if (validCoords(portalOnCurr)) {
-        from2[charId] = { x: portalOnCurr.x, y: portalOnCurr.y }
-        if (movement && movement.waypoints.length >= 2) {
-          const pts = movement.waypoints
-            .map((id) => markerById.get(id))
-            .filter((m): m is LocationMarker => !!m && m.mapLayerId === currLayerId && Number.isFinite(m.x) && Number.isFinite(m.y))
-            .map((m) => ({ x: m.x, y: m.y }))
-          if (pts.length >= 2) waypoints2[charId] = pts
+      for (const { charId } of group) {
+        to2[charId] = { x: currMarker.x, y: currMarker.y }
+        if (validCoords(portalOnCurr)) {
+          from2[charId] = { x: portalOnCurr.x, y: portalOnCurr.y }
+          const pts = trailPts(charId, currLayerId)
+          if (pts) waypoints2[charId] = pts
+        } else {
+          fadeIn2.push(charId)
         }
-      } else {
-        fadeIn2.push(charId)
       }
 
       keyRef.current += 1
@@ -197,7 +214,7 @@ function buildSequentialQueue(
         pinAnimation: {
           key: keyRef.current,
           from: from2,
-          to: { [charId]: { x: currMarker.x, y: currMarker.y } },
+          to: to2,
           waypoints: Object.keys(waypoints2).length > 0 ? waypoints2 : undefined,
           duration: duration * 0.5,
           fadeIn: fadeIn2,
