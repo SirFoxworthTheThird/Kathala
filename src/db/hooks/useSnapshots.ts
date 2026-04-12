@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import type { CharacterSnapshot } from '@/types'
@@ -67,24 +68,28 @@ export function useWorldSnapshots(worldId: string | null) {
 }
 
 /** Returns snapshots for the active event only. When no event is selected,
- *  returns the most recently updated snapshot per character. */
+ *  returns the most recently updated snapshot per character.
+ *  Memoised so the returned array reference is stable between renders when
+ *  neither the underlying data nor the active event has changed. */
 export function useBestSnapshots(worldId: string | null, activeEventId: string | null): CharacterSnapshot[] {
   const all = useWorldSnapshots(worldId)
-  if (!all.length) return []
+  return useMemo(() => {
+    if (!all.length) return []
 
-  if (activeEventId) {
-    return all.filter((s) => s.eventId === activeEventId)
-  }
-
-  // No event selected: show the most recently updated snapshot per character.
-  const byChar = new Map<string, CharacterSnapshot>()
-  for (const snap of all) {
-    const current = byChar.get(snap.characterId)
-    if (!current || snap.updatedAt > current.updatedAt) {
-      byChar.set(snap.characterId, snap)
+    if (activeEventId) {
+      return all.filter((s) => s.eventId === activeEventId)
     }
-  }
-  return Array.from(byChar.values())
+
+    // No event selected: show the most recently updated snapshot per character.
+    const byChar = new Map<string, CharacterSnapshot>()
+    for (const snap of all) {
+      const current = byChar.get(snap.characterId)
+      if (!current || snap.updatedAt > current.updatedAt) {
+        byChar.set(snap.characterId, snap)
+      }
+    }
+    return Array.from(byChar.values())
+  }, [all, activeEventId])
 }
 
 export async function fetchSnapshot(characterId: string, eventId: string): Promise<CharacterSnapshot | undefined> {

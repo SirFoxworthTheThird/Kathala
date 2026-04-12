@@ -52,6 +52,8 @@ interface UISlice {
   setCheckerOpen: (open: boolean) => void
   suppressedIssueIds: string[]
   toggleSuppressIssue: (id: string) => void
+  isAnimating: boolean
+  setIsAnimating: (v: boolean) => void
 }
 
 type AppStore = WorldSlice & EventSlice & MapSlice & UISlice & PlaybackSlice
@@ -119,6 +121,8 @@ export const useAppStore = create<AppStore>()(
           ? s.suppressedIssueIds.filter((x) => x !== id)
           : [...s.suppressedIssueIds, id],
       })),
+      isAnimating: false,
+      setIsAnimating: (v) => set({ isAnimating: v }),
     }),
     {
       name: 'plotweave-ui',

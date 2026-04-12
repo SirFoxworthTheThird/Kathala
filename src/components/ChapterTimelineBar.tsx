@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Play, Pause, Square, GitCompareArrows, MapPi
 import { useActiveWorldId, useActiveEventId, useAppStore, type PlaybackSpeed } from '@/store'
 import { useTimelines, useChapters, useTimelineEvents } from '@/db/hooks/useTimeline'
 import { readingHoldMs } from '@/lib/playbackTiming'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 const SPEED_NEXT: Record<PlaybackSpeed, PlaybackSpeed> = { slow: 'normal', normal: 'fast', fast: 'slow' }
 const SPEED_LABEL: Record<PlaybackSpeed, string> = { slow: '1×', normal: '2×', fast: '3×' }
@@ -112,7 +113,9 @@ function Callout({ left, chapterNum, chapterTitle, eventTitle, eventDescription,
 export function ChapterTimelineBar() {
   const worldId        = useActiveWorldId()
   const activeEventId  = useActiveEventId()
-  const { setActiveEventId, isPlayingStory, setIsPlayingStory, playbackSpeed, setPlaybackSpeed, setDiffOpen } = useAppStore()
+  const { setActiveEventId, isPlayingStory, setIsPlayingStory, playbackSpeed, setPlaybackSpeed, setDiffOpen, isAnimating } = useAppStore()
+  const navigate = useNavigate()
+  const location = useLocation()
 
   const timelines       = useTimelines(worldId)
   const firstTimelineId = timelines[0]?.id ?? null
@@ -156,7 +159,8 @@ export function ChapterTimelineBar() {
 
   // ── Playback — advance through events in global order ───────────────────────
   useEffect(() => {
-    if (!isPlayingStory || !orderedEvents.length) return
+    // Wait for any running map animation to finish before advancing
+    if (!isPlayingStory || !orderedEvents.length || isAnimating) return
 
     if (!activeEventId) {
       setActiveEventId(orderedEvents[0].id)
@@ -175,7 +179,7 @@ export function ChapterTimelineBar() {
     }, holdMs)
 
     return () => clearTimeout(t)
-  }, [isPlayingStory, activeEventId, orderedEvents, playbackSpeed, setActiveEventId, setIsPlayingStory])
+  }, [isPlayingStory, isAnimating, activeEventId, orderedEvents, playbackSpeed, setActiveEventId, setIsPlayingStory])
 
   function handlePlayPause() {
     if (isPlayingStory) {
@@ -185,6 +189,10 @@ export function ChapterTimelineBar() {
         setActiveEventId(orderedEvents[0]?.id ?? null)
       }
       setIsPlayingStory(true)
+      // Auto-navigate to map view if not already there
+      if (worldId && !location.pathname.includes('/maps')) {
+        navigate(`/worlds/${worldId}/maps`)
+      }
     }
   }
 

@@ -1,20 +1,24 @@
+import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import type { BlobEntry } from '@/types'
 import { generateId } from '@/lib/id'
 
-/** Returns a map of blobId → object URL for all blobs in a world. */
+/** Returns a stable map of blobId → object URL for all blobs in a world.
+ *  The Map reference only changes when the underlying Dexie data changes. */
 export function useWorldBlobUrls(worldId: string | null): Map<string, string> {
   const entries = useLiveQuery(
     () => (worldId ? db.blobs.where('worldId').equals(worldId).toArray() : []),
     [worldId],
     []
   )
-  const map = new Map<string, string>()
-  for (const e of entries) {
-    map.set(e.id, URL.createObjectURL(e.data))
-  }
-  return map
+  return useMemo(() => {
+    const map = new Map<string, string>()
+    for (const e of entries) {
+      map.set(e.id, URL.createObjectURL(e.data))
+    }
+    return map
+  }, [entries])
 }
 
 export function useBlobUrl(id: string | null): string | undefined {

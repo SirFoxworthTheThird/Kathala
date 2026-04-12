@@ -31,7 +31,7 @@ import { CharacterSnapshotPanel } from './CharacterSnapshotPanel'
 import { UploadMapDialog } from './UploadMapDialog'
 import { AddLocationDialog } from './AddLocationDialog'
 import { StoryNotesOverlay } from './StoryNotesOverlay'
-import type { Character, CharacterSnapshot, Item, LocationMarker, MapLayer } from '@/types'
+import type { Character, CharacterSnapshot, Item, LocationMarker, MapLayer, CharacterMovement } from '@/types'
 import { pixelDist, pathPixelLength, formatDistance } from '@/lib/mapScale'
 
 // ─── Utilities ───────────────────────────────────────────────────────────────
@@ -46,122 +46,168 @@ interface PlaybackStep {
 }
 
 /**
- * Build the PinAnimation for a specific map layer given two sets of chapter snapshots.
- * Mirrors the logic in MapView but is generalized to any target layer.
+ * Build a sequential per-character animation queue.
+ * Characters are sorted alphabetically by ID for a deterministic order.
+ * Each character contributes one step (same-layer move) or two steps (cross-layer:
+ * departure layer first, then arrival layer). Each step animates only that one character;
+ * others appear at their current snapshot positions immediately.
  */
-function buildLayerPinAnimation(
+function buildSequentialQueue(
   prevSnaps: CharacterSnapshot[],
   currSnaps: CharacterSnapshot[],
-  targetLayerId: string,
-  allLayers: MapLayer[],
   allMarkers: LocationMarker[],
-  duration: number,
-  keyRef: MutableRefObject<number>,
-): PinAnimation | null {
-  // Resolve prev-chapter pins visible from targetLayerId
-  const prevPins: Array<{ charId: string; x: number; y: number }> = []
-  for (const snap of prevSnaps) {
-    const pin = resolveCharacterPin(snap, targetLayerId, allLayers, allMarkers)
-    if (pin) prevPins.push({ charId: snap.characterId, x: pin.x, y: pin.y })
-  }
-
-  // Resolve curr-chapter pins visible from targetLayerId
-  const currPins: Array<{ charId: string; x: number; y: number; inSubMap: boolean }> = []
-  for (const snap of currSnaps) {
-    const pin = resolveCharacterPin(snap, targetLayerId, allLayers, allMarkers)
-    if (pin) currPins.push({ charId: snap.characterId, x: pin.x, y: pin.y, inSubMap: pin.inSubMap })
-  }
-
-  const from: Record<string, { x: number; y: number }> = {}
-  for (const p of prevPins) from[p.charId] = { x: p.x, y: p.y }
-
-  // Back-fill portal entry for characters arriving from a different map
-  for (const cp of currPins) {
-    const { charId } = cp
-    if (from[charId] !== undefined || cp.inSubMap) continue
-    const prevSnap = prevSnaps.find((s) => s.characterId === charId)
-    if (!prevSnap?.currentMapLayerId || prevSnap.currentMapLayerId === targetLayerId) continue
-    const link = allMarkers.find(
-      (m) => m.mapLayerId === targetLayerId && m.linkedMapLayerId === prevSnap.currentMapLayerId,
-    )
-    if (link) from[charId] = { x: link.x, y: link.y }
-  }
-
-  const to: Record<string, { x: number; y: number }> = {}
-  const fadeIn: string[] = []
-  for (const cp of currPins) {
-    to[cp.charId] = { x: cp.x, y: cp.y }
-    if (from[cp.charId] === undefined) fadeIn.push(cp.charId)
-  }
-
-  // Skip this layer if nothing actually moves or appears
-  const hasMovement =
-    fadeIn.length > 0 ||
-    Object.keys(from).some((id) => {
-      if (!to[id]) return true // character left this layer's view
-      return from[id].x !== to[id].x || from[id].y !== to[id].y
-    })
-  if (!hasMovement) return null
-
-  keyRef.current += 1
-  return { from, to, fadeIn, duration, key: keyRef.current }
-}
-
-/**
- * Build an ordered list of map-layer steps for playback.
- * Cross-map departure layers come first (follow the journey), then arrival layers,
- * then any remaining layers that have within-map movement only.
- */
-function buildPlaybackQueue(
-  prevSnaps: CharacterSnapshot[],
-  currSnaps: CharacterSnapshot[],
-  allLayers: MapLayer[],
-  allMarkers: LocationMarker[],
+  movements: CharacterMovement[],
   duration: number,
   keyRef: MutableRefObject<number>,
 ): PlaybackStep[] {
-  const queue: PlaybackStep[] = []
-  const seen = new Set<string>()
+  const steps: PlaybackStep[] = []
+  const markerById = new Map(allMarkers.map((m) => [m.id, m]))
+  const prevByCharId = new Map(prevSnaps.map((s) => [s.characterId, s]))
+  const currByCharId = new Map(currSnaps.map((s) => [s.characterId, s]))
 
-  function tryAdd(mapLayerId: string) {
-    if (seen.has(mapLayerId)) return
-    seen.add(mapLayerId)
-    const anim = buildLayerPinAnimation(prevSnaps, currSnaps, mapLayerId, allLayers, allMarkers, duration, keyRef)
-    if (anim) queue.push({ mapLayerId, pinAnimation: anim })
+  /** Returns true when the marker has finite, usable coordinates. */
+  function validCoords(m: LocationMarker | undefined): m is LocationMarker {
+    return !!m && Number.isFinite(m.x) && Number.isFinite(m.y)
   }
 
-  // 1. Departure layers first (character's from-map for cross-map moves)
-  for (const curr of currSnaps) {
-    if (!curr.currentMapLayerId) continue
-    const prev = prevSnaps.find((s) => s.characterId === curr.characterId)
-    if (prev?.currentMapLayerId && prev.currentMapLayerId !== curr.currentMapLayerId) {
-      tryAdd(prev.currentMapLayerId)
+  // All characters that have a current location, sorted by ID
+  const sortedCharIds = [...new Set([...prevByCharId.keys(), ...currByCharId.keys()])].sort()
+
+  for (const charId of sortedCharIds) {
+    const currSnap = currByCharId.get(charId)
+    const prevSnap = prevByCharId.get(charId)
+
+    if (!currSnap?.currentLocationMarkerId || !currSnap.currentMapLayerId) continue
+
+    const prevLayerId = prevSnap?.currentMapLayerId ?? null
+    const currLayerId = currSnap.currentMapLayerId
+    const prevMarkerId = prevSnap?.currentLocationMarkerId ?? null
+
+    // Skip if position hasn't changed
+    if (prevMarkerId === currSnap.currentLocationMarkerId) continue
+
+    const movement = movements.find((mv) => mv.characterId === charId)
+
+    if (!prevLayerId || prevLayerId === currLayerId) {
+      // ── Same-layer move (or first appearance) ──────────────────────────────
+      const prevMarker = prevMarkerId ? markerById.get(prevMarkerId) : undefined
+      const currMarker = markerById.get(currSnap.currentLocationMarkerId)
+      if (!validCoords(currMarker)) continue
+
+      const from: Record<string, { x: number; y: number }> = {}
+      const to: Record<string, { x: number; y: number }> = { [charId]: { x: currMarker.x, y: currMarker.y } }
+      const waypoints: Record<string, Array<{ x: number; y: number }>> = {}
+      const fadeIn: string[] = []
+
+      if (validCoords(prevMarker)) {
+        from[charId] = { x: prevMarker.x, y: prevMarker.y }
+        // Follow drawn trail if available
+        if (movement && movement.waypoints.length >= 2) {
+          const pts = movement.waypoints
+            .map((id) => markerById.get(id))
+            .filter((m): m is LocationMarker => !!m && m.mapLayerId === currLayerId && Number.isFinite(m.x) && Number.isFinite(m.y))
+            .map((m) => ({ x: m.x, y: m.y }))
+          if (pts.length >= 2) waypoints[charId] = pts
+        }
+      } else {
+        fadeIn.push(charId)
+      }
+
+      keyRef.current += 1
+      steps.push({
+        mapLayerId: currLayerId,
+        pinAnimation: {
+          key: keyRef.current,
+          from,
+          to,
+          waypoints: Object.keys(waypoints).length > 0 ? waypoints : undefined,
+          duration,
+          fadeIn,
+          cameraFollow: true,
+        },
+      })
+    } else {
+      // ── Cross-layer move: departure step then arrival step ─────────────────
+      const prevMarker = prevMarkerId ? markerById.get(prevMarkerId) : undefined
+      const currMarker = markerById.get(currSnap.currentLocationMarkerId)
+      if (!validCoords(currMarker)) continue
+
+      // Portal on departure layer that links to arrival layer
+      const portalOnPrev = allMarkers.find(
+        (m) => m.mapLayerId === prevLayerId && m.linkedMapLayerId === currLayerId,
+      )
+      // Portal on arrival layer that links back to departure layer
+      const portalOnCurr = allMarkers.find(
+        (m) => m.mapLayerId === currLayerId && m.linkedMapLayerId === prevLayerId,
+      )
+
+      // Step 1: move to portal on departure layer
+      if (validCoords(prevMarker) && validCoords(portalOnPrev)) {
+        const from: Record<string, { x: number; y: number }> = {
+          [charId]: { x: prevMarker.x, y: prevMarker.y },
+        }
+        const to: Record<string, { x: number; y: number }> = {
+          [charId]: { x: portalOnPrev.x, y: portalOnPrev.y },
+        }
+        const waypoints: Record<string, Array<{ x: number; y: number }>> = {}
+
+        if (movement && movement.waypoints.length >= 2) {
+          const pts = movement.waypoints
+            .map((id) => markerById.get(id))
+            .filter((m): m is LocationMarker => !!m && m.mapLayerId === prevLayerId && Number.isFinite(m.x) && Number.isFinite(m.y))
+            .map((m) => ({ x: m.x, y: m.y }))
+          if (pts.length >= 2) waypoints[charId] = pts
+        }
+
+        keyRef.current += 1
+        steps.push({
+          mapLayerId: prevLayerId,
+          pinAnimation: {
+            key: keyRef.current,
+            from,
+            to,
+            waypoints: Object.keys(waypoints).length > 0 ? waypoints : undefined,
+            duration: duration * 0.5,
+            cameraFollow: true,
+          },
+        })
+      }
+
+      // Step 2: move from portal to destination on arrival layer
+      const from2: Record<string, { x: number; y: number }> = {}
+      const fadeIn2: string[] = []
+      const waypoints2: Record<string, Array<{ x: number; y: number }>> = {}
+
+      if (validCoords(portalOnCurr)) {
+        from2[charId] = { x: portalOnCurr.x, y: portalOnCurr.y }
+        if (movement && movement.waypoints.length >= 2) {
+          const pts = movement.waypoints
+            .map((id) => markerById.get(id))
+            .filter((m): m is LocationMarker => !!m && m.mapLayerId === currLayerId && Number.isFinite(m.x) && Number.isFinite(m.y))
+            .map((m) => ({ x: m.x, y: m.y }))
+          if (pts.length >= 2) waypoints2[charId] = pts
+        }
+      } else {
+        fadeIn2.push(charId)
+      }
+
+      keyRef.current += 1
+      steps.push({
+        mapLayerId: currLayerId,
+        pinAnimation: {
+          key: keyRef.current,
+          from: from2,
+          to: { [charId]: { x: currMarker.x, y: currMarker.y } },
+          waypoints: Object.keys(waypoints2).length > 0 ? waypoints2 : undefined,
+          duration: duration * 0.5,
+          fadeIn: fadeIn2,
+          cameraFollow: true,
+        },
+      })
     }
   }
 
-  // 2. Arrival layers (character's to-map for cross-map moves)
-  for (const curr of currSnaps) {
-    if (!curr.currentMapLayerId) continue
-    const prev = prevSnaps.find((s) => s.characterId === curr.characterId)
-    if (prev?.currentMapLayerId && prev.currentMapLayerId !== curr.currentMapLayerId) {
-      tryAdd(curr.currentMapLayerId)
-    }
-  }
-
-  // 3. Same-map movement layers
-  for (const curr of currSnaps) {
-    if (!curr.currentMapLayerId) continue
-    const prev = prevSnaps.find((s) => s.characterId === curr.characterId)
-    if (prev?.currentMapLayerId === curr.currentMapLayerId) tryAdd(curr.currentMapLayerId)
-  }
-
-  // 4. Layers where characters disappeared (moved off-world / died)
-  for (const prev of prevSnaps) {
-    if (!prev.currentMapLayerId) continue
-    tryAdd(prev.currentMapLayerId)
-  }
-
-  return queue
+  return steps
 }
 
 const MOVEMENT_COLORS = [
@@ -1090,10 +1136,32 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const activeEvent   = activeEventId ? allWorldEvents.find((e) => e.id === activeEventId) ?? null : null
   const activeChapter = activeEvent ? chapters.find((c) => c.id === activeEvent.chapterId) ?? null : null
   const activeChapterTitle = activeChapter ? `Ch.${activeChapter.number} — ${activeChapter.title}` : null
+
+  // Ordered events for the active timeline — used to find the previous event for playback
+  const orderedEvents = useMemo(() => {
+    const chapNumById = new Map(chapters.map((c) => [c.id, c.number]))
+    return [...allWorldEvents]
+      .filter((e) => chapNumById.has(e.chapterId))
+      .sort((a, b) => {
+        const aN = (chapNumById.get(a.chapterId) ?? 0) * 10_000 + a.sortOrder
+        const bN = (chapNumById.get(b.chapterId) ?? 0) * 10_000 + b.sortOrder
+        return aN - bN
+      })
+  }, [allWorldEvents, chapters])
+
+  const activeEventIdx = activeEventId ? orderedEvents.findIndex((e) => e.id === activeEventId) : -1
+  const prevEventId = activeEventIdx > 0 ? orderedEvents[activeEventIdx - 1].id : null
+
+  // Previous event snapshots (event-based — used for playback animation)
+  const prevSnapshots = useMemo(
+    () => prevEventId ? allSnapshots.filter((s) => s.eventId === prevEventId) : [],
+    [allSnapshots, prevEventId], // eslint-disable-line react-hooks/exhaustive-deps
+  )
+
+  // Previous chapter (for travel-line display — still chapter-based)
   const prevChapter = activeChapter
     ? chapters.find((c) => c.timelineId === activeChapter.timelineId && c.number === activeChapter.number - 1)
     : null
-  // Derive previous chapter's last event to find snapshots for snapshot inheritance display
   const prevChapterEvents = useMemo(
     () => prevChapter
       ? allWorldEvents.filter((e) => e.chapterId === prevChapter.id).sort((a, b) => b.sortOrder - a.sortOrder)
@@ -1101,9 +1169,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     [allWorldEvents, prevChapter?.id], // eslint-disable-line react-hooks/exhaustive-deps
   )
   const prevChapterLastEventId = prevChapterEvents[0]?.id ?? null
-  // Derive previous chapter snapshots synchronously from world-level data (same cache as current
-  // event) so they are available in the same render that activeEventId changes.
-  const prevSnapshots = useMemo(
+  const prevChapterSnapshots = useMemo(
     () => prevChapterLastEventId ? allSnapshots.filter((s) => s.eventId === prevChapterLastEventId) : [],
     [allSnapshots, prevChapterLastEventId], // eslint-disable-line react-hooks/exhaustive-deps
   )
@@ -1118,26 +1184,31 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     setSelectedCharacterId((prev) => prev === characterId ? null : characterId)
   }
 
-  // Resolve character pins for the current chapter
-  const charPins: CharacterPin[] = []
-  for (const snap of snapshots) {
-    const char = characters.find((c) => c.id === snap.characterId)
-    if (!char) continue
-    const pin = resolveCharacterPin(snap, layerId, allLayers, allMarkers)
-    if (pin) charPins.push({
-      ...pin,
-      character: char,
-      portraitUrl: char.portraitImageId ? blobUrls.get(char.portraitImageId) ?? null : null,
-      locationName: snap.currentLocationMarkerId
-        ? allMarkers.find((m) => m.id === snap.currentLocationMarkerId)?.name ?? null
-        : null,
-    })
-  }
+  // Resolve character pins for the current chapter.
+  // Memoised so that Zustand store updates (e.g. isAnimating toggling) don't produce
+  // a new array reference and restart the LeafletMapCanvas animation effect.
+  const charPins = useMemo<CharacterPin[]>(() => {
+    const pins: CharacterPin[] = []
+    for (const snap of snapshots) {
+      const char = characters.find((c) => c.id === snap.characterId)
+      if (!char) continue
+      const pin = resolveCharacterPin(snap, layerId, allLayers, allMarkers)
+      if (pin) pins.push({
+        ...pin,
+        character: char,
+        portraitUrl: char.portraitImageId ? blobUrls.get(char.portraitImageId) ?? null : null,
+        locationName: snap.currentLocationMarkerId
+          ? allMarkers.find((m) => m.id === snap.currentLocationMarkerId)?.name ?? null
+          : null,
+      })
+    }
+    return pins
+  }, [snapshots, characters, layerId, allLayers, allMarkers, blobUrls]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Playback map-navigation queue ──────────────────────────────────────────
-  // When a chapter advances during playback, build an ordered list of map layers to
-  // visit (departure maps first, then arrival maps, then same-map-only maps).
-  // Each step carries its own PinAnimation; we navigate the active layer to match.
+  // ── Playback sequential animation queue ────────────────────────────────────
+  // When the active event advances during playback, build a sequential per-character
+  // animation queue. Each step animates one character at a time and follows their
+  // drawn trail; cross-layer moves generate two steps (departure + arrival).
   useEffect(() => {
     if (!isPlayingStory || !activeEventId) {
       setPlaybackQueue([])
@@ -1146,8 +1217,8 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     }
     if (prevSnapshots.length === 0 && snapshots.length === 0) return
 
-    const queue = buildPlaybackQueue(
-      prevSnapshots, snapshots, allLayers, allMarkers,
+    const queue = buildSequentialQueue(
+      prevSnapshots, snapshots, allMarkers, movements,
       PIN_TRAVEL_MS[playbackSpeed], pinAnimationKeyRef,
     )
     setPlaybackQueue(queue)
@@ -1207,10 +1278,10 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   }
 
   // Build inter-chapter travel lines (previous chapter location → current chapter location)
-  if (prevSnapshots.length > 0) {
+  if (prevChapterSnapshots.length > 0) {
     for (const snap of snapshots) {
       if (!snap.currentLocationMarkerId || snap.currentMapLayerId !== layerId) continue
-      const prev = prevSnapshots.find((s) => s.characterId === snap.characterId)
+      const prev = prevChapterSnapshots.find((s) => s.characterId === snap.characterId)
       if (!prev?.currentLocationMarkerId || prev.currentLocationMarkerId === snap.currentLocationMarkerId) continue
       if (prev.currentMapLayerId !== layerId) continue
       const fromMarker = markers.find((m) => m.id === prev.currentLocationMarkerId)
