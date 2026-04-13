@@ -51,6 +51,7 @@ When writing long stories it's easy to lose track of where a character is, what 
 ### Chapter Timeline Bar
 - **Fixed bottom overlay** — a persistent themed timeline bar visible on every non-dashboard page
 - **Chapter markers** — dot-track with one marker per chapter; click to set the active chapter cursor
+- **Horizontal scrolling** — the timeline scrolls horizontally when there are more chapters than fit on screen; scroll with mouse-wheel (vertical wheel converts to horizontal), or use the left/right arrow buttons that appear at the edges
 - **Callout** — a floating info card appears above the active marker showing the chapter title, synopsis, and prev/next navigation chevrons; auto-dismisses after 4 seconds
 - **"All" deselect** — a button on the left of the bar resets the chapter cursor to show unfiltered data
 - **Playback controls** — Play/Pause, Stop, and Speed buttons built into the timeline bar for story playback mode
@@ -65,6 +66,7 @@ When writing long stories it's easy to lose track of where a character is, what 
 - **Character pins** — characters are shown on the map at their chapter-specific location; characters inside a sub-map appear on parent maps at the entry-point marker
 - **Drag-and-drop placement** — drag character cards from the sidebar directly onto a location marker to place them; dragging onto empty map space automatically creates a new location marker at that spot
 - **Movement trails** — per-chapter waypoints are recorded and drawn as coloured paths on the map; each trail segment shows its own distance label when the map has a scale configured
+- **Tight image bounds** — the map always fits the full image at minimum zoom; panning and zooming are locked so the user cannot move outside the image boundaries
 - **Sub-maps fill the canvas** — when navigating into a nested map, the image always expands to fill the full canvas area
 - **Item placement** — place world items at specific locations per chapter; items show their image thumbnail in the location panel and the items sidebar
 - **Character snapshot panel** — click any character pin to open a sidebar with their portrait, status, location, inventory (with item images), and relationships
@@ -104,10 +106,12 @@ When writing long stories it's easy to lose track of where a character is, what 
 - **Navigate to issues** — click the arrow on any issue to jump directly to the relevant chapter with the chapter cursor set
 
 ### Story Playback
-- **Play the Story So Far** — hit Play in the timeline bar to automatically advance through every chapter in sequence
-- **Animated character travel** — character pins glide smoothly across the map from their previous chapter position to their new one, simulating movement through the story world
+- **Play the Story So Far** — hit Play in the timeline bar to automatically advance through every chapter in sequence, event by event
+- **Trail-following movement** — character pins travel along the waypoint paths you drew on the map, not in straight lines; if no trail exists, they slide directly between markers
+- **Simultaneous movement** — characters travelling between the same pair of locations within the same event step animate at the same time
+- **Sub-map transitions** — characters moving into or out of nested sub-maps animate across the parent map to the portal marker, then continue inside the sub-map; cross-sub-map journeys (A → parent → B) are handled in sequence
 - **Cinematic notes overlay** — while a chapter is held, all characters' status notes for that chapter are displayed as continuous prose in the centre of the screen, with character names highlighted; the text auto-scrolls if it is longer than the visible area
-- **Speed control** — switch between Slow, Normal, and Fast playback speeds; character travel animation adjusts accordingly
+- **Speed control** — switch between Slow, Normal, and Fast playback speeds; both the animation speed and the reading hold duration adjust accordingly
 - **Full hold on last chapter** — the final chapter waits the full hold duration before stopping, giving you time to see the last movements and read the notes
 - **Auto-stop** — playback stops cleanly after the last chapter; pressing Stop at any time returns the timeline cursor to where it was
 
@@ -144,9 +148,9 @@ Nine visual profiles that instantly transform the entire app — backgrounds, bo
 | 🌹 Romance | Dark rose & rose-gold | Georgia serif | Soft glow, very rounded corners |
 
 ### Export / Import
-- **`.pwk` format** — export any world to a single JSON file containing all data and base64-encoded images
+- **`.pwk` format** — export any world to a single JSON file containing all data and base64-encoded images (current format: v3)
 - **Full fidelity** — characters, maps, location markers, timelines, chapters, events, items, relationships, snapshots, movement paths, images, and relationship graph positions are all included
-- **Backward compatible** — older `.pwk` files missing newer fields (`startChapterId`, `scalePixelsPerUnit`, `scaleUnit`, `synopsis`, `notes`) are normalised on import
+- **Backward compatible** — older `.pwk` files (v1/v2) missing newer fields (`startChapterId`, `scalePixelsPerUnit`, `scaleUnit`, `synopsis`, `notes`, snapshot `sortKey`) are normalised on import
 - **One-click restore** — import a `.pwk` file to restore an entire world, including all images
 
 ### Data & Privacy
@@ -240,7 +244,7 @@ src/
     timeline/      # Timeline view, chapter rows, event cards, snapshot cards
     items/         # Item roster, item detail, create dialog
   db/
-    database.ts    # Dexie schema and migrations (v1–v7)
+    database.ts    # Dexie schema and migrations (v1–v13)
     hooks/         # useLiveQuery hooks per entity
   store/
     index.ts       # Zustand store (activeWorld, activeChapter, theme, map history)

@@ -111,16 +111,22 @@ describe('deleteChapter', () => {
     expect(await db.events.where('chapterId').equals(ch.id).count()).toBe(0)
   })
 
-  it('cascades to characterSnapshots', async () => {
-    const ch = await createChapter({ worldId: 'w', timelineId: 'tl-1', number: 1, title: 'Ch', synopsis: '' })
+  it('cascades to characterSnapshots via events', async () => {
+    const tl = await createTimeline({ worldId: 'w', name: 'T', description: '', color: '#000' })
+    const ch = await createChapter({ worldId: 'w', timelineId: tl.id, number: 1, title: 'Ch', synopsis: '' })
+    const ev = await createEvent({
+      worldId: 'w', chapterId: ch.id, timelineId: tl.id, title: 'Ev',
+      description: '', locationMarkerId: null, involvedCharacterIds: [],
+      involvedItemIds: [], tags: [], sortOrder: 0,
+    })
     await db.characterSnapshots.add({
-      id: 'snap-1', worldId: 'w', characterId: 'char-1', chapterId: ch.id,
+      id: 'snap-1', worldId: 'w', characterId: 'char-1', eventId: ev.id,
       isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
       inventoryItemIds: [], inventoryNotes: '', statusNotes: '', travelModeId: null,
       createdAt: Date.now(), updatedAt: Date.now(),
     })
     await deleteChapter(ch.id)
-    expect(await db.characterSnapshots.where('chapterId').equals(ch.id).count()).toBe(0)
+    expect(await db.characterSnapshots.where('eventId').equals(ev.id).count()).toBe(0)
   })
 })
 

@@ -16,7 +16,7 @@ FILE STRUCTURE
 ═══════════════════════════════════════════════════════════
 
 {
-  "version": 1,
+  "version": 2,
   "type": "full",
   "exportedAt": <current unix timestamp in ms, e.g. 1700000000000>,
   "world": { ... },
@@ -91,7 +91,7 @@ SCHEMA REFERENCE
   "sentiment": "<positive|neutral|negative|complex>",
   "description": "<optional detail about this relationship>",
   "isBidirectional": true,
-  "startChapterId": null,
+  "startEventId": null,
   "createdAt": <timestamp>,
   "updatedAt": <timestamp>
 }
@@ -115,12 +115,12 @@ SCHEMA REFERENCE
   "title": "<chapter title>",
   "synopsis": "<2–4 sentence summary of what happens>",
   "notes": "",
-  "travelDays": null,
   "createdAt": <timestamp>,
   "updatedAt": <timestamp>
 }
 
 ── events (key plot moments, 2–5 per chapter) ──────────────
+Events are the primary time unit. Each chapter contains ordered events.
 {
   "id": "<uuid>",
   "worldId": "<world.id>",
@@ -132,25 +132,26 @@ SCHEMA REFERENCE
   "involvedCharacterIds": ["<char id>", "..."],
   "involvedItemIds": ["<item id>"],   // empty array if none
   "tags": ["battle", "revelation"],   // thematic tags
-  "sortOrder": 0,                     // ascending within a chapter
+  "sortOrder": 0,                     // ascending within a chapter, starting at 0
+  "travelDays": null,                 // days of travel before this event; null if unknown
   "createdAt": <timestamp>,
   "updatedAt": <timestamp>
 }
 
-── characterSnapshots (one per character × chapter) ────────
-Create a snapshot for EVERY character in EVERY chapter they appear in,
+── characterSnapshots (one per character × event) ──────────
+Create a snapshot for EVERY character in EVERY event they appear in,
 showing their state at that point in the story.
 {
   "id": "<uuid>",
   "worldId": "<world.id>",
   "characterId": "<character.id>",
-  "chapterId": "<chapter.id>",
+  "eventId": "<event.id>",
   "isAlive": true,              // set to false once the character dies
   "currentLocationMarkerId": null,
   "currentMapLayerId": null,
   "inventoryItemIds": [],
   "inventoryNotes": "",
-  "statusNotes": "<what this character is doing / experiencing this chapter>",
+  "statusNotes": "<what this character is doing / experiencing at this event>",
   "travelModeId": null,
   "createdAt": <timestamp>,
   "updatedAt": <timestamp>
@@ -165,9 +166,9 @@ INSTRUCTIONS
 3. Extract every meaningful relationship between characters.
 4. Extract significant items/objects that appear in the story.
 5. Divide the story into logical chapters (aim for 1 chapter per major scene or act).
-6. For each chapter, write a synopsis and list 2–5 key events.
-7. For each character × chapter combination, write a statusNotes sentence describing their situation.
-8. Cross-reference all ids consistently — every characterId in events/snapshots must match a character in the characters array.
+6. For each chapter, write a synopsis and list 2–5 key events (each event gets its own record).
+7. For each character × event combination where the character is present, write a statusNotes sentence describing their situation.
+8. Cross-reference all ids consistently — every characterId in events/snapshots must match a character in the characters array, and every eventId in snapshots must match an event.
 9. Output ONLY the final JSON object, starting with { and ending with }.
 
 ═══════════════════════════════════════════════════════════

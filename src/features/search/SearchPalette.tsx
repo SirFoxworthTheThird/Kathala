@@ -44,7 +44,7 @@ function highlight(text: string, query: string) {
 export function SearchPalette() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
-  const { searchOpen, setSearchOpen } = useAppStore()
+  const { searchOpen, setSearchOpen, setActiveEventId } = useAppStore()
   const [query, setQuery] = useState('')
   const [activeIdx, setActiveIdx] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -127,6 +127,7 @@ export function SearchPalette() {
   }
 
   function go(result: SearchResult) {
+    if (result.type === 'event') setActiveEventId(result.id)
     navigate(result.path)
     close()
   }

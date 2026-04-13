@@ -5,7 +5,7 @@ import type {
   Relationship, RelationshipSnapshot, Timeline, Chapter, WorldEvent, TravelMode,
 } from '@/types'
 
-const EXPORT_VERSION = 1
+const EXPORT_VERSION = 3
 
 interface BlobExport {
   id: string
@@ -16,7 +16,7 @@ interface BlobExport {
 }
 
 export interface WorldExportFile {
-  version: typeof EXPORT_VERSION
+  version: number
   /** 'full' = single file with blobs, 'data' = split data file (no blobs). Absent in legacy exports — treat as 'full'. */
   type?: 'full' | 'data'
   exportedAt: number
@@ -42,7 +42,7 @@ export interface WorldExportFile {
 
 /** Companion file produced by exportWorldSplit — contains only the binary blobs. */
 export interface WorldImagesFile {
-  version: typeof EXPORT_VERSION
+  version: number
   type: 'images'
   worldId: string
   worldName: string
@@ -313,7 +313,8 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
   if (typeof data !== 'object' || data === null) throw new Error('Invalid file: not an object')
   const d = data as Record<string, unknown>
   if (typeof d.version !== 'number') throw new Error('Invalid file: missing version')
-  if (d.version !== EXPORT_VERSION) throw new Error(`Unsupported export version: ${d.version}`)
+  if (d.version < 1 || d.version > EXPORT_VERSION) throw new Error(`Unsupported export version: ${d.version}`)
+  // v3 added sortKey to snapshots; v1/v2 files are backfilled in normalizeImport
   if (typeof d.world !== 'object' || d.world === null) throw new Error('Invalid file: missing world')
   const world = d.world as Record<string, unknown>
   if (typeof world.id !== 'string' || typeof world.name !== 'string') throw new Error('Invalid file: world missing id or name')
@@ -349,37 +350,149 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
 }
 
 function normalizeImport(data: WorldExportFile): void {
-  // Backfill startChapterId on relationships exported before it was added
-  for (const rel of data.relationships) {
-    if ((rel as unknown as Record<string, unknown>).startChapterId === undefined) {
-      (rel as unknown as Record<string, unknown>).startChapterId = null
-    }
+  type Rec = Record<string, unknown>
+
+  // ── Common backfills (apply to all versions) ────────────────────────────────
+
+  // Backfill color on characters exported before it was added
+  for (const char of data.characters) {
+    const c = char as unknown as Rec
+    if (c.color === undefined) c.color = null
   }
   // Backfill scale fields on map layers exported before they were added
   for (const layer of data.mapLayers) {
-    if ((layer as unknown as Record<string, unknown>).scalePixelsPerUnit === undefined) {
-      (layer as unknown as Record<string, unknown>).scalePixelsPerUnit = null
-    }
-    if ((layer as unknown as Record<string, unknown>).scaleUnit === undefined) {
-      (layer as unknown as Record<string, unknown>).scaleUnit = null
-    }
+    const l = layer as unknown as Rec
+    if (l.scalePixelsPerUnit === undefined) l.scalePixelsPerUnit = null
+    if (l.scaleUnit === undefined) l.scaleUnit = null
   }
-  // Backfill synopsis, notes, and travelDays on chapters exported before they were added
+  // Backfill synopsis and notes on chapters exported before they were added
   for (const ch of data.chapters) {
-    if ((ch as unknown as Record<string, unknown>).synopsis === undefined) {
-      (ch as unknown as Record<string, unknown>).synopsis = ''
+    const c = ch as unknown as Rec
+    if (c.synopsis === undefined) c.synopsis = ''
+    if (c.notes === undefined) c.notes = ''
+  }
+  // Backfill travelDays on events (may be absent on older v2 exports too)
+  for (const ev of data.events) {
+    const e = ev as unknown as Rec
+    if (e.travelDays === undefined) e.travelDays = null
+  }
+  // Backfill travelModeId on character snapshots exported before it was added
+  for (const snap of data.characterSnapshots) {
+    const s = snap as unknown as Rec
+    if (s.travelModeId === undefined) s.travelModeId = null
+  }
+
+  // ── v1 → v2 migration ───────────────────────────────────────────────────────
+  // v1 had snapshots/movements keyed by chapterId; v2 uses eventId.
+  // v1 had Relationship.startChapterId; v2 uses startEventId.
+  if (data.version === 1) {
+    // Backfill pre-Option-A v1 compat: startChapterId may be absent entirely
+    for (const rel of data.relationships) {
+      const r = rel as unknown as Rec
+      if (r.startChapterId === undefined) r.startChapterId = null
     }
-    if ((ch as unknown as Record<string, unknown>).notes === undefined) {
-      (ch as unknown as Record<string, unknown>).notes = ''
+    // Backfill travelDays on chapters (was on Chapter in v1, moved to WorldEvent in v2)
+    for (const ch of data.chapters) {
+      const c = ch as unknown as Rec
+      if (c.travelDays === undefined) c.travelDays = null
     }
-    if ((ch as unknown as Record<string, unknown>).travelDays === undefined) {
-      (ch as unknown as Record<string, unknown>).travelDays = null
+
+    // Build chapterId → first-event-id map
+    const eventsByChapter = new Map<string, WorldEvent[]>()
+    for (const ev of data.events) {
+      const arr = eventsByChapter.get(ev.chapterId) ?? []
+      arr.push(ev)
+      eventsByChapter.set(ev.chapterId, arr)
+    }
+    const chapterToEventId = new Map<string, string>()
+    for (const [chapterId, evs] of eventsByChapter) {
+      evs.sort((a, b) => a.sortOrder - b.sortOrder)
+      chapterToEventId.set(chapterId, evs[0].id)
+    }
+
+    // For chapters that have no events, create a synthetic event
+    const now = Date.now()
+    for (const ch of data.chapters) {
+      if (!chapterToEventId.has(ch.id)) {
+        const c = ch as unknown as Rec
+        const newId = crypto.randomUUID()
+        data.events.push({
+          id: newId,
+          worldId: data.world.id,
+          chapterId: ch.id,
+          timelineId: ch.timelineId,
+          title: '',
+          description: '',
+          locationMarkerId: null,
+          involvedCharacterIds: [],
+          involvedItemIds: [],
+          tags: [],
+          sortOrder: 0,
+          travelDays: (c.travelDays as number | null) ?? null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        chapterToEventId.set(ch.id, newId)
+      }
+    }
+
+    // Rename chapterId → eventId on each snapshot/movement array
+    function remapToEventId(arr: Rec[]): void {
+      for (const item of arr) {
+        if ('chapterId' in item && !('eventId' in item)) {
+          item.eventId = chapterToEventId.get(item.chapterId as string) ?? item.chapterId
+          delete item.chapterId
+        }
+      }
+    }
+    remapToEventId(data.characterSnapshots as unknown as Rec[])
+    remapToEventId(data.characterMovements as unknown as Rec[])
+    remapToEventId(data.itemPlacements as unknown as Rec[])
+    remapToEventId(data.locationSnapshots as unknown as Rec[])
+    remapToEventId(data.itemSnapshots as unknown as Rec[])
+    remapToEventId(data.relationshipSnapshots as unknown as Rec[])
+
+    // Rename startChapterId → startEventId on relationships
+    for (const rel of data.relationships) {
+      const r = rel as unknown as Rec
+      if ('startChapterId' in r) {
+        const chapId = r.startChapterId as string | null
+        r.startEventId = chapId ? (chapterToEventId.get(chapId) ?? null) : null
+        delete r.startChapterId
+      }
+    }
+  } else {
+    // v2+: backfill startEventId if absent (very early v2 exports)
+    for (const rel of data.relationships) {
+      const r = rel as unknown as Rec
+      if (r.startEventId === undefined) r.startEventId = null
     }
   }
-  // Backfill travelModeId on snapshots exported before it was added
-  for (const snap of data.characterSnapshots) {
-    if ((snap as unknown as Record<string, unknown>).travelModeId === undefined) {
-      (snap as unknown as Record<string, unknown>).travelModeId = null
+
+  // ── v3: backfill sortKey on all snapshot arrays (v1/v2 files lack it) ────────
+  if (data.version < 3) {
+    const eventById = new Map(data.events.map((e) => [e.id, e]))
+    const chapterNumberById = new Map(data.chapters.map((c) => [c.id, c.number]))
+
+    const getSortKey = (eventId: string): number => {
+      const ev = eventById.get(eventId)
+      if (!ev) return 0
+      const chapNum = chapterNumberById.get(ev.chapterId) ?? 0
+      return chapNum * 10_000 + ev.sortOrder
+    }
+
+    const snapshotArrays: Rec[][] = [
+      data.characterSnapshots as unknown as Rec[],
+      data.locationSnapshots as unknown as Rec[],
+      data.itemSnapshots as unknown as Rec[],
+      data.relationshipSnapshots as unknown as Rec[],
+    ]
+    for (const arr of snapshotArrays) {
+      for (const snap of arr) {
+        if (snap.sortKey === undefined) {
+          snap.sortKey = getSortKey(snap.eventId as string)
+        }
+      }
     }
   }
 }

@@ -10,7 +10,7 @@ function makeSnap(overrides: Partial<CharacterSnapshot> = {}): Omit<CharacterSna
   return {
     worldId: 'world-1',
     characterId: 'char-1',
-    chapterId: 'ch-1',
+    eventId: 'ev-1',
     isAlive: true,
     currentLocationMarkerId: null,
     currentMapLayerId: null,
@@ -59,8 +59,8 @@ describe('upsertSnapshot', () => {
   })
 
   it('stores distinct snapshots for different chapters', async () => {
-    await upsertSnapshot(makeSnap({ chapterId: 'ch-1' }))
-    await upsertSnapshot(makeSnap({ chapterId: 'ch-2' }))
+    await upsertSnapshot(makeSnap({ eventId: 'ev-1' }))
+    await upsertSnapshot(makeSnap({ eventId: 'ev-2' }))
 
     const all = await db.characterSnapshots.toArray()
     expect(all).toHaveLength(2)
@@ -106,14 +106,14 @@ describe('deleteSnapshot', () => {
   })
 
   it('only removes the targeted snapshot', async () => {
-    const a = await upsertSnapshot(makeSnap({ chapterId: 'ch-1' }))
-    await upsertSnapshot(makeSnap({ chapterId: 'ch-2' }))
+    const a = await upsertSnapshot(makeSnap({ eventId: 'ev-1' }))
+    await upsertSnapshot(makeSnap({ eventId: 'ev-2' }))
 
     await deleteSnapshot(a.id)
 
     const remaining = await db.characterSnapshots.toArray()
     expect(remaining).toHaveLength(1)
-    expect(remaining[0].chapterId).toBe('ch-2')
+    expect(remaining[0].eventId).toBe('ev-2')
   })
 })
 
@@ -122,7 +122,7 @@ describe('deleteSnapshot', () => {
 describe('fetchSnapshot', () => {
   it('returns the snapshot when it exists', async () => {
     const created = await upsertSnapshot(makeSnap())
-    const fetched = await fetchSnapshot('char-1', 'ch-1')
+    const fetched = await fetchSnapshot('char-1', 'ev-1')
     expect(fetched).toBeDefined()
     expect(fetched!.id).toBe(created.id)
   })
@@ -135,7 +135,7 @@ describe('fetchSnapshot', () => {
 
   it('returns undefined when the characterId does not match', async () => {
     await upsertSnapshot(makeSnap())
-    const result = await fetchSnapshot('char-unknown', 'ch-1')
+    const result = await fetchSnapshot('char-unknown', 'ev-1')
     expect(result).toBeUndefined()
   })
 
@@ -143,17 +143,17 @@ describe('fetchSnapshot', () => {
     await upsertSnapshot(makeSnap({ characterId: 'char-1', statusNotes: 'first' }))
     await upsertSnapshot(makeSnap({ characterId: 'char-2', statusNotes: 'second' }))
 
-    const result = await fetchSnapshot('char-2', 'ch-1')
+    const result = await fetchSnapshot('char-2', 'ev-1')
     expect(result).toBeDefined()
     expect(result!.characterId).toBe('char-2')
     expect(result!.statusNotes).toBe('second')
   })
 
   it('returns the correct snapshot when a character has entries across multiple chapters', async () => {
-    await upsertSnapshot(makeSnap({ chapterId: 'ch-1', statusNotes: 'chapter one' }))
-    await upsertSnapshot(makeSnap({ chapterId: 'ch-2', statusNotes: 'chapter two' }))
+    await upsertSnapshot(makeSnap({ eventId: 'ev-1', statusNotes: 'chapter one' }))
+    await upsertSnapshot(makeSnap({ eventId: 'ev-2', statusNotes: 'chapter two' }))
 
-    const result = await fetchSnapshot('char-1', 'ch-2')
+    const result = await fetchSnapshot('char-1', 'ev-2')
     expect(result!.statusNotes).toBe('chapter two')
   })
 
@@ -161,7 +161,7 @@ describe('fetchSnapshot', () => {
     await upsertSnapshot(makeSnap({ statusNotes: 'before' }))
     await upsertSnapshot(makeSnap({ statusNotes: 'after' }))
 
-    const result = await fetchSnapshot('char-1', 'ch-1')
+    const result = await fetchSnapshot('char-1', 'ev-1')
     expect(result!.statusNotes).toBe('after')
   })
 })
@@ -169,21 +169,21 @@ describe('fetchSnapshot', () => {
 // ── chapter isolation (useBestSnapshots logic) ────────────────────────────────
 
 describe('chapter snapshot isolation', () => {
-  it('only snapshots for the active chapter are returned when filtering by chapterId', async () => {
-    await upsertSnapshot(makeSnap({ chapterId: 'ch-1', statusNotes: 'ch1 state' }))
-    await upsertSnapshot(makeSnap({ chapterId: 'ch-2', statusNotes: 'ch2 state' }))
+  it('only snapshots for the active chapter are returned when filtering by eventId', async () => {
+    await upsertSnapshot(makeSnap({ eventId: 'ev-1', statusNotes: 'ch1 state' }))
+    await upsertSnapshot(makeSnap({ eventId: 'ev-2', statusNotes: 'ch2 state' }))
 
     const all = await db.characterSnapshots.where('worldId').equals('world-1').toArray()
-    const forChapter1 = all.filter((s) => s.chapterId === 'ch-1')
+    const forChapter1 = all.filter((s) => s.eventId === 'ev-1')
 
     expect(forChapter1).toHaveLength(1)
     expect(forChapter1[0].statusNotes).toBe('ch1 state')
   })
 
   it('most-recent snapshot is selected per character when no chapter filter', async () => {
-    await upsertSnapshot(makeSnap({ chapterId: 'ch-1' }))
+    await upsertSnapshot(makeSnap({ eventId: 'ev-1' }))
     await new Promise((r) => setTimeout(r, 5))
-    await upsertSnapshot(makeSnap({ chapterId: 'ch-2', statusNotes: 'latest' }))
+    await upsertSnapshot(makeSnap({ eventId: 'ev-2', statusNotes: 'latest' }))
 
     const all = await db.characterSnapshots.where('worldId').equals('world-1').toArray()
 

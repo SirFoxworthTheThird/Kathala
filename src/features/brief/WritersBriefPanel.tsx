@@ -1,8 +1,8 @@
 import { X, BookOpen, Users, Network, Package, Scroll, MapPin, Heart, Skull, ChevronRight } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import { useAppStore } from '@/store'
-import { useChapter, useEvents } from '@/db/hooks/useTimeline'
-import { useChapterSnapshots } from '@/db/hooks/useSnapshots'
+import { useChapter, useEvent, useEvents } from '@/db/hooks/useTimeline'
+import { useBestSnapshots } from '@/db/hooks/useSnapshots'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { useChapterRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
@@ -34,19 +34,20 @@ function Section({ title, icon: Icon, count, children }: {
 
 export function WritersBriefPanel() {
   const { worldId } = useParams<{ worldId: string }>()
-  const { briefOpen, setBriefOpen, activeChapterId } = useAppStore()
+  const { briefOpen, setBriefOpen, activeEventId } = useAppStore()
 
-  const chapter    = useChapter(activeChapterId)
-  const events     = useEvents(activeChapterId)
-  const snapshots  = useChapterSnapshots(activeChapterId)
+  const activeEvent = useEvent(activeEventId)
+  const chapter    = useChapter(activeEvent?.chapterId ?? null)
+  const events     = useEvents(activeEvent?.chapterId ?? null)
+  const snapshots  = useBestSnapshots(worldId ?? null, activeEventId)
   const characters = useCharacters(worldId ?? null)
   const rels       = useRelationships(worldId ?? null)
-  const relSnaps   = useChapterRelationshipSnapshots(activeChapterId)
+  const relSnaps   = useChapterRelationshipSnapshots(activeEventId)
   const items      = useItems(worldId ?? null)
   const markers    = useAllLocationMarkers(worldId ?? null)
   const itemPlacements = useLiveQuery(
-    () => activeChapterId ? db.itemPlacements.where('chapterId').equals(activeChapterId).toArray() : [],
-    [activeChapterId],
+    () => activeEventId ? db.itemPlacements.where('eventId').equals(activeEventId).toArray() : [],
+    [activeEventId],
     []
   )
 
@@ -110,7 +111,7 @@ export function WritersBriefPanel() {
 
         {/* Content */}
         <div className="flex-1 overflow-auto px-4 py-3">
-          {!activeChapterId ? (
+          {!activeEventId ? (
             <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">
               Select a chapter from the timeline bar to see the brief.
             </p>
@@ -118,12 +119,21 @@ export function WritersBriefPanel() {
             <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading…</p>
           ) : (
             <>
-              {/* Chapter header */}
+              {/* Chapter + active event header */}
               <div className="mb-4 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2.5">
                 <p className="text-xs font-semibold text-[hsl(var(--muted-foreground))]">Chapter {chapter.number}</p>
                 <p className="text-sm font-bold text-[hsl(var(--foreground))]">{chapter.title}</p>
                 {chapter.synopsis && (
                   <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))] leading-relaxed">{chapter.synopsis}</p>
+                )}
+                {activeEvent?.title && (
+                  <div className="mt-2 border-t border-[hsl(var(--border))] pt-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Active Event</p>
+                    <p className="text-xs font-medium text-[hsl(var(--foreground))]">{activeEvent.title}</p>
+                    {activeEvent.description && (
+                      <p className="mt-0.5 text-[10px] text-[hsl(var(--muted-foreground))] leading-relaxed">{activeEvent.description}</p>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -133,12 +143,23 @@ export function WritersBriefPanel() {
                   <p className="text-xs italic text-[hsl(var(--muted-foreground))]">No events recorded.</p>
                 ) : (
                   <ul className="space-y-1">
-                    {events.map((ev) => (
-                      <li key={ev.id} className="flex items-start gap-2 text-xs">
-                        <ChevronRight className="mt-0.5 h-3 w-3 shrink-0 text-[hsl(var(--muted-foreground))]" />
-                        <span>{ev.title}</span>
-                      </li>
-                    ))}
+                    {[...events].sort((a, b) => a.sortOrder - b.sortOrder).map((ev) => {
+                      const isActive = ev.id === activeEventId
+                      return (
+                        <li
+                          key={ev.id}
+                          className={cn(
+                            'flex items-start gap-2 rounded px-1.5 py-1 text-xs',
+                            isActive
+                              ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))] font-medium'
+                              : 'text-[hsl(var(--muted-foreground))]'
+                          )}
+                        >
+                          <ChevronRight className={cn('mt-0.5 h-3 w-3 shrink-0', isActive ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))]')} />
+                          <span>{ev.title}</span>
+                        </li>
+                      )
+                    })}
                   </ul>
                 )}
               </Section>

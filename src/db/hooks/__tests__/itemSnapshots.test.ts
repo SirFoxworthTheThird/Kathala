@@ -17,7 +17,7 @@ function makeItemSnapData(overrides: Partial<Omit<ItemSnapshot, 'id' | 'createdA
   return {
     worldId: 'world-1',
     itemId: 'item-1',
-    chapterId: 'ch-1',
+    eventId: 'ev-1',
     condition: 'pristine',
     notes: '',
     ...overrides,
@@ -53,8 +53,8 @@ describe('upsertItemSnapshot', () => {
   })
 
   it('stores distinct snapshots for different chapters', async () => {
-    await upsertItemSnapshot(makeItemSnapData({ chapterId: 'ch-1' }))
-    await upsertItemSnapshot(makeItemSnapData({ chapterId: 'ch-2' }))
+    await upsertItemSnapshot(makeItemSnapData({ eventId: 'ev-1' }))
+    await upsertItemSnapshot(makeItemSnapData({ eventId: 'ev-2' }))
 
     const all = await db.itemSnapshots.toArray()
     expect(all).toHaveLength(2)
@@ -78,15 +78,15 @@ describe('upsertItemSnapshot', () => {
     expect(stored!.condition).toBe('broken')
     expect(stored!.notes).toBe('cracked in battle')
     expect(stored!.worldId).toBe('world-1')
-    expect(stored!.chapterId).toBe('ch-1')
+    expect(stored!.eventId).toBe('ev-1')
   })
 
   it('only updates the targeted item+chapter combination', async () => {
-    const snapA = await upsertItemSnapshot(makeItemSnapData({ itemId: 'item-1', chapterId: 'ch-1', condition: 'good' }))
-    await upsertItemSnapshot(makeItemSnapData({ itemId: 'item-2', chapterId: 'ch-1', condition: 'poor' }))
+    const snapA = await upsertItemSnapshot(makeItemSnapData({ itemId: 'item-1', eventId: 'ev-1', condition: 'good' }))
+    await upsertItemSnapshot(makeItemSnapData({ itemId: 'item-2', eventId: 'ev-1', condition: 'poor' }))
 
     // Update item-1 only
-    await upsertItemSnapshot(makeItemSnapData({ itemId: 'item-1', chapterId: 'ch-1', condition: 'ruined' }))
+    await upsertItemSnapshot(makeItemSnapData({ itemId: 'item-1', eventId: 'ev-1', condition: 'ruined' }))
 
     const item1Snap = await db.itemSnapshots.get(snapA.id)
     const allSnaps = await db.itemSnapshots.toArray()

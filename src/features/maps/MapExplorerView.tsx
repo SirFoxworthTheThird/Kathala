@@ -5,18 +5,18 @@ import {
   Plus, Upload, Users, Map as MapIcon, Trash2, Undo2,
   ChevronRight, ChevronDown, MapPin, Package, Layers, Ruler, X, Route, Search,
 } from 'lucide-react'
-import { useAppStore, useActiveMapLayerId, useActiveChapterId, useMapLayerHistory, type PlaybackSpeed } from '@/store'
+import { useAppStore, useActiveMapLayerId, useActiveEventId, useMapLayerHistory, type PlaybackSpeed } from '@/store'
 import { useRootMapLayers, useMapLayer, useMapLayers, deleteMapLayer, updateMapLayer } from '@/db/hooks/useMapLayers'
-import { useChapters, useTimelines } from '@/db/hooks/useTimeline'
+import { useChapters, useTimelines, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useLocationMarkers, useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useCharacters } from '@/db/hooks/useCharacters'
-import { useBestSnapshots, useWorldSnapshots, upsertSnapshot, fetchSnapshot } from '@/db/hooks/useSnapshots'
-import { useChapterMovements, appendWaypoint, clearMovement, removeLastWaypoint } from '@/db/hooks/useMovements'
+import { useBestSnapshots, upsertSnapshot, fetchSnapshot } from '@/db/hooks/useSnapshots'
+import { useEventMovements, appendWaypoint, clearMovement, removeLastWaypoint } from '@/db/hooks/useMovements'
 import { useItems } from '@/db/hooks/useItems'
-import { useChapterItemPlacements } from '@/db/hooks/useItemPlacements'
+import { useEventItemPlacements } from '@/db/hooks/useItemPlacements'
 import { useItemSnapshot, upsertItemSnapshot } from '@/db/hooks/useItemSnapshots'
 import { useChapterLocationSnapshots } from '@/db/hooks/useLocationSnapshots'
-import type { CharacterPin, MovementLine, PinAnimation, ScaleCalibrationPoint } from './LeafletMapCanvas'
+import type { CharacterPin, MovementLine, PinAnimation, ScaleCalibrationPoint, MeasureLine } from './LeafletMapCanvas'
 import { useBlobUrl, useWorldBlobUrls } from '@/db/hooks/useBlobs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -31,7 +31,7 @@ import { CharacterSnapshotPanel } from './CharacterSnapshotPanel'
 import { UploadMapDialog } from './UploadMapDialog'
 import { AddLocationDialog } from './AddLocationDialog'
 import { StoryNotesOverlay } from './StoryNotesOverlay'
-import type { Character, CharacterSnapshot, Item, LocationMarker, MapLayer } from '@/types'
+import type { Character, CharacterSnapshot, Item, LocationMarker, MapLayer, CharacterMovement } from '@/types'
 import { pixelDist, pathPixelLength, formatDistance } from '@/lib/mapScale'
 
 // ─── Utilities ───────────────────────────────────────────────────────────────
@@ -46,122 +46,251 @@ interface PlaybackStep {
 }
 
 /**
- * Build the PinAnimation for a specific map layer given two sets of chapter snapshots.
- * Mirrors the logic in MapView but is generalized to any target layer.
+ * Build a sequential per-character animation queue.
+ * Characters are sorted alphabetically by ID for a deterministic order.
+ * Each character contributes one step (same-layer move) or two steps (cross-layer:
+ * departure layer first, then arrival layer). Each step animates only that one character;
+ * others appear at their current snapshot positions immediately.
  */
-function buildLayerPinAnimation(
+function buildSequentialQueue(
   prevSnaps: CharacterSnapshot[],
   currSnaps: CharacterSnapshot[],
-  targetLayerId: string,
-  allLayers: MapLayer[],
   allMarkers: LocationMarker[],
-  duration: number,
-  keyRef: MutableRefObject<number>,
-): PinAnimation | null {
-  // Resolve prev-chapter pins visible from targetLayerId
-  const prevPins: Array<{ charId: string; x: number; y: number }> = []
-  for (const snap of prevSnaps) {
-    const pin = resolveCharacterPin(snap, targetLayerId, allLayers, allMarkers)
-    if (pin) prevPins.push({ charId: snap.characterId, x: pin.x, y: pin.y })
-  }
-
-  // Resolve curr-chapter pins visible from targetLayerId
-  const currPins: Array<{ charId: string; x: number; y: number; inSubMap: boolean }> = []
-  for (const snap of currSnaps) {
-    const pin = resolveCharacterPin(snap, targetLayerId, allLayers, allMarkers)
-    if (pin) currPins.push({ charId: snap.characterId, x: pin.x, y: pin.y, inSubMap: pin.inSubMap })
-  }
-
-  const from: Record<string, { x: number; y: number }> = {}
-  for (const p of prevPins) from[p.charId] = { x: p.x, y: p.y }
-
-  // Back-fill portal entry for characters arriving from a different map
-  for (const cp of currPins) {
-    const { charId } = cp
-    if (from[charId] !== undefined || cp.inSubMap) continue
-    const prevSnap = prevSnaps.find((s) => s.characterId === charId)
-    if (!prevSnap?.currentMapLayerId || prevSnap.currentMapLayerId === targetLayerId) continue
-    const link = allMarkers.find(
-      (m) => m.mapLayerId === targetLayerId && m.linkedMapLayerId === prevSnap.currentMapLayerId,
-    )
-    if (link) from[charId] = { x: link.x, y: link.y }
-  }
-
-  const to: Record<string, { x: number; y: number }> = {}
-  const fadeIn: string[] = []
-  for (const cp of currPins) {
-    to[cp.charId] = { x: cp.x, y: cp.y }
-    if (from[cp.charId] === undefined) fadeIn.push(cp.charId)
-  }
-
-  // Skip this layer if nothing actually moves or appears
-  const hasMovement =
-    fadeIn.length > 0 ||
-    Object.keys(from).some((id) => {
-      if (!to[id]) return true // character left this layer's view
-      return from[id].x !== to[id].x || from[id].y !== to[id].y
-    })
-  if (!hasMovement) return null
-
-  keyRef.current += 1
-  return { from, to, fadeIn, duration, key: keyRef.current }
-}
-
-/**
- * Build an ordered list of map-layer steps for playback.
- * Cross-map departure layers come first (follow the journey), then arrival layers,
- * then any remaining layers that have within-map movement only.
- */
-function buildPlaybackQueue(
-  prevSnaps: CharacterSnapshot[],
-  currSnaps: CharacterSnapshot[],
-  allLayers: MapLayer[],
-  allMarkers: LocationMarker[],
+  movements: CharacterMovement[],
   duration: number,
   keyRef: MutableRefObject<number>,
 ): PlaybackStep[] {
-  const queue: PlaybackStep[] = []
-  const seen = new Set<string>()
+  const steps: PlaybackStep[] = []
+  const markerById = new Map(allMarkers.map((m) => [m.id, m]))
+  const prevByCharId = new Map(prevSnaps.map((s) => [s.characterId, s]))
+  const currByCharId = new Map(currSnaps.map((s) => [s.characterId, s]))
 
-  function tryAdd(mapLayerId: string) {
-    if (seen.has(mapLayerId)) return
-    seen.add(mapLayerId)
-    const anim = buildLayerPinAnimation(prevSnaps, currSnaps, mapLayerId, allLayers, allMarkers, duration, keyRef)
-    if (anim) queue.push({ mapLayerId, pinAnimation: anim })
+  /** Returns true when the marker has finite, usable coordinates. */
+  function validCoords(m: LocationMarker | undefined): m is LocationMarker {
+    return !!m && Number.isFinite(m.x) && Number.isFinite(m.y)
   }
 
-  // 1. Departure layers first (character's from-map for cross-map moves)
-  for (const curr of currSnaps) {
-    if (!curr.currentMapLayerId) continue
-    const prev = prevSnaps.find((s) => s.characterId === curr.characterId)
-    if (prev?.currentMapLayerId && prev.currentMapLayerId !== curr.currentMapLayerId) {
-      tryAdd(prev.currentMapLayerId)
+  /** Collect per-character trail waypoints on a specific layer. */
+  function trailPts(charId: string, layerId: string): Array<{ x: number; y: number }> | null {
+    const mov = movements.find((mv) => mv.characterId === charId)
+    if (!mov || mov.waypoints.length < 2) return null
+    const pts = mov.waypoints
+      .map((id) => markerById.get(id))
+      .filter((m): m is LocationMarker => !!m && m.mapLayerId === layerId && Number.isFinite(m.x) && Number.isFinite(m.y))
+      .map((m) => ({ x: m.x, y: m.y }))
+    return pts.length >= 2 ? pts : null
+  }
+
+  /**
+   * First waypoint on `layerId` in the character's movement — used as the
+   * entry point when entering a sub-map (no reverse portal marker exists).
+   */
+  function firstWaypointOnLayer(charId: string, layerId: string): { x: number; y: number } | null {
+    const mov = movements.find((mv) => mv.characterId === charId)
+    if (!mov) return null
+    for (const wId of mov.waypoints) {
+      const m = markerById.get(wId)
+      if (m && m.mapLayerId === layerId && Number.isFinite(m.x) && Number.isFinite(m.y)) {
+        return { x: m.x, y: m.y }
+      }
+    }
+    return null
+  }
+
+  /**
+   * Last waypoint on `layerId` in the character's movement — used as the
+   * exit point when leaving a sub-map (no reverse portal marker exists).
+   */
+  function lastWaypointOnLayer(charId: string, layerId: string): { x: number; y: number } | null {
+    const mov = movements.find((mv) => mv.characterId === charId)
+    if (!mov) return null
+    let last: { x: number; y: number } | null = null
+    for (const wId of mov.waypoints) {
+      const m = markerById.get(wId)
+      if (m && m.mapLayerId === layerId && Number.isFinite(m.x) && Number.isFinite(m.y)) {
+        last = { x: m.x, y: m.y }
+      }
+    }
+    return last
+  }
+
+  // ── Step 1: collect every character move that actually changed position ──────
+  interface CharMove {
+    charId: string
+    prevLayerId: string | null
+    currLayerId: string
+    prevMarkerId: string | null
+    currMarkerId: string
+  }
+  const allMoves: CharMove[] = []
+  const sortedCharIds = [...new Set([...prevByCharId.keys(), ...currByCharId.keys()])].sort()
+
+  for (const charId of sortedCharIds) {
+    const currSnap = currByCharId.get(charId)
+    const prevSnap = prevByCharId.get(charId)
+    if (!currSnap?.currentLocationMarkerId || !currSnap.currentMapLayerId) continue
+    const prevMarkerId = prevSnap?.currentLocationMarkerId ?? null
+    if (prevMarkerId === currSnap.currentLocationMarkerId && prevSnap?.currentMapLayerId === currSnap.currentMapLayerId) continue
+    allMoves.push({
+      charId,
+      prevLayerId: prevSnap?.currentMapLayerId ?? null,
+      currLayerId: currSnap.currentMapLayerId,
+      prevMarkerId,
+      currMarkerId: currSnap.currentLocationMarkerId,
+    })
+  }
+
+  // ── Step 2: group by identical (prevLayerId, prevMarkerId, currLayerId, currMarkerId) ──
+  // Characters sharing the exact same source and destination animate in the same step.
+  const groups = new Map<string, CharMove[]>()
+  for (const move of allMoves) {
+    const key = `${move.prevLayerId ?? ''}|${move.prevMarkerId ?? ''}|${move.currLayerId}|${move.currMarkerId}`
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(move)
+  }
+
+  // ── Step 3: build one PlaybackStep per group ──────────────────────────────
+  for (const [, group] of groups) {
+    const { prevLayerId, currLayerId, prevMarkerId, currMarkerId } = group[0]
+    const currMarker = markerById.get(currMarkerId)
+    if (!validCoords(currMarker)) continue
+
+    if (!prevLayerId || prevLayerId === currLayerId) {
+      // ── Same-layer move (or first appearance) ──────────────────────────────
+      const prevMarker = prevMarkerId ? markerById.get(prevMarkerId) : undefined
+      const from: Record<string, { x: number; y: number }> = {}
+      const to: Record<string, { x: number; y: number }> = {}
+      const waypoints: Record<string, Array<{ x: number; y: number }>> = {}
+      const fadeIn: string[] = []
+
+      for (const { charId } of group) {
+        to[charId] = { x: currMarker.x, y: currMarker.y }
+        if (validCoords(prevMarker)) {
+          from[charId] = { x: prevMarker.x, y: prevMarker.y }
+          const pts = trailPts(charId, currLayerId)
+          if (pts) waypoints[charId] = pts
+        } else {
+          fadeIn.push(charId)
+        }
+      }
+
+      keyRef.current += 1
+      steps.push({
+        mapLayerId: currLayerId,
+        pinAnimation: {
+          key: keyRef.current,
+          from,
+          to,
+          waypoints: Object.keys(waypoints).length > 0 ? waypoints : undefined,
+          duration,
+          fadeIn,
+          cameraFollow: true,
+        },
+      })
+    } else {
+      // ── Cross-layer move: departure step then arrival step ─────────────────
+      //
+      // `linkedMapLayerId` is ONE-DIRECTIONAL: a marker on the PARENT layer
+      // links to a child layer — there is never a reverse link on the child.
+      //
+      // portalOnPrev: parent→child transition — portal is on prevLayerId (parent).
+      //               Works when character exits parent to enter sub-map.
+      // portalOnCurr: child→parent transition — portal is on currLayerId (parent).
+      //               Works when character exits sub-map to enter parent.
+      //
+      // When there is no portal marker we fall back to waypoint-based entry/exit
+      // points: firstWaypointOnLayer for arrival, lastWaypointOnLayer for departure.
+      const prevMarker = prevMarkerId ? markerById.get(prevMarkerId) : undefined
+      const portalOnPrev = allMarkers.find(
+        (m) => m.mapLayerId === prevLayerId && m.linkedMapLayerId === currLayerId,
+      )
+      const portalOnCurr = allMarkers.find(
+        (m) => m.mapLayerId === currLayerId && m.linkedMapLayerId === prevLayerId,
+      )
+
+      // ── Departure step ────────────────────────────────────────────────────
+      // Exit point priority: explicit portal on prevLayerId → last waypoint on
+      // prevLayerId → skip departure (character vanishes from prev layer).
+      const departureTo: Record<string, { x: number; y: number }> = {}
+      const departureFrom: Record<string, { x: number; y: number }> = {}
+      const departureWp: Record<string, Array<{ x: number; y: number }>> = {}
+      let hasDeparture = false
+
+      if (validCoords(prevMarker)) {
+        for (const { charId } of group) {
+          let exitPt: { x: number; y: number } | null = null
+          if (validCoords(portalOnPrev)) {
+            exitPt = { x: portalOnPrev.x, y: portalOnPrev.y }
+          } else {
+            exitPt = lastWaypointOnLayer(charId, prevLayerId)
+          }
+          if (exitPt) {
+            departureFrom[charId] = { x: prevMarker.x, y: prevMarker.y }
+            departureTo[charId] = exitPt
+            const pts = trailPts(charId, prevLayerId)
+            if (pts) departureWp[charId] = pts
+            hasDeparture = true
+          }
+        }
+      }
+
+      if (hasDeparture) {
+        keyRef.current += 1
+        steps.push({
+          mapLayerId: prevLayerId,
+          pinAnimation: {
+            key: keyRef.current,
+            from: departureFrom,
+            to: departureTo,
+            waypoints: Object.keys(departureWp).length > 0 ? departureWp : undefined,
+            duration: duration * 0.5,
+            cameraFollow: true,
+          },
+        })
+      }
+
+      // ── Arrival step ──────────────────────────────────────────────────────
+      // Entry point priority: explicit portal on currLayerId → first waypoint on
+      // currLayerId → fade-in at destination.
+      const from2: Record<string, { x: number; y: number }> = {}
+      const to2: Record<string, { x: number; y: number }> = {}
+      const waypoints2: Record<string, Array<{ x: number; y: number }>> = {}
+      const fadeIn2: string[] = []
+
+      for (const { charId } of group) {
+        to2[charId] = { x: currMarker.x, y: currMarker.y }
+        let entryPt: { x: number; y: number } | null = null
+        if (validCoords(portalOnCurr)) {
+          entryPt = { x: portalOnCurr.x, y: portalOnCurr.y }
+        } else {
+          entryPt = firstWaypointOnLayer(charId, currLayerId)
+        }
+        if (entryPt) {
+          from2[charId] = entryPt
+          const pts = trailPts(charId, currLayerId)
+          if (pts) waypoints2[charId] = pts
+        } else {
+          fadeIn2.push(charId)
+        }
+      }
+
+      keyRef.current += 1
+      steps.push({
+        mapLayerId: currLayerId,
+        pinAnimation: {
+          key: keyRef.current,
+          from: from2,
+          to: to2,
+          waypoints: Object.keys(waypoints2).length > 0 ? waypoints2 : undefined,
+          duration: duration * 0.5,
+          fadeIn: fadeIn2,
+          cameraFollow: true,
+        },
+      })
     }
   }
 
-  // 2. Arrival layers (character's to-map for cross-map moves)
-  for (const curr of currSnaps) {
-    if (!curr.currentMapLayerId) continue
-    const prev = prevSnaps.find((s) => s.characterId === curr.characterId)
-    if (prev?.currentMapLayerId && prev.currentMapLayerId !== curr.currentMapLayerId) {
-      tryAdd(curr.currentMapLayerId)
-    }
-  }
-
-  // 3. Same-map movement layers
-  for (const curr of currSnaps) {
-    if (!curr.currentMapLayerId) continue
-    const prev = prevSnaps.find((s) => s.characterId === curr.characterId)
-    if (prev?.currentMapLayerId === curr.currentMapLayerId) tryAdd(curr.currentMapLayerId)
-  }
-
-  // 4. Layers where characters disappeared (moved off-world / died)
-  for (const prev of prevSnaps) {
-    if (!prev.currentMapLayerId) continue
-    tryAdd(prev.currentMapLayerId)
-  }
-
-  return queue
+  return steps
 }
 
 const MOVEMENT_COLORS = [
@@ -395,7 +524,7 @@ function CharactersSection({
   characters,
   snapshots,
   allMarkers,
-  activeChapterId,
+  activeEventId,
   worldId,
   scalePixelsPerUnit,
   scaleUnit,
@@ -406,7 +535,7 @@ function CharactersSection({
   characters: Character[]
   snapshots: CharacterSnapshot[]
   allMarkers: LocationMarker[]
-  activeChapterId: string | null
+  activeEventId: string | null
   worldId: string
   scalePixelsPerUnit: number | null
   scaleUnit: string | null
@@ -414,7 +543,7 @@ function CharactersSection({
   onDragEnd: () => void
   onFocus: (characterId: string) => void
 }) {
-  const movements = useChapterMovements(worldId, activeChapterId)
+  const movements = useEventMovements(worldId, activeEventId)
   const [search, setSearch] = useState('')
   const filtered = search.trim()
     ? characters.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
@@ -422,7 +551,7 @@ function CharactersSection({
 
   return (
     <SidebarSection title="Characters" icon={Users} count={characters.length}>
-      {!activeChapterId && (
+      {!activeEventId && (
         <p className="px-3 pb-2 text-[10px] italic text-[hsl(var(--muted-foreground))]">
           Select a chapter to place characters.
         </p>
@@ -444,7 +573,7 @@ function CharactersSection({
             return (
               <div key={c.id} className="flex flex-col gap-0.5">
                 <div
-                  draggable={!!activeChapterId}
+                  draggable={!!activeEventId}
                   onDragStart={(e) => {
                     e.dataTransfer.setData('characterId', c.id)
                     e.dataTransfer.effectAllowed = 'move'
@@ -453,7 +582,7 @@ function CharactersSection({
                   onDragEnd={onDragEnd}
                   onClick={() => onFocus(c.id)}
                   className={`flex items-center gap-2 rounded-md border bg-[hsl(var(--muted))] px-2 py-1.5 select-none cursor-pointer ${
-                    activeChapterId ? 'hover:border-[hsl(var(--ring))]' : 'opacity-60'
+                    activeEventId ? 'hover:border-[hsl(var(--ring))]' : 'opacity-60'
                   }`}
                   style={{ borderColor: movement ? color : 'hsl(var(--border))' }}
                 >
@@ -470,7 +599,7 @@ function CharactersSection({
                   </div>
                 </div>
 
-                {movement && movement.waypoints.length >= 2 && activeChapterId && (
+                {movement && movement.waypoints.length >= 2 && activeEventId && (
                   <div className="flex items-center gap-1 pl-2">
                     <span className="h-1 w-3 rounded-full shrink-0" style={{ background: color }} />
                     <p className="flex-1 truncate text-[10px] text-[hsl(var(--muted-foreground))]">
@@ -487,14 +616,14 @@ function CharactersSection({
                     <button
                       title="Undo last stop"
                       className="rounded p-0.5 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
-                      onClick={() => removeLastWaypoint(c.id, activeChapterId)}
+                      onClick={() => removeLastWaypoint(c.id, activeEventId)}
                     >
                       <Undo2 className="h-3 w-3" />
                     </button>
                     <button
                       title="Clear path"
                       className="rounded p-0.5 text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
-                      onClick={() => clearMovement(c.id, activeChapterId)}
+                      onClick={() => clearMovement(c.id, activeEventId)}
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
@@ -577,18 +706,18 @@ const CONDITION_COLORS: Record<string, string> = {
 
 function ItemRow({
   item,
-  activeChapterId,
+  activeEventId,
   worldId,
   locationName,
   onFocus,
 }: {
   item: Item
-  activeChapterId: string | null
+  activeEventId: string | null
   worldId: string
   locationName: string | null
   onFocus: () => void
 }) {
-  const snap = useItemSnapshot(item.id, activeChapterId)
+  const snap = useItemSnapshot(item.id, worldId, activeEventId)
   const [expanded, setExpanded] = useState(false)
   const condition = snap?.condition ?? 'intact'
 
@@ -610,19 +739,19 @@ function ItemRow({
             <p className="truncate text-[10px] opacity-60">{locationName}</p>
           )}
         </div>
-        {activeChapterId && (
+        {activeEventId && (
           <span
             className="h-1.5 w-1.5 shrink-0 rounded-full"
             style={{ background: CONDITION_COLORS[condition] ?? '#94a3b8' }}
             title={condition}
           />
         )}
-        {activeChapterId && (
+        {activeEventId && (
           <ChevronDown className={`h-3 w-3 shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`} />
         )}
       </div>
 
-      {expanded && activeChapterId && (
+      {expanded && activeEventId && (
         <div className="flex flex-col gap-1.5 border-t border-[hsl(var(--border))] px-2 pb-2 pt-1.5">
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] font-medium text-[hsl(var(--muted-foreground))] w-16 shrink-0">Condition</span>
@@ -633,7 +762,7 @@ function ItemRow({
                 upsertItemSnapshot({
                   worldId,
                   itemId: item.id,
-                  chapterId: activeChapterId,
+                  eventId: activeEventId,
                   condition: e.target.value,
                   notes: snap?.notes ?? '',
                 })
@@ -653,7 +782,7 @@ function ItemRow({
               upsertItemSnapshot({
                 worldId,
                 itemId: item.id,
-                chapterId: activeChapterId,
+                eventId: activeEventId,
                 condition: snap?.condition ?? 'intact',
                 notes: e.target.value,
               })
@@ -667,19 +796,19 @@ function ItemRow({
 
 function ItemsSection({
   worldId,
-  activeChapterId,
+  activeEventId,
   allMarkers,
   snapshots,
   onFocus,
 }: {
   worldId: string
-  activeChapterId: string | null
+  activeEventId: string | null
   allMarkers: LocationMarker[]
   snapshots: CharacterSnapshot[]
   onFocus: (itemId: string) => void
 }) {
   const items = useItems(worldId)
-  const placements = useChapterItemPlacements(activeChapterId)
+  const placements = useEventItemPlacements(activeEventId)
   const [search, setSearch] = useState('')
   const filtered = search.trim()
     ? items.filter((i) => i.name.toLowerCase().includes(search.toLowerCase()))
@@ -713,7 +842,7 @@ function ItemsSection({
             <ItemRow
               key={item.id}
               item={item}
-              activeChapterId={activeChapterId}
+              activeEventId={activeEventId}
               worldId={worldId}
               locationName={getItemLocation(item.id)}
               onFocus={() => onFocus(item.id)}
@@ -992,13 +1121,12 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const allLayers = useMapLayers(worldId)
   const allMarkers = useAllLocationMarkers(worldId)
   const characters = useCharacters(worldId)
-  const activeChapterId = useActiveChapterId()
-  const snapshots = useBestSnapshots(worldId, activeChapterId)
-  const allSnapshots = useWorldSnapshots(worldId)
+  const activeEventId = useActiveEventId()
+  const snapshots = useBestSnapshots(worldId, activeEventId)
   const blobUrls = useWorldBlobUrls(worldId)
-  const movements = useChapterMovements(worldId, activeChapterId)
-  const chapterPlacements = useChapterItemPlacements(activeChapterId)
-  const chapterLocSnaps = useChapterLocationSnapshots(activeChapterId)
+  const movements = useEventMovements(worldId, activeEventId)
+  const chapterPlacements = useEventItemPlacements(activeEventId)
+  const chapterLocSnaps = useChapterLocationSnapshots(activeEventId)
 
   const [isDraggingCharacter, setIsDraggingCharacter] = useState(false)
   const crossLayerPanTargetRef = useRef<[number, number] | null>(null)
@@ -1012,6 +1140,8 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null)
   const [scaleMode, setScaleMode] = useState(false)
   const [scaleDialog, setScaleDialog] = useState<{ pixelDist: number } | null>(null)
+  const [measureMode, setMeasureMode] = useState(false)
+  const [measureResult, setMeasureResult] = useState<{ distPx: number; p1: ScaleCalibrationPoint; p2: ScaleCalibrationPoint } | null>(null)
   const [mapFilters, setMapFilters] = useState<MapFilters>(DEFAULT_MAP_FILTERS)
   const { setSelectedLocationMarkerId, selectedLocationMarkerId, pushMapLayer, setActiveMapLayerId, isPlayingStory, playbackSpeed } = useAppStore()
   const mapRef = useRef<L.Map | null>(null)
@@ -1020,6 +1150,12 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     const dist = pixelDist(p1.x, p1.y, p2.x, p2.y)
     setScaleMode(false)
     setScaleDialog({ pixelDist: dist })
+  }
+
+  function handleMeasurePoints(p1: ScaleCalibrationPoint, p2: ScaleCalibrationPoint) {
+    const dist = pixelDist(p1.x, p1.y, p2.x, p2.y)
+    setMeasureMode(false)
+    setMeasureResult({ distPx: dist, p1, p2 })
   }
 
   function focusOnLocation(marker: LocationMarker) {
@@ -1077,17 +1213,42 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
 
   const timelines = useTimelines(worldId)
   const chapters = useChapters(timelines[0]?.id ?? null)
-  const activeChapter = activeChapterId ? chapters.find((c) => c.id === activeChapterId) : null
+  const allWorldEvents = useWorldEvents(worldId)
+  // Derive active chapter from the active event's chapterId
+  const activeEvent   = activeEventId ? allWorldEvents.find((e) => e.id === activeEventId) ?? null : null
+  const activeChapter = activeEvent ? chapters.find((c) => c.id === activeEvent.chapterId) ?? null : null
   const activeChapterTitle = activeChapter ? `Ch.${activeChapter.number} — ${activeChapter.title}` : null
+
+  // Ordered events for the active timeline — used to find the previous event for playback
+  const orderedEvents = useMemo(() => {
+    const chapNumById = new Map(chapters.map((c) => [c.id, c.number]))
+    return [...allWorldEvents]
+      .filter((e) => chapNumById.has(e.chapterId))
+      .sort((a, b) => {
+        const aN = (chapNumById.get(a.chapterId) ?? 0) * 10_000 + a.sortOrder
+        const bN = (chapNumById.get(b.chapterId) ?? 0) * 10_000 + b.sortOrder
+        return aN - bN
+      })
+  }, [allWorldEvents, chapters])
+
+  const activeEventIdx = activeEventId ? orderedEvents.findIndex((e) => e.id === activeEventId) : -1
+  const prevEventId = activeEventIdx > 0 ? orderedEvents[activeEventIdx - 1].id : null
+
+  // Previous event snapshots (last-known state at the previous event — used for playback animation)
+  const prevSnapshots = useBestSnapshots(worldId, prevEventId)
+
+  // Previous chapter (for travel-line display — still chapter-based)
   const prevChapter = activeChapter
     ? chapters.find((c) => c.timelineId === activeChapter.timelineId && c.number === activeChapter.number - 1)
     : null
-  // Derive previous chapter snapshots synchronously from world-level data (same cache as current
-  // chapter) so they are available in the same render that activeChapterId changes.
-  const prevSnapshots = useMemo(
-    () => prevChapter ? allSnapshots.filter((s) => s.chapterId === prevChapter.id) : [],
-    [allSnapshots, prevChapter?.id], // eslint-disable-line react-hooks/exhaustive-deps
+  const prevChapterEvents = useMemo(
+    () => prevChapter
+      ? allWorldEvents.filter((e) => e.chapterId === prevChapter.id).sort((a, b) => b.sortOrder - a.sortOrder)
+      : [],
+    [allWorldEvents, prevChapter?.id], // eslint-disable-line react-hooks/exhaustive-deps
   )
+  const prevChapterLastEventId = prevChapterEvents[0]?.id ?? null
+  const prevChapterSnapshots = useBestSnapshots(worldId, prevChapterLastEventId)
 
   function handleMarkerClick(markerId: string) {
     setSelectedCharacterId(null)
@@ -1099,36 +1260,41 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     setSelectedCharacterId((prev) => prev === characterId ? null : characterId)
   }
 
-  // Resolve character pins for the current chapter
-  const charPins: CharacterPin[] = []
-  for (const snap of snapshots) {
-    const char = characters.find((c) => c.id === snap.characterId)
-    if (!char) continue
-    const pin = resolveCharacterPin(snap, layerId, allLayers, allMarkers)
-    if (pin) charPins.push({
-      ...pin,
-      character: char,
-      portraitUrl: char.portraitImageId ? blobUrls.get(char.portraitImageId) ?? null : null,
-      locationName: snap.currentLocationMarkerId
-        ? allMarkers.find((m) => m.id === snap.currentLocationMarkerId)?.name ?? null
-        : null,
-    })
-  }
+  // Resolve character pins for the current chapter.
+  // Memoised so that Zustand store updates (e.g. isAnimating toggling) don't produce
+  // a new array reference and restart the LeafletMapCanvas animation effect.
+  const charPins = useMemo<CharacterPin[]>(() => {
+    const pins: CharacterPin[] = []
+    for (const snap of snapshots) {
+      const char = characters.find((c) => c.id === snap.characterId)
+      if (!char) continue
+      const pin = resolveCharacterPin(snap, layerId, allLayers, allMarkers)
+      if (pin) pins.push({
+        ...pin,
+        character: char,
+        portraitUrl: char.portraitImageId ? blobUrls.get(char.portraitImageId) ?? null : null,
+        locationName: snap.currentLocationMarkerId
+          ? allMarkers.find((m) => m.id === snap.currentLocationMarkerId)?.name ?? null
+          : null,
+      })
+    }
+    return pins
+  }, [snapshots, characters, layerId, allLayers, allMarkers, blobUrls]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Playback map-navigation queue ──────────────────────────────────────────
-  // When a chapter advances during playback, build an ordered list of map layers to
-  // visit (departure maps first, then arrival maps, then same-map-only maps).
-  // Each step carries its own PinAnimation; we navigate the active layer to match.
+  // ── Playback sequential animation queue ────────────────────────────────────
+  // When the active event advances during playback, build a sequential per-character
+  // animation queue. Each step animates one character at a time and follows their
+  // drawn trail; cross-layer moves generate two steps (departure + arrival).
   useEffect(() => {
-    if (!isPlayingStory || !activeChapterId) {
+    if (!isPlayingStory || !activeEventId) {
       setPlaybackQueue([])
       setPlaybackStepIdx(0)
       return
     }
     if (prevSnapshots.length === 0 && snapshots.length === 0) return
 
-    const queue = buildPlaybackQueue(
-      prevSnapshots, snapshots, allLayers, allMarkers,
+    const queue = buildSequentialQueue(
+      prevSnapshots, snapshots, allMarkers, movements,
       PIN_TRAVEL_MS[playbackSpeed], pinAnimationKeyRef,
     )
     setPlaybackQueue(queue)
@@ -1138,7 +1304,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     if (queue.length > 0 && queue[0].mapLayerId !== layerId) {
       setActiveMapLayerId(queue[0].mapLayerId)
     }
-  }, [activeChapterId, isPlayingStory]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeEventId, isPlayingStory]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // When the step index advances, navigate to that step's map layer
   useEffect(() => {
@@ -1188,10 +1354,10 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   }
 
   // Build inter-chapter travel lines (previous chapter location → current chapter location)
-  if (prevSnapshots.length > 0) {
+  if (prevChapterSnapshots.length > 0) {
     for (const snap of snapshots) {
       if (!snap.currentLocationMarkerId || snap.currentMapLayerId !== layerId) continue
-      const prev = prevSnapshots.find((s) => s.characterId === snap.characterId)
+      const prev = prevChapterSnapshots.find((s) => s.characterId === snap.characterId)
       if (!prev?.currentLocationMarkerId || prev.currentLocationMarkerId === snap.currentLocationMarkerId) continue
       if (prev.currentMapLayerId !== layerId) continue
       const fromMarker = markers.find((m) => m.id === prev.currentLocationMarkerId)
@@ -1212,18 +1378,16 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   }
 
   async function placeCharacterAtMarker(characterId: string, marker: LocationMarker) {
-    if (!activeChapterId) return
+    if (!activeEventId) return
     // Read from DB directly to avoid stale React state
-    const existingInDb = await fetchSnapshot(characterId, activeChapterId)
+    const existingInDb = await fetchSnapshot(characterId, activeEventId)
     const fromMarkerId = existingInDb?.currentLocationMarkerId
-    // Use React state for non-location fields (isAlive, inventory, etc.)
-    const existing = allSnapshots.find(
-      (s) => s.characterId === characterId && s.chapterId === activeChapterId
-    )
+    // Use last-known snapshot (already resolved by useBestSnapshots) for non-location fields
+    const existing = snapshots.find((s) => s.characterId === characterId)
     await upsertSnapshot({
       worldId,
       characterId,
-      chapterId: activeChapterId,
+      eventId: activeEventId,
       isAlive: existingInDb?.isAlive ?? existing?.isAlive ?? true,
       currentLocationMarkerId: marker.id,
       currentMapLayerId: marker.mapLayerId,
@@ -1232,7 +1396,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       statusNotes: existingInDb?.statusNotes ?? existing?.statusNotes ?? '',
       travelModeId: existingInDb?.travelModeId ?? existing?.travelModeId ?? null,
     })
-    await appendWaypoint(worldId, characterId, activeChapterId, marker.id, fromMarkerId ?? undefined)
+    await appendWaypoint(worldId, characterId, activeEventId, marker.id, fromMarkerId ?? undefined)
   }
 
   async function handleCharacterDrop(characterId: string, markerId: string) {
@@ -1276,7 +1440,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           characters={characters}
           snapshots={snapshots}
           allMarkers={allMarkers}
-          activeChapterId={activeChapterId}
+          activeEventId={activeEventId}
           worldId={worldId}
           scalePixelsPerUnit={layer.scalePixelsPerUnit ?? null}
           scaleUnit={layer.scaleUnit ?? null}
@@ -1292,7 +1456,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
         />
         <ItemsSection
           worldId={worldId}
-          activeChapterId={activeChapterId}
+          activeEventId={activeEventId}
           allMarkers={allMarkers}
           snapshots={snapshots}
           onFocus={focusOnItem}
@@ -1316,7 +1480,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               size="sm"
               variant={scaleMode ? 'default' : 'outline'}
               className="gap-1.5 text-xs"
-              onClick={() => setScaleMode((v) => !v)}
+              onClick={() => { setScaleMode((v) => !v); setMeasureMode(false); setMeasureResult(null) }}
               title={layer.scalePixelsPerUnit ? 'Recalibrate scale' : 'Set map scale'}
             >
               <Ruler className="h-3.5 w-3.5" />
@@ -1331,6 +1495,18 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
                 </button>
               )}
             </Button>
+            {layer.scalePixelsPerUnit && layer.scaleUnit && (
+              <Button
+                size="sm"
+                variant={measureMode ? 'default' : 'outline'}
+                className="gap-1.5 text-xs"
+                onClick={() => { setMeasureMode((v) => !v); setScaleMode(false); setMeasureResult(null) }}
+                title="Measure distance between two points"
+              >
+                <Route className="h-3.5 w-3.5" />
+                Measure
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
@@ -1358,10 +1534,10 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
         </div>
 
         {/* Story playback notes overlay */}
-        {isPlayingStory && activeChapterId && activeChapter && worldId && (
+        {isPlayingStory && activeEventId && activeChapter && worldId && (
           <StoryNotesOverlay
-            key={activeChapterId}
-            chapterId={activeChapterId}
+            key={activeEventId}
+            eventId={activeEventId}
             worldId={worldId}
             playbackSpeed={playbackSpeed}
             chapterNumber={activeChapter.number}
@@ -1396,9 +1572,36 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             }}
             onCharacterClick={handleCharacterClick}
             mapRef={mapRef}
-            scaleMode={scaleMode}
-            onScalePoints={handleScalePoints}
+            scaleMode={scaleMode || measureMode}
+            onScalePoints={measureMode ? handleMeasurePoints : handleScalePoints}
+            measureLine={
+              measureResult && layer.scalePixelsPerUnit && layer.scaleUnit
+                ? { p1: measureResult.p1, p2: measureResult.p2, label: formatDistance(measureResult.distPx, layer.scalePixelsPerUnit, layer.scaleUnit) } satisfies MeasureLine
+                : null
+            }
           />
+
+          {/* ── Measure result overlay ── */}
+          {measureResult && layer.scalePixelsPerUnit && layer.scaleUnit && (
+            <div className="absolute bottom-4 left-1/2 z-[600] -translate-x-1/2">
+              <div className="flex items-center gap-2 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2.5 shadow-xl text-sm">
+                <Route className="h-4 w-4 text-[hsl(var(--muted-foreground))] shrink-0" />
+                <span className="font-semibold">
+                  {formatDistance(measureResult.distPx, layer.scalePixelsPerUnit, layer.scaleUnit)}
+                </span>
+                <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                  ({Math.round(measureResult.distPx)} px)
+                </span>
+                <button
+                  onClick={() => setMeasureResult(null)}
+                  className="ml-1 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+                  title="Dismiss"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* ── Detail panels (absolute overlay — keeps map container size stable) ── */}
           {selectedLocationMarkerId && (

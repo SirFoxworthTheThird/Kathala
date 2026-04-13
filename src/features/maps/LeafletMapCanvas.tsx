@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { MapContainer, ImageOverlay, Marker, Popup, Polyline, CircleMarker, Tooltip, useMapEvents } from 'react-leaflet'
+import { MapContainer, ImageOverlay, Marker, Popup, Polyline, CircleMarker, Tooltip, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import type { MapLayer, LocationMarker, Character } from '@/types'
 import { updateLocationMarker } from '@/db/hooks/useLocationMarkers'
+import { useAppStore } from '@/store'
 
 // CSS-variable shortcuts used inside DivIcon HTML strings.
 // These resolve against the document root, so they automatically follow the active theme.
@@ -157,6 +158,15 @@ function makeCharacterGroupIcon(pins: CharacterPin[], zoom: number): L.DivIcon {
 }
 
 // ── Inner map-event components ────────────────────────────────────────────────
+
+/** Detects when the Leaflet map context is ready (react-leaflet creates it
+ *  asynchronously via setContext) and notifies the parent via callback. */
+function MapInstanceTracker({ onReady }: { onReady: (map: L.Map) => void }) {
+  const map = useMap()
+  useEffect(() => { onReady(map) }, [map]) // eslint-disable-line react-hooks/exhaustive-deps
+  return null
+}
+
 function ClickHandler({ onMapClickRef }: { onMapClickRef: React.RefObject<(latlng: L.LatLng) => void> }) {
   useMapEvents({ click: (e) => onMapClickRef.current?.(e.latlng) })
   return null
@@ -192,6 +202,9 @@ function FitBounds({ bounds, initialCenter }: { bounds: L.LatLngBoundsExpression
       const prevSnap = map.options.zoomSnap
       map.options.zoomSnap = 0
       map.fitBounds(bounds, { padding: [0, 0], animate: false })
+      const minZoom = map.getBoundsZoom(bounds, false)
+      map.setMinZoom(minZoom)
+      map.setMaxBounds(bounds)
       map.options.zoomSnap = prevSnap ?? 0.25
       if (center && typeof center[0] === 'number' && typeof center[1] === 'number') {
         map.panTo(center, { animate: false })
@@ -207,9 +220,47 @@ export interface PinAnimation {
   key: number
   from: Record<string, { x: number; y: number }>
   to: Record<string, { x: number; y: number }>
+  /** Full pixel-coord paths per character (includes from and to). When present, marker follows path instead of linear interpolation. */
+  waypoints?: Record<string, Array<{ x: number; y: number }>>
   duration: number
   /** Character IDs with no known from-position: fade in at their destination instead of popping */
   fadeIn?: string[]
+  /** When true, the map camera pans to follow the animated character each frame */
+  cameraFollow?: boolean
+}
+
+// ── Path interpolation helper ─────────────────────────────────────────────────
+
+function interpolateAlongPath(
+  path: Array<{ x: number; y: number }>,
+  t: number,
+): { x: number; y: number } {
+  if (path.length === 0) return { x: 0, y: 0 }
+  if (path.length === 1 || t <= 0) return path[0]
+  if (t >= 1) return path[path.length - 1]
+
+  let totalLen = 0
+  const segLens: number[] = []
+  for (let i = 1; i < path.length; i++) {
+    const d = Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y)
+    segLens.push(d)
+    totalLen += d
+  }
+  if (totalLen === 0) return path[0]
+
+  const target = t * totalLen
+  let accumulated = 0
+  for (let i = 0; i < segLens.length; i++) {
+    if (accumulated + segLens[i] >= target) {
+      const segT = segLens[i] === 0 ? 0 : (target - accumulated) / segLens[i]
+      return {
+        x: path[i].x + (path[i + 1].x - path[i].x) * segT,
+        y: path[i].y + (path[i + 1].y - path[i].y) * segT,
+      }
+    }
+    accumulated += segLens[i]
+  }
+  return path[path.length - 1]
 }
 
 export interface MovementLine {
@@ -224,6 +275,12 @@ export interface MovementLine {
 }
 
 export interface ScaleCalibrationPoint { x: number; y: number }
+
+export interface MeasureLine {
+  p1: ScaleCalibrationPoint
+  p2: ScaleCalibrationPoint
+  label: string
+}
 
 interface LeafletMapCanvasProps {
   layer: MapLayer
@@ -247,6 +304,8 @@ interface LeafletMapCanvasProps {
   locationStatuses?: Record<string, string>
   /** When set, pan to this [y, x] position after FitBounds on mount (used for cross-layer character focus) */
   initialCenter?: [number, number] | null
+  /** When set, draws a measurement line between two points with a distance label */
+  measureLine?: MeasureLine | null
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -255,14 +314,17 @@ export function LeafletMapCanvas({
   isDraggingCharacter, onMarkerClick, onMapClick, onDrillDown,
   onCharacterDrop, onCharacterDropOnEmpty, onCharacterClick, mapRef: externalMapRef,
   scaleMode, onScalePoints, showSubMapLinks = true, locationStatuses = {},
-  pinAnimation, onAnimationEnd, initialCenter,
+  pinAnimation, onAnimationEnd, initialCenter, measureLine,
 }: LeafletMapCanvasProps) {
+  const { setIsAnimating } = useAppStore()
   const internalMapRef = useRef<L.Map | null>(null)
   const mapRef         = externalMapRef ?? internalMapRef
   // Imperative character marker management — bypasses react-leaflet's position-prop mechanism
   const charMarkersRef  = useRef<Map<string, L.Marker>>(new Map()) // per-char, during animation
   const groupMarkersRef = useRef<Map<string, L.Marker>>(new Map()) // per-pos-group, when idle
   const animFrameRef    = useRef<number | null>(null)
+  const runningAnimKeyRef = useRef<number | null>(null) // guard: skip re-init for same animation key
+  const [leafletMap, setLeafletMap] = useState<L.Map | null>(null)
   const [mapZoom, setMapZoom]         = useState(0)
   const charPinsRef     = useRef(charPins)   // always-fresh snapshot for RAF callbacks
   const mapZoomRef      = useRef(mapZoom)
@@ -389,9 +451,11 @@ export function LeafletMapCanvas({
     }
   }
 
-  // Main imperative marker effect — manages all character markers without JSX
+  // Main imperative marker effect — manages all character markers without JSX.
+  // leafletMap is in deps so the effect re-runs once MapContainer has finished
+  // its async initialisation (react-leaflet v5 creates the map via setContext).
   useEffect(() => {
-    const map = mapRef.current
+    const map = leafletMap ?? mapRef.current
     if (!map) return
 
     if (animFrameRef.current) {
@@ -400,7 +464,11 @@ export function LeafletMapCanvas({
     }
 
     if (pinAnimation) {
-      const { from, to, duration, fadeIn } = pinAnimation
+      // Guard: skip re-init if this exact animation key is already running
+      if (pinAnimation.key === runningAnimKeyRef.current) return
+      runningAnimKeyRef.current = pinAnimation.key
+
+      const { from, to, duration, fadeIn, waypoints, cameraFollow } = pinAnimation
 
       // Switch from group markers to per-character animation markers
       for (const [, m] of groupMarkersRef.current) m.remove()
@@ -412,11 +480,14 @@ export function LeafletMapCanvas({
         if (!pinIds.has(id)) { m.remove(); charMarkersRef.current.delete(id) }
       }
 
+      // Determine which character is the active mover (has a from position)
+      const movingCharId = Object.keys(from)[0] ?? null
+
       // Create / reposition per-character markers at their FROM positions
       for (const pin of charPins) {
         const id = pin.character.id
         const fromPos = from[id] ?? to[id]
-        if (!fromPos) continue
+        if (!fromPos || !Number.isFinite(fromPos.x) || !Number.isFinite(fromPos.y)) continue
 
         const icon = makeCharacterGroupIcon([pin], mapZoomRef.current)
         let marker = charMarkersRef.current.get(id)
@@ -437,6 +508,14 @@ export function LeafletMapCanvas({
         }
       }
 
+      // Pan camera to the moving character's start position
+      if (cameraFollow && movingCharId) {
+        const startPos = from[movingCharId]
+        if (startPos) map.panTo([startPos.y, startPos.x], { animate: false })
+      }
+
+      setIsAnimating(true)
+
       // RAF loop
       const start = performance.now()
       function tick() {
@@ -446,14 +525,30 @@ export function LeafletMapCanvas({
         for (const [id, marker] of charMarkersRef.current) {
           const toPos = to[id]
           if (!toPos) continue
-          const fromPos = from[id] ?? toPos
-          marker.setLatLng([
-            fromPos.y + (toPos.y - fromPos.y) * eased,
-            fromPos.x + (toPos.x - fromPos.x) * eased,
-          ])
+
+          let pos: { x: number; y: number }
+          const path = waypoints?.[id]
+          if (path && path.length >= 2) {
+            pos = interpolateAlongPath(path, eased)
+          } else {
+            const fromPos = from[id] ?? toPos
+            pos = {
+              x: fromPos.x + (toPos.x - fromPos.x) * eased,
+              y: fromPos.y + (toPos.y - fromPos.y) * eased,
+            }
+          }
+
+          if (!Number.isFinite(pos.x) || !Number.isFinite(pos.y)) continue
+          marker.setLatLng([pos.y, pos.x])
+
           if (fadeIn?.includes(id)) {
             const el = marker.getElement()
             if (el) el.style.opacity = String(eased)
+          }
+
+          // Camera follow: pan to keep the active mover centered
+          if (cameraFollow && id === movingCharId) {
+            mapRef.current?.panTo([pos.y, pos.x], { animate: false })
           }
         }
 
@@ -465,6 +560,7 @@ export function LeafletMapCanvas({
             if (el) el.style.opacity = ''
           }
           animFrameRef.current = null
+          setIsAnimating(false)
           // Animation complete — switch back to group markers
           for (const [, m] of charMarkersRef.current) m.remove()
           charMarkersRef.current.clear()
@@ -478,15 +574,21 @@ export function LeafletMapCanvas({
 
     } else {
       // Not animating — use stable group markers
+      runningAnimKeyRef.current = null
       for (const [, m] of charMarkersRef.current) m.remove()
       charMarkersRef.current.clear()
       buildGroupMarkers(map, charPins, mapZoom)
     }
 
     return () => {
-      if (animFrameRef.current) { cancelAnimationFrame(animFrameRef.current); animFrameRef.current = null }
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current)
+        animFrameRef.current = null
+        runningAnimKeyRef.current = null
+        setIsAnimating(false)
+      }
     }
-  }, [pinAnimation, charPins]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pinAnimation, charPins, leafletMap]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Update icon sizes when zoom changes, without interrupting any running animation
   useEffect(() => {
@@ -568,9 +670,9 @@ export function LeafletMapCanvas({
         center={[h / 2, w / 2]}
         zoom={0}
         style={{ height: '100%', width: '100%' }}
-        maxBounds={[[-h * 0.2, -w * 0.2], [h * 1.2, w * 1.2]]}
-        minZoom={-3} maxZoom={4} zoomSnap={0.25}
+        maxZoom={4} zoomSnap={0.25}
       >
+        <MapInstanceTracker onReady={(m) => { mapRef.current = m; setLeafletMap(m) }} />
         <FitBounds bounds={bounds} initialCenter={initialCenter} />
         <ZoomTracker onZoomChange={setMapZoom} />
         <ImageOverlay url={imageUrl} bounds={bounds} />
@@ -605,6 +707,30 @@ export function LeafletMapCanvas({
             radius={6}
             pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 1, weight: 2 }}
           />
+        )}
+
+        {/* Distance measurement line */}
+        {measureLine && (
+          <>
+            <Polyline
+              positions={[[measureLine.p1.y, measureLine.p1.x], [measureLine.p2.y, measureLine.p2.x]]}
+              pathOptions={{ color: '#22d3ee', weight: 2, opacity: 0.9, dashArray: '6 4' }}
+            >
+              <Tooltip permanent direction="center" className="movement-distance-tooltip">
+                {measureLine.label}
+              </Tooltip>
+            </Polyline>
+            <CircleMarker
+              center={[measureLine.p1.y, measureLine.p1.x]}
+              radius={5}
+              pathOptions={{ color: '#22d3ee', fillColor: '#22d3ee', fillOpacity: 1, weight: 2 }}
+            />
+            <CircleMarker
+              center={[measureLine.p2.y, measureLine.p2.x]}
+              radius={5}
+              pathOptions={{ color: '#22d3ee', fillColor: '#22d3ee', fillOpacity: 1, weight: 2 }}
+            />
+          </>
         )}
 
         {/* Location markers — guard against markers with missing coordinates (data integrity) */}

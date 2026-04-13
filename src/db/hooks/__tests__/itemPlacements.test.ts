@@ -5,7 +5,7 @@ import { placeItemAtLocation, removeItemPlacement } from '@/db/hooks/useItemPlac
 import { upsertSnapshot } from '@/db/hooks/useSnapshots'
 
 const W  = 'world-1'
-const CH = 'ch-1'
+const EV = 'ev-1'
 
 beforeEach(async () => {
   await db.delete()
@@ -16,15 +16,15 @@ afterAll(async () => {
   await db.delete()
 })
 
-async function getPlacement(itemId: string, chapterId = CH) {
-  return db.itemPlacements.where('[itemId+chapterId]').equals([itemId, chapterId]).first()
+async function getPlacement(itemId: string, eventId = EV) {
+  return db.itemPlacements.where('[itemId+eventId]').equals([itemId, eventId]).first()
 }
 
 // ── placeItemAtLocation ───────────────────────────────────────────────────────
 
 describe('placeItemAtLocation', () => {
   it('creates a new placement record', async () => {
-    await placeItemAtLocation(W, 'item-1', CH, 'loc-1')
+    await placeItemAtLocation(W, 'item-1', EV, 'loc-1')
     const placement = await getPlacement('item-1')
     expect(placement).toBeDefined()
     expect(placement!.locationMarkerId).toBe('loc-1')
@@ -34,14 +34,14 @@ describe('placeItemAtLocation', () => {
   })
 
   it('stores custom notes', async () => {
-    await placeItemAtLocation(W, 'item-1', CH, 'loc-1', 'Hidden under the altar')
+    await placeItemAtLocation(W, 'item-1', EV, 'loc-1', 'Hidden under the altar')
     const placement = await getPlacement('item-1')
     expect(placement!.notes).toBe('Hidden under the altar')
   })
 
   it('moves the item to a new location on second call', async () => {
-    await placeItemAtLocation(W, 'item-1', CH, 'loc-1')
-    await placeItemAtLocation(W, 'item-1', CH, 'loc-2')
+    await placeItemAtLocation(W, 'item-1', EV, 'loc-1')
+    await placeItemAtLocation(W, 'item-1', EV, 'loc-2')
     const placement = await getPlacement('item-1')
     expect(placement!.locationMarkerId).toBe('loc-2')
     expect(await db.itemPlacements.count()).toBe(1)
@@ -49,47 +49,47 @@ describe('placeItemAtLocation', () => {
 
   it('removes item from a character inventory before placing', async () => {
     await upsertSnapshot({
-      worldId: W, characterId: 'char-1', chapterId: CH,
+      worldId: W, characterId: 'char-1', eventId: EV,
       isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
       inventoryItemIds: ['item-1', 'item-2'],
       inventoryNotes: '', statusNotes: '', travelModeId: null,
     })
 
-    await placeItemAtLocation(W, 'item-1', CH, 'loc-1')
+    await placeItemAtLocation(W, 'item-1', EV, 'loc-1')
 
     const snap = await db.characterSnapshots
-      .where('[characterId+chapterId]').equals(['char-1', CH]).first()
+      .where('[characterId+eventId]').equals(['char-1', EV]).first()
     expect(snap!.inventoryItemIds).toEqual(['item-2'])
   })
 
-  it('removes item from all character inventories in the chapter', async () => {
+  it('removes item from all character inventories in the event', async () => {
     await upsertSnapshot({
-      worldId: W, characterId: 'char-1', chapterId: CH,
+      worldId: W, characterId: 'char-1', eventId: EV,
       isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
       inventoryItemIds: ['item-1'], inventoryNotes: '', statusNotes: '', travelModeId: null,
     })
     await upsertSnapshot({
-      worldId: W, characterId: 'char-2', chapterId: CH,
+      worldId: W, characterId: 'char-2', eventId: EV,
       isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
       inventoryItemIds: ['item-1', 'item-3'], inventoryNotes: '', statusNotes: '', travelModeId: null,
     })
 
-    await placeItemAtLocation(W, 'item-1', CH, 'loc-5')
+    await placeItemAtLocation(W, 'item-1', EV, 'loc-5')
 
-    const snap1 = await db.characterSnapshots.where('[characterId+chapterId]').equals(['char-1', CH]).first()
-    const snap2 = await db.characterSnapshots.where('[characterId+chapterId]').equals(['char-2', CH]).first()
+    const snap1 = await db.characterSnapshots.where('[characterId+eventId]').equals(['char-1', EV]).first()
+    const snap2 = await db.characterSnapshots.where('[characterId+eventId]').equals(['char-2', EV]).first()
     expect(snap1!.inventoryItemIds).toEqual([])
     expect(snap2!.inventoryItemIds).toEqual(['item-3'])
   })
 
-  it('keeps placements isolated by chapter', async () => {
-    await placeItemAtLocation(W, 'item-1', 'ch-1', 'loc-A')
-    await placeItemAtLocation(W, 'item-1', 'ch-2', 'loc-B')
+  it('keeps placements isolated by event', async () => {
+    await placeItemAtLocation(W, 'item-1', 'ev-1', 'loc-A')
+    await placeItemAtLocation(W, 'item-1', 'ev-2', 'loc-B')
 
-    const ch1 = await db.itemPlacements.where('[itemId+chapterId]').equals(['item-1', 'ch-1']).first()
-    const ch2 = await db.itemPlacements.where('[itemId+chapterId]').equals(['item-1', 'ch-2']).first()
-    expect(ch1!.locationMarkerId).toBe('loc-A')
-    expect(ch2!.locationMarkerId).toBe('loc-B')
+    const ev1 = await db.itemPlacements.where('[itemId+eventId]').equals(['item-1', 'ev-1']).first()
+    const ev2 = await db.itemPlacements.where('[itemId+eventId]').equals(['item-1', 'ev-2']).first()
+    expect(ev1!.locationMarkerId).toBe('loc-A')
+    expect(ev2!.locationMarkerId).toBe('loc-B')
   })
 })
 
@@ -97,23 +97,23 @@ describe('placeItemAtLocation', () => {
 
 describe('removeItemPlacement', () => {
   it('deletes the placement record', async () => {
-    await placeItemAtLocation(W, 'item-1', CH, 'loc-1')
-    await removeItemPlacement('item-1', CH)
+    await placeItemAtLocation(W, 'item-1', EV, 'loc-1')
+    await removeItemPlacement('item-1', EV)
     expect(await getPlacement('item-1')).toBeUndefined()
   })
 
   it('is a no-op when no placement exists', async () => {
-    await expect(removeItemPlacement('item-ghost', CH)).resolves.toBeUndefined()
+    await expect(removeItemPlacement('item-ghost', EV)).resolves.toBeUndefined()
   })
 
-  it('only removes the targeted chapter placement', async () => {
-    await placeItemAtLocation(W, 'item-1', 'ch-1', 'loc-A')
-    await placeItemAtLocation(W, 'item-1', 'ch-2', 'loc-B')
-    await removeItemPlacement('item-1', 'ch-1')
+  it('only removes the targeted event placement', async () => {
+    await placeItemAtLocation(W, 'item-1', 'ev-1', 'loc-A')
+    await placeItemAtLocation(W, 'item-1', 'ev-2', 'loc-B')
+    await removeItemPlacement('item-1', 'ev-1')
 
-    const ch1 = await db.itemPlacements.where('[itemId+chapterId]').equals(['item-1', 'ch-1']).first()
-    const ch2 = await db.itemPlacements.where('[itemId+chapterId]').equals(['item-1', 'ch-2']).first()
-    expect(ch1).toBeUndefined()
-    expect(ch2).toBeDefined()
+    const ev1 = await db.itemPlacements.where('[itemId+eventId]').equals(['item-1', 'ev-1']).first()
+    const ev2 = await db.itemPlacements.where('[itemId+eventId]').equals(['item-1', 'ev-2']).first()
+    expect(ev1).toBeUndefined()
+    expect(ev2).toBeDefined()
   })
 })

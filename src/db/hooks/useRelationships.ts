@@ -33,12 +33,12 @@ export async function createRelationship(data: {
   sentiment: RelationshipSentiment
   description: string
   isBidirectional: boolean
-  startChapterId?: string | null
+  startEventId?: string | null
 }): Promise<Relationship> {
   const now = Date.now()
   const rel: Relationship = {
     id: generateId(),
-    startChapterId: null,
+    startEventId: null,
     ...data,
     createdAt: now,
     updatedAt: now,

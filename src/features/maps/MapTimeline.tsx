@@ -1,6 +1,6 @@
 import { useRef } from 'react'
-import { useAppStore, useActiveChapterId } from '@/store'
-import { useTimelines, useChapters, useEvents } from '@/db/hooks/useTimeline'
+import { useAppStore, useActiveEventId } from '@/store'
+import { useTimelines, useChapters, useEvents, useTimelineEvents } from '@/db/hooks/useTimeline'
 import type { Chapter, WorldEvent } from '@/types'
 
 function EventDot({ event, isActive }: { event: WorldEvent; isActive: boolean }) {
@@ -19,10 +19,12 @@ function EventDot({ event, isActive }: { event: WorldEvent; isActive: boolean })
 function ChapterBlock({
   chapter,
   isActive,
+  activeEventId,
   onClick,
 }: {
   chapter: Chapter
   isActive: boolean
+  activeEventId: string | null
   onClick: () => void
 }) {
   const events = useEvents(chapter.id)
@@ -47,7 +49,7 @@ function ChapterBlock({
       {events.length > 0 && (
         <div className="flex items-center gap-0.5 flex-wrap" style={{ maxWidth: 140 }}>
           {events.map((ev) => (
-            <EventDot key={ev.id} event={ev} isActive={isActive} />
+            <EventDot key={ev.id} event={ev} isActive={ev.id === activeEventId} />
           ))}
         </div>
       )}
@@ -56,15 +58,36 @@ function ChapterBlock({
 }
 
 export function MapTimeline({ worldId }: { worldId: string }) {
-  const activeChapterId = useActiveChapterId()
-  const { setActiveChapterId } = useAppStore()
+  const activeEventId = useActiveEventId()
+  const { setActiveEventId } = useAppStore()
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const timelines = useTimelines(worldId)
   const firstTimeline = timelines[0] ?? null
   const chapters = useChapters(firstTimeline?.id ?? null)
+  const allEvents = useTimelineEvents(firstTimeline?.id ?? null)
 
-  if (!firstTimeline || chapters.length === 0) return null
+  if (!firstTimeline || chapters.length === 0) {
+    return (
+      <div className="shrink-0 border-t border-[hsl(var(--border))] bg-[hsl(var(--background))] px-4 py-3">
+        <p className="text-xs text-[hsl(var(--muted-foreground))] italic">
+          No chapters yet — add chapters in the Timeline view to navigate the map by event.
+        </p>
+      </div>
+    )
+  }
+
+  // Derive active chapter from active event
+  const activeEvent = activeEventId ? allEvents.find(e => e.id === activeEventId) ?? null : null
+  const activeChapterId = activeEvent?.chapterId ?? null
+
+  /** Select the first event of a chapter. */
+  function selectChapter(chapterId: string) {
+    const events = allEvents
+      .filter(e => e.chapterId === chapterId)
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+    if (events.length > 0) setActiveEventId(events[0].id)
+  }
 
   return (
     <div className="shrink-0 border-t border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2">
@@ -75,10 +98,10 @@ export function MapTimeline({ worldId }: { worldId: string }) {
       >
         {/* "None" pill to deselect */}
         <button
-          onClick={() => setActiveChapterId(null)}
-          title="No chapter selected"
+          onClick={() => setActiveEventId(null)}
+          title="No event selected"
           className={`flex shrink-0 items-center rounded-md border px-2 py-1.5 text-xs transition-colors ${
-            !activeChapterId
+            !activeEventId
               ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
               : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--ring))] hover:text-[hsl(var(--foreground))]'
           }`}
@@ -94,7 +117,11 @@ export function MapTimeline({ worldId }: { worldId: string }) {
             <ChapterBlock
               chapter={ch}
               isActive={activeChapterId === ch.id}
-              onClick={() => setActiveChapterId(activeChapterId === ch.id ? null : ch.id)}
+              activeEventId={activeEventId}
+              onClick={() => {
+                if (activeChapterId === ch.id) setActiveEventId(null)
+                else selectChapter(ch.id)
+              }}
             />
             {i < chapters.length - 1 && (
               <div className="mt-3 h-px w-2 shrink-0 bg-[hsl(var(--border))]" />

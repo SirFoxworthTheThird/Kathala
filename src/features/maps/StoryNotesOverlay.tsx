@@ -7,7 +7,7 @@ import { readingHoldMs } from '@/lib/playbackTiming'
 const FADE_OUT_BEFORE_MS = 1400
 
 interface Props {
-  chapterId: string
+  eventId: string
   worldId: string
   playbackSpeed: PlaybackSpeed
   chapterNumber: number
@@ -15,8 +15,8 @@ interface Props {
   synopsis?: string
 }
 
-export function StoryNotesOverlay({ chapterId, worldId, playbackSpeed, chapterNumber, chapterTitle, synopsis }: Props) {
-  const snapshots  = useChapterSnapshots(chapterId)
+export function StoryNotesOverlay({ eventId, worldId, playbackSpeed, chapterNumber, chapterTitle, synopsis }: Props) {
+  const snapshots  = useChapterSnapshots(eventId)
   const characters = useCharacters(worldId)
   const [phase, setPhase] = useState<'hidden' | 'chapter' | 'notes' | 'fading'>('hidden')
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -59,7 +59,7 @@ export function StoryNotesOverlay({ chapterId, worldId, playbackSpeed, chapterNu
     timers.push(setTimeout(() => setPhase('fading'), fadeAt))
 
     return () => timers.forEach(clearTimeout)
-  }, [chapterId, holdMs])
+  }, [eventId, holdMs])
 
   const visible  = phase !== 'hidden' && phase !== 'fading'
   const showNotes = phase === 'notes'

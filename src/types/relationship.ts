@@ -11,8 +11,8 @@ export interface Relationship {
   sentiment: RelationshipSentiment
   description: string
   isBidirectional: boolean
-  /** Chapter this relationship first appears in. Null = exists from the beginning. */
-  startChapterId: string | null
+  /** Event this relationship first appears in. Null = exists from the beginning. */
+  startEventId: string | null
   createdAt: number
   updatedAt: number
 }
@@ -21,12 +21,14 @@ export interface RelationshipSnapshot {
   id: string
   worldId: string
   relationshipId: string
-  chapterId: string
+  eventId: string
+  /** Globally comparable ordering key: chapter.number × 10_000 + event.sortOrder */
+  sortKey?: number
   label: string
   strength: RelationshipStrength
   sentiment: RelationshipSentiment
   description: string
-  /** false = relationship has ended or not yet formed in this chapter */
+  /** false = relationship has ended or not yet formed in this event */
   isActive: boolean
   createdAt: number
   updatedAt: number

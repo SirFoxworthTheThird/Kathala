@@ -4,7 +4,7 @@ import { useAppStore } from '@/store'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const INITIAL = {
   activeWorldId: null,
-  activeChapterId: null,
+  activeEventId: null,
   activeMapLayerId: null,
   mapLayerHistory: [],
   sidebarOpen: true,
@@ -33,10 +33,10 @@ describe('WorldSlice', () => {
     expect(useAppStore.getState().activeWorldId).toBe('world-1')
   })
 
-  it('clears the active chapter when the world changes', () => {
-    useAppStore.setState({ activeChapterId: 'ch-1' })
+  it('clears the active event when the world changes', () => {
+    useAppStore.setState({ activeEventId: 'ev-1' })
     useAppStore.getState().setActiveWorldId('world-2')
-    expect(useAppStore.getState().activeChapterId).toBeNull()
+    expect(useAppStore.getState().activeEventId).toBeNull()
   })
 
   it('accepts null to clear the active world', () => {
@@ -46,18 +46,18 @@ describe('WorldSlice', () => {
   })
 })
 
-// ── ChapterSlice ──────────────────────────────────────────────────────────────
+// ── EventSlice ────────────────────────────────────────────────────────────────
 
-describe('ChapterSlice', () => {
-  it('sets the active chapter id', () => {
-    useAppStore.getState().setActiveChapterId('ch-1')
-    expect(useAppStore.getState().activeChapterId).toBe('ch-1')
+describe('EventSlice', () => {
+  it('sets the active event id', () => {
+    useAppStore.getState().setActiveEventId('ev-1')
+    expect(useAppStore.getState().activeEventId).toBe('ev-1')
   })
 
-  it('accepts null to clear the active chapter', () => {
-    useAppStore.setState({ activeChapterId: 'ch-1' })
-    useAppStore.getState().setActiveChapterId(null)
-    expect(useAppStore.getState().activeChapterId).toBeNull()
+  it('accepts null to clear the active event', () => {
+    useAppStore.setState({ activeEventId: 'ev-1' })
+    useAppStore.getState().setActiveEventId(null)
+    expect(useAppStore.getState().activeEventId).toBeNull()
   })
 })
 

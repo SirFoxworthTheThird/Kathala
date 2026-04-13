@@ -7,6 +7,8 @@ export interface Character {
   portraitImageId: string | null
   tags: string[]
   isAlive: boolean
+  /** Optional hex color for arc-view row tinting and other visual cues */
+  color: string | null
   createdAt: number
   updatedAt: number
 }
@@ -25,7 +27,7 @@ export interface ItemPlacement {
   id: string
   worldId: string
   itemId: string
-  chapterId: string
+  eventId: string
   locationMarkerId: string
   notes: string
   createdAt: number
@@ -36,7 +38,9 @@ export interface CharacterSnapshot {
   id: string
   worldId: string
   characterId: string
-  chapterId: string
+  eventId: string
+  /** Globally comparable ordering key: chapter.number × 10_000 + event.sortOrder */
+  sortKey?: number
   isAlive: boolean
   currentLocationMarkerId: string | null
   currentMapLayerId: string | null
@@ -52,7 +56,9 @@ export interface LocationSnapshot {
   id: string
   worldId: string
   locationMarkerId: string
-  chapterId: string
+  eventId: string
+  /** Globally comparable ordering key: chapter.number × 10_000 + event.sortOrder */
+  sortKey?: number
   status: string
   notes: string
   createdAt: number
@@ -63,7 +69,9 @@ export interface ItemSnapshot {
   id: string
   worldId: string
   itemId: string
-  chapterId: string
+  eventId: string
+  /** Globally comparable ordering key: chapter.number × 10_000 + event.sortOrder */
+  sortKey?: number
   condition: string
   notes: string
   createdAt: number

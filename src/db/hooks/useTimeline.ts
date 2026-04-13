@@ -2,6 +2,10 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import type { Timeline, Chapter, WorldEvent } from '@/types'
 import { generateId } from '@/lib/id'
+import {
+  recomputeSnapshotSortKeysForEvent,
+  recomputeSnapshotSortKeysForChapter,
+} from '@/lib/sortKey'
 
 // ─── Timelines ─────────────────────────────────────────────────────────────
 
@@ -32,10 +36,23 @@ export async function updateTimeline(id: string, data: Partial<Omit<Timeline, 'i
 }
 
 export async function deleteTimeline(id: string) {
-  await db.transaction('rw', [db.timelines, db.chapters, db.events], async () => {
+  await db.transaction('rw', [
+    db.timelines, db.chapters, db.events,
+    db.characterSnapshots, db.itemPlacements, db.locationSnapshots,
+    db.itemSnapshots, db.characterMovements, db.relationshipSnapshots,
+  ], async () => {
+    const events = await db.events.where('timelineId').equals(id).toArray()
     await db.timelines.delete(id)
     await db.chapters.where('timelineId').equals(id).delete()
     await db.events.where('timelineId').equals(id).delete()
+    for (const ev of events) {
+      await db.characterSnapshots.where('eventId').equals(ev.id).delete()
+      await db.itemPlacements.where('eventId').equals(ev.id).delete()
+      await db.locationSnapshots.where('eventId').equals(ev.id).delete()
+      await db.itemSnapshots.where('eventId').equals(ev.id).delete()
+      await db.characterMovements.where('eventId').equals(ev.id).delete()
+      await db.relationshipSnapshots.where('eventId').equals(ev.id).delete()
+    }
   })
 }
 
@@ -64,78 +81,47 @@ export function useChapter(id: string | null) {
   return useLiveQuery(() => (id ? db.chapters.get(id) : undefined), [id])
 }
 
-export async function createChapter(data: Pick<Chapter, 'worldId' | 'timelineId' | 'number' | 'title' | 'synopsis'>): Promise<Chapter> {
+/** Creates a chapter (folder only — no snapshot inheritance; that lives in createEvent). */
+export async function createChapter(
+  data: Pick<Chapter, 'worldId' | 'timelineId' | 'number' | 'title' | 'synopsis'>
+): Promise<Chapter> {
   const now = Date.now()
   const chapter: Chapter = {
     id: generateId(),
     notes: '',
-    travelDays: null,
     ...data,
     createdAt: now,
     updatedAt: now,
   }
-
-  await db.transaction('rw', [
-    db.chapters, db.characterSnapshots, db.itemPlacements,
-    db.locationSnapshots, db.itemSnapshots,
-  ], async () => {
-    await db.chapters.add(chapter)
-
-    // Find the previous chapter in the same timeline to inherit state from
-    const siblings = await db.chapters
-      .where('timelineId').equals(data.timelineId)
-      .filter((c) => c.number < data.number)
-      .sortBy('number')
-    const prev = siblings[siblings.length - 1]
-    if (!prev) return
-
-    const [prevSnapshots, prevPlacements, prevLocSnaps, prevItemSnaps] = await Promise.all([
-      db.characterSnapshots.where('chapterId').equals(prev.id).toArray(),
-      db.itemPlacements.where('chapterId').equals(prev.id).toArray(),
-      db.locationSnapshots.where('chapterId').equals(prev.id).toArray(),
-      db.itemSnapshots.where('chapterId').equals(prev.id).toArray(),
-    ])
-
-    if (prevSnapshots.length > 0) {
-      await db.characterSnapshots.bulkAdd(
-        prevSnapshots.map((s) => ({ ...s, id: generateId(), chapterId: chapter.id, createdAt: now, updatedAt: now }))
-      )
-    }
-    if (prevPlacements.length > 0) {
-      await db.itemPlacements.bulkAdd(
-        prevPlacements.map((p) => ({ ...p, id: generateId(), chapterId: chapter.id, createdAt: now, updatedAt: now }))
-      )
-    }
-    if (prevLocSnaps.length > 0) {
-      await db.locationSnapshots.bulkAdd(
-        prevLocSnaps.map((s) => ({ ...s, id: generateId(), chapterId: chapter.id, createdAt: now, updatedAt: now }))
-      )
-    }
-    if (prevItemSnaps.length > 0) {
-      await db.itemSnapshots.bulkAdd(
-        prevItemSnaps.map((s) => ({ ...s, id: generateId(), chapterId: chapter.id, createdAt: now, updatedAt: now }))
-      )
-    }
-  })
-
+  await db.chapters.add(chapter)
   return chapter
 }
 
 export async function updateChapter(id: string, data: Partial<Omit<Chapter, 'id' | 'createdAt'>>) {
   await db.chapters.update(id, { ...data, updatedAt: Date.now() })
+  // If chapter number changed, recompute sortKeys for all events in this chapter
+  if (data.number !== undefined) {
+    await recomputeSnapshotSortKeysForChapter(id)
+  }
 }
 
 export async function deleteChapter(id: string) {
   await db.transaction('rw', [
     db.chapters, db.events, db.characterSnapshots,
     db.itemPlacements, db.locationSnapshots, db.itemSnapshots,
+    db.characterMovements, db.relationshipSnapshots,
   ], async () => {
+    const events = await db.events.where('chapterId').equals(id).toArray()
     await db.chapters.delete(id)
     await db.events.where('chapterId').equals(id).delete()
-    await db.characterSnapshots.where('chapterId').equals(id).delete()
-    await db.itemPlacements.where('chapterId').equals(id).delete()
-    await db.locationSnapshots.where('chapterId').equals(id).delete()
-    await db.itemSnapshots.where('chapterId').equals(id).delete()
+    for (const ev of events) {
+      await db.characterSnapshots.where('eventId').equals(ev.id).delete()
+      await db.itemPlacements.where('eventId').equals(ev.id).delete()
+      await db.locationSnapshots.where('eventId').equals(ev.id).delete()
+      await db.itemSnapshots.where('eventId').equals(ev.id).delete()
+      await db.characterMovements.where('eventId').equals(ev.id).delete()
+      await db.relationshipSnapshots.where('eventId').equals(ev.id).delete()
+    }
   })
 }
 
@@ -163,10 +149,25 @@ export function useTimelineEvents(timelineId: string | null) {
   )
 }
 
-export async function createEvent(data: Omit<WorldEvent, 'id' | 'createdAt' | 'updatedAt'>): Promise<WorldEvent> {
+export function useWorldEvents(worldId: string | null) {
+  return useLiveQuery(
+    () => (worldId ? db.events.where('worldId').equals(worldId).toArray() : []),
+    [worldId],
+    []
+  )
+}
+
+export function useEvent(id: string | null) {
+  return useLiveQuery(() => (id ? db.events.get(id) : undefined), [id])
+}
+
+/** Creates an event. In the delta/last-known model, no snapshot inheritance is needed —
+ *  state is resolved by looking back to the most recent prior snapshot at read time. */
+export async function createEvent(data: Omit<WorldEvent, 'id' | 'createdAt' | 'updatedAt' | 'travelDays'> & { travelDays?: number | null }): Promise<WorldEvent> {
   const now = Date.now()
   const event: WorldEvent = {
     id: generateId(),
+    travelDays: null,
     ...data,
     createdAt: now,
     updatedAt: now,
@@ -177,8 +178,24 @@ export async function createEvent(data: Omit<WorldEvent, 'id' | 'createdAt' | 'u
 
 export async function updateEvent(id: string, data: Partial<Omit<WorldEvent, 'id' | 'createdAt'>>) {
   await db.events.update(id, { ...data, updatedAt: Date.now() })
+  // If sortOrder changed, recompute sortKeys on all snapshots for this event
+  if (data.sortOrder !== undefined) {
+    await recomputeSnapshotSortKeysForEvent(id)
+  }
 }
 
 export async function deleteEvent(id: string) {
-  await db.events.delete(id)
+  await db.transaction('rw', [
+    db.events, db.characterSnapshots, db.itemPlacements,
+    db.locationSnapshots, db.itemSnapshots, db.characterMovements,
+    db.relationshipSnapshots,
+  ], async () => {
+    await db.events.delete(id)
+    await db.characterSnapshots.where('eventId').equals(id).delete()
+    await db.itemPlacements.where('eventId').equals(id).delete()
+    await db.locationSnapshots.where('eventId').equals(id).delete()
+    await db.itemSnapshots.where('eventId').equals(id).delete()
+    await db.characterMovements.where('eventId').equals(id).delete()
+    await db.relationshipSnapshots.where('eventId').equals(id).delete()
+  })
 }

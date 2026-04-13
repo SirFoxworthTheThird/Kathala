@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, MapPin, Package, Heart, HeartOff, Plus, Footprints, ExternalLink } from 'lucide-react'
+import { X, MapPin, Package, Heart, HeartOff, Plus, Footprints, ExternalLink, Route, GripVertical, ArrowUp, ArrowDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -9,8 +9,9 @@ import { PortraitImage } from '@/components/PortraitImage'
 import { useCharacterRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
-import { useChapterSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
-import { useActiveChapterId } from '@/store'
+import { useBestSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { useCharacterMovement, updateMovement } from '@/db/hooks/useMovements'
+import { useActiveEventId } from '@/store'
 import type { Character, CharacterSnapshot, LocationMarker, MapLayer, Relationship } from '@/types'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -69,22 +70,28 @@ export function CharacterSnapshotPanel({
   worldId,
   onClose,
 }: CharacterSnapshotPanelProps) {
-  const activeChapterId = useActiveChapterId()
+  const activeEventId = useActiveEventId()
   const relationships = useCharacterRelationships(character.id)
   const items = useItems(worldId)
   const travelModes = useTravelModes(worldId)
-  const chapterSnapshots = useChapterSnapshots(activeChapterId)
+  const chapterSnapshots = useBestSnapshots(worldId, activeEventId)
+  const movement = useCharacterMovement(character.id, activeEventId)
   const navigate = useNavigate()
 
   // Local state for text fields (save on blur to avoid cursor jumping)
   const [statusNotes, setStatusNotes] = useState(snapshot?.statusNotes ?? '')
   const [inventoryNotes, setInventoryNotes] = useState(snapshot?.inventoryNotes ?? '')
+  const [movementNotes, setMovementNotes] = useState(movement?.notes ?? '')
 
   // Re-sync text fields when the character or chapter changes (not on every save)
   useEffect(() => {
     setStatusNotes(snapshot?.statusNotes ?? '')
     setInventoryNotes(snapshot?.inventoryNotes ?? '')
-  }, [character.id, activeChapterId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [character.id, activeEventId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    setMovementNotes(movement?.notes ?? '')
+  }, [movement?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const locationMarker = snapshot?.currentLocationMarkerId
     ? allMarkers.find((m) => m.id === snapshot.currentLocationMarkerId)
@@ -108,7 +115,7 @@ export function CharacterSnapshotPanel({
     return {
       worldId,
       characterId: character.id,
-      chapterId: activeChapterId!,
+      eventId: activeEventId!,
       isAlive: snapshot?.isAlive ?? true,
       currentLocationMarkerId: snapshot?.currentLocationMarkerId ?? null,
       currentMapLayerId: snapshot?.currentMapLayerId ?? null,
@@ -119,8 +126,8 @@ export function CharacterSnapshotPanel({
     }
   }
 
-  async function saveField(patch: Partial<Omit<CharacterSnapshot, 'id' | 'worldId' | 'characterId' | 'chapterId' | 'createdAt' | 'updatedAt'>>) {
-    if (!activeChapterId) return
+  async function saveField(patch: Partial<Omit<CharacterSnapshot, 'id' | 'worldId' | 'characterId' | 'eventId' | 'createdAt' | 'updatedAt'>>) {
+    if (!activeEventId) return
     await upsertSnapshot({ ...baseData(), ...patch })
   }
 
@@ -181,13 +188,13 @@ export function CharacterSnapshotPanel({
         <div className="flex flex-col gap-4 p-4">
 
           {/* No chapter selected */}
-          {!activeChapterId && (
+          {!activeEventId && (
             <p className="text-xs italic text-[hsl(var(--muted-foreground))]">
               Select a chapter from the timeline bar to view and edit state.
             </p>
           )}
 
-          {activeChapterId && (
+          {activeEventId && (
             <>
               {/* Alive toggle */}
               <button
@@ -321,6 +328,96 @@ export function CharacterSnapshotPanel({
               </div>
             </>
           )}
+
+          {/* Journey (movement waypoints, travel mode, notes) */}
+          {movement && movement.waypoints.length > 0 && activeEventId && (() => {
+            const mov = movement
+            const evId = activeEventId
+            return (
+              <div className="flex flex-col gap-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] flex items-center gap-1.5">
+                  <Route className="h-3 w-3" /> Journey
+                </p>
+
+                {/* Waypoint list with reorder */}
+                <div className="flex flex-col gap-1">
+                  {mov.waypoints.map((markerId, idx) => {
+                    const marker = allMarkers.find((m) => m.id === markerId)
+                    const isFirst = idx === 0
+                    const isLast = idx === mov.waypoints.length - 1
+                    const waypoints = mov.waypoints
+
+                    return (
+                      <div key={`${markerId}-${idx}`} className="flex items-center gap-1 rounded-md bg-[hsl(var(--muted))] px-2 py-1">
+                        <GripVertical className="h-3 w-3 shrink-0 text-[hsl(var(--muted-foreground))]" />
+                        <MapPin className="h-3 w-3 shrink-0 text-[hsl(var(--muted-foreground))]" />
+                        <span className="flex-1 truncate text-xs">{marker?.name ?? markerId}</span>
+                        <div className="flex gap-0.5">
+                          <button
+                            onClick={() => {
+                              const wps = [...waypoints]
+                              ;[wps[idx], wps[idx - 1]] = [wps[idx - 1], wps[idx]]
+                              updateMovement(character.id, evId, { waypoints: wps })
+                            }}
+                            disabled={isFirst}
+                            className="rounded p-0.5 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] disabled:opacity-30 transition-colors"
+                            title="Move up"
+                          >
+                            <ArrowUp className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              const wps = [...waypoints]
+                              ;[wps[idx], wps[idx + 1]] = [wps[idx + 1], wps[idx]]
+                              updateMovement(character.id, evId, { waypoints: wps })
+                            }}
+                            disabled={isLast}
+                            className="rounded p-0.5 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] disabled:opacity-30 transition-colors"
+                            title="Move down"
+                          >
+                            <ArrowDown className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Travel mode for this movement */}
+                {travelModes.length > 0 && (
+                  <Select
+                    value={mov.travelModeId ?? 'none'}
+                    onValueChange={(v) =>
+                      updateMovement(character.id, evId, { travelModeId: v === 'none' ? null : v })
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <span className="flex items-center gap-1.5 text-[hsl(var(--muted-foreground))]">
+                        <Footprints className="h-3 w-3" />
+                        <SelectValue placeholder="Travel mode…" />
+                      </span>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No travel mode</SelectItem>
+                      {travelModes.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {/* Journey notes */}
+                <Textarea
+                  className="resize-none text-xs"
+                  rows={2}
+                  placeholder="Reason for travel, notes on the journey…"
+                  value={movementNotes}
+                  onChange={(e) => setMovementNotes(e.target.value)}
+                  onBlur={() => updateMovement(character.id, evId, { notes: movementNotes })}
+                />
+              </div>
+            )
+          })()}
 
           {/* Relationships (always visible, read-only) */}
           {relationships.length > 0 && (

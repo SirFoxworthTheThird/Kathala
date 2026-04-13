@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useAppStore } from '@/store'
-import { useWorldChapters } from '@/db/hooks/useTimeline'
+import { useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
@@ -45,47 +45,71 @@ function SectionHeader({ title, icon: Icon }: { title: string; icon: React.Eleme
 
 export function ChapterDiffModal() {
   const { worldId } = useParams<{ worldId: string }>()
-  const { diffOpen, setDiffOpen, activeChapterId } = useAppStore()
+  const { diffOpen, setDiffOpen, activeEventId } = useAppStore()
   const [compareChapterId, setCompareChapterId] = useState<string>('')
 
   const chapters   = useWorldChapters(worldId ?? null)
+  const allEvents  = useWorldEvents(worldId ?? null)
   const characters = useCharacters(worldId ?? null)
   const rels       = useRelationships(worldId ?? null)
   const items      = useItems(worldId ?? null)
   const markers    = useAllLocationMarkers(worldId ?? null)
 
-  // Snapshots for both chapters
+  const chapById   = useMemo(() => new Map(chapters.map((c) => [c.id, c])), [chapters])
+
+  // Derive active chapter from active event
+  const activeEvent   = useMemo(() => allEvents.find((e) => e.id === activeEventId) ?? null, [allEvents, activeEventId])
+  const activeChapter = activeEvent ? chapById.get(activeEvent.chapterId) ?? null : null
+
+  // Map each chapter to its last event (by sortOrder) — that's the "final state" we diff
+  const lastEventByChapter = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const ev of allEvents) {
+      const cur = map.get(ev.chapterId)
+      if (cur === undefined) {
+        map.set(ev.chapterId, ev.id)
+      } else {
+        const curEv = allEvents.find((e) => e.id === cur)
+        if (curEv && ev.sortOrder > curEv.sortOrder) map.set(ev.chapterId, ev.id)
+      }
+    }
+    return map
+  }, [allEvents])
+
+  const eventIdA = activeChapter ? (lastEventByChapter.get(activeChapter.id) ?? null) : null
+  const eventIdB = compareChapterId ? (lastEventByChapter.get(compareChapterId) ?? null) : null
+
+  // Snapshots for both chapters (using last-event-of-chapter)
   const snapsA = useLiveQuery(
-    () => activeChapterId ? db.characterSnapshots.where('chapterId').equals(activeChapterId).toArray() : [],
-    [activeChapterId], []
+    () => eventIdA ? db.characterSnapshots.where('eventId').equals(eventIdA).toArray() : [],
+    [eventIdA], []
   )
   const snapsB = useLiveQuery(
-    () => compareChapterId ? db.characterSnapshots.where('chapterId').equals(compareChapterId).toArray() : [],
-    [compareChapterId], []
+    () => eventIdB ? db.characterSnapshots.where('eventId').equals(eventIdB).toArray() : [],
+    [eventIdB], []
   )
   const relSnapsA = useLiveQuery(
-    () => activeChapterId ? db.relationshipSnapshots.where('chapterId').equals(activeChapterId).toArray() : [],
-    [activeChapterId], []
+    () => eventIdA ? db.relationshipSnapshots.where('eventId').equals(eventIdA).toArray() : [],
+    [eventIdA], []
   )
   const relSnapsB = useLiveQuery(
-    () => compareChapterId ? db.relationshipSnapshots.where('chapterId').equals(compareChapterId).toArray() : [],
-    [compareChapterId], []
+    () => eventIdB ? db.relationshipSnapshots.where('eventId').equals(eventIdB).toArray() : [],
+    [eventIdB], []
   )
   const itemPlacementsA = useLiveQuery(
-    () => activeChapterId ? db.itemPlacements.where('chapterId').equals(activeChapterId).toArray() : [],
-    [activeChapterId], []
+    () => eventIdA ? db.itemPlacements.where('eventId').equals(eventIdA).toArray() : [],
+    [eventIdA], []
   )
   const itemPlacementsB = useLiveQuery(
-    () => compareChapterId ? db.itemPlacements.where('chapterId').equals(compareChapterId).toArray() : [],
-    [compareChapterId], []
+    () => eventIdB ? db.itemPlacements.where('eventId').equals(eventIdB).toArray() : [],
+    [eventIdB], []
   )
 
   const charById   = useMemo(() => new Map(characters.map((c) => [c.id, c])), [characters])
   const markerById = useMemo(() => new Map(markers.map((m) => [m.id, m])), [markers])
   const itemById   = useMemo(() => new Map(items.map((i) => [i.id, i])), [items])
-  const chapById   = useMemo(() => new Map(chapters.map((c) => [c.id, c])), [chapters])
 
-  const chapterA = chapById.get(activeChapterId ?? '')
+  const chapterA = activeChapter
   const chapterB = chapById.get(compareChapterId)
 
   // ── character diffs ────────────────────────────────────────────────────────
@@ -167,7 +191,7 @@ export function ChapterDiffModal() {
 
   if (!diffOpen) return null
 
-  const otherChapters = chapters.filter((c) => c.id !== activeChapterId).sort((a, b) => a.number - b.number)
+  const otherChapters = chapters.filter((c) => c.id !== activeChapter?.id).sort((a, b) => a.number - b.number)
 
   const totalChanges = charDiffs.filter((d) => d.changes.length > 0 || !d.a || !d.b).length
     + relDiffs.length
@@ -219,7 +243,7 @@ export function ChapterDiffModal() {
 
         {/* Body */}
         <div className="flex-1 overflow-auto px-5 py-2">
-          {!activeChapterId ? (
+          {!activeChapter ? (
             <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">Select a chapter from the timeline bar first.</p>
           ) : !compareChapterId ? (
             <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">Choose a chapter to compare against.</p>

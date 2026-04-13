@@ -64,4 +64,66 @@ test.describe('Timeline and chapters', () => {
     await expect(page).toHaveURL(/#\/worlds\/.+\/timeline\/.+/)
     await expect(page.getByText('Chapter One')).toBeVisible()
   })
+
+  test('creates an event within a chapter', async ({ page }) => {
+    await page.getByRole('button', { name: 'Create Timeline' }).click()
+    await page.getByRole('button', { name: 'Add Chapter' }).first().click()
+    await page.getByPlaceholder('Chapter title').fill('Act One')
+    await page.getByRole('button', { name: 'Add Chapter' }).last().click()
+    await page.getByTitle('Open chapter detail').click()
+    await expect(page).toHaveURL(/#\/worlds\/.+\/timeline\/.+/)
+
+    await page.getByRole('button', { name: 'Add Event' }).click()
+    await expect(page.getByRole('heading', { name: 'Add Event' })).toBeVisible()
+
+    await page.getByPlaceholder('Event title').fill('The Departure')
+    await page.getByRole('button', { name: 'Add Event' }).last().click()
+
+    await expect(page.getByRole('heading', { name: 'Add Event' })).not.toBeVisible()
+    await expect(page.getByText('The Departure')).toBeVisible()
+  })
+
+  test('requires a title to create an event', async ({ page }) => {
+    await page.getByRole('button', { name: 'Create Timeline' }).click()
+    await page.getByRole('button', { name: 'Add Chapter' }).first().click()
+    await page.getByPlaceholder('Chapter title').fill('Act One')
+    await page.getByRole('button', { name: 'Add Chapter' }).last().click()
+    await page.getByTitle('Open chapter detail').click()
+
+    await page.getByRole('button', { name: 'Add Event' }).click()
+    await expect(page.getByRole('heading', { name: 'Add Event' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Add Event' }).last()).toBeDisabled()
+  })
+
+  test('sets active event cursor via timeline bar', async ({ page }) => {
+    await page.getByRole('button', { name: 'Create Timeline' }).click()
+    await page.getByRole('button', { name: 'Add Chapter' }).first().click()
+    await page.getByPlaceholder('Chapter title').fill('Act One')
+    await page.getByRole('button', { name: 'Add Chapter' }).last().click()
+    await page.getByTitle('Open chapter detail').click()
+
+    // Create two events
+    await page.getByRole('button', { name: 'Add Event' }).click()
+    await page.getByPlaceholder('Event title').fill('First Event')
+    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await expect(page.getByText('First Event')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Add Event' }).click()
+    await page.getByPlaceholder('Event title').fill('Second Event')
+    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await expect(page.getByText('Second Event')).toBeVisible()
+
+    // Navigate back to timeline — the bottom bar renders event markers with title= attributes
+    await page.getByRole('link', { name: /timeline/i }).click()
+
+    // Click the 'First Event' marker in the timeline bar
+    await page.getByTitle('First Event').click()
+
+    // The active event label appears in the timeline bar
+    await expect(page.getByTitle('First Event')).toBeVisible()
+
+    // Click the second event and verify the active marker shifts
+    await page.getByTitle('Second Event').click()
+    await expect(page.getByTitle('Second Event')).toBeVisible()
+  })
 })

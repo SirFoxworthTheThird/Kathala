@@ -32,6 +32,7 @@
     "clsx": "^2.1.1",
     "dexie": "^4.4.1",
     "dexie-react-hooks": "^4.4.0",
+    "html2canvas": "^1.4.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.7.0",
     "nanoid": "^5.1.7",

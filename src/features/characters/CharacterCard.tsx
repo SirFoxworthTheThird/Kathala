@@ -2,8 +2,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { MapPin, Package } from 'lucide-react'
 import type { Character } from '@/types'
 import { PortraitImage } from '@/components/PortraitImage'
-import { useSnapshot } from '@/db/hooks/useSnapshots'
-import { useActiveChapterId } from '@/store'
+import { useResolvedCharacterSnapshot } from '@/db/hooks/useSnapshots'
+import { useActiveEventId } from '@/store'
 import { useLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { cn } from '@/lib/utils'
 
@@ -25,8 +25,8 @@ function LocationBadge({ locationId }: { locationId: string | null }) {
 export function CharacterCard({ character }: CharacterCardProps) {
   const navigate = useNavigate()
   const { worldId } = useParams<{ worldId: string }>()
-  const activeChapterId = useActiveChapterId()
-  const snapshot = useSnapshot(character.id, activeChapterId)
+  const activeEventId = useActiveEventId()
+  const snapshot = useResolvedCharacterSnapshot(character.id, character.worldId, activeEventId)
 
   return (
     <div

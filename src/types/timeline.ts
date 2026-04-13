@@ -15,7 +15,6 @@ export interface Chapter {
   title: string
   synopsis: string
   notes: string
-  travelDays: number | null
   createdAt: number
   updatedAt: number
 }
@@ -32,6 +31,8 @@ export interface WorldEvent {
   involvedItemIds: string[]
   tags: string[]
   sortOrder: number
+  /** Days of travel before this event. Drives continuity distance checks. */
+  travelDays: number | null
   createdAt: number
   updatedAt: number
 }

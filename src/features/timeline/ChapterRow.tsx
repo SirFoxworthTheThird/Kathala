@@ -16,12 +16,12 @@ interface ChapterRowProps {
 export function ChapterRow({ chapter }: ChapterRowProps) {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
-  const { activeChapterId, setActiveChapterId } = useAppStore()
+  const { activeEventId, setActiveEventId } = useAppStore()
   const [expanded, setExpanded] = useState(false)
   const [addEventOpen, setAddEventOpen] = useState(false)
   const events = useEvents(expanded ? chapter.id : null)
 
-  const isActive = chapter.id === activeChapterId
+  const isActive = chapter.id === activeEventId
   const sortedEvents = [...events].sort((a, b) => a.sortOrder - b.sortOrder)
 
   async function moveEvent(eventId: string, direction: 'up' | 'down') {
@@ -50,16 +50,16 @@ export function ChapterRow({ chapter }: ChapterRowProps) {
     )}>
       {/* Chapter header */}
       <div className="flex items-center gap-2 px-4 py-3">
-        <button onClick={() => setExpanded((v) => !v)} className="flex items-center gap-2 flex-1 text-left">
+        <button onClick={() => setExpanded((v) => !v)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
           {expanded
             ? <ChevronDown className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />
             : <ChevronRight className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />}
           <BookOpen className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />
-          <span className="text-sm font-medium text-[hsl(var(--foreground))]">
+          <span className="text-sm font-medium text-[hsl(var(--foreground))] shrink-0">
             Ch. {chapter.number} — {chapter.title}
           </span>
           {chapter.synopsis && (
-            <span className="hidden lg:block text-xs text-[hsl(var(--muted-foreground))] truncate">
+            <span className="hidden lg:block text-xs text-[hsl(var(--muted-foreground))] truncate min-w-0">
               — {chapter.synopsis}
             </span>
           )}
@@ -69,7 +69,7 @@ export function ChapterRow({ chapter }: ChapterRowProps) {
           size="sm"
           variant={isActive ? 'secondary' : 'ghost'}
           className="h-7 px-2 text-xs shrink-0"
-          onClick={() => setActiveChapterId(isActive ? null : chapter.id)}
+          onClick={() => setActiveEventId(isActive ? null : chapter.id)}
         >
           {isActive ? 'Active' : 'Set Active'}
         </Button>
