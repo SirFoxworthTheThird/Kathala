@@ -2,17 +2,22 @@
 
 ## Overview
 
-When the user presses Play on the `ChapterTimelineBar`, the app advances the story event-by-event. Currently this only updates the time cursor (`activeEventId`); the map snaps instantly without any animation. This feature reworks playback so that character movements are animated on the map, with the camera following each character in turn.
+When the user presses Play on the `ChapterTimelineBar`, the app advances the story event-by-event. Character movements are animated on the map: pins travel along the waypoint trails drawn by the user, with simultaneous movement for characters sharing the same step, and full sub-map transition support.
+
+**Status: implemented.** See Tasks section for remaining polish items.
 
 ---
 
-## What Already Works
+## What Is Implemented
 
-- `ChapterTimelineBar` drives playback: auto-advances `activeEventId` through all events in global order (`chapter.number × 10_000 + sortOrder`)
-- `playbackSpeed` (`slow` / `normal` / `fast`) controls reading hold time between events via `readingHoldMs`
-- `CharacterMovement` records store ordered `waypoints: string[]` (locationMarkerIds) per character per event — these are the pre-drawn movement trails
-- `CharacterSnapshot` carries `currentLocationMarkerId` + `currentMapLayerId` for each character at each event
-- `MapLayer` sub-map links: location markers can have a `linkedMapLayerId` pointing to a sub-map
+- `ChapterTimelineBar` drives playback: auto-advances `activeEventId` through all events in global order (`chapter.number × 10_000 + sortOrder`); `isAnimating` flag gates the auto-advance timer
+- `buildSequentialQueue` in `MapExplorerView` groups character moves by shared `(prevLayerId, prevMarkerId, currLayerId, currMarkerId)` key → one `PlaybackStep` per group → characters in the same group animate simultaneously
+- `LeafletMapCanvas` runs the animation via `requestAnimationFrame`; `runningAnimKeyRef` prevents re-entrancy; `Number.isFinite` guards on all coordinates
+- Trail resolution: waypoints from `CharacterMovement.waypoints` → pixel path; fallback straight line when no movement record exists
+- Sub-map transitions: `firstWaypointOnLayer` / `lastWaypointOnLayer` helpers provide fallback entry/exit points when no portal marker exists (since `linkedMapLayerId` is one-directional)
+- Map bounds: image perfectly fills canvas at min zoom; `setMinZoom` + `setMaxBounds` lock panning to image boundaries
+- Timeline horizontal scroll: mouse-wheel converts to horizontal, left/right arrow buttons appear when content overflows
+- `playbackSpeed` (`slow` / `normal` / `fast`) controls both animation speed (px/s) and reading hold duration
 
 ---
 
@@ -172,10 +177,12 @@ Duration of a movement segment = `pathLengthPx / speedPxPerSec`.
 
 ## Tasks
 
-- [ ] Add `isAnimating` flag to Zustand store; guard auto-advance in `ChapterTimelineBar`
-- [ ] `usePlaybackAnimation` hook — build movement queue from snapshot diffs, resolve trail paths, handle sub-map transitions
-- [ ] Animated marker overlay in `LeafletMapCanvas` — RAF-driven position update, camera pan-follow
+- [x] Add `isAnimating` flag to Zustand store; guard auto-advance in `ChapterTimelineBar`
+- [x] `buildSequentialQueue` in `MapExplorerView` — collect character moves, group by shared `(prevLayer, prevMarker, currLayer, currMarker)` into simultaneous steps, resolve trail paths with `validCoords` guards
+- [x] Animated marker overlay in `LeafletMapCanvas` — RAF-driven position update via `requestAnimationFrame`; `runningAnimKeyRef` guard prevents re-entrancy
+- [x] Sub-map cross-layer animation — `firstWaypointOnLayer` / `lastWaypointOnLayer` fallback chain when no portal marker exists (one-directional `linkedMapLayerId`)
+- [x] React-leaflet v5 async map init — `MapInstanceTracker` component using `useMap()` inside `MapContainer`; map instance passed via `onReady` callback and added to animation effect deps
+- [x] Tight image bounds — `FitBounds` sets `minZoom` from `getBoundsZoom` and calls `setMaxBounds`; `minZoom={-3}` and padded `maxBounds` removed from `MapContainer`
+- [x] Infinite-loop fix — `useBestSnapshots` result wrapped in `useMemo`; `useWorldBlobUrls` map wrapped in `useMemo`; `charPins` in `MapExplorerView` wrapped in `useMemo`
 - [ ] Fade-in for first appearance; fade-out on character death
-- [ ] Sub-map edge-exit calculation (ray vs. bounding rect)
-- [ ] Sub-map instant-cut transition (swap active map layer mid-animation)
-- [ ] Wire everything together in `MapExplorerView`
+- [ ] Skipping / scrubbing
