@@ -111,7 +111,24 @@
       "Bash(\"/c/Users/rpaiva/AppData/Local/mise/installs/node/20.20.0/node.exe\" \"/c/Users/rpaiva/AppData/Local/mise/installs/node/20.20.0/node_modules/npm/bin/npm-cli.js\" run build)",
       "Bash(\"/c/Users/rpaiva/AppData/Local/mise/installs/node/20.20.0/node.exe\" \"/c/Projects/mine/PlotWeave/node_modules/.bin/tsc\" -b)",
       "Bash(\"/c/Users/rpaiva/AppData/Local/mise/installs/node/20.20.0/node.exe\" \"/c/Projects/mine/PlotWeave/node_modules/typescript/bin/tsc\" -b)",
-      "Bash(\"/c/Users/rpaiva/AppData/Local/mise/installs/node/20.20.0/node.exe\" \"/c/Projects/mine/PlotWeave/node_modules/vite/bin/vite.js\" build)"
+      "Bash(\"/c/Users/rpaiva/AppData/Local/mise/installs/node/20.20.0/node.exe\" \"/c/Projects/mine/PlotWeave/node_modules/vite/bin/vite.js\" build)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/nodejs\")",
+      "Read(//c/nvm/**)",
+      "Bash(find /c -name \"node.exe\" -maxdepth 6)",
+      "Bash(export PATH=\"$PATH:/c/Users/rpaiva/AppData/Local/mise/installs/node/18.20.8/bin\")",
+      "Bash(/c/Users/rpaiva/AppData/Local/mise/installs/node/18.20.8/npm.cmd run:*)",
+      "Bash(/c/Users/rpaiva/AppData/Local/mise/installs/node/18.20.8/node.exe /c/Users/rpaiva/AppData/Local/mise/installs/node/18.20.8/node_modules/typescript/bin/tsc -b --noEmit)",
+      "Bash(/c/Users/rpaiva/AppData/Local/mise/installs/node/18.20.8/node.exe ./node_modules/.bin/tsc --noEmit)",
+      "Bash(/c/Users/rpaiva/AppData/Local/mise/installs/node/18.20.8/node.exe ./node_modules/typescript/bin/tsc --noEmit)",
+      "Bash(/c/Users/rpaiva/AppData/Local/mise/installs/node/18.20.8/node.exe ./node_modules/.bin/vitest run)",
+      "Bash(/c/Users/rpaiva/AppData/Local/mise/installs/node/18.20.8/node.exe ./node_modules/vitest/vitest.mjs run)",
+      "Bash(/c/Users/rpaiva/AppData/Local/mise/installs/node/lts/node.exe ./node_modules/vitest/vitest.mjs run)",
+      "Bash(/c/Users/rpaiva/AppData/Local/mise/installs/node/24.13/node.exe ./node_modules/vitest/vitest.mjs run)",
+      "Bash(/c/Users/rpaiva/AppData/Local/mise/installs/node/20.20.0/node.exe ./node_modules/vitest/vitest.mjs run)",
+      "Bash(/c/Users/rpaiva/AppData/Local/mise/installs/node/20.20.0/node.exe ./node_modules/vitest/vitest.mjs run src/db/hooks/__tests__/timeline.extra.test.ts)",
+      "Bash(/c/Users/rpaiva/AppData/Local/mise/installs/node/20.20.0/node.exe ./node_modules/typescript/bin/tsc --noEmit)",
+      "Bash(/c/Users/rpaiva/AppData/Local/mise/installs/node/20.20.0/node.exe ./node_modules/vite/bin/vite.js build)",
+      "Bash(/c/Users/rpaiva/AppData/Local/mise/installs/node/20.20.0/node.exe /c/Users/rpaiva/AppData/Local/mise/installs/node/20.20.0/node_modules/npm/bin/npm-cli.js install)"
     ]
   }
 }

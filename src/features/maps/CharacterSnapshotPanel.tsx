@@ -9,7 +9,7 @@ import { PortraitImage } from '@/components/PortraitImage'
 import { useCharacterRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
-import { useChapterSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { useBestSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { useCharacterMovement, updateMovement } from '@/db/hooks/useMovements'
 import { useActiveEventId } from '@/store'
 import type { Character, CharacterSnapshot, LocationMarker, MapLayer, Relationship } from '@/types'
@@ -74,7 +74,7 @@ export function CharacterSnapshotPanel({
   const relationships = useCharacterRelationships(character.id)
   const items = useItems(worldId)
   const travelModes = useTravelModes(worldId)
-  const chapterSnapshots = useChapterSnapshots(activeEventId)
+  const chapterSnapshots = useBestSnapshots(worldId, activeEventId)
   const movement = useCharacterMovement(character.id, activeEventId)
   const navigate = useNavigate()
 

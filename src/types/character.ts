@@ -39,6 +39,8 @@ export interface CharacterSnapshot {
   worldId: string
   characterId: string
   eventId: string
+  /** Globally comparable ordering key: chapter.number × 10_000 + event.sortOrder */
+  sortKey?: number
   isAlive: boolean
   currentLocationMarkerId: string | null
   currentMapLayerId: string | null
@@ -55,6 +57,8 @@ export interface LocationSnapshot {
   worldId: string
   locationMarkerId: string
   eventId: string
+  /** Globally comparable ordering key: chapter.number × 10_000 + event.sortOrder */
+  sortKey?: number
   status: string
   notes: string
   createdAt: number
@@ -66,6 +70,8 @@ export interface ItemSnapshot {
   worldId: string
   itemId: string
   eventId: string
+  /** Globally comparable ordering key: chapter.number × 10_000 + event.sortOrder */
+  sortKey?: number
   condition: string
   notes: string
   createdAt: number

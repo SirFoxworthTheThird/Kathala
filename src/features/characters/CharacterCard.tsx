@@ -2,7 +2,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { MapPin, Package } from 'lucide-react'
 import type { Character } from '@/types'
 import { PortraitImage } from '@/components/PortraitImage'
-import { useSnapshot } from '@/db/hooks/useSnapshots'
+import { useResolvedCharacterSnapshot } from '@/db/hooks/useSnapshots'
 import { useActiveEventId } from '@/store'
 import { useLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { cn } from '@/lib/utils'
@@ -26,7 +26,7 @@ export function CharacterCard({ character }: CharacterCardProps) {
   const navigate = useNavigate()
   const { worldId } = useParams<{ worldId: string }>()
   const activeEventId = useActiveEventId()
-  const snapshot = useSnapshot(character.id, activeEventId)
+  const snapshot = useResolvedCharacterSnapshot(character.id, character.worldId, activeEventId)
 
   return (
     <div

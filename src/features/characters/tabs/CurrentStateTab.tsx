@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { MapPin, Package, Plus, X, Heart, Skull, Footprints } from 'lucide-react'
 import type { Character } from '@/types'
-import { useSnapshot, useChapterSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { useResolvedCharacterSnapshot, useBestSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { removeItemPlacement } from '@/db/hooks/useItemPlacements'
 import { useItems, createItem } from '@/db/hooks/useItems'
 import { useLocationMarkers } from '@/db/hooks/useLocationMarkers'
@@ -21,8 +21,8 @@ interface CurrentStateTabProps {
 
 export function CurrentStateTab({ character }: CurrentStateTabProps) {
   const activeEventId = useActiveEventId()
-  const snapshot = useSnapshot(character.id, activeEventId)
-  const chapterSnapshots = useChapterSnapshots(activeEventId)
+  const snapshot = useResolvedCharacterSnapshot(character.id, character.worldId, activeEventId)
+  const chapterSnapshots = useBestSnapshots(character.worldId, activeEventId)
   const items = useItems(character.worldId)
   const maps = useRootMapLayers(character.worldId)
   const firstMapId = maps[0]?.id ?? null

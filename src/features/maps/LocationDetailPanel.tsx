@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useLocationMarker, updateLocationMarker, deleteLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { useCharacters } from '@/db/hooks/useCharacters'
-import { useWorldSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { useBestSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { useTimelines, useChapters, createTimeline, createChapter } from '@/db/hooks/useTimeline'
 import { useItems } from '@/db/hooks/useItems'
 import { useLocationItemPlacements, useWorldItemPlacements, placeItemAtLocation, removeItemPlacement } from '@/db/hooks/useItemPlacements'
@@ -31,7 +31,7 @@ function LocationItemRow({ item, eventId, worldId, onRemove }: {
   worldId: string
   onRemove: () => void
 }) {
-  const snap = useItemSnapshot(item.id, eventId)
+  const snap = useItemSnapshot(item.id, worldId, eventId)
   const [expanded, setExpanded] = useState(false)
   const condition = snap?.condition ?? 'intact'
 
@@ -120,15 +120,15 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
   const marker = useLocationMarker(markerId)
   const allLayers = useMapLayers(worldId)
   const characters = useCharacters(worldId)
-  const allSnapshots = useWorldSnapshots(worldId)
+  const { setSelectedLocationMarkerId, activeEventId, setActiveEventId } = useAppStore()
+  const allSnapshots = useBestSnapshots(worldId, activeEventId)
   const timelines = useTimelines(worldId)
   const firstTimelineId = timelines[0]?.id ?? null
   const chapters = useChapters(firstTimelineId)
-  const { setSelectedLocationMarkerId, activeEventId, setActiveEventId } = useAppStore()
   const allItems = useItems(worldId)
   const itemsHere = useLocationItemPlacements(markerId, activeEventId)
   const allPlacements = useWorldItemPlacements(worldId)
-  const locationSnap = useLocationSnapshot(markerId, activeEventId)
+  const locationSnap = useLocationSnapshot(markerId, worldId, activeEventId)
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -139,23 +139,18 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
 
   if (!marker) return null
 
-  // Characters currently at this location for the active chapter (or most recent snapshot)
-  const charsHere = characters.filter((c) => {
-    const snap = activeEventId
-      ? allSnapshots.find((s) => s.characterId === c.id && s.eventId === activeEventId)
-      : allSnapshots
-          .filter((s) => s.characterId === c.id)
-          .sort((a, b) => b.updatedAt - a.updatedAt)[0]
-    return snap?.currentLocationMarkerId === markerId
-  })
+  // Characters currently at this location (last-known snapshot at the active event)
+  const snapByChar = new globalThis.Map(allSnapshots.map((s): [string, typeof s] => [s.characterId, s]))
+  const charsHere = characters.filter(
+    (c) => snapByChar.get(c.id)?.currentLocationMarkerId === markerId
+  )
 
   const charsElsewhere = characters.filter((c) => !charsHere.find((h) => h.id === c.id))
 
   async function assignCharacter(characterId: string) {
     if (!activeEventId) return
-    const existing = allSnapshots.find(
-      (s) => s.characterId === characterId && s.eventId === activeEventId
-    )
+    // Use the last-known state as a base (already resolved by useBestSnapshots)
+    const existing = snapByChar.get(characterId)
     await upsertSnapshot({
       worldId,
       characterId,
@@ -173,11 +168,14 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
 
   async function removeCharacter(characterId: string) {
     if (!activeEventId) return
-    const existing = allSnapshots.find(
-      (s) => s.characterId === characterId && s.eventId === activeEventId
-    )
+    const existing = snapByChar.get(characterId)
     if (!existing) return
-    await upsertSnapshot({ ...existing, currentLocationMarkerId: null, currentMapLayerId: null })
+    await upsertSnapshot({
+      ...existing,
+      eventId: activeEventId,
+      currentLocationMarkerId: null,
+      currentMapLayerId: null,
+    })
   }
 
   async function handleCreateChapter() {
@@ -391,9 +389,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
               // Items not in any character's inventory AND not already here
               const hereIds = new Set(itemsHere.map((p) => p.itemId))
               const inInventory = new Set(
-                allSnapshots
-                  .filter((s) => s.eventId === activeEventId)
-                  .flatMap((s) => s.inventoryItemIds)
+                allSnapshots.flatMap((s) => s.inventoryItemIds)
               )
               const elsewhereIds = new Set(
                 allPlacements

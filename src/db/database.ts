@@ -243,6 +243,43 @@ class PlotWeaveDB extends Dexie {
         if (!('color' in c)) c.color = null
       })
     })
+
+    // v13: add sortKey to all snapshot tables.
+    // sortKey = chapter.number × 10_000 + event.sortOrder — enables efficient
+    // "last-known state at or before event N" queries (delta/last-known model).
+    this.version(13).stores({
+      characterSnapshots: 'id, worldId, characterId, eventId, [characterId+eventId], [worldId+characterId+sortKey]',
+      locationSnapshots: 'id, worldId, locationMarkerId, eventId, [locationMarkerId+eventId], [worldId+locationMarkerId+sortKey]',
+      itemSnapshots: 'id, worldId, itemId, eventId, [itemId+eventId], [worldId+itemId+sortKey]',
+      relationshipSnapshots: 'id, worldId, relationshipId, eventId, [relationshipId+eventId], [worldId+relationshipId+sortKey]',
+    }).upgrade(async (tx) => {
+      // Build lookup maps from events and chapters
+      const events: Array<{ id: string; chapterId: string; sortOrder: number }> =
+        await tx.table('events').toArray()
+      const chapters: Array<{ id: string; number: number }> =
+        await tx.table('chapters').toArray()
+
+      const eventById = new Map(events.map((e) => [e.id, e]))
+      const chapterNumberById = new Map(chapters.map((c) => [c.id, c.number]))
+
+      const getSortKey = (eventId: string): number => {
+        const ev = eventById.get(eventId)
+        if (!ev) return 0
+        const chapNum = chapterNumberById.get(ev.chapterId) ?? 0
+        return chapNum * 10_000 + ev.sortOrder
+      }
+
+      const snapshotTables = [
+        'characterSnapshots', 'locationSnapshots', 'itemSnapshots', 'relationshipSnapshots',
+      ]
+      for (const tableName of snapshotTables) {
+        await tx.table(tableName).toCollection().modify((s: Record<string, unknown>) => {
+          if (s.sortKey === undefined) {
+            s.sortKey = getSortKey(s.eventId as string)
+          }
+        })
+      }
+    })
   }
 }
 

@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import type { RelationshipSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
+import { computeSortKey, computeSortKeySync } from '@/lib/sortKey'
 import { useWorldChapters, useWorldEvents } from './useTimeline'
 
 export function useRelationshipSnapshot(relationshipId: string | null, eventId: string | null) {
@@ -46,19 +47,6 @@ export function useWorldRelationshipSnapshots(worldId: string | null) {
 type EventStub = { id: string; chapterId: string; sortOrder: number }
 type ChapterStub = { id: string; number: number }
 
-/** Compute a globally comparable sort key for an event.
- *  Ordering: chapter.number (primary) → event.sortOrder (secondary). */
-function globalEventOrder(
-  eventId: string,
-  eventById: Map<string, EventStub>,
-  chapterNumberById: Map<string, number>
-): number {
-  const ev = eventById.get(eventId)
-  if (!ev) return -1
-  const chapNum = chapterNumberById.get(ev.chapterId) ?? -1
-  return chapNum * 10_000 + ev.sortOrder
-}
-
 /** Pure selection logic — exported for testing. */
 export function selectBestSnapshots(
   all: RelationshipSnapshot[],
@@ -82,20 +70,19 @@ export function selectBestSnapshots(
 
   const eventById = new Map(allEvents.map((e) => [e.id, e]))
   const chapterNumberById = new Map(allChapters.map((c) => [c.id, c.number]))
-
-  const getOrder = (eventId: string) => globalEventOrder(eventId, eventById, chapterNumberById)
-  const activeOrder = getOrder(activeEventId)
+  const getOrder = (snap: RelationshipSnapshot) =>
+    snap.sortKey ?? computeSortKeySync(snap.eventId, eventById, chapterNumberById)
+  const activeOrder = computeSortKeySync(activeEventId, eventById, chapterNumberById)
 
   if (activeOrder === -1) {
     // Active event not loaded yet — fall back to exact match only
     return all.filter((s) => s.eventId === activeEventId)
   }
 
-  // For each relationship, pick the snapshot from the event with the highest global
-  // order that is still ≤ the active event's order (most recent known state).
+  // For each relationship, pick the snapshot with the highest order ≤ activeOrder
   const byRel = new Map<string, RelationshipSnapshot>()
   for (const snap of all) {
-    const snapOrder = getOrder(snap.eventId)
+    const snapOrder = getOrder(snap)
     if (snapOrder === -1 || snapOrder > activeOrder) continue
 
     const current = byRel.get(snap.relationshipId)
@@ -104,7 +91,7 @@ export function selectBestSnapshots(
       continue
     }
 
-    const currentOrder = getOrder(current.eventId)
+    const currentOrder = getOrder(current)
     // Exact match for the active event always wins; otherwise prefer higher order
     if (snap.eventId === activeEventId) {
       byRel.set(snap.relationshipId, snap)
@@ -134,29 +121,57 @@ export function useBestRelationshipSnapshots(
   )
 }
 
+function relSnapContentEqual(
+  a: Omit<RelationshipSnapshot, 'id' | 'sortKey' | 'createdAt' | 'updatedAt'>,
+  b: RelationshipSnapshot
+): boolean {
+  return (
+    a.label === b.label &&
+    a.strength === b.strength &&
+    a.sentiment === b.sentiment &&
+    a.description === b.description &&
+    a.isActive === b.isActive
+  )
+}
+
 export async function upsertRelationshipSnapshot(
-  data: Omit<RelationshipSnapshot, 'id' | 'createdAt' | 'updatedAt'>
+  data: Omit<RelationshipSnapshot, 'id' | 'sortKey' | 'createdAt' | 'updatedAt'>
 ): Promise<RelationshipSnapshot> {
+  const now = Date.now()
+  const sortKey = await computeSortKey(data.eventId)
+
   const existing = await db.relationshipSnapshots
     .where('[relationshipId+eventId]')
     .equals([data.relationshipId, data.eventId])
     .first()
 
-  const now = Date.now()
   if (existing) {
-    const updated = { ...existing, ...data, updatedAt: now }
+    const updated = { ...existing, ...data, sortKey, updatedAt: now }
     await db.relationshipSnapshots.put(updated)
     return updated
-  } else {
-    const snapshot: RelationshipSnapshot = {
-      id: generateId(),
-      ...data,
-      createdAt: now,
-      updatedAt: now,
-    }
-    await db.relationshipSnapshots.add(snapshot)
-    return snapshot
   }
+
+  // Dedup: skip write if state matches the last-known snapshot
+  const allForRel = await db.relationshipSnapshots
+    .where('relationshipId').equals(data.relationshipId)
+    .toArray()
+  const prevBest = allForRel
+    .filter((s) => (s.sortKey ?? 0) < sortKey)
+    .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+
+  if (prevBest && relSnapContentEqual(data, prevBest)) {
+    return prevBest
+  }
+
+  const snapshot: RelationshipSnapshot = {
+    id: generateId(),
+    ...data,
+    sortKey,
+    createdAt: now,
+    updatedAt: now,
+  }
+  await db.relationshipSnapshots.add(snapshot)
+  return snapshot
 }
 
 export async function deleteRelationshipSnapshot(id: string) {

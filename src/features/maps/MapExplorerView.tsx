@@ -10,7 +10,7 @@ import { useRootMapLayers, useMapLayer, useMapLayers, deleteMapLayer, updateMapL
 import { useChapters, useTimelines, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useLocationMarkers, useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useCharacters } from '@/db/hooks/useCharacters'
-import { useBestSnapshots, useWorldSnapshots, upsertSnapshot, fetchSnapshot } from '@/db/hooks/useSnapshots'
+import { useBestSnapshots, upsertSnapshot, fetchSnapshot } from '@/db/hooks/useSnapshots'
 import { useEventMovements, appendWaypoint, clearMovement, removeLastWaypoint } from '@/db/hooks/useMovements'
 import { useItems } from '@/db/hooks/useItems'
 import { useEventItemPlacements } from '@/db/hooks/useItemPlacements'
@@ -717,7 +717,7 @@ function ItemRow({
   locationName: string | null
   onFocus: () => void
 }) {
-  const snap = useItemSnapshot(item.id, activeEventId)
+  const snap = useItemSnapshot(item.id, worldId, activeEventId)
   const [expanded, setExpanded] = useState(false)
   const condition = snap?.condition ?? 'intact'
 
@@ -1123,7 +1123,6 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const characters = useCharacters(worldId)
   const activeEventId = useActiveEventId()
   const snapshots = useBestSnapshots(worldId, activeEventId)
-  const allSnapshots = useWorldSnapshots(worldId)
   const blobUrls = useWorldBlobUrls(worldId)
   const movements = useEventMovements(worldId, activeEventId)
   const chapterPlacements = useEventItemPlacements(activeEventId)
@@ -1235,11 +1234,8 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const activeEventIdx = activeEventId ? orderedEvents.findIndex((e) => e.id === activeEventId) : -1
   const prevEventId = activeEventIdx > 0 ? orderedEvents[activeEventIdx - 1].id : null
 
-  // Previous event snapshots (event-based — used for playback animation)
-  const prevSnapshots = useMemo(
-    () => prevEventId ? allSnapshots.filter((s) => s.eventId === prevEventId) : [],
-    [allSnapshots, prevEventId], // eslint-disable-line react-hooks/exhaustive-deps
-  )
+  // Previous event snapshots (last-known state at the previous event — used for playback animation)
+  const prevSnapshots = useBestSnapshots(worldId, prevEventId)
 
   // Previous chapter (for travel-line display — still chapter-based)
   const prevChapter = activeChapter
@@ -1252,10 +1248,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     [allWorldEvents, prevChapter?.id], // eslint-disable-line react-hooks/exhaustive-deps
   )
   const prevChapterLastEventId = prevChapterEvents[0]?.id ?? null
-  const prevChapterSnapshots = useMemo(
-    () => prevChapterLastEventId ? allSnapshots.filter((s) => s.eventId === prevChapterLastEventId) : [],
-    [allSnapshots, prevChapterLastEventId], // eslint-disable-line react-hooks/exhaustive-deps
-  )
+  const prevChapterSnapshots = useBestSnapshots(worldId, prevChapterLastEventId)
 
   function handleMarkerClick(markerId: string) {
     setSelectedCharacterId(null)
@@ -1389,10 +1382,8 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     // Read from DB directly to avoid stale React state
     const existingInDb = await fetchSnapshot(characterId, activeEventId)
     const fromMarkerId = existingInDb?.currentLocationMarkerId
-    // Use React state for non-location fields (isAlive, inventory, etc.)
-    const existing = allSnapshots.find(
-      (s) => s.characterId === characterId && s.eventId === activeEventId
-    )
+    // Use last-known snapshot (already resolved by useBestSnapshots) for non-location fields
+    const existing = snapshots.find((s) => s.characterId === characterId)
     await upsertSnapshot({
       worldId,
       characterId,

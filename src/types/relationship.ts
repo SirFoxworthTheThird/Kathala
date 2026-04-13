@@ -22,6 +22,8 @@ export interface RelationshipSnapshot {
   worldId: string
   relationshipId: string
   eventId: string
+  /** Globally comparable ordering key: chapter.number × 10_000 + event.sortOrder */
+  sortKey?: number
   label: string
   strength: RelationshipStrength
   sentiment: RelationshipSentiment

@@ -2,7 +2,7 @@ import { X, BookOpen, Users, Network, Package, Scroll, MapPin, Heart, Skull, Che
 import { useParams } from 'react-router-dom'
 import { useAppStore } from '@/store'
 import { useChapter, useEvent, useEvents } from '@/db/hooks/useTimeline'
-import { useChapterSnapshots } from '@/db/hooks/useSnapshots'
+import { useBestSnapshots } from '@/db/hooks/useSnapshots'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { useChapterRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
@@ -39,7 +39,7 @@ export function WritersBriefPanel() {
   const activeEvent = useEvent(activeEventId)
   const chapter    = useChapter(activeEvent?.chapterId ?? null)
   const events     = useEvents(activeEvent?.chapterId ?? null)
-  const snapshots  = useChapterSnapshots(activeEventId)
+  const snapshots  = useBestSnapshots(worldId ?? null, activeEventId)
   const characters = useCharacters(worldId ?? null)
   const rels       = useRelationships(worldId ?? null)
   const relSnaps   = useChapterRelationshipSnapshots(activeEventId)

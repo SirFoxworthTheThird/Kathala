@@ -5,7 +5,7 @@ import type {
   Relationship, RelationshipSnapshot, Timeline, Chapter, WorldEvent, TravelMode,
 } from '@/types'
 
-const EXPORT_VERSION = 2
+const EXPORT_VERSION = 3
 
 interface BlobExport {
   id: string
@@ -314,6 +314,7 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
   const d = data as Record<string, unknown>
   if (typeof d.version !== 'number') throw new Error('Invalid file: missing version')
   if (d.version < 1 || d.version > EXPORT_VERSION) throw new Error(`Unsupported export version: ${d.version}`)
+  // v3 added sortKey to snapshots; v1/v2 files are backfilled in normalizeImport
   if (typeof d.world !== 'object' || d.world === null) throw new Error('Invalid file: missing world')
   const world = d.world as Record<string, unknown>
   if (typeof world.id !== 'string' || typeof world.name !== 'string') throw new Error('Invalid file: world missing id or name')
@@ -465,6 +466,33 @@ function normalizeImport(data: WorldExportFile): void {
     for (const rel of data.relationships) {
       const r = rel as unknown as Rec
       if (r.startEventId === undefined) r.startEventId = null
+    }
+  }
+
+  // ── v3: backfill sortKey on all snapshot arrays (v1/v2 files lack it) ────────
+  if (data.version < 3) {
+    const eventById = new Map(data.events.map((e) => [e.id, e]))
+    const chapterNumberById = new Map(data.chapters.map((c) => [c.id, c.number]))
+
+    const getSortKey = (eventId: string): number => {
+      const ev = eventById.get(eventId)
+      if (!ev) return 0
+      const chapNum = chapterNumberById.get(ev.chapterId) ?? 0
+      return chapNum * 10_000 + ev.sortOrder
+    }
+
+    const snapshotArrays: Rec[][] = [
+      data.characterSnapshots as unknown as Rec[],
+      data.locationSnapshots as unknown as Rec[],
+      data.itemSnapshots as unknown as Rec[],
+      data.relationshipSnapshots as unknown as Rec[],
+    ]
+    for (const arr of snapshotArrays) {
+      for (const snap of arr) {
+        if (snap.sortKey === undefined) {
+          snap.sortKey = getSortKey(snap.eventId as string)
+        }
+      }
     }
   }
 }
