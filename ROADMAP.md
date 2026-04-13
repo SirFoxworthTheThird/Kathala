@@ -26,10 +26,21 @@ The ChapterDetailView critical bug (character/relationship state panels always e
 
 Detailed specs live in `docs/features/`:
 
+- [x] **[Worlds](docs/features/worlds.md)** — multi-world support, dashboard, travel mode management
 - [x] **[Maps](docs/features/maps.md)** — waypoint editing, movement annotations, travel mode per movement, distance measurement tool
+- [x] **[Characters](docs/features/characters.md)** — roster, snapshot tabs, portrait images, per-character colour
+- [x] **[Relationships](docs/features/relationships.md)** — ReactFlow graph, sentiment/strength, event-scoped, per-event overrides
+- [x] **[Timeline](docs/features/timeline.md)** — chapters, events, snapshot cards, writer's notes, AI dialog
+- [x] **[Items](docs/features/items.md)** — catalogue, per-event inventory and placement, item images
 - [x] **[Arc visualization](docs/features/arc-visualization.md)** — per-character color, inventory sparkline, cell expand, character filter, export to image
 - [x] **[Continuity checker expansion](docs/features/continuity-checker.md)** — issue suppression, location-destroyed check, item-before-acquired check, keyboard navigation
 - [x] **[Playback — character movement](docs/features/playback.md)** — animated movement along trails, simultaneous movement for shared steps, sub-map transitions with portal fallback, bounds-locked map, timeline horizontal scrolling
+- [x] **[Chapter Timeline Bar](docs/features/chapter-timeline-bar.md)** — chapter/event dots, callout, playback controls, horizontal scrolling, diff trigger
+- [x] **[Search](docs/features/search.md)** — Ctrl+K palette, 7 entity types, grouped results, keyboard navigation
+- [x] **[Writer's Brief](docs/features/writers-brief.md)** — slide-in panel, chapter summary, live updates
+- [x] **[Chapter Diff](docs/features/chapter-diff.md)** — compare any two chapters, character/relationship/item diffs
+- [x] **[Export / Import](docs/features/export-import.md)** — .pwk v3 format, backward compat, sortKey backfill
+- [x] **[Themes](docs/features/themes.md)** — nine themes, CSS variable injection, per-theme fonts and overlays
 - [ ] **[Timeline multi-select](docs/features/timeline-multi-select.md)** — checkboxes, shift-click range, bulk delete/move/tag, drag-to-reorder chapters
 
 ---
