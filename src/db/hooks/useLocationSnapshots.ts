@@ -6,6 +6,41 @@ import { generateId } from '@/lib/id'
 import { computeSortKey, computeSortKeySync } from '@/lib/sortKey'
 import { useWorldEvents, useWorldChapters } from './useTimeline'
 
+type EventStub = { id: string; chapterId: string; sortOrder: number }
+type ChapterStub = { id: string; number: number }
+
+/** Pure single-marker resolution — exported for testing. */
+export function resolveLocationSnapshot(
+  all: LocationSnapshot[],
+  activeEventId: string | null,
+  allEvents: EventStub[],
+  allChapters: ChapterStub[]
+): LocationSnapshot | undefined {
+  if (!activeEventId || !all.length) return undefined
+
+  const eventById = new Map(allEvents.map((e) => [e.id, e]))
+  const chapNumById = new Map(allChapters.map((c) => [c.id, c.number]))
+  const getOrder = (snap: LocationSnapshot) =>
+    snap.sortKey ?? computeSortKeySync(snap.eventId, eventById, chapNumById)
+  const activeOrder = computeSortKeySync(activeEventId, eventById, chapNumById)
+
+  if (activeOrder === -1) {
+    return all.find((s) => s.eventId === activeEventId)
+  }
+
+  let best: LocationSnapshot | undefined
+  let bestOrder = -1
+  for (const snap of all) {
+    const order = getOrder(snap)
+    if (order === -1 || order > activeOrder) continue
+    if (!best || order > bestOrder || (order === bestOrder && snap.eventId === activeEventId)) {
+      best = snap
+      bestOrder = order
+    }
+  }
+  return best
+}
+
 /** Returns the last-known location snapshot at or before the active event. */
 export function useLocationSnapshot(
   locationMarkerId: string | null,
@@ -15,32 +50,10 @@ export function useLocationSnapshot(
   const all = useMarkerSnapshots(locationMarkerId)
   const allEvents = useWorldEvents(worldId)
   const allChapters = useWorldChapters(worldId)
-
-  return useMemo(() => {
-    if (!locationMarkerId || !activeEventId || !all.length) return undefined
-
-    const eventById = new Map(allEvents.map((e) => [e.id, e]))
-    const chapNumById = new Map(allChapters.map((c) => [c.id, c.number]))
-    const getOrder = (snap: LocationSnapshot) =>
-      snap.sortKey ?? computeSortKeySync(snap.eventId, eventById, chapNumById)
-    const activeOrder = computeSortKeySync(activeEventId, eventById, chapNumById)
-
-    if (activeOrder === -1) {
-      return all.find((s) => s.eventId === activeEventId)
-    }
-
-    let best: LocationSnapshot | undefined
-    let bestOrder = -1
-    for (const snap of all) {
-      const order = getOrder(snap)
-      if (order === -1 || order > activeOrder) continue
-      if (!best || order > bestOrder || (order === bestOrder && snap.eventId === activeEventId)) {
-        best = snap
-        bestOrder = order
-      }
-    }
-    return best
-  }, [locationMarkerId, activeEventId, all, allEvents, allChapters])
+  return useMemo(
+    () => (!locationMarkerId ? undefined : resolveLocationSnapshot(all, activeEventId, allEvents, allChapters)),
+    [locationMarkerId, activeEventId, all, allEvents, allChapters]
+  )
 }
 
 export function useEventLocationSnapshots(eventId: string | null) {
@@ -80,6 +93,55 @@ export function useWorldLocationSnapshots(worldId: string | null) {
   )
 }
 
+/** Pure world-level selection logic — exported for testing. */
+export function selectBestLocationSnapshots(
+  all: LocationSnapshot[],
+  activeEventId: string | null,
+  allEvents: EventStub[],
+  allChapters: ChapterStub[]
+): LocationSnapshot[] {
+  if (!all.length) return all
+
+  if (!activeEventId) {
+    const byMarker = new Map<string, LocationSnapshot>()
+    for (const snap of all) {
+      const current = byMarker.get(snap.locationMarkerId)
+      if (!current || snap.updatedAt > current.updatedAt) {
+        byMarker.set(snap.locationMarkerId, snap)
+      }
+    }
+    return Array.from(byMarker.values())
+  }
+
+  const eventById = new Map(allEvents.map((e) => [e.id, e]))
+  const chapNumById = new Map(allChapters.map((c) => [c.id, c.number]))
+  const getOrder = (snap: LocationSnapshot) =>
+    snap.sortKey ?? computeSortKeySync(snap.eventId, eventById, chapNumById)
+  const activeOrder = computeSortKeySync(activeEventId, eventById, chapNumById)
+
+  if (activeOrder === -1) {
+    return all.filter((s) => s.eventId === activeEventId)
+  }
+
+  const byMarker = new Map<string, LocationSnapshot>()
+  for (const snap of all) {
+    const order = getOrder(snap)
+    if (order === -1 || order > activeOrder) continue
+    const current = byMarker.get(snap.locationMarkerId)
+    if (!current) {
+      byMarker.set(snap.locationMarkerId, snap)
+      continue
+    }
+    const currentOrder = getOrder(current)
+    if (snap.eventId === activeEventId) {
+      byMarker.set(snap.locationMarkerId, snap)
+    } else if (current.eventId !== activeEventId && order > currentOrder) {
+      byMarker.set(snap.locationMarkerId, snap)
+    }
+  }
+  return Array.from(byMarker.values())
+}
+
 /** Returns the best (last-known) location snapshot per marker for the active event. */
 export function useBestLocationSnapshots(
   worldId: string | null,
@@ -88,49 +150,10 @@ export function useBestLocationSnapshots(
   const all = useWorldLocationSnapshots(worldId)
   const allEvents = useWorldEvents(worldId)
   const allChapters = useWorldChapters(worldId)
-
-  return useMemo(() => {
-    if (!all.length) return []
-
-    if (!activeEventId) {
-      const byMarker = new Map<string, LocationSnapshot>()
-      for (const snap of all) {
-        const current = byMarker.get(snap.locationMarkerId)
-        if (!current || snap.updatedAt > current.updatedAt) {
-          byMarker.set(snap.locationMarkerId, snap)
-        }
-      }
-      return Array.from(byMarker.values())
-    }
-
-    const eventById = new Map(allEvents.map((e) => [e.id, e]))
-    const chapNumById = new Map(allChapters.map((c) => [c.id, c.number]))
-    const getOrder = (snap: LocationSnapshot) =>
-      snap.sortKey ?? computeSortKeySync(snap.eventId, eventById, chapNumById)
-    const activeOrder = computeSortKeySync(activeEventId, eventById, chapNumById)
-
-    if (activeOrder === -1) {
-      return all.filter((s) => s.eventId === activeEventId)
-    }
-
-    const byMarker = new Map<string, LocationSnapshot>()
-    for (const snap of all) {
-      const order = getOrder(snap)
-      if (order === -1 || order > activeOrder) continue
-      const current = byMarker.get(snap.locationMarkerId)
-      if (!current) {
-        byMarker.set(snap.locationMarkerId, snap)
-        continue
-      }
-      const currentOrder = getOrder(current)
-      if (snap.eventId === activeEventId) {
-        byMarker.set(snap.locationMarkerId, snap)
-      } else if (current.eventId !== activeEventId && order > currentOrder) {
-        byMarker.set(snap.locationMarkerId, snap)
-      }
-    }
-    return Array.from(byMarker.values())
-  }, [all, activeEventId, allEvents, allChapters])
+  return useMemo(
+    () => selectBestLocationSnapshots(all, activeEventId, allEvents, allChapters),
+    [all, activeEventId, allEvents, allChapters]
+  )
 }
 
 function locSnapContentEqual(

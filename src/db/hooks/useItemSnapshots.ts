@@ -6,6 +6,41 @@ import { generateId } from '@/lib/id'
 import { computeSortKey, computeSortKeySync } from '@/lib/sortKey'
 import { useWorldEvents, useWorldChapters } from './useTimeline'
 
+type EventStub = { id: string; chapterId: string; sortOrder: number }
+type ChapterStub = { id: string; number: number }
+
+/** Pure single-item resolution — exported for testing. */
+export function resolveItemSnapshot(
+  all: ItemSnapshot[],
+  activeEventId: string | null,
+  allEvents: EventStub[],
+  allChapters: ChapterStub[]
+): ItemSnapshot | undefined {
+  if (!activeEventId || !all.length) return undefined
+
+  const eventById = new Map(allEvents.map((e) => [e.id, e]))
+  const chapNumById = new Map(allChapters.map((c) => [c.id, c.number]))
+  const getOrder = (snap: ItemSnapshot) =>
+    snap.sortKey ?? computeSortKeySync(snap.eventId, eventById, chapNumById)
+  const activeOrder = computeSortKeySync(activeEventId, eventById, chapNumById)
+
+  if (activeOrder === -1) {
+    return all.find((s) => s.eventId === activeEventId)
+  }
+
+  let best: ItemSnapshot | undefined
+  let bestOrder = -1
+  for (const snap of all) {
+    const order = getOrder(snap)
+    if (order === -1 || order > activeOrder) continue
+    if (!best || order > bestOrder || (order === bestOrder && snap.eventId === activeEventId)) {
+      best = snap
+      bestOrder = order
+    }
+  }
+  return best
+}
+
 /** All snapshots for a single item. */
 function useItemAllSnapshots(itemId: string | null) {
   return useLiveQuery(
@@ -25,32 +60,10 @@ export function useItemSnapshot(
   const all = useItemAllSnapshots(itemId)
   const allEvents = useWorldEvents(worldId)
   const allChapters = useWorldChapters(worldId)
-
-  return useMemo(() => {
-    if (!itemId || !activeEventId || !all.length) return undefined
-
-    const eventById = new Map(allEvents.map((e) => [e.id, e]))
-    const chapNumById = new Map(allChapters.map((c) => [c.id, c.number]))
-    const getOrder = (snap: ItemSnapshot) =>
-      snap.sortKey ?? computeSortKeySync(snap.eventId, eventById, chapNumById)
-    const activeOrder = computeSortKeySync(activeEventId, eventById, chapNumById)
-
-    if (activeOrder === -1) {
-      return all.find((s) => s.eventId === activeEventId)
-    }
-
-    let best: ItemSnapshot | undefined
-    let bestOrder = -1
-    for (const snap of all) {
-      const order = getOrder(snap)
-      if (order === -1 || order > activeOrder) continue
-      if (!best || order > bestOrder || (order === bestOrder && snap.eventId === activeEventId)) {
-        best = snap
-        bestOrder = order
-      }
-    }
-    return best
-  }, [itemId, activeEventId, all, allEvents, allChapters])
+  return useMemo(
+    () => (!itemId ? undefined : resolveItemSnapshot(all, activeEventId, allEvents, allChapters)),
+    [itemId, activeEventId, all, allEvents, allChapters]
+  )
 }
 
 export function useEventItemSnapshots(eventId: string | null) {

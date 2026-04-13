@@ -69,6 +69,93 @@ export function useWorldSnapshots(worldId: string | null) {
   )
 }
 
+type EventStub = { id: string; chapterId: string; sortOrder: number }
+type ChapterStub = { id: string; number: number }
+
+/** Pure selection logic — exported for testing. */
+export function selectBestCharacterSnapshots(
+  all: CharacterSnapshot[],
+  activeEventId: string | null,
+  allEvents: EventStub[],
+  allChapters: ChapterStub[]
+): CharacterSnapshot[] {
+  if (!all.length) return all
+
+  if (!activeEventId) {
+    // No event selected: most recently updated snapshot per character
+    const byChar = new Map<string, CharacterSnapshot>()
+    for (const snap of all) {
+      const current = byChar.get(snap.characterId)
+      if (!current || snap.updatedAt > current.updatedAt) {
+        byChar.set(snap.characterId, snap)
+      }
+    }
+    return Array.from(byChar.values())
+  }
+
+  const eventById = new Map(allEvents.map((e) => [e.id, e]))
+  const chapNumById = new Map(allChapters.map((c) => [c.id, c.number]))
+  const getOrder = (snap: CharacterSnapshot) =>
+    snap.sortKey ?? computeSortKeySync(snap.eventId, eventById, chapNumById)
+  const activeOrder = computeSortKeySync(activeEventId, eventById, chapNumById)
+
+  if (activeOrder === -1) {
+    // Active event not loaded yet — exact match fallback
+    return all.filter((s) => s.eventId === activeEventId)
+  }
+
+  // Per character, pick the snapshot with the highest order ≤ activeOrder
+  const byChar = new Map<string, CharacterSnapshot>()
+  for (const snap of all) {
+    const order = getOrder(snap)
+    if (order === -1 || order > activeOrder) continue
+    const current = byChar.get(snap.characterId)
+    if (!current) {
+      byChar.set(snap.characterId, snap)
+      continue
+    }
+    const currentOrder = getOrder(current)
+    if (snap.eventId === activeEventId) {
+      byChar.set(snap.characterId, snap)
+    } else if (current.eventId !== activeEventId && order > currentOrder) {
+      byChar.set(snap.characterId, snap)
+    }
+  }
+  return Array.from(byChar.values())
+}
+
+/** Pure single-character resolution — exported for testing. */
+export function resolveCharacterSnapshot(
+  all: CharacterSnapshot[],
+  activeEventId: string | null,
+  allEvents: EventStub[],
+  allChapters: ChapterStub[]
+): CharacterSnapshot | undefined {
+  if (!activeEventId || !all.length) return undefined
+
+  const eventById = new Map(allEvents.map((e) => [e.id, e]))
+  const chapNumById = new Map(allChapters.map((c) => [c.id, c.number]))
+  const getOrder = (snap: CharacterSnapshot) =>
+    snap.sortKey ?? computeSortKeySync(snap.eventId, eventById, chapNumById)
+  const activeOrder = computeSortKeySync(activeEventId, eventById, chapNumById)
+
+  if (activeOrder === -1) {
+    return all.find((s) => s.eventId === activeEventId)
+  }
+
+  let best: CharacterSnapshot | undefined
+  let bestOrder = -1
+  for (const snap of all) {
+    const order = getOrder(snap)
+    if (order === -1 || order > activeOrder) continue
+    if (!best || order > bestOrder || (order === bestOrder && snap.eventId === activeEventId)) {
+      best = snap
+      bestOrder = order
+    }
+  }
+  return best
+}
+
 /** Returns the best (last-known) snapshot per character for the active event.
  *  When an event is active: for each character, finds the most recent snapshot
  *  at or before that event (by sortKey ordering).
@@ -78,52 +165,10 @@ export function useBestSnapshots(worldId: string | null, activeEventId: string |
   const all = useWorldSnapshots(worldId)
   const allEvents = useWorldEvents(worldId)
   const allChapters = useWorldChapters(worldId)
-
-  return useMemo(() => {
-    if (!all.length) return []
-
-    if (!activeEventId) {
-      // No event selected: most recently updated snapshot per character
-      const byChar = new Map<string, CharacterSnapshot>()
-      for (const snap of all) {
-        const current = byChar.get(snap.characterId)
-        if (!current || snap.updatedAt > current.updatedAt) {
-          byChar.set(snap.characterId, snap)
-        }
-      }
-      return Array.from(byChar.values())
-    }
-
-    const eventById = new Map(allEvents.map((e) => [e.id, e]))
-    const chapNumById = new Map(allChapters.map((c) => [c.id, c.number]))
-    const getOrder = (snap: CharacterSnapshot) =>
-      snap.sortKey ?? computeSortKeySync(snap.eventId, eventById, chapNumById)
-    const activeOrder = computeSortKeySync(activeEventId, eventById, chapNumById)
-
-    if (activeOrder === -1) {
-      // Active event not loaded yet — exact match fallback
-      return all.filter((s) => s.eventId === activeEventId)
-    }
-
-    // Per character, pick the snapshot with the highest order ≤ activeOrder
-    const byChar = new Map<string, CharacterSnapshot>()
-    for (const snap of all) {
-      const order = getOrder(snap)
-      if (order === -1 || order > activeOrder) continue
-      const current = byChar.get(snap.characterId)
-      if (!current) {
-        byChar.set(snap.characterId, snap)
-        continue
-      }
-      const currentOrder = getOrder(current)
-      if (snap.eventId === activeEventId) {
-        byChar.set(snap.characterId, snap)
-      } else if (current.eventId !== activeEventId && order > currentOrder) {
-        byChar.set(snap.characterId, snap)
-      }
-    }
-    return Array.from(byChar.values())
-  }, [all, activeEventId, allEvents, allChapters])
+  return useMemo(
+    () => selectBestCharacterSnapshots(all, activeEventId, allEvents, allChapters),
+    [all, activeEventId, allEvents, allChapters]
+  )
 }
 
 /** Returns the last-known snapshot for a single character at or before the active event.
@@ -136,32 +181,10 @@ export function useResolvedCharacterSnapshot(
   const all = useCharacterSnapshots(characterId)
   const allEvents = useWorldEvents(worldId)
   const allChapters = useWorldChapters(worldId)
-
-  return useMemo(() => {
-    if (!characterId || !activeEventId || !all.length) return undefined
-
-    const eventById = new Map(allEvents.map((e) => [e.id, e]))
-    const chapNumById = new Map(allChapters.map((c) => [c.id, c.number]))
-    const getOrder = (snap: CharacterSnapshot) =>
-      snap.sortKey ?? computeSortKeySync(snap.eventId, eventById, chapNumById)
-    const activeOrder = computeSortKeySync(activeEventId, eventById, chapNumById)
-
-    if (activeOrder === -1) {
-      return all.find((s) => s.eventId === activeEventId)
-    }
-
-    let best: CharacterSnapshot | undefined
-    let bestOrder = -1
-    for (const snap of all) {
-      const order = getOrder(snap)
-      if (order === -1 || order > activeOrder) continue
-      if (!best || order > bestOrder || (order === bestOrder && snap.eventId === activeEventId)) {
-        best = snap
-        bestOrder = order
-      }
-    }
-    return best
-  }, [characterId, activeEventId, all, allEvents, allChapters])
+  return useMemo(
+    () => (!characterId ? undefined : resolveCharacterSnapshot(all, activeEventId, allEvents, allChapters)),
+    [characterId, activeEventId, all, allEvents, allChapters]
+  )
 }
 
 export async function fetchSnapshot(characterId: string, eventId: string): Promise<CharacterSnapshot | undefined> {
