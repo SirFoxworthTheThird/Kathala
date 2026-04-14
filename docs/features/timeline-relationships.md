@@ -6,7 +6,7 @@ Timelines can be linked to each other with a typed relationship, enabling multi-
 
 The feature is entirely additive. Single-timeline worlds are completely unaffected. No existing data model changes — two new tables are added at database version 14.
 
-**Status: planned.**
+**Status: Phase 1 complete (data model + plumbing). Phase 2 (management UI) not yet started.**
 
 ---
 
@@ -258,14 +258,14 @@ New `EchoMarker` interface: `{ markerId: string; position: { x: number; y: numbe
 
 ## Tasks
 
-### Phase 1 — Data model + plumbing
+### Phase 1 — Data model + plumbing ✓
 
-- [ ] Create `src/types/timelineRelationship.ts` (includes `syncPoints` array on `TimelineRelationship`)
-- [ ] Update `src/types/index.ts`, `src/types/world.ts`
-- [ ] `src/db/database.ts` version 14 — two new tables
-- [ ] `src/db/hooks/useTimelineRelationships.ts` — CRUD + cascade delete
-- [ ] `src/store/index.ts` — `playbackTimelineId`, `activeDepthTimelineId`, `activeOuterEventId`
-- [ ] `src/lib/exportImport.ts` — version 4, v1–v3 import compatibility
+- [x] Create `src/types/timelineRelationship.ts` (includes `syncPoints` array on `TimelineRelationship`)
+- [x] Update `src/types/index.ts`
+- [x] `src/db/database.ts` version 14 — two new tables
+- [x] `src/db/hooks/useTimelineRelationships.ts` — CRUD + cascade delete
+- [x] `src/store/index.ts` — `playbackTimelineId`, `activeDepthTimelineId`, `activeOuterEventId`
+- [x] `src/lib/exportImport.ts` — version 4, v1–v3 import compatibility
 
 ### Phase 2 — Relationship management UI
 

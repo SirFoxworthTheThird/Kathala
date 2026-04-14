@@ -150,7 +150,12 @@
       "Bash(/c/Python311/python.exe \"c:/Projects/mine/PlotWeave/.claude/build-and-test.py\")",
       "Bash(cygpath -w /usr/bin/bash)",
       "Bash(/c/Python311/python.exe -c \"import json; d=json.load\\(open\\('c:/Projects/mine/PlotWeave/.claude/settings.json'\\)\\); h=d['hooks']['PostToolUse'][0]['hooks'][0]; print\\('type:', h['type']\\); print\\('command:', h['command']\\); print\\('asyncRewake:', h['asyncRewake']\\)\")",
-      "Bash(/c/Users/rpaiva/AppData/Local/mise/shims/npm install:*)"
+      "Bash(/c/Users/rpaiva/AppData/Local/mise/shims/npm install:*)",
+      "Bash(cmd.exe /c \"cd c:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave && npm run build 2>&1\")",
+      "Bash(cmd.exe /c \"cd c:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave && npm run build\")",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(cmd.exe /c \"cd c:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave && npm run build 2>&1 && echo BUILD_OK || echo BUILD_FAIL\")",
+      "Bash(powershell.exe -Command \"cd 'c:\\\\Projects\\\\mine\\\\PlotWeave'; npm run test 2>&1\")"
     ]
   }
 }

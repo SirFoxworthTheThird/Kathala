@@ -39,11 +39,17 @@ Detailed specs live in `docs/features/`:
 - [x] **[Search](docs/features/search.md)** — Ctrl+K palette, 7 entity types, grouped results, keyboard navigation
 - [x] **[Writer's Brief](docs/features/writers-brief.md)** — slide-in panel, chapter summary, live updates
 - [x] **[Chapter Diff](docs/features/chapter-diff.md)** — compare any two chapters, character/relationship/item diffs
-- [x] **[Export / Import](docs/features/export-import.md)** — .pwk v3 format, backward compat, sortKey backfill
+- [x] **[Export / Import](docs/features/export-import.md)** — .pwk v4 format, backward compat, sortKey backfill
 - [x] **[Themes](docs/features/themes.md)** — nine themes, CSS variable injection, per-theme fonts and overlays
 - [x] **[Timeline multi-select](docs/features/timeline-multi-select.md)** — checkboxes, shift-click range, bulk delete/move/tag, drag-to-reorder chapters
 
 - [ ] **[Timeline Relationships](docs/features/timeline-relationships.md)** — typed links between timelines (frame narrative, historical echo, embedded fiction, alternate); ghost pins on map for frame anchors; palimpsest echo rings for shared geography; cross-timeline artifacts; depth-scoped playback
+  - [x] Phase 1: data model + plumbing (types, DB v14, CRUD hooks, store fields, export v4)
+  - [ ] Phase 2: relationship management UI
+  - [ ] Phase 3: playback scoping
+  - [ ] Phase 4: frame narrative map rendering (ghost pins)
+  - [ ] Phase 5: historical echo map rendering (echo rings)
+  - [ ] Phase 6: cross-timeline artifacts
 
 ---
 

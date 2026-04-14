@@ -19,6 +19,8 @@ import type {
   WorldEvent,
   BlobEntry,
   TravelMode,
+  TimelineRelationship,
+  CrossTimelineArtifact,
 } from '@/types'
 
 class PlotWeaveDB extends Dexie {
@@ -40,6 +42,8 @@ class PlotWeaveDB extends Dexie {
   locationSnapshots!: EntityTable<LocationSnapshot, 'id'>
   itemSnapshots!: EntityTable<ItemSnapshot, 'id'>
   travelModes!: EntityTable<TravelMode, 'id'>
+  timelineRelationships!: EntityTable<TimelineRelationship, 'id'>
+  crossTimelineArtifacts!: EntityTable<CrossTimelineArtifact, 'id'>
 
   constructor() {
     super('PlotWeaveDB')
@@ -242,6 +246,12 @@ class PlotWeaveDB extends Dexie {
       await tx.table('characters').toCollection().modify((c: Record<string, unknown>) => {
         if (!('color' in c)) c.color = null
       })
+    })
+
+    // v14: timeline relationships and cross-timeline artifacts (purely additive)
+    this.version(14).stores({
+      timelineRelationships: 'id, worldId, sourceTimelineId, targetTimelineId',
+      crossTimelineArtifacts: 'id, worldId, itemId, originTimelineId, encounterTimelineId',
     })
 
     // v13: add sortKey to all snapshot tables.
