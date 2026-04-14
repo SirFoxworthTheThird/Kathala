@@ -190,7 +190,7 @@ export function CharacterSnapshotPanel({
           {/* No chapter selected */}
           {!activeEventId && (
             <p className="text-xs italic text-[hsl(var(--muted-foreground))]">
-              Select a chapter from the timeline bar to view and edit state.
+              Select an event from the timeline bar to view and edit state.
             </p>
           )}
 

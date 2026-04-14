@@ -553,7 +553,7 @@ function CharactersSection({
     <SidebarSection title="Characters" icon={Users} count={characters.length}>
       {!activeEventId && (
         <p className="px-3 pb-2 text-[10px] italic text-[hsl(var(--muted-foreground))]">
-          Select a chapter to place characters.
+          Select an event to place characters.
         </p>
       )}
       {characters.length > 0 && <SidebarSearch value={search} onChange={setSearch} />}

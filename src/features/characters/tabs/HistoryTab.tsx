@@ -1,4 +1,4 @@
-import { MapPin, Package, Heart, Skull, BookOpen } from 'lucide-react'
+import { MapPin, Package, Heart, Skull, BookOpen, Camera } from 'lucide-react'
 import type { Character } from '@/types'
 import { useCharacterSnapshots } from '@/db/hooks/useSnapshots'
 import { useChapter, useEvent } from '@/db/hooks/useTimeline'
@@ -6,6 +6,7 @@ import { useLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { useItems } from '@/db/hooks/useItems'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@/components/EmptyState'
 
 function SnapshotRow({
   snapshotId: _snapshotId,
@@ -85,9 +86,12 @@ export function HistoryTab({ character }: HistoryTabProps) {
 
   if (snapshots.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">
-        No snapshots recorded yet. Select an event and save state in the "Current State" tab.
-      </p>
+      <EmptyState
+        icon={Camera}
+        title="No snapshots yet"
+        description='Select an event and save state in the "Current State" tab.'
+        className="py-8"
+      />
     )
   }
 

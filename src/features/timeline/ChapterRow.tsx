@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ChevronDown, ChevronRight, Trash2, BookOpen, Plus, ExternalLink } from 'lucide-react'
+import { ChevronDown, ChevronRight, Trash2, BookOpen, Plus, ExternalLink, Scroll } from 'lucide-react'
 import type { Chapter } from '@/types'
 import { deleteChapter, useEvents, updateEvent } from '@/db/hooks/useTimeline'
 import { useAppStore } from '@/store'
@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { EventRow } from './EventRow'
 import { AddEventDialog } from './AddEventDialog'
+import { EmptyState } from '@/components/EmptyState'
 
 interface ChapterRowProps {
   chapter: Chapter
@@ -133,7 +134,7 @@ export function ChapterRow({ chapter }: ChapterRowProps) {
       {expanded && (
         <div className="border-t border-[hsl(var(--border))] px-4 pt-3 pb-2 flex flex-col">
           {sortedEvents.length === 0 ? (
-            <p className="text-xs italic text-[hsl(var(--muted-foreground))] pb-2">No events yet.</p>
+            <EmptyState icon={Scroll} title="No events yet" className="py-3" />
           ) : (
             <div className="flex flex-col">
               {sortedEvents.map((e, i) => (
