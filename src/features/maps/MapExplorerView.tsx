@@ -5,7 +5,7 @@ import {
   Plus, Upload, Users, Map as MapIcon, Trash2, Undo2,
   ChevronRight, ChevronDown, MapPin, Package, Layers, Ruler, X, Route, Search,
 } from 'lucide-react'
-import { useAppStore, useActiveMapLayerId, useActiveEventId, useMapLayerHistory, type PlaybackSpeed } from '@/store'
+import { useAppStore, useActiveMapLayerId, useActiveEventId, useMapLayerHistory, usePlaybackTimelineId, type PlaybackSpeed } from '@/store'
 import { useRootMapLayers, useMapLayer, useMapLayers, deleteMapLayer, updateMapLayer } from '@/db/hooks/useMapLayers'
 import { useChapters, useTimelines, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useLocationMarkers, useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
@@ -1212,7 +1212,9 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   }, [allMarkers]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const timelines = useTimelines(worldId)
-  const chapters = useChapters(timelines[0]?.id ?? null)
+  const playbackTimelineId = usePlaybackTimelineId()
+  const effectiveTimelineId = playbackTimelineId ?? timelines[0]?.id ?? null
+  const chapters = useChapters(effectiveTimelineId)
   const allWorldEvents = useWorldEvents(worldId)
   // Derive active chapter from the active event's chapterId
   const activeEvent   = activeEventId ? allWorldEvents.find((e) => e.id === activeEventId) ?? null : null

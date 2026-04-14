@@ -2,6 +2,7 @@ import { Outlet, useParams, useMatch } from 'react-router-dom'
 import { TopBar } from './TopBar'
 import { ChapterTimelineBar } from './ChapterTimelineBar'
 import { useAppStore } from '@/store'
+import { useBarHeight } from '@/lib/useBarHeight'
 import { useEffect } from 'react'
 import { SearchPalette } from '@/features/search/SearchPalette'
 import { WritersBriefPanel } from '@/features/brief/WritersBriefPanel'
@@ -13,6 +14,7 @@ export function AppShell() {
   const { worldId } = useParams<{ worldId: string }>()
   const { setActiveWorldId, setSearchOpen } = useAppStore()
   const isDashboard = !!useMatch('/worlds/:worldId')
+  const barHeight = useBarHeight(isDashboard ? null : worldId)
 
   useEffect(() => {
     if (worldId) setActiveWorldId(worldId)
@@ -34,7 +36,7 @@ export function AppShell() {
     <div className="flex h-screen flex-col overflow-hidden">
       <TopBar />
       {!isDashboard && <ChapterTimelineBar />}
-      <main className={`flex-1 overflow-auto${!isDashboard ? ' pb-[3.25rem]' : ''}`}>
+      <main className="flex-1 overflow-auto" style={{ paddingBottom: !isDashboard ? barHeight : undefined }}>
         <Outlet />
       </main>
       <SearchPalette />

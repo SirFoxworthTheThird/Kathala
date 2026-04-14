@@ -183,4 +183,7 @@ export const useActiveWorldId = () => useAppStore((s) => s.activeWorldId)
 export const useActiveEventId = () => useAppStore((s) => s.activeEventId)
 export const useActiveMapLayerId = () => useAppStore((s) => s.activeMapLayerId)
 export const useMapLayerHistory = () => useAppStore((s) => s.mapLayerHistory)
+export const usePlaybackTimelineId = () => useAppStore((s) => s.playbackTimelineId)
+export const useActiveDepthTimelineId = () => useAppStore((s) => s.activeDepthTimelineId)
+export const useActiveOuterEventId = () => useAppStore((s) => s.activeOuterEventId)
 
