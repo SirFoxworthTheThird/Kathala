@@ -61,7 +61,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
   if (!activeEventId) {
     return (
       <div className="flex flex-col items-center gap-2 py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">
-        <p>Select a chapter from the top bar to view and edit state.</p>
+        <p>Select an event from the timeline bar to view and edit state.</p>
       </div>
     )
   }

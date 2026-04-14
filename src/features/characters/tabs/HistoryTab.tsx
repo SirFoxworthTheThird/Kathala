@@ -1,7 +1,7 @@
 import { MapPin, Package, Heart, Skull, BookOpen } from 'lucide-react'
 import type { Character } from '@/types'
 import { useCharacterSnapshots } from '@/db/hooks/useSnapshots'
-import { useChapter } from '@/db/hooks/useTimeline'
+import { useChapter, useEvent } from '@/db/hooks/useTimeline'
 import { useLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { useItems } from '@/db/hooks/useItems'
 import { useAppStore } from '@/store'
@@ -28,7 +28,8 @@ function SnapshotRow({
   isActive: boolean
   onClick: () => void
 }) {
-  const chapter = useChapter(eventId)
+  const event = useEvent(eventId)
+  const chapter = useChapter(event?.chapterId ?? null)
   const location = useLocationMarker(locationMarkerId)
   const items = useItems(worldId)
 
@@ -85,7 +86,7 @@ export function HistoryTab({ character }: HistoryTabProps) {
   if (snapshots.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">
-        No snapshots recorded yet. Select a chapter and save state in the "Current State" tab.
+        No snapshots recorded yet. Select an event and save state in the "Current State" tab.
       </p>
     )
   }

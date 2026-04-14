@@ -91,7 +91,7 @@ export function EventRow({ event, isFirst, isLast, onMoveUp, onMoveDown }: Event
             <ExternalLink className="h-3 w-3" />
           </Button>
           <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0 hover:text-red-400"
-            onClick={(e) => { e.stopPropagation(); deleteEvent(event.id) }}>
+            onClick={(e) => { e.stopPropagation(); if (confirm(`Delete event "${event.title}"?`)) deleteEvent(event.id) }}>
             <Trash2 className="h-3 w-3" />
           </Button>
         </div>

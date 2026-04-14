@@ -210,7 +210,7 @@ export function ContinuityChecker() {
           category: 'character',
           message: `${char.name} is alive in Ch. ${ch?.number ?? '?'} after dying in Ch. ${deathChapNum}`,
           detail: `Death recorded in Ch. ${deathChapNum} — ${chapById.get(eventById.get(deathSnap.eventId)?.chapterId ?? '')?.title ?? ''}`,
-          navigatePath: `/worlds/${worldId}/timeline/${snap.eventId}`,
+          navigatePath: `/worlds/${worldId}/timeline/${ev?.chapterId ?? snap.eventId}`,
           eventId: snap.eventId,
         })
       }
@@ -260,7 +260,7 @@ export function ContinuityChecker() {
         category: 'character',
         message: `${char?.name ?? '?'} is at a destroyed location in Ch. ${ch?.number ?? '?'}`,
         detail: `"${marker?.name ?? snap.currentLocationMarkerId}" was destroyed at or before this event`,
-        navigatePath: `/worlds/${worldId}/timeline/${snap.eventId}`,
+        navigatePath: `/worlds/${worldId}/timeline/${ev?.chapterId ?? snap.eventId}`,
         eventId: snap.eventId,
       })
     }
@@ -315,7 +315,7 @@ export function ContinuityChecker() {
             category: 'item',
             message: `"${item?.name ?? itemId}" appears in multiple places in Ch. ${ch.number}`,
             detail: `Held by: ${ownerNames.join(', ')}`,
-            navigatePath: `/worlds/${worldId}/timeline/${evId}`,
+            navigatePath: `/worlds/${worldId}/timeline/${ch.id}`,
             eventId: evId,
           })
         }
@@ -350,7 +350,7 @@ export function ContinuityChecker() {
             category: 'item',
             message: `"${item?.name ?? itemId}" used before acquired in Ch. ${ch.number}`,
             detail: `Appears in event "${ev.title}" but isn't in any inventory until later`,
-            navigatePath: `/worlds/${worldId}/timeline/${ev.id}`,
+            navigatePath: `/worlds/${worldId}/timeline/${ch.id}`,
             eventId: ev.id,
           })
         }
@@ -381,7 +381,7 @@ export function ContinuityChecker() {
           category: 'relationship',
           message: `Relationship snapshot exists before it started`,
           detail: `${charA?.name ?? '?'} ↔ ${charB?.name ?? '?'} — snapshot in Ch. ${rsCh?.number ?? '?'} but relationship starts in Ch. ${startChapNum}`,
-          navigatePath: `/worlds/${worldId}/timeline/${rs.eventId}`,
+          navigatePath: `/worlds/${worldId}/timeline/${rsEv?.chapterId ?? rs.eventId}`,
           eventId: rs.eventId,
         })
       }
@@ -416,7 +416,7 @@ export function ContinuityChecker() {
           category: 'relationship',
           message: `Relationship snapshot references deceased ${deadChar?.name ?? '?'}`,
           detail: `${charA?.name ?? '?'} ↔ ${charB?.name ?? '?'} in Ch. ${rsCh?.number ?? '?'}`,
-          navigatePath: `/worlds/${worldId}/timeline/${rs.eventId}`,
+          navigatePath: `/worlds/${worldId}/timeline/${rsEv?.chapterId ?? rs.eventId}`,
           eventId: rs.eventId,
         })
       }
@@ -473,7 +473,7 @@ export function ContinuityChecker() {
             category: 'character',
             message: `${char.name} can't reach ${toMarker.name} in time`,
             detail: `${fromMarker.name} → ${toMarker.name} is ~${dist} ${layer.scaleUnit} at ${travelMode.speedPerDay} ${layer.scaleUnit}/day — needs ${daysNeeded.toFixed(1)} days but only ${currEvent.travelDays} available (Ch. ${currCh?.number ?? '?'})`,
-            navigatePath: `/worlds/${worldId}/timeline/${curr.eventId}`,
+            navigatePath: `/worlds/${worldId}/timeline/${currEvent.chapterId}`,
             eventId: curr.eventId,
           })
         }

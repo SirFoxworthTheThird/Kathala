@@ -5,7 +5,7 @@ import { useChapter, useEvent, useEvents } from '@/db/hooks/useTimeline'
 import { useBestSnapshots } from '@/db/hooks/useSnapshots'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
-import { useChapterRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
+import { useBestRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
 import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -42,7 +42,7 @@ export function WritersBriefPanel() {
   const snapshots  = useBestSnapshots(worldId ?? null, activeEventId)
   const characters = useCharacters(worldId ?? null)
   const rels       = useRelationships(worldId ?? null)
-  const relSnaps   = useChapterRelationshipSnapshots(activeEventId)
+  const relSnaps   = useBestRelationshipSnapshots(worldId ?? null, activeEventId)
   const items      = useItems(worldId ?? null)
   const markers    = useAllLocationMarkers(worldId ?? null)
   const itemPlacements = useLiveQuery(
@@ -113,7 +113,7 @@ export function WritersBriefPanel() {
         <div className="flex-1 overflow-auto px-4 py-3">
           {!activeEventId ? (
             <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">
-              Select a chapter from the timeline bar to see the brief.
+              Select an event from the timeline bar to see the brief.
             </p>
           ) : !chapter ? (
             <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading…</p>
