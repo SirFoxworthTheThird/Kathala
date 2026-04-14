@@ -28,6 +28,18 @@ interface PlaybackSlice {
   playbackSpeed: PlaybackSpeed
   setIsPlayingStory: (v: boolean) => void
   setPlaybackSpeed: (speed: PlaybackSpeed) => void
+  /** The timeline whose events drive playback and map character positions.
+   *  null = fall back to timelines[0] (existing behaviour). */
+  playbackTimelineId: string | null
+  setPlaybackTimelineId: (id: string | null) => void
+  /** When a frame narrative is active: the current event on the outer (frame) timeline.
+   *  Drives ghost pin positions. Separate from activeEventId which tracks the inner timeline. */
+  activeOuterEventId: string | null
+  setActiveOuterEventId: (id: string | null) => void
+  /** The timeline currently shown as the "active depth" in the stacked timeline bar.
+   *  null = no frame relationship active. */
+  activeDepthTimelineId: string | null
+  setActiveDepthTimelineId: (id: string | null) => void
 }
 
 interface UISlice {
@@ -94,6 +106,12 @@ export const useAppStore = create<AppStore>()(
       playbackSpeed: 'normal' as PlaybackSpeed,
       setIsPlayingStory: (v) => set({ isPlayingStory: v }),
       setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
+      playbackTimelineId: null,
+      setPlaybackTimelineId: (id) => set({ playbackTimelineId: id }),
+      activeOuterEventId: null,
+      setActiveOuterEventId: (id) => set({ activeOuterEventId: id }),
+      activeDepthTimelineId: null,
+      setActiveDepthTimelineId: (id) => set({ activeDepthTimelineId: id }),
 
       // UI
       sidebarOpen: true,

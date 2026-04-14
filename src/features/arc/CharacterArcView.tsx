@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
+import { toPng } from 'html-to-image'
 import { useParams } from 'react-router-dom'
 import { Heart, Skull, MapPin, Minus, Search, Download, X } from 'lucide-react'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
@@ -128,21 +129,26 @@ export default function CharacterArcView() {
   const handleExport = useCallback(async () => {
     const el = tableRef.current
     if (!el) return
-    const html2canvas = (await import('html2canvas')).default
-    const canvas = await html2canvas(el, {
-      backgroundColor: null,
-      scale: 2,
-      useCORS: true,
-      // Capture full scroll width
-      width: el.scrollWidth,
-      height: el.scrollHeight,
-      windowWidth: el.scrollWidth,
-      windowHeight: el.scrollHeight,
-    })
-    const link = document.createElement('a')
-    link.download = 'character-arc.png'
-    link.href = canvas.toDataURL('image/png')
-    link.click()
+    const prevOverflow = el.style.overflow
+    el.style.overflow = 'visible'
+    try {
+      const dataUrl = await toPng(el, {
+        pixelRatio: 2,
+        width: el.scrollWidth,
+        height: el.scrollHeight,
+      })
+      const link = document.createElement('a')
+      link.download = 'character-arc.png'
+      link.href = dataUrl
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } catch (err) {
+      console.error('PNG export failed:', err)
+      alert(`Export failed: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      el.style.overflow = prevOverflow
+    }
   }, [])
 
   if (characters.length === 0 || sortedChapters.length === 0) {

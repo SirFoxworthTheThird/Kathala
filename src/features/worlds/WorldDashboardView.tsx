@@ -7,6 +7,7 @@ import { useRootMapLayers } from '@/db/hooks/useMapLayers'
 import { useTimelines } from '@/db/hooks/useTimeline'
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { useTravelModes, createTravelMode, updateTravelMode, deleteTravelMode } from '@/db/hooks/useTravelModes'
+import { useTimelineRelationships } from '@/db/hooks/useTimelineRelationships'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { TravelMode } from '@/types'
@@ -80,6 +81,7 @@ export default function WorldDashboardView() {
   const timelines = useTimelines(worldId ?? null)
   const relationships = useRelationships(worldId ?? null)
   const travelModes = useTravelModes(worldId ?? null)
+  const timelineRelationships = useTimelineRelationships(worldId ?? null)
 
   const [newName, setNewName] = useState('')
   const [newSpeed, setNewSpeed] = useState('')
@@ -93,7 +95,12 @@ export default function WorldDashboardView() {
     { label: 'Maps', icon: Map, count: maps.length, to: 'maps', description: 'Locations and sub-maps' },
     { label: 'Characters', icon: Users, count: characters.length, to: 'characters', description: 'Track your cast' },
     { label: 'Relationships', icon: Network, count: relationships.length, to: 'relationships', description: 'Character connections' },
-    { label: 'Timeline', icon: BookOpen, count: timelines.length, to: 'timeline', description: 'Chapters and events' },
+    {
+      label: 'Timeline', icon: BookOpen, count: timelines.length, to: 'timeline',
+      description: timelineRelationships.length > 0
+        ? `${timelineRelationships.length} linked timeline${timelineRelationships.length !== 1 ? 's' : ''}`
+        : 'Chapters and events',
+    },
   ]
 
   async function handleAdd() {

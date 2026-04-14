@@ -3,9 +3,10 @@ import type {
   World, MapLayer, LocationMarker, Character, Item,
   CharacterSnapshot, CharacterMovement, ItemPlacement, LocationSnapshot, ItemSnapshot,
   Relationship, RelationshipSnapshot, Timeline, Chapter, WorldEvent, TravelMode,
+  TimelineRelationship, CrossTimelineArtifact,
 } from '@/types'
 
-const EXPORT_VERSION = 3
+const EXPORT_VERSION = 4
 
 interface BlobExport {
   id: string
@@ -37,6 +38,8 @@ export interface WorldExportFile {
   events: WorldEvent[]
   blobs: BlobExport[]
   travelModes: TravelMode[]
+  timelineRelationships: TimelineRelationship[]
+  crossTimelineArtifacts: CrossTimelineArtifact[]
   relationshipPositions?: Record<string, { x: number; y: number }>
 }
 
@@ -90,6 +93,8 @@ export async function exportWorld(worldId: string): Promise<void> {
     events,
     rawBlobs,
     travelModes,
+    timelineRelationships,
+    crossTimelineArtifacts,
   ] = await Promise.all([
     db.worlds.get(worldId),
     db.mapLayers.where('worldId').equals(worldId).toArray(),
@@ -108,6 +113,8 @@ export async function exportWorld(worldId: string): Promise<void> {
     db.events.where('worldId').equals(worldId).toArray(),
     db.blobs.where('worldId').equals(worldId).toArray(),
     db.travelModes.where('worldId').equals(worldId).toArray(),
+    db.timelineRelationships.where('worldId').equals(worldId).toArray(),
+    db.crossTimelineArtifacts.where('worldId').equals(worldId).toArray(),
   ])
 
   if (!world) throw new Error('World not found')
@@ -149,6 +156,8 @@ export async function exportWorld(worldId: string): Promise<void> {
     events,
     blobs,
     travelModes,
+    timelineRelationships,
+    crossTimelineArtifacts,
     relationshipPositions,
   }
 
@@ -193,6 +202,8 @@ export async function exportWorldSplit(worldId: string): Promise<void> {
     events,
     rawBlobs,
     travelModes,
+    timelineRelationships,
+    crossTimelineArtifacts,
   ] = await Promise.all([
     db.worlds.get(worldId),
     db.mapLayers.where('worldId').equals(worldId).toArray(),
@@ -211,6 +222,8 @@ export async function exportWorldSplit(worldId: string): Promise<void> {
     db.events.where('worldId').equals(worldId).toArray(),
     db.blobs.where('worldId').equals(worldId).toArray(),
     db.travelModes.where('worldId').equals(worldId).toArray(),
+    db.timelineRelationships.where('worldId').equals(worldId).toArray(),
+    db.crossTimelineArtifacts.where('worldId').equals(worldId).toArray(),
   ])
 
   if (!world) throw new Error('World not found')
@@ -256,6 +269,8 @@ export async function exportWorldSplit(worldId: string): Promise<void> {
     events,
     blobs: [],
     travelModes,
+    timelineRelationships,
+    crossTimelineArtifacts,
     relationshipPositions,
   }
   triggerDownload(JSON.stringify(dataFile), `${safeName}.pwk`)
@@ -347,6 +362,14 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
     throw new Error('Invalid file: travelModes is not an array')
   }
   if (!d.travelModes) (d as Record<string, unknown>).travelModes = []
+  if (d.timelineRelationships !== undefined && !Array.isArray(d.timelineRelationships)) {
+    throw new Error('Invalid file: timelineRelationships is not an array')
+  }
+  if (!d.timelineRelationships) (d as Record<string, unknown>).timelineRelationships = []
+  if (d.crossTimelineArtifacts !== undefined && !Array.isArray(d.crossTimelineArtifacts)) {
+    throw new Error('Invalid file: crossTimelineArtifacts is not an array')
+  }
+  if (!d.crossTimelineArtifacts) (d as Record<string, unknown>).crossTimelineArtifacts = []
 }
 
 function normalizeImport(data: WorldExportFile): void {
@@ -514,6 +537,7 @@ export async function importWorld(file: File): Promise<string> {
     db.locationSnapshots, db.itemSnapshots,
     db.relationships, db.relationshipSnapshots, db.timelines,
     db.chapters, db.events, db.blobs, db.travelModes,
+    db.timelineRelationships, db.crossTimelineArtifacts,
   ], async () => {
     await db.worlds.put(data.world)
     await db.mapLayers.bulkPut(data.mapLayers)
@@ -531,6 +555,8 @@ export async function importWorld(file: File): Promise<string> {
     await db.chapters.bulkPut(data.chapters)
     await db.events.bulkPut(data.events)
     await db.travelModes.bulkPut(data.travelModes)
+    await db.timelineRelationships.bulkPut(data.timelineRelationships)
+    await db.crossTimelineArtifacts.bulkPut(data.crossTimelineArtifacts)
 
     for (const b of data.blobs) {
       await db.blobs.put({
