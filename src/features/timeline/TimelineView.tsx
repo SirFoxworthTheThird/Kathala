@@ -6,6 +6,7 @@ import { useWorld } from '@/db/hooks/useWorlds'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/EmptyState'
 import { ChapterRow } from './ChapterRow'
+import { BulkActionToolbar } from './BulkActionToolbar'
 import { AddChapterDialog } from './AddChapterDialog'
 import { ChapterAIDialog } from './ChapterAIDialog'
 
@@ -86,6 +87,7 @@ export default function TimelineView() {
         </div>
       </div>
 
+      <div className="flex flex-col flex-1 min-h-0">
       <div className="flex-1 overflow-auto p-4">
         {chapters.length === 0 ? (
           <EmptyState
@@ -105,6 +107,8 @@ export default function TimelineView() {
             ))}
           </div>
         )}
+      </div>
+      {currentTimelineId && <BulkActionToolbar timelineId={currentTimelineId} />}
       </div>
 
       {worldId && currentTimelineId && (

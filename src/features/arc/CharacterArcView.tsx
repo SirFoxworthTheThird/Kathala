@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
+import { toPng } from 'html-to-image'
 import { useParams } from 'react-router-dom'
 import { Heart, Skull, MapPin, Minus, Search, Download, X } from 'lucide-react'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
@@ -128,37 +129,33 @@ export default function CharacterArcView() {
   const handleExport = useCallback(async () => {
     const el = tableRef.current
     if (!el) return
-    const html2canvas = (await import('html2canvas')).default
-    const canvas = await html2canvas(el, {
-      backgroundColor: null,
-      scale: 2,
-      useCORS: true,
-      // Capture full scroll width
-      width: el.scrollWidth,
-      height: el.scrollHeight,
-      windowWidth: el.scrollWidth,
-      windowHeight: el.scrollHeight,
-    })
-    const link = document.createElement('a')
-    link.download = 'character-arc.png'
-    link.href = canvas.toDataURL('image/png')
-    link.click()
+    try {
+      const prevOverflow = el.style.overflow
+      el.style.overflow = 'visible'
+      const dataUrl = await toPng(el, { pixelRatio: 2 })
+      el.style.overflow = prevOverflow
+      const link = document.createElement('a')
+      link.download = 'character-arc.png'
+      link.href = dataUrl
+      link.click()
+    } catch (err) {
+      alert('Export failed: ' + (err instanceof Error ? err.message : String(err)))
+    }
   }, [])
 
-  if (characters.length === 0 || sortedChapters.length === 0) {
+  if (characters.length === 0) {
     return (
-      <EmptyState
-        icon={BookOpen}
-        title="Nothing to show"
-        description={
-          characters.length === 0
-            ? 'Add characters to get started.'
-            : sortedChapters.length === 0
-              ? 'Add chapters to your timeline to see the arc.'
-              : 'No snapshots recorded yet. Select an event to start tracking character states.'
-        }
-        className="h-full"
-      />
+      <EmptyState icon={BookOpen} title="Nothing to show" description="Add characters to get started." className="h-full" />
+    )
+  }
+  if (sortedChapters.length === 0) {
+    return (
+      <EmptyState icon={BookOpen} title="Nothing to show" description="Add chapters to your timeline to see the arc." className="h-full" />
+    )
+  }
+  if (snapshots.length === 0) {
+    return (
+      <EmptyState icon={BookOpen} title="No snapshots yet" description="Select an event and save character state to start tracking the arc." className="h-full" />
     )
   }
 

@@ -292,7 +292,7 @@ export function ChapterTimelineBar() {
 
         {/* Playback controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.125rem', padding: '0 0.5rem', height: '100%', flexShrink: 0, borderRight: '1px solid var(--tl-border)' }}>
-          <button onClick={handlePlayPause} title={isPlayingStory ? 'Pause' : 'Play story'}
+          <button onClick={handlePlayPause} title={isPlayingStory ? 'Pause' : 'Plays story movement on the map'}
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tl-accent)', padding: '0.25rem', display: 'flex', alignItems: 'center', borderRadius: '3px' }}>
             {isPlayingStory ? <Pause size={14} /> : <Play size={14} />}
           </button>
@@ -387,12 +387,13 @@ export function ChapterTimelineBar() {
                   {/* Chapter marker — selects first event of the chapter */}
                   <button
                     ref={isChapterActive && !activeEvent ? activeMarkerRef : undefined}
+                    title={chEvents.length === 0 ? 'Add an event to this chapter to activate it.' : undefined}
                     style={{
                       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
                       padding: '0 0.4rem', minWidth: '2rem',
-                      background: 'none', border: 'none', cursor: 'pointer',
+                      background: 'none', border: 'none', cursor: chEvents.length === 0 ? 'default' : 'pointer',
                       flexShrink: 0, position: 'relative', zIndex: 1,
-                      opacity: isChapterActive ? 1 : 0.7, transition: 'opacity 0.2s',
+                      opacity: chEvents.length === 0 ? 0.35 : isChapterActive ? 1 : 0.7, transition: 'opacity 0.2s',
                     }}
                     onClick={() => selectChapter(ch.id)}
                   >

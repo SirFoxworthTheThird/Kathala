@@ -5,8 +5,10 @@ import type { WorldEvent } from '@/types'
 import { deleteEvent } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
+import { useAppStore } from '@/store'
 import { Button } from '@/components/ui/button'
 import { PortraitImage } from '@/components/PortraitImage'
+import { cn } from '@/lib/utils'
 
 interface EventRowProps {
   event: WorldEvent
@@ -14,12 +16,18 @@ interface EventRowProps {
   isLast: boolean
   onMoveUp: () => void
   onMoveDown: () => void
+  /** All event IDs in this chapter in order, for shift-click range selection */
+  chapterEventIds: string[]
 }
 
-export function EventRow({ event, isFirst, isLast, onMoveUp, onMoveDown }: EventRowProps) {
+export function EventRow({ event, isFirst, isLast, onMoveUp, onMoveDown, chapterEventIds }: EventRowProps) {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
   const [expanded, setExpanded] = useState(false)
+
+  const { selectedEventIds, toggleEventSelected, selectEventRange, setLastSelectedEventId, lastSelectedEventId } = useAppStore()
+  const isSelected = selectedEventIds.has(event.id)
+  const anySelected = selectedEventIds.size > 0
 
   const characters = useCharacters(event.worldId)
   const locationMarkers = useAllLocationMarkers(event.worldId)
@@ -29,16 +37,49 @@ export function EventRow({ event, isFirst, isLast, onMoveUp, onMoveDown }: Event
 
   const hasMeta = involvedChars.length > 0 || location !== null || event.tags.length > 0
 
+  function handleCheckboxClick(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (e.shiftKey && lastSelectedEventId && lastSelectedEventId !== event.id) {
+      const fromIdx = chapterEventIds.indexOf(lastSelectedEventId)
+      const toIdx = chapterEventIds.indexOf(event.id)
+      if (fromIdx !== -1 && toIdx !== -1) {
+        const [lo, hi] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx]
+        selectEventRange(chapterEventIds.slice(lo, hi + 1))
+        setLastSelectedEventId(event.id)
+        return
+      }
+    }
+    toggleEventSelected(event.id)
+    setLastSelectedEventId(event.id)
+  }
+
   return (
-    <div className="flex gap-0">
-      {/* Left gutter — timeline connector */}
+    <div className={cn('flex gap-0 group', isSelected && 'opacity-100')}>
+      {/* Left gutter — checkbox or timeline dot */}
       <div className="flex w-6 shrink-0 flex-col items-center">
-        <div className="mt-3.5 h-2 w-2 rounded-full bg-[hsl(var(--muted-foreground))] opacity-40 shrink-0" />
+        <div
+          className={cn(
+            'mt-2.5 shrink-0 flex items-center justify-center cursor-pointer',
+            anySelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+            'transition-opacity'
+          )}
+          onClick={handleCheckboxClick}
+        >
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => {}} // controlled via onClick
+            className="h-3 w-3 cursor-pointer accent-[hsl(var(--ring))]"
+          />
+        </div>
         <div className="flex-1 w-px bg-[hsl(var(--border))]" />
       </div>
 
       {/* Row body */}
-      <div className="mb-1.5 flex-1 min-w-0 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))]">
+      <div className={cn(
+        'mb-1.5 flex-1 min-w-0 rounded-md border bg-[hsl(var(--background))] transition-colors',
+        isSelected ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent)/0.3)]' : 'border-[hsl(var(--border))]'
+      )}>
         {/* Header */}
         <div className="flex items-center gap-1 px-2 py-1.5">
           <button
@@ -91,7 +132,7 @@ export function EventRow({ event, isFirst, isLast, onMoveUp, onMoveDown }: Event
             <ExternalLink className="h-3 w-3" />
           </Button>
           <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0 hover:text-red-400"
-            onClick={(e) => { e.stopPropagation(); deleteEvent(event.id) }}>
+            onClick={(e) => { e.stopPropagation(); if (confirm(`Delete event "${event.title}"?`)) deleteEvent(event.id) }}>
             <Trash2 className="h-3 w-3" />
           </Button>
         </div>

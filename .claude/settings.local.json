@@ -128,7 +128,29 @@
       "Bash(/c/Users/rpaiva/AppData/Local/mise/installs/node/20.20.0/node.exe ./node_modules/vitest/vitest.mjs run src/db/hooks/__tests__/timeline.extra.test.ts)",
       "Bash(/c/Users/rpaiva/AppData/Local/mise/installs/node/20.20.0/node.exe ./node_modules/typescript/bin/tsc --noEmit)",
       "Bash(/c/Users/rpaiva/AppData/Local/mise/installs/node/20.20.0/node.exe ./node_modules/vite/bin/vite.js build)",
-      "Bash(/c/Users/rpaiva/AppData/Local/mise/installs/node/20.20.0/node.exe /c/Users/rpaiva/AppData/Local/mise/installs/node/20.20.0/node_modules/npm/bin/npm-cli.js install)"
+      "Bash(/c/Users/rpaiva/AppData/Local/mise/installs/node/20.20.0/node.exe /c/Users/rpaiva/AppData/Local/mise/installs/node/20.20.0/node_modules/npm/bin/npm-cli.js install)",
+      "Bash(bash -c 'read input; file=$\\(echo \"$input\" | jq -r \".tool_input.file_path\"\\); echo \"File: $file\"; echo \"$file\" | grep -q \"Projects/mine/PlotWeave\" && echo \"Match: yes\" || echo \"Match: no\"')",
+      "Bash(where jq:*)",
+      "Bash(where node:*)",
+      "Bash(where npm:*)",
+      "Bash(Get-Command jq:*)",
+      "Bash(Get-Command node:*)",
+      "Bash(Get-Command npm:*)",
+      "Bash(command -v jq)",
+      "Bash(command -v node)",
+      "Bash(command -v npm)",
+      "Bash(command -v npx)",
+      "Read(//usr/bin/**)",
+      "Read(//c/Windows/System32/**)",
+      "Bash(/c/Users/rpaiva/AppData/Local/mise/shims/npm run:*)",
+      "Read(//mingw64/bin/**)",
+      "Bash(python3 -c:*)",
+      "Bash(echo '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"c:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave\\\\\\\\src\\\\\\\\features\\\\\\\\arc\\\\\\\\CharacterArcView.tsx\"}}')",
+      "Bash(/c/Python311/python.exe -c ':*)",
+      "Bash(/c/Python311/python.exe \"c:/Projects/mine/PlotWeave/.claude/build-and-test.py\")",
+      "Bash(cygpath -w /usr/bin/bash)",
+      "Bash(/c/Python311/python.exe -c \"import json; d=json.load\\(open\\('c:/Projects/mine/PlotWeave/.claude/settings.json'\\)\\); h=d['hooks']['PostToolUse'][0]['hooks'][0]; print\\('type:', h['type']\\); print\\('command:', h['command']\\); print\\('asyncRewake:', h['asyncRewake']\\)\")",
+      "Bash(/c/Users/rpaiva/AppData/Local/mise/shims/npm install:*)"
     ]
   }
 }

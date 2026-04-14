@@ -179,7 +179,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
             <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => setExpanded((v) => !v)}>
               {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
             </Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 hover:text-red-400" onClick={() => deleteEvent(event.id)}>
+            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 hover:text-red-400" onClick={() => { if (confirm(`Delete event "${event.title}"?`)) deleteEvent(event.id) }}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
           </>

@@ -41,11 +41,51 @@ Detailed specs live in `docs/features/`:
 - [x] **[Chapter Diff](docs/features/chapter-diff.md)** — compare any two chapters, character/relationship/item diffs
 - [x] **[Export / Import](docs/features/export-import.md)** — .pwk v3 format, backward compat, sortKey backfill
 - [x] **[Themes](docs/features/themes.md)** — nine themes, CSS variable injection, per-theme fonts and overlays
-- [ ] **[Timeline multi-select](docs/features/timeline-multi-select.md)** — checkboxes, shift-click range, bulk delete/move/tag, drag-to-reorder chapters
+- [x] **[Timeline multi-select](docs/features/timeline-multi-select.md)** — checkboxes, shift-click range, bulk delete/move/tag, drag-to-reorder chapters
 
 ---
 
 ## Polish
 
-- [ ] **End-to-end UX review** — walk through the app with events as the primary unit; identify rough edges introduced by the Option-A refactor
-- [ ] **[Empty-state improvements](docs/features/empty-states.md)** — migrate inline empties to `EmptyState` component; context-aware messaging; zero-data vs. filtered-to-zero distinction
+- [x] **End-to-end UX review** — walk through the app with events as the primary unit; identify rough edges introduced by the Option-A refactor
+- [x] **[Empty-state improvements](docs/features/empty-states.md)** — migrate inline empties to `EmptyState` component; context-aware messaging; zero-data vs. filtered-to-zero distinction
+
+---
+
+## UX Review — Post Option-A Fixes
+
+Findings from the end-to-end review. Bugs first, then copy/polish.
+
+### Bugs (broken behavior)
+
+- [x] **ChapterRow "Set Active" passes chapter ID to event setter** (`src/features/timeline/ChapterRow.tsx:24,72`)
+  `isActive = chapter.id === activeEventId` always evaluates false (different ID namespaces). Clicking "Set Active" calls `setActiveEventId(chapter.id)`, pushing a chapter ID into an event-ID field — corrupts store state. Fix: derive `isActive` from whether the active event belongs to this chapter; on click, select the chapter's first event (mirrors `selectChapter()` in ChapterTimelineBar).
+
+- [x] **HistoryTab calls `useChapter(eventId)` — always returns undefined** (`src/features/characters/tabs/HistoryTab.tsx:31`)
+  `useChapter` queries `db.chapters.get(id)`, so passing an event ID always resolves to `undefined`. The fallback renders the raw UUID. Fix: look up the event, then its chapter — show something like "Ch. 2 — The Shire / The Ambush".
+
+- [x] **ContinuityChecker navigate paths use eventId where chapterId is required** (`src/features/continuity/ContinuityChecker.tsx:213,263,318,353,384,419,476`)
+  All `navigatePath` values are built as `/worlds/${worldId}/timeline/${snap.eventId}`, but the route is `/timeline/:chapterId`. Clicking "Go to issue" 404s or opens the wrong chapter. Fix: resolve `eventById.get(id)?.chapterId` and use that in every `navigatePath`.
+
+- [x] **Event deletion has no confirmation guard** (`src/features/timeline/EventCard.tsx:182`, `EventRow.tsx:94`)
+  Every other destructive delete (chapter, character, item, location, world) uses `confirm()`. Event deletion is instant and silent, orphaning any character/item/relationship snapshots for that event (which the continuity checker then flags). Fix: add `if (!confirm(...)) return` consistent with the rest of the app.
+
+- [x] **WritersBrief relationship section ignores inherited state** (`src/features/brief/WritersBriefPanel.tsx:45`)
+  Uses `useChapterRelationshipSnapshots(activeEventId)` — an exact-match query. A relationship last recorded at event 3 shows as absent at event 5. Character and item sections correctly show inherited state; relationships don't. Fix: replace with `useBestRelationshipSnapshots(worldId, activeEventId)`.
+
+### Stale copy ("chapter" where "event" is meant)
+
+- [x] **CurrentStateTab empty state** (`src/features/characters/tabs/CurrentStateTab.tsx:64`) — "Select a chapter from the top bar" → "Select an event from the timeline bar"
+- [x] **WritersBriefPanel empty state** (`src/features/brief/WritersBriefPanel.tsx:116`) — "Select a chapter from the timeline bar" → "Select an event from the timeline bar"
+- [x] **HistoryTab empty state** (`src/features/characters/tabs/HistoryTab.tsx:88`) — "Select a chapter and save state" → "Select an event and save state"
+
+### UX rough edges
+
+- [x] **Character detail defaults to the event-gated tab** (`src/features/characters/CharacterDetailView.tsx:82`)
+  `defaultValue="state"` opens on "Current State", which immediately shows a blank placeholder when no event is active. New users opening a character see a dead screen. Fix: change to `defaultValue="overview"`.
+
+- [x] **Chapter pill with no events silently does nothing** (`src/components/ChapterTimelineBar.tsx:154`)
+  `selectChapter()` exits early with no feedback when a chapter has no events. The pill looks clickable but does nothing. Fix: visually dim empty-chapter pills and add a tooltip — "Add an event to this chapter to activate it."
+
+- [x] **Playback forces navigation to Maps without warning** (`src/components/ChapterTimelineBar.tsx:194`)
+  Pressing Play from any view immediately navigates to Maps. Intentional (trails are on the map), but jarring when in Characters or Timeline. Fix: add a tooltip to the play button — "Plays story movement on the map."

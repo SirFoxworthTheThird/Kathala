@@ -272,7 +272,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
           {!activeEventId && (
             <div className="rounded-md border border-dashed border-[hsl(var(--border))] p-3 flex flex-col gap-2">
               <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                Select a chapter to place characters, or create one now:
+                Select an event to place characters, or create one now:
               </p>
               {chapters.length > 0 && (
                 <Select onValueChange={setActiveEventId}>

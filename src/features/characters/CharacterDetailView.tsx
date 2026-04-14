@@ -79,7 +79,7 @@ export default function CharacterDetailView() {
 
       {/* Tabs */}
       <div className="flex-1 overflow-auto p-4">
-        <Tabs defaultValue="state">
+        <Tabs defaultValue="overview">
           <TabsList className="mb-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="state">Current State</TabsTrigger>

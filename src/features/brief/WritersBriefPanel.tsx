@@ -5,7 +5,7 @@ import { useChapter, useEvent, useEvents } from '@/db/hooks/useTimeline'
 import { useBestSnapshots } from '@/db/hooks/useSnapshots'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
-import { useChapterRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
+import { useBestRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
 import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -42,7 +42,7 @@ export function WritersBriefPanel() {
   const snapshots  = useBestSnapshots(worldId ?? null, activeEventId)
   const characters = useCharacters(worldId ?? null)
   const rels       = useRelationships(worldId ?? null)
-  const relSnaps   = useChapterRelationshipSnapshots(activeEventId)
+  const relSnaps   = useBestRelationshipSnapshots(worldId ?? null, activeEventId)
   const items      = useItems(worldId ?? null)
   const markers    = useAllLocationMarkers(worldId ?? null)
   const itemPlacements = useLiveQuery(
@@ -113,7 +113,7 @@ export function WritersBriefPanel() {
         <div className="flex-1 overflow-auto px-4 py-3">
           {!activeEventId ? (
             <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">
-              Select a chapter from the timeline bar to see the brief.
+              Select an event from the timeline bar to see the brief.
             </p>
           ) : !chapter ? (
             <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading…</p>
@@ -140,7 +140,7 @@ export function WritersBriefPanel() {
               {/* Events */}
               <Section title="Events" icon={Scroll} count={events.length}>
                 {events.length === 0 ? (
-                  <p className="text-xs italic text-[hsl(var(--muted-foreground))]">No events recorded.</p>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))]">No events in this chapter yet.</p>
                 ) : (
                   <ul className="space-y-1">
                     {[...events].sort((a, b) => a.sortOrder - b.sortOrder).map((ev) => {
@@ -167,7 +167,11 @@ export function WritersBriefPanel() {
               {/* Characters present */}
               <Section title="Characters" icon={Users} count={presentChars.length}>
                 {presentChars.length === 0 ? (
-                  <p className="text-xs italic text-[hsl(var(--muted-foreground))]">No character states recorded.</p>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                    {characters.length === 0
+                      ? 'No characters created yet.'
+                      : 'No character states recorded for this event.'}
+                  </p>
                 ) : (
                   <div className="space-y-2">
                     {presentChars.map(({ snap, char }) => {

@@ -26,9 +26,9 @@ test.describe("Writer's Brief panel", () => {
     await expect(page.getByText("Writer's Brief")).not.toBeVisible()
   })
 
-  test('shows prompt to select chapter when no event is active', async ({ page }) => {
+  test('shows prompt to select event when no event is active', async ({ page }) => {
     await page.getByTitle("Writer's Brief").click()
-    await expect(page.getByText('Select a chapter from the timeline bar to see the brief.')).toBeVisible()
+    await expect(page.getByText('Select an event from the timeline bar to see the brief.')).toBeVisible()
   })
 
   test('shows chapter content when an event is active', async ({ page }) => {

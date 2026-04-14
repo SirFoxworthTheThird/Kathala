@@ -6,5 +6,21 @@
     "allow": [
       "Bash(grep -v '^\\\\s*//')"
     ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/c/Python311/python.exe \"c:/Projects/mine/PlotWeave/.claude/build-and-test.py\"",
+            "asyncRewake": true,
+            "rewakeMessage": "Build/test hook output:",
+            "statusMessage": "Building and running tests…",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
   }
 }
