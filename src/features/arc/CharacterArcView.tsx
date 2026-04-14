@@ -151,20 +151,19 @@ export default function CharacterArcView() {
     }
   }, [])
 
-  if (characters.length === 0 || sortedChapters.length === 0) {
+  if (characters.length === 0) {
     return (
-      <EmptyState
-        icon={BookOpen}
-        title="Nothing to show"
-        description={
-          characters.length === 0
-            ? 'Add characters to get started.'
-            : sortedChapters.length === 0
-              ? 'Add chapters to your timeline to see the arc.'
-              : 'No snapshots recorded yet. Select an event to start tracking character states.'
-        }
-        className="h-full"
-      />
+      <EmptyState icon={BookOpen} title="Nothing to show" description="Add characters to get started." className="h-full" />
+    )
+  }
+  if (sortedChapters.length === 0) {
+    return (
+      <EmptyState icon={BookOpen} title="Nothing to show" description="Add chapters to your timeline to see the arc." className="h-full" />
+    )
+  }
+  if (snapshots.length === 0) {
+    return (
+      <EmptyState icon={BookOpen} title="No snapshots yet" description="Select an event and save character state to start tracking the arc." className="h-full" />
     )
   }
 

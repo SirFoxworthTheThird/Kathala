@@ -41,7 +41,7 @@ Detailed specs live in `docs/features/`:
 - [x] **[Chapter Diff](docs/features/chapter-diff.md)** — compare any two chapters, character/relationship/item diffs
 - [x] **[Export / Import](docs/features/export-import.md)** — .pwk v4 format, backward compat, sortKey backfill
 - [x] **[Themes](docs/features/themes.md)** — nine themes, CSS variable injection, per-theme fonts and overlays
-- [ ] **[Timeline multi-select](docs/features/timeline-multi-select.md)** — checkboxes, shift-click range, bulk delete/move/tag, drag-to-reorder chapters
+- [x] **[Timeline multi-select](docs/features/timeline-multi-select.md)** — checkboxes, shift-click range, bulk delete/move/tag, drag-to-reorder chapters
 
 - [ ] **[Timeline Relationships](docs/features/timeline-relationships.md)** — typed links between timelines (frame narrative, historical echo, embedded fiction, alternate); ghost pins on map for frame anchors; palimpsest echo rings for shared geography; cross-timeline artifacts; depth-scoped playback
   - [x] Phase 1: data model + plumbing (types, DB v14, CRUD hooks, store fields, export v4)
@@ -56,7 +56,7 @@ Detailed specs live in `docs/features/`:
 ## Polish
 
 - [x] **End-to-end UX review** — walk through the app with events as the primary unit; identify rough edges introduced by the Option-A refactor
-- [ ] **[Empty-state improvements](docs/features/empty-states.md)** — migrate inline empties to `EmptyState` component; context-aware messaging; zero-data vs. filtered-to-zero distinction
+- [x] **[Empty-state improvements](docs/features/empty-states.md)** — migrate inline empties to `EmptyState` component; context-aware messaging; zero-data vs. filtered-to-zero distinction
 
 ---
 

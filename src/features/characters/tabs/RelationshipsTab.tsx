@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Trash2, Pencil } from 'lucide-react'
+import { Plus, Trash2, Pencil, Network } from 'lucide-react'
 import type { Character } from '@/types'
 import { useCharacterRelationships, createRelationship, updateRelationship, deleteRelationship } from '@/db/hooks/useRelationships'
 import { useCharacters } from '@/db/hooks/useCharacters'
@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import type { RelationshipStrength, RelationshipSentiment } from '@/types'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@/components/EmptyState'
 
 const SENTIMENT_COLORS: Record<RelationshipSentiment, string> = {
   positive: 'text-green-400',
@@ -192,9 +193,12 @@ export function RelationshipsTab({ character }: RelationshipsTabProps) {
       </div>
 
       {visibleRelationships.length === 0 ? (
-        <p className="py-4 text-center text-sm text-[hsl(var(--muted-foreground))]">
-          {activeEventId ? 'No relationships at this point in the story yet.' : 'No relationships yet.'}
-        </p>
+        <EmptyState
+          icon={Network}
+          title={activeEventId ? 'No relationships at this point' : 'No relationships yet'}
+          description={activeEventId ? 'No relationship states recorded up to this event.' : 'Add a relationship to start tracking connections between characters.'}
+          className="py-4"
+        />
       ) : (
         visibleRelationships.map((rel) => {
           const other = getOtherChar(rel)

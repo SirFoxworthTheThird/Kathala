@@ -140,7 +140,7 @@ export function WritersBriefPanel() {
               {/* Events */}
               <Section title="Events" icon={Scroll} count={events.length}>
                 {events.length === 0 ? (
-                  <p className="text-xs italic text-[hsl(var(--muted-foreground))]">No events recorded.</p>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))]">No events in this chapter yet.</p>
                 ) : (
                   <ul className="space-y-1">
                     {[...events].sort((a, b) => a.sortOrder - b.sortOrder).map((ev) => {
@@ -167,7 +167,11 @@ export function WritersBriefPanel() {
               {/* Characters present */}
               <Section title="Characters" icon={Users} count={presentChars.length}>
                 {presentChars.length === 0 ? (
-                  <p className="text-xs italic text-[hsl(var(--muted-foreground))]">No character states recorded.</p>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                    {characters.length === 0
+                      ? 'No characters created yet.'
+                      : 'No character states recorded for this event.'}
+                  </p>
                 ) : (
                   <div className="space-y-2">
                     {presentChars.map(({ snap, char }) => {

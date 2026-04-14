@@ -13,9 +13,9 @@ export interface TimelineAnchor {
 }
 
 export interface TimelineSyncPoint {
-  /** Event on the inner (target) timeline */
+  /** Event in the inner (target) timeline */
   innerEventId: string
-  /** Event on the outer (source) timeline the cursor should jump to */
+  /** Event in the outer (source) timeline that the narrator is at when telling this */
   outerEventId: string
 }
 
@@ -35,21 +35,26 @@ export interface TimelineRelationship {
    * reaches a sync point, the outer cursor jumps to the linked outer event.
    */
   syncPoints: TimelineSyncPoint[]
+  /** Human-readable label, e.g. "Kvothe narrates his life" */
   label: string
   description: string
   createdAt: number
   updatedAt: number
 }
 
+/**
+ * An item that physically exists in one timeline but is encountered
+ * (found, read, inherited) in another — e.g. Ash's letters found by Roland.
+ */
 export interface CrossTimelineArtifact {
   id: string
   worldId: string
-  /** The item that travels across timelines */
   itemId: string
-  /** Timeline where/when the item was created */
+  /** Timeline where this item was created / originally exists */
   originTimelineId: string
-  /** Timeline where/when the item is found or encountered */
+  /** Timeline where this item is encountered, found, or read */
   encounterTimelineId: string
+  /** e.g. "found in archive box 14", "read as manuscript" */
   encounterNotes: string
   createdAt: number
   updatedAt: number

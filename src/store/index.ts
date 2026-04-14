@@ -42,6 +42,15 @@ interface PlaybackSlice {
   setActiveDepthTimelineId: (id: string | null) => void
 }
 
+interface SelectionSlice {
+  selectedEventIds: Set<string>
+  lastSelectedEventId: string | null
+  toggleEventSelected: (id: string) => void
+  selectEventRange: (ids: string[]) => void
+  clearSelection: () => void
+  setLastSelectedEventId: (id: string | null) => void
+}
+
 interface UISlice {
   sidebarOpen: boolean
   setSidebarOpen: (open: boolean) => void
@@ -68,7 +77,7 @@ interface UISlice {
   setIsAnimating: (v: boolean) => void
 }
 
-type AppStore = WorldSlice & EventSlice & MapSlice & UISlice & PlaybackSlice
+type AppStore = WorldSlice & EventSlice & MapSlice & UISlice & PlaybackSlice & SelectionSlice
 
 export const useAppStore = create<AppStore>()(
   persist(
@@ -100,6 +109,20 @@ export const useAppStore = create<AppStore>()(
         }),
       resetMapHistory: (rootId) =>
         set({ activeMapLayerId: rootId, mapLayerHistory: [rootId] }),
+
+      // Selection (not persisted)
+      selectedEventIds: new Set<string>(),
+      lastSelectedEventId: null,
+      toggleEventSelected: (id) => set((s) => {
+        const next = new Set(s.selectedEventIds)
+        next.has(id) ? next.delete(id) : next.add(id)
+        return { selectedEventIds: next }
+      }),
+      selectEventRange: (ids) => set((s) => ({
+        selectedEventIds: new Set([...s.selectedEventIds, ...ids]),
+      })),
+      clearSelection: () => set({ selectedEventIds: new Set(), lastSelectedEventId: null }),
+      setLastSelectedEventId: (id) => set({ lastSelectedEventId: id }),
 
       // Playback (not persisted)
       isPlayingStory: false,

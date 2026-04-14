@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Users, Network, StickyNote, ChevronDown, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Plus, Users, Network, StickyNote, ChevronDown, ChevronRight, Scroll } from 'lucide-react'
 import { useChapter, useEvents, updateChapter, updateEvent } from '@/db/hooks/useTimeline'
 import { useChapterEventSnapshots } from '@/db/hooks/useSnapshots'
 import { useEventRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { EventCard } from './EventCard'
 import { SnapshotCard } from './SnapshotCard'
 import { AddEventDialog } from './AddEventDialog'
+import { EmptyState } from '@/components/EmptyState'
 import type { WorldEvent } from '@/types'
 
 // Collapsible section for one event's character snapshots
@@ -131,7 +132,12 @@ export default function ChapterDetailView() {
           </div>
           <div className="flex-1 overflow-auto p-4 flex flex-col gap-3">
             {events.length === 0 ? (
-              <p className="py-4 text-center text-sm text-[hsl(var(--muted-foreground))]">No events yet.</p>
+              <EmptyState
+                icon={Scroll}
+                title="No events yet"
+                description="Add the first event to this chapter."
+                action={<Button size="sm" onClick={() => setAddEventOpen(true)}><Plus className="h-4 w-4" /> Add Event</Button>}
+              />
             ) : (
               sortedEvents.map((e, i) => (
                 <EventCard
@@ -155,9 +161,7 @@ export default function ChapterDetailView() {
           </div>
           <div className="flex-1 overflow-auto p-3 flex flex-col gap-2">
             {events.length === 0 && (
-              <p className="py-4 text-center text-sm text-[hsl(var(--muted-foreground))]">
-                No events yet.
-              </p>
+              <EmptyState icon={Scroll} title="No events yet" className="py-4" />
             )}
 
             {sortedEvents.map((ev) => (
@@ -192,7 +196,7 @@ export default function ChapterDetailView() {
                   <span className="ml-auto text-[10px] text-[hsl(var(--muted-foreground))]">end of chapter</span>
                 </div>
                 {relSnapshots.length === 0 ? (
-                  <p className="text-xs italic text-[hsl(var(--muted-foreground))]">No relationship states recorded.</p>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))]">No relationship states recorded.</p>
                 ) : (
                   relSnapshots.map((rs) => {
                     const rel = relationships.find((r) => r.id === rs.relationshipId)
