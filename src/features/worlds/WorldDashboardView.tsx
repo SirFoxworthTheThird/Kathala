@@ -7,6 +7,7 @@ import { useRootMapLayers } from '@/db/hooks/useMapLayers'
 import { useTimelines } from '@/db/hooks/useTimeline'
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { useTravelModes, createTravelMode, updateTravelMode, deleteTravelMode } from '@/db/hooks/useTravelModes'
+import { useTimelineRelationships } from '@/db/hooks/useTimelineRelationships'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { TravelMode } from '@/types'
@@ -80,6 +81,7 @@ export default function WorldDashboardView() {
   const timelines = useTimelines(worldId ?? null)
   const relationships = useRelationships(worldId ?? null)
   const travelModes = useTravelModes(worldId ?? null)
+  const timelineRelationships = useTimelineRelationships(worldId ?? null)
 
   const [newName, setNewName] = useState('')
   const [newSpeed, setNewSpeed] = useState('')

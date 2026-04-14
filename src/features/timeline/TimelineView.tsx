@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, BookOpen, Layers, Sparkles } from 'lucide-react'
+import { Plus, BookOpen, Layers, Sparkles, Link2 } from 'lucide-react'
 import { useTimelines, useChapters, createTimeline } from '@/db/hooks/useTimeline'
 import { useWorld } from '@/db/hooks/useWorlds'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,7 @@ import { ChapterRow } from './ChapterRow'
 import { BulkActionToolbar } from './BulkActionToolbar'
 import { AddChapterDialog } from './AddChapterDialog'
 import { ChapterAIDialog } from './ChapterAIDialog'
+import { TimelineRelationshipPanel } from './TimelineRelationshipPanel'
 
 export default function TimelineView() {
   const { worldId } = useParams<{ worldId: string }>()
@@ -20,6 +21,7 @@ export default function TimelineView() {
   const currentTimeline = timelines.find((t) => t.id === currentTimelineId)
   const [addChapterOpen, setAddChapterOpen] = useState(false)
   const [aiChapterOpen, setAiChapterOpen] = useState(false)
+  const [relPanelOpen, setRelPanelOpen] = useState(false)
 
   async function handleCreateTimeline() {
     if (!worldId) return
@@ -78,6 +80,11 @@ export default function TimelineView() {
           <span className="text-xs text-[hsl(var(--muted-foreground))]">({chapters.length} chapters)</span>
         </div>
         <div className="flex items-center gap-2">
+          {timelines.length >= 2 && (
+            <Button size="sm" variant="outline" onClick={() => setRelPanelOpen(true)}>
+              <Link2 className="h-4 w-4" /> Link Timelines
+            </Button>
+          )}
           <Button size="sm" variant="outline" onClick={() => setAiChapterOpen(true)} disabled={!currentTimelineId}>
             <Sparkles className="h-4 w-4" /> Generate with AI
           </Button>
@@ -130,6 +137,14 @@ export default function TimelineView() {
           timelineName={currentTimeline.name}
           nextNumber={chapters.length + 1}
           existingChapters={chapters}
+        />
+      )}
+      {worldId && (
+        <TimelineRelationshipPanel
+          open={relPanelOpen}
+          onOpenChange={setRelPanelOpen}
+          worldId={worldId}
+          timelines={timelines}
         />
       )}
     </div>
