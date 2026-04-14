@@ -41,7 +41,7 @@ Detailed specs live in `docs/features/`:
 - [x] **[Chapter Diff](docs/features/chapter-diff.md)** — compare any two chapters, character/relationship/item diffs
 - [x] **[Export / Import](docs/features/export-import.md)** — .pwk v3 format, backward compat, sortKey backfill
 - [x] **[Themes](docs/features/themes.md)** — nine themes, CSS variable injection, per-theme fonts and overlays
-- [ ] **[Timeline multi-select](docs/features/timeline-multi-select.md)** — checkboxes, shift-click range, bulk delete/move/tag, drag-to-reorder chapters
+- [x] **[Timeline multi-select](docs/features/timeline-multi-select.md)** — checkboxes, shift-click range, bulk delete/move/tag, drag-to-reorder chapters
 
 ---
 

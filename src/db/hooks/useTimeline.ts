@@ -199,3 +199,59 @@ export async function deleteEvent(id: string) {
     await db.relationshipSnapshots.where('eventId').equals(id).delete()
   })
 }
+
+export async function bulkDeleteEvents(ids: string[]): Promise<void> {
+  if (ids.length === 0) return
+  await db.transaction('rw', [
+    db.events, db.characterSnapshots, db.itemPlacements,
+    db.locationSnapshots, db.itemSnapshots, db.characterMovements,
+    db.relationshipSnapshots,
+  ], async () => {
+    for (const id of ids) {
+      await db.events.delete(id)
+      await db.characterSnapshots.where('eventId').equals(id).delete()
+      await db.itemPlacements.where('eventId').equals(id).delete()
+      await db.locationSnapshots.where('eventId').equals(id).delete()
+      await db.itemSnapshots.where('eventId').equals(id).delete()
+      await db.characterMovements.where('eventId').equals(id).delete()
+      await db.relationshipSnapshots.where('eventId').equals(id).delete()
+    }
+  })
+}
+
+export async function bulkMoveEvents(ids: string[], targetChapterId: string): Promise<void> {
+  if (ids.length === 0) return
+  const targetChapter = await db.chapters.get(targetChapterId)
+  if (!targetChapter) return
+  // Find highest existing sortOrder in target chapter to append after
+  const existingEvents = await db.events.where('chapterId').equals(targetChapterId).toArray()
+  const maxSortOrder = existingEvents.reduce((max, e) => Math.max(max, e.sortOrder), -1)
+  await db.transaction('rw', [db.events], async () => {
+    for (let i = 0; i < ids.length; i++) {
+      await db.events.update(ids[i], {
+        chapterId: targetChapterId,
+        timelineId: targetChapter.timelineId,
+        sortOrder: maxSortOrder + 1 + i,
+        updatedAt: Date.now(),
+      })
+    }
+  })
+  // Recompute sortKeys for moved events
+  for (const id of ids) {
+    await recomputeSnapshotSortKeysForEvent(id)
+  }
+}
+
+export async function bulkAddTag(ids: string[], tag: string): Promise<void> {
+  if (ids.length === 0 || !tag.trim()) return
+  const trimmed = tag.trim()
+  await db.transaction('rw', [db.events], async () => {
+    for (const id of ids) {
+      const ev = await db.events.get(id)
+      if (!ev) continue
+      if (!ev.tags.includes(trimmed)) {
+        await db.events.update(id, { tags: [...ev.tags, trimmed], updatedAt: Date.now() })
+      }
+    }
+  })
+}

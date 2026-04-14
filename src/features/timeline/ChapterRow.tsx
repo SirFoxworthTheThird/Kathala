@@ -4,10 +4,10 @@ import { ChevronDown, ChevronRight, Trash2, BookOpen, Plus, ExternalLink } from 
 import type { Chapter } from '@/types'
 import { deleteChapter, useEvents, updateEvent } from '@/db/hooks/useTimeline'
 import { useAppStore } from '@/store'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { EventRow } from './EventRow'
 import { AddEventDialog } from './AddEventDialog'
-import { cn } from '@/lib/utils'
 
 interface ChapterRowProps {
   chapter: Chapter
@@ -16,13 +16,32 @@ interface ChapterRowProps {
 export function ChapterRow({ chapter }: ChapterRowProps) {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
-  const { activeEventId, setActiveEventId } = useAppStore()
+  const { activeEventId, setActiveEventId, selectedEventIds, selectEventRange, clearSelection } = useAppStore()
   const [expanded, setExpanded] = useState(false)
   const [addEventOpen, setAddEventOpen] = useState(false)
   const events = useEvents(chapter.id)
 
   const sortedEvents = [...events].sort((a, b) => a.sortOrder - b.sortOrder)
   const isActive = sortedEvents.some((e) => e.id === activeEventId)
+  const chapterEventIds = sortedEvents.map((e) => e.id)
+  const selectedInChapter = chapterEventIds.filter((id) => selectedEventIds.has(id))
+  const allSelected = chapterEventIds.length > 0 && selectedInChapter.length === chapterEventIds.length
+  const someSelected = selectedInChapter.length > 0 && !allSelected
+
+  function handleSelectAll(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (allSelected) {
+      // deselect all in this chapter
+      const next = new Set(selectedEventIds)
+      chapterEventIds.forEach((id) => next.delete(id))
+      // Replace store set — use clearSelection then re-add others
+      const others = [...selectedEventIds].filter((id) => !chapterEventIds.includes(id))
+      clearSelection()
+      if (others.length) selectEventRange(others)
+    } else {
+      selectEventRange(chapterEventIds)
+    }
+  }
 
   async function moveEvent(eventId: string, direction: 'up' | 'down') {
     const idx = sortedEvents.findIndex((e) => e.id === eventId)
@@ -45,11 +64,27 @@ export function ChapterRow({ chapter }: ChapterRowProps) {
 
   return (
     <div className={cn(
-      'rounded-lg border transition-colors',
+      'rounded-lg border transition-colors group',
       isActive ? 'border-[hsl(var(--ring))] bg-[hsl(var(--card))]' : 'border-[hsl(var(--border))] bg-[hsl(var(--card))]'
     )}>
       {/* Chapter header */}
       <div className="flex items-center gap-2 px-4 py-3">
+        {/* Select-all checkbox — visible on hover or when any events in chapter are selected */}
+        <div
+          className={cn(
+            'shrink-0 flex items-center justify-center cursor-pointer transition-opacity',
+            someSelected || allSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          )}
+          onClick={handleSelectAll}
+        >
+          <input
+            type="checkbox"
+            ref={(el) => { if (el) el.indeterminate = someSelected }}
+            checked={allSelected}
+            onChange={() => {}}
+            className="h-3.5 w-3.5 cursor-pointer accent-[hsl(var(--ring))]"
+          />
+        </div>
         <button onClick={() => setExpanded((v) => !v)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
           {expanded
             ? <ChevronDown className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />
@@ -109,6 +144,7 @@ export function ChapterRow({ chapter }: ChapterRowProps) {
                   isLast={i === sortedEvents.length - 1}
                   onMoveUp={() => moveEvent(e.id, 'up')}
                   onMoveDown={() => moveEvent(e.id, 'down')}
+                  chapterEventIds={chapterEventIds}
                 />
               ))}
             </div>
