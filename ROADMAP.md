@@ -63,13 +63,20 @@ Technical debt and structural improvements identified in architectural review. T
 
 - [ ] **Extract shared `selectBestSnapshots` generic** — create `src/lib/snapshotUtils.ts` with one generic `selectBestSnapshots<T>` utility; wire it into the four hook files that each copy the same "highest sortKey at or before active event" algorithm (`useSnapshots`, `useLocationSnapshots`, `useItemSnapshots`, `useRelationshipSnapshots`). Rename the existing `selectBestSnapshots` export in `useRelationshipSnapshots.ts` to `selectBestRelationshipSnapshots` first to avoid import collision. Public signatures unchanged; no downstream breakage.
 
+- [x] **Fix Rules of Hooks violation in `ChapterTimelineBar.tsx`** — two `useMemo` calls (`outerEventsByChapter`, `innerEventsByChapter`) were inside an `if (frameRel)` block, causing a "rendered more hooks than previous render" crash when linking timelines. Moved both to unconditional component top level.
+
 - [ ] **Split `ChapterTimelineBar.tsx`** (844 lines) — create `src/components/timeline/` directory:
   - `timelineStyles.ts` — three pure style-helper functions
   - `TimelineCallout.tsx` — callout popover component
   - `StackedTrack.tsx` — frame narrative dual-track component
   - `SingleTrack.tsx` — single-track render extracted from main component
   - `useTimelinePlayback.ts` — playback `useEffect` + `handlePlayPause`
-  - Fix latent Rules of Hooks violation: two `useMemo` calls inside an `if (frameRel)` block must move to the unconditional component top level.
+
+- [ ] **Redesign `ChapterTimelineBar` visuals** — rework from scrubber-style dots to a chapter-segment strip:
+  - **Single-track**: chapters as proportional-width labeled segments (width ∝ event count); fill bar advances per event; tick marks for individual events with hover tooltip; chapter title truncated below segment. Replaces the tiny numbered dot + `1.1`/`1.2` event labels.
+  - **Active event display**: fixed "Ch.N — Title › Event Title" panel between controls and track, always visible. Replaces the 4-second disappearing callout.
+  - **Stacked (frame narrative)**: frame track rendered as a visually thinner strip (30px) with a `FRAME` badge; story track is the main full-height track with a `STORY` badge. A vertical ghost cursor line spans both tracks at the active frame event, showing temporal correspondence. Clicking either track activates it. Replaces the indistinguishable same-height rows with colored left-border indicator.
+  - **"All" button** renamed to "Clear" or removed in favour of clicking the active event dot to deselect.
 
 - [ ] **Split `MapExplorerView.tsx`** (1,867 lines) — create focused files in `src/features/maps/`:
   - `mapUtils.ts` — `buildSequentialQueue`, `resolveCharacterPin`, constants (pure, no React)
