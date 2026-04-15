@@ -84,7 +84,7 @@ export const useAppStore = create<AppStore>()(
     (set, _get) => ({
       // World
       activeWorldId: null,
-      setActiveWorldId: (id) => set({ activeWorldId: id, activeEventId: null }),
+      setActiveWorldId: (id) => set({ activeWorldId: id, activeEventId: null, activeMapLayerId: null, mapLayerHistory: [] }),
 
       // Event (the global time cursor — replaces activeChapterId)
       activeEventId: null,
