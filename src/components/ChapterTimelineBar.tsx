@@ -3,16 +3,12 @@ import { ChevronLeft, ChevronRight, Play, Pause, Square, GitCompareArrows, X } f
 import { useActiveWorldId, useActiveEventId, useAppStore, type PlaybackSpeed } from '@/store'
 import { useTimelines, useChapters, useTimelineEvents } from '@/db/hooks/useTimeline'
 import { useTimelineRelationships } from '@/db/hooks/useTimelineRelationships'
-import { readingHoldMs } from '@/lib/playbackTiming'
 import { BAR_H_SINGLE, BAR_H_STACKED } from '@/lib/useBarHeight'
-import { useNavigate, useLocation } from 'react-router-dom'
 import type { Chapter, WorldEvent } from '@/types'
+import { useTimelinePlayback, SPEED_LABEL } from '@/features/timeline/useTimelinePlayback'
 
 /** @deprecated import BAR_H_SINGLE from @/lib/useBarHeight instead */
 export const BAR_H = BAR_H_SINGLE
-
-const SPEED_NEXT: Record<PlaybackSpeed, PlaybackSpeed> = { slow: 'normal', normal: 'fast', fast: 'slow' }
-const SPEED_LABEL: Record<PlaybackSpeed, string> = { slow: '0.5×', normal: '1×', fast: '2×' }
 
 // ── Playback controls ─────────────────────────────────────────────────────────
 
@@ -386,19 +382,15 @@ function Scrubber({
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function ChapterTimelineBar() {
-  const worldId       = useActiveWorldId()
   const activeEventId = useActiveEventId()
   const {
     setActiveEventId,
-    isPlayingStory, setIsPlayingStory,
-    playbackSpeed, setPlaybackSpeed,
-    setDiffOpen, isAnimating,
+    setDiffOpen,
+    setIsPlayingStory,
     playbackTimelineId, setPlaybackTimelineId,
     activeDepthTimelineId, setActiveDepthTimelineId,
-    setActiveOuterEventId,
   } = useAppStore()
-  const navigate  = useNavigate()
-  const location  = useLocation()
+  const worldId = useActiveWorldId()
 
   const timelines     = useTimelines(worldId)
   const relationships = useTimelineRelationships(worldId)
@@ -470,42 +462,8 @@ export function ChapterTimelineBar() {
   }
 
   // ── Playback ───────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!isPlayingStory || !orderedEvents.length || isAnimating) return
-    if (!activeEventId) { setActiveEventId(orderedEvents[0].id); return }
-    const idx = orderedEvents.findIndex((e) => e.id === activeEventId)
-    if (idx === -1) return
-    const ev = orderedEvents[idx]
-    const holdMs = readingHoldMs([ev.title, ev.description ?? ''].join(' '), playbackSpeed)
-    const t = setTimeout(() => {
-      if (idx >= orderedEvents.length - 1) { setIsPlayingStory(false); return }
-      const nextEv = orderedEvents[idx + 1]
-      setActiveEventId(nextEv.id)
-      if (frameRel && activeDepthTimelineId === innerTimelineId) {
-        const sp = frameRel.syncPoints.find((s) => s.innerEventId === nextEv.id)
-        if (sp) setActiveOuterEventId(sp.outerEventId)
-      }
-    }, holdMs)
-    return () => clearTimeout(t)
-  }, [isPlayingStory, isAnimating, activeEventId, orderedEvents, playbackSpeed, // eslint-disable-line react-hooks/exhaustive-deps
-      setActiveEventId, setIsPlayingStory, frameRel, activeDepthTimelineId, innerTimelineId, setActiveOuterEventId])
-
-  function handlePlayPause() {
-    if (isPlayingStory) {
-      setIsPlayingStory(false)
-    } else {
-      if (!activeEventId || orderedEvents.findIndex((e) => e.id === activeEventId) >= orderedEvents.length - 1) {
-        setActiveEventId(orderedEvents[0]?.id ?? null)
-      }
-      setIsPlayingStory(true)
-      if (worldId && !location.pathname.includes('/maps')) navigate(`/worlds/${worldId}/maps`)
-    }
-  }
-
-  function handleStop() {
-    setIsPlayingStory(false)
-    setActiveEventId(null)
-  }
+  const { handlePlayPause, handleStop, cycleSpeed, isPlayingStory, playbackSpeed } =
+    useTimelinePlayback(orderedEvents, frameRel, activeDepthTimelineId, innerTimelineId)
 
   // ── Scroll refs ────────────────────────────────────────────────────────────
   const scrollerRef      = useRef<HTMLDivElement>(null)
@@ -587,7 +545,7 @@ export function ChapterTimelineBar() {
               color={outerColor}
               onPlayPause={handlePlayPause}
               onStop={handleStop}
-              onSpeedChange={() => setPlaybackSpeed(SPEED_NEXT[playbackSpeed])}
+              onSpeedChange={cycleSpeed}
               onDiffOpen={() => setDiffOpen(true)}
               onClear={handleStop}
             />
@@ -638,7 +596,7 @@ export function ChapterTimelineBar() {
               color={innerColor}
               onPlayPause={handlePlayPause}
               onStop={handleStop}
-              onSpeedChange={() => setPlaybackSpeed(SPEED_NEXT[playbackSpeed])}
+              onSpeedChange={cycleSpeed}
               onDiffOpen={() => setDiffOpen(true)}
               onClear={handleStop}
             />
@@ -693,7 +651,7 @@ export function ChapterTimelineBar() {
           color={accentColor}
           onPlayPause={handlePlayPause}
           onStop={handleStop}
-          onSpeedChange={() => setPlaybackSpeed(SPEED_NEXT[playbackSpeed])}
+          onSpeedChange={cycleSpeed}
           onDiffOpen={() => setDiffOpen(true)}
           onClear={handleStop}
         />

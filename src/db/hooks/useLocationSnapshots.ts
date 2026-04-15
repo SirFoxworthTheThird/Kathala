@@ -3,11 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import type { LocationSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
-import { computeSortKey, computeSortKeySync } from '@/lib/sortKey'
+import { computeSortKey } from '@/lib/sortKey'
 import { useWorldEvents, useWorldChapters } from './useTimeline'
-
-type EventStub = { id: string; chapterId: string; sortOrder: number }
-type ChapterStub = { id: string; number: number }
+import { resolveSnapshot, selectBestSnapshots as selectBestSnapshotsGeneric } from '@/lib/snapshotUtils'
+import type { EventStub, ChapterStub } from '@/lib/snapshotUtils'
 
 /** Pure single-marker resolution — exported for testing. */
 export function resolveLocationSnapshot(
@@ -16,29 +15,7 @@ export function resolveLocationSnapshot(
   allEvents: EventStub[],
   allChapters: ChapterStub[]
 ): LocationSnapshot | undefined {
-  if (!activeEventId || !all.length) return undefined
-
-  const eventById = new Map(allEvents.map((e) => [e.id, e]))
-  const chapNumById = new Map(allChapters.map((c) => [c.id, c.number]))
-  const getOrder = (snap: LocationSnapshot) =>
-    snap.sortKey ?? computeSortKeySync(snap.eventId, eventById, chapNumById)
-  const activeOrder = computeSortKeySync(activeEventId, eventById, chapNumById)
-
-  if (activeOrder === -1) {
-    return all.find((s) => s.eventId === activeEventId)
-  }
-
-  let best: LocationSnapshot | undefined
-  let bestOrder = -1
-  for (const snap of all) {
-    const order = getOrder(snap)
-    if (order === -1 || order > activeOrder) continue
-    if (!best || order > bestOrder || (order === bestOrder && snap.eventId === activeEventId)) {
-      best = snap
-      bestOrder = order
-    }
-  }
-  return best
+  return resolveSnapshot(all, activeEventId, allEvents, allChapters)
 }
 
 /** Returns the last-known location snapshot at or before the active event. */
@@ -100,46 +77,7 @@ export function selectBestLocationSnapshots(
   allEvents: EventStub[],
   allChapters: ChapterStub[]
 ): LocationSnapshot[] {
-  if (!all.length) return all
-
-  if (!activeEventId) {
-    const byMarker = new Map<string, LocationSnapshot>()
-    for (const snap of all) {
-      const current = byMarker.get(snap.locationMarkerId)
-      if (!current || snap.updatedAt > current.updatedAt) {
-        byMarker.set(snap.locationMarkerId, snap)
-      }
-    }
-    return Array.from(byMarker.values())
-  }
-
-  const eventById = new Map(allEvents.map((e) => [e.id, e]))
-  const chapNumById = new Map(allChapters.map((c) => [c.id, c.number]))
-  const getOrder = (snap: LocationSnapshot) =>
-    snap.sortKey ?? computeSortKeySync(snap.eventId, eventById, chapNumById)
-  const activeOrder = computeSortKeySync(activeEventId, eventById, chapNumById)
-
-  if (activeOrder === -1) {
-    return all.filter((s) => s.eventId === activeEventId)
-  }
-
-  const byMarker = new Map<string, LocationSnapshot>()
-  for (const snap of all) {
-    const order = getOrder(snap)
-    if (order === -1 || order > activeOrder) continue
-    const current = byMarker.get(snap.locationMarkerId)
-    if (!current) {
-      byMarker.set(snap.locationMarkerId, snap)
-      continue
-    }
-    const currentOrder = getOrder(current)
-    if (snap.eventId === activeEventId) {
-      byMarker.set(snap.locationMarkerId, snap)
-    } else if (current.eventId !== activeEventId && order > currentOrder) {
-      byMarker.set(snap.locationMarkerId, snap)
-    }
-  }
-  return Array.from(byMarker.values())
+  return selectBestSnapshotsGeneric(all, activeEventId, allEvents, allChapters, (s) => s.locationMarkerId)
 }
 
 /** Returns the best (last-known) location snapshot per marker for the active event. */

@@ -3,8 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import type { RelationshipSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
-import { computeSortKey, computeSortKeySync } from '@/lib/sortKey'
+import { computeSortKey } from '@/lib/sortKey'
 import { useWorldChapters, useWorldEvents } from './useTimeline'
+import { selectBestSnapshots as selectBestSnapshotsGeneric } from '@/lib/snapshotUtils'
+import type { EventStub, ChapterStub } from '@/lib/snapshotUtils'
 
 export function useRelationshipSnapshot(relationshipId: string | null, eventId: string | null) {
   return useLiveQuery(
@@ -44,9 +46,6 @@ export function useWorldRelationshipSnapshots(worldId: string | null) {
   )
 }
 
-type EventStub = { id: string; chapterId: string; sortOrder: number }
-type ChapterStub = { id: string; number: number }
-
 /** Pure selection logic — exported for testing. */
 export function selectBestSnapshots(
   all: RelationshipSnapshot[],
@@ -54,53 +53,7 @@ export function selectBestSnapshots(
   allEvents: EventStub[],
   allChapters: ChapterStub[]
 ): RelationshipSnapshot[] {
-  if (!all.length) return all
-
-  if (!activeEventId) {
-    // No event active — most recently updated snapshot per relationship
-    const byRel = new Map<string, RelationshipSnapshot>()
-    for (const snap of all) {
-      const current = byRel.get(snap.relationshipId)
-      if (!current || snap.updatedAt > current.updatedAt) {
-        byRel.set(snap.relationshipId, snap)
-      }
-    }
-    return Array.from(byRel.values())
-  }
-
-  const eventById = new Map(allEvents.map((e) => [e.id, e]))
-  const chapterNumberById = new Map(allChapters.map((c) => [c.id, c.number]))
-  const getOrder = (snap: RelationshipSnapshot) =>
-    snap.sortKey ?? computeSortKeySync(snap.eventId, eventById, chapterNumberById)
-  const activeOrder = computeSortKeySync(activeEventId, eventById, chapterNumberById)
-
-  if (activeOrder === -1) {
-    // Active event not loaded yet — fall back to exact match only
-    return all.filter((s) => s.eventId === activeEventId)
-  }
-
-  // For each relationship, pick the snapshot with the highest order ≤ activeOrder
-  const byRel = new Map<string, RelationshipSnapshot>()
-  for (const snap of all) {
-    const snapOrder = getOrder(snap)
-    if (snapOrder === -1 || snapOrder > activeOrder) continue
-
-    const current = byRel.get(snap.relationshipId)
-    if (!current) {
-      byRel.set(snap.relationshipId, snap)
-      continue
-    }
-
-    const currentOrder = getOrder(current)
-    // Exact match for the active event always wins; otherwise prefer higher order
-    if (snap.eventId === activeEventId) {
-      byRel.set(snap.relationshipId, snap)
-    } else if (current.eventId !== activeEventId && snapOrder > currentOrder) {
-      byRel.set(snap.relationshipId, snap)
-    }
-  }
-
-  return Array.from(byRel.values())
+  return selectBestSnapshotsGeneric(all, activeEventId, allEvents, allChapters, (s) => s.relationshipId)
 }
 
 /** Returns the best snapshot per relationship for the active event.

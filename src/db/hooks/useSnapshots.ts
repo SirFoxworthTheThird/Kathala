@@ -3,8 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import type { CharacterSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
-import { computeSortKey, computeSortKeySync } from '@/lib/sortKey'
+import { computeSortKey } from '@/lib/sortKey'
 import { useWorldEvents, useWorldChapters } from './useTimeline'
+import { resolveSnapshot, selectBestSnapshots as selectBestSnapshotsGeneric } from '@/lib/snapshotUtils'
+import type { EventStub, ChapterStub } from '@/lib/snapshotUtils'
 
 export function useSnapshot(characterId: string | null, eventId: string | null) {
   return useLiveQuery(
@@ -69,9 +71,6 @@ export function useWorldSnapshots(worldId: string | null) {
   )
 }
 
-type EventStub = { id: string; chapterId: string; sortOrder: number }
-type ChapterStub = { id: string; number: number }
-
 /** Pure selection logic — exported for testing.
  *  @param timelineEventIds When provided, only snapshots whose eventId is in this set
  *  are considered. Pass the Set of all event IDs belonging to the active playback
@@ -84,49 +83,7 @@ export function selectBestCharacterSnapshots(
   timelineEventIds?: Set<string>
 ): CharacterSnapshot[] {
   const candidates = timelineEventIds ? all.filter((s) => timelineEventIds.has(s.eventId)) : all
-  if (!candidates.length) return candidates
-
-  if (!activeEventId) {
-    // No event selected: most recently updated snapshot per character
-    const byChar = new Map<string, CharacterSnapshot>()
-    for (const snap of candidates) {
-      const current = byChar.get(snap.characterId)
-      if (!current || snap.updatedAt > current.updatedAt) {
-        byChar.set(snap.characterId, snap)
-      }
-    }
-    return Array.from(byChar.values())
-  }
-
-  const eventById = new Map(allEvents.map((e) => [e.id, e]))
-  const chapNumById = new Map(allChapters.map((c) => [c.id, c.number]))
-  const getOrder = (snap: CharacterSnapshot) =>
-    snap.sortKey ?? computeSortKeySync(snap.eventId, eventById, chapNumById)
-  const activeOrder = computeSortKeySync(activeEventId, eventById, chapNumById)
-
-  if (activeOrder === -1) {
-    // Active event not loaded yet — exact match fallback
-    return candidates.filter((s) => s.eventId === activeEventId)
-  }
-
-  // Per character, pick the snapshot with the highest order ≤ activeOrder
-  const byChar = new Map<string, CharacterSnapshot>()
-  for (const snap of candidates) {
-    const order = getOrder(snap)
-    if (order === -1 || order > activeOrder) continue
-    const current = byChar.get(snap.characterId)
-    if (!current) {
-      byChar.set(snap.characterId, snap)
-      continue
-    }
-    const currentOrder = getOrder(current)
-    if (snap.eventId === activeEventId) {
-      byChar.set(snap.characterId, snap)
-    } else if (current.eventId !== activeEventId && order > currentOrder) {
-      byChar.set(snap.characterId, snap)
-    }
-  }
-  return Array.from(byChar.values())
+  return selectBestSnapshotsGeneric(candidates, activeEventId, allEvents, allChapters, (s) => s.characterId)
 }
 
 /** Pure single-character resolution — exported for testing. */
@@ -136,29 +93,7 @@ export function resolveCharacterSnapshot(
   allEvents: EventStub[],
   allChapters: ChapterStub[]
 ): CharacterSnapshot | undefined {
-  if (!activeEventId || !all.length) return undefined
-
-  const eventById = new Map(allEvents.map((e) => [e.id, e]))
-  const chapNumById = new Map(allChapters.map((c) => [c.id, c.number]))
-  const getOrder = (snap: CharacterSnapshot) =>
-    snap.sortKey ?? computeSortKeySync(snap.eventId, eventById, chapNumById)
-  const activeOrder = computeSortKeySync(activeEventId, eventById, chapNumById)
-
-  if (activeOrder === -1) {
-    return all.find((s) => s.eventId === activeEventId)
-  }
-
-  let best: CharacterSnapshot | undefined
-  let bestOrder = -1
-  for (const snap of all) {
-    const order = getOrder(snap)
-    if (order === -1 || order > activeOrder) continue
-    if (!best || order > bestOrder || (order === bestOrder && snap.eventId === activeEventId)) {
-      best = snap
-      bestOrder = order
-    }
-  }
-  return best
+  return resolveSnapshot(all, activeEventId, allEvents, allChapters)
 }
 
 /** Returns the best (last-known) snapshot per character for the active event.

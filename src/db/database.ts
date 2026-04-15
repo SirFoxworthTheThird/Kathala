@@ -248,12 +248,6 @@ class PlotWeaveDB extends Dexie {
       })
     })
 
-    // v14: timeline relationships and cross-timeline artifacts (purely additive)
-    this.version(14).stores({
-      timelineRelationships: 'id, worldId, sourceTimelineId, targetTimelineId',
-      crossTimelineArtifacts: 'id, worldId, itemId, originTimelineId, encounterTimelineId',
-    })
-
     // v13: add sortKey to all snapshot tables.
     // sortKey = chapter.number × 10_000 + event.sortOrder — enables efficient
     // "last-known state at or before event N" queries (delta/last-known model).
@@ -289,6 +283,12 @@ class PlotWeaveDB extends Dexie {
           }
         })
       }
+    })
+
+    // v14: timeline relationships and cross-timeline artifacts (purely additive)
+    this.version(14).stores({
+      timelineRelationships: 'id, worldId, sourceTimelineId, targetTimelineId',
+      crossTimelineArtifacts: 'id, worldId, itemId, originTimelineId, encounterTimelineId',
     })
   }
 }
