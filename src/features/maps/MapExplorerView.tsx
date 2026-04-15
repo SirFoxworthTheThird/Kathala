@@ -5,9 +5,10 @@ import {
   Plus, Upload, Users, Map as MapIcon, Trash2, Undo2,
   ChevronRight, ChevronDown, MapPin, Package, Layers, Ruler, X, Route, Search,
 } from 'lucide-react'
-import { useAppStore, useActiveMapLayerId, useActiveEventId, useMapLayerHistory, usePlaybackTimelineId, type PlaybackSpeed } from '@/store'
+import { useAppStore, useActiveMapLayerId, useActiveEventId, useMapLayerHistory, usePlaybackTimelineId, useActiveDepthTimelineId, useActiveOuterEventId, type PlaybackSpeed } from '@/store'
 import { useRootMapLayers, useMapLayer, useMapLayers, deleteMapLayer, updateMapLayer } from '@/db/hooks/useMapLayers'
 import { useChapters, useTimelines, useWorldEvents } from '@/db/hooks/useTimeline'
+import { useTimelineRelationships } from '@/db/hooks/useTimelineRelationships'
 import { useLocationMarkers, useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useBestSnapshots, upsertSnapshot, fetchSnapshot } from '@/db/hooks/useSnapshots'
@@ -16,7 +17,7 @@ import { useItems } from '@/db/hooks/useItems'
 import { useEventItemPlacements } from '@/db/hooks/useItemPlacements'
 import { useItemSnapshot, upsertItemSnapshot } from '@/db/hooks/useItemSnapshots'
 import { useChapterLocationSnapshots } from '@/db/hooks/useLocationSnapshots'
-import type { CharacterPin, MovementLine, PinAnimation, ScaleCalibrationPoint, MeasureLine } from './LeafletMapCanvas'
+import type { CharacterPin, MovementLine, PinAnimation, ScaleCalibrationPoint, MeasureLine, GhostPin } from './LeafletMapCanvas'
 import { useBlobUrl, useWorldBlobUrls } from '@/db/hooks/useBlobs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -1122,7 +1123,45 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const allMarkers = useAllLocationMarkers(worldId)
   const characters = useCharacters(worldId)
   const activeEventId = useActiveEventId()
-  const snapshots = useBestSnapshots(worldId, activeEventId)
+  const timelines = useTimelines(worldId)
+  const relationships = useTimelineRelationships(worldId)
+  const playbackTimelineId = usePlaybackTimelineId()
+  const activeDepthTimelineId = useActiveDepthTimelineId()
+  const activeOuterEventId = useActiveOuterEventId()
+  const effectiveTimelineId = playbackTimelineId ?? timelines[0]?.id ?? null
+  const chapters = useChapters(effectiveTimelineId)
+  const allWorldEvents = useWorldEvents(worldId)
+
+  // Frame narrative context — determines whether ghost pins should be shown
+  const frameRel = useMemo(() => {
+    const tlIds = new Set(timelines.map((t) => t.id))
+    return relationships.find(
+      (r) => r.type === 'frame_narrative' && tlIds.has(r.sourceTimelineId) && tlIds.has(r.targetTimelineId)
+    ) ?? null
+  }, [relationships, timelines])
+  const outerTimelineId = frameRel?.sourceTimelineId ?? null
+  const innerTimelineId = frameRel?.targetTimelineId ?? null
+  const isInnerActive = !!(frameRel && activeDepthTimelineId === innerTimelineId)
+
+  // Ordered events for the active timeline — used to find the previous event for playback
+  const orderedEvents = useMemo(() => {
+    const chapNumById = new Map(chapters.map((c) => [c.id, c.number]))
+    return [...allWorldEvents]
+      .filter((e) => chapNumById.has(e.chapterId))
+      .sort((a, b) => {
+        const aN = (chapNumById.get(a.chapterId) ?? 0) * 10_000 + a.sortOrder
+        const bN = (chapNumById.get(b.chapterId) ?? 0) * 10_000 + b.sortOrder
+        return aN - bN
+      })
+  }, [allWorldEvents, chapters])
+
+  // Restrict snapshot resolution to events belonging to the active timeline only,
+  // preventing characters from other timelines bleeding into this view.
+  const activeTimelineEventIds = useMemo(() => {
+    return orderedEvents.length > 0 ? new Set(orderedEvents.map((e) => e.id)) : undefined
+  }, [orderedEvents])
+
+  const snapshots = useBestSnapshots(worldId, activeEventId, activeTimelineEventIds)
   const blobUrls = useWorldBlobUrls(worldId)
   const movements = useEventMovements(worldId, activeEventId)
   const chapterPlacements = useEventItemPlacements(activeEventId)
@@ -1211,33 +1250,16 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     return () => window.removeEventListener('wb:map:focusMarker', handler)
   }, [allMarkers]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const timelines = useTimelines(worldId)
-  const playbackTimelineId = usePlaybackTimelineId()
-  const effectiveTimelineId = playbackTimelineId ?? timelines[0]?.id ?? null
-  const chapters = useChapters(effectiveTimelineId)
-  const allWorldEvents = useWorldEvents(worldId)
   // Derive active chapter from the active event's chapterId
   const activeEvent   = activeEventId ? allWorldEvents.find((e) => e.id === activeEventId) ?? null : null
   const activeChapter = activeEvent ? chapters.find((c) => c.id === activeEvent.chapterId) ?? null : null
   const activeChapterTitle = activeChapter ? `Ch.${activeChapter.number} — ${activeChapter.title}` : null
 
-  // Ordered events for the active timeline — used to find the previous event for playback
-  const orderedEvents = useMemo(() => {
-    const chapNumById = new Map(chapters.map((c) => [c.id, c.number]))
-    return [...allWorldEvents]
-      .filter((e) => chapNumById.has(e.chapterId))
-      .sort((a, b) => {
-        const aN = (chapNumById.get(a.chapterId) ?? 0) * 10_000 + a.sortOrder
-        const bN = (chapNumById.get(b.chapterId) ?? 0) * 10_000 + b.sortOrder
-        return aN - bN
-      })
-  }, [allWorldEvents, chapters])
-
   const activeEventIdx = activeEventId ? orderedEvents.findIndex((e) => e.id === activeEventId) : -1
   const prevEventId = activeEventIdx > 0 ? orderedEvents[activeEventIdx - 1].id : null
 
   // Previous event snapshots (last-known state at the previous event — used for playback animation)
-  const prevSnapshots = useBestSnapshots(worldId, prevEventId)
+  const prevSnapshots = useBestSnapshots(worldId, prevEventId, activeTimelineEventIds)
 
   // Previous chapter (for travel-line display — still chapter-based)
   const prevChapter = activeChapter
@@ -1250,7 +1272,47 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     [allWorldEvents, prevChapter?.id], // eslint-disable-line react-hooks/exhaustive-deps
   )
   const prevChapterLastEventId = prevChapterEvents[0]?.id ?? null
-  const prevChapterSnapshots = useBestSnapshots(worldId, prevChapterLastEventId)
+  const prevChapterSnapshots = useBestSnapshots(worldId, prevChapterLastEventId, activeTimelineEventIds)
+
+  // ── Ghost pins (frame narrative) ─────────────────────────────────────────
+  // When the inner track is active, show outer-timeline characters as dimmed
+  // ghost pins at their position as of the active outer event.
+  const outerChaptersForGhost = useChapters(isInnerActive ? outerTimelineId : null)
+  const outerTimelineEventIds = useMemo(() => {
+    if (!isInnerActive || outerChaptersForGhost.length === 0) return undefined
+    const chapIds = new Set(outerChaptersForGhost.map((c) => c.id))
+    return new Set(allWorldEvents.filter((e) => chapIds.has(e.chapterId)).map((e) => e.id))
+  }, [isInnerActive, outerChaptersForGhost, allWorldEvents])
+  const outerSnapshots = useBestSnapshots(worldId, activeOuterEventId ?? null, outerTimelineEventIds)
+  const outerTimeline = useMemo(
+    () => timelines.find((t) => t.id === outerTimelineId) ?? null,
+    [timelines, outerTimelineId]
+  )
+  const outerActiveEvent = useMemo(
+    () => (activeOuterEventId ? allWorldEvents.find((e) => e.id === activeOuterEventId) ?? null : null),
+    [allWorldEvents, activeOuterEventId]
+  )
+  const ghostPins = useMemo<GhostPin[]>(() => {
+    if (!isInnerActive || !outerTimeline) return []
+    const pins: GhostPin[] = []
+    for (const snap of outerSnapshots) {
+      const char = characters.find((c) => c.id === snap.characterId)
+      if (!char) continue
+      const pin = resolveCharacterPin(snap, layerId, allLayers, allMarkers)
+      if (!pin) continue
+      pins.push({
+        characterId: char.id,
+        name: char.name,
+        color: char.color ?? '#888',
+        portraitUrl: char.portraitImageId ? blobUrls.get(char.portraitImageId) ?? null : null,
+        x: pin.x,
+        y: pin.y,
+        outerTimelineName: outerTimeline.name,
+        outerEventTitle: outerActiveEvent?.title ?? '',
+      })
+    }
+    return pins
+  }, [isInnerActive, outerTimeline, outerSnapshots, characters, layerId, allLayers, allMarkers, blobUrls, outerActiveEvent]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleMarkerClick(markerId: string) {
     setSelectedCharacterId(null)
@@ -1572,6 +1634,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               setPendingPos({ x, y })
               setAddLocationOpen(true)
             }}
+            ghostPins={ghostPins}
             onCharacterClick={handleCharacterClick}
             mapRef={mapRef}
             scaleMode={scaleMode || measureMode}

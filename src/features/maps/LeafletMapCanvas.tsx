@@ -4,6 +4,9 @@ import L from 'leaflet'
 import type { MapLayer, LocationMarker, Character } from '@/types'
 import { updateLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { useAppStore } from '@/store'
+import { type GhostPin, makeGhostIcon } from '@/lib/ghostMarkerIcon'
+
+export type { GhostPin }
 
 // CSS-variable shortcuts used inside DivIcon HTML strings.
 // These resolve against the document root, so they automatically follow the active theme.
@@ -306,6 +309,8 @@ interface LeafletMapCanvasProps {
   initialCenter?: [number, number] | null
   /** When set, draws a measurement line between two points with a distance label */
   measureLine?: MeasureLine | null
+  /** Ghost pins — outer-timeline characters shown as a dimmed overlay when the inner depth track is active */
+  ghostPins?: GhostPin[]
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -314,7 +319,7 @@ export function LeafletMapCanvas({
   isDraggingCharacter, onMarkerClick, onMapClick, onDrillDown,
   onCharacterDrop, onCharacterDropOnEmpty, onCharacterClick, mapRef: externalMapRef,
   scaleMode, onScalePoints, showSubMapLinks = true, locationStatuses = {},
-  pinAnimation, onAnimationEnd, initialCenter, measureLine,
+  pinAnimation, onAnimationEnd, initialCenter, measureLine, ghostPins,
 }: LeafletMapCanvasProps) {
   const { setIsAnimating } = useAppStore()
   const internalMapRef = useRef<L.Map | null>(null)
@@ -322,6 +327,7 @@ export function LeafletMapCanvas({
   // Imperative character marker management — bypasses react-leaflet's position-prop mechanism
   const charMarkersRef  = useRef<Map<string, L.Marker>>(new Map()) // per-char, during animation
   const groupMarkersRef = useRef<Map<string, L.Marker>>(new Map()) // per-pos-group, when idle
+  const ghostMarkersRef = useRef<Map<string, L.Marker>>(new Map()) // ghost pins — never animated
   const animFrameRef    = useRef<number | null>(null)
   const runningAnimKeyRef = useRef<number | null>(null) // guard: skip re-init for same animation key
   const [leafletMap, setLeafletMap] = useState<L.Map | null>(null)
@@ -605,12 +611,41 @@ export function LeafletMapCanvas({
     }
   }, [mapZoom]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Ghost marker effect — fully decoupled from the animation system.
+  // Ghost pins never animate; they just snap to updated positions when outerEventId changes.
+  useEffect(() => {
+    const map = leafletMap ?? mapRef.current
+    if (!map) return
+    for (const [, m] of ghostMarkersRef.current) { try { m.remove() } catch { /* ok */ } }
+    ghostMarkersRef.current.clear()
+    for (const pin of ghostPins ?? []) {
+      if (!Number.isFinite(pin.x) || !Number.isFinite(pin.y)) continue
+      const marker = L.marker([pin.y, pin.x], {
+        icon: makeGhostIcon(pin, mapZoom),
+        zIndexOffset: 900, // below regular character pins (1000)
+        interactive: true,
+        draggable: false,
+      })
+      .bindTooltip(
+        `${pin.name} — ${pin.outerTimelineName}${pin.outerEventTitle ? '\n' + pin.outerEventTitle : ''}`,
+        { permanent: false, direction: 'top' }
+      )
+      .addTo(map)
+      ghostMarkersRef.current.set(pin.characterId, marker)
+    }
+    return () => {
+      for (const [, m] of ghostMarkersRef.current) { try { m.remove() } catch { /* ok */ } }
+      ghostMarkersRef.current.clear()
+    }
+  }, [leafletMap, ghostPins, mapZoom]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Remove all character markers when the component unmounts
   useEffect(() => {
     return () => {
       if (animFrameRef.current) { cancelAnimationFrame(animFrameRef.current); animFrameRef.current = null }
       charMarkersRef.current.forEach(m => { try { m.remove() } catch { /* map may be gone */ } })
       groupMarkersRef.current.forEach(m => { try { m.remove() } catch { /* map may be gone */ } })
+      ghostMarkersRef.current.forEach(m => { try { m.remove() } catch { /* map may be gone */ } })
     }
   }, [])
 
