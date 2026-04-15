@@ -391,6 +391,24 @@ export function ChapterTimelineBar() {
     return map
   }, [allEvents, chapters])
 
+  // These two memos are used by the stacked (frame narrative) render path.
+  // They must live here unconditionally to satisfy the Rules of Hooks.
+  const outerEventsByChapter = useMemo(() => {
+    const map = new Map<string, WorldEvent[]>()
+    for (const ch of outerChapters) {
+      map.set(ch.id, outerRawEvents.filter((e) => e.chapterId === ch.id).sort((a, b) => a.sortOrder - b.sortOrder))
+    }
+    return map
+  }, [outerChapters, outerRawEvents])
+
+  const innerEventsByChapter = useMemo(() => {
+    const map = new Map<string, WorldEvent[]>()
+    for (const ch of innerChapters) {
+      map.set(ch.id, innerRawEvents.filter((e) => e.chapterId === ch.id).sort((a, b) => a.sortOrder - b.sortOrder))
+    }
+    return map
+  }, [innerChapters, innerRawEvents])
+
   const activeEvent   = activeEventId ? allEvents.find((e) => e.id === activeEventId) ?? null : null
   const activeChapter = activeEvent ? chapters.find((c) => c.id === activeEvent.chapterId) ?? null : null
 
@@ -540,22 +558,6 @@ export function ChapterTimelineBar() {
     const outerTimeline = timelines.find((t) => t.id === outerTimelineId)
     const innerTimeline = timelines.find((t) => t.id === innerTimelineId)
     const isOuterActive = activeDepthTimelineId !== innerTimelineId
-
-    const outerEventsByChapter = useMemo(() => {
-      const map = new Map<string, WorldEvent[]>()
-      for (const ch of outerChapters) {
-        map.set(ch.id, outerRawEvents.filter((e) => e.chapterId === ch.id).sort((a, b) => a.sortOrder - b.sortOrder))
-      }
-      return map
-    }, [outerChapters, outerRawEvents]) // eslint-disable-line react-hooks/exhaustive-deps
-
-    const innerEventsByChapter = useMemo(() => {
-      const map = new Map<string, WorldEvent[]>()
-      for (const ch of innerChapters) {
-        map.set(ch.id, innerRawEvents.filter((e) => e.chapterId === ch.id).sort((a, b) => a.sortOrder - b.sortOrder))
-      }
-      return map
-    }, [innerChapters, innerRawEvents]) // eslint-disable-line react-hooks/exhaustive-deps
 
     return (
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1000, overflow: 'visible' }}>
