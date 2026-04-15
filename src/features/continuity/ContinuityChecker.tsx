@@ -7,6 +7,7 @@ import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
 import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
+import { useCrossTimelineArtifacts } from '@/db/hooks/useTimelineRelationships'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
@@ -143,6 +144,7 @@ export function ContinuityChecker() {
   const allLayers   = useMapLayers(worldId ?? null)
   const travelModes = useTravelModes(worldId ?? null)
   const allMovements = useWorldMovements(worldId ?? null)
+  const artifacts    = useCrossTimelineArtifacts(worldId ?? null)
   const allRelSnaps = useLiveQuery(
     () => worldId ? db.relationshipSnapshots.where('worldId').equals(worldId).toArray() : [],
     [worldId], []
@@ -480,8 +482,47 @@ export function ContinuityChecker() {
       }
     }
 
+    // ── Cross-timeline artifact anachronism check ────────────────────────────
+
+    // Build a map: timelineId → Set<chapterId>
+    const chaptersByTimeline = new Map<string, Set<string>>()
+    for (const ch of chapters) {
+      if (!chaptersByTimeline.has(ch.timelineId)) chaptersByTimeline.set(ch.timelineId, new Set())
+      chaptersByTimeline.get(ch.timelineId)!.add(ch.id)
+    }
+
+    for (const artifact of artifacts) {
+      const item = itemById.get(artifact.itemId)
+      if (!item) continue
+
+      const allowedTimelines = new Set([artifact.originTimelineId, artifact.encounterTimelineId])
+
+      // Find snapshots where this item is in inventory
+      for (const snap of snapshots) {
+        if (!snap.inventoryItemIds.includes(artifact.itemId)) continue
+        const ev = eventById.get(snap.eventId)
+        if (!ev) continue
+        const ch = chapById.get(ev.chapterId)
+        if (!ch) continue
+
+        // If the snapshot's chapter belongs to a timeline outside the two declared timelines, flag it
+        if (!allowedTimelines.has(ch.timelineId)) {
+          const char = charById.get(snap.characterId)
+          out.push({
+            id: `artifact-wrong-timeline-${artifact.id}-${snap.id}`,
+            severity: 'warning',
+            category: 'item',
+            message: `"${item.name}" appears outside its declared timelines`,
+            detail: `${char?.name ?? '?'} holds it in Ch. ${ch.number} — not in origin or encounter timeline`,
+            navigatePath: `/worlds/${worldId}/timeline/${ch.id}`,
+            eventId: snap.eventId,
+          })
+        }
+      }
+    }
+
     return out
-  }, [chapters, allEvents, characters, rels, items, snapshots, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, worldId])
+  }, [chapters, allEvents, characters, rels, items, snapshots, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, worldId])
 
   // Focus modal on open so keyboard navigation works immediately
   useEffect(() => {

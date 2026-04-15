@@ -8,7 +8,7 @@ import {
 import { useAppStore, useActiveMapLayerId, useActiveEventId, useMapLayerHistory, usePlaybackTimelineId, useActiveDepthTimelineId, useActiveOuterEventId, type PlaybackSpeed } from '@/store'
 import { useRootMapLayers, useMapLayer, useMapLayers, deleteMapLayer, updateMapLayer } from '@/db/hooks/useMapLayers'
 import { useChapters, useTimelines, useWorldEvents } from '@/db/hooks/useTimeline'
-import { useTimelineRelationships } from '@/db/hooks/useTimelineRelationships'
+import { useTimelineRelationships, useCrossTimelineArtifacts } from '@/db/hooks/useTimelineRelationships'
 import { useLocationMarkers, useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useBestSnapshots, upsertSnapshot, fetchSnapshot } from '@/db/hooks/useSnapshots'
@@ -711,12 +711,14 @@ function ItemRow({
   activeEventId,
   worldId,
   locationName,
+  isCrossTimeline,
   onFocus,
 }: {
   item: Item
   activeEventId: string | null
   worldId: string
   locationName: string | null
+  isCrossTimeline: boolean
   onFocus: () => void
 }) {
   const snap = useItemSnapshot(item.id, worldId, activeEventId)
@@ -736,7 +738,12 @@ function ItemRow({
           fallbackClassName="h-5 w-5 rounded shrink-0"
         />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-xs">{item.name}</p>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <p className="truncate text-xs">{item.name}</p>
+            {isCrossTimeline && (
+              <span className="shrink-0 rounded px-1 py-px text-[9px] font-semibold uppercase tracking-wide bg-amber-500/20 text-amber-400">echo era</span>
+            )}
+          </div>
           {locationName && (
             <p className="truncate text-[10px] opacity-60">{locationName}</p>
           )}
@@ -811,6 +818,8 @@ function ItemsSection({
 }) {
   const items = useItems(worldId)
   const placements = useEventItemPlacements(activeEventId)
+  const artifacts = useCrossTimelineArtifacts(worldId)
+  const crossTimelineItemIds = useMemo(() => new Set(artifacts.map((a) => a.itemId)), [artifacts])
   const [search, setSearch] = useState('')
   const filtered = search.trim()
     ? items.filter((i) => i.name.toLowerCase().includes(search.toLowerCase()))
@@ -847,6 +856,7 @@ function ItemsSection({
               activeEventId={activeEventId}
               worldId={worldId}
               locationName={getItemLocation(item.id)}
+              isCrossTimeline={crossTimelineItemIds.has(item.id)}
               onFocus={() => onFocus(item.id)}
             />
           ))

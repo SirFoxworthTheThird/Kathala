@@ -1,7 +1,7 @@
 import { MapPin, Package, Heart, Skull, BookOpen, Camera } from 'lucide-react'
-import type { Character } from '@/types'
+import type { Character, Timeline } from '@/types'
 import { useCharacterSnapshots } from '@/db/hooks/useSnapshots'
-import { useChapter, useEvent } from '@/db/hooks/useTimeline'
+import { useChapter, useEvent, useTimelines } from '@/db/hooks/useTimeline'
 import { useLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { useItems } from '@/db/hooks/useItems'
 import { useAppStore } from '@/store'
@@ -17,6 +17,7 @@ function SnapshotRow({
   statusNotes,
   worldId,
   isActive,
+  timelines,
   onClick,
 }: {
   snapshotId: string
@@ -27,12 +28,14 @@ function SnapshotRow({
   statusNotes: string
   worldId: string
   isActive: boolean
+  timelines: Timeline[]
   onClick: () => void
 }) {
   const event = useEvent(eventId)
   const chapter = useChapter(event?.chapterId ?? null)
   const location = useLocationMarker(locationMarkerId)
   const items = useItems(worldId)
+  const timeline = chapter ? timelines.find((t) => t.id === chapter.timelineId) ?? null : null
 
   return (
     <button
@@ -45,17 +48,31 @@ function SnapshotRow({
       )}
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <BookOpen className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" />
-          <span className="text-sm font-medium">
+        <div className="flex items-center gap-2 min-w-0">
+          <BookOpen className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))]" />
+          <span className="text-sm font-medium truncate">
             {chapter ? `Ch. ${chapter.number} — ${chapter.title}` : eventId}
           </span>
         </div>
-        {isAlive ? (
-          <Heart className="h-3.5 w-3.5 text-green-400" />
-        ) : (
-          <Skull className="h-3.5 w-3.5 text-red-400" />
-        )}
+        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+          {timeline && timelines.length >= 2 && (
+            <span
+              className="rounded px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide"
+              style={{
+                background: `${timeline.color}22`,
+                color: timeline.color,
+                border: `1px solid ${timeline.color}55`,
+              }}
+            >
+              {timeline.name}
+            </span>
+          )}
+          {isAlive ? (
+            <Heart className="h-3.5 w-3.5 text-green-400" />
+          ) : (
+            <Skull className="h-3.5 w-3.5 text-red-400" />
+          )}
+        </div>
       </div>
       {location && (
         <div className="flex items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))]">
@@ -82,6 +99,7 @@ interface HistoryTabProps {
 
 export function HistoryTab({ character }: HistoryTabProps) {
   const snapshots = useCharacterSnapshots(character.id)
+  const timelines = useTimelines(character.worldId)
   const { activeEventId, setActiveEventId } = useAppStore()
 
   if (snapshots.length === 0) {
@@ -108,6 +126,7 @@ export function HistoryTab({ character }: HistoryTabProps) {
           statusNotes={snap.statusNotes}
           worldId={character.worldId}
           isActive={snap.eventId === activeEventId}
+          timelines={timelines}
           onClick={() => setActiveEventId(snap.eventId)}
         />
       ))}
