@@ -285,6 +285,14 @@ export interface MeasureLine {
   label: string
 }
 
+export interface EchoMarker {
+  markerId: string
+  x: number
+  y: number
+  counterpartTimelineName: string
+  eventCount: number
+}
+
 interface LeafletMapCanvasProps {
   layer: MapLayer
   imageUrl: string
@@ -311,6 +319,10 @@ interface LeafletMapCanvasProps {
   measureLine?: MeasureLine | null
   /** Ghost pins — outer-timeline characters shown as a dimmed overlay when the inner depth track is active */
   ghostPins?: GhostPin[]
+  /** Echo rings — amber dashed circles marking locations that exist in a historical-echo counterpart timeline */
+  echoMarkers?: EchoMarker[]
+  /** Called when the user clicks an echo ring */
+  onEchoRingClick?: (markerId: string) => void
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -320,6 +332,7 @@ export function LeafletMapCanvas({
   onCharacterDrop, onCharacterDropOnEmpty, onCharacterClick, mapRef: externalMapRef,
   scaleMode, onScalePoints, showSubMapLinks = true, locationStatuses = {},
   pinAnimation, onAnimationEnd, initialCenter, measureLine, ghostPins,
+  echoMarkers, onEchoRingClick,
 }: LeafletMapCanvasProps) {
   const { setIsAnimating } = useAppStore()
   const internalMapRef = useRef<L.Map | null>(null)
@@ -327,7 +340,8 @@ export function LeafletMapCanvas({
   // Imperative character marker management — bypasses react-leaflet's position-prop mechanism
   const charMarkersRef  = useRef<Map<string, L.Marker>>(new Map()) // per-char, during animation
   const groupMarkersRef = useRef<Map<string, L.Marker>>(new Map()) // per-pos-group, when idle
-  const ghostMarkersRef = useRef<Map<string, L.Marker>>(new Map()) // ghost pins — never animated
+  const ghostMarkersRef = useRef<Map<string, L.Marker>>(new Map())        // ghost pins — never animated
+  const echoMarkersRef  = useRef<Map<string, L.CircleMarker>>(new Map()) // echo rings — historical echo
   const animFrameRef    = useRef<number | null>(null)
   const runningAnimKeyRef = useRef<number | null>(null) // guard: skip re-init for same animation key
   const [leafletMap, setLeafletMap] = useState<L.Map | null>(null)
@@ -639,6 +653,37 @@ export function LeafletMapCanvas({
     }
   }, [leafletMap, ghostPins, mapZoom]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Echo rings (historical echo) ──────────────────────────────────────────
+  // Dashed amber circles drawn beneath location markers; always-on, not animated.
+  useEffect(() => {
+    const map = leafletMap ?? mapRef.current
+    if (!map) return
+    for (const [, c] of echoMarkersRef.current) { try { c.remove() } catch { /* ok */ } }
+    echoMarkersRef.current.clear()
+    for (const em of echoMarkers ?? []) {
+      if (!Number.isFinite(em.x) || !Number.isFinite(em.y)) continue
+      const circle = L.circleMarker([em.y, em.x], {
+        radius: 18,
+        fill: false,
+        color: 'hsl(38 92% 50%)',
+        weight: 2,
+        dashArray: '5 4',
+        interactive: true,
+      })
+        .bindTooltip(
+          `${escapeHtml(em.counterpartTimelineName)} — ${em.eventCount} event${em.eventCount !== 1 ? 's' : ''}`,
+          { permanent: false, direction: 'top' },
+        )
+        .on('click', (e) => { L.DomEvent.stopPropagation(e); onEchoRingClick?.(em.markerId) })
+        .addTo(map)
+      echoMarkersRef.current.set(em.markerId, circle)
+    }
+    return () => {
+      for (const [, c] of echoMarkersRef.current) { try { c.remove() } catch { /* ok */ } }
+      echoMarkersRef.current.clear()
+    }
+  }, [leafletMap, echoMarkers]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Remove all character markers when the component unmounts
   useEffect(() => {
     return () => {
@@ -646,6 +691,7 @@ export function LeafletMapCanvas({
       charMarkersRef.current.forEach(m => { try { m.remove() } catch { /* map may be gone */ } })
       groupMarkersRef.current.forEach(m => { try { m.remove() } catch { /* map may be gone */ } })
       ghostMarkersRef.current.forEach(m => { try { m.remove() } catch { /* map may be gone */ } })
+      echoMarkersRef.current.forEach(c => { try { c.remove() } catch { /* map may be gone */ } })
     }
   }, [])
 

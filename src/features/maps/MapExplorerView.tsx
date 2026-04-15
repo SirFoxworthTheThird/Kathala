@@ -17,7 +17,8 @@ import { useItems } from '@/db/hooks/useItems'
 import { useEventItemPlacements } from '@/db/hooks/useItemPlacements'
 import { useItemSnapshot, upsertItemSnapshot } from '@/db/hooks/useItemSnapshots'
 import { useChapterLocationSnapshots } from '@/db/hooks/useLocationSnapshots'
-import type { CharacterPin, MovementLine, PinAnimation, ScaleCalibrationPoint, MeasureLine, GhostPin } from './LeafletMapCanvas'
+import type { CharacterPin, MovementLine, PinAnimation, ScaleCalibrationPoint, MeasureLine, GhostPin, EchoMarker } from './LeafletMapCanvas'
+import { useEchoLocations } from '@/lib/useEchoLocations'
 import { useBlobUrl, useWorldBlobUrls } from '@/db/hooks/useBlobs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -1314,6 +1315,28 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     return pins
   }, [isInnerActive, outerTimeline, outerSnapshots, characters, layerId, allLayers, allMarkers, blobUrls, outerActiveEvent]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Echo rings (historical echo) ─────────────────────────────────────────
+  const echoLocations = useEchoLocations(effectiveTimelineId, worldId)
+  const echoMarkers = useMemo<EchoMarker[]>(() => {
+    const result: EchoMarker[] = []
+    for (const [markerId, info] of echoLocations) {
+      const marker = allMarkers.find((m) => m.id === markerId)
+      if (!marker || marker.mapLayerId !== layerId) continue
+      result.push({
+        markerId,
+        x: marker.x,
+        y: marker.y,
+        counterpartTimelineName: info.counterpartTimelineName,
+        eventCount: info.events.length,
+      })
+    }
+    return result
+  }, [echoLocations, allMarkers, layerId])
+
+  const [echoPopoverMarkerId, setEchoPopoverMarkerId] = useState<string | null>(null)
+  const echoPopoverInfo = echoPopoverMarkerId ? echoLocations.get(echoPopoverMarkerId) ?? null : null
+  const echoPopoverMarker = echoPopoverMarkerId ? allMarkers.find((m) => m.id === echoPopoverMarkerId) ?? null : null
+
   function handleMarkerClick(markerId: string) {
     setSelectedCharacterId(null)
     setSelectedLocationMarkerId(markerId)
@@ -1635,6 +1658,8 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               setAddLocationOpen(true)
             }}
             ghostPins={ghostPins}
+            echoMarkers={echoMarkers}
+            onEchoRingClick={setEchoPopoverMarkerId}
             onCharacterClick={handleCharacterClick}
             mapRef={mapRef}
             scaleMode={scaleMode || measureMode}
@@ -1645,6 +1670,38 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
                 : null
             }
           />
+
+          {/* ── Echo ring popover ── */}
+          {echoPopoverMarkerId && echoPopoverInfo && (
+            <div className="absolute left-1/2 top-4 z-[610] -translate-x-1/2">
+              <div className="w-72 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl">
+                <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-2.5">
+                  <div>
+                    <div className="text-xs font-semibold text-amber-500 uppercase tracking-wide">Historical Echo</div>
+                    <div className="text-sm font-medium text-[hsl(var(--foreground))]">
+                      {echoPopoverMarker?.name ?? 'Location'}
+                    </div>
+                    <div className="text-xs text-[hsl(var(--muted-foreground))]">
+                      {echoPopoverInfo.counterpartTimelineName}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setEchoPopoverMarkerId(null)}
+                    className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <ul className="max-h-52 overflow-y-auto divide-y divide-[hsl(var(--border))]">
+                  {echoPopoverInfo.events.map((ev) => (
+                    <li key={ev.id} className="px-4 py-2 text-sm text-[hsl(var(--foreground))]">
+                      {ev.title}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
 
           {/* ── Measure result overlay ── */}
           {measureResult && layer.scalePixelsPerUnit && layer.scaleUnit && (
