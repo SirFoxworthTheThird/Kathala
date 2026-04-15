@@ -19,7 +19,8 @@ const V = {
   font:   'var(--font-body)',          // theme font (sans / serif / mono)
 } as const
 
-function escapeHtml(s: string): string {
+function escapeHtml(s: string | null | undefined): string {
+  if (!s) return ''
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
@@ -41,10 +42,11 @@ const STATUS_COLORS: Record<string, string> = {
 function makeLocationIcon(
   iconType: string,
   isLinked: boolean,
-  name: string,
+  name: string | undefined,
   highlighted = false,
   status = 'active',
 ) {
+  const safeName = name ?? ''
   const typeColor   = TYPE_COLORS[iconType] ?? '#94a3b8'
   const statusColor = STATUS_COLORS[status] || typeColor
   const color       = statusColor
@@ -52,7 +54,7 @@ function makeLocationIcon(
   const pillH  = 32
   const iconW  = 28
   const side   = 10
-  const labelW = Math.max(88, name.length * 8 + 16)
+  const labelW = Math.max(88, safeName.length * 8 + 16)
 
   const innerBg = isLinked
     ? `radial-gradient(circle at center,#fff 20%,${color} 55%)`
@@ -73,7 +75,7 @@ function makeLocationIcon(
   const iconArea = `<div style="width:${iconW}px;height:${pillH}px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${diamond}</div>`
   const divider  = `<div style="width:1px;height:${Math.round(pillH * 0.65)}px;align-self:center;background:${V.frame};opacity:0.6;flex-shrink:0;"></div>`
   const label    = `<div style="display:flex;flex-direction:column;justify-content:center;padding:0 8px;min-width:${labelW}px;height:${pillH}px;overflow:hidden;">
-    <div style="color:${V.fg};font-size:11px;font-family:${V.font};line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(name)}</div>
+    <div style="color:${V.fg};font-size:11px;font-family:${V.font};line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(safeName)}</div>
     <div style="display:flex;align-items:center;gap:0;font-size:9px;font-family:${V.font};line-height:1.3;white-space:nowrap;">
       <span style="color:${V.muted};text-transform:capitalize;">${escapeHtml(iconType)}</span>${statusBadge}
     </div>

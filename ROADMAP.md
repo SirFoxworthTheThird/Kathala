@@ -72,7 +72,7 @@ Technical debt and structural improvements identified in architectural review. T
   - `SingleTrack.tsx` — single-track render extracted from main component
   - `useTimelinePlayback.ts` — playback `useEffect` + `handlePlayPause`
 
-- [ ] **Redesign `ChapterTimelineBar` visuals** — rework from scrubber-style dots to a chapter-segment strip:
+- [x] **Redesign `ChapterTimelineBar` visuals** — rework from scrubber-style dots to a chapter-segment strip:
   - **Single-track**: chapters as proportional-width labeled segments (width ∝ event count); fill bar advances per event; tick marks for individual events with hover tooltip; chapter title truncated below segment. Replaces the tiny numbered dot + `1.1`/`1.2` event labels.
   - **Active event display**: fixed "Ch.N — Title › Event Title" panel between controls and track, always visible. Replaces the 4-second disappearing callout.
   - **Stacked (frame narrative)**: frame track rendered as a visually thinner strip (30px) with a `FRAME` badge; story track is the main full-height track with a `STORY` badge. A vertical ghost cursor line spans both tracks at the active frame event, showing temporal correspondence. Clicking either track activates it. Replaces the indistinguishable same-height rows with colored left-border indicator.

@@ -2,12 +2,12 @@ import { useMemo } from 'react'
 import { useTimelineRelationships } from '@/db/hooks/useTimelineRelationships'
 import { useTimelines } from '@/db/hooks/useTimeline'
 
-export const BAR_H_SINGLE = '3.25rem'
-export const BAR_H_STACKED = '6rem'
+export const BAR_H_SINGLE = '4rem'
+export const BAR_H_STACKED = '6.25rem'
 
 /**
  * Returns the height the ChapterTimelineBar will occupy.
- * Single-track: 3.25rem. Stacked (frame_narrative active): 6rem.
+ * Single-track: 4rem. Stacked (frame_narrative active): 6.25rem.
  * Pass null / undefined when on the dashboard — returns '0'.
  */
 export function useBarHeight(worldId: string | null | undefined): string {
