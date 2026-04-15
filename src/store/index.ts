@@ -71,8 +71,8 @@ interface UISlice {
   setDiffOpen: (open: boolean) => void
   checkerOpen: boolean
   setCheckerOpen: (open: boolean) => void
-  suppressedIssueIds: string[]
-  toggleSuppressIssue: (id: string) => void
+  suppressedIssueIds: Record<string, string[]>
+  toggleSuppressIssue: (worldId: string, id: string) => void
   isAnimating: boolean
   setIsAnimating: (v: boolean) => void
 }
@@ -156,12 +156,14 @@ export const useAppStore = create<AppStore>()(
       setDiffOpen: (open) => set({ diffOpen: open }),
       checkerOpen: false,
       setCheckerOpen: (open) => set({ checkerOpen: open }),
-      suppressedIssueIds: [],
-      toggleSuppressIssue: (id) => set((s) => ({
-        suppressedIssueIds: s.suppressedIssueIds.includes(id)
-          ? s.suppressedIssueIds.filter((x) => x !== id)
-          : [...s.suppressedIssueIds, id],
-      })),
+      suppressedIssueIds: {},
+      toggleSuppressIssue: (worldId, id) => set((s) => {
+        const current = s.suppressedIssueIds[worldId] ?? []
+        const next = current.includes(id)
+          ? current.filter((x) => x !== id)
+          : [...current, id]
+        return { suppressedIssueIds: { ...s.suppressedIssueIds, [worldId]: next } }
+      }),
       isAnimating: false,
       setIsAnimating: (v) => set({ isAnimating: v }),
     }),

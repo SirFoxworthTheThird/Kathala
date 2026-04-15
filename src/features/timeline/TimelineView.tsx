@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, BookOpen, Layers, Sparkles, Link2 } from 'lucide-react'
-import { useTimelines, useChapters, createTimeline } from '@/db/hooks/useTimeline'
+import { Plus, BookOpen, Layers, Sparkles, Link2, X } from 'lucide-react'
+import { useTimelines, useChapters, createTimeline, updateTimeline, deleteTimeline } from '@/db/hooks/useTimeline'
 import { useWorld } from '@/db/hooks/useWorlds'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/EmptyState'
@@ -22,14 +22,40 @@ export default function TimelineView() {
   const [addChapterOpen, setAddChapterOpen] = useState(false)
   const [aiChapterOpen, setAiChapterOpen] = useState(false)
   const [relPanelOpen, setRelPanelOpen] = useState(false)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+  const renameInputRef = useRef<HTMLInputElement>(null)
+
+  function startRename(id: string, currentName: string) {
+    setRenamingId(id)
+    setRenameValue(currentName)
+    setTimeout(() => renameInputRef.current?.select(), 0)
+  }
+
+  async function commitRename() {
+    if (renamingId && renameValue.trim()) {
+      await updateTimeline(renamingId, { name: renameValue.trim() })
+    }
+    setRenamingId(null)
+  }
+
+  async function handleDeleteTimeline(id: string, name: string) {
+    if (!confirm(`Delete timeline "${name}" and all its chapters and events?`)) return
+    const remaining = timelines.filter((t) => t.id !== id)
+    if (activeTimelineId === id) setActiveTimelineId(remaining[0]?.id ?? null)
+    await deleteTimeline(id)
+  }
+
+  const TIMELINE_COLORS = ['#60a5fa', '#34d399', '#f87171', '#fbbf24', '#a78bfa', '#fb923c']
 
   async function handleCreateTimeline() {
     if (!worldId) return
+    const n = timelines.length
     const tl = await createTimeline({
       worldId,
-      name: 'Main Timeline',
+      name: n === 0 ? 'Main Timeline' : `Timeline ${n + 1}`,
       description: '',
-      color: '#60a5fa',
+      color: TIMELINE_COLORS[n % TIMELINE_COLORS.length],
     })
     setActiveTimelineId(tl.id)
   }
@@ -56,17 +82,43 @@ export default function TimelineView() {
       {timelines.length > 1 && (
         <div className="flex items-center gap-1 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-1">
           {timelines.map((tl) => (
-            <button
+            <div
               key={tl.id}
-              onClick={() => setActiveTimelineId(tl.id)}
-              className={`rounded px-3 py-1 text-xs transition-colors ${
+              className={`group flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors ${
                 currentTimelineId === tl.id
                   ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
                   : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
               }`}
             >
-              {tl.name}
-            </button>
+              {renamingId === tl.id ? (
+                <input
+                  ref={renameInputRef}
+                  className="w-28 rounded border border-[hsl(var(--ring))] bg-[hsl(var(--background))] px-1 py-px text-xs text-[hsl(var(--foreground))] outline-none"
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onBlur={commitRename}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') commitRename()
+                    if (e.key === 'Escape') setRenamingId(null)
+                  }}
+                />
+              ) : (
+                <button
+                  onClick={() => setActiveTimelineId(tl.id)}
+                  onDoubleClick={() => startRename(tl.id, tl.name)}
+                  title="Double-click to rename"
+                >
+                  {tl.name}
+                </button>
+              )}
+              <button
+                onClick={() => handleDeleteTimeline(tl.id, tl.name)}
+                className="opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity text-[hsl(var(--muted-foreground))] hover:text-red-400"
+                title="Delete timeline"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
           ))}
         </div>
       )}
@@ -85,6 +137,9 @@ export default function TimelineView() {
               <Link2 className="h-4 w-4" /> Link Timelines
             </Button>
           )}
+          <Button size="sm" variant="outline" onClick={handleCreateTimeline}>
+            <Layers className="h-4 w-4" /> New Timeline
+          </Button>
           <Button size="sm" variant="outline" onClick={() => setAiChapterOpen(true)} disabled={!currentTimelineId}>
             <Sparkles className="h-4 w-4" /> Generate with AI
           </Button>

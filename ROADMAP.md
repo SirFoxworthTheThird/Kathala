@@ -43,13 +43,42 @@ Detailed specs live in `docs/features/`:
 - [x] **[Themes](docs/features/themes.md)** — nine themes, CSS variable injection, per-theme fonts and overlays
 - [x] **[Timeline multi-select](docs/features/timeline-multi-select.md)** — checkboxes, shift-click range, bulk delete/move/tag, drag-to-reorder chapters
 
-- [ ] **[Timeline Relationships](docs/features/timeline-relationships.md)** — typed links between timelines (frame narrative, historical echo, embedded fiction, alternate); ghost pins on map for frame anchors; palimpsest echo rings for shared geography; cross-timeline artifacts; depth-scoped playback
+- [x] **[Timeline Relationships](docs/features/timeline-relationships.md)** — typed links between timelines (frame narrative, historical echo, embedded fiction, alternate); ghost pins on map for frame anchors; palimpsest echo rings for shared geography; cross-timeline artifacts; depth-scoped playback
   - [x] Phase 1: data model + plumbing (types, DB v14, CRUD hooks, store fields, export v4)
   - [x] Phase 2: relationship management UI (panel, "Link Timelines" button, dashboard tile)
-  - [ ] Phase 3: playback scoping
-  - [ ] Phase 4: frame narrative map rendering (ghost pins)
-  - [ ] Phase 5: historical echo map rendering (echo rings)
-  - [ ] Phase 6: cross-timeline artifacts
+  - [x] Phase 3: playback scoping
+  - [x] Phase 4: frame narrative map rendering (ghost pins)
+  - [x] Phase 5: historical echo map rendering (echo rings)
+  - [x] Phase 6: cross-timeline artifacts
+
+---
+
+## Architectural Work
+
+Technical debt and structural improvements identified in architectural review. Tackle in order — each is a prerequisite or low-risk warmup for the next.
+
+- [ ] **Fix DB version declaration order** — swap `version(13)` and `version(14)` blocks in `src/db/database.ts` so versions read 10→11→12→13→14 in source order. Dexie sorts at runtime so this is cosmetic, but the current order misleads anyone adding a v15. 2-line change.
+
+- [ ] **Fix `resolveCharacterPin` return type** — add `ResolvedPinPosition` type alias in `src/features/maps/MapExplorerView.tsx`; remove two `null as unknown as Character` casts from the function body. Callers already overwrite `character` immediately. ~10-line change.
+
+- [ ] **Extract shared `selectBestSnapshots` generic** — create `src/lib/snapshotUtils.ts` with one generic `selectBestSnapshots<T>` utility; wire it into the four hook files that each copy the same "highest sortKey at or before active event" algorithm (`useSnapshots`, `useLocationSnapshots`, `useItemSnapshots`, `useRelationshipSnapshots`). Rename the existing `selectBestSnapshots` export in `useRelationshipSnapshots.ts` to `selectBestRelationshipSnapshots` first to avoid import collision. Public signatures unchanged; no downstream breakage.
+
+- [ ] **Split `ChapterTimelineBar.tsx`** (844 lines) — create `src/components/timeline/` directory:
+  - `timelineStyles.ts` — three pure style-helper functions
+  - `TimelineCallout.tsx` — callout popover component
+  - `StackedTrack.tsx` — frame narrative dual-track component
+  - `SingleTrack.tsx` — single-track render extracted from main component
+  - `useTimelinePlayback.ts` — playback `useEffect` + `handlePlayPause`
+  - Fix latent Rules of Hooks violation: two `useMemo` calls inside an `if (frameRel)` block must move to the unconditional component top level.
+
+- [ ] **Split `MapExplorerView.tsx`** (1,867 lines) — create focused files in `src/features/maps/`:
+  - `mapUtils.ts` — `buildSequentialQueue`, `resolveCharacterPin`, constants (pure, no React)
+  - `SetScaleDialog.tsx` — scale calibration dialog
+  - `MapFilterBar.tsx` — `MapFilters` type, `DEFAULT_MAP_FILTERS`, filter bar UI (preserve exports for existing consumers)
+  - `MapSidebar.tsx` — all six sidebar section components under one `<MapSidebar>` wrapper
+  - `usePlaybackQueue.ts` — playback queue state + effects
+  - `useMapViewState.ts` — all data-fetching hooks and derived memos from `MapView`
+  - After extraction `MapView` handles only local UI state, event handlers, and canvas/panel JSX (~400 lines).
 
 ---
 

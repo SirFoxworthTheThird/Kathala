@@ -4,7 +4,8 @@
       "Bash(grep -v '^\\\\s*//')",
       "Read(//c/Projects/mine/PlotWeave/src/features/worlds/**)",
       "Bash(powershell.exe -Command \"cd 'f:\\\\Projects\\\\WorldBreaker'; npm run build 2>&1\")",
-      "Bash(powershell.exe -Command \"cd 'f:\\\\Projects\\\\WorldBreaker'; npm run test 2>&1\")"
+      "Bash(powershell.exe -Command \"cd 'f:\\\\Projects\\\\WorldBreaker'; npm run test 2>&1\")",
+      "Bash(grep -c \"async function\\\\|export\" /f/Projects/WorldBreaker/src/db/hooks/*.ts)"
     ]
   },
   "hooks": {
@@ -14,10 +15,10 @@
           {
             "type": "command",
             "command": "/c/Python311/python.exe \"c:/Projects/mine/PlotWeave/.claude/build-and-test.py\"",
-            "asyncRewake": true,
-            "rewakeMessage": "Build/test hook output:",
+            "timeout": 120,
             "statusMessage": "Building and running tests…",
-            "timeout": 120
+            "asyncRewake": true,
+            "rewakeMessage": "Build/test hook output:"
           }
         ]
       }

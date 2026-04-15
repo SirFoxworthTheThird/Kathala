@@ -41,6 +41,7 @@ export interface WorldExportFile {
   timelineRelationships: TimelineRelationship[]
   crossTimelineArtifacts: CrossTimelineArtifact[]
   relationshipPositions?: Record<string, { x: number; y: number }>
+  suppressedIssueIds?: string[]
 }
 
 /** Companion file produced by exportWorldSplit — contains only the binary blobs. */
@@ -135,6 +136,15 @@ export async function exportWorld(worldId: string): Promise<void> {
     if (raw) relationshipPositions = JSON.parse(raw)
   } catch { /* ignore */ }
 
+  let suppressedIssueIds: string[] | undefined
+  try {
+    const raw = localStorage.getItem('plotweave-ui')
+    if (raw) {
+      const ui = JSON.parse(raw) as { state?: { suppressedIssueIds?: Record<string, string[]> } }
+      suppressedIssueIds = ui.state?.suppressedIssueIds?.[worldId] ?? []
+    }
+  } catch { /* ignore */ }
+
   const exportData: WorldExportFile = {
     version: EXPORT_VERSION,
     type: 'full',
@@ -159,6 +169,7 @@ export async function exportWorld(worldId: string): Promise<void> {
     timelineRelationships,
     crossTimelineArtifacts,
     relationshipPositions,
+    suppressedIssueIds,
   }
 
   triggerDownload(JSON.stringify(exportData), `${world.name.replace(/[^a-z0-9]/gi, '_')}.pwk`)
@@ -244,6 +255,15 @@ export async function exportWorldSplit(worldId: string): Promise<void> {
     if (raw) relationshipPositions = JSON.parse(raw)
   } catch { /* ignore */ }
 
+  let suppressedIssueIds: string[] | undefined
+  try {
+    const raw = localStorage.getItem('plotweave-ui')
+    if (raw) {
+      const ui = JSON.parse(raw) as { state?: { suppressedIssueIds?: Record<string, string[]> } }
+      suppressedIssueIds = ui.state?.suppressedIssueIds?.[worldId] ?? []
+    }
+  } catch { /* ignore */ }
+
   const safeName = world.name.replace(/[^a-z0-9]/gi, '_')
   const exportedAt = Date.now()
 
@@ -272,6 +292,7 @@ export async function exportWorldSplit(worldId: string): Promise<void> {
     timelineRelationships,
     crossTimelineArtifacts,
     relationshipPositions,
+    suppressedIssueIds,
   }
   triggerDownload(JSON.stringify(dataFile), `${safeName}.pwk`)
 
@@ -571,6 +592,18 @@ export async function importWorld(file: File): Promise<string> {
 
   if (data.relationshipPositions && typeof data.relationshipPositions === 'object') {
     localStorage.setItem(`wb-rel-pos-${data.world.id}`, JSON.stringify(data.relationshipPositions))
+  }
+
+  if (Array.isArray(data.suppressedIssueIds) && data.suppressedIssueIds.length > 0) {
+    try {
+      const raw = localStorage.getItem('plotweave-ui')
+      const ui = raw ? (JSON.parse(raw) as { state?: Record<string, unknown> }) : { state: {} }
+      if (!ui.state) ui.state = {}
+      const existing = (ui.state.suppressedIssueIds ?? {}) as Record<string, string[]>
+      existing[data.world.id] = data.suppressedIssueIds
+      ui.state.suppressedIssueIds = existing
+      localStorage.setItem('plotweave-ui', JSON.stringify(ui))
+    } catch { /* ignore */ }
   }
 
   return data.world.id

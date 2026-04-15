@@ -129,7 +129,8 @@ function CategorySection({ title, icon: Icon, issues, focusedIdx, baseIdx, suppr
 export function ContinuityChecker() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
-  const { checkerOpen, setCheckerOpen, setActiveEventId, suppressedIssueIds, toggleSuppressIssue } = useAppStore()
+  const { checkerOpen, setCheckerOpen, setActiveEventId, suppressedIssueIds: suppressedByWorld, toggleSuppressIssue } = useAppStore()
+  const suppressedIssueIds = suppressedByWorld[worldId ?? ''] ?? []
   const [showSuppressed, setShowSuppressed] = useState(false)
   const [focusedIdx, setFocusedIdx] = useState(-1)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -640,15 +641,15 @@ export function ContinuityChecker() {
               <CategorySection title="Characters" icon={Users} issues={charIssues}
                 focusedIdx={categoryFocusedIdx(charIssues)} baseIdx={0}
                 suppressedIds={suppressedSet} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i) => toggleSuppressIssue(i.id)} />
+                onNavigate={handleNavigate} onSuppress={(i) => toggleSuppressIssue(worldId ?? '', i.id)} />
               <CategorySection title="Items" icon={Package} issues={itemIssues}
                 focusedIdx={categoryFocusedIdx(itemIssues)} baseIdx={visibleChar.length}
                 suppressedIds={suppressedSet} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i) => toggleSuppressIssue(i.id)} />
+                onNavigate={handleNavigate} onSuppress={(i) => toggleSuppressIssue(worldId ?? '', i.id)} />
               <CategorySection title="Relationships" icon={Network} issues={relIssues}
                 focusedIdx={categoryFocusedIdx(relIssues)} baseIdx={visibleChar.length + visibleItem.length}
                 suppressedIds={suppressedSet} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i) => toggleSuppressIssue(i.id)} />
+                onNavigate={handleNavigate} onSuppress={(i) => toggleSuppressIssue(worldId ?? '', i.id)} />
             </>
           )}
         </div>
