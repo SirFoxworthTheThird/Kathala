@@ -5,7 +5,10 @@
       "Read(//c/Projects/mine/PlotWeave/src/features/worlds/**)",
       "Bash(powershell.exe -Command \"cd 'f:\\\\Projects\\\\WorldBreaker'; npm run build 2>&1\")",
       "Bash(powershell.exe -Command \"cd 'f:\\\\Projects\\\\WorldBreaker'; npm run test 2>&1\")",
-      "Bash(grep -c \"async function\\\\|export\" /f/Projects/WorldBreaker/src/db/hooks/*.ts)"
+      "Bash(grep -c \"async function\\\\|export\" /f/Projects/WorldBreaker/src/db/hooks/*.ts)",
+      "Bash(node -e ':*)",
+      "Bash(node f:/Projects/WorldBreaker/scripts/fix-notw-locations.mjs)",
+      "Bash(node f:/Projects/WorldBreaker/scripts/enrich-notw.mjs)"
     ]
   },
   "hooks": {
