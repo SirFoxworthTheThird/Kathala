@@ -56,9 +56,10 @@ function InventorySparkline({ counts }: { counts: number[] }) {
 export default function CharacterArcView() {
   const { worldId } = useParams<{ worldId: string }>()
   const { activeEventId, setActiveEventId } = useAppStore()
-  const [viewMode, setViewMode]           = useState<'chapter' | 'event'>('chapter')
-  const [filterText, setFilterText]       = useState('')
-  const [expandedKey, setExpandedKey]     = useState<string | null>(null) // `${charId}:${colId}`
+  const [viewMode, setViewMode]             = useState<'chapter' | 'event'>('chapter')
+  const [filterText, setFilterText]         = useState('')
+  const [expandedKey, setExpandedKey]       = useState<string | null>(null) // `${charId}:${colId}`
+  const [selectedTimelineId, setSelectedTimelineId] = useState<string | null>(null) // null = all
   const tableRef = useRef<HTMLDivElement>(null)
 
   const timelines  = useTimelines(worldId ?? null)
@@ -70,7 +71,7 @@ export default function CharacterArcView() {
 
   // Sort chapters by timeline order then chapter number
   const timelineOrder  = new Map(timelines.map((tl, i) => [tl.id, i]))
-  const sortedChapters = [...chapters].sort((a, b) => {
+  const allSortedChapters = [...chapters].sort((a, b) => {
     const tlDiff = (timelineOrder.get(a.timelineId) ?? 0) - (timelineOrder.get(b.timelineId) ?? 0)
     return tlDiff !== 0 ? tlDiff : a.number - b.number
   })
@@ -82,8 +83,8 @@ export default function CharacterArcView() {
   const activeEvent     = allEvents.find((e) => e.id === activeEventId) ?? null
   const activeChapterId = activeEvent?.chapterId ?? null
 
-  // Events sorted by chapter order then sortOrder
-  const sortedEvents = [...allEvents].sort((a, b) => {
+  // All events sorted by (timeline order → chapter number → sortOrder)
+  const allSortedEvents = [...allEvents].sort((a, b) => {
     const chA = chapterById.get(a.chapterId)
     const chB = chapterById.get(b.chapterId)
     const tlDiff = (timelineOrder.get(chA?.timelineId ?? '') ?? 0) - (timelineOrder.get(chB?.timelineId ?? '') ?? 0)
@@ -92,7 +93,15 @@ export default function CharacterArcView() {
     return chDiff !== 0 ? chDiff : a.sortOrder - b.sortOrder
   })
 
-  // Map chapter → last / first event ID
+  // Apply timeline filter to columns (chapters / events shown)
+  const sortedChapters = selectedTimelineId
+    ? allSortedChapters.filter((ch) => ch.timelineId === selectedTimelineId)
+    : allSortedChapters
+  const sortedEvents = selectedTimelineId
+    ? allSortedEvents.filter((ev) => chapterById.get(ev.chapterId)?.timelineId === selectedTimelineId)
+    : allSortedEvents
+
+  // Map chapter → last / first event ID (from ALL events, for click-to-activate)
   const lastEventByChapter  = new Map<string, string>()
   const firstEventByChapter = new Map<string, string>()
   for (const ev of allEvents) {
@@ -104,19 +113,42 @@ export default function CharacterArcView() {
     if (!curFirstEv || ev.sortOrder < curFirstEv.sortOrder) firstEventByChapter.set(ev.chapterId, ev.id)
   }
 
-  // snapMap[characterId][eventId] → snapshot
-  const snapMap = new Map<string, Map<string, typeof snapshots[0]>>()
+  // ── Snapshot inheritance ────────────────────────────────────────────────────
+  // Position map: eventId → index in allSortedEvents (cross-timeline ordering).
+  // We use allSortedEvents (not the filtered view) so inheritance is correct even
+  // when a snapshot lives on a timeline that's currently hidden.
+  const eventPosition = new Map(allSortedEvents.map((ev, i) => [ev.id, i]))
+
+  // Per-character: sorted array of { pos, snap } — built once, reused per cell.
+  type SnapEntry = { pos: number; snap: typeof snapshots[0] }
+  const sortedSnapsByChar = new Map<string, SnapEntry[]>()
   for (const snap of snapshots) {
-    if (!snapMap.has(snap.characterId)) snapMap.set(snap.characterId, new Map())
-    snapMap.get(snap.characterId)!.set(snap.eventId, snap)
+    const pos = eventPosition.get(snap.eventId)
+    if (pos === undefined) continue
+    if (!sortedSnapsByChar.has(snap.characterId)) sortedSnapsByChar.set(snap.characterId, [])
+    sortedSnapsByChar.get(snap.characterId)!.push({ pos, snap })
+  }
+  for (const arr of sortedSnapsByChar.values()) arr.sort((a, b) => a.pos - b.pos)
+
+  /** Best inherited snapshot at or before the given event position. */
+  function getBestSnap(charId: string, targetPos: number) {
+    const arr = sortedSnapsByChar.get(charId)
+    if (!arr) return undefined
+    let best: typeof snapshots[0] | undefined
+    for (const { pos, snap } of arr) {
+      if (pos <= targetPos) best = snap
+      else break
+    }
+    return best
   }
 
-  // Inventory count series per character (across sortedEvents order)
+  // Inventory count sparkline — uses inheritance across ALL events for the full shape
   const sparklineData = new Map<string, number[]>()
   for (const char of characters) {
-    const charSnaps = snapMap.get(char.id)
-    if (!charSnaps) { sparklineData.set(char.id, []); continue }
-    sparklineData.set(char.id, sortedEvents.map((ev) => charSnaps.get(ev.id)?.inventoryItemIds.length ?? 0))
+    sparklineData.set(char.id, allSortedEvents.map((ev) => {
+      const pos = eventPosition.get(ev.id) ?? 0
+      return getBestSnap(char.id, pos)?.inventoryItemIds.length ?? 0
+    }))
   }
 
   // Filtered character list
@@ -124,6 +156,8 @@ export default function CharacterArcView() {
   const displayedChars = q
     ? characters.filter((c) => c.name.toLowerCase().includes(q))
     : characters
+
+  const multiTimeline = timelines.length > 1
 
   // Export to PNG
   const handleExport = useCallback(async () => {
@@ -168,6 +202,24 @@ export default function CharacterArcView() {
   }
 
   const colWidth = viewMode === 'event' ? 100 : 110
+
+  // Build timeline header spans: [{timeline, colSpan}] for the header row
+  const timelineSpans = (() => {
+    const cols = viewMode === 'chapter' ? sortedChapters : sortedEvents
+    const spans: Array<{ id: string; name: string; colSpan: number }> = []
+    for (const col of cols) {
+      const tlId   = viewMode === 'chapter'
+        ? (col as typeof sortedChapters[0]).timelineId
+        : (chapterById.get((col as typeof sortedEvents[0]).chapterId)?.timelineId ?? '')
+      const tlName = timelines.find((t) => t.id === tlId)?.name ?? tlId
+      if (spans.length && spans[spans.length - 1].id === tlId) {
+        spans[spans.length - 1].colSpan++
+      } else {
+        spans.push({ id: tlId, name: tlName, colSpan: 1 })
+      }
+    }
+    return spans
+  })()
 
   function toggleExpand(charId: string, colId: string) {
     const key = `${charId}:${colId}`
@@ -278,6 +330,37 @@ export default function CharacterArcView() {
           </button>
         </div>
 
+        {/* Timeline filter pills — only shown when world has multiple timelines */}
+        {multiTimeline && (
+          <div className="ml-1 flex items-center gap-1">
+            <button
+              className={cn(
+                'rounded px-2 py-0.5 text-xs transition-colors border',
+                selectedTimelineId === null
+                  ? 'border-[hsl(var(--accent))] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                  : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
+              )}
+              onClick={() => setSelectedTimelineId(null)}
+            >
+              All
+            </button>
+            {timelines.map((tl) => (
+              <button
+                key={tl.id}
+                className={cn(
+                  'rounded px-2 py-0.5 text-xs transition-colors border',
+                  selectedTimelineId === tl.id
+                    ? 'border-[hsl(var(--accent))] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                    : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
+                )}
+                onClick={() => setSelectedTimelineId(tl.id)}
+              >
+                {tl.name}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Character filter */}
         <div className="relative ml-1 flex items-center">
           <Search className="pointer-events-none absolute left-2 h-3 w-3 text-[hsl(var(--muted-foreground))]" />
@@ -322,6 +405,21 @@ export default function CharacterArcView() {
       <div ref={tableRef} className="flex-1 overflow-auto">
         <table className="border-collapse text-xs" style={{ tableLayout: 'fixed' }}>
           <thead className="sticky top-0 z-10 bg-[hsl(var(--card))]">
+            {/* Timeline header row — only rendered when multiple timelines exist */}
+            {multiTimeline && (
+              <tr>
+                <th className="sticky left-0 z-20 min-w-[180px] max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-[hsl(var(--card))]" />
+                {timelineSpans.map((span) => (
+                  <th
+                    key={span.id}
+                    colSpan={span.colSpan}
+                    className="border-b border-r border-[hsl(var(--border))] bg-[hsl(var(--accent)/0.12)] px-2 py-1 text-center text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]"
+                  >
+                    {span.name}
+                  </th>
+                ))}
+              </tr>
+            )}
             <tr>
               <th className="sticky left-0 z-20 min-w-[180px] max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-2 text-left font-semibold text-[hsl(var(--muted-foreground))]">
                 Character
@@ -377,9 +475,8 @@ export default function CharacterArcView() {
           </thead>
           <tbody>
             {displayedChars.map((char, rowIdx) => {
-              const charSnaps  = snapMap.get(char.id)
-              const color      = charColor(char)
-              const sparkline  = sparklineData.get(char.id) ?? []
+              const color     = charColor(char)
+              const sparkline = sparklineData.get(char.id) ?? []
 
               return (
                 <tr
@@ -401,12 +498,14 @@ export default function CharacterArcView() {
 
                   {viewMode === 'chapter' && sortedChapters.map((ch) => {
                     const lastEvId = lastEventByChapter.get(ch.id)
-                    const snap = lastEvId ? charSnaps?.get(lastEvId) : undefined
+                    const targetPos = lastEvId !== undefined ? (eventPosition.get(lastEvId) ?? -1) : -1
+                    const snap = targetPos >= 0 ? getBestSnap(char.id, targetPos) : undefined
                     return <SnapCell key={ch.id} colId={ch.id} charId={char.id} snap={snap} isActive={ch.id === activeChapterId} />
                   })}
 
                   {viewMode === 'event' && sortedEvents.map((ev) => {
-                    const snap = charSnaps?.get(ev.id)
+                    const targetPos = eventPosition.get(ev.id) ?? -1
+                    const snap = targetPos >= 0 ? getBestSnap(char.id, targetPos) : undefined
                     return <SnapCell key={ev.id} colId={ev.id} charId={char.id} snap={snap} isActive={ev.id === activeEventId} />
                   })}
                 </tr>
