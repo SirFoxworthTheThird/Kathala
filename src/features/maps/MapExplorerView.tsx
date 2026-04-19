@@ -156,7 +156,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     if (!route) return
     const pts = route.waypoints
       .map((wp) => typeof wp === 'string' ? routeMarkerPositions.get(wp) : [wp.y, wp.x] as [number, number])
-      .filter(Boolean) as [number, number][]
+      .filter((pt): pt is [number, number] => pt != null && Number.isFinite(pt[0]) && Number.isFinite(pt[1]))
     if (pts.length === 0) return
     if (pts.length === 1) { mapRef.current?.panTo(pts[0]); return }
     const lats = pts.map((p) => p[0])
@@ -484,7 +484,9 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const routeMarkerPositions = useMemo(() => {
     const map = new Map<string, [number, number]>()
     for (const m of allMarkers) {
-      map.set(m.id, [m.y, m.x])
+      if (Number.isFinite(m.x) && Number.isFinite(m.y)) {
+        map.set(m.id, [m.y, m.x])
+      }
     }
     return map
   }, [allMarkers])
@@ -722,7 +724,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
                   typeof wp === 'string'
                     ? routeMarkerPositions.get(wp)
                     : [wp.y, wp.x] as [number, number]
-                ).filter(Boolean) as [number, number][]
+                ).filter((pt): pt is [number, number] => pt != null && Number.isFinite(pt[0]) && Number.isFinite(pt[1]))
               : undefined}
             locationStatuses={locationStatusMap}
             isDraggingCharacter={isDraggingCharacter}

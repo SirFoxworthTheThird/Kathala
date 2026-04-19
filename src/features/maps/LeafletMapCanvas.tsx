@@ -872,7 +872,7 @@ export function LeafletMapCanvas({
                 ? routeMarkerPositions?.get(wp)
                 : [wp.y, wp.x] as [number, number]
             )
-            .filter(Boolean) as [number, number][]
+            .filter((pt): pt is [number, number] => pt != null && Number.isFinite(pt[0]) && Number.isFinite(pt[1]))
           if (pts.length < 2) return null
           const isDashed = route.routeType === 'border' || route.routeType === 'trail'
           const isRouteSelected = selectedRouteId === route.id

@@ -141,6 +141,41 @@ export function buildSequentialQueue(
   }
 
   /**
+   * Last-resort fallback for sub-map arrivals with no reverse portal and no
+   * manual movement trail.  Scans routes on `layerId` for one that reaches
+   * `toMarkerId`, picks the other endpoint as the spawn position, and returns
+   * both the spawn point and the resolved route geometry so the character can
+   * walk in along the road/corridor rather than teleporting.
+   */
+  function routeEntryFallback(
+    toMarkerId: string,
+    layerId: string,
+  ): { entryPt: { x: number; y: number }; pts: Array<{ x: number; y: number }> } | null {
+    for (const route of mapRoutes) {
+      if (route.mapLayerId !== layerId) continue
+      const wps = route.waypoints
+      const toIdx = wps.findIndex((wp) => wp === toMarkerId)
+      if (toIdx === -1) continue
+
+      // Try both ends of the route; prefer whichever is further from toIdx
+      // (longer path = more visible animation). Require the end to be a named
+      // marker so we can resolve a definite start position.
+      const candidates = [0, wps.length - 1].filter((i) => i !== toIdx)
+      for (const endIdx of candidates) {
+        const endWp = wps[endIdx]
+        if (typeof endWp !== 'string' || endWp === toMarkerId) continue
+        const m = markerById.get(endWp)
+        if (!validCoords(m) || m.mapLayerId !== layerId) continue
+        const pts = routeTrailPts(endWp, toMarkerId, layerId)
+        if (pts && pts.length >= 2) {
+          return { entryPt: { x: m.x, y: m.y }, pts }
+        }
+      }
+    }
+    return null
+  }
+
+  /**
    * Trail waypoints for a character moving between two markers:
    * 1. Manual CharacterMovement trail (explicit author override)
    * 2. MapRoute geometry connecting the two markers
@@ -321,6 +356,12 @@ export function buildSequentialQueue(
       const waypoints2: Record<string, Array<{ x: number; y: number }>> = {}
       const fadeIn2: string[] = []
 
+      // Compute route-based entry fallback once for the group — only needed
+      // when there is no explicit reverse portal marker on the sub-map.
+      const arrivalRouteFallback = !validCoords(portalOnCurr)
+        ? routeEntryFallback(currMarkerId, currLayerId)
+        : null
+
       for (const { charId } of group) {
         to2[charId] = { x: currMarker.x, y: currMarker.y }
         let entryPt: { x: number; y: number } | null = null
@@ -334,6 +375,10 @@ export function buildSequentialQueue(
           const entryMarkerId = validCoords(portalOnCurr) ? portalOnCurr.id : null
           const pts = trailPts(charId, currLayerId, entryMarkerId, currMarkerId)
           if (pts) waypoints2[charId] = pts
+        } else if (arrivalRouteFallback) {
+          // No portal or manual trail — walk in along the nearest route
+          from2[charId] = arrivalRouteFallback.entryPt
+          waypoints2[charId] = arrivalRouteFallback.pts
         } else {
           fadeIn2.push(charId)
         }
