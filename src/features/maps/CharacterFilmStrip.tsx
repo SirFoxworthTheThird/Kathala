@@ -36,7 +36,6 @@ export function CharacterFilmStrip({
     if (snapshots.length === 0 || orderedEvents.length === 0) return []
 
     const chapterById = new Map(chapters.map((c) => [c.id, c]))
-    const eventOrderMap = new Map(orderedEvents.map((e, i) => [e.id, i]))
 
     // For each event that has a snapshot with a location, pick the best
     // (highest-order event in sequence). We want one entry per distinct

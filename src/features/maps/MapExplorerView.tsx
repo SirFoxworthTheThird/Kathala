@@ -29,12 +29,12 @@ import { PIN_TRAVEL_MS, type PlaybackStep, buildSequentialQueue, characterColor,
 import { MapFilterBar, DEFAULT_MAP_FILTERS } from './MapFilterBar'
 import type { MapFilters } from './MapFilterBar'
 import { SetScaleDialog } from './SetScaleDialog'
-import { LayersSection, CharactersSection, LocationsSection, ItemsSection, RoutesSection, RegionsSection, ROUTE_TYPE_COLORS, REGION_STATUS_COLORS } from './MapSidebar'
+import { LayersSection, CharactersSection, LocationsSection, ItemsSection, RoutesSection, RegionsSection } from './MapSidebar'
 import { CharacterFilmStrip } from './CharacterFilmStrip'
 import { RouteDrawHud, RegionDrawHud } from './DrawHuds'
-import { useMapRoutes, createMapRoute } from '@/db/hooks/useMapRoutes'
-import { useMapRegions, useEventRegionSnapshots, createMapRegion } from '@/db/hooks/useMapRegions'
-import type { RouteType, MapRegionStatus } from '@/types'
+import { useMapRoutes } from '@/db/hooks/useMapRoutes'
+import { useMapRegions, useBestRegionSnapshots } from '@/db/hooks/useMapRegions'
+import type { MapRegionStatus } from '@/types'
 
 // ─── MapView ──────────────────────────────────────────────────────────────────
 
@@ -92,7 +92,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
 
   const mapRoutes = useMapRoutes(layerId)
   const mapRegions = useMapRegions(layerId)
-  const regionSnaps = useEventRegionSnapshots(activeEventId)
+  const regionSnaps = useBestRegionSnapshots(worldId, activeEventId)
   const regionStatusMap = useMemo(
     () => new Map<string, MapRegionStatus>(regionSnaps.map((s) => [s.regionId, s.status])),
     [regionSnaps]
@@ -119,8 +119,6 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const [routeWaypoints, setRouteWaypoints] = useState<Array<string | { x: number; y: number }>>([])
   const [drawingRegion, setDrawingRegion] = useState(false)
   const [regionVertices, setRegionVertices] = useState<Array<{ x: number; y: number }>>([])
-  const [routeNameDialog, setRouteNameDialog] = useState(false)
-  const [regionNameDialog, setRegionNameDialog] = useState(false)
   const { setSelectedLocationMarkerId, selectedLocationMarkerId, pushMapLayer, setActiveMapLayerId, isPlayingStory, playbackSpeed } = useAppStore()
   const mapRef = useRef<L.Map | null>(null)
 
@@ -151,6 +149,33 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     setSelectedCharacterId(null)
     setSelectedLocationMarkerId(marker.id)
     mapRef.current?.panTo([marker.y, marker.x])
+  }
+
+  function focusOnRoute(routeId: string) {
+    const route = mapRoutes.find((r) => r.id === routeId)
+    if (!route) return
+    const pts = route.waypoints
+      .map((wp) => typeof wp === 'string' ? routeMarkerPositions.get(wp) : [wp.y, wp.x] as [number, number])
+      .filter(Boolean) as [number, number][]
+    if (pts.length === 0) return
+    if (pts.length === 1) { mapRef.current?.panTo(pts[0]); return }
+    const lats = pts.map((p) => p[0])
+    const lngs = pts.map((p) => p[1])
+    mapRef.current?.fitBounds(
+      [[Math.min(...lats), Math.min(...lngs)], [Math.max(...lats), Math.max(...lngs)]],
+      { padding: [48, 48], maxZoom: mapRef.current.getZoom() }
+    )
+  }
+
+  function focusOnRegion(regionId: string) {
+    const region = mapRegions.find((r) => r.id === regionId)
+    if (!region || region.vertices.length === 0) return
+    const lats = region.vertices.map((v) => v.y)
+    const lngs = region.vertices.map((v) => v.x)
+    mapRef.current?.fitBounds(
+      [[Math.min(...lats), Math.min(...lngs)], [Math.max(...lats), Math.max(...lngs)]],
+      { padding: [48, 48], maxZoom: mapRef.current.getZoom() }
+    )
   }
 
   function focusOnCharacter(characterId: string) {
@@ -339,7 +364,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
 
     const queue = buildSequentialQueue(
       prevSnapshots, snapshots, allMarkers, movements,
-      PIN_TRAVEL_MS[playbackSpeed], pinAnimationKeyRef,
+      PIN_TRAVEL_MS[playbackSpeed], pinAnimationKeyRef, mapRoutes,
     )
     setPlaybackQueue(queue)
     setPlaybackStepIdx(0)
@@ -558,7 +583,10 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           mapLayerId={layerId}
           worldId={worldId}
           selectedRouteId={selectedRouteId}
-          onSelectRoute={setSelectedRouteId}
+          onSelectRoute={(id) => {
+            setSelectedRouteId((prev) => (prev === id ? null : id))
+            if (id) focusOnRoute(id)
+          }}
           drawingRoute={drawingRoute}
           onStartDraw={() => { setDrawingRoute(true); setRouteWaypoints([]) }}
           onCancelDraw={() => { setDrawingRoute(false); setRouteWaypoints([]) }}
@@ -568,7 +596,10 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           worldId={worldId}
           activeEventId={activeEventId}
           selectedRegionId={selectedRegionId}
-          onSelectRegion={setSelectedRegionId}
+          onSelectRegion={(id) => {
+            setSelectedRegionId((prev) => (prev === id ? null : id))
+            if (id) focusOnRegion(id)
+          }}
           drawingRegion={drawingRegion}
           onStartDraw={() => { setDrawingRegion(true); setRegionVertices([]) }}
           onCancelDraw={() => { setDrawingRegion(false); setRegionVertices([]) }}
@@ -739,6 +770,16 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             scaleMode={scaleMode || measureMode}
             directMapClick={drawingRegion || drawingRoute}
             onScalePoints={measureMode ? handleMeasurePoints : handleScalePoints}
+            selectedRouteId={selectedRouteId}
+            selectedRegionId={selectedRegionId}
+            onRouteClick={(id) => {
+              setSelectedRouteId((prev) => (prev === id ? null : id))
+              if (id) focusOnRoute(id)
+            }}
+            onRegionClick={(id) => {
+              setSelectedRegionId((prev) => (prev === id ? null : id))
+              if (id) focusOnRegion(id)
+            }}
             measureLine={
               measureResult && layer.scalePixelsPerUnit && layer.scaleUnit
                 ? { p1: measureResult.p1, p2: measureResult.p2, label: formatDistance(measureResult.distPx, layer.scalePixelsPerUnit, layer.scaleUnit) } satisfies MeasureLine

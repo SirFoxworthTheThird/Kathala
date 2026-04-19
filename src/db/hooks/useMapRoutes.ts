@@ -16,7 +16,7 @@ export async function createMapRoute(data: {
   mapLayerId: string
   name: string
   routeType: RouteType
-  waypoints: string[]
+  waypoints: Array<string | { x: number; y: number }>
   color?: string
   notes?: string
 }): Promise<MapRoute> {

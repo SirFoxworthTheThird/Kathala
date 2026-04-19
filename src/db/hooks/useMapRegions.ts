@@ -1,7 +1,10 @@
+import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { generateId } from '@/lib/id'
 import type { MapRegion, MapRegionSnapshot, MapRegionStatus } from '@/types'
+import { selectBestSnapshots } from '@/lib/snapshotUtils'
+import { useWorldEvents, useWorldChapters } from './useTimeline'
 
 export function useMapRegions(mapLayerId: string | null) {
   return useLiveQuery(
@@ -52,6 +55,25 @@ export function useEventRegionSnapshots(eventId: string | null) {
     () => eventId ? db.mapRegionSnapshots.where('eventId').equals(eventId).toArray() : [],
     [eventId],
     []
+  )
+}
+
+/**
+ * Returns the best region snapshot per region at or before `activeEventId`,
+ * using the same inherited-state pattern as character/location snapshots.
+ */
+export function useBestRegionSnapshots(worldId: string | null, activeEventId: string | null) {
+  const allSnaps = useLiveQuery(
+    () => worldId ? db.mapRegionSnapshots.where('worldId').equals(worldId).toArray() : [],
+    [worldId],
+    []
+  )
+  const allEvents = useWorldEvents(worldId)
+  const allChapters = useWorldChapters(worldId)
+
+  return useMemo(
+    () => selectBestSnapshots(allSnaps, activeEventId, allEvents, allChapters, (s) => s.regionId),
+    [allSnaps, activeEventId, allEvents, allChapters]
   )
 }
 

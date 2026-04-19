@@ -107,6 +107,15 @@ New capabilities identified in the maps UX review. Detailed specs in `docs/featu
 
 - [x] **Map export as image** — Export button in map header; uses `html2canvas` to capture the Leaflet container as PNG.
 
+### Map Routes & Regions — Depth Pass
+
+- [x] **Region status editing UI** — Inline status picker in sidebar when a region is selected and an event is active; calls `upsertMapRegionSnapshot` so status changes are saved per-event. Also shows a notes field.
+- [x] **Region snapshot inheritance** — `useBestRegionSnapshots` follows the standard best-snapshot pattern (highest sortKey ≤ active event) so a region keeps its last-recorded status rather than reverting to "active" at every new event.
+- [x] **Canvas click → select route / region** — Clicking a route polyline or region polygon on the canvas selects it in the sidebar (highlights the row, same as clicking the sidebar entry).
+- [ ] **Route & region detail panel** — Slide-in panel (matching `LocationDetailPanel`) for a selected route/region: rename, edit notes, and for routes change the route type and waypoints list; for regions change fill color and opacity.
+- [ ] **Continuity checker route integration** — When checking travel time between two locations, look up any direct route between them and apply route-type speed multipliers (road fastest, trail slowest); surface a warning when a character traverses a `destroyed` or `abandoned` border region.
+- [x] **Character movement follows routes** — During playback, if a MapRoute exists on the same layer connecting a character's previous and current location markers, the pin animates along the route geometry instead of a straight line. Manual `CharacterMovement` waypoints take priority; route geometry is the automatic fallback.
+
 ---
 
 ## UX Improvements

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import {
   Users, Map as MapIcon, MapPin, Package, Layers,
   ChevronRight, ChevronDown, Trash2, Undo2, X, Search,
-  Route, Hexagon, Plus, Check, Pencil,
+  Route, Hexagon, Plus,
 } from 'lucide-react'
 import { useAppStore, useMapLayerHistory } from '@/store'
 import { useMapLayers, deleteMapLayer } from '@/db/hooks/useMapLayers'
@@ -11,8 +11,8 @@ import { useItems } from '@/db/hooks/useItems'
 import { useEventItemPlacements } from '@/db/hooks/useItemPlacements'
 import { useItemSnapshot, upsertItemSnapshot } from '@/db/hooks/useItemSnapshots'
 import { useCrossTimelineArtifacts } from '@/db/hooks/useTimelineRelationships'
-import { useMapRoutes, createMapRoute, updateMapRoute, deleteMapRoute } from '@/db/hooks/useMapRoutes'
-import { useMapRegions, updateMapRegion, deleteMapRegion, useEventRegionSnapshots, upsertMapRegionSnapshot } from '@/db/hooks/useMapRegions'
+import { useMapRoutes, deleteMapRoute } from '@/db/hooks/useMapRoutes'
+import { useMapRegions, deleteMapRegion, useBestRegionSnapshots, upsertMapRegionSnapshot } from '@/db/hooks/useMapRegions'
 import { PortraitImage } from '@/components/PortraitImage'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import type { Character, CharacterSnapshot, Item, LocationMarker, MapLayer, RouteType, MapRegionStatus } from '@/types'
@@ -564,7 +564,7 @@ export const ROUTE_TYPE_COLORS: Record<RouteType, string> = {
 
 export function RoutesSection({
   mapLayerId,
-  worldId,
+  worldId: _worldId,
   selectedRouteId,
   onSelectRoute,
   drawingRoute,
@@ -677,10 +677,34 @@ export function RegionsSection({
   onCancelDraw: () => void
 }) {
   const regions = useMapRegions(mapLayerId)
-  const regionSnaps = useEventRegionSnapshots(activeEventId)
+  const regionSnaps = useBestRegionSnapshots(worldId, activeEventId)
   const snapByRegionId = useMemo(() => new Map(regionSnaps.map((s) => [s.regionId, s])), [regionSnaps])
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [editingNotes, setEditingNotes] = useState<Record<string, string>>({})
   const confirmRegion = confirmId ? regions.find((r) => r.id === confirmId) : null
+
+  function handleStatusChange(regionId: string, status: MapRegionStatus) {
+    if (!activeEventId) return
+    upsertMapRegionSnapshot({
+      worldId,
+      regionId,
+      eventId: activeEventId,
+      status,
+      notes: editingNotes[regionId] ?? snapByRegionId.get(regionId)?.notes ?? '',
+    })
+  }
+
+  function handleNotesSave(regionId: string) {
+    if (!activeEventId) return
+    const currentSnap = snapByRegionId.get(regionId)
+    upsertMapRegionSnapshot({
+      worldId,
+      regionId,
+      eventId: activeEventId,
+      status: currentSnap?.status ?? 'active',
+      notes: editingNotes[regionId] ?? '',
+    })
+  }
 
   return (
     <SidebarSection title="Regions" icon={Hexagon} count={regions.length} defaultOpen={false}>
@@ -708,40 +732,80 @@ export function RegionsSection({
           regions.map((region) => {
             const snap = snapByRegionId.get(region.id)
             const status: MapRegionStatus = snap?.status ?? 'active'
+            const isSelected = selectedRegionId === region.id
+            const notes = editingNotes[region.id] ?? snap?.notes ?? ''
             return (
-              <div
-                key={region.id}
-                className={`group flex items-center gap-2 rounded-sm mx-1 px-2 py-1.5 cursor-pointer transition-colors ${
-                  selectedRegionId === region.id
-                    ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
-                    : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]'
-                }`}
-                onClick={() => onSelectRegion(selectedRegionId === region.id ? null : region.id)}
-              >
-                <span
-                  className="h-2 w-2 rounded-full shrink-0 ring-1 ring-black/20"
-                  style={{ background: region.fillColor }}
-                />
-                <div className="flex flex-col flex-1 min-w-0">
-                  <span className="truncate text-xs leading-tight">{region.name}</span>
-                  {activeEventId && (
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <span
-                        className="h-1.5 w-1.5 rounded-full shrink-0"
-                        style={{ background: REGION_STATUS_COLORS[status] }}
-                      />
-                      <span className="text-[9px] capitalize text-[hsl(var(--muted-foreground))] leading-tight">
-                        {status}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setConfirmId(region.id) }}
-                  className="shrink-0 opacity-0 group-hover:opacity-100 text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
+              <div key={region.id} className="flex flex-col">
+                {/* Region row */}
+                <div
+                  className={`group flex items-center gap-2 rounded-sm mx-1 px-2 py-1.5 cursor-pointer transition-colors ${
+                    isSelected
+                      ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                      : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]'
+                  }`}
+                  onClick={() => onSelectRegion(isSelected ? null : region.id)}
                 >
-                  <Trash2 className="h-3 w-3" />
-                </button>
+                  <span
+                    className="h-2 w-2 rounded-full shrink-0 ring-1 ring-black/20"
+                    style={{ background: region.fillColor }}
+                  />
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <span className="truncate text-xs leading-tight">{region.name}</span>
+                    {activeEventId && (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <span
+                          className="h-1.5 w-1.5 rounded-full shrink-0"
+                          style={{ background: REGION_STATUS_COLORS[status] }}
+                        />
+                        <span className="text-[9px] capitalize text-[hsl(var(--muted-foreground))] leading-tight">
+                          {status}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setConfirmId(region.id) }}
+                    className="shrink-0 opacity-0 group-hover:opacity-100 text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+
+                {/* Inline status editor — only when selected and an event is active */}
+                {isSelected && activeEventId && (
+                  <div className="mx-2 mb-2 flex flex-col gap-1.5 rounded border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.4)] px-2 py-2">
+                    <span className="text-[9px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                      Status at this event
+                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {ALL_REGION_STATUSES.map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => handleStatusChange(region.id, s)}
+                          className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] capitalize transition-colors ${
+                            status === s
+                              ? 'bg-[hsl(var(--ring))] text-[hsl(var(--background))]'
+                              : 'border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
+                          }`}
+                        >
+                          <span
+                            className="h-1.5 w-1.5 rounded-full"
+                            style={{ background: status === s ? 'currentColor' : REGION_STATUS_COLORS[s] }}
+                          />
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      value={notes}
+                      onChange={(e) => setEditingNotes((prev) => ({ ...prev, [region.id]: e.target.value }))}
+                      onBlur={() => handleNotesSave(region.id)}
+                      placeholder="Notes for this event…"
+                      rows={2}
+                      className="w-full resize-none rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 py-1 text-[11px] text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:outline-none focus:border-[hsl(var(--ring))] transition-colors"
+                    />
+                  </div>
+                )}
               </div>
             )
           })

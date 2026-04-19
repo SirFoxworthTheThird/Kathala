@@ -1,6 +1,6 @@
 import type { MutableRefObject } from 'react'
 import type { PlaybackSpeed } from '@/store'
-import type { CharacterSnapshot, LocationMarker, CharacterMovement } from '@/types'
+import type { CharacterSnapshot, LocationMarker, CharacterMovement, MapRoute } from '@/types'
 import type { CharacterPin, PinAnimation } from './LeafletMapCanvas'
 
 /** How long character pins animate across the map per playback speed (ms) */
@@ -76,6 +76,7 @@ export function buildSequentialQueue(
   movements: CharacterMovement[],
   duration: number,
   keyRef: MutableRefObject<number>,
+  mapRoutes: MapRoute[] = [],
 ): PlaybackStep[] {
   const steps: PlaybackStep[] = []
   const markerById = new Map(allMarkers.map((m) => [m.id, m]))
@@ -87,8 +88,8 @@ export function buildSequentialQueue(
     return !!m && Number.isFinite(m.x) && Number.isFinite(m.y)
   }
 
-  /** Collect per-character trail waypoints on a specific layer. */
-  function trailPts(charId: string, layerId: string): Array<{ x: number; y: number }> | null {
+  /** Collect per-character trail waypoints on a specific layer (manually drawn movement). */
+  function manualTrailPts(charId: string, layerId: string): Array<{ x: number; y: number }> | null {
     const mov = movements.find((mv) => mv.characterId === charId)
     if (!mov || mov.waypoints.length < 2) return null
     const pts = mov.waypoints
@@ -96,6 +97,67 @@ export function buildSequentialQueue(
       .filter((m): m is LocationMarker => !!m && m.mapLayerId === layerId && Number.isFinite(m.x) && Number.isFinite(m.y))
       .map((m) => ({ x: m.x, y: m.y }))
     return pts.length >= 2 ? pts : null
+  }
+
+  /**
+   * Find a MapRoute that connects fromMarkerId → toMarkerId (forward or reversed)
+   * on the given layer, and return the resolved pixel waypoints between those two
+   * endpoints (inclusive). Free-form {x,y} waypoints in the route pass through
+   * as-is; marker-ID waypoints are resolved via markerById.
+   */
+  function routeTrailPts(
+    fromMarkerId: string,
+    toMarkerId: string,
+    layerId: string,
+  ): Array<{ x: number; y: number }> | null {
+    for (const route of mapRoutes) {
+      if (route.mapLayerId !== layerId) continue
+      const wps = route.waypoints
+
+      // Find the indices of both endpoint markers in the waypoint list
+      const fromIdx = wps.findIndex((wp) => wp === fromMarkerId)
+      const toIdx   = wps.findIndex((wp) => wp === toMarkerId)
+      if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) continue
+
+      // Extract the slice in the correct direction
+      const slice = fromIdx < toIdx
+        ? wps.slice(fromIdx, toIdx + 1)
+        : [...wps.slice(toIdx, fromIdx + 1)].reverse()
+
+      // Resolve each waypoint to {x, y}
+      const pts: Array<{ x: number; y: number }> = []
+      for (const wp of slice) {
+        if (typeof wp === 'string') {
+          const m = markerById.get(wp)
+          if (!m || !Number.isFinite(m.x)) return null // broken route, skip
+          pts.push({ x: m.x, y: m.y })
+        } else {
+          pts.push(wp)
+        }
+      }
+      if (pts.length >= 2) return pts
+    }
+    return null
+  }
+
+  /**
+   * Trail waypoints for a character moving between two markers:
+   * 1. Manual CharacterMovement trail (explicit author override)
+   * 2. MapRoute geometry connecting the two markers
+   * 3. null → straight-line animation
+   */
+  function trailPts(
+    charId: string,
+    layerId: string,
+    fromMarkerId?: string | null,
+    toMarkerId?: string | null,
+  ): Array<{ x: number; y: number }> | null {
+    const manual = manualTrailPts(charId, layerId)
+    if (manual) return manual
+    if (fromMarkerId && toMarkerId) {
+      return routeTrailPts(fromMarkerId, toMarkerId, layerId)
+    }
+    return null
   }
 
   /**
@@ -183,7 +245,7 @@ export function buildSequentialQueue(
         to[charId] = { x: currMarker.x, y: currMarker.y }
         if (validCoords(prevMarker)) {
           from[charId] = { x: prevMarker.x, y: prevMarker.y }
-          const pts = trailPts(charId, currLayerId)
+          const pts = trailPts(charId, currLayerId, prevMarkerId, currMarkerId)
           if (pts) waypoints[charId] = pts
         } else {
           fadeIn.push(charId)
@@ -230,7 +292,8 @@ export function buildSequentialQueue(
           if (exitPt) {
             departureFrom[charId] = { x: prevMarker.x, y: prevMarker.y }
             departureTo[charId] = exitPt
-            const pts = trailPts(charId, prevLayerId)
+            const exitMarkerId = validCoords(portalOnPrev) ? portalOnPrev.id : null
+            const pts = trailPts(charId, prevLayerId, prevMarkerId, exitMarkerId)
             if (pts) departureWp[charId] = pts
             hasDeparture = true
           }
@@ -268,7 +331,8 @@ export function buildSequentialQueue(
         }
         if (entryPt) {
           from2[charId] = entryPt
-          const pts = trailPts(charId, currLayerId)
+          const entryMarkerId = validCoords(portalOnCurr) ? portalOnCurr.id : null
+          const pts = trailPts(charId, currLayerId, entryMarkerId, currMarkerId)
           if (pts) waypoints2[charId] = pts
         } else {
           fadeIn2.push(charId)

@@ -28,6 +28,9 @@ function makeExport(overrides: Partial<WorldExportFile> = {}): WorldExportFile {
     travelModes: [],
     timelineRelationships: [],
     crossTimelineArtifacts: [],
+    mapRoutes: [],
+    mapRegions: [],
+    mapRegionSnapshots: [],
     ...overrides,
   }
 }

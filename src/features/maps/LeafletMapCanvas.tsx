@@ -367,6 +367,14 @@ interface LeafletMapCanvasProps {
   directMapClick?: boolean
   /** In-progress route draw points — shown as a preview polyline */
   drawRoutePoints?: [number, number][]
+  /** Called when the user clicks a persistent route polyline */
+  onRouteClick?: (routeId: string) => void
+  /** Called when the user clicks a persistent region polygon */
+  onRegionClick?: (regionId: string) => void
+  /** ID of the currently selected route (highlighted on canvas) */
+  selectedRouteId?: string | null
+  /** ID of the currently selected region (highlighted on canvas) */
+  selectedRegionId?: string | null
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -379,6 +387,7 @@ export function LeafletMapCanvas({
   echoMarkers, onEchoRingClick, showLocationLabels = true, journeyLines = [],
   mapRoutes = [], routeMarkerPositions, mapRegions = [], regionStatuses, drawRegionVertices,
   directMapClick = false, drawRoutePoints,
+  onRouteClick, onRegionClick, selectedRouteId, selectedRegionId,
 }: LeafletMapCanvasProps) {
   const { setIsAnimating } = useAppStore()
   const internalMapRef = useRef<L.Map | null>(null)
@@ -823,13 +832,22 @@ export function LeafletMapCanvas({
           const verts = region.vertices.map((v) => [v.y, v.x] as [number, number])
           if (verts.length < 3) return null
           const status = regionStatuses?.get(region.id) ?? 'active'
+          const isRegionSelected = selectedRegionId === region.id
           const fillOpacity = status === 'destroyed' ? 0.08 : status === 'abandoned' ? 0.12 : region.opacity * 0.45
           const color = region.fillColor
           return (
             <Polygon
               key={region.id}
               positions={verts}
-              pathOptions={{ color, fillColor: color, weight: 1.5, opacity: 0.7, fillOpacity }}
+              pathOptions={{
+                color,
+                fillColor: color,
+                weight: isRegionSelected ? 2.5 : 1.5,
+                opacity: isRegionSelected ? 1 : 0.7,
+                fillOpacity: isRegionSelected ? Math.min(fillOpacity + 0.1, 0.7) : fillOpacity,
+                dashArray: isRegionSelected ? '5 4' : undefined,
+              }}
+              eventHandlers={{ click: () => onRegionClick?.(region.id) }}
             >
               <Tooltip direction="center" permanent className="region-label-tooltip">
                 <span style={{ fontSize: '10px', fontWeight: 600 }}>{region.name}</span>
@@ -857,16 +875,20 @@ export function LeafletMapCanvas({
             .filter(Boolean) as [number, number][]
           if (pts.length < 2) return null
           const isDashed = route.routeType === 'border' || route.routeType === 'trail'
+          const isRouteSelected = selectedRouteId === route.id
           return (
             <Polyline
               key={route.id}
               positions={pts}
               pathOptions={{
                 color: route.color ?? '#94a3b8',
-                weight: route.routeType === 'river' || route.routeType === 'sea_route' ? 3 : 2,
-                opacity: 0.75,
+                weight: isRouteSelected
+                  ? (route.routeType === 'river' || route.routeType === 'sea_route' ? 5 : 4)
+                  : (route.routeType === 'river' || route.routeType === 'sea_route' ? 3 : 2),
+                opacity: isRouteSelected ? 1 : 0.75,
                 dashArray: isDashed ? '4 6' : undefined,
               }}
+              eventHandlers={{ click: () => onRouteClick?.(route.id) }}
             >
               <Tooltip sticky>{route.name}</Tooltip>
             </Polyline>
