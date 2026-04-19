@@ -13,6 +13,7 @@ const RelationshipGraphView = lazy(() => import('@/features/relationships/Relati
 const TimelineView = lazy(() => import('@/features/timeline/TimelineView'))
 const ChapterDetailView = lazy(() => import('@/features/timeline/ChapterDetailView'))
 const CharacterArcView = lazy(() => import('@/features/arc/CharacterArcView'))
+const WorldSettingsView = lazy(() => import('@/features/worlds/WorldSettingsView'))
 
 function Loading() {
   return (
@@ -45,6 +46,7 @@ export const router = createHashRouter([
       { path: 'timeline', element: <Wrap><TimelineView /></Wrap> },
       { path: 'timeline/:chapterId', element: <Wrap><ChapterDetailView /></Wrap> },
       { path: 'arc', element: <Wrap><CharacterArcView /></Wrap> },
+      { path: 'settings', element: <Wrap><WorldSettingsView /></Wrap> },
     ],
   },
 ])

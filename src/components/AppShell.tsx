@@ -14,9 +14,9 @@ export function AppShell() {
   const { worldId } = useParams<{ worldId: string }>()
   const { setActiveWorldId, setSearchOpen } = useAppStore()
   const isDashboard = !!useMatch('/worlds/:worldId')
-  const isRelationships = !!useMatch('/worlds/:worldId/relationships')
   const isArc = !!useMatch('/worlds/:worldId/arc')
-  const showBar = !isDashboard && !isRelationships && !isArc
+  const isSettings = !!useMatch('/worlds/:worldId/settings')
+  const showBar = !isDashboard && !isArc && !isSettings
   const barHeight = useBarHeight(showBar ? worldId : null)
 
   useEffect(() => {
