@@ -177,8 +177,37 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   async function handleExportMap() {
     const mapEl = document.querySelector('.leaflet-container') as HTMLElement | null
     if (!mapEl) return
+
+    // Pre-resolve the CSS custom properties used in divIcon inline HTML so that
+    // html2canvas (which runs in an isolated iframe where var() can't be looked up)
+    // receives real colour/font values instead of unresolvable var() references.
+    const rootStyles = getComputedStyle(document.documentElement)
+    const rv = (name: string) => rootStyles.getPropertyValue(name).trim()
+    const varReplacements: Record<string, string> = {
+      'hsl(var(--leaflet-card))':   `hsl(${rv('--leaflet-card')})`,
+      'hsl(var(--ring))':            `hsl(${rv('--ring')})`,
+      'hsl(var(--leaflet-border))': `hsl(${rv('--leaflet-border')})`,
+      'hsl(var(--leaflet-fg))':     `hsl(${rv('--leaflet-fg')})`,
+      'hsl(var(--leaflet-muted))':  `hsl(${rv('--leaflet-muted')})`,
+      'var(--font-body)':            rv('--font-body') || 'sans-serif',
+    }
+
     const html2canvas = (await import('html2canvas')).default
-    const canvas = await html2canvas(mapEl, { useCORS: true, allowTaint: true, logging: false })
+    const canvas = await html2canvas(mapEl, {
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      onclone: (_doc, clonedEl) => {
+        clonedEl.querySelectorAll<HTMLElement>('[style]').forEach((el) => {
+          let style = el.getAttribute('style') ?? ''
+          for (const [pattern, value] of Object.entries(varReplacements)) {
+            style = style.replaceAll(pattern, value)
+          }
+          el.setAttribute('style', style)
+        })
+      },
+    })
+
     const link = document.createElement('a')
     link.download = `${layer?.name ?? 'map'}.png`
     link.href = canvas.toDataURL('image/png')
