@@ -118,6 +118,36 @@ New capabilities identified in the maps UX review. Detailed specs in `docs/featu
 
 ---
 
+## New Feature Work
+
+### Loose Ends
+
+- [x] **Travel mode visible in timeline** — the History tab and CharacterDetailView show snapshot state but omit travel mode; surface `travelModeId` in the History tab entry for each event where a snapshot was recorded. Also show it in the continuity checker travel-time detail message (currently only shows speed, not which mode name was used).
+
+### Map
+
+- [ ] **Map annotations / free-text labels** — ability to place text labels (or sticky notes) directly on the map canvas, independent of location markers. Stored as a new `MapAnnotation` table (worldId, mapLayerId, x, y, text, fontSize, color); shown as non-interactive overlays on the Leaflet canvas; editable via a small inline popover on click. DB v16.
+
+- [ ] **Playback sub-map transition polish** — when a character crosses into or out of a sub-map during playback, the camera currently cuts instantly. Add a brief zoom-out → layer switch → zoom-in animation so the transition feels intentional rather than jarring.
+
+### Search
+
+- [x] **Search palette covers routes & regions** — extend the Ctrl+K search palette to include MapRoute and MapRegion as two new entity types (with Route / Hexagon icons); selecting a result navigates to the Maps view and focuses the selected route or region (same `focusOnRoute` / `focusOnRegion` logic already used in the sidebar).
+
+### Character
+
+- [x] **History tab enrichment** — for each snapshot entry in the History tab, show travel mode (name, not just ID), route used (if a MapRoute connects the previous and current location on the same layer), and straight-line distance covered. Makes the tab genuinely informative instead of just a state dump.
+
+### Continuity
+
+- [x] **Continuity checker: character inside destroyed/occupied region** — complement the existing "traverses destroyed region" check with a stationary check: if a character's snapshot places them at a location that is *inside* a region with status `destroyed` or `occupied` at that event, surface a warning. Uses the same `pathCrossesPolygon` geometry already in the checker (point-in-polygon case).
+
+### AI
+
+- [x] **Map AI dialog — extract location moves from prose** — a "paste travel narrative" dialog on the Maps view; sends the pasted text plus the current map's location list to Claude; returns a structured list of character → location assignments per event; previews the moves before applying them as snapshots. Mirrors the chapter AI dialog pattern.
+
+---
+
 ## UX Improvements
 
 Findings from the UX audit (April 2026).

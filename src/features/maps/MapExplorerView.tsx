@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import L from 'leaflet'
 import { useParams } from 'react-router-dom'
-import { Plus, Upload, Map as MapIcon, Ruler, X, Route, Download } from 'lucide-react'
+import { Plus, Upload, Map as MapIcon, Ruler, X, Route, Download, Sparkles } from 'lucide-react'
 import { useAppStore, useActiveMapLayerId } from '@/store'
 import { useRootMapLayers, updateMapLayer } from '@/db/hooks/useMapLayers'
 import { Button } from '@/components/ui/button'
@@ -22,6 +22,7 @@ import { LayersSection, CharactersSection, LocationsSection, ItemsSection, Route
 import { CharacterFilmStrip } from './CharacterFilmStrip'
 import { RouteDrawHud, RegionDrawHud } from './DrawHuds'
 import { RouteDetailPanel, RegionDetailPanel } from './RouteRegionDetailPanel'
+import { MapAIDialog } from './MapAIDialog'
 import { useMapViewState } from './useMapViewState'
 import { usePlaybackQueue } from './usePlaybackQueue'
 import { upsertSnapshot, fetchSnapshot, useWorldSnapshots } from '@/db/hooks/useSnapshots'
@@ -45,6 +46,8 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const {
     setSelectedLocationMarkerId, selectedLocationMarkerId, pushMapLayer,
     setActiveMapLayerId, isPlayingStory, playbackSpeed,
+    pendingFocusRouteId, setPendingFocusRouteId,
+    pendingFocusRegionId, setPendingFocusRegionId,
   } = useAppStore()
 
   // ── Local UI state ────────────────────────────────────────────────────────
@@ -55,6 +58,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const [pendingPos, setPendingPos] = useState<{ x: number; y: number } | null>(null)
   const [pendingDropCharacterId, setPendingDropCharacterId] = useState<string | null>(null)
   const [uploadOpen, setUploadOpen] = useState(false)
+  const [aiDialogOpen, setAiDialogOpen] = useState(false)
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null)
   const [scaleMode, setScaleMode] = useState(false)
   const [scaleDialog, setScaleDialog] = useState<{ pixelDist: number } | null>(null)
@@ -81,6 +85,23 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   useEffect(() => {
     crossLayerPanTargetRef.current = null
   }, [layerId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Consume pending route/region focus from search palette ────────────────
+  useEffect(() => {
+    if (pendingFocusRouteId && mapRoutes.length > 0) {
+      setSelectedRouteId(pendingFocusRouteId)
+      focusOnRoute(pendingFocusRouteId)
+      setPendingFocusRouteId(null)
+    }
+  }, [pendingFocusRouteId, mapRoutes]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (pendingFocusRegionId && mapRegions.length > 0) {
+      setSelectedRegionId(pendingFocusRegionId)
+      focusOnRegion(pendingFocusRegionId)
+      setPendingFocusRegionId(null)
+    }
+  }, [pendingFocusRegionId, mapRegions]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Focus helpers ─────────────────────────────────────────────────────────
   function focusOnLocation(marker: LocationMarker) {
@@ -397,6 +418,16 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               size="sm"
               variant="outline"
               className="gap-1.5 text-xs"
+              onClick={() => setAiDialogOpen(true)}
+              title="Extract location moves from prose with AI"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              AI Moves
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs"
               onClick={() => setUploadOpen(true)}
             >
               <Upload className="h-3.5 w-3.5" />
@@ -691,6 +722,11 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
         worldId={worldId}
         parentMapId={layerId}
         onCreated={(newLayerId) => { setActiveMapLayerId(newLayerId); setUploadOpen(false) }}
+      />
+      <MapAIDialog
+        worldId={worldId}
+        open={aiDialogOpen}
+        onOpenChange={setAiDialogOpen}
       />
     </div>
   )

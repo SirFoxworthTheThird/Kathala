@@ -240,6 +240,36 @@ export function ContinuityChecker() {
       return (chapNumById.get(ev.chapterId) ?? 0) * 10_000 + ev.sortOrder
     }
 
+    // ── Shared lookup maps ──────────────────────────────────────────────────
+
+    const markerById = new Map(allMarkers.map((m) => [m.id, m]))
+    const layerById  = new Map(allLayers.map((l) => [l.id, l]))
+
+    // Best region snapshot per region at a given event order
+    const regionSnapHistory = new Map<string, Array<{ order: number; status: string }>>()
+    for (const rs of allRegionSnapshots ?? []) {
+      if (!regionSnapHistory.has(rs.regionId)) regionSnapHistory.set(rs.regionId, [])
+      regionSnapHistory.get(rs.regionId)!.push({ order: eventOrder(rs.eventId), status: rs.status })
+    }
+    for (const hist of regionSnapHistory.values()) hist.sort((a, b) => a.order - b.order)
+
+    function bestRegionStatus(regionId: string, atOrder: number): string | null {
+      const hist = regionSnapHistory.get(regionId)
+      if (!hist || hist.length === 0) return null
+      let best: string | null = null
+      for (const entry of hist) {
+        if (entry.order <= atOrder) best = entry.status
+        else break
+      }
+      return best
+    }
+
+    const regionsByLayer = new Map<string, MapRegion[]>()
+    for (const region of allMapRegions ?? []) {
+      if (!regionsByLayer.has(region.mapLayerId)) regionsByLayer.set(region.mapLayerId, [])
+      regionsByLayer.get(region.mapLayerId)!.push(region)
+    }
+
     // ── Character checks ────────────────────────────────────────────────────
 
     // Group snapshots by character
@@ -331,6 +361,37 @@ export function ContinuityChecker() {
         navigatePath: `/worlds/${worldId}/timeline/${ev?.chapterId ?? snap.eventId}`,
         eventId: snap.eventId,
       })
+    }
+
+    // ── Character inside destroyed/occupied region ───────────────────────────
+
+    for (const snap of snapshots) {
+      if (!snap.currentLocationMarkerId || !snap.currentMapLayerId) continue
+      const marker = markerById.get(snap.currentLocationMarkerId)
+      if (!marker) continue
+
+      const snapOrder = eventOrder(snap.eventId)
+      const char = charById.get(snap.characterId)
+      const ev = eventById.get(snap.eventId)
+      const ch = ev ? chapById.get(ev.chapterId) : undefined
+
+      const layerRegions = regionsByLayer.get(snap.currentMapLayerId) ?? []
+      for (const region of layerRegions) {
+        if (region.vertices.length < 3) continue
+        const status = bestRegionStatus(region.id, snapOrder)
+        if (status !== 'destroyed' && status !== 'occupied') continue
+        if (!pointInPolygon(marker.x, marker.y, region.vertices)) continue
+
+        out.push({
+          id: `char-in-region-${snap.characterId}-${snap.eventId}-${region.id}`,
+          severity: 'warning',
+          category: 'character',
+          message: `${char?.name ?? '?'} is inside a ${status} region in Ch. ${ch?.number ?? '?'}`,
+          detail: `"${marker.name}" is inside "${region.name}" which is ${status} at this event`,
+          navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+          eventId: snap.eventId,
+        })
+      }
     }
 
     // ── Item checks ─────────────────────────────────────────────────────────
@@ -492,8 +553,6 @@ export function ContinuityChecker() {
 
     // ── Travel distance checks (with route speed multipliers) ───────────────
 
-    const markerById    = new Map(allMarkers.map((m) => [m.id, m]))
-    const layerById     = new Map(allLayers.map((l) => [l.id, l]))
     const travelModeById = new Map(travelModes.map((t) => [t.id, t]))
     const movementKey = (charId: string, eventId: string) => `${charId}:${eventId}`
     const movementByKey = new Map(allMovements.map((m) => [movementKey(m.characterId, m.eventId), m]))
@@ -503,34 +562,6 @@ export function ContinuityChecker() {
     for (const route of allMapRoutes ?? []) {
       if (!routesByLayer.has(route.mapLayerId)) routesByLayer.set(route.mapLayerId, [])
       routesByLayer.get(route.mapLayerId)!.push(route)
-    }
-
-    // Best region snapshot per region at a given event order (for region traversal check)
-    // Pre-build: regionId → sorted [{order, status}]
-    const regionSnapHistory = new Map<string, Array<{ order: number; status: string }>>()
-    for (const rs of allRegionSnapshots ?? []) {
-      if (!regionSnapHistory.has(rs.regionId)) regionSnapHistory.set(rs.regionId, [])
-      regionSnapHistory.get(rs.regionId)!.push({ order: eventOrder(rs.eventId), status: rs.status })
-    }
-    // Sort each history by order
-    for (const hist of regionSnapHistory.values()) hist.sort((a, b) => a.order - b.order)
-
-    function bestRegionStatus(regionId: string, atOrder: number): string | null {
-      const hist = regionSnapHistory.get(regionId)
-      if (!hist || hist.length === 0) return null
-      let best: string | null = null
-      for (const entry of hist) {
-        if (entry.order <= atOrder) best = entry.status
-        else break
-      }
-      return best
-    }
-
-    // Group regions by mapLayerId for fast lookup
-    const regionsByLayer = new Map<string, MapRegion[]>()
-    for (const region of allMapRegions ?? []) {
-      if (!regionsByLayer.has(region.mapLayerId)) regionsByLayer.set(region.mapLayerId, [])
-      regionsByLayer.get(region.mapLayerId)!.push(region)
     }
 
     for (const [charId, charSnaps] of snapsByChar) {
@@ -610,7 +641,7 @@ export function ContinuityChecker() {
             severity: 'warning',
             category: 'character',
             message: `${char.name} can't reach ${toMarker.name} in time`,
-            detail: `${fromMarker.name} → ${toMarker.name} is ~${dist} ${layer.scaleUnit} at ${effectiveSpeed.toFixed(1)} ${layer.scaleUnit}/day${routeNote} — needs ${daysNeeded.toFixed(1)} days but only ${currEvent.travelDays} available (Ch. ${currCh?.number ?? '?'})`,
+            detail: `${fromMarker.name} → ${toMarker.name} is ~${dist} ${layer.scaleUnit} · ${travelMode.name} at ${effectiveSpeed.toFixed(1)} ${layer.scaleUnit}/day${routeNote} — needs ${daysNeeded.toFixed(1)} days but only ${currEvent.travelDays} available (Ch. ${currCh?.number ?? '?'})`,
             navigatePath: `/worlds/${worldId}/timeline/${currEvent.chapterId}`,
             eventId: curr.eventId,
           })
