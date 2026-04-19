@@ -57,15 +57,15 @@ Detailed specs live in `docs/features/`:
 
 Technical debt and structural improvements identified in architectural review. Tackle in order — each is a prerequisite or low-risk warmup for the next.
 
-- [ ] **Fix DB version declaration order** — swap `version(13)` and `version(14)` blocks in `src/db/database.ts` so versions read 10→11→12→13→14 in source order. Dexie sorts at runtime so this is cosmetic, but the current order misleads anyone adding a v15. 2-line change.
+- [x] **Fix DB version declaration order** — swap `version(13)` and `version(14)` blocks in `src/db/database.ts` so versions read 10→11→12→13→14 in source order. Dexie sorts at runtime so this is cosmetic, but the current order misleads anyone adding a v15. 2-line change.
 
-- [ ] **Fix `resolveCharacterPin` return type** — add `ResolvedPinPosition` type alias in `src/features/maps/MapExplorerView.tsx`; remove two `null as unknown as Character` casts from the function body. Callers already overwrite `character` immediately. ~10-line change.
+- [x] **Fix `resolveCharacterPin` return type** — add `ResolvedPinPosition` type alias in `src/features/maps/MapExplorerView.tsx`; remove two `null as unknown as Character` casts from the function body. Callers already overwrite `character` immediately. ~10-line change.
 
-- [ ] **Extract shared `selectBestSnapshots` generic** — create `src/lib/snapshotUtils.ts` with one generic `selectBestSnapshots<T>` utility; wire it into the four hook files that each copy the same "highest sortKey at or before active event" algorithm (`useSnapshots`, `useLocationSnapshots`, `useItemSnapshots`, `useRelationshipSnapshots`). Rename the existing `selectBestSnapshots` export in `useRelationshipSnapshots.ts` to `selectBestRelationshipSnapshots` first to avoid import collision. Public signatures unchanged; no downstream breakage.
+- [x] **Extract shared `selectBestSnapshots` generic** — create `src/lib/snapshotUtils.ts` with one generic `selectBestSnapshots<T>` utility; wire it into the four hook files that each copy the same "highest sortKey at or before active event" algorithm (`useSnapshots`, `useLocationSnapshots`, `useItemSnapshots`, `useRelationshipSnapshots`). Rename the existing `selectBestSnapshots` export in `useRelationshipSnapshots.ts` to `selectBestRelationshipSnapshots` first to avoid import collision. Public signatures unchanged; no downstream breakage.
 
 - [x] **Fix Rules of Hooks violation in `ChapterTimelineBar.tsx`** — two `useMemo` calls (`outerEventsByChapter`, `innerEventsByChapter`) were inside an `if (frameRel)` block, causing a "rendered more hooks than previous render" crash when linking timelines. Moved both to unconditional component top level.
 
-- [ ] **Split `ChapterTimelineBar.tsx`** (844 lines) — create `src/components/timeline/` directory:
+- [x] **Split `ChapterTimelineBar.tsx`** (844 lines) — create `src/components/timeline/` directory:
   - `timelineStyles.ts` — three pure style-helper functions
   - `TimelineCallout.tsx` — callout popover component
   - `StackedTrack.tsx` — frame narrative dual-track component
@@ -78,7 +78,7 @@ Technical debt and structural improvements identified in architectural review. T
   - **Stacked (frame narrative)**: frame track rendered as a visually thinner strip (30px) with a `FRAME` badge; story track is the main full-height track with a `STORY` badge. A vertical ghost cursor line spans both tracks at the active frame event, showing temporal correspondence. Clicking either track activates it. Replaces the indistinguishable same-height rows with colored left-border indicator.
   - **"All" button** renamed to "Clear" or removed in favour of clicking the active event dot to deselect.
 
-- [ ] **Split `MapExplorerView.tsx`** (1,867 lines) — create focused files in `src/features/maps/`:
+- [x] **Split `MapExplorerView.tsx`** (1,867 lines) — create focused files in `src/features/maps/`:
   - `mapUtils.ts` — `buildSequentialQueue`, `resolveCharacterPin`, constants (pure, no React)
   - `SetScaleDialog.tsx` — scale calibration dialog
   - `MapFilterBar.tsx` — `MapFilters` type, `DEFAULT_MAP_FILTERS`, filter bar UI (preserve exports for existing consumers)
@@ -112,8 +112,8 @@ New capabilities identified in the maps UX review. Detailed specs in `docs/featu
 - [x] **Region status editing UI** — Inline status picker in sidebar when a region is selected and an event is active; calls `upsertMapRegionSnapshot` so status changes are saved per-event. Also shows a notes field.
 - [x] **Region snapshot inheritance** — `useBestRegionSnapshots` follows the standard best-snapshot pattern (highest sortKey ≤ active event) so a region keeps its last-recorded status rather than reverting to "active" at every new event.
 - [x] **Canvas click → select route / region** — Clicking a route polyline or region polygon on the canvas selects it in the sidebar (highlights the row, same as clicking the sidebar entry).
-- [ ] **Route & region detail panel** — Slide-in panel (matching `LocationDetailPanel`) for a selected route/region: rename, edit notes, and for routes change the route type and waypoints list; for regions change fill color and opacity.
-- [ ] **Continuity checker route integration** — When checking travel time between two locations, look up any direct route between them and apply route-type speed multipliers (road fastest, trail slowest); surface a warning when a character traverses a `destroyed` or `abandoned` border region.
+- [x] **Route & region detail panel** — Slide-in panel (matching `LocationDetailPanel`) for a selected route/region: rename, edit notes, and for routes change the route type and waypoints list; for regions change fill color and opacity.
+- [x] **Continuity checker route integration** — When checking travel time between two locations, look up any direct route between them and apply route-type speed multipliers (road fastest, trail slowest); surface a warning when a character traverses a `destroyed` or `abandoned` border region.
 - [x] **Character movement follows routes** — During playback, if a MapRoute exists on the same layer connecting a character's previous and current location markers, the pin animates along the route geometry instead of a straight line. Manual `CharacterMovement` waypoints take priority; route geometry is the automatic fallback.
 
 ---

@@ -16,7 +16,60 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { cn } from '@/lib/utils'
 import { pixelDist } from '@/lib/mapScale'
-import type { CharacterSnapshot, ItemPlacement } from '@/types'
+import type { CharacterSnapshot, ItemPlacement, MapRoute, MapRegion, RouteType } from '@/types'
+
+// ── Geometry helpers ──────────────────────────────────────────────────────────
+
+/** Point-in-polygon test using ray casting */
+function pointInPolygon(px: number, py: number, polygon: Array<{ x: number; y: number }>): boolean {
+  let inside = false
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].x, yi = polygon[i].y
+    const xj = polygon[j].x, yj = polygon[j].y
+    if (((yi > py) !== (yj > py)) && (px < ((xj - xi) * (py - yi)) / (yj - yi) + xi)) {
+      inside = !inside
+    }
+  }
+  return inside
+}
+
+/** Check if line segment (ax,ay)→(bx,by) intersects segment (cx,cy)→(dx,dy) */
+function segmentsIntersect(
+  ax: number, ay: number, bx: number, by: number,
+  cx: number, cy: number, dx: number, dy: number
+): boolean {
+  const d1x = bx - ax, d1y = by - ay
+  const d2x = dx - cx, d2y = dy - cy
+  const cross = d1x * d2y - d1y * d2x
+  if (Math.abs(cross) < 1e-10) return false // parallel
+  const t = ((cx - ax) * d2y - (cy - ay) * d2x) / cross
+  const u = ((cx - ax) * d1y - (cy - ay) * d1x) / cross
+  return t >= 0 && t <= 1 && u >= 0 && u <= 1
+}
+
+/** Check if segment AB crosses or touches polygon (path traversal test) */
+function pathCrossesPolygon(
+  ax: number, ay: number, bx: number, by: number,
+  polygon: Array<{ x: number; y: number }>
+): boolean {
+  if (polygon.length < 3) return false
+  if (pointInPolygon(ax, ay, polygon) || pointInPolygon(bx, by, polygon)) return true
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    if (segmentsIntersect(ax, ay, bx, by, polygon[i].x, polygon[i].y, polygon[j].x, polygon[j].y)) return true
+  }
+  return false
+}
+
+// ── Route type speed multipliers ──────────────────────────────────────────────
+
+const ROUTE_SPEED_MULTIPLIERS: Record<RouteType, number> = {
+  road: 1.5,
+  river: 1.2,
+  sea_route: 1.2,
+  trail: 0.6,
+  border: 1.0,
+  custom: 1.0,
+}
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -156,6 +209,18 @@ export function ContinuityChecker() {
   )
   const allLocationSnapshots = useLiveQuery(
     () => worldId ? db.locationSnapshots.where('worldId').equals(worldId).toArray() : [],
+    [worldId], []
+  )
+  const allMapRoutes = useLiveQuery(
+    () => worldId ? db.mapRoutes.where('worldId').equals(worldId).toArray() : [],
+    [worldId], []
+  )
+  const allMapRegions = useLiveQuery(
+    () => worldId ? db.mapRegions.where('worldId').equals(worldId).toArray() : [],
+    [worldId], []
+  )
+  const allRegionSnapshots = useLiveQuery(
+    () => worldId ? db.mapRegionSnapshots.where('worldId').equals(worldId).toArray() : [],
     [worldId], []
   )
 
@@ -425,13 +490,48 @@ export function ContinuityChecker() {
       }
     }
 
-    // ── Travel distance checks ───────────────────────────────────────────────
+    // ── Travel distance checks (with route speed multipliers) ───────────────
 
     const markerById    = new Map(allMarkers.map((m) => [m.id, m]))
     const layerById     = new Map(allLayers.map((l) => [l.id, l]))
     const travelModeById = new Map(travelModes.map((t) => [t.id, t]))
     const movementKey = (charId: string, eventId: string) => `${charId}:${eventId}`
     const movementByKey = new Map(allMovements.map((m) => [movementKey(m.characterId, m.eventId), m]))
+
+    // Group routes by mapLayerId for fast lookup
+    const routesByLayer = new Map<string, MapRoute[]>()
+    for (const route of allMapRoutes ?? []) {
+      if (!routesByLayer.has(route.mapLayerId)) routesByLayer.set(route.mapLayerId, [])
+      routesByLayer.get(route.mapLayerId)!.push(route)
+    }
+
+    // Best region snapshot per region at a given event order (for region traversal check)
+    // Pre-build: regionId → sorted [{order, status}]
+    const regionSnapHistory = new Map<string, Array<{ order: number; status: string }>>()
+    for (const rs of allRegionSnapshots ?? []) {
+      if (!regionSnapHistory.has(rs.regionId)) regionSnapHistory.set(rs.regionId, [])
+      regionSnapHistory.get(rs.regionId)!.push({ order: eventOrder(rs.eventId), status: rs.status })
+    }
+    // Sort each history by order
+    for (const hist of regionSnapHistory.values()) hist.sort((a, b) => a.order - b.order)
+
+    function bestRegionStatus(regionId: string, atOrder: number): string | null {
+      const hist = regionSnapHistory.get(regionId)
+      if (!hist || hist.length === 0) return null
+      let best: string | null = null
+      for (const entry of hist) {
+        if (entry.order <= atOrder) best = entry.status
+        else break
+      }
+      return best
+    }
+
+    // Group regions by mapLayerId for fast lookup
+    const regionsByLayer = new Map<string, MapRegion[]>()
+    for (const region of allMapRegions ?? []) {
+      if (!regionsByLayer.has(region.mapLayerId)) regionsByLayer.set(region.mapLayerId, [])
+      regionsByLayer.get(region.mapLayerId)!.push(region)
+    }
 
     for (const [charId, charSnaps] of snapsByChar) {
       const char = charById.get(charId)
@@ -448,7 +548,32 @@ export function ContinuityChecker() {
         if (prev.currentLocationMarkerId === curr.currentLocationMarkerId &&
             prev.currentMapLayerId === curr.currentMapLayerId) continue
 
+        const fromMarker = prev.currentLocationMarkerId ? markerById.get(prev.currentLocationMarkerId) : undefined
+        const toMarker   = curr.currentLocationMarkerId ? markerById.get(curr.currentLocationMarkerId) : undefined
+        if (!fromMarker || !toMarker || fromMarker.mapLayerId !== toMarker.mapLayerId) continue
+
         const currEvent = eventById.get(curr.eventId)
+        const currOrder = eventOrder(curr.eventId)
+
+        // ── Region traversal: warn if path crosses a destroyed/abandoned region ──
+        const layerRegions = regionsByLayer.get(fromMarker.mapLayerId) ?? []
+        for (const region of layerRegions) {
+          const status = bestRegionStatus(region.id, currOrder)
+          if (status !== 'destroyed' && status !== 'abandoned') continue
+          if (!pathCrossesPolygon(fromMarker.x, fromMarker.y, toMarker.x, toMarker.y, region.vertices)) continue
+
+          out.push({
+            id: `region-traversal-${charId}-${curr.eventId}-${region.id}`,
+            severity: 'warning',
+            category: 'character',
+            message: `${char.name} travels through a ${status} region`,
+            detail: `"${region.name}" is ${status} when ${char.name} moves from ${fromMarker.name} → ${toMarker.name}${currEvent ? ` (Ch. ${chapById.get(currEvent.chapterId)?.number ?? '?'})` : ''}`,
+            navigatePath: currEvent ? `/worlds/${worldId}/timeline/${currEvent.chapterId}` : undefined,
+            eventId: curr.eventId,
+          })
+        }
+
+        // ── Travel time check ─────────────────────────────────────────────────
         if (!currEvent || currEvent.travelDays === null || currEvent.travelDays <= 0) continue
 
         const mov = movementByKey.get(movementKey(charId, curr.eventId))
@@ -456,26 +581,36 @@ export function ContinuityChecker() {
         const travelMode = travelModeId ? travelModeById.get(travelModeId) : undefined
         if (!travelMode) continue
 
-        const fromMarker = prev.currentLocationMarkerId ? markerById.get(prev.currentLocationMarkerId) : undefined
-        const toMarker   = curr.currentLocationMarkerId ? markerById.get(curr.currentLocationMarkerId) : undefined
-        if (!fromMarker || !toMarker || fromMarker.mapLayerId !== toMarker.mapLayerId) continue
-
         const layer = layerById.get(fromMarker.mapLayerId)
         if (!layer?.scalePixelsPerUnit || !layer.scaleUnit) continue
 
+        // Find a route connecting the two markers (on the same layer)
+        const layerRoutes = routesByLayer.get(fromMarker.mapLayerId) ?? []
+        const connectingRoute = layerRoutes.find((r) => {
+          const wps = r.waypoints
+          return wps.some((wp) => wp === prev.currentLocationMarkerId) &&
+                 wps.some((wp) => wp === curr.currentLocationMarkerId)
+        })
+
+        const routeMultiplier = connectingRoute ? ROUTE_SPEED_MULTIPLIERS[connectingRoute.routeType] : 1.0
+        const effectiveSpeed = travelMode.speedPerDay * routeMultiplier
+
         const distPx = pixelDist(fromMarker.x, fromMarker.y, toMarker.x, toMarker.y)
         const distUnits = distPx / layer.scalePixelsPerUnit
-        const daysNeeded = distUnits / travelMode.speedPerDay
+        const daysNeeded = distUnits / effectiveSpeed
 
         if (daysNeeded > currEvent.travelDays) {
           const currCh = chapById.get(currEvent.chapterId)
           const dist = distUnits < 10 ? distUnits.toFixed(1) : Math.round(distUnits).toString()
+          const routeNote = connectingRoute
+            ? ` via ${connectingRoute.routeType.replace('_', ' ')} (×${routeMultiplier} speed)`
+            : ''
           out.push({
             id: `travel-dist-${charId}-${curr.eventId}`,
             severity: 'warning',
             category: 'character',
             message: `${char.name} can't reach ${toMarker.name} in time`,
-            detail: `${fromMarker.name} → ${toMarker.name} is ~${dist} ${layer.scaleUnit} at ${travelMode.speedPerDay} ${layer.scaleUnit}/day — needs ${daysNeeded.toFixed(1)} days but only ${currEvent.travelDays} available (Ch. ${currCh?.number ?? '?'})`,
+            detail: `${fromMarker.name} → ${toMarker.name} is ~${dist} ${layer.scaleUnit} at ${effectiveSpeed.toFixed(1)} ${layer.scaleUnit}/day${routeNote} — needs ${daysNeeded.toFixed(1)} days but only ${currEvent.travelDays} available (Ch. ${currCh?.number ?? '?'})`,
             navigatePath: `/worlds/${worldId}/timeline/${currEvent.chapterId}`,
             eventId: curr.eventId,
           })
@@ -523,7 +658,7 @@ export function ContinuityChecker() {
     }
 
     return out
-  }, [chapters, allEvents, characters, rels, items, snapshots, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, worldId])
+  }, [chapters, allEvents, characters, rels, items, snapshots, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, worldId])
 
   // Focus modal on open so keyboard navigation works immediately
   useEffect(() => {

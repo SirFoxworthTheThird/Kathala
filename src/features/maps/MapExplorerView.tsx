@@ -2,19 +2,8 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import L from 'leaflet'
 import { useParams } from 'react-router-dom'
 import { Plus, Upload, Map as MapIcon, Ruler, X, Route, Download } from 'lucide-react'
-import { useAppStore, useActiveMapLayerId, useActiveEventId, usePlaybackTimelineId, useActiveDepthTimelineId, useActiveOuterEventId } from '@/store'
-import { useRootMapLayers, useMapLayer, useMapLayers, updateMapLayer } from '@/db/hooks/useMapLayers'
-import { useChapters, useTimelines, useWorldEvents } from '@/db/hooks/useTimeline'
-import { useTimelineRelationships } from '@/db/hooks/useTimelineRelationships'
-import { useLocationMarkers, useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
-import { useCharacters } from '@/db/hooks/useCharacters'
-import { useBestSnapshots, useWorldSnapshots, upsertSnapshot, fetchSnapshot } from '@/db/hooks/useSnapshots'
-import { useEventMovements, appendWaypoint } from '@/db/hooks/useMovements'
-import { useEventItemPlacements } from '@/db/hooks/useItemPlacements'
-import { useChapterLocationSnapshots } from '@/db/hooks/useLocationSnapshots'
-import type { CharacterPin, MovementLine, JourneyLine, PinAnimation, ScaleCalibrationPoint, MeasureLine, GhostPin, EchoMarker } from './LeafletMapCanvas'
-import { useEchoLocations } from '@/lib/useEchoLocations'
-import { useBlobUrl, useWorldBlobUrls } from '@/db/hooks/useBlobs'
+import { useAppStore, useActiveMapLayerId } from '@/store'
+import { useRootMapLayers, updateMapLayer } from '@/db/hooks/useMapLayers'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/EmptyState'
 import { LeafletMapCanvas } from './LeafletMapCanvas'
@@ -23,88 +12,47 @@ import { CharacterSnapshotPanel } from './CharacterSnapshotPanel'
 import { UploadMapDialog } from './UploadMapDialog'
 import { AddLocationDialog } from './AddLocationDialog'
 import { StoryNotesOverlay } from './StoryNotesOverlay'
-import type { LocationMarker } from '@/types'
-import { pixelDist, pathPixelLength, formatDistance } from '@/lib/mapScale'
-import { PIN_TRAVEL_MS, type PlaybackStep, buildSequentialQueue, characterColor, resolveCharacterPin } from './mapUtils'
+import type { ScaleCalibrationPoint, MeasureLine, JourneyLine } from './LeafletMapCanvas'
+import { pixelDist, formatDistance } from '@/lib/mapScale'
+import { characterColor } from './mapUtils'
 import { MapFilterBar, DEFAULT_MAP_FILTERS } from './MapFilterBar'
 import type { MapFilters } from './MapFilterBar'
 import { SetScaleDialog } from './SetScaleDialog'
 import { LayersSection, CharactersSection, LocationsSection, ItemsSection, RoutesSection, RegionsSection } from './MapSidebar'
 import { CharacterFilmStrip } from './CharacterFilmStrip'
 import { RouteDrawHud, RegionDrawHud } from './DrawHuds'
-import { useMapRoutes } from '@/db/hooks/useMapRoutes'
-import { useMapRegions, useBestRegionSnapshots } from '@/db/hooks/useMapRegions'
-import type { MapRegionStatus } from '@/types'
+import { RouteDetailPanel, RegionDetailPanel } from './RouteRegionDetailPanel'
+import { useMapViewState } from './useMapViewState'
+import { usePlaybackQueue } from './usePlaybackQueue'
+import { upsertSnapshot, fetchSnapshot, useWorldSnapshots } from '@/db/hooks/useSnapshots'
+import { appendWaypoint } from '@/db/hooks/useMovements'
+import type { LocationMarker } from '@/types'
 
 // ─── MapView ──────────────────────────────────────────────────────────────────
 
 function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
-  const layer = useMapLayer(layerId)
-  const imageUrl = useBlobUrl(layer?.imageId ?? null)
-  const markers = useLocationMarkers(layerId)
-  const allLayers = useMapLayers(worldId)
-  const allMarkers = useAllLocationMarkers(worldId)
-  const characters = useCharacters(worldId)
-  const activeEventId = useActiveEventId()
-  const timelines = useTimelines(worldId)
-  const relationships = useTimelineRelationships(worldId)
-  const playbackTimelineId = usePlaybackTimelineId()
-  const activeDepthTimelineId = useActiveDepthTimelineId()
-  const activeOuterEventId = useActiveOuterEventId()
-  const effectiveTimelineId = playbackTimelineId ?? timelines[0]?.id ?? null
-  const chapters = useChapters(effectiveTimelineId)
-  const allWorldEvents = useWorldEvents(worldId)
+  const {
+    layer, imageUrl, markers, allLayers, allMarkers, characters,
+    activeEventId, orderedEvents,
+    activeChapter, activeChapterTitle,
+    snapshots, prevSnapshots,
+    chapterPlacements, chapters,
+    mapRoutes, mapRegions, regionStatusMap, routeMarkerPositions,
+    locationStatusMap, charPins, ghostPins, echoMarkers, echoLocations,
+    movementLines,
+  } = useMapViewState(worldId, layerId)
 
-  // Frame narrative context — determines whether ghost pins should be shown
-  const frameRel = useMemo(() => {
-    const tlIds = new Set(timelines.map((t) => t.id))
-    return relationships.find(
-      (r) => r.type === 'frame_narrative' && tlIds.has(r.sourceTimelineId) && tlIds.has(r.targetTimelineId)
-    ) ?? null
-  }, [relationships, timelines])
-  const outerTimelineId = frameRel?.sourceTimelineId ?? null
-  const innerTimelineId = frameRel?.targetTimelineId ?? null
-  const isInnerActive = !!(frameRel && activeDepthTimelineId === innerTimelineId)
+  const {
+    setSelectedLocationMarkerId, selectedLocationMarkerId, pushMapLayer,
+    setActiveMapLayerId, isPlayingStory, playbackSpeed,
+  } = useAppStore()
 
-  // Ordered events for the active timeline — used to find the previous event for playback
-  const orderedEvents = useMemo(() => {
-    const chapNumById = new Map(chapters.map((c) => [c.id, c.number]))
-    return [...allWorldEvents]
-      .filter((e) => chapNumById.has(e.chapterId))
-      .sort((a, b) => {
-        const aN = (chapNumById.get(a.chapterId) ?? 0) * 10_000 + a.sortOrder
-        const bN = (chapNumById.get(b.chapterId) ?? 0) * 10_000 + b.sortOrder
-        return aN - bN
-      })
-  }, [allWorldEvents, chapters])
-
-  // Restrict snapshot resolution to events belonging to the active timeline only,
-  // preventing characters from other timelines bleeding into this view.
-  const activeTimelineEventIds = useMemo(() => {
-    return orderedEvents.length > 0 ? new Set(orderedEvents.map((e) => e.id)) : undefined
-  }, [orderedEvents])
-
-  const snapshots = useBestSnapshots(worldId, activeEventId, activeTimelineEventIds)
-  const blobUrls = useWorldBlobUrls(worldId)
-  const movements = useEventMovements(worldId, activeEventId)
-  const chapterPlacements = useEventItemPlacements(activeEventId)
-  const chapterLocSnaps = useChapterLocationSnapshots(activeEventId)
-
-  const mapRoutes = useMapRoutes(layerId)
-  const mapRegions = useMapRegions(layerId)
-  const regionSnaps = useBestRegionSnapshots(worldId, activeEventId)
-  const regionStatusMap = useMemo(
-    () => new Map<string, MapRegionStatus>(regionSnaps.map((s) => [s.regionId, s.status])),
-    [regionSnaps]
-  )
-
+  // ── Local UI state ────────────────────────────────────────────────────────
   const [isDraggingCharacter, setIsDraggingCharacter] = useState(false)
   const crossLayerPanTargetRef = useRef<[number, number] | null>(null)
-  const pinAnimationKeyRef  = useRef(0)
-  const [playbackQueue, setPlaybackQueue]     = useState<PlaybackStep[]>([])
-  const [playbackStepIdx, setPlaybackStepIdx] = useState(0)
-  const [pendingPos, setPendingPos] = useState<{ x: number; y: number } | null>(null)
+  const pinAnimationKeyRef = useRef(0)
   const [addLocationOpen, setAddLocationOpen] = useState(false)
+  const [pendingPos, setPendingPos] = useState<{ x: number; y: number } | null>(null)
   const [pendingDropCharacterId, setPendingDropCharacterId] = useState<string | null>(null)
   const [uploadOpen, setUploadOpen] = useState(false)
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null)
@@ -119,32 +67,22 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const [routeWaypoints, setRouteWaypoints] = useState<Array<string | { x: number; y: number }>>([])
   const [drawingRegion, setDrawingRegion] = useState(false)
   const [regionVertices, setRegionVertices] = useState<Array<{ x: number; y: number }>>([])
-  const { setSelectedLocationMarkerId, selectedLocationMarkerId, pushMapLayer, setActiveMapLayerId, isPlayingStory, playbackSpeed } = useAppStore()
+  const [echoPopoverMarkerId, setEchoPopoverMarkerId] = useState<string | null>(null)
   const mapRef = useRef<L.Map | null>(null)
 
-  async function handleExportMap() {
-    const mapEl = document.querySelector('.leaflet-container') as HTMLElement | null
-    if (!mapEl) return
-    const html2canvas = (await import('html2canvas')).default
-    const canvas = await html2canvas(mapEl, { useCORS: true, allowTaint: true, logging: false })
-    const link = document.createElement('a')
-    link.download = `${layer?.name ?? 'map'}.png`
-    link.href = canvas.toDataURL('image/png')
-    link.click()
-  }
+  // ── Playback queue ─────────────────────────────────────────────────────────
+  const { pinAnimation, handlePlaybackAnimationEnd } = usePlaybackQueue({
+    worldId, layerId, isPlayingStory, playbackSpeed, activeEventId,
+    prevSnapshots, snapshots, allMarkers, mapRoutes,
+    pinAnimationKeyRef, setActiveMapLayerId,
+  })
 
-  function handleScalePoints(p1: ScaleCalibrationPoint, p2: ScaleCalibrationPoint) {
-    const dist = pixelDist(p1.x, p1.y, p2.x, p2.y)
-    setScaleMode(false)
-    setScaleDialog({ pixelDist: dist })
-  }
+  // Clear cross-layer pan target once the new layer has mounted
+  useEffect(() => {
+    crossLayerPanTargetRef.current = null
+  }, [layerId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function handleMeasurePoints(p1: ScaleCalibrationPoint, p2: ScaleCalibrationPoint) {
-    const dist = pixelDist(p1.x, p1.y, p2.x, p2.y)
-    setMeasureMode(false)
-    setMeasureResult({ distPx: dist, p1, p2 })
-  }
-
+  // ── Focus helpers ─────────────────────────────────────────────────────────
   function focusOnLocation(marker: LocationMarker) {
     setSelectedCharacterId(null)
     setSelectedLocationMarkerId(marker.id)
@@ -182,31 +120,20 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     const pin = charPins.find((p) => p.character.id === characterId)
     setSelectedLocationMarkerId(null)
     setSelectedCharacterId(characterId)
-
     if (pin && !pin.inSubMap) {
-      // Character is directly on this layer — just pan
       mapRef.current?.panTo([pin.y, pin.x])
       return
     }
-
-    // Navigate to the layer the character is actually on.
-    // Pass the target position as initialCenter so FitBounds applies it
-    // synchronously after fitting — no setTimeout race condition.
     const snap = snapshots.find((s) => s.characterId === characterId)
     if (!snap?.currentMapLayerId) return
-
     const targetMarker = allMarkers.find((m) => m.id === snap.currentLocationMarkerId)
-    if (targetMarker) {
-      crossLayerPanTargetRef.current = [targetMarker.y, targetMarker.x]
-    }
+    if (targetMarker) crossLayerPanTargetRef.current = [targetMarker.y, targetMarker.x]
     pushMapLayer(snap.currentMapLayerId)
   }
 
   function focusOnItem(itemId: string) {
-    // Check if item is in a character's inventory
     const snap = snapshots.find((s) => s.inventoryItemIds.includes(itemId))
     if (snap) { focusOnCharacter(snap.characterId); return }
-    // Check if item is placed at a location
     const placement = chapterPlacements.find((p) => p.itemId === itemId)
     if (placement) {
       const marker = allMarkers.find((m) => m.id === placement.locationMarkerId)
@@ -225,92 +152,32 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     return () => window.removeEventListener('wb:map:focusMarker', handler)
   }, [allMarkers]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Derive active chapter from the active event's chapterId
-  const activeEvent   = activeEventId ? allWorldEvents.find((e) => e.id === activeEventId) ?? null : null
-  const activeChapter = activeEvent ? chapters.find((c) => c.id === activeEvent.chapterId) ?? null : null
-  const activeChapterTitle = activeChapter ? `Ch.${activeChapter.number} — ${activeChapter.title}` : null
+  // ── Map export ────────────────────────────────────────────────────────────
+  async function handleExportMap() {
+    const mapEl = document.querySelector('.leaflet-container') as HTMLElement | null
+    if (!mapEl) return
+    const html2canvas = (await import('html2canvas')).default
+    const canvas = await html2canvas(mapEl, { useCORS: true, allowTaint: true, logging: false })
+    const link = document.createElement('a')
+    link.download = `${layer?.name ?? 'map'}.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+  }
 
-  const activeEventIdx = activeEventId ? orderedEvents.findIndex((e) => e.id === activeEventId) : -1
-  const prevEventId = activeEventIdx > 0 ? orderedEvents[activeEventIdx - 1].id : null
+  // ── Scale & measure ───────────────────────────────────────────────────────
+  function handleScalePoints(p1: ScaleCalibrationPoint, p2: ScaleCalibrationPoint) {
+    const dist = pixelDist(p1.x, p1.y, p2.x, p2.y)
+    setScaleMode(false)
+    setScaleDialog({ pixelDist: dist })
+  }
 
-  // Previous event snapshots (last-known state at the previous event — used for playback animation)
-  const prevSnapshots = useBestSnapshots(worldId, prevEventId, activeTimelineEventIds)
+  function handleMeasurePoints(p1: ScaleCalibrationPoint, p2: ScaleCalibrationPoint) {
+    const dist = pixelDist(p1.x, p1.y, p2.x, p2.y)
+    setMeasureMode(false)
+    setMeasureResult({ distPx: dist, p1, p2 })
+  }
 
-  // Previous chapter (for travel-line display — still chapter-based)
-  const prevChapter = activeChapter
-    ? chapters.find((c) => c.timelineId === activeChapter.timelineId && c.number === activeChapter.number - 1)
-    : null
-  const prevChapterEvents = useMemo(
-    () => prevChapter
-      ? allWorldEvents.filter((e) => e.chapterId === prevChapter.id).sort((a, b) => b.sortOrder - a.sortOrder)
-      : [],
-    [allWorldEvents, prevChapter?.id], // eslint-disable-line react-hooks/exhaustive-deps
-  )
-  const prevChapterLastEventId = prevChapterEvents[0]?.id ?? null
-  const prevChapterSnapshots = useBestSnapshots(worldId, prevChapterLastEventId, activeTimelineEventIds)
-
-  // ── Ghost pins (frame narrative) ─────────────────────────────────────────
-  // When the inner track is active, show outer-timeline characters as dimmed
-  // ghost pins at their position as of the active outer event.
-  const outerChaptersForGhost = useChapters(isInnerActive ? outerTimelineId : null)
-  const outerTimelineEventIds = useMemo(() => {
-    if (!isInnerActive || outerChaptersForGhost.length === 0) return undefined
-    const chapIds = new Set(outerChaptersForGhost.map((c) => c.id))
-    return new Set(allWorldEvents.filter((e) => chapIds.has(e.chapterId)).map((e) => e.id))
-  }, [isInnerActive, outerChaptersForGhost, allWorldEvents])
-  const outerSnapshots = useBestSnapshots(worldId, activeOuterEventId ?? null, outerTimelineEventIds)
-  const outerTimeline = useMemo(
-    () => timelines.find((t) => t.id === outerTimelineId) ?? null,
-    [timelines, outerTimelineId]
-  )
-  const outerActiveEvent = useMemo(
-    () => (activeOuterEventId ? allWorldEvents.find((e) => e.id === activeOuterEventId) ?? null : null),
-    [allWorldEvents, activeOuterEventId]
-  )
-  const ghostPins = useMemo<GhostPin[]>(() => {
-    if (!isInnerActive || !outerTimeline) return []
-    const pins: GhostPin[] = []
-    for (const snap of outerSnapshots) {
-      const char = characters.find((c) => c.id === snap.characterId)
-      if (!char) continue
-      const pin = resolveCharacterPin(snap, layerId, allLayers, allMarkers)
-      if (!pin) continue
-      pins.push({
-        characterId: char.id,
-        name: char.name,
-        color: char.color ?? '#888',
-        portraitUrl: char.portraitImageId ? blobUrls.get(char.portraitImageId) ?? null : null,
-        x: pin.x,
-        y: pin.y,
-        outerTimelineName: outerTimeline.name,
-        outerEventTitle: outerActiveEvent?.title ?? '',
-      })
-    }
-    return pins
-  }, [isInnerActive, outerTimeline, outerSnapshots, characters, layerId, allLayers, allMarkers, blobUrls, outerActiveEvent]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Echo rings (historical echo) ─────────────────────────────────────────
-  const echoLocations = useEchoLocations(effectiveTimelineId, worldId)
-  const echoMarkers = useMemo<EchoMarker[]>(() => {
-    const result: EchoMarker[] = []
-    for (const [markerId, info] of echoLocations) {
-      const marker = allMarkers.find((m) => m.id === markerId)
-      if (!marker || marker.mapLayerId !== layerId) continue
-      result.push({
-        markerId,
-        x: marker.x,
-        y: marker.y,
-        counterpartTimelineName: info.counterpartTimelineName,
-        eventCount: info.events.length,
-      })
-    }
-    return result
-  }, [echoLocations, allMarkers, layerId])
-
-  const [echoPopoverMarkerId, setEchoPopoverMarkerId] = useState<string | null>(null)
-  const echoPopoverInfo = echoPopoverMarkerId ? echoLocations.get(echoPopoverMarkerId) ?? null : null
-  const echoPopoverMarker = echoPopoverMarkerId ? allMarkers.find((m) => m.id === echoPopoverMarkerId) ?? null : null
-
+  // ── Map click handlers ────────────────────────────────────────────────────
   function handleMarkerClick(markerId: string) {
     if (drawingRoute) {
       setRouteWaypoints((prev) => {
@@ -329,129 +196,11 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     setSelectedCharacterId((prev) => prev === characterId ? null : characterId)
   }
 
-  // Resolve character pins for the current chapter.
-  // Memoised so that Zustand store updates (e.g. isAnimating toggling) don't produce
-  // a new array reference and restart the LeafletMapCanvas animation effect.
-  const charPins = useMemo<CharacterPin[]>(() => {
-    const pins: CharacterPin[] = []
-    for (const snap of snapshots) {
-      const char = characters.find((c) => c.id === snap.characterId)
-      if (!char) continue
-      const pin = resolveCharacterPin(snap, layerId, allLayers, allMarkers)
-      if (pin) pins.push({
-        ...pin,
-        character: char,
-        portraitUrl: char.portraitImageId ? blobUrls.get(char.portraitImageId) ?? null : null,
-        locationName: snap.currentLocationMarkerId
-          ? allMarkers.find((m) => m.id === snap.currentLocationMarkerId)?.name ?? null
-          : null,
-      })
-    }
-    return pins
-  }, [snapshots, characters, layerId, allLayers, allMarkers, blobUrls]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Playback sequential animation queue ────────────────────────────────────
-  // When the active event advances during playback, build a sequential per-character
-  // animation queue. Each step animates one character at a time and follows their
-  // drawn trail; cross-layer moves generate two steps (departure + arrival).
-  useEffect(() => {
-    if (!isPlayingStory || !activeEventId) {
-      setPlaybackQueue([])
-      setPlaybackStepIdx(0)
-      return
-    }
-    if (prevSnapshots.length === 0 && snapshots.length === 0) return
-
-    const queue = buildSequentialQueue(
-      prevSnapshots, snapshots, allMarkers, movements,
-      PIN_TRAVEL_MS[playbackSpeed], pinAnimationKeyRef, mapRoutes,
-    )
-    setPlaybackQueue(queue)
-    setPlaybackStepIdx(0)
-
-    // Navigate immediately to the first map in the queue (if different from current)
-    if (queue.length > 0 && queue[0].mapLayerId !== layerId) {
-      setActiveMapLayerId(queue[0].mapLayerId)
-    }
-  }, [activeEventId, isPlayingStory]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // When the step index advances, navigate to that step's map layer
-  useEffect(() => {
-    if (playbackQueue.length === 0) return
-    const step = playbackQueue[playbackStepIdx]
-    if (step && step.mapLayerId !== layerId) {
-      setActiveMapLayerId(step.mapLayerId)
-    }
-  }, [playbackStepIdx]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Clear the cross-layer pan target once the new layer has mounted and consumed it
-  useEffect(() => {
-    crossLayerPanTargetRef.current = null
-  }, [layerId]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Derive the active pin animation: only animate if we're on the right map for this step
-  const currentStep = playbackQueue[playbackStepIdx] ?? null
-  const pinAnimation: PinAnimation | null =
-    currentStep && currentStep.mapLayerId === layerId ? currentStep.pinAnimation : null
-
-  function handlePlaybackAnimationEnd() {
-    setPlaybackStepIdx((i) => i + 1)
-  }
-
-  // Build in-chapter waypoint lines — one segment per consecutive waypoint pair
-  const movementLines: MovementLine[] = []
-  for (const mov of movements) {
-    const resolvedPoints: [number, number][] = []
-    for (const wId of mov.waypoints) {
-      const m = allMarkers.find((mk) => mk.id === wId && mk.mapLayerId === layerId)
-      if (m) resolvedPoints.push([m.y, m.x])
-    }
-    for (let i = 0; i < resolvedPoints.length - 1; i++) {
-      const segPoints: [number, number][] = [resolvedPoints[i], resolvedPoints[i + 1]]
-      const distanceLabel = layer && layer.scalePixelsPerUnit && layer.scaleUnit
-        ? formatDistance(pathPixelLength(segPoints.map(([y, x]) => [x, y])), layer.scalePixelsPerUnit, layer.scaleUnit)
-        : undefined
-      movementLines.push({
-        id: `${mov.characterId}-seg-${i}`,
-        characterId: mov.characterId,
-        color: characterColor(mov.characterId),
-        points: segPoints,
-        distanceLabel,
-        style: 'waypoint',
-      })
-    }
-  }
-
-  // Build inter-chapter travel lines (previous chapter location → current chapter location)
-  if (prevChapterSnapshots.length > 0) {
-    for (const snap of snapshots) {
-      if (!snap.currentLocationMarkerId || snap.currentMapLayerId !== layerId) continue
-      const prev = prevChapterSnapshots.find((s) => s.characterId === snap.characterId)
-      if (!prev?.currentLocationMarkerId || prev.currentLocationMarkerId === snap.currentLocationMarkerId) continue
-      if (prev.currentMapLayerId !== layerId) continue
-      const fromMarker = markers.find((m) => m.id === prev.currentLocationMarkerId)
-      const toMarker = markers.find((m) => m.id === snap.currentLocationMarkerId)
-      if (!fromMarker || !toMarker) continue
-      const travelPoints: [number, number][] = [[fromMarker.y, fromMarker.x], [toMarker.y, toMarker.x]]
-      const travelDistanceLabel = layer && layer.scalePixelsPerUnit && layer.scaleUnit
-        ? formatDistance(pathPixelLength(travelPoints.map(([y, x]) => [x, y])), layer.scalePixelsPerUnit, layer.scaleUnit)
-        : undefined
-      movementLines.push({
-        characterId: `travel-${snap.characterId}`,
-        color: characterColor(snap.characterId),
-        points: travelPoints,
-        distanceLabel: travelDistanceLabel,
-        style: 'travel',
-      })
-    }
-  }
-
+  // ── Character placement ───────────────────────────────────────────────────
   async function placeCharacterAtMarker(characterId: string, marker: LocationMarker) {
     if (!activeEventId) return
-    // Read from DB directly to avoid stale React state
     const existingInDb = await fetchSnapshot(characterId, activeEventId)
     const fromMarkerId = existingInDb?.currentLocationMarkerId
-    // Use last-known snapshot (already resolved by useBestSnapshots) for non-location fields
     const existing = snapshots.find((s) => s.characterId === characterId)
     await upsertSnapshot({
       worldId,
@@ -474,36 +223,16 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     await placeCharacterAtMarker(characterId, targetMarker)
   }
 
-  // Build markerId → status map for the active chapter
-  const locationStatusMap: Record<string, string> = {}
-  for (const snap of chapterLocSnaps) {
-    locationStatusMap[snap.locationMarkerId] = snap.status
-  }
-
-  // Route marker position lookup: markerId → [lat, lng]
-  const routeMarkerPositions = useMemo(() => {
-    const map = new Map<string, [number, number]>()
-    for (const m of allMarkers) {
-      if (Number.isFinite(m.x) && Number.isFinite(m.y)) {
-        map.set(m.id, [m.y, m.x])
-      }
-    }
-    return map
-  }, [allMarkers])
-
-  // Apply map filters
+  // ── Display filtering ─────────────────────────────────────────────────────
   const visibleCharIds = mapFilters.characterIds.size > 0 ? mapFilters.characterIds : null
 
-  // Full journey trails — all-chapter paths per character
+  // World snapshots for journey trails — only loaded when the filter is enabled
   const allWorldSnaps = useWorldSnapshots(mapFilters.showJourneys ? worldId : null)
+
   const journeyLines = useMemo<JourneyLine[]>(() => {
     if (!mapFilters.showJourneys || allWorldSnaps.length === 0) return []
-    // Build event→index map for ordering
     const eventOrderMap = new Map<string, number>()
-    for (let i = 0; i < orderedEvents.length; i++) {
-      eventOrderMap.set(orderedEvents[i].id, i)
-    }
-    // Group snapshots by character, only those on the current layer
+    for (let i = 0; i < orderedEvents.length; i++) eventOrderMap.set(orderedEvents[i].id, i)
     const byChar = new Map<string, typeof allWorldSnaps>()
     for (const snap of allWorldSnaps) {
       if (!snap.currentLocationMarkerId || snap.currentMapLayerId !== layerId) continue
@@ -527,12 +256,11 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
         points.push([m.y, m.x])
         lastMarkerId = snap.currentLocationMarkerId
       }
-      if (points.length >= 2) {
-        lines.push({ characterId: charId, color: characterColor(charId), points })
-      }
+      if (points.length >= 2) lines.push({ characterId: charId, color: characterColor(charId), points })
     }
     return lines
   }, [mapFilters.showJourneys, allWorldSnaps, orderedEvents, layerId, characters, allMarkers, visibleCharIds]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const displayedCharPins = !mapFilters.showCharacters ? []
     : visibleCharIds ? charPins.filter((p) => visibleCharIds.has(p.character.id))
     : charPins
@@ -542,6 +270,9 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const displayedMarkers = !mapFilters.showLocations ? []
     : mapFilters.locationTypes.size > 0 ? markers.filter((m) => mapFilters.locationTypes.has(m.iconType))
     : markers
+
+  const echoPopoverInfo   = echoPopoverMarkerId ? echoLocations.get(echoPopoverMarkerId) ?? null : null
+  const echoPopoverMarker = echoPopoverMarkerId ? allMarkers.find((m) => m.id === echoPopoverMarkerId) ?? null : null
 
   if (!layer || !imageUrl) {
     return (
@@ -683,7 +414,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           </div>
         </div>
 
-        {/* Filter bar — relative + z-index so its dropdowns paint above the Leaflet canvas */}
+        {/* Filter bar */}
         <div className="relative z-[1100] shrink-0">
           <MapFilterBar filters={mapFilters} characters={characters} onChange={setMapFilters} />
         </div>
@@ -701,7 +432,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           />
         )}
 
-        {/* Map canvas — relative so detail panels can overlay without resizing the Leaflet container */}
+        {/* Map canvas */}
         <div className="relative flex-1 overflow-hidden">
           <LeafletMapCanvas
             key={layerId}
@@ -732,12 +463,8 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             onAnimationEnd={handlePlaybackAnimationEnd}
             onMarkerClick={handleMarkerClick}
             onMapClick={(x, y) => {
-              if (drawingRegion) {
-                setRegionVertices((prev) => [...prev, { x, y }])
-                return
-              }
+              if (drawingRegion) { setRegionVertices((prev) => [...prev, { x, y }]); return }
               if (drawingRoute) {
-                // Snap to a nearby marker if within 30px, otherwise free point
                 const SNAP_PX = 30
                 let nearest: LocationMarker | null = null
                 let nearestDist = Infinity
@@ -789,7 +516,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             }
           />
 
-          {/* ── Route draw HUD ── */}
+          {/* Route draw HUD */}
           {drawingRoute && (
             <RouteDrawHud
               worldId={worldId}
@@ -802,7 +529,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             />
           )}
 
-          {/* ── Region draw HUD ── */}
+          {/* Region draw HUD */}
           {drawingRegion && (
             <RegionDrawHud
               worldId={worldId}
@@ -814,7 +541,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             />
           )}
 
-          {/* ── Echo ring popover ── */}
+          {/* Echo ring popover */}
           {echoPopoverMarkerId && echoPopoverInfo && (
             <div className="absolute left-1/2 top-4 z-[610] -translate-x-1/2">
               <div className="w-72 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl">
@@ -846,7 +573,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             </div>
           )}
 
-          {/* ── Measure result overlay ── */}
+          {/* Measure result overlay */}
           {measureResult && layer.scalePixelsPerUnit && layer.scaleUnit && (
             <div className="absolute bottom-4 left-1/2 z-[600] -translate-x-1/2">
               <div className="flex items-center gap-2 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2.5 shadow-xl text-sm">
@@ -868,7 +595,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             </div>
           )}
 
-          {/* ── Detail panels (absolute overlay — keeps map container size stable) ── */}
+          {/* Detail panels */}
           {selectedLocationMarkerId && (
             <div className="absolute inset-y-0 right-0 z-[500] flex">
               <LocationDetailPanel
@@ -877,6 +604,16 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
                 onClose={() => setSelectedLocationMarkerId(null)}
                 onDrillDown={pushMapLayer}
               />
+            </div>
+          )}
+          {selectedRouteId && !selectedLocationMarkerId && !selectedCharacterId && (
+            <div className="absolute inset-y-0 right-0 z-[500] flex">
+              <RouteDetailPanel routeId={selectedRouteId} onClose={() => setSelectedRouteId(null)} />
+            </div>
+          )}
+          {selectedRegionId && !selectedLocationMarkerId && !selectedCharacterId && (
+            <div className="absolute inset-y-0 right-0 z-[500] flex">
+              <RegionDetailPanel regionId={selectedRegionId} onClose={() => setSelectedRegionId(null)} />
             </div>
           )}
           {selectedCharacterId && (() => {
@@ -899,7 +636,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             )
           })()}
 
-          {/* ── Character film strip ── */}
+          {/* Character film strip */}
           {selectedCharacterId && (() => {
             const char = characters.find((c) => c.id === selectedCharacterId)
             if (!char) return null
@@ -924,7 +661,6 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             layerId={layer.id}
           />
         )}
-
       </div>
 
       {/* Dialogs */}
