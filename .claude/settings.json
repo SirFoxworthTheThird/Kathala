@@ -8,7 +8,8 @@
       "Bash(grep -c \"async function\\\\|export\" /f/Projects/WorldBreaker/src/db/hooks/*.ts)",
       "Bash(node -e ':*)",
       "Bash(node f:/Projects/WorldBreaker/scripts/fix-notw-locations.mjs)",
-      "Bash(node f:/Projects/WorldBreaker/scripts/enrich-notw.mjs)"
+      "Bash(node f:/Projects/WorldBreaker/scripts/enrich-notw.mjs)",
+      "Bash(node -e ' *)"
     ]
   },
   "hooks": {

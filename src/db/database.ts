@@ -21,6 +21,9 @@ import type {
   TravelMode,
   TimelineRelationship,
   CrossTimelineArtifact,
+  MapRoute,
+  MapRegion,
+  MapRegionSnapshot,
 } from '@/types'
 
 class PlotWeaveDB extends Dexie {
@@ -44,6 +47,9 @@ class PlotWeaveDB extends Dexie {
   travelModes!: EntityTable<TravelMode, 'id'>
   timelineRelationships!: EntityTable<TimelineRelationship, 'id'>
   crossTimelineArtifacts!: EntityTable<CrossTimelineArtifact, 'id'>
+  mapRoutes!: EntityTable<MapRoute, 'id'>
+  mapRegions!: EntityTable<MapRegion, 'id'>
+  mapRegionSnapshots!: EntityTable<MapRegionSnapshot, 'id'>
 
   constructor() {
     super('PlotWeaveDB')
@@ -289,6 +295,13 @@ class PlotWeaveDB extends Dexie {
     this.version(14).stores({
       timelineRelationships: 'id, worldId, sourceTimelineId, targetTimelineId',
       crossTimelineArtifacts: 'id, worldId, itemId, originTimelineId, encounterTimelineId',
+    })
+
+    // v15: persistent map routes and region polygons (purely additive)
+    this.version(15).stores({
+      mapRoutes: 'id, worldId, mapLayerId',
+      mapRegions: 'id, worldId, mapLayerId',
+      mapRegionSnapshots: 'id, worldId, regionId, eventId, [regionId+eventId]',
     })
   }
 }

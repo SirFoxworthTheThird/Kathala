@@ -88,6 +88,10 @@ A Leaflet draw-like tool: on activation, click two points on the canvas and comp
 - [x] **Location sidebar search** — `SidebarSearch` input in `LocationsSection`; filters by name in real time; no DB changes
 - [x] **Label density toggle** — `showLocationLabels` in `MapFilters`; "Labels" button in filter bar; `makeLocationIcon` renders dot-only when `showLabel=false`
 - [x] **Full character journey trail** — `showJourneys` in `MapFilters`; "Journeys" button in filter bar; `useWorldSnapshots` + ordered event index → faded dashed `Polyline` per character on current layer
+- [x] **Character path film strip** — `CharacterFilmStrip` component; appears at bottom of canvas when a character is selected; scrollable stop list (location + chapter); clicking a stop calls `setActiveEventId`
+- [x] **Persistent routes** — `MapRoute` in DB v15; `useMapRoutes` hook; click-marker draw mode with `RouteDrawHud`; styled `Polyline` per route type; Routes sidebar section
+- [x] **Region polygons** — `MapRegion` + `MapRegionSnapshot` in DB v15; `useMapRegions` hook; click-canvas draw mode with live preview + `RegionDrawHud`; `Polygon` with label tooltip; per-event status; Regions sidebar section
+- [x] **Map export** — `html2canvas` dependency; Export button in map header; captures `.leaflet-container` as PNG download
 
 ---
 

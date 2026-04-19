@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { MapContainer, ImageOverlay, Marker, Popup, Polyline, CircleMarker, Tooltip, useMapEvents, useMap } from 'react-leaflet'
+import { MapContainer, ImageOverlay, Marker, Popup, Polyline, Polygon, CircleMarker, Tooltip, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import type { MapLayer, LocationMarker, Character } from '@/types'
+import type { MapLayer, LocationMarker, Character, MapRoute, MapRegion, MapRegionStatus } from '@/types'
 import { updateLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { useAppStore } from '@/store'
 import { type GhostPin, makeGhostIcon } from '@/lib/ghostMarkerIcon'
@@ -353,6 +353,20 @@ interface LeafletMapCanvasProps {
   showLocationLabels?: boolean
   /** Full-journey polylines — one per character, spanning all chapters */
   journeyLines?: JourneyLine[]
+  /** Persistent route polylines (roads, rivers, etc.) — always visible */
+  mapRoutes?: MapRoute[]
+  /** Route marker positions: markerId → [lat, lng] */
+  routeMarkerPositions?: Map<string, [number, number]>
+  /** Region polygons with optional per-event fill tint */
+  mapRegions?: MapRegion[]
+  /** regionId → status at the active event */
+  regionStatuses?: Map<string, MapRegionStatus>
+  /** In-progress region draw vertices — shown as a preview polygon */
+  drawRegionVertices?: Array<{ x: number; y: number }>
+  /** When true, every canvas click calls onMapClick directly (no addMode gate) */
+  directMapClick?: boolean
+  /** In-progress route draw points — shown as a preview polyline */
+  drawRoutePoints?: [number, number][]
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -363,6 +377,8 @@ export function LeafletMapCanvas({
   scaleMode, onScalePoints, showSubMapLinks = true, locationStatuses = {},
   pinAnimation, onAnimationEnd, initialCenter, measureLine, ghostPins,
   echoMarkers, onEchoRingClick, showLocationLabels = true, journeyLines = [],
+  mapRoutes = [], routeMarkerPositions, mapRegions = [], regionStatuses, drawRegionVertices,
+  directMapClick = false, drawRoutePoints,
 }: LeafletMapCanvasProps) {
   const { setIsAnimating } = useAppStore()
   const internalMapRef = useRef<L.Map | null>(null)
@@ -410,6 +426,10 @@ export function LeafletMapCanvas({
         onScalePoints?.(scalePoint1, pt)
         setScalePoint1(null)
       }
+      return
+    }
+    if (directMapClick) {
+      onMapClick(latlng.lng, latlng.lat)
       return
     }
     if (!addModeRef.current) return
@@ -789,6 +809,69 @@ export function LeafletMapCanvas({
         <ImageOverlay url={imageUrl} bounds={bounds} />
         <ClickHandler onMapClickRef={onMapClickRef} />
         <ContextMenuHandler onContextMenu={setContextMenu} />
+
+        {/* In-progress region draw preview */}
+        {drawRegionVertices && drawRegionVertices.length >= 2 && (
+          <Polygon
+            positions={drawRegionVertices.map((v) => [v.y, v.x] as [number, number])}
+            pathOptions={{ color: '#22d3ee', fillColor: '#22d3ee', weight: 1.5, opacity: 0.8, fillOpacity: 0.15, dashArray: '4 4' }}
+          />
+        )}
+
+        {/* Region polygons */}
+        {mapRegions.map((region) => {
+          const verts = region.vertices.map((v) => [v.y, v.x] as [number, number])
+          if (verts.length < 3) return null
+          const status = regionStatuses?.get(region.id) ?? 'active'
+          const fillOpacity = status === 'destroyed' ? 0.08 : status === 'abandoned' ? 0.12 : region.opacity * 0.45
+          const color = region.fillColor
+          return (
+            <Polygon
+              key={region.id}
+              positions={verts}
+              pathOptions={{ color, fillColor: color, weight: 1.5, opacity: 0.7, fillOpacity }}
+            >
+              <Tooltip direction="center" permanent className="region-label-tooltip">
+                <span style={{ fontSize: '10px', fontWeight: 600 }}>{region.name}</span>
+              </Tooltip>
+            </Polygon>
+          )
+        })}
+
+        {/* In-progress route draw preview */}
+        {drawRoutePoints && drawRoutePoints.length >= 2 && (
+          <Polyline
+            positions={drawRoutePoints}
+            pathOptions={{ color: '#a78bfa', weight: 2, opacity: 0.8, dashArray: '6 4' }}
+          />
+        )}
+
+        {/* Persistent map routes */}
+        {mapRoutes.map((route) => {
+          const pts = route.waypoints
+            .map((wp) =>
+              typeof wp === 'string'
+                ? routeMarkerPositions?.get(wp)
+                : [wp.y, wp.x] as [number, number]
+            )
+            .filter(Boolean) as [number, number][]
+          if (pts.length < 2) return null
+          const isDashed = route.routeType === 'border' || route.routeType === 'trail'
+          return (
+            <Polyline
+              key={route.id}
+              positions={pts}
+              pathOptions={{
+                color: route.color ?? '#94a3b8',
+                weight: route.routeType === 'river' || route.routeType === 'sea_route' ? 3 : 2,
+                opacity: 0.75,
+                dashArray: isDashed ? '4 6' : undefined,
+              }}
+            >
+              <Tooltip sticky>{route.name}</Tooltip>
+            </Polyline>
+          )
+        })}
 
         {/* Full journey trails (all-chapter paths) */}
         {journeyLines.map((line) =>

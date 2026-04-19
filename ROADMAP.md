@@ -99,13 +99,13 @@ New capabilities identified in the maps UX review. Detailed specs in `docs/featu
 
 - [x] **Full character journey trail** — toggleable per-character overlay showing their complete path across *all* chapters (not just the previous chapter → current). Reads all snapshots for a character in order and draws a faded polyline through every location they visited.
 
-- [ ] **Character path film strip** — clicking a character pin shows a horizontal timeline strip at the bottom of the map listing every location that character visited in chapter order; clicking a stop jumps to that chapter.
+- [x] **Character path film strip** — clicking a character pin shows a horizontal timeline strip at the bottom of the map listing every location that character visited in chapter order; clicking a stop jumps to that chapter.
 
-- [ ] **Persistent routes between locations** — a separate "connections" layer for roads, rivers, trade routes, and borders that exist independently of character movement; persists across all chapters; styled by route type (road, river, border, etc.).
+- [x] **Persistent routes between locations** — Routes section in sidebar; click-marker draw mode; styled polylines by route type (road, river, trail, sea route, border, custom); DB v15.
 
-- [ ] **Region polygon support** — draw named territories as filled polygons on the map (kingdoms, forests, danger zones); stored per map layer; shown with a fill color + label and optional per-chapter status.
+- [x] **Region polygon support** — Regions section in sidebar; click-canvas draw mode with live preview; filled polygons with per-event status; DB v15.
 
-- [ ] **Map export as image** — export the current map view (with markers, character pins, and movement lines visible) as a PNG file.
+- [x] **Map export as image** — Export button in map header; uses `html2canvas` to capture the Leaflet container as PNG.
 
 ---
 

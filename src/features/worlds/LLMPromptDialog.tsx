@@ -16,7 +16,7 @@ FILE STRUCTURE
 ═══════════════════════════════════════════════════════════
 
 {
-  "version": 4,
+  "version": 5,
   "type": "full",
   "exportedAt": <current unix timestamp in ms, e.g. 1700000000000>,
   "world": { ... },
@@ -37,6 +37,9 @@ FILE STRUCTURE
   "travelModes": [],
   "timelineRelationships": [],
   "crossTimelineArtifacts": [],
+  "mapRoutes": [],
+  "mapRegions": [],
+  "mapRegionSnapshots": [],
   "blobs": []
 }
 

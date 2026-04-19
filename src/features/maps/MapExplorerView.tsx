@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import L from 'leaflet'
 import { useParams } from 'react-router-dom'
-import { Plus, Upload, Map as MapIcon, Ruler, X, Route } from 'lucide-react'
+import { Plus, Upload, Map as MapIcon, Ruler, X, Route, Download } from 'lucide-react'
 import { useAppStore, useActiveMapLayerId, useActiveEventId, usePlaybackTimelineId, useActiveDepthTimelineId, useActiveOuterEventId } from '@/store'
 import { useRootMapLayers, useMapLayer, useMapLayers, updateMapLayer } from '@/db/hooks/useMapLayers'
 import { useChapters, useTimelines, useWorldEvents } from '@/db/hooks/useTimeline'
@@ -29,7 +29,12 @@ import { PIN_TRAVEL_MS, type PlaybackStep, buildSequentialQueue, characterColor,
 import { MapFilterBar, DEFAULT_MAP_FILTERS } from './MapFilterBar'
 import type { MapFilters } from './MapFilterBar'
 import { SetScaleDialog } from './SetScaleDialog'
-import { LayersSection, CharactersSection, LocationsSection, ItemsSection } from './MapSidebar'
+import { LayersSection, CharactersSection, LocationsSection, ItemsSection, RoutesSection, RegionsSection, ROUTE_TYPE_COLORS, REGION_STATUS_COLORS } from './MapSidebar'
+import { CharacterFilmStrip } from './CharacterFilmStrip'
+import { RouteDrawHud, RegionDrawHud } from './DrawHuds'
+import { useMapRoutes, createMapRoute } from '@/db/hooks/useMapRoutes'
+import { useMapRegions, useEventRegionSnapshots, createMapRegion } from '@/db/hooks/useMapRegions'
+import type { RouteType, MapRegionStatus } from '@/types'
 
 // ─── MapView ──────────────────────────────────────────────────────────────────
 
@@ -85,6 +90,14 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const chapterPlacements = useEventItemPlacements(activeEventId)
   const chapterLocSnaps = useChapterLocationSnapshots(activeEventId)
 
+  const mapRoutes = useMapRoutes(layerId)
+  const mapRegions = useMapRegions(layerId)
+  const regionSnaps = useEventRegionSnapshots(activeEventId)
+  const regionStatusMap = useMemo(
+    () => new Map<string, MapRegionStatus>(regionSnaps.map((s) => [s.regionId, s.status])),
+    [regionSnaps]
+  )
+
   const [isDraggingCharacter, setIsDraggingCharacter] = useState(false)
   const crossLayerPanTargetRef = useRef<[number, number] | null>(null)
   const pinAnimationKeyRef  = useRef(0)
@@ -100,8 +113,27 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const [measureMode, setMeasureMode] = useState(false)
   const [measureResult, setMeasureResult] = useState<{ distPx: number; p1: ScaleCalibrationPoint; p2: ScaleCalibrationPoint } | null>(null)
   const [mapFilters, setMapFilters] = useState<MapFilters>(DEFAULT_MAP_FILTERS)
+  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null)
+  const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null)
+  const [drawingRoute, setDrawingRoute] = useState(false)
+  const [routeWaypoints, setRouteWaypoints] = useState<Array<string | { x: number; y: number }>>([])
+  const [drawingRegion, setDrawingRegion] = useState(false)
+  const [regionVertices, setRegionVertices] = useState<Array<{ x: number; y: number }>>([])
+  const [routeNameDialog, setRouteNameDialog] = useState(false)
+  const [regionNameDialog, setRegionNameDialog] = useState(false)
   const { setSelectedLocationMarkerId, selectedLocationMarkerId, pushMapLayer, setActiveMapLayerId, isPlayingStory, playbackSpeed } = useAppStore()
   const mapRef = useRef<L.Map | null>(null)
+
+  async function handleExportMap() {
+    const mapEl = document.querySelector('.leaflet-container') as HTMLElement | null
+    if (!mapEl) return
+    const html2canvas = (await import('html2canvas')).default
+    const canvas = await html2canvas(mapEl, { useCORS: true, allowTaint: true, logging: false })
+    const link = document.createElement('a')
+    link.download = `${layer?.name ?? 'map'}.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+  }
 
   function handleScalePoints(p1: ScaleCalibrationPoint, p2: ScaleCalibrationPoint) {
     const dist = pixelDist(p1.x, p1.y, p2.x, p2.y)
@@ -255,6 +287,14 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const echoPopoverMarker = echoPopoverMarkerId ? allMarkers.find((m) => m.id === echoPopoverMarkerId) ?? null : null
 
   function handleMarkerClick(markerId: string) {
+    if (drawingRoute) {
+      setRouteWaypoints((prev) => {
+        const last = prev[prev.length - 1]
+        if (last === markerId) return prev
+        return [...prev, markerId]
+      })
+      return
+    }
     setSelectedCharacterId(null)
     setSelectedLocationMarkerId(markerId)
   }
@@ -415,6 +455,15 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     locationStatusMap[snap.locationMarkerId] = snap.status
   }
 
+  // Route marker position lookup: markerId → [lat, lng]
+  const routeMarkerPositions = useMemo(() => {
+    const map = new Map<string, [number, number]>()
+    for (const m of allMarkers) {
+      map.set(m.id, [m.y, m.x])
+    }
+    return map
+  }, [allMarkers])
+
   // Apply map filters
   const visibleCharIds = mapFilters.characterIds.size > 0 ? mapFilters.characterIds : null
 
@@ -505,6 +554,25 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           snapshots={snapshots}
           onFocus={focusOnItem}
         />
+        <RoutesSection
+          mapLayerId={layerId}
+          worldId={worldId}
+          selectedRouteId={selectedRouteId}
+          onSelectRoute={setSelectedRouteId}
+          drawingRoute={drawingRoute}
+          onStartDraw={() => { setDrawingRoute(true); setRouteWaypoints([]) }}
+          onCancelDraw={() => { setDrawingRoute(false); setRouteWaypoints([]) }}
+        />
+        <RegionsSection
+          mapLayerId={layerId}
+          worldId={worldId}
+          activeEventId={activeEventId}
+          selectedRegionId={selectedRegionId}
+          onSelectRegion={setSelectedRegionId}
+          drawingRegion={drawingRegion}
+          onStartDraw={() => { setDrawingRegion(true); setRegionVertices([]) }}
+          onCancelDraw={() => { setDrawingRegion(false); setRegionVertices([]) }}
+        />
       </div>
 
       {/* ── Center: header + map ── */}
@@ -551,6 +619,16 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
                 Measure
               </Button>
             )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs"
+              onClick={handleExportMap}
+              title="Export map as PNG"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export
+            </Button>
             <Button
               size="sm"
               variant="outline"
@@ -603,12 +681,49 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             showSubMapLinks={mapFilters.showSubMapLinks}
             showLocationLabels={mapFilters.showLocationLabels}
             journeyLines={journeyLines}
+            mapRoutes={mapRoutes}
+            routeMarkerPositions={routeMarkerPositions}
+            mapRegions={mapRegions}
+            regionStatuses={regionStatusMap}
+            drawRegionVertices={drawingRegion ? regionVertices : undefined}
+            drawRoutePoints={drawingRoute && routeWaypoints.length >= 2
+              ? routeWaypoints.map((wp) =>
+                  typeof wp === 'string'
+                    ? routeMarkerPositions.get(wp)
+                    : [wp.y, wp.x] as [number, number]
+                ).filter(Boolean) as [number, number][]
+              : undefined}
             locationStatuses={locationStatusMap}
             isDraggingCharacter={isDraggingCharacter}
             pinAnimation={pinAnimation}
             onAnimationEnd={handlePlaybackAnimationEnd}
             onMarkerClick={handleMarkerClick}
-            onMapClick={(x, y) => { setPendingPos({ x, y }); setAddLocationOpen(true) }}
+            onMapClick={(x, y) => {
+              if (drawingRegion) {
+                setRegionVertices((prev) => [...prev, { x, y }])
+                return
+              }
+              if (drawingRoute) {
+                // Snap to a nearby marker if within 30px, otherwise free point
+                const SNAP_PX = 30
+                let nearest: LocationMarker | null = null
+                let nearestDist = Infinity
+                for (const m of markers) {
+                  const d = Math.hypot(m.x - x, m.y - y)
+                  if (d < nearestDist) { nearestDist = d; nearest = m }
+                }
+                const point: string | { x: number; y: number } =
+                  nearest && nearestDist <= SNAP_PX ? nearest.id : { x, y }
+                setRouteWaypoints((prev) => {
+                  const last = prev[prev.length - 1]
+                  if (typeof last === 'string' && last === point) return prev
+                  return [...prev, point]
+                })
+                return
+              }
+              setPendingPos({ x, y })
+              setAddLocationOpen(true)
+            }}
             onDrillDown={pushMapLayer}
             onCharacterDrop={handleCharacterDrop}
             onCharacterDropOnEmpty={(characterId, x, y) => {
@@ -622,6 +737,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             onCharacterClick={handleCharacterClick}
             mapRef={mapRef}
             scaleMode={scaleMode || measureMode}
+            directMapClick={drawingRegion || drawingRoute}
             onScalePoints={measureMode ? handleMeasurePoints : handleScalePoints}
             measureLine={
               measureResult && layer.scalePixelsPerUnit && layer.scaleUnit
@@ -629,6 +745,31 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
                 : null
             }
           />
+
+          {/* ── Route draw HUD ── */}
+          {drawingRoute && (
+            <RouteDrawHud
+              worldId={worldId}
+              mapLayerId={layerId}
+              waypoints={routeWaypoints}
+              allMarkers={allMarkers}
+              onUndo={() => setRouteWaypoints((prev) => prev.slice(0, -1))}
+              onCancel={() => { setDrawingRoute(false); setRouteWaypoints([]) }}
+              onSave={() => { setDrawingRoute(false); setRouteWaypoints([]) }}
+            />
+          )}
+
+          {/* ── Region draw HUD ── */}
+          {drawingRegion && (
+            <RegionDrawHud
+              worldId={worldId}
+              mapLayerId={layerId}
+              vertices={regionVertices}
+              onUndo={() => setRegionVertices((prev) => prev.slice(0, -1))}
+              onCancel={() => { setDrawingRegion(false); setRegionVertices([]) }}
+              onSave={() => { setDrawingRegion(false); setRegionVertices([]) }}
+            />
+          )}
 
           {/* ── Echo ring popover ── */}
           {echoPopoverMarkerId && echoPopoverInfo && (
@@ -712,6 +853,22 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
                   onClose={() => setSelectedCharacterId(null)}
                 />
               </div>
+            )
+          })()}
+
+          {/* ── Character film strip ── */}
+          {selectedCharacterId && (() => {
+            const char = characters.find((c) => c.id === selectedCharacterId)
+            if (!char) return null
+            return (
+              <CharacterFilmStrip
+                character={char}
+                allMarkers={allMarkers}
+                orderedEvents={orderedEvents}
+                chapters={chapters}
+                activeEventId={activeEventId}
+                onClose={() => setSelectedCharacterId(null)}
+              />
             )
           })()}
         </div>

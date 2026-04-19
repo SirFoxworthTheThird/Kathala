@@ -3,10 +3,10 @@ import type {
   World, MapLayer, LocationMarker, Character, Item,
   CharacterSnapshot, CharacterMovement, ItemPlacement, LocationSnapshot, ItemSnapshot,
   Relationship, RelationshipSnapshot, Timeline, Chapter, WorldEvent, TravelMode,
-  TimelineRelationship, CrossTimelineArtifact,
+  TimelineRelationship, CrossTimelineArtifact, MapRoute, MapRegion, MapRegionSnapshot,
 } from '@/types'
 
-const EXPORT_VERSION = 4
+const EXPORT_VERSION = 5
 
 interface BlobExport {
   id: string
@@ -40,6 +40,9 @@ export interface WorldExportFile {
   travelModes: TravelMode[]
   timelineRelationships: TimelineRelationship[]
   crossTimelineArtifacts: CrossTimelineArtifact[]
+  mapRoutes: MapRoute[]
+  mapRegions: MapRegion[]
+  mapRegionSnapshots: MapRegionSnapshot[]
   relationshipPositions?: Record<string, { x: number; y: number }>
   suppressedIssueIds?: string[]
 }
@@ -96,6 +99,9 @@ export async function exportWorld(worldId: string): Promise<void> {
     travelModes,
     timelineRelationships,
     crossTimelineArtifacts,
+    mapRoutes,
+    mapRegions,
+    mapRegionSnapshots,
   ] = await Promise.all([
     db.worlds.get(worldId),
     db.mapLayers.where('worldId').equals(worldId).toArray(),
@@ -116,6 +122,9 @@ export async function exportWorld(worldId: string): Promise<void> {
     db.travelModes.where('worldId').equals(worldId).toArray(),
     db.timelineRelationships.where('worldId').equals(worldId).toArray(),
     db.crossTimelineArtifacts.where('worldId').equals(worldId).toArray(),
+    db.mapRoutes.where('worldId').equals(worldId).toArray(),
+    db.mapRegions.where('worldId').equals(worldId).toArray(),
+    db.mapRegionSnapshots.where('worldId').equals(worldId).toArray(),
   ])
 
   if (!world) throw new Error('World not found')
@@ -168,6 +177,9 @@ export async function exportWorld(worldId: string): Promise<void> {
     travelModes,
     timelineRelationships,
     crossTimelineArtifacts,
+    mapRoutes,
+    mapRegions,
+    mapRegionSnapshots,
     relationshipPositions,
     suppressedIssueIds,
   }
@@ -215,6 +227,9 @@ export async function exportWorldSplit(worldId: string): Promise<void> {
     travelModes,
     timelineRelationships,
     crossTimelineArtifacts,
+    mapRoutes,
+    mapRegions,
+    mapRegionSnapshots,
   ] = await Promise.all([
     db.worlds.get(worldId),
     db.mapLayers.where('worldId').equals(worldId).toArray(),
@@ -235,6 +250,9 @@ export async function exportWorldSplit(worldId: string): Promise<void> {
     db.travelModes.where('worldId').equals(worldId).toArray(),
     db.timelineRelationships.where('worldId').equals(worldId).toArray(),
     db.crossTimelineArtifacts.where('worldId').equals(worldId).toArray(),
+    db.mapRoutes.where('worldId').equals(worldId).toArray(),
+    db.mapRegions.where('worldId').equals(worldId).toArray(),
+    db.mapRegionSnapshots.where('worldId').equals(worldId).toArray(),
   ])
 
   if (!world) throw new Error('World not found')
@@ -291,6 +309,9 @@ export async function exportWorldSplit(worldId: string): Promise<void> {
     travelModes,
     timelineRelationships,
     crossTimelineArtifacts,
+    mapRoutes,
+    mapRegions,
+    mapRegionSnapshots,
     relationshipPositions,
     suppressedIssueIds,
   }
@@ -391,6 +412,18 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
     throw new Error('Invalid file: crossTimelineArtifacts is not an array')
   }
   if (!d.crossTimelineArtifacts) (d as Record<string, unknown>).crossTimelineArtifacts = []
+  if (d.mapRoutes !== undefined && !Array.isArray(d.mapRoutes)) {
+    throw new Error('Invalid file: mapRoutes is not an array')
+  }
+  if (!d.mapRoutes) (d as Record<string, unknown>).mapRoutes = []
+  if (d.mapRegions !== undefined && !Array.isArray(d.mapRegions)) {
+    throw new Error('Invalid file: mapRegions is not an array')
+  }
+  if (!d.mapRegions) (d as Record<string, unknown>).mapRegions = []
+  if (d.mapRegionSnapshots !== undefined && !Array.isArray(d.mapRegionSnapshots)) {
+    throw new Error('Invalid file: mapRegionSnapshots is not an array')
+  }
+  if (!d.mapRegionSnapshots) (d as Record<string, unknown>).mapRegionSnapshots = []
 }
 
 function normalizeImport(data: WorldExportFile): void {
@@ -559,6 +592,7 @@ export async function importWorld(file: File): Promise<string> {
     db.relationships, db.relationshipSnapshots, db.timelines,
     db.chapters, db.events, db.blobs, db.travelModes,
     db.timelineRelationships, db.crossTimelineArtifacts,
+    db.mapRoutes, db.mapRegions, db.mapRegionSnapshots,
   ], async () => {
     await db.worlds.put(data.world)
     await db.mapLayers.bulkPut(data.mapLayers)
@@ -578,6 +612,9 @@ export async function importWorld(file: File): Promise<string> {
     await db.travelModes.bulkPut(data.travelModes)
     await db.timelineRelationships.bulkPut(data.timelineRelationships)
     await db.crossTimelineArtifacts.bulkPut(data.crossTimelineArtifacts)
+    await db.mapRoutes.bulkPut(data.mapRoutes)
+    await db.mapRegions.bulkPut(data.mapRegions)
+    await db.mapRegionSnapshots.bulkPut(data.mapRegionSnapshots)
 
     for (const b of data.blobs) {
       await db.blobs.put({

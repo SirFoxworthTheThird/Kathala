@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import {
   Users, Map as MapIcon, MapPin, Package, Layers,
   ChevronRight, ChevronDown, Trash2, Undo2, X, Search,
+  Route, Hexagon, Plus, Check, Pencil,
 } from 'lucide-react'
 import { useAppStore, useMapLayerHistory } from '@/store'
 import { useMapLayers, deleteMapLayer } from '@/db/hooks/useMapLayers'
@@ -10,9 +11,11 @@ import { useItems } from '@/db/hooks/useItems'
 import { useEventItemPlacements } from '@/db/hooks/useItemPlacements'
 import { useItemSnapshot, upsertItemSnapshot } from '@/db/hooks/useItemSnapshots'
 import { useCrossTimelineArtifacts } from '@/db/hooks/useTimelineRelationships'
+import { useMapRoutes, createMapRoute, updateMapRoute, deleteMapRoute } from '@/db/hooks/useMapRoutes'
+import { useMapRegions, updateMapRegion, deleteMapRegion, useEventRegionSnapshots, upsertMapRegionSnapshot } from '@/db/hooks/useMapRegions'
 import { PortraitImage } from '@/components/PortraitImage'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
-import type { Character, CharacterSnapshot, Item, LocationMarker, MapLayer } from '@/types'
+import type { Character, CharacterSnapshot, Item, LocationMarker, MapLayer, RouteType, MapRegionStatus } from '@/types'
 import { pathPixelLength, formatDistance } from '@/lib/mapScale'
 import { characterColor, ICON_COLORS } from './mapUtils'
 
@@ -542,6 +545,215 @@ export function ItemsSection({
           ))
         )}
       </div>
+    </SidebarSection>
+  )
+}
+
+// ─── Route type display helpers ───────────────────────────────────────────────
+
+const ROUTE_TYPE_LABELS: Record<RouteType, string> = {
+  road: 'Road', river: 'River', trail: 'Trail',
+  sea_route: 'Sea route', border: 'Border', custom: 'Custom',
+}
+export const ROUTE_TYPE_COLORS: Record<RouteType, string> = {
+  road: '#a78bfa', river: '#60a5fa', trail: '#34d399',
+  sea_route: '#22d3ee', border: '#fb923c', custom: '#94a3b8',
+}
+
+// ─── Routes section ───────────────────────────────────────────────────────────
+
+export function RoutesSection({
+  mapLayerId,
+  worldId,
+  selectedRouteId,
+  onSelectRoute,
+  drawingRoute,
+  onStartDraw,
+  onCancelDraw,
+}: {
+  mapLayerId: string
+  worldId: string
+  selectedRouteId: string | null
+  onSelectRoute: (id: string | null) => void
+  drawingRoute: boolean
+  onStartDraw: () => void
+  onCancelDraw: () => void
+}) {
+  const routes = useMapRoutes(mapLayerId)
+  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const confirmRoute = confirmId ? routes.find((r) => r.id === confirmId) : null
+
+  return (
+    <SidebarSection title="Routes" icon={Route} count={routes.length} defaultOpen={false}>
+      <div className="px-2 pb-1.5 pt-0.5">
+        {drawingRoute ? (
+          <button
+            onClick={onCancelDraw}
+            className="flex w-full items-center justify-center gap-1.5 rounded border border-[hsl(var(--ring))] bg-[hsl(var(--ring)/0.12)] px-2 py-1 text-[10px] font-medium text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--ring)/0.2)]"
+          >
+            <X className="h-3 w-3" /> Cancel drawing
+          </button>
+        ) : (
+          <button
+            onClick={onStartDraw}
+            className="flex w-full items-center justify-center gap-1.5 rounded border border-[hsl(var(--border))] px-2 py-1 text-[10px] font-medium text-[hsl(var(--muted-foreground))] transition-colors hover:border-[hsl(var(--ring))] hover:text-[hsl(var(--foreground))]"
+          >
+            <Plus className="h-3 w-3" /> New route
+          </button>
+        )}
+      </div>
+      <div className="flex flex-col py-1">
+        {routes.length === 0 ? (
+          <p className="px-3 py-2 text-xs italic text-[hsl(var(--muted-foreground))]">No routes on this map.</p>
+        ) : (
+          routes.map((route) => (
+            <div
+              key={route.id}
+              className={`group flex items-center gap-2 rounded-sm mx-1 px-2 py-1.5 cursor-pointer transition-colors ${
+                selectedRouteId === route.id
+                  ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                  : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]'
+              }`}
+              onClick={() => onSelectRoute(selectedRouteId === route.id ? null : route.id)}
+            >
+              <span
+                className="h-2 w-2 rounded-full shrink-0"
+                style={{ background: route.color ?? ROUTE_TYPE_COLORS[route.routeType] }}
+              />
+              <div className="flex flex-col flex-1 min-w-0">
+                <span className="truncate text-xs leading-tight">{route.name}</span>
+                <span className="text-[9px] capitalize text-[hsl(var(--muted-foreground))] leading-tight">
+                  {ROUTE_TYPE_LABELS[route.routeType]} · {route.waypoints.length} stops
+                </span>
+              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); setConfirmId(route.id) }}
+                className="shrink-0 opacity-0 group-hover:opacity-100 text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+      <ConfirmDialog
+        open={!!confirmId}
+        onOpenChange={(v) => { if (!v) setConfirmId(null) }}
+        title="Delete route"
+        description={`Delete "${confirmRoute?.name ?? ''}"? This cannot be undone.`}
+        onConfirm={() => { if (confirmId) deleteMapRoute(confirmId); setConfirmId(null) }}
+      />
+    </SidebarSection>
+  )
+}
+
+// ─── Region status helpers ────────────────────────────────────────────────────
+
+export const REGION_STATUS_COLORS: Record<MapRegionStatus, string> = {
+  active: '#34d399', occupied: '#fb923c', contested: '#ef4444',
+  abandoned: '#94a3b8', destroyed: '#dc2626', unknown: '#a78bfa',
+}
+const ALL_REGION_STATUSES: MapRegionStatus[] = ['active', 'occupied', 'contested', 'abandoned', 'destroyed', 'unknown']
+
+// ─── Regions section ──────────────────────────────────────────────────────────
+
+export function RegionsSection({
+  mapLayerId,
+  worldId,
+  activeEventId,
+  selectedRegionId,
+  onSelectRegion,
+  drawingRegion,
+  onStartDraw,
+  onCancelDraw,
+}: {
+  mapLayerId: string
+  worldId: string
+  activeEventId: string | null
+  selectedRegionId: string | null
+  onSelectRegion: (id: string | null) => void
+  drawingRegion: boolean
+  onStartDraw: () => void
+  onCancelDraw: () => void
+}) {
+  const regions = useMapRegions(mapLayerId)
+  const regionSnaps = useEventRegionSnapshots(activeEventId)
+  const snapByRegionId = useMemo(() => new Map(regionSnaps.map((s) => [s.regionId, s])), [regionSnaps])
+  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const confirmRegion = confirmId ? regions.find((r) => r.id === confirmId) : null
+
+  return (
+    <SidebarSection title="Regions" icon={Hexagon} count={regions.length} defaultOpen={false}>
+      <div className="px-2 pb-1.5 pt-0.5">
+        {drawingRegion ? (
+          <button
+            onClick={onCancelDraw}
+            className="flex w-full items-center justify-center gap-1.5 rounded border border-[hsl(var(--ring))] bg-[hsl(var(--ring)/0.12)] px-2 py-1 text-[10px] font-medium text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--ring)/0.2)]"
+          >
+            <X className="h-3 w-3" /> Cancel drawing
+          </button>
+        ) : (
+          <button
+            onClick={onStartDraw}
+            className="flex w-full items-center justify-center gap-1.5 rounded border border-[hsl(var(--border))] px-2 py-1 text-[10px] font-medium text-[hsl(var(--muted-foreground))] transition-colors hover:border-[hsl(var(--ring))] hover:text-[hsl(var(--foreground))]"
+          >
+            <Plus className="h-3 w-3" /> New region
+          </button>
+        )}
+      </div>
+      <div className="flex flex-col py-1">
+        {regions.length === 0 ? (
+          <p className="px-3 py-2 text-xs italic text-[hsl(var(--muted-foreground))]">No regions on this map.</p>
+        ) : (
+          regions.map((region) => {
+            const snap = snapByRegionId.get(region.id)
+            const status: MapRegionStatus = snap?.status ?? 'active'
+            return (
+              <div
+                key={region.id}
+                className={`group flex items-center gap-2 rounded-sm mx-1 px-2 py-1.5 cursor-pointer transition-colors ${
+                  selectedRegionId === region.id
+                    ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                    : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]'
+                }`}
+                onClick={() => onSelectRegion(selectedRegionId === region.id ? null : region.id)}
+              >
+                <span
+                  className="h-2 w-2 rounded-full shrink-0 ring-1 ring-black/20"
+                  style={{ background: region.fillColor }}
+                />
+                <div className="flex flex-col flex-1 min-w-0">
+                  <span className="truncate text-xs leading-tight">{region.name}</span>
+                  {activeEventId && (
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span
+                        className="h-1.5 w-1.5 rounded-full shrink-0"
+                        style={{ background: REGION_STATUS_COLORS[status] }}
+                      />
+                      <span className="text-[9px] capitalize text-[hsl(var(--muted-foreground))] leading-tight">
+                        {status}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setConfirmId(region.id) }}
+                  className="shrink-0 opacity-0 group-hover:opacity-100 text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
+            )
+          })
+        )}
+      </div>
+      <ConfirmDialog
+        open={!!confirmId}
+        onOpenChange={(v) => { if (!v) setConfirmId(null) }}
+        title="Delete region"
+        description={`Delete "${confirmRegion?.name ?? ''}"? This cannot be undone.`}
+        onConfirm={() => { if (confirmId) deleteMapRegion(confirmId); setConfirmId(null) }}
+      />
     </SidebarSection>
   )
 }
