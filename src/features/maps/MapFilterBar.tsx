@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Users, Route, MapPin, ChevronDown } from 'lucide-react'
+import { Users, Route, MapPin, ChevronDown, Tag, History } from 'lucide-react'
 import type { Character } from '@/types'
 import { ICON_COLORS } from './mapUtils'
 
@@ -8,6 +8,8 @@ export interface MapFilters {
   showTrails: boolean
   showLocations: boolean
   showSubMapLinks: boolean
+  showLocationLabels: boolean
+  showJourneys: boolean
   characterIds: Set<string>   // empty = all
   locationTypes: Set<string>  // empty = all
 }
@@ -17,6 +19,8 @@ export const DEFAULT_MAP_FILTERS: MapFilters = {
   showTrails: true,
   showLocations: true,
   showSubMapLinks: true,
+  showLocationLabels: true,
+  showJourneys: false,
   characterIds: new Set(),
   locationTypes: new Set(),
 }
@@ -126,6 +130,24 @@ export function MapFilterBar({
       >
         <Route className="h-3 w-3" />
         Trails
+      </button>
+
+      {/* Labels */}
+      <button
+        onClick={() => onChange({ ...filters, showLocationLabels: !filters.showLocationLabels })}
+        className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-medium transition-colors ${filters.showLocationLabels ? activeBtn : inactiveBtn}`}
+      >
+        <Tag className="h-3 w-3" />
+        Labels
+      </button>
+
+      {/* Journeys */}
+      <button
+        onClick={() => onChange({ ...filters, showJourneys: !filters.showJourneys })}
+        className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-medium transition-colors ${filters.showJourneys ? activeBtn : inactiveBtn}`}
+      >
+        <History className="h-3 w-3" />
+        Journeys
       </button>
 
       {/* Locations */}

@@ -45,12 +45,36 @@ function makeLocationIcon(
   name: string | undefined,
   highlighted = false,
   status = 'active',
+  showLabel = true,
 ) {
-  const safeName = name ?? ''
   const typeColor   = TYPE_COLORS[iconType] ?? '#94a3b8'
   const statusColor = STATUS_COLORS[status] || typeColor
   const color       = statusColor
 
+  const glowFilter = highlighted
+    ? `drop-shadow(0 4px 8px rgba(0,0,0,0.9)) drop-shadow(0 0 6px ${color})`
+    : status !== 'active'
+      ? `drop-shadow(0 4px 8px rgba(0,0,0,0.9)) drop-shadow(0 0 4px ${color}88)`
+      : 'drop-shadow(0 4px 8px rgba(0,0,0,0.9))'
+
+  // ── Dot-only mode (labels hidden) ──────────────────────────────────────────
+  if (!showLabel) {
+    const r = 7
+    const innerBg = isLinked
+      ? `radial-gradient(circle at center,#fff 20%,${color} 55%)`
+      : color
+    const dot = `<div style="width:${r * 2}px;height:${r * 2}px;border-radius:50%;background:${innerBg};border:1.5px solid ${V.frame};"></div>`
+    const html = `<div style="display:inline-block;filter:${glowFilter};">${dot}</div>`
+    return L.divIcon({
+      html, className: '',
+      iconSize:    [r * 2, r * 2],
+      iconAnchor:  [r, r],
+      popupAnchor: [0, -r],
+    })
+  }
+
+  // ── Full pill mode ─────────────────────────────────────────────────────────
+  const safeName = name ?? ''
   const pillH  = 32
   const iconW  = 28
   const side   = 10
@@ -60,13 +84,6 @@ function makeLocationIcon(
     ? `radial-gradient(circle at center,#fff 20%,${color} 55%)`
     : color
 
-  const glowFilter = highlighted
-    ? `drop-shadow(0 4px 8px rgba(0,0,0,0.9)) drop-shadow(0 0 6px ${color})`
-    : status !== 'active'
-      ? `drop-shadow(0 4px 8px rgba(0,0,0,0.9)) drop-shadow(0 0 4px ${color}88)`
-      : 'drop-shadow(0 4px 8px rgba(0,0,0,0.9))'
-
-  // Status badge shown when not active
   const statusBadge = status !== 'active'
     ? `<span style="margin-left:4px;padding:0 4px;border-radius:2px;background:${color}22;border:1px solid ${color}88;color:${color};font-size:8px;font-family:${V.font};font-weight:600;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;">${escapeHtml(status)}</span>`
     : ''
@@ -295,6 +312,13 @@ export interface EchoMarker {
   eventCount: number
 }
 
+/** Full-journey polyline for a single character across all chapters */
+export interface JourneyLine {
+  characterId: string
+  color: string
+  points: [number, number][]
+}
+
 interface LeafletMapCanvasProps {
   layer: MapLayer
   imageUrl: string
@@ -325,6 +349,10 @@ interface LeafletMapCanvasProps {
   echoMarkers?: EchoMarker[]
   /** Called when the user clicks an echo ring */
   onEchoRingClick?: (markerId: string) => void
+  /** When false, location markers render as dots instead of full pill labels */
+  showLocationLabels?: boolean
+  /** Full-journey polylines — one per character, spanning all chapters */
+  journeyLines?: JourneyLine[]
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -334,7 +362,7 @@ export function LeafletMapCanvas({
   onCharacterDrop, onCharacterDropOnEmpty, onCharacterClick, mapRef: externalMapRef,
   scaleMode, onScalePoints, showSubMapLinks = true, locationStatuses = {},
   pinAnimation, onAnimationEnd, initialCenter, measureLine, ghostPins,
-  echoMarkers, onEchoRingClick,
+  echoMarkers, onEchoRingClick, showLocationLabels = true, journeyLines = [],
 }: LeafletMapCanvasProps) {
   const { setIsAnimating } = useAppStore()
   const internalMapRef = useRef<L.Map | null>(null)
@@ -762,6 +790,17 @@ export function LeafletMapCanvas({
         <ClickHandler onMapClickRef={onMapClickRef} />
         <ContextMenuHandler onContextMenu={setContextMenu} />
 
+        {/* Full journey trails (all-chapter paths) */}
+        {journeyLines.map((line) =>
+          line.points.length >= 2 && (
+            <Polyline
+              key={`journey-${line.characterId}`}
+              positions={line.points}
+              pathOptions={{ color: line.color, weight: 2, opacity: 0.35, dashArray: '4 6' }}
+            />
+          )
+        )}
+
         {/* Movement lines */}
         {movementLines.map((line) =>
           line.points.length >= 2 && (
@@ -821,7 +860,7 @@ export function LeafletMapCanvas({
           <Marker
             key={marker.id}
             position={[marker.y, marker.x]}
-            icon={makeLocationIcon(marker.iconType, !!marker.linkedMapLayerId && showSubMapLinks, marker.name, isDraggingCharacter, locationStatuses[marker.id] ?? 'active')}
+            icon={makeLocationIcon(marker.iconType, !!marker.linkedMapLayerId && showSubMapLinks, marker.name, isDraggingCharacter, locationStatuses[marker.id] ?? 'active', showLocationLabels)}
             zIndexOffset={isDraggingCharacter ? 2000 : -100}
             draggable
             eventHandlers={{

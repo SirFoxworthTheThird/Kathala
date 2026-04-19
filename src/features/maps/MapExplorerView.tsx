@@ -8,11 +8,11 @@ import { useChapters, useTimelines, useWorldEvents } from '@/db/hooks/useTimelin
 import { useTimelineRelationships } from '@/db/hooks/useTimelineRelationships'
 import { useLocationMarkers, useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useCharacters } from '@/db/hooks/useCharacters'
-import { useBestSnapshots, upsertSnapshot, fetchSnapshot } from '@/db/hooks/useSnapshots'
+import { useBestSnapshots, useWorldSnapshots, upsertSnapshot, fetchSnapshot } from '@/db/hooks/useSnapshots'
 import { useEventMovements, appendWaypoint } from '@/db/hooks/useMovements'
 import { useEventItemPlacements } from '@/db/hooks/useItemPlacements'
 import { useChapterLocationSnapshots } from '@/db/hooks/useLocationSnapshots'
-import type { CharacterPin, MovementLine, PinAnimation, ScaleCalibrationPoint, MeasureLine, GhostPin, EchoMarker } from './LeafletMapCanvas'
+import type { CharacterPin, MovementLine, JourneyLine, PinAnimation, ScaleCalibrationPoint, MeasureLine, GhostPin, EchoMarker } from './LeafletMapCanvas'
 import { useEchoLocations } from '@/lib/useEchoLocations'
 import { useBlobUrl, useWorldBlobUrls } from '@/db/hooks/useBlobs'
 import { Button } from '@/components/ui/button'
@@ -417,6 +417,46 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
 
   // Apply map filters
   const visibleCharIds = mapFilters.characterIds.size > 0 ? mapFilters.characterIds : null
+
+  // Full journey trails — all-chapter paths per character
+  const allWorldSnaps = useWorldSnapshots(mapFilters.showJourneys ? worldId : null)
+  const journeyLines = useMemo<JourneyLine[]>(() => {
+    if (!mapFilters.showJourneys || allWorldSnaps.length === 0) return []
+    // Build event→index map for ordering
+    const eventOrderMap = new Map<string, number>()
+    for (let i = 0; i < orderedEvents.length; i++) {
+      eventOrderMap.set(orderedEvents[i].id, i)
+    }
+    // Group snapshots by character, only those on the current layer
+    const byChar = new Map<string, typeof allWorldSnaps>()
+    for (const snap of allWorldSnaps) {
+      if (!snap.currentLocationMarkerId || snap.currentMapLayerId !== layerId) continue
+      if (!eventOrderMap.has(snap.eventId)) continue
+      const arr = byChar.get(snap.characterId) ?? []
+      arr.push(snap)
+      byChar.set(snap.characterId, arr)
+    }
+    const lines: JourneyLine[] = []
+    for (const [charId, snaps] of byChar) {
+      const char = characters.find((c) => c.id === charId)
+      if (!char) continue
+      if (visibleCharIds && !visibleCharIds.has(charId)) continue
+      const sorted = [...snaps].sort((a, b) => (eventOrderMap.get(a.eventId) ?? 0) - (eventOrderMap.get(b.eventId) ?? 0))
+      const points: [number, number][] = []
+      let lastMarkerId: string | null = null
+      for (const snap of sorted) {
+        if (!snap.currentLocationMarkerId || snap.currentLocationMarkerId === lastMarkerId) continue
+        const m = allMarkers.find((mk) => mk.id === snap.currentLocationMarkerId)
+        if (!m) continue
+        points.push([m.y, m.x])
+        lastMarkerId = snap.currentLocationMarkerId
+      }
+      if (points.length >= 2) {
+        lines.push({ characterId: charId, color: characterColor(charId), points })
+      }
+    }
+    return lines
+  }, [mapFilters.showJourneys, allWorldSnaps, orderedEvents, layerId, characters, allMarkers, visibleCharIds]) // eslint-disable-line react-hooks/exhaustive-deps
   const displayedCharPins = !mapFilters.showCharacters ? []
     : visibleCharIds ? charPins.filter((p) => visibleCharIds.has(p.character.id))
     : charPins
@@ -561,6 +601,8 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             charPins={displayedCharPins}
             movementLines={displayedMovementLines}
             showSubMapLinks={mapFilters.showSubMapLinks}
+            showLocationLabels={mapFilters.showLocationLabels}
+            journeyLines={journeyLines}
             locationStatuses={locationStatusMap}
             isDraggingCharacter={isDraggingCharacter}
             pinAnimation={pinAnimation}

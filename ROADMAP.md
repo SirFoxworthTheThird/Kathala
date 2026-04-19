@@ -89,6 +89,40 @@ Technical debt and structural improvements identified in architectural review. T
 
 ---
 
+## Map Enhancements
+
+New capabilities identified in the maps UX review. Detailed specs in `docs/features/maps.md`.
+
+- [x] **Location sidebar search** — filter input at the top of the Locations section in the map sidebar; filters the visible list by name in real time. Very low effort.
+
+- [x] **Label density toggle** — a button in the map header (or filter bar) to switch between "labels on" and "dots only" mode; reduces clutter when zoomed out on large maps. Very low effort.
+
+- [x] **Full character journey trail** — toggleable per-character overlay showing their complete path across *all* chapters (not just the previous chapter → current). Reads all snapshots for a character in order and draws a faded polyline through every location they visited.
+
+- [ ] **Character path film strip** — clicking a character pin shows a horizontal timeline strip at the bottom of the map listing every location that character visited in chapter order; clicking a stop jumps to that chapter.
+
+- [ ] **Persistent routes between locations** — a separate "connections" layer for roads, rivers, trade routes, and borders that exist independently of character movement; persists across all chapters; styled by route type (road, river, border, etc.).
+
+- [ ] **Region polygon support** — draw named territories as filled polygons on the map (kingdoms, forests, danger zones); stored per map layer; shown with a fill color + label and optional per-chapter status.
+
+- [ ] **Map export as image** — export the current map view (with markers, character pins, and movement lines visible) as a PNG file.
+
+---
+
+## UX Improvements
+
+Findings from the UX audit (April 2026).
+
+- [x] **Icon-only navigation** — TopBar nav items now show icon + text label
+- [x] **Platform keyboard shortcut** — Search bar shows `Ctrl+K` on Windows/Linux, `⌘K` on Mac
+- [x] **Writer's Brief and Continuity Checker discoverability** — styled with text labels and a separator; no longer icon-only
+- [x] **ChapterTimelineBar hidden on Arc and Settings** — playback bar suppressed on views where chapter selection is not meaningful
+- [x] **All `confirm()` dialogs replaced** — 12 native browser confirms replaced with `ConfirmDialog` component
+- [x] **WorldSelector import hint** — hint text only shown while importing, not always
+- [x] **Travel modes moved to Settings** — extracted from the Dashboard into a dedicated `WorldSettingsView` at `/settings`; Settings nav item added to TopBar
+
+---
+
 ## Polish
 
 - [x] **End-to-end UX review** — walk through the app with events as the primary unit; identify rough edges introduced by the Option-A refactor
