@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Upload, Trash2, Check, X, Plus, Layers } from 'lucide-react'
 import { useItem, updateItem, deleteItem } from '@/db/hooks/useItems'
@@ -26,6 +27,7 @@ export default function ItemDetailView() {
   const [iconType, setIconType] = useState('')
 
   // Cross-timeline artifact form state
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const [addingArtifact, setAddingArtifact] = useState(false)
   const [artifactOriginId, setArtifactOriginId] = useState('')
   const [artifactEncounterId, setArtifactEncounterId] = useState('')
@@ -47,10 +49,8 @@ export default function ItemDetailView() {
   }
 
   async function handleDelete() {
-    if (confirm(`Delete "${item!.name}"?`)) {
-      await deleteItem(item!.id)
-      navigate(`/worlds/${worldId}/items`)
-    }
+    await deleteItem(item!.id)
+    navigate(`/worlds/${worldId}/items`)
   }
 
   async function save() {
@@ -118,11 +118,18 @@ export default function ItemDetailView() {
           variant="ghost"
           size="icon"
           className="ml-auto h-8 w-8 hover:text-red-400"
-          onClick={handleDelete}
+          onClick={() => setConfirmOpen(true)}
         >
           <Trash2 className="h-4 w-4" />
         </Button>
       </div>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={`Delete "${item.name}"?`}
+        description="This will permanently remove the item and all its snapshots."
+        onConfirm={handleDelete}
+      />
 
       {/* Body */}
       <div className="flex-1 overflow-auto p-4 flex flex-col gap-6">

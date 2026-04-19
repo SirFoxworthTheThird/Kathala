@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/EmptyState'
 import { ChapterRow } from './ChapterRow'
 import { BulkActionToolbar } from './BulkActionToolbar'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { AddChapterDialog } from './AddChapterDialog'
 import { ChapterAIDialog } from './ChapterAIDialog'
 import { TimelineRelationshipPanel } from './TimelineRelationshipPanel'
@@ -25,6 +26,7 @@ export default function TimelineView() {
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const renameInputRef = useRef<HTMLInputElement>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
 
   function startRename(id: string, currentName: string) {
     setRenamingId(id)
@@ -39,11 +41,11 @@ export default function TimelineView() {
     setRenamingId(null)
   }
 
-  async function handleDeleteTimeline(id: string, name: string) {
-    if (!confirm(`Delete timeline "${name}" and all its chapters and events?`)) return
-    const remaining = timelines.filter((t) => t.id !== id)
-    if (activeTimelineId === id) setActiveTimelineId(remaining[0]?.id ?? null)
-    await deleteTimeline(id)
+  async function doDeleteTimeline() {
+    if (!deleteTarget) return
+    const remaining = timelines.filter((t) => t.id !== deleteTarget.id)
+    if (activeTimelineId === deleteTarget.id) setActiveTimelineId(remaining[0]?.id ?? null)
+    await deleteTimeline(deleteTarget.id)
   }
 
   const TIMELINE_COLORS = ['#60a5fa', '#34d399', '#f87171', '#fbbf24', '#a78bfa', '#fb923c']
@@ -112,7 +114,7 @@ export default function TimelineView() {
                 </button>
               )}
               <button
-                onClick={() => handleDeleteTimeline(tl.id, tl.name)}
+                onClick={() => setDeleteTarget({ id: tl.id, name: tl.name })}
                 className="opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity text-[hsl(var(--muted-foreground))] hover:text-red-400"
                 title="Delete timeline"
               >
@@ -202,6 +204,13 @@ export default function TimelineView() {
           timelines={timelines}
         />
       )}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(v) => { if (!v) setDeleteTarget(null) }}
+        title={`Delete "${deleteTarget?.name ?? ''}"?`}
+        description="All chapters and events in this timeline will be permanently deleted."
+        onConfirm={doDeleteTimeline}
+      />
     </div>
   )
 }

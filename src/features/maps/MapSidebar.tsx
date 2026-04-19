@@ -11,6 +11,7 @@ import { useEventItemPlacements } from '@/db/hooks/useItemPlacements'
 import { useItemSnapshot, upsertItemSnapshot } from '@/db/hooks/useItemSnapshots'
 import { useCrossTimelineArtifacts } from '@/db/hooks/useTimelineRelationships'
 import { PortraitImage } from '@/components/PortraitImage'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import type { Character, CharacterSnapshot, Item, LocationMarker, MapLayer } from '@/types'
 import { pathPixelLength, formatDistance } from '@/lib/mapScale'
 import { characterColor, ICON_COLORS } from './mapUtils'
@@ -100,15 +101,11 @@ function LayerTreeNode({
   const children = allLayers.filter((l) => l.parentMapId === layer.id)
   const [open, setOpen] = useState(true)
   const [hovered, setHovered] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const isActive = layer.id === activeLayerId
+  const childCount = allLayers.filter((l) => l.parentMapId === layer.id).length
 
-  async function handleDelete(e: React.MouseEvent) {
-    e.stopPropagation()
-    const childCount = allLayers.filter((l) => l.parentMapId === layer.id).length
-    const msg = childCount > 0
-      ? `Delete "${layer.name}" and its ${childCount} sub-map(s)? This cannot be undone.`
-      : `Delete "${layer.name}"? This cannot be undone.`
-    if (!confirm(msg)) return
+  async function handleDelete() {
     await deleteMapLayer(layer.id)
     onDeleted(layer.id)
   }
@@ -141,13 +138,20 @@ function LayerTreeNode({
         {hovered && (
           <button
             className="shrink-0 rounded p-0.5 hover:text-red-400 transition-colors"
-            onClick={handleDelete}
+            onClick={(e) => { e.stopPropagation(); setConfirmOpen(true) }}
             title="Delete map"
           >
             <Trash2 className="h-3 w-3" />
           </button>
         )}
       </div>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={childCount > 0 ? `Delete "${layer.name}" and its ${childCount} sub-map(s)?` : `Delete "${layer.name}"?`}
+        description="This cannot be undone."
+        onConfirm={handleDelete}
+      />
       {open && children.map((child) => (
         <LayerTreeNode
           key={child.id}

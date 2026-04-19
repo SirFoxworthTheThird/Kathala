@@ -13,6 +13,7 @@ import { useItems } from '@/db/hooks/useItems'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import type {
   Timeline, TimelineRelationship, TimelineAnchor, TimelineSyncPoint, TimelineRelationshipType,
 } from '@/types'
@@ -152,6 +153,7 @@ function RelationshipCard({ rel, timelines, allEvents, allChapters, characters, 
   const [expanded, setExpanded] = useState(false)
   const [anchorKind, setAnchorKind] = useState<AnchorKind>('character')
   const [anchorEntityId, setAnchorEntityId] = useState('')
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   const sourceTimeline = timelines.find((t) => t.id === rel.sourceTimelineId)
   const targetTimeline = timelines.find((t) => t.id === rel.targetTimelineId)
@@ -189,7 +191,6 @@ function RelationshipCard({ rel, timelines, allEvents, allChapters, characters, 
   }
 
   async function handleDelete() {
-    if (!confirm(`Delete the relationship "${rel.label || REL_TYPE_LABELS[rel.type]}"? This cannot be undone.`)) return
     await deleteTimelineRelationship(rel.id)
   }
 
@@ -230,12 +231,19 @@ function RelationshipCard({ rel, timelines, allEvents, allChapters, characters, 
           </span>
         </button>
         <button
-          onClick={handleDelete}
+          onClick={() => setConfirmOpen(true)}
           className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-destructive transition-colors"
           title="Delete relationship"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
+        <ConfirmDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          title={`Delete "${rel.label || REL_TYPE_LABELS[rel.type]}" relationship?`}
+          description="This cannot be undone."
+          onConfirm={handleDelete}
+        />
       </div>
 
       {/* Timeline pill row */}

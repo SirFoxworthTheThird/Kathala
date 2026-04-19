@@ -14,7 +14,10 @@ export function AppShell() {
   const { worldId } = useParams<{ worldId: string }>()
   const { setActiveWorldId, setSearchOpen } = useAppStore()
   const isDashboard = !!useMatch('/worlds/:worldId')
-  const barHeight = useBarHeight(isDashboard ? null : worldId)
+  const isRelationships = !!useMatch('/worlds/:worldId/relationships')
+  const isArc = !!useMatch('/worlds/:worldId/arc')
+  const showBar = !isDashboard && !isRelationships && !isArc
+  const barHeight = useBarHeight(showBar ? worldId : null)
 
   useEffect(() => {
     if (worldId) setActiveWorldId(worldId)
@@ -35,8 +38,8 @@ export function AppShell() {
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       <TopBar />
-      {!isDashboard && <ChapterTimelineBar />}
-      <main className="flex-1 overflow-auto" style={{ paddingBottom: !isDashboard ? barHeight : undefined }}>
+      {showBar && <ChapterTimelineBar />}
+      <main className="flex-1 overflow-auto" style={{ paddingBottom: showBar ? barHeight : undefined }}>
         <Outlet />
       </main>
       <SearchPalette />

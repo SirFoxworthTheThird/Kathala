@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PortraitImage } from '@/components/PortraitImage'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 
 interface EventCardProps {
   event: WorldEvent
@@ -22,6 +23,7 @@ interface EventCardProps {
 export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: EventCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const [title, setTitle] = useState(event.title)
   const [description, setDescription] = useState(event.description)
   const [involvedIds, setInvolvedIds] = useState<string[]>(event.involvedCharacterIds)
@@ -179,9 +181,15 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
             <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => setExpanded((v) => !v)}>
               {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
             </Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 hover:text-red-400" onClick={() => { if (confirm(`Delete event "${event.title}"?`)) deleteEvent(event.id) }}>
+            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 hover:text-red-400" onClick={() => setConfirmOpen(true)}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
+            <ConfirmDialog
+              open={confirmOpen}
+              onOpenChange={setConfirmOpen}
+              title={`Delete "${event.title || 'this event'}"?`}
+              onConfirm={() => deleteEvent(event.id)}
+            />
           </>
         )}
       </div>

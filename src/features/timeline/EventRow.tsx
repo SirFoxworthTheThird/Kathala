@@ -8,6 +8,7 @@ import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useAppStore } from '@/store'
 import { Button } from '@/components/ui/button'
 import { PortraitImage } from '@/components/PortraitImage'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { cn } from '@/lib/utils'
 
 interface EventRowProps {
@@ -24,6 +25,7 @@ export function EventRow({ event, isFirst, isLast, onMoveUp, onMoveDown, chapter
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
   const [expanded, setExpanded] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   const { selectedEventIds, toggleEventSelected, selectEventRange, setLastSelectedEventId, lastSelectedEventId } = useAppStore()
   const isSelected = selectedEventIds.has(event.id)
@@ -132,9 +134,15 @@ export function EventRow({ event, isFirst, isLast, onMoveUp, onMoveDown, chapter
             <ExternalLink className="h-3 w-3" />
           </Button>
           <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0 hover:text-red-400"
-            onClick={(e) => { e.stopPropagation(); if (confirm(`Delete event "${event.title}"?`)) deleteEvent(event.id) }}>
+            onClick={(e) => { e.stopPropagation(); setConfirmOpen(true) }}>
             <Trash2 className="h-3 w-3" />
           </Button>
+          <ConfirmDialog
+            open={confirmOpen}
+            onOpenChange={setConfirmOpen}
+            title={`Delete "${event.title || 'this event'}"?`}
+            onConfirm={() => deleteEvent(event.id)}
+          />
         </div>
 
         {/* Expanded detail */}

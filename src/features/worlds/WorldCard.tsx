@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Trash2, Globe, Download, Loader2, ChevronDown, Files } from 'lucide-react'
 import type { World } from '@/types'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { deleteWorld } from '@/db/hooks/useWorlds'
 import { exportWorld, exportWorldSplit } from '@/lib/exportImport'
 
@@ -14,6 +15,7 @@ export function WorldCard({ world }: WorldCardProps) {
   const navigate = useNavigate()
   const [exporting, setExporting] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   // Close the export dropdown when clicking outside
@@ -28,11 +30,13 @@ export function WorldCard({ world }: WorldCardProps) {
     return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [menuOpen])
 
-  async function handleDelete(e: React.MouseEvent) {
+  function handleDelete(e: React.MouseEvent) {
     e.stopPropagation()
-    if (confirm(`Delete "${world.name}" and all its data? This cannot be undone.`)) {
-      await deleteWorld(world.id)
-    }
+    setConfirmOpen(true)
+  }
+
+  async function doDelete() {
+    await deleteWorld(world.id)
   }
 
   async function handleExport(fn: (id: string) => Promise<void>) {
@@ -131,6 +135,13 @@ export function WorldCard({ world }: WorldCardProps) {
           {world.description}
         </p>
       )}
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={`Delete "${world.name}"?`}
+        description="This will permanently delete the world and all its data. This cannot be undone."
+        onConfirm={doDelete}
+      />
     </div>
   )
 }
