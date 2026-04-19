@@ -59,8 +59,6 @@ interface UISlice {
   setSelectedLocationMarkerId: (id: string | null) => void
   selectedCharacterId: string | null
   setSelectedCharacterId: (id: string | null) => void
-  selectedRelationshipId: string | null
-  setSelectedRelationshipId: (id: string | null) => void
   theme: AppTheme
   setTheme: (theme: AppTheme) => void
   searchOpen: boolean
@@ -150,8 +148,6 @@ export const useAppStore = create<AppStore>()(
       setSelectedLocationMarkerId: (id) => set({ selectedLocationMarkerId: id }),
       selectedCharacterId: null,
       setSelectedCharacterId: (id) => set({ selectedCharacterId: id }),
-      selectedRelationshipId: null,
-      setSelectedRelationshipId: (id) => set({ selectedRelationshipId: id }),
       theme: 'default',
       setTheme: (theme) => set({ theme }),
       searchOpen: false,

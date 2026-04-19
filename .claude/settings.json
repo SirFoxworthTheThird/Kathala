@@ -10,7 +10,8 @@
       "Bash(node f:/Projects/WorldBreaker/scripts/fix-notw-locations.mjs)",
       "Bash(node f:/Projects/WorldBreaker/scripts/enrich-notw.mjs)",
       "Bash(node -e ' *)",
-      "Bash(xargs wc *)"
+      "Bash(xargs wc *)",
+      "Bash(grep -l \"TODO\\\\|FIXME\\\\|DEPRECATED\\\\|stale\\\\|old\" *.md docs/features/*.md)"
     ]
   },
   "hooks": {

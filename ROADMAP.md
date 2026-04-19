@@ -65,12 +65,12 @@ Technical debt and structural improvements identified in architectural review. T
 
 - [x] **Fix Rules of Hooks violation in `ChapterTimelineBar.tsx`** — two `useMemo` calls (`outerEventsByChapter`, `innerEventsByChapter`) were inside an `if (frameRel)` block, causing a "rendered more hooks than previous render" crash when linking timelines. Moved both to unconditional component top level.
 
-- [x] **Split `ChapterTimelineBar.tsx`** (844 lines) — create `src/components/timeline/` directory:
-  - `timelineStyles.ts` — three pure style-helper functions
-  - `TimelineCallout.tsx` — callout popover component
+- [x] **Split `ChapterTimelineBar.tsx`** (844 lines) — created `src/components/timeline/` directory:
+  - `TimelineControls.tsx` — controls row + event panel display
+  - `TimelineScrubber.tsx` — chapter segment scrubber
   - `StackedTrack.tsx` — frame narrative dual-track component
-  - `SingleTrack.tsx` — single-track render extracted from main component
-  - `useTimelinePlayback.ts` — playback `useEffect` + `handlePlayPause`
+  - `SingleTrack.tsx` — single-track render
+  - `src/features/timeline/useTimelinePlayback.ts` — playback `useEffect` + `handlePlayPause`
 
 - [x] **Redesign `ChapterTimelineBar` visuals** — rework from scrubber-style dots to a chapter-segment strip:
   - **Single-track**: chapters as proportional-width labeled segments (width ∝ event count); fill bar advances per event; tick marks for individual events with hover tooltip; chapter title truncated below segment. Replaces the tiny numbered dot + `1.1`/`1.2` event labels.

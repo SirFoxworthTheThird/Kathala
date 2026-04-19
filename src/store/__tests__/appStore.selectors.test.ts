@@ -26,7 +26,6 @@ const INITIAL = {
   sidebarOpen: true,
   selectedLocationMarkerId: null,
   selectedCharacterId: null,
-  selectedRelationshipId: null,
   theme: 'default',
 }
 
