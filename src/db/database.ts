@@ -317,6 +317,13 @@ class PlotWeaveDB extends Dexie {
         if (!('linkedMapLayerId' in r)) r.linkedMapLayerId = null
       })
     })
+
+    // v18: add per-world theme (backfill null = inherit global theme)
+    this.version(18).stores({}).upgrade(async (tx) => {
+      await tx.table('worlds').toCollection().modify((w: Record<string, unknown>) => {
+        if (!('theme' in w)) w.theme = null
+      })
+    })
   }
 }
 

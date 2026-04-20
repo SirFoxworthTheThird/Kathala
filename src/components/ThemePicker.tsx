@@ -16,16 +16,13 @@ const THEMES: { id: AppTheme; label: string; icon: string; swatch: string }[] = 
 ]
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const theme = useAppStore((s) => s.theme)
+  const activeWorldTheme = useAppStore((s) => s.activeWorldTheme)
 
   useEffect(() => {
     const html = document.documentElement
-    // Remove all theme classes
     html.classList.remove(...THEMES.map((t) => `theme-${t.id}`))
-    if (theme !== 'default') {
-      html.classList.add(`theme-${theme}`)
-    }
-  }, [theme])
+    if (activeWorldTheme) html.classList.add(activeWorldTheme)
+  }, [activeWorldTheme])
 
   return <>{children}</>
 }

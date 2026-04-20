@@ -18,6 +18,7 @@ export async function createWorld(data: Pick<World, 'name' | 'description'>): Pr
     name: data.name,
     description: data.description,
     coverImageId: null,
+    theme: null,
     createdAt: now,
     updatedAt: now,
   }

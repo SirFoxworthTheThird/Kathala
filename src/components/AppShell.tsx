@@ -6,6 +6,7 @@ import { useBarHeight } from '@/lib/useBarHeight'
 import { useEffect } from 'react'
 import { SearchPalette } from '@/features/search/SearchPalette'
 import { useAutoFolderSync } from '@/features/worlds/useAutoFolderSync'
+import { useWorld } from '@/db/hooks/useWorlds'
 import { WritersBriefPanel } from '@/features/brief/WritersBriefPanel'
 import { ChapterDiffModal } from '@/features/diff/ChapterDiffModal'
 import { ContinuityChecker } from '@/features/continuity/ContinuityChecker'
@@ -13,7 +14,8 @@ import { TutorialWizard } from '@/features/tutorial/TutorialWizard'
 
 export function AppShell() {
   const { worldId } = useParams<{ worldId: string }>()
-  const { setActiveWorldId, setSearchOpen } = useAppStore()
+  const { setActiveWorldId, setSearchOpen, setActiveWorldTheme } = useAppStore()
+  const world = useWorld(worldId ?? null)
   const isDashboard = !!useMatch('/worlds/:worldId')
   const isArc = !!useMatch('/worlds/:worldId/arc')
   const isSettings = !!useMatch('/worlds/:worldId/settings')
@@ -23,6 +25,12 @@ export function AppShell() {
   useEffect(() => {
     if (worldId) setActiveWorldId(worldId)
   }, [worldId, setActiveWorldId])
+
+  // Apply per-world theme override via store — ThemeProvider owns the DOM
+  useEffect(() => {
+    setActiveWorldTheme(world?.theme ?? null)
+    return () => setActiveWorldTheme(null)
+  }, [world?.theme, setActiveWorldTheme])
 
   useAutoFolderSync(worldId)
 

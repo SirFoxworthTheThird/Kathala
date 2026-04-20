@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { Footprints, Plus, Pencil, Check, X, Trash2, FileCode2 } from 'lucide-react'
 import { useWorld, updateWorld } from '@/db/hooks/useWorlds'
+import type { AppTheme } from '@/store'
 import { useRootMapLayers } from '@/db/hooks/useMapLayers'
 import { useTravelModes, createTravelMode, updateTravelMode, deleteTravelMode } from '@/db/hooks/useTravelModes'
 import { Button } from '@/components/ui/button'
@@ -9,6 +10,18 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { TravelMode } from '@/types'
 import { CloudSyncPanel } from './CloudSyncPanel'
+
+const WORLD_THEMES: { id: AppTheme; label: string; icon: string; swatch: string }[] = [
+  { id: 'default',   label: 'Default',    icon: '🌑', swatch: '#1e3a5f' },
+  { id: 'fantasy',   label: 'Fantasy',    icon: '⚔️',  swatch: '#7c5c2a' },
+  { id: 'scifi',     label: 'Sci-Fi',     icon: '🚀', swatch: '#0a3d5c' },
+  { id: 'cyberpunk', label: 'Cyberpunk',  icon: '🤖', swatch: '#6b21a8' },
+  { id: 'horror',    label: 'Horror',     icon: '🩸', swatch: '#5c0a0a' },
+  { id: 'western',   label: 'Western',    icon: '🤠', swatch: '#5c3a1a' },
+  { id: 'action',    label: 'Action',     icon: '💥', swatch: '#b84a00' },
+  { id: 'noir',      label: 'Noir',       icon: '🎬', swatch: '#2a2a2a' },
+  { id: 'romance',   label: 'Romance',    icon: '🌹', swatch: '#8b2252' },
+]
 
 // ── Travel mode row ───────────────────────────────────────────────────────────
 
@@ -184,6 +197,40 @@ export default function WorldSettingsView() {
               </button>
             </div>
           )}
+        </div>
+      </section>
+
+      {/* World theme */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Theme</h2>
+          <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+            Override the global app theme for this world. "Default" inherits your global setting.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {WORLD_THEMES.map((t) => {
+            const worldThemeClass = t.id === 'default' ? null : `theme-${t.id}`
+            const isActive = (world?.theme ?? null) === worldThemeClass
+            return (
+              <button
+                key={t.id}
+                title={t.label}
+                onClick={() => worldId && updateWorld(worldId, { theme: worldThemeClass })}
+                className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors ${
+                  isActive
+                    ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                    : 'border-[hsl(var(--border))] bg-[hsl(var(--background))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
+                }`}
+              >
+                <span
+                  className="h-3 w-3 rounded-full shrink-0 border border-white/20"
+                  style={{ background: t.swatch }}
+                />
+                {t.icon} {t.label}
+              </button>
+            )
+          })}
         </div>
       </section>
 

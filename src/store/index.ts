@@ -61,6 +61,8 @@ interface UISlice {
   setSelectedCharacterId: (id: string | null) => void
   theme: AppTheme
   setTheme: (theme: AppTheme) => void
+  activeWorldTheme: string | null
+  setActiveWorldTheme: (t: string | null) => void
   searchOpen: boolean
   setSearchOpen: (open: boolean) => void
   briefOpen: boolean
@@ -150,6 +152,8 @@ export const useAppStore = create<AppStore>()(
       setSelectedCharacterId: (id) => set({ selectedCharacterId: id }),
       theme: 'default',
       setTheme: (theme) => set({ theme }),
+      activeWorldTheme: null,
+      setActiveWorldTheme: (t) => set({ activeWorldTheme: t }),
       searchOpen: false,
       setSearchOpen: (open) => set({ searchOpen: open }),
       briefOpen: false,
@@ -179,7 +183,6 @@ export const useAppStore = create<AppStore>()(
         activeWorldId: state.activeWorldId,
         activeEventId: state.activeEventId,
         sidebarOpen: state.sidebarOpen,
-        theme: state.theme,
         suppressedIssueIds: state.suppressedIssueIds,
       }),
     }

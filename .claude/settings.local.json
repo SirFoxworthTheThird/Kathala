@@ -183,7 +183,11 @@
       "Bash(cmd.exe /c \"cd /d C:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave && npm run build\")",
       "Bash(cmd.exe /c \"cd /d C:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave && npm run build && echo BUILD_OK\")",
       "Bash(powershell.exe -Command \"Set-Location 'C:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave'; npm run build 2>&1 | Out-String\")",
-      "Bash(powershell.exe -Command \"Remove-Item -Recurse -Force 'C:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave\\\\\\\\src\\\\\\\\lib\\\\\\\\cloud'\")"
+      "Bash(powershell.exe -Command \"Remove-Item -Recurse -Force 'C:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave\\\\\\\\src\\\\\\\\lib\\\\\\\\cloud'\")",
+      "Bash(cmd /c \"cd c:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave && npm run build 2>&1\")",
+      "Bash(cmd.exe /c \"cd /d c:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave && npm run build 2>&1\")",
+      "Bash(powershell.exe -Command \"Set-Location 'c:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave'; npm run build 2>&1 | Select-Object -Last 50\")",
+      "Bash(powershell.exe -Command \"Set-Location 'c:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave'; npm run build 2>&1 | Select-Object -Last 20\")"
     ]
   }
 }

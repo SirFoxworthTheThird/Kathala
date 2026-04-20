@@ -443,6 +443,11 @@ function normalizeImport(data: WorldExportFile): void {
 
   // ── Common backfills (apply to all versions) ────────────────────────────────
 
+  // Backfill theme on world exported before it was added
+  {
+    const w = data.world as unknown as Rec
+    if (w.theme === undefined) w.theme = null
+  }
   // Backfill color on characters exported before it was added
   for (const char of data.characters) {
     const c = char as unknown as Rec

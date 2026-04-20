@@ -2,7 +2,6 @@ import { BookOpen, Map, Users, Network, LayoutDashboard, Package, Search, Scroll
 import faviconUrl from '/favicon.png'
 import { useActiveWorldId, useAppStore } from '@/store'
 import { useWorld } from '@/db/hooks/useWorlds'
-import { ThemePicker } from './ThemePicker'
 import { useNavigate, NavLink, useParams } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 
@@ -112,7 +111,6 @@ export function TopBar() {
             </button>
           </>
         )}
-        <ThemePicker />
       </div>
     </header>
   )
