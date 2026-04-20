@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import {
   Users, Map as MapIcon, MapPin, Package, Layers,
   ChevronRight, ChevronDown, Trash2, Undo2, X, Search,
-  Route, Hexagon, Plus,
+  Route, Hexagon, Plus, Link,
 } from 'lucide-react'
 import { useAppStore, useMapLayerHistory } from '@/store'
 import { useMapLayers, deleteMapLayer } from '@/db/hooks/useMapLayers'
@@ -750,7 +750,12 @@ export function RegionsSection({
                     style={{ background: region.fillColor }}
                   />
                   <div className="flex flex-col flex-1 min-w-0">
-                    <span className="truncate text-xs leading-tight">{region.name}</span>
+                    <div className="flex items-center gap-1 min-w-0">
+                      <span className="truncate text-xs leading-tight">{region.name}</span>
+                      {region.linkedMapLayerId && (
+                        <Link className="h-2.5 w-2.5 shrink-0 text-[hsl(var(--muted-foreground))] opacity-60" />
+                      )}
+                    </div>
                     {activeEventId && (
                       <div className="flex items-center gap-1 mt-0.5">
                         <span

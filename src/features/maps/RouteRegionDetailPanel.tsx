@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
-import { X, Trash2, Route, Hexagon } from 'lucide-react'
+import { X, Trash2, Route, Hexagon, Link, Map } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { updateMapRoute, deleteMapRoute } from '@/db/hooks/useMapRoutes'
 import { updateMapRegion, deleteMapRegion } from '@/db/hooks/useMapRegions'
 import { ROUTE_TYPE_COLORS } from './MapSidebar'
@@ -176,12 +178,17 @@ export function RouteDetailPanel({
 
 export function RegionDetailPanel({
   regionId,
+  worldId,
   onClose,
+  onDrillDown,
 }: {
   regionId: string
+  worldId: string
   onClose: () => void
+  onDrillDown?: (layerId: string) => void
 }) {
   const region = useLiveQuery(() => db.mapRegions.get(regionId), [regionId])
+  const allLayers = useMapLayers(worldId)
   const [name, setName] = useState('')
   const [fillColor, setFillColor] = useState(PRESET_COLORS[0])
   const [opacity, setOpacity] = useState(0.35)
@@ -200,10 +207,16 @@ export function RegionDetailPanel({
 
   if (!region) return null
 
+  const otherLayers = allLayers.filter((l) => l.id !== region.mapLayerId)
+
   async function handleSave() {
     if (!name.trim()) return
     await updateMapRegion(regionId, { name: name.trim(), fillColor, opacity, notes: notes.trim() })
     setDirty(false)
+  }
+
+  async function handleLinkSubMap(layerId: string) {
+    await updateMapRegion(regionId, { linkedMapLayerId: layerId === 'none' ? null : layerId })
   }
 
   async function handleDelete() {
@@ -304,6 +317,31 @@ export function RegionDetailPanel({
             placeholder="Add notes about this region…"
             rows={3}
           />
+        </div>
+
+        {/* Sub-map link */}
+        <div className="flex flex-col gap-1.5">
+          <Label className="flex items-center gap-1.5">
+            <Link className="h-3.5 w-3.5" /> Sub-map
+          </Label>
+          {otherLayers.length > 0 && (
+            <Select value={region.linkedMapLayerId ?? 'none'} onValueChange={handleLinkSubMap}>
+              <SelectTrigger className="text-xs">
+                <SelectValue placeholder="Link a sub-map…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {otherLayers.map((l) => (
+                  <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {region.linkedMapLayerId && onDrillDown && (
+            <Button size="sm" variant="secondary" className="gap-1.5" onClick={() => onDrillDown(region.linkedMapLayerId!)}>
+              <Map className="h-3.5 w-3.5" /> Open Sub-map
+            </Button>
+          )}
         </div>
 
         {/* Vertex count */}

@@ -454,6 +454,11 @@ function normalizeImport(data: WorldExportFile): void {
     if (l.scalePixelsPerUnit === undefined) l.scalePixelsPerUnit = null
     if (l.scaleUnit === undefined) l.scaleUnit = null
   }
+  // Backfill linkedMapLayerId on regions exported before it was added
+  for (const region of data.mapRegions) {
+    const r = region as unknown as Rec
+    if (r.linkedMapLayerId === undefined) r.linkedMapLayerId = null
+  }
   // Backfill synopsis and notes on chapters exported before they were added
   for (const ch of data.chapters) {
     const c = ch as unknown as Rec

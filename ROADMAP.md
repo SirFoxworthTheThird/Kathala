@@ -128,6 +128,10 @@ New capabilities identified in the maps UX review. Detailed specs in `docs/featu
 
 - [x] **Map annotations / free-text labels** — ability to place text labels (or sticky notes) directly on the map canvas, independent of location markers. Stored as a new `MapAnnotation` table (worldId, mapLayerId, x, y, text, fontSize, color); shown as non-interactive overlays on the Leaflet canvas; editable via a small inline popover on click. DB v16.
 
+- [x] **Region sub-map links** — regions gain an optional `linkedMapLayerId` (DB v17 backfill); a "⤵" badge marker rendered at the polygon centroid drills down on click; linked regions show a chain-link icon in the sidebar; the Region Detail Panel gets a sub-map picker with a clear button.
+
+- [x] **Context menu expansion** — right-click on the map canvas offers: Add Location (existing), Add Label (creates annotation immediately), Start Route here (enters route-draw mode with first waypoint set), Start Region here (enters region-draw mode with first vertex set), Copy coordinates (copies `x, y` to clipboard). Menu suppressed during active draw modes.
+
 - [ ] **Playback sub-map transition polish** — when a character crosses into or out of a sub-map during playback, the camera currently cuts instantly. Add a brief zoom-out → layer switch → zoom-in animation so the transition feels intentional rather than jarring.
 
 ### Search

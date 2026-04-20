@@ -567,6 +567,19 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               setSelectedRegionId((prev) => (prev === id ? null : id))
               if (id) focusOnRegion(id)
             }}
+            onRegionDrillDown={pushMapLayer}
+            onContextAddLabel={async (x, y) => {
+              const ann = await createMapAnnotation({ worldId, mapLayerId: layerId, x, y, text: 'Label' })
+              setSelectedAnnotationId(ann.id)
+            }}
+            onContextStartRoute={(x, y) => {
+              setDrawingRoute(true)
+              setRouteWaypoints([{ x, y }])
+            }}
+            onContextStartRegion={(x, y) => {
+              setDrawingRegion(true)
+              setRegionVertices([{ x, y }])
+            }}
             mapAnnotations={mapAnnotations}
             selectedAnnotationId={selectedAnnotationId}
             onAnnotationClick={(id) => setSelectedAnnotationId((prev) => prev === id ? null : id)}
@@ -758,7 +771,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           )}
           {selectedRegionId && !selectedLocationMarkerId && !selectedCharacterId && (
             <div className="absolute inset-y-0 right-0 z-[500] flex">
-              <RegionDetailPanel regionId={selectedRegionId} onClose={() => setSelectedRegionId(null)} />
+              <RegionDetailPanel regionId={selectedRegionId} worldId={worldId} onClose={() => setSelectedRegionId(null)} onDrillDown={pushMapLayer} />
             </div>
           )}
           {selectedCharacterId && (() => {

@@ -65,6 +65,8 @@ export interface MapRegion {
   fillColor: string
   opacity: number
   notes?: string
+  /** If set, the region badge drills down into this sub-map layer */
+  linkedMapLayerId: string | null
   createdAt: number
   updatedAt: number
 }

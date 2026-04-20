@@ -29,6 +29,20 @@ function escapeHtml(s: string | null | undefined): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function polygonCentroid(vertices: Array<{ x: number; y: number }>): { x: number; y: number } {
+  const n = vertices.length
+  if (n === 0) return { x: 0, y: 0 }
+  let x = 0, y = 0
+  for (const v of vertices) { x += v.x; y += v.y }
+  return { x: x / n, y: y / n }
+}
+
+function makeSubMapBadgeIcon() {
+  const html = `<div style="width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,0.65);border:1.5px solid rgba(255,255,255,0.5);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;line-height:1;user-select:none;" title="Open sub-map">⤵</div>`
+  return L.divIcon({ html, className: '', iconSize: [22, 22], iconAnchor: [11, 11] })
+}
+
 // ── Annotation marker ─────────────────────────────────────────────────────────
 function makeAnnotationIcon(text: string, fontSize: number, color: string, selected: boolean) {
   const escaped = escapeHtml(text)
@@ -213,11 +227,11 @@ function ClickHandler({ onMapClickRef }: { onMapClickRef: React.RefObject<(latln
 
 interface ContextMenuState { screenX: number; screenY: number; mapX: number; mapY: number }
 
-function ContextMenuHandler({ onContextMenu }: { onContextMenu: (s: ContextMenuState) => void }) {
+function ContextMenuHandler({ onContextMenu, disabled }: { onContextMenu: (s: ContextMenuState) => void; disabled?: boolean }) {
   useMapEvents({
     contextmenu: (e) => {
       L.DomEvent.preventDefault(e.originalEvent)
-      onContextMenu({ screenX: e.containerPoint.x, screenY: e.containerPoint.y, mapX: e.latlng.lng, mapY: e.latlng.lat })
+      if (!disabled) onContextMenu({ screenX: e.containerPoint.x, screenY: e.containerPoint.y, mapX: e.latlng.lng, mapY: e.latlng.lat })
     },
   })
   return null
@@ -388,6 +402,12 @@ interface LeafletMapCanvasProps {
   onRouteClick?: (routeId: string) => void
   /** Called when the user clicks a persistent region polygon */
   onRegionClick?: (regionId: string) => void
+  /** Called when the user clicks the sub-map badge on a linked region */
+  onRegionDrillDown?: (mapLayerId: string) => void
+  /** Context menu extra actions */
+  onContextAddLabel?: (x: number, y: number) => void
+  onContextStartRoute?: (x: number, y: number) => void
+  onContextStartRegion?: (x: number, y: number) => void
   /** ID of the currently selected route (highlighted on canvas) */
   selectedRouteId?: string | null
   /** ID of the currently selected region (highlighted on canvas) */
@@ -411,6 +431,8 @@ export function LeafletMapCanvas({
   mapRoutes = [], routeMarkerPositions, mapRegions = [], regionStatuses, drawRegionVertices,
   directMapClick = false, drawRoutePoints,
   onRouteClick, onRegionClick, selectedRouteId, selectedRegionId,
+  onRegionDrillDown,
+  onContextAddLabel, onContextStartRoute, onContextStartRegion,
   mapAnnotations = [], onAnnotationClick, selectedAnnotationId,
 }: LeafletMapCanvasProps) {
   const { setIsAnimating } = useAppStore()
@@ -841,7 +863,7 @@ export function LeafletMapCanvas({
         <ZoomTracker onZoomChange={setMapZoom} />
         <ImageOverlay url={imageUrl} bounds={bounds} />
         <ClickHandler onMapClickRef={onMapClickRef} />
-        <ContextMenuHandler onContextMenu={setContextMenu} />
+        <ContextMenuHandler onContextMenu={setContextMenu} disabled={directMapClick} />
 
         {/* In-progress region draw preview */}
         {drawRegionVertices && drawRegionVertices.length >= 2 && (
@@ -877,6 +899,20 @@ export function LeafletMapCanvas({
                 <span style={{ fontSize: '10px', fontWeight: 600 }}>{region.name}</span>
               </Tooltip>
             </Polygon>
+          )
+        })}
+
+        {/* Sub-map badge markers for linked regions */}
+        {mapRegions.filter((r) => r.linkedMapLayerId && r.vertices.length >= 3).map((region) => {
+          const c = polygonCentroid(region.vertices)
+          return (
+            <Marker
+              key={`region-badge-${region.id}`}
+              position={[c.y, c.x]}
+              icon={makeSubMapBadgeIcon()}
+              zIndexOffset={600}
+              eventHandlers={{ click: (e) => { e.originalEvent.stopPropagation(); onRegionDrillDown?.(region.linkedMapLayerId!) } }}
+            />
           )
         })}
 
@@ -1032,16 +1068,35 @@ export function LeafletMapCanvas({
       {/* Right-click context menu */}
       {contextMenu && (
         <div
-          className="absolute z-[2000] min-w-[140px] overflow-hidden rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--card))] py-1 shadow-lg"
+          className="absolute z-[2000] min-w-[160px] overflow-hidden rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--card))] py-1 shadow-lg"
           style={{ left: contextMenu.screenX, top: contextMenu.screenY }}
           onClick={(e) => e.stopPropagation()}
         >
+          {[
+            { glyph: '＋', label: 'Add Location', action: () => { onMapClick(contextMenu.mapX, contextMenu.mapY); setContextMenu(null) } },
+            { glyph: '✎', label: 'Add Label', action: () => { onContextAddLabel?.(contextMenu.mapX, contextMenu.mapY); setContextMenu(null) } },
+            { glyph: '╌', label: 'Start Route here', action: () => { onContextStartRoute?.(contextMenu.mapX, contextMenu.mapY); setContextMenu(null) } },
+            { glyph: '⬡', label: 'Start Region here', action: () => { onContextStartRegion?.(contextMenu.mapX, contextMenu.mapY); setContextMenu(null) } },
+          ].map(({ glyph, label, action }) => (
+            <button
+              key={label}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-[hsl(var(--accent))] transition-colors"
+              onClick={action}
+            >
+              <span className="w-4 text-center text-[hsl(var(--muted-foreground))] text-xs">{glyph}</span>
+              {label}
+            </button>
+          ))}
+          <div className="my-1 border-t border-[hsl(var(--border))]" />
           <button
             className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-[hsl(var(--accent))] transition-colors"
-            onClick={() => { onMapClick(contextMenu.mapX, contextMenu.mapY); setContextMenu(null) }}
+            onClick={() => {
+              navigator.clipboard.writeText(`${Math.round(contextMenu.mapX)}, ${Math.round(contextMenu.mapY)}`)
+              setContextMenu(null)
+            }}
           >
-            <span className="text-[hsl(var(--muted-foreground))]">＋</span>
-            Add Location
+            <span className="w-4 text-center text-[hsl(var(--muted-foreground))] text-xs">⎘</span>
+            Copy coordinates
           </button>
         </div>
       )}

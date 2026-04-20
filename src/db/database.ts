@@ -310,6 +310,13 @@ class PlotWeaveDB extends Dexie {
     this.version(16).stores({
       mapAnnotations: 'id, worldId, mapLayerId',
     })
+
+    // v17: add linkedMapLayerId to map regions (backfill null)
+    this.version(17).stores({}).upgrade(async (tx) => {
+      await tx.table('mapRegions').toCollection().modify((r: Record<string, unknown>) => {
+        if (!('linkedMapLayerId' in r)) r.linkedMapLayerId = null
+      })
+    })
   }
 }
 
