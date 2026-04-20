@@ -1,14 +1,17 @@
 import L from 'leaflet'
 
-// Matches the CSS-variable shortcuts in LeafletMapCanvas — resolved at render time.
-const V = {
-  bg:   'hsl(var(--leaflet-card))',
-  border: 'hsl(var(--ring))',
-  frame: 'hsl(var(--leaflet-border))',
-  fg:   'hsl(var(--leaflet-fg))',
-  muted: 'hsl(var(--leaflet-muted))',
-  font:  'var(--font-body)',
-} as const
+function resolveV() {
+  const s = getComputedStyle(document.documentElement)
+  const r = (n: string) => s.getPropertyValue(n).trim()
+  return {
+    bg:     `hsl(${r('--leaflet-card')})`,
+    border: `hsl(${r('--ring')})`,
+    frame:  `hsl(${r('--leaflet-border')})`,
+    fg:     `hsl(${r('--leaflet-fg')})`,
+    muted:  `hsl(${r('--leaflet-muted')})`,
+    font:   r('--font-body') || 'sans-serif',
+  }
+}
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -34,6 +37,7 @@ export interface GhostPin {
  * characters shown as a fixed context overlay when the inner track is active.
  */
 export function makeGhostIcon(pin: GhostPin, zoom: number): L.DivIcon {
+  const V = resolveV()
   const size     = Math.max(20, Math.min(80, Math.round(36 * Math.pow(2, zoom))))
   const fontSize = Math.round(size * 0.36)
   const labelW   = 110

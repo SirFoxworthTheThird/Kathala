@@ -8,16 +8,21 @@ import { type GhostPin, makeGhostIcon } from '@/lib/ghostMarkerIcon'
 
 export type { GhostPin }
 
-// CSS-variable shortcuts used inside DivIcon HTML strings.
-// These resolve against the document root, so they automatically follow the active theme.
-const V = {
-  bg:     'hsl(var(--leaflet-card))',
-  border: 'hsl(var(--ring))',          // accent ring — changes per theme
-  frame:  'hsl(var(--leaflet-border))',// subtle structural border
-  fg:     'hsl(var(--leaflet-fg))',    // primary text
-  muted:  'hsl(var(--leaflet-muted))', // secondary / subtext
-  font:   'var(--font-body)',          // theme font (sans / serif / mono)
-} as const
+// Resolve CSS custom properties at call time so divIcon inline HTML contains
+// real colour values. Using hsl(var(--...)) strings directly works in the live
+// browser but html2canvas captures a cloned iframe where var() can't resolve.
+function resolveV() {
+  const s = getComputedStyle(document.documentElement)
+  const r = (n: string) => s.getPropertyValue(n).trim()
+  return {
+    bg:     `hsl(${r('--leaflet-card')})`,
+    border: `hsl(${r('--ring')})`,
+    frame:  `hsl(${r('--leaflet-border')})`,
+    fg:     `hsl(${r('--leaflet-fg')})`,
+    muted:  `hsl(${r('--leaflet-muted')})`,
+    font:   r('--font-body') || 'sans-serif',
+  }
+}
 
 function escapeHtml(s: string | null | undefined): string {
   if (!s) return ''
@@ -47,6 +52,7 @@ function makeLocationIcon(
   status = 'active',
   showLabel = true,
 ) {
+  const V = resolveV()
   const typeColor   = TYPE_COLORS[iconType] ?? '#94a3b8'
   const statusColor = STATUS_COLORS[status] || typeColor
   const color       = statusColor
@@ -124,6 +130,7 @@ export interface CharacterPin {
 }
 
 function makeCharacterGroupIcon(pins: CharacterPin[], zoom: number): L.DivIcon {
+  const V = resolveV()
   const size  = Math.max(20, Math.min(80, Math.round(36 * Math.pow(2, zoom))))
   const first = pins[0]
   const n     = pins.length
