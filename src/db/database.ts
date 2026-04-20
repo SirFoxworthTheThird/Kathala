@@ -19,6 +19,12 @@ import type {
   WorldEvent,
   BlobEntry,
   TravelMode,
+  TimelineRelationship,
+  CrossTimelineArtifact,
+  MapRoute,
+  MapRegion,
+  MapRegionSnapshot,
+  MapAnnotation,
 } from '@/types'
 
 class PlotWeaveDB extends Dexie {
@@ -40,6 +46,12 @@ class PlotWeaveDB extends Dexie {
   locationSnapshots!: EntityTable<LocationSnapshot, 'id'>
   itemSnapshots!: EntityTable<ItemSnapshot, 'id'>
   travelModes!: EntityTable<TravelMode, 'id'>
+  timelineRelationships!: EntityTable<TimelineRelationship, 'id'>
+  crossTimelineArtifacts!: EntityTable<CrossTimelineArtifact, 'id'>
+  mapRoutes!: EntityTable<MapRoute, 'id'>
+  mapRegions!: EntityTable<MapRegion, 'id'>
+  mapRegionSnapshots!: EntityTable<MapRegionSnapshot, 'id'>
+  mapAnnotations!: EntityTable<MapAnnotation, 'id'>
 
   constructor() {
     super('PlotWeaveDB')
@@ -279,6 +291,38 @@ class PlotWeaveDB extends Dexie {
           }
         })
       }
+    })
+
+    // v14: timeline relationships and cross-timeline artifacts (purely additive)
+    this.version(14).stores({
+      timelineRelationships: 'id, worldId, sourceTimelineId, targetTimelineId',
+      crossTimelineArtifacts: 'id, worldId, itemId, originTimelineId, encounterTimelineId',
+    })
+
+    // v15: persistent map routes and region polygons (purely additive)
+    this.version(15).stores({
+      mapRoutes: 'id, worldId, mapLayerId',
+      mapRegions: 'id, worldId, mapLayerId',
+      mapRegionSnapshots: 'id, worldId, regionId, eventId, [regionId+eventId]',
+    })
+
+    // v16: free-text map annotations (purely additive)
+    this.version(16).stores({
+      mapAnnotations: 'id, worldId, mapLayerId',
+    })
+
+    // v17: add linkedMapLayerId to map regions (backfill null)
+    this.version(17).stores({}).upgrade(async (tx) => {
+      await tx.table('mapRegions').toCollection().modify((r: Record<string, unknown>) => {
+        if (!('linkedMapLayerId' in r)) r.linkedMapLayerId = null
+      })
+    })
+
+    // v18: add per-world theme (backfill null = inherit global theme)
+    this.version(18).stores({}).upgrade(async (tx) => {
+      await tx.table('worlds').toCollection().modify((w: Record<string, unknown>) => {
+        if (!('theme' in w)) w.theme = null
+      })
     })
   }
 }

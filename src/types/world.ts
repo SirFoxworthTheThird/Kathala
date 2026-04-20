@@ -3,6 +3,8 @@ export interface World {
   name: string
   description: string
   coverImageId: string | null
+  /** Per-world theme class name. null = inherit the global app theme. */
+  theme: string | null
   createdAt: number
   updatedAt: number
 }

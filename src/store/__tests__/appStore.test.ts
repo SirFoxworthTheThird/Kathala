@@ -10,7 +10,6 @@ const INITIAL = {
   sidebarOpen: true,
   selectedLocationMarkerId: null,
   selectedCharacterId: null,
-  selectedRelationshipId: null,
   theme: 'default',
   isPlayingStory: false,
   playbackSpeed: 'normal',
@@ -266,10 +265,4 @@ describe('UISlice', () => {
     expect(useAppStore.getState().selectedCharacterId).toBeNull()
   })
 
-  it('sets the selected relationship', () => {
-    useAppStore.getState().setSelectedRelationshipId('rel-1')
-    expect(useAppStore.getState().selectedRelationshipId).toBe('rel-1')
-    useAppStore.getState().setSelectedRelationshipId(null)
-    expect(useAppStore.getState().selectedRelationshipId).toBeNull()
-  })
 })

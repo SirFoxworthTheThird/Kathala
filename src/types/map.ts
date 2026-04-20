@@ -38,3 +38,60 @@ export interface LocationMarker {
   createdAt: number
   updatedAt: number
 }
+
+export type RouteType = 'road' | 'river' | 'trail' | 'sea_route' | 'border' | 'custom'
+
+export interface MapRoute {
+  id: string
+  worldId: string
+  mapLayerId: string
+  name: string
+  routeType: RouteType
+  /** Ordered points — either a locationMarkerId (string) or a raw pixel coordinate */
+  waypoints: Array<string | { x: number; y: number }>
+  color?: string
+  notes?: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface MapRegion {
+  id: string
+  worldId: string
+  mapLayerId: string
+  name: string
+  /** Polygon vertices in pixel coordinates */
+  vertices: Array<{ x: number; y: number }>
+  fillColor: string
+  opacity: number
+  notes?: string
+  /** If set, the region badge drills down into this sub-map layer */
+  linkedMapLayerId: string | null
+  createdAt: number
+  updatedAt: number
+}
+
+export type MapRegionStatus = 'active' | 'occupied' | 'contested' | 'abandoned' | 'destroyed' | 'unknown'
+
+export interface MapRegionSnapshot {
+  id: string
+  worldId: string
+  regionId: string
+  eventId: string
+  status: MapRegionStatus
+  notes?: string
+  updatedAt: number
+}
+
+export interface MapAnnotation {
+  id: string
+  worldId: string
+  mapLayerId: string
+  x: number
+  y: number
+  text: string
+  fontSize: number
+  color: string
+  createdAt: number
+  updatedAt: number
+}

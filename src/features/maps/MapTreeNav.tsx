@@ -3,6 +3,7 @@ import { ChevronRight, ChevronDown, Map, MapPin, Trash2 } from 'lucide-react'
 import { useMapLayers, deleteMapLayer } from '@/db/hooks/useMapLayers'
 import { useAppStore, useMapLayerHistory } from '@/store'
 import type { MapLayer } from '@/types'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 
 interface TreeNodeProps {
   layer: MapLayer
@@ -17,15 +18,11 @@ function TreeNode({ layer, allLayers, activeLayerId, depth, onSelect, onDeleted 
   const children = allLayers.filter((l) => l.parentMapId === layer.id)
   const [open, setOpen] = useState(true)
   const [hovered, setHovered] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const isActive = layer.id === activeLayerId
+  const childCount = allLayers.filter((l) => l.parentMapId === layer.id).length
 
-  async function handleDelete(e: React.MouseEvent) {
-    e.stopPropagation()
-    const childCount = allLayers.filter((l) => l.parentMapId === layer.id).length
-    const msg = childCount > 0
-      ? `Delete "${layer.name}" and its ${childCount} sub-map(s)? This cannot be undone.`
-      : `Delete "${layer.name}"? This cannot be undone.`
-    if (!confirm(msg)) return
+  async function handleDelete() {
     await deleteMapLayer(layer.id)
     onDeleted(layer.id)
   }
@@ -60,13 +57,20 @@ function TreeNode({ layer, allLayers, activeLayerId, depth, onSelect, onDeleted 
         {hovered && (
           <button
             className="shrink-0 p-0.5 rounded hover:text-red-400 transition-colors"
-            onClick={handleDelete}
+            onClick={(e) => { e.stopPropagation(); setConfirmOpen(true) }}
             title="Delete map"
           >
             <Trash2 className="h-3 w-3" />
           </button>
         )}
       </div>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={childCount > 0 ? `Delete "${layer.name}" and its ${childCount} sub-map(s)?` : `Delete "${layer.name}"?`}
+        description="This cannot be undone."
+        onConfirm={handleDelete}
+      />
 
       {open && children.map((child) => (
         <TreeNode

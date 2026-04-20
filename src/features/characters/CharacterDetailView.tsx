@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Upload, Trash2 } from 'lucide-react'
 import { useCharacter, deleteCharacter } from '@/db/hooks/useCharacters'
@@ -6,6 +7,7 @@ import { storeBlob } from '@/db/hooks/useBlobs'
 import { PortraitImage } from '@/components/PortraitImage'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { OverviewTab } from './tabs/OverviewTab'
 import { CurrentStateTab } from './tabs/CurrentStateTab'
 import { HistoryTab } from './tabs/HistoryTab'
@@ -15,6 +17,7 @@ export default function CharacterDetailView() {
   const { worldId, characterId } = useParams<{ worldId: string; characterId: string }>()
   const navigate = useNavigate()
   const character = useCharacter(characterId ?? null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   if (!character) {
     return (
@@ -32,10 +35,8 @@ export default function CharacterDetailView() {
   }
 
   async function handleDelete() {
-    if (confirm(`Delete "${character!.name}"?`)) {
-      await deleteCharacter(character!.id)
-      navigate(`/worlds/${worldId}/characters`)
-    }
+    await deleteCharacter(character!.id)
+    navigate(`/worlds/${worldId}/characters`)
   }
 
   return (
@@ -71,11 +72,18 @@ export default function CharacterDetailView() {
           variant="ghost"
           size="icon"
           className="ml-auto h-8 w-8 hover:text-red-400"
-          onClick={handleDelete}
+          onClick={() => setConfirmOpen(true)}
         >
           <Trash2 className="h-4 w-4" />
         </Button>
       </div>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={`Delete "${character.name}"?`}
+        description="This will permanently remove the character and all their snapshots."
+        onConfirm={handleDelete}
+      />
 
       {/* Tabs */}
       <div className="flex-1 overflow-auto p-4">

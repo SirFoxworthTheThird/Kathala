@@ -9,7 +9,7 @@ function makeExport(overrides: Partial<WorldExportFile> = {}): WorldExportFile {
   return {
     version: 2,
     exportedAt: Date.now(),
-    world: { id: 'world-test', name: 'Test World', description: '', coverImageId: null, createdAt: 1000, updatedAt: 1000 },
+    world: { id: 'world-test', name: 'Test World', description: '', coverImageId: null, theme: null, createdAt: 1000, updatedAt: 1000 },
     mapLayers: [],
     locationMarkers: [],
     characters: [],
@@ -26,6 +26,12 @@ function makeExport(overrides: Partial<WorldExportFile> = {}): WorldExportFile {
     events: [],
     blobs: [],
     travelModes: [],
+    timelineRelationships: [],
+    crossTimelineArtifacts: [],
+    mapRoutes: [],
+    mapRegions: [],
+    mapRegionSnapshots: [],
+    mapAnnotations: [],
     ...overrides,
   }
 }
@@ -149,8 +155,8 @@ describe('importWorld — successful import', () => {
     await db.delete()
     await db.open()
 
-    await importWorld(makeFile(makeExport({ world: { id: 'world-test', name: 'First', description: '', coverImageId: null, createdAt: 1, updatedAt: 1 } })))
-    await importWorld(makeFile(makeExport({ world: { id: 'world-test', name: 'Second', description: '', coverImageId: null, createdAt: 1, updatedAt: 1 } })))
+    await importWorld(makeFile(makeExport({ world: { id: 'world-test', name: 'First', description: '', coverImageId: null, theme: null, createdAt: 1, updatedAt: 1 } })))
+    await importWorld(makeFile(makeExport({ world: { id: 'world-test', name: 'Second', description: '', coverImageId: null, theme: null, createdAt: 1, updatedAt: 1 } })))
 
     const stored = await db.worlds.get('world-test')
     expect(stored!.name).toBe('Second')

@@ -4,6 +4,7 @@ import { useAppStore } from '@/store'
 import { useChapters } from '@/db/hooks/useTimeline'
 import { bulkDeleteEvents, bulkMoveEvents, bulkAddTag } from '@/db/hooks/useTimeline'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 
 interface BulkActionToolbarProps {
   timelineId: string
@@ -15,6 +16,7 @@ export function BulkActionToolbar({ timelineId }: BulkActionToolbarProps) {
   const [moveOpen, setMoveOpen] = useState(false)
   const [tagOpen, setTagOpen] = useState(false)
   const [tagInput, setTagInput] = useState('')
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   const count = selectedEventIds.size
   if (count === 0) return null
@@ -22,8 +24,6 @@ export function BulkActionToolbar({ timelineId }: BulkActionToolbarProps) {
   const ids = [...selectedEventIds]
 
   async function handleDelete() {
-    if (!confirm(`Delete ${count} event${count > 1 ? 's' : ''} and all their snapshots?`)) return
-    // Clear active event if it was among the deleted
     if (activeEventId && selectedEventIds.has(activeEventId)) setActiveEventId(null)
     await bulkDeleteEvents(ids)
     clearSelection()
@@ -51,9 +51,16 @@ export function BulkActionToolbar({ timelineId }: BulkActionToolbarProps) {
 
       <div className="flex items-center gap-1.5 flex-1">
         {/* Delete */}
-        <Button size="sm" variant="destructive" className="gap-1.5 h-7 text-xs" onClick={handleDelete}>
+        <Button size="sm" variant="destructive" className="gap-1.5 h-7 text-xs" onClick={() => setConfirmOpen(true)}>
           <Trash2 className="h-3.5 w-3.5" /> Delete
         </Button>
+        <ConfirmDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          title={`Delete ${count} event${count > 1 ? 's' : ''}?`}
+          description="All selected events and their snapshots will be permanently deleted."
+          onConfirm={handleDelete}
+        />
 
         {/* Move to chapter */}
         <div className="relative">

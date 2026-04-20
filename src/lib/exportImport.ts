@@ -3,9 +3,11 @@ import type {
   World, MapLayer, LocationMarker, Character, Item,
   CharacterSnapshot, CharacterMovement, ItemPlacement, LocationSnapshot, ItemSnapshot,
   Relationship, RelationshipSnapshot, Timeline, Chapter, WorldEvent, TravelMode,
+  TimelineRelationship, CrossTimelineArtifact, MapRoute, MapRegion, MapRegionSnapshot,
+  MapAnnotation,
 } from '@/types'
 
-const EXPORT_VERSION = 3
+const EXPORT_VERSION = 5
 
 interface BlobExport {
   id: string
@@ -37,7 +39,14 @@ export interface WorldExportFile {
   events: WorldEvent[]
   blobs: BlobExport[]
   travelModes: TravelMode[]
+  timelineRelationships: TimelineRelationship[]
+  crossTimelineArtifacts: CrossTimelineArtifact[]
+  mapRoutes: MapRoute[]
+  mapRegions: MapRegion[]
+  mapRegionSnapshots: MapRegionSnapshot[]
+  mapAnnotations: MapAnnotation[]
   relationshipPositions?: Record<string, { x: number; y: number }>
+  suppressedIssueIds?: string[]
 }
 
 /** Companion file produced by exportWorldSplit — contains only the binary blobs. */
@@ -90,6 +99,12 @@ export async function exportWorld(worldId: string): Promise<void> {
     events,
     rawBlobs,
     travelModes,
+    timelineRelationships,
+    crossTimelineArtifacts,
+    mapRoutes,
+    mapRegions,
+    mapRegionSnapshots,
+    mapAnnotations,
   ] = await Promise.all([
     db.worlds.get(worldId),
     db.mapLayers.where('worldId').equals(worldId).toArray(),
@@ -108,6 +123,12 @@ export async function exportWorld(worldId: string): Promise<void> {
     db.events.where('worldId').equals(worldId).toArray(),
     db.blobs.where('worldId').equals(worldId).toArray(),
     db.travelModes.where('worldId').equals(worldId).toArray(),
+    db.timelineRelationships.where('worldId').equals(worldId).toArray(),
+    db.crossTimelineArtifacts.where('worldId').equals(worldId).toArray(),
+    db.mapRoutes.where('worldId').equals(worldId).toArray(),
+    db.mapRegions.where('worldId').equals(worldId).toArray(),
+    db.mapRegionSnapshots.where('worldId').equals(worldId).toArray(),
+    db.mapAnnotations.where('worldId').equals(worldId).toArray(),
   ])
 
   if (!world) throw new Error('World not found')
@@ -126,6 +147,15 @@ export async function exportWorld(worldId: string): Promise<void> {
   try {
     const raw = localStorage.getItem(`wb-rel-pos-${worldId}`)
     if (raw) relationshipPositions = JSON.parse(raw)
+  } catch { /* ignore */ }
+
+  let suppressedIssueIds: string[] | undefined
+  try {
+    const raw = localStorage.getItem('plotweave-ui')
+    if (raw) {
+      const ui = JSON.parse(raw) as { state?: { suppressedIssueIds?: Record<string, string[]> } }
+      suppressedIssueIds = ui.state?.suppressedIssueIds?.[worldId] ?? []
+    }
   } catch { /* ignore */ }
 
   const exportData: WorldExportFile = {
@@ -149,7 +179,14 @@ export async function exportWorld(worldId: string): Promise<void> {
     events,
     blobs,
     travelModes,
+    timelineRelationships,
+    crossTimelineArtifacts,
+    mapRoutes,
+    mapRegions,
+    mapRegionSnapshots,
+    mapAnnotations,
     relationshipPositions,
+    suppressedIssueIds,
   }
 
   triggerDownload(JSON.stringify(exportData), `${world.name.replace(/[^a-z0-9]/gi, '_')}.pwk`)
@@ -193,6 +230,12 @@ export async function exportWorldSplit(worldId: string): Promise<void> {
     events,
     rawBlobs,
     travelModes,
+    timelineRelationships,
+    crossTimelineArtifacts,
+    mapRoutes,
+    mapRegions,
+    mapRegionSnapshots,
+    mapAnnotations,
   ] = await Promise.all([
     db.worlds.get(worldId),
     db.mapLayers.where('worldId').equals(worldId).toArray(),
@@ -211,6 +254,12 @@ export async function exportWorldSplit(worldId: string): Promise<void> {
     db.events.where('worldId').equals(worldId).toArray(),
     db.blobs.where('worldId').equals(worldId).toArray(),
     db.travelModes.where('worldId').equals(worldId).toArray(),
+    db.timelineRelationships.where('worldId').equals(worldId).toArray(),
+    db.crossTimelineArtifacts.where('worldId').equals(worldId).toArray(),
+    db.mapRoutes.where('worldId').equals(worldId).toArray(),
+    db.mapRegions.where('worldId').equals(worldId).toArray(),
+    db.mapRegionSnapshots.where('worldId').equals(worldId).toArray(),
+    db.mapAnnotations.where('worldId').equals(worldId).toArray(),
   ])
 
   if (!world) throw new Error('World not found')
@@ -229,6 +278,15 @@ export async function exportWorldSplit(worldId: string): Promise<void> {
   try {
     const raw = localStorage.getItem(`wb-rel-pos-${worldId}`)
     if (raw) relationshipPositions = JSON.parse(raw)
+  } catch { /* ignore */ }
+
+  let suppressedIssueIds: string[] | undefined
+  try {
+    const raw = localStorage.getItem('plotweave-ui')
+    if (raw) {
+      const ui = JSON.parse(raw) as { state?: { suppressedIssueIds?: Record<string, string[]> } }
+      suppressedIssueIds = ui.state?.suppressedIssueIds?.[worldId] ?? []
+    }
   } catch { /* ignore */ }
 
   const safeName = world.name.replace(/[^a-z0-9]/gi, '_')
@@ -256,7 +314,14 @@ export async function exportWorldSplit(worldId: string): Promise<void> {
     events,
     blobs: [],
     travelModes,
+    timelineRelationships,
+    crossTimelineArtifacts,
+    mapRoutes,
+    mapRegions,
+    mapRegionSnapshots,
+    mapAnnotations,
     relationshipPositions,
+    suppressedIssueIds,
   }
   triggerDownload(JSON.stringify(dataFile), `${safeName}.pwk`)
 
@@ -347,6 +412,30 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
     throw new Error('Invalid file: travelModes is not an array')
   }
   if (!d.travelModes) (d as Record<string, unknown>).travelModes = []
+  if (d.timelineRelationships !== undefined && !Array.isArray(d.timelineRelationships)) {
+    throw new Error('Invalid file: timelineRelationships is not an array')
+  }
+  if (!d.timelineRelationships) (d as Record<string, unknown>).timelineRelationships = []
+  if (d.crossTimelineArtifacts !== undefined && !Array.isArray(d.crossTimelineArtifacts)) {
+    throw new Error('Invalid file: crossTimelineArtifacts is not an array')
+  }
+  if (!d.crossTimelineArtifacts) (d as Record<string, unknown>).crossTimelineArtifacts = []
+  if (d.mapRoutes !== undefined && !Array.isArray(d.mapRoutes)) {
+    throw new Error('Invalid file: mapRoutes is not an array')
+  }
+  if (!d.mapRoutes) (d as Record<string, unknown>).mapRoutes = []
+  if (d.mapRegions !== undefined && !Array.isArray(d.mapRegions)) {
+    throw new Error('Invalid file: mapRegions is not an array')
+  }
+  if (!d.mapRegions) (d as Record<string, unknown>).mapRegions = []
+  if (d.mapRegionSnapshots !== undefined && !Array.isArray(d.mapRegionSnapshots)) {
+    throw new Error('Invalid file: mapRegionSnapshots is not an array')
+  }
+  if (!d.mapRegionSnapshots) (d as Record<string, unknown>).mapRegionSnapshots = []
+  if (d.mapAnnotations !== undefined && !Array.isArray(d.mapAnnotations)) {
+    throw new Error('Invalid file: mapAnnotations is not an array')
+  }
+  if (!d.mapAnnotations) (d as Record<string, unknown>).mapAnnotations = []
 }
 
 function normalizeImport(data: WorldExportFile): void {
@@ -354,6 +443,11 @@ function normalizeImport(data: WorldExportFile): void {
 
   // ── Common backfills (apply to all versions) ────────────────────────────────
 
+  // Backfill theme on world exported before it was added
+  {
+    const w = data.world as unknown as Rec
+    if (w.theme === undefined) w.theme = null
+  }
   // Backfill color on characters exported before it was added
   for (const char of data.characters) {
     const c = char as unknown as Rec
@@ -364,6 +458,11 @@ function normalizeImport(data: WorldExportFile): void {
     const l = layer as unknown as Rec
     if (l.scalePixelsPerUnit === undefined) l.scalePixelsPerUnit = null
     if (l.scaleUnit === undefined) l.scaleUnit = null
+  }
+  // Backfill linkedMapLayerId on regions exported before it was added
+  for (const region of data.mapRegions) {
+    const r = region as unknown as Rec
+    if (r.linkedMapLayerId === undefined) r.linkedMapLayerId = null
   }
   // Backfill synopsis and notes on chapters exported before they were added
   for (const ch of data.chapters) {
@@ -497,23 +596,24 @@ function normalizeImport(data: WorldExportFile): void {
   }
 }
 
-export async function importWorld(file: File): Promise<string> {
-  const text = await file.text()
+/** Import a world from a raw JSON string (used by cloud sync). */
+export async function importWorldFromJson(json: string): Promise<string> {
   let data: unknown
-  try {
-    data = JSON.parse(text)
-  } catch {
-    throw new Error('Invalid file: could not parse JSON')
-  }
+  try { data = JSON.parse(json) } catch { throw new Error('Invalid file: could not parse JSON') }
   validateImport(data)
   normalizeImport(data)
+  return importWorldData(data)
+}
 
+async function importWorldData(data: WorldExportFile): Promise<string> {
   await db.transaction('rw', [
     db.worlds, db.mapLayers, db.locationMarkers, db.characters,
     db.items, db.characterSnapshots, db.characterMovements, db.itemPlacements,
     db.locationSnapshots, db.itemSnapshots,
     db.relationships, db.relationshipSnapshots, db.timelines,
     db.chapters, db.events, db.blobs, db.travelModes,
+    db.timelineRelationships, db.crossTimelineArtifacts,
+    db.mapRoutes, db.mapRegions, db.mapRegionSnapshots, db.mapAnnotations,
   ], async () => {
     await db.worlds.put(data.world)
     await db.mapLayers.bulkPut(data.mapLayers)
@@ -531,6 +631,12 @@ export async function importWorld(file: File): Promise<string> {
     await db.chapters.bulkPut(data.chapters)
     await db.events.bulkPut(data.events)
     await db.travelModes.bulkPut(data.travelModes)
+    await db.timelineRelationships.bulkPut(data.timelineRelationships)
+    await db.crossTimelineArtifacts.bulkPut(data.crossTimelineArtifacts)
+    await db.mapRoutes.bulkPut(data.mapRoutes)
+    await db.mapRegions.bulkPut(data.mapRegions)
+    await db.mapRegionSnapshots.bulkPut(data.mapRegionSnapshots)
+    await db.mapAnnotations.bulkPut(data.mapAnnotations)
 
     for (const b of data.blobs) {
       await db.blobs.put({
@@ -547,5 +653,191 @@ export async function importWorld(file: File): Promise<string> {
     localStorage.setItem(`wb-rel-pos-${data.world.id}`, JSON.stringify(data.relationshipPositions))
   }
 
+  if (Array.isArray(data.suppressedIssueIds) && data.suppressedIssueIds.length > 0) {
+    try {
+      const raw = localStorage.getItem('plotweave-ui')
+      const ui = raw ? (JSON.parse(raw) as { state?: Record<string, unknown> }) : { state: {} }
+      if (!ui.state) ui.state = {}
+      const existing = (ui.state.suppressedIssueIds ?? {}) as Record<string, string[]>
+      existing[data.world.id] = data.suppressedIssueIds
+      ui.state.suppressedIssueIds = existing
+      localStorage.setItem('plotweave-ui', JSON.stringify(ui))
+    } catch { /* ignore */ }
+  }
+
   return data.world.id
+}
+
+export async function importWorld(file: File): Promise<string> {
+  const text = await file.text()
+  let data: unknown
+  try { data = JSON.parse(text) } catch { throw new Error('Invalid file: could not parse JSON') }
+  validateImport(data)
+  normalizeImport(data)
+  return importWorldData(data)
+}
+
+// ── Merge / collaboration helpers ─────────────────────────────────────────────
+
+export interface MergePreview {
+  exportedAt: number
+  characters:  { added: number; updated: number }
+  events:      { added: number; updated: number }
+  chapters:    { added: number; updated: number }
+  locations:   { added: number; updated: number }
+  items:       { added: number; updated: number }
+}
+
+/** Merge two arrays by ID. Records only in `incoming` are added; records in
+ *  both use whichever has the higher `updatedAt` (falling back to incoming). */
+function mergeTable<T extends { id: string }>(
+  incoming: T[],
+  local: T[],
+): { result: T[]; added: number; updated: number } {
+  const localById    = new Map(local.map((r) => [r.id, r]))
+  const incomingById = new Map(incoming.map((r) => [r.id, r]))
+  const result: T[]  = []
+  let added = 0, updated = 0
+
+  for (const loc of local) {
+    const inc = incomingById.get(loc.id)
+    if (!inc) {
+      result.push(loc) // local-only — keep
+    } else {
+      const locTs = (loc  as unknown as Record<string, unknown>).updatedAt as number | undefined
+      const incTs = (inc  as unknown as Record<string, unknown>).updatedAt as number | undefined
+      if (locTs !== undefined && incTs !== undefined && locTs >= incTs) {
+        result.push(loc) // local is same age or newer
+      } else {
+        result.push(inc) // incoming is newer, or no timestamp — trust incoming
+        updated++
+      }
+    }
+  }
+  for (const inc of incoming) {
+    if (!localById.has(inc.id)) {
+      result.push(inc)
+      added++
+    }
+  }
+  return { result, added, updated }
+}
+
+/**
+ * Parse and validate a .pwk JSON string, diff it against the current world in
+ * the DB, and return a human-readable preview plus the parsed data object so
+ * the caller can execute without re-parsing.
+ */
+export async function previewWorldMerge(
+  json: string,
+): Promise<{ preview: MergePreview; parsed: WorldExportFile }> {
+  let raw: unknown
+  try { raw = JSON.parse(json) } catch { throw new Error('Invalid file: could not parse JSON') }
+  validateImport(raw)
+  normalizeImport(raw)
+  const parsed = raw as WorldExportFile
+  const worldId = parsed.world.id
+
+  const [localChars, localEvents, localChapters, localLocations, localItems] = await Promise.all([
+    db.characters.where('worldId').equals(worldId).toArray(),
+    db.events.where('worldId').equals(worldId).toArray(),
+    db.chapters.where('worldId').equals(worldId).toArray(),
+    db.locationMarkers.where('worldId').equals(worldId).toArray(),
+    db.items.where('worldId').equals(worldId).toArray(),
+  ])
+
+  const chars = mergeTable(parsed.characters, localChars)
+  const evts  = mergeTable(parsed.events, localEvents)
+  const chaps = mergeTable(parsed.chapters, localChapters)
+  const locs  = mergeTable(parsed.locationMarkers, localLocations)
+  const itms  = mergeTable(parsed.items, localItems)
+
+  return {
+    parsed,
+    preview: {
+      exportedAt: parsed.exportedAt,
+      characters: { added: chars.added, updated: chars.updated },
+      events:     { added: evts.added,  updated: evts.updated  },
+      chapters:   { added: chaps.added, updated: chaps.updated },
+      locations:  { added: locs.added,  updated: locs.updated  },
+      items:      { added: itms.added,  updated: itms.updated  },
+    },
+  }
+}
+
+/**
+ * Apply a previously parsed WorldExportFile to the DB.
+ * - 'replace': identical to a normal import (overwrites everything).
+ * - 'merge': per-table smart merge — keeps locally-newer records and
+ *   local-only records; pulls in incoming additions and newer remote edits.
+ */
+export async function applyWorldImport(
+  parsed: WorldExportFile,
+  mode: 'replace' | 'merge',
+): Promise<string> {
+  if (mode === 'replace') return importWorldData(parsed)
+
+  const worldId = parsed.world.id
+
+  const [
+    localChars, localItems, localLocs, localLayers,
+    localEvents, localChapters, localTimelines,
+    localRels, localRelSnaps,
+    localCharSnaps, localMovements, localItemPlacements,
+    localLocSnaps, localItemSnaps,
+    localTravelModes, localTlRels, localCta,
+    localRoutes, localRegions, localRegSnaps, localAnnotations,
+  ] = await Promise.all([
+    db.characters.where('worldId').equals(worldId).toArray(),
+    db.items.where('worldId').equals(worldId).toArray(),
+    db.locationMarkers.where('worldId').equals(worldId).toArray(),
+    db.mapLayers.where('worldId').equals(worldId).toArray(),
+    db.events.where('worldId').equals(worldId).toArray(),
+    db.chapters.where('worldId').equals(worldId).toArray(),
+    db.timelines.where('worldId').equals(worldId).toArray(),
+    db.relationships.where('worldId').equals(worldId).toArray(),
+    db.relationshipSnapshots.where('worldId').equals(worldId).toArray(),
+    db.characterSnapshots.where('worldId').equals(worldId).toArray(),
+    db.characterMovements.where('worldId').equals(worldId).toArray(),
+    db.itemPlacements.where('worldId').equals(worldId).toArray(),
+    db.locationSnapshots.where('worldId').equals(worldId).toArray(),
+    db.itemSnapshots.where('worldId').equals(worldId).toArray(),
+    db.travelModes.where('worldId').equals(worldId).toArray(),
+    db.timelineRelationships.where('worldId').equals(worldId).toArray(),
+    db.crossTimelineArtifacts.where('worldId').equals(worldId).toArray(),
+    db.mapRoutes.where('worldId').equals(worldId).toArray(),
+    db.mapRegions.where('worldId').equals(worldId).toArray(),
+    db.mapRegionSnapshots.where('worldId').equals(worldId).toArray(),
+    db.mapAnnotations.where('worldId').equals(worldId).toArray(),
+  ])
+
+  const merged = {
+    world:                parsed.world, // world-level fields: use incoming (name, description)
+    mapLayers:            mergeTable(parsed.mapLayers, localLayers).result,
+    locationMarkers:      mergeTable(parsed.locationMarkers, localLocs).result,
+    characters:           mergeTable(parsed.characters, localChars).result,
+    items:                mergeTable(parsed.items, localItems).result,
+    characterSnapshots:   mergeTable(parsed.characterSnapshots, localCharSnaps).result,
+    characterMovements:   mergeTable(parsed.characterMovements, localMovements).result,
+    itemPlacements:       mergeTable(parsed.itemPlacements, localItemPlacements).result,
+    locationSnapshots:    mergeTable(parsed.locationSnapshots, localLocSnaps).result,
+    itemSnapshots:        mergeTable(parsed.itemSnapshots, localItemSnaps).result,
+    relationships:        mergeTable(parsed.relationships, localRels).result,
+    relationshipSnapshots:mergeTable(parsed.relationshipSnapshots, localRelSnaps).result,
+    timelines:            mergeTable(parsed.timelines, localTimelines).result,
+    chapters:             mergeTable(parsed.chapters, localChapters).result,
+    events:               mergeTable(parsed.events, localEvents).result,
+    travelModes:          mergeTable(parsed.travelModes, localTravelModes).result,
+    timelineRelationships:mergeTable(parsed.timelineRelationships, localTlRels).result,
+    crossTimelineArtifacts:mergeTable(parsed.crossTimelineArtifacts, localCta).result,
+    mapRoutes:            mergeTable(parsed.mapRoutes, localRoutes).result,
+    mapRegions:           mergeTable(parsed.mapRegions, localRegions).result,
+    mapRegionSnapshots:   mergeTable(parsed.mapRegionSnapshots, localRegSnaps).result,
+    mapAnnotations:       mergeTable(parsed.mapAnnotations, localAnnotations).result,
+    blobs:                parsed.blobs, // blobs: always use incoming (binary, no updatedAt)
+    relationshipPositions: parsed.relationshipPositions,
+    suppressedIssueIds:   parsed.suppressedIssueIds,
+  }
+
+  return importWorldData(merged as WorldExportFile)
 }

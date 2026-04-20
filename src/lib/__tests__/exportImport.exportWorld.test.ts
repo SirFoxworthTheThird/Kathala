@@ -34,6 +34,7 @@ describe('exportWorld — happy path', () => {
       name: 'Exportable World',
       description: 'For testing',
       coverImageId: null,
+      theme: null,
       createdAt: 1000,
       updatedAt: 1000,
     })
@@ -66,6 +67,7 @@ describe('exportWorld — happy path', () => {
       name: 'World: Special / Characters!',
       description: '',
       coverImageId: null,
+      theme: null,
       createdAt: 1000,
       updatedAt: 1000,
     })

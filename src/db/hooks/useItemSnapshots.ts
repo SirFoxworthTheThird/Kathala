@@ -3,11 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import type { ItemSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
-import { computeSortKey, computeSortKeySync } from '@/lib/sortKey'
+import { computeSortKey } from '@/lib/sortKey'
 import { useWorldEvents, useWorldChapters } from './useTimeline'
-
-type EventStub = { id: string; chapterId: string; sortOrder: number }
-type ChapterStub = { id: string; number: number }
+import { resolveSnapshot } from '@/lib/snapshotUtils'
+import type { EventStub, ChapterStub } from '@/lib/snapshotUtils'
 
 /** Pure single-item resolution — exported for testing. */
 export function resolveItemSnapshot(
@@ -16,29 +15,7 @@ export function resolveItemSnapshot(
   allEvents: EventStub[],
   allChapters: ChapterStub[]
 ): ItemSnapshot | undefined {
-  if (!activeEventId || !all.length) return undefined
-
-  const eventById = new Map(allEvents.map((e) => [e.id, e]))
-  const chapNumById = new Map(allChapters.map((c) => [c.id, c.number]))
-  const getOrder = (snap: ItemSnapshot) =>
-    snap.sortKey ?? computeSortKeySync(snap.eventId, eventById, chapNumById)
-  const activeOrder = computeSortKeySync(activeEventId, eventById, chapNumById)
-
-  if (activeOrder === -1) {
-    return all.find((s) => s.eventId === activeEventId)
-  }
-
-  let best: ItemSnapshot | undefined
-  let bestOrder = -1
-  for (const snap of all) {
-    const order = getOrder(snap)
-    if (order === -1 || order > activeOrder) continue
-    if (!best || order > bestOrder || (order === bestOrder && snap.eventId === activeEventId)) {
-      best = snap
-      bestOrder = order
-    }
-  }
-  return best
+  return resolveSnapshot(all, activeEventId, allEvents, allChapters)
 }
 
 /** All snapshots for a single item. */

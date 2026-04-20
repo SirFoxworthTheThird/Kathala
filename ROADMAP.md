@@ -39,9 +39,156 @@ Detailed specs live in `docs/features/`:
 - [x] **[Search](docs/features/search.md)** — Ctrl+K palette, 7 entity types, grouped results, keyboard navigation
 - [x] **[Writer's Brief](docs/features/writers-brief.md)** — slide-in panel, chapter summary, live updates
 - [x] **[Chapter Diff](docs/features/chapter-diff.md)** — compare any two chapters, character/relationship/item diffs
-- [x] **[Export / Import](docs/features/export-import.md)** — .pwk v3 format, backward compat, sortKey backfill
+- [x] **[Export / Import](docs/features/export-import.md)** — .pwk v4 format, backward compat, sortKey backfill
 - [x] **[Themes](docs/features/themes.md)** — nine themes, CSS variable injection, per-theme fonts and overlays
 - [x] **[Timeline multi-select](docs/features/timeline-multi-select.md)** — checkboxes, shift-click range, bulk delete/move/tag, drag-to-reorder chapters
+
+- [x] **[Timeline Relationships](docs/features/timeline-relationships.md)** — typed links between timelines (frame narrative, historical echo, embedded fiction, alternate); ghost pins on map for frame anchors; palimpsest echo rings for shared geography; cross-timeline artifacts; depth-scoped playback
+  - [x] Phase 1: data model + plumbing (types, DB v14, CRUD hooks, store fields, export v4)
+  - [x] Phase 2: relationship management UI (panel, "Link Timelines" button, dashboard tile)
+  - [x] Phase 3: playback scoping
+  - [x] Phase 4: frame narrative map rendering (ghost pins)
+  - [x] Phase 5: historical echo map rendering (echo rings)
+  - [x] Phase 6: cross-timeline artifacts
+
+---
+
+## Architectural Work
+
+Technical debt and structural improvements identified in architectural review. Tackle in order — each is a prerequisite or low-risk warmup for the next.
+
+- [x] **Fix DB version declaration order** — swap `version(13)` and `version(14)` blocks in `src/db/database.ts` so versions read 10→11→12→13→14 in source order. Dexie sorts at runtime so this is cosmetic, but the current order misleads anyone adding a v15. 2-line change.
+
+- [x] **Fix `resolveCharacterPin` return type** — add `ResolvedPinPosition` type alias in `src/features/maps/MapExplorerView.tsx`; remove two `null as unknown as Character` casts from the function body. Callers already overwrite `character` immediately. ~10-line change.
+
+- [x] **Extract shared `selectBestSnapshots` generic** — create `src/lib/snapshotUtils.ts` with one generic `selectBestSnapshots<T>` utility; wire it into the four hook files that each copy the same "highest sortKey at or before active event" algorithm (`useSnapshots`, `useLocationSnapshots`, `useItemSnapshots`, `useRelationshipSnapshots`). Rename the existing `selectBestSnapshots` export in `useRelationshipSnapshots.ts` to `selectBestRelationshipSnapshots` first to avoid import collision. Public signatures unchanged; no downstream breakage.
+
+- [x] **Fix Rules of Hooks violation in `ChapterTimelineBar.tsx`** — two `useMemo` calls (`outerEventsByChapter`, `innerEventsByChapter`) were inside an `if (frameRel)` block, causing a "rendered more hooks than previous render" crash when linking timelines. Moved both to unconditional component top level.
+
+- [x] **Split `ChapterTimelineBar.tsx`** (844 lines) — created `src/components/timeline/` directory:
+  - `TimelineControls.tsx` — controls row + event panel display
+  - `TimelineScrubber.tsx` — chapter segment scrubber
+  - `StackedTrack.tsx` — frame narrative dual-track component
+  - `SingleTrack.tsx` — single-track render
+  - `src/features/timeline/useTimelinePlayback.ts` — playback `useEffect` + `handlePlayPause`
+
+- [x] **Redesign `ChapterTimelineBar` visuals** — rework from scrubber-style dots to a chapter-segment strip:
+  - **Single-track**: chapters as proportional-width labeled segments (width ∝ event count); fill bar advances per event; tick marks for individual events with hover tooltip; chapter title truncated below segment. Replaces the tiny numbered dot + `1.1`/`1.2` event labels.
+  - **Active event display**: fixed "Ch.N — Title › Event Title" panel between controls and track, always visible. Replaces the 4-second disappearing callout.
+  - **Stacked (frame narrative)**: frame track rendered as a visually thinner strip (30px) with a `FRAME` badge; story track is the main full-height track with a `STORY` badge. A vertical ghost cursor line spans both tracks at the active frame event, showing temporal correspondence. Clicking either track activates it. Replaces the indistinguishable same-height rows with colored left-border indicator.
+  - **"All" button** renamed to "Clear" or removed in favour of clicking the active event dot to deselect.
+
+- [x] **Split `MapExplorerView.tsx`** (1,867 lines) — create focused files in `src/features/maps/`:
+  - `mapUtils.ts` — `buildSequentialQueue`, `resolveCharacterPin`, constants (pure, no React)
+  - `SetScaleDialog.tsx` — scale calibration dialog
+  - `MapFilterBar.tsx` — `MapFilters` type, `DEFAULT_MAP_FILTERS`, filter bar UI (preserve exports for existing consumers)
+  - `MapSidebar.tsx` — all six sidebar section components under one `<MapSidebar>` wrapper
+  - `usePlaybackQueue.ts` — playback queue state + effects
+  - `useMapViewState.ts` — all data-fetching hooks and derived memos from `MapView`
+  - After extraction `MapView` handles only local UI state, event handlers, and canvas/panel JSX (~400 lines).
+
+---
+
+## Map Enhancements
+
+New capabilities identified in the maps UX review. Detailed specs in `docs/features/maps.md`.
+
+- [x] **Location sidebar search** — filter input at the top of the Locations section in the map sidebar; filters the visible list by name in real time. Very low effort.
+
+- [x] **Label density toggle** — a button in the map header (or filter bar) to switch between "labels on" and "dots only" mode; reduces clutter when zoomed out on large maps. Very low effort.
+
+- [x] **Full character journey trail** — toggleable per-character overlay showing their complete path across *all* chapters (not just the previous chapter → current). Reads all snapshots for a character in order and draws a faded polyline through every location they visited.
+
+- [x] **Character path film strip** — clicking a character pin shows a horizontal timeline strip at the bottom of the map listing every location that character visited in chapter order; clicking a stop jumps to that chapter.
+
+- [x] **Persistent routes between locations** — Routes section in sidebar; click-marker draw mode; styled polylines by route type (road, river, trail, sea route, border, custom); DB v15.
+
+- [x] **Region polygon support** — Regions section in sidebar; click-canvas draw mode with live preview; filled polygons with per-event status; DB v15.
+
+- [x] **Map export as image** — Export button in map header; uses `html2canvas` to capture the Leaflet container as PNG.
+
+### Map Routes & Regions — Depth Pass
+
+- [x] **Region status editing UI** — Inline status picker in sidebar when a region is selected and an event is active; calls `upsertMapRegionSnapshot` so status changes are saved per-event. Also shows a notes field.
+- [x] **Region snapshot inheritance** — `useBestRegionSnapshots` follows the standard best-snapshot pattern (highest sortKey ≤ active event) so a region keeps its last-recorded status rather than reverting to "active" at every new event.
+- [x] **Canvas click → select route / region** — Clicking a route polyline or region polygon on the canvas selects it in the sidebar (highlights the row, same as clicking the sidebar entry).
+- [x] **Route & region detail panel** — Slide-in panel (matching `LocationDetailPanel`) for a selected route/region: rename, edit notes, and for routes change the route type and waypoints list; for regions change fill color and opacity.
+- [x] **Continuity checker route integration** — When checking travel time between two locations, look up any direct route between them and apply route-type speed multipliers (road fastest, trail slowest); surface a warning when a character traverses a `destroyed` or `abandoned` border region.
+- [x] **Character movement follows routes** — During playback, if a MapRoute exists on the same layer connecting a character's previous and current location markers, the pin animates along the route geometry instead of a straight line. Manual `CharacterMovement` waypoints take priority; route geometry is the automatic fallback.
+
+---
+
+## New Feature Work
+
+### Loose Ends
+
+- [x] **Travel mode visible in timeline** — the History tab and CharacterDetailView show snapshot state but omit travel mode; surface `travelModeId` in the History tab entry for each event where a snapshot was recorded. Also show it in the continuity checker travel-time detail message (currently only shows speed, not which mode name was used).
+
+### Map
+
+- [x] **Map annotations / free-text labels** — ability to place text labels (or sticky notes) directly on the map canvas, independent of location markers. Stored as a new `MapAnnotation` table (worldId, mapLayerId, x, y, text, fontSize, color); shown as non-interactive overlays on the Leaflet canvas; editable via a small inline popover on click. DB v16.
+
+- [x] **Region sub-map links** — regions gain an optional `linkedMapLayerId` (DB v17 backfill); a "⤵" badge marker rendered at the polygon centroid drills down on click; linked regions show a chain-link icon in the sidebar; the Region Detail Panel gets a sub-map picker with a clear button.
+
+- [x] **Context menu expansion** — right-click on the map canvas offers: Add Location (existing), Add Label (creates annotation immediately), Start Route here (enters route-draw mode with first waypoint set), Start Region here (enters region-draw mode with first vertex set), Copy coordinates (copies `x, y` to clipboard). Menu suppressed during active draw modes.
+
+---
+
+## Cloud Sync / Collaboration
+
+> **Goal:** let users (and collaborators) persist and share worlds via their own cloud storage — no PlotWeave server, no account management, no credentials ever handled by the app. Auth and storage are fully delegated to Google / Microsoft.
+
+### How it works
+
+- On first use, the user picks a provider (Google Drive or OneDrive) and completes an OAuth flow on the provider's own login page. PlotWeave only ever holds a short-lived access token in localStorage.
+- The world is stored as a `.pwk` file in a Drive/OneDrive folder of the user's choosing.
+- Collaborators get access via Drive/OneDrive's native share UI — PlotWeave has no concept of "invite".
+- Sync is **turn-based** (one editor at a time): load from cloud → edit → save to cloud. Simultaneous edits produce a conflict the user resolves by choosing a version.
+- Works in both the Netlify web app and the Electron desktop app.
+
+### Implementation plan
+
+- [ ] **Cloud sync provider abstraction** — define a `CloudProvider` interface (`connect`, `disconnect`, `listFiles`, `readFile`, `writeFile`) so Google Drive and OneDrive share a single integration surface. Store provider name + token in localStorage.
+
+- [ ] **Google Drive integration** — register a free OAuth client ID in Google Cloud Console (no server needed for browser/desktop OAuth); implement `GoogleDriveProvider` using the [Google Drive REST API v3](https://developers.google.com/drive/api/reference/rest/v3); scope limited to `drive.file` (app-created files only — user sees exactly what the app touches).
+
+- [ ] **OneDrive / Microsoft Graph integration** — register a free app in Azure (no server needed); implement `OneDriveProvider` using [Microsoft Graph API](https://learn.microsoft.com/en-us/graph/api/resources/onedrive); scope limited to `Files.ReadWrite.AppFolder` or a user-chosen folder.
+
+- [ ] **Cloud sync UI** — "Cloud Sync" section in World Settings: connect/disconnect provider, pick or create the sync folder, "Save to Cloud" and "Load from Cloud" buttons, last-synced timestamp, and a conflict resolution dialog (show both versions' timestamps, let user pick one).
+
+- [ ] **Auto-sync on world open/close** — when a world has a cloud binding, automatically pull on open and push on close (with a conflict check before overwriting).
+
+- [ ] **Playback sub-map transition polish** — when a character crosses into or out of a sub-map during playback, the camera currently cuts instantly. Add a brief zoom-out → layer switch → zoom-in animation so the transition feels intentional rather than jarring.
+
+### Search
+
+- [x] **Search palette covers routes & regions** — extend the Ctrl+K search palette to include MapRoute and MapRegion as two new entity types (with Route / Hexagon icons); selecting a result navigates to the Maps view and focuses the selected route or region (same `focusOnRoute` / `focusOnRegion` logic already used in the sidebar).
+
+### Character
+
+- [x] **History tab enrichment** — for each snapshot entry in the History tab, show travel mode (name, not just ID), route used (if a MapRoute connects the previous and current location on the same layer), and straight-line distance covered. Makes the tab genuinely informative instead of just a state dump.
+
+### Continuity
+
+- [x] **Continuity checker: character inside destroyed/occupied region** — complement the existing "traverses destroyed region" check with a stationary check: if a character's snapshot places them at a location that is *inside* a region with status `destroyed` or `occupied` at that event, surface a warning. Uses the same `pathCrossesPolygon` geometry already in the checker (point-in-polygon case).
+
+### AI
+
+- [x] **Map AI dialog — extract location moves from prose** — a "paste travel narrative" dialog on the Maps view; sends the pasted text plus the current map's location list to Claude; returns a structured list of character → location assignments per event; previews the moves before applying them as snapshots. Mirrors the chapter AI dialog pattern.
+
+---
+
+## UX Improvements
+
+Findings from the UX audit (April 2026).
+
+- [x] **Icon-only navigation** — TopBar nav items now show icon + text label
+- [x] **Platform keyboard shortcut** — Search bar shows `Ctrl+K` on Windows/Linux, `⌘K` on Mac
+- [x] **Writer's Brief and Continuity Checker discoverability** — styled with text labels and a separator; no longer icon-only
+- [x] **ChapterTimelineBar hidden on Arc and Settings** — playback bar suppressed on views where chapter selection is not meaningful
+- [x] **All `confirm()` dialogs replaced** — 12 native browser confirms replaced with `ConfirmDialog` component
+- [x] **WorldSelector import hint** — hint text only shown while importing, not always
+- [x] **Travel modes moved to Settings** — extracted from the Dashboard into a dedicated `WorldSettingsView` at `/settings`; Settings nav item added to TopBar
 
 ---
 

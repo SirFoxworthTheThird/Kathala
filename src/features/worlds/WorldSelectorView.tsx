@@ -133,7 +133,7 @@ export default function WorldSelectorView() {
         {importError && (
           <p className="mt-2 text-xs text-red-400">{importError}</p>
         )}
-        {!importError && (
+        {importing && !importError && (
           <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">
             Select a <code className="font-mono">.pwk</code> file to import.
             If you exported with split files, select both the <code className="font-mono">.pwk</code> and the <code className="font-mono">.pwb</code> images file together.

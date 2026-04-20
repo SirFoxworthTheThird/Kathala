@@ -9,7 +9,7 @@ function makeExport(overrides: Partial<WorldExportFile> = {}): WorldExportFile {
   return {
     version: 2,
     exportedAt: Date.now(),
-    world: { id: 'world-extra', name: 'Extra World', description: '', coverImageId: null, createdAt: 1000, updatedAt: 1000 },
+    world: { id: 'world-extra', name: 'Extra World', description: '', coverImageId: null, theme: null, createdAt: 1000, updatedAt: 1000 },
     mapLayers: [],
     locationMarkers: [],
     characters: [],
@@ -26,6 +26,12 @@ function makeExport(overrides: Partial<WorldExportFile> = {}): WorldExportFile {
     events: [],
     blobs: [],
     travelModes: [],
+    timelineRelationships: [],
+    crossTimelineArtifacts: [],
+    mapRoutes: [],
+    mapRegions: [],
+    mapRegionSnapshots: [],
+    mapAnnotations: [],
     ...overrides,
   }
 }

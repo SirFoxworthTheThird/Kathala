@@ -16,7 +16,7 @@ FILE STRUCTURE
 ═══════════════════════════════════════════════════════════
 
 {
-  "version": 2,
+  "version": 5,
   "type": "full",
   "exportedAt": <current unix timestamp in ms, e.g. 1700000000000>,
   "world": { ... },
@@ -35,6 +35,11 @@ FILE STRUCTURE
   "itemSnapshots": [],
   "relationshipSnapshots": [],
   "travelModes": [],
+  "timelineRelationships": [],
+  "crossTimelineArtifacts": [],
+  "mapRoutes": [],
+  "mapRegions": [],
+  "mapRegionSnapshots": [],
   "blobs": []
 }
 
@@ -63,6 +68,7 @@ SCHEMA REFERENCE
   "aliases": ["<nickname>", "<title>"],   // empty array if none
   "description": "<bio, role, key traits>",
   "portraitImageId": null,
+  "color": null,                          // hex color for this character's pins, or null
   "tags": ["protagonist", "mage"],        // role/archetype tags
   "isAlive": true,                        // false if they die before the story ends
   "createdAt": <timestamp>,
@@ -153,6 +159,7 @@ showing their state at that point in the story.
   "inventoryNotes": "",
   "statusNotes": "<what this character is doing / experiencing at this event>",
   "travelModeId": null,
+  "sortKey": null,              // leave null; the app assigns sort order on import
   "createdAt": <timestamp>,
   "updatedAt": <timestamp>
 }

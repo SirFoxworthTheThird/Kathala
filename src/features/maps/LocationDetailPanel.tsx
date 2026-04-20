@@ -17,6 +17,7 @@ import { useItemSnapshot, upsertItemSnapshot } from '@/db/hooks/useItemSnapshots
 import { useAppStore } from '@/store'
 import { UploadMapDialog } from './UploadMapDialog'
 import { PortraitImage } from '@/components/PortraitImage'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import type { Item } from '@/types'
 
 const ITEM_CONDITIONS = ['intact', 'damaged', 'broken', 'lost', 'used', 'depleted']
@@ -133,6 +134,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [uploadSubMapOpen, setUploadSubMapOpen] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const [addingChar, setAddingChar] = useState(false)
   const [creatingChapter, setCreatingChapter] = useState(false)
   const [newChapterTitle, setNewChapterTitle] = useState('')
@@ -209,11 +211,9 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
   }
 
   async function handleDelete() {
-    if (confirm(`Delete location "${marker!.name}"?`)) {
-      await deleteLocationMarker(markerId)
-      setSelectedLocationMarkerId(null)
-      onClose()
-    }
+    await deleteLocationMarker(markerId)
+    setSelectedLocationMarkerId(null)
+    onClose()
   }
 
   async function handleLinkSubMap(layerId: string) {
@@ -506,10 +506,17 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
       />
 
       <div className="border-t border-[hsl(var(--border))] p-3">
-        <Button variant="destructive" size="sm" className="w-full gap-1.5" onClick={handleDelete}>
+        <Button variant="destructive" size="sm" className="w-full gap-1.5" onClick={() => setConfirmOpen(true)}>
           <Trash2 className="h-3.5 w-3.5" /> Delete Location
         </Button>
       </div>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={`Delete "${marker.name}"?`}
+        description="This location marker will be permanently removed from the map."
+        onConfirm={handleDelete}
+      />
     </div>
   )
 }

@@ -1,23 +1,56 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { MapContainer, ImageOverlay, Marker, Popup, Polyline, CircleMarker, Tooltip, useMapEvents, useMap } from 'react-leaflet'
+import { MapContainer, ImageOverlay, Marker, Popup, Polyline, Polygon, CircleMarker, Tooltip, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import type { MapLayer, LocationMarker, Character } from '@/types'
+import type { MapLayer, LocationMarker, Character, MapRoute, MapRegion, MapRegionStatus, MapAnnotation } from '@/types'
 import { updateLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { useAppStore } from '@/store'
+import { type GhostPin, makeGhostIcon } from '@/lib/ghostMarkerIcon'
 
-// CSS-variable shortcuts used inside DivIcon HTML strings.
-// These resolve against the document root, so they automatically follow the active theme.
-const V = {
-  bg:     'hsl(var(--leaflet-card))',
-  border: 'hsl(var(--ring))',          // accent ring — changes per theme
-  frame:  'hsl(var(--leaflet-border))',// subtle structural border
-  fg:     'hsl(var(--leaflet-fg))',    // primary text
-  muted:  'hsl(var(--leaflet-muted))', // secondary / subtext
-  font:   'var(--font-body)',          // theme font (sans / serif / mono)
-} as const
+export type { GhostPin }
 
-function escapeHtml(s: string): string {
+// Resolve CSS custom properties at call time so divIcon inline HTML contains
+// real colour values. Using hsl(var(--...)) strings directly works in the live
+// browser but html2canvas captures a cloned iframe where var() can't resolve.
+function resolveV() {
+  const s = getComputedStyle(document.documentElement)
+  const r = (n: string) => s.getPropertyValue(n).trim()
+  return {
+    bg:     `hsl(${r('--leaflet-card')})`,
+    border: `hsl(${r('--ring')})`,
+    frame:  `hsl(${r('--leaflet-border')})`,
+    fg:     `hsl(${r('--leaflet-fg')})`,
+    muted:  `hsl(${r('--leaflet-muted')})`,
+    font:   r('--font-body') || 'sans-serif',
+  }
+}
+
+function escapeHtml(s: string | null | undefined): string {
+  if (!s) return ''
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function polygonCentroid(vertices: Array<{ x: number; y: number }>): { x: number; y: number } {
+  const n = vertices.length
+  if (n === 0) return { x: 0, y: 0 }
+  let x = 0, y = 0
+  for (const v of vertices) { x += v.x; y += v.y }
+  return { x: x / n, y: y / n }
+}
+
+function makeSubMapBadgeIcon() {
+  const html = `<div style="width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,0.65);border:1.5px solid rgba(255,255,255,0.5);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;line-height:1;user-select:none;" title="Open sub-map">⤵</div>`
+  return L.divIcon({ html, className: '', iconSize: [22, 22], iconAnchor: [11, 11] })
+}
+
+// ── Annotation marker ─────────────────────────────────────────────────────────
+function makeAnnotationIcon(text: string, fontSize: number, color: string, selected: boolean) {
+  const escaped = escapeHtml(text)
+  const outline = selected ? `0 0 0 2px ${color}` : 'none'
+  const html = `<div style="display:inline-block;padding:3px 6px;background:rgba(0,0,0,0.55);border-radius:4px;box-shadow:${outline};cursor:pointer;user-select:none;text-align:center;">` +
+    `<span style="color:${color};font-size:${fontSize}px;font-weight:600;line-height:1.3;white-space:pre;">${escaped}</span>` +
+    `</div>`
+  return L.divIcon({ html, className: '' })
 }
 
 // ── Location marker: pill badge  [◇ | Name · type] ───────────────────────────
@@ -38,22 +71,15 @@ const STATUS_COLORS: Record<string, string> = {
 function makeLocationIcon(
   iconType: string,
   isLinked: boolean,
-  name: string,
+  name: string | undefined,
   highlighted = false,
   status = 'active',
+  showLabel = true,
 ) {
+  const V = resolveV()
   const typeColor   = TYPE_COLORS[iconType] ?? '#94a3b8'
   const statusColor = STATUS_COLORS[status] || typeColor
   const color       = statusColor
-
-  const pillH  = 32
-  const iconW  = 28
-  const side   = 10
-  const labelW = Math.max(88, name.length * 8 + 16)
-
-  const innerBg = isLinked
-    ? `radial-gradient(circle at center,#fff 20%,${color} 55%)`
-    : color
 
   const glowFilter = highlighted
     ? `drop-shadow(0 4px 8px rgba(0,0,0,0.9)) drop-shadow(0 0 6px ${color})`
@@ -61,7 +87,33 @@ function makeLocationIcon(
       ? `drop-shadow(0 4px 8px rgba(0,0,0,0.9)) drop-shadow(0 0 4px ${color}88)`
       : 'drop-shadow(0 4px 8px rgba(0,0,0,0.9))'
 
-  // Status badge shown when not active
+  // ── Dot-only mode (labels hidden) ──────────────────────────────────────────
+  if (!showLabel) {
+    const r = 7
+    const innerBg = isLinked
+      ? `radial-gradient(circle at center,#fff 20%,${color} 55%)`
+      : color
+    const dot = `<div style="width:${r * 2}px;height:${r * 2}px;border-radius:50%;background:${innerBg};border:1.5px solid ${V.frame};"></div>`
+    const html = `<div style="display:inline-block;filter:${glowFilter};">${dot}</div>`
+    return L.divIcon({
+      html, className: '',
+      iconSize:    [r * 2, r * 2],
+      iconAnchor:  [r, r],
+      popupAnchor: [0, -r],
+    })
+  }
+
+  // ── Full pill mode ─────────────────────────────────────────────────────────
+  const safeName = name ?? ''
+  const pillH  = 32
+  const iconW  = 28
+  const side   = 10
+  const labelW = Math.max(88, safeName.length * 8 + 16)
+
+  const innerBg = isLinked
+    ? `radial-gradient(circle at center,#fff 20%,${color} 55%)`
+    : color
+
   const statusBadge = status !== 'active'
     ? `<span style="margin-left:4px;padding:0 4px;border-radius:2px;background:${color}22;border:1px solid ${color}88;color:${color};font-size:8px;font-family:${V.font};font-weight:600;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;">${escapeHtml(status)}</span>`
     : ''
@@ -70,7 +122,7 @@ function makeLocationIcon(
   const iconArea = `<div style="width:${iconW}px;height:${pillH}px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${diamond}</div>`
   const divider  = `<div style="width:1px;height:${Math.round(pillH * 0.65)}px;align-self:center;background:${V.frame};opacity:0.6;flex-shrink:0;"></div>`
   const label    = `<div style="display:flex;flex-direction:column;justify-content:center;padding:0 8px;min-width:${labelW}px;height:${pillH}px;overflow:hidden;">
-    <div style="color:${V.fg};font-size:11px;font-family:${V.font};line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(name)}</div>
+    <div style="color:${V.fg};font-size:11px;font-family:${V.font};line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(safeName)}</div>
     <div style="display:flex;align-items:center;gap:0;font-size:9px;font-family:${V.font};line-height:1.3;white-space:nowrap;">
       <span style="color:${V.muted};text-transform:capitalize;">${escapeHtml(iconType)}</span>${statusBadge}
     </div>
@@ -102,6 +154,7 @@ export interface CharacterPin {
 }
 
 function makeCharacterGroupIcon(pins: CharacterPin[], zoom: number): L.DivIcon {
+  const V = resolveV()
   const size  = Math.max(20, Math.min(80, Math.round(36 * Math.pow(2, zoom))))
   const first = pins[0]
   const n     = pins.length
@@ -174,11 +227,11 @@ function ClickHandler({ onMapClickRef }: { onMapClickRef: React.RefObject<(latln
 
 interface ContextMenuState { screenX: number; screenY: number; mapX: number; mapY: number }
 
-function ContextMenuHandler({ onContextMenu }: { onContextMenu: (s: ContextMenuState) => void }) {
+function ContextMenuHandler({ onContextMenu, disabled }: { onContextMenu: (s: ContextMenuState) => void; disabled?: boolean }) {
   useMapEvents({
     contextmenu: (e) => {
       L.DomEvent.preventDefault(e.originalEvent)
-      onContextMenu({ screenX: e.containerPoint.x, screenY: e.containerPoint.y, mapX: e.latlng.lng, mapY: e.latlng.lat })
+      if (!disabled) onContextMenu({ screenX: e.containerPoint.x, screenY: e.containerPoint.y, mapX: e.latlng.lng, mapY: e.latlng.lat })
     },
   })
   return null
@@ -282,6 +335,21 @@ export interface MeasureLine {
   label: string
 }
 
+export interface EchoMarker {
+  markerId: string
+  x: number
+  y: number
+  counterpartTimelineName: string
+  eventCount: number
+}
+
+/** Full-journey polyline for a single character across all chapters */
+export interface JourneyLine {
+  characterId: string
+  color: string
+  points: [number, number][]
+}
+
 interface LeafletMapCanvasProps {
   layer: MapLayer
   imageUrl: string
@@ -306,6 +374,50 @@ interface LeafletMapCanvasProps {
   initialCenter?: [number, number] | null
   /** When set, draws a measurement line between two points with a distance label */
   measureLine?: MeasureLine | null
+  /** Ghost pins — outer-timeline characters shown as a dimmed overlay when the inner depth track is active */
+  ghostPins?: GhostPin[]
+  /** Echo rings — amber dashed circles marking locations that exist in a historical-echo counterpart timeline */
+  echoMarkers?: EchoMarker[]
+  /** Called when the user clicks an echo ring */
+  onEchoRingClick?: (markerId: string) => void
+  /** When false, location markers render as dots instead of full pill labels */
+  showLocationLabels?: boolean
+  /** Full-journey polylines — one per character, spanning all chapters */
+  journeyLines?: JourneyLine[]
+  /** Persistent route polylines (roads, rivers, etc.) — always visible */
+  mapRoutes?: MapRoute[]
+  /** Route marker positions: markerId → [lat, lng] */
+  routeMarkerPositions?: Map<string, [number, number]>
+  /** Region polygons with optional per-event fill tint */
+  mapRegions?: MapRegion[]
+  /** regionId → status at the active event */
+  regionStatuses?: Map<string, MapRegionStatus>
+  /** In-progress region draw vertices — shown as a preview polygon */
+  drawRegionVertices?: Array<{ x: number; y: number }>
+  /** When true, every canvas click calls onMapClick directly (no addMode gate) */
+  directMapClick?: boolean
+  /** In-progress route draw points — shown as a preview polyline */
+  drawRoutePoints?: [number, number][]
+  /** Called when the user clicks a persistent route polyline */
+  onRouteClick?: (routeId: string) => void
+  /** Called when the user clicks a persistent region polygon */
+  onRegionClick?: (regionId: string) => void
+  /** Called when the user clicks the sub-map badge on a linked region */
+  onRegionDrillDown?: (mapLayerId: string) => void
+  /** Context menu extra actions */
+  onContextAddLabel?: (x: number, y: number) => void
+  onContextStartRoute?: (x: number, y: number) => void
+  onContextStartRegion?: (x: number, y: number) => void
+  /** ID of the currently selected route (highlighted on canvas) */
+  selectedRouteId?: string | null
+  /** ID of the currently selected region (highlighted on canvas) */
+  selectedRegionId?: string | null
+  /** Free-text annotation labels placed on the canvas */
+  mapAnnotations?: MapAnnotation[]
+  /** Called when the user clicks an annotation */
+  onAnnotationClick?: (annotationId: string) => void
+  /** ID of the currently selected annotation */
+  selectedAnnotationId?: string | null
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -314,7 +426,14 @@ export function LeafletMapCanvas({
   isDraggingCharacter, onMarkerClick, onMapClick, onDrillDown,
   onCharacterDrop, onCharacterDropOnEmpty, onCharacterClick, mapRef: externalMapRef,
   scaleMode, onScalePoints, showSubMapLinks = true, locationStatuses = {},
-  pinAnimation, onAnimationEnd, initialCenter, measureLine,
+  pinAnimation, onAnimationEnd, initialCenter, measureLine, ghostPins,
+  echoMarkers, onEchoRingClick, showLocationLabels = true, journeyLines = [],
+  mapRoutes = [], routeMarkerPositions, mapRegions = [], regionStatuses, drawRegionVertices,
+  directMapClick = false, drawRoutePoints,
+  onRouteClick, onRegionClick, selectedRouteId, selectedRegionId,
+  onRegionDrillDown,
+  onContextAddLabel, onContextStartRoute, onContextStartRegion,
+  mapAnnotations = [], onAnnotationClick, selectedAnnotationId,
 }: LeafletMapCanvasProps) {
   const { setIsAnimating } = useAppStore()
   const internalMapRef = useRef<L.Map | null>(null)
@@ -322,6 +441,8 @@ export function LeafletMapCanvas({
   // Imperative character marker management — bypasses react-leaflet's position-prop mechanism
   const charMarkersRef  = useRef<Map<string, L.Marker>>(new Map()) // per-char, during animation
   const groupMarkersRef = useRef<Map<string, L.Marker>>(new Map()) // per-pos-group, when idle
+  const ghostMarkersRef = useRef<Map<string, L.Marker>>(new Map())        // ghost pins — never animated
+  const echoMarkersRef  = useRef<Map<string, L.CircleMarker>>(new Map()) // echo rings — historical echo
   const animFrameRef    = useRef<number | null>(null)
   const runningAnimKeyRef = useRef<number | null>(null) // guard: skip re-init for same animation key
   const [leafletMap, setLeafletMap] = useState<L.Map | null>(null)
@@ -360,6 +481,10 @@ export function LeafletMapCanvas({
         onScalePoints?.(scalePoint1, pt)
         setScalePoint1(null)
       }
+      return
+    }
+    if (directMapClick) {
+      onMapClick(latlng.lng, latlng.lat)
       return
     }
     if (!addModeRef.current) return
@@ -605,12 +730,73 @@ export function LeafletMapCanvas({
     }
   }, [mapZoom]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Ghost marker effect — fully decoupled from the animation system.
+  // Ghost pins never animate; they just snap to updated positions when outerEventId changes.
+  useEffect(() => {
+    const map = leafletMap ?? mapRef.current
+    if (!map) return
+    for (const [, m] of ghostMarkersRef.current) { try { m.remove() } catch { /* ok */ } }
+    ghostMarkersRef.current.clear()
+    for (const pin of ghostPins ?? []) {
+      if (!Number.isFinite(pin.x) || !Number.isFinite(pin.y)) continue
+      const marker = L.marker([pin.y, pin.x], {
+        icon: makeGhostIcon(pin, mapZoom),
+        zIndexOffset: 900, // below regular character pins (1000)
+        interactive: true,
+        draggable: false,
+      })
+      .bindTooltip(
+        `${pin.name} — ${pin.outerTimelineName}${pin.outerEventTitle ? '\n' + pin.outerEventTitle : ''}`,
+        { permanent: false, direction: 'top' }
+      )
+      .addTo(map)
+      ghostMarkersRef.current.set(pin.characterId, marker)
+    }
+    return () => {
+      for (const [, m] of ghostMarkersRef.current) { try { m.remove() } catch { /* ok */ } }
+      ghostMarkersRef.current.clear()
+    }
+  }, [leafletMap, ghostPins, mapZoom]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Echo rings (historical echo) ──────────────────────────────────────────
+  // Dashed amber circles drawn beneath location markers; always-on, not animated.
+  useEffect(() => {
+    const map = leafletMap ?? mapRef.current
+    if (!map) return
+    for (const [, c] of echoMarkersRef.current) { try { c.remove() } catch { /* ok */ } }
+    echoMarkersRef.current.clear()
+    for (const em of echoMarkers ?? []) {
+      if (!Number.isFinite(em.x) || !Number.isFinite(em.y)) continue
+      const circle = L.circleMarker([em.y, em.x], {
+        radius: 18,
+        fill: false,
+        color: 'hsl(38 92% 50%)',
+        weight: 2,
+        dashArray: '5 4',
+        interactive: true,
+      })
+        .bindTooltip(
+          `${escapeHtml(em.counterpartTimelineName)} — ${em.eventCount} event${em.eventCount !== 1 ? 's' : ''}`,
+          { permanent: false, direction: 'top' },
+        )
+        .on('click', (e) => { L.DomEvent.stopPropagation(e); onEchoRingClick?.(em.markerId) })
+        .addTo(map)
+      echoMarkersRef.current.set(em.markerId, circle)
+    }
+    return () => {
+      for (const [, c] of echoMarkersRef.current) { try { c.remove() } catch { /* ok */ } }
+      echoMarkersRef.current.clear()
+    }
+  }, [leafletMap, echoMarkers]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Remove all character markers when the component unmounts
   useEffect(() => {
     return () => {
       if (animFrameRef.current) { cancelAnimationFrame(animFrameRef.current); animFrameRef.current = null }
       charMarkersRef.current.forEach(m => { try { m.remove() } catch { /* map may be gone */ } })
       groupMarkersRef.current.forEach(m => { try { m.remove() } catch { /* map may be gone */ } })
+      ghostMarkersRef.current.forEach(m => { try { m.remove() } catch { /* map may be gone */ } })
+      echoMarkersRef.current.forEach(c => { try { c.remove() } catch { /* map may be gone */ } })
     }
   }, [])
 
@@ -677,7 +863,108 @@ export function LeafletMapCanvas({
         <ZoomTracker onZoomChange={setMapZoom} />
         <ImageOverlay url={imageUrl} bounds={bounds} />
         <ClickHandler onMapClickRef={onMapClickRef} />
-        <ContextMenuHandler onContextMenu={setContextMenu} />
+        <ContextMenuHandler onContextMenu={setContextMenu} disabled={directMapClick} />
+
+        {/* In-progress region draw preview */}
+        {drawRegionVertices && drawRegionVertices.length >= 2 && (
+          <Polygon
+            positions={drawRegionVertices.map((v) => [v.y, v.x] as [number, number])}
+            pathOptions={{ color: '#22d3ee', fillColor: '#22d3ee', weight: 1.5, opacity: 0.8, fillOpacity: 0.15, dashArray: '4 4' }}
+          />
+        )}
+
+        {/* Region polygons */}
+        {mapRegions.map((region) => {
+          const verts = region.vertices.map((v) => [v.y, v.x] as [number, number])
+          if (verts.length < 3) return null
+          const status = regionStatuses?.get(region.id) ?? 'active'
+          const isRegionSelected = selectedRegionId === region.id
+          const fillOpacity = status === 'destroyed' ? 0.08 : status === 'abandoned' ? 0.12 : region.opacity * 0.45
+          const color = region.fillColor
+          return (
+            <Polygon
+              key={region.id}
+              positions={verts}
+              pathOptions={{
+                color,
+                fillColor: color,
+                weight: isRegionSelected ? 2.5 : 1.5,
+                opacity: isRegionSelected ? 1 : 0.7,
+                fillOpacity: isRegionSelected ? Math.min(fillOpacity + 0.1, 0.7) : fillOpacity,
+                dashArray: isRegionSelected ? '5 4' : undefined,
+              }}
+              eventHandlers={{ click: () => onRegionClick?.(region.id) }}
+            >
+              <Tooltip direction="center" permanent className="region-label-tooltip">
+                <span style={{ fontSize: '10px', fontWeight: 600 }}>{region.name}</span>
+              </Tooltip>
+            </Polygon>
+          )
+        })}
+
+        {/* Sub-map badge markers for linked regions */}
+        {mapRegions.filter((r) => r.linkedMapLayerId && r.vertices.length >= 3).map((region) => {
+          const c = polygonCentroid(region.vertices)
+          return (
+            <Marker
+              key={`region-badge-${region.id}`}
+              position={[c.y, c.x]}
+              icon={makeSubMapBadgeIcon()}
+              zIndexOffset={600}
+              eventHandlers={{ click: (e) => { e.originalEvent.stopPropagation(); onRegionDrillDown?.(region.linkedMapLayerId!) } }}
+            />
+          )
+        })}
+
+        {/* In-progress route draw preview */}
+        {drawRoutePoints && drawRoutePoints.length >= 2 && (
+          <Polyline
+            positions={drawRoutePoints}
+            pathOptions={{ color: '#a78bfa', weight: 2, opacity: 0.8, dashArray: '6 4' }}
+          />
+        )}
+
+        {/* Persistent map routes */}
+        {mapRoutes.map((route) => {
+          const pts = route.waypoints
+            .map((wp) =>
+              typeof wp === 'string'
+                ? routeMarkerPositions?.get(wp)
+                : [wp.y, wp.x] as [number, number]
+            )
+            .filter((pt): pt is [number, number] => pt != null && Number.isFinite(pt[0]) && Number.isFinite(pt[1]))
+          if (pts.length < 2) return null
+          const isDashed = route.routeType === 'border' || route.routeType === 'trail'
+          const isRouteSelected = selectedRouteId === route.id
+          return (
+            <Polyline
+              key={route.id}
+              positions={pts}
+              pathOptions={{
+                color: route.color ?? '#94a3b8',
+                weight: isRouteSelected
+                  ? (route.routeType === 'river' || route.routeType === 'sea_route' ? 5 : 4)
+                  : (route.routeType === 'river' || route.routeType === 'sea_route' ? 3 : 2),
+                opacity: isRouteSelected ? 1 : 0.75,
+                dashArray: isDashed ? '4 6' : undefined,
+              }}
+              eventHandlers={{ click: () => onRouteClick?.(route.id) }}
+            >
+              <Tooltip sticky>{route.name}</Tooltip>
+            </Polyline>
+          )
+        })}
+
+        {/* Full journey trails (all-chapter paths) */}
+        {journeyLines.map((line) =>
+          line.points.length >= 2 && (
+            <Polyline
+              key={`journey-${line.characterId}`}
+              positions={line.points}
+              pathOptions={{ color: line.color, weight: 2, opacity: 0.35, dashArray: '4 6' }}
+            />
+          )
+        )}
 
         {/* Movement lines */}
         {movementLines.map((line) =>
@@ -738,7 +1025,7 @@ export function LeafletMapCanvas({
           <Marker
             key={marker.id}
             position={[marker.y, marker.x]}
-            icon={makeLocationIcon(marker.iconType, !!marker.linkedMapLayerId && showSubMapLinks, marker.name, isDraggingCharacter, locationStatuses[marker.id] ?? 'active')}
+            icon={makeLocationIcon(marker.iconType, !!marker.linkedMapLayerId && showSubMapLinks, marker.name, isDraggingCharacter, locationStatuses[marker.id] ?? 'active', showLocationLabels)}
             zIndexOffset={isDraggingCharacter ? 2000 : -100}
             draggable
             eventHandlers={{
@@ -764,22 +1051,52 @@ export function LeafletMapCanvas({
           </Marker>
         ))}
 
+        {/* Free-text annotation labels */}
+        {mapAnnotations.map((ann) => (
+          <Marker
+            key={ann.id}
+            position={[ann.y, ann.x]}
+            icon={makeAnnotationIcon(ann.text, ann.fontSize, ann.color, selectedAnnotationId === ann.id)}
+            zIndexOffset={500}
+            eventHandlers={{ click: (e) => { e.originalEvent.stopPropagation(); onAnnotationClick?.(ann.id) } }}
+          />
+        ))}
+
         {/* Character markers are managed imperatively by the useEffect above — no JSX here */}
       </MapContainer>
 
       {/* Right-click context menu */}
       {contextMenu && (
         <div
-          className="absolute z-[2000] min-w-[140px] overflow-hidden rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--card))] py-1 shadow-lg"
+          className="absolute z-[2000] min-w-[160px] overflow-hidden rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--card))] py-1 shadow-lg"
           style={{ left: contextMenu.screenX, top: contextMenu.screenY }}
           onClick={(e) => e.stopPropagation()}
         >
+          {[
+            { glyph: '＋', label: 'Add Location', action: () => { onMapClick(contextMenu.mapX, contextMenu.mapY); setContextMenu(null) } },
+            { glyph: '✎', label: 'Add Label', action: () => { onContextAddLabel?.(contextMenu.mapX, contextMenu.mapY); setContextMenu(null) } },
+            { glyph: '╌', label: 'Start Route here', action: () => { onContextStartRoute?.(contextMenu.mapX, contextMenu.mapY); setContextMenu(null) } },
+            { glyph: '⬡', label: 'Start Region here', action: () => { onContextStartRegion?.(contextMenu.mapX, contextMenu.mapY); setContextMenu(null) } },
+          ].map(({ glyph, label, action }) => (
+            <button
+              key={label}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-[hsl(var(--accent))] transition-colors"
+              onClick={action}
+            >
+              <span className="w-4 text-center text-[hsl(var(--muted-foreground))] text-xs">{glyph}</span>
+              {label}
+            </button>
+          ))}
+          <div className="my-1 border-t border-[hsl(var(--border))]" />
           <button
             className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-[hsl(var(--accent))] transition-colors"
-            onClick={() => { onMapClick(contextMenu.mapX, contextMenu.mapY); setContextMenu(null) }}
+            onClick={() => {
+              navigator.clipboard.writeText(`${Math.round(contextMenu.mapX)}, ${Math.round(contextMenu.mapY)}`)
+              setContextMenu(null)
+            }}
           >
-            <span className="text-[hsl(var(--muted-foreground))]">＋</span>
-            Add Location
+            <span className="w-4 text-center text-[hsl(var(--muted-foreground))] text-xs">⎘</span>
+            Copy coordinates
           </button>
         </div>
       )}

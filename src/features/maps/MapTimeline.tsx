@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { useAppStore, useActiveEventId } from '@/store'
+import { useAppStore, useActiveEventId, usePlaybackTimelineId } from '@/store'
 import { useTimelines, useChapters, useEvents, useTimelineEvents } from '@/db/hooks/useTimeline'
 import type { Chapter, WorldEvent } from '@/types'
 
@@ -63,11 +63,13 @@ export function MapTimeline({ worldId }: { worldId: string }) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const timelines = useTimelines(worldId)
-  const firstTimeline = timelines[0] ?? null
-  const chapters = useChapters(firstTimeline?.id ?? null)
-  const allEvents = useTimelineEvents(firstTimeline?.id ?? null)
+  const playbackTimelineId = usePlaybackTimelineId()
+  const effectiveTimelineId = playbackTimelineId ?? timelines[0]?.id ?? null
+  const timeline = timelines.find((t) => t.id === effectiveTimelineId) ?? null
+  const chapters = useChapters(effectiveTimelineId)
+  const allEvents = useTimelineEvents(effectiveTimelineId)
 
-  if (!firstTimeline || chapters.length === 0) {
+  if (!timeline || chapters.length === 0) {
     return (
       <div className="shrink-0 border-t border-[hsl(var(--border))] bg-[hsl(var(--background))] px-4 py-3">
         <p className="text-xs text-[hsl(var(--muted-foreground))] italic">

@@ -1,467 +1,183 @@
-import { useEffect, useRef, useState, useMemo, useCallback, type CSSProperties } from 'react'
-import { ChevronLeft, ChevronRight, Play, Pause, Square, GitCompareArrows, MapPin } from 'lucide-react'
-import { useActiveWorldId, useActiveEventId, useAppStore, type PlaybackSpeed } from '@/store'
+import { useEffect, useRef, useMemo } from 'react'
+import { useActiveWorldId, useActiveEventId, useAppStore } from '@/store'
 import { useTimelines, useChapters, useTimelineEvents } from '@/db/hooks/useTimeline'
-import { readingHoldMs } from '@/lib/playbackTiming'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useTimelineRelationships } from '@/db/hooks/useTimelineRelationships'
+import { BAR_H_SINGLE } from '@/lib/useBarHeight'
+import { useTimelinePlayback } from '@/features/timeline/useTimelinePlayback'
+import { SingleTrack } from './timeline/SingleTrack'
+import { StackedTrack } from './timeline/StackedTrack'
+import { selectFirstEvent, activateEvent } from './timeline/TimelineControls'
 
-const SPEED_NEXT: Record<PlaybackSpeed, PlaybackSpeed> = { slow: 'normal', normal: 'fast', fast: 'slow' }
-const SPEED_LABEL: Record<PlaybackSpeed, string> = { slow: '1×', normal: '2×', fast: '3×' }
-
-export const BAR_H = '3.25rem'
-
-// ─── Style helpers ────────────────────────────────────────────────────────────
-
-function chapterDotStyle(isActive: boolean): CSSProperties {
-  return {
-    width: isActive ? '0.8rem' : '0.55rem',
-    height: isActive ? '0.8rem' : '0.55rem',
-    borderRadius: '50%',
-    background: isActive ? 'var(--tl-accent)' : 'var(--tl-border)',
-    border: `2px solid ${isActive ? 'var(--tl-accent)' : 'var(--tl-border)'}`,
-    flexShrink: 0,
-    transition: 'all 0.2s ease',
-    position: 'relative' as const,
-    zIndex: 1,
-  }
-}
-
-function eventDotStyle(isActive: boolean, hasLocation: boolean): CSSProperties {
-  return {
-    width: '0.35rem',
-    height: '0.35rem',
-    borderRadius: '50%',
-    background: isActive
-      ? (hasLocation ? 'var(--tl-accent)' : 'var(--tl-text-muted)')
-      : 'var(--tl-border)',
-    flexShrink: 0,
-    transition: 'all 0.2s ease',
-    position: 'relative' as const,
-    zIndex: 1,
-  }
-}
-
-function navBtnStyle(disabled: boolean): CSSProperties {
-  return {
-    background: 'none', border: 'none',
-    cursor: disabled ? 'default' : 'pointer',
-    color: disabled ? 'var(--tl-text-muted)' : 'var(--tl-accent)',
-    padding: '0.25rem', opacity: disabled ? 0.3 : 1,
-    display: 'flex', alignItems: 'center',
-    transition: 'opacity 0.15s', flexShrink: 0,
-  }
-}
-
-// ─── Callout ──────────────────────────────────────────────────────────────────
-
-interface CalloutProps {
-  left: number
-  chapterNum: number
-  chapterTitle: string
-  eventTitle: string
-  eventDescription: string
-  hasPrev: boolean
-  hasNext: boolean
-  onPrev: () => void
-  onNext: () => void
-}
-
-function Callout({ left, chapterNum, chapterTitle, eventTitle, eventDescription, hasPrev, hasNext, onPrev, onNext }: CalloutProps) {
-  return (
-    <div style={{
-      position: 'absolute',
-      bottom: `calc(${BAR_H} + 0.5rem)`,
-      left,
-      transform: 'translateX(-50%)',
-      background: 'var(--tl-callout-bg)',
-      border: '1px solid var(--tl-border)',
-      boxShadow: 'var(--tl-callout-shadow)',
-      borderRadius: 'var(--radius)',
-      width: 'min(340px, 88vw)',
-      fontFamily: 'var(--font-body)',
-      pointerEvents: 'auto',
-      zIndex: 10,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', padding: '0.625rem 0.5rem', gap: '0.25rem' }}>
-        <button style={navBtnStyle(!hasPrev)} onClick={onPrev} disabled={!hasPrev} aria-label="Previous event">
-          <ChevronLeft size={18} />
-        </button>
-        <div style={{ flex: 1, minWidth: 0, textAlign: 'center', padding: '0 0.25rem' }}>
-          <div style={{ fontSize: '0.6rem', letterSpacing: '0.08em', color: 'var(--tl-text-muted)', marginBottom: '0.2rem' }}>
-            Ch. {chapterNum} — {chapterTitle}
-          </div>
-          <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--tl-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {eventTitle}
-          </div>
-          {eventDescription && (
-            <div style={{ fontSize: '0.68rem', color: 'var(--tl-text-muted)', marginTop: '0.2rem', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, lineHeight: 1.4 }}>
-              {eventDescription}
-            </div>
-          )}
-        </div>
-        <button style={navBtnStyle(!hasNext)} onClick={onNext} disabled={!hasNext} aria-label="Next event">
-          <ChevronRight size={18} />
-        </button>
-      </div>
-      <div className="tl-caret" />
-    </div>
-  )
-}
-
-// ─── Main component ───────────────────────────────────────────────────────────
+/** @deprecated import BAR_H_SINGLE from @/lib/useBarHeight instead */
+export const BAR_H = BAR_H_SINGLE
 
 export function ChapterTimelineBar() {
-  const worldId        = useActiveWorldId()
-  const activeEventId  = useActiveEventId()
-  const { setActiveEventId, isPlayingStory, setIsPlayingStory, playbackSpeed, setPlaybackSpeed, setDiffOpen, isAnimating } = useAppStore()
-  const navigate = useNavigate()
-  const location = useLocation()
+  const activeEventId = useActiveEventId()
+  const {
+    setActiveEventId,
+    setDiffOpen,
+    setIsPlayingStory,
+    playbackTimelineId, setPlaybackTimelineId,
+    activeDepthTimelineId, setActiveDepthTimelineId,
+  } = useAppStore()
+  const worldId = useActiveWorldId()
 
-  const timelines       = useTimelines(worldId)
-  const firstTimelineId = timelines[0]?.id ?? null
-  const chapters        = useChapters(firstTimelineId)
-  const allEvents       = useTimelineEvents(firstTimelineId)
+  const timelines     = useTimelines(worldId)
+  const relationships = useTimelineRelationships(worldId)
 
-  // All events in global order: chapter.number (primary) → sortOrder (secondary)
+  // ── Frame narrative detection ──────────────────────────────────────────────
+  const frameRel = useMemo(() => {
+    const tlIds = new Set(timelines.map((t) => t.id))
+    return relationships.find(
+      (r) => r.type === 'frame_narrative' && tlIds.has(r.sourceTimelineId) && tlIds.has(r.targetTimelineId)
+    ) ?? null
+  }, [relationships, timelines])
+
+  const outerTimelineId = frameRel?.sourceTimelineId ?? null
+  const innerTimelineId = frameRel?.targetTimelineId ?? null
+
+  // ── Initialize / cleanup active depth ─────────────────────────────────────
+  useEffect(() => {
+    if (frameRel) {
+      if (activeDepthTimelineId !== frameRel.sourceTimelineId && activeDepthTimelineId !== frameRel.targetTimelineId) {
+        setActiveDepthTimelineId(frameRel.sourceTimelineId)
+        setPlaybackTimelineId(frameRel.sourceTimelineId)
+      }
+    } else if (activeDepthTimelineId !== null) {
+      setActiveDepthTimelineId(null)
+      setPlaybackTimelineId(null)
+    }
+  }, [frameRel?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Timeline data — all hooks unconditional ────────────────────────────────
+  const outerChapters   = useChapters(outerTimelineId)
+  const outerRawEvents  = useTimelineEvents(outerTimelineId)
+  const innerChapters   = useChapters(innerTimelineId)
+  const innerRawEvents  = useTimelineEvents(innerTimelineId)
+  const singleId        = frameRel ? null : (playbackTimelineId ?? timelines[0]?.id ?? null)
+  const singleChapters  = useChapters(singleId)
+  const singleRawEvents = useTimelineEvents(singleId)
+
+  const chapters  = frameRel ? (activeDepthTimelineId === innerTimelineId ? innerChapters  : outerChapters)  : singleChapters
+  const allEvents = frameRel ? (activeDepthTimelineId === innerTimelineId ? innerRawEvents : outerRawEvents) : singleRawEvents
+
+  // ── Ordered events for playback ────────────────────────────────────────────
   const orderedEvents = useMemo(() => {
-    const chapterNumberById = new Map(chapters.map(c => [c.id, c.number]))
+    const chapNumById = new Map(chapters.map((c) => [c.id, c.number]))
     return [...allEvents].sort((a, b) => {
-      const aN = (chapterNumberById.get(a.chapterId) ?? 0) * 10_000 + a.sortOrder
-      const bN = (chapterNumberById.get(b.chapterId) ?? 0) * 10_000 + b.sortOrder
+      const aN = (chapNumById.get(a.chapterId) ?? 0) * 10_000 + a.sortOrder
+      const bN = (chapNumById.get(b.chapterId) ?? 0) * 10_000 + b.sortOrder
       return aN - bN
     })
   }, [allEvents, chapters])
 
-  // Events grouped by chapter, sorted by sortOrder
-  const eventsByChapter = useMemo(() => {
-    const map = new Map<string, typeof allEvents>()
-    for (const ch of chapters) {
-      map.set(ch.id, allEvents.filter(e => e.chapterId === ch.id).sort((a, b) => a.sortOrder - b.sortOrder))
-    }
-    return map
-  }, [allEvents, chapters])
+  const activeEvent      = activeEventId ? allEvents.find((e) => e.id === activeEventId) ?? null : null
+  const activeChapter    = activeEvent   ? chapters.find((c) => c.id === activeEvent.chapterId) ?? null : null
+  const activeEventIndex = activeEventId ? orderedEvents.findIndex((e) => e.id === activeEventId) : -1
+  const prevEvent        = activeEventIndex > 0 ? orderedEvents[activeEventIndex - 1] : null
+  const nextEvent        = activeEventIndex < orderedEvents.length - 1 ? orderedEvents[activeEventIndex + 1] : null
 
-  // Derive active chapter from active event
-  const activeEvent   = activeEventId ? allEvents.find(e => e.id === activeEventId) ?? null : null
-  const activeChapter = activeEvent ? chapters.find(c => c.id === activeEvent.chapterId) ?? null : null
+  // ── Playback ───────────────────────────────────────────────────────────────
+  const { handlePlayPause, handleStop, cycleSpeed, isPlayingStory, playbackSpeed } =
+    useTimelinePlayback(orderedEvents, frameRel, activeDepthTimelineId, innerTimelineId)
 
-  // Prev/next event in global order
-  const activeEventIndex = activeEventId ? orderedEvents.findIndex(e => e.id === activeEventId) : -1
-  const prevEvent = activeEventIndex > 0 ? orderedEvents[activeEventIndex - 1] : null
-  const nextEvent = activeEventIndex < orderedEvents.length - 1 ? orderedEvents[activeEventIndex + 1] : null
-
-  /** Select the first event of a chapter, or null if the chapter has no events. */
-  function selectChapter(chapterId: string) {
-    const events = eventsByChapter.get(chapterId) ?? []
-    if (events.length > 0) setActiveEventId(events[0].id)
-    // If no events yet, do nothing (can't set a valid event ID)
-  }
-
-  // ── Playback — advance through events in global order ───────────────────────
-  useEffect(() => {
-    // Wait for any running map animation to finish before advancing
-    if (!isPlayingStory || !orderedEvents.length || isAnimating) return
-
-    if (!activeEventId) {
-      setActiveEventId(orderedEvents[0].id)
-      return
-    }
-
-    const idx = orderedEvents.findIndex(e => e.id === activeEventId)
-    if (idx === -1) return
-
-    const ev = orderedEvents[idx]
-    const holdMs = readingHoldMs([ev.title, ev.description ?? ''].join(' '), playbackSpeed)
-
-    const t = setTimeout(() => {
-      if (idx >= orderedEvents.length - 1) setIsPlayingStory(false)
-      else setActiveEventId(orderedEvents[idx + 1].id)
-    }, holdMs)
-
-    return () => clearTimeout(t)
-  }, [isPlayingStory, isAnimating, activeEventId, orderedEvents, playbackSpeed, setActiveEventId, setIsPlayingStory])
-
-  function handlePlayPause() {
-    if (isPlayingStory) {
-      setIsPlayingStory(false)
-    } else {
-      if (!activeEventId || orderedEvents.findIndex(e => e.id === activeEventId) >= orderedEvents.length - 1) {
-        setActiveEventId(orderedEvents[0]?.id ?? null)
-      }
-      setIsPlayingStory(true)
-      // Auto-navigate to map view if not already there
-      if (worldId && !location.pathname.includes('/maps')) {
-        navigate(`/worlds/${worldId}/maps`)
-      }
-    }
-  }
-
-  // ── Callout positioning + scroll state ─────────────────────────────────────
-  const scrollerRef     = useRef<HTMLDivElement>(null)
-  const activeMarkerRef = useRef<HTMLButtonElement>(null)
-  const [calloutLeft, setCalloutLeft]       = useState<number | null>(null)
-  const [calloutVisible, setCalloutVisible] = useState(true)
-  const [canScrollLeft, setCanScrollLeft]   = useState(false)
-  const [canScrollRight, setCanScrollRight] = useState(false)
-
-  const updateScrollArrows = useCallback(() => {
-    const el = scrollerRef.current
-    if (!el) return
-    setCanScrollLeft(el.scrollLeft > 2)
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2)
-  }, [])
-
-  // Recalculate arrow visibility whenever scroll position or content changes
-  useEffect(() => {
-    const el = scrollerRef.current
-    if (!el) return
-    updateScrollArrows()
-    el.addEventListener('scroll', updateScrollArrows, { passive: true })
-    const ro = new ResizeObserver(updateScrollArrows)
-    ro.observe(el)
-    return () => { el.removeEventListener('scroll', updateScrollArrows); ro.disconnect() }
-  }, [chapters, updateScrollArrows])
-
-  // Convert vertical wheel to horizontal scroll
-  useEffect(() => {
-    const el = scrollerRef.current
-    if (!el) return
-    function onWheel(e: WheelEvent) {
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return // already horizontal
-      e.preventDefault()
-      el!.scrollBy({ left: e.deltaY, behavior: 'auto' })
-    }
-    el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
-  }, [])
-
-  function scrollBy(amount: number) {
-    scrollerRef.current?.scrollBy({ left: amount, behavior: 'smooth' })
-  }
+  // ── Scroll refs ────────────────────────────────────────────────────────────
+  const scrollerRef      = useRef<HTMLDivElement>(null)
+  const activeMarkerRef  = useRef<HTMLButtonElement>(null)
+  const outerScrollerRef = useRef<HTMLDivElement>(null)
+  const innerScrollerRef = useRef<HTMLDivElement>(null)
+  const outerMarkerRef   = useRef<HTMLButtonElement>(null)
+  const innerMarkerRef   = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
-    setCalloutVisible(true)
-    const t = setTimeout(() => setCalloutVisible(false), 4000)
-    return () => clearTimeout(t)
+    activeMarkerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
   }, [activeEventId])
 
   useEffect(() => {
-    const marker = activeMarkerRef.current
-    if (!marker) { setCalloutLeft(null); return }
-    marker.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
-    const id = requestAnimationFrame(() => {
-      const rect    = marker.getBoundingClientRect()
-      const center  = rect.left + rect.width / 2
-      const half    = 170
-      setCalloutLeft(Math.max(half + 12, Math.min(window.innerWidth - half - 12, center)))
-    })
-    return () => cancelAnimationFrame(id)
-  }, [activeEventId, chapters])
+    if (!frameRel) return
+    const ref = activeDepthTimelineId === innerTimelineId ? innerMarkerRef : outerMarkerRef
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
+  }, [activeEventId, frameRel, activeDepthTimelineId, innerTimelineId])
 
-  if (!timelines.length || !chapters.length) return null
+  // ── Color resolution ───────────────────────────────────────────────────────
+  const accentColor = timelines.find((t) => t.id === singleId)?.color ?? 'var(--tl-accent)'
+  const outerColor  = timelines.find((t) => t.id === outerTimelineId)?.color ?? 'var(--tl-accent)'
+  const innerColor  = timelines.find((t) => t.id === innerTimelineId)?.color ?? 'var(--tl-accent)'
 
+  if (!timelines.length) return null
+  if (!frameRel && !chapters.length) return null
+
+  // ── Shared handlers ────────────────────────────────────────────────────────
+  const handleEventSelect = (id: string, locId?: string | null) => activateEvent(id, locId, setActiveEventId)
+  const handleChapterSelect = (chId: string, events = allEvents) => selectFirstEvent(chId, events, setActiveEventId)
+  const handleActivateDepth = (timelineId: string) => {
+    setIsPlayingStory(false)
+    setActiveDepthTimelineId(timelineId)
+    setPlaybackTimelineId(timelineId)
+  }
+
+  // ── Stacked render (frame narrative) ──────────────────────────────────────
+  if (frameRel && outerTimelineId && innerTimelineId) {
+    return (
+      <StackedTrack
+        outerChapters={outerChapters}
+        outerRawEvents={outerRawEvents}
+        innerChapters={innerChapters}
+        innerRawEvents={innerRawEvents}
+        outerTimelineId={outerTimelineId}
+        innerTimelineId={innerTimelineId}
+        isOuterActive={activeDepthTimelineId !== innerTimelineId}
+        outerColor={outerColor}
+        innerColor={innerColor}
+        isPlayingStory={isPlayingStory}
+        playbackSpeed={playbackSpeed}
+        activeEventId={activeEventId}
+        activeEvent={activeEvent}
+        activeChapter={activeChapter}
+        prevEvent={prevEvent}
+        nextEvent={nextEvent}
+        outerScrollerRef={outerScrollerRef}
+        innerScrollerRef={innerScrollerRef}
+        outerMarkerRef={outerMarkerRef}
+        innerMarkerRef={innerMarkerRef}
+        onPlayPause={handlePlayPause}
+        onStop={handleStop}
+        onSpeedChange={cycleSpeed}
+        onDiffOpen={() => setDiffOpen(true)}
+        onPrev={() => prevEvent && setActiveEventId(prevEvent.id)}
+        onNext={() => nextEvent && setActiveEventId(nextEvent.id)}
+        onEventSelect={handleEventSelect}
+        onChapterSelect={handleChapterSelect}
+        onActivateDepth={handleActivateDepth}
+        setActiveEventId={setActiveEventId}
+      />
+    )
+  }
+
+  // ── Single-track render ────────────────────────────────────────────────────
   return (
-    <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1000, overflow: 'visible' }}>
-
-      {/* Callout */}
-      {activeEvent && activeChapter && calloutLeft !== null && calloutVisible && (
-        <Callout
-          left={calloutLeft}
-          chapterNum={activeChapter.number}
-          chapterTitle={activeChapter.title}
-          eventTitle={activeEvent.title}
-          eventDescription={activeEvent.description ?? ''}
-          hasPrev={!!prevEvent}
-          hasNext={!!nextEvent}
-          onPrev={() => prevEvent && setActiveEventId(prevEvent.id)}
-          onNext={() => nextEvent && setActiveEventId(nextEvent.id)}
-        />
-      )}
-
-      {/* Bar */}
-      <div style={{
-        height: BAR_H,
-        background: 'var(--tl-bg)',
-        borderTop: '1px solid var(--tl-border)',
-        backdropFilter: 'var(--tl-backdrop)',
-        WebkitBackdropFilter: 'var(--tl-backdrop)' as string,
-        display: 'flex', alignItems: 'center',
-        overflow: 'hidden',
-        fontFamily: 'var(--font-body)',
-      }}>
-
-        {/* Playback controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.125rem', padding: '0 0.5rem', height: '100%', flexShrink: 0, borderRight: '1px solid var(--tl-border)' }}>
-          <button onClick={handlePlayPause} title={isPlayingStory ? 'Pause' : 'Plays story movement on the map'}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tl-accent)', padding: '0.25rem', display: 'flex', alignItems: 'center', borderRadius: '3px' }}>
-            {isPlayingStory ? <Pause size={14} /> : <Play size={14} />}
-          </button>
-          {isPlayingStory && (
-            <button onClick={() => { setIsPlayingStory(false); setActiveEventId(null) }} title="Stop"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tl-text-muted)', padding: '0.25rem', display: 'flex', alignItems: 'center', borderRadius: '3px' }}>
-              <Square size={11} />
-            </button>
-          )}
-          <button onClick={() => setPlaybackSpeed(SPEED_NEXT[playbackSpeed])} title="Playback speed"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: isPlayingStory ? 'var(--tl-accent)' : 'var(--tl-text-muted)', fontSize: '0.6rem', fontWeight: 700, fontFamily: 'var(--font-body)', padding: '0.25rem 0.125rem', lineHeight: 1, borderRadius: '3px' }}>
-            {SPEED_LABEL[playbackSpeed]}
-          </button>
-          {activeEventId && (
-            <button onClick={() => setDiffOpen(true)} title="Compare chapters"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tl-text-muted)', padding: '0.25rem', display: 'flex', alignItems: 'center', borderRadius: '3px' }}>
-              <GitCompareArrows size={13} />
-            </button>
-          )}
-        </div>
-
-        {/* "All" deselect */}
-        <button
-          onClick={() => { setIsPlayingStory(false); setActiveEventId(null) }}
-          style={{
-            flexShrink: 0, padding: '0 0.875rem', height: '100%',
-            background: 'none', border: 'none', borderRight: '1px solid var(--tl-border)',
-            cursor: 'pointer', fontSize: '0.7rem', letterSpacing: '0.06em',
-            textTransform: 'uppercase' as const,
-            fontWeight: !activeEventId ? 700 : 400,
-            color: !activeEventId ? 'var(--tl-accent)' : 'var(--tl-text-muted)',
-            fontFamily: 'var(--font-body)', transition: 'color 0.2s',
-          }}
-        >
-          All
-        </button>
-
-        {/* Scrollable track — chapters + events interleaved */}
-        <div style={{ position: 'relative', flex: 1, height: '100%', minWidth: 0 }}>
-          {/* Left scroll arrow */}
-          {canScrollLeft && (
-            <button
-              onClick={() => scrollBy(-200)}
-              style={{
-                position: 'absolute', left: 0, top: 0, bottom: 0, zIndex: 5,
-                display: 'flex', alignItems: 'center', paddingInline: '0.25rem',
-                background: 'linear-gradient(to right, var(--tl-bg) 60%, transparent)',
-                border: 'none', cursor: 'pointer', color: 'var(--tl-accent)',
-              }}
-            >
-              <ChevronLeft size={14} />
-            </button>
-          )}
-          {/* Right scroll arrow */}
-          {canScrollRight && (
-            <button
-              onClick={() => scrollBy(200)}
-              style={{
-                position: 'absolute', right: 0, top: 0, bottom: 0, zIndex: 5,
-                display: 'flex', alignItems: 'center', paddingInline: '0.25rem',
-                background: 'linear-gradient(to left, var(--tl-bg) 60%, transparent)',
-                border: 'none', cursor: 'pointer', color: 'var(--tl-accent)',
-              }}
-            >
-              <ChevronRight size={14} />
-            </button>
-          )}
-          <div ref={scrollerRef} style={{
-            display: 'flex', alignItems: 'center',
-            overflowX: 'auto', overflowY: 'visible',
-            scrollbarWidth: 'none', paddingLeft: '0.75rem', paddingRight: '0.75rem',
-            height: '100%', gap: 0,
-          }}>
-          <div style={{
-            position: 'relative', display: 'flex', alignItems: 'center',
-            minWidth: 'max-content', gap: 0,
-          }}>
-            {/* Connecting line */}
-            <div style={{
-              position: 'absolute', left: 0, right: 0, top: '50%', height: '1px',
-              background: 'var(--tl-border)',
-              transform: 'translateY(calc(-50% - 5px))',
-              zIndex: 0,
-            }} />
-
-            {chapters.map((ch) => {
-              const isChapterActive = activeChapter?.id === ch.id
-              const chEvents        = eventsByChapter.get(ch.id) ?? []
-
-              return (
-                <div key={ch.id} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                  {/* Chapter marker — selects first event of the chapter */}
-                  <button
-                    ref={isChapterActive && !activeEvent ? activeMarkerRef : undefined}
-                    title={chEvents.length === 0 ? 'Add an event to this chapter to activate it.' : undefined}
-                    style={{
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
-                      padding: '0 0.4rem', minWidth: '2rem',
-                      background: 'none', border: 'none', cursor: chEvents.length === 0 ? 'default' : 'pointer',
-                      flexShrink: 0, position: 'relative', zIndex: 1,
-                      opacity: chEvents.length === 0 ? 0.35 : isChapterActive ? 1 : 0.7, transition: 'opacity 0.2s',
-                    }}
-                    onClick={() => selectChapter(ch.id)}
-                  >
-                    <div style={chapterDotStyle(isChapterActive)} className={isChapterActive ? 'tl-dot-active' : ''} />
-                    <span style={{
-                      fontSize: '0.58rem', lineHeight: 1, letterSpacing: '0.04em',
-                      color: isChapterActive ? 'var(--tl-accent)' : 'var(--tl-text-muted)',
-                      fontWeight: isChapterActive ? 700 : 400, whiteSpace: 'nowrap',
-                      fontFamily: 'var(--font-body)', transition: 'color 0.2s',
-                    }}>
-                      {ch.number}
-                    </span>
-                  </button>
-
-                  {/* Individual event markers */}
-                  {chEvents.map((ev, i) => {
-                    const isEvActive = ev.id === activeEventId
-                    return (
-                      <button
-                        key={ev.id}
-                        ref={isEvActive ? activeMarkerRef : undefined}
-                        title={ev.title}
-                        onClick={() => {
-                          setActiveEventId(ev.id)
-                          if (ev.locationMarkerId) {
-                            window.dispatchEvent(new CustomEvent('wb:map:focusMarker', { detail: { markerId: ev.locationMarkerId } }))
-                          }
-                        }}
-                        style={{
-                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
-                          padding: '0 0.35rem', minWidth: '1.5rem',
-                          background: 'none', border: 'none',
-                          cursor: 'pointer', flexShrink: 0,
-                          position: 'relative', zIndex: 1,
-                          opacity: isChapterActive ? 1 : 0.5, transition: 'opacity 0.2s',
-                        }}
-                      >
-                        <div style={eventDotStyle(isEvActive, !!ev.locationMarkerId)}>
-                          {ev.locationMarkerId && isEvActive && (
-                            <MapPin
-                              size={6}
-                              style={{
-                                position: 'absolute', top: '50%', left: '50%',
-                                transform: 'translate(-50%, -50%)',
-                                color: 'var(--tl-bg)',
-                                pointerEvents: 'none',
-                              }}
-                            />
-                          )}
-                        </div>
-                        <span style={{
-                          fontSize: '0.5rem', lineHeight: 1, letterSpacing: '0.02em',
-                          color: isEvActive ? 'var(--tl-accent)' : isChapterActive ? 'var(--tl-text-muted)' : 'var(--tl-border)',
-                          whiteSpace: 'nowrap', fontFamily: 'var(--font-body)',
-                          transition: 'color 0.2s',
-                        }}>
-                          {ch.number}.{i + 1}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-              )
-            })}
-          </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <SingleTrack
+      chapters={chapters}
+      allEvents={allEvents}
+      activeEventId={activeEventId}
+      activeEvent={activeEvent}
+      activeChapter={activeChapter}
+      prevEvent={prevEvent}
+      nextEvent={nextEvent}
+      accentColor={accentColor}
+      isPlayingStory={isPlayingStory}
+      playbackSpeed={playbackSpeed}
+      scrollerRef={scrollerRef}
+      activeMarkerRef={activeMarkerRef}
+      onPlayPause={handlePlayPause}
+      onStop={handleStop}
+      onSpeedChange={cycleSpeed}
+      onDiffOpen={() => setDiffOpen(true)}
+      onClear={handleStop}
+      onPrev={() => prevEvent && setActiveEventId(prevEvent.id)}
+      onNext={() => nextEvent && setActiveEventId(nextEvent.id)}
+      onEventSelect={handleEventSelect}
+      onChapterSelect={handleChapterSelect}
+    />
   )
 }

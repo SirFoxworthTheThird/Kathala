@@ -205,6 +205,7 @@ ${hasLocations
       "inventoryNotes": "",
       "statusNotes": "<1–2 sentences: what this character is doing or experiencing>",
       "travelModeId": null,
+      "sortKey": null,
       "createdAt": ${ts},
       "updatedAt": ${ts}
     }
@@ -222,6 +223,7 @@ ${hasLocations
       "strength": "<weak|moderate|strong|bond>",
       "label": "<brief label for this relationship at this point>",
       "description": "<1–2 sentences: how this relationship stands during this event>",
+      "sortKey": null,
       "createdAt": ${ts},
       "updatedAt": ${ts}
     }

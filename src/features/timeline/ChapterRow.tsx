@@ -6,6 +6,7 @@ import { deleteChapter, useEvents, updateEvent } from '@/db/hooks/useTimeline'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EventRow } from './EventRow'
 import { AddEventDialog } from './AddEventDialog'
 import { EmptyState } from '@/components/EmptyState'
@@ -20,6 +21,7 @@ export function ChapterRow({ chapter }: ChapterRowProps) {
   const { activeEventId, setActiveEventId, selectedEventIds, selectEventRange, clearSelection } = useAppStore()
   const [expanded, setExpanded] = useState(false)
   const [addEventOpen, setAddEventOpen] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const events = useEvents(chapter.id)
 
   const sortedEvents = [...events].sort((a, b) => a.sortOrder - b.sortOrder)
@@ -58,9 +60,7 @@ export function ChapterRow({ chapter }: ChapterRowProps) {
   }
 
   async function handleDelete() {
-    if (confirm(`Delete chapter "${chapter.title}"?`)) {
-      await deleteChapter(chapter.id)
-    }
+    await deleteChapter(chapter.id)
   }
 
   return (
@@ -124,10 +124,17 @@ export function ChapterRow({ chapter }: ChapterRowProps) {
           variant="ghost"
           size="icon"
           className="h-7 w-7 shrink-0 hover:text-red-400"
-          onClick={handleDelete}
+          onClick={() => setConfirmOpen(true)}
         >
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
+        <ConfirmDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          title={`Delete chapter "${chapter.title}"?`}
+          description="All events in this chapter will be permanently deleted."
+          onConfirm={handleDelete}
+        />
       </div>
 
       {/* Expanded events */}
