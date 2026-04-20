@@ -47,10 +47,10 @@ function makeSubMapBadgeIcon() {
 function makeAnnotationIcon(text: string, fontSize: number, color: string, selected: boolean) {
   const escaped = escapeHtml(text)
   const outline = selected ? `0 0 0 2px ${color}` : 'none'
-  const html = `<div style="position:relative;display:inline-block;padding:3px 6px;background:rgba(0,0,0,0.55);border-radius:4px;box-shadow:${outline};cursor:pointer;user-select:none;max-width:200px;word-break:break-word;text-align:center;">` +
-    `<span style="color:${color};font-size:${fontSize}px;font-weight:600;line-height:1.3;white-space:pre-wrap;">${escaped}</span>` +
+  const html = `<div style="display:inline-block;padding:3px 6px;background:rgba(0,0,0,0.55);border-radius:4px;box-shadow:${outline};cursor:pointer;user-select:none;text-align:center;">` +
+    `<span style="color:${color};font-size:${fontSize}px;font-weight:600;line-height:1.3;white-space:pre;">${escaped}</span>` +
     `</div>`
-  return L.divIcon({ html, className: '', iconSize: undefined, iconAnchor: undefined })
+  return L.divIcon({ html, className: '' })
 }
 
 // ── Location marker: pill badge  [◇ | Name · type] ───────────────────────────
