@@ -18,6 +18,7 @@ import { useAppStore } from '@/store'
 import { UploadMapDialog } from './UploadMapDialog'
 import { PortraitImage } from '@/components/PortraitImage'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { RelatedLoreSection } from '@/features/lore/RelatedLoreSection'
 import type { Item } from '@/types'
 
 const ITEM_CONDITIONS = ['intact', 'damaged', 'broken', 'lost', 'used', 'depleted']
@@ -464,6 +465,9 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
             />
           </div>
         )}
+
+        {/* ── Related Lore ── */}
+        <RelatedLoreSection worldId={worldId} entityId={markerId} entityName={marker.name} />
 
         {/* ── Sub-map ── */}
         <div className="flex flex-col gap-1.5">
