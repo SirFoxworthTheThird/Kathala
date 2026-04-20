@@ -1,4 +1,4 @@
-import { BookOpen, Map, Users, Network, LayoutDashboard, Package, Search, ScrollText, TableProperties, ShieldAlert, Settings } from 'lucide-react'
+import { BookOpen, Map, Users, Network, LayoutDashboard, Package, Search, ScrollText, TableProperties, ShieldAlert, Settings, HelpCircle } from 'lucide-react'
 import faviconUrl from '/favicon.png'
 import { useActiveWorldId, useAppStore } from '@/store'
 import { useWorld } from '@/db/hooks/useWorlds'
@@ -50,7 +50,7 @@ export function TopBar() {
   const worldId = useActiveWorldId()
   const world = useWorld(worldId)
   const navigate = useNavigate()
-  const { setSearchOpen, setBriefOpen, setCheckerOpen } = useAppStore()
+  const { setSearchOpen, setBriefOpen, setCheckerOpen, setHelpOpen } = useAppStore()
 
   return (
     <header className="relative flex h-12 shrink-0 items-center border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4">
@@ -111,6 +111,15 @@ export function TopBar() {
             </button>
           </>
         )}
+        <div className="mx-1 h-5 w-px bg-[hsl(var(--border))]" />
+        <button
+          onClick={() => setHelpOpen(true)}
+          className="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] transition-colors"
+          title="Help"
+        >
+          <HelpCircle className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Help</span>
+        </button>
       </div>
     </header>
   )

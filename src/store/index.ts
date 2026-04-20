@@ -67,6 +67,8 @@ interface UISlice {
   setSearchOpen: (open: boolean) => void
   briefOpen: boolean
   setBriefOpen: (open: boolean) => void
+  helpOpen: boolean
+  setHelpOpen: (open: boolean) => void
   diffOpen: boolean
   setDiffOpen: (open: boolean) => void
   checkerOpen: boolean
@@ -158,6 +160,8 @@ export const useAppStore = create<AppStore>()(
       setSearchOpen: (open) => set({ searchOpen: open }),
       briefOpen: false,
       setBriefOpen: (open) => set({ briefOpen: open }),
+      helpOpen: false,
+      setHelpOpen: (open) => set({ helpOpen: open }),
       diffOpen: false,
       setDiffOpen: (open) => set({ diffOpen: open }),
       checkerOpen: false,

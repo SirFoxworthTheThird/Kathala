@@ -46,7 +46,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
 
   const {
     setSelectedLocationMarkerId, selectedLocationMarkerId, pushMapLayer,
-    setActiveMapLayerId, isPlayingStory, playbackSpeed,
+    setActiveMapLayerId, setIsAnimating, isPlayingStory, playbackSpeed,
     pendingFocusRouteId, setPendingFocusRouteId,
     pendingFocusRegionId, setPendingFocusRegionId,
   } = useAppStore()
@@ -77,13 +77,60 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null)
   const mapRef = useRef<L.Map | null>(null)
 
+  // ── Layer-switch transition (zoom-out → switch → zoom-in) ──────────────────
+  type TransitionPhase = 'idle' | 'zooming-out' | 'zoomed-out' | 'zooming-in'
+  const [transitionPhase, setTransitionPhase] = useState<TransitionPhase>('idle')
+  const pendingLayerSwitchRef = useRef<string | null>(null)
+
+  function requestLayerSwitch(targetId: string) {
+    if (!isPlayingStory) { setActiveMapLayerId(targetId); return }
+    setIsAnimating(true)
+    pendingLayerSwitchRef.current = targetId
+    setTransitionPhase('zooming-out')
+  }
+
+  // Once zoomed out: switch the layer, then trigger zoom-in on the new canvas
+  useEffect(() => {
+    if (transitionPhase !== 'zoomed-out') return
+    const targetId = pendingLayerSwitchRef.current
+    if (!targetId) return
+    pendingLayerSwitchRef.current = null
+    setActiveMapLayerId(targetId)
+    // Double-rAF: new LeafletMapCanvas renders at zoomed-out styles first, then animate in
+    requestAnimationFrame(() => requestAnimationFrame(() => setTransitionPhase('zooming-in')))
+  }, [transitionPhase]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleCanvasTransitionEnd(e: React.TransitionEvent<HTMLDivElement>) {
+    // Filter: only handle transitions on this div, only the opacity property
+    if (e.target !== e.currentTarget || e.propertyName !== 'opacity') return
+    if (transitionPhase === 'zooming-out') {
+      setTransitionPhase('zoomed-out')
+    } else if (transitionPhase === 'zooming-in') {
+      setTransitionPhase('idle')
+      setIsAnimating(false)
+    }
+  }
+
+  const canvasTransitionStyle: React.CSSProperties = (() => {
+    switch (transitionPhase) {
+      case 'zooming-out':
+        return { transform: 'scale(0.88)', opacity: 0, transition: 'transform 0.3s ease-in, opacity 0.3s ease-in' }
+      case 'zoomed-out':
+        return { transform: 'scale(0.88)', opacity: 0, transition: 'none' }
+      case 'zooming-in':
+        return { transform: 'scale(1)', opacity: 1, transition: 'transform 0.35s ease-out, opacity 0.35s ease-out' }
+      default:
+        return {}
+    }
+  })()
+
   const mapAnnotations = useMapAnnotations(layerId)
 
   // ── Playback queue ─────────────────────────────────────────────────────────
   const { pinAnimation, handlePlaybackAnimationEnd } = usePlaybackQueue({
     worldId, layerId, isPlayingStory, playbackSpeed, activeEventId,
     prevSnapshots, snapshots, allMarkers, mapRoutes,
-    pinAnimationKeyRef, setActiveMapLayerId,
+    pinAnimationKeyRef, requestLayerSwitch,
   })
 
   // Clear cross-layer pan target once the new layer has mounted
@@ -485,7 +532,11 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
         )}
 
         {/* Map canvas */}
-        <div className="relative flex-1 overflow-hidden">
+        <div
+          className="relative flex-1 overflow-hidden"
+          style={canvasTransitionStyle}
+          onTransitionEnd={handleCanvasTransitionEnd}
+        >
           <LeafletMapCanvas
             key={layerId}
             layer={layer}

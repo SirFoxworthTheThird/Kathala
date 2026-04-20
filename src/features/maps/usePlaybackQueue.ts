@@ -18,7 +18,7 @@ interface UsePlaybackQueueParams {
   allMarkers: LocationMarker[]
   mapRoutes: MapRoute[]
   pinAnimationKeyRef: MutableRefObject<number>
-  setActiveMapLayerId: (id: string) => void
+  requestLayerSwitch: (targetId: string) => void
 }
 
 export function usePlaybackQueue({
@@ -32,7 +32,7 @@ export function usePlaybackQueue({
   allMarkers,
   mapRoutes,
   pinAnimationKeyRef,
-  setActiveMapLayerId,
+  requestLayerSwitch,
 }: UsePlaybackQueueParams) {
   const movements = useEventMovements(worldId, activeEventId)
   const [playbackQueue, setPlaybackQueue] = useState<PlaybackStep[]>([])
@@ -56,7 +56,7 @@ export function usePlaybackQueue({
 
     // Navigate to the first map in the queue if different from current
     if (queue.length > 0 && queue[0].mapLayerId !== layerId) {
-      setActiveMapLayerId(queue[0].mapLayerId)
+      requestLayerSwitch(queue[0].mapLayerId)
     }
   }, [activeEventId, isPlayingStory]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -65,7 +65,7 @@ export function usePlaybackQueue({
     if (playbackQueue.length === 0) return
     const step = playbackQueue[playbackStepIdx]
     if (step && step.mapLayerId !== layerId) {
-      setActiveMapLayerId(step.mapLayerId)
+      requestLayerSwitch(step.mapLayerId)
     }
   }, [playbackStepIdx]) // eslint-disable-line react-hooks/exhaustive-deps
 
