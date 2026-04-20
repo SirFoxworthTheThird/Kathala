@@ -165,6 +165,26 @@ export function HelpPanel() {
             <P>Speed can be set to Slow, Normal, or Fast. Playback always navigates to the Maps view.</P>
           </Section>
 
+          <Section title="Timeline & chapter AI">
+            <P>The <B>AI button</B> (✦ sparkles) on any chapter in the Timeline view opens the Chapter AI dialog. Paste a passage of prose and the AI generates a list of events, character snapshots, and relationship updates — with a review step before anything is saved.</P>
+            <P>The AI uses your world's existing characters, locations, and items as context, so it only references things that actually exist.</P>
+            <Tip>The review step lets you accept, adjust, or discard each suggested snapshot individually before committing.</Tip>
+          </Section>
+
+          <Section title="Arc view">
+            <P>The <B>Arc</B> nav item shows a grid of every character's location journey across all events — one row per character, one column per event, coloured by location.</P>
+            <P>Each cell is clickable: click a cell to jump to that character at that event. Hover for a tooltip with location name and notes.</P>
+            <P>The <B>inventory sparkline</B> in each row shows the number of item placements that character has over time — a quick visual indicator of inventory activity.</P>
+            <P>Use the <B>search box</B> to filter character rows by name, and the <B>timeline selector</B> to focus on a single timeline.</P>
+            <P>Click <B>Export</B> (download icon) to save the arc grid as a PNG image.</P>
+          </Section>
+
+          <Section title="World settings">
+            <P><B>Themes</B> — each world can have its own visual theme (Fantasy, Sci-Fi, Horror, Cyberpunk, and more), set in World Settings → Theme. Overrides the global app default just for that world.</P>
+            <P><B>Travel modes</B> — define movement types (on foot, horse, sailing…) with a speed in scale-units per in-world day. Travel modes are used by the Continuity checker to validate whether a character could realistically cover a distance between two events.</P>
+            <P>Travel mode requires the map to be <B>calibrated</B> with a scale (see Map scale & measurement).</P>
+          </Section>
+
           <Section title="Timeline relationships">
             <P>Multiple timelines can be <B>linked</B> — useful for frame narratives, alternate histories, or embedded stories-within-stories.</P>
             <P>Relationship types: <B>Frame narrative</B> (outer/inner story), <B>Historical echo</B> (events repeat across eras), <B>Embedded fiction</B> (story-within-story), <B>Alternate timeline</B> (diverging branch).</P>
@@ -198,7 +218,11 @@ export function HelpPanel() {
             <div className="space-y-2">
               <KbdRow keys={['Ctrl', 'K']} label="Open search" />
               <KbdRow keys={['Shift', 'Click']} label="Range-select events in timeline" />
-              <KbdRow keys={['Esc']} label="Close any open panel or dialog" />
+              <KbdRow keys={['Esc']} label="Close panel or dialog" />
+              <KbdRow keys={['↑', '↓']} label="Navigate search results / continuity issues" />
+              <KbdRow keys={['Enter']} label="Confirm selection in search / continuity" />
+              <KbdRow keys={['Enter']} label="Save inline edits (name, description fields)" />
+              <KbdRow keys={['Esc']} label="Cancel inline edits" />
             </div>
           </Section>
 
