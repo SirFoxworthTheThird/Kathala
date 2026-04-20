@@ -671,3 +671,168 @@ export async function importWorld(file: File): Promise<string> {
   normalizeImport(data)
   return importWorldData(data)
 }
+
+// ── Merge / collaboration helpers ─────────────────────────────────────────────
+
+export interface MergePreview {
+  exportedAt: number
+  characters:  { added: number; updated: number }
+  events:      { added: number; updated: number }
+  chapters:    { added: number; updated: number }
+  locations:   { added: number; updated: number }
+  items:       { added: number; updated: number }
+}
+
+/** Merge two arrays by ID. Records only in `incoming` are added; records in
+ *  both use whichever has the higher `updatedAt` (falling back to incoming). */
+function mergeTable<T extends { id: string }>(
+  incoming: T[],
+  local: T[],
+): { result: T[]; added: number; updated: number } {
+  const localById    = new Map(local.map((r) => [r.id, r]))
+  const incomingById = new Map(incoming.map((r) => [r.id, r]))
+  const result: T[]  = []
+  let added = 0, updated = 0
+
+  for (const loc of local) {
+    const inc = incomingById.get(loc.id)
+    if (!inc) {
+      result.push(loc) // local-only — keep
+    } else {
+      const locTs = (loc  as unknown as Record<string, unknown>).updatedAt as number | undefined
+      const incTs = (inc  as unknown as Record<string, unknown>).updatedAt as number | undefined
+      if (locTs !== undefined && incTs !== undefined && locTs >= incTs) {
+        result.push(loc) // local is same age or newer
+      } else {
+        result.push(inc) // incoming is newer, or no timestamp — trust incoming
+        updated++
+      }
+    }
+  }
+  for (const inc of incoming) {
+    if (!localById.has(inc.id)) {
+      result.push(inc)
+      added++
+    }
+  }
+  return { result, added, updated }
+}
+
+/**
+ * Parse and validate a .pwk JSON string, diff it against the current world in
+ * the DB, and return a human-readable preview plus the parsed data object so
+ * the caller can execute without re-parsing.
+ */
+export async function previewWorldMerge(
+  json: string,
+): Promise<{ preview: MergePreview; parsed: WorldExportFile }> {
+  let raw: unknown
+  try { raw = JSON.parse(json) } catch { throw new Error('Invalid file: could not parse JSON') }
+  validateImport(raw)
+  normalizeImport(raw)
+  const parsed = raw as WorldExportFile
+  const worldId = parsed.world.id
+
+  const [localChars, localEvents, localChapters, localLocations, localItems] = await Promise.all([
+    db.characters.where('worldId').equals(worldId).toArray(),
+    db.events.where('worldId').equals(worldId).toArray(),
+    db.chapters.where('worldId').equals(worldId).toArray(),
+    db.locationMarkers.where('worldId').equals(worldId).toArray(),
+    db.items.where('worldId').equals(worldId).toArray(),
+  ])
+
+  const chars = mergeTable(parsed.characters, localChars)
+  const evts  = mergeTable(parsed.events, localEvents)
+  const chaps = mergeTable(parsed.chapters, localChapters)
+  const locs  = mergeTable(parsed.locationMarkers, localLocations)
+  const itms  = mergeTable(parsed.items, localItems)
+
+  return {
+    parsed,
+    preview: {
+      exportedAt: parsed.exportedAt,
+      characters: { added: chars.added, updated: chars.updated },
+      events:     { added: evts.added,  updated: evts.updated  },
+      chapters:   { added: chaps.added, updated: chaps.updated },
+      locations:  { added: locs.added,  updated: locs.updated  },
+      items:      { added: itms.added,  updated: itms.updated  },
+    },
+  }
+}
+
+/**
+ * Apply a previously parsed WorldExportFile to the DB.
+ * - 'replace': identical to a normal import (overwrites everything).
+ * - 'merge': per-table smart merge — keeps locally-newer records and
+ *   local-only records; pulls in incoming additions and newer remote edits.
+ */
+export async function applyWorldImport(
+  parsed: WorldExportFile,
+  mode: 'replace' | 'merge',
+): Promise<string> {
+  if (mode === 'replace') return importWorldData(parsed)
+
+  const worldId = parsed.world.id
+
+  const [
+    localChars, localItems, localLocs, localLayers,
+    localEvents, localChapters, localTimelines,
+    localRels, localRelSnaps,
+    localCharSnaps, localMovements, localItemPlacements,
+    localLocSnaps, localItemSnaps,
+    localTravelModes, localTlRels, localCta,
+    localRoutes, localRegions, localRegSnaps, localAnnotations,
+  ] = await Promise.all([
+    db.characters.where('worldId').equals(worldId).toArray(),
+    db.items.where('worldId').equals(worldId).toArray(),
+    db.locationMarkers.where('worldId').equals(worldId).toArray(),
+    db.mapLayers.where('worldId').equals(worldId).toArray(),
+    db.events.where('worldId').equals(worldId).toArray(),
+    db.chapters.where('worldId').equals(worldId).toArray(),
+    db.timelines.where('worldId').equals(worldId).toArray(),
+    db.relationships.where('worldId').equals(worldId).toArray(),
+    db.relationshipSnapshots.where('worldId').equals(worldId).toArray(),
+    db.characterSnapshots.where('worldId').equals(worldId).toArray(),
+    db.characterMovements.where('worldId').equals(worldId).toArray(),
+    db.itemPlacements.where('worldId').equals(worldId).toArray(),
+    db.locationSnapshots.where('worldId').equals(worldId).toArray(),
+    db.itemSnapshots.where('worldId').equals(worldId).toArray(),
+    db.travelModes.where('worldId').equals(worldId).toArray(),
+    db.timelineRelationships.where('worldId').equals(worldId).toArray(),
+    db.crossTimelineArtifacts.where('worldId').equals(worldId).toArray(),
+    db.mapRoutes.where('worldId').equals(worldId).toArray(),
+    db.mapRegions.where('worldId').equals(worldId).toArray(),
+    db.mapRegionSnapshots.where('worldId').equals(worldId).toArray(),
+    db.mapAnnotations.where('worldId').equals(worldId).toArray(),
+  ])
+
+  const merged = {
+    world:                parsed.world, // world-level fields: use incoming (name, description)
+    mapLayers:            mergeTable(parsed.mapLayers, localLayers).result,
+    locationMarkers:      mergeTable(parsed.locationMarkers, localLocs).result,
+    characters:           mergeTable(parsed.characters, localChars).result,
+    items:                mergeTable(parsed.items, localItems).result,
+    characterSnapshots:   mergeTable(parsed.characterSnapshots, localCharSnaps).result,
+    characterMovements:   mergeTable(parsed.characterMovements, localMovements).result,
+    itemPlacements:       mergeTable(parsed.itemPlacements, localItemPlacements).result,
+    locationSnapshots:    mergeTable(parsed.locationSnapshots, localLocSnaps).result,
+    itemSnapshots:        mergeTable(parsed.itemSnapshots, localItemSnaps).result,
+    relationships:        mergeTable(parsed.relationships, localRels).result,
+    relationshipSnapshots:mergeTable(parsed.relationshipSnapshots, localRelSnaps).result,
+    timelines:            mergeTable(parsed.timelines, localTimelines).result,
+    chapters:             mergeTable(parsed.chapters, localChapters).result,
+    events:               mergeTable(parsed.events, localEvents).result,
+    travelModes:          mergeTable(parsed.travelModes, localTravelModes).result,
+    timelineRelationships:mergeTable(parsed.timelineRelationships, localTlRels).result,
+    crossTimelineArtifacts:mergeTable(parsed.crossTimelineArtifacts, localCta).result,
+    mapRoutes:            mergeTable(parsed.mapRoutes, localRoutes).result,
+    mapRegions:           mergeTable(parsed.mapRegions, localRegions).result,
+    mapRegionSnapshots:   mergeTable(parsed.mapRegionSnapshots, localRegSnaps).result,
+    mapAnnotations:       mergeTable(parsed.mapAnnotations, localAnnotations).result,
+    blobs:                parsed.blobs, // blobs: always use incoming (binary, no updatedAt)
+    relationshipPositions: parsed.relationshipPositions,
+    suppressedIssueIds:   parsed.suppressedIssueIds,
+  }
+
+  return importWorldData(merged as WorldExportFile)
+}

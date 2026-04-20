@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
-import { Footprints, Plus, Pencil, Check, X, Trash2 } from 'lucide-react'
+import { Footprints, Plus, Pencil, Check, X, Trash2, FileCode2 } from 'lucide-react'
 import { useWorld, updateWorld } from '@/db/hooks/useWorlds'
 import { useRootMapLayers } from '@/db/hooks/useMapLayers'
 import { useTravelModes, createTravelMode, updateTravelMode, deleteTravelMode } from '@/db/hooks/useTravelModes'
@@ -233,6 +233,27 @@ export default function WorldSettingsView() {
             ))}
           </div>
         )}
+      </section>
+
+      {/* Share */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Share</h2>
+          <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+            Export a read-only HTML snapshot of this world — characters, timeline, locations, items and relationships — that anyone can open in a browser.
+          </p>
+        </div>
+        <Button
+          variant="outline" size="sm" className="gap-2"
+          onClick={async () => {
+            if (!worldId) return
+            const { exportWorldAsHtml } = await import('@/lib/htmlExport')
+            await exportWorldAsHtml(worldId)
+          }}
+        >
+          <FileCode2 className="h-3.5 w-3.5" />
+          Export as HTML
+        </Button>
       </section>
 
       {/* Cloud Sync */}

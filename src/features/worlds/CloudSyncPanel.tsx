@@ -7,7 +7,9 @@ import {
   ensurePermission, isFolderSyncSupported,
 } from '@/lib/folderSync'
 import type { FolderBinding } from '@/lib/folderSync'
-import { exportWorldData, importWorldData } from './cloudSyncHelpers'
+import { exportWorldData, previewWorldMerge, applyWorldImport } from './cloudSyncHelpers'
+import type { MergePreview, WorldExportFile } from './cloudSyncHelpers'
+import { LoadPreviewDialog } from './LoadPreviewDialog'
 
 type SyncState = 'idle' | 'saving' | 'loading' | 'error'
 
@@ -16,6 +18,7 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
   const [syncState, setSyncState] = useState<SyncState>('idle')
   const [statusMsg, setStatusMsg] = useState<string | null>(null)
   const [confirmDisconnect, setConfirmDisconnect] = useState(false)
+  const [loadPreview, setLoadPreview] = useState<{ preview: MergePreview; parsed: WorldExportFile } | null>(null)
 
   useEffect(() => {
     loadFolderBinding(worldId).then(setBinding)
@@ -72,15 +75,31 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
       const fileHandle = await binding.handle.getFileHandle(binding.fileName)
       const file       = await fileHandle.getFile()
       const json       = await file.text()
-      await importWorldData(json)
-      const updated = { ...binding, lastSyncedAt: Date.now() }
-      await saveFolderBinding(updated)
-      setBinding(updated)
+      // Preview diff before committing — shows LoadPreviewDialog
+      const result = await previewWorldMerge(json)
       setSyncState('idle')
-      setStatusMsg(`Loaded — ${new Date().toLocaleTimeString()}`)
+      setLoadPreview(result)
     } catch (e) {
       setSyncState('error')
       setStatusMsg((e as Error).message)
+    }
+  }
+
+  async function handleApplyLoad(parsed: WorldExportFile, mode: 'replace' | 'merge') {
+    if (!binding) return
+    setSyncState('loading')
+    try {
+      await applyWorldImport(parsed, mode)
+      const updated = { ...binding, lastSyncedAt: Date.now() }
+      await saveFolderBinding(updated)
+      setBinding(updated)
+      setStatusMsg(`Loaded (${mode === 'merge' ? 'merged' : 'replaced'}) — ${new Date().toLocaleTimeString()}`)
+    } catch (e) {
+      setSyncState('error')
+      setStatusMsg((e as Error).message)
+    } finally {
+      setSyncState('idle')
+      setLoadPreview(null)
     }
   }
 
@@ -179,6 +198,17 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
             </Button>
           </div>
         </div>
+      )}
+
+      {loadPreview && (
+        <LoadPreviewDialog
+          preview={loadPreview.preview}
+          parsed={loadPreview.parsed}
+          onMerge={(p)   => handleApplyLoad(p, 'merge')}
+          onReplace={(p) => handleApplyLoad(p, 'replace')}
+          onCancel={() => setLoadPreview(null)}
+          isApplying={syncState === 'loading'}
+        />
       )}
 
       <ConfirmDialog

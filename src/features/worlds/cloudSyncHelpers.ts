@@ -102,8 +102,25 @@ function blobToBase64(blob: Blob): Promise<string> {
   })
 }
 
-/** Deserialize a JSON string and import it into the local DB. */
+/** Deserialize a JSON string and import it into the local DB (full replace). */
 export async function importWorldData(json: string): Promise<string> {
   const { importWorldFromJson } = await import('@/lib/exportImport')
   return importWorldFromJson(json)
+}
+
+export type { MergePreview, WorldExportFile } from '@/lib/exportImport'
+
+/** Parse a .pwk JSON string and diff it against the local DB without writing anything. */
+export async function previewWorldMerge(json: string) {
+  const { previewWorldMerge: fn } = await import('@/lib/exportImport')
+  return fn(json)
+}
+
+/** Apply a previously-parsed world file in either 'replace' or 'merge' mode. */
+export async function applyWorldImport(
+  parsed: import('@/lib/exportImport').WorldExportFile,
+  mode: 'replace' | 'merge',
+): Promise<string> {
+  const { applyWorldImport: fn } = await import('@/lib/exportImport')
+  return fn(parsed, mode)
 }
