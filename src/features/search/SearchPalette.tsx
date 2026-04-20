@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Search, Users, Map, Package, BookOpen, Network, Scroll, X, Route, Hexagon } from 'lucide-react'
+import { Search, Users, Map, Package, BookOpen, Network, Scroll, X, Route, Hexagon, BookMarked } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 
-type ResultType = 'character' | 'item' | 'location' | 'chapter' | 'event' | 'timeline' | 'relationship' | 'route' | 'region'
+type ResultType = 'character' | 'item' | 'location' | 'chapter' | 'event' | 'timeline' | 'relationship' | 'route' | 'region' | 'lore'
 
 interface SearchResult {
   id: string
@@ -25,7 +25,8 @@ const TYPE_META: Record<ResultType, { icon: React.ElementType; color: string; gr
   timeline:     { icon: BookOpen, color: 'text-cyan-400',   group: 'Timelines' },
   relationship: { icon: Network,  color: 'text-rose-400',   group: 'Relationships' },
   route:        { icon: Route,    color: 'text-teal-400',   group: 'Routes' },
-  region:       { icon: Hexagon,  color: 'text-violet-400', group: 'Regions' },
+  region:       { icon: Hexagon,     color: 'text-violet-400', group: 'Regions' },
+  lore:         { icon: BookMarked,  color: 'text-indigo-400', group: 'Lore' },
 }
 
 function highlight(text: string, query: string) {
@@ -62,6 +63,7 @@ export function SearchPalette() {
   const relationships = useLiveQuery(() => worldId ? db.relationships.where('worldId').equals(worldId).toArray() : [], [worldId], [])
   const routes        = useLiveQuery(() => worldId ? db.mapRoutes.where('worldId').equals(worldId).toArray() : [], [worldId], [])
   const regions       = useLiveQuery(() => worldId ? db.mapRegions.where('worldId').equals(worldId).toArray() : [], [worldId], [])
+  const lorePages     = useLiveQuery(() => worldId ? db.lorePages.where('worldId').equals(worldId).toArray() : [], [worldId], [])
 
   const results: SearchResult[] = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -114,9 +116,14 @@ export function SearchPalette() {
         out.push({ id: r.id, type: 'region', label: r.name, sublabel: r.notes ? r.notes.slice(0, 60) : undefined, path: `/worlds/${worldId}/maps` })
       }
     }
+    for (const p of (lorePages ?? [])) {
+      if (p.title?.toLowerCase().includes(q) || p.body?.toLowerCase().includes(q) || p.tags?.some((t) => t.toLowerCase().includes(q))) {
+        out.push({ id: p.id, type: 'lore', label: p.title, sublabel: p.body ? p.body.slice(0, 60).replace(/[#*`_>\-]/g, '').trim() : undefined, path: `/worlds/${worldId}/lore/${p.id}` })
+      }
+    }
 
     return out
-  }, [query, worldId, characters, items, markers, chapters, events, timelines, relationships, routes, regions])
+  }, [query, worldId, characters, items, markers, chapters, events, timelines, relationships, routes, regions, lorePages])
 
   // Reset active index when results change
   useEffect(() => setActiveIdx(0), [results])
@@ -160,7 +167,7 @@ export function SearchPalette() {
   // Group results by type for display
   const grouped: { group: string; type: ResultType; items: (SearchResult & { globalIdx: number })[] }[] = []
   let globalIdx = 0
-  const typeOrder: ResultType[] = ['character', 'item', 'location', 'chapter', 'event', 'timeline', 'relationship', 'route', 'region']
+  const typeOrder: ResultType[] = ['character', 'item', 'location', 'chapter', 'event', 'timeline', 'relationship', 'route', 'region', 'lore']
   for (const type of typeOrder) {
     const typeResults = results.filter((r) => r.type === type)
     if (typeResults.length === 0) continue

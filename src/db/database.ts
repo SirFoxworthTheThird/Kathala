@@ -25,6 +25,8 @@ import type {
   MapRegion,
   MapRegionSnapshot,
   MapAnnotation,
+  LorePage,
+  LoreCategory,
 } from '@/types'
 
 class PlotWeaveDB extends Dexie {
@@ -52,6 +54,8 @@ class PlotWeaveDB extends Dexie {
   mapRegions!: EntityTable<MapRegion, 'id'>
   mapRegionSnapshots!: EntityTable<MapRegionSnapshot, 'id'>
   mapAnnotations!: EntityTable<MapAnnotation, 'id'>
+  loreCategories!: EntityTable<LoreCategory, 'id'>
+  lorePages!: EntityTable<LorePage, 'id'>
 
   constructor() {
     super('PlotWeaveDB')
@@ -322,6 +326,20 @@ class PlotWeaveDB extends Dexie {
     this.version(18).stores({}).upgrade(async (tx) => {
       await tx.table('worlds').toCollection().modify((w: Record<string, unknown>) => {
         if (!('theme' in w)) w.theme = null
+      })
+    })
+
+    // v19: lore pages and categories (purely additive)
+    this.version(19).stores({
+      loreCategories: 'id, worldId, sortOrder',
+      lorePages: 'id, worldId, categoryId, updatedAt',
+    })
+
+    // v20: lore page entity links and timeline visibility (backfill)
+    this.version(20).stores({}).upgrade(async (tx) => {
+      await tx.table('lorePages').toCollection().modify((p: Record<string, unknown>) => {
+        if (!('linkedEntityIds' in p)) p.linkedEntityIds = []
+        if (!('visibleFromEventId' in p)) p.visibleFromEventId = null
       })
     })
   }

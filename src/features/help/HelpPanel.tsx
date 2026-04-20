@@ -108,8 +108,9 @@ export function HelpPanel() {
           </Section>
 
           <Section title="Characters">
-            <P>Each character has four tabs: <B>Overview</B> (bio, aliases, tags), <B>Current State</B> (live snapshot at the active event), <B>History</B> (all past snapshots), and <B>Relationships</B>.</P>
+            <P>Each character has five tabs: <B>Overview</B> (bio, aliases, tags), <B>Current State</B> (live snapshot at the active event), <B>History</B> (all past snapshots), <B>Relationships</B>, and <B>Lore</B>.</P>
             <P>Current State shows the character's location, alive status, travel mode, and notes at the active event. Hit <B>Save State</B> to create or update the snapshot.</P>
+            <P>The <B>Lore</B> tab lists every lore page that has been linked to this character — click any card to open the page in the lore editor.</P>
             <P>The <B>Arc View</B> (top nav) visualises every character's location journey across the timeline as a colour-coded grid — great for spotting gaps in your tracking.</P>
           </Section>
 
@@ -129,6 +130,7 @@ export function HelpPanel() {
             <P>Items live in the <B>Items</B> nav section. Each item can have a description, tags, and an image.</P>
             <P>Place an item at a map location for a specific event using the <B>item placement</B> system — useful for tracking props, artefacts, or loot.</P>
             <P>The <B>History</B> tab on an item shows its condition and notes across all events, following the same snapshot/delta model as characters.</P>
+            <P>A <B>Related Lore</B> section appears below the item description listing any lore pages linked to that item.</P>
             <P>Items that travel between timelines are tracked as <B>cross-timeline artifacts</B> — link them from the Timeline Relationships panel.</P>
           </Section>
 
@@ -199,12 +201,22 @@ export function HelpPanel() {
           </Section>
 
           <Section title="Writer's Brief">
-            <P>The <B>Brief</B> panel (scroll icon) is a live summary of the active event: which characters are present, their states, active relationships, and item placements.</P>
+            <P>The <B>Brief</B> panel (scroll icon) is a live summary of the active event: which characters are present, their states, active relationships, item placements, and relevant lore.</P>
+            <P>The <B>Lore</B> section in the brief shows pages that are linked to any character present at the current event, plus any page whose <B>revealed at</B> event matches the current one (marked <B>NEW</B>). Click a lore card to open it.</P>
             <P>It updates automatically as you move through events. Use it as a quick reference while writing.</P>
           </Section>
 
+          <Section title="Lore">
+            <P>The <B>Lore</B> section (bookmark icon) is a wiki-style knowledge base for your world — magic systems, history, factions, languages, anything that doesn't belong in the timeline.</P>
+            <P>Organise pages into colour-coded <B>categories</B> using the sidebar. Pages without a category appear under <B>Uncategorised</B>.</P>
+            <P>Each page has a <B>markdown editor</B> with preview toggle, a tag bar, and two connection controls in the toolbar:</P>
+            <P><B>Revealed at</B> (clock icon) — pick the exact event when this lore is revealed in the story. The <B>Revealed</B> filter toggle on the Lore index then hides pages not yet revealed at the active event.</P>
+            <P><B>Link entities</B> (chain icon) — associate the page with any characters, items, or location markers. Linked pages appear in the <B>Lore tab</B> on the character/item detail page, and in the <B>Writer's Brief</B> when those characters are present.</P>
+            <Tip>Use the Revealed filter while writing to see only what your characters know so far — keeps you from accidentally referencing unrevealed lore.</Tip>
+          </Section>
+
           <Section title="Search">
-            <P>Press <B>Ctrl+K</B> (or <B>⌘K</B> on Mac) to open the search palette. It searches across characters, items, locations, events, chapters, routes, and regions.</P>
+            <P>Press <B>Ctrl+K</B> (or <B>⌘K</B> on Mac) to open the search palette. It searches across characters, items, locations, events, chapters, routes, regions, and lore pages.</P>
             <P>Selecting a result navigates to that entity and, for events, sets the time cursor to that event.</P>
           </Section>
 

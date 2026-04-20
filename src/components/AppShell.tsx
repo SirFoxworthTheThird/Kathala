@@ -20,7 +20,8 @@ export function AppShell() {
   const isDashboard = !!useMatch('/worlds/:worldId')
   const isArc = !!useMatch('/worlds/:worldId/arc')
   const isSettings = !!useMatch('/worlds/:worldId/settings')
-  const showBar = !isDashboard && !isArc && !isSettings
+  const isLore = !!useMatch('/worlds/:worldId/lore/*')
+  const showBar = !isDashboard && !isArc && !isSettings && !isLore
   const barHeight = useBarHeight(showBar ? worldId : null)
 
   useEffect(() => {

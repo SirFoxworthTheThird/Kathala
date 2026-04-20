@@ -134,6 +134,14 @@ New capabilities identified in the maps UX review. Detailed specs in `docs/featu
 
 ---
 
+## New Major Features
+
+- [ ] **[Lore](docs/features/lore.md)** — wiki-like pages for world-building information that isn't time-varying (magic systems, history, religions, terminology, etc.). Free-form markdown editor, user-defined categories, full-text search, links from characters/locations/items, included in `.pwk` export and HTML export. New DB tables: `lorePages`, `loreCategories` (v19).
+
+- [ ] **[Factions](docs/features/factions.md)** — named groups with event-scoped character membership (allegiances change over time). Integrates with the relationship graph (faction cluster overlay, cross-faction edge styling), map regions (faction ownership + colour), Arc View (faction tint overlay), and the continuity checker (allegiance conflict detection). New DB tables: `factions`, `factionMemberships` (v20).
+
+---
+
 ## Cloud Sync / Collaboration
 
 > **Goal:** let users (and collaborators) persist and share worlds via their own cloud storage — no PlotWeave server, no account management, no credentials ever handled by the app. Auth and storage are fully delegated to Google / Microsoft.

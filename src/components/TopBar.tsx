@@ -1,4 +1,4 @@
-import { BookOpen, Map, Users, Network, LayoutDashboard, Package, Search, ScrollText, TableProperties, ShieldAlert, Settings, HelpCircle } from 'lucide-react'
+import { BookOpen, Map, Users, Network, LayoutDashboard, Package, Search, ScrollText, TableProperties, ShieldAlert, Settings, HelpCircle, BookMarked } from 'lucide-react'
 import faviconUrl from '/favicon.png'
 import { useActiveWorldId, useAppStore } from '@/store'
 import { useWorld } from '@/db/hooks/useWorlds'
@@ -13,6 +13,7 @@ const navItems = [
   { to: 'relationships', label: 'Relations', icon: Network, end: false },
   { to: 'timeline', label: 'Timeline', icon: BookOpen, end: false },
   { to: 'arc', label: 'Arc', icon: TableProperties, end: false },
+  { to: 'lore', label: 'Lore', icon: BookMarked, end: false },
   { to: 'settings', label: 'Settings', icon: Settings, end: false },
 ]
 
