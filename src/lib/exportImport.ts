@@ -4,6 +4,7 @@ import type {
   CharacterSnapshot, CharacterMovement, ItemPlacement, LocationSnapshot, ItemSnapshot,
   Relationship, RelationshipSnapshot, Timeline, Chapter, WorldEvent, TravelMode,
   TimelineRelationship, CrossTimelineArtifact, MapRoute, MapRegion, MapRegionSnapshot,
+  MapAnnotation,
 } from '@/types'
 
 const EXPORT_VERSION = 5
@@ -43,6 +44,7 @@ export interface WorldExportFile {
   mapRoutes: MapRoute[]
   mapRegions: MapRegion[]
   mapRegionSnapshots: MapRegionSnapshot[]
+  mapAnnotations: MapAnnotation[]
   relationshipPositions?: Record<string, { x: number; y: number }>
   suppressedIssueIds?: string[]
 }
@@ -102,6 +104,7 @@ export async function exportWorld(worldId: string): Promise<void> {
     mapRoutes,
     mapRegions,
     mapRegionSnapshots,
+    mapAnnotations,
   ] = await Promise.all([
     db.worlds.get(worldId),
     db.mapLayers.where('worldId').equals(worldId).toArray(),
@@ -125,6 +128,7 @@ export async function exportWorld(worldId: string): Promise<void> {
     db.mapRoutes.where('worldId').equals(worldId).toArray(),
     db.mapRegions.where('worldId').equals(worldId).toArray(),
     db.mapRegionSnapshots.where('worldId').equals(worldId).toArray(),
+    db.mapAnnotations.where('worldId').equals(worldId).toArray(),
   ])
 
   if (!world) throw new Error('World not found')
@@ -180,6 +184,7 @@ export async function exportWorld(worldId: string): Promise<void> {
     mapRoutes,
     mapRegions,
     mapRegionSnapshots,
+    mapAnnotations,
     relationshipPositions,
     suppressedIssueIds,
   }
@@ -230,6 +235,7 @@ export async function exportWorldSplit(worldId: string): Promise<void> {
     mapRoutes,
     mapRegions,
     mapRegionSnapshots,
+    mapAnnotations,
   ] = await Promise.all([
     db.worlds.get(worldId),
     db.mapLayers.where('worldId').equals(worldId).toArray(),
@@ -253,6 +259,7 @@ export async function exportWorldSplit(worldId: string): Promise<void> {
     db.mapRoutes.where('worldId').equals(worldId).toArray(),
     db.mapRegions.where('worldId').equals(worldId).toArray(),
     db.mapRegionSnapshots.where('worldId').equals(worldId).toArray(),
+    db.mapAnnotations.where('worldId').equals(worldId).toArray(),
   ])
 
   if (!world) throw new Error('World not found')
@@ -312,6 +319,7 @@ export async function exportWorldSplit(worldId: string): Promise<void> {
     mapRoutes,
     mapRegions,
     mapRegionSnapshots,
+    mapAnnotations,
     relationshipPositions,
     suppressedIssueIds,
   }
@@ -424,6 +432,10 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
     throw new Error('Invalid file: mapRegionSnapshots is not an array')
   }
   if (!d.mapRegionSnapshots) (d as Record<string, unknown>).mapRegionSnapshots = []
+  if (d.mapAnnotations !== undefined && !Array.isArray(d.mapAnnotations)) {
+    throw new Error('Invalid file: mapAnnotations is not an array')
+  }
+  if (!d.mapAnnotations) (d as Record<string, unknown>).mapAnnotations = []
 }
 
 function normalizeImport(data: WorldExportFile): void {
@@ -592,7 +604,7 @@ export async function importWorld(file: File): Promise<string> {
     db.relationships, db.relationshipSnapshots, db.timelines,
     db.chapters, db.events, db.blobs, db.travelModes,
     db.timelineRelationships, db.crossTimelineArtifacts,
-    db.mapRoutes, db.mapRegions, db.mapRegionSnapshots,
+    db.mapRoutes, db.mapRegions, db.mapRegionSnapshots, db.mapAnnotations,
   ], async () => {
     await db.worlds.put(data.world)
     await db.mapLayers.bulkPut(data.mapLayers)
@@ -615,6 +627,7 @@ export async function importWorld(file: File): Promise<string> {
     await db.mapRoutes.bulkPut(data.mapRoutes)
     await db.mapRegions.bulkPut(data.mapRegions)
     await db.mapRegionSnapshots.bulkPut(data.mapRegionSnapshots)
+    await db.mapAnnotations.bulkPut(data.mapAnnotations)
 
     for (const b of data.blobs) {
       await db.blobs.put({

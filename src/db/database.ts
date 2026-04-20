@@ -24,6 +24,7 @@ import type {
   MapRoute,
   MapRegion,
   MapRegionSnapshot,
+  MapAnnotation,
 } from '@/types'
 
 class PlotWeaveDB extends Dexie {
@@ -50,6 +51,7 @@ class PlotWeaveDB extends Dexie {
   mapRoutes!: EntityTable<MapRoute, 'id'>
   mapRegions!: EntityTable<MapRegion, 'id'>
   mapRegionSnapshots!: EntityTable<MapRegionSnapshot, 'id'>
+  mapAnnotations!: EntityTable<MapAnnotation, 'id'>
 
   constructor() {
     super('PlotWeaveDB')
@@ -302,6 +304,11 @@ class PlotWeaveDB extends Dexie {
       mapRoutes: 'id, worldId, mapLayerId',
       mapRegions: 'id, worldId, mapLayerId',
       mapRegionSnapshots: 'id, worldId, regionId, eventId, [regionId+eventId]',
+    })
+
+    // v16: free-text map annotations (purely additive)
+    this.version(16).stores({
+      mapAnnotations: 'id, worldId, mapLayerId',
     })
   }
 }

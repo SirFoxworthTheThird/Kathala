@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import L from 'leaflet'
 import { useParams } from 'react-router-dom'
-import { Plus, Upload, Map as MapIcon, Ruler, X, Route, Download, Sparkles } from 'lucide-react'
+import { Plus, Upload, Map as MapIcon, Ruler, X, Route, Download, Sparkles, Type, Trash2 } from 'lucide-react'
 import { useAppStore, useActiveMapLayerId } from '@/store'
 import { useRootMapLayers, updateMapLayer } from '@/db/hooks/useMapLayers'
 import { Button } from '@/components/ui/button'
@@ -27,6 +27,7 @@ import { useMapViewState } from './useMapViewState'
 import { usePlaybackQueue } from './usePlaybackQueue'
 import { upsertSnapshot, fetchSnapshot, useWorldSnapshots } from '@/db/hooks/useSnapshots'
 import { appendWaypoint } from '@/db/hooks/useMovements'
+import { useMapAnnotations, createMapAnnotation, updateMapAnnotation, deleteMapAnnotation } from '@/db/hooks/useMapAnnotations'
 import type { LocationMarker } from '@/types'
 
 // ─── MapView ──────────────────────────────────────────────────────────────────
@@ -72,7 +73,11 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const [drawingRegion, setDrawingRegion] = useState(false)
   const [regionVertices, setRegionVertices] = useState<Array<{ x: number; y: number }>>([])
   const [echoPopoverMarkerId, setEchoPopoverMarkerId] = useState<string | null>(null)
+  const [annotateMode, setAnnotateMode] = useState(false)
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null)
   const mapRef = useRef<L.Map | null>(null)
+
+  const mapAnnotations = useMapAnnotations(layerId)
 
   // ── Playback queue ─────────────────────────────────────────────────────────
   const { pinAnimation, handlePlaybackAnimationEnd } = usePlaybackQueue({
@@ -432,6 +437,16 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             </Button>
             <Button
               size="sm"
+              variant={annotateMode ? 'default' : 'outline'}
+              className="gap-1.5 text-xs"
+              onClick={() => { setAnnotateMode((v) => !v); setSelectedAnnotationId(null) }}
+              title="Place a text label on the map"
+            >
+              <Type className="h-3.5 w-3.5" />
+              Label
+            </Button>
+            <Button
+              size="sm"
               variant="outline"
               className="gap-1.5 text-xs"
               onClick={() => setUploadOpen(true)}
@@ -499,7 +514,13 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             pinAnimation={pinAnimation}
             onAnimationEnd={handlePlaybackAnimationEnd}
             onMarkerClick={handleMarkerClick}
-            onMapClick={(x, y) => {
+            onMapClick={async (x, y) => {
+              if (annotateMode) {
+                const ann = await createMapAnnotation({ worldId, mapLayerId: layerId, x, y, text: 'Label' })
+                setSelectedAnnotationId(ann.id)
+                setAnnotateMode(false)
+                return
+              }
               if (drawingRegion) { setRegionVertices((prev) => [...prev, { x, y }]); return }
               if (drawingRoute) {
                 const SNAP_PX = 30
@@ -534,7 +555,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             onCharacterClick={handleCharacterClick}
             mapRef={mapRef}
             scaleMode={scaleMode || measureMode}
-            directMapClick={drawingRegion || drawingRoute}
+            directMapClick={drawingRegion || drawingRoute || annotateMode}
             onScalePoints={measureMode ? handleMeasurePoints : handleScalePoints}
             selectedRouteId={selectedRouteId}
             selectedRegionId={selectedRegionId}
@@ -546,6 +567,9 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               setSelectedRegionId((prev) => (prev === id ? null : id))
               if (id) focusOnRegion(id)
             }}
+            mapAnnotations={mapAnnotations}
+            selectedAnnotationId={selectedAnnotationId}
+            onAnnotationClick={(id) => setSelectedAnnotationId((prev) => prev === id ? null : id)}
             measureLine={
               measureResult && layer.scalePixelsPerUnit && layer.scaleUnit
                 ? { p1: measureResult.p1, p2: measureResult.p2, label: formatDistance(measureResult.distPx, layer.scalePixelsPerUnit, layer.scaleUnit) } satisfies MeasureLine
@@ -577,6 +601,90 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               onSave={() => { setDrawingRegion(false); setRegionVertices([]) }}
             />
           )}
+
+          {/* Annotate placement HUD */}
+          {annotateMode && (
+            <div className="absolute bottom-4 left-1/2 z-[610] -translate-x-1/2">
+              <div className="flex items-center gap-2 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2 shadow-lg text-sm">
+                <Type className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+                <span>Click on the map to place a text label</span>
+                <button
+                  onClick={() => setAnnotateMode(false)}
+                  className="ml-2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Annotation edit popover */}
+          {selectedAnnotationId && (() => {
+            const ann = mapAnnotations.find((a) => a.id === selectedAnnotationId)
+            if (!ann) return null
+            return (
+              <div className="absolute right-4 top-4 z-[610] w-56">
+                <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl">
+                  <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-3 py-2">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">Label</span>
+                    <button
+                      onClick={() => setSelectedAnnotationId(null)}
+                      className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <div className="space-y-3 p-3">
+                    <textarea
+                      className="w-full resize-none rounded border border-[hsl(var(--border))] bg-[hsl(var(--input))] px-2 py-1.5 text-sm text-[hsl(var(--foreground))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
+                      rows={3}
+                      value={ann.text}
+                      onChange={(e) => updateMapAnnotation(ann.id, { text: e.target.value })}
+                    />
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-[hsl(var(--muted-foreground))] w-16 shrink-0">Size</span>
+                      <input
+                        type="range"
+                        min={10}
+                        max={40}
+                        value={ann.fontSize}
+                        onChange={(e) => updateMapAnnotation(ann.id, { fontSize: Number(e.target.value) })}
+                        className="flex-1"
+                      />
+                      <span className="text-xs w-6 text-right">{ann.fontSize}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-[hsl(var(--muted-foreground))] w-16 shrink-0">Color</span>
+                      <div className="flex gap-1.5 flex-wrap">
+                        {['#ffffff', '#fbbf24', '#34d399', '#60a5fa', '#f87171', '#a78bfa', '#fb923c'].map((c) => (
+                          <button
+                            key={c}
+                            title={c}
+                            onClick={() => updateMapAnnotation(ann.id, { color: c })}
+                            className="h-5 w-5 rounded-full border-2 transition-transform hover:scale-110"
+                            style={{
+                              background: c,
+                              borderColor: ann.color === c ? '#fff' : 'transparent',
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        await deleteMapAnnotation(ann.id)
+                        setSelectedAnnotationId(null)
+                      }}
+                      className="flex w-full items-center justify-center gap-1.5 rounded border border-[hsl(var(--destructive)/0.4)] px-2 py-1 text-xs text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/0.1)] transition-colors"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      Delete label
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Echo ring popover */}
           {echoPopoverMarkerId && echoPopoverInfo && (

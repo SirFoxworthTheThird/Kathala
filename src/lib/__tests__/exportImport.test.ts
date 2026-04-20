@@ -31,6 +31,7 @@ function makeExport(overrides: Partial<WorldExportFile> = {}): WorldExportFile {
     mapRoutes: [],
     mapRegions: [],
     mapRegionSnapshots: [],
+    mapAnnotations: [],
     ...overrides,
   }
 }

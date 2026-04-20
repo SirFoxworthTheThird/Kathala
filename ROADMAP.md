@@ -126,7 +126,7 @@ New capabilities identified in the maps UX review. Detailed specs in `docs/featu
 
 ### Map
 
-- [ ] **Map annotations / free-text labels** — ability to place text labels (or sticky notes) directly on the map canvas, independent of location markers. Stored as a new `MapAnnotation` table (worldId, mapLayerId, x, y, text, fontSize, color); shown as non-interactive overlays on the Leaflet canvas; editable via a small inline popover on click. DB v16.
+- [x] **Map annotations / free-text labels** — ability to place text labels (or sticky notes) directly on the map canvas, independent of location markers. Stored as a new `MapAnnotation` table (worldId, mapLayerId, x, y, text, fontSize, color); shown as non-interactive overlays on the Leaflet canvas; editable via a small inline popover on click. DB v16.
 
 - [ ] **Playback sub-map transition polish** — when a character crosses into or out of a sub-map during playback, the camera currently cuts instantly. Add a brief zoom-out → layer switch → zoom-in animation so the transition feels intentional rather than jarring.
 

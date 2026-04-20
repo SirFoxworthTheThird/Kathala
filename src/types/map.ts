@@ -80,3 +80,16 @@ export interface MapRegionSnapshot {
   notes?: string
   updatedAt: number
 }
+
+export interface MapAnnotation {
+  id: string
+  worldId: string
+  mapLayerId: string
+  x: number
+  y: number
+  text: string
+  fontSize: number
+  color: string
+  createdAt: number
+  updatedAt: number
+}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, ImageOverlay, Marker, Popup, Polyline, Polygon, CircleMarker, Tooltip, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import type { MapLayer, LocationMarker, Character, MapRoute, MapRegion, MapRegionStatus } from '@/types'
+import type { MapLayer, LocationMarker, Character, MapRoute, MapRegion, MapRegionStatus, MapAnnotation } from '@/types'
 import { updateLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { useAppStore } from '@/store'
 import { type GhostPin, makeGhostIcon } from '@/lib/ghostMarkerIcon'
@@ -27,6 +27,16 @@ function resolveV() {
 function escapeHtml(s: string | null | undefined): string {
   if (!s) return ''
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+// ── Annotation marker ─────────────────────────────────────────────────────────
+function makeAnnotationIcon(text: string, fontSize: number, color: string, selected: boolean) {
+  const escaped = escapeHtml(text)
+  const outline = selected ? `0 0 0 2px ${color}` : 'none'
+  const html = `<div style="position:relative;display:inline-block;padding:3px 6px;background:rgba(0,0,0,0.55);border-radius:4px;box-shadow:${outline};cursor:pointer;user-select:none;max-width:200px;word-break:break-word;text-align:center;">` +
+    `<span style="color:${color};font-size:${fontSize}px;font-weight:600;line-height:1.3;white-space:pre-wrap;">${escaped}</span>` +
+    `</div>`
+  return L.divIcon({ html, className: '', iconSize: undefined, iconAnchor: undefined })
 }
 
 // ── Location marker: pill badge  [◇ | Name · type] ───────────────────────────
@@ -382,6 +392,12 @@ interface LeafletMapCanvasProps {
   selectedRouteId?: string | null
   /** ID of the currently selected region (highlighted on canvas) */
   selectedRegionId?: string | null
+  /** Free-text annotation labels placed on the canvas */
+  mapAnnotations?: MapAnnotation[]
+  /** Called when the user clicks an annotation */
+  onAnnotationClick?: (annotationId: string) => void
+  /** ID of the currently selected annotation */
+  selectedAnnotationId?: string | null
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -395,6 +411,7 @@ export function LeafletMapCanvas({
   mapRoutes = [], routeMarkerPositions, mapRegions = [], regionStatuses, drawRegionVertices,
   directMapClick = false, drawRoutePoints,
   onRouteClick, onRegionClick, selectedRouteId, selectedRegionId,
+  mapAnnotations = [], onAnnotationClick, selectedAnnotationId,
 }: LeafletMapCanvasProps) {
   const { setIsAnimating } = useAppStore()
   const internalMapRef = useRef<L.Map | null>(null)
@@ -996,6 +1013,17 @@ export function LeafletMapCanvas({
               </div>
             </Popup>
           </Marker>
+        ))}
+
+        {/* Free-text annotation labels */}
+        {mapAnnotations.map((ann) => (
+          <Marker
+            key={ann.id}
+            position={[ann.y, ann.x]}
+            icon={makeAnnotationIcon(ann.text, ann.fontSize, ann.color, selectedAnnotationId === ann.id)}
+            zIndexOffset={500}
+            eventHandlers={{ click: (e) => { e.originalEvent.stopPropagation(); onAnnotationClick?.(ann.id) } }}
+          />
         ))}
 
         {/* Character markers are managed imperatively by the useEffect above — no JSX here */}
