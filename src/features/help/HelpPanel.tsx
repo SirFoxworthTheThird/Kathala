@@ -119,18 +119,49 @@ export function HelpPanel() {
             <P>Relationship state also participates in the snapshot model — you can record how a relationship changes at a specific event (e.g. trust breaks down in Chapter 5).</P>
           </Section>
 
+          <Section title="Characters (portraits & colour)">
+            <P>Open a character and click the avatar circle to <B>upload a portrait image</B>. Portraits appear on the character card, Arc View, and map pins.</P>
+            <P>Each character can have a <B>colour</B> — set it in the Overview tab. The colour is used in the Arc View grid and for the character's movement trail on the map.</P>
+            <P>The <B>Current State</B> tab has an <B>inventory notes</B> field alongside location and alive status — use it to jot down what a character is carrying at that event.</P>
+          </Section>
+
+          <Section title="Items">
+            <P>Items live in the <B>Items</B> nav section. Each item can have a description, tags, and an image.</P>
+            <P>Place an item at a map location for a specific event using the <B>item placement</B> system — useful for tracking props, artefacts, or loot.</P>
+            <P>The <B>History</B> tab on an item shows its condition and notes across all events, following the same snapshot/delta model as characters.</P>
+            <P>Items that travel between timelines are tracked as <B>cross-timeline artifacts</B> — link them from the Timeline Relationships panel.</P>
+          </Section>
+
           <Section title="Maps">
             <P>Upload any image as a map layer. Add <B>location markers</B> by clicking the canvas, then drag characters onto locations to place them.</P>
             <P>Location markers can link to a <B>sub-map</B> (another map layer) — click the ⤵ badge to drill in. The back button returns you up the hierarchy.</P>
-            <P><B>Routes</B> draw persistent paths between locations (roads, rivers, trails). <B>Regions</B> draw filled polygons with per-event status (active, occupied, destroyed…).</P>
-            <P>The <B>filter bar</B> above the map toggles journey trails, character labels, sub-map links, and density mode.</P>
+            <P><B>Routes</B> draw persistent paths between locations (road, river, trail, sea route, border, custom). <B>Regions</B> draw filled polygons with per-event status (active, occupied, destroyed…).</P>
+            <P><B>Annotations</B> place free-text labels directly on the canvas — click the T button in the map header, then click anywhere on the map.</P>
+            <P>The <B>filter bar</B> toggles journey trails, character labels, sub-map links, and label-density mode. Use the character filter to focus on one character at a time.</P>
             <Tip>Right-click the map canvas for quick actions: add location, add label, start a route or region from that point.</Tip>
+          </Section>
+
+          <Section title="Map scale & measurement">
+            <P>Calibrate a map by clicking the <B>ruler icon</B> and selecting two known points. Enter the real-world distance between them to set the scale unit (km, miles, leagues…).</P>
+            <P>Once calibrated, use the <B>measure tool</B> (ruler) to draw a line between any two points and read off the distance. Travel-time estimates in the Continuity checker also use this scale.</P>
+            <P>Travel modes (set in <B>World Settings</B>) define speed in scale-units per in-world day, enabling realistic travel-time validation.</P>
+          </Section>
+
+          <Section title="Map AI dialog">
+            <P>Click the <B>Sparkles ✦</B> button in the map header to open the Map AI dialog. Paste a passage of travel narrative and the AI extracts character→location assignments per event and previews them before applying.</P>
+            <P>This mirrors the Chapter AI dialog in the Timeline — both send your world's existing data as context so the AI only references locations and characters that actually exist.</P>
+          </Section>
+
+          <Section title="Character film strip">
+            <P>Click a character pin on the map to open the <B>film strip</B> — a horizontal bar at the bottom showing every location that character visited, in order.</P>
+            <P>Click any stop in the film strip to jump to that event in the timeline. Useful for quickly reviewing a character's journey without leaving the map.</P>
           </Section>
 
           <Section title="Playback">
             <P>Hit the <B>▶ Play</B> button in the timeline bar to animate character movement across the map event by event.</P>
             <P>Characters move along route geometry when a matching route exists between their previous and current location. Otherwise they travel in a straight line.</P>
             <P>When a character crosses into a sub-map, the camera zooms out, switches layers, then zooms back in on the new map.</P>
+            <P>During playback a <B>story notes overlay</B> shows the chapter title, synopsis, and character status notes for the current event.</P>
             <P>Speed can be set to Slow, Normal, or Fast. Playback always navigates to the Maps view.</P>
           </Section>
 
