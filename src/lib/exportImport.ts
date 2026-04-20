@@ -591,17 +591,16 @@ function normalizeImport(data: WorldExportFile): void {
   }
 }
 
-export async function importWorld(file: File): Promise<string> {
-  const text = await file.text()
+/** Import a world from a raw JSON string (used by cloud sync). */
+export async function importWorldFromJson(json: string): Promise<string> {
   let data: unknown
-  try {
-    data = JSON.parse(text)
-  } catch {
-    throw new Error('Invalid file: could not parse JSON')
-  }
+  try { data = JSON.parse(json) } catch { throw new Error('Invalid file: could not parse JSON') }
   validateImport(data)
   normalizeImport(data)
+  return importWorldData(data)
+}
 
+async function importWorldData(data: WorldExportFile): Promise<string> {
   await db.transaction('rw', [
     db.worlds, db.mapLayers, db.locationMarkers, db.characters,
     db.items, db.characterSnapshots, db.characterMovements, db.itemPlacements,
@@ -662,4 +661,13 @@ export async function importWorld(file: File): Promise<string> {
   }
 
   return data.world.id
+}
+
+export async function importWorld(file: File): Promise<string> {
+  const text = await file.text()
+  let data: unknown
+  try { data = JSON.parse(text) } catch { throw new Error('Invalid file: could not parse JSON') }
+  validateImport(data)
+  normalizeImport(data)
+  return importWorldData(data)
 }

@@ -178,7 +178,12 @@
       "Bash(/c/Users/rpaiva/AppData/Local/mise/installs/node/20.20.0/node.exe -e ' *)",
       "Bash(/c/Users/rpaiva/AppData/Local/mise/installs/node/20.20.0/node.exe c:/Projects/mine/PlotWeave/fix_pwk.js)",
       "Bash(cmd /c \"node -e \\\\\"const fs=require\\('fs'\\);const d=JSON.parse\\(fs.readFileSync\\('c:/Projects/mine/PlotWeave/example/The Name of the Wind.pwk','utf8'\\)\\);console.log\\('markers:',d.locationMarkers.length,'layers:',d.mapLayers.length\\);\\\\\"\")",
-      "Bash(cmd /c \"type \\\\\"c:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave\\\\\\\\example\\\\\\\\The Name of the Wind.pwk\\\\\"\")"
+      "Bash(cmd /c \"type \\\\\"c:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave\\\\\\\\example\\\\\\\\The Name of the Wind.pwk\\\\\"\")",
+      "Bash(cmd.exe /c \"cd C:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave && npm run build 2>&1\")",
+      "Bash(cmd.exe /c \"cd /d C:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave && npm run build\")",
+      "Bash(cmd.exe /c \"cd /d C:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave && npm run build && echo BUILD_OK\")",
+      "Bash(powershell.exe -Command \"Set-Location 'C:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave'; npm run build 2>&1 | Out-String\")",
+      "Bash(powershell.exe -Command \"Remove-Item -Recurse -Force 'C:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave\\\\\\\\src\\\\\\\\lib\\\\\\\\cloud'\")"
     ]
   }
 }

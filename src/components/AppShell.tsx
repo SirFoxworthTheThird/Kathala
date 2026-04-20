@@ -5,6 +5,7 @@ import { useAppStore } from '@/store'
 import { useBarHeight } from '@/lib/useBarHeight'
 import { useEffect } from 'react'
 import { SearchPalette } from '@/features/search/SearchPalette'
+import { useAutoFolderSync } from '@/features/worlds/useAutoFolderSync'
 import { WritersBriefPanel } from '@/features/brief/WritersBriefPanel'
 import { ChapterDiffModal } from '@/features/diff/ChapterDiffModal'
 import { ContinuityChecker } from '@/features/continuity/ContinuityChecker'
@@ -22,6 +23,8 @@ export function AppShell() {
   useEffect(() => {
     if (worldId) setActiveWorldId(worldId)
   }, [worldId, setActiveWorldId])
+
+  useAutoFolderSync(worldId)
 
   // Global Cmd/Ctrl+K to open search
   useEffect(() => {

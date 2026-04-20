@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { TravelMode } from '@/types'
+import { CloudSyncPanel } from './CloudSyncPanel'
 
 // ── Travel mode row ───────────────────────────────────────────────────────────
 
@@ -233,6 +234,11 @@ export default function WorldSettingsView() {
           </div>
         )}
       </section>
+
+      {/* Cloud Sync */}
+      {worldId && (
+        <CloudSyncPanel worldId={worldId} worldName={world?.name ?? ''} />
+      )}
 
     </div>
   )
