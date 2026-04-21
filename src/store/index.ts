@@ -74,7 +74,9 @@ interface UISlice {
   checkerOpen: boolean
   setCheckerOpen: (open: boolean) => void
   suppressedIssueIds: Record<string, string[]>
+  suppressedNotes: Record<string, Record<string, string>>
   toggleSuppressIssue: (worldId: string, id: string) => void
+  setSuppressNote: (worldId: string, issueId: string, note: string) => void
   isAnimating: boolean
   setIsAnimating: (v: boolean) => void
   /** Set before navigating to Maps to auto-select + focus a route on arrival. */
@@ -167,13 +169,25 @@ export const useAppStore = create<AppStore>()(
       checkerOpen: false,
       setCheckerOpen: (open) => set({ checkerOpen: open }),
       suppressedIssueIds: {},
+      suppressedNotes: {},
       toggleSuppressIssue: (worldId, id) => set((s) => {
         const current = s.suppressedIssueIds[worldId] ?? []
-        const next = current.includes(id)
-          ? current.filter((x) => x !== id)
-          : [...current, id]
-        return { suppressedIssueIds: { ...s.suppressedIssueIds, [worldId]: next } }
+        const isSuppressed = current.includes(id)
+        const next = isSuppressed ? current.filter((x) => x !== id) : [...current, id]
+        // Clean up note when unsuppressing
+        const notes = { ...(s.suppressedNotes[worldId] ?? {}) }
+        if (isSuppressed) delete notes[id]
+        return {
+          suppressedIssueIds: { ...s.suppressedIssueIds, [worldId]: next },
+          suppressedNotes: { ...s.suppressedNotes, [worldId]: notes },
+        }
       }),
+      setSuppressNote: (worldId, issueId, note) => set((s) => ({
+        suppressedNotes: {
+          ...s.suppressedNotes,
+          [worldId]: { ...(s.suppressedNotes[worldId] ?? {}), [issueId]: note },
+        },
+      })),
       isAnimating: false,
       setIsAnimating: (v) => set({ isAnimating: v }),
       pendingFocusRouteId: null,
@@ -188,6 +202,7 @@ export const useAppStore = create<AppStore>()(
         activeEventId: state.activeEventId,
         sidebarOpen: state.sidebarOpen,
         suppressedIssueIds: state.suppressedIssueIds,
+        suppressedNotes: state.suppressedNotes,
       }),
     }
   )
