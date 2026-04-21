@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, X, Trash2, Users, ChevronRight, Shield, Map as MapIcon, MapPin } from 'lucide-react'
+import { Plus, X, Trash2, Users, ChevronRight, Shield, Map as MapIcon, MapPin, Swords, Handshake, Minus } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { Button } from '@/components/ui/button'
@@ -11,13 +11,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import {
   useFactions, useFactionMemberships, useMembershipsForFaction,
+  useFactionRelationships,
   createFaction, updateFaction, deleteFaction,
   createFactionMembership, updateFactionMembership, deleteFactionMembership,
+  createFactionRelationship, updateFactionRelationship, deleteFactionRelationship,
 } from '@/db/hooks/useFactions'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useEvents, useChapters, useTimelines } from '@/db/hooks/useTimeline'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
-import type { Faction, FactionMembership } from '@/types'
+import type { Faction, FactionMembership, FactionRelationship, FactionStance } from '@/types'
 
 const PRESET_COLORS = [
   '#ef4444', '#f97316', '#eab308', '#22c55e',
@@ -145,6 +147,79 @@ function MembershipRow({
   )
 }
 
+// ── Stance helpers ────────────────────────────────────────────────────────────
+
+const STANCE_LABELS: Record<FactionStance, string> = {
+  allied: 'Allied',
+  neutral: 'Neutral',
+  hostile: 'Hostile',
+}
+
+const STANCE_COLORS: Record<FactionStance, string> = {
+  allied: 'text-emerald-400',
+  neutral: 'text-[hsl(var(--muted-foreground))]',
+  hostile: 'text-red-400',
+}
+
+function StanceIcon({ stance }: { stance: FactionStance }) {
+  if (stance === 'allied') return <Handshake className="h-3.5 w-3.5" />
+  if (stance === 'hostile') return <Swords className="h-3.5 w-3.5" />
+  return <Minus className="h-3.5 w-3.5" />
+}
+
+// ── Relation row ──────────────────────────────────────────────────────────────
+
+function RelationRow({
+  rel, otherFaction, onDelete,
+}: {
+  rel: FactionRelationship
+  otherFaction: Faction
+  onDelete: () => void
+}) {
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  return (
+    <div className="flex items-center gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2">
+      <div className="h-3 w-3 rounded-full shrink-0" style={{ background: otherFaction.color }} />
+      <span className="flex-1 text-sm truncate">{otherFaction.name}</span>
+      <Select
+        value={rel.stance}
+        onValueChange={(v) => updateFactionRelationship(rel.id, { stance: v as FactionStance })}
+      >
+        <SelectTrigger className={`h-6 w-24 text-[11px] gap-1 ${STANCE_COLORS[rel.stance]}`}>
+          <span className="flex items-center gap-1">
+            <StanceIcon stance={rel.stance} />
+            {STANCE_LABELS[rel.stance]}
+          </span>
+        </SelectTrigger>
+        <SelectContent>
+          {(['allied', 'neutral', 'hostile'] as FactionStance[]).map((s) => (
+            <SelectItem key={s} value={s} className={STANCE_COLORS[s]}>
+              <span className="flex items-center gap-1.5">
+                <StanceIcon stance={s} />
+                {STANCE_LABELS[s]}
+              </span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <button
+        onClick={() => setConfirmDelete(true)}
+        className="text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={(v) => { if (!v) setConfirmDelete(false) }}
+        title="Remove relation"
+        description={`Remove the relationship with "${otherFaction.name}"?`}
+        onConfirm={onDelete}
+      />
+    </div>
+  )
+}
+
 // ── Faction detail panel ──────────────────────────────────────────────────────
 
 function FactionDetailPanel({
@@ -163,7 +238,20 @@ function FactionDetailPanel({
   const [addingMember, setAddingMember] = useState(false)
   const [savedFlash, setSavedFlash] = useState(false)
 
+  const [addingRelation, setAddingRelation] = useState(false)
+
   const memberships = useMembershipsForFaction(faction.id)
+  const allFactions = useFactions(worldId)
+  const allRelations = useFactionRelationships(worldId)
+  const myRelations = allRelations.filter(
+    (r) => r.factionAId === faction.id || r.factionBId === faction.id
+  )
+  const relatedFactionIds = new Set(myRelations.map((r) =>
+    r.factionAId === faction.id ? r.factionBId : r.factionAId
+  ))
+  const unrelatedFactions = allFactions.filter(
+    (f) => f.id !== faction.id && !relatedFactionIds.has(f.id)
+  )
   const territories = useLiveQuery(
     () => db.mapRegions.where('factionId').equals(faction.id).toArray(),
     [faction.id],
@@ -210,6 +298,17 @@ function FactionDetailPanel({
   async function handleDelete() {
     await deleteFaction(faction.id)
     onClose()
+  }
+
+  async function addRelation(otherFactionId: string) {
+    await createFactionRelationship({
+      worldId,
+      factionAId: faction.id,
+      factionBId: otherFactionId,
+      stance: 'neutral',
+      notes: '',
+    })
+    setAddingRelation(false)
   }
 
   async function addMember(characterId: string) {
@@ -354,6 +453,70 @@ function FactionDetailPanel({
             </Button>
           )}
         </div>
+
+        {/* Relations */}
+        {allFactions.length > 1 && (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-1.5">
+              <Swords className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                Relations ({myRelations.length})
+              </span>
+            </div>
+
+            {myRelations.length === 0 && (
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">No inter-faction relations defined.</p>
+            )}
+
+            <div className="flex flex-col gap-1.5">
+              {myRelations.map((rel) => {
+                const otherId = rel.factionAId === faction.id ? rel.factionBId : rel.factionAId
+                const other = allFactions.find((f) => f.id === otherId)
+                if (!other) return null
+                return (
+                  <RelationRow
+                    key={rel.id}
+                    rel={rel}
+                    otherFaction={other}
+                    onDelete={() => deleteFactionRelationship(rel.id)}
+                  />
+                )
+              })}
+            </div>
+
+            {addingRelation ? (
+              <Select onValueChange={addRelation}>
+                <SelectTrigger className="text-xs h-8">
+                  <SelectValue placeholder="Choose faction…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {unrelatedFactions.length === 0 ? (
+                    <SelectItem value="__none__" disabled>All factions have a relation</SelectItem>
+                  ) : (
+                    unrelatedFactions.map((f) => (
+                      <SelectItem key={f.id} value={f.id}>
+                        <span className="flex items-center gap-2">
+                          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: f.color }} />
+                          {f.name}
+                        </span>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 text-xs"
+                onClick={() => setAddingRelation(true)}
+                disabled={unrelatedFactions.length === 0}
+              >
+                <Plus className="h-3.5 w-3.5" /> Add relation
+              </Button>
+            )}
+          </div>
+        )}
 
         {/* Territories */}
         <div className="flex flex-col gap-2">

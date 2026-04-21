@@ -29,9 +29,10 @@ function NavIcons() {
           key={to}
           to={`/worlds/${worldId}/${to}`}
           end={end}
+          title={label}
           className={({ isActive }) =>
             cn(
-              'flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors',
+              'flex h-8 w-8 items-center justify-center rounded-md transition-colors',
               isActive
                 ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
                 : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]'
@@ -39,7 +40,6 @@ function NavIcons() {
           }
         >
           <Icon className="h-3.5 w-3.5 shrink-0" />
-          <span>{label}</span>
         </NavLink>
       ))}
     </nav>
@@ -55,9 +55,9 @@ export function TopBar() {
   const { setSearchOpen, setBriefOpen, setCheckerOpen, setHelpOpen } = useAppStore()
 
   return (
-    <header className="relative flex h-12 shrink-0 items-center border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4">
+    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4">
       {/* Left: brand + world name */}
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
         <button
           onClick={() => navigate('/')}
           className="flex items-center gap-2 hover:opacity-80 transition-opacity"
@@ -70,57 +70,56 @@ export function TopBar() {
         {world && (
           <>
             <span className="text-[hsl(var(--muted-foreground))]">/</span>
-            <span className="text-sm text-[hsl(var(--foreground))]">{world.name}</span>
+            <span className="max-w-[120px] truncate text-sm text-[hsl(var(--foreground))]">{world.name}</span>
           </>
         )}
       </div>
 
-      {/* Center: nav icons — absolutely centered */}
+      {/* Center: nav icons */}
       {world && (
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+        <div className="flex flex-1 justify-center">
           <NavIcons />
         </div>
       )}
 
-      {/* Right: search + brief + theme */}
-      <div className="ml-auto flex items-center gap-1">
+      {/* Right: search + brief + continuity + help */}
+      <div className="flex shrink-0 items-center gap-1">
         {world && (
           <>
             <button
               onClick={() => setSearchOpen(true)}
-              className="flex h-8 items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 text-xs text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--ring)/0.4)] hover:text-[hsl(var(--foreground))] transition-colors"
+              title={`Search (${isMac ? '⌘K' : 'Ctrl+K'})`}
+              className="flex h-8 items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 text-xs text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--ring)/0.4)] hover:text-[hsl(var(--foreground))] transition-colors"
             >
               <Search className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Search</span>
-              <kbd className="hidden sm:inline-block rounded border border-[hsl(var(--border))] px-1 py-0.5 text-[10px]">
+              <kbd className="rounded border border-[hsl(var(--border))] px-1 py-0.5 text-[10px]">
                 {isMac ? '⌘K' : 'Ctrl+K'}
               </kbd>
             </button>
-            <div className="mx-1 h-5 w-px bg-[hsl(var(--border))]" />
+            <div className="mx-0.5 h-5 w-px bg-[hsl(var(--border))]" />
             <button
               onClick={() => setBriefOpen(true)}
-              className="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] transition-colors"
+              title="Writer's Brief"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] transition-colors"
             >
               <ScrollText className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Brief</span>
             </button>
             <button
               onClick={() => setCheckerOpen(true)}
-              className="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] transition-colors"
+              title="Continuity Checker"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] transition-colors"
             >
               <ShieldAlert className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Continuity</span>
             </button>
           </>
         )}
-        <div className="mx-1 h-5 w-px bg-[hsl(var(--border))]" />
+        <div className="mx-0.5 h-5 w-px bg-[hsl(var(--border))]" />
         <button
           onClick={() => setHelpOpen(true)}
-          className="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] transition-colors"
           title="Help"
+          className="flex h-8 w-8 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] transition-colors"
         >
           <HelpCircle className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Help</span>
         </button>
       </div>
     </header>

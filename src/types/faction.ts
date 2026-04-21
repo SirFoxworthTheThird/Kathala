@@ -1,3 +1,16 @@
+export type FactionStance = 'allied' | 'neutral' | 'hostile'
+
+export interface FactionRelationship {
+  id: string
+  worldId: string
+  factionAId: string
+  factionBId: string
+  stance: FactionStance
+  notes: string
+  createdAt: number
+  updatedAt: number
+}
+
 export interface Faction {
   id: string
   worldId: string

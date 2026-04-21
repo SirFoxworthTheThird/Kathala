@@ -12,7 +12,7 @@ import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
 import { useWorldMovements } from '@/db/hooks/useMovements'
-import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
+import { useFactions, useFactionMemberships, useFactionRelationships } from '@/db/hooks/useFactions'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { cn } from '@/lib/utils'
@@ -290,8 +290,9 @@ export function ContinuityChecker() {
     () => worldId ? db.mapRegionSnapshots.where('worldId').equals(worldId).toArray() : [],
     [worldId], []
   )
-  const allFactions    = useFactions(worldId ?? null)
-  const allMemberships = useFactionMemberships(worldId ?? null)
+  const allFactions       = useFactions(worldId ?? null)
+  const allMemberships    = useFactionMemberships(worldId ?? null)
+  const allFactionRels    = useFactionRelationships(worldId ?? null)
 
   const issues = useMemo(() => {
     const out: Issue[] = []
@@ -794,8 +795,56 @@ export function ContinuityChecker() {
       }
     }
 
+    // ── Hostile faction location check ──────────────────────────────────────
+    // Warn when a character is at a location controlled by a faction that is
+    // hostile to one of the character's own active factions.
+
+    const hostileRels = allFactionRels.filter((r) => r.stance === 'hostile')
+
+    function areHostile(fA: string, fB: string): boolean {
+      return hostileRels.some(
+        (r) => (r.factionAId === fA && r.factionBId === fB) ||
+               (r.factionAId === fB && r.factionBId === fA)
+      )
+    }
+
+    for (const snap of snapshots) {
+      if (!snap.currentLocationMarkerId) continue
+      const marker = markerById.get(snap.currentLocationMarkerId)
+      if (!marker?.factionId) continue
+
+      const snapOrder = eventOrder(snap.eventId)
+      const charMemberships = membershipsByChar.get(snap.characterId) ?? []
+      const activeCharFactionIds = charMemberships
+        .filter((m) => {
+          const start = m.startEventId ? eventOrder(m.startEventId) : 0
+          const end   = m.endEventId   ? eventOrder(m.endEventId)   : Infinity
+          return start <= snapOrder && snapOrder < end
+        })
+        .map((m) => m.factionId)
+
+      for (const charFactionId of activeCharFactionIds) {
+        if (!areHostile(charFactionId, marker.factionId)) continue
+
+        const char       = charById.get(snap.characterId)
+        const ev         = eventById.get(snap.eventId)
+        const ch         = ev ? chapById.get(ev.chapterId) : undefined
+        const charFaction = factionById.get(charFactionId)
+        const locFaction  = factionById.get(marker.factionId)
+        out.push({
+          id: `hostile-loc-${snap.characterId}-${snap.eventId}-${charFactionId}`,
+          severity: 'warning',
+          category: 'faction',
+          message: `${char?.name ?? '?'} is at hostile territory in Ch. ${ch?.number ?? '?'}`,
+          detail: `"${marker.name}" is controlled by "${locFaction?.name ?? '?'}" — hostile to "${charFaction?.name ?? '?'}"`,
+          navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+          eventId: snap.eventId,
+        })
+      }
+    }
+
     return out
-  }, [chapters, allEvents, characters, rels, items, snapshots, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, worldId])
+  }, [chapters, allEvents, characters, rels, items, snapshots, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId])
 
   // Focus modal on open so keyboard navigation works immediately
   useEffect(() => {
