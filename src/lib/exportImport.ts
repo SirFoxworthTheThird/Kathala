@@ -4,10 +4,10 @@ import type {
   CharacterSnapshot, CharacterMovement, ItemPlacement, LocationSnapshot, ItemSnapshot,
   Relationship, RelationshipSnapshot, Timeline, Chapter, WorldEvent, TravelMode,
   TimelineRelationship, CrossTimelineArtifact, MapRoute, MapRegion, MapRegionSnapshot,
-  MapAnnotation, LoreCategory, LorePage,
+  MapAnnotation, LoreCategory, LorePage, Faction, FactionMembership,
 } from '@/types'
 
-const EXPORT_VERSION = 5
+const EXPORT_VERSION = 6
 
 interface BlobExport {
   id: string
@@ -47,6 +47,8 @@ export interface WorldExportFile {
   mapAnnotations: MapAnnotation[]
   loreCategories: LoreCategory[]
   lorePages: LorePage[]
+  factions: Faction[]
+  factionMemberships: FactionMembership[]
   relationshipPositions?: Record<string, { x: number; y: number }>
   suppressedIssueIds?: string[]
 }
@@ -109,6 +111,8 @@ export async function exportWorld(worldId: string): Promise<void> {
     mapAnnotations,
     loreCategories,
     lorePages,
+    factions,
+    factionMemberships,
   ] = await Promise.all([
     db.worlds.get(worldId),
     db.mapLayers.where('worldId').equals(worldId).toArray(),
@@ -135,6 +139,8 @@ export async function exportWorld(worldId: string): Promise<void> {
     db.mapAnnotations.where('worldId').equals(worldId).toArray(),
     db.loreCategories.where('worldId').equals(worldId).toArray(),
     db.lorePages.where('worldId').equals(worldId).toArray(),
+    db.factions.where('worldId').equals(worldId).toArray(),
+    db.factionMemberships.where('worldId').equals(worldId).toArray(),
   ])
 
   if (!world) throw new Error('World not found')
@@ -193,6 +199,8 @@ export async function exportWorld(worldId: string): Promise<void> {
     mapAnnotations,
     loreCategories,
     lorePages,
+    factions,
+    factionMemberships,
     relationshipPositions,
     suppressedIssueIds,
   }
@@ -246,6 +254,8 @@ export async function exportWorldSplit(worldId: string): Promise<void> {
     mapAnnotations,
     loreCategories,
     lorePages,
+    factions,
+    factionMemberships,
   ] = await Promise.all([
     db.worlds.get(worldId),
     db.mapLayers.where('worldId').equals(worldId).toArray(),
@@ -272,6 +282,8 @@ export async function exportWorldSplit(worldId: string): Promise<void> {
     db.mapAnnotations.where('worldId').equals(worldId).toArray(),
     db.loreCategories.where('worldId').equals(worldId).toArray(),
     db.lorePages.where('worldId').equals(worldId).toArray(),
+    db.factions.where('worldId').equals(worldId).toArray(),
+    db.factionMemberships.where('worldId').equals(worldId).toArray(),
   ])
 
   if (!world) throw new Error('World not found')
@@ -334,6 +346,8 @@ export async function exportWorldSplit(worldId: string): Promise<void> {
     mapAnnotations,
     loreCategories,
     lorePages,
+    factions,
+    factionMemberships,
     relationshipPositions,
     suppressedIssueIds,
   }
@@ -458,6 +472,14 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
     throw new Error('Invalid file: lorePages is not an array')
   }
   if (!d.lorePages) (d as Record<string, unknown>).lorePages = []
+  if (d.factions !== undefined && !Array.isArray(d.factions)) {
+    throw new Error('Invalid file: factions is not an array')
+  }
+  if (!d.factions) (d as Record<string, unknown>).factions = []
+  if (d.factionMemberships !== undefined && !Array.isArray(d.factionMemberships)) {
+    throw new Error('Invalid file: factionMemberships is not an array')
+  }
+  if (!d.factionMemberships) (d as Record<string, unknown>).factionMemberships = []
 }
 
 function normalizeImport(data: WorldExportFile): void {
@@ -481,10 +503,16 @@ function normalizeImport(data: WorldExportFile): void {
     if (l.scalePixelsPerUnit === undefined) l.scalePixelsPerUnit = null
     if (l.scaleUnit === undefined) l.scaleUnit = null
   }
-  // Backfill linkedMapLayerId on regions exported before it was added
+  // Backfill linkedMapLayerId and factionId on regions exported before they were added
   for (const region of data.mapRegions) {
     const r = region as unknown as Rec
     if (r.linkedMapLayerId === undefined) r.linkedMapLayerId = null
+    if (r.factionId === undefined) r.factionId = null
+  }
+  // Backfill factionId on locationMarkers exported before it was added
+  for (const marker of data.locationMarkers) {
+    const m = marker as unknown as Rec
+    if (m.factionId === undefined) m.factionId = null
   }
   // Backfill synopsis and notes on chapters exported before they were added
   for (const ch of data.chapters) {
@@ -636,7 +664,7 @@ async function importWorldData(data: WorldExportFile): Promise<string> {
     db.chapters, db.events, db.blobs, db.travelModes,
     db.timelineRelationships, db.crossTimelineArtifacts,
     db.mapRoutes, db.mapRegions, db.mapRegionSnapshots, db.mapAnnotations,
-    db.loreCategories, db.lorePages,
+    db.loreCategories, db.lorePages, db.factions, db.factionMemberships,
   ], async () => {
     await db.worlds.put(data.world)
     await db.mapLayers.bulkPut(data.mapLayers)
@@ -662,6 +690,8 @@ async function importWorldData(data: WorldExportFile): Promise<string> {
     await db.mapAnnotations.bulkPut(data.mapAnnotations)
     await db.loreCategories.bulkPut(data.loreCategories)
     await db.lorePages.bulkPut(data.lorePages)
+    await db.factions.bulkPut(data.factions)
+    await db.factionMemberships.bulkPut(data.factionMemberships)
 
     for (const b of data.blobs) {
       await db.blobs.put({
@@ -813,6 +843,7 @@ export async function applyWorldImport(
     localTravelModes, localTlRels, localCta,
     localRoutes, localRegions, localRegSnaps, localAnnotations,
     localLoreCats, localLorePages,
+    localFactions, localFactionMemberships,
   ] = await Promise.all([
     db.characters.where('worldId').equals(worldId).toArray(),
     db.items.where('worldId').equals(worldId).toArray(),
@@ -837,6 +868,8 @@ export async function applyWorldImport(
     db.mapAnnotations.where('worldId').equals(worldId).toArray(),
     db.loreCategories.where('worldId').equals(worldId).toArray(),
     db.lorePages.where('worldId').equals(worldId).toArray(),
+    db.factions.where('worldId').equals(worldId).toArray(),
+    db.factionMemberships.where('worldId').equals(worldId).toArray(),
   ])
 
   const merged = {
@@ -864,6 +897,8 @@ export async function applyWorldImport(
     mapAnnotations:       mergeTable(parsed.mapAnnotations, localAnnotations).result,
     loreCategories:       mergeTable(parsed.loreCategories, localLoreCats).result,
     lorePages:            mergeTable(parsed.lorePages, localLorePages).result,
+    factions:             mergeTable(parsed.factions, localFactions).result,
+    factionMemberships:   mergeTable(parsed.factionMemberships, localFactionMemberships).result,
     blobs:                parsed.blobs, // blobs: always use incoming (binary, no updatedAt)
     relationshipPositions: parsed.relationshipPositions,
     suppressedIssueIds:   parsed.suppressedIssueIds,

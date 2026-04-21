@@ -138,7 +138,7 @@ New capabilities identified in the maps UX review. Detailed specs in `docs/featu
 
 - [x] **[Lore](docs/features/lore.md)** — wiki-like pages for world-building information that isn't time-varying (magic systems, history, religions, terminology, etc.). Free-form markdown editor, user-defined categories, full-text search, links from characters/locations/items, included in `.pwk` export and HTML export. New DB tables: `lorePages`, `loreCategories` (v19). Also added: timeline visibility filter ("Revealed at" event), entity backlinks (characters, items, locations), Writer's Brief integration, Related Lore tabs on character/item/location panels.
 
-- [ ] **[Factions](docs/features/factions.md)** — named groups with event-scoped character membership (allegiances change over time). Integrates with the relationship graph (faction cluster overlay, cross-faction edge styling), map regions (faction ownership + colour), Arc View (faction tint overlay), and the continuity checker (allegiance conflict detection). New DB tables: `factions`, `factionMemberships` (v20).
+- [x] **[Factions](docs/features/factions.md)** — named groups with event-scoped character membership (allegiances change over time). DB v21 (factions, factionMemberships) + v22 (MapRegion factionId backfill). Factions view with roster and member management; character Factions tab (membership CRUD, role/start/end event per membership); map region owning-faction picker; Arc View faction overlay toggle (colored cell borders + footer legend); relationship graph faction overlay toggle (colored node borders + faction badge on nodes); .pwk export v6 and HTML export factions section.
 
 ---
 

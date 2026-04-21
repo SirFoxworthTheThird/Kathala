@@ -1,11 +1,12 @@
 import { useState, useRef, useCallback } from 'react'
 import { toPng } from 'html-to-image'
 import { useParams } from 'react-router-dom'
-import { Heart, Skull, MapPin, Minus, Search, Download, X } from 'lucide-react'
+import { Heart, Skull, MapPin, Minus, Search, Download, X, Shield } from 'lucide-react'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
+import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/EmptyState'
@@ -60,14 +61,17 @@ export default function CharacterArcView() {
   const [filterText, setFilterText]         = useState('')
   const [expandedKey, setExpandedKey]       = useState<string | null>(null) // `${charId}:${colId}`
   const [selectedTimelineId, setSelectedTimelineId] = useState<string | null>(null) // null = all
+  const [showFactionOverlay, setShowFactionOverlay] = useState(false)
   const tableRef = useRef<HTMLDivElement>(null)
 
-  const timelines  = useTimelines(worldId ?? null)
-  const chapters   = useWorldChapters(worldId ?? null)
-  const allEvents  = useWorldEvents(worldId ?? null)
-  const characters = useCharacters(worldId ?? null)
-  const snapshots  = useWorldSnapshots(worldId ?? null)
-  const markers    = useAllLocationMarkers(worldId ?? null)
+  const timelines      = useTimelines(worldId ?? null)
+  const chapters       = useWorldChapters(worldId ?? null)
+  const allEvents      = useWorldEvents(worldId ?? null)
+  const characters     = useCharacters(worldId ?? null)
+  const snapshots      = useWorldSnapshots(worldId ?? null)
+  const markers        = useAllLocationMarkers(worldId ?? null)
+  const allFactions    = useFactions(worldId ?? null)
+  const allMemberships = useFactionMemberships(worldId ?? null)
 
   // Sort chapters by timeline order then chapter number
   const timelineOrder  = new Map(timelines.map((tl, i) => [tl.id, i]))
@@ -140,6 +144,21 @@ export default function CharacterArcView() {
       else break
     }
     return best
+  }
+
+  // Faction color lookup: active membership at a given event position
+  const factionById = new Map(allFactions.map((f) => [f.id, f]))
+  function getFactionColor(charId: string, targetPos: number): string | null {
+    if (!showFactionOverlay) return null
+    const charMemberships = allMemberships.filter((m) => m.characterId === charId)
+    for (const m of charMemberships) {
+      const start = m.startEventId ? (eventPosition.get(m.startEventId) ?? 0) : 0
+      const end   = m.endEventId   ? (eventPosition.get(m.endEventId) ?? Infinity) : Infinity
+      if (start <= targetPos && targetPos < end) {
+        return factionById.get(m.factionId)?.color ?? null
+      }
+    }
+    return null
   }
 
   // Inventory count sparkline — uses inheritance across ALL events for the full shape
@@ -226,19 +245,21 @@ export default function CharacterArcView() {
     setExpandedKey((prev) => (prev === key ? null : key))
   }
 
-  function SnapCell({ snap, isActive, charId, colId }: {
+  function SnapCell({ snap, isActive, charId, colId, factionColor }: {
     snap: typeof snapshots[0] | undefined
     isActive: boolean
     charId: string
     colId: string
+    factionColor: string | null
   }) {
     const key = `${charId}:${colId}`
     const isExpanded = expandedKey === key
+    const factionStyle = factionColor ? { borderTop: `2px solid ${factionColor}` } : {}
 
     if (!snap) {
       return (
         <td
-          style={{ minWidth: colWidth, maxWidth: colWidth }}
+          style={{ minWidth: colWidth, maxWidth: colWidth, ...factionStyle }}
           className={cn(
             'border-b border-r border-[hsl(var(--border))] px-2 py-1.5 text-center',
             isActive && 'bg-[hsl(var(--accent)/0.15)]'
@@ -254,7 +275,7 @@ export default function CharacterArcView() {
 
     return (
       <td
-        style={{ minWidth: colWidth, maxWidth: colWidth }}
+        style={{ minWidth: colWidth, maxWidth: colWidth, ...factionStyle }}
         className={cn(
           'border-b border-r border-[hsl(var(--border))] px-2 py-1.5',
           isActive && 'bg-[hsl(var(--accent)/0.15)]',
@@ -390,6 +411,21 @@ export default function CharacterArcView() {
               Clear filter
             </button>
           )}
+          {allFactions.length > 0 && (
+            <button
+              onClick={() => setShowFactionOverlay((v) => !v)}
+              className={cn(
+                'flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors',
+                showFactionOverlay
+                  ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                  : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
+              )}
+              title="Toggle faction overlay"
+            >
+              <Shield className="h-3 w-3" />
+              Factions
+            </button>
+          )}
           <button
             onClick={handleExport}
             className="flex items-center gap-1 rounded-md border border-[hsl(var(--border))] px-2 py-1 text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent)/0.4)] transition-colors"
@@ -500,13 +536,15 @@ export default function CharacterArcView() {
                     const lastEvId = lastEventByChapter.get(ch.id)
                     const targetPos = lastEvId !== undefined ? (eventPosition.get(lastEvId) ?? -1) : -1
                     const snap = targetPos >= 0 ? getBestSnap(char.id, targetPos) : undefined
-                    return <SnapCell key={ch.id} colId={ch.id} charId={char.id} snap={snap} isActive={ch.id === activeChapterId} />
+                    const fc = targetPos >= 0 ? getFactionColor(char.id, targetPos) : null
+                    return <SnapCell key={ch.id} colId={ch.id} charId={char.id} snap={snap} isActive={ch.id === activeChapterId} factionColor={fc} />
                   })}
 
                   {viewMode === 'event' && sortedEvents.map((ev) => {
                     const targetPos = eventPosition.get(ev.id) ?? -1
                     const snap = targetPos >= 0 ? getBestSnap(char.id, targetPos) : undefined
-                    return <SnapCell key={ev.id} colId={ev.id} charId={char.id} snap={snap} isActive={ev.id === activeEventId} />
+                    const fc = targetPos >= 0 ? getFactionColor(char.id, targetPos) : null
+                    return <SnapCell key={ev.id} colId={ev.id} charId={char.id} snap={snap} isActive={ev.id === activeEventId} factionColor={fc} />
                   })}
                 </tr>
               )
@@ -527,6 +565,12 @@ export default function CharacterArcView() {
         <div className="flex items-center gap-1"><Heart className="h-2.5 w-2.5 text-green-400" /> Alive</div>
         <div className="flex items-center gap-1"><Skull className="h-2.5 w-2.5 text-red-400" /> Dead</div>
         <div className="flex items-center gap-1"><Minus className="h-2.5 w-2.5 text-[hsl(var(--border))]" /> No snapshot</div>
+        {showFactionOverlay && allFactions.map((f) => (
+          <div key={f.id} className="flex items-center gap-1">
+            <span className="inline-block h-2 w-4 rounded-sm" style={{ background: f.color }} />
+            {f.name}
+          </div>
+        ))}
         <div className="ml-auto">Click a column to set cursor · Click a notes cell to expand</div>
       </div>
     </div>

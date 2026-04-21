@@ -16,6 +16,7 @@ const CharacterArcView = lazy(() => import('@/features/arc/CharacterArcView'))
 const WorldSettingsView = lazy(() => import('@/features/worlds/WorldSettingsView'))
 const LoreView = lazy(() => import('@/features/lore/LoreView'))
 const LorePageEditor = lazy(() => import('@/features/lore/LorePageEditor'))
+const FactionsView = lazy(() => import('@/features/factions/FactionsView'))
 
 function Loading() {
   return (
@@ -51,6 +52,7 @@ export const router = createHashRouter([
       { path: 'settings', element: <Wrap><WorldSettingsView /></Wrap> },
       { path: 'lore', element: <Wrap><LoreView /></Wrap> },
       { path: 'lore/:pageId', element: <Wrap><LorePageEditor /></Wrap> },
+      { path: 'factions', element: <Wrap><FactionsView /></Wrap> },
     ],
   },
 ])

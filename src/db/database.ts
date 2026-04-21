@@ -27,6 +27,8 @@ import type {
   MapAnnotation,
   LorePage,
   LoreCategory,
+  Faction,
+  FactionMembership,
 } from '@/types'
 
 class PlotWeaveDB extends Dexie {
@@ -56,6 +58,8 @@ class PlotWeaveDB extends Dexie {
   mapAnnotations!: EntityTable<MapAnnotation, 'id'>
   loreCategories!: EntityTable<LoreCategory, 'id'>
   lorePages!: EntityTable<LorePage, 'id'>
+  factions!: EntityTable<Faction, 'id'>
+  factionMemberships!: EntityTable<FactionMembership, 'id'>
 
   constructor() {
     super('PlotWeaveDB')
@@ -340,6 +344,33 @@ class PlotWeaveDB extends Dexie {
       await tx.table('lorePages').toCollection().modify((p: Record<string, unknown>) => {
         if (!('linkedEntityIds' in p)) p.linkedEntityIds = []
         if (!('visibleFromEventId' in p)) p.visibleFromEventId = null
+      })
+    })
+
+    // v21: factions and faction memberships (purely additive)
+    this.version(21).stores({
+      factions: 'id, worldId',
+      factionMemberships: 'id, worldId, factionId, characterId',
+    })
+
+    // v22: add factionId to map regions (backfill null)
+    this.version(22).stores({}).upgrade(async (tx) => {
+      await tx.table('mapRegions').toCollection().modify((r: Record<string, unknown>) => {
+        if (!('factionId' in r)) r.factionId = null
+      })
+    })
+
+    // v23: index factionId on mapRegions so we can query by owning faction
+    this.version(23).stores({
+      mapRegions: 'id, worldId, mapLayerId, factionId',
+    })
+
+    // v24: add factionId to locationMarkers (backfill null, then index)
+    this.version(24).stores({
+      locationMarkers: 'id, worldId, mapLayerId, linkedMapLayerId, factionId',
+    }).upgrade(async (tx) => {
+      await tx.table('locationMarkers').toCollection().modify((m: Record<string, unknown>) => {
+        if (!('factionId' in m)) m.factionId = null
       })
     })
   }

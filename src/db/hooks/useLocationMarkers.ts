@@ -46,6 +46,7 @@ export async function createLocationMarker(data: {
     y: data.y,
     iconType: data.iconType,
     tags: data.tags ?? [],
+    factionId: null,
     createdAt: now,
     updatedAt: now,
   }

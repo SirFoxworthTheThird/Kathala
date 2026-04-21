@@ -206,6 +206,16 @@ export function HelpPanel() {
             <P>It updates automatically as you move through events. Use it as a quick reference while writing.</P>
           </Section>
 
+          <Section title="Factions">
+            <P>The <B>Factions</B> nav item (shield icon) lets you group characters by allegiance, organisation, or any other affiliation.</P>
+            <P>Create a faction with a name, description, and colour. Then add <B>members</B> — each membership can record a role (e.g. Leader, Spy), a start event, an end event, and notes. Use start/end events to model characters who join or leave over time.</P>
+            <P>Faction membership is visible in the <B>Factions tab</B> on any character's detail page. From there you can also navigate directly to the faction.</P>
+            <P><B>Owning faction</B> can be set on both <B>map regions</B> and <B>location markers</B> — open the side panel for a region or location and pick a faction from the dropdown.</P>
+            <P>The <B>Territories</B> section on a faction's detail panel lists all regions and locations currently assigned to that faction.</P>
+            <P>Enable the <B>Factions overlay</B> in the Relationship Graph (top-right toggle) to colour character nodes by their faction and see a legend. The same overlay is available in the <B>Arc View</B> — it adds a colour bar at the top of each cell.</P>
+            <Tip>Set start and end events on memberships to track shifting allegiances without losing the historical record.</Tip>
+          </Section>
+
           <Section title="Lore">
             <P>The <B>Lore</B> section (bookmark icon) is a wiki-style knowledge base for your world — magic systems, history, factions, languages, anything that doesn't belong in the timeline.</P>
             <P>Organise pages into colour-coded <B>categories</B> using the sidebar. Pages without a category appear under <B>Uncategorised</B>.</P>

@@ -11,6 +11,7 @@ import { db } from '@/db/database'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { updateMapRoute, deleteMapRoute } from '@/db/hooks/useMapRoutes'
 import { updateMapRegion, deleteMapRegion } from '@/db/hooks/useMapRegions'
+import { useFactions } from '@/db/hooks/useFactions'
 import { ROUTE_TYPE_COLORS } from './MapSidebar'
 import type { RouteType } from '@/types'
 
@@ -189,6 +190,7 @@ export function RegionDetailPanel({
 }) {
   const region = useLiveQuery(() => db.mapRegions.get(regionId), [regionId])
   const allLayers = useMapLayers(worldId)
+  const factions = useFactions(worldId)
   const [name, setName] = useState('')
   const [fillColor, setFillColor] = useState(PRESET_COLORS[0])
   const [opacity, setOpacity] = useState(0.35)
@@ -317,6 +319,35 @@ export function RegionDetailPanel({
             placeholder="Add notes about this region…"
             rows={3}
           />
+        </div>
+
+        {/* Owning faction */}
+        <div className="flex flex-col gap-1.5">
+          <Label>Owning faction</Label>
+          {factions.length === 0 ? (
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">
+              No factions yet — create one in the Factions view.
+            </p>
+          ) : (
+            <Select
+              value={region.factionId ?? 'none'}
+              onValueChange={(v) => updateMapRegion(regionId, { factionId: v === 'none' ? null : v })}
+            >
+              <SelectTrigger className="text-xs gap-1.5">
+                {region.factionId && (() => {
+                  const sel = factions.find((f) => f.id === region.factionId)
+                  return sel ? <span className="h-3 w-3 rounded-full shrink-0" style={{ background: sel.color }} /> : null
+                })()}
+                <SelectValue placeholder="Unassigned" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Unassigned</SelectItem>
+                {factions.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         {/* Sub-map link */}
