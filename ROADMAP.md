@@ -138,7 +138,15 @@ New capabilities identified in the maps UX review. Detailed specs in `docs/featu
 
 - [x] **[Lore](docs/features/lore.md)** — wiki-like pages for world-building information that isn't time-varying (magic systems, history, religions, terminology, etc.). Free-form markdown editor, user-defined categories, full-text search, links from characters/locations/items, included in `.pwk` export and HTML export. New DB tables: `lorePages`, `loreCategories` (v19). Also added: timeline visibility filter ("Revealed at" event), entity backlinks (characters, items, locations), Writer's Brief integration, Related Lore tabs on character/item/location panels.
 
-- [x] **[Factions](docs/features/factions.md)** — named groups with event-scoped character membership (allegiances change over time). DB v21 (factions, factionMemberships) + v22 (MapRegion factionId backfill). Factions view with roster and member management; character Factions tab (membership CRUD, role/start/end event per membership); map region owning-faction picker; Arc View faction overlay toggle (colored cell borders + footer legend); relationship graph faction overlay toggle (colored node borders + faction badge on nodes); .pwk export v6 and HTML export factions section.
+- [x] **[Factions](docs/features/factions.md)** — named groups with event-scoped character membership (allegiances change over time). DB v21 (factions, factionMemberships) + v22 (MapRegion factionId backfill) + v23 (factionId index on mapRegions) + v24 (factionId on locationMarkers). Factions view with roster and member management; character Factions tab (membership CRUD, role/start/end event per membership); owning-faction picker on both map regions and location markers; Territories section in faction panel lists owned regions and locations; Arc View faction overlay toggle (colored cell borders + footer legend); relationship graph faction overlay toggle (colored node borders + faction badge on nodes + legend); faction badges on character cards in Writer's Brief; "Factions in scene" section in Writer's Brief; factions included in Ctrl+K search; .pwk export v6 and HTML export factions section (including location marker faction labels).
+
+### Factions — Depth Pass
+
+- [ ] **Faction-aware continuity checks** — add two new checks to the Continuity checker: (1) a character is at a location controlled by a hostile faction at that event (requires a way to mark faction relationships as hostile); (2) a character's faction membership has a gap — they leave one faction but join no other, which may be intentional or an oversight. Surface as low-priority warnings with suppress support.
+
+- [ ] **Faction Arc View** — a new tab or toggle in Arc View showing faction membership across the timeline: one row per faction, one column per event, cells filled with member names (or avatars) who were active members at that event. Useful for visualising how faction composition shifts.
+
+- [ ] **Faction tags UI** — the `Faction` type already has a `tags: string[]` field but there is no UI to add or remove tags. Add a tag bar to the `FactionDetailPanel` (same pill + X + input pattern used on characters and items).
 
 ---
 

@@ -206,7 +206,7 @@ export function SearchPalette() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Search characters, locations, chapters…"
+            placeholder="Search characters, factions, locations, lore…"
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-[hsl(var(--muted-foreground))]"
           />
           {query && (

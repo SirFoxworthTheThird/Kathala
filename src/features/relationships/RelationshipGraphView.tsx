@@ -338,7 +338,7 @@ export default function RelationshipGraphView() {
                     key={f.id}
                     className="flex items-center gap-1.5 rounded border border-[hsl(217,33%,30%)] bg-[hsl(222,47%,14%)] px-2 py-1 text-[10px] text-[hsl(210,40%,70%)]"
                   >
-                    <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: f.color }} />
+                    <span className="h-3 w-3 rounded-full shrink-0" style={{ background: f.color }} />
                     {f.name}
                   </div>
                 ))}
