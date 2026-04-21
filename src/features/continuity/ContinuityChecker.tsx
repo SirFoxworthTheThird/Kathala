@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
-import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, ChevronRight, EyeOff, Eye } from 'lucide-react'
+import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, Shield, ChevronRight, EyeOff, Eye } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store'
 import { useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
@@ -12,6 +12,7 @@ import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
 import { useWorldMovements } from '@/db/hooks/useMovements'
+import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { cn } from '@/lib/utils'
@@ -78,7 +79,7 @@ type IssueSeverity = 'error' | 'warning'
 interface Issue {
   id: string
   severity: IssueSeverity
-  category: 'character' | 'item' | 'relationship'
+  category: 'character' | 'item' | 'relationship' | 'faction'
   message: string
   detail?: string
   navigatePath?: string
@@ -223,6 +224,8 @@ export function ContinuityChecker() {
     () => worldId ? db.mapRegionSnapshots.where('worldId').equals(worldId).toArray() : [],
     [worldId], []
   )
+  const allFactions    = useFactions(worldId ?? null)
+  const allMemberships = useFactionMemberships(worldId ?? null)
 
   const issues = useMemo(() => {
     const out: Issue[] = []
@@ -688,8 +691,45 @@ export function ContinuityChecker() {
       }
     }
 
+    // ── Faction membership gap check ────────────────────────────────────────
+    const factionById = new Map(allFactions.map((f) => [f.id, f]))
+    const membershipsByChar = new Map<string, typeof allMemberships>()
+    for (const m of allMemberships) {
+      if (!membershipsByChar.has(m.characterId)) membershipsByChar.set(m.characterId, [])
+      membershipsByChar.get(m.characterId)!.push(m)
+    }
+
+    for (const [charId, memberships] of membershipsByChar) {
+      const char = charById.get(charId)
+      if (!char) continue
+      for (const m of memberships) {
+        if (!m.endEventId) continue
+        const endOrder = eventOrder(m.endEventId)
+        const endEvent = eventById.get(m.endEventId)
+        const faction  = factionById.get(m.factionId)
+        const hasOtherActive = memberships.some((other) => {
+          if (other.id === m.id) return false
+          const otherStart = other.startEventId ? eventOrder(other.startEventId) : 0
+          const otherEnd   = other.endEventId   ? eventOrder(other.endEventId)   : Infinity
+          return otherStart <= endOrder + 1 && otherEnd > endOrder
+        })
+        if (!hasOtherActive) {
+          const endCh = endEvent ? chapById.get(endEvent.chapterId) : undefined
+          out.push({
+            id: `faction-gap-${charId}-${m.id}`,
+            severity: 'warning',
+            category: 'faction',
+            message: `${char.name} leaves "${faction?.name ?? '?'}" with no replacement faction`,
+            detail: `Membership ends at "${endEvent?.title ?? '?'}" (Ch. ${endCh?.number ?? '?'}) — no other faction active from this point.`,
+            navigatePath: endEvent ? `/worlds/${worldId}/timeline/${endEvent.chapterId}` : undefined,
+            eventId: m.endEventId,
+          })
+        }
+      }
+    }
+
     return out
-  }, [chapters, allEvents, characters, rels, items, snapshots, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, worldId])
+  }, [chapters, allEvents, characters, rels, items, snapshots, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, worldId])
 
   // Focus modal on open so keyboard navigation works immediately
   useEffect(() => {
@@ -736,13 +776,15 @@ export function ContinuityChecker() {
   const suppressedCount = suppressedIssueIds.length
 
   // Per-category visible issues (respects showSuppressed)
-  const charIssues = issues.filter((i) => i.category === 'character')
-  const itemIssues = issues.filter((i) => i.category === 'item')
-  const relIssues  = issues.filter((i) => i.category === 'relationship')
+  const charIssues    = issues.filter((i) => i.category === 'character')
+  const itemIssues    = issues.filter((i) => i.category === 'item')
+  const relIssues     = issues.filter((i) => i.category === 'relationship')
+  const factionIssues = issues.filter((i) => i.category === 'faction')
 
   // Compute base indices for keyboard focus mapping per category
-  const visibleChar = charIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
-  const visibleItem = itemIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
+  const visibleChar    = charIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
+  const visibleItem    = itemIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
+  const visibleRel     = relIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
 
   // focusedIdx is into navigableIssues; map back to category position
   function categoryFocusedIdx(categoryIssues: Issue[]): number {
@@ -799,7 +841,7 @@ export function ContinuityChecker() {
               <ShieldCheck className="h-10 w-10 text-green-400" />
               <p className="text-sm font-medium text-[hsl(var(--foreground))]">No issues found</p>
               <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                No continuity errors detected across {characters.length} character{characters.length !== 1 ? 's' : ''}, {items.length} item{items.length !== 1 ? 's' : ''}, and {rels.length} relationship{rels.length !== 1 ? 's' : ''}.
+                No continuity errors detected across {characters.length} character{characters.length !== 1 ? 's' : ''}, {items.length} item{items.length !== 1 ? 's' : ''}, {rels.length} relationship{rels.length !== 1 ? 's' : ''}, and {allFactions.length} faction{allFactions.length !== 1 ? 's' : ''}.
               </p>
             </div>
           ) : (
@@ -814,6 +856,10 @@ export function ContinuityChecker() {
                 onNavigate={handleNavigate} onSuppress={(i) => toggleSuppressIssue(worldId ?? '', i.id)} />
               <CategorySection title="Relationships" icon={Network} issues={relIssues}
                 focusedIdx={categoryFocusedIdx(relIssues)} baseIdx={visibleChar.length + visibleItem.length}
+                suppressedIds={suppressedSet} showSuppressed={showSuppressed}
+                onNavigate={handleNavigate} onSuppress={(i) => toggleSuppressIssue(worldId ?? '', i.id)} />
+              <CategorySection title="Factions" icon={Shield} issues={factionIssues}
+                focusedIdx={categoryFocusedIdx(factionIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length}
                 suppressedIds={suppressedSet} showSuppressed={showSuppressed}
                 onNavigate={handleNavigate} onSuppress={(i) => toggleSuppressIssue(worldId ?? '', i.id)} />
             </>

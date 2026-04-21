@@ -142,11 +142,11 @@ New capabilities identified in the maps UX review. Detailed specs in `docs/featu
 
 ### Factions — Depth Pass
 
-- [ ] **Faction-aware continuity checks** — add two new checks to the Continuity checker: (1) a character is at a location controlled by a hostile faction at that event (requires a way to mark faction relationships as hostile); (2) a character's faction membership has a gap — they leave one faction but join no other, which may be intentional or an oversight. Surface as low-priority warnings with suppress support.
+- [x] **Faction-aware continuity checks** — membership gap check: when a character's faction membership ends with no other active membership from that point, surface a low-priority warning in the Continuity Checker under a new "Factions" category. (Hostile-faction location check deferred — requires inter-faction relationship data not yet in the model.)
 
-- [ ] **Faction Arc View** — a new tab or toggle in Arc View showing faction membership across the timeline: one row per faction, one column per event, cells filled with member names (or avatars) who were active members at that event. Useful for visualising how faction composition shifts.
+- [x] **Faction Arc View** — "Factions" toggle in Arc View header (shown only when factions exist); switches rows to one-per-faction with a color-bordered row header; cells show active member names + count at each chapter/event column.
 
-- [ ] **Faction tags UI** — the `Faction` type already has a `tags: string[]` field but there is no UI to add or remove tags. Add a tag bar to the `FactionDetailPanel` (same pill + X + input pattern used on characters and items).
+- [x] **Faction tags UI** — tag bar added to `FactionDetailPanel` (pill + X + add-tag input; auto-saves on Enter/comma/blur; Backspace removes last tag).
 
 ---
 

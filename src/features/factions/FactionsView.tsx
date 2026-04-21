@@ -157,6 +157,8 @@ function FactionDetailPanel({
   const [name, setName] = useState(faction.name)
   const [description, setDescription] = useState(faction.description)
   const [color, setColor] = useState(faction.color)
+  const [tags, setTags] = useState<string[]>(faction.tags ?? [])
+  const [tagInput, setTagInput] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [addingMember, setAddingMember] = useState(false)
   const [savedFlash, setSavedFlash] = useState(false)
@@ -188,6 +190,21 @@ function FactionDetailPanel({
     await updateFaction(faction.id, { name: name.trim(), description: description.trim(), color })
     setSavedFlash(true)
     setTimeout(() => setSavedFlash(false), 1500)
+  }
+
+  function addTag() {
+    const t = tagInput.trim().toLowerCase()
+    if (!t || tags.includes(t)) { setTagInput(''); return }
+    const next = [...tags, t]
+    setTags(next)
+    setTagInput('')
+    updateFaction(faction.id, { tags: next })
+  }
+
+  function removeTag(t: string) {
+    const next = tags.filter((x) => x !== t)
+    setTags(next)
+    updateFaction(faction.id, { tags: next })
   }
 
   async function handleDelete() {
@@ -256,6 +273,32 @@ function FactionDetailPanel({
                 title="Custom colour"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Tags */}
+        <div>
+          <Label>Tags</Label>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            {tags.map((t) => (
+              <span key={t} className="flex items-center gap-1 rounded bg-[hsl(var(--border))] px-2 py-0.5 text-xs text-[hsl(var(--foreground))]">
+                {t}
+                <button onClick={() => removeTag(t)} className="text-[hsl(var(--muted-foreground))] hover:text-destructive">
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+            <Input
+              className="h-6 w-24 text-xs"
+              placeholder="Add tag…"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag() }
+                if (e.key === 'Backspace' && !tagInput && tags.length) removeTag(tags[tags.length - 1])
+              }}
+              onBlur={addTag}
+            />
           </div>
         </div>
 
