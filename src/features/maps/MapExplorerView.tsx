@@ -58,7 +58,6 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const [addLocationOpen, setAddLocationOpen] = useState(false)
   const [pendingPos, setPendingPos] = useState<{ x: number; y: number } | null>(null)
   const [pendingDropCharacterId, setPendingDropCharacterId] = useState<string | null>(null)
-  const [uploadOpen, setUploadOpen] = useState(false)
   const [aiDialogOpen, setAiDialogOpen] = useState(false)
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null)
   const [scaleMode, setScaleMode] = useState(false)
@@ -492,15 +491,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               <Type className="h-3.5 w-3.5" />
               Label
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5 text-xs"
-              onClick={() => setUploadOpen(true)}
-            >
-              <Upload className="h-3.5 w-3.5" />
-              Sub-map
-            </Button>
+
             <Button
               size="sm"
               variant="outline"
@@ -894,13 +885,6 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           }}
         />
       )}
-      <UploadMapDialog
-        open={uploadOpen}
-        onOpenChange={setUploadOpen}
-        worldId={worldId}
-        parentMapId={layerId}
-        onCreated={(newLayerId) => { setActiveMapLayerId(newLayerId); setUploadOpen(false) }}
-      />
       <MapAIDialog
         worldId={worldId}
         open={aiDialogOpen}
