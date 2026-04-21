@@ -142,32 +142,6 @@ New capabilities identified in the maps UX review. Detailed specs in `docs/featu
 
 ---
 
-## Cloud Sync / Collaboration
-
-> **Goal:** let users (and collaborators) persist and share worlds via their own cloud storage — no PlotWeave server, no account management, no credentials ever handled by the app. Auth and storage are fully delegated to Google / Microsoft.
-
-### How it works
-
-- On first use, the user picks a provider (Google Drive or OneDrive) and completes an OAuth flow on the provider's own login page. PlotWeave only ever holds a short-lived access token in localStorage.
-- The world is stored as a `.pwk` file in a Drive/OneDrive folder of the user's choosing.
-- Collaborators get access via Drive/OneDrive's native share UI — PlotWeave has no concept of "invite".
-- Sync is **turn-based** (one editor at a time): load from cloud → edit → save to cloud. Simultaneous edits produce a conflict the user resolves by choosing a version.
-- Works in both the Netlify web app and the Electron desktop app.
-
-### Implementation plan
-
-- [ ] **Cloud sync provider abstraction** — define a `CloudProvider` interface (`connect`, `disconnect`, `listFiles`, `readFile`, `writeFile`) so Google Drive and OneDrive share a single integration surface. Store provider name + token in localStorage.
-
-- [ ] **Google Drive integration** — register a free OAuth client ID in Google Cloud Console (no server needed for browser/desktop OAuth); implement `GoogleDriveProvider` using the [Google Drive REST API v3](https://developers.google.com/drive/api/reference/rest/v3); scope limited to `drive.file` (app-created files only — user sees exactly what the app touches).
-
-- [ ] **OneDrive / Microsoft Graph integration** — register a free app in Azure (no server needed); implement `OneDriveProvider` using [Microsoft Graph API](https://learn.microsoft.com/en-us/graph/api/resources/onedrive); scope limited to `Files.ReadWrite.AppFolder` or a user-chosen folder.
-
-- [ ] **Cloud sync UI** — "Cloud Sync" section in World Settings: connect/disconnect provider, pick or create the sync folder, "Save to Cloud" and "Load from Cloud" buttons, last-synced timestamp, and a conflict resolution dialog (show both versions' timestamps, let user pick one).
-
-- [ ] **Auto-sync on world open/close** — when a world has a cloud binding, automatically pull on open and push on close (with a conflict check before overwriting).
-
-- [ ] **Playback sub-map transition polish** — when a character crosses into or out of a sub-map during playback, the camera currently cuts instantly. Add a brief zoom-out → layer switch → zoom-in animation so the transition feels intentional rather than jarring.
-
 ### Search
 
 - [x] **Search palette covers routes & regions** — extend the Ctrl+K search palette to include MapRoute and MapRegion as two new entity types (with Route / Hexagon icons); selecting a result navigates to the Maps view and focuses the selected route or region (same `focusOnRoute` / `focusOnRegion` logic already used in the sidebar).

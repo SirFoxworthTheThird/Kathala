@@ -69,6 +69,7 @@ export async function exportWorldAsHtml(worldId: string): Promise<void> {
 
   const charById = new Map(characters.map((c) => [c.id, c]))
   const itemById = new Map(items.map((i) => [i.id, i]))
+  const factionById = new Map(factions.map((f) => [f.id, f]))
 
   // ── Overview ────────────────────────────────────────────────────────────────
   const overviewHtml = section('overview', 'Overview', `
@@ -131,12 +132,16 @@ export async function exportWorldAsHtml(worldId: string): Promise<void> {
   const timelineHtml = section('timeline', 'Timeline', tlHtml || '<p>No timelines.</p>')
 
   // ── Locations ───────────────────────────────────────────────────────────────
-  const locCards = locationMarkers.map((l) => `
+  const locCards = locationMarkers.map((l) => {
+    const faction = l.factionId ? factionById.get(l.factionId) : null
+    return `
     <div class="card">
       <h3>${esc(l.name)}</h3>
+      ${faction ? `<p style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${esc(faction.color)}"></span><span style="font-size:0.8em;color:#888">${esc(faction.name)}</span></p>` : ''}
       ${l.description ? `<p>${nl2br(l.description)}</p>` : ''}
       ${l.tags.length ? `<div>${l.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
-    </div>`).join('')
+    </div>`
+  }).join('')
   const locsHtml = section('locations', `Locations (${locationMarkers.length})`,
     locationMarkers.length ? `<div class="grid">${locCards}</div>` : '<p>No locations.</p>')
 

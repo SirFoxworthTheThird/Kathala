@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, X, Trash2, Users, ChevronRight, Shield, Map as MapIcon } from 'lucide-react'
+import { Plus, X, Trash2, Users, ChevronRight, Shield, Map as MapIcon, MapPin } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { Button } from '@/components/ui/button'
@@ -167,6 +167,11 @@ function FactionDetailPanel({
     [faction.id],
     []
   )
+  const territoryLocations = useLiveQuery(
+    () => db.locationMarkers.where('factionId').equals(faction.id).toArray(),
+    [faction.id],
+    []
+  )
   const allLayers = useMapLayers(worldId)
   const layerById = new Map(allLayers.map((l) => [l.id, l]))
   const characters = useCharacters(worldId)
@@ -312,13 +317,13 @@ function FactionDetailPanel({
           <div className="flex items-center gap-1.5">
             <MapIcon className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" />
             <span className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-              Territories ({territories.length})
+              Territories ({territories.length + territoryLocations.length})
             </span>
           </div>
 
-          {territories.length === 0 ? (
+          {territories.length === 0 && territoryLocations.length === 0 ? (
             <p className="text-xs text-[hsl(var(--muted-foreground))]">
-              No regions assigned — select a region on the map and set its owning faction.
+              No regions or locations assigned — open a region or location on the map and set its owning faction.
             </p>
           ) : (
             <div className="flex flex-col gap-1">
@@ -328,6 +333,18 @@ function FactionDetailPanel({
                   <div key={r.id} className="flex items-center gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2">
                     <span className="h-3 w-3 rounded-full shrink-0" style={{ background: r.fillColor }} />
                     <span className="flex-1 text-sm truncate">{r.name}</span>
+                    {layer && (
+                      <span className="text-[10px] text-[hsl(var(--muted-foreground))] shrink-0">{layer.name}</span>
+                    )}
+                  </div>
+                )
+              })}
+              {territoryLocations.map((m) => {
+                const layer = layerById.get(m.mapLayerId)
+                return (
+                  <div key={m.id} className="flex items-center gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2">
+                    <MapPin className="h-3 w-3 shrink-0 text-[hsl(var(--muted-foreground))]" />
+                    <span className="flex-1 text-sm truncate">{m.name}</span>
                     {layer && (
                       <span className="text-[10px] text-[hsl(var(--muted-foreground))] shrink-0">{layer.name}</span>
                     )}
