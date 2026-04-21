@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
-import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, ChevronRight, EyeOff, Eye } from 'lucide-react'
+import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, Shield, ChevronRight, EyeOff, Eye, Check } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store'
 import { useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
@@ -12,6 +12,7 @@ import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
 import { useWorldMovements } from '@/db/hooks/useMovements'
+import { useFactions, useFactionMemberships, useFactionRelationships } from '@/db/hooks/useFactions'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { cn } from '@/lib/utils'
@@ -78,7 +79,7 @@ type IssueSeverity = 'error' | 'warning'
 interface Issue {
   id: string
   severity: IssueSeverity
-  category: 'character' | 'item' | 'relationship'
+  category: 'character' | 'item' | 'relationship' | 'faction'
   message: string
   detail?: string
   navigatePath?: string
@@ -91,18 +92,45 @@ function IssueRow({
   issue,
   focused,
   suppressed,
+  suppressNote,
   onNavigate,
   onSuppress,
 }: {
   issue: Issue
   focused: boolean
   suppressed: boolean
+  suppressNote: string
   onNavigate: (issue: Issue) => void
-  onSuppress: (issue: Issue) => void
+  onSuppress: (issue: Issue, note: string) => void
 }) {
+  const [justifyMode, setJustifyMode] = useState(false)
+  const [noteInput, setNoteInput] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  function handleSuppressClick() {
+    if (suppressed) {
+      onSuppress(issue, '')
+    } else {
+      setJustifyMode(true)
+      setNoteInput('')
+      setTimeout(() => inputRef.current?.focus(), 0)
+    }
+  }
+
+  function confirmSuppress() {
+    onSuppress(issue, noteInput.trim())
+    setJustifyMode(false)
+    setNoteInput('')
+  }
+
+  function cancelJustify() {
+    setJustifyMode(false)
+    setNoteInput('')
+  }
+
   return (
     <div className={cn(
-      'flex items-start gap-3 rounded border px-3 py-2.5 text-xs transition-colors',
+      'rounded border text-xs transition-colors',
       suppressed
         ? 'border-[hsl(var(--border))] bg-transparent opacity-40'
         : issue.severity === 'error'
@@ -110,47 +138,84 @@ function IssueRow({
           : 'border-amber-500/30 bg-amber-500/10',
       focused && !suppressed && 'ring-1 ring-[hsl(var(--ring))]',
     )}>
-      <AlertTriangle className={cn(
-        'mt-0.5 h-3.5 w-3.5 shrink-0',
-        suppressed ? 'text-[hsl(var(--muted-foreground))]' : issue.severity === 'error' ? 'text-red-400' : 'text-amber-400'
-      )} />
-      <div className="min-w-0 flex-1">
-        <p className={cn(
-          'font-medium',
-          suppressed ? 'text-[hsl(var(--muted-foreground))]' : issue.severity === 'error' ? 'text-red-300' : 'text-amber-300'
-        )}>{issue.message}</p>
-        {issue.detail && <p className="mt-0.5 text-[hsl(var(--muted-foreground))]">{issue.detail}</p>}
-      </div>
-      <button
-        onClick={() => onSuppress(issue)}
-        className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
-        title={suppressed ? 'Un-suppress' : 'Suppress'}
-      >
-        {suppressed ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-      </button>
-      {issue.navigatePath && !suppressed && (
+      <div className="flex items-start gap-3 px-3 py-2.5">
+        <AlertTriangle className={cn(
+          'mt-0.5 h-3.5 w-3.5 shrink-0',
+          suppressed ? 'text-[hsl(var(--muted-foreground))]' : issue.severity === 'error' ? 'text-red-400' : 'text-amber-400'
+        )} />
+        <div className="min-w-0 flex-1">
+          <p className={cn(
+            'font-medium',
+            suppressed ? 'text-[hsl(var(--muted-foreground))]' : issue.severity === 'error' ? 'text-red-300' : 'text-amber-300'
+          )}>{issue.message}</p>
+          {issue.detail && <p className="mt-0.5 text-[hsl(var(--muted-foreground))]">{issue.detail}</p>}
+          {suppressed && suppressNote && (
+            <p className="mt-1 italic text-[hsl(var(--muted-foreground))]">"{suppressNote}"</p>
+          )}
+        </div>
         <button
-          onClick={() => onNavigate(issue)}
+          onClick={handleSuppressClick}
           className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
-          title="Go to chapter"
+          title={suppressed ? 'Un-suppress' : 'Suppress'}
         >
-          <ChevronRight className="h-3.5 w-3.5" />
+          {suppressed ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
         </button>
+        {issue.navigatePath && !suppressed && (
+          <button
+            onClick={() => onNavigate(issue)}
+            className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+            title="Go to chapter"
+          >
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
+      {justifyMode && (
+        <div className="flex items-center gap-2 border-t border-[hsl(var(--border))] px-3 py-2">
+          <input
+            ref={inputRef}
+            type="text"
+            className="flex-1 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 py-1 text-xs text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
+            placeholder="Reason for suppressing (optional)…"
+            value={noteInput}
+            onChange={(e) => setNoteInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); confirmSuppress() }
+              if (e.key === 'Escape') { e.preventDefault(); cancelJustify() }
+            }}
+          />
+          <button
+            onClick={confirmSuppress}
+            className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-green-400 transition-colors"
+            title="Confirm suppress"
+          >
+            <Check className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={cancelJustify}
+            className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+            title="Cancel"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
       )}
     </div>
   )
 }
 
-function CategorySection({ title, icon: Icon, issues, focusedIdx, baseIdx, suppressedIds, showSuppressed, onNavigate, onSuppress }: {
+function CategorySection({ title, icon: Icon, issues, focusedIdx, baseIdx, suppressedIds, suppressedNotes, showSuppressed, onNavigate, onSuppress }: {
   title: string
   icon: React.ElementType
   issues: Issue[]
   focusedIdx: number
   baseIdx: number
   suppressedIds: Set<string>
+  suppressedNotes: Record<string, string>
   showSuppressed: boolean
   onNavigate: (issue: Issue) => void
-  onSuppress: (issue: Issue) => void
+  onSuppress: (issue: Issue, note: string) => void
 }) {
   const visible = issues.filter((i) => showSuppressed || !suppressedIds.has(i.id))
   if (visible.length === 0) return null
@@ -168,6 +233,7 @@ function CategorySection({ title, icon: Icon, issues, focusedIdx, baseIdx, suppr
             issue={issue}
             focused={focusedIdx === baseIdx + i}
             suppressed={suppressedIds.has(issue.id)}
+            suppressNote={suppressedNotes[issue.id] ?? ''}
             onNavigate={onNavigate}
             onSuppress={onSuppress}
           />
@@ -182,8 +248,9 @@ function CategorySection({ title, icon: Icon, issues, focusedIdx, baseIdx, suppr
 export function ContinuityChecker() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
-  const { checkerOpen, setCheckerOpen, setActiveEventId, suppressedIssueIds: suppressedByWorld, toggleSuppressIssue } = useAppStore()
+  const { checkerOpen, setCheckerOpen, setActiveEventId, suppressedIssueIds: suppressedByWorld, suppressedNotes: suppressedNotesByWorld, toggleSuppressIssue, setSuppressNote } = useAppStore()
   const suppressedIssueIds = suppressedByWorld[worldId ?? ''] ?? []
+  const suppressedNotes    = suppressedNotesByWorld[worldId ?? ''] ?? {}
   const [showSuppressed, setShowSuppressed] = useState(false)
   const [focusedIdx, setFocusedIdx] = useState(-1)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -223,6 +290,9 @@ export function ContinuityChecker() {
     () => worldId ? db.mapRegionSnapshots.where('worldId').equals(worldId).toArray() : [],
     [worldId], []
   )
+  const allFactions       = useFactions(worldId ?? null)
+  const allMemberships    = useFactionMemberships(worldId ?? null)
+  const allFactionRels    = useFactionRelationships(worldId ?? null)
 
   const issues = useMemo(() => {
     const out: Issue[] = []
@@ -688,8 +758,93 @@ export function ContinuityChecker() {
       }
     }
 
+    // ── Faction membership gap check ────────────────────────────────────────
+    const factionById = new Map(allFactions.map((f) => [f.id, f]))
+    const membershipsByChar = new Map<string, typeof allMemberships>()
+    for (const m of allMemberships) {
+      if (!membershipsByChar.has(m.characterId)) membershipsByChar.set(m.characterId, [])
+      membershipsByChar.get(m.characterId)!.push(m)
+    }
+
+    for (const [charId, memberships] of membershipsByChar) {
+      const char = charById.get(charId)
+      if (!char) continue
+      for (const m of memberships) {
+        if (!m.endEventId) continue
+        const endOrder = eventOrder(m.endEventId)
+        const endEvent = eventById.get(m.endEventId)
+        const faction  = factionById.get(m.factionId)
+        const hasOtherActive = memberships.some((other) => {
+          if (other.id === m.id) return false
+          const otherStart = other.startEventId ? eventOrder(other.startEventId) : 0
+          const otherEnd   = other.endEventId   ? eventOrder(other.endEventId)   : Infinity
+          return otherStart <= endOrder + 1 && otherEnd > endOrder
+        })
+        if (!hasOtherActive) {
+          const endCh = endEvent ? chapById.get(endEvent.chapterId) : undefined
+          out.push({
+            id: `faction-gap-${charId}-${m.id}`,
+            severity: 'warning',
+            category: 'faction',
+            message: `${char.name} leaves "${faction?.name ?? '?'}" with no replacement faction`,
+            detail: `Membership ends at "${endEvent?.title ?? '?'}" (Ch. ${endCh?.number ?? '?'}) — no other faction active from this point.`,
+            navigatePath: endEvent ? `/worlds/${worldId}/timeline/${endEvent.chapterId}` : undefined,
+            eventId: m.endEventId,
+          })
+        }
+      }
+    }
+
+    // ── Hostile faction location check ──────────────────────────────────────
+    // Warn when a character is at a location controlled by a faction that is
+    // hostile to one of the character's own active factions.
+
+    const hostileRels = allFactionRels.filter((r) => r.stance === 'hostile')
+
+    function areHostile(fA: string, fB: string): boolean {
+      return hostileRels.some(
+        (r) => (r.factionAId === fA && r.factionBId === fB) ||
+               (r.factionAId === fB && r.factionBId === fA)
+      )
+    }
+
+    for (const snap of snapshots) {
+      if (!snap.currentLocationMarkerId) continue
+      const marker = markerById.get(snap.currentLocationMarkerId)
+      if (!marker?.factionId) continue
+
+      const snapOrder = eventOrder(snap.eventId)
+      const charMemberships = membershipsByChar.get(snap.characterId) ?? []
+      const activeCharFactionIds = charMemberships
+        .filter((m) => {
+          const start = m.startEventId ? eventOrder(m.startEventId) : 0
+          const end   = m.endEventId   ? eventOrder(m.endEventId)   : Infinity
+          return start <= snapOrder && snapOrder < end
+        })
+        .map((m) => m.factionId)
+
+      for (const charFactionId of activeCharFactionIds) {
+        if (!areHostile(charFactionId, marker.factionId)) continue
+
+        const char       = charById.get(snap.characterId)
+        const ev         = eventById.get(snap.eventId)
+        const ch         = ev ? chapById.get(ev.chapterId) : undefined
+        const charFaction = factionById.get(charFactionId)
+        const locFaction  = factionById.get(marker.factionId)
+        out.push({
+          id: `hostile-loc-${snap.characterId}-${snap.eventId}-${charFactionId}`,
+          severity: 'warning',
+          category: 'faction',
+          message: `${char?.name ?? '?'} is at hostile territory in Ch. ${ch?.number ?? '?'}`,
+          detail: `"${marker.name}" is controlled by "${locFaction?.name ?? '?'}" — hostile to "${charFaction?.name ?? '?'}"`,
+          navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+          eventId: snap.eventId,
+        })
+      }
+    }
+
     return out
-  }, [chapters, allEvents, characters, rels, items, snapshots, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, worldId])
+  }, [chapters, allEvents, characters, rels, items, snapshots, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId])
 
   // Focus modal on open so keyboard navigation works immediately
   useEffect(() => {
@@ -736,13 +891,15 @@ export function ContinuityChecker() {
   const suppressedCount = suppressedIssueIds.length
 
   // Per-category visible issues (respects showSuppressed)
-  const charIssues = issues.filter((i) => i.category === 'character')
-  const itemIssues = issues.filter((i) => i.category === 'item')
-  const relIssues  = issues.filter((i) => i.category === 'relationship')
+  const charIssues    = issues.filter((i) => i.category === 'character')
+  const itemIssues    = issues.filter((i) => i.category === 'item')
+  const relIssues     = issues.filter((i) => i.category === 'relationship')
+  const factionIssues = issues.filter((i) => i.category === 'faction')
 
   // Compute base indices for keyboard focus mapping per category
-  const visibleChar = charIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
-  const visibleItem = itemIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
+  const visibleChar    = charIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
+  const visibleItem    = itemIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
+  const visibleRel     = relIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
 
   // focusedIdx is into navigableIssues; map back to category position
   function categoryFocusedIdx(categoryIssues: Issue[]): number {
@@ -799,23 +956,27 @@ export function ContinuityChecker() {
               <ShieldCheck className="h-10 w-10 text-green-400" />
               <p className="text-sm font-medium text-[hsl(var(--foreground))]">No issues found</p>
               <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                No continuity errors detected across {characters.length} character{characters.length !== 1 ? 's' : ''}, {items.length} item{items.length !== 1 ? 's' : ''}, and {rels.length} relationship{rels.length !== 1 ? 's' : ''}.
+                No continuity errors detected across {characters.length} character{characters.length !== 1 ? 's' : ''}, {items.length} item{items.length !== 1 ? 's' : ''}, {rels.length} relationship{rels.length !== 1 ? 's' : ''}, and {allFactions.length} faction{allFactions.length !== 1 ? 's' : ''}.
               </p>
             </div>
           ) : (
             <>
               <CategorySection title="Characters" icon={Users} issues={charIssues}
                 focusedIdx={categoryFocusedIdx(charIssues)} baseIdx={0}
-                suppressedIds={suppressedSet} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i) => toggleSuppressIssue(worldId ?? '', i.id)} />
+                suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
+                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleSuppressIssue(worldId ?? '', i.id); if (note) setSuppressNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Items" icon={Package} issues={itemIssues}
                 focusedIdx={categoryFocusedIdx(itemIssues)} baseIdx={visibleChar.length}
-                suppressedIds={suppressedSet} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i) => toggleSuppressIssue(worldId ?? '', i.id)} />
+                suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
+                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleSuppressIssue(worldId ?? '', i.id); if (note) setSuppressNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Relationships" icon={Network} issues={relIssues}
                 focusedIdx={categoryFocusedIdx(relIssues)} baseIdx={visibleChar.length + visibleItem.length}
-                suppressedIds={suppressedSet} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i) => toggleSuppressIssue(worldId ?? '', i.id)} />
+                suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
+                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleSuppressIssue(worldId ?? '', i.id); if (note) setSuppressNote(worldId ?? '', i.id, note) }} />
+              <CategorySection title="Factions" icon={Shield} issues={factionIssues}
+                focusedIdx={categoryFocusedIdx(factionIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length}
+                suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
+                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleSuppressIssue(worldId ?? '', i.id); if (note) setSuppressNote(worldId ?? '', i.id, note) }} />
             </>
           )}
         </div>

@@ -134,31 +134,25 @@ New capabilities identified in the maps UX review. Detailed specs in `docs/featu
 
 ---
 
-## Cloud Sync / Collaboration
+## New Major Features
 
-> **Goal:** let users (and collaborators) persist and share worlds via their own cloud storage — no PlotWeave server, no account management, no credentials ever handled by the app. Auth and storage are fully delegated to Google / Microsoft.
+- [x] **[Lore](docs/features/lore.md)** — wiki-like pages for world-building information that isn't time-varying (magic systems, history, religions, terminology, etc.). Free-form markdown editor, user-defined categories, full-text search, links from characters/locations/items, included in `.pwk` export and HTML export. New DB tables: `lorePages`, `loreCategories` (v19). Also added: timeline visibility filter ("Revealed at" event), entity backlinks (characters, items, locations), Writer's Brief integration, Related Lore tabs on character/item/location panels.
 
-### How it works
+- [x] **[Factions](docs/features/factions.md)** — named groups with event-scoped character membership (allegiances change over time). DB v21 (factions, factionMemberships) + v22 (MapRegion factionId backfill) + v23 (factionId index on mapRegions) + v24 (factionId on locationMarkers). Factions view with roster and member management; character Factions tab (membership CRUD, role/start/end event per membership); owning-faction picker on both map regions and location markers; Territories section in faction panel lists owned regions and locations; Arc View faction overlay toggle (colored cell borders + footer legend); relationship graph faction overlay toggle (colored node borders + faction badge on nodes + legend); faction badges on character cards in Writer's Brief; "Factions in scene" section in Writer's Brief; factions included in Ctrl+K search; .pwk export v6 and HTML export factions section (including location marker faction labels).
 
-- On first use, the user picks a provider (Google Drive or OneDrive) and completes an OAuth flow on the provider's own login page. PlotWeave only ever holds a short-lived access token in localStorage.
-- The world is stored as a `.pwk` file in a Drive/OneDrive folder of the user's choosing.
-- Collaborators get access via Drive/OneDrive's native share UI — PlotWeave has no concept of "invite".
-- Sync is **turn-based** (one editor at a time): load from cloud → edit → save to cloud. Simultaneous edits produce a conflict the user resolves by choosing a version.
-- Works in both the Netlify web app and the Electron desktop app.
+### Inter-faction Relationships
 
-### Implementation plan
+- [x] **Inter-faction relationship model** — `FactionRelationship` type (factionAId, factionBId, stance: allied/neutral/hostile); DB v25; CRUD hooks; Relations section in `FactionDetailPanel` (stance selector per pair, add/remove); hostile-faction location check in Continuity Checker (warns when a character is at a location controlled by a faction hostile to one of their own active factions).
 
-- [ ] **Cloud sync provider abstraction** — define a `CloudProvider` interface (`connect`, `disconnect`, `listFiles`, `readFile`, `writeFile`) so Google Drive and OneDrive share a single integration surface. Store provider name + token in localStorage.
+### Factions — Depth Pass
 
-- [ ] **Google Drive integration** — register a free OAuth client ID in Google Cloud Console (no server needed for browser/desktop OAuth); implement `GoogleDriveProvider` using the [Google Drive REST API v3](https://developers.google.com/drive/api/reference/rest/v3); scope limited to `drive.file` (app-created files only — user sees exactly what the app touches).
+- [x] **Faction-aware continuity checks** — membership gap check: when a character's faction membership ends with no other active membership from that point, surface a low-priority warning in the Continuity Checker under a new "Factions" category. (Hostile-faction location check deferred — requires inter-faction relationship data not yet in the model.)
 
-- [ ] **OneDrive / Microsoft Graph integration** — register a free app in Azure (no server needed); implement `OneDriveProvider` using [Microsoft Graph API](https://learn.microsoft.com/en-us/graph/api/resources/onedrive); scope limited to `Files.ReadWrite.AppFolder` or a user-chosen folder.
+- [x] **Faction Arc View** — "Factions" toggle in Arc View header (shown only when factions exist); switches rows to one-per-faction with a color-bordered row header; cells show active member names + count at each chapter/event column.
 
-- [ ] **Cloud sync UI** — "Cloud Sync" section in World Settings: connect/disconnect provider, pick or create the sync folder, "Save to Cloud" and "Load from Cloud" buttons, last-synced timestamp, and a conflict resolution dialog (show both versions' timestamps, let user pick one).
+- [x] **Faction tags UI** — tag bar added to `FactionDetailPanel` (pill + X + add-tag input; auto-saves on Enter/comma/blur; Backspace removes last tag).
 
-- [ ] **Auto-sync on world open/close** — when a world has a cloud binding, automatically pull on open and push on close (with a conflict check before overwriting).
-
-- [ ] **Playback sub-map transition polish** — when a character crosses into or out of a sub-map during playback, the camera currently cuts instantly. Add a brief zoom-out → layer switch → zoom-in animation so the transition feels intentional rather than jarring.
+---
 
 ### Search
 
@@ -236,3 +230,74 @@ Findings from the end-to-end review. Bugs first, then copy/polish.
 
 - [x] **Playback forces navigation to Maps without warning** (`src/components/ChapterTimelineBar.tsx:194`)
   Pressing Play from any view immediately navigates to Maps. Intentional (trails are on the map), but jarring when in Characters or Timeline. Fix: add a tooltip to the play button — "Plays story movement on the map."
+
+---
+
+## Planned Features
+
+### POV Tracking
+
+Track which character's point-of-view each event/scene is told from. Useful for multi-POV stories to spot unintentional POV gaps, back-to-back same-POV sequences, or a character POVing a scene they couldn't witness.
+
+- [ ] **Data model** — add optional `povCharacterId: string | null` field to `WorldEvent`; DB migration backfills `null`. No new table needed.
+- [ ] **Timeline UI** — POV badge on each `EventCard`/`EventRow` (character colour swatch + name); inline picker to assign/clear POV (dropdown of characters involved in that event, or any character in the world).
+- [ ] **Arc View POV column** — optional overlay mode that colours cells by POV character instead of faction/snapshot state.
+- [ ] **Continuity checks** — warn when an event has a POV character who is not listed in `involvedCharacterIds`; warn on consecutive events with the same POV character (configurable threshold, e.g. 3+ in a row).
+- [ ] **Writer's Brief** — show POV character prominently in the active-event summary panel.
+
+---
+
+### Plot Threads / Subplots
+
+Tag events as belonging to named narrative threads (A-plot, romance subplot, mystery, etc.) and filter the timeline to a single thread.
+
+- [ ] **Data model** — new `PlotThread` entity (`id, worldId, name, color, description`); events gain `threadIds: string[]` (many-to-many); DB migration.
+- [ ] **Plot Threads management** — new `Threads` nav item (or section inside Timeline); CRUD for threads with colour picker; events can be tagged to multiple threads.
+- [ ] **Timeline filter** — thread filter pill row above the chapter list; selecting a thread dims events not in that thread (or hides them); "All" resets.
+- [ ] **Arc View thread lane** — optional row per thread showing which chapters/events contain thread activity.
+- [ ] **Continuity checks** — warn on threads with a long gap (configurable N chapters with no events); warn on threads that start but never resolve (no events after chapter N).
+
+---
+
+### Scene / Event Status
+
+Track the writing-progress state of each event so the writer knows what's drafted vs. still planned.
+
+- [ ] **Data model** — add `status: 'idea' | 'outline' | 'draft' | 'revised' | 'final'` field to `WorldEvent`; DB migration backfills `'draft'` for existing events.
+- [ ] **Timeline UI** — status badge/dot on `EventCard`/`EventRow`; inline status picker; optional colour-coded background tint per status.
+- [ ] **Dashboard summary** — progress bar on the world dashboard showing event counts per status across all timelines.
+- [ ] **Arc View** — status overlay option to tint cells by scene status rather than character state.
+
+---
+
+### Character Goals & Motivations
+
+Structured inner-life tracking alongside the existing external-state snapshots.
+
+- [ ] **Data model** — new `CharacterGoal` entity (`id, worldId, characterId, type: 'want'|'need'|'fear'|'flaw', text, startEventId, endEventId`); purely additive DB table.
+- [ ] **Character panel tab** — "Goals" tab in `CharacterDetailView` (alongside Overview, State, History, Relationships, Factions); CRUD for goals with type selector, free-text field, and optional time-scoping.
+- [ ] **Arc View overlay** — goals listed in the row header tooltip or a collapsible sub-row per character.
+- [ ] **Writer's Brief** — active goals (those with no `endEventId` or ending after the current event) shown in the character summary card.
+- [ ] **Continuity check** — warn when a character acts in a way that directly contradicts a declared fear or goal (requires tagging events with character motivations — lower priority, may stay manual).
+
+---
+
+### Clue & Secret Tracking
+
+For mysteries and complex plots: track information objects, when they're introduced, and which characters know them.
+
+- [ ] **Data model** — new `Clue` entity (`id, worldId, name, description, plantedEventId, revealedEventId | null`); new `ClueKnowledge` entity (`id, worldId, clueId, characterId, learnedEventId`) recording when each character learns each clue.
+- [ ] **Clues view** — new `Clues` nav item; list/grid of clues with planted/revealed events; per-clue panel showing which characters know it and when they learned it.
+- [ ] **Character panel** — "Knows" section listing clues the character has knowledge of at the active event.
+- [ ] **Continuity check** — warn when a character acts on a clue (tagged on an event) before their `learnedEventId` for that clue.
+
+---
+
+### Physical Description Snapshots
+
+Track how a character looks over time — injuries, aging, haircuts, distinctive marks.
+
+- [ ] **Data model** — add `appearance: string` free-text field to `CharacterSnapshot` (alongside the existing location/inventory/alive fields); DB migration backfills empty string.
+- [ ] **Character State tab** — appearance field shown as an editable textarea in the snapshot editor.
+- [ ] **History tab** — appearance changes surfaced in the history list (only shown when it differs from the previous snapshot).
+- [ ] **Continuity check** — warn when appearance is never recorded for a character who has snapshots (low priority nudge, not an error).

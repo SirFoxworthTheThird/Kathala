@@ -11,6 +11,7 @@ import { WritersBriefPanel } from '@/features/brief/WritersBriefPanel'
 import { ChapterDiffModal } from '@/features/diff/ChapterDiffModal'
 import { ContinuityChecker } from '@/features/continuity/ContinuityChecker'
 import { TutorialWizard } from '@/features/tutorial/TutorialWizard'
+import { HelpPanel } from '@/features/help/HelpPanel'
 
 export function AppShell() {
   const { worldId } = useParams<{ worldId: string }>()
@@ -19,7 +20,9 @@ export function AppShell() {
   const isDashboard = !!useMatch('/worlds/:worldId')
   const isArc = !!useMatch('/worlds/:worldId/arc')
   const isSettings = !!useMatch('/worlds/:worldId/settings')
-  const showBar = !isDashboard && !isArc && !isSettings
+  const isLore = !!useMatch('/worlds/:worldId/lore/*')
+  const isFactions = !!useMatch('/worlds/:worldId/factions')
+  const showBar = !isDashboard && !isArc && !isSettings && !isLore && !isFactions
   const barHeight = useBarHeight(showBar ? worldId : null)
 
   useEffect(() => {
@@ -58,6 +61,7 @@ export function AppShell() {
       <ChapterDiffModal />
       <ContinuityChecker />
       <TutorialWizard />
+      <HelpPanel />
     </div>
   )
 }

@@ -187,7 +187,9 @@
       "Bash(cmd /c \"cd c:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave && npm run build 2>&1\")",
       "Bash(cmd.exe /c \"cd /d c:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave && npm run build 2>&1\")",
       "Bash(powershell.exe -Command \"Set-Location 'c:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave'; npm run build 2>&1 | Select-Object -Last 50\")",
-      "Bash(powershell.exe -Command \"Set-Location 'c:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave'; npm run build 2>&1 | Select-Object -Last 20\")"
+      "Bash(powershell.exe -Command \"Set-Location 'c:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave'; npm run build 2>&1 | Select-Object -Last 20\")",
+      "Bash(powershell.exe -Command \"Set-Location 'c:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave'; npm run build 2>&1 | Select-Object -Last 15\")",
+      "Bash(grep -E \"\\\\.tsx$\")"
     ]
   }
 }

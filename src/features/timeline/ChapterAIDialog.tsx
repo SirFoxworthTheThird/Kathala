@@ -12,8 +12,9 @@ import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { useEvents } from '@/db/hooks/useTimeline'
 import { useEventSnapshots } from '@/db/hooks/useSnapshots'
 import { useEventRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
+import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
 import { db } from '@/db/database'
-import type { Chapter, WorldEvent, CharacterSnapshot, RelationshipSnapshot } from '@/types'
+import type { Chapter, WorldEvent, CharacterSnapshot, RelationshipSnapshot, Faction, FactionMembership } from '@/types'
 
 // ── Types for the LLM response ────────────────────────────────────────────────
 
@@ -38,6 +39,8 @@ function buildPrompt(
   items: ReturnType<typeof useItems>,
   locationMarkers: ReturnType<typeof useAllLocationMarkers>,
   mapLayers: ReturnType<typeof useMapLayers>,
+  factions: Faction[],
+  memberships: FactionMembership[],
   chapterToUpdate?: {
     chapter: Chapter
     events: WorldEvent[]
@@ -112,6 +115,17 @@ function buildPrompt(
 
   const hasLocations = locationMarkers.length > 0
 
+  const factionList = factions.length > 0
+    ? factions.map((f: Faction) => {
+        const memberNames = memberships
+          .filter((m: FactionMembership) => m.factionId === f.id)
+          .map((m: FactionMembership) => characters.find((c) => c.id === m.characterId)?.name)
+          .filter(Boolean)
+          .join(', ')
+        return `  - "${f.name}" (id: "${f.id}")${f.description ? ` — ${f.description.slice(0, 100)}` : ''}${memberNames ? ` [members: ${memberNames}]` : ''}`
+      }).join('\n')
+    : '  (none)'
+
   return `You are helping me ${isUpdate ? 'rewrite an existing chapter' : 'add a new chapter'} in PlotWeave, a story-tracking app.
 Read the ${isUpdate ? 'rewritten chapter content' : 'chapter content'} I provide, then output a single JSON object I can import directly.
 Output ONLY the raw JSON — no explanation, no markdown fences.
@@ -152,6 +166,9 @@ ${itemList}
 
 ── Locations — USE THESE EXACT IDs to place characters on the map ──
 ${locationList}
+
+── Factions — FOR CONTEXT ONLY (no faction output required) ──
+${factionList}
 
 ═══════════════════════════════════════════════
 OUTPUT FORMAT
@@ -525,6 +542,8 @@ export function ChapterAIDialog({
   const items = useItems(worldId)
   const locationMarkers = useAllLocationMarkers(worldId)
   const mapLayers = useMapLayers(worldId)
+  const factions = useFactions(worldId)
+  const memberships = useFactionMemberships(worldId)
 
   const [mode, setMode] = useState<'create' | 'update'>('create')
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null)
@@ -553,7 +572,7 @@ export function ChapterAIDialog({
   const canProceed = mode === 'create' || selectedChapter !== null
 
   const prompt = canProceed
-    ? buildPrompt(worldId, worldName, timelineId, timelineName, nextNumber, existingChapters, characters, relationships, items, locationMarkers, mapLayers, chapterToUpdate)
+    ? buildPrompt(worldId, worldName, timelineId, timelineName, nextNumber, existingChapters, characters, relationships, items, locationMarkers, mapLayers, factions, memberships, chapterToUpdate)
     : ''
 
   const characterIds = new Set(characters.map((c) => c.id))

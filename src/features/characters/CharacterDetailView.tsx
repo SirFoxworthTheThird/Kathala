@@ -12,6 +12,8 @@ import { OverviewTab } from './tabs/OverviewTab'
 import { CurrentStateTab } from './tabs/CurrentStateTab'
 import { HistoryTab } from './tabs/HistoryTab'
 import { RelationshipsTab } from './tabs/RelationshipsTab'
+import { RelatedLoreSection } from '@/features/lore/RelatedLoreSection'
+import { FactionsTab } from './tabs/FactionsTab'
 
 export default function CharacterDetailView() {
   const { worldId, characterId } = useParams<{ worldId: string; characterId: string }>()
@@ -93,6 +95,8 @@ export default function CharacterDetailView() {
             <TabsTrigger value="state">Current State</TabsTrigger>
             <TabsTrigger value="history">History</TabsTrigger>
             <TabsTrigger value="relationships">Relationships</TabsTrigger>
+            <TabsTrigger value="lore">Lore</TabsTrigger>
+            <TabsTrigger value="factions">Factions</TabsTrigger>
           </TabsList>
           <TabsContent value="overview">
             <OverviewTab character={character} />
@@ -105,6 +109,12 @@ export default function CharacterDetailView() {
           </TabsContent>
           <TabsContent value="relationships">
             <RelationshipsTab character={character} />
+          </TabsContent>
+          <TabsContent value="lore">
+            <RelatedLoreSection worldId={worldId ?? ''} entityId={character.id} entityName={character.name} />
+          </TabsContent>
+          <TabsContent value="factions">
+            <FactionsTab character={character} />
           </TabsContent>
         </Tabs>
       </div>

@@ -25,6 +25,11 @@ import type {
   MapRegion,
   MapRegionSnapshot,
   MapAnnotation,
+  LorePage,
+  LoreCategory,
+  Faction,
+  FactionMembership,
+  FactionRelationship,
 } from '@/types'
 
 class PlotWeaveDB extends Dexie {
@@ -52,6 +57,11 @@ class PlotWeaveDB extends Dexie {
   mapRegions!: EntityTable<MapRegion, 'id'>
   mapRegionSnapshots!: EntityTable<MapRegionSnapshot, 'id'>
   mapAnnotations!: EntityTable<MapAnnotation, 'id'>
+  loreCategories!: EntityTable<LoreCategory, 'id'>
+  lorePages!: EntityTable<LorePage, 'id'>
+  factions!: EntityTable<Faction, 'id'>
+  factionMemberships!: EntityTable<FactionMembership, 'id'>
+  factionRelationships!: EntityTable<FactionRelationship, 'id'>
 
   constructor() {
     super('PlotWeaveDB')
@@ -323,6 +333,52 @@ class PlotWeaveDB extends Dexie {
       await tx.table('worlds').toCollection().modify((w: Record<string, unknown>) => {
         if (!('theme' in w)) w.theme = null
       })
+    })
+
+    // v19: lore pages and categories (purely additive)
+    this.version(19).stores({
+      loreCategories: 'id, worldId, sortOrder',
+      lorePages: 'id, worldId, categoryId, updatedAt',
+    })
+
+    // v20: lore page entity links and timeline visibility (backfill)
+    this.version(20).stores({}).upgrade(async (tx) => {
+      await tx.table('lorePages').toCollection().modify((p: Record<string, unknown>) => {
+        if (!('linkedEntityIds' in p)) p.linkedEntityIds = []
+        if (!('visibleFromEventId' in p)) p.visibleFromEventId = null
+      })
+    })
+
+    // v21: factions and faction memberships (purely additive)
+    this.version(21).stores({
+      factions: 'id, worldId',
+      factionMemberships: 'id, worldId, factionId, characterId',
+    })
+
+    // v22: add factionId to map regions (backfill null)
+    this.version(22).stores({}).upgrade(async (tx) => {
+      await tx.table('mapRegions').toCollection().modify((r: Record<string, unknown>) => {
+        if (!('factionId' in r)) r.factionId = null
+      })
+    })
+
+    // v23: index factionId on mapRegions so we can query by owning faction
+    this.version(23).stores({
+      mapRegions: 'id, worldId, mapLayerId, factionId',
+    })
+
+    // v24: add factionId to locationMarkers (backfill null, then index)
+    this.version(24).stores({
+      locationMarkers: 'id, worldId, mapLayerId, linkedMapLayerId, factionId',
+    }).upgrade(async (tx) => {
+      await tx.table('locationMarkers').toCollection().modify((m: Record<string, unknown>) => {
+        if (!('factionId' in m)) m.factionId = null
+      })
+    })
+
+    // v25: inter-faction relationships (stance: allied | neutral | hostile)
+    this.version(25).stores({
+      factionRelationships: 'id, worldId, factionAId, factionBId',
     })
   }
 }

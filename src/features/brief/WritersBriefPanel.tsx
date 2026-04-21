@@ -1,5 +1,5 @@
-import { X, BookOpen, Users, Network, Package, Scroll, MapPin, Heart, Skull, ChevronRight } from 'lucide-react'
-import { useParams } from 'react-router-dom'
+import { X, BookOpen, Users, Network, Package, Scroll, MapPin, Heart, Skull, ChevronRight, BookMarked, Shield } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useAppStore } from '@/store'
 import { useChapter, useEvent, useEvents } from '@/db/hooks/useTimeline'
 import { useBestSnapshots } from '@/db/hooks/useSnapshots'
@@ -8,6 +8,8 @@ import { useRelationships } from '@/db/hooks/useRelationships'
 import { useBestRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
 import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
+import { useLorePages } from '@/db/hooks/useLore'
+import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { cn } from '@/lib/utils'
@@ -34,6 +36,7 @@ function Section({ title, icon: Icon, count, children }: {
 
 export function WritersBriefPanel() {
   const { worldId } = useParams<{ worldId: string }>()
+  const navigate = useNavigate()
   const { briefOpen, setBriefOpen, activeEventId } = useAppStore()
 
   const activeEvent = useEvent(activeEventId)
@@ -45,6 +48,9 @@ export function WritersBriefPanel() {
   const relSnaps   = useBestRelationshipSnapshots(worldId ?? null, activeEventId)
   const items      = useItems(worldId ?? null)
   const markers    = useAllLocationMarkers(worldId ?? null)
+  const allLorePages = useLorePages(worldId ?? null)
+  const allFactions = useFactions(worldId ?? null)
+  const allMemberships = useFactionMemberships(worldId ?? null)
   const itemPlacements = useLiveQuery(
     () => activeEventId ? db.itemPlacements.where('eventId').equals(activeEventId).toArray() : [],
     [activeEventId],
@@ -56,6 +62,16 @@ export function WritersBriefPanel() {
   const charById  = new Map(characters.map((c) => [c.id, c]))
   const itemById  = new Map(items.map((i) => [i.id, i]))
   const markerById = new Map(markers.map((m) => [m.id, m]))
+  const factionById = new Map(allFactions.map((f) => [f.id, f]))
+  // Map characterId → their factions (all memberships, no time-gating in brief)
+  const charFactions = new Map<string, typeof allFactions>()
+  for (const m of allMemberships) {
+    const f = factionById.get(m.factionId)
+    if (!f) continue
+    const list = charFactions.get(m.characterId) ?? []
+    if (!list.find((x) => x.id === f.id)) list.push(f)
+    charFactions.set(m.characterId, list)
+  }
 
   // Characters present this chapter (have a snapshot)
   const presentChars = snapshots
@@ -79,6 +95,14 @@ export function WritersBriefPanel() {
   const placedItems = itemPlacements
     .map((p) => ({ placement: p, item: itemById.get(p.itemId), location: markerById.get(p.locationMarkerId) }))
     .filter((x) => !!x.item)
+
+  // Lore: pages linked to present characters OR revealed at this event
+  const presentCharIds = new Set(snapshots.map((s) => s.characterId))
+  const relevantLore = allLorePages.filter((p) => {
+    const linkedToPresent = (p.linkedEntityIds ?? []).some((id) => presentCharIds.has(id))
+    const revealedNow = p.visibleFromEventId === activeEventId
+    return linkedToPresent || revealedNow
+  })
 
   const sentimentColor: Record<string, string> = {
     positive: 'text-green-400',
@@ -204,12 +228,56 @@ export function WritersBriefPanel() {
                               ))}
                             </div>
                           )}
+                          {(() => {
+                            const facs = charFactions.get(char.id) ?? []
+                            if (facs.length === 0) return null
+                            return (
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                {facs.map((f) => (
+                                  <span key={f.id} className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px]" style={{ background: f.color + '30', color: f.color }}>
+                                    <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: f.color }} />
+                                    {f.name}
+                                  </span>
+                                ))}
+                              </div>
+                            )
+                          })()}
                         </div>
                       )
                     })}
                   </div>
                 )}
               </Section>
+
+              {/* Factions in scene */}
+              {(() => {
+                const presentCharIds = new Set(presentChars.map((x) => x.char.id))
+                const sceneFactions = allFactions.filter((f) =>
+                  allMemberships.some((m) => m.factionId === f.id && presentCharIds.has(m.characterId))
+                )
+                if (sceneFactions.length === 0) return null
+                return (
+                  <Section title="Factions in scene" icon={Shield} count={sceneFactions.length}>
+                    <div className="space-y-1.5">
+                      {sceneFactions.map((f) => {
+                        const members = allMemberships
+                          .filter((m) => m.factionId === f.id && presentCharIds.has(m.characterId))
+                          .map((m) => charById.get(m.characterId)?.name)
+                          .filter(Boolean)
+                        return (
+                          <div key={f.id} className="flex items-center gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-2">
+                            <span className="h-3 w-3 rounded-full shrink-0" style={{ background: f.color }} />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-medium text-[hsl(var(--foreground))] truncate">{f.name}</p>
+                              <p className="text-[10px] text-[hsl(var(--muted-foreground))] truncate">{members.join(', ')}</p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </Section>
+                )
+              })()}
 
               {/* Relationships */}
               {relSnapsWithNames.length > 0 && (
@@ -246,6 +314,35 @@ export function WritersBriefPanel() {
                         {location && <span className="text-[hsl(var(--muted-foreground))]">@ {location.name}</span>}
                       </div>
                     ))}
+                  </div>
+                </Section>
+              )}
+
+              {/* Relevant lore */}
+              {relevantLore.length > 0 && (
+                <Section title="Lore" icon={BookMarked} count={relevantLore.length}>
+                  <div className="space-y-1.5">
+                    {relevantLore.map((page) => {
+                      const preview = page.body.slice(0, 80).replace(/[#*`_>\-]/g, '').trim()
+                      const isNew = page.visibleFromEventId === activeEventId
+                      return (
+                        <button
+                          key={page.id}
+                          onClick={() => { navigate(`/worlds/${worldId}/lore/${page.id}`); setBriefOpen(false) }}
+                          className="group w-full rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-2 text-left hover:border-[hsl(var(--ring)/0.4)] transition-colors"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span className="flex-1 truncate text-xs font-medium text-[hsl(var(--foreground))]">{page.title}</span>
+                            {isNew && (
+                              <span className="shrink-0 rounded bg-indigo-500/20 px-1 py-0.5 text-[9px] font-semibold text-indigo-400">NEW</span>
+                            )}
+                          </div>
+                          {preview && (
+                            <p className="mt-0.5 line-clamp-1 text-[10px] text-[hsl(var(--muted-foreground))]">{preview}</p>
+                          )}
+                        </button>
+                      )
+                    })}
                   </div>
                 </Section>
               )}

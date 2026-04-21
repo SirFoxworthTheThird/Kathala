@@ -35,6 +35,7 @@ export interface LocationMarker {
   y: number
   iconType: LocationIconType
   tags: string[]
+  factionId: string | null
   createdAt: number
   updatedAt: number
 }
@@ -67,6 +68,8 @@ export interface MapRegion {
   notes?: string
   /** If set, the region badge drills down into this sub-map layer */
   linkedMapLayerId: string | null
+  /** Owning faction, used for map colouring */
+  factionId: string | null
   createdAt: number
   updatedAt: number
 }

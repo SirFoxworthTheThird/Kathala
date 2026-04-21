@@ -11,7 +11,17 @@
       "Bash(node f:/Projects/WorldBreaker/scripts/enrich-notw.mjs)",
       "Bash(node -e ' *)",
       "Bash(xargs wc *)",
-      "Bash(grep -l \"TODO\\\\|FIXME\\\\|DEPRECATED\\\\|stale\\\\|old\" *.md docs/features/*.md)"
+      "Bash(grep -l \"TODO\\\\|FIXME\\\\|DEPRECATED\\\\|stale\\\\|old\" *.md docs/features/*.md)",
+      "Read(//c/Projects/mine/PlotWeave/src/features/help/**)",
+      "Bash(powershell.exe -Command \"Get-Content 'c:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave\\\\\\\\src\\\\\\\\features\\\\\\\\help\\\\\\\\HelpPanel.tsx' | Select-Object -Last 80\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem 'c:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave\\\\\\\\src\\\\\\\\features\\\\\\\\' | Select-Object Name\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem 'c:\\\\\\\\Projects\\\\\\\\mine' | Select-Object Name\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem 'f:\\\\\\\\Projects\\\\\\\\WorldBreaker\\\\\\\\src\\\\\\\\features\\\\\\\\help' | Select-Object Name\")",
+      "Bash(powershell.exe -Command \"Set-Location 'f:\\\\\\\\Projects\\\\\\\\WorldBreaker'; npm run build 2>&1 | Select-Object -Last 12\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem 'f:\\\\\\\\Projects\\\\\\\\WorldBreaker\\\\\\\\docs\\\\\\\\features' | Select-Object Name\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem 'f:\\\\\\\\Projects\\\\\\\\WorldBreaker\\\\\\\\src\\\\\\\\types' | Select-Object Name\")",
+      "Bash(powershell.exe -Command \"Get-Content 'f:\\\\\\\\Projects\\\\\\\\WorldBreaker\\\\\\\\src\\\\\\\\app\\\\\\\\router.tsx' -ErrorAction SilentlyContinue; Get-Content 'f:\\\\\\\\Projects\\\\\\\\WorldBreaker\\\\\\\\src\\\\\\\\main.tsx' -ErrorAction SilentlyContinue | Select-Object -First 60\")",
+      "Bash(powershell.exe -Command \"npm run build 2>&1\")"
     ]
   },
   "hooks": {

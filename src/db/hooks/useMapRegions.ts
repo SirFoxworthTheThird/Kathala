@@ -24,7 +24,7 @@ export async function createMapRegion(data: {
   notes?: string
 }): Promise<MapRegion> {
   const now = Date.now()
-  const region: MapRegion = { id: generateId(), linkedMapLayerId: null, ...data, createdAt: now, updatedAt: now }
+  const region: MapRegion = { id: generateId(), linkedMapLayerId: null, factionId: null, ...data, createdAt: now, updatedAt: now }
   await db.mapRegions.add(region)
   return region
 }

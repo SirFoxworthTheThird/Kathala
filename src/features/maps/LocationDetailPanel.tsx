@@ -18,6 +18,8 @@ import { useAppStore } from '@/store'
 import { UploadMapDialog } from './UploadMapDialog'
 import { PortraitImage } from '@/components/PortraitImage'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { RelatedLoreSection } from '@/features/lore/RelatedLoreSection'
+import { useFactions } from '@/db/hooks/useFactions'
 import type { Item } from '@/types'
 
 const ITEM_CONDITIONS = ['intact', 'damaged', 'broken', 'lost', 'used', 'depleted']
@@ -130,6 +132,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
   const itemsHere = useLocationItemPlacements(markerId, activeEventId)
   const allPlacements = useWorldItemPlacements(worldId)
   const locationSnap = useLocationSnapshot(markerId, worldId, activeEventId)
+  const factions = useFactions(worldId)
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -464,6 +467,40 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
             />
           </div>
         )}
+
+        {/* ── Controlling Faction ── */}
+        <div className="flex flex-col gap-1.5">
+          <Label className="flex items-center gap-1.5">
+            <Users className="h-3.5 w-3.5" /> Controlling Faction
+          </Label>
+          {factions.length === 0 ? (
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">
+              No factions yet — create one in the Factions view.
+            </p>
+          ) : (
+            <Select
+              value={marker.factionId ?? 'none'}
+              onValueChange={(v) => updateLocationMarker(markerId, { factionId: v === 'none' ? null : v })}
+            >
+              <SelectTrigger className="text-xs gap-1.5">
+                {marker.factionId && (() => {
+                  const sel = factions.find((f) => f.id === marker.factionId)
+                  return sel ? <span className="h-3 w-3 rounded-full shrink-0" style={{ background: sel.color }} /> : null
+                })()}
+                <SelectValue placeholder="Unassigned" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Unassigned</SelectItem>
+                {factions.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+
+        {/* ── Related Lore ── */}
+        <RelatedLoreSection worldId={worldId} entityId={markerId} entityName={marker.name} />
 
         {/* ── Sub-map ── */}
         <div className="flex flex-col gap-1.5">

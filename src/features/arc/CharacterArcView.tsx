@@ -1,11 +1,12 @@
 import { useState, useRef, useCallback } from 'react'
 import { toPng } from 'html-to-image'
 import { useParams } from 'react-router-dom'
-import { Heart, Skull, MapPin, Minus, Search, Download, X } from 'lucide-react'
+import { Heart, Skull, MapPin, Minus, Search, Download, X, Shield } from 'lucide-react'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
+import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/EmptyState'
@@ -57,17 +58,21 @@ export default function CharacterArcView() {
   const { worldId } = useParams<{ worldId: string }>()
   const { activeEventId, setActiveEventId } = useAppStore()
   const [viewMode, setViewMode]             = useState<'chapter' | 'event'>('chapter')
+  const [viewType, setViewType]             = useState<'characters' | 'factions'>('characters')
   const [filterText, setFilterText]         = useState('')
   const [expandedKey, setExpandedKey]       = useState<string | null>(null) // `${charId}:${colId}`
   const [selectedTimelineId, setSelectedTimelineId] = useState<string | null>(null) // null = all
+  const [showFactionOverlay, setShowFactionOverlay] = useState(false)
   const tableRef = useRef<HTMLDivElement>(null)
 
-  const timelines  = useTimelines(worldId ?? null)
-  const chapters   = useWorldChapters(worldId ?? null)
-  const allEvents  = useWorldEvents(worldId ?? null)
-  const characters = useCharacters(worldId ?? null)
-  const snapshots  = useWorldSnapshots(worldId ?? null)
-  const markers    = useAllLocationMarkers(worldId ?? null)
+  const timelines      = useTimelines(worldId ?? null)
+  const chapters       = useWorldChapters(worldId ?? null)
+  const allEvents      = useWorldEvents(worldId ?? null)
+  const characters     = useCharacters(worldId ?? null)
+  const snapshots      = useWorldSnapshots(worldId ?? null)
+  const markers        = useAllLocationMarkers(worldId ?? null)
+  const allFactions    = useFactions(worldId ?? null)
+  const allMemberships = useFactionMemberships(worldId ?? null)
 
   // Sort chapters by timeline order then chapter number
   const timelineOrder  = new Map(timelines.map((tl, i) => [tl.id, i]))
@@ -140,6 +145,42 @@ export default function CharacterArcView() {
       else break
     }
     return best
+  }
+
+  // Faction color lookup: active membership at a given event position
+  const factionById = new Map(allFactions.map((f) => [f.id, f]))
+  function getFactionColor(charId: string, targetPos: number): string | null {
+    if (!showFactionOverlay) return null
+    const charMemberships = allMemberships.filter((m) => m.characterId === charId)
+    for (const m of charMemberships) {
+      const start = m.startEventId ? (eventPosition.get(m.startEventId) ?? 0) : 0
+      const end   = m.endEventId   ? (eventPosition.get(m.endEventId) ?? Infinity) : Infinity
+      if (start <= targetPos && targetPos < end) {
+        return factionById.get(m.factionId)?.color ?? null
+      }
+    }
+    return null
+  }
+
+  // Last event position per chapter — used for faction membership check in chapter mode
+  const lastEventPosByChapter = new Map<string, number>()
+  for (const ev of allSortedEvents) {
+    const pos = eventPosition.get(ev.id)
+    if (pos === undefined) continue
+    const existing = lastEventPosByChapter.get(ev.chapterId)
+    if (existing === undefined || pos > existing) lastEventPosByChapter.set(ev.chapterId, pos)
+  }
+
+  function getActiveMembersAtPos(factionId: string, targetPos: number): string[] {
+    return allMemberships
+      .filter((m) => m.factionId === factionId)
+      .filter((m) => {
+        const start = m.startEventId ? (eventPosition.get(m.startEventId) ?? 0) : 0
+        const end   = m.endEventId   ? (eventPosition.get(m.endEventId) ?? Infinity) : Infinity
+        return start <= targetPos && targetPos < end
+      })
+      .map((m) => characters.find((c) => c.id === m.characterId)?.name)
+      .filter((n): n is string => !!n)
   }
 
   // Inventory count sparkline — uses inheritance across ALL events for the full shape
@@ -226,19 +267,21 @@ export default function CharacterArcView() {
     setExpandedKey((prev) => (prev === key ? null : key))
   }
 
-  function SnapCell({ snap, isActive, charId, colId }: {
+  function SnapCell({ snap, isActive, charId, colId, factionColor }: {
     snap: typeof snapshots[0] | undefined
     isActive: boolean
     charId: string
     colId: string
+    factionColor: string | null
   }) {
     const key = `${charId}:${colId}`
     const isExpanded = expandedKey === key
+    const factionStyle = factionColor ? { borderTop: `2px solid ${factionColor}` } : {}
 
     if (!snap) {
       return (
         <td
-          style={{ minWidth: colWidth, maxWidth: colWidth }}
+          style={{ minWidth: colWidth, maxWidth: colWidth, ...factionStyle }}
           className={cn(
             'border-b border-r border-[hsl(var(--border))] px-2 py-1.5 text-center',
             isActive && 'bg-[hsl(var(--accent)/0.15)]'
@@ -254,7 +297,7 @@ export default function CharacterArcView() {
 
     return (
       <td
-        style={{ minWidth: colWidth, maxWidth: colWidth }}
+        style={{ minWidth: colWidth, maxWidth: colWidth, ...factionStyle }}
         className={cn(
           'border-b border-r border-[hsl(var(--border))] px-2 py-1.5',
           isActive && 'bg-[hsl(var(--accent)/0.15)]',
@@ -294,17 +337,77 @@ export default function CharacterArcView() {
     )
   }
 
+  function FactionSnapCell({ factionId, colId, targetPos, isActive }: {
+    factionId: string
+    colId: string
+    targetPos: number
+    isActive: boolean
+  }) {
+    const members = getActiveMembersAtPos(factionId, targetPos)
+    if (members.length === 0) {
+      return (
+        <td
+          key={colId}
+          style={{ minWidth: colWidth, maxWidth: colWidth }}
+          className={cn('border-b border-r border-[hsl(var(--border))] px-2 py-1.5 text-center', isActive && 'bg-[hsl(var(--accent)/0.15)]')}
+        >
+          <Minus className="mx-auto h-3 w-3 text-[hsl(var(--border))]" />
+        </td>
+      )
+    }
+    return (
+      <td
+        key={colId}
+        style={{ minWidth: colWidth, maxWidth: colWidth }}
+        className={cn('border-b border-r border-[hsl(var(--border))] px-2 py-1.5', isActive && 'bg-[hsl(var(--accent)/0.15)]')}
+      >
+        <p className="truncate text-[10px] text-[hsl(var(--foreground))]">{members.join(', ')}</p>
+        <p className="text-[9px] text-[hsl(var(--muted-foreground))]">{members.length} member{members.length !== 1 ? 's' : ''}</p>
+      </td>
+    )
+  }
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex shrink-0 items-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2.5">
         <span className="text-sm font-semibold">Character Arc</span>
         <span className="text-xs text-[hsl(var(--muted-foreground))]">
-          {displayedChars.length}{q ? `/${characters.length}` : ''} chars ·{' '}
+          {viewType === 'factions'
+            ? `${allFactions.length} faction${allFactions.length !== 1 ? 's' : ''} · `
+            : `${displayedChars.length}${q ? `/${characters.length}` : ''} chars · `}
           {viewMode === 'chapter' ? `${sortedChapters.length} ch` : `${sortedEvents.length} ev`}
         </span>
 
-        {/* View toggle */}
+        {/* Row type toggle */}
+        <div className="ml-1 flex rounded-md border border-[hsl(var(--border))] overflow-hidden text-xs">
+          <button
+            className={cn(
+              'px-2.5 py-1 transition-colors',
+              viewType === 'characters'
+                ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
+            )}
+            onClick={() => setViewType('characters')}
+          >
+            Characters
+          </button>
+          {allFactions.length > 0 && (
+            <button
+              className={cn(
+                'px-2.5 py-1 border-l border-[hsl(var(--border))] transition-colors',
+                viewType === 'factions'
+                  ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                  : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
+              )}
+              onClick={() => setViewType('factions')}
+            >
+              Factions
+            </button>
+          )}
+        </div>
+
+        {/* Column granularity toggle */}
         <div className="ml-1 flex rounded-md border border-[hsl(var(--border))] overflow-hidden text-xs">
           <button
             className={cn(
@@ -388,6 +491,21 @@ export default function CharacterArcView() {
               onClick={() => setActiveEventId(null)}
             >
               Clear filter
+            </button>
+          )}
+          {allFactions.length > 0 && viewType === 'characters' && (
+            <button
+              onClick={() => setShowFactionOverlay((v) => !v)}
+              className={cn(
+                'flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors',
+                showFactionOverlay
+                  ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                  : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
+              )}
+              title="Toggle faction overlay"
+            >
+              <Shield className="h-3 w-3" />
+              Factions
             </button>
           )}
           <button
@@ -474,7 +592,7 @@ export default function CharacterArcView() {
             </tr>
           </thead>
           <tbody>
-            {displayedChars.map((char, rowIdx) => {
+            {viewType === 'characters' && displayedChars.map((char, rowIdx) => {
               const color     = charColor(char)
               const sparkline = sparklineData.get(char.id) ?? []
 
@@ -500,24 +618,50 @@ export default function CharacterArcView() {
                     const lastEvId = lastEventByChapter.get(ch.id)
                     const targetPos = lastEvId !== undefined ? (eventPosition.get(lastEvId) ?? -1) : -1
                     const snap = targetPos >= 0 ? getBestSnap(char.id, targetPos) : undefined
-                    return <SnapCell key={ch.id} colId={ch.id} charId={char.id} snap={snap} isActive={ch.id === activeChapterId} />
+                    const fc = targetPos >= 0 ? getFactionColor(char.id, targetPos) : null
+                    return <SnapCell key={ch.id} colId={ch.id} charId={char.id} snap={snap} isActive={ch.id === activeChapterId} factionColor={fc} />
                   })}
 
                   {viewMode === 'event' && sortedEvents.map((ev) => {
                     const targetPos = eventPosition.get(ev.id) ?? -1
                     const snap = targetPos >= 0 ? getBestSnap(char.id, targetPos) : undefined
-                    return <SnapCell key={ev.id} colId={ev.id} charId={char.id} snap={snap} isActive={ev.id === activeEventId} />
+                    const fc = targetPos >= 0 ? getFactionColor(char.id, targetPos) : null
+                    return <SnapCell key={ev.id} colId={ev.id} charId={char.id} snap={snap} isActive={ev.id === activeEventId} factionColor={fc} />
                   })}
                 </tr>
               )
             })}
-            {displayedChars.length === 0 && (
+            {viewType === 'characters' && displayedChars.length === 0 && (
               <tr>
                 <td colSpan={99} className="py-8 text-center text-xs text-[hsl(var(--muted-foreground))] italic">
                   No characters match "{filterText}"
                 </td>
               </tr>
             )}
+
+            {viewType === 'factions' && allFactions.map((faction, rowIdx) => (
+              <tr key={faction.id} className={cn(rowIdx % 2 === 0 ? 'bg-[hsl(var(--background))]' : 'bg-[hsl(var(--card))]')}>
+                <td
+                  className="sticky left-0 z-10 min-w-[180px] max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-inherit px-3 py-2"
+                  style={{ borderLeft: `3px solid ${faction.color}` }}
+                >
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-3 w-3 shrink-0 text-[hsl(var(--muted-foreground))]" />
+                    <span className="truncate text-xs font-medium">{faction.name}</span>
+                  </div>
+                </td>
+
+                {viewMode === 'chapter' && sortedChapters.map((ch) => {
+                  const pos = lastEventPosByChapter.get(ch.id) ?? -1
+                  return <FactionSnapCell key={ch.id} factionId={faction.id} colId={ch.id} targetPos={pos} isActive={ch.id === activeChapterId} />
+                })}
+
+                {viewMode === 'event' && sortedEvents.map((ev) => {
+                  const pos = eventPosition.get(ev.id) ?? -1
+                  return <FactionSnapCell key={ev.id} factionId={faction.id} colId={ev.id} targetPos={pos} isActive={ev.id === activeEventId} />
+                })}
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -527,6 +671,12 @@ export default function CharacterArcView() {
         <div className="flex items-center gap-1"><Heart className="h-2.5 w-2.5 text-green-400" /> Alive</div>
         <div className="flex items-center gap-1"><Skull className="h-2.5 w-2.5 text-red-400" /> Dead</div>
         <div className="flex items-center gap-1"><Minus className="h-2.5 w-2.5 text-[hsl(var(--border))]" /> No snapshot</div>
+        {showFactionOverlay && allFactions.map((f) => (
+          <div key={f.id} className="flex items-center gap-1">
+            <span className="inline-block h-2 w-4 rounded-sm" style={{ background: f.color }} />
+            {f.name}
+          </div>
+        ))}
         <div className="ml-auto">Click a column to set cursor · Click a notes cell to expand</div>
       </div>
     </div>

@@ -38,12 +38,18 @@ const CSS = `
   .event{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:.75rem 1rem;margin:.5rem 0;font-size:.875rem}
   .event h4{font-size:.875rem;font-weight:600;margin-bottom:.2rem}
   .footer{margin-top:3rem;padding-top:1rem;border-top:1px solid var(--border);font-size:.75rem;color:var(--muted);text-align:center}
+  .lore-cat{margin-bottom:2rem} .lore-cat-title{font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:.5rem;padding-bottom:.3rem;border-bottom:1px solid var(--border)}
+  .lore-body{font-size:.875rem;white-space:pre-wrap;line-height:1.7;margin-top:.5rem}
+  .lore-body h1,.lore-body h2,.lore-body h3{font-weight:600;margin:.75rem 0 .25rem}
+  .lore-body blockquote{border-left:3px solid var(--border);padding-left:.75rem;color:var(--muted);font-style:italic}
 `
 
 export async function exportWorldAsHtml(worldId: string): Promise<void> {
   const [
     world, characters, items, locationMarkers,
     timelines, chapters, events, relationships,
+    loreCategories, lorePages,
+    factions, factionMemberships,
   ] = await Promise.all([
     db.worlds.get(worldId),
     db.characters.where('worldId').equals(worldId).toArray(),
@@ -53,12 +59,17 @@ export async function exportWorldAsHtml(worldId: string): Promise<void> {
     db.chapters.where('worldId').equals(worldId).toArray(),
     db.events.where('worldId').equals(worldId).toArray(),
     db.relationships.where('worldId').equals(worldId).toArray(),
+    db.loreCategories.where('worldId').equals(worldId).sortBy('sortOrder'),
+    db.lorePages.where('worldId').equals(worldId).sortBy('updatedAt'),
+    db.factions.where('worldId').equals(worldId).toArray(),
+    db.factionMemberships.where('worldId').equals(worldId).toArray(),
   ])
 
   if (!world) throw new Error('World not found')
 
   const charById = new Map(characters.map((c) => [c.id, c]))
   const itemById = new Map(items.map((i) => [i.id, i]))
+  const factionById = new Map(factions.map((f) => [f.id, f]))
 
   // ── Overview ────────────────────────────────────────────────────────────────
   const overviewHtml = section('overview', 'Overview', `
@@ -121,12 +132,16 @@ export async function exportWorldAsHtml(worldId: string): Promise<void> {
   const timelineHtml = section('timeline', 'Timeline', tlHtml || '<p>No timelines.</p>')
 
   // ── Locations ───────────────────────────────────────────────────────────────
-  const locCards = locationMarkers.map((l) => `
+  const locCards = locationMarkers.map((l) => {
+    const faction = l.factionId ? factionById.get(l.factionId) : null
+    return `
     <div class="card">
       <h3>${esc(l.name)}</h3>
+      ${faction ? `<p style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${esc(faction.color)}"></span><span style="font-size:0.8em;color:#888">${esc(faction.name)}</span></p>` : ''}
       ${l.description ? `<p>${nl2br(l.description)}</p>` : ''}
       ${l.tags.length ? `<div>${l.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
-    </div>`).join('')
+    </div>`
+  }).join('')
   const locsHtml = section('locations', `Locations (${locationMarkers.length})`,
     locationMarkers.length ? `<div class="grid">${locCards}</div>` : '<p>No locations.</p>')
 
@@ -139,6 +154,64 @@ export async function exportWorldAsHtml(worldId: string): Promise<void> {
     </div>`).join('')
   const itemsHtml = section('items', `Items (${items.length})`,
     items.length ? `<div class="grid">${itemCards}</div>` : '<p>No items.</p>')
+
+  // ── Lore ────────────────────────────────────────────────────────────────────
+  const catById = new Map(loreCategories.map((c) => [c.id, c]))
+  // Group pages by category, uncategorised last
+  const pagesByCat = new Map<string | null, typeof lorePages>()
+  for (const p of [...lorePages].reverse()) { // reverse so newest first
+    const key = p.categoryId ?? null
+    const arr = pagesByCat.get(key) ?? []
+    arr.push(p)
+    pagesByCat.set(key, arr)
+  }
+  const loreOrder: (string | null)[] = [
+    ...loreCategories.map((c) => c.id),
+    null,
+  ]
+  const loreBlocks = loreOrder
+    .filter((key) => pagesByCat.has(key))
+    .map((catId) => {
+      const cat = catId ? catById.get(catId) : null
+      const catLabel = cat ? esc(cat.name) : 'Uncategorised'
+      const pages = pagesByCat.get(catId) ?? []
+      const pageCards = pages.map((p) => {
+        const bodyHtml = esc(p.body)
+          .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+          .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+          .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+          .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+        return `<div class="card">
+          <h3>${esc(p.title)}</h3>
+          ${p.tags.length ? `<div>${p.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
+          ${p.body ? `<div class="lore-body">${bodyHtml}</div>` : ''}
+        </div>`
+      }).join('')
+      return `<div class="lore-cat">
+        <div class="lore-cat-title">${catLabel}</div>
+        ${pageCards}
+      </div>`
+    }).join('')
+  const loreHtml = section('lore', `Lore (${lorePages.length})`,
+    lorePages.length ? loreBlocks : '<p>No lore pages.</p>')
+
+  // ── Factions ────────────────────────────────────────────────────────────────
+  const membersByFaction = new Map<string, string[]>()
+  for (const m of factionMemberships) {
+    const arr = membersByFaction.get(m.factionId) ?? []
+    arr.push(charById.get(m.characterId)?.name ?? '?')
+    membersByFaction.set(m.factionId, arr)
+  }
+  const factionCards = factions.map((f) => {
+    const members = membersByFaction.get(f.id) ?? []
+    return `<div class="card" style="border-left:4px solid ${esc(f.color)}">
+      <h3 style="color:${esc(f.color)}">${esc(f.name)}</h3>
+      ${f.description ? `<p>${nl2br(f.description)}</p>` : ''}
+      ${members.length ? `<div class="meta">Members: ${members.map(esc).join(', ')}</div>` : '<div class="meta">No members.</div>'}
+    </div>`
+  }).join('')
+  const factionsHtml = section('factions', `Factions (${factions.length})`,
+    factions.length ? `<div class="grid">${factionCards}</div>` : '<p>No factions.</p>')
 
   // ── Relationships ───────────────────────────────────────────────────────────
   const relRows = relationships.map((r) => {
@@ -161,6 +234,8 @@ export async function exportWorldAsHtml(worldId: string): Promise<void> {
     <a href="#timeline">Timeline</a>
     <a href="#locations">Locations</a>
     <a href="#items">Items</a>
+    <a href="#lore">Lore</a>
+    <a href="#factions">Factions</a>
     <a href="#relationships">Relationships</a>
   </nav>`
 
@@ -181,6 +256,8 @@ ${nav}
   ${timelineHtml}
   ${locsHtml}
   ${itemsHtml}
+  ${loreHtml}
+  ${factionsHtml}
   ${relsHtml}
   <div class="footer">Generated by <strong>PlotWeave</strong> · ${new Date().toLocaleDateString()}</div>
 </div>

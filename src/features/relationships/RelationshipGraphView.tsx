@@ -4,6 +4,7 @@ import ReactFlow, {
   Background,
   Controls,
   MiniMap,
+  Panel,
   type NodeTypes,
   type EdgeTypes,
   Handle,
@@ -15,7 +16,7 @@ import ReactFlow, {
   useEdgesState,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
-import { X, Trash2, Network, Plus, Check } from 'lucide-react'
+import { X, Trash2, Network, Plus, Check, Shield } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships, deleteRelationship, updateRelationship } from '@/db/hooks/useRelationships'
@@ -29,13 +30,18 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { EmptyState } from '@/components/EmptyState'
+import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
+import { cn } from '@/lib/utils'
 import type { RelationshipSentiment, RelationshipStrength, RelationshipSnapshot } from '@/types'
 
 // ─── Custom Node ────────────────────────────────────────────────────────────
 
-function CharacterNode({ data }: { data: { name: string; portraitImageId: string | null } }) {
+function CharacterNode({ data }: { data: { name: string; portraitImageId: string | null; factionColor?: string | null; factionName?: string | null } }) {
   return (
-    <div className="flex flex-col items-center gap-1 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-2 shadow-lg min-w-20">
+    <div
+      className="flex flex-col items-center gap-1 rounded-lg border-2 bg-[hsl(var(--card))] px-3 py-2 shadow-lg min-w-20 overflow-hidden"
+      style={{ borderColor: data.factionColor ?? 'hsl(var(--border))' }}
+    >
       <Handle type="target" position={Position.Left} style={{ background: 'hsl(212,72%,59%)' }} />
       <PortraitImage
         imageId={data.portraitImageId}
@@ -46,6 +52,11 @@ function CharacterNode({ data }: { data: { name: string; portraitImageId: string
       <span className="text-xs font-medium text-[hsl(var(--foreground))] max-w-24 text-center leading-tight">
         {data.name}
       </span>
+      {data.factionColor && data.factionName && (
+        <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: data.factionColor + '33', color: data.factionColor }}>
+          {data.factionName}
+        </span>
+      )}
       <Handle type="source" position={Position.Right} style={{ background: 'hsl(212,72%,59%)' }} />
     </div>
   )
@@ -170,8 +181,23 @@ export default function RelationshipGraphView() {
   const snapshots = useBestRelationshipSnapshots(worldId ?? null, activeEventId)
   const [selectedRelId, setSelectedRelId] = useState<string | null>(null)
   const [editingSnapshot, setEditingSnapshot] = useState(false)
+  const [showFactionOverlay, setShowFactionOverlay] = useState(false)
   const [nodes, setNodes, onNodesChange] = useNodesState([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
+
+  const allFactions    = useFactions(worldId ?? null)
+  const allMemberships = useFactionMemberships(worldId ?? null)
+
+  // Map characterId → active faction (first found, ordered by faction creation)
+  const charFactionMap = new Map<string, { color: string; name: string }>()
+  if (showFactionOverlay) {
+    for (const m of allMemberships) {
+      if (!charFactionMap.has(m.characterId)) {
+        const f = allFactions.find((f) => f.id === m.factionId)
+        if (f) charFactionMap.set(m.characterId, { color: f.color, name: f.name })
+      }
+    }
+  }
 
   const posKey = `wb-rel-pos-${worldId ?? ''}`
   const [persistedPositions] = useState<Record<string, { x: number; y: number }>>(() => {
@@ -183,14 +209,22 @@ export default function RelationshipGraphView() {
   useEffect(() => {
     setNodes((prev) => {
       const livePos = new Map(prev.map((n) => [n.id, n.position]))
-      return characters.map((c, i) => ({
-        id: c.id,
-        type: 'character',
-        position: livePos.get(c.id) ?? posRef.current[c.id] ?? { x: (i % 4) * 220, y: Math.floor(i / 4) * 160 },
-        data: { name: c.name, portraitImageId: c.portraitImageId },
-      }))
+      return characters.map((c, i) => {
+        const faction = showFactionOverlay ? charFactionMap.get(c.id) : undefined
+        return {
+          id: c.id,
+          type: 'character',
+          position: livePos.get(c.id) ?? posRef.current[c.id] ?? { x: (i % 4) * 220, y: Math.floor(i / 4) * 160 },
+          data: {
+            name: c.name,
+            portraitImageId: c.portraitImageId,
+            factionColor: faction?.color ?? null,
+            factionName: faction?.name ?? null,
+          },
+        }
+      })
     })
-  }, [characters, setNodes])
+  }, [characters, setNodes, showFactionOverlay, allMemberships, allFactions]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync edges — filter by startEventId, hide inactive, use snapshot data when available
   useEffect(() => {
@@ -284,6 +318,33 @@ export default function RelationshipGraphView() {
             maskColor="rgba(0,0,0,0.4)"
             style={{ background: 'hsl(222,47%,11%)', border: '1px solid hsl(217,33%,22%)' }}
           />
+          {allFactions.length > 0 && (
+            <Panel position="top-right">
+              <div className="flex flex-col gap-1.5">
+                <button
+                  onClick={() => setShowFactionOverlay((v) => !v)}
+                  className={cn(
+                    'flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium shadow-md transition-colors',
+                    showFactionOverlay
+                      ? 'border-indigo-400 bg-indigo-600 text-white'
+                      : 'border-[hsl(217,33%,30%)] bg-[hsl(222,47%,14%)] text-[hsl(210,40%,70%)] hover:bg-[hsl(222,47%,20%)]'
+                  )}
+                >
+                  <Shield className="h-3.5 w-3.5" />
+                  Factions
+                </button>
+                {showFactionOverlay && allFactions.map((f) => (
+                  <div
+                    key={f.id}
+                    className="flex items-center gap-1.5 rounded border border-[hsl(217,33%,30%)] bg-[hsl(222,47%,14%)] px-2 py-1 text-[10px] text-[hsl(210,40%,70%)]"
+                  >
+                    <span className="h-3 w-3 rounded-full shrink-0" style={{ background: f.color }} />
+                    {f.name}
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          )}
         </ReactFlow>
       </div>
 
