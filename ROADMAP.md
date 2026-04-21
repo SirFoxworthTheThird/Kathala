@@ -233,6 +233,33 @@ Findings from the end-to-end review. Bugs first, then copy/polish.
 
 ---
 
+## Reliability
+
+### Export Streaming
+- [ ] **Streaming blob export** — replace the `Promise.all(rawBlobs.map(blobToBase64))` pattern (loads all images into memory simultaneously) with a one-at-a-time pipeline. Use the File System Access API (`showSaveFilePicker` + `WritableStream`) when available so each converted blob is flushed to disk immediately; fall back to sequential in-memory build on browsers that don't support it. Add `onProgress(done, total)` callback so the export button shows progress. Extract shared `collectWorldData` helper to eliminate the three copies of the 28-query block (exportWorld, exportWorldSplit, cloudSyncHelpers). Fix pre-existing omission: `factionRelationships` was never included in any export path.
+
+### Database Integrity Repair Tool
+- [ ] **Delete cascade audit** — verify every `deleteX` function in `src/db/hooks/` wraps all affected tables in a single Dexie transaction; table coverage checklist: Character (snapshots, movements, memberships, relationships + their snapshots), Event (all six snapshot tables, movements, regionSnapshots), Chapter (cascade to events), Timeline (cascade to chapters), LocationMarker (locationSnapshots, characterSnapshot.currentLocationMarkerId references, route waypoints), MapLayer (markers, routes, regions, annotations), LoreCategory (lorePages).
+- [ ] **DB Health view in Settings** — scan all snapshot/membership/placement tables for records pointing to deleted parent entities; report orphan counts by type; one-click "Clean up orphaned records" button that deletes all found orphans in a single transaction. Complements the Continuity Checker (which reports orphans but doesn't fix them).
+
+---
+
+## High Priority — UX
+
+### [Onboarding & Progressive Disclosure](docs/features/onboarding-ux.md)
+
+Make the app intuitive from the first click without removing any functionality. Four independent pillars — implement in order:
+
+- [ ] **Pillar 3 — Smart empty states** — each section's empty state answers: what is this for, when would I need it, how do I start. Update copy and action buttons in Maps, Items, Relations, Arc, Lore, Factions. Highest ROI, lowest effort.
+
+- [ ] **Pillar 4 — Dashboard suggestion cards** — replace the static dashboard with a contextual next-step engine. Show suggestion cards based on world state (no characters → "Add your first character"; characters but no relationships → "Define how they relate"; etc.). Dismissible cards for optional features (Lore, Factions). Add `DashboardSuggestion.tsx` component; persist dismissed card IDs in localStorage.
+
+- [ ] **Pillar 2 — Empty-world onboarding wizard** — when a world has zero events, replace the Dashboard with a focused 4-step "Start your story" flow: create timeline → add character → place them at first event → done. Skippable at any step. New `src/features/onboarding/` directory with step components; trigger condition in `WorldDashboard.tsx`.
+
+- [ ] **Pillar 1 — Tiered navigation** — split the 10 TopBar nav items into Core (Dashboard, Timeline, Characters, Maps) and Extended (Items, Lore, Factions, Relations, Arc, Settings) with a visual separator. Extended items remain always accessible; visual grouping reduces initial cognitive load.
+
+---
+
 ## Planned Features
 
 ### POV Tracking

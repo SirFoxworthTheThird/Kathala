@@ -189,7 +189,10 @@
       "Bash(powershell.exe -Command \"Set-Location 'c:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave'; npm run build 2>&1 | Select-Object -Last 50\")",
       "Bash(powershell.exe -Command \"Set-Location 'c:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave'; npm run build 2>&1 | Select-Object -Last 20\")",
       "Bash(powershell.exe -Command \"Set-Location 'c:\\\\\\\\Projects\\\\\\\\mine\\\\\\\\PlotWeave'; npm run build 2>&1 | Select-Object -Last 15\")",
-      "Bash(grep -E \"\\\\.tsx$\")"
+      "Bash(grep -E \"\\\\.tsx$\")",
+      "PowerShell($env:PATH += \";C:\\\\Program Files\\\\nodejs\"; cd C:\\\\Projects\\\\mine\\\\PlotWeave; npm run build 2>&1 | Select-Object -Last 40)",
+      "PowerShell(Get-Command node, npm, npx -ErrorAction SilentlyContinue)",
+      "PowerShell($nodePaths = @\\(\"C:\\\\Program Files\\\\nodejs\", \"C:\\\\nvm\\\\current\", \"$env:APPDATA\\\\nvm\\\\current\", \"$env:LOCALAPPDATA\\\\Programs\\\\nodejs\"\\); foreach \\($p in $nodePaths\\) { if \\(Test-Path \"$p\\\\npm.cmd\"\\) { Write-Output \"Found: $p\"; break } })"
     ]
   }
 }
