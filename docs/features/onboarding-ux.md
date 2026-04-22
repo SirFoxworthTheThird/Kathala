@@ -49,20 +49,20 @@ When a world has **zero events**, replace the Dashboard content with a focused "
 #### Steps
 
 ```
-Step 1 — Create your timeline
-         "Every story needs a spine. Give your main timeline a name."
+Step 1 — Start your timeline
+         “Your story unfolds over time. Create a timeline and your first moment.”
          → Input: timeline name  →  creates Timeline + first Chapter + first Event
 
 Step 2 — Add your first character
-         "Who is this story about? Add a character to start tracking their journey."
+         “Stories change because people do. Add someone to track across your timeline.”
          → Input: character name, optional description  →  creates Character
 
-Step 3 — Place them at your first event
-         "Where is [Name] when your story begins?"
+Step 3 — Set their starting point
+         “Pick where they are at this moment. You can change this later at any point in the story.”
          → Dropdown: pick from existing events  →  creates CharacterSnapshot
 
-Step 4 — Done ✓
-         "Your world is ready. Explore the timeline, add a map, or keep adding characters."
+Step 4 — Your story is now trackable ✓
+         "At any moment in your timeline, you can see what’s true — where characters are, what they carry, and what’s changed. Try switching events to see your story update."
          → CTA: "Go to Timeline"  →  normal Dashboard
 ```
 
