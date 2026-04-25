@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Plus, X, Trash2, Users, ChevronRight, Shield, Map as MapIcon, MapPin, Swords, Handshake, Minus } from 'lucide-react'
+import { EmptyState } from '@/components/EmptyState'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { Button } from '@/components/ui/button'
@@ -657,16 +658,17 @@ export default function FactionsView() {
         {/* Grid */}
         <div className="flex-1 overflow-auto p-6">
           {factions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
-              <Shield className="h-12 w-12 text-[hsl(var(--muted-foreground)/0.3)]" />
-              <p className="text-sm text-[hsl(var(--muted-foreground))]">No factions yet.</p>
-              <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                Create factions to group characters by allegiance, organisation, or any other affiliation.
-              </p>
-              <Button size="sm" className="mt-2 gap-1.5" onClick={() => setCreating(true)}>
-                <Plus className="h-3.5 w-3.5" /> New Faction
-              </Button>
-            </div>
+            <EmptyState
+              icon={Shield}
+              title="No factions yet"
+              description="Factions are organizations characters can belong to — kingdoms, guilds, cults. Optional, but powerful for political stories."
+              action={
+                <Button onClick={() => setCreating(true)}>
+                  <Plus className="h-4 w-4" /> Add Faction
+                </Button>
+              }
+              className="h-full"
+            />
           ) : (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
               {factions.map((faction) => {

@@ -62,8 +62,10 @@ Step 3 — Set their starting point
          → Dropdown: pick from existing events  →  creates CharacterSnapshot
 
 Step 4 — Your story is now trackable ✓
-         "At any moment in your timeline, you can see what’s true — where characters are, what they carry, and what’s changed. Try switching events to see your story update."
-         → CTA: "Go to Timeline"  →  normal Dashboard
+         “Your story is alive. As you add more moments to your timeline, move between them —
+          everything you see updates: where your characters are, what they carry, what’s changed.
+          That’s the time cursor. It’s the heart of how PlotWeave works.”
+         → CTA: “Go to Timeline”  →  normal Dashboard
 ```
 
 Each step is completable in under 30 seconds. The user can **skip** at any step and access the full interface immediately — no forced flow.
@@ -185,3 +187,202 @@ Dismissed card IDs stored in `localStorage` under key `plotweave-dismissed-sugge
 - No data model changes.
 - No forced tutorial that blocks the user.
 - The app remains fully functional with all ten nav sections accessible at all times.
+
+---
+
+## User Stories & Acceptance Criteria
+
+---
+
+### Pillar 1 — Tiered Navigation
+
+**User Story**
+
+As a new user opening WorldBreaker for the first time, I want the navigation bar to visually communicate which sections are essential and which are optional, so that I can confidently start without feeling paralysed by ten equally weighted choices.
+
+**Acceptance Criteria**
+
+*Given* I open any world in the app,  
+*When* I look at the top navigation bar,  
+*Then* I see a clear visual distinction between core items (Dashboard, Timeline, Characters, Maps) and extended items (Items, Lore, Factions, Relations, Arc, Settings) — expressed through a separator, muted opacity, or a collapsible group, at the developer's discretion.
+
+*Given* the navigation is tiered,  
+*When* I click any extended nav item,  
+*Then* I navigate to that section without any additional steps — all items remain directly accessible.
+
+*Given* the navigation is tiered,  
+*When* I am an experienced user who knows all sections,  
+*Then* the tiering does not prevent me from reaching any section — no item is hidden behind a toggle I must deliberately enable.
+
+**Out of Scope**
+
+- User-configurable tier preferences.
+- Permanently hiding or removing any nav item.
+- Changing navigation routes or section names.
+
+---
+
+### Pillar 2 — Onboarding Wizard
+
+**User Story**
+
+As a writer opening a brand-new world for the first time, I want a short, narrative-toned guided experience that walks me through creating my first timeline moment, my first character, and placing them in the story, so that I understand how the time-cursor model works and feel like I've already begun writing — not just configuring software.
+
+**Tone requirement:** The wizard copy must feel like an invitation into a story, not a setup checklist. It should speak the writer's language (moments, characters, stories) and carry a sense of gentle excitement about what they are about to create.
+
+**Acceptance Criteria**
+
+*Given* I open a world that has zero events,  
+*When* I navigate to the Dashboard,  
+*Then* I see the onboarding wizard in place of the standard Dashboard content.
+
+*Given* the wizard is showing,  
+*When* I look at Step 1,  
+*Then* I see narrative-toned copy that frames my action as beginning a story (not "create a database record"), an input field for a timeline name, and a primary action button to create the timeline, first chapter, and first event in a single step.
+
+*Given* I fill in the timeline name and confirm,  
+*When* Step 1 completes successfully,  
+*Then* a Timeline, a first Chapter, and a first Event are created, and I am automatically advanced to Step 2.
+
+*Given* the wizard is on Step 2,  
+*When* I look at the screen,  
+*Then* I see narrative-toned copy inviting me to add a character whose journey I want to follow, a name input, an optional description field, and a primary action to create the character.
+
+*Given* I fill in the character name and confirm,  
+*When* Step 2 completes successfully,  
+*Then* the Character is created and I am automatically advanced to Step 3.
+
+*Given* the wizard is on Step 3,  
+*When* I look at the screen,  
+*Then* I see narrative-toned copy prompting me to place my character in the story's first moment, and a dropdown pre-populated with the events that already exist (including the one created in Step 1).
+
+*Given* I select an event from the dropdown and confirm,  
+*When* Step 3 completes successfully,  
+*Then* a CharacterSnapshot is created linking the character to the selected event, and I am automatically advanced to Step 4.
+
+*Given* the wizard is on Step 4,  
+*When* I look at the screen,  
+*Then* I see a brief narrative-toned completion message explaining that I can now move through time and see my story update, and a single call-to-action button that navigates me to the Timeline view.
+
+*Given* Step 1 has been completed and at least one event exists,  
+*When* I navigate to the Dashboard at any point in the future,  
+*Then* the wizard never appears again — the standard Dashboard is shown instead.
+
+*Given* I am on any wizard step,  
+*When* I click "Skip" (available at every step),  
+*Then* I am taken immediately to the standard Dashboard and the full interface is available — nothing is blocked or deferred.
+
+**Out of Scope**
+
+- Multi-character or multi-timeline setup in the wizard.
+- Editing wizard-created records before leaving the wizard.
+- A way to relaunch the wizard after it has been completed.
+
+---
+
+### Pillar 3 — Smart Empty States
+
+**User Story**
+
+As a user visiting a section that contains no data, I want to see a purposeful message that explains what the section is for, whether I need it, and how to take my first action, so that I can decide in seconds whether this section is relevant to my story and start using it immediately if it is.
+
+**Acceptance Criteria**
+
+*Given* I visit the Maps section and no map layers exist,  
+*When* I look at the empty state,  
+*Then* I see the title "No maps yet", the body "Upload an image of your world and place locations on it.", and a primary button labelled "Add Map".
+
+*Given* I visit the Items section and no items exist,  
+*When* I look at the empty state,  
+*Then* I see the title "No items yet", the body "Track objects that characters carry, use, or lose over time.", and a primary button labelled "Add Item".
+
+*Given* I visit the Relations section and no relationships exist,  
+*When* I look at the empty state,  
+*Then* I see the title "No relationships yet", the body "Define how characters know and feel about each other.", and a primary button labelled "Add Relationship".
+
+*Given* I visit the Arc section and no characters or events exist,  
+*When* I look at the empty state,  
+*Then* I see the title "Nothing to visualize", the body "The Arc view shows character states across every chapter. Add characters and events first.", and a primary button labelled "Go to Timeline".
+
+*Given* I visit the Lore section and no lore pages exist,  
+*When* I look at the empty state,  
+*Then* I see the title "No lore pages yet", the body "Document your world's history, rules, and mythology — things that don't change with time.", and a primary button labelled "Add Page".
+
+*Given* I visit the Factions section and no factions exist,  
+*When* I look at the empty state,  
+*Then* I see the title "No factions yet", the body "Factions are organizations characters can belong to — kingdoms, guilds, cults. Optional, but powerful for political stories.", and a primary button labelled "Add Faction".
+
+*Given* I click the primary action button in any empty state,  
+*When* the action resolves,  
+*Then* I land in the correct creation flow for that section — no secondary navigation required.
+
+**Out of Scope**
+
+- Empty state variations based on partial data (e.g., "you have characters but no relationships").
+- Animated or interactive empty state illustrations.
+- Dismissible empty states.
+
+---
+
+### Pillar 4 — Dashboard as Living Guide
+
+**User Story**
+
+As a user actively building my world, I want the Dashboard to surface contextual suggestions based on what I have and have not yet created, so that I always have a clear next step without having to manually inspect every section to figure out what is missing.
+
+**Acceptance Criteria**
+
+*Given* I open the Dashboard,  
+*When* one or more suggestion conditions are true,  
+*Then* I see at most 3 suggestion cards displayed — the most relevant ones based on the priority order defined in the feature spec.
+
+*Given* the condition "no characters exist" is true,  
+*When* I see the Dashboard,  
+*Then* a suggestion card with the title "Add your first character" is shown, and clicking it navigates me to the Characters section.
+
+*Given* characters exist but no events exist,  
+*When* I see the Dashboard,  
+*Then* a suggestion card with the title "Add your first event" is shown, and clicking it navigates me to the Timeline section.
+
+*Given* events exist but no character has been placed at any event,  
+*When* I see the Dashboard,  
+*Then* a suggestion card with the title "Place a character on the timeline" is shown, and clicking it navigates me to the Timeline section.
+
+*Given* 2 or more characters exist but no relationships exist,  
+*When* I see the Dashboard,  
+*Then* a suggestion card with the title "Define how your characters relate" is shown, and clicking it navigates me to the Relations section.
+
+*Given* events exist but no map layer exists,  
+*When* I see the Dashboard,  
+*Then* a suggestion card with the title "Add a map to track where things happen" is shown, and clicking it navigates me to the Maps section.
+
+*Given* 5 or more events exist but no lore pages exist,  
+*When* I see the Dashboard,  
+*Then* a dismissible suggestion card with the title "Document your world's lore" is shown, and clicking it navigates me to the Lore section.
+
+*Given* 3 or more characters exist but no factions exist,  
+*When* I see the Dashboard,  
+*Then* a dismissible suggestion card with the title "Are there organizations in your world?" is shown, and clicking it navigates me to the Factions section.
+
+*Given* a dismissible suggestion card is visible,  
+*When* I click its dismiss (×) button,  
+*Then* the card is permanently removed from the Dashboard for this world and never reappears — even after refreshing or reopening the app.
+
+*Given* I have dismissed one or more cards,  
+*When* I open a different world,  
+*Then* the dismissed state of the previous world does not affect the suggestions shown for the new world — dismissals are scoped per world.
+
+*Given* a suggestion condition is no longer true (e.g., I added a character after seeing the "Add your first character" card),  
+*When* I return to the Dashboard,  
+*Then* that suggestion card is no longer shown — it disappears automatically.
+
+*Given* I am on the Dashboard with or without active suggestions,  
+*When* I scroll down,  
+*Then* the existing world summary statistics (character count, event count, chapter count, etc.) are still visible below the suggestion cards.
+
+**Out of Scope**
+
+- Suggestions that require cross-world data.
+- User-defined custom suggestions.
+- A way to un-dismiss a dismissed card from within the app.
+- Suggestion cards for sections that do not yet exist in the app.

@@ -39,7 +39,7 @@ export default function ItemRosterView() {
           <EmptyState
             icon={Package}
             title={items.length === 0 ? 'No items yet' : 'No matches'}
-            description={items.length === 0 ? 'Add your first item to start tracking.' : 'Try a different search.'}
+            description={items.length === 0 ? 'Track objects that characters carry, use, or lose over time.' : 'Try a different search.'}
             action={
               items.length === 0 ? (
                 <Button onClick={() => setDialogOpen(true)}>

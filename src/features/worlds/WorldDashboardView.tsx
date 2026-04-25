@@ -1,9 +1,11 @@
-import { useState, useMemo, type ElementType } from 'react'
+import { useState, useMemo, useEffect, type ElementType } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   Map as MapIcon, Users, Network, BookOpen,
   Package, BarChart2, ShieldAlert, Clock, Layers, Pencil,
 } from 'lucide-react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from '@/db/database'
 import { useWorld, updateWorld } from '@/db/hooks/useWorlds'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRootMapLayers } from '@/db/hooks/useMapLayers'
@@ -13,9 +15,14 @@ import { useTimelineRelationships } from '@/db/hooks/useTimelineRelationships'
 import { useItems } from '@/db/hooks/useItems'
 import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
+import { useLorePages } from '@/db/hooks/useLore'
+import { useFactions } from '@/db/hooks/useFactions'
 import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
+import { OnboardingWizard } from '@/features/onboarding/OnboardingWizard'
+import { DashboardSuggestion } from './DashboardSuggestion'
+import { evaluateSuggestions, type WorldSummaryData } from './suggestionRules'
 
 // ── Stat pill ────────────────────────────────────────────────────────────────
 
@@ -49,6 +56,43 @@ export default function WorldDashboardView() {
   const items               = useItems(worldId ?? null)
   const snapshots           = useWorldSnapshots(worldId ?? null)
   const locationMarkers     = useAllLocationMarkers(worldId ?? null)
+  const lorePages           = useLorePages(worldId ?? null)
+  const factions            = useFactions(worldId ?? null)
+
+  // ── Wizard trigger (loading-aware) ─────────────────────────────────────────
+  // Use raw counts so we get `undefined` while IndexedDB is still loading,
+  // avoiding a false-positive empty-world flash on worlds that have data.
+  const timelineCount = useLiveQuery(
+    () => worldId ? db.timelines.where('worldId').equals(worldId).count() : 0,
+    [worldId]
+  )
+  const eventCount = useLiveQuery(
+    () => worldId ? db.events.where('worldId').equals(worldId).count() : 0,
+    [worldId]
+  )
+  const wizardReady = timelineCount !== undefined && eventCount !== undefined
+
+  // Latch: keep the wizard mounted until it explicitly exits, even after step 1
+  // creates an event (which would clear the trigger condition mid-session).
+  const [wizardLatch, setWizardLatch] = useState(false)
+  useEffect(() => {
+    if (wizardReady && !wizardLatch && (timelineCount === 0 || eventCount === 0)) {
+      setWizardLatch(true)
+    }
+  }, [wizardReady, wizardLatch, timelineCount, eventCount])
+
+  // ── Dashboard suggestions ─────────────────────────────────────────────────
+  const dismissedKey = worldId ? `plotweave-dismissed-suggestions-${worldId}` : null
+  const [dismissedIds, setDismissedIds] = useState<string[]>(() => {
+    if (!dismissedKey) return []
+    try { return JSON.parse(localStorage.getItem(dismissedKey) ?? '[]') } catch { return [] }
+  })
+
+  function dismissSuggestion(id: string) {
+    const updated = [...dismissedIds, id]
+    setDismissedIds(updated)
+    if (dismissedKey) localStorage.setItem(dismissedKey, JSON.stringify(updated))
+  }
 
   // Inline description editing
   const [editingDesc, setEditingDesc] = useState(false)
@@ -86,7 +130,19 @@ export default function WorldDashboardView() {
   const chapterById = useMemo(() => new Map(chapters.map((c) => [c.id, c])), [chapters])
   const timelineById = useMemo(() => new Map(timelines.map((t) => [t.id, t])), [timelines])
 
-  // Nav tiles
+  // ── Suggestion evaluation ─────────────────────────────────────────────────
+  const summaryData: WorldSummaryData = {
+    characterCount:        characters.length,
+    eventCount:            allEvents.length,
+    hasCharacterAtAnyEvent: snapshots.length > 0,
+    relationshipCount:     relationships.length,
+    mapLayerCount:         maps.length,
+    lorePageCount:         lorePages.length,
+    factionCount:          factions.length,
+  }
+  const activeSuggestions = evaluateSuggestions(summaryData, dismissedIds)
+
+  // ── Nav tiles ─────────────────────────────────────────────────────────────
   type Tile = {
     label: string
     icon: ElementType
@@ -163,6 +219,14 @@ export default function WorldDashboardView() {
     },
   ]
 
+  // Show nothing while loading (IndexedDB resolves in < 1 frame locally)
+  if (!wizardReady) return null
+
+  // Wizard replaces the dashboard while active
+  if (wizardLatch && worldId) {
+    return <OnboardingWizard worldId={worldId} onExit={() => setWizardLatch(false)} />
+  }
+
   return (
     <div className="p-6 space-y-8 max-w-5xl">
 
@@ -205,6 +269,24 @@ export default function WorldDashboardView() {
           )}
         </div>
       </div>
+
+      {/* Suggestions */}
+      {activeSuggestions.length > 0 && (
+        <section aria-live="polite" aria-label="Suggested next steps">
+          <div className="flex flex-col gap-2">
+            {activeSuggestions.map((rule) => (
+              <DashboardSuggestion
+                key={rule.id}
+                title={rule.title}
+                navLabel={rule.navLabel}
+                dismissible={rule.dismissible}
+                onNavigate={() => navigate(rule.navigateTo)}
+                onDismiss={rule.dismissible ? () => dismissSuggestion(rule.id) : undefined}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Nav tiles */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">

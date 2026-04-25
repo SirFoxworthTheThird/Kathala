@@ -922,11 +922,11 @@ export default function MapExplorerView() {
         <EmptyState
           icon={MapIcon}
           title="No maps yet"
-          description="Upload a map image to start placing locations and tracking characters."
+          description="Upload an image of your world and place locations on it."
           action={
             <Button onClick={() => setUploadOpen(true)}>
               <Upload className="h-4 w-4" />
-              Upload Map
+              Add Map
             </Button>
           }
         />

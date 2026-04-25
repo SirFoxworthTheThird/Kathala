@@ -321,13 +321,13 @@ export default function LoreView() {
               title={allPages.length === 0 ? 'No lore pages yet' : 'No matches'}
               description={
                 allPages.length === 0
-                  ? 'Document your world\'s magic systems, history, factions, and more.'
+                  ? "Document your world's history, rules, and mythology — things that don't change with time."
                   : 'Try a different search or category.'
               }
               action={
                 allPages.length === 0 ? (
                   <Button onClick={handleNewPage}>
-                    <Plus className="h-4 w-4" /> New Page
+                    <Plus className="h-4 w-4" /> Add Page
                   </Button>
                 ) : undefined
               }

@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { toPng } from 'html-to-image'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { Heart, Skull, MapPin, Minus, Search, Download, X, Shield } from 'lucide-react'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
@@ -56,6 +56,7 @@ function InventorySparkline({ counts }: { counts: number[] }) {
 
 export default function CharacterArcView() {
   const { worldId } = useParams<{ worldId: string }>()
+  const navigate = useNavigate()
   const { activeEventId, setActiveEventId } = useAppStore()
   const [viewMode, setViewMode]             = useState<'chapter' | 'event'>('chapter')
   const [viewType, setViewType]             = useState<'characters' | 'factions'>('characters')
@@ -226,14 +227,22 @@ export default function CharacterArcView() {
     }
   }, [])
 
-  if (characters.length === 0) {
+  if (characters.length === 0 || sortedChapters.length === 0) {
     return (
-      <EmptyState icon={BookOpen} title="Nothing to show" description="Add characters to get started." className="h-full" />
-    )
-  }
-  if (sortedChapters.length === 0) {
-    return (
-      <EmptyState icon={BookOpen} title="Nothing to show" description="Add chapters to your timeline to see the arc." className="h-full" />
+      <EmptyState
+        icon={BookOpen}
+        title="Nothing to visualize"
+        description="The Arc view shows character states across every chapter. Add characters and events first."
+        action={
+          <button
+            onClick={() => navigate('timeline')}
+            className="inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-sm font-medium hover:bg-[hsl(var(--accent))] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
+          >
+            Go to Timeline
+          </button>
+        }
+        className="h-full"
+      />
     )
   }
   if (snapshots.length === 0) {

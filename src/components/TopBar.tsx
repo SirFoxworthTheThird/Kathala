@@ -5,41 +5,68 @@ import { useWorld } from '@/db/hooks/useWorlds'
 import { useNavigate, NavLink, useParams } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 
-const navItems = [
-  { to: '', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: 'maps', label: 'Maps', icon: Map, end: false },
-  { to: 'characters', label: 'Characters', icon: Users, end: false },
-  { to: 'items', label: 'Items', icon: Package, end: false },
-  { to: 'relationships', label: 'Relations', icon: Network, end: false },
-  { to: 'timeline', label: 'Timeline', icon: BookOpen, end: false },
-  { to: 'arc', label: 'Arc', icon: TableProperties, end: false },
-  { to: 'lore', label: 'Lore', icon: BookMarked, end: false },
-  { to: 'factions', label: 'Factions', icon: Shield, end: false },
-  { to: 'settings', label: 'Settings', icon: Settings, end: false },
+type NavTier = 'core' | 'extended'
+
+const navItems: { to: string; label: string; icon: typeof LayoutDashboard; end: boolean; tier: NavTier }[] = [
+  { to: '', label: 'Dashboard', icon: LayoutDashboard, end: true,  tier: 'core' },
+  { to: 'timeline',       label: 'Timeline',   icon: BookOpen,        end: false, tier: 'core' },
+  { to: 'characters',     label: 'Characters', icon: Users,           end: false, tier: 'core' },
+  { to: 'maps',           label: 'Maps',       icon: Map,             end: false, tier: 'core' },
+  { to: 'items',          label: 'Items',      icon: Package,         end: false, tier: 'extended' },
+  { to: 'relationships',  label: 'Relations',  icon: Network,         end: false, tier: 'extended' },
+  { to: 'arc',            label: 'Arc',        icon: TableProperties, end: false, tier: 'extended' },
+  { to: 'lore',           label: 'Lore',       icon: BookMarked,      end: false, tier: 'extended' },
+  { to: 'factions',       label: 'Factions',   icon: Shield,          end: false, tier: 'extended' },
+  { to: 'settings',       label: 'Settings',   icon: Settings,        end: false, tier: 'extended' },
 ]
 
 function NavIcons() {
   const { worldId } = useParams<{ worldId: string }>()
   if (!worldId) return null
 
+  const coreItems     = navItems.filter((n) => n.tier === 'core')
+  const extendedItems = navItems.filter((n) => n.tier === 'extended')
+
+  const renderLink = ({ to, label, icon: Icon, end }: typeof navItems[number]) => (
+    <NavLink
+      key={to}
+      to={`/worlds/${worldId}/${to}`}
+      end={end}
+      title={label}
+      className={({ isActive }) =>
+        cn(
+          'flex h-8 w-8 items-center justify-center rounded-md transition-colors',
+          isActive
+            ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+            : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]'
+        )
+      }
+    >
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+    </NavLink>
+  )
+
   return (
-    <nav className="flex items-center gap-0.5">
-      {navItems.map(({ to, label, icon: Icon, end }) => (
+    <nav className="flex items-center gap-0.5" aria-label="Main navigation">
+      {coreItems.map(renderLink)}
+      {/* Tier separator — decorative, not semantic */}
+      <span aria-hidden="true" className="mx-1 h-4 w-px bg-[hsl(var(--border))]" />
+      {extendedItems.map((item) => (
         <NavLink
-          key={to}
-          to={`/worlds/${worldId}/${to}`}
-          end={end}
-          title={label}
+          key={item.to}
+          to={`/worlds/${worldId}/${item.to}`}
+          end={item.end}
+          title={item.label}
           className={({ isActive }) =>
             cn(
               'flex h-8 w-8 items-center justify-center rounded-md transition-colors',
               isActive
                 ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
-                : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]'
+                : 'text-[hsl(var(--muted-foreground)/0.6)] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]'
             )
           }
         >
-          <Icon className="h-3.5 w-3.5 shrink-0" />
+          <item.icon className="h-3.5 w-3.5 shrink-0" />
         </NavLink>
       ))}
     </nav>
