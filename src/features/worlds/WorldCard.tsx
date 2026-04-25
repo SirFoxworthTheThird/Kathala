@@ -14,6 +14,7 @@ interface WorldCardProps {
 export function WorldCard({ world }: WorldCardProps) {
   const navigate = useNavigate()
   const [exporting, setExporting] = useState(false)
+  const [exportProgress, setExportProgress] = useState<{ done: number; total: number } | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -39,13 +40,15 @@ export function WorldCard({ world }: WorldCardProps) {
     await deleteWorld(world.id)
   }
 
-  async function handleExport(fn: (id: string) => Promise<void>) {
+  async function handleExport(fn: (id: string, onProgress: (done: number, total: number) => void) => Promise<void>) {
     setMenuOpen(false)
     setExporting(true)
+    setExportProgress(null)
     try {
-      await fn(world.id)
+      await fn(world.id, (done, total) => setExportProgress({ done, total }))
     } finally {
       setExporting(false)
+      setExportProgress(null)
     }
   }
 
@@ -74,12 +77,14 @@ export function WorldCard({ world }: WorldCardProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-6 rounded-r-none hover:text-blue-400"
+                className={`h-7 rounded-r-none hover:text-blue-400 ${exporting && exportProgress ? 'w-12 px-1' : 'w-6'}`}
                 onClick={() => handleExport(exportWorld)}
                 disabled={exporting}
                 title="Export world (single file)"
               >
-                {exporting
+                {exporting && exportProgress
+                  ? <span className="text-[10px] tabular-nums">{exportProgress.done}/{exportProgress.total}</span>
+                  : exporting
                   ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   : <Download className="h-3.5 w-3.5" />
                 }

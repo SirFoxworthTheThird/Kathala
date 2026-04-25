@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { generateId } from '@/lib/id'
-import type { Faction, FactionMembership } from '@/types'
+import type { Faction, FactionMembership, FactionRelationship } from '@/types'
 
 // ── Factions ──────────────────────────────────────────────────────────────────
 
@@ -32,8 +32,10 @@ export async function updateFaction(id: string, data: Partial<Omit<Faction, 'id'
 }
 
 export async function deleteFaction(id: string) {
-  await db.transaction('rw', [db.factions, db.factionMemberships], async () => {
+  await db.transaction('rw', [db.factions, db.factionMemberships, db.factionRelationships], async () => {
     await db.factionMemberships.where('factionId').equals(id).delete()
+    await db.factionRelationships.where('factionAId').equals(id).delete()
+    await db.factionRelationships.where('factionBId').equals(id).delete()
     await db.factions.delete(id)
   })
 }
@@ -79,6 +81,33 @@ export async function updateFactionMembership(id: string, data: Partial<Omit<Fac
 
 export async function deleteFactionMembership(id: string) {
   await db.factionMemberships.delete(id)
+}
+
+// ── Faction Relationships ─────────────────────────────────────────────────────
+
+export function useFactionRelationships(worldId: string | null) {
+  return useLiveQuery(
+    () => worldId ? db.factionRelationships.where('worldId').equals(worldId).toArray() : [],
+    [worldId],
+    [] as FactionRelationship[]
+  )
+}
+
+export async function createFactionRelationship(
+  data: Omit<FactionRelationship, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<FactionRelationship> {
+  const now = Date.now()
+  const rel: FactionRelationship = { ...data, id: generateId(), createdAt: now, updatedAt: now }
+  await db.factionRelationships.add(rel)
+  return rel
+}
+
+export async function updateFactionRelationship(id: string, data: Partial<Omit<FactionRelationship, 'id' | 'createdAt'>>) {
+  await db.factionRelationships.update(id, { ...data, updatedAt: Date.now() })
+}
+
+export async function deleteFactionRelationship(id: string) {
+  await db.factionRelationships.delete(id)
 }
 
 // ── Active membership helper ──────────────────────────────────────────────────

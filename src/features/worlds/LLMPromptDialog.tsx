@@ -16,7 +16,7 @@ FILE STRUCTURE
 ═══════════════════════════════════════════════════════════
 
 {
-  "version": 5,
+  "version": 6,
   "type": "full",
   "exportedAt": <current unix timestamp in ms, e.g. 1700000000000>,
   "world": { ... },
@@ -27,6 +27,10 @@ FILE STRUCTURE
   "chapters": [ ... ],
   "events": [ ... ],
   "characterSnapshots": [ ... ],
+  "factions": [ ... ],
+  "factionMemberships": [ ... ],
+  "loreCategories": [ ... ],
+  "lorePages": [ ... ],
   "mapLayers": [],
   "locationMarkers": [],
   "characterMovements": [],
@@ -164,6 +168,58 @@ showing their state at that point in the story.
   "updatedAt": <timestamp>
 }
 
+── factions (named groups, guilds, kingdoms, organisations) ──
+{
+  "id": "<uuid>",
+  "worldId": "<world.id>",
+  "name": "<faction name>",
+  "description": "<purpose, ideology, history>",
+  "color": "<hex color, e.g. #6366f1>",
+  "coverImageId": null,
+  "tags": ["military", "political"],   // empty array if none
+  "createdAt": <timestamp>,
+  "updatedAt": <timestamp>
+}
+
+── factionMemberships (one per character × faction) ──────────
+{
+  "id": "<uuid>",
+  "worldId": "<world.id>",
+  "factionId": "<faction.id>",
+  "characterId": "<character.id>",
+  "role": "<Leader|Member|Spy|...>",   // null if unspecified
+  "startEventId": null,                // event when they joined, or null
+  "endEventId": null,                  // event when they left, or null
+  "notes": "",
+  "createdAt": <timestamp>,
+  "updatedAt": <timestamp>
+}
+
+── loreCategories (groupings for lore pages) ─────────────────
+{
+  "id": "<uuid>",
+  "worldId": "<world.id>",
+  "name": "<category name, e.g. Magic, History, Geography>",
+  "color": "<hex color>",
+  "sortOrder": 0,                      // sequential, starting at 0
+  "createdAt": <timestamp>,
+  "updatedAt": <timestamp>
+}
+
+── lorePages (world-building reference pages) ────────────────
+{
+  "id": "<uuid>",
+  "worldId": "<world.id>",
+  "categoryId": "<loreCategory.id>",   // null if uncategorised
+  "title": "<page title>",
+  "body": "<markdown content>",
+  "tags": [],
+  "linkedEntityIds": [],               // character/item/location ids this page is about
+  "visibleFromEventId": null,
+  "createdAt": <timestamp>,
+  "updatedAt": <timestamp>
+}
+
 ═══════════════════════════════════════════════════════════
 INSTRUCTIONS
 ═══════════════════════════════════════════════════════════
@@ -172,11 +228,13 @@ INSTRUCTIONS
 2. Extract every named character; infer their role, traits, and fate.
 3. Extract every meaningful relationship between characters.
 4. Extract significant items/objects that appear in the story.
-5. Divide the story into logical chapters (aim for 1 chapter per major scene or act).
-6. For each chapter, write a synopsis and list 2–5 key events (each event gets its own record).
-7. For each character × event combination where the character is present, write a statusNotes sentence describing their situation.
-8. Cross-reference all ids consistently — every characterId in events/snapshots must match a character in the characters array, and every eventId in snapshots must match an event.
-9. Output ONLY the final JSON object, starting with { and ending with }.
+5. Extract named groups, organisations, factions, or kingdoms; create a faction record for each and a factionMembership for every character who belongs to one (include their role and start/end events if known).
+6. Divide the story into logical chapters (aim for 1 chapter per major scene or act).
+7. For each chapter, write a synopsis and list 2–5 key events (each event gets its own record).
+8. For each character × event combination where the character is present, write a statusNotes sentence describing their situation.
+9. Create lore pages for significant world-building concepts (magic systems, religions, historical events, geography, languages). Group them into loreCategories. Use markdown in the body field.
+10. Cross-reference all ids consistently — every characterId in events/snapshots must match a character in the characters array, and every eventId in snapshots must match an event.
+11. Output ONLY the final JSON object, starting with { and ending with }.
 
 ═══════════════════════════════════════════════════════════
 MY STORY

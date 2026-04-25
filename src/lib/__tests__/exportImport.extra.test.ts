@@ -36,6 +36,7 @@ function makeExport(overrides: Partial<WorldExportFile> = {}): WorldExportFile {
     lorePages: [],
     factions: [],
     factionMemberships: [],
+    factionRelationships: [],
     ...overrides,
   }
 }

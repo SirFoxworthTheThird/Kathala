@@ -29,6 +29,7 @@ import type {
   LoreCategory,
   Faction,
   FactionMembership,
+  FactionRelationship,
 } from '@/types'
 
 class PlotWeaveDB extends Dexie {
@@ -60,6 +61,7 @@ class PlotWeaveDB extends Dexie {
   lorePages!: EntityTable<LorePage, 'id'>
   factions!: EntityTable<Faction, 'id'>
   factionMemberships!: EntityTable<FactionMembership, 'id'>
+  factionRelationships!: EntityTable<FactionRelationship, 'id'>
 
   constructor() {
     super('PlotWeaveDB')
@@ -372,6 +374,11 @@ class PlotWeaveDB extends Dexie {
       await tx.table('locationMarkers').toCollection().modify((m: Record<string, unknown>) => {
         if (!('factionId' in m)) m.factionId = null
       })
+    })
+
+    // v25: inter-faction relationships (stance: allied | neutral | hostile)
+    this.version(25).stores({
+      factionRelationships: 'id, worldId, factionAId, factionBId',
     })
   }
 }

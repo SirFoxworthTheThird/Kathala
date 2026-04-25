@@ -140,13 +140,17 @@ New capabilities identified in the maps UX review. Detailed specs in `docs/featu
 
 - [x] **[Factions](docs/features/factions.md)** — named groups with event-scoped character membership (allegiances change over time). DB v21 (factions, factionMemberships) + v22 (MapRegion factionId backfill) + v23 (factionId index on mapRegions) + v24 (factionId on locationMarkers). Factions view with roster and member management; character Factions tab (membership CRUD, role/start/end event per membership); owning-faction picker on both map regions and location markers; Territories section in faction panel lists owned regions and locations; Arc View faction overlay toggle (colored cell borders + footer legend); relationship graph faction overlay toggle (colored node borders + faction badge on nodes + legend); faction badges on character cards in Writer's Brief; "Factions in scene" section in Writer's Brief; factions included in Ctrl+K search; .pwk export v6 and HTML export factions section (including location marker faction labels).
 
+### Inter-faction Relationships
+
+- [x] **Inter-faction relationship model** — `FactionRelationship` type (factionAId, factionBId, stance: allied/neutral/hostile); DB v25; CRUD hooks; Relations section in `FactionDetailPanel` (stance selector per pair, add/remove); hostile-faction location check in Continuity Checker (warns when a character is at a location controlled by a faction hostile to one of their own active factions).
+
 ### Factions — Depth Pass
 
-- [ ] **Faction-aware continuity checks** — add two new checks to the Continuity checker: (1) a character is at a location controlled by a hostile faction at that event (requires a way to mark faction relationships as hostile); (2) a character's faction membership has a gap — they leave one faction but join no other, which may be intentional or an oversight. Surface as low-priority warnings with suppress support.
+- [x] **Faction-aware continuity checks** — membership gap check: when a character's faction membership ends with no other active membership from that point, surface a low-priority warning in the Continuity Checker under a new "Factions" category. (Hostile-faction location check deferred — requires inter-faction relationship data not yet in the model.)
 
-- [ ] **Faction Arc View** — a new tab or toggle in Arc View showing faction membership across the timeline: one row per faction, one column per event, cells filled with member names (or avatars) who were active members at that event. Useful for visualising how faction composition shifts.
+- [x] **Faction Arc View** — "Factions" toggle in Arc View header (shown only when factions exist); switches rows to one-per-faction with a color-bordered row header; cells show active member names + count at each chapter/event column.
 
-- [ ] **Faction tags UI** — the `Faction` type already has a `tags: string[]` field but there is no UI to add or remove tags. Add a tag bar to the `FactionDetailPanel` (same pill + X + input pattern used on characters and items).
+- [x] **Faction tags UI** — tag bar added to `FactionDetailPanel` (pill + X + add-tag input; auto-saves on Enter/comma/blur; Backspace removes last tag).
 
 ---
 
@@ -226,3 +230,101 @@ Findings from the end-to-end review. Bugs first, then copy/polish.
 
 - [x] **Playback forces navigation to Maps without warning** (`src/components/ChapterTimelineBar.tsx:194`)
   Pressing Play from any view immediately navigates to Maps. Intentional (trails are on the map), but jarring when in Characters or Timeline. Fix: add a tooltip to the play button — "Plays story movement on the map."
+
+---
+
+## Reliability
+
+### Export Streaming
+- [ ] **Streaming blob export** — replace the `Promise.all(rawBlobs.map(blobToBase64))` pattern (loads all images into memory simultaneously) with a one-at-a-time pipeline. Use the File System Access API (`showSaveFilePicker` + `WritableStream`) when available so each converted blob is flushed to disk immediately; fall back to sequential in-memory build on browsers that don't support it. Add `onProgress(done, total)` callback so the export button shows progress. Extract shared `collectWorldData` helper to eliminate the three copies of the 28-query block (exportWorld, exportWorldSplit, cloudSyncHelpers). Fix pre-existing omission: `factionRelationships` was never included in any export path.
+
+### Database Integrity Repair Tool
+- [ ] **Delete cascade audit** — verify every `deleteX` function in `src/db/hooks/` wraps all affected tables in a single Dexie transaction; table coverage checklist: Character (snapshots, movements, memberships, relationships + their snapshots), Event (all six snapshot tables, movements, regionSnapshots), Chapter (cascade to events), Timeline (cascade to chapters), LocationMarker (locationSnapshots, characterSnapshot.currentLocationMarkerId references, route waypoints), MapLayer (markers, routes, regions, annotations), LoreCategory (lorePages).
+- [ ] **DB Health view in Settings** — scan all snapshot/membership/placement tables for records pointing to deleted parent entities; report orphan counts by type; one-click "Clean up orphaned records" button that deletes all found orphans in a single transaction. Complements the Continuity Checker (which reports orphans but doesn't fix them).
+
+---
+
+## High Priority — UX
+
+### [Onboarding & Progressive Disclosure](docs/features/onboarding-ux.md)
+
+Make the app intuitive from the first click without removing any functionality. Four independent pillars — implement in order:
+
+- [ ] **Pillar 3 — Smart empty states** — each section's empty state answers: what is this for, when would I need it, how do I start. Update copy and action buttons in Maps, Items, Relations, Arc, Lore, Factions. Highest ROI, lowest effort.
+
+- [ ] **Pillar 4 — Dashboard suggestion cards** — replace the static dashboard with a contextual next-step engine. Show suggestion cards based on world state (no characters → "Add your first character"; characters but no relationships → "Define how they relate"; etc.). Dismissible cards for optional features (Lore, Factions). Add `DashboardSuggestion.tsx` component; persist dismissed card IDs in localStorage.
+
+- [ ] **Pillar 2 — Empty-world onboarding wizard** — when a world has zero events, replace the Dashboard with a focused 4-step "Start your story" flow: create timeline → add character → place them at first event → done. Skippable at any step. New `src/features/onboarding/` directory with step components; trigger condition in `WorldDashboard.tsx`.
+
+- [ ] **Pillar 1 — Tiered navigation** — split the 10 TopBar nav items into Core (Dashboard, Timeline, Characters, Maps) and Extended (Items, Lore, Factions, Relations, Arc, Settings) with a visual separator. Extended items remain always accessible; visual grouping reduces initial cognitive load.
+
+---
+
+## Planned Features
+
+### POV Tracking
+
+Track which character's point-of-view each event/scene is told from. Useful for multi-POV stories to spot unintentional POV gaps, back-to-back same-POV sequences, or a character POVing a scene they couldn't witness.
+
+- [ ] **Data model** — add optional `povCharacterId: string | null` field to `WorldEvent`; DB migration backfills `null`. No new table needed.
+- [ ] **Timeline UI** — POV badge on each `EventCard`/`EventRow` (character colour swatch + name); inline picker to assign/clear POV (dropdown of characters involved in that event, or any character in the world).
+- [ ] **Arc View POV column** — optional overlay mode that colours cells by POV character instead of faction/snapshot state.
+- [ ] **Continuity checks** — warn when an event has a POV character who is not listed in `involvedCharacterIds`; warn on consecutive events with the same POV character (configurable threshold, e.g. 3+ in a row).
+- [ ] **Writer's Brief** — show POV character prominently in the active-event summary panel.
+
+---
+
+### Plot Threads / Subplots
+
+Tag events as belonging to named narrative threads (A-plot, romance subplot, mystery, etc.) and filter the timeline to a single thread.
+
+- [ ] **Data model** — new `PlotThread` entity (`id, worldId, name, color, description`); events gain `threadIds: string[]` (many-to-many); DB migration.
+- [ ] **Plot Threads management** — new `Threads` nav item (or section inside Timeline); CRUD for threads with colour picker; events can be tagged to multiple threads.
+- [ ] **Timeline filter** — thread filter pill row above the chapter list; selecting a thread dims events not in that thread (or hides them); "All" resets.
+- [ ] **Arc View thread lane** — optional row per thread showing which chapters/events contain thread activity.
+- [ ] **Continuity checks** — warn on threads with a long gap (configurable N chapters with no events); warn on threads that start but never resolve (no events after chapter N).
+
+---
+
+### Scene / Event Status
+
+Track the writing-progress state of each event so the writer knows what's drafted vs. still planned.
+
+- [ ] **Data model** — add `status: 'idea' | 'outline' | 'draft' | 'revised' | 'final'` field to `WorldEvent`; DB migration backfills `'draft'` for existing events.
+- [ ] **Timeline UI** — status badge/dot on `EventCard`/`EventRow`; inline status picker; optional colour-coded background tint per status.
+- [ ] **Dashboard summary** — progress bar on the world dashboard showing event counts per status across all timelines.
+- [ ] **Arc View** — status overlay option to tint cells by scene status rather than character state.
+
+---
+
+### Character Goals & Motivations
+
+Structured inner-life tracking alongside the existing external-state snapshots.
+
+- [ ] **Data model** — new `CharacterGoal` entity (`id, worldId, characterId, type: 'want'|'need'|'fear'|'flaw', text, startEventId, endEventId`); purely additive DB table.
+- [ ] **Character panel tab** — "Goals" tab in `CharacterDetailView` (alongside Overview, State, History, Relationships, Factions); CRUD for goals with type selector, free-text field, and optional time-scoping.
+- [ ] **Arc View overlay** — goals listed in the row header tooltip or a collapsible sub-row per character.
+- [ ] **Writer's Brief** — active goals (those with no `endEventId` or ending after the current event) shown in the character summary card.
+- [ ] **Continuity check** — warn when a character acts in a way that directly contradicts a declared fear or goal (requires tagging events with character motivations — lower priority, may stay manual).
+
+---
+
+### Clue & Secret Tracking
+
+For mysteries and complex plots: track information objects, when they're introduced, and which characters know them.
+
+- [ ] **Data model** — new `Clue` entity (`id, worldId, name, description, plantedEventId, revealedEventId | null`); new `ClueKnowledge` entity (`id, worldId, clueId, characterId, learnedEventId`) recording when each character learns each clue.
+- [ ] **Clues view** — new `Clues` nav item; list/grid of clues with planted/revealed events; per-clue panel showing which characters know it and when they learned it.
+- [ ] **Character panel** — "Knows" section listing clues the character has knowledge of at the active event.
+- [ ] **Continuity check** — warn when a character acts on a clue (tagged on an event) before their `learnedEventId` for that clue.
+
+---
+
+### Physical Description Snapshots
+
+Track how a character looks over time — injuries, aging, haircuts, distinctive marks.
+
+- [ ] **Data model** — add `appearance: string` free-text field to `CharacterSnapshot` (alongside the existing location/inventory/alive fields); DB migration backfills empty string.
+- [ ] **Character State tab** — appearance field shown as an editable textarea in the snapshot editor.
+- [ ] **History tab** — appearance changes surfaced in the history list (only shown when it differs from the previous snapshot).
+- [ ] **Continuity check** — warn when appearance is never recorded for a character who has snapshots (low priority nudge, not an error).
