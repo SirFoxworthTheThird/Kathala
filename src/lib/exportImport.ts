@@ -710,6 +710,8 @@ function normalizeImport(data: WorldExportFile): void {
           tags: [],
           sortOrder: 0,
           travelDays: (c.travelDays as number | null) ?? null,
+          status: 'draft',
+          povCharacterId: null,
           createdAt: now,
           updatedAt: now,
         })

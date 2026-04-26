@@ -36,6 +36,7 @@ export interface WorldEvent {
   /** Days of travel before this event. Drives continuity distance checks. */
   travelDays: number | null
   status: EventStatus
+  povCharacterId: string | null
   createdAt: number
   updatedAt: number
 }

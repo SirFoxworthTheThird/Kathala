@@ -1,4 +1,4 @@
-import { X, BookOpen, Users, Network, Package, Scroll, MapPin, Heart, Skull, ChevronRight, BookMarked, Shield } from 'lucide-react'
+import { X, BookOpen, Users, Network, Package, Scroll, MapPin, Heart, Skull, ChevronRight, BookMarked, Shield, Eye } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useEffect, useRef } from 'react'
 import { useAppStore } from '@/store'
@@ -15,6 +15,7 @@ import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { cn } from '@/lib/utils'
+import { charColor } from '@/lib/characterColor'
 
 function Section({ title, icon: Icon, count, children }: {
   title: string
@@ -178,6 +179,18 @@ export function WritersBriefPanel() {
                     {activeEvent.description && (
                       <p className="mt-0.5 text-[10px] text-[hsl(var(--muted-foreground))] leading-relaxed">{activeEvent.description}</p>
                     )}
+                    {activeEvent.povCharacterId && (() => {
+                      const povChar = characters.find((c) => c.id === activeEvent.povCharacterId)
+                      if (!povChar) return null
+                      return (
+                        <div className="mt-1 flex items-center gap-1.5 text-[10px]">
+                          <Eye className="h-2.5 w-2.5 shrink-0 text-[hsl(var(--muted-foreground))]" />
+                          <span className="text-[hsl(var(--muted-foreground))]">POV:</span>
+                          <span className="inline-block h-2 w-2 rounded-full shrink-0" style={{ background: charColor(povChar) }} />
+                          <span className="font-medium text-[hsl(var(--foreground))]">{povChar.name}</span>
+                        </div>
+                      )
+                    })()}
                   </div>
                 )}
               </div>

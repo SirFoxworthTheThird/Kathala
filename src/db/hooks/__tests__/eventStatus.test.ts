@@ -24,12 +24,12 @@ const BASE_EVENT = {
   chapterId: 'ch',
   timelineId: 'tl',
   description: '',
-  locationMarkerId: null,
-  involvedCharacterIds: [],
-  involvedItemIds: [],
-  tags: [],
+  locationMarkerId: null as null,
+  involvedCharacterIds: [] as string[],
+  involvedItemIds: [] as string[],
+  tags: [] as string[],
   sortOrder: 0,
-} as const
+}
 
 beforeEach(async () => {
   await db.delete()
@@ -184,15 +184,17 @@ describe('ChapterAIDialog import normalisation (Bug #1 fix)', () => {
       id: 'ai-event-1',
       worldId: 'w', chapterId: 'ch', timelineId: 'tl',
       title: 'AI-generated', description: '',
-      locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [],
-      tags: [], sortOrder: 0, travelDays: null,
+      locationMarkerId: null as null, involvedCharacterIds: [] as string[], involvedItemIds: [] as string[],
+      tags: [] as string[], sortOrder: 0, travelDays: null as null,
       createdAt: Date.now(), updatedAt: Date.now(),
       status: 'outline' as EventStatus,
+      povCharacterId: null as string | null,
     }
-    const normalised = { status: 'draft' as const, ...rawEvent }
+    const p = rawEvent as Partial<typeof rawEvent>
+    const normalised = { ...rawEvent, status: p.status ?? ('draft' as const), povCharacterId: p.povCharacterId ?? null }
     await db.events.bulkPut([normalised])
     const stored = await db.events.get('ai-event-1')
-    // Spread puts default first, rawEvent.status='outline' wins
+    // rawEvent.status='outline' wins over the default
     expect(stored!.status).toBe('outline')
   })
 
@@ -201,13 +203,13 @@ describe('ChapterAIDialog import normalisation (Bug #1 fix)', () => {
       id: 'ai-event-2',
       worldId: 'w', chapterId: 'ch', timelineId: 'tl',
       title: 'AI-no-status', description: '',
-      locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [],
-      tags: [], sortOrder: 1, travelDays: null,
+      locationMarkerId: null as null, involvedCharacterIds: [] as string[], involvedItemIds: [] as string[],
+      tags: [] as string[], sortOrder: 1, travelDays: null as null,
       createdAt: Date.now(), updatedAt: Date.now(),
-      // status intentionally absent
+      // status and povCharacterId intentionally absent
     }
-    // @ts-expect-error — simulating pre-fix AI import shape
-    const normalised = { status: 'draft' as const, ...rawEvent }
+    const p = rawEvent as Partial<typeof rawEvent> & { status?: EventStatus; povCharacterId?: string | null }
+    const normalised = { ...rawEvent, status: p.status ?? ('draft' as const), povCharacterId: p.povCharacterId ?? null }
     await db.events.bulkPut([normalised])
     const stored = await db.events.get('ai-event-2')
     expect(stored!.status).toBe('draft')
@@ -300,7 +302,7 @@ describe('dashboard status aggregation', () => {
 // The Map is built in a single O(n) pass over allEvents, then lookups are O(1).
 
 function buildChapterMinStatusMap(
-  allEvents: Array<{ id: string; chapterId: string; status?: EventStatus }>
+  allEvents: Array<{ chapterId: string; status?: EventStatus }>
 ): Map<string, EventStatus> {
   const map = new Map<string, EventStatus>()
   for (const ev of allEvents) {
@@ -315,7 +317,7 @@ function buildChapterMinStatusMap(
 
 function getChapterMinStatus(
   chapterId: string,
-  allEvents: Array<{ id: string; chapterId: string; status?: EventStatus }>
+  allEvents: Array<{ chapterId: string; status?: EventStatus }>
 ): EventStatus | null {
   const map = buildChapterMinStatusMap(allEvents)
   return map.get(chapterId) ?? null

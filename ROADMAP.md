@@ -297,15 +297,15 @@ Full audit findings in `docs/features/ux-audit.md`.
 
 ## Planned Features
 
-### POV Tracking
+### POV Tracking ✅
 
 Track which character's point-of-view each event/scene is told from. Useful for multi-POV stories to spot unintentional POV gaps, back-to-back same-POV sequences, or a character POVing a scene they couldn't witness.
 
-- [ ] **Data model** — add optional `povCharacterId: string | null` field to `WorldEvent`; DB migration backfills `null`. No new table needed.
-- [ ] **Timeline UI** — POV badge on each `EventCard`/`EventRow` (character colour swatch + name); inline picker to assign/clear POV (dropdown of characters involved in that event, or any character in the world).
-- [ ] **Arc View POV column** — optional overlay mode that colours cells by POV character instead of faction/snapshot state.
-- [ ] **Continuity checks** — warn when an event has a POV character who is not listed in `involvedCharacterIds`; warn on consecutive events with the same POV character (configurable threshold, e.g. 3+ in a row).
-- [ ] **Writer's Brief** — show POV character prominently in the active-event summary panel.
+- [x] **Data model** — `povCharacterId: string | null` on `WorldEvent`; DB v27 migration backfills `null`; `createEvent` defaults to `null`; `charColor` extracted to `src/lib/characterColor.ts`.
+- [x] **Timeline UI** — POV badge (Eye icon + colour swatch + name) on `EventCard` header; grouped Select picker (involved chars first, then all); POV Eye dot on `EventRow`; POV field in `AddEventDialog`.
+- [x] **Arc View POV overlay** — "POV" toggle button; `borderTop` coloring on chapter/event column headers (dominant POV per chapter; exact POV per event); POV legend with character colours.
+- [x] **Continuity checks** — `'pov'` category in `ContinuityChecker`; warns when POV character is absent from `involvedCharacterIds`; warns on 3+ consecutive same-POV events.
+- [x] **Writer's Brief** — POV row (Eye icon + colour swatch + name) in active-event summary card.
 
 ---
 

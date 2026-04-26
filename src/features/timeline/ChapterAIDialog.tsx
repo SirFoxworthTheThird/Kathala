@@ -373,8 +373,11 @@ async function importChapter(data: ChapterAIResponse, replacing: boolean): Promi
     }
     await db.chapters.put(data.chapter)
     if (data.events.length) {
-      // Ensure status is always present — AI JSON omits it since the LLM schema predates v26
-      const normalised = data.events.map((ev) => ({ status: 'draft' as const, ...ev }))
+      // Ensure status and povCharacterId are always present — AI JSON may omit fields predating their schema versions
+      const normalised = data.events.map((ev) => {
+        const p = ev as Partial<WorldEvent>
+        return { ...ev, status: p.status ?? ('draft' as const), povCharacterId: p.povCharacterId ?? null }
+      })
       await db.events.bulkPut(normalised)
     }
     if (data.characterSnapshots.length) await db.characterSnapshots.bulkPut(data.characterSnapshots)

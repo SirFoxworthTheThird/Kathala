@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { toPng } from 'html-to-image'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Heart, Skull, MapPin, Minus, Search, Download, X, Shield, FileEdit } from 'lucide-react'
+import { Heart, Skull, MapPin, Minus, Search, Download, X, Shield, FileEdit, Eye } from 'lucide-react'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
@@ -11,21 +11,9 @@ import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/EmptyState'
 import { BookOpen } from 'lucide-react'
-import type { Character, EventStatus } from '@/types'
+import type { EventStatus } from '@/types'
 import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
-
-// ── Colour helpers ────────────────────────────────────────────────────────────
-
-/** Deterministic hue from character id — used as fallback when no explicit color set */
-function idToHue(id: string): number {
-  let h = 0
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) & 0xffff
-  return h % 360
-}
-
-function charColor(char: Character): string {
-  return char.color ?? `hsl(${idToHue(char.id)}, 60%, 55%)`
-}
+import { charColor } from '@/lib/characterColor'
 
 // ── Inventory sparkline (pure SVG, no library) ────────────────────────────────
 
@@ -66,6 +54,7 @@ export default function CharacterArcView() {
   const [selectedTimelineId, setSelectedTimelineId] = useState<string | null>(null) // null = all
   const [showFactionOverlay, setShowFactionOverlay] = useState(false)
   const [showStatusOverlay, setShowStatusOverlay]   = useState(false)
+  const [showPovOverlay, setShowPovOverlay]         = useState(false)
   const tableRef = useRef<HTMLDivElement>(null)
 
   const timelines      = useTimelines(worldId ?? null)
@@ -189,6 +178,41 @@ export default function CharacterArcView() {
   function getChapterStatusColor(chapterId: string): string | null {
     const s = chapterMinStatusMap.get(chapterId)
     return s !== undefined ? EVENT_STATUS_CONFIG[s].color : null
+  }
+
+  // POV overlay — pre-computed Maps.
+  // Event mode: each event → POV character's color (or absent).
+  // Chapter mode: each chapter → dominant (most-frequent) POV character's color.
+  const eventPovColorMap    = new Map<string, string>()
+  const chapterDomPovMap    = new Map<string, string>()
+  const povCharSet          = new Set<string>() // charIds with ≥1 POV event (for legend)
+  if (showPovOverlay) {
+    const charColorLookup = new Map(characters.map((c) => [c.id, charColor(c)]))
+    for (const ev of allEvents) {
+      if (!ev.povCharacterId) continue
+      const color = charColorLookup.get(ev.povCharacterId)
+      if (!color) continue
+      eventPovColorMap.set(ev.id, color)
+      povCharSet.add(ev.povCharacterId)
+    }
+    // Dominant POV per chapter: count events by POV char, pick highest
+    const chapterPovCounts = new Map<string, Map<string, number>>()
+    for (const ev of allEvents) {
+      if (!ev.povCharacterId) continue
+      if (!chapterPovCounts.has(ev.chapterId)) chapterPovCounts.set(ev.chapterId, new Map())
+      const counts = chapterPovCounts.get(ev.chapterId)!
+      counts.set(ev.povCharacterId, (counts.get(ev.povCharacterId) ?? 0) + 1)
+    }
+    for (const [chapterId, counts] of chapterPovCounts) {
+      let domCharId = '', domCount = 0
+      for (const [charId, count] of counts) {
+        if (count > domCount) { domCharId = charId; domCount = count }
+      }
+      if (domCharId) {
+        const color = charColorLookup.get(domCharId)
+        if (color) chapterDomPovMap.set(chapterId, color)
+      }
+    }
   }
 
   // Last event position per chapter — used for faction membership check in chapter mode
@@ -559,6 +583,19 @@ export default function CharacterArcView() {
             Status
           </button>
           <button
+            onClick={() => setShowPovOverlay((v) => !v)}
+            className={cn(
+              'flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors',
+              showPovOverlay
+                ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
+            )}
+            title="Toggle POV overlay"
+          >
+            <Eye className="h-3 w-3" />
+            POV
+          </button>
+          <button
             onClick={handleExport}
             className="flex items-center gap-1 rounded-md border border-[hsl(var(--border))] px-2 py-1 text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent)/0.4)] transition-colors"
             title="Export arc as PNG"
@@ -596,12 +633,14 @@ export default function CharacterArcView() {
               {viewMode === 'chapter' && sortedChapters.map((ch) => {
                 const isActive = ch.id === activeChapterId
                 const statusColor = getChapterStatusColor(ch.id)
+                const povColor = chapterDomPovMap.get(ch.id) ?? null
                 return (
                   <th
                     key={ch.id}
                     style={{
                       minWidth: colWidth, maxWidth: colWidth,
                       ...(statusColor ? { borderBottom: `3px solid ${statusColor}` } : {}),
+                      ...(povColor ? { borderTop: `3px solid ${povColor}` } : {}),
                     }}
                     className={cn(
                       'cursor-pointer border-r border-[hsl(var(--border))] px-2 py-2 text-center font-medium transition-colors',
@@ -627,12 +666,14 @@ export default function CharacterArcView() {
                 const ch = chapterById.get(ev.chapterId)
                 const isActive = ev.id === activeEventId
                 const statusColor = getEventStatusColor(ev.id)
+                const povColor = eventPovColorMap.get(ev.id) ?? null
                 return (
                   <th
                     key={ev.id}
                     style={{
                       minWidth: colWidth, maxWidth: colWidth,
                       ...(statusColor ? { borderBottom: `3px solid ${statusColor}` } : {}),
+                      ...(povColor ? { borderTop: `3px solid ${povColor}` } : {}),
                     }}
                     className={cn(
                       'cursor-pointer border-r border-[hsl(var(--border))] px-2 py-2 text-center font-medium transition-colors',
@@ -743,6 +784,12 @@ export default function CharacterArcView() {
           <div key={s} className="flex items-center gap-1">
             <span className="inline-block h-2 w-4 rounded-sm" style={{ background: EVENT_STATUS_CONFIG[s].color }} />
             {EVENT_STATUS_CONFIG[s].label}
+          </div>
+        ))}
+        {showPovOverlay && characters.filter((c) => povCharSet.has(c.id)).map((c) => (
+          <div key={c.id} className="flex items-center gap-1">
+            <Eye className="h-2.5 w-2.5" style={{ color: charColor(c) }} />
+            {c.name}
           </div>
         ))}
         <div className="ml-auto">Click a column to set cursor · Click a notes cell to expand</div>

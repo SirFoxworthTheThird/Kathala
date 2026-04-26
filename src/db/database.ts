@@ -387,6 +387,13 @@ class PlotWeaveDB extends Dexie {
         if (!('status' in ev)) ev.status = 'draft'
       })
     })
+
+    // v27: event POV character; backfill null
+    this.version(27).stores({}).upgrade(async (tx) => {
+      await tx.table('events').toCollection().modify((ev: Record<string, unknown>) => {
+        if (!('povCharacterId' in ev)) ev.povCharacterId = null
+      })
+    })
   }
 }
 

@@ -1,7 +1,8 @@
 import { useState, useRef, type KeyboardEvent } from 'react'
-import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package } from 'lucide-react'
+import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye } from 'lucide-react'
 import type { WorldEvent, EventStatus } from '@/types'
 import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
+import { charColor } from '@/lib/characterColor'
 import { deleteEvent, updateEvent } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useItems } from '@/db/hooks/useItems'
@@ -9,7 +10,7 @@ import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PortraitImage } from '@/components/PortraitImage'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 
@@ -33,6 +34,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
   const [tags, setTags] = useState<string[]>(event.tags)
   const [tagInput, setTagInput] = useState('')
   const [status, setStatus] = useState<EventStatus>(event.status ?? 'draft')
+  const [povCharacterId, setPovCharacterId] = useState<string | null>(event.povCharacterId ?? null)
   const tagInputRef = useRef<HTMLInputElement>(null)
 
   const characters = useCharacters(event.worldId)
@@ -44,6 +46,8 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
   const involvedItems = items.filter((it) => involvedItemIds.includes(it.id))
   const availableItems = items.filter((it) => !involvedItemIds.includes(it.id))
   const currentLocation = locationMarkers.find((m) => m.id === locationMarkerId) ?? null
+  const povChar = characters.find((c) => c.id === povCharacterId) ?? null
+  const nonInvolvedChars = characters.filter((c) => !involvedIds.includes(c.id))
 
   async function saveEdit() {
     await updateEvent(event.id, {
@@ -65,6 +69,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
     setLocationMarkerId(event.locationMarkerId)
     setTags(event.tags)
     setStatus(event.status ?? 'draft')
+    setPovCharacterId(event.povCharacterId ?? null)
     setTagInput('')
     setEditing(false)
   }
@@ -72,6 +77,11 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
   async function changeStatus(s: EventStatus) {
     setStatus(s)
     await updateEvent(event.id, { status: s })
+  }
+
+  async function changePov(id: string | null) {
+    setPovCharacterId(id)
+    await updateEvent(event.id, { povCharacterId: id })
   }
 
   function startEdit() {
@@ -181,6 +191,20 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
         >
           {EVENT_STATUS_CONFIG[status].label}
         </button>
+
+        {/* POV badge — visible when set */}
+        {povChar && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setExpanded(true) }}
+            className="shrink-0 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-[hsl(var(--muted))] hover:opacity-80"
+            title={`POV: ${povChar.name} — click to change`}
+            aria-label={`POV: ${povChar.name}`}
+          >
+            <span className="inline-block h-2 w-2 rounded-full shrink-0" style={{ background: charColor(povChar) }} />
+            <Eye className="h-2.5 w-2.5 text-[hsl(var(--muted-foreground))]" />
+            <span className="text-[hsl(var(--foreground))]">{povChar.name}</span>
+          </button>
+        )}
 
         {editing ? (
           <>
@@ -391,6 +415,52 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
                   </SelectContent>
                 </Select>
               )}
+            </div>
+          )}
+
+          {/* POV picker */}
+          {characters.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
+                <Eye className="h-3 w-3" /> Point of View
+              </span>
+              <Select
+                value={povCharacterId ?? '__none__'}
+                onValueChange={(v) => changePov(v === '__none__' ? null : v)}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="No POV character…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__" className="text-xs italic text-[hsl(var(--muted-foreground))]">No POV character</SelectItem>
+                  {involvedChars.length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel className="text-[10px] uppercase tracking-wide">In this event</SelectLabel>
+                      {involvedChars.map((c) => (
+                        <SelectItem key={c.id} value={c.id} className="text-xs">
+                          <span className="flex items-center gap-1.5">
+                            <span className="inline-block h-2 w-2 rounded-full shrink-0" style={{ background: charColor(c) }} />
+                            {c.name}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
+                  {nonInvolvedChars.length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel className="text-[10px] uppercase tracking-wide">All characters</SelectLabel>
+                      {nonInvolvedChars.map((c) => (
+                        <SelectItem key={c.id} value={c.id} className="text-xs">
+                          <span className="flex items-center gap-1.5">
+                            <span className="inline-block h-2 w-2 rounded-full shrink-0" style={{ background: charColor(c) }} />
+                            {c.name}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
           )}
 

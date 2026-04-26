@@ -80,7 +80,7 @@ type IssueSeverity = 'error' | 'warning'
 interface Issue {
   id: string
   severity: IssueSeverity
-  category: 'character' | 'item' | 'relationship' | 'faction'
+  category: 'character' | 'item' | 'relationship' | 'faction' | 'pov'
   message: string
   detail?: string
   navigatePath?: string
@@ -848,6 +848,56 @@ export function ContinuityChecker() {
       }
     }
 
+    // ── POV checks ──────────────────────────────────────────────────────────────
+
+    // Check 1: POV character not listed in involvedCharacterIds
+    for (const ev of allEvents) {
+      if (!ev.povCharacterId) continue
+      if (!ev.involvedCharacterIds.includes(ev.povCharacterId)) {
+        const char = charById.get(ev.povCharacterId)
+        const ch = chapById.get(ev.chapterId)
+        out.push({
+          id: `pov-not-involved-${ev.id}`,
+          severity: 'warning',
+          category: 'pov',
+          message: `POV "${char?.name ?? '?'}" is not in the cast of "${ev.title || 'untitled'}"`,
+          detail: `Ch. ${ch?.number ?? '?'} — add them to Characters or clear the POV`,
+          navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+          eventId: ev.id,
+        })
+      }
+    }
+
+    // Check 2: 3+ consecutive events with the same POV character (considers only events with POV set)
+    const povEvents = allEvents
+      .filter((ev) => !!ev.povCharacterId)
+      .sort((a, b) => eventOrder(a.id) - eventOrder(b.id))
+
+    let runStart = 0
+    while (runStart < povEvents.length) {
+      const charId = povEvents[runStart].povCharacterId!
+      let runEnd = runStart + 1
+      while (runEnd < povEvents.length && povEvents[runEnd].povCharacterId === charId) runEnd++
+      const runLen = runEnd - runStart
+      if (runLen >= 3) {
+        const char = charById.get(charId)
+        const firstEv = povEvents[runStart]
+        const lastEv  = povEvents[runEnd - 1]
+        const firstCh = chapById.get(firstEv.chapterId)
+        const lastCh  = chapById.get(lastEv.chapterId)
+        out.push({
+          id: `pov-consecutive-${charId}-${firstEv.id}`,
+          severity: 'warning',
+          category: 'pov',
+          message: `${char?.name ?? '?'} is POV for ${runLen} consecutive events`,
+          detail: `Ch. ${firstCh?.number ?? '?'} → Ch. ${lastCh?.number ?? '?'} — consider alternating perspectives`,
+          navigatePath: `/worlds/${worldId}/timeline/${firstEv.chapterId}`,
+          eventId: firstEv.id,
+        })
+      }
+      runStart = runEnd
+    }
+
     return out
   }, [chapters, allEvents, characters, rels, items, snapshots, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId])
 
@@ -901,11 +951,13 @@ export function ContinuityChecker() {
   const itemIssues    = issues.filter((i) => i.category === 'item')
   const relIssues     = issues.filter((i) => i.category === 'relationship')
   const factionIssues = issues.filter((i) => i.category === 'faction')
+  const povIssues     = issues.filter((i) => i.category === 'pov')
 
   // Compute base indices for keyboard focus mapping per category
   const visibleChar    = charIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
   const visibleItem    = itemIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
   const visibleRel     = relIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
+  const visibleFaction = factionIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
 
   // focusedIdx is into navigableIssues; map back to category position
   function categoryFocusedIdx(categoryIssues: Issue[]): number {
@@ -966,7 +1018,7 @@ export function ContinuityChecker() {
               <ShieldCheck className="h-10 w-10 text-green-400" />
               <p className="text-sm font-medium text-[hsl(var(--foreground))]">No issues found</p>
               <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                No continuity errors detected across {characters.length} character{characters.length !== 1 ? 's' : ''}, {items.length} item{items.length !== 1 ? 's' : ''}, {rels.length} relationship{rels.length !== 1 ? 's' : ''}, and {allFactions.length} faction{allFactions.length !== 1 ? 's' : ''}.
+                No continuity errors detected across {characters.length} character{characters.length !== 1 ? 's' : ''}, {items.length} item{items.length !== 1 ? 's' : ''}, {rels.length} relationship{rels.length !== 1 ? 's' : ''}, {allFactions.length} faction{allFactions.length !== 1 ? 's' : ''}, and POV assignments.
               </p>
             </div>
           ) : (
@@ -985,6 +1037,10 @@ export function ContinuityChecker() {
                 onNavigate={handleNavigate} onSuppress={(i, note) => { toggleSuppressIssue(worldId ?? '', i.id); if (note) setSuppressNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Factions" icon={Shield} issues={factionIssues}
                 focusedIdx={categoryFocusedIdx(factionIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length}
+                suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
+                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleSuppressIssue(worldId ?? '', i.id); if (note) setSuppressNote(worldId ?? '', i.id, note) }} />
+              <CategorySection title="POV" icon={Eye} issues={povIssues}
+                focusedIdx={categoryFocusedIdx(povIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length + visibleFaction.length}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
                 onNavigate={handleNavigate} onSuppress={(i, note) => { toggleSuppressIssue(worldId ?? '', i.id); if (note) setSuppressNote(worldId ?? '', i.id, note) }} />
             </>

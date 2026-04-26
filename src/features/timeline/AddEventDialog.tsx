@@ -1,13 +1,14 @@
 import { useState, useRef, type KeyboardEvent } from 'react'
-import { X } from 'lucide-react'
+import { X, Eye } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { EventStatus } from '@/types'
 import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
+import { charColor } from '@/lib/characterColor'
 import { createEvent } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
 
@@ -27,6 +28,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
   const [status, setStatus] = useState<EventStatus>('draft')
+  const [povCharacterId, setPovCharacterId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const tagInputRef = useRef<HTMLInputElement>(null)
 
@@ -62,6 +64,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
     setTags([])
     setTagInput('')
     setStatus('draft')
+    setPovCharacterId(null)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -80,6 +83,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
       tags,
       sortOrder: nextSortOrder,
       status,
+      povCharacterId,
     })
     setSaving(false)
     reset()
@@ -133,6 +137,49 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
                   </SelectContent>
                 </Select>
               )}
+            </div>
+          )}
+
+          {characters.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <Label className="flex items-center gap-1"><Eye className="h-3.5 w-3.5" /> Point of View</Label>
+              <Select
+                value={povCharacterId ?? '__none__'}
+                onValueChange={(v) => setPovCharacterId(v === '__none__' ? null : v)}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="No POV character…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__" className="text-xs italic text-[hsl(var(--muted-foreground))]">No POV character</SelectItem>
+                  {selectedChars.length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel className="text-[10px] uppercase tracking-wide">In this event</SelectLabel>
+                      {selectedChars.map((c) => (
+                        <SelectItem key={c.id} value={c.id} className="text-xs">
+                          <span className="flex items-center gap-1.5">
+                            <span className="inline-block h-2 w-2 rounded-full shrink-0" style={{ background: charColor(c) }} />
+                            {c.name}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
+                  {availableChars.length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel className="text-[10px] uppercase tracking-wide">All characters</SelectLabel>
+                      {availableChars.map((c) => (
+                        <SelectItem key={c.id} value={c.id} className="text-xs">
+                          <span className="flex items-center gap-1.5">
+                            <span className="inline-block h-2 w-2 rounded-full shrink-0" style={{ background: charColor(c) }} />
+                            {c.name}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
           )}
 
