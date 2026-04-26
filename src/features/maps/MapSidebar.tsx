@@ -243,7 +243,7 @@ export function CharactersSection({
     <SidebarSection title="Characters" icon={Users} count={characters.length}>
       {!activeEventId && (
         <p className="px-3 pb-2 text-[10px] italic text-[hsl(var(--muted-foreground))]">
-          Select an event to place characters.
+          Select an event from the timeline bar below to place and drag characters onto the map.
         </p>
       )}
       {characters.length > 0 && <SidebarSearch value={search} onChange={setSearch} />}
@@ -604,7 +604,7 @@ export function RoutesSection({
       </div>
       <div className="flex flex-col py-1">
         {routes.length === 0 ? (
-          <p className="px-3 py-2 text-xs italic text-[hsl(var(--muted-foreground))]">No routes on this map.</p>
+          <p className="px-3 py-2 text-xs italic text-[hsl(var(--muted-foreground))]">No routes yet. Click 'New route' above, or right-click the map to start drawing.</p>
         ) : (
           routes.map((route) => (
             <div
@@ -727,7 +727,7 @@ export function RegionsSection({
       </div>
       <div className="flex flex-col py-1">
         {regions.length === 0 ? (
-          <p className="px-3 py-2 text-xs italic text-[hsl(var(--muted-foreground))]">No regions on this map.</p>
+          <p className="px-3 py-2 text-xs italic text-[hsl(var(--muted-foreground))]">No regions yet. Click 'New region' above, or right-click the map to start drawing.</p>
         ) : (
           regions.map((region) => {
             const snap = snapByRegionId.get(region.id)

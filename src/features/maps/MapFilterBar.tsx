@@ -126,6 +126,7 @@ export function MapFilterBar({
       {/* Trails */}
       <button
         onClick={() => onChange({ ...filters, showTrails: !filters.showTrails })}
+        title="Show character movement paths within the active event"
         className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-medium transition-colors ${filters.showTrails ? activeBtn : inactiveBtn}`}
       >
         <Route className="h-3 w-3" />
@@ -144,6 +145,7 @@ export function MapFilterBar({
       {/* Journeys */}
       <button
         onClick={() => onChange({ ...filters, showJourneys: !filters.showJourneys })}
+        title="Show each character's complete path across all events"
         className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-medium transition-colors ${filters.showJourneys ? activeBtn : inactiveBtn}`}
       >
         <History className="h-3 w-3" />
