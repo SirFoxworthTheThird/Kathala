@@ -325,10 +325,10 @@ Tag events as belonging to named narrative threads (A-plot, romance subplot, mys
 
 Track the writing-progress state of each event so the writer knows what's drafted vs. still planned.
 
-- [ ] **Data model** — add `status: 'idea' | 'outline' | 'draft' | 'revised' | 'final'` field to `WorldEvent`; DB migration backfills `'draft'` for existing events.
-- [ ] **Timeline UI** — status badge/dot on `EventCard`/`EventRow`; inline status picker; optional colour-coded background tint per status.
-- [ ] **Dashboard summary** — progress bar on the world dashboard showing event counts per status across all timelines.
-- [ ] **Arc View** — status overlay option to tint cells by scene status rather than character state.
+- [x] **Data model** — `status: 'idea' | 'outline' | 'draft' | 'revised' | 'final'` added to `WorldEvent`; DB v26 migration backfills `'draft'`; shared config in `src/lib/eventStatus.ts`.
+- [x] **Timeline UI** — colored status badge in `EventCard` header (click to cycle); full segmented picker in expanded body; status field in `AddEventDialog`.
+- [x] **Dashboard summary** — stacked progress bar (`Scene Status` section) showing event counts per status with color legend.
+- [x] **Arc View** — "Status" overlay toggle; chapter mode shows minimum-status color; event mode shows each event's status; legend updates accordingly.
 
 ---
 

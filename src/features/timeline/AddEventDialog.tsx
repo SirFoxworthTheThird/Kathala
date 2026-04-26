@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import type { EventStatus } from '@/types'
+import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
 import { createEvent } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
 
@@ -24,6 +26,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
   const [involvedIds, setInvolvedIds] = useState<string[]>([])
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
+  const [status, setStatus] = useState<EventStatus>('draft')
   const [saving, setSaving] = useState(false)
   const tagInputRef = useRef<HTMLInputElement>(null)
 
@@ -58,6 +61,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
     setInvolvedIds([])
     setTags([])
     setTagInput('')
+    setStatus('draft')
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -75,6 +79,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
       involvedItemIds: [],
       tags,
       sortOrder: nextSortOrder,
+      status,
     })
     setSaving(false)
     reset()
@@ -154,6 +159,28 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
                 placeholder={tags.length === 0 ? 'battle, revelation… (Enter to add)' : ''}
                 className="flex-1 min-w-[10rem] bg-transparent text-xs text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] outline-none"
               />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label>Status</Label>
+            <div className="flex gap-1">
+              {EVENT_STATUSES.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setStatus(s)}
+                  className="flex-1 rounded py-1.5 text-xs font-medium transition-opacity hover:opacity-90"
+                  style={
+                    status === s
+                      ? { background: EVENT_STATUS_CONFIG[s].color, color: '#fff' }
+                      : { background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }
+                  }
+                  aria-pressed={status === s}
+                >
+                  {EVENT_STATUS_CONFIG[s].label}
+                </button>
+              ))}
             </div>
           </div>
 

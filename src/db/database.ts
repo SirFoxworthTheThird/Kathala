@@ -380,6 +380,13 @@ class PlotWeaveDB extends Dexie {
     this.version(25).stores({
       factionRelationships: 'id, worldId, factionAId, factionBId',
     })
+
+    // v26: event status ('idea' | 'outline' | 'draft' | 'revised' | 'final'); backfill 'draft'
+    this.version(26).stores({}).upgrade(async (tx) => {
+      await tx.table('events').toCollection().modify((ev: Record<string, unknown>) => {
+        if (!('status' in ev)) ev.status = 'draft'
+      })
+    })
   }
 }
 

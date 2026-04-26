@@ -2,8 +2,10 @@ import { useState, useMemo, useEffect, type ElementType } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   Map as MapIcon, Users, Network, BookOpen,
-  Package, BarChart2, ShieldAlert, Clock, Layers, Pencil,
+  Package, BarChart2, ShieldAlert, Clock, Layers, Pencil, FileEdit,
 } from 'lucide-react'
+import type { EventStatus } from '@/types'
+import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useWorld, updateWorld } from '@/db/hooks/useWorlds'
@@ -129,6 +131,12 @@ export default function WorldDashboardView() {
 
   const chapterById = useMemo(() => new Map(chapters.map((c) => [c.id, c])), [chapters])
   const timelineById = useMemo(() => new Map(timelines.map((t) => [t.id, t])), [timelines])
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<EventStatus, number> = { idea: 0, outline: 0, draft: 0, revised: 0, final: 0 }
+    for (const ev of allEvents) counts[ev.status ?? 'draft']++
+    return counts
+  }, [allEvents])
 
   // ── Suggestion evaluation ─────────────────────────────────────────────────
   const summaryData: WorldSummaryData = {
@@ -357,6 +365,43 @@ export default function WorldDashboardView() {
                     </p>
                   </div>
                 </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Scene status progress */}
+      {totalEvents > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <FileEdit className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+            <h3 className="text-sm font-semibold">Scene Status</h3>
+            <span className="text-xs text-[hsl(var(--muted-foreground))]">{totalEvents} events</span>
+          </div>
+          <div className="flex h-2.5 w-full overflow-hidden rounded-full">
+            {EVENT_STATUSES.map((s) => {
+              const count = statusCounts[s]
+              if (count === 0) return null
+              return (
+                <div
+                  key={s}
+                  style={{ width: `${(count / totalEvents) * 100}%`, background: EVENT_STATUS_CONFIG[s].color }}
+                  title={`${EVENT_STATUS_CONFIG[s].label}: ${count}`}
+                />
+              )
+            })}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-3">
+            {EVENT_STATUSES.map((s) => {
+              const count = statusCounts[s]
+              if (count === 0) return null
+              return (
+                <div key={s} className="flex items-center gap-1 text-[11px]">
+                  <span className="inline-block h-2 w-2 rounded-full" style={{ background: EVENT_STATUS_CONFIG[s].color }} />
+                  <span className="text-[hsl(var(--muted-foreground))]">{EVENT_STATUS_CONFIG[s].label}</span>
+                  <span className="font-semibold text-[hsl(var(--foreground))]">{count}</span>
+                </div>
               )
             })}
           </div>

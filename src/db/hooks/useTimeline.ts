@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
-import type { Timeline, Chapter, WorldEvent } from '@/types'
+import type { Timeline, Chapter, WorldEvent, EventStatus } from '@/types'
 import { generateId } from '@/lib/id'
 import {
   recomputeSnapshotSortKeysForEvent,
@@ -163,11 +163,17 @@ export function useEvent(id: string | null) {
 
 /** Creates an event. In the delta/last-known model, no snapshot inheritance is needed —
  *  state is resolved by looking back to the most recent prior snapshot at read time. */
-export async function createEvent(data: Omit<WorldEvent, 'id' | 'createdAt' | 'updatedAt' | 'travelDays'> & { travelDays?: number | null }): Promise<WorldEvent> {
+export async function createEvent(
+  data: Omit<WorldEvent, 'id' | 'createdAt' | 'updatedAt' | 'travelDays' | 'status'> & {
+    travelDays?: number | null
+    status?: EventStatus
+  }
+): Promise<WorldEvent> {
   const now = Date.now()
   const event: WorldEvent = {
     id: generateId(),
     travelDays: null,
+    status: 'draft',
     ...data,
     createdAt: now,
     updatedAt: now,

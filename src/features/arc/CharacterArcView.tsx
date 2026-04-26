@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { toPng } from 'html-to-image'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Heart, Skull, MapPin, Minus, Search, Download, X, Shield } from 'lucide-react'
+import { Heart, Skull, MapPin, Minus, Search, Download, X, Shield, FileEdit } from 'lucide-react'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
@@ -11,7 +11,8 @@ import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/EmptyState'
 import { BookOpen } from 'lucide-react'
-import type { Character } from '@/types'
+import type { Character, EventStatus } from '@/types'
+import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
 
 // ── Colour helpers ────────────────────────────────────────────────────────────
 
@@ -64,6 +65,7 @@ export default function CharacterArcView() {
   const [expandedKey, setExpandedKey]       = useState<string | null>(null) // `${charId}:${colId}`
   const [selectedTimelineId, setSelectedTimelineId] = useState<string | null>(null) // null = all
   const [showFactionOverlay, setShowFactionOverlay] = useState(false)
+  const [showStatusOverlay, setShowStatusOverlay]   = useState(false)
   const tableRef = useRef<HTMLDivElement>(null)
 
   const timelines      = useTimelines(worldId ?? null)
@@ -161,6 +163,28 @@ export default function CharacterArcView() {
       }
     }
     return null
+  }
+
+  // Status overlay helpers
+  const eventById = new Map(allEvents.map((e) => [e.id, e]))
+
+  function getEventStatusColor(eventId: string): string | null {
+    if (!showStatusOverlay) return null
+    const ev = eventById.get(eventId)
+    const s = (ev?.status ?? 'draft') as EventStatus
+    return EVENT_STATUS_CONFIG[s].color
+  }
+
+  function getChapterStatusColor(chapterId: string): string | null {
+    if (!showStatusOverlay) return null
+    const chEvents = allEvents.filter((ev) => ev.chapterId === chapterId)
+    if (chEvents.length === 0) return null
+    // Use minimum (least advanced) status — reflects the chapter's weakest link
+    const minIdx = chEvents.reduce((min, ev) => {
+      const idx = EVENT_STATUSES.indexOf((ev.status ?? 'draft') as EventStatus)
+      return idx < min ? idx : min
+    }, EVENT_STATUSES.length - 1)
+    return EVENT_STATUS_CONFIG[EVENT_STATUSES[minIdx]].color
   }
 
   // Last event position per chapter — used for faction membership check in chapter mode
@@ -518,6 +542,19 @@ export default function CharacterArcView() {
             </button>
           )}
           <button
+            onClick={() => setShowStatusOverlay((v) => !v)}
+            className={cn(
+              'flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors',
+              showStatusOverlay
+                ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
+            )}
+            title="Toggle scene status overlay"
+          >
+            <FileEdit className="h-3 w-3" />
+            Status
+          </button>
+          <button
             onClick={handleExport}
             className="flex items-center gap-1 rounded-md border border-[hsl(var(--border))] px-2 py-1 text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent)/0.4)] transition-colors"
             title="Export arc as PNG"
@@ -554,12 +591,17 @@ export default function CharacterArcView() {
 
               {viewMode === 'chapter' && sortedChapters.map((ch) => {
                 const isActive = ch.id === activeChapterId
+                const statusColor = getChapterStatusColor(ch.id)
                 return (
                   <th
                     key={ch.id}
-                    style={{ minWidth: colWidth, maxWidth: colWidth }}
+                    style={{
+                      minWidth: colWidth, maxWidth: colWidth,
+                      ...(statusColor ? { borderBottom: `3px solid ${statusColor}` } : {}),
+                    }}
                     className={cn(
-                      'cursor-pointer border-b border-r border-[hsl(var(--border))] px-2 py-2 text-center font-medium transition-colors',
+                      'cursor-pointer border-r border-[hsl(var(--border))] px-2 py-2 text-center font-medium transition-colors',
+                      !statusColor && 'border-b',
                       isActive
                         ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
                         : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
@@ -580,18 +622,23 @@ export default function CharacterArcView() {
               {viewMode === 'event' && sortedEvents.map((ev) => {
                 const ch = chapterById.get(ev.chapterId)
                 const isActive = ev.id === activeEventId
+                const statusColor = getEventStatusColor(ev.id)
                 return (
                   <th
                     key={ev.id}
-                    style={{ minWidth: colWidth, maxWidth: colWidth }}
+                    style={{
+                      minWidth: colWidth, maxWidth: colWidth,
+                      ...(statusColor ? { borderBottom: `3px solid ${statusColor}` } : {}),
+                    }}
                     className={cn(
-                      'cursor-pointer border-b border-r border-[hsl(var(--border))] px-2 py-2 text-center font-medium transition-colors',
+                      'cursor-pointer border-r border-[hsl(var(--border))] px-2 py-2 text-center font-medium transition-colors',
+                      !statusColor && 'border-b',
                       isActive
                         ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
                         : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
                     )}
                     onClick={() => setActiveEventId(isActive ? null : ev.id)}
-                    title={`Ch. ${ch?.number ?? '?'} — ${ev.title}`}
+                    title={`Ch. ${ch?.number ?? '?'} — ${ev.title} [${EVENT_STATUS_CONFIG[(ev.status ?? 'draft') as EventStatus].label}]`}
                   >
                     <div className="truncate text-[10px] opacity-60">Ch. {ch?.number ?? '?'}</div>
                     <div className="truncate font-semibold">{ev.title || <span className="italic opacity-50">untitled</span>}</div>
@@ -686,6 +733,12 @@ export default function CharacterArcView() {
           <div key={f.id} className="flex items-center gap-1">
             <span className="inline-block h-2 w-4 rounded-sm" style={{ background: f.color }} />
             {f.name}
+          </div>
+        ))}
+        {showStatusOverlay && EVENT_STATUSES.map((s) => (
+          <div key={s} className="flex items-center gap-1">
+            <span className="inline-block h-2 w-4 rounded-sm" style={{ background: EVENT_STATUS_CONFIG[s].color }} />
+            {EVENT_STATUS_CONFIG[s].label}
           </div>
         ))}
         <div className="ml-auto">Click a column to set cursor · Click a notes cell to expand</div>

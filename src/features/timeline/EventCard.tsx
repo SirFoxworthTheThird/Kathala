@@ -1,6 +1,7 @@
 import { useState, useRef, type KeyboardEvent } from 'react'
 import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package } from 'lucide-react'
-import type { WorldEvent } from '@/types'
+import type { WorldEvent, EventStatus } from '@/types'
+import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
 import { deleteEvent, updateEvent } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useItems } from '@/db/hooks/useItems'
@@ -31,6 +32,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
   const [locationMarkerId, setLocationMarkerId] = useState<string | null>(event.locationMarkerId)
   const [tags, setTags] = useState<string[]>(event.tags)
   const [tagInput, setTagInput] = useState('')
+  const [status, setStatus] = useState<EventStatus>(event.status ?? 'draft')
   const tagInputRef = useRef<HTMLInputElement>(null)
 
   const characters = useCharacters(event.worldId)
@@ -62,8 +64,14 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
     setInvolvedItemIds(event.involvedItemIds)
     setLocationMarkerId(event.locationMarkerId)
     setTags(event.tags)
+    setStatus(event.status ?? 'draft')
     setTagInput('')
     setEditing(false)
+  }
+
+  async function changeStatus(s: EventStatus) {
+    setStatus(s)
+    await updateEvent(event.id, { status: s })
   }
 
   function startEdit() {
@@ -157,6 +165,21 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
           ) : (
             <span className="text-sm font-medium text-[hsl(var(--foreground))] truncate block">{event.title}</span>
           )}
+        </button>
+
+        {/* Status badge — always visible, click to cycle */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            const idx = EVENT_STATUSES.indexOf(status)
+            changeStatus(EVENT_STATUSES[(idx + 1) % EVENT_STATUSES.length])
+          }}
+          className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium text-white transition-opacity hover:opacity-80"
+          style={{ background: EVENT_STATUS_CONFIG[status].color }}
+          title={`Status: ${EVENT_STATUS_CONFIG[status].label} — click to advance`}
+          aria-label={`Event status: ${EVENT_STATUS_CONFIG[status].label}`}
+        >
+          {EVENT_STATUS_CONFIG[status].label}
         </button>
 
         {editing ? (
@@ -370,6 +393,28 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
               )}
             </div>
           )}
+
+          {/* Status picker */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide">Status</span>
+            <div className="flex gap-1">
+              {EVENT_STATUSES.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => changeStatus(s)}
+                  className="flex-1 rounded py-1 text-[10px] font-medium transition-opacity hover:opacity-90"
+                  style={
+                    status === s
+                      ? { background: EVENT_STATUS_CONFIG[s].color, color: '#fff' }
+                      : { background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }
+                  }
+                  aria-pressed={status === s}
+                >
+                  {EVENT_STATUS_CONFIG[s].label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* Edit / save */}
           {editing ? (
