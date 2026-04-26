@@ -277,14 +277,14 @@ Full audit findings in `docs/features/ux-audit.md`.
 - [x] **Portrait upload label accessible name** — added `aria-label="Upload portrait image"` to the upload label.
 - [x] **Timeline multi-timeline selector** — added `role="tablist"` / `role="tab"` / `aria-selected` / `role="tabpanel"` to the multi-timeline tab structure.
 - [x] **Search result cap per group** — capped at 5 results per group with "Show all N →" affordance and per-group expand state.
-- [ ] **Search location marker focus** — selecting a location marker result navigates to Maps but does not focus the marker; implement `setPendingFocusMarkerId` analogous to existing route/region focus.
+- [x] **Search location marker focus** — added `pendingFocusMarkerId` to store; SearchPalette sets it on location results; MapExplorerView consumes it on mount to pan and select the marker.
 
 ### Medium
 
-- [ ] **Dashboard skeleton during load** — `return null` while `wizardReady` is false causes a blank flash; replace with a lightweight skeleton.
+- [x] **Dashboard skeleton during load** — replaced `return null` with an animated pulse skeleton (world name + 6 tile placeholders).
 - [x] **Writer's Brief: Escape closes panel** — added Escape key handler + `role="dialog"` + `aria-modal` + `aria-label` to the panel.
-- [ ] **Arc View: empty cell legend** — blank cells are ambiguous (no snapshot vs. not introduced); add a legend or tooltip explaining the distinction.
-- [ ] **Arc View: sticky character name column** — horizontal scroll on dense grid has no affordance; pin the row header with `position: sticky`.
+- [x] **Arc View: empty cell legend** — updated legend entry from "No snapshot" to "No state recorded" with a tooltip explaining the distinction.
+- [x] **Arc View: sticky character name column** — character name `<td>` and header `<th>` already use `sticky left-0`; confirmed working.
 - [x] **Lore color swatches accessible labels** — added `aria-label` and `aria-pressed` to color swatch buttons in `AddCategoryForm`.
 - [x] **World Selector: import hint timing** — hint now shows statically (whenever no error), not conditionally during the loading state.
 - [x] **World Selector: import error treatment** — added `AlertCircle` icon and `role="alert"` to the error paragraph.

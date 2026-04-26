@@ -85,6 +85,9 @@ interface UISlice {
   /** Set before navigating to Maps to auto-select + focus a region on arrival. */
   pendingFocusRegionId: string | null
   setPendingFocusRegionId: (id: string | null) => void
+  /** Set before navigating to Maps to auto-pan to a location marker on arrival. */
+  pendingFocusMarkerId: string | null
+  setPendingFocusMarkerId: (id: string | null) => void
 }
 
 type AppStore = WorldSlice & EventSlice & MapSlice & UISlice & PlaybackSlice & SelectionSlice
@@ -194,6 +197,8 @@ export const useAppStore = create<AppStore>()(
       setPendingFocusRouteId: (id) => set({ pendingFocusRouteId: id }),
       pendingFocusRegionId: null,
       setPendingFocusRegionId: (id) => set({ pendingFocusRegionId: id }),
+      pendingFocusMarkerId: null,
+      setPendingFocusMarkerId: (id) => set({ pendingFocusMarkerId: id }),
     }),
     {
       name: 'plotweave-ui',

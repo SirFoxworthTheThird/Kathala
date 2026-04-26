@@ -49,7 +49,7 @@ function highlight(text: string, query: string) {
 export function SearchPalette() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
-  const { searchOpen, setSearchOpen, setActiveEventId, setPendingFocusRouteId, setPendingFocusRegionId } = useAppStore()
+  const { searchOpen, setSearchOpen, setActiveEventId, setPendingFocusRouteId, setPendingFocusRegionId, setPendingFocusMarkerId } = useAppStore()
   const [query, setQuery] = useState('')
   const [activeIdx, setActiveIdx] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -167,6 +167,7 @@ export function SearchPalette() {
     if (result.type === 'event') setActiveEventId(result.id)
     if (result.type === 'route') setPendingFocusRouteId(result.id)
     if (result.type === 'region') setPendingFocusRegionId(result.id)
+    if (result.type === 'location') setPendingFocusMarkerId(result.id)
     navigate(result.path)
     close()
   }

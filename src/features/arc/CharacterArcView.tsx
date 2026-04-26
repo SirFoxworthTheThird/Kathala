@@ -528,8 +528,8 @@ export default function CharacterArcView() {
         </div>
       </div>
 
-      {/* Scrollable table */}
-      <div ref={tableRef} className="flex-1 overflow-auto">
+      {/* Scrollable table — sticky name column; horizontal scroll when content overflows */}
+      <div ref={tableRef} className="flex-1 overflow-auto relative">
         <table className="border-collapse text-xs" style={{ tableLayout: 'fixed' }}>
           <thead className="sticky top-0 z-10 bg-[hsl(var(--card))]">
             {/* Timeline header row — only rendered when multiple timelines exist */}
@@ -679,7 +679,9 @@ export default function CharacterArcView() {
       <div className="flex items-center gap-4 border-t border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-1.5 text-[10px] text-[hsl(var(--muted-foreground))]">
         <div className="flex items-center gap-1"><Heart className="h-2.5 w-2.5 text-green-400" /> Alive</div>
         <div className="flex items-center gap-1"><Skull className="h-2.5 w-2.5 text-red-400" /> Dead</div>
-        <div className="flex items-center gap-1"><Minus className="h-2.5 w-2.5 text-[hsl(var(--border))]" /> No snapshot</div>
+        <div className="flex items-center gap-1" title="No state recorded — character not yet introduced or state not set for this chapter/event">
+          <Minus className="h-2.5 w-2.5 text-[hsl(var(--border))]" /> No state recorded
+        </div>
         {showFactionOverlay && allFactions.map((f) => (
           <div key={f.id} className="flex items-center gap-1">
             <span className="inline-block h-2 w-4 rounded-sm" style={{ background: f.color }} />

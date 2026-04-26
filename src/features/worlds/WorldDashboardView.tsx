@@ -219,8 +219,19 @@ export default function WorldDashboardView() {
     },
   ]
 
-  // Show nothing while loading (IndexedDB resolves in < 1 frame locally)
-  if (!wizardReady) return null
+  if (!wizardReady) return (
+    <div className="p-6 space-y-8 max-w-5xl">
+      <div className="animate-pulse space-y-3">
+        <div className="h-7 w-48 rounded bg-[hsl(var(--muted))]" />
+        <div className="h-4 w-72 rounded bg-[hsl(var(--muted))]" />
+      </div>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="animate-pulse h-24 rounded-lg bg-[hsl(var(--muted))]" />
+        ))}
+      </div>
+    </div>
+  )
 
   // Wizard replaces the dashboard while active
   if (wizardLatch && worldId) {

@@ -49,6 +49,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     setActiveMapLayerId, setIsAnimating, isPlayingStory, playbackSpeed,
     pendingFocusRouteId, setPendingFocusRouteId,
     pendingFocusRegionId, setPendingFocusRegionId,
+    pendingFocusMarkerId, setPendingFocusMarkerId,
   } = useAppStore()
 
   // ── Local UI state ────────────────────────────────────────────────────────
@@ -153,6 +154,14 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       setPendingFocusRegionId(null)
     }
   }, [pendingFocusRegionId, mapRegions]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (pendingFocusMarkerId && allMarkers.length > 0) {
+      const marker = allMarkers.find((m) => m.id === pendingFocusMarkerId)
+      if (marker) focusOnLocation(marker)
+      setPendingFocusMarkerId(null)
+    }
+  }, [pendingFocusMarkerId, allMarkers]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Focus helpers ─────────────────────────────────────────────────────────
   function focusOnLocation(marker: LocationMarker) {
