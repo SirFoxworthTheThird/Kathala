@@ -11,10 +11,11 @@ import { WritersBriefPanel } from '@/features/brief/WritersBriefPanel'
 import { ChapterDiffModal } from '@/features/diff/ChapterDiffModal'
 import { ContinuityChecker } from '@/features/continuity/ContinuityChecker'
 import { HelpPanel } from '@/features/help/HelpPanel'
+import { db } from '@/db/database'
 
 export function AppShell() {
   const { worldId } = useParams<{ worldId: string }>()
-  const { setActiveWorldId, setSearchOpen, setActiveWorldTheme } = useAppStore()
+  const { setActiveWorldId, setSearchOpen, setActiveWorldTheme, activeEventId, setActiveEventId } = useAppStore()
   const world = useWorld(worldId ?? null)
   const isDashboard = !!useMatch('/worlds/:worldId')
   const isArc = !!useMatch('/worlds/:worldId/arc')
@@ -27,6 +28,17 @@ export function AppShell() {
   useEffect(() => {
     if (worldId) setActiveWorldId(worldId)
   }, [worldId, setActiveWorldId])
+
+  // Guard against a stale activeEventId persisted in localStorage that points to a
+  // deleted event (e.g. after folder sync or world replace while the app was closed).
+  useEffect(() => {
+    if (!activeEventId) return
+    db.events.get(activeEventId).then((ev) => {
+      if (!ev) setActiveEventId(null)
+    })
+  // Only validate on mount and on world change — not every time activeEventId changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [worldId])
 
   // Apply per-world theme override via store — ThemeProvider owns the DOM
   useEffect(() => {

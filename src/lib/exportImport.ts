@@ -5,9 +5,11 @@ import type {
   Relationship, RelationshipSnapshot, Timeline, Chapter, WorldEvent, TravelMode,
   TimelineRelationship, CrossTimelineArtifact, MapRoute, MapRegion, MapRegionSnapshot,
   MapAnnotation, LoreCategory, LorePage, Faction, FactionMembership, FactionRelationship,
+  ContinuitySuppression,
 } from '@/types'
+import { generateId } from '@/lib/id'
 
-const EXPORT_VERSION = 6
+const EXPORT_VERSION = 7
 
 interface BlobExport {
   id: string
@@ -52,7 +54,9 @@ export interface WorldExportFile {
   factions: Faction[]
   factionMemberships: FactionMembership[]
   factionRelationships: FactionRelationship[]
+  continuitySuppressions?: ContinuitySuppression[]
   relationshipPositions?: Record<string, { x: number; y: number }>
+  /** @deprecated v6 and earlier stored only IDs via localStorage; superseded by continuitySuppressions */
   suppressedIssueIds?: string[]
 }
 
@@ -118,6 +122,7 @@ interface CollectedWorldData {
   factions: Faction[]
   factionMemberships: FactionMembership[]
   factionRelationships: FactionRelationship[]
+  continuitySuppressions: ContinuitySuppression[]
 }
 
 async function collectWorldData(worldId: string): Promise<CollectedWorldData> {
@@ -150,6 +155,7 @@ async function collectWorldData(worldId: string): Promise<CollectedWorldData> {
     factions,
     factionMemberships,
     factionRelationships,
+    continuitySuppressions,
   ] = await Promise.all([
     db.worlds.get(worldId),
     db.mapLayers.where('worldId').equals(worldId).toArray(),
@@ -179,6 +185,7 @@ async function collectWorldData(worldId: string): Promise<CollectedWorldData> {
     db.factions.where('worldId').equals(worldId).toArray(),
     db.factionMemberships.where('worldId').equals(worldId).toArray(),
     db.factionRelationships.where('worldId').equals(worldId).toArray(),
+    db.continuitySuppressions.where('worldId').equals(worldId).toArray(),
   ])
 
   if (!world) throw new Error('World not found')
@@ -212,12 +219,12 @@ async function collectWorldData(worldId: string): Promise<CollectedWorldData> {
     factions,
     factionMemberships,
     factionRelationships,
+    continuitySuppressions,
   }
 }
 
 function readLocalStorageExtras(worldId: string): {
   relationshipPositions?: Record<string, { x: number; y: number }>
-  suppressedIssueIds?: string[]
 } {
   let relationshipPositions: Record<string, { x: number; y: number }> | undefined
   try {
@@ -225,16 +232,7 @@ function readLocalStorageExtras(worldId: string): {
     if (raw) relationshipPositions = JSON.parse(raw)
   } catch { /* ignore */ }
 
-  let suppressedIssueIds: string[] | undefined
-  try {
-    const raw = localStorage.getItem('plotweave-ui')
-    if (raw) {
-      const ui = JSON.parse(raw) as { state?: { suppressedIssueIds?: Record<string, string[]> } }
-      suppressedIssueIds = ui.state?.suppressedIssueIds?.[worldId] ?? []
-    }
-  } catch { /* ignore */ }
-
-  return { relationshipPositions, suppressedIssueIds }
+  return { relationshipPositions }
 }
 
 // ── Streaming export ──────────────────────────────────────────────────────────
@@ -359,6 +357,7 @@ export async function exportWorld(
     factions: d.factions,
     factionMemberships: d.factionMemberships,
     factionRelationships: d.factionRelationships,
+    continuitySuppressions: d.continuitySuppressions,
     ...extras,
   }
   const filename = `${d.world.name.replace(/[^a-z0-9]/gi, '_')}.pwk`
@@ -426,6 +425,7 @@ export async function exportWorldSplit(
     factions: d.factions,
     factionMemberships: d.factionMemberships,
     factionRelationships: d.factionRelationships,
+    continuitySuppressions: d.continuitySuppressions,
     ...extras,
   }
   triggerDownload(JSON.stringify(dataFile), `${safeName}.pwk`)
@@ -490,6 +490,7 @@ export async function serializeWorldForSync(worldId: string): Promise<string> {
     factions: d.factions,
     factionMemberships: d.factionMemberships,
     factionRelationships: d.factionRelationships,
+    continuitySuppressions: d.continuitySuppressions,
     ...extras,
   }
   return JSON.stringify(exportData)
@@ -761,7 +762,7 @@ function normalizeImport(data: WorldExportFile): void {
       const ev = eventById.get(eventId)
       if (!ev) return 0
       const chapNum = chapterNumberById.get(ev.chapterId) ?? 0
-      return chapNum * 10_000 + ev.sortOrder
+      return chapNum + ev.sortOrder / 1_000_000
     }
 
     const snapshotArrays: Rec[][] = [
@@ -790,6 +791,22 @@ export async function importWorldFromJson(json: string): Promise<string> {
 }
 
 async function importWorldData(data: WorldExportFile): Promise<string> {
+  // Normalise continuitySuppressions: v7+ files carry the DB records directly;
+  // v6 and earlier stored only issueIds via localStorage (notes were lost on export).
+  // Merge both sources so that upgrading users don't lose their suppressions.
+  const suppressionsToImport: ContinuitySuppression[] = []
+  if (Array.isArray(data.continuitySuppressions)) {
+    suppressionsToImport.push(...data.continuitySuppressions)
+  }
+  if (Array.isArray(data.suppressedIssueIds)) {
+    const existingIds = new Set(suppressionsToImport.map((s) => s.issueId))
+    for (const issueId of data.suppressedIssueIds) {
+      if (!existingIds.has(issueId)) {
+        suppressionsToImport.push({ id: generateId(), worldId: data.world.id, issueId, note: '' })
+      }
+    }
+  }
+
   await db.transaction('rw', [
     db.worlds, db.mapLayers, db.locationMarkers, db.characters,
     db.items, db.characterSnapshots, db.characterMovements, db.itemPlacements,
@@ -799,6 +816,7 @@ async function importWorldData(data: WorldExportFile): Promise<string> {
     db.timelineRelationships, db.crossTimelineArtifacts,
     db.mapRoutes, db.mapRegions, db.mapRegionSnapshots, db.mapAnnotations,
     db.loreCategories, db.lorePages, db.factions, db.factionMemberships, db.factionRelationships,
+    db.continuitySuppressions,
   ], async () => {
     await db.worlds.put(data.world)
     await db.mapLayers.bulkPut(data.mapLayers)
@@ -827,6 +845,9 @@ async function importWorldData(data: WorldExportFile): Promise<string> {
     await db.factions.bulkPut(data.factions)
     await db.factionMemberships.bulkPut(data.factionMemberships)
     await db.factionRelationships.bulkPut(data.factionRelationships)
+    if (suppressionsToImport.length > 0) {
+      await db.continuitySuppressions.bulkPut(suppressionsToImport)
+    }
 
     for (const b of data.blobs) {
       await db.blobs.put({
@@ -841,18 +862,6 @@ async function importWorldData(data: WorldExportFile): Promise<string> {
 
   if (data.relationshipPositions && typeof data.relationshipPositions === 'object') {
     localStorage.setItem(`wb-rel-pos-${data.world.id}`, JSON.stringify(data.relationshipPositions))
-  }
-
-  if (Array.isArray(data.suppressedIssueIds) && data.suppressedIssueIds.length > 0) {
-    try {
-      const raw = localStorage.getItem('plotweave-ui')
-      const ui = raw ? (JSON.parse(raw) as { state?: Record<string, unknown> }) : { state: {} }
-      if (!ui.state) ui.state = {}
-      const existing = (ui.state.suppressedIssueIds ?? {}) as Record<string, string[]>
-      existing[data.world.id] = data.suppressedIssueIds
-      ui.state.suppressedIssueIds = existing
-      localStorage.setItem('plotweave-ui', JSON.stringify(ui))
-    } catch { /* ignore */ }
   }
 
   return data.world.id

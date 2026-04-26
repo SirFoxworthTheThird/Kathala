@@ -1,6 +1,6 @@
 import { db } from '@/db/database'
 
-/** Globally comparable event order: chapter.number × 10_000 + event.sortOrder. */
+/** Globally comparable event order: chapter.number + event.sortOrder / 1_000_000. */
 export type SortKey = number
 
 /**
@@ -11,8 +11,8 @@ export async function computeSortKey(eventId: string): Promise<SortKey> {
   const event = await db.events.get(eventId)
   if (!event) return 0
   const chapter = await db.chapters.get(event.chapterId)
-  if (!chapter) return event.sortOrder
-  return chapter.number * 10_000 + event.sortOrder
+  if (!chapter) return event.sortOrder / 1_000_000
+  return chapter.number + event.sortOrder / 1_000_000
 }
 
 /**
@@ -28,12 +28,12 @@ export function computeSortKeySync(
   if (!ev) return -1
   const chapNum = chapterNumberById.get(ev.chapterId)
   if (chapNum === undefined) return -1
-  return chapNum * 10_000 + ev.sortOrder
+  return chapNum + ev.sortOrder / 1_000_000
 }
 
 /**
- * Recompute and write sortKey on every snapshot record attached to a given eventId.
- * Call this after updating an event's sortOrder.
+ * Recompute and write sortKey on every snapshot/placement/movement record attached
+ * to a given eventId. Call this after updating an event's sortOrder.
  */
 export async function recomputeSnapshotSortKeysForEvent(eventId: string): Promise<void> {
   const sortKey = await computeSortKey(eventId)
@@ -42,6 +42,9 @@ export async function recomputeSnapshotSortKeysForEvent(eventId: string): Promis
     db.locationSnapshots.where('eventId').equals(eventId).modify({ sortKey }),
     db.itemSnapshots.where('eventId').equals(eventId).modify({ sortKey }),
     db.relationshipSnapshots.where('eventId').equals(eventId).modify({ sortKey }),
+    db.itemPlacements.where('eventId').equals(eventId).modify({ sortKey }),
+    db.characterMovements.where('eventId').equals(eventId).modify({ sortKey }),
+    db.mapRegionSnapshots.where('eventId').equals(eventId).modify({ sortKey }),
   ])
 }
 

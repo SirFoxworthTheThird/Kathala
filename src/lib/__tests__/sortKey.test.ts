@@ -105,6 +105,50 @@ function makeRelSnap(eventId: string, sortKey?: number) {
   }
 }
 
+function makeItemPlacement(eventId: string, sortKey?: number) {
+  return {
+    id: `ip-${eventId}`,
+    worldId: 'w',
+    itemId: 'item-1',
+    eventId,
+    locationMarkerId: 'loc-1',
+    sortKey,
+    notes: '',
+    createdAt: now,
+    updatedAt: now,
+  }
+}
+
+function makeCharMovement(eventId: string, sortKey?: number) {
+  return {
+    id: `cm-${eventId}`,
+    worldId: 'w',
+    characterId: 'char-1',
+    eventId,
+    sortKey,
+    fromLocationMarkerId: null,
+    toLocationMarkerId: null,
+    travelModeId: null,
+    notes: '',
+    createdAt: now,
+    updatedAt: now,
+  }
+}
+
+function makeRegionSnap(eventId: string, sortKey?: number) {
+  return {
+    id: `rgs-${eventId}`,
+    worldId: 'w',
+    regionId: 'region-1',
+    eventId,
+    sortKey,
+    status: 'active',
+    notes: '',
+    createdAt: now,
+    updatedAt: now,
+  }
+}
+
 beforeEach(async () => {
   await db.delete()
   await db.open()
@@ -122,8 +166,7 @@ describe('computeSortKey', () => {
     expect(key).toBe(0)
   })
 
-  it('returns sortOrder when the chapter cannot be found', async () => {
-    // Insert event manually with a nonexistent chapterId
+  it('returns sortOrder / 1_000_000 when the chapter cannot be found', async () => {
     await db.events.add({
       id: 'ev-orphan',
       worldId: 'w',
@@ -142,15 +185,15 @@ describe('computeSortKey', () => {
       updatedAt: now,
     })
     const key = await computeSortKey('ev-orphan')
-    expect(key).toBe(5)
+    expect(key).toBe(5 / 1_000_000)
   })
 
-  it('returns chapter.number × 10_000 + event.sortOrder', async () => {
+  it('returns chapter.number + event.sortOrder / 1_000_000', async () => {
     const { ev, ch } = await seedWorld()
-    // ch.number = 3, ev.sortOrder = 7 → 30_007
+    // ch.number = 3, ev.sortOrder = 7 → 3.000007
     const key = await computeSortKey(ev.id)
-    expect(key).toBe(ch.number * 10_000 + ev.sortOrder)
-    expect(key).toBe(30_007)
+    expect(key).toBe(ch.number + ev.sortOrder / 1_000_000)
+    expect(key).toBe(3.000007)
   })
 
   it('is sensitive to both components', async () => {
@@ -159,8 +202,8 @@ describe('computeSortKey', () => {
     const ch2 = await createChapter({ worldId: 'w', timelineId: tl.id, number: 2, title: '', synopsis: '' })
     const evA = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: ch1.id, description: '', sortOrder: 5, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [] })
     const evB = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: ch2.id, description: '', sortOrder: 5, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [] })
-    expect(await computeSortKey(evA.id)).toBe(10_005)
-    expect(await computeSortKey(evB.id)).toBe(20_005)
+    expect(await computeSortKey(evA.id)).toBe(1.000005)
+    expect(await computeSortKey(evB.id)).toBe(2.000005)
   })
 })
 
@@ -179,18 +222,18 @@ describe('computeSortKeySync', () => {
     expect(result).toBe(-1)
   })
 
-  it('returns chapter.number × 10_000 + event.sortOrder', () => {
+  it('returns chapter.number + event.sortOrder / 1_000_000', () => {
     const eventById = new Map([['ev-1', { chapterId: 'ch-1', sortOrder: 7 }]])
     const chapterNumberById = new Map([['ch-1', 3]])
     const result = computeSortKeySync('ev-1', eventById, chapterNumberById)
-    expect(result).toBe(30_007)
+    expect(result).toBe(3.000007)
   })
 
   it('handles sortOrder 0 correctly (not confused with missing)', () => {
     const eventById = new Map([['ev-1', { chapterId: 'ch-1', sortOrder: 0 }]])
     const chapterNumberById = new Map([['ch-1', 1]])
     const result = computeSortKeySync('ev-1', eventById, chapterNumberById)
-    expect(result).toBe(10_000)
+    expect(result).toBe(1)
   })
 
   it('works with multiple events from different chapters', () => {
@@ -199,8 +242,8 @@ describe('computeSortKeySync', () => {
       ['ev-b', { chapterId: 'ch-2', sortOrder: 1 }],
     ])
     const chapterNumberById = new Map([['ch-1', 1], ['ch-2', 2]])
-    expect(computeSortKeySync('ev-a', eventById, chapterNumberById)).toBe(10_002)
-    expect(computeSortKeySync('ev-b', eventById, chapterNumberById)).toBe(20_001)
+    expect(computeSortKeySync('ev-a', eventById, chapterNumberById)).toBe(1.000002)
+    expect(computeSortKeySync('ev-b', eventById, chapterNumberById)).toBe(2.000001)
     expect(computeSortKeySync('ev-c', eventById, chapterNumberById)).toBe(-1)
   })
 })
@@ -208,27 +251,35 @@ describe('computeSortKeySync', () => {
 // ── recomputeSnapshotSortKeysForEvent ─────────────────────────────────────────
 
 describe('recomputeSnapshotSortKeysForEvent', () => {
-  it('updates sortKey on all four snapshot table types', async () => {
+  it('updates sortKey on all seven snapshot/placement/movement table types', async () => {
     const { ev, ch } = await seedWorld()
-    const expectedKey = ch.number * 10_000 + ev.sortOrder // 30_007
+    const expectedKey = ch.number + ev.sortOrder / 1_000_000 // 3.000007
 
-    // Seed snapshots with an old sortKey
     await db.characterSnapshots.add(makeCharSnap(ev.id, 0))
     await db.locationSnapshots.add(makeLocSnap(ev.id, 0))
     await db.itemSnapshots.add(makeItemSnap(ev.id, 0))
     await db.relationshipSnapshots.add(makeRelSnap(ev.id, 0))
+    await db.itemPlacements.add(makeItemPlacement(ev.id, 0))
+    await db.characterMovements.add(makeCharMovement(ev.id, 0))
+    await db.mapRegionSnapshots.add(makeRegionSnap(ev.id, 0))
 
     await recomputeSnapshotSortKeysForEvent(ev.id)
 
-    const cs = await db.characterSnapshots.get(`cs-${ev.id}`)
-    const ls = await db.locationSnapshots.get(`ls-${ev.id}`)
-    const is = await db.itemSnapshots.get(`is-${ev.id}`)
-    const rs = await db.relationshipSnapshots.get(`rs-${ev.id}`)
+    const cs  = await db.characterSnapshots.get(`cs-${ev.id}`)
+    const ls  = await db.locationSnapshots.get(`ls-${ev.id}`)
+    const is  = await db.itemSnapshots.get(`is-${ev.id}`)
+    const rs  = await db.relationshipSnapshots.get(`rs-${ev.id}`)
+    const ip  = await db.itemPlacements.get(`ip-${ev.id}`)
+    const cm  = await db.characterMovements.get(`cm-${ev.id}`)
+    const rgs = await db.mapRegionSnapshots.get(`rgs-${ev.id}`)
 
     expect(cs?.sortKey).toBe(expectedKey)
     expect(ls?.sortKey).toBe(expectedKey)
     expect(is?.sortKey).toBe(expectedKey)
     expect(rs?.sortKey).toBe(expectedKey)
+    expect(ip?.sortKey).toBe(expectedKey)
+    expect(cm?.sortKey).toBe(expectedKey)
+    expect(rgs?.sortKey).toBe(expectedKey)
   })
 
   it('is a no-op when there are no snapshots for the event', async () => {
@@ -242,14 +293,14 @@ describe('recomputeSnapshotSortKeysForEvent', () => {
     const evA = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: ch.id, description: '', sortOrder: 1, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [] })
     const evB = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: ch.id, description: '', sortOrder: 2, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [] })
 
-    await db.characterSnapshots.add({ ...makeCharSnap(evA.id, 0), id: `cs-a` })
-    await db.characterSnapshots.add({ ...makeCharSnap(evB.id, 0), id: `cs-b` })
+    await db.characterSnapshots.add({ ...makeCharSnap(evA.id, 0), id: 'cs-a' })
+    await db.characterSnapshots.add({ ...makeCharSnap(evB.id, 0), id: 'cs-b' })
 
     await recomputeSnapshotSortKeysForEvent(evA.id)
 
     const csA = await db.characterSnapshots.get('cs-a')
     const csB = await db.characterSnapshots.get('cs-b')
-    expect(csA?.sortKey).toBe(10_001)
+    expect(csA?.sortKey).toBe(1.000001)
     expect(csB?.sortKey).toBe(0) // untouched
   })
 })
@@ -270,8 +321,8 @@ describe('recomputeSnapshotSortKeysForChapter', () => {
 
     const csA = await db.characterSnapshots.get('cs-a')
     const csB = await db.characterSnapshots.get('cs-b')
-    expect(csA?.sortKey).toBe(20_001) // ch 2 × 10_000 + sortOrder 1
-    expect(csB?.sortKey).toBe(20_003) // ch 2 × 10_000 + sortOrder 3
+    expect(csA?.sortKey).toBe(2.000001) // ch 2 + sortOrder 1 / 1_000_000
+    expect(csB?.sortKey).toBe(2.000003) // ch 2 + sortOrder 3 / 1_000_000
   })
 
   it('is a no-op when the chapter has no events', async () => {
@@ -294,7 +345,7 @@ describe('recomputeSnapshotSortKeysForChapter', () => {
 
     const csA = await db.characterSnapshots.get('cs-a')
     const csB = await db.characterSnapshots.get('cs-b')
-    expect(csA?.sortKey).toBe(10_001)
+    expect(csA?.sortKey).toBe(1.000001)
     expect(csB?.sortKey).toBe(0) // chB not touched
   })
 })

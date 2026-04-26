@@ -17,6 +17,7 @@ import { useWorldMovements } from '@/db/hooks/useMovements'
 import { useFactions, useFactionMemberships, useFactionRelationships } from '@/db/hooks/useFactions'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { useContinuitySuppressions, toggleContinuitySuppression, setContinuitySuppressionNote } from '@/db/hooks/useContinuitySuppressions'
 import { cn } from '@/lib/utils'
 import { pixelDist } from '@/lib/mapScale'
 import type { CharacterSnapshot, ItemPlacement, MapRoute, MapRegion, RouteType } from '@/types'
@@ -252,9 +253,8 @@ function CategorySection({ title, icon: Icon, issues, focusedIdx, baseIdx, suppr
 export function ContinuityChecker() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
-  const { checkerOpen, setCheckerOpen, setActiveEventId, suppressedIssueIds: suppressedByWorld, suppressedNotes: suppressedNotesByWorld, toggleSuppressIssue, setSuppressNote } = useAppStore()
-  const suppressedIssueIds = suppressedByWorld[worldId ?? ''] ?? []
-  const suppressedNotes    = suppressedNotesByWorld[worldId ?? ''] ?? {}
+  const { checkerOpen, setCheckerOpen, setActiveEventId } = useAppStore()
+  const { suppressedIds, suppressedNotes } = useContinuitySuppressions(worldId ?? null)
   const [showSuppressed, setShowSuppressed] = useState(false)
   const [focusedIdx, setFocusedIdx] = useState(-1)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -1126,7 +1126,7 @@ export function ContinuityChecker() {
     }
   }, [checkerOpen])
 
-  const suppressedSet = useMemo(() => new Set(suppressedIssueIds), [suppressedIssueIds])
+  const suppressedSet = suppressedIds
 
   // Flat ordered list of navigable (non-suppressed) issues for keyboard nav
   const navigableIssues = useMemo(
@@ -1161,7 +1161,7 @@ export function ContinuityChecker() {
   const errors   = issues.filter((i) => i.severity === 'error')
   const warnings = issues.filter((i) => i.severity === 'warning')
   const activeCount = issues.filter((i) => !suppressedSet.has(i.id)).length
-  const suppressedCount = suppressedIssueIds.length
+  const suppressedCount = suppressedIds.size
 
   // Per-category visible issues (respects showSuppressed)
   const charIssues    = issues.filter((i) => i.category === 'character')
@@ -1243,23 +1243,23 @@ export function ContinuityChecker() {
               <CategorySection title="Characters" icon={Users} issues={charIssues}
                 focusedIdx={categoryFocusedIdx(charIssues)} baseIdx={0}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleSuppressIssue(worldId ?? '', i.id); if (note) setSuppressNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Items" icon={Package} issues={itemIssues}
                 focusedIdx={categoryFocusedIdx(itemIssues)} baseIdx={visibleChar.length}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleSuppressIssue(worldId ?? '', i.id); if (note) setSuppressNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Relationships" icon={Network} issues={relIssues}
                 focusedIdx={categoryFocusedIdx(relIssues)} baseIdx={visibleChar.length + visibleItem.length}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleSuppressIssue(worldId ?? '', i.id); if (note) setSuppressNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Factions" icon={Shield} issues={factionIssues}
                 focusedIdx={categoryFocusedIdx(factionIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleSuppressIssue(worldId ?? '', i.id); if (note) setSuppressNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="POV" icon={Eye} issues={povIssues}
                 focusedIdx={categoryFocusedIdx(povIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length + visibleFaction.length}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleSuppressIssue(worldId ?? '', i.id); if (note) setSuppressNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
             </>
           )}
         </div>
