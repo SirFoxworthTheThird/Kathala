@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom'
-import { MapPin, Package } from 'lucide-react'
+import { MapPin, Package, Skull } from 'lucide-react'
 import type { Character } from '@/types'
 import { PortraitImage } from '@/components/PortraitImage'
 import { useResolvedCharacterSnapshot } from '@/db/hooks/useSnapshots'
@@ -44,9 +44,12 @@ export function CharacterCard({ character }: CharacterCardProps) {
       />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-[hsl(var(--foreground))] truncate">{character.name}</span>
+          <span className={cn('font-medium truncate', snapshot && !snapshot.isAlive ? 'text-[hsl(var(--muted-foreground))] line-through' : 'text-[hsl(var(--foreground))]')}>{character.name}</span>
           {snapshot && !snapshot.isAlive && (
-            <span className="text-xs text-red-400">deceased</span>
+            <span className="flex items-center gap-0.5 text-xs text-red-400">
+              <Skull className="h-3 w-3" aria-hidden="true" />
+              deceased
+            </span>
           )}
         </div>
         {snapshot ? (

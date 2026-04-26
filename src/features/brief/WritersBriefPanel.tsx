@@ -1,6 +1,8 @@
 import { X, BookOpen, Users, Network, Package, Scroll, MapPin, Heart, Skull, ChevronRight, BookMarked, Shield } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
 import { useAppStore } from '@/store'
+import { useFocusTrap } from '@/lib/useFocusTrap'
 import { useChapter, useEvent, useEvents } from '@/db/hooks/useTimeline'
 import { useBestSnapshots } from '@/db/hooks/useSnapshots'
 import { useCharacters } from '@/db/hooks/useCharacters'
@@ -38,6 +40,18 @@ export function WritersBriefPanel() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
   const { briefOpen, setBriefOpen, activeEventId } = useAppStore()
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  useFocusTrap(panelRef, briefOpen)
+
+  useEffect(() => {
+    if (!briefOpen) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setBriefOpen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [briefOpen, setBriefOpen])
 
   const activeEvent = useEvent(activeEventId)
   const chapter    = useChapter(activeEvent?.chapterId ?? null)
@@ -120,16 +134,23 @@ export function WritersBriefPanel() {
       />
 
       {/* Panel */}
-      <div className="fixed right-0 top-0 z-[3001] flex h-screen w-80 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-2xl">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Writer's Brief"
+        className="fixed right-0 top-0 z-[3001] flex h-screen w-80 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-2xl"
+      >
         {/* Header */}
         <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] px-4 py-3">
           <BookOpen className="h-4 w-4 text-[hsl(var(--accent-foreground))]" />
           <span className="text-sm font-semibold">Writer's Brief</span>
           <button
+            aria-label="Close Writer's Brief"
             className="ml-auto text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
             onClick={() => setBriefOpen(false)}
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
 

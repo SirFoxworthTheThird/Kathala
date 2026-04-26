@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
+import { useFocusTrap } from '@/lib/useFocusTrap'
 import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, Shield, ChevronRight, EyeOff, Eye, Check } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store'
@@ -155,18 +156,20 @@ function IssueRow({
         </div>
         <button
           onClick={handleSuppressClick}
-          className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+          aria-label={suppressed ? 'Un-suppress this issue' : 'Suppress this issue'}
           title={suppressed ? 'Un-suppress' : 'Suppress'}
+          className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
         >
-          {suppressed ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+          {suppressed ? <Eye className="h-3.5 w-3.5" aria-hidden="true" /> : <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />}
         </button>
         {issue.navigatePath && !suppressed && (
           <button
             onClick={() => onNavigate(issue)}
-            className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+            aria-label="Go to chapter"
             title="Go to chapter"
+            className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
           >
-            <ChevronRight className="h-3.5 w-3.5" />
+            <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
         )}
       </div>
@@ -254,6 +257,8 @@ export function ContinuityChecker() {
   const [showSuppressed, setShowSuppressed] = useState(false)
   const [focusedIdx, setFocusedIdx] = useState(-1)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  useFocusTrap(containerRef, checkerOpen)
 
   const chapters    = useWorldChapters(worldId ?? null)
   const allEvents   = useWorldEvents(worldId ?? null)
@@ -870,6 +875,7 @@ export function ContinuityChecker() {
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Escape') { setCheckerOpen(false); return }
     if (navigableIssues.length === 0) return
     if (e.key === 'ArrowDown') {
       e.preventDefault()
@@ -918,6 +924,9 @@ export function ContinuityChecker() {
 
       <div
         ref={containerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Continuity Checker"
         tabIndex={0}
         className="relative z-10 flex w-full max-w-xl flex-col rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-2xl outline-none"
         style={{ maxHeight: '80vh' }}
@@ -942,10 +951,11 @@ export function ContinuityChecker() {
             </div>
           )}
           <button
+            aria-label="Close Continuity Checker"
             className="ml-auto text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
             onClick={() => setCheckerOpen(false)}
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
 

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import faviconUrl from '/favicon.png'
-import { Plus, Scroll, Upload, Sparkles } from 'lucide-react'
+import { Plus, Scroll, Upload, Sparkles, AlertCircle } from 'lucide-react'
 import { useWorlds } from '@/db/hooks/useWorlds'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/EmptyState'
@@ -105,7 +105,7 @@ export default function WorldSelectorView() {
               onClick={() => setPromptOpen(true)}
             >
               <Sparkles className="h-4 w-4" />
-              Generate from AI
+              Generate World from AI
             </Button>
             <Button
               variant="outline"
@@ -118,6 +118,7 @@ export default function WorldSelectorView() {
             <input
               ref={importRef}
               type="file"
+              aria-label="Import world file"
               accept=".pwk,.pwb,application/json"
               multiple
               className="hidden"
@@ -130,9 +131,12 @@ export default function WorldSelectorView() {
           </div>
         </div>
         {importError && (
-          <p className="mt-2 text-xs text-red-400">{importError}</p>
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-red-400" role="alert">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            {importError}
+          </p>
         )}
-        {importing && !importError && (
+        {!importError && (
           <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">
             Select a <code className="font-mono">.pwk</code> file to import.
             If you exported with split files, select both the <code className="font-mono">.pwk</code> and the <code className="font-mono">.pwb</code> images file together.

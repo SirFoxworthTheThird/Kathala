@@ -250,13 +250,48 @@ Findings from the end-to-end review. Bugs first, then copy/polish.
 
 Make the app intuitive from the first click without removing any functionality. Four independent pillars — implement in order:
 
-- [ ] **Pillar 3 — Smart empty states** — each section's empty state answers: what is this for, when would I need it, how do I start. Update copy and action buttons in Maps, Items, Relations, Arc, Lore, Factions. Highest ROI, lowest effort.
+- [x] **Pillar 3 — Smart empty states** — each section's empty state answers: what is this for, when would I need it, how do I start. Update copy and action buttons in Maps, Items, Relations, Arc, Lore, Factions. Highest ROI, lowest effort.
 
-- [ ] **Pillar 4 — Dashboard suggestion cards** — replace the static dashboard with a contextual next-step engine. Show suggestion cards based on world state (no characters → "Add your first character"; characters but no relationships → "Define how they relate"; etc.). Dismissible cards for optional features (Lore, Factions). Add `DashboardSuggestion.tsx` component; persist dismissed card IDs in localStorage.
+- [x] **Pillar 4 — Dashboard suggestion cards** — replace the static dashboard with a contextual next-step engine. Show suggestion cards based on world state (no characters → "Add your first character"; characters but no relationships → "Define how they relate"; etc.). Dismissible cards for optional features (Lore, Factions). Add `DashboardSuggestion.tsx` component; persist dismissed card IDs in localStorage.
 
-- [ ] **Pillar 2 — Empty-world onboarding wizard** — when a world has zero events, replace the Dashboard with a focused 4-step "Start your story" flow: create timeline → add character → place them at first event → done. Skippable at any step. New `src/features/onboarding/` directory with step components; trigger condition in `WorldDashboard.tsx`.
+- [x] **Pillar 2 — Empty-world onboarding wizard** — when a world has zero events, replace the Dashboard with a focused 4-step "Start your story" flow: create timeline → add character → place them at first event → done. Skippable at any step. New `src/features/onboarding/` directory with step components; trigger condition in `WorldDashboard.tsx`.
 
-- [ ] **Pillar 1 — Tiered navigation** — split the 10 TopBar nav items into Core (Dashboard, Timeline, Characters, Maps) and Extended (Items, Lore, Factions, Relations, Arc, Settings) with a visual separator. Extended items remain always accessible; visual grouping reduces initial cognitive load.
+- [x] **Pillar 1 — Tiered navigation** — split the 10 TopBar nav items into Core (Dashboard, Timeline, Characters, Maps) and Extended (Items, Lore, Factions, Relations, Arc, Settings) with a visual separator. Extended items remain always accessible; visual grouping reduces initial cognitive load.
+
+---
+
+## UX Audit Fixes (April 2026)
+
+Full audit findings in `docs/features/ux-audit.md`.
+
+### Critical
+
+- [x] **Focus trap in modal overlays** — `useFocusTrap` hook created (`src/lib/useFocusTrap.ts`) and applied to Search Palette, Writer's Brief, and Continuity Checker.
+- [x] **Search Palette ARIA roles** — added `role="dialog"`, `aria-modal="true"`, `aria-label="Search"` to the palette container.
+
+### High
+
+- [x] **`aria-label` on all icon-only buttons** — added `aria-label` to all icon-only buttons in TopBar (brand, nav items, search, Writer's Brief, Continuity, Help), CharacterDetailView (back, delete), and ContinuityChecker (suppress, navigate, close).
+- [ ] **`aria-current="page"` on active nav item** — React Router v6 NavLink sets `aria-current="page"` automatically; verified it is handled by the framework.
+- [x] **Character detail back button** — replaced `navigate(-1)` with `navigate(\`/worlds/${worldId}/characters\`)`.
+- [x] **Portrait upload label accessible name** — added `aria-label="Upload portrait image"` to the upload label.
+- [x] **Timeline multi-timeline selector** — added `role="tablist"` / `role="tab"` / `aria-selected` / `role="tabpanel"` to the multi-timeline tab structure.
+- [x] **Search result cap per group** — capped at 5 results per group with "Show all N →" affordance and per-group expand state.
+- [ ] **Search location marker focus** — selecting a location marker result navigates to Maps but does not focus the marker; implement `setPendingFocusMarkerId` analogous to existing route/region focus.
+
+### Medium
+
+- [ ] **Dashboard skeleton during load** — `return null` while `wizardReady` is false causes a blank flash; replace with a lightweight skeleton.
+- [x] **Writer's Brief: Escape closes panel** — added Escape key handler + `role="dialog"` + `aria-modal` + `aria-label` to the panel.
+- [ ] **Arc View: empty cell legend** — blank cells are ambiguous (no snapshot vs. not introduced); add a legend or tooltip explaining the distinction.
+- [ ] **Arc View: sticky character name column** — horizontal scroll on dense grid has no affordance; pin the row header with `position: sticky`.
+- [x] **Lore color swatches accessible labels** — added `aria-label` and `aria-pressed` to color swatch buttons in `AddCategoryForm`.
+- [x] **World Selector: import hint timing** — hint now shows statically (whenever no error), not conditionally during the loading state.
+- [x] **World Selector: import error treatment** — added `AlertCircle` icon and `role="alert"` to the error paragraph.
+- [x] **Relationship search sublabel** — sublabel now shows `"CharA → CharB"` instead of `"positive · strong"`.
+- [x] **Dead characters distinguished in roster** — added Skull icon badge + strikethrough name on dead character cards.
+- [x] **Factions detail panel placeholder** — added "Select a faction to view its details" placeholder when factions exist but none is selected.
+- [x] **`"..."` → `"…"` placeholder copy** — standardized to `…` in CharacterRosterView, ItemRosterView, and MapSidebar search inputs.
 
 ---
 

@@ -76,6 +76,8 @@ function AddCategoryForm({ worldId, onDone }: { worldId: string; onDone: () => v
           <button
             key={c}
             onClick={() => setColor(c)}
+            aria-label={`Color: ${c}`}
+            aria-pressed={color === c}
             className="h-4 w-4 rounded-full border-2 transition-transform hover:scale-110"
             style={{
               background: c,

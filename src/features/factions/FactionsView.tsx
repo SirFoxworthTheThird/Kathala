@@ -709,14 +709,18 @@ export default function FactionsView() {
       </div>
 
       {/* Detail panel */}
-      {selectedFaction && (
+      {selectedFaction ? (
         <FactionDetailPanel
           key={selectedFaction.id}
           faction={selectedFaction}
           worldId={worldId ?? ''}
           onClose={() => setSelectedId(null)}
         />
-      )}
+      ) : factions.length > 0 ? (
+        <div className="flex w-80 shrink-0 items-center justify-center border-l border-[hsl(var(--border))]">
+          <p className="text-sm text-[hsl(var(--muted-foreground))]">Select a faction to view its details</p>
+        </div>
+      ) : null}
     </div>
   )
 }
