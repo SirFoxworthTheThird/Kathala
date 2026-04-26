@@ -37,6 +37,8 @@ export interface WorldEvent {
   travelDays: number | null
   status: EventStatus
   povCharacterId: string | null
+  /** Marks the event as a flashback/retrospective — suppresses present-state continuity checks. */
+  isFlashback: boolean
   createdAt: number
   updatedAt: number
 }

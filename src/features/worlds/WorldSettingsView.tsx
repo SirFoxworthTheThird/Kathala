@@ -283,6 +283,32 @@ export default function WorldSettingsView() {
         )}
       </section>
 
+      {/* Continuity */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Continuity</h2>
+          <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+            Number of consecutive events a character can be involved in without a snapshot update before a stale-state warning is raised.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Label htmlFor="stale-threshold" className="shrink-0">Stale snapshot threshold</Label>
+          <input
+            id="stale-threshold"
+            type="number"
+            min="2"
+            max="50"
+            className="w-20 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 py-1 text-xs text-[hsl(var(--foreground))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
+            value={world?.continuityStaleThreshold ?? 5}
+            onChange={(e) => {
+              const n = parseInt(e.target.value, 10)
+              if (worldId && !isNaN(n) && n >= 2) updateWorld(worldId, { continuityStaleThreshold: n })
+            }}
+          />
+          <span className="text-xs text-[hsl(var(--muted-foreground))]">events</span>
+        </div>
+      </section>
+
       {/* Share */}
       <section className="space-y-4">
         <div>

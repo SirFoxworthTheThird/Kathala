@@ -19,6 +19,7 @@ export async function createWorld(data: Pick<World, 'name' | 'description'>): Pr
     description: data.description,
     coverImageId: null,
     theme: null,
+    continuityStaleThreshold: 5,
     createdAt: now,
     updatedAt: now,
   }

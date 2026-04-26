@@ -4,6 +4,7 @@ import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, Sh
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store'
 import { useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
+import { useWorld } from '@/db/hooks/useWorlds'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
@@ -298,6 +299,11 @@ export function ContinuityChecker() {
   const allFactions       = useFactions(worldId ?? null)
   const allMemberships    = useFactionMemberships(worldId ?? null)
   const allFactionRels    = useFactionRelationships(worldId ?? null)
+  const world             = useWorld(worldId ?? null)
+  const allItemSnapshots  = useLiveQuery(
+    () => worldId ? db.itemSnapshots.where('worldId').equals(worldId).toArray() : [],
+    [worldId], []
+  )
 
   const issues = useMemo(() => {
     const out: Issue[] = []
@@ -345,6 +351,8 @@ export function ContinuityChecker() {
       regionsByLayer.get(region.mapLayerId)!.push(region)
     }
 
+    const staleThreshold = world?.continuityStaleThreshold ?? 5
+
     // ── Character checks ────────────────────────────────────────────────────
 
     // Group snapshots by character
@@ -352,6 +360,32 @@ export function ContinuityChecker() {
     for (const snap of snapshots) {
       if (!snapsByChar.has(snap.characterId)) snapsByChar.set(snap.characterId, [])
       snapsByChar.get(snap.characterId)!.push(snap)
+    }
+
+    // Sorted alive-history per character (for dead-in-cast / before-intro checks)
+    const snapsByCharSorted = new Map<string, Array<{ order: number; isAlive: boolean; eventId: string }>>()
+    for (const snap of snapshots) {
+      if (!snapsByCharSorted.has(snap.characterId)) snapsByCharSorted.set(snap.characterId, [])
+      snapsByCharSorted.get(snap.characterId)!.push({ order: eventOrder(snap.eventId), isAlive: snap.isAlive, eventId: snap.eventId })
+    }
+    for (const arr of snapsByCharSorted.values()) arr.sort((a, b) => a.order - b.order)
+
+    function isDeadAtOrder(charId: string, order: number): boolean {
+      const hist = snapsByCharSorted.get(charId)
+      if (!hist) return false
+      let lastAlive: boolean | null = null
+      for (const entry of hist) {
+        if (entry.order > order) break
+        lastAlive = entry.isAlive
+      }
+      return lastAlive === false
+    }
+
+    // Event IDs where each character has a snapshot (for stale-snapshot check)
+    const snapEventIdsByChar = new Map<string, Set<string>>()
+    for (const snap of snapshots) {
+      if (!snapEventIdsByChar.has(snap.characterId)) snapEventIdsByChar.set(snap.characterId, new Set())
+      snapEventIdsByChar.get(snap.characterId)!.add(snap.eventId)
     }
 
     for (const [charId, charSnaps] of snapsByChar) {
@@ -398,6 +432,110 @@ export function ContinuityChecker() {
             message: `${char.name} has a snapshot for a deleted event`,
             detail: `Snapshot ID ${snap.id} — event no longer exists`,
           })
+        }
+      }
+    }
+
+    // ── Dead character in non-flashback event cast ──────────────────────────────
+    for (const ev of allEvents) {
+      if (ev.isFlashback) continue
+      const evOrder = eventOrder(ev.id)
+      const ch = chapById.get(ev.chapterId)
+      const checkedDead = new Set<string>()
+      const castIds = [
+        ...ev.involvedCharacterIds,
+        ...(ev.povCharacterId ? [ev.povCharacterId] : []),
+      ]
+      for (const charId of castIds) {
+        if (checkedDead.has(charId)) continue
+        checkedDead.add(charId)
+        if (!isDeadAtOrder(charId, evOrder)) continue
+        const char = charById.get(charId)
+        const isPov = ev.povCharacterId === charId
+        out.push({
+          id: `dead-in-event-${charId}-${ev.id}`,
+          severity: 'warning',
+          category: 'character',
+          message: `Dead character ${char?.name ?? '?'} in "${ev.title || 'untitled'}"`,
+          detail: `${char?.name ?? '?'} is dead at this point${isPov ? ' and is the POV' : ''} — Ch. ${ch?.number ?? '?'}. Mark as Flashback if intentional.`,
+          navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+          eventId: ev.id,
+        })
+      }
+    }
+
+    // ── Character referenced before first snapshot ───────────────────────────
+    // For each character, find their first event appearance and first snapshot order.
+    // If first appearance precedes first snapshot (or no snapshot at all), raise one warning.
+    const charFirstAppearance = new Map<string, { evOrder: number; ev: (typeof allEvents)[0] }>()
+    const sortedEventsAsc = [...allEvents].sort((a, b) => eventOrder(a.id) - eventOrder(b.id))
+    for (const ev of sortedEventsAsc) {
+      if (ev.isFlashback) continue
+      const castIds = [
+        ...ev.involvedCharacterIds,
+        ...(ev.povCharacterId ? [ev.povCharacterId] : []),
+      ]
+      for (const charId of castIds) {
+        if (!charFirstAppearance.has(charId)) {
+          charFirstAppearance.set(charId, { evOrder: eventOrder(ev.id), ev })
+        }
+      }
+    }
+    for (const [charId, { evOrder, ev }] of charFirstAppearance) {
+      if (!charById.has(charId)) continue
+      const charHist = snapsByCharSorted.get(charId)
+      const firstSnapOrder = charHist && charHist.length > 0 ? charHist[0].order : undefined
+      if (firstSnapOrder !== undefined && firstSnapOrder <= evOrder) continue
+      const char = charById.get(charId)
+      const ch = chapById.get(ev.chapterId)
+      out.push({
+        id: `char-before-intro-${charId}`,
+        severity: 'warning',
+        category: 'character',
+        message: `${char?.name ?? '?'} appears before any snapshot record`,
+        detail: firstSnapOrder === undefined
+          ? `First appears in "${ev.title || 'untitled'}" (Ch. ${ch?.number ?? '?'}) but has no snapshots at all`
+          : `First appears in "${ev.title || 'untitled'}" (Ch. ${ch?.number ?? '?'}) but first snapshot is later in the timeline`,
+        navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+        eventId: ev.id,
+      })
+    }
+
+    // ── Stale snapshot warning ────────────────────────────────────────────────
+    // Warn when a character is involved in staleThreshold+ consecutive events without a snapshot update.
+    const involvedEventsByChar = new Map<string, Array<(typeof allEvents)[0]>>()
+    for (const ev of sortedEventsAsc) {
+      for (const charId of ev.involvedCharacterIds) {
+        if (!involvedEventsByChar.has(charId)) involvedEventsByChar.set(charId, [])
+        involvedEventsByChar.get(charId)!.push(ev)
+      }
+    }
+    for (const [charId, charEvents] of involvedEventsByChar) {
+      const char = charById.get(charId)
+      if (!char) continue
+      const snapEventSet = snapEventIdsByChar.get(charId) ?? new Set<string>()
+      let streakStart: (typeof allEvents)[0] | null = null
+      let streakCount = 0
+      for (const ev of charEvents) {
+        if (snapEventSet.has(ev.id)) {
+          streakStart = null
+          streakCount = 0
+        } else {
+          streakCount++
+          if (!streakStart) streakStart = ev
+          if (streakCount === staleThreshold) {
+            const startCh = chapById.get(streakStart.chapterId)
+            const endCh = chapById.get(ev.chapterId)
+            out.push({
+              id: `stale-snapshot-${charId}-${streakStart.id}`,
+              severity: 'warning',
+              category: 'character',
+              message: `${char.name}'s state may be stale (${streakCount}+ events without update)`,
+              detail: `Involved from Ch. ${startCh?.number ?? '?'} to Ch. ${endCh?.number ?? '?'} with no snapshot update`,
+              navigatePath: `/worlds/${worldId}/timeline/${streakStart.chapterId}`,
+              eventId: streakStart.id,
+            })
+          }
         }
       }
     }
@@ -558,6 +696,67 @@ export function ContinuityChecker() {
             eventId: ev.id,
           })
         }
+      }
+    }
+
+    // ── Item used after destroyed ─────────────────────────────────────────────
+    // An item's condition is tracked via ItemSnapshot. If the last condition at or before
+    // a reference point is 'destroyed', flag it. A later non-destroyed snapshot acts as restoration.
+    const itemSnapHistory = new Map<string, Array<{ order: number; condition: string }>>()
+    for (const is of allItemSnapshots ?? []) {
+      if (!itemSnapHistory.has(is.itemId)) itemSnapHistory.set(is.itemId, [])
+      itemSnapHistory.get(is.itemId)!.push({ order: eventOrder(is.eventId), condition: is.condition })
+    }
+    for (const hist of itemSnapHistory.values()) hist.sort((a, b) => a.order - b.order)
+
+    function isItemDestroyedAtOrder(itemId: string, order: number): boolean {
+      const hist = itemSnapHistory.get(itemId)
+      if (!hist) return false
+      let lastCondition: string | null = null
+      for (const entry of hist) {
+        if (entry.order > order) break
+        lastCondition = entry.condition
+      }
+      return lastCondition === 'destroyed'
+    }
+
+    for (const ev of allEvents) {
+      if (!ev.involvedItemIds?.length) continue
+      const evOrder = eventOrder(ev.id)
+      const ch = chapById.get(ev.chapterId)
+      for (const itemId of ev.involvedItemIds) {
+        if (!isItemDestroyedAtOrder(itemId, evOrder)) continue
+        const item = itemById.get(itemId)
+        out.push({
+          id: `item-after-destroyed-ev-${itemId}-${ev.id}`,
+          severity: 'warning',
+          category: 'item',
+          message: `"${item?.name ?? itemId}" used after being destroyed`,
+          detail: `Referenced in "${ev.title || 'untitled'}" (Ch. ${ch?.number ?? '?'}) — condition is "destroyed". Update the item snapshot to restore it if intentional.`,
+          navigatePath: `/worlds/${worldId}/timeline/${ch?.id ?? ev.chapterId}`,
+          eventId: ev.id,
+        })
+      }
+    }
+
+    for (const snap of snapshots) {
+      if (!snap.inventoryItemIds?.length) continue
+      const snapOrder = eventOrder(snap.eventId)
+      const ev = eventById.get(snap.eventId)
+      const ch = ev ? chapById.get(ev.chapterId) : undefined
+      for (const itemId of snap.inventoryItemIds) {
+        if (!isItemDestroyedAtOrder(itemId, snapOrder)) continue
+        const item = itemById.get(itemId)
+        const char = charById.get(snap.characterId)
+        out.push({
+          id: `item-after-destroyed-inv-${itemId}-${snap.eventId}-${snap.characterId}`,
+          severity: 'warning',
+          category: 'item',
+          message: `Destroyed item "${item?.name ?? itemId}" in ${char?.name ?? '?'}'s inventory`,
+          detail: `Held in Ch. ${ch?.number ?? '?'} — condition is "destroyed". Update the item snapshot to restore it if intentional.`,
+          navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+          eventId: snap.eventId,
+        })
       }
     }
 
@@ -850,7 +1049,7 @@ export function ContinuityChecker() {
 
     // ── POV checks ──────────────────────────────────────────────────────────────
 
-    // Check 1: POV character not listed in involvedCharacterIds
+    // Check 3: POV character not listed in involvedCharacterIds
     for (const ev of allEvents) {
       if (!ev.povCharacterId) continue
       if (!ev.involvedCharacterIds.includes(ev.povCharacterId)) {
@@ -868,7 +1067,25 @@ export function ContinuityChecker() {
       }
     }
 
-    // Check 2: 3+ consecutive events with the same POV character (considers only events with POV set)
+    // Check 2: POV character dead at that event (non-flashback only)
+    for (const ev of allEvents) {
+      if (!ev.povCharacterId || ev.isFlashback) continue
+      const evOrder = eventOrder(ev.id)
+      if (!isDeadAtOrder(ev.povCharacterId, evOrder)) continue
+      const char = charById.get(ev.povCharacterId)
+      const ch = chapById.get(ev.chapterId)
+      out.push({
+        id: `dead-pov-${ev.povCharacterId}-${ev.id}`,
+        severity: 'warning',
+        category: 'pov',
+        message: `POV "${char?.name ?? '?'}" is dead at "${ev.title || 'untitled'}"`,
+        detail: `Ch. ${ch?.number ?? '?'} — mark event as Flashback if intentional`,
+        navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+        eventId: ev.id,
+      })
+    }
+
+    // Check 4: 3+ consecutive events with the same POV character (considers only events with POV set)
     const povEvents = allEvents
       .filter((ev) => !!ev.povCharacterId)
       .sort((a, b) => eventOrder(a.id) - eventOrder(b.id))
@@ -899,7 +1116,7 @@ export function ContinuityChecker() {
     }
 
     return out
-  }, [chapters, allEvents, characters, rels, items, snapshots, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId])
+  }, [chapters, allEvents, characters, rels, items, snapshots, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId, world, allItemSnapshots])
 
   // Focus modal on open so keyboard navigation works immediately
   useEffect(() => {

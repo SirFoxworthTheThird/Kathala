@@ -394,6 +394,20 @@ class PlotWeaveDB extends Dexie {
         if (!('povCharacterId' in ev)) ev.povCharacterId = null
       })
     })
+
+    // v28: flashback flag on events; backfill false
+    this.version(28).stores({}).upgrade(async (tx) => {
+      await tx.table('events').toCollection().modify((ev: Record<string, unknown>) => {
+        if (!('isFlashback' in ev)) ev.isFlashback = false
+      })
+    })
+
+    // v29: per-world stale snapshot threshold for continuity checker; backfill 5
+    this.version(29).stores({}).upgrade(async (tx) => {
+      await tx.table('worlds').toCollection().modify((w: Record<string, unknown>) => {
+        if (!('continuityStaleThreshold' in w)) w.continuityStaleThreshold = 5
+      })
+    })
   }
 }
 

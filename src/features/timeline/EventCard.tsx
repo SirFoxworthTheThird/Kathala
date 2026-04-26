@@ -1,5 +1,5 @@
 import { useState, useRef, type KeyboardEvent } from 'react'
-import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye } from 'lucide-react'
+import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye, History } from 'lucide-react'
 import type { WorldEvent, EventStatus } from '@/types'
 import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
@@ -35,6 +35,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
   const [tagInput, setTagInput] = useState('')
   const [status, setStatus] = useState<EventStatus>(event.status ?? 'draft')
   const [povCharacterId, setPovCharacterId] = useState<string | null>(event.povCharacterId ?? null)
+  const [isFlashback, setIsFlashback] = useState(event.isFlashback ?? false)
   const tagInputRef = useRef<HTMLInputElement>(null)
 
   const characters = useCharacters(event.worldId)
@@ -82,6 +83,12 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
   async function changePov(id: string | null) {
     setPovCharacterId(id)
     await updateEvent(event.id, { povCharacterId: id })
+  }
+
+  async function toggleFlashback() {
+    const next = !isFlashback
+    setIsFlashback(next)
+    await updateEvent(event.id, { isFlashback: next })
   }
 
   function startEdit() {
@@ -191,6 +198,18 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
         >
           {EVENT_STATUS_CONFIG[status].label}
         </button>
+
+        {/* Flashback badge — visible when set */}
+        {isFlashback && (
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleFlashback() }}
+            className="shrink-0 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-[hsl(var(--accent))] hover:opacity-80"
+            title="Flashback / retrospective — click to remove"
+          >
+            <History className="h-2.5 w-2.5 text-[hsl(var(--muted-foreground))]" />
+            <span className="text-[hsl(var(--muted-foreground))]">Flashback</span>
+          </button>
+        )}
 
         {/* POV badge — visible when set */}
         {povChar && (
@@ -463,6 +482,22 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
               </Select>
             </div>
           )}
+
+          {/* Flashback toggle */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleFlashback}
+              className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors ${
+                isFlashback
+                  ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                  : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
+              }`}
+              title="Mark as flashback or retrospective — suppresses present-state continuity checks for this event"
+            >
+              <History className="h-3 w-3" />
+              Flashback / Retrospective
+            </button>
+          </div>
 
           {/* Status picker */}
           <div className="flex flex-col gap-1.5">
