@@ -174,8 +174,8 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
             const idx = EVENT_STATUSES.indexOf(status)
             changeStatus(EVENT_STATUSES[(idx + 1) % EVENT_STATUSES.length])
           }}
-          className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium text-white transition-opacity hover:opacity-80"
-          style={{ background: EVENT_STATUS_CONFIG[status].color }}
+          className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium transition-opacity hover:opacity-80"
+          style={{ background: EVENT_STATUS_CONFIG[status].color, color: EVENT_STATUS_CONFIG[status].textColor }}
           title={`Status: ${EVENT_STATUS_CONFIG[status].label} — click to advance`}
           aria-label={`Event status: ${EVENT_STATUS_CONFIG[status].label}`}
         >
@@ -405,7 +405,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
                   className="flex-1 rounded py-1 text-[10px] font-medium transition-opacity hover:opacity-90"
                   style={
                     status === s
-                      ? { background: EVENT_STATUS_CONFIG[s].color, color: '#fff' }
+                      ? { background: EVENT_STATUS_CONFIG[s].color, color: EVENT_STATUS_CONFIG[s].textColor }
                       : { background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }
                   }
                   aria-pressed={status === s}

@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ChevronDown, ChevronRight, Trash2, ArrowUp, ArrowDown, MapPin, ExternalLink } from 'lucide-react'
-import type { WorldEvent } from '@/types'
+import type { WorldEvent, EventStatus } from '@/types'
+import { EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
 import { deleteEvent } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
@@ -91,6 +92,12 @@ export function EventRow({ event, isFirst, isLast, onMoveUp, onMoveDown, chapter
             {expanded
               ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))]" />
               : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))]" />}
+            <span
+              className="inline-block h-2 w-2 shrink-0 rounded-full"
+              style={{ background: EVENT_STATUS_CONFIG[(event.status ?? 'draft') as EventStatus].color }}
+              title={EVENT_STATUS_CONFIG[(event.status ?? 'draft') as EventStatus].label}
+              aria-hidden="true"
+            />
             <span className="text-xs font-medium text-[hsl(var(--foreground))] truncate">{event.title}</span>
           </button>
 

@@ -165,26 +165,30 @@ export default function CharacterArcView() {
     return null
   }
 
-  // Status overlay helpers
-  const eventById = new Map(allEvents.map((e) => [e.id, e]))
+  // Status overlay — pre-computed O(n) Maps so column-header lookups are O(1).
+  // Rebuilt only when allEvents or showStatusOverlay changes (derived on each render;
+  // React will skip re-renders when neither changes thanks to referential stability of hooks).
+  const eventStatusColorMap = new Map<string, string>()
+  const chapterMinStatusMap = new Map<string, EventStatus>()
+  if (showStatusOverlay) {
+    for (const ev of allEvents) {
+      const s = (ev.status ?? 'draft') as EventStatus
+      eventStatusColorMap.set(ev.id, EVENT_STATUS_CONFIG[s].color)
+
+      const evIdx = EVENT_STATUSES.indexOf(s)
+      const existing = chapterMinStatusMap.get(ev.chapterId)
+      const existingIdx = existing !== undefined ? EVENT_STATUSES.indexOf(existing) : EVENT_STATUSES.length
+      if (evIdx < existingIdx) chapterMinStatusMap.set(ev.chapterId, s)
+    }
+  }
 
   function getEventStatusColor(eventId: string): string | null {
-    if (!showStatusOverlay) return null
-    const ev = eventById.get(eventId)
-    const s = (ev?.status ?? 'draft') as EventStatus
-    return EVENT_STATUS_CONFIG[s].color
+    return eventStatusColorMap.get(eventId) ?? null
   }
 
   function getChapterStatusColor(chapterId: string): string | null {
-    if (!showStatusOverlay) return null
-    const chEvents = allEvents.filter((ev) => ev.chapterId === chapterId)
-    if (chEvents.length === 0) return null
-    // Use minimum (least advanced) status — reflects the chapter's weakest link
-    const minIdx = chEvents.reduce((min, ev) => {
-      const idx = EVENT_STATUSES.indexOf((ev.status ?? 'draft') as EventStatus)
-      return idx < min ? idx : min
-    }, EVENT_STATUSES.length - 1)
-    return EVENT_STATUS_CONFIG[EVENT_STATUSES[minIdx]].color
+    const s = chapterMinStatusMap.get(chapterId)
+    return s !== undefined ? EVENT_STATUS_CONFIG[s].color : null
   }
 
   // Last event position per chapter — used for faction membership check in chapter mode

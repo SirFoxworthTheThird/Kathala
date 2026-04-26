@@ -372,7 +372,11 @@ async function importChapter(data: ChapterAIResponse, replacing: boolean): Promi
       }
     }
     await db.chapters.put(data.chapter)
-    if (data.events.length) await db.events.bulkPut(data.events)
+    if (data.events.length) {
+      // Ensure status is always present — AI JSON omits it since the LLM schema predates v26
+      const normalised = data.events.map((ev) => ({ status: 'draft' as const, ...ev }))
+      await db.events.bulkPut(normalised)
+    }
     if (data.characterSnapshots.length) await db.characterSnapshots.bulkPut(data.characterSnapshots)
     if (data.relationshipSnapshots?.length) await db.relationshipSnapshots.bulkPut(data.relationshipSnapshots)
   })

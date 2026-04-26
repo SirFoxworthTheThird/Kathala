@@ -173,7 +173,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
                   className="flex-1 rounded py-1.5 text-xs font-medium transition-opacity hover:opacity-90"
                   style={
                     status === s
-                      ? { background: EVENT_STATUS_CONFIG[s].color, color: '#fff' }
+                      ? { background: EVENT_STATUS_CONFIG[s].color, color: EVENT_STATUS_CONFIG[s].textColor }
                       : { background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }
                   }
                   aria-pressed={status === s}
