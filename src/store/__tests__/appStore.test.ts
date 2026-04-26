@@ -265,4 +265,217 @@ describe('UISlice', () => {
     expect(useAppStore.getState().selectedCharacterId).toBeNull()
   })
 
+  it('sets activeWorldTheme', () => {
+    useAppStore.getState().setActiveWorldTheme('dark-forest')
+    expect(useAppStore.getState().activeWorldTheme).toBe('dark-forest')
+    useAppStore.getState().setActiveWorldTheme(null)
+    expect(useAppStore.getState().activeWorldTheme).toBeNull()
+  })
+
+  it('sets isAnimating', () => {
+    useAppStore.getState().setIsAnimating(true)
+    expect(useAppStore.getState().isAnimating).toBe(true)
+    useAppStore.getState().setIsAnimating(false)
+    expect(useAppStore.getState().isAnimating).toBe(false)
+  })
+
+  it('sets pendingFocusRouteId', () => {
+    useAppStore.getState().setPendingFocusRouteId('route-1')
+    expect(useAppStore.getState().pendingFocusRouteId).toBe('route-1')
+    useAppStore.getState().setPendingFocusRouteId(null)
+    expect(useAppStore.getState().pendingFocusRouteId).toBeNull()
+  })
+
+  it('sets pendingFocusRegionId', () => {
+    useAppStore.getState().setPendingFocusRegionId('region-1')
+    expect(useAppStore.getState().pendingFocusRegionId).toBe('region-1')
+    useAppStore.getState().setPendingFocusRegionId(null)
+    expect(useAppStore.getState().pendingFocusRegionId).toBeNull()
+  })
+
+  it('sets pendingFocusMarkerId', () => {
+    useAppStore.getState().setPendingFocusMarkerId('marker-1')
+    expect(useAppStore.getState().pendingFocusMarkerId).toBe('marker-1')
+    useAppStore.getState().setPendingFocusMarkerId(null)
+    expect(useAppStore.getState().pendingFocusMarkerId).toBeNull()
+  })
+})
+
+// ── SelectionSlice ────────────────────────────────────────────────────────────
+
+describe('SelectionSlice', () => {
+  beforeEach(() => {
+    useAppStore.setState({ selectedEventIds: new Set(), lastSelectedEventId: null } as any)
+  })
+
+  it('starts with an empty selection', () => {
+    expect(useAppStore.getState().selectedEventIds.size).toBe(0)
+    expect(useAppStore.getState().lastSelectedEventId).toBeNull()
+  })
+
+  it('toggleEventSelected adds an event to the selection', () => {
+    useAppStore.getState().toggleEventSelected('ev-1')
+    expect(useAppStore.getState().selectedEventIds.has('ev-1')).toBe(true)
+  })
+
+  it('toggleEventSelected removes an already-selected event', () => {
+    useAppStore.setState({ selectedEventIds: new Set(['ev-1']) } as any)
+    useAppStore.getState().toggleEventSelected('ev-1')
+    expect(useAppStore.getState().selectedEventIds.has('ev-1')).toBe(false)
+  })
+
+  it('toggleEventSelected preserves other selected events', () => {
+    useAppStore.setState({ selectedEventIds: new Set(['ev-1', 'ev-2']) } as any)
+    useAppStore.getState().toggleEventSelected('ev-2')
+    expect(useAppStore.getState().selectedEventIds.has('ev-1')).toBe(true)
+    expect(useAppStore.getState().selectedEventIds.has('ev-2')).toBe(false)
+  })
+
+  it('selectEventRange adds all ids to the existing selection', () => {
+    useAppStore.setState({ selectedEventIds: new Set(['ev-1']) } as any)
+    useAppStore.getState().selectEventRange(['ev-2', 'ev-3'])
+    const ids = useAppStore.getState().selectedEventIds
+    expect(ids.has('ev-1')).toBe(true)
+    expect(ids.has('ev-2')).toBe(true)
+    expect(ids.has('ev-3')).toBe(true)
+  })
+
+  it('selectEventRange with duplicate ids does not double-count', () => {
+    useAppStore.setState({ selectedEventIds: new Set(['ev-1']) } as any)
+    useAppStore.getState().selectEventRange(['ev-1', 'ev-2'])
+    expect(useAppStore.getState().selectedEventIds.size).toBe(2)
+  })
+
+  it('clearSelection empties the set and resets lastSelectedEventId', () => {
+    useAppStore.setState({ selectedEventIds: new Set(['ev-1', 'ev-2']), lastSelectedEventId: 'ev-2' } as any)
+    useAppStore.getState().clearSelection()
+    expect(useAppStore.getState().selectedEventIds.size).toBe(0)
+    expect(useAppStore.getState().lastSelectedEventId).toBeNull()
+  })
+
+  it('setLastSelectedEventId stores the id', () => {
+    useAppStore.getState().setLastSelectedEventId('ev-5')
+    expect(useAppStore.getState().lastSelectedEventId).toBe('ev-5')
+  })
+
+  it('setLastSelectedEventId can be cleared to null', () => {
+    useAppStore.setState({ lastSelectedEventId: 'ev-5' } as any)
+    useAppStore.getState().setLastSelectedEventId(null)
+    expect(useAppStore.getState().lastSelectedEventId).toBeNull()
+  })
+})
+
+// ── PlaybackSlice — frame narrative fields ────────────────────────────────────
+
+describe('PlaybackSlice — frame narrative', () => {
+  it('setPlaybackTimelineId stores the id', () => {
+    useAppStore.getState().setPlaybackTimelineId('tl-1')
+    expect(useAppStore.getState().playbackTimelineId).toBe('tl-1')
+  })
+
+  it('setPlaybackTimelineId can be cleared to null', () => {
+    useAppStore.setState({ playbackTimelineId: 'tl-1' } as any)
+    useAppStore.getState().setPlaybackTimelineId(null)
+    expect(useAppStore.getState().playbackTimelineId).toBeNull()
+  })
+
+  it('setActiveOuterEventId stores the id', () => {
+    useAppStore.getState().setActiveOuterEventId('ev-outer')
+    expect(useAppStore.getState().activeOuterEventId).toBe('ev-outer')
+  })
+
+  it('setActiveOuterEventId can be cleared to null', () => {
+    useAppStore.setState({ activeOuterEventId: 'ev-outer' } as any)
+    useAppStore.getState().setActiveOuterEventId(null)
+    expect(useAppStore.getState().activeOuterEventId).toBeNull()
+  })
+
+  it('setActiveDepthTimelineId stores the id', () => {
+    useAppStore.getState().setActiveDepthTimelineId('tl-depth')
+    expect(useAppStore.getState().activeDepthTimelineId).toBe('tl-depth')
+  })
+
+  it('setActiveDepthTimelineId can be cleared to null', () => {
+    useAppStore.setState({ activeDepthTimelineId: 'tl-depth' } as any)
+    useAppStore.getState().setActiveDepthTimelineId(null)
+    expect(useAppStore.getState().activeDepthTimelineId).toBeNull()
+  })
+
+  it('frame narrative fields are independent of isPlayingStory', () => {
+    useAppStore.getState().setIsPlayingStory(true)
+    useAppStore.getState().setPlaybackTimelineId('tl-1')
+    useAppStore.getState().setActiveOuterEventId('ev-outer')
+    useAppStore.getState().setActiveDepthTimelineId('tl-depth')
+    expect(useAppStore.getState().isPlayingStory).toBe(true)
+    useAppStore.getState().setIsPlayingStory(false)
+    expect(useAppStore.getState().playbackTimelineId).toBe('tl-1')
+    expect(useAppStore.getState().activeOuterEventId).toBe('ev-outer')
+    expect(useAppStore.getState().activeDepthTimelineId).toBe('tl-depth')
+  })
+})
+
+// ── UISlice — suppression ─────────────────────────────────────────────────────
+
+describe('UISlice — suppression', () => {
+  beforeEach(() => {
+    useAppStore.setState({ suppressedIssueIds: {}, suppressedNotes: {} } as any)
+  })
+
+  it('toggleSuppressIssue adds an issue id', () => {
+    useAppStore.getState().toggleSuppressIssue('world-1', 'issue-a')
+    expect(useAppStore.getState().suppressedIssueIds['world-1']).toContain('issue-a')
+  })
+
+  it('toggleSuppressIssue removes a previously suppressed issue', () => {
+    useAppStore.setState({ suppressedIssueIds: { 'world-1': ['issue-a', 'issue-b'] }, suppressedNotes: {} } as any)
+    useAppStore.getState().toggleSuppressIssue('world-1', 'issue-a')
+    expect(useAppStore.getState().suppressedIssueIds['world-1']).not.toContain('issue-a')
+    expect(useAppStore.getState().suppressedIssueIds['world-1']).toContain('issue-b')
+  })
+
+  it('toggleSuppressIssue deletes the note when unsuppressing', () => {
+    useAppStore.setState({
+      suppressedIssueIds: { 'world-1': ['issue-a'] },
+      suppressedNotes: { 'world-1': { 'issue-a': 'some note' } },
+    } as any)
+    useAppStore.getState().toggleSuppressIssue('world-1', 'issue-a')
+    expect(useAppStore.getState().suppressedNotes['world-1']?.['issue-a']).toBeUndefined()
+  })
+
+  it('toggleSuppressIssue preserves notes for other issues when unsuppressing one', () => {
+    useAppStore.setState({
+      suppressedIssueIds: { 'world-1': ['issue-a', 'issue-b'] },
+      suppressedNotes: { 'world-1': { 'issue-a': 'note-a', 'issue-b': 'note-b' } },
+    } as any)
+    useAppStore.getState().toggleSuppressIssue('world-1', 'issue-a')
+    expect(useAppStore.getState().suppressedNotes['world-1']?.['issue-b']).toBe('note-b')
+  })
+
+  it('setSuppressNote stores a note for a given world+issue', () => {
+    useAppStore.getState().setSuppressNote('world-1', 'issue-a', 'This is intentional')
+    expect(useAppStore.getState().suppressedNotes['world-1']?.['issue-a']).toBe('This is intentional')
+  })
+
+  it('setSuppressNote updates an existing note', () => {
+    useAppStore.setState({ suppressedIssueIds: {}, suppressedNotes: { 'world-1': { 'issue-a': 'old note' } } } as any)
+    useAppStore.getState().setSuppressNote('world-1', 'issue-a', 'new note')
+    expect(useAppStore.getState().suppressedNotes['world-1']?.['issue-a']).toBe('new note')
+  })
+
+  it('setSuppressNote preserves other worlds and issues', () => {
+    useAppStore.setState({
+      suppressedIssueIds: {},
+      suppressedNotes: { 'world-2': { 'issue-x': 'keep me' } },
+    } as any)
+    useAppStore.getState().setSuppressNote('world-1', 'issue-a', 'hello')
+    expect(useAppStore.getState().suppressedNotes['world-2']?.['issue-x']).toBe('keep me')
+  })
+
+  it('suppression is isolated per world', () => {
+    useAppStore.getState().toggleSuppressIssue('world-1', 'issue-a')
+    useAppStore.getState().toggleSuppressIssue('world-2', 'issue-b')
+    expect(useAppStore.getState().suppressedIssueIds['world-1']).toContain('issue-a')
+    expect(useAppStore.getState().suppressedIssueIds['world-1']).not.toContain('issue-b')
+    expect(useAppStore.getState().suppressedIssueIds['world-2']).toContain('issue-b')
+  })
 })
