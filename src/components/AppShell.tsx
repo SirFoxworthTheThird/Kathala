@@ -10,7 +10,6 @@ import { useWorld } from '@/db/hooks/useWorlds'
 import { WritersBriefPanel } from '@/features/brief/WritersBriefPanel'
 import { ChapterDiffModal } from '@/features/diff/ChapterDiffModal'
 import { ContinuityChecker } from '@/features/continuity/ContinuityChecker'
-import { TutorialWizard } from '@/features/tutorial/TutorialWizard'
 import { HelpPanel } from '@/features/help/HelpPanel'
 
 export function AppShell() {
@@ -60,7 +59,6 @@ export function AppShell() {
       <WritersBriefPanel />
       <ChapterDiffModal />
       <ContinuityChecker />
-      <TutorialWizard />
       <HelpPanel />
     </div>
   )

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Sparkles } from 'lucide-react'
+import { Sparkles, Map } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface StepDoneProps {
@@ -23,8 +23,20 @@ export function StepDone({ onNavigate }: StepDoneProps) {
           Your world is alive
         </h2>
         <p className="text-sm text-[hsl(var(--muted-foreground))] max-w-md">
-          Move through your timeline and everything updates — where characters are, what they carry,
-          what&apos;s changed. Your story is now trackable.
+          Your story is alive. As you add more moments to your timeline, move between them — everything
+          updates: where your characters are, what they carry, what&apos;s changed.
+        </p>
+        <p className="text-sm text-[hsl(var(--muted-foreground))] max-w-md">
+          That&apos;s the <span className="font-semibold text-[hsl(var(--foreground))]">time cursor</span>.
+          It&apos;s the heart of how PlotWeave works.
+        </p>
+      </div>
+
+      <div className="flex items-start gap-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3 max-w-md">
+        <Map className="mt-0.5 h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+        <p className="text-sm text-[hsl(var(--muted-foreground))]">
+          When you&apos;re ready, upload a map image and pin your characters to it — their positions
+          will update as you move through time, just like everything else.
         </p>
       </div>
 

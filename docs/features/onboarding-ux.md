@@ -171,6 +171,22 @@ Dismissed card IDs stored in `localStorage` under key `plotweave-dismissed-sugge
 
 ---
 
+## Pillar 5 — Tutorial Retirement
+
+### Problem
+
+A previous first-run feature (`TutorialWizard`) exists in the codebase. It guided the user through world creation, adding a character, and creating a timeline via a floating card overlay. Now that Pillar 2 delivers a more complete and narrative-toned first-run experience, the two systems overlap directly. Running both would result in a user being walked through setup twice, with conflicting copy, conflicting structure, and no coherent handoff between them.
+
+The old tutorial also covered one concept the new wizard initially lacked — the **time cursor / chapter selector**. That gap is now closed by Pillar 2, Step 4 (see above).
+
+### Solution
+
+Retire `TutorialWizard` and `tutorialState.ts` entirely when Pillar 2 ships. World creation — the one step the old tutorial handled that Pillar 2 does not — is already handled by the existing `CreateWorldDialog`. No functionality is lost.
+
+The old tutorial's localStorage key (`plotweave-tutorial`) is abandoned in place. No migration is required: users who completed the old tutorial have already set up their worlds, and the key is never read again.
+
+---
+
 ## Implementation Order
 
 1. **Pillar 3 — Smart empty states** — one component per section, no new architecture, highest ROI per hour of effort.
@@ -262,7 +278,7 @@ As a writer opening a brand-new world for the first time, I want a short, narrat
 
 *Given* the wizard is on Step 4,  
 *When* I look at the screen,  
-*Then* I see a brief narrative-toned completion message explaining that I can now move through time and see my story update, and a single call-to-action button that navigates me to the Timeline view.
+*Then* I see a narrative-toned completion message that explicitly names and explains the **time cursor** — the mechanic by which moving between moments in the timeline updates all character states, locations, and inventory — and a single call-to-action button that navigates me to the Timeline view.
 
 *Given* Step 1 has been completed and at least one event exists,  
 *When* I navigate to the Dashboard at any point in the future,  
@@ -386,3 +402,39 @@ As a user actively building my world, I want the Dashboard to surface contextual
 - User-defined custom suggestions.
 - A way to un-dismiss a dismissed card from within the app.
 - Suggestion cards for sections that do not yet exist in the app.
+
+---
+
+### Pillar 5 — Tutorial Retirement
+
+**User Story**
+
+As a new user opening WorldBreaker for the first time, I want a single, coherent first-run experience that sets up my world and teaches me the app's core concept, so that I am not walked through overlapping or conflicting setup flows.
+
+**Acceptance Criteria**
+
+*Given* Pillar 2 has shipped,  
+*When* I create a new world and navigate to its Dashboard,  
+*Then* I see the Pillar 2 onboarding wizard — not the old `TutorialWizard` overlay.
+
+*Given* the old `TutorialWizard` is removed,  
+*When* I navigate to any section of the app,  
+*Then* no floating tutorial card appears at any step — the old tutorial is completely gone.
+
+*Given* a user previously completed the old tutorial and has data in their world,  
+*When* they open the app after the old tutorial is removed,  
+*Then* all world data they created (characters, timelines, chapters) is intact — no content is lost as a result of retiring the feature.
+
+*Given* world creation was previously a step in the old tutorial,  
+*When* the old tutorial is removed,  
+*Then* world creation still works via the existing Create World dialog — no regression in that flow.
+
+*Given* the old tutorial stored its state under the localStorage key `plotweave-tutorial`,  
+*When* the tutorial is retired,  
+*Then* that key is abandoned in place and never read — no migration or cleanup is required of users.
+
+**Out of Scope**
+
+- Providing a way to replay or opt back in to the old tutorial.
+- Migrating or deleting the `plotweave-tutorial` localStorage key from existing users' browsers.
+- Any UI affordance referencing the retired tutorial.

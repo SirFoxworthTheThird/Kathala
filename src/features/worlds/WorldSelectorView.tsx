@@ -9,7 +9,6 @@ import { CreateWorldDialog } from './CreateWorldDialog'
 import { LLMPromptDialog } from './LLMPromptDialog'
 import { useNavigate } from 'react-router-dom'
 import { importWorld, importWorldImages } from '@/lib/exportImport'
-import { TutorialWelcome } from '@/features/tutorial/TutorialWizard'
 
 declare global {
   interface Window {
@@ -182,7 +181,6 @@ export default function WorldSelectorView() {
         onCreated={(id) => navigate(`/worlds/${id}`)}
       />
       <LLMPromptDialog open={promptOpen} onOpenChange={setPromptOpen} />
-      <TutorialWelcome />
     </div>
   )
 }
