@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { TravelMode } from '@/types'
 import { CloudSyncPanel } from './CloudSyncPanel'
+import { DbHealthPanel } from './DbHealthPanel'
 
 const WORLD_THEMES: { id: AppTheme; label: string; icon: string; swatch: string }[] = [
   { id: 'default',   label: 'Default',    icon: '🌑', swatch: '#1e3a5f' },
@@ -302,6 +303,9 @@ export default function WorldSettingsView() {
           Export as HTML
         </Button>
       </section>
+
+      {/* DB Health */}
+      {worldId && <DbHealthPanel worldId={worldId} />}
 
       {/* Cloud Sync */}
       {worldId && (

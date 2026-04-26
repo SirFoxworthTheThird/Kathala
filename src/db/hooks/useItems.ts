@@ -30,5 +30,9 @@ export async function updateItem(id: string, data: Partial<Omit<Item, 'id'>>) {
 }
 
 export async function deleteItem(id: string) {
-  await db.items.delete(id)
+  await db.transaction('rw', [db.items, db.itemPlacements, db.itemSnapshots], async () => {
+    await db.items.delete(id)
+    await db.itemPlacements.where('itemId').equals(id).delete()
+    await db.itemSnapshots.where('itemId').equals(id).delete()
+  })
 }

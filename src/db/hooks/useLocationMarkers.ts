@@ -59,5 +59,12 @@ export async function updateLocationMarker(id: string, data: Partial<Omit<Locati
 }
 
 export async function deleteLocationMarker(id: string) {
-  await db.locationMarkers.delete(id)
+  await db.transaction('rw', [db.locationMarkers, db.locationSnapshots, db.characterSnapshots], async () => {
+    await db.locationMarkers.delete(id)
+    await db.locationSnapshots.where('locationMarkerId').equals(id).delete()
+    // Null out stale currentLocationMarkerId references (currentLocationMarkerId is unindexed — filter scan)
+    await db.characterSnapshots
+      .filter((s) => s.currentLocationMarkerId === id)
+      .modify({ currentLocationMarkerId: null })
+  })
 }
