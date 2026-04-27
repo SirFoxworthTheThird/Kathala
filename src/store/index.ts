@@ -73,10 +73,6 @@ interface UISlice {
   setDiffOpen: (open: boolean) => void
   checkerOpen: boolean
   setCheckerOpen: (open: boolean) => void
-  suppressedIssueIds: Record<string, string[]>
-  suppressedNotes: Record<string, Record<string, string>>
-  toggleSuppressIssue: (worldId: string, id: string) => void
-  setSuppressNote: (worldId: string, issueId: string, note: string) => void
   isAnimating: boolean
   setIsAnimating: (v: boolean) => void
   /** Set before navigating to Maps to auto-select + focus a route on arrival. */
@@ -85,6 +81,9 @@ interface UISlice {
   /** Set before navigating to Maps to auto-select + focus a region on arrival. */
   pendingFocusRegionId: string | null
   setPendingFocusRegionId: (id: string | null) => void
+  /** Set before navigating to Maps to auto-pan to a location marker on arrival. */
+  pendingFocusMarkerId: string | null
+  setPendingFocusMarkerId: (id: string | null) => void
 }
 
 type AppStore = WorldSlice & EventSlice & MapSlice & UISlice & PlaybackSlice & SelectionSlice
@@ -94,7 +93,15 @@ export const useAppStore = create<AppStore>()(
     (set, _get) => ({
       // World
       activeWorldId: null,
-      setActiveWorldId: (id) => set({ activeWorldId: id, activeEventId: null, activeMapLayerId: null, mapLayerHistory: [] }),
+      setActiveWorldId: (id) => set({
+        activeWorldId: id,
+        activeEventId: null,
+        activeMapLayerId: null,
+        mapLayerHistory: [],
+        pendingFocusRouteId: null,
+        pendingFocusRegionId: null,
+        pendingFocusMarkerId: null,
+      }),
 
       // Event (the global time cursor — replaces activeChapterId)
       activeEventId: null,
@@ -168,32 +175,14 @@ export const useAppStore = create<AppStore>()(
       setDiffOpen: (open) => set({ diffOpen: open }),
       checkerOpen: false,
       setCheckerOpen: (open) => set({ checkerOpen: open }),
-      suppressedIssueIds: {},
-      suppressedNotes: {},
-      toggleSuppressIssue: (worldId, id) => set((s) => {
-        const current = s.suppressedIssueIds[worldId] ?? []
-        const isSuppressed = current.includes(id)
-        const next = isSuppressed ? current.filter((x) => x !== id) : [...current, id]
-        // Clean up note when unsuppressing
-        const notes = { ...(s.suppressedNotes[worldId] ?? {}) }
-        if (isSuppressed) delete notes[id]
-        return {
-          suppressedIssueIds: { ...s.suppressedIssueIds, [worldId]: next },
-          suppressedNotes: { ...s.suppressedNotes, [worldId]: notes },
-        }
-      }),
-      setSuppressNote: (worldId, issueId, note) => set((s) => ({
-        suppressedNotes: {
-          ...s.suppressedNotes,
-          [worldId]: { ...(s.suppressedNotes[worldId] ?? {}), [issueId]: note },
-        },
-      })),
       isAnimating: false,
       setIsAnimating: (v) => set({ isAnimating: v }),
       pendingFocusRouteId: null,
       setPendingFocusRouteId: (id) => set({ pendingFocusRouteId: id }),
       pendingFocusRegionId: null,
       setPendingFocusRegionId: (id) => set({ pendingFocusRegionId: id }),
+      pendingFocusMarkerId: null,
+      setPendingFocusMarkerId: (id) => set({ pendingFocusMarkerId: id }),
     }),
     {
       name: 'plotweave-ui',
@@ -201,8 +190,6 @@ export const useAppStore = create<AppStore>()(
         activeWorldId: state.activeWorldId,
         activeEventId: state.activeEventId,
         sidebarOpen: state.sidebarOpen,
-        suppressedIssueIds: state.suppressedIssueIds,
-        suppressedNotes: state.suppressedNotes,
       }),
     }
   )

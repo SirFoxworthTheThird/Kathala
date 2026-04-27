@@ -18,7 +18,7 @@ import { useAppStore } from '@/store'
 import { UploadMapDialog } from './UploadMapDialog'
 import { PortraitImage } from '@/components/PortraitImage'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
-import { RelatedLoreSection } from '@/features/lore/RelatedLoreSection'
+import { RelatedLoreSection } from '@/features/lore'
 import { useFactions } from '@/db/hooks/useFactions'
 import type { Item } from '@/types'
 

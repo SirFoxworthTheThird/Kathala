@@ -39,9 +39,14 @@ export async function updateCharacter(id: string, data: Partial<Omit<Character, 
 }
 
 export async function deleteCharacter(id: string) {
-  await db.transaction('rw', [db.characters, db.characterSnapshots, db.relationships, db.relationshipSnapshots], async () => {
+  await db.transaction('rw', [
+    db.characters, db.characterSnapshots, db.characterMovements,
+    db.relationships, db.relationshipSnapshots, db.factionMemberships,
+  ], async () => {
     await db.characters.delete(id)
     await db.characterSnapshots.where('characterId').equals(id).delete()
+    await db.characterMovements.where('characterId').equals(id).delete()
+    await db.factionMemberships.where('characterId').equals(id).delete()
     // Collect relationship ids involving this character, then delete snapshots too
     const relIds = (await db.relationships
       .filter((r) => r.characterAId === id || r.characterBId === id)

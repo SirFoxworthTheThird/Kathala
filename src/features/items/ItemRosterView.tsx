@@ -23,7 +23,7 @@ export default function ItemRosterView() {
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
         <Input
-          placeholder="Search items..."
+          placeholder="Search items…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="h-8 max-w-xs text-sm"
@@ -39,7 +39,7 @@ export default function ItemRosterView() {
           <EmptyState
             icon={Package}
             title={items.length === 0 ? 'No items yet' : 'No matches'}
-            description={items.length === 0 ? 'Add your first item to start tracking.' : 'Try a different search.'}
+            description={items.length === 0 ? 'Track objects that characters carry, use, or lose over time.' : 'Try a different search.'}
             action={
               items.length === 0 ? (
                 <Button onClick={() => setDialogOpen(true)}>

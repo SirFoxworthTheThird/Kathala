@@ -1,9 +1,13 @@
-import { useState, useMemo, type ElementType } from 'react'
+import { useState, useMemo, useEffect, type ElementType } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   Map as MapIcon, Users, Network, BookOpen,
-  Package, BarChart2, ShieldAlert, Clock, Layers, Pencil,
+  Package, BarChart2, ShieldAlert, Clock, Layers, Pencil, FileEdit,
 } from 'lucide-react'
+import type { EventStatus } from '@/types'
+import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from '@/db/database'
 import { useWorld, updateWorld } from '@/db/hooks/useWorlds'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRootMapLayers } from '@/db/hooks/useMapLayers'
@@ -13,9 +17,14 @@ import { useTimelineRelationships } from '@/db/hooks/useTimelineRelationships'
 import { useItems } from '@/db/hooks/useItems'
 import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
+import { useLorePages } from '@/db/hooks/useLore'
+import { useFactions } from '@/db/hooks/useFactions'
 import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
+import { OnboardingWizard } from '@/features/onboarding'
+import { DashboardSuggestion } from './DashboardSuggestion'
+import { evaluateSuggestions, type WorldSummaryData } from './suggestionRules'
 
 // ── Stat pill ────────────────────────────────────────────────────────────────
 
@@ -49,6 +58,43 @@ export default function WorldDashboardView() {
   const items               = useItems(worldId ?? null)
   const snapshots           = useWorldSnapshots(worldId ?? null)
   const locationMarkers     = useAllLocationMarkers(worldId ?? null)
+  const lorePages           = useLorePages(worldId ?? null)
+  const factions            = useFactions(worldId ?? null)
+
+  // ── Wizard trigger (loading-aware) ─────────────────────────────────────────
+  // Use raw counts so we get `undefined` while IndexedDB is still loading,
+  // avoiding a false-positive empty-world flash on worlds that have data.
+  const timelineCount = useLiveQuery(
+    () => worldId ? db.timelines.where('worldId').equals(worldId).count() : 0,
+    [worldId]
+  )
+  const eventCount = useLiveQuery(
+    () => worldId ? db.events.where('worldId').equals(worldId).count() : 0,
+    [worldId]
+  )
+  const wizardReady = timelineCount !== undefined && eventCount !== undefined
+
+  // Latch: keep the wizard mounted until it explicitly exits, even after step 1
+  // creates an event (which would clear the trigger condition mid-session).
+  const [wizardLatch, setWizardLatch] = useState(false)
+  useEffect(() => {
+    if (wizardReady && !wizardLatch && (timelineCount === 0 || eventCount === 0)) {
+      setWizardLatch(true)
+    }
+  }, [wizardReady, wizardLatch, timelineCount, eventCount])
+
+  // ── Dashboard suggestions ─────────────────────────────────────────────────
+  const dismissedKey = worldId ? `plotweave-dismissed-suggestions-${worldId}` : null
+  const [dismissedIds, setDismissedIds] = useState<string[]>(() => {
+    if (!dismissedKey) return []
+    try { return JSON.parse(localStorage.getItem(dismissedKey) ?? '[]') } catch { return [] }
+  })
+
+  function dismissSuggestion(id: string) {
+    const updated = [...dismissedIds, id]
+    setDismissedIds(updated)
+    if (dismissedKey) localStorage.setItem(dismissedKey, JSON.stringify(updated))
+  }
 
   // Inline description editing
   const [editingDesc, setEditingDesc] = useState(false)
@@ -86,7 +132,25 @@ export default function WorldDashboardView() {
   const chapterById = useMemo(() => new Map(chapters.map((c) => [c.id, c])), [chapters])
   const timelineById = useMemo(() => new Map(timelines.map((t) => [t.id, t])), [timelines])
 
-  // Nav tiles
+  const statusCounts = useMemo(() => {
+    const counts: Record<EventStatus, number> = { idea: 0, outline: 0, draft: 0, revised: 0, final: 0 }
+    for (const ev of allEvents) counts[ev.status ?? 'draft']++
+    return counts
+  }, [allEvents])
+
+  // ── Suggestion evaluation ─────────────────────────────────────────────────
+  const summaryData: WorldSummaryData = {
+    characterCount:        characters.length,
+    eventCount:            allEvents.length,
+    hasCharacterAtAnyEvent: snapshots.length > 0,
+    relationshipCount:     relationships.length,
+    mapLayerCount:         maps.length,
+    lorePageCount:         lorePages.length,
+    factionCount:          factions.length,
+  }
+  const activeSuggestions = evaluateSuggestions(summaryData, dismissedIds)
+
+  // ── Nav tiles ─────────────────────────────────────────────────────────────
   type Tile = {
     label: string
     icon: ElementType
@@ -163,6 +227,25 @@ export default function WorldDashboardView() {
     },
   ]
 
+  if (!wizardReady) return (
+    <div className="p-6 space-y-8 max-w-5xl">
+      <div className="animate-pulse space-y-3">
+        <div className="h-7 w-48 rounded bg-[hsl(var(--muted))]" />
+        <div className="h-4 w-72 rounded bg-[hsl(var(--muted))]" />
+      </div>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="animate-pulse h-24 rounded-lg bg-[hsl(var(--muted))]" />
+        ))}
+      </div>
+    </div>
+  )
+
+  // Wizard replaces the dashboard while active
+  if (wizardLatch && worldId) {
+    return <OnboardingWizard worldId={worldId} onExit={() => setWizardLatch(false)} />
+  }
+
   return (
     <div className="p-6 space-y-8 max-w-5xl">
 
@@ -205,6 +288,24 @@ export default function WorldDashboardView() {
           )}
         </div>
       </div>
+
+      {/* Suggestions */}
+      {activeSuggestions.length > 0 && (
+        <section aria-live="polite" aria-label="Suggested next steps">
+          <div className="flex flex-col gap-2">
+            {activeSuggestions.map((rule) => (
+              <DashboardSuggestion
+                key={rule.id}
+                title={rule.title}
+                navLabel={rule.navLabel}
+                dismissible={rule.dismissible}
+                onNavigate={() => navigate(rule.navigateTo)}
+                onDismiss={rule.dismissible ? () => dismissSuggestion(rule.id) : undefined}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Nav tiles */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -264,6 +365,43 @@ export default function WorldDashboardView() {
                     </p>
                   </div>
                 </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Scene status progress */}
+      {totalEvents > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <FileEdit className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+            <h3 className="text-sm font-semibold">Scene Status</h3>
+            <span className="text-xs text-[hsl(var(--muted-foreground))]">{totalEvents} events</span>
+          </div>
+          <div className="flex h-2.5 w-full overflow-hidden rounded-full">
+            {EVENT_STATUSES.map((s) => {
+              const count = statusCounts[s]
+              if (count === 0) return null
+              return (
+                <div
+                  key={s}
+                  style={{ width: `${(count / totalEvents) * 100}%`, background: EVENT_STATUS_CONFIG[s].color }}
+                  title={`${EVENT_STATUS_CONFIG[s].label}: ${count}`}
+                />
+              )
+            })}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-3">
+            {EVENT_STATUSES.map((s) => {
+              const count = statusCounts[s]
+              if (count === 0) return null
+              return (
+                <div key={s} className="flex items-center gap-1 text-[11px]">
+                  <span className="inline-block h-2 w-2 rounded-full" style={{ background: EVENT_STATUS_CONFIG[s].color }} />
+                  <span className="text-[hsl(var(--muted-foreground))]">{EVENT_STATUS_CONFIG[s].label}</span>
+                  <span className="font-semibold text-[hsl(var(--foreground))]">{count}</span>
+                </div>
               )
             })}
           </div>

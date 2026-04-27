@@ -23,6 +23,7 @@ import { CharacterFilmStrip } from './CharacterFilmStrip'
 import { RouteDrawHud, RegionDrawHud } from './DrawHuds'
 import { RouteDetailPanel, RegionDetailPanel } from './RouteRegionDetailPanel'
 import { MapAIDialog } from './MapAIDialog'
+import { MapHintsBar } from './MapHintsBar'
 import { useMapViewState } from './useMapViewState'
 import { usePlaybackQueue } from './usePlaybackQueue'
 import { upsertSnapshot, fetchSnapshot, useWorldSnapshots } from '@/db/hooks/useSnapshots'
@@ -49,6 +50,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     setActiveMapLayerId, setIsAnimating, isPlayingStory, playbackSpeed,
     pendingFocusRouteId, setPendingFocusRouteId,
     pendingFocusRegionId, setPendingFocusRegionId,
+    pendingFocusMarkerId, setPendingFocusMarkerId,
   } = useAppStore()
 
   // ── Local UI state ────────────────────────────────────────────────────────
@@ -153,6 +155,14 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       setPendingFocusRegionId(null)
     }
   }, [pendingFocusRegionId, mapRegions]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (pendingFocusMarkerId && allMarkers.length > 0) {
+      const marker = allMarkers.find((m) => m.id === pendingFocusMarkerId)
+      if (marker) focusOnLocation(marker)
+      setPendingFocusMarkerId(null)
+    }
+  }, [pendingFocusMarkerId, allMarkers]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Focus helpers ─────────────────────────────────────────────────────────
   function focusOnLocation(marker: LocationMarker) {
@@ -449,18 +459,17 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
                 </button>
               )}
             </Button>
-            {layer.scalePixelsPerUnit && layer.scaleUnit && (
-              <Button
-                size="sm"
-                variant={measureMode ? 'default' : 'outline'}
-                className="gap-1.5 text-xs"
-                onClick={() => { setMeasureMode((v) => !v); setScaleMode(false); setMeasureResult(null) }}
-                title="Measure distance between two points"
-              >
-                <Route className="h-3.5 w-3.5" />
-                Measure
-              </Button>
-            )}
+            <Button
+              size="sm"
+              variant={measureMode ? 'default' : 'outline'}
+              className="gap-1.5 text-xs"
+              disabled={!layer.scalePixelsPerUnit || !layer.scaleUnit}
+              onClick={() => { setMeasureMode((v) => !v); setScaleMode(false); setMeasureResult(null) }}
+              title={layer.scalePixelsPerUnit && layer.scaleUnit ? 'Measure distance between two points' : 'Set a map scale first to enable distance measurement'}
+            >
+              <Route className="h-3.5 w-3.5" />
+              Measure
+            </Button>
             <Button
               size="sm"
               variant="outline"
@@ -508,6 +517,9 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
         <div className="relative z-[1100] shrink-0">
           <MapFilterBar filters={mapFilters} characters={characters} onChange={setMapFilters} />
         </div>
+
+        {/* Map hints bar — dismissable first-use tips */}
+        <MapHintsBar worldId={worldId} />
 
         {/* Story playback notes overlay */}
         {isPlayingStory && activeEventId && activeChapter && worldId && (
@@ -922,11 +934,11 @@ export default function MapExplorerView() {
         <EmptyState
           icon={MapIcon}
           title="No maps yet"
-          description="Upload a map image to start placing locations and tracking characters."
+          description="Upload an image of your world and place locations on it."
           action={
             <Button onClick={() => setUploadOpen(true)}>
               <Upload className="h-4 w-4" />
-              Upload Map
+              Add Map
             </Button>
           }
         />

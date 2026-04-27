@@ -30,6 +30,7 @@ The global chapter selector in `TopBar` drives everything. `activeChapterId` (Zu
 
 ### Data layer (`src/db/`)
 - `database.ts` — single `PlotWeaveDB` (Dexie) instance, versioned schema with migrations. Add new tables or fields as new `.version(N)` blocks with upgrade functions.
+- **Never remove old `.version(N)` blocks** from `PlotWeaveDB`. Dexie requires the full migration chain to remain present so that databases at any prior version can upgrade through each step.
 - `db/hooks/` — one file per entity group. Each exports `useFoo(id)` hooks (built on `useLiveQuery`) and standalone async CRUD functions (`createFoo`, `updateFoo`, `deleteFoo`). Hooks are the only way components read data.
 - Images are stored as Blobs in a separate `blobs` table (`BlobStore`) — never inline in entity records.
 

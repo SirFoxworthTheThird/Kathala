@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { useFocusTrap } from '@/lib/useFocusTrap'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Search, Users, Map, Package, BookOpen, Network, Scroll, X, Route, Hexagon, BookMarked, Shield } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -48,11 +49,15 @@ function highlight(text: string, query: string) {
 export function SearchPalette() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
-  const { searchOpen, setSearchOpen, setActiveEventId, setPendingFocusRouteId, setPendingFocusRegionId } = useAppStore()
+  const { searchOpen, setSearchOpen, setActiveEventId, setPendingFocusRouteId, setPendingFocusRegionId, setPendingFocusMarkerId } = useAppStore()
   const [query, setQuery] = useState('')
   const [activeIdx, setActiveIdx] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  const paletteRef = useRef<HTMLDivElement>(null)
+  const [expandedGroups, setExpandedGroups] = useState<Set<ResultType>>(new Set())
+
+  useFocusTrap(paletteRef, searchOpen)
 
   // Load all searchable data for the world
   const characters    = useLiveQuery(() => worldId ? db.characters.where('worldId').equals(worldId).toArray() : [], [worldId], [])
@@ -105,7 +110,10 @@ export function SearchPalette() {
     }
     for (const r of (relationships ?? [])) {
       if (r.label?.toLowerCase().includes(q) || r.description?.toLowerCase().includes(q)) {
-        out.push({ id: r.id, type: 'relationship', label: r.label, sublabel: `${r.sentiment} · ${r.strength}`, path: `/worlds/${worldId}/relationships` })
+        const charA = (characters ?? []).find((c) => c.id === r.characterAId)
+        const charB = (characters ?? []).find((c) => c.id === r.characterBId)
+        const charNames = charA && charB ? `${charA.name} → ${charB.name}` : `${r.sentiment} · ${r.strength}`
+        out.push({ id: r.id, type: 'relationship', label: r.label, sublabel: charNames, path: `/worlds/${worldId}/relationships` })
       }
     }
     for (const r of (routes ?? [])) {
@@ -135,10 +143,11 @@ export function SearchPalette() {
   // Reset active index when results change
   useEffect(() => setActiveIdx(0), [results])
 
-  // Focus input when opened
+  // Focus input when opened; reset expanded groups on close
   useEffect(() => {
     if (searchOpen) {
       setQuery('')
+      setExpandedGroups(new Set())
       setTimeout(() => inputRef.current?.focus(), 50)
     }
   }, [searchOpen])
@@ -158,6 +167,7 @@ export function SearchPalette() {
     if (result.type === 'event') setActiveEventId(result.id)
     if (result.type === 'route') setPendingFocusRouteId(result.id)
     if (result.type === 'region') setPendingFocusRegionId(result.id)
+    if (result.type === 'location') setPendingFocusMarkerId(result.id)
     navigate(result.path)
     close()
   }
@@ -195,6 +205,10 @@ export function SearchPalette() {
 
       {/* Palette */}
       <div
+        ref={paletteRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Search"
         className="relative z-10 w-full max-w-xl rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
@@ -210,8 +224,8 @@ export function SearchPalette() {
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-[hsl(var(--muted-foreground))]"
           />
           {query && (
-            <button onClick={() => setQuery('')} className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">
-              <X className="h-3.5 w-3.5" />
+            <button aria-label="Clear search" onClick={() => setQuery('')} className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">
+              <X className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           )}
           <kbd className="hidden sm:inline-block rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-1.5 py-0.5 text-[10px] text-[hsl(var(--muted-foreground))]">Esc</kbd>
@@ -230,12 +244,15 @@ export function SearchPalette() {
           ) : (
             grouped.map(({ group, type, items: groupItems }) => {
               const { icon: Icon, color } = TYPE_META[type]
+              const isExpanded = expandedGroups.has(type)
+              const visibleItems = isExpanded ? groupItems : groupItems.slice(0, 5)
+              const hiddenCount = groupItems.length - 5
               return (
                 <div key={group} className="mb-1">
                   <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
                     {group}
                   </p>
-                  {groupItems.map(({ globalIdx: idx, ...result }) => (
+                  {visibleItems.map(({ globalIdx: idx, ...result }) => (
                     <button
                       key={result.id}
                       data-idx={idx}
@@ -248,7 +265,7 @@ export function SearchPalette() {
                           : 'text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent)/0.5)]'
                       )}
                     >
-                      <Icon className={cn('h-4 w-4 shrink-0', color)} />
+                      <Icon className={cn('h-4 w-4 shrink-0', color)} aria-hidden="true" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-medium">{highlight(result.label, query.trim())}</span>
                         {result.sublabel && (
@@ -257,6 +274,14 @@ export function SearchPalette() {
                       </span>
                     </button>
                   ))}
+                  {!isExpanded && hiddenCount > 0 && (
+                    <button
+                      onClick={() => setExpandedGroups((s) => { const next = new Set(s); next.add(type); return next })}
+                      className="w-full px-3 py-1.5 text-left text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+                    >
+                      Show all {groupItems.length} →
+                    </button>
+                  )}
                 </div>
               )
             })

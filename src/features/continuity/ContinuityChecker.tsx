@@ -1,8 +1,10 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
+import { useFocusTrap } from '@/lib/useFocusTrap'
 import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, Shield, ChevronRight, EyeOff, Eye, Check } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store'
 import { useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
+import { useWorld } from '@/db/hooks/useWorlds'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
@@ -15,6 +17,7 @@ import { useWorldMovements } from '@/db/hooks/useMovements'
 import { useFactions, useFactionMemberships, useFactionRelationships } from '@/db/hooks/useFactions'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { useContinuitySuppressions, toggleContinuitySuppression, setContinuitySuppressionNote } from '@/db/hooks/useContinuitySuppressions'
 import { cn } from '@/lib/utils'
 import { pixelDist } from '@/lib/mapScale'
 import type { CharacterSnapshot, ItemPlacement, MapRoute, MapRegion, RouteType } from '@/types'
@@ -79,7 +82,7 @@ type IssueSeverity = 'error' | 'warning'
 interface Issue {
   id: string
   severity: IssueSeverity
-  category: 'character' | 'item' | 'relationship' | 'faction'
+  category: 'character' | 'item' | 'relationship' | 'faction' | 'pov'
   message: string
   detail?: string
   navigatePath?: string
@@ -155,18 +158,20 @@ function IssueRow({
         </div>
         <button
           onClick={handleSuppressClick}
-          className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+          aria-label={suppressed ? 'Un-suppress this issue' : 'Suppress this issue'}
           title={suppressed ? 'Un-suppress' : 'Suppress'}
+          className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
         >
-          {suppressed ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+          {suppressed ? <Eye className="h-3.5 w-3.5" aria-hidden="true" /> : <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />}
         </button>
         {issue.navigatePath && !suppressed && (
           <button
             onClick={() => onNavigate(issue)}
-            className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+            aria-label="Go to chapter"
             title="Go to chapter"
+            className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
           >
-            <ChevronRight className="h-3.5 w-3.5" />
+            <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
         )}
       </div>
@@ -248,12 +253,13 @@ function CategorySection({ title, icon: Icon, issues, focusedIdx, baseIdx, suppr
 export function ContinuityChecker() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
-  const { checkerOpen, setCheckerOpen, setActiveEventId, suppressedIssueIds: suppressedByWorld, suppressedNotes: suppressedNotesByWorld, toggleSuppressIssue, setSuppressNote } = useAppStore()
-  const suppressedIssueIds = suppressedByWorld[worldId ?? ''] ?? []
-  const suppressedNotes    = suppressedNotesByWorld[worldId ?? ''] ?? {}
+  const { checkerOpen, setCheckerOpen, setActiveEventId } = useAppStore()
+  const { suppressedIds, suppressedNotes } = useContinuitySuppressions(worldId ?? null)
   const [showSuppressed, setShowSuppressed] = useState(false)
   const [focusedIdx, setFocusedIdx] = useState(-1)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  useFocusTrap(containerRef, checkerOpen)
 
   const chapters    = useWorldChapters(worldId ?? null)
   const allEvents   = useWorldEvents(worldId ?? null)
@@ -293,6 +299,11 @@ export function ContinuityChecker() {
   const allFactions       = useFactions(worldId ?? null)
   const allMemberships    = useFactionMemberships(worldId ?? null)
   const allFactionRels    = useFactionRelationships(worldId ?? null)
+  const world             = useWorld(worldId ?? null)
+  const allItemSnapshots  = useLiveQuery(
+    () => worldId ? db.itemSnapshots.where('worldId').equals(worldId).toArray() : [],
+    [worldId], []
+  )
 
   const issues = useMemo(() => {
     const out: Issue[] = []
@@ -340,6 +351,8 @@ export function ContinuityChecker() {
       regionsByLayer.get(region.mapLayerId)!.push(region)
     }
 
+    const staleThreshold = world?.continuityStaleThreshold ?? 5
+
     // ── Character checks ────────────────────────────────────────────────────
 
     // Group snapshots by character
@@ -347,6 +360,32 @@ export function ContinuityChecker() {
     for (const snap of snapshots) {
       if (!snapsByChar.has(snap.characterId)) snapsByChar.set(snap.characterId, [])
       snapsByChar.get(snap.characterId)!.push(snap)
+    }
+
+    // Sorted alive-history per character (for dead-in-cast / before-intro checks)
+    const snapsByCharSorted = new Map<string, Array<{ order: number; isAlive: boolean; eventId: string }>>()
+    for (const snap of snapshots) {
+      if (!snapsByCharSorted.has(snap.characterId)) snapsByCharSorted.set(snap.characterId, [])
+      snapsByCharSorted.get(snap.characterId)!.push({ order: eventOrder(snap.eventId), isAlive: snap.isAlive, eventId: snap.eventId })
+    }
+    for (const arr of snapsByCharSorted.values()) arr.sort((a, b) => a.order - b.order)
+
+    function isDeadAtOrder(charId: string, order: number): boolean {
+      const hist = snapsByCharSorted.get(charId)
+      if (!hist) return false
+      let lastAlive: boolean | null = null
+      for (const entry of hist) {
+        if (entry.order > order) break
+        lastAlive = entry.isAlive
+      }
+      return lastAlive === false
+    }
+
+    // Event IDs where each character has a snapshot (for stale-snapshot check)
+    const snapEventIdsByChar = new Map<string, Set<string>>()
+    for (const snap of snapshots) {
+      if (!snapEventIdsByChar.has(snap.characterId)) snapEventIdsByChar.set(snap.characterId, new Set())
+      snapEventIdsByChar.get(snap.characterId)!.add(snap.eventId)
     }
 
     for (const [charId, charSnaps] of snapsByChar) {
@@ -393,6 +432,110 @@ export function ContinuityChecker() {
             message: `${char.name} has a snapshot for a deleted event`,
             detail: `Snapshot ID ${snap.id} — event no longer exists`,
           })
+        }
+      }
+    }
+
+    // ── Dead character in non-flashback event cast ──────────────────────────────
+    for (const ev of allEvents) {
+      if (ev.isFlashback) continue
+      const evOrder = eventOrder(ev.id)
+      const ch = chapById.get(ev.chapterId)
+      const checkedDead = new Set<string>()
+      const castIds = [
+        ...ev.involvedCharacterIds,
+        ...(ev.povCharacterId ? [ev.povCharacterId] : []),
+      ]
+      for (const charId of castIds) {
+        if (checkedDead.has(charId)) continue
+        checkedDead.add(charId)
+        if (!isDeadAtOrder(charId, evOrder)) continue
+        const char = charById.get(charId)
+        const isPov = ev.povCharacterId === charId
+        out.push({
+          id: `dead-in-event-${charId}-${ev.id}`,
+          severity: 'warning',
+          category: 'character',
+          message: `Dead character ${char?.name ?? '?'} in "${ev.title || 'untitled'}"`,
+          detail: `${char?.name ?? '?'} is dead at this point${isPov ? ' and is the POV' : ''} — Ch. ${ch?.number ?? '?'}. Mark as Flashback if intentional.`,
+          navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+          eventId: ev.id,
+        })
+      }
+    }
+
+    // ── Character referenced before first snapshot ───────────────────────────
+    // For each character, find their first event appearance and first snapshot order.
+    // If first appearance precedes first snapshot (or no snapshot at all), raise one warning.
+    const charFirstAppearance = new Map<string, { evOrder: number; ev: (typeof allEvents)[0] }>()
+    const sortedEventsAsc = [...allEvents].sort((a, b) => eventOrder(a.id) - eventOrder(b.id))
+    for (const ev of sortedEventsAsc) {
+      if (ev.isFlashback) continue
+      const castIds = [
+        ...ev.involvedCharacterIds,
+        ...(ev.povCharacterId ? [ev.povCharacterId] : []),
+      ]
+      for (const charId of castIds) {
+        if (!charFirstAppearance.has(charId)) {
+          charFirstAppearance.set(charId, { evOrder: eventOrder(ev.id), ev })
+        }
+      }
+    }
+    for (const [charId, { evOrder, ev }] of charFirstAppearance) {
+      if (!charById.has(charId)) continue
+      const charHist = snapsByCharSorted.get(charId)
+      const firstSnapOrder = charHist && charHist.length > 0 ? charHist[0].order : undefined
+      if (firstSnapOrder !== undefined && firstSnapOrder <= evOrder) continue
+      const char = charById.get(charId)
+      const ch = chapById.get(ev.chapterId)
+      out.push({
+        id: `char-before-intro-${charId}`,
+        severity: 'warning',
+        category: 'character',
+        message: `${char?.name ?? '?'} appears before any snapshot record`,
+        detail: firstSnapOrder === undefined
+          ? `First appears in "${ev.title || 'untitled'}" (Ch. ${ch?.number ?? '?'}) but has no snapshots at all`
+          : `First appears in "${ev.title || 'untitled'}" (Ch. ${ch?.number ?? '?'}) but first snapshot is later in the timeline`,
+        navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+        eventId: ev.id,
+      })
+    }
+
+    // ── Stale snapshot warning ────────────────────────────────────────────────
+    // Warn when a character is involved in staleThreshold+ consecutive events without a snapshot update.
+    const involvedEventsByChar = new Map<string, Array<(typeof allEvents)[0]>>()
+    for (const ev of sortedEventsAsc) {
+      for (const charId of ev.involvedCharacterIds) {
+        if (!involvedEventsByChar.has(charId)) involvedEventsByChar.set(charId, [])
+        involvedEventsByChar.get(charId)!.push(ev)
+      }
+    }
+    for (const [charId, charEvents] of involvedEventsByChar) {
+      const char = charById.get(charId)
+      if (!char) continue
+      const snapEventSet = snapEventIdsByChar.get(charId) ?? new Set<string>()
+      let streakStart: (typeof allEvents)[0] | null = null
+      let streakCount = 0
+      for (const ev of charEvents) {
+        if (snapEventSet.has(ev.id)) {
+          streakStart = null
+          streakCount = 0
+        } else {
+          streakCount++
+          if (!streakStart) streakStart = ev
+          if (streakCount === staleThreshold) {
+            const startCh = chapById.get(streakStart.chapterId)
+            const endCh = chapById.get(ev.chapterId)
+            out.push({
+              id: `stale-snapshot-${charId}-${streakStart.id}`,
+              severity: 'warning',
+              category: 'character',
+              message: `${char.name}'s state may be stale (${streakCount}+ events without update)`,
+              detail: `Involved from Ch. ${startCh?.number ?? '?'} to Ch. ${endCh?.number ?? '?'} with no snapshot update`,
+              navigatePath: `/worlds/${worldId}/timeline/${streakStart.chapterId}`,
+              eventId: streakStart.id,
+            })
+          }
         }
       }
     }
@@ -553,6 +696,67 @@ export function ContinuityChecker() {
             eventId: ev.id,
           })
         }
+      }
+    }
+
+    // ── Item used after destroyed ─────────────────────────────────────────────
+    // An item's condition is tracked via ItemSnapshot. If the last condition at or before
+    // a reference point is 'destroyed', flag it. A later non-destroyed snapshot acts as restoration.
+    const itemSnapHistory = new Map<string, Array<{ order: number; condition: string }>>()
+    for (const is of allItemSnapshots ?? []) {
+      if (!itemSnapHistory.has(is.itemId)) itemSnapHistory.set(is.itemId, [])
+      itemSnapHistory.get(is.itemId)!.push({ order: eventOrder(is.eventId), condition: is.condition })
+    }
+    for (const hist of itemSnapHistory.values()) hist.sort((a, b) => a.order - b.order)
+
+    function isItemDestroyedAtOrder(itemId: string, order: number): boolean {
+      const hist = itemSnapHistory.get(itemId)
+      if (!hist) return false
+      let lastCondition: string | null = null
+      for (const entry of hist) {
+        if (entry.order > order) break
+        lastCondition = entry.condition
+      }
+      return lastCondition === 'destroyed'
+    }
+
+    for (const ev of allEvents) {
+      if (!ev.involvedItemIds?.length) continue
+      const evOrder = eventOrder(ev.id)
+      const ch = chapById.get(ev.chapterId)
+      for (const itemId of ev.involvedItemIds) {
+        if (!isItemDestroyedAtOrder(itemId, evOrder)) continue
+        const item = itemById.get(itemId)
+        out.push({
+          id: `item-after-destroyed-ev-${itemId}-${ev.id}`,
+          severity: 'warning',
+          category: 'item',
+          message: `"${item?.name ?? itemId}" used after being destroyed`,
+          detail: `Referenced in "${ev.title || 'untitled'}" (Ch. ${ch?.number ?? '?'}) — condition is "destroyed". Update the item snapshot to restore it if intentional.`,
+          navigatePath: `/worlds/${worldId}/timeline/${ch?.id ?? ev.chapterId}`,
+          eventId: ev.id,
+        })
+      }
+    }
+
+    for (const snap of snapshots) {
+      if (!snap.inventoryItemIds?.length) continue
+      const snapOrder = eventOrder(snap.eventId)
+      const ev = eventById.get(snap.eventId)
+      const ch = ev ? chapById.get(ev.chapterId) : undefined
+      for (const itemId of snap.inventoryItemIds) {
+        if (!isItemDestroyedAtOrder(itemId, snapOrder)) continue
+        const item = itemById.get(itemId)
+        const char = charById.get(snap.characterId)
+        out.push({
+          id: `item-after-destroyed-inv-${itemId}-${snap.eventId}-${snap.characterId}`,
+          severity: 'warning',
+          category: 'item',
+          message: `Destroyed item "${item?.name ?? itemId}" in ${char?.name ?? '?'}'s inventory`,
+          detail: `Held in Ch. ${ch?.number ?? '?'} — condition is "destroyed". Update the item snapshot to restore it if intentional.`,
+          navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+          eventId: snap.eventId,
+        })
       }
     }
 
@@ -843,8 +1047,76 @@ export function ContinuityChecker() {
       }
     }
 
+    // ── POV checks ──────────────────────────────────────────────────────────────
+
+    // Check 3: POV character not listed in involvedCharacterIds
+    for (const ev of allEvents) {
+      if (!ev.povCharacterId) continue
+      if (!ev.involvedCharacterIds.includes(ev.povCharacterId)) {
+        const char = charById.get(ev.povCharacterId)
+        const ch = chapById.get(ev.chapterId)
+        out.push({
+          id: `pov-not-involved-${ev.id}`,
+          severity: 'warning',
+          category: 'pov',
+          message: `POV "${char?.name ?? '?'}" is not in the cast of "${ev.title || 'untitled'}"`,
+          detail: `Ch. ${ch?.number ?? '?'} — add them to Characters or clear the POV`,
+          navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+          eventId: ev.id,
+        })
+      }
+    }
+
+    // Check 2: POV character dead at that event (non-flashback only)
+    for (const ev of allEvents) {
+      if (!ev.povCharacterId || ev.isFlashback) continue
+      const evOrder = eventOrder(ev.id)
+      if (!isDeadAtOrder(ev.povCharacterId, evOrder)) continue
+      const char = charById.get(ev.povCharacterId)
+      const ch = chapById.get(ev.chapterId)
+      out.push({
+        id: `dead-pov-${ev.povCharacterId}-${ev.id}`,
+        severity: 'warning',
+        category: 'pov',
+        message: `POV "${char?.name ?? '?'}" is dead at "${ev.title || 'untitled'}"`,
+        detail: `Ch. ${ch?.number ?? '?'} — mark event as Flashback if intentional`,
+        navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+        eventId: ev.id,
+      })
+    }
+
+    // Check 4: 3+ consecutive events with the same POV character (considers only events with POV set)
+    const povEvents = allEvents
+      .filter((ev) => !!ev.povCharacterId)
+      .sort((a, b) => eventOrder(a.id) - eventOrder(b.id))
+
+    let runStart = 0
+    while (runStart < povEvents.length) {
+      const charId = povEvents[runStart].povCharacterId!
+      let runEnd = runStart + 1
+      while (runEnd < povEvents.length && povEvents[runEnd].povCharacterId === charId) runEnd++
+      const runLen = runEnd - runStart
+      if (runLen >= 3) {
+        const char = charById.get(charId)
+        const firstEv = povEvents[runStart]
+        const lastEv  = povEvents[runEnd - 1]
+        const firstCh = chapById.get(firstEv.chapterId)
+        const lastCh  = chapById.get(lastEv.chapterId)
+        out.push({
+          id: `pov-consecutive-${charId}-${firstEv.id}`,
+          severity: 'warning',
+          category: 'pov',
+          message: `${char?.name ?? '?'} is POV for ${runLen} consecutive events`,
+          detail: `Ch. ${firstCh?.number ?? '?'} → Ch. ${lastCh?.number ?? '?'} — consider alternating perspectives`,
+          navigatePath: `/worlds/${worldId}/timeline/${firstEv.chapterId}`,
+          eventId: firstEv.id,
+        })
+      }
+      runStart = runEnd
+    }
+
     return out
-  }, [chapters, allEvents, characters, rels, items, snapshots, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId])
+  }, [chapters, allEvents, characters, rels, items, snapshots, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId, world, allItemSnapshots])
 
   // Focus modal on open so keyboard navigation works immediately
   useEffect(() => {
@@ -854,7 +1126,7 @@ export function ContinuityChecker() {
     }
   }, [checkerOpen])
 
-  const suppressedSet = useMemo(() => new Set(suppressedIssueIds), [suppressedIssueIds])
+  const suppressedSet = suppressedIds
 
   // Flat ordered list of navigable (non-suppressed) issues for keyboard nav
   const navigableIssues = useMemo(
@@ -870,6 +1142,7 @@ export function ContinuityChecker() {
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Escape') { setCheckerOpen(false); return }
     if (navigableIssues.length === 0) return
     if (e.key === 'ArrowDown') {
       e.preventDefault()
@@ -888,18 +1161,20 @@ export function ContinuityChecker() {
   const errors   = issues.filter((i) => i.severity === 'error')
   const warnings = issues.filter((i) => i.severity === 'warning')
   const activeCount = issues.filter((i) => !suppressedSet.has(i.id)).length
-  const suppressedCount = suppressedIssueIds.length
+  const suppressedCount = suppressedIds.size
 
   // Per-category visible issues (respects showSuppressed)
   const charIssues    = issues.filter((i) => i.category === 'character')
   const itemIssues    = issues.filter((i) => i.category === 'item')
   const relIssues     = issues.filter((i) => i.category === 'relationship')
   const factionIssues = issues.filter((i) => i.category === 'faction')
+  const povIssues     = issues.filter((i) => i.category === 'pov')
 
   // Compute base indices for keyboard focus mapping per category
   const visibleChar    = charIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
   const visibleItem    = itemIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
   const visibleRel     = relIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
+  const visibleFaction = factionIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
 
   // focusedIdx is into navigableIssues; map back to category position
   function categoryFocusedIdx(categoryIssues: Issue[]): number {
@@ -918,6 +1193,9 @@ export function ContinuityChecker() {
 
       <div
         ref={containerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Continuity Checker"
         tabIndex={0}
         className="relative z-10 flex w-full max-w-xl flex-col rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-2xl outline-none"
         style={{ maxHeight: '80vh' }}
@@ -942,10 +1220,11 @@ export function ContinuityChecker() {
             </div>
           )}
           <button
+            aria-label="Close Continuity Checker"
             className="ml-auto text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
             onClick={() => setCheckerOpen(false)}
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
 
@@ -956,7 +1235,7 @@ export function ContinuityChecker() {
               <ShieldCheck className="h-10 w-10 text-green-400" />
               <p className="text-sm font-medium text-[hsl(var(--foreground))]">No issues found</p>
               <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                No continuity errors detected across {characters.length} character{characters.length !== 1 ? 's' : ''}, {items.length} item{items.length !== 1 ? 's' : ''}, {rels.length} relationship{rels.length !== 1 ? 's' : ''}, and {allFactions.length} faction{allFactions.length !== 1 ? 's' : ''}.
+                No continuity errors detected across {characters.length} character{characters.length !== 1 ? 's' : ''}, {items.length} item{items.length !== 1 ? 's' : ''}, {rels.length} relationship{rels.length !== 1 ? 's' : ''}, {allFactions.length} faction{allFactions.length !== 1 ? 's' : ''}, and POV assignments.
               </p>
             </div>
           ) : (
@@ -964,19 +1243,23 @@ export function ContinuityChecker() {
               <CategorySection title="Characters" icon={Users} issues={charIssues}
                 focusedIdx={categoryFocusedIdx(charIssues)} baseIdx={0}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleSuppressIssue(worldId ?? '', i.id); if (note) setSuppressNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Items" icon={Package} issues={itemIssues}
                 focusedIdx={categoryFocusedIdx(itemIssues)} baseIdx={visibleChar.length}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleSuppressIssue(worldId ?? '', i.id); if (note) setSuppressNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Relationships" icon={Network} issues={relIssues}
                 focusedIdx={categoryFocusedIdx(relIssues)} baseIdx={visibleChar.length + visibleItem.length}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleSuppressIssue(worldId ?? '', i.id); if (note) setSuppressNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Factions" icon={Shield} issues={factionIssues}
                 focusedIdx={categoryFocusedIdx(factionIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleSuppressIssue(worldId ?? '', i.id); if (note) setSuppressNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+              <CategorySection title="POV" icon={Eye} issues={povIssues}
+                focusedIdx={categoryFocusedIdx(povIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length + visibleFaction.length}
+                suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
+                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
             </>
           )}
         </div>

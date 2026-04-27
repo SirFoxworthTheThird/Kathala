@@ -19,6 +19,8 @@ export interface Chapter {
   updatedAt: number
 }
 
+export type EventStatus = 'idea' | 'outline' | 'draft' | 'revised' | 'final'
+
 export interface WorldEvent {
   id: string
   worldId: string
@@ -33,6 +35,10 @@ export interface WorldEvent {
   sortOrder: number
   /** Days of travel before this event. Drives continuity distance checks. */
   travelDays: number | null
+  status: EventStatus
+  povCharacterId: string | null
+  /** Marks the event as a flashback/retrospective — suppresses present-state continuity checks. */
+  isFlashback: boolean
   createdAt: number
   updatedAt: number
 }

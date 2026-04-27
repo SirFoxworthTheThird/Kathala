@@ -82,10 +82,13 @@ export default function TimelineView() {
     <div className="flex h-full flex-col">
       {/* Timeline tabs */}
       {timelines.length > 1 && (
-        <div className="flex items-center gap-1 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-1">
+        <div role="tablist" aria-label="Timelines" className="flex items-center gap-1 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-1">
           {timelines.map((tl) => (
             <div
               key={tl.id}
+              role="tab"
+              aria-selected={currentTimelineId === tl.id}
+              aria-controls="timeline-panel"
               className={`group flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors ${
                 currentTimelineId === tl.id
                   ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
@@ -115,10 +118,11 @@ export default function TimelineView() {
               )}
               <button
                 onClick={() => setDeleteTarget({ id: tl.id, name: tl.name })}
+                aria-label={`Delete ${tl.name}`}
                 className="opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity text-[hsl(var(--muted-foreground))] hover:text-red-400"
                 title="Delete timeline"
               >
-                <X className="h-3 w-3" />
+                <X className="h-3 w-3" aria-hidden="true" />
               </button>
             </div>
           ))}
@@ -151,7 +155,7 @@ export default function TimelineView() {
         </div>
       </div>
 
-      <div className="flex flex-col flex-1 min-h-0">
+      <div id="timeline-panel" role="tabpanel" className="flex flex-col flex-1 min-h-0">
       <div className="flex-1 overflow-auto p-4">
         {chapters.length === 0 ? (
           <EmptyState

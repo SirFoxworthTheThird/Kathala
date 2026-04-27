@@ -1,6 +1,8 @@
-import { X, BookOpen, Users, Network, Package, Scroll, MapPin, Heart, Skull, ChevronRight, BookMarked, Shield } from 'lucide-react'
+import { X, BookOpen, Users, Network, Package, Scroll, MapPin, Heart, Skull, ChevronRight, BookMarked, Shield, Eye } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
 import { useAppStore } from '@/store'
+import { useFocusTrap } from '@/lib/useFocusTrap'
 import { useChapter, useEvent, useEvents } from '@/db/hooks/useTimeline'
 import { useBestSnapshots } from '@/db/hooks/useSnapshots'
 import { useCharacters } from '@/db/hooks/useCharacters'
@@ -13,6 +15,7 @@ import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { cn } from '@/lib/utils'
+import { charColor } from '@/lib/characterColor'
 
 function Section({ title, icon: Icon, count, children }: {
   title: string
@@ -38,6 +41,18 @@ export function WritersBriefPanel() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
   const { briefOpen, setBriefOpen, activeEventId } = useAppStore()
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  useFocusTrap(panelRef, briefOpen)
+
+  useEffect(() => {
+    if (!briefOpen) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setBriefOpen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [briefOpen, setBriefOpen])
 
   const activeEvent = useEvent(activeEventId)
   const chapter    = useChapter(activeEvent?.chapterId ?? null)
@@ -120,16 +135,23 @@ export function WritersBriefPanel() {
       />
 
       {/* Panel */}
-      <div className="fixed right-0 top-0 z-[3001] flex h-screen w-80 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-2xl">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Writer's Brief"
+        className="fixed right-0 top-0 z-[3001] flex h-screen w-80 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-2xl"
+      >
         {/* Header */}
         <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] px-4 py-3">
           <BookOpen className="h-4 w-4 text-[hsl(var(--accent-foreground))]" />
           <span className="text-sm font-semibold">Writer's Brief</span>
           <button
+            aria-label="Close Writer's Brief"
             className="ml-auto text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
             onClick={() => setBriefOpen(false)}
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
 
@@ -157,6 +179,18 @@ export function WritersBriefPanel() {
                     {activeEvent.description && (
                       <p className="mt-0.5 text-[10px] text-[hsl(var(--muted-foreground))] leading-relaxed">{activeEvent.description}</p>
                     )}
+                    {activeEvent.povCharacterId && (() => {
+                      const povChar = characters.find((c) => c.id === activeEvent.povCharacterId)
+                      if (!povChar) return null
+                      return (
+                        <div className="mt-1 flex items-center gap-1.5 text-[10px]">
+                          <Eye className="h-2.5 w-2.5 shrink-0 text-[hsl(var(--muted-foreground))]" />
+                          <span className="text-[hsl(var(--muted-foreground))]">POV:</span>
+                          <span className="inline-block h-2 w-2 rounded-full shrink-0" style={{ background: charColor(povChar) }} />
+                          <span className="font-medium text-[hsl(var(--foreground))]">{povChar.name}</span>
+                        </div>
+                      )
+                    })()}
                   </div>
                 )}
               </div>

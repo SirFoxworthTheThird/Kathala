@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { toPng } from 'html-to-image'
-import { useParams } from 'react-router-dom'
-import { Heart, Skull, MapPin, Minus, Search, Download, X, Shield } from 'lucide-react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { Heart, Skull, MapPin, Minus, Search, Download, X, Shield, FileEdit, Eye } from 'lucide-react'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
@@ -11,20 +11,9 @@ import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/EmptyState'
 import { BookOpen } from 'lucide-react'
-import type { Character } from '@/types'
-
-// ── Colour helpers ────────────────────────────────────────────────────────────
-
-/** Deterministic hue from character id — used as fallback when no explicit color set */
-function idToHue(id: string): number {
-  let h = 0
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) & 0xffff
-  return h % 360
-}
-
-function charColor(char: Character): string {
-  return char.color ?? `hsl(${idToHue(char.id)}, 60%, 55%)`
-}
+import type { EventStatus } from '@/types'
+import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
+import { charColor } from '@/lib/characterColor'
 
 // ── Inventory sparkline (pure SVG, no library) ────────────────────────────────
 
@@ -56,6 +45,7 @@ function InventorySparkline({ counts }: { counts: number[] }) {
 
 export default function CharacterArcView() {
   const { worldId } = useParams<{ worldId: string }>()
+  const navigate = useNavigate()
   const { activeEventId, setActiveEventId } = useAppStore()
   const [viewMode, setViewMode]             = useState<'chapter' | 'event'>('chapter')
   const [viewType, setViewType]             = useState<'characters' | 'factions'>('characters')
@@ -63,6 +53,8 @@ export default function CharacterArcView() {
   const [expandedKey, setExpandedKey]       = useState<string | null>(null) // `${charId}:${colId}`
   const [selectedTimelineId, setSelectedTimelineId] = useState<string | null>(null) // null = all
   const [showFactionOverlay, setShowFactionOverlay] = useState(false)
+  const [showStatusOverlay, setShowStatusOverlay]   = useState(false)
+  const [showPovOverlay, setShowPovOverlay]         = useState(false)
   const tableRef = useRef<HTMLDivElement>(null)
 
   const timelines      = useTimelines(worldId ?? null)
@@ -162,6 +154,67 @@ export default function CharacterArcView() {
     return null
   }
 
+  // Status overlay — pre-computed O(n) Maps so column-header lookups are O(1).
+  // Rebuilt only when allEvents or showStatusOverlay changes (derived on each render;
+  // React will skip re-renders when neither changes thanks to referential stability of hooks).
+  const eventStatusColorMap = new Map<string, string>()
+  const chapterMinStatusMap = new Map<string, EventStatus>()
+  if (showStatusOverlay) {
+    for (const ev of allEvents) {
+      const s = (ev.status ?? 'draft') as EventStatus
+      eventStatusColorMap.set(ev.id, EVENT_STATUS_CONFIG[s].color)
+
+      const evIdx = EVENT_STATUSES.indexOf(s)
+      const existing = chapterMinStatusMap.get(ev.chapterId)
+      const existingIdx = existing !== undefined ? EVENT_STATUSES.indexOf(existing) : EVENT_STATUSES.length
+      if (evIdx < existingIdx) chapterMinStatusMap.set(ev.chapterId, s)
+    }
+  }
+
+  function getEventStatusColor(eventId: string): string | null {
+    return eventStatusColorMap.get(eventId) ?? null
+  }
+
+  function getChapterStatusColor(chapterId: string): string | null {
+    const s = chapterMinStatusMap.get(chapterId)
+    return s !== undefined ? EVENT_STATUS_CONFIG[s].color : null
+  }
+
+  // POV overlay — pre-computed Maps.
+  // Event mode: each event → POV character's color (or absent).
+  // Chapter mode: each chapter → dominant (most-frequent) POV character's color.
+  const eventPovColorMap    = new Map<string, string>()
+  const chapterDomPovMap    = new Map<string, string>()
+  const povCharSet          = new Set<string>() // charIds with ≥1 POV event (for legend)
+  if (showPovOverlay) {
+    const charColorLookup = new Map(characters.map((c) => [c.id, charColor(c)]))
+    for (const ev of allEvents) {
+      if (!ev.povCharacterId) continue
+      const color = charColorLookup.get(ev.povCharacterId)
+      if (!color) continue
+      eventPovColorMap.set(ev.id, color)
+      povCharSet.add(ev.povCharacterId)
+    }
+    // Dominant POV per chapter: count events by POV char, pick highest
+    const chapterPovCounts = new Map<string, Map<string, number>>()
+    for (const ev of allEvents) {
+      if (!ev.povCharacterId) continue
+      if (!chapterPovCounts.has(ev.chapterId)) chapterPovCounts.set(ev.chapterId, new Map())
+      const counts = chapterPovCounts.get(ev.chapterId)!
+      counts.set(ev.povCharacterId, (counts.get(ev.povCharacterId) ?? 0) + 1)
+    }
+    for (const [chapterId, counts] of chapterPovCounts) {
+      let domCharId = '', domCount = 0
+      for (const [charId, count] of counts) {
+        if (count > domCount) { domCharId = charId; domCount = count }
+      }
+      if (domCharId) {
+        const color = charColorLookup.get(domCharId)
+        if (color) chapterDomPovMap.set(chapterId, color)
+      }
+    }
+  }
+
   // Last event position per chapter — used for faction membership check in chapter mode
   const lastEventPosByChapter = new Map<string, number>()
   for (const ev of allSortedEvents) {
@@ -226,14 +279,22 @@ export default function CharacterArcView() {
     }
   }, [])
 
-  if (characters.length === 0) {
+  if (characters.length === 0 || sortedChapters.length === 0) {
     return (
-      <EmptyState icon={BookOpen} title="Nothing to show" description="Add characters to get started." className="h-full" />
-    )
-  }
-  if (sortedChapters.length === 0) {
-    return (
-      <EmptyState icon={BookOpen} title="Nothing to show" description="Add chapters to your timeline to see the arc." className="h-full" />
+      <EmptyState
+        icon={BookOpen}
+        title="Nothing to visualize"
+        description="The Arc view shows character states across every chapter. Add characters and events first."
+        action={
+          <button
+            onClick={() => navigate('timeline')}
+            className="inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-sm font-medium hover:bg-[hsl(var(--accent))] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
+          >
+            Go to Timeline
+          </button>
+        }
+        className="h-full"
+      />
     )
   }
   if (snapshots.length === 0) {
@@ -509,6 +570,32 @@ export default function CharacterArcView() {
             </button>
           )}
           <button
+            onClick={() => setShowStatusOverlay((v) => !v)}
+            className={cn(
+              'flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors',
+              showStatusOverlay
+                ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
+            )}
+            title="Toggle scene status overlay"
+          >
+            <FileEdit className="h-3 w-3" />
+            Status
+          </button>
+          <button
+            onClick={() => setShowPovOverlay((v) => !v)}
+            className={cn(
+              'flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors',
+              showPovOverlay
+                ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
+            )}
+            title="Toggle POV overlay"
+          >
+            <Eye className="h-3 w-3" />
+            POV
+          </button>
+          <button
             onClick={handleExport}
             className="flex items-center gap-1 rounded-md border border-[hsl(var(--border))] px-2 py-1 text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent)/0.4)] transition-colors"
             title="Export arc as PNG"
@@ -519,8 +606,8 @@ export default function CharacterArcView() {
         </div>
       </div>
 
-      {/* Scrollable table */}
-      <div ref={tableRef} className="flex-1 overflow-auto">
+      {/* Scrollable table — sticky name column; horizontal scroll when content overflows */}
+      <div ref={tableRef} className="flex-1 overflow-auto relative">
         <table className="border-collapse text-xs" style={{ tableLayout: 'fixed' }}>
           <thead className="sticky top-0 z-10 bg-[hsl(var(--card))]">
             {/* Timeline header row — only rendered when multiple timelines exist */}
@@ -545,12 +632,19 @@ export default function CharacterArcView() {
 
               {viewMode === 'chapter' && sortedChapters.map((ch) => {
                 const isActive = ch.id === activeChapterId
+                const statusColor = getChapterStatusColor(ch.id)
+                const povColor = chapterDomPovMap.get(ch.id) ?? null
                 return (
                   <th
                     key={ch.id}
-                    style={{ minWidth: colWidth, maxWidth: colWidth }}
+                    style={{
+                      minWidth: colWidth, maxWidth: colWidth,
+                      ...(statusColor ? { borderBottom: `3px solid ${statusColor}` } : {}),
+                      ...(povColor ? { borderTop: `3px solid ${povColor}` } : {}),
+                    }}
                     className={cn(
-                      'cursor-pointer border-b border-r border-[hsl(var(--border))] px-2 py-2 text-center font-medium transition-colors',
+                      'cursor-pointer border-r border-[hsl(var(--border))] px-2 py-2 text-center font-medium transition-colors',
+                      !statusColor && 'border-b',
                       isActive
                         ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
                         : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
@@ -571,18 +665,25 @@ export default function CharacterArcView() {
               {viewMode === 'event' && sortedEvents.map((ev) => {
                 const ch = chapterById.get(ev.chapterId)
                 const isActive = ev.id === activeEventId
+                const statusColor = getEventStatusColor(ev.id)
+                const povColor = eventPovColorMap.get(ev.id) ?? null
                 return (
                   <th
                     key={ev.id}
-                    style={{ minWidth: colWidth, maxWidth: colWidth }}
+                    style={{
+                      minWidth: colWidth, maxWidth: colWidth,
+                      ...(statusColor ? { borderBottom: `3px solid ${statusColor}` } : {}),
+                      ...(povColor ? { borderTop: `3px solid ${povColor}` } : {}),
+                    }}
                     className={cn(
-                      'cursor-pointer border-b border-r border-[hsl(var(--border))] px-2 py-2 text-center font-medium transition-colors',
+                      'cursor-pointer border-r border-[hsl(var(--border))] px-2 py-2 text-center font-medium transition-colors',
+                      !statusColor && 'border-b',
                       isActive
                         ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
                         : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
                     )}
                     onClick={() => setActiveEventId(isActive ? null : ev.id)}
-                    title={`Ch. ${ch?.number ?? '?'} — ${ev.title}`}
+                    title={`Ch. ${ch?.number ?? '?'} — ${ev.title} [${EVENT_STATUS_CONFIG[(ev.status ?? 'draft') as EventStatus].label}]`}
                   >
                     <div className="truncate text-[10px] opacity-60">Ch. {ch?.number ?? '?'}</div>
                     <div className="truncate font-semibold">{ev.title || <span className="italic opacity-50">untitled</span>}</div>
@@ -670,11 +771,25 @@ export default function CharacterArcView() {
       <div className="flex items-center gap-4 border-t border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-1.5 text-[10px] text-[hsl(var(--muted-foreground))]">
         <div className="flex items-center gap-1"><Heart className="h-2.5 w-2.5 text-green-400" /> Alive</div>
         <div className="flex items-center gap-1"><Skull className="h-2.5 w-2.5 text-red-400" /> Dead</div>
-        <div className="flex items-center gap-1"><Minus className="h-2.5 w-2.5 text-[hsl(var(--border))]" /> No snapshot</div>
+        <div className="flex items-center gap-1" title="No state recorded — character not yet introduced or state not set for this chapter/event">
+          <Minus className="h-2.5 w-2.5 text-[hsl(var(--border))]" /> No state recorded
+        </div>
         {showFactionOverlay && allFactions.map((f) => (
           <div key={f.id} className="flex items-center gap-1">
             <span className="inline-block h-2 w-4 rounded-sm" style={{ background: f.color }} />
             {f.name}
+          </div>
+        ))}
+        {showStatusOverlay && EVENT_STATUSES.map((s) => (
+          <div key={s} className="flex items-center gap-1">
+            <span className="inline-block h-2 w-4 rounded-sm" style={{ background: EVENT_STATUS_CONFIG[s].color }} />
+            {EVENT_STATUS_CONFIG[s].label}
+          </div>
+        ))}
+        {showPovOverlay && characters.filter((c) => povCharSet.has(c.id)).map((c) => (
+          <div key={c.id} className="flex items-center gap-1">
+            <Eye className="h-2.5 w-2.5" style={{ color: charColor(c) }} />
+            {c.name}
           </div>
         ))}
         <div className="ml-auto">Click a column to set cursor · Click a notes cell to expand</div>

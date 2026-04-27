@@ -4,10 +4,12 @@ import type {
   CharacterSnapshot, CharacterMovement, ItemPlacement, LocationSnapshot, ItemSnapshot,
   Relationship, RelationshipSnapshot, Timeline, Chapter, WorldEvent, TravelMode,
   TimelineRelationship, CrossTimelineArtifact, MapRoute, MapRegion, MapRegionSnapshot,
-  MapAnnotation, LoreCategory, LorePage, Faction, FactionMembership,
+  MapAnnotation, LoreCategory, LorePage, Faction, FactionMembership, FactionRelationship,
+  ContinuitySuppression,
 } from '@/types'
+import { generateId } from '@/lib/id'
 
-const EXPORT_VERSION = 6
+const EXPORT_VERSION = 7
 
 interface BlobExport {
   id: string
@@ -16,6 +18,8 @@ interface BlobExport {
   dataBase64: string
   createdAt: number
 }
+
+type RawBlob = { id: string; worldId: string; mimeType: string; data: Blob; createdAt: number }
 
 export interface WorldExportFile {
   version: number
@@ -49,7 +53,10 @@ export interface WorldExportFile {
   lorePages: LorePage[]
   factions: Faction[]
   factionMemberships: FactionMembership[]
+  factionRelationships: FactionRelationship[]
+  continuitySuppressions?: ContinuitySuppression[]
   relationshipPositions?: Record<string, { x: number; y: number }>
+  /** @deprecated v6 and earlier stored only IDs via localStorage; superseded by continuitySuppressions */
   suppressedIssueIds?: string[]
 }
 
@@ -84,7 +91,41 @@ function base64ToBlob(base64: string, mimeType: string): Blob {
   return new Blob([array], { type: mimeType })
 }
 
-export async function exportWorld(worldId: string): Promise<void> {
+// ── Shared data-gathering ─────────────────────────────────────────────────────
+
+interface CollectedWorldData {
+  world: World
+  mapLayers: MapLayer[]
+  locationMarkers: LocationMarker[]
+  characters: Character[]
+  items: Item[]
+  characterSnapshots: CharacterSnapshot[]
+  characterMovements: CharacterMovement[]
+  itemPlacements: ItemPlacement[]
+  locationSnapshots: LocationSnapshot[]
+  itemSnapshots: ItemSnapshot[]
+  relationships: Relationship[]
+  relationshipSnapshots: RelationshipSnapshot[]
+  timelines: Timeline[]
+  chapters: Chapter[]
+  events: WorldEvent[]
+  rawBlobs: RawBlob[]
+  travelModes: TravelMode[]
+  timelineRelationships: TimelineRelationship[]
+  crossTimelineArtifacts: CrossTimelineArtifact[]
+  mapRoutes: MapRoute[]
+  mapRegions: MapRegion[]
+  mapRegionSnapshots: MapRegionSnapshot[]
+  mapAnnotations: MapAnnotation[]
+  loreCategories: LoreCategory[]
+  lorePages: LorePage[]
+  factions: Faction[]
+  factionMemberships: FactionMembership[]
+  factionRelationships: FactionRelationship[]
+  continuitySuppressions: ContinuitySuppression[]
+}
+
+async function collectWorldData(worldId: string): Promise<CollectedWorldData> {
   const [
     world,
     mapLayers,
@@ -113,6 +154,8 @@ export async function exportWorld(worldId: string): Promise<void> {
     lorePages,
     factions,
     factionMemberships,
+    factionRelationships,
+    continuitySuppressions,
   ] = await Promise.all([
     db.worlds.get(worldId),
     db.mapLayers.where('worldId').equals(worldId).toArray(),
@@ -141,39 +184,13 @@ export async function exportWorld(worldId: string): Promise<void> {
     db.lorePages.where('worldId').equals(worldId).toArray(),
     db.factions.where('worldId').equals(worldId).toArray(),
     db.factionMemberships.where('worldId').equals(worldId).toArray(),
+    db.factionRelationships.where('worldId').equals(worldId).toArray(),
+    db.continuitySuppressions.where('worldId').equals(worldId).toArray(),
   ])
 
   if (!world) throw new Error('World not found')
 
-  const blobs: BlobExport[] = await Promise.all(
-    rawBlobs.map(async (b) => ({
-      id: b.id,
-      worldId: b.worldId,
-      mimeType: b.mimeType,
-      dataBase64: await blobToBase64(b.data),
-      createdAt: b.createdAt,
-    }))
-  )
-
-  let relationshipPositions: Record<string, { x: number; y: number }> | undefined
-  try {
-    const raw = localStorage.getItem(`wb-rel-pos-${worldId}`)
-    if (raw) relationshipPositions = JSON.parse(raw)
-  } catch { /* ignore */ }
-
-  let suppressedIssueIds: string[] | undefined
-  try {
-    const raw = localStorage.getItem('plotweave-ui')
-    if (raw) {
-      const ui = JSON.parse(raw) as { state?: { suppressedIssueIds?: Record<string, string[]> } }
-      suppressedIssueIds = ui.state?.suppressedIssueIds?.[worldId] ?? []
-    }
-  } catch { /* ignore */ }
-
-  const exportData: WorldExportFile = {
-    version: EXPORT_VERSION,
-    type: 'full',
-    exportedAt: Date.now(),
+  return {
     world,
     mapLayers,
     locationMarkers,
@@ -189,7 +206,7 @@ export async function exportWorld(worldId: string): Promise<void> {
     timelines,
     chapters,
     events,
-    blobs,
+    rawBlobs: rawBlobs as RawBlob[],
     travelModes,
     timelineRelationships,
     crossTimelineArtifacts,
@@ -201,11 +218,150 @@ export async function exportWorld(worldId: string): Promise<void> {
     lorePages,
     factions,
     factionMemberships,
-    relationshipPositions,
-    suppressedIssueIds,
+    factionRelationships,
+    continuitySuppressions,
+  }
+}
+
+function readLocalStorageExtras(worldId: string): {
+  relationshipPositions?: Record<string, { x: number; y: number }>
+} {
+  let relationshipPositions: Record<string, { x: number; y: number }> | undefined
+  try {
+    const raw = localStorage.getItem(`wb-rel-pos-${worldId}`)
+    if (raw) relationshipPositions = JSON.parse(raw)
+  } catch { /* ignore */ }
+
+  return { relationshipPositions }
+}
+
+// ── Streaming export ──────────────────────────────────────────────────────────
+
+/**
+ * Write a JSON file where all blobs are streamed one-at-a-time rather than
+ * loaded into memory simultaneously.
+ *
+ * Uses the File System Access API (showSaveFilePicker) when available
+ * (Chrome/Edge/Electron).  Falls back to sequential in-memory accumulation +
+ * triggerDownload on Firefox and other browsers.
+ *
+ * headerObj must NOT include a `blobs` key — blobs are appended via streaming.
+ */
+async function writeJsonWithBlobs(
+  headerObj: Record<string, unknown>,
+  rawBlobs: RawBlob[],
+  filename: string,
+  onProgress?: (done: number, total: number) => void,
+): Promise<void> {
+  // Build a JSON envelope with a string placeholder for the blobs array, then
+  // split the string at the placeholder so we can stream blob entries in between.
+  const PLACEHOLDER = '"__BLOBS_PLACEHOLDER__"'
+  const envelope = JSON.stringify({ ...headerObj, blobs: '__BLOBS_PLACEHOLDER__' })
+  const splitIdx = envelope.indexOf(PLACEHOLDER)
+  const prefix = envelope.slice(0, splitIdx) + '['
+  const suffix = ']' + envelope.slice(splitIdx + PLACEHOLDER.length)
+
+  const total = rawBlobs.length
+  onProgress?.(0, total)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const picker = (window as any).showSaveFilePicker as ((...a: any[]) => Promise<any>) | undefined
+
+  if (picker) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let writable: any
+    try {
+      const handle = await picker({
+        suggestedName: filename,
+        types: [{ description: 'PlotWeave Export', accept: { 'application/json': ['.pwk', '.pwb'] } }],
+      })
+      writable = await handle.createWritable()
+      await writable.write(prefix)
+      for (let i = 0; i < rawBlobs.length; i++) {
+        const b = rawBlobs[i]
+        const entry: BlobExport = {
+          id: b.id,
+          worldId: b.worldId,
+          mimeType: b.mimeType,
+          dataBase64: await blobToBase64(b.data),
+          createdAt: b.createdAt,
+        }
+        await writable.write((i > 0 ? ',' : '') + JSON.stringify(entry))
+        onProgress?.(i + 1, total)
+      }
+      await writable.write(suffix)
+      await writable.close()
+      return
+    } catch (err) {
+      if (writable) { try { await writable.close() } catch { /* ignore */ } }
+      // User cancelled — silent exit
+      if ((err as { name?: string }).name === 'AbortError') return
+      // Other picker error — fall through to in-memory fallback
+    }
   }
 
-  triggerDownload(JSON.stringify(exportData), `${world.name.replace(/[^a-z0-9]/gi, '_')}.pwk`)
+  // Fallback: sequential in-memory accumulation (Firefox, Safari, old browsers)
+  const parts: string[] = [prefix]
+  for (let i = 0; i < rawBlobs.length; i++) {
+    const b = rawBlobs[i]
+    const entry: BlobExport = {
+      id: b.id,
+      worldId: b.worldId,
+      mimeType: b.mimeType,
+      dataBase64: await blobToBase64(b.data),
+      createdAt: b.createdAt,
+    }
+    parts.push((i > 0 ? ',' : '') + JSON.stringify(entry))
+    onProgress?.(i + 1, total)
+  }
+  parts.push(suffix)
+  triggerDownload(parts.join(''), filename)
+}
+
+// ── Export functions ──────────────────────────────────────────────────────────
+
+export async function exportWorld(
+  worldId: string,
+  onProgress?: (done: number, total: number) => void,
+): Promise<void> {
+  const d = await collectWorldData(worldId)
+  const extras = readLocalStorageExtras(worldId)
+  const headerObj: Record<string, unknown> = {
+    version: EXPORT_VERSION,
+    type: 'full',
+    exportedAt: Date.now(),
+    world: d.world,
+    mapLayers: d.mapLayers,
+    locationMarkers: d.locationMarkers,
+    characters: d.characters,
+    items: d.items,
+    characterSnapshots: d.characterSnapshots,
+    characterMovements: d.characterMovements,
+    itemPlacements: d.itemPlacements,
+    locationSnapshots: d.locationSnapshots,
+    itemSnapshots: d.itemSnapshots,
+    relationships: d.relationships,
+    relationshipSnapshots: d.relationshipSnapshots,
+    timelines: d.timelines,
+    chapters: d.chapters,
+    events: d.events,
+    travelModes: d.travelModes,
+    timelineRelationships: d.timelineRelationships,
+    crossTimelineArtifacts: d.crossTimelineArtifacts,
+    mapRoutes: d.mapRoutes,
+    mapRegions: d.mapRegions,
+    mapRegionSnapshots: d.mapRegionSnapshots,
+    mapAnnotations: d.mapAnnotations,
+    loreCategories: d.loreCategories,
+    lorePages: d.lorePages,
+    factions: d.factions,
+    factionMemberships: d.factionMemberships,
+    factionRelationships: d.factionRelationships,
+    continuitySuppressions: d.continuitySuppressions,
+    ...extras,
+  }
+  const filename = `${d.world.name.replace(/[^a-z0-9]/gi, '_')}.pwk`
+  await writeJsonWithBlobs(headerObj, d.rawBlobs, filename, onProgress)
 }
 
 function triggerDownload(json: string, filename: string): void {
@@ -220,155 +376,128 @@ function triggerDownload(json: string, filename: string): void {
 
 /**
  * Export a world as two separate files:
- *  - `WorldName.pwk`        — all story data, no images (fast to open/share)
- *  - `WorldName.images.pwk` — binary blobs only (maps, portraits, etc.)
+ *  - `WorldName.pwk`  — all story data, no images (fast to open/share)
+ *  - `WorldName.pwb`  — binary blobs only (maps, portraits, etc.)
  *
  * Both files are needed for a complete round-trip import.
  * The images file can also be imported independently to restore images
  * for an already-imported world.
  */
-export async function exportWorldSplit(worldId: string): Promise<void> {
-  const [
-    world,
-    mapLayers,
-    locationMarkers,
-    characters,
-    items,
-    characterSnapshots,
-    characterMovements,
-    itemPlacements,
-    locationSnapshots,
-    itemSnapshots,
-    relationships,
-    relationshipSnapshots,
-    timelines,
-    chapters,
-    events,
-    rawBlobs,
-    travelModes,
-    timelineRelationships,
-    crossTimelineArtifacts,
-    mapRoutes,
-    mapRegions,
-    mapRegionSnapshots,
-    mapAnnotations,
-    loreCategories,
-    lorePages,
-    factions,
-    factionMemberships,
-  ] = await Promise.all([
-    db.worlds.get(worldId),
-    db.mapLayers.where('worldId').equals(worldId).toArray(),
-    db.locationMarkers.where('worldId').equals(worldId).toArray(),
-    db.characters.where('worldId').equals(worldId).toArray(),
-    db.items.where('worldId').equals(worldId).toArray(),
-    db.characterSnapshots.where('worldId').equals(worldId).toArray(),
-    db.characterMovements.where('worldId').equals(worldId).toArray(),
-    db.itemPlacements.where('worldId').equals(worldId).toArray(),
-    db.locationSnapshots.where('worldId').equals(worldId).toArray(),
-    db.itemSnapshots.where('worldId').equals(worldId).toArray(),
-    db.relationships.where('worldId').equals(worldId).toArray(),
-    db.relationshipSnapshots.where('worldId').equals(worldId).toArray(),
-    db.timelines.where('worldId').equals(worldId).toArray(),
-    db.chapters.where('worldId').equals(worldId).toArray(),
-    db.events.where('worldId').equals(worldId).toArray(),
-    db.blobs.where('worldId').equals(worldId).toArray(),
-    db.travelModes.where('worldId').equals(worldId).toArray(),
-    db.timelineRelationships.where('worldId').equals(worldId).toArray(),
-    db.crossTimelineArtifacts.where('worldId').equals(worldId).toArray(),
-    db.mapRoutes.where('worldId').equals(worldId).toArray(),
-    db.mapRegions.where('worldId').equals(worldId).toArray(),
-    db.mapRegionSnapshots.where('worldId').equals(worldId).toArray(),
-    db.mapAnnotations.where('worldId').equals(worldId).toArray(),
-    db.loreCategories.where('worldId').equals(worldId).toArray(),
-    db.lorePages.where('worldId').equals(worldId).toArray(),
-    db.factions.where('worldId').equals(worldId).toArray(),
-    db.factionMemberships.where('worldId').equals(worldId).toArray(),
-  ])
+export async function exportWorldSplit(
+  worldId: string,
+  onProgress?: (done: number, total: number) => void,
+): Promise<void> {
+  const d = await collectWorldData(worldId)
+  const extras = readLocalStorageExtras(worldId)
+  const safeName = d.world.name.replace(/[^a-z0-9]/gi, '_')
+  const exportedAt = Date.now()
 
-  if (!world) throw new Error('World not found')
+  // ── File 1: data (no blobs) — immediate download ─────────────────────────
+  const dataFile: WorldExportFile = {
+    version: EXPORT_VERSION,
+    type: 'data',
+    exportedAt,
+    world: d.world,
+    mapLayers: d.mapLayers,
+    locationMarkers: d.locationMarkers,
+    characters: d.characters,
+    items: d.items,
+    characterSnapshots: d.characterSnapshots,
+    characterMovements: d.characterMovements,
+    itemPlacements: d.itemPlacements,
+    locationSnapshots: d.locationSnapshots,
+    itemSnapshots: d.itemSnapshots,
+    relationships: d.relationships,
+    relationshipSnapshots: d.relationshipSnapshots,
+    timelines: d.timelines,
+    chapters: d.chapters,
+    events: d.events,
+    blobs: [],
+    travelModes: d.travelModes,
+    timelineRelationships: d.timelineRelationships,
+    crossTimelineArtifacts: d.crossTimelineArtifacts,
+    mapRoutes: d.mapRoutes,
+    mapRegions: d.mapRegions,
+    mapRegionSnapshots: d.mapRegionSnapshots,
+    mapAnnotations: d.mapAnnotations,
+    loreCategories: d.loreCategories,
+    lorePages: d.lorePages,
+    factions: d.factions,
+    factionMemberships: d.factionMemberships,
+    factionRelationships: d.factionRelationships,
+    continuitySuppressions: d.continuitySuppressions,
+    ...extras,
+  }
+  triggerDownload(JSON.stringify(dataFile), `${safeName}.pwk`)
 
-  const blobs: BlobExport[] = await Promise.all(
-    rawBlobs.map(async (b) => ({
+  // ── File 2: images — streamed via File System Access API when available ───
+  const imagesHeader: Record<string, unknown> = {
+    version: EXPORT_VERSION,
+    type: 'images',
+    worldId,
+    worldName: d.world.name,
+    exportedAt,
+  }
+  await writeJsonWithBlobs(imagesHeader, d.rawBlobs, `${safeName}.pwb`, onProgress)
+}
+
+/**
+ * Serialize a world to a JSON string for cloud sync.
+ * Blobs are converted in-memory sequentially to keep peak memory bounded.
+ */
+export async function serializeWorldForSync(worldId: string): Promise<string> {
+  const d = await collectWorldData(worldId)
+  const extras = readLocalStorageExtras(worldId)
+  const blobs: BlobExport[] = []
+  for (const b of d.rawBlobs) {
+    blobs.push({
       id: b.id,
       worldId: b.worldId,
       mimeType: b.mimeType,
       dataBase64: await blobToBase64(b.data),
       createdAt: b.createdAt,
-    }))
-  )
-
-  let relationshipPositions: Record<string, { x: number; y: number }> | undefined
-  try {
-    const raw = localStorage.getItem(`wb-rel-pos-${worldId}`)
-    if (raw) relationshipPositions = JSON.parse(raw)
-  } catch { /* ignore */ }
-
-  let suppressedIssueIds: string[] | undefined
-  try {
-    const raw = localStorage.getItem('plotweave-ui')
-    if (raw) {
-      const ui = JSON.parse(raw) as { state?: { suppressedIssueIds?: Record<string, string[]> } }
-      suppressedIssueIds = ui.state?.suppressedIssueIds?.[worldId] ?? []
-    }
-  } catch { /* ignore */ }
-
-  const safeName = world.name.replace(/[^a-z0-9]/gi, '_')
-  const exportedAt = Date.now()
-
-  // ── File 1: data (no blobs) ──────────────────────────────────────────────
-  const dataFile: WorldExportFile = {
-    version: EXPORT_VERSION,
-    type: 'data',
-    exportedAt,
-    world,
-    mapLayers,
-    locationMarkers,
-    characters,
-    items,
-    characterSnapshots,
-    characterMovements,
-    itemPlacements,
-    locationSnapshots,
-    itemSnapshots,
-    relationships,
-    relationshipSnapshots,
-    timelines,
-    chapters,
-    events,
-    blobs: [],
-    travelModes,
-    timelineRelationships,
-    crossTimelineArtifacts,
-    mapRoutes,
-    mapRegions,
-    mapRegionSnapshots,
-    mapAnnotations,
-    loreCategories,
-    lorePages,
-    factions,
-    factionMemberships,
-    relationshipPositions,
-    suppressedIssueIds,
+    })
   }
-  triggerDownload(JSON.stringify(dataFile), `${safeName}.pwk`)
-
-  // ── File 2: images ───────────────────────────────────────────────────────
-  const imagesFile: WorldImagesFile = {
+  const exportData: WorldExportFile = {
     version: EXPORT_VERSION,
-    type: 'images',
-    worldId,
-    worldName: world.name,
-    exportedAt,
+    type: 'full',
+    exportedAt: Date.now(),
+    world: d.world,
+    mapLayers: d.mapLayers,
+    locationMarkers: d.locationMarkers,
+    characters: d.characters,
+    items: d.items,
+    characterSnapshots: d.characterSnapshots,
+    characterMovements: d.characterMovements,
+    itemPlacements: d.itemPlacements,
+    locationSnapshots: d.locationSnapshots,
+    itemSnapshots: d.itemSnapshots,
+    relationships: d.relationships,
+    relationshipSnapshots: d.relationshipSnapshots,
+    timelines: d.timelines,
+    chapters: d.chapters,
+    events: d.events,
     blobs,
+    travelModes: d.travelModes,
+    timelineRelationships: d.timelineRelationships,
+    crossTimelineArtifacts: d.crossTimelineArtifacts,
+    mapRoutes: d.mapRoutes,
+    mapRegions: d.mapRegions,
+    mapRegionSnapshots: d.mapRegionSnapshots,
+    mapAnnotations: d.mapAnnotations,
+    loreCategories: d.loreCategories,
+    lorePages: d.lorePages,
+    factions: d.factions,
+    factionMemberships: d.factionMemberships,
+    factionRelationships: d.factionRelationships,
+    continuitySuppressions: d.continuitySuppressions,
+    ...extras,
   }
-  // Small delay so browsers don't block the second download as a popup
-  await new Promise((r) => setTimeout(r, 200))
-  triggerDownload(JSON.stringify(imagesFile), `${safeName}.pwb`)
+  return JSON.stringify(exportData)
 }
 
 /**
- * Import only the images companion file (`.images.pwk`) for an already-imported world.
+ * Import only the images companion file (`.pwb`) for an already-imported world.
  * Safe to run multiple times — uses bulkPut so existing blobs are overwritten.
  */
 export async function importWorldImages(file: File): Promise<string> {
@@ -378,7 +507,7 @@ export async function importWorldImages(file: File): Promise<string> {
 
   if (typeof data !== 'object' || data === null) throw new Error('Invalid images file')
   const d = data as Record<string, unknown>
-  if (d.type !== 'images') throw new Error('Not an images export file (.images.pwk)')
+  if (d.type !== 'images') throw new Error('Not an images export file (.pwb)')
   if (typeof d.worldId !== 'string') throw new Error('Invalid images file: missing worldId')
   if (!Array.isArray(d.blobs)) throw new Error('Invalid images file: missing blobs array')
 
@@ -480,6 +609,10 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
     throw new Error('Invalid file: factionMemberships is not an array')
   }
   if (!d.factionMemberships) (d as Record<string, unknown>).factionMemberships = []
+  if (d.factionRelationships !== undefined && !Array.isArray(d.factionRelationships)) {
+    throw new Error('Invalid file: factionRelationships is not an array')
+  }
+  if (!d.factionRelationships) (d as Record<string, unknown>).factionRelationships = []
 }
 
 function normalizeImport(data: WorldExportFile): void {
@@ -578,6 +711,9 @@ function normalizeImport(data: WorldExportFile): void {
           tags: [],
           sortOrder: 0,
           travelDays: (c.travelDays as number | null) ?? null,
+          status: 'draft',
+          povCharacterId: null,
+          isFlashback: false,
           createdAt: now,
           updatedAt: now,
         })
@@ -627,7 +763,7 @@ function normalizeImport(data: WorldExportFile): void {
       const ev = eventById.get(eventId)
       if (!ev) return 0
       const chapNum = chapterNumberById.get(ev.chapterId) ?? 0
-      return chapNum * 10_000 + ev.sortOrder
+      return chapNum + ev.sortOrder / 1_000_000
     }
 
     const snapshotArrays: Rec[][] = [
@@ -656,6 +792,22 @@ export async function importWorldFromJson(json: string): Promise<string> {
 }
 
 async function importWorldData(data: WorldExportFile): Promise<string> {
+  // Normalise continuitySuppressions: v7+ files carry the DB records directly;
+  // v6 and earlier stored only issueIds via localStorage (notes were lost on export).
+  // Merge both sources so that upgrading users don't lose their suppressions.
+  const suppressionsToImport: ContinuitySuppression[] = []
+  if (Array.isArray(data.continuitySuppressions)) {
+    suppressionsToImport.push(...data.continuitySuppressions)
+  }
+  if (Array.isArray(data.suppressedIssueIds)) {
+    const existingIds = new Set(suppressionsToImport.map((s) => s.issueId))
+    for (const issueId of data.suppressedIssueIds) {
+      if (!existingIds.has(issueId)) {
+        suppressionsToImport.push({ id: generateId(), worldId: data.world.id, issueId, note: '' })
+      }
+    }
+  }
+
   await db.transaction('rw', [
     db.worlds, db.mapLayers, db.locationMarkers, db.characters,
     db.items, db.characterSnapshots, db.characterMovements, db.itemPlacements,
@@ -664,7 +816,8 @@ async function importWorldData(data: WorldExportFile): Promise<string> {
     db.chapters, db.events, db.blobs, db.travelModes,
     db.timelineRelationships, db.crossTimelineArtifacts,
     db.mapRoutes, db.mapRegions, db.mapRegionSnapshots, db.mapAnnotations,
-    db.loreCategories, db.lorePages, db.factions, db.factionMemberships,
+    db.loreCategories, db.lorePages, db.factions, db.factionMemberships, db.factionRelationships,
+    db.continuitySuppressions,
   ], async () => {
     await db.worlds.put(data.world)
     await db.mapLayers.bulkPut(data.mapLayers)
@@ -692,6 +845,10 @@ async function importWorldData(data: WorldExportFile): Promise<string> {
     await db.lorePages.bulkPut(data.lorePages)
     await db.factions.bulkPut(data.factions)
     await db.factionMemberships.bulkPut(data.factionMemberships)
+    await db.factionRelationships.bulkPut(data.factionRelationships)
+    if (suppressionsToImport.length > 0) {
+      await db.continuitySuppressions.bulkPut(suppressionsToImport)
+    }
 
     for (const b of data.blobs) {
       await db.blobs.put({
@@ -706,18 +863,6 @@ async function importWorldData(data: WorldExportFile): Promise<string> {
 
   if (data.relationshipPositions && typeof data.relationshipPositions === 'object') {
     localStorage.setItem(`wb-rel-pos-${data.world.id}`, JSON.stringify(data.relationshipPositions))
-  }
-
-  if (Array.isArray(data.suppressedIssueIds) && data.suppressedIssueIds.length > 0) {
-    try {
-      const raw = localStorage.getItem('plotweave-ui')
-      const ui = raw ? (JSON.parse(raw) as { state?: Record<string, unknown> }) : { state: {} }
-      if (!ui.state) ui.state = {}
-      const existing = (ui.state.suppressedIssueIds ?? {}) as Record<string, string[]>
-      existing[data.world.id] = data.suppressedIssueIds
-      ui.state.suppressedIssueIds = existing
-      localStorage.setItem('plotweave-ui', JSON.stringify(ui))
-    } catch { /* ignore */ }
   }
 
   return data.world.id
@@ -843,7 +988,7 @@ export async function applyWorldImport(
     localTravelModes, localTlRels, localCta,
     localRoutes, localRegions, localRegSnaps, localAnnotations,
     localLoreCats, localLorePages,
-    localFactions, localFactionMemberships,
+    localFactions, localFactionMemberships, localFactionRelationships,
   ] = await Promise.all([
     db.characters.where('worldId').equals(worldId).toArray(),
     db.items.where('worldId').equals(worldId).toArray(),
@@ -870,6 +1015,7 @@ export async function applyWorldImport(
     db.lorePages.where('worldId').equals(worldId).toArray(),
     db.factions.where('worldId').equals(worldId).toArray(),
     db.factionMemberships.where('worldId').equals(worldId).toArray(),
+    db.factionRelationships.where('worldId').equals(worldId).toArray(),
   ])
 
   const merged = {
@@ -899,6 +1045,7 @@ export async function applyWorldImport(
     lorePages:            mergeTable(parsed.lorePages, localLorePages).result,
     factions:             mergeTable(parsed.factions, localFactions).result,
     factionMemberships:   mergeTable(parsed.factionMemberships, localFactionMemberships).result,
+    factionRelationships: mergeTable(parsed.factionRelationships, localFactionRelationships).result,
     blobs:                parsed.blobs, // blobs: always use incoming (binary, no updatedAt)
     relationshipPositions: parsed.relationshipPositions,
     suppressedIssueIds:   parsed.suppressedIssueIds,

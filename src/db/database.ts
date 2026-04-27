@@ -30,6 +30,7 @@ import type {
   Faction,
   FactionMembership,
   FactionRelationship,
+  ContinuitySuppression,
 } from '@/types'
 
 class PlotWeaveDB extends Dexie {
@@ -62,9 +63,13 @@ class PlotWeaveDB extends Dexie {
   factions!: EntityTable<Faction, 'id'>
   factionMemberships!: EntityTable<FactionMembership, 'id'>
   factionRelationships!: EntityTable<FactionRelationship, 'id'>
+  continuitySuppressions!: EntityTable<ContinuitySuppression, 'id'>
 
   constructor() {
     super('PlotWeaveDB')
+
+    // IMPORTANT: Never remove old .version(N) blocks. Dexie requires the full
+    // migration chain to be present so databases at any prior version can upgrade.
 
     this.version(1).stores({
       worlds: 'id, name, createdAt',
@@ -266,9 +271,8 @@ class PlotWeaveDB extends Dexie {
       })
     })
 
-    // v13: add sortKey to all snapshot tables.
-    // sortKey = chapter.number × 10_000 + event.sortOrder — enables efficient
-    // "last-known state at or before event N" queries (delta/last-known model).
+    // v13: add sortKey to four snapshot tables using the original formula.
+    // v31 will recompute to the fractional formula; v30 adds the missing three tables.
     this.version(13).stores({
       characterSnapshots: 'id, worldId, characterId, eventId, [characterId+eventId], [worldId+characterId+sortKey]',
       locationSnapshots: 'id, worldId, locationMarkerId, eventId, [locationMarkerId+eventId], [worldId+locationMarkerId+sortKey]',
@@ -379,6 +383,101 @@ class PlotWeaveDB extends Dexie {
     // v25: inter-faction relationships (stance: allied | neutral | hostile)
     this.version(25).stores({
       factionRelationships: 'id, worldId, factionAId, factionBId',
+    })
+
+    // v26: event status ('idea' | 'outline' | 'draft' | 'revised' | 'final'); backfill 'draft'
+    this.version(26).stores({}).upgrade(async (tx) => {
+      await tx.table('events').toCollection().modify((ev: Record<string, unknown>) => {
+        if (!('status' in ev)) ev.status = 'draft'
+      })
+    })
+
+    // v27: event POV character; backfill null
+    this.version(27).stores({}).upgrade(async (tx) => {
+      await tx.table('events').toCollection().modify((ev: Record<string, unknown>) => {
+        if (!('povCharacterId' in ev)) ev.povCharacterId = null
+      })
+    })
+
+    // v28: flashback flag on events; backfill false
+    this.version(28).stores({}).upgrade(async (tx) => {
+      await tx.table('events').toCollection().modify((ev: Record<string, unknown>) => {
+        if (!('isFlashback' in ev)) ev.isFlashback = false
+      })
+    })
+
+    // v29: per-world stale snapshot threshold for continuity checker; backfill 5
+    this.version(29).stores({}).upgrade(async (tx) => {
+      await tx.table('worlds').toCollection().modify((w: Record<string, unknown>) => {
+        if (!('continuityStaleThreshold' in w)) w.continuityStaleThreshold = 5
+      })
+    })
+
+    // v30: add sortKey compound indexes to itemPlacements, characterMovements, and
+    // mapRegionSnapshots — the three tables omitted from v13 — and backfill sortKey
+    // using the v13 formula so v31 can recompute them uniformly.
+    this.version(30).stores({
+      itemPlacements: 'id, worldId, itemId, eventId, locationMarkerId, [itemId+eventId], [worldId+itemId+sortKey]',
+      characterMovements: 'id, worldId, characterId, eventId, [characterId+eventId], [worldId+characterId+sortKey]',
+      mapRegionSnapshots: 'id, worldId, regionId, eventId, [regionId+eventId], [worldId+regionId+sortKey]',
+    }).upgrade(async (tx) => {
+      const events: Array<{ id: string; chapterId: string; sortOrder: number }> =
+        await tx.table('events').toArray()
+      const chapters: Array<{ id: string; number: number }> =
+        await tx.table('chapters').toArray()
+
+      const eventById = new Map(events.map((e) => [e.id, e]))
+      const chapterNumberById = new Map(chapters.map((c) => [c.id, c.number]))
+
+      const getSortKey = (eventId: string): number => {
+        const ev = eventById.get(eventId)
+        if (!ev) return 0
+        const chapNum = chapterNumberById.get(ev.chapterId) ?? 0
+        return chapNum * 10_000 + ev.sortOrder
+      }
+
+      for (const tableName of ['itemPlacements', 'characterMovements', 'mapRegionSnapshots']) {
+        await tx.table(tableName).toCollection().modify((s: Record<string, unknown>) => {
+          if (s.sortKey === undefined) {
+            s.sortKey = getSortKey(s.eventId as string)
+          }
+        })
+      }
+    })
+
+    // v31: switch sortKey to fractional scheme (chapter.number + event.sortOrder / 1_000_000)
+    // to eliminate overlap when sortOrder ≥ 10_000. Recomputes all seven snapshot tables.
+    this.version(31).stores({}).upgrade(async (tx) => {
+      const events: Array<{ id: string; chapterId: string; sortOrder: number }> =
+        await tx.table('events').toArray()
+      const chapters: Array<{ id: string; number: number }> =
+        await tx.table('chapters').toArray()
+
+      const eventById = new Map(events.map((e) => [e.id, e]))
+      const chapterNumberById = new Map(chapters.map((c) => [c.id, c.number]))
+
+      const getSortKey = (eventId: string): number => {
+        const ev = eventById.get(eventId)
+        if (!ev) return 0
+        const chapNum = chapterNumberById.get(ev.chapterId) ?? 0
+        return chapNum + ev.sortOrder / 1_000_000
+      }
+
+      const allTables = [
+        'characterSnapshots', 'locationSnapshots', 'itemSnapshots', 'relationshipSnapshots',
+        'itemPlacements', 'characterMovements', 'mapRegionSnapshots',
+      ]
+      for (const tableName of allTables) {
+        await tx.table(tableName).toCollection().modify((s: Record<string, unknown>) => {
+          s.sortKey = getSortKey(s.eventId as string)
+        })
+      }
+    })
+
+    // v32: continuity suppressions moved from localStorage into IndexedDB so they
+    // round-trip with world export/import and are not silently lost on device change.
+    this.version(32).stores({
+      continuitySuppressions: 'id, worldId, issueId, [worldId+issueId]',
     })
   }
 }

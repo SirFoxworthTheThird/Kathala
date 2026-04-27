@@ -233,17 +233,79 @@ Findings from the end-to-end review. Bugs first, then copy/polish.
 
 ---
 
+## Reliability
+
+### Export Streaming
+- [x] **Streaming blob export** — replace the `Promise.all(rawBlobs.map(blobToBase64))` pattern (loads all images into memory simultaneously) with a one-at-a-time pipeline. Use the File System Access API (`showSaveFilePicker` + `WritableStream`) when available so each converted blob is flushed to disk immediately; fall back to sequential in-memory build on browsers that don't support it. Add `onProgress(done, total)` callback so the export button shows progress. Extract shared `collectWorldData` helper to eliminate the three copies of the 28-query block (exportWorld, exportWorldSplit, cloudSyncHelpers). Fix pre-existing omission: `factionRelationships` was never included in any export path.
+
+### Database Integrity Repair Tool
+- [x] **Delete cascade audit** — verify every `deleteX` function in `src/db/hooks/` wraps all affected tables in a single Dexie transaction; table coverage checklist: Character (snapshots, movements, memberships, relationships + their snapshots), Event (all six snapshot tables, movements, regionSnapshots), Chapter (cascade to events), Timeline (cascade to chapters), LocationMarker (locationSnapshots, characterSnapshot.currentLocationMarkerId references, route waypoints), MapLayer (markers, routes, regions, annotations), LoreCategory (lorePages).
+- [x] **DB Health view in Settings** — scan all snapshot/membership/placement tables for records pointing to deleted parent entities; report orphan counts by type; one-click "Clean up orphaned records" button that deletes all found orphans in a single transaction. Complements the Continuity Checker (which reports orphans but doesn't fix them).
+
+---
+
+## High Priority — UX
+
+### [Onboarding & Progressive Disclosure](docs/features/onboarding-ux.md)
+
+Make the app intuitive from the first click without removing any functionality. Four independent pillars — implement in order:
+
+- [x] **Pillar 3 — Smart empty states** — each section's empty state answers: what is this for, when would I need it, how do I start. Update copy and action buttons in Maps, Items, Relations, Arc, Lore, Factions. Highest ROI, lowest effort.
+
+- [x] **Pillar 4 — Dashboard suggestion cards** — replace the static dashboard with a contextual next-step engine. Show suggestion cards based on world state (no characters → "Add your first character"; characters but no relationships → "Define how they relate"; etc.). Dismissible cards for optional features (Lore, Factions). Add `DashboardSuggestion.tsx` component; persist dismissed card IDs in localStorage.
+
+- [x] **Pillar 2 — Empty-world onboarding wizard** — when a world has zero events, replace the Dashboard with a focused 4-step "Start your story" flow: create timeline → add character → place them at first event → done. Skippable at any step. New `src/features/onboarding/` directory with step components; trigger condition in `WorldDashboard.tsx`.
+
+- [x] **Pillar 1 — Tiered navigation** — split the 10 TopBar nav items into Core (Dashboard, Timeline, Characters, Maps) and Extended (Items, Lore, Factions, Relations, Arc, Settings) with a visual separator. Extended items remain always accessible; visual grouping reduces initial cognitive load.
+
+---
+
+## UX Audit Fixes (April 2026)
+
+Full audit findings in `docs/features/ux-audit.md`.
+
+### Critical
+
+- [x] **Focus trap in modal overlays** — `useFocusTrap` hook created (`src/lib/useFocusTrap.ts`) and applied to Search Palette, Writer's Brief, and Continuity Checker.
+- [x] **Search Palette ARIA roles** — added `role="dialog"`, `aria-modal="true"`, `aria-label="Search"` to the palette container.
+
+### High
+
+- [x] **`aria-label` on all icon-only buttons** — added `aria-label` to all icon-only buttons in TopBar (brand, nav items, search, Writer's Brief, Continuity, Help), CharacterDetailView (back, delete), and ContinuityChecker (suppress, navigate, close).
+- [ ] **`aria-current="page"` on active nav item** — React Router v6 NavLink sets `aria-current="page"` automatically; verified it is handled by the framework.
+- [x] **Character detail back button** — replaced `navigate(-1)` with `navigate(\`/worlds/${worldId}/characters\`)`.
+- [x] **Portrait upload label accessible name** — added `aria-label="Upload portrait image"` to the upload label.
+- [x] **Timeline multi-timeline selector** — added `role="tablist"` / `role="tab"` / `aria-selected` / `role="tabpanel"` to the multi-timeline tab structure.
+- [x] **Search result cap per group** — capped at 5 results per group with "Show all N →" affordance and per-group expand state.
+- [x] **Search location marker focus** — added `pendingFocusMarkerId` to store; SearchPalette sets it on location results; MapExplorerView consumes it on mount to pan and select the marker.
+
+### Medium
+
+- [x] **Dashboard skeleton during load** — replaced `return null` with an animated pulse skeleton (world name + 6 tile placeholders).
+- [x] **Writer's Brief: Escape closes panel** — added Escape key handler + `role="dialog"` + `aria-modal` + `aria-label` to the panel.
+- [x] **Arc View: empty cell legend** — updated legend entry from "No snapshot" to "No state recorded" with a tooltip explaining the distinction.
+- [x] **Arc View: sticky character name column** — character name `<td>` and header `<th>` already use `sticky left-0`; confirmed working.
+- [x] **Lore color swatches accessible labels** — added `aria-label` and `aria-pressed` to color swatch buttons in `AddCategoryForm`.
+- [x] **World Selector: import hint timing** — hint now shows statically (whenever no error), not conditionally during the loading state.
+- [x] **World Selector: import error treatment** — added `AlertCircle` icon and `role="alert"` to the error paragraph.
+- [x] **Relationship search sublabel** — sublabel now shows `"CharA → CharB"` instead of `"positive · strong"`.
+- [x] **Dead characters distinguished in roster** — added Skull icon badge + strikethrough name on dead character cards.
+- [x] **Factions detail panel placeholder** — added "Select a faction to view its details" placeholder when factions exist but none is selected.
+- [x] **`"..."` → `"…"` placeholder copy** — standardized to `…` in CharacterRosterView, ItemRosterView, and MapSidebar search inputs.
+
+---
+
 ## Planned Features
 
-### POV Tracking
+### POV Tracking ✅
 
 Track which character's point-of-view each event/scene is told from. Useful for multi-POV stories to spot unintentional POV gaps, back-to-back same-POV sequences, or a character POVing a scene they couldn't witness.
 
-- [ ] **Data model** — add optional `povCharacterId: string | null` field to `WorldEvent`; DB migration backfills `null`. No new table needed.
-- [ ] **Timeline UI** — POV badge on each `EventCard`/`EventRow` (character colour swatch + name); inline picker to assign/clear POV (dropdown of characters involved in that event, or any character in the world).
-- [ ] **Arc View POV column** — optional overlay mode that colours cells by POV character instead of faction/snapshot state.
-- [ ] **Continuity checks** — warn when an event has a POV character who is not listed in `involvedCharacterIds`; warn on consecutive events with the same POV character (configurable threshold, e.g. 3+ in a row).
-- [ ] **Writer's Brief** — show POV character prominently in the active-event summary panel.
+- [x] **Data model** — `povCharacterId: string | null` on `WorldEvent`; DB v27 migration backfills `null`; `createEvent` defaults to `null`; `charColor` extracted to `src/lib/characterColor.ts`.
+- [x] **Timeline UI** — POV badge (Eye icon + colour swatch + name) on `EventCard` header; grouped Select picker (involved chars first, then all); POV Eye dot on `EventRow`; POV field in `AddEventDialog`.
+- [x] **Arc View POV overlay** — "POV" toggle button; `borderTop` coloring on chapter/event column headers (dominant POV per chapter; exact POV per event); POV legend with character colours.
+- [x] **Continuity checks** — `'pov'` category in `ContinuityChecker`; warns when POV character is absent from `involvedCharacterIds`; warns on 3+ consecutive same-POV events.
+- [x] **Writer's Brief** — POV row (Eye icon + colour swatch + name) in active-event summary card.
 
 ---
 
@@ -263,10 +325,10 @@ Tag events as belonging to named narrative threads (A-plot, romance subplot, mys
 
 Track the writing-progress state of each event so the writer knows what's drafted vs. still planned.
 
-- [ ] **Data model** — add `status: 'idea' | 'outline' | 'draft' | 'revised' | 'final'` field to `WorldEvent`; DB migration backfills `'draft'` for existing events.
-- [ ] **Timeline UI** — status badge/dot on `EventCard`/`EventRow`; inline status picker; optional colour-coded background tint per status.
-- [ ] **Dashboard summary** — progress bar on the world dashboard showing event counts per status across all timelines.
-- [ ] **Arc View** — status overlay option to tint cells by scene status rather than character state.
+- [x] **Data model** — `status: 'idea' | 'outline' | 'draft' | 'revised' | 'final'` added to `WorldEvent`; DB v26 migration backfills `'draft'`; shared config in `src/lib/eventStatus.ts`.
+- [x] **Timeline UI** — colored status badge in `EventCard` header (click to cycle); full segmented picker in expanded body; status field in `AddEventDialog`.
+- [x] **Dashboard summary** — stacked progress bar (`Scene Status` section) showing event counts per status with color legend.
+- [x] **Arc View** — "Status" overlay toggle; chapter mode shows minimum-status color; event mode shows each event's status; legend updates accordingly.
 
 ---
 

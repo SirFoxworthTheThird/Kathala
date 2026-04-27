@@ -9,7 +9,7 @@ function makeExport(overrides: Partial<WorldExportFile> = {}): WorldExportFile {
   return {
     version: 2,
     exportedAt: Date.now(),
-    world: { id: 'world-extra', name: 'Extra World', description: '', coverImageId: null, theme: null, createdAt: 1000, updatedAt: 1000 },
+    world: { id: 'world-extra', name: 'Extra World', description: '', coverImageId: null, theme: null, continuityStaleThreshold: 5, createdAt: 1000, updatedAt: 1000 },
     mapLayers: [],
     locationMarkers: [],
     characters: [],
@@ -36,6 +36,7 @@ function makeExport(overrides: Partial<WorldExportFile> = {}): WorldExportFile {
     lorePages: [],
     factions: [],
     factionMemberships: [],
+    factionRelationships: [],
     ...overrides,
   }
 }
@@ -454,6 +455,9 @@ describe('importWorld — travelModes', () => {
         tags: [],
         sortOrder: 0,
         travelDays: 7,
+        status: 'draft' as const,
+        povCharacterId: null,
+        isFlashback: false,
         createdAt: 1000,
         updatedAt: 1000,
       }],
@@ -539,8 +543,8 @@ describe('importWorld — v1 → v2 migration', () => {
       version: 1,
       chapters: [{ id: 'ch-1', worldId: 'world-extra', timelineId: 'tl-1', number: 1, title: 'Ch1', synopsis: '', notes: '', createdAt: 1000, updatedAt: 1000 }],
       events: [
-        { id: 'ev-b', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'B', description: '', locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 10, travelDays: null, createdAt: 1000, updatedAt: 1000 },
-        { id: 'ev-a', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'A', description: '', locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, createdAt: 1000, updatedAt: 1000 },
+        { id: 'ev-b', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'B', description: '', locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 10, travelDays: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 },
+        { id: 'ev-a', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'A', description: '', locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 },
       ],
       characterSnapshots: [{
         id: 'snap-v1',
@@ -610,7 +614,7 @@ describe('importWorld — v1 → v2 migration', () => {
     const data = makeExport({
       version: 1,
       chapters: [{ id: 'ch-rel', worldId: 'world-extra', timelineId: 'tl-1', number: 1, title: 'Ch', synopsis: '', notes: '', createdAt: 1000, updatedAt: 1000 }],
-      events: [{ id: 'ev-rel', worldId: 'world-extra', chapterId: 'ch-rel', timelineId: 'tl-1', title: 'Ev', description: '', locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, createdAt: 1000, updatedAt: 1000 }],
+      events: [{ id: 'ev-rel', worldId: 'world-extra', chapterId: 'ch-rel', timelineId: 'tl-1', title: 'Ev', description: '', locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 }],
       relationships: [{
         id: 'rel-v1',
         worldId: 'world-extra',
@@ -681,7 +685,7 @@ describe('importWorld — full optional arrays', () => {
         id: 'ev-1', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1',
         title: 'Battle Begins', description: '', locationMarkerId: null,
         involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0,
-        travelDays: null, createdAt: 1000, updatedAt: 1000,
+        travelDays: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000,
       }],
     })
 

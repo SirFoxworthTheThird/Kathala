@@ -282,11 +282,11 @@ export default function RelationshipGraphView() {
     return (
       <EmptyState
         icon={Network}
-        title="No characters yet"
-        description="Add characters first, then come back here to define their relationships."
+        title="No relationships yet"
+        description="Define how characters know and feel about each other."
         action={
           <Button onClick={() => navigate(`/worlds/${worldId}/characters`)}>
-            <Plus className="h-4 w-4" /> Go to Characters
+            <Plus className="h-4 w-4" /> Add Relationship
           </Button>
         }
         className="h-full"

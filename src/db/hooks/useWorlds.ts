@@ -19,6 +19,7 @@ export async function createWorld(data: Pick<World, 'name' | 'description'>): Pr
     description: data.description,
     coverImageId: null,
     theme: null,
+    continuityStaleThreshold: 5,
     createdAt: now,
     updatedAt: now,
   }
@@ -37,6 +38,10 @@ export async function deleteWorld(id: string) {
     db.locationSnapshots, db.itemSnapshots,
     db.relationships, db.relationshipSnapshots, db.timelines,
     db.chapters, db.events, db.blobs, db.travelModes,
+    db.timelineRelationships, db.crossTimelineArtifacts,
+    db.mapRoutes, db.mapRegions, db.mapRegionSnapshots, db.mapAnnotations,
+    db.loreCategories, db.lorePages,
+    db.factions, db.factionMemberships, db.factionRelationships,
   ], async () => {
     await db.worlds.delete(id)
     await db.mapLayers.where('worldId').equals(id).delete()
@@ -55,5 +60,16 @@ export async function deleteWorld(id: string) {
     await db.events.where('worldId').equals(id).delete()
     await db.blobs.where('worldId').equals(id).delete()
     await db.travelModes.where('worldId').equals(id).delete()
+    await db.timelineRelationships.where('worldId').equals(id).delete()
+    await db.crossTimelineArtifacts.where('worldId').equals(id).delete()
+    await db.mapRoutes.where('worldId').equals(id).delete()
+    await db.mapRegions.where('worldId').equals(id).delete()
+    await db.mapRegionSnapshots.where('worldId').equals(id).delete()
+    await db.mapAnnotations.where('worldId').equals(id).delete()
+    await db.loreCategories.where('worldId').equals(id).delete()
+    await db.lorePages.where('worldId').equals(id).delete()
+    await db.factions.where('worldId').equals(id).delete()
+    await db.factionMemberships.where('worldId').equals(id).delete()
+    await db.factionRelationships.where('worldId').equals(id).delete()
   })
 }

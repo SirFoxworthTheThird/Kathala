@@ -12,7 +12,7 @@ import { OverviewTab } from './tabs/OverviewTab'
 import { CurrentStateTab } from './tabs/CurrentStateTab'
 import { HistoryTab } from './tabs/HistoryTab'
 import { RelationshipsTab } from './tabs/RelationshipsTab'
-import { RelatedLoreSection } from '@/features/lore/RelatedLoreSection'
+import { RelatedLoreSection } from '@/features/lore'
 import { FactionsTab } from './tabs/FactionsTab'
 
 export default function CharacterDetailView() {
@@ -45,8 +45,8 @@ export default function CharacterDetailView() {
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4" />
+        <Button variant="ghost" size="icon" aria-label="Back to characters" className="h-8 w-8" onClick={() => navigate(`/worlds/${worldId}/characters`)}>
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         </Button>
 
         {/* Portrait */}
@@ -57,8 +57,8 @@ export default function CharacterDetailView() {
             className="h-12 w-12 rounded-full object-cover"
             fallbackClassName="h-12 w-12 rounded-full"
           />
-          <label className="absolute -bottom-1 -right-1 cursor-pointer rounded-full bg-[hsl(var(--accent))] p-1 hover:bg-[hsl(var(--secondary))]">
-            <Upload className="h-3 w-3 text-[hsl(var(--foreground))]" />
+          <label aria-label="Upload portrait image" className="absolute -bottom-1 -right-1 cursor-pointer rounded-full bg-[hsl(var(--accent))] p-1 hover:bg-[hsl(var(--secondary))]">
+            <Upload className="h-3 w-3 text-[hsl(var(--foreground))]" aria-hidden="true" />
             <input type="file" accept="image/*" className="hidden" onChange={handlePortraitUpload} />
           </label>
         </div>
@@ -73,10 +73,11 @@ export default function CharacterDetailView() {
         <Button
           variant="ghost"
           size="icon"
+          aria-label="Delete character"
           className="ml-auto h-8 w-8 hover:text-red-400"
           onClick={() => setConfirmOpen(true)}
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-4 w-4" aria-hidden="true" />
         </Button>
       </div>
       <ConfirmDialog
