@@ -653,15 +653,21 @@ function normalizeImport(data: WorldExportFile): void {
     if (c.synopsis === undefined) c.synopsis = ''
     if (c.notes === undefined) c.notes = ''
   }
-  // Backfill travelDays on events (may be absent on older v2 exports too)
+  // Backfill travelDays and isFlashback on events (may be absent on older exports)
   for (const ev of data.events) {
     const e = ev as unknown as Rec
     if (e.travelDays === undefined) e.travelDays = null
+    if (e.isFlashback === undefined) e.isFlashback = false
   }
   // Backfill travelModeId on character snapshots exported before it was added
   for (const snap of data.characterSnapshots) {
     const s = snap as unknown as Rec
     if (s.travelModeId === undefined) s.travelModeId = null
+  }
+  // Backfill continuityStaleThreshold on worlds exported before it was added
+  {
+    const w = data.world as unknown as Rec
+    if (w.continuityStaleThreshold === undefined) w.continuityStaleThreshold = 5
   }
 
   // ── v1 → v2 migration ───────────────────────────────────────────────────────
@@ -754,8 +760,11 @@ function normalizeImport(data: WorldExportFile): void {
     }
   }
 
-  // ── v3: backfill sortKey on all snapshot arrays (v1/v2 files lack it) ────────
-  if (data.version < 3) {
+  // ── v3-v6: recompute sortKey to the fractional formula ───────────────────────
+  // v3-v6 files have sortKey using the old formula (chapter.number × 10_000 + sortOrder).
+  // v7+ files use the fractional formula (chapter.number + sortOrder / 1_000_000).
+  // v1/v2 files have no sortKey at all — compute fresh below.
+  if (data.version < 7) {
     const eventById = new Map(data.events.map((e) => [e.id, e]))
     const chapterNumberById = new Map(data.chapters.map((c) => [c.id, c.number]))
 
@@ -774,9 +783,7 @@ function normalizeImport(data: WorldExportFile): void {
     ]
     for (const arr of snapshotArrays) {
       for (const snap of arr) {
-        if (snap.sortKey === undefined) {
-          snap.sortKey = getSortKey(snap.eventId as string)
-        }
+        snap.sortKey = getSortKey(snap.eventId as string)
       }
     }
   }
