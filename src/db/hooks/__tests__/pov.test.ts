@@ -190,7 +190,7 @@ describe('post-migration invariant', () => {
       title: 'Bulk', description: '',
       locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [],
       tags: [], sortOrder: 0, travelDays: null,
-      status: 'draft', povCharacterId: 'char-z',
+      status: 'draft', povCharacterId: 'char-z', isFlashback: false,
       createdAt: now, updatedAt: now,
     }])
     const stored = await db.events.get('bulk-1')

@@ -18,7 +18,7 @@ async function seedWorld() {
     worldId: 'w',
     name: 'Main',
     description: '',
-    color: null,
+    color: '',
   })
   const ch = await createChapter({
     worldId: 'w',
@@ -31,6 +31,7 @@ async function seedWorld() {
     worldId: 'w',
     timelineId: tl.id,
     chapterId: ch.id,
+    title: '',
     description: 'test event',
     sortOrder: 7,
     locationMarkerId: null,
@@ -96,7 +97,7 @@ function makeRelSnap(eventId: string, sortKey?: number) {
     eventId,
     sortKey,
     label: '',
-    strength: 'neutral' as const,
+    strength: 'moderate' as const,
     sentiment: 'neutral' as const,
     description: '',
     isActive: true,
@@ -125,10 +126,9 @@ function makeCharMovement(eventId: string, sortKey?: number) {
     worldId: 'w',
     characterId: 'char-1',
     eventId,
-    sortKey,
-    fromLocationMarkerId: null,
-    toLocationMarkerId: null,
+    waypoints: [] as string[],
     travelModeId: null,
+    sortKey,
     notes: '',
     createdAt: now,
     updatedAt: now,
@@ -142,7 +142,7 @@ function makeRegionSnap(eventId: string, sortKey?: number) {
     regionId: 'region-1',
     eventId,
     sortKey,
-    status: 'active',
+    status: 'active' as const,
     notes: '',
     createdAt: now,
     updatedAt: now,
@@ -172,6 +172,7 @@ describe('computeSortKey', () => {
       worldId: 'w',
       timelineId: 'tl',
       chapterId: 'missing-chapter',
+      title: '',
       description: '',
       sortOrder: 5,
       locationMarkerId: null,
@@ -181,6 +182,7 @@ describe('computeSortKey', () => {
       travelDays: null,
       status: 'draft',
       povCharacterId: null,
+      isFlashback: false,
       createdAt: now,
       updatedAt: now,
     })
@@ -197,11 +199,11 @@ describe('computeSortKey', () => {
   })
 
   it('is sensitive to both components', async () => {
-    const tl = await createTimeline({ worldId: 'w', name: 'TL', description: '', color: null })
+    const tl = await createTimeline({ worldId: 'w', name: 'TL', description: '', color: '' })
     const ch1 = await createChapter({ worldId: 'w', timelineId: tl.id, number: 1, title: '', synopsis: '' })
     const ch2 = await createChapter({ worldId: 'w', timelineId: tl.id, number: 2, title: '', synopsis: '' })
-    const evA = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: ch1.id, description: '', sortOrder: 5, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [] })
-    const evB = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: ch2.id, description: '', sortOrder: 5, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [] })
+    const evA = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: ch1.id, title: '', description: '', sortOrder: 5, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [] })
+    const evB = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: ch2.id, title: '', description: '', sortOrder: 5, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [] })
     expect(await computeSortKey(evA.id)).toBe(1.000005)
     expect(await computeSortKey(evB.id)).toBe(2.000005)
   })
@@ -288,10 +290,10 @@ describe('recomputeSnapshotSortKeysForEvent', () => {
   })
 
   it('only updates snapshots for the given event, not others', async () => {
-    const tl = await createTimeline({ worldId: 'w', name: 'TL', description: '', color: null })
+    const tl = await createTimeline({ worldId: 'w', name: 'TL', description: '', color: '' })
     const ch = await createChapter({ worldId: 'w', timelineId: tl.id, number: 1, title: '', synopsis: '' })
-    const evA = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: ch.id, description: '', sortOrder: 1, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [] })
-    const evB = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: ch.id, description: '', sortOrder: 2, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [] })
+    const evA = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: ch.id, title: '', description: '', sortOrder: 1, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [] })
+    const evB = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: ch.id, title: '', description: '', sortOrder: 2, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [] })
 
     await db.characterSnapshots.add({ ...makeCharSnap(evA.id, 0), id: 'cs-a' })
     await db.characterSnapshots.add({ ...makeCharSnap(evB.id, 0), id: 'cs-b' })
@@ -309,10 +311,10 @@ describe('recomputeSnapshotSortKeysForEvent', () => {
 
 describe('recomputeSnapshotSortKeysForChapter', () => {
   it('recomputes sortKey for all events in the chapter', async () => {
-    const tl = await createTimeline({ worldId: 'w', name: 'TL', description: '', color: null })
+    const tl = await createTimeline({ worldId: 'w', name: 'TL', description: '', color: '' })
     const ch = await createChapter({ worldId: 'w', timelineId: tl.id, number: 2, title: '', synopsis: '' })
-    const evA = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: ch.id, description: '', sortOrder: 1, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [] })
-    const evB = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: ch.id, description: '', sortOrder: 3, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [] })
+    const evA = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: ch.id, title: '', description: '', sortOrder: 1, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [] })
+    const evB = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: ch.id, title: '', description: '', sortOrder: 3, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [] })
 
     await db.characterSnapshots.add({ ...makeCharSnap(evA.id, 0), id: 'cs-a', characterId: 'char-1' })
     await db.characterSnapshots.add({ ...makeCharSnap(evB.id, 0), id: 'cs-b', characterId: 'char-1' })
@@ -326,17 +328,17 @@ describe('recomputeSnapshotSortKeysForChapter', () => {
   })
 
   it('is a no-op when the chapter has no events', async () => {
-    const tl = await createTimeline({ worldId: 'w', name: 'TL', description: '', color: null })
+    const tl = await createTimeline({ worldId: 'w', name: 'TL', description: '', color: '' })
     const ch = await createChapter({ worldId: 'w', timelineId: tl.id, number: 1, title: '', synopsis: '' })
     await expect(recomputeSnapshotSortKeysForChapter(ch.id)).resolves.toBeUndefined()
   })
 
   it('does not touch events from other chapters', async () => {
-    const tl = await createTimeline({ worldId: 'w', name: 'TL', description: '', color: null })
+    const tl = await createTimeline({ worldId: 'w', name: 'TL', description: '', color: '' })
     const chA = await createChapter({ worldId: 'w', timelineId: tl.id, number: 1, title: '', synopsis: '' })
     const chB = await createChapter({ worldId: 'w', timelineId: tl.id, number: 5, title: '', synopsis: '' })
-    const evA = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: chA.id, description: '', sortOrder: 1, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [] })
-    const evB = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: chB.id, description: '', sortOrder: 1, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [] })
+    const evA = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: chA.id, title: '', description: '', sortOrder: 1, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [] })
+    const evB = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: chB.id, title: '', description: '', sortOrder: 1, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [] })
 
     await db.characterSnapshots.add({ ...makeCharSnap(evA.id, 0), id: 'cs-a', characterId: 'char-1' })
     await db.characterSnapshots.add({ ...makeCharSnap(evB.id, 0), id: 'cs-b', characterId: 'char-1' })

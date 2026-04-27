@@ -29,6 +29,7 @@ export interface ItemPlacement {
   itemId: string
   eventId: string
   locationMarkerId: string
+  sortKey?: number
   notes: string
   createdAt: number
   updatedAt: number

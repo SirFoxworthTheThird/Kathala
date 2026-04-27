@@ -35,6 +35,7 @@ describe('exportWorld — happy path', () => {
       description: 'For testing',
       coverImageId: null,
       theme: null,
+      continuityStaleThreshold: 5,
       createdAt: 1000,
       updatedAt: 1000,
     })
@@ -68,6 +69,7 @@ describe('exportWorld — happy path', () => {
       description: '',
       coverImageId: null,
       theme: null,
+      continuityStaleThreshold: 5,
       createdAt: 1000,
       updatedAt: 1000,
     })

@@ -82,6 +82,7 @@ export interface MapRegionSnapshot {
   regionId: string
   eventId: string
   status: MapRegionStatus
+  sortKey?: number
   notes?: string
   updatedAt: number
 }

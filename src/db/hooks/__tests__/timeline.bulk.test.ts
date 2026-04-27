@@ -13,7 +13,7 @@ import {
 // ── Shared fixture helpers ────────────────────────────────────────────────────
 
 async function seedTimeline() {
-  const tl = await createTimeline({ worldId: 'w', name: 'TL', description: '', color: null })
+  const tl = await createTimeline({ worldId: 'w', name: 'TL', description: '', color: '' })
   const ch = await createChapter({ worldId: 'w', timelineId: tl.id, number: 1, title: 'Ch 1', synopsis: '' })
   return { tl, ch }
 }
@@ -23,6 +23,7 @@ async function addEvent(timelineId: string, chapterId: string, sortOrder: number
     worldId: 'w',
     timelineId,
     chapterId,
+    title: '',
     description: `event ${sortOrder}`,
     sortOrder,
     locationMarkerId: null,
@@ -141,8 +142,8 @@ describe('bulkMoveEvents', () => {
   })
 
   it('updates timelineId along with chapterId when moving across timelines', async () => {
-    const tl1 = await createTimeline({ worldId: 'w', name: 'TL1', description: '', color: null })
-    const tl2 = await createTimeline({ worldId: 'w', name: 'TL2', description: '', color: null })
+    const tl1 = await createTimeline({ worldId: 'w', name: 'TL1', description: '', color: '' })
+    const tl2 = await createTimeline({ worldId: 'w', name: 'TL2', description: '', color: '' })
     const ch1 = await createChapter({ worldId: 'w', timelineId: tl1.id, number: 1, title: '', synopsis: '' })
     const ch2 = await createChapter({ worldId: 'w', timelineId: tl2.id, number: 1, title: '', synopsis: '' })
     const ev = await addEvent(tl1.id, ch1.id, 0)
@@ -223,7 +224,7 @@ describe('bulkAddTag', () => {
 
   it('does not add a duplicate tag', async () => {
     const { tl, ch } = await seedTimeline()
-    const ev = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: ch.id, description: '', sortOrder: 0, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: ['battle'] })
+    const ev = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: ch.id, title: '', description: '', sortOrder: 0, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: ['battle'] })
     await bulkAddTag([ev.id], 'battle')
     const after = await db.events.get(ev.id)
     expect(after?.tags.filter((t) => t === 'battle').length).toBe(1)
@@ -231,7 +232,7 @@ describe('bulkAddTag', () => {
 
   it('preserves existing tags when adding a new one', async () => {
     const { tl, ch } = await seedTimeline()
-    const ev = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: ch.id, description: '', sortOrder: 0, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: ['magic'] })
+    const ev = await createEvent({ worldId: 'w', timelineId: tl.id, chapterId: ch.id, title: '', description: '', sortOrder: 0, locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: ['magic'] })
     await bulkAddTag([ev.id], 'battle')
     const after = await db.events.get(ev.id)
     expect(after?.tags).toContain('magic')

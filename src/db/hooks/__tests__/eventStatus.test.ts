@@ -189,6 +189,7 @@ describe('ChapterAIDialog import normalisation (Bug #1 fix)', () => {
       createdAt: Date.now(), updatedAt: Date.now(),
       status: 'outline' as EventStatus,
       povCharacterId: null as string | null,
+      isFlashback: false,
     }
     const p = rawEvent as Partial<typeof rawEvent>
     const normalised = { ...rawEvent, status: p.status ?? ('draft' as const), povCharacterId: p.povCharacterId ?? null }
@@ -205,6 +206,7 @@ describe('ChapterAIDialog import normalisation (Bug #1 fix)', () => {
       title: 'AI-no-status', description: '',
       locationMarkerId: null as null, involvedCharacterIds: [] as string[], involvedItemIds: [] as string[],
       tags: [] as string[], sortOrder: 1, travelDays: null as null,
+      isFlashback: false,
       createdAt: Date.now(), updatedAt: Date.now(),
       // status and povCharacterId intentionally absent
     }

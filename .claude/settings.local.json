@@ -192,7 +192,29 @@
       "Bash(grep -E \"\\\\.tsx$\")",
       "PowerShell($env:PATH += \";C:\\\\Program Files\\\\nodejs\"; cd C:\\\\Projects\\\\mine\\\\PlotWeave; npm run build 2>&1 | Select-Object -Last 40)",
       "PowerShell(Get-Command node, npm, npx -ErrorAction SilentlyContinue)",
-      "PowerShell($nodePaths = @\\(\"C:\\\\Program Files\\\\nodejs\", \"C:\\\\nvm\\\\current\", \"$env:APPDATA\\\\nvm\\\\current\", \"$env:LOCALAPPDATA\\\\Programs\\\\nodejs\"\\); foreach \\($p in $nodePaths\\) { if \\(Test-Path \"$p\\\\npm.cmd\"\\) { Write-Output \"Found: $p\"; break } })"
+      "PowerShell($nodePaths = @\\(\"C:\\\\Program Files\\\\nodejs\", \"C:\\\\nvm\\\\current\", \"$env:APPDATA\\\\nvm\\\\current\", \"$env:LOCALAPPDATA\\\\Programs\\\\nodejs\"\\); foreach \\($p in $nodePaths\\) { if \\(Test-Path \"$p\\\\npm.cmd\"\\) { Write-Output \"Found: $p\"; break } })",
+      "PowerShell(npm run build 2>&1)",
+      "PowerShell(& \"C:\\\\Program Files\\\\nodejs\\\\npm.cmd\" run build 2>&1)",
+      "Bash(git -C /c/Projects/mine/PlotWeave diff src/types/character.ts)",
+      "Bash(git -C /c/Projects/mine/PlotWeave diff HEAD -- src/types/character.ts src/db/hooks/__tests__/eventStatus.test.ts src/db/hooks/__tests__/pov.test.ts src/db/hooks/__tests__/timeline.bulk.test.ts src/lib/__tests__/exportImport.exportWorld.test.ts src/lib/__tests__/exportImport.extra.test.ts src/lib/__tests__/exportImport.test.ts src/lib/__tests__/sortKey.test.ts)",
+      "PowerShell($env:Path = $env:Path + \";C:\\\\Users\\\\rpaiva\\\\AppData\\\\Roaming\\\\nvm\\\\v20.11.0;C:\\\\Users\\\\rpaiva\\\\AppData\\\\Roaming\\\\nvm\\\\v18.17.0\"; Get-ChildItem \"C:\\\\Users\\\\rpaiva\\\\AppData\\\\Roaming\\\\nvm\" -ErrorAction SilentlyContinue | Select-Object Name)",
+      "PowerShell($env:NVM_HOME)",
+      "PowerShell($env:NVM_SYMLINK)",
+      "PowerShell($env:NODE_PATH)",
+      "PowerShell(Get-ChildItem \"$env:USERPROFILE\\\\AppData\\\\Local\\\\fnm\" -ErrorAction SilentlyContinue | Select-Object Name; Test-Path \"$env:USERPROFILE\\\\AppData\\\\Roaming\\\\fnm\")",
+      "PowerShell([System.IO.Directory]::GetDirectories\\(\"c:\\\\Projects\\\\mine\\\\PlotWeave\\\\node_modules\"\\) | Select-Object -First 5)",
+      "PowerShell([System.IO.Directory]::GetFiles\\(\"c:\\\\Projects\\\\mine\\\\PlotWeave\\\\node_modules\\\\.bin\"\\) | Where-Object { $_ -match \"tsc\" } | Select-Object)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/nodejs:/c/Users/rpaiva/AppData/Roaming/npm\")",
+      "PowerShell(Get-Command node -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Command npm -ErrorAction SilentlyContinue)",
+      "PowerShell($env:PATH)",
+      "PowerShell(Get-ChildItem \"C:\\\\Program Files\\\\nodejs\\\\npm.cmd\" -ErrorAction SilentlyContinue; Get-ChildItem \"C:\\\\ProgramData\\\\nvm\" -ErrorAction SilentlyContinue; Get-ChildItem \"$env:APPDATA\\\\npm\\\\npm.cmd\" -ErrorAction SilentlyContinue; Get-ChildItem \"$env:USERPROFILE\\\\AppData\\\\Roaming\\\\nvm\" -ErrorAction SilentlyContinue)",
+      "PowerShell(& \"C:\\\\Users\\\\rpaiva\\\\AppData\\\\Local\\\\claude-cli-nodejs\\\\node.exe\" --version 2>&1)",
+      "PowerShell(& \"C:\\\\Users\\\\rpaiva\\\\AppData\\\\Local\\\\claude-cli-nodejs\\\\npm.cmd\" --version 2>&1)",
+      "PowerShell($nodePath = \"C:\\\\Program Files\\\\Microsoft Visual Studio\\\\18\\\\Insiders\\\\MSBuild\\\\Microsoft\\\\VisualStudio\\\\NodeJs\\\\node.exe\"; & $nodePath --version 2>&1)",
+      "PowerShell($nodeDir = \"C:\\\\Program Files\\\\Microsoft Visual Studio\\\\18\\\\Insiders\\\\MSBuild\\\\Microsoft\\\\VisualStudio\\\\NodeJs\"; $env:PATH = \"$nodeDir;$env:PATH\"; Set-Location \"C:\\\\Projects\\\\mine\\\\PlotWeave\"; npm run build 2>&1 | Select-Object -Last 150)",
+      "PowerShell($nodeDir = \"C:\\\\Program Files\\\\Microsoft Visual Studio\\\\18\\\\Insiders\\\\MSBuild\\\\Microsoft\\\\VisualStudio\\\\NodeJs\"; $env:PATH = \"$nodeDir;$env:PATH\"; Set-Location \"C:\\\\Projects\\\\mine\\\\PlotWeave\"; npm run build 2>&1 | Select-Object -Last 80)",
+      "PowerShell($nodeDir = \"C:\\\\Program Files\\\\Microsoft Visual Studio\\\\18\\\\Insiders\\\\MSBuild\\\\Microsoft\\\\VisualStudio\\\\NodeJs\"; $env:PATH = \"$nodeDir;$env:PATH\"; Set-Location \"C:\\\\Projects\\\\mine\\\\PlotWeave\"; npm run build 2>&1 | Select-Object -Last 60)"
     ]
   }
 }
