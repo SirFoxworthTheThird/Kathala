@@ -255,10 +255,16 @@ src/
     characters/    # Character roster, detail view, snapshot tabs (state/history/relationships/lore)
     relationships/ # ReactFlow relationship graph, snapshot editor
     timeline/      # Timeline view, chapter rows, event cards, snapshot cards
+    arc/           # CharacterArcView — full-cast × full-story table
+    diff/          # ChapterDiffModal — side-by-side chapter comparison
+    continuity/    # ContinuityChecker — automated consistency issue scanner
     items/         # Item roster, item detail, create dialog
+    factions/      # Faction management
     lore/          # Lore index (LoreView), page editor (LorePageEditor), RelatedLoreSection
+    search/        # SearchPalette — global Ctrl+K command palette
+    brief/         # WritersBriefPanel — active-chapter summary slide-in
+    onboarding/    # First-run experience
     help/          # HelpPanel accordion
-    brief/         # WritersBriefPanel
   db/
     database.ts    # Dexie schema and migrations (v1–v20)
     hooks/         # useLiveQuery hooks per entity
