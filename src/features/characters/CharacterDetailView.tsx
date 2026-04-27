@@ -12,7 +12,7 @@ import { OverviewTab } from './tabs/OverviewTab'
 import { CurrentStateTab } from './tabs/CurrentStateTab'
 import { HistoryTab } from './tabs/HistoryTab'
 import { RelationshipsTab } from './tabs/RelationshipsTab'
-import { RelatedLoreSection } from '@/features/lore/RelatedLoreSection'
+import { RelatedLoreSection } from '@/features/lore'
 import { FactionsTab } from './tabs/FactionsTab'
 
 export default function CharacterDetailView() {

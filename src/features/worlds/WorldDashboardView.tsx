@@ -22,7 +22,7 @@ import { useFactions } from '@/db/hooks/useFactions'
 import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
-import { OnboardingWizard } from '@/features/onboarding/OnboardingWizard'
+import { OnboardingWizard } from '@/features/onboarding'
 import { DashboardSuggestion } from './DashboardSuggestion'
 import { evaluateSuggestions, type WorldSummaryData } from './suggestionRules'
 

@@ -20,4 +20,19 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  // Feature isolation: files inside src/features/ must import other features
+  // through their public barrel (e.g. '@/features/lore'), not internal files.
+  {
+    files: ['src/features/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [
+          {
+            group: ['@/features/*/**'],
+            message: "Cross-feature: import from the barrel ('@/features/<name>') not internal files.",
+          },
+        ],
+      }],
+    },
+  },
 ])

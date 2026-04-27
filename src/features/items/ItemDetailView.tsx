@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { RelatedLoreSection } from '@/features/lore/RelatedLoreSection'
+import { RelatedLoreSection } from '@/features/lore'
 import { Package } from 'lucide-react'
 
 export default function ItemDetailView() {
