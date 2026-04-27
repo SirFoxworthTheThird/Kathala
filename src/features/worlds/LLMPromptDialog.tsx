@@ -16,7 +16,7 @@ FILE STRUCTURE
 ═══════════════════════════════════════════════════════════
 
 {
-  "version": 6,
+  "version": 7,
   "type": "full",
   "exportedAt": <current unix timestamp in ms, e.g. 1700000000000>,
   "world": { ... },
@@ -29,10 +29,12 @@ FILE STRUCTURE
   "characterSnapshots": [ ... ],
   "factions": [ ... ],
   "factionMemberships": [ ... ],
+  "factionRelationships": [],
   "loreCategories": [ ... ],
   "lorePages": [ ... ],
   "mapLayers": [],
   "locationMarkers": [],
+  "mapAnnotations": [],
   "characterMovements": [],
   "itemPlacements": [],
   "locationSnapshots": [],
@@ -144,6 +146,9 @@ Events are the primary time unit. Each chapter contains ordered events.
   "tags": ["battle", "revelation"],   // thematic tags
   "sortOrder": 0,                     // ascending within a chapter, starting at 0
   "travelDays": null,                 // days of travel before this event; null if unknown
+  "status": "draft",                  // one of: idea | outline | draft | revised | final
+  "povCharacterId": null,             // id of the POV character, or null
+  "isFlashback": false,               // true if this event is a flashback/retrospective
   "createdAt": <timestamp>,
   "updatedAt": <timestamp>
 }
