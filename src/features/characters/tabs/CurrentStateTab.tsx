@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { MapPin, Package, Plus, X, Heart, Skull, Footprints } from 'lucide-react'
+import { MapPin, Package, Plus, X, Heart, Skull, Footprints, History } from 'lucide-react'
 import type { Character } from '@/types'
 import { useResolvedCharacterSnapshot, useBestSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { removeItemPlacement } from '@/db/hooks/useItemPlacements'
@@ -22,6 +22,7 @@ interface CurrentStateTabProps {
 export function CurrentStateTab({ character }: CurrentStateTabProps) {
   const activeEventId = useActiveEventId()
   const snapshot = useResolvedCharacterSnapshot(character.id, character.worldId, activeEventId)
+  const isInherited = !!snapshot && snapshot.eventId !== activeEventId
   const chapterSnapshots = useBestSnapshots(character.worldId, activeEventId)
   const items = useItems(character.worldId)
   const maps = useRootMapLayers(character.worldId)
@@ -117,6 +118,17 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
 
   return (
     <div className="flex flex-col gap-5">
+      {isInherited && (
+        <div className="flex items-start gap-2 rounded-md border border-dashed border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)] px-3 py-2 text-xs text-[hsl(var(--muted-foreground))]">
+          <History className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span>
+            This state is{' '}
+            <strong className="font-medium text-[hsl(var(--foreground))]">carried forward</strong>{' '}
+            from an earlier chapter — nothing has been recorded here yet. Editing and saving will pin it to this chapter.
+          </span>
+        </div>
+      )}
+
       {/* Alive / Deceased */}
       <div className="flex flex-col gap-1.5">
         <Label>Status</Label>
