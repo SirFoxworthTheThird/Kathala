@@ -21,6 +21,10 @@ export function TimeCursor({ worldId }: { worldId: string }) {
   const navigate = useNavigate()
   const activeEventId = useActiveEventId()
   const setActiveEventId = useAppStore((s) => s.setActiveEventId)
+  // While the story is playing, the playback loop owns activeEventId. Keep the
+  // readout live (it animates through chapters as the story plays) but make the
+  // controls inert so a stray click can't fight or restart the playback timer.
+  const isPlayingStory = useAppStore((s) => s.isPlayingStory)
   const chapters = useWorldChapters(worldId)
   const events = useWorldEvents(worldId)
 
@@ -56,7 +60,7 @@ export function TimeCursor({ worldId }: { worldId: string }) {
     <div className="flex items-center gap-0.5">
       <button
         onClick={() => prevEvent && setActiveEventId(prevEvent.id)}
-        disabled={!prevEvent}
+        disabled={!prevEvent || isPlayingStory}
         aria-label="Previous moment"
         title="Previous moment"
         className={stepBtn}
@@ -65,9 +69,12 @@ export function TimeCursor({ worldId }: { worldId: string }) {
       </button>
 
       <button
-        onClick={() => navigate(`/worlds/${worldId}/timeline`)}
+        onClick={isPlayingStory ? undefined : () => navigate(`/worlds/${worldId}/timeline`)}
+        disabled={isPlayingStory}
         title={
-          activeEvent
+          isPlayingStory
+            ? `Playing… Ch.${activeChapter?.number} · ${activeEvent?.title || activeChapter?.title || ''}`
+            : activeEvent
             ? `Ch.${activeChapter?.number} · ${activeChapter?.title} — ${activeEvent.title || 'Untitled event'} (open timeline)`
             : 'Viewing all chapters — open the timeline to pick a moment'
         }
@@ -94,7 +101,7 @@ export function TimeCursor({ worldId }: { worldId: string }) {
 
       <button
         onClick={() => nextEvent && setActiveEventId(nextEvent.id)}
-        disabled={!nextEvent}
+        disabled={!nextEvent || isPlayingStory}
         aria-label="Next moment"
         title="Next moment"
         className={stepBtn}
@@ -105,6 +112,7 @@ export function TimeCursor({ worldId }: { worldId: string }) {
       {activeEvent && (
         <button
           onClick={() => setActiveEventId(null)}
+          disabled={isPlayingStory}
           aria-label="View all chapters"
           title="View all chapters"
           className={stepBtn}
