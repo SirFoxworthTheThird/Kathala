@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Plus, X, Trash2, Users, ChevronRight, Shield, Map as MapIcon, MapPin, Swords, Handshake, Minus } from 'lucide-react'
 import { EmptyState } from '@/components/EmptyState'
+import { PageHeader } from '@/components/PageHeader'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { Button } from '@/components/ui/button'
@@ -623,13 +624,13 @@ export default function FactionsView() {
     <div className="flex h-full">
       {/* Main list */}
       <div className="flex flex-1 flex-col min-w-0">
-        {/* Toolbar */}
-        <div className="flex items-center gap-3 border-b border-[hsl(var(--border))] px-6 py-4">
-          <Shield className="h-5 w-5 text-[hsl(var(--muted-foreground))]" />
-          <h1 className="text-lg font-semibold">Factions</h1>
-          <span className="text-sm text-[hsl(var(--muted-foreground))]">({factions.length})</span>
-          <div className="ml-auto">
-            {creating ? (
+        <PageHeader
+          icon={Shield}
+          title="Factions"
+          count={factions.length}
+          description="Organizations characters belong to — kingdoms, guilds, cults."
+          actions={
+            creating ? (
               <div className="flex items-center gap-2">
                 <Input
                   className="h-8 w-48 text-sm"
@@ -651,12 +652,12 @@ export default function FactionsView() {
               <Button size="sm" className="gap-1.5" onClick={() => setCreating(true)}>
                 <Plus className="h-3.5 w-3.5" /> New Faction
               </Button>
-            )}
-          </div>
-        </div>
+            )
+          }
+        />
 
         {/* Grid */}
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto p-4">
           {factions.length === 0 ? (
             <EmptyState
               icon={Shield}
