@@ -4,6 +4,7 @@ import { useActiveWorldId, useAppStore } from '@/store'
 import { useWorld } from '@/db/hooks/useWorlds'
 import { useNavigate, NavLink, useParams } from 'react-router-dom'
 import { cn } from '@/lib/utils'
+import { TimeCursor } from './TimeCursor'
 
 type NavTier = 'core' | 'extended'
 
@@ -99,6 +100,12 @@ export function TopBar() {
           <>
             <span aria-hidden="true" className="text-[hsl(var(--muted-foreground))]">/</span>
             <span className="max-w-[120px] truncate text-sm text-[hsl(var(--foreground))]" title={world.name}>{world.name}</span>
+          </>
+        )}
+        {world && worldId && (
+          <>
+            <span aria-hidden="true" className="mx-0.5 h-5 w-px bg-[hsl(var(--border))]" />
+            <TimeCursor worldId={worldId} />
           </>
         )}
       </div>
