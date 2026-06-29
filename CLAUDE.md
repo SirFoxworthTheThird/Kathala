@@ -23,7 +23,7 @@ npx vitest run src/db/hooks/__tests__/timeline.test.ts
 
 ## Architecture
 
-**WorldBreaker** (internal package name: `plotweave`) is a local-first story-tracking app. All data lives in IndexedDB via Dexie — no backend.
+**PlotWeave** (package name: `plotweave`) is a local-first story-tracking app. All data lives in IndexedDB via Dexie — no backend.
 
 ### The time-cursor pattern
 The global chapter selector in `TopBar` drives everything. `activeChapterId` (Zustand, persisted) acts as a "time cursor" — all character/item/location state is read relative to it. Never auto-compute state across chapters; always use explicit snapshot records.

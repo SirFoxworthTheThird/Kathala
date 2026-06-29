@@ -214,7 +214,7 @@ The old tutorial's localStorage key (`plotweave-tutorial`) is abandoned in place
 
 **User Story**
 
-As a new user opening WorldBreaker for the first time, I want the navigation bar to visually communicate which sections are essential and which are optional, so that I can confidently start without feeling paralysed by ten equally weighted choices.
+As a new user opening PlotWeave for the first time, I want the navigation bar to visually communicate which sections are essential and which are optional, so that I can confidently start without feeling paralysed by ten equally weighted choices.
 
 **Acceptance Criteria**
 
@@ -409,7 +409,7 @@ As a user actively building my world, I want the Dashboard to surface contextual
 
 **User Story**
 
-As a new user opening WorldBreaker for the first time, I want a single, coherent first-run experience that sets up my world and teaches me the app's core concept, so that I am not walked through overlapping or conflicting setup flows.
+As a new user opening PlotWeave for the first time, I want a single, coherent first-run experience that sets up my world and teaches me the app's core concept, so that I am not walked through overlapping or conflicting setup flows.
 
 **Acceptance Criteria**
 
