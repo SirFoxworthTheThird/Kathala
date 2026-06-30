@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { toPng } from 'html-to-image'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Heart, Skull, MapPin, Minus, Search, Download, X, Shield, FileEdit, Eye } from 'lucide-react'
+import { Heart, Skull, MapPin, Minus, Search, Download, X, Shield, FileEdit, Eye, History } from 'lucide-react'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
@@ -115,6 +115,9 @@ export default function CharacterArcView() {
   // We use allSortedEvents (not the filtered view) so inheritance is correct even
   // when a snapshot lives on a timeline that's currently hidden.
   const eventPosition = new Map(allSortedEvents.map((ev, i) => [ev.id, i]))
+  // eventId → chapterId, so a cell can tell whether its resolved snapshot was
+  // authored within this column or carried forward from an earlier chapter.
+  const chapterByEvent = new Map(allSortedEvents.map((ev) => [ev.id, ev.chapterId]))
 
   // Per-character: sorted array of { pos, snap } — built once, reused per cell.
   type SnapEntry = { pos: number; snap: typeof snapshots[0] }
@@ -328,12 +331,13 @@ export default function CharacterArcView() {
     setExpandedKey((prev) => (prev === key ? null : key))
   }
 
-  function SnapCell({ snap, isActive, charId, colId, factionColor }: {
+  function SnapCell({ snap, isActive, charId, colId, factionColor, isInherited }: {
     snap: typeof snapshots[0] | undefined
     isActive: boolean
     charId: string
     colId: string
     factionColor: string | null
+    isInherited: boolean
   }) {
     const key = `${charId}:${colId}`
     const isExpanded = expandedKey === key
@@ -379,6 +383,11 @@ export default function CharacterArcView() {
           )}>
             {snap.isAlive ? 'Alive' : 'Dead'}
           </span>
+          {isInherited && (
+            <span className="ml-auto shrink-0" title="Carried forward — no change recorded in this column">
+              <History className="h-2.5 w-2.5 text-[hsl(var(--muted-foreground)/0.6)]" aria-hidden="true" />
+            </span>
+          )}
         </div>
         {location && (
           <div className="mt-0.5 flex items-center gap-1 text-[hsl(var(--muted-foreground))]">
@@ -720,14 +729,16 @@ export default function CharacterArcView() {
                     const targetPos = lastEvId !== undefined ? (eventPosition.get(lastEvId) ?? -1) : -1
                     const snap = targetPos >= 0 ? getBestSnap(char.id, targetPos) : undefined
                     const fc = targetPos >= 0 ? getFactionColor(char.id, targetPos) : null
-                    return <SnapCell key={ch.id} colId={ch.id} charId={char.id} snap={snap} isActive={ch.id === activeChapterId} factionColor={fc} />
+                    const isInh = !!snap && chapterByEvent.get(snap.eventId) !== ch.id
+                    return <SnapCell key={ch.id} colId={ch.id} charId={char.id} snap={snap} isActive={ch.id === activeChapterId} factionColor={fc} isInherited={isInh} />
                   })}
 
                   {viewMode === 'event' && sortedEvents.map((ev) => {
                     const targetPos = eventPosition.get(ev.id) ?? -1
                     const snap = targetPos >= 0 ? getBestSnap(char.id, targetPos) : undefined
                     const fc = targetPos >= 0 ? getFactionColor(char.id, targetPos) : null
-                    return <SnapCell key={ev.id} colId={ev.id} charId={char.id} snap={snap} isActive={ev.id === activeEventId} factionColor={fc} />
+                    const isInh = !!snap && snap.eventId !== ev.id
+                    return <SnapCell key={ev.id} colId={ev.id} charId={char.id} snap={snap} isActive={ev.id === activeEventId} factionColor={fc} isInherited={isInh} />
                   })}
                 </tr>
               )

@@ -16,6 +16,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { cn } from '@/lib/utils'
 import { charColor } from '@/lib/characterColor'
+import { InheritedBadge } from '@/components/InheritedBadge'
 
 function Section({ title, icon: Icon, count, children }: {
   title: string
@@ -245,6 +246,7 @@ export function WritersBriefPanel() {
                               : <Skull className="h-3 w-3 text-red-400" />
                             }
                             <span className={cn(!snap.isAlive && 'line-through text-[hsl(var(--muted-foreground))]')}>{char.name}</span>
+                            {snap.eventId !== activeEventId && <InheritedBadge className="ml-auto" />}
                           </div>
                           {location && (
                             <div className="mt-1 flex items-center gap-1 text-[hsl(var(--muted-foreground))]">
