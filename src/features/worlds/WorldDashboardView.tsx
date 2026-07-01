@@ -24,6 +24,7 @@ import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { OnboardingWizard } from '@/features/onboarding'
 import { DashboardSuggestion } from './DashboardSuggestion'
+import { CastBalance } from './CastBalance'
 import { evaluateSuggestions, type WorldSummaryData } from './suggestionRules'
 
 // ── Stat pill ────────────────────────────────────────────────────────────────
@@ -418,6 +419,14 @@ export default function WorldDashboardView() {
               )
             })}
           </div>
+        </div>
+      )}
+
+      {/* Cast balance — who's underused / absent lately */}
+      {characters.length > 0 && totalChapters > 0 && (
+        <div>
+          <SectionHeading icon={Users}>Cast Balance</SectionHeading>
+          <CastBalance characters={characters} chapters={chapters} events={allEvents} />
         </div>
       )}
 
