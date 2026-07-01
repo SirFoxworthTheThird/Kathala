@@ -440,6 +440,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Tools */}
             <Button
               size="sm"
               variant={scaleMode ? 'default' : 'outline'}
@@ -470,16 +471,33 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               <Route className="h-3.5 w-3.5" />
               Measure
             </Button>
+
+            <span aria-hidden="true" className="h-5 w-px bg-[hsl(var(--border))]" />
+
+            {/* Add to map */}
+            <Button
+              size="sm"
+              variant={annotateMode ? 'default' : 'outline'}
+              className="gap-1.5 text-xs"
+              onClick={() => { setAnnotateMode((v) => !v); setSelectedAnnotationId(null) }}
+              title="Place a text label on the map"
+            >
+              <Type className="h-3.5 w-3.5" />
+              Label
+            </Button>
             <Button
               size="sm"
               variant="outline"
               className="gap-1.5 text-xs"
-              onClick={handleExportMap}
-              title="Export map as PNG"
+              onClick={() => window.dispatchEvent(new CustomEvent('wb:map:startAddMarker'))}
             >
-              <Download className="h-3.5 w-3.5" />
-              Export
+              <Plus className="h-3.5 w-3.5" />
+              Location
             </Button>
+
+            <span aria-hidden="true" className="h-5 w-px bg-[hsl(var(--border))]" />
+
+            {/* Utility */}
             <Button
               size="sm"
               variant="outline"
@@ -492,23 +510,13 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             </Button>
             <Button
               size="sm"
-              variant={annotateMode ? 'default' : 'outline'}
-              className="gap-1.5 text-xs"
-              onClick={() => { setAnnotateMode((v) => !v); setSelectedAnnotationId(null) }}
-              title="Place a text label on the map"
-            >
-              <Type className="h-3.5 w-3.5" />
-              Label
-            </Button>
-
-            <Button
-              size="sm"
               variant="outline"
               className="gap-1.5 text-xs"
-              onClick={() => window.dispatchEvent(new CustomEvent('wb:map:startAddMarker'))}
+              onClick={handleExportMap}
+              title="Export map as PNG"
             >
-              <Plus className="h-3.5 w-3.5" />
-              Location
+              <Download className="h-3.5 w-3.5" />
+              Export
             </Button>
           </div>
         </div>
