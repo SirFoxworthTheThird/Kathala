@@ -5,6 +5,7 @@ import ReactFlow, {
   Controls,
   MiniMap,
   Panel,
+  ConnectionMode,
   type NodeTypes,
   type EdgeTypes,
   Handle,
@@ -37,28 +38,47 @@ import type { Character, Relationship, RelationshipSentiment, RelationshipStreng
 
 // ─── Custom Node ────────────────────────────────────────────────────────────
 
+// Invisible connection strips hugging each edge of a character card. Together
+// they let a drag start or end anywhere along the card's border (in any
+// direction, thanks to ConnectionMode.Loose), while the centre stays free to
+// drag the node itself.
+const CONNECT_EDGE_BASE: React.CSSProperties = {
+  background: 'transparent', border: 'none', borderRadius: 0, transform: 'none', minWidth: 0, minHeight: 0,
+}
+const CONNECT_EDGE_STYLE: Record<'left' | 'right' | 'top' | 'bottom', React.CSSProperties> = {
+  left:   { ...CONNECT_EDGE_BASE, top: 0, left: 0, width: 10, height: '100%' },
+  right:  { ...CONNECT_EDGE_BASE, top: 0, right: 0, left: 'auto', width: 10, height: '100%' },
+  top:    { ...CONNECT_EDGE_BASE, top: 0, left: 0, width: '100%', height: 10 },
+  bottom: { ...CONNECT_EDGE_BASE, bottom: 0, top: 'auto', left: 0, width: '100%', height: 10 },
+}
+
 function CharacterNode({ data }: { data: { name: string; portraitImageId: string | null; factionColor?: string | null; factionName?: string | null } }) {
   return (
     <div
-      className="flex flex-col items-center gap-1 rounded-lg border-2 bg-[hsl(var(--card))] px-3 py-2 shadow-lg min-w-20 overflow-hidden"
+      className="relative flex flex-col items-center gap-1 rounded-lg border-2 bg-[hsl(var(--card))] px-3 py-2 shadow-lg min-w-20 overflow-hidden"
       style={{ borderColor: data.factionColor ?? 'hsl(var(--border))' }}
     >
-      <Handle type="target" position={Position.Left} style={{ background: 'hsl(212,72%,59%)' }} />
+      {/* Perimeter connection zones — drag from any edge of one character to
+          any edge of another to link them (undirected). The centre stays free
+          for dragging the node to rearrange the graph. */}
+      <Handle id="l" type="source" position={Position.Left}   style={CONNECT_EDGE_STYLE.left} />
+      <Handle id="r" type="source" position={Position.Right}  style={CONNECT_EDGE_STYLE.right} />
+      <Handle id="t" type="source" position={Position.Top}    style={CONNECT_EDGE_STYLE.top} />
+      <Handle id="b" type="source" position={Position.Bottom} style={CONNECT_EDGE_STYLE.bottom} />
       <PortraitImage
         imageId={data.portraitImageId}
         alt={data.name}
-        className="h-10 w-10 rounded-full object-cover"
+        className="pointer-events-none h-10 w-10 rounded-full object-cover"
         fallbackClassName="h-10 w-10 rounded-full"
       />
-      <span className="text-xs font-medium text-[hsl(var(--foreground))] max-w-24 text-center leading-tight">
+      <span className="pointer-events-none text-xs font-medium text-[hsl(var(--foreground))] max-w-24 text-center leading-tight">
         {data.name}
       </span>
       {data.factionColor && data.factionName && (
-        <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: data.factionColor + '33', color: data.factionColor }}>
+        <span className="pointer-events-none text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: data.factionColor + '33', color: data.factionColor }}>
           {data.factionName}
         </span>
       )}
-      <Handle type="source" position={Position.Right} style={{ background: 'hsl(212,72%,59%)' }} />
     </div>
   )
 }
@@ -483,6 +503,7 @@ export default function RelationshipGraphView() {
           onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
+          connectionMode={ConnectionMode.Loose}
           fitView
           style={{ background: 'hsl(222,47%,9%)' }}
           onConnect={(c) => {
