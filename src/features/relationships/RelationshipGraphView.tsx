@@ -19,7 +19,7 @@ import 'reactflow/dist/style.css'
 import { X, Trash2, Network, Plus, Check, Shield } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useCharacters } from '@/db/hooks/useCharacters'
-import { useRelationships, deleteRelationship, updateRelationship } from '@/db/hooks/useRelationships'
+import { useRelationships, createRelationship, deleteRelationship, updateRelationship } from '@/db/hooks/useRelationships'
 import { useBestRelationshipSnapshots, upsertRelationshipSnapshot } from '@/db/hooks/useRelationshipSnapshots'
 import { useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useActiveEventId } from '@/store'
@@ -29,10 +29,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { EmptyState } from '@/components/EmptyState'
 import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
 import { cn } from '@/lib/utils'
-import type { RelationshipSentiment, RelationshipStrength, RelationshipSnapshot } from '@/types'
+import type { Character, Relationship, RelationshipSentiment, RelationshipStrength, RelationshipSnapshot } from '@/types'
 
 // ─── Custom Node ────────────────────────────────────────────────────────────
 
@@ -168,6 +169,171 @@ function SnapshotEditor({
   )
 }
 
+// ─── Base relationship editor (default label/strength/sentiment) ─────────────
+
+function BaseEditor({ relationship, onSaved }: { relationship: Relationship; onSaved: () => void }) {
+  const [label, setLabel]             = useState(relationship.label)
+  const [strength, setStrength]       = useState<RelationshipStrength>(relationship.strength)
+  const [sentiment, setSentiment]     = useState<RelationshipSentiment>(relationship.sentiment)
+  const [description, setDescription] = useState(relationship.description)
+  const [saving, setSaving]           = useState(false)
+
+  async function save() {
+    setSaving(true)
+    await updateRelationship(relationship.id, { label: label.trim(), strength, sentiment, description })
+    setSaving(false)
+    onSaved()
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1.5">
+        <Label className="text-xs">Label</Label>
+        <Input className="h-7 text-xs" value={label} onChange={(e) => setLabel(e.target.value)} />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label className="text-xs">Strength</Label>
+        <Select value={strength} onValueChange={(v) => setStrength(v as RelationshipStrength)}>
+          <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {(['weak', 'moderate', 'strong', 'bond'] as RelationshipStrength[]).map((s) => (
+              <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label className="text-xs">Sentiment</Label>
+        <Select value={sentiment} onValueChange={(v) => setSentiment(v as RelationshipSentiment)}>
+          <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {(['positive', 'neutral', 'negative', 'complex'] as RelationshipSentiment[]).map((s) => (
+              <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label className="text-xs">Description</Label>
+        <Textarea className="text-xs resize-none" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+      </div>
+      <Button size="sm" disabled={!label.trim() || saving} onClick={save}>
+        <Check className="h-3.5 w-3.5" /> Save relationship
+      </Button>
+    </div>
+  )
+}
+
+// ─── Create relationship dialog ──────────────────────────────────────────────
+
+function CreateRelationshipDialog({ open, onOpenChange, worldId, characters, startEventId, startChapterLabel }: {
+  open: boolean
+  onOpenChange: (o: boolean) => void
+  worldId: string
+  characters: Character[]
+  startEventId: string | null
+  startChapterLabel: string | null
+}) {
+  const [aId, setAId]                 = useState('')
+  const [bId, setBId]                 = useState('')
+  const [label, setLabel]             = useState('')
+  const [strength, setStrength]       = useState<RelationshipStrength>('moderate')
+  const [sentiment, setSentiment]     = useState<RelationshipSentiment>('neutral')
+  const [description, setDescription] = useState('')
+  const [saving, setSaving]           = useState(false)
+
+  function reset() {
+    setAId(''); setBId(''); setLabel(''); setStrength('moderate'); setSentiment('neutral'); setDescription('')
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!aId || !bId || aId === bId || !label.trim()) return
+    setSaving(true)
+    await createRelationship({
+      worldId, characterAId: aId, characterBId: bId,
+      label: label.trim(), strength, sentiment, description,
+      isBidirectional: true, startEventId,
+    })
+    setSaving(false)
+    reset()
+    onOpenChange(false)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o) }}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>New Relationship</DialogTitle></DialogHeader>
+        <form onSubmit={submit} className="flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label>Character A</Label>
+              <Select value={aId} onValueChange={setAId}>
+                <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                <SelectContent>
+                  {characters.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label>Character B</Label>
+              <Select value={bId} onValueChange={setBId}>
+                <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                <SelectContent>
+                  {characters.filter((c) => c.id !== aId).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label>Relationship Label</Label>
+            <Input placeholder="e.g. mentor, rival, sibling" value={label} onChange={(e) => setLabel(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label>Strength</Label>
+              <Select value={strength} onValueChange={(v) => setStrength(v as RelationshipStrength)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(['weak', 'moderate', 'strong', 'bond'] as RelationshipStrength[]).map((s) => (
+                    <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label>Sentiment</Label>
+              <Select value={sentiment} onValueChange={(v) => setSentiment(v as RelationshipSentiment)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(['positive', 'neutral', 'negative', 'complex'] as RelationshipSentiment[]).map((s) => (
+                    <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label>Description</Label>
+            <Input placeholder="Optional description…" value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          {startChapterLabel && (
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">
+              Starts at <span className="font-medium text-[hsl(var(--foreground))]">{startChapterLabel}</span> and won't appear in earlier chapters.
+            </p>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" disabled={!aId || !bId || aId === bId || !label.trim() || saving}>
+              {saving ? 'Saving…' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ─── Main View ──────────────────────────────────────────────────────────────
 
 export default function RelationshipGraphView() {
@@ -181,6 +347,8 @@ export default function RelationshipGraphView() {
   const snapshots = useBestRelationshipSnapshots(worldId ?? null, activeEventId)
   const [selectedRelId, setSelectedRelId] = useState<string | null>(null)
   const [editingSnapshot, setEditingSnapshot] = useState(false)
+  const [editingBase, setEditingBase] = useState(false)
+  const [creating, setCreating] = useState(false)
   const [showFactionOverlay, setShowFactionOverlay] = useState(false)
   const [nodes, setNodes, onNodesChange] = useNodesState([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
@@ -264,6 +432,7 @@ export default function RelationshipGraphView() {
           onSelect:    (id: string) => {
             setSelectedRelId(id)
             setEditingSnapshot(!!activeEventId && !snapshotMap.has(id))
+            setEditingBase(false)
           },
         },
       }]
@@ -277,6 +446,13 @@ export default function RelationshipGraphView() {
   const inheritedEvent   = isSnapInherited ? allEvents.find((e) => e.id === selectedSnap!.eventId) : undefined
   const charA            = characters.find((c) => c.id === selectedRel?.characterAId)
   const charB            = characters.find((c) => c.id === selectedRel?.characterBId)
+
+  // Label for the chapter a newly-created relationship would start in (the cursor).
+  const createStartEvent   = activeEventId ? allEvents.find((e) => e.id === activeEventId) : undefined
+  const createStartChapter = createStartEvent ? allChapters.find((c) => c.id === createStartEvent.chapterId) : undefined
+  const startChapterLabel  = createStartChapter
+    ? `Ch. ${createStartChapter.number} — ${createStartChapter.title}${createStartEvent ? ` / ${createStartEvent.title}` : ''}`
+    : null
 
   if (characters.length === 0) {
     return (
@@ -312,6 +488,11 @@ export default function RelationshipGraphView() {
           }}
         >
           <Background color="#334155" gap={20} />
+          <Panel position="top-left">
+            <Button size="sm" className="gap-1.5 shadow-md" onClick={() => setCreating(true)} disabled={characters.length < 2}>
+              <Plus className="h-4 w-4" /> New Relationship
+            </Button>
+          </Panel>
           <Controls style={{ background: 'hsl(222,47%,14%)', borderColor: 'hsl(217,33%,22%)' }} />
           <MiniMap
             nodeColor="hsl(222,47%,20%)"
@@ -359,7 +540,7 @@ export default function RelationshipGraphView() {
                 </p>
               )}
             </div>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedRelId(null)}>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedRelId(null); setEditingBase(false); setEditingSnapshot(false) }}>
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -409,20 +590,27 @@ export default function RelationshipGraphView() {
 
             {/* Inherited / base info */}
             {!editingSnapshot && (
-              <>
-                {isSnapInherited && inheritedEvent && (
-                  <p className="text-[10px] italic text-[hsl(var(--muted-foreground))] text-center">
-                    Inherited from event: {inheritedEvent.title}
-                  </p>
-                )}
-                <div className="text-xs text-[hsl(var(--muted-foreground))] space-y-1">
-                  <p><span className="font-medium text-[hsl(var(--foreground))]">Strength:</span> {selectedSnap?.strength ?? selectedRel.strength}</p>
-                  <p><span className="font-medium text-[hsl(var(--foreground))]">Sentiment:</span> {selectedSnap?.sentiment ?? selectedRel.sentiment}</p>
-                  {(selectedSnap?.description || selectedRel.description) && (
-                    <p className="pt-1 text-[hsl(var(--foreground))]">{selectedSnap?.description || selectedRel.description}</p>
+              editingBase ? (
+                <BaseEditor relationship={selectedRel} onSaved={() => setEditingBase(false)} />
+              ) : (
+                <>
+                  {isSnapInherited && inheritedEvent && (
+                    <p className="text-[10px] italic text-[hsl(var(--muted-foreground))] text-center">
+                      Inherited from event: {inheritedEvent.title}
+                    </p>
                   )}
-                </div>
-              </>
+                  <div className="text-xs text-[hsl(var(--muted-foreground))] space-y-1">
+                    <p><span className="font-medium text-[hsl(var(--foreground))]">Strength:</span> {selectedSnap?.strength ?? selectedRel.strength}</p>
+                    <p><span className="font-medium text-[hsl(var(--foreground))]">Sentiment:</span> {selectedSnap?.sentiment ?? selectedRel.sentiment}</p>
+                    {(selectedSnap?.description || selectedRel.description) && (
+                      <p className="pt-1 text-[hsl(var(--foreground))]">{selectedSnap?.description || selectedRel.description}</p>
+                    )}
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => setEditingBase(true)}>
+                    Edit relationship
+                  </Button>
+                </>
+              )
             )}
 
             {/* Event snapshot editor */}
@@ -483,6 +671,17 @@ export default function RelationshipGraphView() {
             )}
           </div>
         </div>
+      )}
+
+      {worldId && (
+        <CreateRelationshipDialog
+          open={creating}
+          onOpenChange={setCreating}
+          worldId={worldId}
+          characters={characters}
+          startEventId={activeEventId}
+          startChapterLabel={startChapterLabel}
+        />
       )}
     </div>
   )
