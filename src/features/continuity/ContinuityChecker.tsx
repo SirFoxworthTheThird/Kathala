@@ -20,6 +20,7 @@ import { db } from '@/db/database'
 import { useContinuitySuppressions, toggleContinuitySuppression, setContinuitySuppressionNote } from '@/db/hooks/useContinuitySuppressions'
 import { cn } from '@/lib/utils'
 import { pixelDist } from '@/lib/mapScale'
+import { computeInWorldDays } from '@/lib/inWorldTime'
 import type { CharacterSnapshot, ItemPlacement, MapRoute, MapRegion, RouteType } from '@/types'
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────
@@ -312,6 +313,10 @@ export function ContinuityChecker() {
     const charById  = new Map(characters.map((c) => [c.id, c]))
     const itemById  = new Map(items.map((i) => [i.id, i]))
     const eventById = new Map(allEvents.map((e) => [e.id, e]))
+    // Absolute in-world day per event, so travel checks can use the elapsed
+    // time between two points (which spans every event in between, and honors
+    // explicit inWorldTime pins) rather than a single event's travelDays.
+    const inWorldDay = computeInWorldDays(allEvents, chapters)
 
     // Global event order: chapter.number * 10_000 + event.sortOrder
     const chapNumById = new Map(chapters.map((c) => [c.id, c.number]))
@@ -879,7 +884,12 @@ export function ContinuityChecker() {
         }
 
         // ── Travel time check ─────────────────────────────────────────────────
-        if (!currEvent || currEvent.travelDays === null || currEvent.travelDays <= 0) continue
+        // Days available = elapsed in-world time between the two snapshots. This
+        // spans every event in between (not just this one's travelDays) and
+        // respects explicit inWorldTime. <= 0 means no tracked time (or a
+        // flashback jump), so there's nothing to check.
+        const daysAvailable = (inWorldDay.get(curr.eventId) ?? 0) - (inWorldDay.get(prev.eventId) ?? 0)
+        if (!currEvent || daysAvailable <= 0) continue
 
         const mov = movementByKey.get(movementKey(charId, curr.eventId))
         const travelModeId = mov?.travelModeId ?? curr.travelModeId
@@ -904,7 +914,7 @@ export function ContinuityChecker() {
         const distUnits = distPx / layer.scalePixelsPerUnit
         const daysNeeded = distUnits / effectiveSpeed
 
-        if (daysNeeded > currEvent.travelDays) {
+        if (daysNeeded > daysAvailable) {
           const currCh = chapById.get(currEvent.chapterId)
           const dist = distUnits < 10 ? distUnits.toFixed(1) : Math.round(distUnits).toString()
           const routeNote = connectingRoute
@@ -915,7 +925,7 @@ export function ContinuityChecker() {
             severity: 'warning',
             category: 'character',
             message: `${char.name} can't reach ${toMarker.name} in time`,
-            detail: `${fromMarker.name} → ${toMarker.name} is ~${dist} ${layer.scaleUnit} · ${travelMode.name} at ${effectiveSpeed.toFixed(1)} ${layer.scaleUnit}/day${routeNote} — needs ${daysNeeded.toFixed(1)} days but only ${currEvent.travelDays} available (Ch. ${currCh?.number ?? '?'})`,
+            detail: `${fromMarker.name} → ${toMarker.name} is ~${dist} ${layer.scaleUnit} · ${travelMode.name} at ${effectiveSpeed.toFixed(1)} ${layer.scaleUnit}/day${routeNote} — needs ${daysNeeded.toFixed(1)} days but only ${daysAvailable} in-world day${daysAvailable === 1 ? '' : 's'} available (Ch. ${currCh?.number ?? '?'})`,
             navigatePath: `/worlds/${worldId}/timeline/${currEvent.chapterId}`,
             eventId: curr.eventId,
           })
