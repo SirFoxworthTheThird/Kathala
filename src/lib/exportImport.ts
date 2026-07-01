@@ -5,11 +5,12 @@ import type {
   Relationship, RelationshipSnapshot, Timeline, Chapter, WorldEvent, TravelMode,
   TimelineRelationship, CrossTimelineArtifact, MapRoute, MapRegion, MapRegionSnapshot,
   MapAnnotation, LoreCategory, LorePage, Faction, FactionMembership, FactionRelationship,
+  KnowledgeFact, KnowledgeReveal,
   ContinuitySuppression,
 } from '@/types'
 import { generateId } from '@/lib/id'
 
-const EXPORT_VERSION = 8
+const EXPORT_VERSION = 9
 
 interface BlobExport {
   id: string
@@ -54,6 +55,8 @@ export interface WorldExportFile {
   factions: Faction[]
   factionMemberships: FactionMembership[]
   factionRelationships: FactionRelationship[]
+  knowledgeFacts?: KnowledgeFact[]
+  knowledgeReveals?: KnowledgeReveal[]
   continuitySuppressions?: ContinuitySuppression[]
   relationshipPositions?: Record<string, { x: number; y: number }>
   /** @deprecated v6 and earlier stored only IDs via localStorage; superseded by continuitySuppressions */
@@ -122,6 +125,8 @@ interface CollectedWorldData {
   factions: Faction[]
   factionMemberships: FactionMembership[]
   factionRelationships: FactionRelationship[]
+  knowledgeFacts: KnowledgeFact[]
+  knowledgeReveals: KnowledgeReveal[]
   continuitySuppressions: ContinuitySuppression[]
 }
 
@@ -155,6 +160,8 @@ async function collectWorldData(worldId: string): Promise<CollectedWorldData> {
     factions,
     factionMemberships,
     factionRelationships,
+    knowledgeFacts,
+    knowledgeReveals,
     continuitySuppressions,
   ] = await Promise.all([
     db.worlds.get(worldId),
@@ -185,6 +192,8 @@ async function collectWorldData(worldId: string): Promise<CollectedWorldData> {
     db.factions.where('worldId').equals(worldId).toArray(),
     db.factionMemberships.where('worldId').equals(worldId).toArray(),
     db.factionRelationships.where('worldId').equals(worldId).toArray(),
+    db.knowledgeFacts.where('worldId').equals(worldId).toArray(),
+    db.knowledgeReveals.where('worldId').equals(worldId).toArray(),
     db.continuitySuppressions.where('worldId').equals(worldId).toArray(),
   ])
 
@@ -219,6 +228,8 @@ async function collectWorldData(worldId: string): Promise<CollectedWorldData> {
     factions,
     factionMemberships,
     factionRelationships,
+    knowledgeFacts,
+    knowledgeReveals,
     continuitySuppressions,
   }
 }
@@ -357,6 +368,8 @@ export async function exportWorld(
     factions: d.factions,
     factionMemberships: d.factionMemberships,
     factionRelationships: d.factionRelationships,
+    knowledgeFacts: d.knowledgeFacts,
+    knowledgeReveals: d.knowledgeReveals,
     continuitySuppressions: d.continuitySuppressions,
     ...extras,
   }
@@ -425,6 +438,8 @@ export async function exportWorldSplit(
     factions: d.factions,
     factionMemberships: d.factionMemberships,
     factionRelationships: d.factionRelationships,
+    knowledgeFacts: d.knowledgeFacts,
+    knowledgeReveals: d.knowledgeReveals,
     continuitySuppressions: d.continuitySuppressions,
     ...extras,
   }
@@ -490,6 +505,8 @@ export async function serializeWorldForSync(worldId: string): Promise<string> {
     factions: d.factions,
     factionMemberships: d.factionMemberships,
     factionRelationships: d.factionRelationships,
+    knowledgeFacts: d.knowledgeFacts,
+    knowledgeReveals: d.knowledgeReveals,
     continuitySuppressions: d.continuitySuppressions,
     ...extras,
   }
@@ -613,6 +630,14 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
     throw new Error('Invalid file: factionRelationships is not an array')
   }
   if (!d.factionRelationships) (d as Record<string, unknown>).factionRelationships = []
+  if (d.knowledgeFacts !== undefined && !Array.isArray(d.knowledgeFacts)) {
+    throw new Error('Invalid file: knowledgeFacts is not an array')
+  }
+  if (!d.knowledgeFacts) (d as Record<string, unknown>).knowledgeFacts = []
+  if (d.knowledgeReveals !== undefined && !Array.isArray(d.knowledgeReveals)) {
+    throw new Error('Invalid file: knowledgeReveals is not an array')
+  }
+  if (!d.knowledgeReveals) (d as Record<string, unknown>).knowledgeReveals = []
 }
 
 function normalizeImport(data: WorldExportFile): void {
@@ -826,6 +851,7 @@ async function importWorldData(data: WorldExportFile): Promise<string> {
     db.timelineRelationships, db.crossTimelineArtifacts,
     db.mapRoutes, db.mapRegions, db.mapRegionSnapshots, db.mapAnnotations,
     db.loreCategories, db.lorePages, db.factions, db.factionMemberships, db.factionRelationships,
+    db.knowledgeFacts, db.knowledgeReveals,
     db.continuitySuppressions,
   ], async () => {
     await db.worlds.put(data.world)
@@ -855,6 +881,8 @@ async function importWorldData(data: WorldExportFile): Promise<string> {
     await db.factions.bulkPut(data.factions)
     await db.factionMemberships.bulkPut(data.factionMemberships)
     await db.factionRelationships.bulkPut(data.factionRelationships)
+    await db.knowledgeFacts.bulkPut(data.knowledgeFacts ?? [])
+    await db.knowledgeReveals.bulkPut(data.knowledgeReveals ?? [])
     if (suppressionsToImport.length > 0) {
       await db.continuitySuppressions.bulkPut(suppressionsToImport)
     }
@@ -998,6 +1026,7 @@ export async function applyWorldImport(
     localRoutes, localRegions, localRegSnaps, localAnnotations,
     localLoreCats, localLorePages,
     localFactions, localFactionMemberships, localFactionRelationships,
+    localKnowledgeFacts, localKnowledgeReveals,
   ] = await Promise.all([
     db.characters.where('worldId').equals(worldId).toArray(),
     db.items.where('worldId').equals(worldId).toArray(),
@@ -1025,6 +1054,8 @@ export async function applyWorldImport(
     db.factions.where('worldId').equals(worldId).toArray(),
     db.factionMemberships.where('worldId').equals(worldId).toArray(),
     db.factionRelationships.where('worldId').equals(worldId).toArray(),
+    db.knowledgeFacts.where('worldId').equals(worldId).toArray(),
+    db.knowledgeReveals.where('worldId').equals(worldId).toArray(),
   ])
 
   const merged = {
@@ -1055,6 +1086,8 @@ export async function applyWorldImport(
     factions:             mergeTable(parsed.factions, localFactions).result,
     factionMemberships:   mergeTable(parsed.factionMemberships, localFactionMemberships).result,
     factionRelationships: mergeTable(parsed.factionRelationships, localFactionRelationships).result,
+    knowledgeFacts:       mergeTable(parsed.knowledgeFacts ?? [], localKnowledgeFacts).result,
+    knowledgeReveals:     mergeTable(parsed.knowledgeReveals ?? [], localKnowledgeReveals).result,
     blobs:                parsed.blobs, // blobs: always use incoming (binary, no updatedAt)
     relationshipPositions: parsed.relationshipPositions,
     suppressedIssueIds:   parsed.suppressedIssueIds,

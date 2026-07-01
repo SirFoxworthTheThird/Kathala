@@ -30,6 +30,8 @@ import type {
   Faction,
   FactionMembership,
   FactionRelationship,
+  KnowledgeFact,
+  KnowledgeReveal,
   ContinuitySuppression,
 } from '@/types'
 
@@ -63,6 +65,8 @@ class PlotWeaveDB extends Dexie {
   factions!: EntityTable<Faction, 'id'>
   factionMemberships!: EntityTable<FactionMembership, 'id'>
   factionRelationships!: EntityTable<FactionRelationship, 'id'>
+  knowledgeFacts!: EntityTable<KnowledgeFact, 'id'>
+  knowledgeReveals!: EntityTable<KnowledgeReveal, 'id'>
   continuitySuppressions!: EntityTable<ContinuitySuppression, 'id'>
 
   constructor() {
@@ -487,6 +491,13 @@ class PlotWeaveDB extends Dexie {
       await tx.table('events').toCollection().modify((e: Record<string, unknown>) => {
         if (e.inWorldTime === undefined) e.inWorldTime = null
       })
+    })
+
+    // v34: character knowledge — facts and per-character "learned at" reveals,
+    // so "who knows what, when" can be read relative to the chapter cursor.
+    this.version(34).stores({
+      knowledgeFacts: 'id, worldId',
+      knowledgeReveals: 'id, worldId, factId, characterId, eventId',
     })
   }
 }

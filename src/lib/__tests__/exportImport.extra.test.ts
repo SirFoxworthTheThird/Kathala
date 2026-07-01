@@ -535,6 +535,35 @@ describe('importWorld — travelModes', () => {
     expect(stored!.inWorldTime).toBe(3)
   })
 
+  it('round-trips knowledge facts and reveals through export/import', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      knowledgeFacts: [
+        { id: 'kf-1', worldId: 'world-extra', title: 'The king is dead', description: 'Only the council knows.', tags: [], createdAt: 1000, updatedAt: 1000 },
+      ],
+      knowledgeReveals: [
+        { id: 'kr-1', worldId: 'world-extra', factId: 'kf-1', characterId: 'char-x', eventId: 'ev-1', note: 'overheard', createdAt: 1000, updatedAt: 1000 },
+      ],
+    })
+    await importWorld(makeFile(data))
+
+    expect((await db.knowledgeFacts.get('kf-1'))?.title).toBe('The king is dead')
+    expect((await db.knowledgeReveals.get('kr-1'))?.factId).toBe('kf-1')
+  })
+
+  it('backfills knowledge arrays to empty on older exports that lack them', async () => {
+    await db.delete()
+    await db.open()
+
+    // Base makeExport (v2) carries no knowledge arrays — simulates a pre-feature file.
+    await importWorld(makeFile(makeExport()))
+
+    expect(await db.knowledgeFacts.count()).toBe(0)
+    expect(await db.knowledgeReveals.count()).toBe(0)
+  })
+
   it('backfills travelModeId to null on snapshots that lack it', async () => {
     await db.delete()
     await db.open()
