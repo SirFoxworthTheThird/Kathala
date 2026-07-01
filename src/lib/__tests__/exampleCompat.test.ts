@@ -1,16 +1,17 @@
 import 'fake-indexeddb/auto'
-import { readFileSync, existsSync } from 'node:fs'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { db } from '@/db/database'
 import { importWorldFromJson } from '@/lib/exportImport'
 
 // The shipped example worlds (in /example) must keep importing as the schema
 // and export format evolve. These are older exports (v7), so this also
-// exercises the backfill of every field/array added since.
-const EXAMPLES = [
-  'example/The Name of the Wind.pwk',
-  'example/The Fellowship of the Ring.pwk',
-]
+// exercises the backfill of every field/array added since. Loaded via Vite's
+// raw glob import so the test needs no Node fs types.
+const examples = import.meta.glob('/example/*.pwk', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+}) as Record<string, string>
 
 beforeEach(async () => {
   await db.delete()
@@ -18,17 +19,16 @@ beforeEach(async () => {
 })
 
 describe('bundled example worlds stay importable', () => {
-  for (const path of EXAMPLES) {
-    it(`imports ${path} without error and backfills new fields`, async () => {
-      if (!existsSync(path)) {
-        throw new Error(`Example file missing: ${path}`)
-      }
-      const json = readFileSync(path, 'utf8')
+  const entries = Object.entries(examples)
 
+  it('finds the bundled example files', () => {
+    expect(entries.length).toBeGreaterThanOrEqual(2)
+  })
+
+  for (const [path, json] of entries) {
+    it(`imports ${path} without error and backfills new fields`, async () => {
       const worldId = await importWorldFromJson(json)
       expect(typeof worldId).toBe('string')
-
-      // World landed.
       expect(await db.worlds.get(worldId)).toBeDefined()
 
       // Fields added after these files were exported are backfilled on every event.
