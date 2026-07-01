@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useEffect, useRef } from 'react'
 import { useAppStore } from '@/store'
 import { useFocusTrap } from '@/lib/useFocusTrap'
-import { useChapter, useEvent, useEvents } from '@/db/hooks/useTimeline'
+import { useChapter, useEvent, useEvents, useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
+import { computeInWorldDays } from '@/lib/inWorldTime'
 import { useBestSnapshots } from '@/db/hooks/useSnapshots'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
@@ -57,6 +58,9 @@ export function WritersBriefPanel() {
 
   const activeEvent = useEvent(activeEventId)
   const chapter    = useChapter(activeEvent?.chapterId ?? null)
+  const worldEvents = useWorldEvents(worldId ?? null)
+  const worldChapters = useWorldChapters(worldId ?? null)
+  const activeDay = activeEventId ? computeInWorldDays(worldEvents, worldChapters).get(activeEventId) : undefined
   const events     = useEvents(activeEvent?.chapterId ?? null)
   const snapshots  = useBestSnapshots(worldId ?? null, activeEventId)
   const characters = useCharacters(worldId ?? null)
@@ -177,6 +181,9 @@ export function WritersBriefPanel() {
                   <div className="mt-2 border-t border-[hsl(var(--border))] pt-2">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Active Event</p>
                     <p className="text-xs font-medium text-[hsl(var(--foreground))]">{activeEvent.title}</p>
+                    {activeDay !== undefined && activeDay > 0 && !activeEvent.isFlashback && (
+                      <p className="mt-0.5 text-[10px] text-[hsl(var(--muted-foreground))]">In-world day {activeDay}</p>
+                    )}
                     {activeEvent.description && (
                       <p className="mt-0.5 text-[10px] text-[hsl(var(--muted-foreground))] leading-relaxed">{activeEvent.description}</p>
                     )}

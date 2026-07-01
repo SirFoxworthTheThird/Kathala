@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus, Users, Network, StickyNote, ChevronDown, ChevronRight, Scroll } from 'lucide-react'
-import { useChapter, useEvents, updateChapter, updateEvent } from '@/db/hooks/useTimeline'
+import { useChapter, useEvents, useWorldEvents, useWorldChapters, updateChapter, updateEvent } from '@/db/hooks/useTimeline'
 import { useChapterEventSnapshots } from '@/db/hooks/useSnapshots'
+import { computeInWorldDays } from '@/lib/inWorldTime'
 import { useEventRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
@@ -55,6 +56,9 @@ export default function ChapterDetailView() {
   const navigate = useNavigate()
   const chapter = useChapter(chapterId ?? null)
   const events = useEvents(chapterId ?? null)
+  const worldEvents = useWorldEvents(worldId ?? null)
+  const worldChapters = useWorldChapters(worldId ?? null)
+  const inWorldDays = computeInWorldDays(worldEvents, worldChapters)
   const characters = useCharacters(worldId ?? null)
   const relationships = useRelationships(worldId ?? null)
   const [addEventOpen, setAddEventOpen] = useState(false)
@@ -147,6 +151,7 @@ export default function ChapterDetailView() {
                   isLast={i === sortedEvents.length - 1}
                   onMoveUp={() => moveEvent(e.id, 'up')}
                   onMoveDown={() => moveEvent(e.id, 'down')}
+                  inWorldDay={inWorldDays.get(e.id)}
                 />
               ))
             )}

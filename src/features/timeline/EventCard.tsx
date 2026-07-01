@@ -20,9 +20,11 @@ interface EventCardProps {
   isLast: boolean
   onMoveUp: () => void
   onMoveDown: () => void
+  /** Derived in-world day (cumulative travel days along narrative order). */
+  inWorldDay?: number
 }
 
-export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: EventCardProps) {
+export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorldDay }: EventCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -36,6 +38,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
   const [status, setStatus] = useState<EventStatus>(event.status ?? 'draft')
   const [povCharacterId, setPovCharacterId] = useState<string | null>(event.povCharacterId ?? null)
   const [isFlashback, setIsFlashback] = useState(event.isFlashback ?? false)
+  const [travelDays, setTravelDays] = useState<number | null>(event.travelDays ?? null)
   const tagInputRef = useRef<HTMLInputElement>(null)
 
   const characters = useCharacters(event.worldId)
@@ -89,6 +92,13 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
     const next = !isFlashback
     setIsFlashback(next)
     await updateEvent(event.id, { isFlashback: next })
+  }
+
+  function handleTravelDaysChange(raw: string) {
+    const parsed = raw.trim() === '' ? null : Math.max(0, parseFloat(raw))
+    const val = parsed === null || Number.isNaN(parsed) ? null : parsed
+    setTravelDays(val)
+    updateEvent(event.id, { travelDays: val })
   }
 
   function startEdit() {
@@ -183,6 +193,16 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
             <span className="text-sm font-medium text-[hsl(var(--foreground))] truncate block">{event.title}</span>
           )}
         </button>
+
+        {/* In-world day chip — only when the story tracks elapsed time */}
+        {inWorldDay !== undefined && inWorldDay > 0 && !isFlashback && (
+          <span
+            className="shrink-0 rounded-full bg-[hsl(var(--muted))] px-2 py-0.5 text-[10px] font-medium tabular-nums text-[hsl(var(--muted-foreground))]"
+            title={`In-world day ${inWorldDay} — ${inWorldDay} day${inWorldDay === 1 ? '' : 's'} after the story's start`}
+          >
+            Day {inWorldDay}
+          </span>
+        )}
 
         {/* Status badge — always visible, click to cycle */}
         <button
@@ -482,6 +502,28 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
               </Select>
             </div>
           )}
+
+          {/* Elapsed time before this event */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
+              <History className="h-3 w-3" /> Elapsed Time
+            </span>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={0}
+                step="any"
+                className="h-8 w-24 text-xs"
+                placeholder="0"
+                value={travelDays ?? ''}
+                onChange={(e) => handleTravelDaysChange(e.target.value)}
+              />
+              <span className="text-xs text-[hsl(var(--muted-foreground))]">days since the previous event</span>
+            </div>
+            <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
+              Builds the in-world clock and powers the travel-time continuity check.
+            </p>
+          </div>
 
           {/* Flashback toggle */}
           <div className="flex items-center gap-2">
