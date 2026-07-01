@@ -16,7 +16,7 @@ FILE STRUCTURE
 ═══════════════════════════════════════════════════════════
 
 {
-  "version": 7,
+  "version": 9,
   "type": "full",
   "exportedAt": <current unix timestamp in ms, e.g. 1700000000000>,
   "world": { ... },
@@ -32,6 +32,8 @@ FILE STRUCTURE
   "factionRelationships": [],
   "loreCategories": [ ... ],
   "lorePages": [ ... ],
+  "knowledgeFacts": [ ... ],
+  "knowledgeReveals": [ ... ],
   "mapLayers": [],
   "locationMarkers": [],
   "mapAnnotations": [],
@@ -146,6 +148,7 @@ Events are the primary time unit. Each chapter contains ordered events.
   "tags": ["battle", "revelation"],   // thematic tags
   "sortOrder": 0,                     // ascending within a chapter, starting at 0
   "travelDays": null,                 // days of travel before this event; null if unknown
+  "inWorldTime": null,                // explicit absolute in-world day; null unless this event (e.g. a flashback) sits out of narrative order
   "status": "draft",                  // one of: idea | outline | draft | revised | final
   "povCharacterId": null,             // id of the POV character, or null
   "isFlashback": false,               // true if this event is a flashback/retrospective
@@ -221,6 +224,29 @@ showing their state at that point in the story.
   "tags": [],
   "linkedEntityIds": [],               // character/item/location ids this page is about
   "visibleFromEventId": null,
+  "createdAt": <timestamp>,
+  "updatedAt": <timestamp>
+}
+
+── knowledgeFacts (secrets / key information whose spread matters) ──
+{
+  "id": "<uuid>",
+  "worldId": "<world.id>",
+  "title": "<short label, e.g. 'The king is dead'>",
+  "description": "<what the information is>",
+  "tags": [],
+  "createdAt": <timestamp>,
+  "updatedAt": <timestamp>
+}
+
+── knowledgeReveals (one per character learning a fact) ──────
+{
+  "id": "<uuid>",
+  "worldId": "<world.id>",
+  "factId": "<knowledgeFact.id>",
+  "characterId": "<character.id>",
+  "eventId": "<event.id at which they learn it>",
+  "note": "",
   "createdAt": <timestamp>,
   "updatedAt": <timestamp>
 }

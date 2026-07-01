@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PortraitImage } from '@/components/PortraitImage'
+import { InheritedBadge } from '@/components/InheritedBadge'
 import { useCharacterRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
@@ -71,6 +72,7 @@ export function CharacterSnapshotPanel({
   onClose,
 }: CharacterSnapshotPanelProps) {
   const activeEventId = useActiveEventId()
+  const isInherited = !!snapshot && !!activeEventId && snapshot.eventId !== activeEventId
   const relationships = useCharacterRelationships(character.id)
   const items = useItems(worldId)
   const travelModes = useTravelModes(worldId)
@@ -196,6 +198,8 @@ export function CharacterSnapshotPanel({
 
           {activeEventId && (
             <>
+              {isInherited && <InheritedBadge className="self-start" />}
+
               {/* Alive toggle */}
               <button
                 onClick={handleAliveToggle}

@@ -1,9 +1,10 @@
-import { BookOpen, Map, Users, Network, LayoutDashboard, Package, Search, ScrollText, TableProperties, ShieldAlert, Settings, HelpCircle, BookMarked, Shield } from 'lucide-react'
+import { BookOpen, Map, Users, Network, LayoutDashboard, Package, Search, ScrollText, TableProperties, ShieldAlert, Settings, HelpCircle, BookMarked, Shield, KeyRound } from 'lucide-react'
 import faviconUrl from '/favicon.png'
 import { useActiveWorldId, useAppStore } from '@/store'
 import { useWorld } from '@/db/hooks/useWorlds'
 import { useNavigate, NavLink, useParams } from 'react-router-dom'
 import { cn } from '@/lib/utils'
+import { TimeCursor } from './TimeCursor'
 
 type NavTier = 'core' | 'extended'
 
@@ -17,6 +18,7 @@ const navItems: { to: string; label: string; icon: typeof LayoutDashboard; end: 
   { to: 'arc',            label: 'Arc',        icon: TableProperties, end: false, tier: 'extended' },
   { to: 'lore',           label: 'Lore',       icon: BookMarked,      end: false, tier: 'extended' },
   { to: 'factions',       label: 'Factions',   icon: Shield,          end: false, tier: 'extended' },
+  { to: 'knowledge',      label: 'Knowledge',  icon: KeyRound,        end: false, tier: 'extended' },
   { to: 'settings',       label: 'Settings',   icon: Settings,        end: false, tier: 'extended' },
 ]
 
@@ -99,6 +101,12 @@ export function TopBar() {
           <>
             <span aria-hidden="true" className="text-[hsl(var(--muted-foreground))]">/</span>
             <span className="max-w-[120px] truncate text-sm text-[hsl(var(--foreground))]" title={world.name}>{world.name}</span>
+          </>
+        )}
+        {world && worldId && (
+          <>
+            <span aria-hidden="true" className="mx-0.5 h-5 w-px bg-[hsl(var(--border))]" />
+            <TimeCursor worldId={worldId} />
           </>
         )}
       </div>

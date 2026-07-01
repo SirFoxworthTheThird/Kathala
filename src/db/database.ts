@@ -30,6 +30,8 @@ import type {
   Faction,
   FactionMembership,
   FactionRelationship,
+  KnowledgeFact,
+  KnowledgeReveal,
   ContinuitySuppression,
 } from '@/types'
 
@@ -63,6 +65,8 @@ class PlotWeaveDB extends Dexie {
   factions!: EntityTable<Faction, 'id'>
   factionMemberships!: EntityTable<FactionMembership, 'id'>
   factionRelationships!: EntityTable<FactionRelationship, 'id'>
+  knowledgeFacts!: EntityTable<KnowledgeFact, 'id'>
+  knowledgeReveals!: EntityTable<KnowledgeReveal, 'id'>
   continuitySuppressions!: EntityTable<ContinuitySuppression, 'id'>
 
   constructor() {
@@ -478,6 +482,22 @@ class PlotWeaveDB extends Dexie {
     // round-trip with world export/import and are not silently lost on device change.
     this.version(32).stores({
       continuitySuppressions: 'id, worldId, issueId, [worldId+issueId]',
+    })
+
+    // v33: explicit in-world time on events (absolute story-day) so flashbacks
+    // and flash-forwards can be placed on the chronological timeline
+    // independent of narrative order. Non-indexed; backfill null on existing rows.
+    this.version(33).stores({}).upgrade(async (tx) => {
+      await tx.table('events').toCollection().modify((e: Record<string, unknown>) => {
+        if (e.inWorldTime === undefined) e.inWorldTime = null
+      })
+    })
+
+    // v34: character knowledge — facts and per-character "learned at" reveals,
+    // so "who knows what, when" can be read relative to the chapter cursor.
+    this.version(34).stores({
+      knowledgeFacts: 'id, worldId',
+      knowledgeReveals: 'id, worldId, factId, characterId, eventId',
     })
   }
 }

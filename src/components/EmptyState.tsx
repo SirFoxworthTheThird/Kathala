@@ -18,7 +18,7 @@ export function EmptyState({ icon: Icon, title, description, action, className }
       <div>
         <p className="text-sm font-medium text-[hsl(var(--foreground))]">{title}</p>
         {description && (
-          <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{description}</p>
+          <p className="mx-auto mt-1 max-w-xs text-xs text-[hsl(var(--muted-foreground))]">{description}</p>
         )}
       </div>
       {action && <div className="mt-1">{action}</div>}

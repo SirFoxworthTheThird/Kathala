@@ -2,6 +2,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { MapPin, Package, Skull } from 'lucide-react'
 import type { Character } from '@/types'
 import { PortraitImage } from '@/components/PortraitImage'
+import { InheritedBadge } from '@/components/InheritedBadge'
 import { useResolvedCharacterSnapshot } from '@/db/hooks/useSnapshots'
 import { useActiveEventId } from '@/store'
 import { useLocationMarker } from '@/db/hooks/useLocationMarkers'
@@ -27,6 +28,7 @@ export function CharacterCard({ character }: CharacterCardProps) {
   const { worldId } = useParams<{ worldId: string }>()
   const activeEventId = useActiveEventId()
   const snapshot = useResolvedCharacterSnapshot(character.id, character.worldId, activeEventId)
+  const isInherited = !!snapshot && snapshot.eventId !== activeEventId
 
   return (
     <div
@@ -61,9 +63,12 @@ export function CharacterCard({ character }: CharacterCardProps) {
                 {snapshot.inventoryItemIds.length} item{snapshot.inventoryItemIds.length !== 1 ? 's' : ''}
               </span>
             )}
+            {isInherited && <InheritedBadge className="mt-0.5 self-start" />}
           </div>
+        ) : activeEventId ? (
+          <p className="mt-0.5 text-xs text-[hsl(var(--muted-foreground))]">No state recorded for this chapter</p>
         ) : (
-          <p className="mt-0.5 text-xs text-[hsl(var(--muted-foreground))]">No snapshot for selected chapter</p>
+          <p className="mt-0.5 text-xs italic text-[hsl(var(--muted-foreground)/0.7)]">Pick a chapter to see where they are</p>
         )}
       </div>
     </div>

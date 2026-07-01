@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, type ElementType } from 'react'
+import { useState, useMemo, useEffect, type ElementType, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   Map as MapIcon, Users, Network, BookOpen,
@@ -24,6 +24,7 @@ import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { OnboardingWizard } from '@/features/onboarding'
 import { DashboardSuggestion } from './DashboardSuggestion'
+import { CastBalance } from './CastBalance'
 import { evaluateSuggestions, type WorldSummaryData } from './suggestionRules'
 
 // ── Stat pill ────────────────────────────────────────────────────────────────
@@ -37,6 +38,18 @@ function StatPill({ label, value, dim }: { label: string; value: string | number
       <span className="font-semibold">{value}</span>
       <span className="text-[hsl(var(--muted-foreground))]">{label}</span>
     </span>
+  )
+}
+
+// ── Section heading ──────────────────────────────────────────────────────────
+
+function SectionHeading({ icon: Icon, children, aside }: { icon: ElementType; children: ReactNode; aside?: ReactNode }) {
+  return (
+    <div className="mb-3 flex items-center gap-2">
+      <Icon className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+      <h2 className="text-sm font-semibold text-[hsl(var(--foreground))]">{children}</h2>
+      {aside}
+    </div>
   )
 }
 
@@ -252,9 +265,12 @@ export default function WorldDashboardView() {
       {/* World header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
-          <h2 className="text-lg font-semibold text-[hsl(var(--foreground))]">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+            World
+          </p>
+          <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-[hsl(var(--foreground))]">
             {world?.name ?? 'Loading…'}
-          </h2>
+          </h1>
 
           {editingDesc ? (
             <div className="mt-2 flex flex-col gap-2">
@@ -339,10 +355,7 @@ export default function WorldDashboardView() {
       {/* Recent events */}
       {recentEvents.length > 0 && (
         <div>
-          <div className="flex items-center gap-2 mb-3">
-            <Clock className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-            <h3 className="text-sm font-semibold">Recent Events</h3>
-          </div>
+          <SectionHeading icon={Clock}>Recent Events</SectionHeading>
           <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
             {recentEvents.map((ev) => {
               const ch = chapterById.get(ev.chapterId)
@@ -374,11 +387,12 @@ export default function WorldDashboardView() {
       {/* Scene status progress */}
       {totalEvents > 0 && (
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <FileEdit className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-            <h3 className="text-sm font-semibold">Scene Status</h3>
-            <span className="text-xs text-[hsl(var(--muted-foreground))]">{totalEvents} events</span>
-          </div>
+          <SectionHeading
+            icon={FileEdit}
+            aside={<span className="text-xs text-[hsl(var(--muted-foreground))]">{totalEvents} events</span>}
+          >
+            Scene Status
+          </SectionHeading>
           <div className="flex h-2.5 w-full overflow-hidden rounded-full">
             {EVENT_STATUSES.map((s) => {
               const count = statusCounts[s]
@@ -408,13 +422,18 @@ export default function WorldDashboardView() {
         </div>
       )}
 
+      {/* Cast balance — who's underused / absent lately */}
+      {characters.length > 0 && totalChapters > 0 && (
+        <div>
+          <SectionHeading icon={Users}>Cast Balance</SectionHeading>
+          <CastBalance characters={characters} chapters={chapters} events={allEvents} />
+        </div>
+      )}
+
       {/* Timeline relationships — only shown when links exist */}
       {timelineRelationships.length > 0 && (
         <div>
-          <div className="flex items-center gap-2 mb-3">
-            <Layers className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-            <h3 className="text-sm font-semibold">Timeline Links</h3>
-          </div>
+          <SectionHeading icon={Layers}>Timeline Links</SectionHeading>
           <div className="flex flex-wrap gap-2">
             {timelineRelationships.map((rel) => {
               const src = timelineById.get(rel.sourceTimelineId)

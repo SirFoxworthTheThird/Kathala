@@ -11,6 +11,7 @@ import { useAppStore } from '@/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/EmptyState'
+import { PageHeader } from '@/components/PageHeader'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 
 // ── Colour palette for categories ─────────────────────────────────────────────
@@ -290,7 +291,17 @@ export default function LoreView() {
 
       {/* Main area */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex items-center gap-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
+        <PageHeader
+          icon={BookMarked}
+          title="Lore"
+          count={allPages.length}
+          description="Your world's history, rules, and mythology — things that don't change with time."
+          actions={
+            <Button size="sm" className="gap-1.5" onClick={handleNewPage}>
+              <Plus className="h-4 w-4" /> New Page
+            </Button>
+          }
+        >
           <Input
             placeholder="Search lore…"
             value={search}
@@ -311,10 +322,7 @@ export default function LoreView() {
               Revealed
             </button>
           )}
-          <Button size="sm" className="ml-auto gap-1.5" onClick={handleNewPage}>
-            <Plus className="h-4 w-4" /> New Page
-          </Button>
-        </div>
+        </PageHeader>
 
         <div className="flex-1 overflow-auto p-4">
           {filteredPages.length === 0 ? (
