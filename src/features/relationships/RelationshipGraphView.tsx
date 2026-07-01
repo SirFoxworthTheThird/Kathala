@@ -226,16 +226,18 @@ function BaseEditor({ relationship, onSaved }: { relationship: Relationship; onS
 
 // ─── Create relationship dialog ──────────────────────────────────────────────
 
-function CreateRelationshipDialog({ open, onOpenChange, worldId, characters, startEventId, startChapterLabel }: {
+function CreateRelationshipDialog({ open, onOpenChange, worldId, characters, startEventId, startChapterLabel, initialA = '', initialB = '' }: {
   open: boolean
   onOpenChange: (o: boolean) => void
   worldId: string
   characters: Character[]
   startEventId: string | null
   startChapterLabel: string | null
+  initialA?: string
+  initialB?: string
 }) {
-  const [aId, setAId]                 = useState('')
-  const [bId, setBId]                 = useState('')
+  const [aId, setAId]                 = useState(initialA)
+  const [bId, setBId]                 = useState(initialB)
   const [label, setLabel]             = useState('')
   const [strength, setStrength]       = useState<RelationshipStrength>('moderate')
   const [sentiment, setSentiment]     = useState<RelationshipSentiment>('neutral')
@@ -349,6 +351,7 @@ export default function RelationshipGraphView() {
   const [editingSnapshot, setEditingSnapshot] = useState(false)
   const [editingBase, setEditingBase] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [pendingConn, setPendingConn] = useState<{ a: string; b: string } | null>(null)
   const [showFactionOverlay, setShowFactionOverlay] = useState(false)
   const [nodes, setNodes, onNodesChange] = useNodesState([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
@@ -482,6 +485,13 @@ export default function RelationshipGraphView() {
           edgeTypes={edgeTypes}
           fitView
           style={{ background: 'hsl(222,47%,9%)' }}
+          onConnect={(c) => {
+            // Drag between two characters → open the create dialog pre-filled.
+            if (c.source && c.target && c.source !== c.target) {
+              setPendingConn({ a: c.source, b: c.target })
+              setCreating(true)
+            }
+          }}
           onNodeDragStop={(_, node) => {
             posRef.current = { ...posRef.current, [node.id]: node.position }
             localStorage.setItem(posKey, JSON.stringify(posRef.current))
@@ -489,7 +499,7 @@ export default function RelationshipGraphView() {
         >
           <Background color="#334155" gap={20} />
           <Panel position="top-left">
-            <Button size="sm" className="gap-1.5 shadow-md" onClick={() => setCreating(true)} disabled={characters.length < 2}>
+            <Button size="sm" className="gap-1.5 shadow-md" onClick={() => { setPendingConn(null); setCreating(true) }} disabled={characters.length < 2}>
               <Plus className="h-4 w-4" /> New Relationship
             </Button>
           </Panel>
@@ -675,12 +685,15 @@ export default function RelationshipGraphView() {
 
       {worldId && (
         <CreateRelationshipDialog
+          key={creating ? `${pendingConn?.a ?? ''}-${pendingConn?.b ?? ''}` : 'closed'}
           open={creating}
-          onOpenChange={setCreating}
+          onOpenChange={(o) => { setCreating(o); if (!o) setPendingConn(null) }}
           worldId={worldId}
           characters={characters}
           startEventId={activeEventId}
           startChapterLabel={startChapterLabel}
+          initialA={pendingConn?.a ?? ''}
+          initialB={pendingConn?.b ?? ''}
         />
       )}
     </div>
