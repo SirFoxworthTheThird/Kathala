@@ -35,6 +35,10 @@ export interface WorldEvent {
   sortOrder: number
   /** Days of travel before this event. Drives continuity distance checks. */
   travelDays: number | null
+  /** Explicit absolute in-world day, overriding the travelDays-derived clock.
+   *  Lets flashbacks/flash-forwards sit at their true chronological time,
+   *  independent of narrative order. null = use the derived clock. */
+  inWorldTime: number | null
   status: EventStatus
   povCharacterId: string | null
   /** Marks the event as a flashback/retrospective — suppresses present-state continuity checks. */

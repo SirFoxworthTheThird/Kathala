@@ -180,6 +180,7 @@ describe('computeSortKey', () => {
       involvedItemIds: [],
       tags: [],
       travelDays: null,
+      inWorldTime: null,
       status: 'draft',
       povCharacterId: null,
       isFlashback: false,

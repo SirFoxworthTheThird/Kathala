@@ -479,6 +479,15 @@ class PlotWeaveDB extends Dexie {
     this.version(32).stores({
       continuitySuppressions: 'id, worldId, issueId, [worldId+issueId]',
     })
+
+    // v33: explicit in-world time on events (absolute story-day) so flashbacks
+    // and flash-forwards can be placed on the chronological timeline
+    // independent of narrative order. Non-indexed; backfill null on existing rows.
+    this.version(33).stores({}).upgrade(async (tx) => {
+      await tx.table('events').toCollection().modify((e: Record<string, unknown>) => {
+        if (e.inWorldTime === undefined) e.inWorldTime = null
+      })
+    })
   }
 }
 

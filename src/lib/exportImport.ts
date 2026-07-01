@@ -9,7 +9,7 @@ import type {
 } from '@/types'
 import { generateId } from '@/lib/id'
 
-const EXPORT_VERSION = 7
+const EXPORT_VERSION = 8
 
 interface BlobExport {
   id: string
@@ -653,11 +653,12 @@ function normalizeImport(data: WorldExportFile): void {
     if (c.synopsis === undefined) c.synopsis = ''
     if (c.notes === undefined) c.notes = ''
   }
-  // Backfill travelDays and isFlashback on events (may be absent on older exports)
+  // Backfill travelDays, isFlashback and inWorldTime on events (may be absent on older exports)
   for (const ev of data.events) {
     const e = ev as unknown as Rec
     if (e.travelDays === undefined) e.travelDays = null
     if (e.isFlashback === undefined) e.isFlashback = false
+    if (e.inWorldTime === undefined) e.inWorldTime = null
   }
   // Backfill travelModeId on character snapshots exported before it was added
   for (const snap of data.characterSnapshots) {
@@ -717,6 +718,7 @@ function normalizeImport(data: WorldExportFile): void {
           tags: [],
           sortOrder: 0,
           travelDays: (c.travelDays as number | null) ?? null,
+          inWorldTime: null,
           status: 'draft',
           povCharacterId: null,
           isFlashback: false,

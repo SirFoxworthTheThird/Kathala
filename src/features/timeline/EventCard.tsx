@@ -39,6 +39,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
   const [povCharacterId, setPovCharacterId] = useState<string | null>(event.povCharacterId ?? null)
   const [isFlashback, setIsFlashback] = useState(event.isFlashback ?? false)
   const [travelDays, setTravelDays] = useState<number | null>(event.travelDays ?? null)
+  const [inWorldTime, setInWorldTime] = useState<number | null>(event.inWorldTime ?? null)
   const tagInputRef = useRef<HTMLInputElement>(null)
 
   const characters = useCharacters(event.worldId)
@@ -99,6 +100,13 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
     const val = parsed === null || Number.isNaN(parsed) ? null : parsed
     setTravelDays(val)
     updateEvent(event.id, { travelDays: val })
+  }
+
+  function handleInWorldTimeChange(raw: string) {
+    const parsed = raw.trim() === '' ? null : parseFloat(raw)
+    const val = parsed === null || Number.isNaN(parsed) ? null : parsed
+    setInWorldTime(val)
+    updateEvent(event.id, { inWorldTime: val })
   }
 
   function startEdit() {
@@ -522,6 +530,20 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
             </div>
             <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
               Builds the in-world clock and powers the travel-time continuity check.
+            </p>
+            <div className="mt-1 flex items-center gap-2">
+              <Input
+                type="number"
+                step="any"
+                className="h-8 w-24 text-xs"
+                placeholder="auto"
+                value={inWorldTime ?? ''}
+                onChange={(e) => handleInWorldTimeChange(e.target.value)}
+              />
+              <span className="text-xs text-[hsl(var(--muted-foreground))]">pin to an exact in-world day</span>
+            </div>
+            <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
+              Overrides the derived clock — use for flashbacks or scenes out of narrative order.
             </p>
           </div>
 

@@ -35,6 +35,12 @@ export function computeInWorldDays(
     })
     let day = 0
     for (const ev of ordered) {
+      // An explicit in-world time pins the event (e.g. a flashback to its true
+      // date) and does not disturb the running derived clock.
+      if (ev.inWorldTime != null) {
+        dayByEvent.set(ev.id, ev.inWorldTime)
+        continue
+      }
       if (!ev.isFlashback) day += ev.travelDays ?? 0
       dayByEvent.set(ev.id, day)
     }
