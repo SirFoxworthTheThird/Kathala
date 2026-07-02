@@ -111,8 +111,8 @@ function RelationshipEdge({
       <BaseEdge id={id} path={edgePath} markerEnd={markerEnd} style={{ stroke: color, strokeWidth: 2, strokeDasharray }} />
       <EdgeLabelRenderer>
         <button
-          style={{ transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)` }}
-          className="pointer-events-all absolute rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-1.5 py-0.5 text-xs hover:bg-[hsl(var(--accent))] nodrag nopan"
+          style={{ transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`, pointerEvents: 'all' }}
+          className="absolute cursor-pointer rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-1.5 py-0.5 text-xs hover:bg-[hsl(var(--accent))] nodrag nopan"
           onClick={() => data!.onSelect(id)}
         >
           {data!.label}
@@ -515,6 +515,12 @@ export default function RelationshipGraphView() {
               setCreating(true)
             }
           }}
+          onEdgeClick={(_, edge) => {
+            // Clicking anywhere on the connection selects the relationship.
+            setSelectedRelId(edge.id)
+            setEditingSnapshot(false)
+            setEditingBase(false)
+          }}
           onNodeDragStop={(_, node) => {
             posRef.current = { ...posRef.current, [node.id]: node.position }
             localStorage.setItem(posKey, JSON.stringify(posRef.current))
@@ -720,19 +726,19 @@ export default function RelationshipGraphView() {
                 <Trash2 className="h-3.5 w-3.5" /> End in this event
               </Button>
             )}
-            {!activeEventId && (
-              <Button
-                variant="destructive"
-                size="sm"
-                className="w-full gap-1.5"
-                onClick={async () => {
-                  await deleteRelationship(selectedRel.id)
-                  setSelectedRelId(null)
-                }}
-              >
-                <Trash2 className="h-3.5 w-3.5" /> Delete permanently
-              </Button>
-            )}
+            <Button
+              variant="destructive"
+              size="sm"
+              className="w-full gap-1.5"
+              onClick={async () => {
+                await deleteRelationship(selectedRel.id)
+                setSelectedRelId(null)
+                setEditingBase(false)
+                setEditingSnapshot(false)
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Delete permanently
+            </Button>
           </div>
         </div>
       )}
