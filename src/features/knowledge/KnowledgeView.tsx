@@ -185,6 +185,27 @@ export default function KnowledgeView() {
             </div>
 
             <div>
+              <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                <Eye className="h-3 w-3" /> Reader learns at
+              </p>
+              <Select
+                value={selected.readerLearnsAtEventId ?? '__auto__'}
+                onValueChange={(v) => updateKnowledgeFact(selected.id, { readerLearnsAtEventId: v === '__auto__' ? null : v })}
+              >
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__auto__">Auto — when a POV character knows it</SelectItem>
+                  {events.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>{eventLabel.get(e.id) ?? e.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="mt-1 text-[10px] text-[hsl(var(--muted-foreground))]">
+                Set an event to withhold from (or reveal early to) the reader; leave on Auto otherwise.
+              </p>
+            </div>
+
+            <div>
               <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
                 <Eye className="h-3 w-3" /> Known by ({revealsForSelected.length})
               </p>

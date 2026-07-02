@@ -6,6 +6,10 @@ export interface KnowledgeFact {
   title: string
   description: string
   tags: string[]
+  /** Event at which the *reader* learns this fact. null = derive it from POV
+   *  (the reader learns it when a POV character who knows it holds the POV).
+   *  Set explicitly to withhold from the reader or to reveal it early. */
+  readerLearnsAtEventId: string | null
   createdAt: number
   updatedAt: number
 }
