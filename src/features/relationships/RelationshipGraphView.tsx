@@ -21,7 +21,8 @@ import { X, Trash2, Network, Plus, Check, Shield } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships, createRelationship, deleteRelationship, updateRelationship } from '@/db/hooks/useRelationships'
-import { useBestRelationshipSnapshots, upsertRelationshipSnapshot } from '@/db/hooks/useRelationshipSnapshots'
+import { useBestRelationshipSnapshots, useWorldRelationshipSnapshots, upsertRelationshipSnapshot } from '@/db/hooks/useRelationshipSnapshots'
+import { computeRelationshipTimeline } from '@/lib/relationshipTimeline'
 import { useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useActiveEventId } from '@/store'
 import { PortraitImage } from '@/components/PortraitImage'
@@ -367,6 +368,7 @@ export default function RelationshipGraphView() {
   const characters = useCharacters(worldId ?? null)
   const relationships = useRelationships(worldId ?? null)
   const snapshots = useBestRelationshipSnapshots(worldId ?? null, activeEventId)
+  const allRelSnapshots = useWorldRelationshipSnapshots(worldId ?? null)
   const [selectedRelId, setSelectedRelId] = useState<string | null>(null)
   const [editingSnapshot, setEditingSnapshot] = useState(false)
   const [editingBase, setEditingBase] = useState(false)
@@ -661,6 +663,37 @@ export default function RelationshipGraphView() {
                 {!selectedSnap ? 'Set for this event' : isSnapInherited ? 'Override for this event' : 'Edit event state'}
               </Button>
             )}
+
+            {/* Evolution — how this relationship changes across the story */}
+            {!editingSnapshot && (() => {
+              const points = computeRelationshipTimeline({ relationship: selectedRel, snapshots: allRelSnapshots, events: allEvents, chapters: allChapters })
+              if (points.length < 2) return null
+              return (
+                <div className="border-t border-[hsl(var(--border))] pt-3">
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Evolution</p>
+                  <div className="flex flex-col">
+                    {points.map((p, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <div className="flex flex-col items-center self-stretch">
+                          <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: SENTIMENT_COLORS[p.sentiment] }} />
+                          {i < points.length - 1 && <span className="w-px flex-1 bg-[hsl(var(--border))]" />}
+                        </div>
+                        <div className="min-w-0 flex-1 pb-2">
+                          <p className={cn('truncate text-xs', p.isActive ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] line-through')}>
+                            {p.label}
+                            <span className="ml-1 text-[10px] text-[hsl(var(--muted-foreground))]">· {p.sentiment}</span>
+                          </p>
+                          <p className="truncate text-[10px] text-[hsl(var(--muted-foreground))]">
+                            {p.isBase ? 'from the start' : p.chapterNumber !== null ? `Ch. ${p.chapterNumber}${p.eventTitle ? ` — ${p.eventTitle}` : ''}` : p.eventTitle ?? ''}
+                            {!p.isActive && ' · ended'}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
           </div>
 
           <div className="border-t border-[hsl(var(--border))] p-3 flex flex-col gap-2">
