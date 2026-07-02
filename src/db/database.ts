@@ -499,6 +499,23 @@ class PlotWeaveDB extends Dexie {
       knowledgeFacts: 'id, worldId',
       knowledgeReveals: 'id, worldId, factId, characterId, eventId',
     })
+
+    // v35: a reader-clock on each fact (when the reader learns it), so the
+    // reader-vs-character knowledge gap (dramatic irony / withheld info) can be
+    // read at the cursor. Non-indexed; backfill null (= derive from POV).
+    this.version(35).stores({}).upgrade(async (tx) => {
+      await tx.table('knowledgeFacts').toCollection().modify((f: Record<string, unknown>) => {
+        if (f.readerLearnsAtEventId === undefined) f.readerLearnsAtEventId = null
+      })
+    })
+
+    // v36: an origin event on each fact (when it becomes true/knowable), so the
+    // continuity checker can flag anachronistic knowledge. Backfill null.
+    this.version(36).stores({}).upgrade(async (tx) => {
+      await tx.table('knowledgeFacts').toCollection().modify((f: Record<string, unknown>) => {
+        if (f.originEventId === undefined) f.originEventId = null
+      })
+    })
   }
 }
 

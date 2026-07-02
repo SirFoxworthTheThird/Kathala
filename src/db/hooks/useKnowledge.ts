@@ -21,10 +21,11 @@ export function useKnowledgeFact(factId: string | null) {
 }
 
 export async function createKnowledgeFact(
-  data: Omit<KnowledgeFact, 'id' | 'createdAt' | 'updatedAt'>,
+  data: Omit<KnowledgeFact, 'id' | 'createdAt' | 'updatedAt' | 'readerLearnsAtEventId' | 'originEventId'>
+    & { readerLearnsAtEventId?: string | null; originEventId?: string | null },
 ): Promise<KnowledgeFact> {
   const now = Date.now()
-  const fact: KnowledgeFact = { ...data, id: generateId(), createdAt: now, updatedAt: now }
+  const fact: KnowledgeFact = { readerLearnsAtEventId: null, originEventId: null, ...data, id: generateId(), createdAt: now, updatedAt: now }
   await db.knowledgeFacts.add(fact)
   return fact
 }
