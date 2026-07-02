@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, X, Trash2, Eye, EyeOff, KeyRound, UserPlus } from 'lucide-react'
+import { Plus, X, Trash2, Eye, EyeOff, KeyRound, UserPlus, History } from 'lucide-react'
 import {
   useKnowledgeFacts, useKnowledgeReveals,
   createKnowledgeFact, updateKnowledgeFact, deleteKnowledgeFact,
@@ -202,6 +202,27 @@ export default function KnowledgeView() {
               </Select>
               <p className="mt-1 text-[10px] text-[hsl(var(--muted-foreground))]">
                 Set an event to withhold from (or reveal early to) the reader; leave on Auto otherwise.
+              </p>
+            </div>
+
+            <div>
+              <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                <History className="h-3 w-3" /> Becomes true at
+              </p>
+              <Select
+                value={selected.originEventId ?? '__origin_none__'}
+                onValueChange={(v) => updateKnowledgeFact(selected.id, { originEventId: v === '__origin_none__' ? null : v })}
+              >
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__origin_none__">True from the start</SelectItem>
+                  {events.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>{eventLabel.get(e.id) ?? e.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="mt-1 text-[10px] text-[hsl(var(--muted-foreground))]">
+                Anyone who knows it before this is flagged by the continuity checker.
               </p>
             </div>
 

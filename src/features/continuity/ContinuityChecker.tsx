@@ -21,6 +21,8 @@ import { useContinuitySuppressions, toggleContinuitySuppression, setContinuitySu
 import { cn } from '@/lib/utils'
 import { pixelDist } from '@/lib/mapScale'
 import { computeInWorldDays } from '@/lib/inWorldTime'
+import { computeKnowledgeAnachronisms } from '@/lib/knowledgeAnachronisms'
+import { useKnowledgeFacts, useKnowledgeReveals } from '@/db/hooks/useKnowledge'
 import type { CharacterSnapshot, ItemPlacement, MapRoute, MapRegion, RouteType } from '@/types'
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────
@@ -268,6 +270,8 @@ export function ContinuityChecker() {
   const rels        = useRelationships(worldId ?? null)
   const items       = useItems(worldId ?? null)
   const snapshots   = useWorldSnapshots(worldId ?? null)
+  const knowledgeFacts   = useKnowledgeFacts(worldId ?? null)
+  const knowledgeReveals = useKnowledgeReveals(worldId ?? null)
   const allMarkers  = useAllLocationMarkers(worldId ?? null)
   const allLayers   = useMapLayers(worldId ?? null)
   const travelModes = useTravelModes(worldId ?? null)
@@ -1125,8 +1129,24 @@ export function ContinuityChecker() {
       runStart = runEnd
     }
 
+    // ── Anachronistic knowledge: knowing a fact before it becomes true ────────
+    for (const a of computeKnowledgeAnachronisms({ facts: knowledgeFacts, reveals: knowledgeReveals, events: allEvents, chapters })) {
+      const knownCh  = chapById.get(eventById.get(a.knownAtEventId)?.chapterId ?? '')
+      const originCh = chapById.get(eventById.get(a.originEventId)?.chapterId ?? '')
+      const who = a.characterId ? (charById.get(a.characterId)?.name ?? 'A character') : 'The reader'
+      out.push({
+        id: `knowledge-anachronism-${a.fact.id}-${a.characterId ?? 'reader'}-${a.knownAtEventId}`,
+        severity: 'warning',
+        category: 'character',
+        message: `${who} knows "${a.fact.title}" before it happens`,
+        detail: `"${a.fact.title}" isn't true until Ch. ${originCh?.number ?? '?'}, but ${who.toLowerCase()} knows it in Ch. ${knownCh?.number ?? '?'}.`,
+        navigatePath: `/worlds/${worldId}/timeline/${eventById.get(a.knownAtEventId)?.chapterId ?? ''}`,
+        eventId: a.knownAtEventId,
+      })
+    }
+
     return out
-  }, [chapters, allEvents, characters, rels, items, snapshots, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId, world, allItemSnapshots])
+  }, [chapters, allEvents, characters, rels, items, snapshots, knowledgeFacts, knowledgeReveals, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId, world, allItemSnapshots])
 
   // Focus modal on open so keyboard navigation works immediately
   useEffect(() => {

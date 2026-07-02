@@ -10,6 +10,10 @@ export interface KnowledgeFact {
    *  (the reader learns it when a POV character who knows it holds the POV).
    *  Set explicitly to withhold from the reader or to reveal it early. */
   readerLearnsAtEventId: string | null
+  /** Event at/after which this fact becomes true or knowable in-world (e.g. the
+   *  event where the king actually dies). null = true from the start. Anyone
+   *  who "knows" it before this is a continuity error. */
+  originEventId: string | null
   createdAt: number
   updatedAt: number
 }

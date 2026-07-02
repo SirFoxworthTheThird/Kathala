@@ -541,7 +541,7 @@ describe('importWorld — travelModes', () => {
 
     const data = makeExport({
       knowledgeFacts: [
-        { id: 'kf-1', worldId: 'world-extra', title: 'The king is dead', description: 'Only the council knows.', tags: [], readerLearnsAtEventId: 'ev-1', createdAt: 1000, updatedAt: 1000 },
+        { id: 'kf-1', worldId: 'world-extra', title: 'The king is dead', description: 'Only the council knows.', tags: [], readerLearnsAtEventId: 'ev-1', originEventId: 'ev-1', createdAt: 1000, updatedAt: 1000 },
       ],
       knowledgeReveals: [
         { id: 'kr-1', worldId: 'world-extra', factId: 'kf-1', characterId: 'char-x', eventId: 'ev-1', note: 'overheard', createdAt: 1000, updatedAt: 1000 },
