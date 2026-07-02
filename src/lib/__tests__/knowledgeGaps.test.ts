@@ -14,7 +14,7 @@ function event(id: string, chapterId: string, sortOrder: number, povCharacterId:
   }
 }
 function fact(id: string, readerLearnsAtEventId: string | null = null): KnowledgeFact {
-  return { id, worldId: 'w', title: id, description: '', tags: [], readerLearnsAtEventId, createdAt: 0, updatedAt: 0 }
+  return { id, worldId: 'w', title: id, description: '', tags: [], readerLearnsAtEventId, originEventId: null, createdAt: 0, updatedAt: 0 }
 }
 function reveal(factId: string, characterId: string, eventId: string): KnowledgeReveal {
   return { id: `${factId}-${characterId}`, worldId: 'w', factId, characterId, eventId, note: '', createdAt: 0, updatedAt: 0 }

@@ -508,6 +508,14 @@ class PlotWeaveDB extends Dexie {
         if (f.readerLearnsAtEventId === undefined) f.readerLearnsAtEventId = null
       })
     })
+
+    // v36: an origin event on each fact (when it becomes true/knowable), so the
+    // continuity checker can flag anachronistic knowledge. Backfill null.
+    this.version(36).stores({}).upgrade(async (tx) => {
+      await tx.table('knowledgeFacts').toCollection().modify((f: Record<string, unknown>) => {
+        if (f.originEventId === undefined) f.originEventId = null
+      })
+    })
   }
 }
 
