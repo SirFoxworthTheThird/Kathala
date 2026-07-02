@@ -541,7 +541,7 @@ describe('importWorld — travelModes', () => {
 
     const data = makeExport({
       knowledgeFacts: [
-        { id: 'kf-1', worldId: 'world-extra', title: 'The king is dead', description: 'Only the council knows.', tags: [], createdAt: 1000, updatedAt: 1000 },
+        { id: 'kf-1', worldId: 'world-extra', title: 'The king is dead', description: 'Only the council knows.', tags: [], readerLearnsAtEventId: 'ev-1', createdAt: 1000, updatedAt: 1000 },
       ],
       knowledgeReveals: [
         { id: 'kr-1', worldId: 'world-extra', factId: 'kf-1', characterId: 'char-x', eventId: 'ev-1', note: 'overheard', createdAt: 1000, updatedAt: 1000 },
@@ -550,7 +550,26 @@ describe('importWorld — travelModes', () => {
     await importWorld(makeFile(data))
 
     expect((await db.knowledgeFacts.get('kf-1'))?.title).toBe('The king is dead')
+    expect((await db.knowledgeFacts.get('kf-1'))?.readerLearnsAtEventId).toBe('ev-1')
     expect((await db.knowledgeReveals.get('kr-1'))?.factId).toBe('kf-1')
+  })
+
+  it('backfills readerLearnsAtEventId to null on facts from a pre-reader-clock export', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      version: 9 as never, // knowledge existed, reader-clock did not
+      knowledgeFacts: [
+        // deliberately omit readerLearnsAtEventId — simulates a v9 export
+        { id: 'kf-old', worldId: 'world-extra', title: 'A secret', description: '', tags: [], createdAt: 1000, updatedAt: 1000 } as never,
+      ],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.knowledgeFacts.get('kf-old')
+    expect(stored).toBeDefined()
+    expect(stored!.readerLearnsAtEventId).toBeNull()
   })
 
   it('backfills knowledge arrays to empty on older exports that lack them', async () => {

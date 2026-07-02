@@ -1,4 +1,4 @@
-import { X, BookOpen, Users, Network, Package, Scroll, MapPin, Heart, Skull, ChevronRight, BookMarked, Shield, Eye, KeyRound } from 'lucide-react'
+import { X, BookOpen, Users, Network, Package, Scroll, MapPin, Heart, Skull, ChevronRight, BookMarked, Shield, Eye, EyeOff, KeyRound, Drama } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useEffect, useRef } from 'react'
 import { useAppStore } from '@/store'
@@ -14,6 +14,7 @@ import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useLorePages } from '@/db/hooks/useLore'
 import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
 import { useKnowledgeFacts, useKnowledgeReveals } from '@/db/hooks/useKnowledge'
+import { computeSceneKnowledgeGaps } from '@/lib/knowledgeGaps'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { cn } from '@/lib/utils'
@@ -361,6 +362,53 @@ export function WritersBriefPanel() {
                           </p>
                         </div>
                       ))}
+                    </div>
+                  </Section>
+                )
+              })()}
+
+              {/* Knowledge gaps — dramatic irony (reader ahead) and withheld info (character ahead) */}
+              {(() => {
+                const present = new Set<string>()
+                if (activeEvent) {
+                  for (const id of activeEvent.involvedCharacterIds) present.add(id)
+                  if (activeEvent.povCharacterId) present.add(activeEvent.povCharacterId)
+                }
+                const gaps = computeSceneKnowledgeGaps({
+                  facts: knowledgeFacts,
+                  reveals: knowledgeReveals,
+                  events: worldEvents,
+                  chapters: worldChapters,
+                  presentCharacterIds: [...present],
+                  activeEventId,
+                })
+                if (gaps.length === 0) return null
+                const nameOf = (id: string) => charById.get(id)?.name ?? '—'
+                return (
+                  <Section title="Knowledge gaps" icon={Drama} count={gaps.length}>
+                    <div className="space-y-1.5">
+                      {gaps.map((g) => {
+                        const known = g.knownBy.map(nameOf)
+                        const unknown = g.unknownBy.map(nameOf)
+                        return (
+                          <div key={g.fact.id} className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1.5 text-xs">
+                            <div className="flex items-center gap-1.5">
+                              {g.kind === 'irony'
+                                ? <Eye className="h-3 w-3 shrink-0 text-amber-400" aria-hidden="true" />
+                                : <EyeOff className="h-3 w-3 shrink-0 text-indigo-400" aria-hidden="true" />}
+                              <span className="font-medium text-[hsl(var(--foreground))]">{g.fact.title}</span>
+                              <span className="ml-auto text-[9px] uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+                                {g.kind === 'irony' ? 'irony' : 'withheld'}
+                              </span>
+                            </div>
+                            <p className="mt-0.5 text-[10px] text-[hsl(var(--muted-foreground))]">
+                              {g.kind === 'irony'
+                                ? <>The reader knows — {unknown.join(', ')} {unknown.length === 1 ? "doesn't" : "don't"}.</>
+                                : <>{known.join(', ')} know{known.length === 1 ? 's' : ''} — the reader doesn't yet.</>}
+                            </p>
+                          </div>
+                        )
+                      })}
                     </div>
                   </Section>
                 )

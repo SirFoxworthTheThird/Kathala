@@ -16,7 +16,7 @@ FILE STRUCTURE
 ═══════════════════════════════════════════════════════════
 
 {
-  "version": 9,
+  "version": 10,
   "type": "full",
   "exportedAt": <current unix timestamp in ms, e.g. 1700000000000>,
   "world": { ... },
@@ -235,6 +235,7 @@ showing their state at that point in the story.
   "title": "<short label, e.g. 'The king is dead'>",
   "description": "<what the information is>",
   "tags": [],
+  "readerLearnsAtEventId": null,       // event where the reader learns it; null = derive from POV (only set to withhold or reveal early)
   "createdAt": <timestamp>,
   "updatedAt": <timestamp>
 }
