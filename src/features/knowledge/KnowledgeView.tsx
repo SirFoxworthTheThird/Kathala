@@ -8,6 +8,8 @@ import {
 } from '@/db/hooks/useKnowledge'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
+import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
+import { suggestDeathFacts, suggestReveals } from '@/lib/knowledgeSuggestions'
 import { useActiveEventId } from '@/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,7 +27,25 @@ export default function KnowledgeView() {
   const characters = useCharacters(worldId ?? null)
   const events = useWorldEvents(worldId ?? null)
   const chapters = useWorldChapters(worldId ?? null)
+  const snapshots = useWorldSnapshots(worldId ?? null)
   const activeEventId = useActiveEventId()
+
+  const deathSuggestions = useMemo(
+    () => suggestDeathFacts({ characters, snapshots, events, chapters, existingFacts: facts }),
+    [characters, snapshots, events, chapters, facts],
+  )
+
+  async function trackSuggestedFact(s: ReturnType<typeof suggestDeathFacts>[number]) {
+    if (!worldId) return
+    const fact = await createKnowledgeFact({ worldId, title: s.title, description: '', tags: [], originEventId: s.originEventId })
+    // Everyone present at the death witnesses it — seed their reveals.
+    await Promise.all(
+      s.presentCharacterIds.map((cid) =>
+        createKnowledgeReveal({ worldId, factId: fact.id, characterId: cid, eventId: s.originEventId, note: '' }),
+      ),
+    )
+    setSelectedId(fact.id)
+  }
 
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -129,6 +149,26 @@ export default function KnowledgeView() {
         </PageHeader>
 
         <div className="flex-1 overflow-auto p-4">
+          {deathSuggestions.length > 0 && (
+            <div className="mb-4 rounded-lg border border-dashed border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)] p-3">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                Suggested from your story
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {deathSuggestions.map((s) => (
+                  <button
+                    key={s.originEventId}
+                    onClick={() => trackSuggestedFact(s)}
+                    className="flex items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1.5 text-xs text-[hsl(var(--foreground))] transition-colors hover:border-[hsl(var(--ring)/0.4)]"
+                    title="Track this as a fact (and mark everyone present as knowing it)"
+                  >
+                    <Plus className="h-3 w-3 text-[hsl(var(--muted-foreground))]" />
+                    {s.title}{s.chapterNumber !== null ? ` · Ch. ${s.chapterNumber}` : ''}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {facts.length === 0 ? (
             <EmptyState
               icon={KeyRound}
@@ -274,6 +314,35 @@ export default function KnowledgeView() {
               {events.length === 0 && (
                 <p className="mt-2 text-[10px] text-[hsl(var(--muted-foreground))]">Add events on the timeline to record when characters learn this.</p>
               )}
+
+              {/* Co-presence suggestions: who shared a scene with a knower */}
+              {(() => {
+                const suggestions = suggestReveals({ fact: selected, reveals, events, chapters })
+                  .filter((s) => !revealedCharIds.has(s.characterId))
+                if (suggestions.length === 0) return null
+                return (
+                  <div className="mt-3 flex flex-col gap-1.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Might also know</p>
+                    {suggestions.map((s) => (
+                      <div key={s.characterId} className="flex items-center gap-2 rounded border border-dashed border-[hsl(var(--border))] px-2.5 py-1.5 text-xs">
+                        <span className="min-w-0 flex-1 truncate">
+                          <span className="text-[hsl(var(--foreground))]">{charById.get(s.characterId)?.name ?? '—'}</span>
+                          <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
+                            {' '}— with {charById.get(s.viaCharacterId)?.name ?? '—'}{s.chapterNumber !== null ? ` in Ch. ${s.chapterNumber}` : ''}
+                          </span>
+                        </span>
+                        <button
+                          onClick={() => worldId && createKnowledgeReveal({ worldId, factId: selected.id, characterId: s.characterId, eventId: s.eventId, note: '' })}
+                          className="shrink-0 rounded px-1.5 py-0.5 text-[10px] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] transition-colors"
+                          title="Record that they learned it here"
+                        >
+                          + learned it
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
             </div>
           </div>
 
