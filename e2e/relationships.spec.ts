@@ -62,7 +62,7 @@ test.describe('Relationship graph', () => {
     await expect(page.getByText('No characters yet')).not.toBeVisible()
   })
 
-  test('redirects to characters when no characters exist', async ({ page }) => {
+  test('shows an empty state (with a way to add) when no characters exist', async ({ page }) => {
     await page.goto('/')
     await resetDB(page)
 
@@ -72,8 +72,9 @@ test.describe('Relationship graph', () => {
     await expect(page).toHaveURL(/#\/worlds\//)
 
     await page.getByRole('link', { name: 'Relations' }).click()
-    await expect(page.getByText('No characters yet')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Go to Characters' })).toBeVisible()
+    // With no characters the graph shows its empty state and a way to add.
+    await expect(page.getByText('No relationships yet')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Add Relationship' })).toBeVisible()
   })
 
   test('creates a relationship via character detail tab', async ({ page }) => {

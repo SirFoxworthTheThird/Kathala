@@ -39,6 +39,21 @@ test.describe('Character Arc view', () => {
     await page.getByPlaceholder('Chapter title').fill('Rivendell')
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
     await expect(page.getByText('Rivendell').first()).toBeVisible()
+
+    // The arc renders rows only once at least one snapshot exists. Add an event
+    // in Ch. 1 and save a state for Frodo so the grid has data.
+    await page.getByTitle('Open chapter detail').first().click()
+    await page.getByRole('button', { name: 'Add Event' }).first().click()
+    await page.getByPlaceholder('Event title').fill('Departure')
+    await page.getByRole('button', { name: 'Add Event' }).last().click()
+
+    await page.getByRole('link', { name: /timeline/i }).click()
+    await page.getByTitle('Departure', { exact: true }).click()
+
+    await page.getByTitle('Characters').click()
+    await page.getByText('Frodo').click()
+    await page.getByRole('tab', { name: /current state/i }).click()
+    await page.getByRole('button', { name: 'Alive' }).click()
   })
 
   test('navigates to character arc view', async ({ page }) => {

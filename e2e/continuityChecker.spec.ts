@@ -65,7 +65,7 @@ test.describe('Continuity Checker', () => {
 
     // Set event as active via timeline bar
     await page.getByRole('link', { name: 'Timeline' }).click()
-    await page.getByTitle('Death Scene').click()
+    await page.getByTitle('Death Scene', { exact: true }).click()
 
     // Go to character, mark as deceased in current state tab
     await page.getByTitle('Characters').click()
