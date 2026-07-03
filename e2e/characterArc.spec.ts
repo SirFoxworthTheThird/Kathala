@@ -53,7 +53,9 @@ test.describe('Character Arc view', () => {
     await page.getByTitle('Characters').click()
     await page.getByText('Frodo').click()
     await page.getByRole('tab', { name: /current state/i }).click()
-    await page.getByRole('button', { name: 'Alive' }).click()
+    // Alive/Deceased only mark the form dirty; "Save State" persists the snapshot.
+    await page.getByRole('button', { name: 'Deceased' }).click()
+    await page.getByRole('button', { name: 'Save State' }).click()
   })
 
   test('navigates to character arc view', async ({ page }) => {
