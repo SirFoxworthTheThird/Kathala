@@ -14,7 +14,15 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        // Opt-in escape hatch: point at a pre-installed Chromium when the
+        // sandbox can't download Playwright's pinned build. Unset in normal
+        // CI/local runs, where Playwright uses its own managed browser.
+        launchOptions: process.env.PW_CHROMIUM_PATH
+          ? { executablePath: process.env.PW_CHROMIUM_PATH }
+          : {},
+      },
     },
   ],
   webServer: {

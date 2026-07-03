@@ -64,5 +64,9 @@ Each feature folder is self-contained. Notable features:
 ### Testing
 Tests use Vitest + jsdom + `@testing-library/jest-dom`. Dexie is tested against `fake-indexeddb`. Tests live in `src/db/hooks/__tests__/` and `src/lib/__tests__/`. Coverage is scoped to `src/lib/**`, `src/store/**`, and `src/db/hooks/**`.
 
+Playwright e2e tests live in `e2e/*.spec.ts` (run with `npm run test:e2e`) and drive the real app in Chromium against a live dev server, resetting IndexedDB per test via `e2e/helpers/reset.ts`.
+
+**Testing rule:** every new behaviour needs a test. Prefer a Vitest unit test (pure logic in `src/lib/**`) or an integration test (real CRUD hooks against `fake-indexeddb`, as in `src/db/hooks/__tests__/`). When behaviour genuinely can't be exercised that way — because it depends on the browser/DOM (caret handling, autocomplete dropdowns, focus/blur timing, drag, canvas/Leaflet) or on a full multi-view user flow — add a Playwright e2e test in `e2e/` instead. Do not leave such behaviour untested with a note that it "needs a manual check"; write the e2e test.
+
 ### Electron
 The app is also packaged as an Electron desktop app. Entry point: `electron/main.cjs`. Use `npm run electron:dev` during development or `npm run electron:make` to build distributables via electron-forge.
