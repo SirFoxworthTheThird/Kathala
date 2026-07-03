@@ -537,6 +537,13 @@ class PlotWeaveDB extends Dexie {
     this.version(39).stores({
       sceneTexts: 'id, worldId, eventId',
     })
+
+    // v40: explicit "@"-mentions on events (referenced but not present). Backfill [].
+    this.version(40).stores({}).upgrade(async (tx) => {
+      await tx.table('events').toCollection().modify((e: Record<string, unknown>) => {
+        if (e.mentionedCharacterIds === undefined) e.mentionedCharacterIds = []
+      })
+    })
   }
 }
 

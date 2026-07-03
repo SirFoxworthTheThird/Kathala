@@ -16,7 +16,7 @@ FILE STRUCTURE
 ═══════════════════════════════════════════════════════════
 
 {
-  "version": 14,
+  "version": 15,
   "type": "full",
   "exportedAt": <current unix timestamp in ms, e.g. 1700000000000>,
   "world": { ... },
@@ -145,6 +145,7 @@ Events are the primary time unit. Each chapter contains ordered events.
   "description": "<what happens in detail>",
   "locationMarkerId": null,
   "involvedCharacterIds": ["<char id>", "..."],
+  "mentionedCharacterIds": [],        // ids of characters referenced but NOT present in the scene; [] if none
   "involvedItemIds": ["<item id>"],   // empty array if none
   "tags": ["battle", "revelation"],   // thematic tags
   "sortOrder": 0,                     // ascending within a chapter, starting at 0

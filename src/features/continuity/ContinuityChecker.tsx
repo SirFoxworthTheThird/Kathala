@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { useFocusTrap } from '@/lib/useFocusTrap'
-import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, Shield, ChevronRight, EyeOff, Eye, Check } from 'lucide-react'
+import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, Shield, ChevronRight, EyeOff, Eye, Check, PenLine } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store'
 import { useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
@@ -22,7 +22,9 @@ import { cn } from '@/lib/utils'
 import { pixelDist } from '@/lib/mapScale'
 import { computeInWorldDays } from '@/lib/inWorldTime'
 import { computeKnowledgeAnachronisms } from '@/lib/knowledgeAnachronisms'
+import { computeProseMentionIssues, computeKnowledgeLeaks } from '@/lib/proseContinuity'
 import { useKnowledgeFacts, useKnowledgeReveals } from '@/db/hooks/useKnowledge'
+import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
 import type { CharacterSnapshot, ItemPlacement, MapRoute, MapRegion, RouteType } from '@/types'
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────
@@ -85,7 +87,7 @@ type IssueSeverity = 'error' | 'warning'
 interface Issue {
   id: string
   severity: IssueSeverity
-  category: 'character' | 'item' | 'relationship' | 'faction' | 'pov'
+  category: 'character' | 'item' | 'relationship' | 'faction' | 'pov' | 'prose'
   message: string
   detail?: string
   navigatePath?: string
@@ -272,6 +274,7 @@ export function ContinuityChecker() {
   const snapshots   = useWorldSnapshots(worldId ?? null)
   const knowledgeFacts   = useKnowledgeFacts(worldId ?? null)
   const knowledgeReveals = useKnowledgeReveals(worldId ?? null)
+  const sceneTexts       = useWorldSceneTexts(worldId ?? null)
   const allMarkers  = useAllLocationMarkers(worldId ?? null)
   const allLayers   = useMapLayers(worldId ?? null)
   const travelModes = useTravelModes(worldId ?? null)
@@ -1145,8 +1148,53 @@ export function ContinuityChecker() {
       })
     }
 
+    // ── Prose ↔ metadata drift (scene text vs. the event's cast) ─────────────
+    const sceneTextByEvent = new Map(sceneTexts.map((s) => [s.eventId, s.text]))
+
+    for (const p of computeProseMentionIssues({ events: allEvents, chapters, characters, snapshots, sceneTextByEvent })) {
+      const ev = eventById.get(p.eventId)
+      const ch = ev ? chapById.get(ev.chapterId) : undefined
+      if (p.kind === 'dead') {
+        out.push({
+          id: `prose-dead-${p.characterId}-${p.eventId}`,
+          severity: 'warning',
+          category: 'prose',
+          message: `Dead character ${p.characterName} is named in the prose of "${ev?.title || 'untitled'}"`,
+          detail: `Ch. ${ch?.number ?? '?'} — ${p.characterName} is dead at this point. Mark the event as a flashback or update their status if intentional.`,
+          navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+          eventId: p.eventId,
+        })
+      } else {
+        out.push({
+          id: `prose-untagged-${p.characterId}-${p.eventId}`,
+          severity: 'warning',
+          category: 'prose',
+          message: `${p.characterName} is named in the prose but not in the cast of "${ev?.title || 'untitled'}"`,
+          detail: `Ch. ${ch?.number ?? '?'} — appears ${p.count}× in the scene text. Add them to the event or check the reference.`,
+          navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+          eventId: p.eventId,
+        })
+      }
+    }
+
+    // ── Reader knowledge leaks (fact referenced in prose before its reveal) ──
+    for (const leak of computeKnowledgeLeaks({ facts: knowledgeFacts, events: allEvents, chapters, sceneTextByEvent })) {
+      const leakEv = eventById.get(leak.leakEventId)
+      const leakCh = leakEv ? chapById.get(leakEv.chapterId) : undefined
+      const revealCh = chapById.get(eventById.get(leak.revealEventId)?.chapterId ?? '')
+      out.push({
+        id: `prose-leak-${leak.fact.id}-${leak.leakEventId}`,
+        severity: 'warning',
+        category: 'prose',
+        message: `Possible early reveal: "${leak.fact.title}"`,
+        detail: `The reader is set to learn this in Ch. ${revealCh?.number ?? '?'}, but "${leakEv?.title || 'untitled'}" (Ch. ${leakCh?.number ?? '?'}) already references it (matched "${leak.matchedTerm}").`,
+        navigatePath: leakEv ? `/worlds/${worldId}/timeline/${leakEv.chapterId}` : undefined,
+        eventId: leak.leakEventId,
+      })
+    }
+
     return out
-  }, [chapters, allEvents, characters, rels, items, snapshots, knowledgeFacts, knowledgeReveals, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId, world, allItemSnapshots])
+  }, [chapters, allEvents, characters, rels, items, snapshots, knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId, world, allItemSnapshots])
 
   // Focus modal on open so keyboard navigation works immediately
   useEffect(() => {
@@ -1199,12 +1247,14 @@ export function ContinuityChecker() {
   const relIssues     = issues.filter((i) => i.category === 'relationship')
   const factionIssues = issues.filter((i) => i.category === 'faction')
   const povIssues     = issues.filter((i) => i.category === 'pov')
+  const proseIssues   = issues.filter((i) => i.category === 'prose')
 
   // Compute base indices for keyboard focus mapping per category
   const visibleChar    = charIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
   const visibleItem    = itemIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
   const visibleRel     = relIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
   const visibleFaction = factionIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
+  const visiblePov     = povIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
 
   // focusedIdx is into navigableIssues; map back to category position
   function categoryFocusedIdx(categoryIssues: Issue[]): number {
@@ -1288,6 +1338,10 @@ export function ContinuityChecker() {
                 onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="POV" icon={Eye} issues={povIssues}
                 focusedIdx={categoryFocusedIdx(povIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length + visibleFaction.length}
+                suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
+                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+              <CategorySection title="Prose vs. record" icon={PenLine} issues={proseIssues}
+                focusedIdx={categoryFocusedIdx(proseIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length + visibleFaction.length + visiblePov.length}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
                 onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
             </>

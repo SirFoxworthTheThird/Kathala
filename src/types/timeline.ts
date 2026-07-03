@@ -30,6 +30,9 @@ export interface WorldEvent {
   description: string
   locationMarkerId: string | null
   involvedCharacterIds: string[]
+  /** Characters referenced in this event but not physically present ("@"-mentions).
+   *  Distinct from involvedCharacterIds, which is the on-stage cast. */
+  mentionedCharacterIds: string[]
   involvedItemIds: string[]
   tags: string[]
   sortOrder: number
