@@ -177,7 +177,7 @@ export function useEvent(id: string | null) {
 /** Creates an event. In the delta/last-known model, no snapshot inheritance is needed —
  *  state is resolved by looking back to the most recent prior snapshot at read time. */
 export async function createEvent(
-  data: Omit<WorldEvent, 'id' | 'createdAt' | 'updatedAt' | 'travelDays' | 'inWorldTime' | 'tension' | 'structureBeat' | 'status' | 'povCharacterId' | 'isFlashback'> & {
+  data: Omit<WorldEvent, 'id' | 'createdAt' | 'updatedAt' | 'travelDays' | 'inWorldTime' | 'tension' | 'structureBeat' | 'status' | 'povCharacterId' | 'isFlashback' | 'mentionedCharacterIds'> & {
     travelDays?: number | null
     inWorldTime?: number | null
     tension?: number | null
@@ -185,6 +185,7 @@ export async function createEvent(
     status?: EventStatus
     povCharacterId?: string | null
     isFlashback?: boolean
+    mentionedCharacterIds?: string[]
   }
 ): Promise<WorldEvent> {
   const now = Date.now()
@@ -197,6 +198,7 @@ export async function createEvent(
     status: 'draft',
     povCharacterId: null,
     isFlashback: false,
+    mentionedCharacterIds: [],
     ...data,
     createdAt: now,
     updatedAt: now,

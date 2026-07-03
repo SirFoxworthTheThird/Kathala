@@ -2,8 +2,10 @@ import { useState, useRef, type KeyboardEvent } from 'react'
 import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye, History, Flame, Milestone, PenLine, Plus } from 'lucide-react'
 import { TENSION_LEVELS, tensionColor, tensionLabel } from '@/lib/tension'
 import { STORY_BEATS, beatById, beatActColor } from '@/lib/storyBeats'
+import { AtSign } from 'lucide-react'
 import { wordCount, detectMentions } from '@/lib/manuscript'
 import { useSceneText, setSceneText } from '@/db/hooks/useManuscript'
+import { SceneDraftEditor } from './SceneDraftEditor'
 import type { WorldEvent, EventStatus } from '@/types'
 import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
@@ -35,6 +37,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
   const [title, setTitle] = useState(event.title)
   const [description, setDescription] = useState(event.description)
   const [involvedIds, setInvolvedIds] = useState<string[]>(event.involvedCharacterIds)
+  const [mentionedIds, setMentionedIds] = useState<string[]>(event.mentionedCharacterIds ?? [])
   const [involvedItemIds, setInvolvedItemIds] = useState<string[]>(event.involvedItemIds)
   const [locationMarkerId, setLocationMarkerId] = useState<string | null>(event.locationMarkerId)
   const [tags, setTags] = useState<string[]>(event.tags)
@@ -63,11 +66,15 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
   const povChar = characters.find((c) => c.id === povCharacterId) ?? null
   const nonInvolvedChars = characters.filter((c) => !involvedIds.includes(c.id))
 
+  const mentionedChars = characters.filter((c) => mentionedIds.includes(c.id))
+  const availableForMention = characters.filter((c) => !mentionedIds.includes(c.id) && !involvedIds.includes(c.id))
+
   // Scene prose derived values
   const sceneValue = draft ?? sceneText?.text ?? ''
   const sceneWords = draft === null ? (sceneText?.wordCount ?? 0) : wordCount(sceneValue)
   const mentions = detectMentions(sceneValue, characters)
-  const untaggedMentions = mentions.filter((m) => !involvedIds.includes(m.characterId))
+  // Nudge only for names that aren't accounted for as present OR mentioned.
+  const untaggedMentions = mentions.filter((m) => !involvedIds.includes(m.characterId) && !mentionedIds.includes(m.characterId))
 
   async function saveEdit() {
     await updateEvent(event.id, {
@@ -165,6 +172,21 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
     const newIds = involvedIds.filter((id) => id !== characterId)
     setInvolvedIds(newIds)
     if (!editing) await updateEvent(event.id, { involvedCharacterIds: newIds })
+  }
+
+  // ── Mention helpers (referenced but not present) ─────────────────────────────
+  async function addMention(characterId: string) {
+    // Present characters are on-stage, not merely mentioned.
+    if (involvedIds.includes(characterId) || mentionedIds.includes(characterId)) return
+    const newIds = [...mentionedIds, characterId]
+    setMentionedIds(newIds)
+    await updateEvent(event.id, { mentionedCharacterIds: newIds })
+  }
+
+  async function removeMention(characterId: string) {
+    const newIds = mentionedIds.filter((id) => id !== characterId)
+    setMentionedIds(newIds)
+    await updateEvent(event.id, { mentionedCharacterIds: newIds })
   }
 
   // ── Item helpers ───────────────────────────────────────────────────────────
@@ -423,13 +445,14 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                 {sceneWords} {sceneWords === 1 ? 'word' : 'words'}
               </span>
             </div>
-            <Textarea
+            <SceneDraftEditor
               value={sceneValue}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={setDraft}
               onBlur={saveScene}
-              placeholder="Write or paste this scene's prose… (word count feeds the pacing curve)"
+              characters={characters}
+              onMention={addMention}
+              placeholder="Write or paste this scene's prose… (type @ to mention a character; word count feeds the pacing curve)"
               rows={5}
-              className="text-sm font-serif leading-relaxed"
             />
             {untaggedMentions.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
@@ -524,6 +547,44 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                 </SelectTrigger>
                 <SelectContent>
                   {availableChars.map((c) => (
+                    <SelectItem key={c.id} value={c.id} className="text-xs">{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          {/* Mentioned (referenced but not present) */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
+              <AtSign className="h-3 w-3" /> Mentioned
+            </span>
+            {mentionedChars.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {mentionedChars.map((c) => (
+                  <span key={c.id} className="flex items-center gap-1 rounded-full bg-[hsl(var(--muted))] pl-0.5 pr-1 py-0.5">
+                    <PortraitImage
+                      imageId={c.portraitImageId}
+                      className="h-4 w-4 rounded-full object-cover"
+                      fallbackClassName="h-4 w-4 rounded-full"
+                    />
+                    <span className="text-[10px] text-[hsl(var(--foreground))]">{c.name}</span>
+                    <button onClick={() => removeMention(c.id)} className="ml-0.5 hover:text-red-400" aria-label={`Remove mention of ${c.name}`}>
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs italic text-[hsl(var(--muted-foreground))]">No one mentioned. Type @ in the scene draft, or add below.</p>
+            )}
+            {availableForMention.length > 0 && (
+              <Select onValueChange={addMention}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="+ Mention character…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableForMention.map((c) => (
                     <SelectItem key={c.id} value={c.id} className="text-xs">{c.name}</SelectItem>
                   ))}
                 </SelectContent>

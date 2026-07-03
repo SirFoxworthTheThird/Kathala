@@ -70,14 +70,17 @@ export function computeProseMentionIssues({
     const text = sceneTextByEvent.get(ev.id)
     if (!text || !text.trim()) continue
 
-    const castIds = new Set([
+    // "Acknowledged" = on-stage cast, POV, or an explicit "@"-mention. Any of
+    // these means the writer already accounts for the character in this scene.
+    const acknowledged = new Set([
       ...ev.involvedCharacterIds,
       ...(ev.povCharacterId ? [ev.povCharacterId] : []),
+      ...(ev.mentionedCharacterIds ?? []),
     ])
 
     for (const m of detectMentions(text, characters)) {
-      // Characters already in the cast are covered by the metadata checks.
-      if (castIds.has(m.characterId)) continue
+      // Characters the writer already accounts for are covered elsewhere.
+      if (acknowledged.has(m.characterId)) continue
 
       // A dead mention is the stronger, more specific signal. Flashbacks may name
       // the dead deliberately, so only flag 'dead' outside flashbacks.

@@ -8,7 +8,7 @@ function chapter(id: string, number: number): Chapter {
 function event(id: string, chapterId: string, sortOrder: number, extra: Partial<WorldEvent> = {}): WorldEvent {
   return {
     id, worldId: 'w', chapterId, timelineId: 't1', title: id, description: '',
-    locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder,
+    locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder,
     travelDays: null, inWorldTime: null, tension: null, structureBeat: null,
     status: 'draft', povCharacterId: null, isFlashback: false, createdAt: 0, updatedAt: 0, ...extra,
   }
@@ -38,6 +38,13 @@ describe('computeProseMentionIssues', () => {
   it('does not flag characters already in the cast or POV', () => {
     const events = [event('e1', 'c1', 0, { involvedCharacterIds: ['kael'], povCharacterId: 'mira' })]
     const sceneTextByEvent = new Map([['e1', 'Kael and Mira faced the storm.']])
+    const issues = computeProseMentionIssues({ events, chapters, characters: cast, snapshots: [], sceneTextByEvent })
+    expect(issues).toHaveLength(0)
+  })
+
+  it('does not flag a character who is an explicit @-mention on the event', () => {
+    const events = [event('e1', 'c1', 0, { involvedCharacterIds: ['kael'], mentionedCharacterIds: ['mira'] })]
+    const sceneTextByEvent = new Map([['e1', 'Kael spoke of Mira, far away.']])
     const issues = computeProseMentionIssues({ events, chapters, characters: cast, snapshots: [], sceneTextByEvent })
     expect(issues).toHaveLength(0)
   })

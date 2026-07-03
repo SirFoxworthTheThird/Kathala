@@ -41,6 +41,7 @@ describe('bundled example worlds stay importable', () => {
         // Backfilled by later versions — must be present and null on old exports.
         expect(ev.tension).toBeNull()
         expect(ev.structureBeat).toBeNull()
+        expect(ev.mentionedCharacterIds).toEqual([])
       }
 
       // Knowledge and manuscript tables exist and default to empty for pre-feature exports.

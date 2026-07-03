@@ -422,6 +422,7 @@ describe('importWorld — travelModes', () => {
         description: '',
         locationMarkerId: null,
         involvedCharacterIds: [],
+        mentionedCharacterIds: [],
         involvedItemIds: [],
         tags: [],
         sortOrder: 0,
@@ -451,6 +452,7 @@ describe('importWorld — travelModes', () => {
         description: '',
         locationMarkerId: null,
         involvedCharacterIds: [],
+        mentionedCharacterIds: [],
         involvedItemIds: [],
         tags: [],
         sortOrder: 0,
@@ -486,6 +488,7 @@ describe('importWorld — travelModes', () => {
         description: '',
         locationMarkerId: null,
         involvedCharacterIds: [],
+        mentionedCharacterIds: [],
         involvedItemIds: [],
         tags: [],
         sortOrder: 0,
@@ -520,6 +523,7 @@ describe('importWorld — travelModes', () => {
         description: '',
         locationMarkerId: null,
         involvedCharacterIds: [],
+        mentionedCharacterIds: [],
         involvedItemIds: [],
         tags: [],
         sortOrder: 0,
@@ -555,6 +559,7 @@ describe('importWorld — travelModes', () => {
         description: '',
         locationMarkerId: null,
         involvedCharacterIds: [],
+        mentionedCharacterIds: [],
         involvedItemIds: [],
         tags: [],
         sortOrder: 0,
@@ -590,6 +595,7 @@ describe('importWorld — travelModes', () => {
         description: '',
         locationMarkerId: null,
         involvedCharacterIds: [],
+        mentionedCharacterIds: [],
         involvedItemIds: [],
         tags: [],
         sortOrder: 0,
@@ -642,6 +648,78 @@ describe('importWorld — travelModes', () => {
     await expect(importWorld(makeFile(bad))).rejects.toThrow('sceneTexts is not an array')
   })
 
+  it('backfills mentionedCharacterIds to [] on a pre-mentions export', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      version: 14 as never, // pre-mentions export
+      events: [{
+        id: 'ev-no-mentions',
+        worldId: 'world-extra',
+        chapterId: 'ch-1',
+        timelineId: 'tl-1',
+        title: 'Pre-mentions Event',
+        description: '',
+        locationMarkerId: null,
+        involvedCharacterIds: ['c1'],
+        // deliberately omit mentionedCharacterIds — simulates a v14 export
+        involvedItemIds: [],
+        tags: [],
+        sortOrder: 0,
+        travelDays: null,
+        inWorldTime: null,
+        tension: null,
+        structureBeat: null,
+        status: 'draft' as const,
+        povCharacterId: null,
+        isFlashback: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      } as never],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.events.get('ev-no-mentions')
+    expect(stored).toBeDefined()
+    expect((stored as unknown as Record<string, unknown>).mentionedCharacterIds).toEqual([])
+  })
+
+  it('preserves explicit mentionedCharacterIds through export/import', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      events: [{
+        id: 'ev-mentions',
+        worldId: 'world-extra',
+        chapterId: 'ch-1',
+        timelineId: 'tl-1',
+        title: 'Council',
+        description: '',
+        locationMarkerId: null,
+        involvedCharacterIds: ['c1'],
+        mentionedCharacterIds: ['c2', 'c3'],
+        involvedItemIds: [],
+        tags: [],
+        sortOrder: 0,
+        travelDays: null,
+        inWorldTime: null,
+        tension: null,
+        structureBeat: null,
+        status: 'draft' as const,
+        povCharacterId: null,
+        isFlashback: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      }],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.events.get('ev-mentions')
+    expect(stored!.mentionedCharacterIds).toEqual(['c2', 'c3'])
+  })
+
   it('backfills inWorldTime to null on events that lack it (older export)', async () => {
     await db.delete()
     await db.open()
@@ -657,6 +735,7 @@ describe('importWorld — travelModes', () => {
         description: '',
         locationMarkerId: null,
         involvedCharacterIds: [],
+        mentionedCharacterIds: [],
         involvedItemIds: [],
         tags: [],
         sortOrder: 0,
@@ -690,6 +769,7 @@ describe('importWorld — travelModes', () => {
         description: '',
         locationMarkerId: null,
         involvedCharacterIds: [],
+        mentionedCharacterIds: [],
         involvedItemIds: [],
         tags: [],
         sortOrder: 0,
@@ -833,8 +913,8 @@ describe('importWorld — v1 → v2 migration', () => {
       version: 1,
       chapters: [{ id: 'ch-1', worldId: 'world-extra', timelineId: 'tl-1', number: 1, title: 'Ch1', synopsis: '', notes: '', createdAt: 1000, updatedAt: 1000 }],
       events: [
-        { id: 'ev-b', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'B', description: '', locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 10, travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 },
-        { id: 'ev-a', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'A', description: '', locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 },
+        { id: 'ev-b', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'B', description: '', locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 10, travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 },
+        { id: 'ev-a', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'A', description: '', locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 },
       ],
       characterSnapshots: [{
         id: 'snap-v1',
@@ -904,7 +984,7 @@ describe('importWorld — v1 → v2 migration', () => {
     const data = makeExport({
       version: 1,
       chapters: [{ id: 'ch-rel', worldId: 'world-extra', timelineId: 'tl-1', number: 1, title: 'Ch', synopsis: '', notes: '', createdAt: 1000, updatedAt: 1000 }],
-      events: [{ id: 'ev-rel', worldId: 'world-extra', chapterId: 'ch-rel', timelineId: 'tl-1', title: 'Ev', description: '', locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 }],
+      events: [{ id: 'ev-rel', worldId: 'world-extra', chapterId: 'ch-rel', timelineId: 'tl-1', title: 'Ev', description: '', locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 }],
       relationships: [{
         id: 'rel-v1',
         worldId: 'world-extra',
@@ -974,7 +1054,7 @@ describe('importWorld — full optional arrays', () => {
       events: [{
         id: 'ev-1', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1',
         title: 'Battle Begins', description: '', locationMarkerId: null,
-        involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0,
+        involvedCharacterIds: [], mentionedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0,
         travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000,
       }],
     })

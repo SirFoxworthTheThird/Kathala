@@ -196,6 +196,8 @@ OUTPUT FORMAT
       "description": "<detailed description of what happens>",
       "locationMarkerId": ${hasLocations ? '"<markerId from location list, or null>"' : 'null'},
       "involvedCharacterIds": ["<char id from list>"],
+      "mentionedCharacterIds": [],
+
       "involvedItemIds": ${hasItems ? '["<item id if this event involves an item, otherwise []>"]' : '[]'},
       "tags": ["<thematic tag>"],
       "sortOrder": 0,
@@ -382,7 +384,7 @@ async function importChapter(data: ChapterAIResponse, replacing: boolean): Promi
       // Ensure status and povCharacterId are always present — AI JSON may omit fields predating their schema versions
       const normalised = data.events.map((ev) => {
         const p = ev as Partial<WorldEvent>
-        return { ...ev, status: p.status ?? ('draft' as const), povCharacterId: p.povCharacterId ?? null, isFlashback: p.isFlashback ?? false, inWorldTime: p.inWorldTime ?? null, tension: p.tension ?? null, structureBeat: p.structureBeat ?? null }
+        return { ...ev, status: p.status ?? ('draft' as const), povCharacterId: p.povCharacterId ?? null, isFlashback: p.isFlashback ?? false, inWorldTime: p.inWorldTime ?? null, tension: p.tension ?? null, structureBeat: p.structureBeat ?? null, mentionedCharacterIds: p.mentionedCharacterIds ?? [] }
       })
       await db.events.bulkPut(normalised)
     }

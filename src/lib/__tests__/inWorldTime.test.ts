@@ -9,7 +9,7 @@ function chapter(id: string, number: number, timelineId = 't1'): Chapter {
 function event(id: string, chapterId: string, sortOrder: number, opts: Partial<WorldEvent> = {}): WorldEvent {
   return {
     id, worldId: 'w', chapterId, timelineId: opts.timelineId ?? 't1', title: '', description: '',
-    locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder,
+    locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder,
     travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft', povCharacterId: null, isFlashback: false,
     createdAt: 0, updatedAt: 0, ...opts,
   }
