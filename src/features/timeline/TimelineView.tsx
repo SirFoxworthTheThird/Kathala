@@ -270,6 +270,7 @@ export default function TimelineView() {
         ) : (
           <div className="flex flex-col gap-3">
             <PacingCurve
+              worldId={worldId!}
               events={timelineEvents}
               chapters={chapters}
               order={viewMode}

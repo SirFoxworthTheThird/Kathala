@@ -1,7 +1,9 @@
 import { useState, useRef, type KeyboardEvent } from 'react'
-import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye, History, Flame, Milestone } from 'lucide-react'
+import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye, History, Flame, Milestone, PenLine, Plus } from 'lucide-react'
 import { TENSION_LEVELS, tensionColor, tensionLabel } from '@/lib/tension'
 import { STORY_BEATS, beatById, beatActColor } from '@/lib/storyBeats'
+import { wordCount, detectMentions } from '@/lib/manuscript'
+import { useSceneText, setSceneText } from '@/db/hooks/useManuscript'
 import type { WorldEvent, EventStatus } from '@/types'
 import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
@@ -44,6 +46,9 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
   const [inWorldTime, setInWorldTime] = useState<number | null>(event.inWorldTime ?? null)
   const [tension, setTension] = useState<number | null>(event.tension ?? null)
   const [structureBeat, setStructureBeat] = useState<string | null>(event.structureBeat ?? null)
+  // Scene prose: `draft === null` means "show the stored value"; a string means unsaved edits.
+  const sceneText = useSceneText(event.id)
+  const [draft, setDraft] = useState<string | null>(null)
   const tagInputRef = useRef<HTMLInputElement>(null)
 
   const characters = useCharacters(event.worldId)
@@ -57,6 +62,12 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
   const currentLocation = locationMarkers.find((m) => m.id === locationMarkerId) ?? null
   const povChar = characters.find((c) => c.id === povCharacterId) ?? null
   const nonInvolvedChars = characters.filter((c) => !involvedIds.includes(c.id))
+
+  // Scene prose derived values
+  const sceneValue = draft ?? sceneText?.text ?? ''
+  const sceneWords = draft === null ? (sceneText?.wordCount ?? 0) : wordCount(sceneValue)
+  const mentions = detectMentions(sceneValue, characters)
+  const untaggedMentions = mentions.filter((m) => !involvedIds.includes(m.characterId))
 
   async function saveEdit() {
     await updateEvent(event.id, {
@@ -109,6 +120,12 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
   async function changeBeat(id: string | null) {
     setStructureBeat(id)
     await updateEvent(event.id, { structureBeat: id })
+  }
+
+  async function saveScene() {
+    if (draft === null) return
+    await setSceneText(event.worldId, event.id, draft)
+    setDraft(null) // fall back to the freshly-stored live value
   }
 
   function handleTravelDaysChange(raw: string) {
@@ -217,6 +234,17 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
             <span className="text-sm font-medium text-[hsl(var(--foreground))] truncate block">{event.title}</span>
           )}
         </button>
+
+        {/* Scene word-count chip — only when this scene has prose */}
+        {sceneWords > 0 && (
+          <span
+            className="shrink-0 flex items-center gap-1 rounded-full bg-[hsl(var(--muted))] px-2 py-0.5 text-[10px] font-medium tabular-nums text-[hsl(var(--muted-foreground))]"
+            title={`${sceneWords} words of scene draft`}
+          >
+            <PenLine className="h-2.5 w-2.5" />
+            {sceneWords >= 1000 ? `${(sceneWords / 1000).toFixed(1)}k` : sceneWords}
+          </span>
+        )}
 
         {/* In-world day chip — only when the story tracks elapsed time */}
         {inWorldDay !== undefined && inWorldDay > 0 && !isFlashback && (
@@ -382,6 +410,41 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
               event.description
                 ? <p className="text-sm text-[hsl(var(--muted-foreground))] whitespace-pre-wrap">{event.description}</p>
                 : <p className="text-xs italic text-[hsl(var(--muted-foreground))]">No description.</p>
+            )}
+          </div>
+
+          {/* Scene draft (manuscript prose) */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
+                <PenLine className="h-3 w-3" /> Scene Draft
+              </span>
+              <span className="text-[10px] tabular-nums text-[hsl(var(--muted-foreground))]">
+                {sceneWords} {sceneWords === 1 ? 'word' : 'words'}
+              </span>
+            </div>
+            <Textarea
+              value={sceneValue}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={saveScene}
+              placeholder="Write or paste this scene's prose… (word count feeds the pacing curve)"
+              rows={5}
+              className="text-sm font-serif leading-relaxed"
+            />
+            {untaggedMentions.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] text-[hsl(var(--muted-foreground))]">In the text but not on this event:</span>
+                {untaggedMentions.map((m) => (
+                  <button
+                    key={m.characterId}
+                    onClick={() => addCharacter(m.characterId)}
+                    className="flex items-center gap-1 rounded-full border border-dashed border-[hsl(var(--border))] px-2 py-0.5 text-[10px] text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--ring))] hover:text-[hsl(var(--foreground))] transition-colors"
+                    title={`${m.name} appears ${m.count}× — click to add to this event`}
+                  >
+                    <Plus className="h-2.5 w-2.5" /> {m.name}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
 

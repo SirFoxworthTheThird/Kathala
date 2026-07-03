@@ -4,8 +4,10 @@ import type { WorldEvent, Chapter } from '@/types'
 import { computePacingCurve, tensionColor, tensionLabel } from '@/lib/tension'
 import { beatById, beatActColor } from '@/lib/storyBeats'
 import { computeInWorldDays } from '@/lib/inWorldTime'
+import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
 
 interface PacingCurveProps {
+  worldId: string
   events: WorldEvent[]
   chapters: Chapter[]
   order: 'narrative' | 'chronological'
@@ -23,15 +25,21 @@ const STEP = 46 // horizontal px per event
  * Rated scenes plot as points on a 1–5 curve; unrated scenes sit on the
  * baseline as hollow markers. Clicking a point moves the time cursor there.
  */
-export function PacingCurve({ events, chapters, order, activeEventId, onSelect }: PacingCurveProps) {
+export function PacingCurve({ worldId, events, chapters, order, activeEventId, onSelect }: PacingCurveProps) {
+  const sceneTexts = useWorldSceneTexts(worldId)
+
   const points = useMemo(() => {
     const inWorldDayByEvent = order === 'chronological'
       ? computeInWorldDays(events, chapters)
       : undefined
-    return computePacingCurve({ events, chapters, order, inWorldDayByEvent })
-  }, [events, chapters, order])
+    const wordCountByEvent = new Map(sceneTexts.map((s) => [s.eventId, s.wordCount]))
+    return computePacingCurve({ events, chapters, order, inWorldDayByEvent, wordCountByEvent })
+  }, [events, chapters, order, sceneTexts])
 
   const ratedCount = points.filter((p) => p.tension !== null).length
+  const maxWords = points.reduce((m, p) => Math.max(m, p.wordCount), 0)
+  // Radius grows with scene length so longer scenes read as heavier points.
+  const radiusFor = (wc: number) => (maxWords > 0 ? 4 + 5 * (wc / maxWords) : 5)
   const width = Math.max(points.length * STEP, STEP)
   const plotH = HEIGHT - PAD_TOP - PAD_BOTTOM
 
@@ -66,6 +74,11 @@ export function PacingCurve({ events, chapters, order, activeEventId, onSelect }
         {ratedCount === 0 && (
           <span className="text-[10px] italic text-[hsl(var(--muted-foreground))]">
             rate scenes on their cards to draw the curve
+          </span>
+        )}
+        {ratedCount > 0 && maxWords > 0 && (
+          <span className="text-[10px] italic text-[hsl(var(--muted-foreground))]">
+            point size = scene length
           </span>
         )}
       </div>
@@ -135,16 +148,18 @@ export function PacingCurve({ events, chapters, order, activeEventId, onSelect }
                 </g>
               )
             }
+            const r = radiusFor(p.wordCount)
+            const wordsLabel = p.wordCount > 0 ? ` — ${p.wordCount} words` : ''
             return (
               <g key={p.eventId} className="cursor-pointer" onClick={() => onSelect(p.eventId)}>
-                <title>{`${p.title || 'Untitled'} — ${tensionLabel(p.tension)} (${p.tension}/5)`}</title>
+                <title>{`${p.title || 'Untitled'} — ${tensionLabel(p.tension)} (${p.tension}/5)${wordsLabel}`}</title>
                 {isActive && (
-                  <circle cx={cx} cy={yFor(p.tension)} r={8} fill="none" stroke="hsl(var(--ring))" strokeWidth={2} />
+                  <circle cx={cx} cy={yFor(p.tension)} r={r + 3} fill="none" stroke="hsl(var(--ring))" strokeWidth={2} />
                 )}
                 <circle
                   cx={cx}
                   cy={yFor(p.tension)}
-                  r={5}
+                  r={r}
                   fill={tensionColor(p.tension)}
                   stroke={p.isFlashback ? 'hsl(var(--card))' : 'none'}
                   strokeWidth={p.isFlashback ? 2 : 0}

@@ -67,6 +67,14 @@ describe('computePacingCurve', () => {
     expect(pts.map((p) => p.eventId)).toEqual(['e2', 'e1'])
   })
 
+  it('attaches scene word counts to points (0 when unwritten)', () => {
+    const events = [event('e1', 'c1', 0, 3), event('e2', 'c1', 1, 4)]
+    const wordCountByEvent = new Map([['e1', 1200]])
+    const pts = computePacingCurve({ events, chapters, order: 'narrative', wordCountByEvent })
+    expect(pts.find((p) => p.eventId === 'e1')?.wordCount).toBe(1200)
+    expect(pts.find((p) => p.eventId === 'e2')?.wordCount).toBe(0)
+  })
+
   it('falls back to narrative order when in-world days tie', () => {
     const events = [event('e2', 'c1', 1, 1), event('e1', 'c1', 0, 2)]
     const inWorldDayByEvent = new Map([['e1', 5], ['e2', 5]])

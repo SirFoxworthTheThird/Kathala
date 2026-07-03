@@ -16,7 +16,7 @@ FILE STRUCTURE
 ═══════════════════════════════════════════════════════════
 
 {
-  "version": 13,
+  "version": 14,
   "type": "full",
   "exportedAt": <current unix timestamp in ms, e.g. 1700000000000>,
   "world": { ... },
@@ -34,6 +34,7 @@ FILE STRUCTURE
   "lorePages": [ ... ],
   "knowledgeFacts": [ ... ],
   "knowledgeReveals": [ ... ],
+  "sceneTexts": [],                    // leave empty — scene prose is authored in-app, not generated here
   "mapLayers": [],
   "locationMarkers": [],
   "mapAnnotations": [],

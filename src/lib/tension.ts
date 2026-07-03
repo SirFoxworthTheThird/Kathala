@@ -39,6 +39,8 @@ export interface PacingPoint {
   tension: number | null
   /** Story-structure beat id this event fulfils, or null. */
   structureBeat: string | null
+  /** Word count of the scene's prose (0 when unwritten). */
+  wordCount: number
   isFlashback: boolean
 }
 
@@ -58,12 +60,15 @@ export function computePacingCurve({
   chapters,
   order,
   inWorldDayByEvent,
+  wordCountByEvent,
 }: {
   events: WorldEvent[]
   chapters: Chapter[]
   order: 'narrative' | 'chronological'
   /** Resolved in-world day per event id — only consulted for chronological order. */
   inWorldDayByEvent?: Map<string, number>
+  /** Scene word count per event id — feeds the length dimension of each point. */
+  wordCountByEvent?: Map<string, number>
 }): PacingPoint[] {
   const chapterNumber = new Map(chapters.map((c) => [c.id, c.number]))
 
@@ -85,6 +90,7 @@ export function computePacingCurve({
     chapterNumber: chapterNumber.get(e.chapterId) ?? null,
     tension: e.tension ?? null,
     structureBeat: e.structureBeat ?? null,
+    wordCount: wordCountByEvent?.get(e.id) ?? 0,
     isFlashback: e.isFlashback ?? false,
   }))
 }

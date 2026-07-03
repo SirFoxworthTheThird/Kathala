@@ -32,6 +32,7 @@ import type {
   FactionRelationship,
   KnowledgeFact,
   KnowledgeReveal,
+  SceneText,
   ContinuitySuppression,
 } from '@/types'
 
@@ -67,6 +68,7 @@ class PlotWeaveDB extends Dexie {
   factionRelationships!: EntityTable<FactionRelationship, 'id'>
   knowledgeFacts!: EntityTable<KnowledgeFact, 'id'>
   knowledgeReveals!: EntityTable<KnowledgeReveal, 'id'>
+  sceneTexts!: EntityTable<SceneText, 'id'>
   continuitySuppressions!: EntityTable<ContinuitySuppression, 'id'>
 
   constructor() {
@@ -529,6 +531,11 @@ class PlotWeaveDB extends Dexie {
       await tx.table('events').toCollection().modify((e: Record<string, unknown>) => {
         if (e.structureBeat === undefined) e.structureBeat = null
       })
+    })
+
+    // v39: manuscript prose per scene, keyed to its event.
+    this.version(39).stores({
+      sceneTexts: 'id, worldId, eventId',
     })
   }
 }

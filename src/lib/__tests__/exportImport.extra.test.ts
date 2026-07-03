@@ -610,6 +610,38 @@ describe('importWorld — travelModes', () => {
     expect(stored!.structureBeat).toBe('midpoint')
   })
 
+  it('round-trips scene texts through export/import', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      sceneTexts: [
+        { id: 'st-1', worldId: 'world-extra', eventId: 'ev-1', text: 'The storm broke at dawn.', wordCount: 5, createdAt: 1000, updatedAt: 1000 },
+      ],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.sceneTexts.get('st-1')
+    expect(stored).toBeDefined()
+    expect(stored!.text).toBe('The storm broke at dawn.')
+    expect(stored!.wordCount).toBe(5)
+    expect(stored!.eventId).toBe('ev-1')
+  })
+
+  it('defaults sceneTexts to [] on older exports that lack them', async () => {
+    await db.delete()
+    await db.open()
+
+    // Base makeExport (v2) carries no sceneTexts — simulates a pre-feature file.
+    await importWorld(makeFile(makeExport()))
+    expect(await db.sceneTexts.count()).toBe(0)
+  })
+
+  it('rejects when sceneTexts is present but not an array', async () => {
+    const bad = { ...makeExport(), sceneTexts: 'bad' }
+    await expect(importWorld(makeFile(bad))).rejects.toThrow('sceneTexts is not an array')
+  })
+
   it('backfills inWorldTime to null on events that lack it (older export)', async () => {
     await db.delete()
     await db.open()
