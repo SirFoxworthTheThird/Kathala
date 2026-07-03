@@ -202,6 +202,7 @@ OUTPUT FORMAT
       "travelDays": null,
       "inWorldTime": null,
       "tension": null,
+      "structureBeat": null,
       "status": "draft",
       "povCharacterId": null,
       "isFlashback": false,
@@ -381,7 +382,7 @@ async function importChapter(data: ChapterAIResponse, replacing: boolean): Promi
       // Ensure status and povCharacterId are always present — AI JSON may omit fields predating their schema versions
       const normalised = data.events.map((ev) => {
         const p = ev as Partial<WorldEvent>
-        return { ...ev, status: p.status ?? ('draft' as const), povCharacterId: p.povCharacterId ?? null, isFlashback: p.isFlashback ?? false, inWorldTime: p.inWorldTime ?? null, tension: p.tension ?? null }
+        return { ...ev, status: p.status ?? ('draft' as const), povCharacterId: p.povCharacterId ?? null, isFlashback: p.isFlashback ?? false, inWorldTime: p.inWorldTime ?? null, tension: p.tension ?? null, structureBeat: p.structureBeat ?? null }
       })
       await db.events.bulkPut(normalised)
     }

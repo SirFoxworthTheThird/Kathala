@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Activity } from 'lucide-react'
 import type { WorldEvent, Chapter } from '@/types'
 import { computePacingCurve, tensionColor, tensionLabel } from '@/lib/tension'
+import { beatById, beatActColor } from '@/lib/storyBeats'
 import { computeInWorldDays } from '@/lib/inWorldTime'
 
 interface PacingCurveProps {
@@ -91,6 +92,23 @@ export function PacingCurve({ events, chapters, order, activeEventId, onSelect }
               opacity={lvl === 1 ? 0.8 : 0.4}
             />
           ))}
+
+          {/* Story-beat markers — vertical guides with a short label in the bottom band */}
+          {points.map((p, i) => {
+            const beat = beatById(p.structureBeat)
+            if (!beat) return null
+            const cx = xFor(i)
+            const color = beatActColor(beat.act)
+            return (
+              <g key={`beat-${p.eventId}`} className="cursor-pointer" onClick={() => onSelect(p.eventId)}>
+                <title>{`${beat.label} — ${p.title || 'Untitled'}`}</title>
+                <line x1={cx} x2={cx} y1={PAD_TOP} y2={baselineY} stroke={color} strokeWidth={1} strokeDasharray="3 3" opacity={0.7} />
+                <text x={cx} y={HEIGHT - 8} textAnchor="middle" fontSize={9} fontWeight={600} fill={color}>
+                  {beat.short}
+                </text>
+              </g>
+            )
+          })}
 
           {/* Tension line */}
           {linePath && (

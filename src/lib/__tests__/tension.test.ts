@@ -15,7 +15,7 @@ function event(
   return {
     id, worldId: 'w', chapterId, timelineId: 't1', title: id, description: '',
     locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder,
-    travelDays: null, inWorldTime: null, tension, status: 'draft', povCharacterId: null, isFlashback: false,
+    travelDays: null, inWorldTime: null, tension, structureBeat: null, status: 'draft', povCharacterId: null, isFlashback: false,
     createdAt: 0, updatedAt: 0, ...extra,
   }
 }
@@ -46,12 +46,14 @@ describe('computePacingCurve', () => {
     const events = [
       event('e2', 'c1', 1, null),
       event('e1', 'c1', 0, 3),
-      event('e3', 'c2', 0, 5),
+      event('e3', 'c2', 0, 5, { structureBeat: 'climax' }),
     ]
     const pts = computePacingCurve({ events, chapters, order: 'narrative' })
     expect(pts.map((p) => p.eventId)).toEqual(['e1', 'e2', 'e3'])
     expect(pts.map((p) => p.tension)).toEqual([3, null, 5])
     expect(pts[2].chapterNumber).toBe(2)
+    expect(pts[2].structureBeat).toBe('climax')
+    expect(pts[0].structureBeat).toBeNull()
   })
 
   it('orders by in-world day in chronological mode', () => {

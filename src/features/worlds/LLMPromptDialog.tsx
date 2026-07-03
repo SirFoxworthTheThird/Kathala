@@ -16,7 +16,7 @@ FILE STRUCTURE
 ═══════════════════════════════════════════════════════════
 
 {
-  "version": 12,
+  "version": 13,
   "type": "full",
   "exportedAt": <current unix timestamp in ms, e.g. 1700000000000>,
   "world": { ... },
@@ -150,6 +150,7 @@ Events are the primary time unit. Each chapter contains ordered events.
   "travelDays": null,                 // days of travel before this event; null if unknown
   "inWorldTime": null,                // explicit absolute in-world day; null unless this event (e.g. a flashback) sits out of narrative order
   "tension": null,                    // dramatic intensity 1–5 for the pacing curve; null if unrated
+  "structureBeat": null,              // story beat, one of: hook | inciting-incident | plot-point-1 | midpoint | plot-point-2 | climax | resolution; null if none
   "status": "draft",                  // one of: idea | outline | draft | revised | final
   "povCharacterId": null,             // id of the POV character, or null
   "isFlashback": false,               // true if this event is a flashback/retrospective

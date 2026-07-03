@@ -523,6 +523,13 @@ class PlotWeaveDB extends Dexie {
         if (e.tension === undefined) e.tension = null
       })
     })
+
+    // v38: story-structure beat marker on events (Inciting Incident, Midpoint, …). Backfill null.
+    this.version(38).stores({}).upgrade(async (tx) => {
+      await tx.table('events').toCollection().modify((e: Record<string, unknown>) => {
+        if (e.structureBeat === undefined) e.structureBeat = null
+      })
+    })
   }
 }
 

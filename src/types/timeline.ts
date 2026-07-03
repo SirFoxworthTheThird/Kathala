@@ -41,6 +41,8 @@ export interface WorldEvent {
   inWorldTime: number | null
   /** Dramatic intensity 1–5 for the pacing curve. null = unrated. */
   tension: number | null
+  /** Story-structure beat this event fulfils (beat id, e.g. 'midpoint'). null = none. */
+  structureBeat: string | null
   status: EventStatus
   povCharacterId: string | null
   /** Marks the event as a flashback/retrospective — suppresses present-state continuity checks. */

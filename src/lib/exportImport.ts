@@ -10,7 +10,7 @@ import type {
 } from '@/types'
 import { generateId } from '@/lib/id'
 
-const EXPORT_VERSION = 12
+const EXPORT_VERSION = 13
 
 interface BlobExport {
   id: string
@@ -685,6 +685,7 @@ function normalizeImport(data: WorldExportFile): void {
     if (e.isFlashback === undefined) e.isFlashback = false
     if (e.inWorldTime === undefined) e.inWorldTime = null
     if (e.tension === undefined) e.tension = null
+    if (e.structureBeat === undefined) e.structureBeat = null
   }
   // Backfill the reader-clock and origin on knowledge facts (added after knowledge shipped)
   for (const fact of data.knowledgeFacts ?? []) {
@@ -752,6 +753,7 @@ function normalizeImport(data: WorldExportFile): void {
           travelDays: (c.travelDays as number | null) ?? null,
           inWorldTime: null,
           tension: null,
+          structureBeat: null,
           status: 'draft',
           povCharacterId: null,
           isFlashback: false,

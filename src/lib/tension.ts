@@ -37,6 +37,8 @@ export interface PacingPoint {
   chapterNumber: number | null
   /** 1–5 rating, or null when the event is unrated (drawn as a gap). */
   tension: number | null
+  /** Story-structure beat id this event fulfils, or null. */
+  structureBeat: string | null
   isFlashback: boolean
 }
 
@@ -82,6 +84,7 @@ export function computePacingCurve({
     title: e.title,
     chapterNumber: chapterNumber.get(e.chapterId) ?? null,
     tension: e.tension ?? null,
+    structureBeat: e.structureBeat ?? null,
     isFlashback: e.isFlashback ?? false,
   }))
 }

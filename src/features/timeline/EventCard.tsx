@@ -1,6 +1,7 @@
 import { useState, useRef, type KeyboardEvent } from 'react'
-import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye, History, Flame } from 'lucide-react'
+import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye, History, Flame, Milestone } from 'lucide-react'
 import { TENSION_LEVELS, tensionColor, tensionLabel } from '@/lib/tension'
+import { STORY_BEATS, beatById, beatActColor } from '@/lib/storyBeats'
 import type { WorldEvent, EventStatus } from '@/types'
 import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
@@ -42,6 +43,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
   const [travelDays, setTravelDays] = useState<number | null>(event.travelDays ?? null)
   const [inWorldTime, setInWorldTime] = useState<number | null>(event.inWorldTime ?? null)
   const [tension, setTension] = useState<number | null>(event.tension ?? null)
+  const [structureBeat, setStructureBeat] = useState<string | null>(event.structureBeat ?? null)
   const tagInputRef = useRef<HTMLInputElement>(null)
 
   const characters = useCharacters(event.worldId)
@@ -102,6 +104,11 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
     const next = level !== null && level === tension ? null : level
     setTension(next)
     await updateEvent(event.id, { tension: next })
+  }
+
+  async function changeBeat(id: string | null) {
+    setStructureBeat(id)
+    await updateEvent(event.id, { structureBeat: id })
   }
 
   function handleTravelDaysChange(raw: string) {
@@ -245,6 +252,19 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
           >
             <History className="h-2.5 w-2.5 text-[hsl(var(--muted-foreground))]" />
             <span className="text-[hsl(var(--muted-foreground))]">Flashback</span>
+          </button>
+        )}
+
+        {/* Story-beat badge — visible when set */}
+        {beatById(structureBeat) && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setExpanded(true) }}
+            className="shrink-0 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-[hsl(var(--muted))] hover:opacity-80"
+            title={`Story beat: ${beatById(structureBeat)!.label} — click to change`}
+            aria-label={`Story beat: ${beatById(structureBeat)!.label}`}
+          >
+            <Milestone className="h-2.5 w-2.5" style={{ color: beatActColor(beatById(structureBeat)!.act) }} />
+            <span className="text-[hsl(var(--foreground))]">{beatById(structureBeat)!.label}</span>
           </button>
         )}
 
@@ -583,6 +603,37 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
               <History className="h-3 w-3" />
               Flashback / Retrospective
             </button>
+          </div>
+
+          {/* Story-structure beat */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
+              <Milestone className="h-3 w-3" /> Story Beat
+            </span>
+            <Select value={structureBeat ?? '__none__'} onValueChange={(v) => changeBeat(v === '__none__' ? null : v)}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="No beat…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__" className="text-xs italic text-[hsl(var(--muted-foreground))]">No beat</SelectItem>
+                {[1, 2, 3].map((act) => (
+                  <SelectGroup key={act}>
+                    <SelectLabel className="text-[10px] uppercase tracking-wide">Act {act}</SelectLabel>
+                    {STORY_BEATS.filter((b) => b.act === act).map((b) => (
+                      <SelectItem key={b.id} value={b.id} className="text-xs">
+                        <span className="flex items-center gap-1.5">
+                          <span className="inline-block h-2 w-2 rounded-full shrink-0" style={{ background: beatActColor(b.act) }} />
+                          {b.label}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))}
+              </SelectContent>
+            </Select>
+            {beatById(structureBeat) && (
+              <p className="text-[10px] text-[hsl(var(--muted-foreground))]">{beatById(structureBeat)!.hint}</p>
+            )}
           </div>
 
           {/* Tension picker */}
