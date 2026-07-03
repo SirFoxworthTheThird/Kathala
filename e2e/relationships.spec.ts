@@ -58,7 +58,7 @@ async function setupTwoCharacters(page: import('@playwright/test').Page) {
 test.describe('Relationship graph', () => {
   test('shows empty graph when no relationships exist (but characters do)', async ({ page }) => {
     await setupTwoCharacters(page)
-    await page.getByTitle('Relationships').click()
+    await page.getByRole('link', { name: 'Relations' }).click()
     await expect(page.getByText('No characters yet')).not.toBeVisible()
   })
 
@@ -71,7 +71,7 @@ test.describe('Relationship graph', () => {
     await page.getByRole('button', { name: 'Create World' }).last().click()
     await expect(page).toHaveURL(/#\/worlds\//)
 
-    await page.getByTitle('Relationships').click()
+    await page.getByRole('link', { name: 'Relations' }).click()
     await expect(page.getByText('No characters yet')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Go to Characters' })).toBeVisible()
   })
@@ -98,7 +98,7 @@ test.describe('Relationship graph', () => {
     await fillRelationshipDialog(page, 'Bob', 'Rivals')
 
     // Navigate to graph — edge label renders as a button
-    await page.getByTitle('Relationships').click()
+    await page.getByRole('link', { name: 'Relations' }).click()
     await expect(page.getByRole('button', { name: 'Rivals' })).toBeVisible()
   })
 
@@ -110,7 +110,7 @@ test.describe('Relationship graph', () => {
     await page.getByRole('button', { name: 'Add Relationship' }).click()
     await fillRelationshipDialog(page, 'Bob', 'Allies')
 
-    await page.getByTitle('Relationships').click()
+    await page.getByRole('link', { name: 'Relations' }).click()
     // ReactFlow edge interaction path (stroke-opacity:0) sits on top of the
     // EdgeLabelRenderer button in Playwright's hit-test.
     // Use dispatchEvent to fire the React click handler directly.

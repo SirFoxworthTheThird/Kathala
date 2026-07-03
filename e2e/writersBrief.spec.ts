@@ -41,7 +41,8 @@ test.describe("Writer's Brief panel", () => {
     await page.getByPlaceholder('Chapter title').fill('Opening Act')
     await page.getByPlaceholder('Brief synopsis...').fill('The story begins.')
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
-    await expect(page.getByText('Opening Act')).toBeVisible()
+    // Appears in both the chapter list and the timeline bar — first() is fine.
+    await expect(page.getByText('Opening Act').first()).toBeVisible()
 
     // Open chapter detail and create an event
     await page.getByTitle('Open chapter detail').click()

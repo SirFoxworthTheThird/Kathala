@@ -32,21 +32,22 @@ test.describe('Character Arc view', () => {
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('The Shire')
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
-    await expect(page.getByText('The Shire')).toBeVisible()
+    // Chapter names appear in both the chapter list and the timeline bar.
+    await expect(page.getByText('The Shire').first()).toBeVisible()
 
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('Rivendell')
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
-    await expect(page.getByText('Rivendell')).toBeVisible()
+    await expect(page.getByText('Rivendell').first()).toBeVisible()
   })
 
   test('navigates to character arc view', async ({ page }) => {
-    await page.getByTitle('Character Arc').click()
+    await page.getByRole('link', { name: 'Arc' }).click()
     await expect(page).toHaveURL(/#\/worlds\/.+\/arc/)
   })
 
   test('arc view shows chapter columns', async ({ page }) => {
-    await page.getByTitle('Character Arc').click()
+    await page.getByRole('link', { name: 'Arc' }).click()
     await expect(page).toHaveURL(/#\/worlds\/.+\/arc/)
 
     // Chapter columns are headed "Ch. N — Title"
@@ -55,7 +56,7 @@ test.describe('Character Arc view', () => {
   })
 
   test('arc view shows character rows', async ({ page }) => {
-    await page.getByTitle('Character Arc').click()
+    await page.getByRole('link', { name: 'Arc' }).click()
     await expect(page).toHaveURL(/#\/worlds\/.+\/arc/)
 
     await expect(page.getByText('Frodo')).toBeVisible()
@@ -63,7 +64,7 @@ test.describe('Character Arc view', () => {
   })
 
   test('filter input narrows visible characters', async ({ page }) => {
-    await page.getByTitle('Character Arc').click()
+    await page.getByRole('link', { name: 'Arc' }).click()
     await expect(page).toHaveURL(/#\/worlds\/.+\/arc/)
 
     await expect(page.getByText('Frodo')).toBeVisible()

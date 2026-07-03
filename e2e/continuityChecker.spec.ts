@@ -49,7 +49,7 @@ test.describe('Continuity Checker', () => {
     await expect(page.getByText('Boromir')).toBeVisible()
 
     // Create a timeline with a chapter and an event
-    await page.getByTitle('Timeline').click()
+    await page.getByRole('link', { name: 'Timeline' }).click()
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await expect(page.getByText('Main Timeline')).toBeVisible()
 
@@ -61,10 +61,10 @@ test.describe('Continuity Checker', () => {
     await page.getByRole('button', { name: 'Add Event' }).first().click()
     await page.getByPlaceholder('Event title').fill('Death Scene')
     await page.getByRole('button', { name: 'Add Event' }).last().click()
-    await expect(page.getByText('Death Scene')).toBeVisible()
+    await expect(page.getByText('Death Scene').first()).toBeVisible()
 
     // Set event as active via timeline bar
-    await page.getByTitle('Timeline').click()
+    await page.getByRole('link', { name: 'Timeline' }).click()
     await page.getByTitle('Death Scene').click()
 
     // Go to character, mark as deceased in current state tab
