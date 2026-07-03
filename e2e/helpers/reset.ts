@@ -40,5 +40,5 @@ export async function resetDB(page: Page): Promise<void> {
   // Wait for 'load' rather than 'networkidle': Vite's HMR websocket keeps the
   // network perpetually "busy", so networkidle can time out under load. The
   // subsequent auto-waiting locators handle readiness.
-  await page.goto('/', { waitUntil: 'load' })
+  await page.goto('/', { waitUntil: 'load', timeout: 60_000 })
 }
