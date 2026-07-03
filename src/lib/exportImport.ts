@@ -10,7 +10,7 @@ import type {
 } from '@/types'
 import { generateId } from '@/lib/id'
 
-const EXPORT_VERSION = 11
+const EXPORT_VERSION = 12
 
 interface BlobExport {
   id: string
@@ -678,12 +678,13 @@ function normalizeImport(data: WorldExportFile): void {
     if (c.synopsis === undefined) c.synopsis = ''
     if (c.notes === undefined) c.notes = ''
   }
-  // Backfill travelDays, isFlashback and inWorldTime on events (may be absent on older exports)
+  // Backfill travelDays, isFlashback, inWorldTime and tension on events (may be absent on older exports)
   for (const ev of data.events) {
     const e = ev as unknown as Rec
     if (e.travelDays === undefined) e.travelDays = null
     if (e.isFlashback === undefined) e.isFlashback = false
     if (e.inWorldTime === undefined) e.inWorldTime = null
+    if (e.tension === undefined) e.tension = null
   }
   // Backfill the reader-clock and origin on knowledge facts (added after knowledge shipped)
   for (const fact of data.knowledgeFacts ?? []) {
@@ -750,6 +751,7 @@ function normalizeImport(data: WorldExportFile): void {
           sortOrder: 0,
           travelDays: (c.travelDays as number | null) ?? null,
           inWorldTime: null,
+          tension: null,
           status: 'draft',
           povCharacterId: null,
           isFlashback: false,

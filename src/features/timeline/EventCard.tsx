@@ -1,5 +1,6 @@
 import { useState, useRef, type KeyboardEvent } from 'react'
-import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye, History } from 'lucide-react'
+import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye, History, Flame } from 'lucide-react'
+import { TENSION_LEVELS, tensionColor, tensionLabel } from '@/lib/tension'
 import type { WorldEvent, EventStatus } from '@/types'
 import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
@@ -40,6 +41,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
   const [isFlashback, setIsFlashback] = useState(event.isFlashback ?? false)
   const [travelDays, setTravelDays] = useState<number | null>(event.travelDays ?? null)
   const [inWorldTime, setInWorldTime] = useState<number | null>(event.inWorldTime ?? null)
+  const [tension, setTension] = useState<number | null>(event.tension ?? null)
   const tagInputRef = useRef<HTMLInputElement>(null)
 
   const characters = useCharacters(event.worldId)
@@ -93,6 +95,13 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
     const next = !isFlashback
     setIsFlashback(next)
     await updateEvent(event.id, { isFlashback: next })
+  }
+
+  async function changeTension(level: number | null) {
+    // Clicking the active level clears it back to unrated.
+    const next = level !== null && level === tension ? null : level
+    setTension(next)
+    await updateEvent(event.id, { tension: next })
   }
 
   function handleTravelDaysChange(raw: string) {
@@ -236,6 +245,19 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
           >
             <History className="h-2.5 w-2.5 text-[hsl(var(--muted-foreground))]" />
             <span className="text-[hsl(var(--muted-foreground))]">Flashback</span>
+          </button>
+        )}
+
+        {/* Tension badge — visible when rated, click to expand and adjust */}
+        {tension !== null && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setExpanded(true) }}
+            className="shrink-0 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-[hsl(var(--muted))] hover:opacity-80"
+            title={`Tension: ${tensionLabel(tension)} (${tension}/5) — click to adjust`}
+            aria-label={`Tension: ${tensionLabel(tension)}`}
+          >
+            <Flame className="h-2.5 w-2.5" style={{ color: tensionColor(tension) }} />
+            <span className="tabular-nums text-[hsl(var(--foreground))]">{tension}/5</span>
           </button>
         )}
 
@@ -561,6 +583,36 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
               <History className="h-3 w-3" />
               Flashback / Retrospective
             </button>
+          </div>
+
+          {/* Tension picker */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
+              <Flame className="h-3 w-3" /> Dramatic Tension
+            </span>
+            <div className="flex gap-1">
+              {TENSION_LEVELS.map((level) => (
+                <button
+                  key={level}
+                  onClick={() => changeTension(level)}
+                  className="flex-1 rounded py-1 text-[10px] font-medium tabular-nums transition-opacity hover:opacity-90"
+                  style={
+                    tension === level
+                      ? { background: tensionColor(level), color: '#fff' }
+                      : { background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }
+                  }
+                  title={`${tensionLabel(level)} (${level}/5)`}
+                  aria-pressed={tension === level}
+                >
+                  {level}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
+              {tension !== null
+                ? `${tensionLabel(tension)} — click the same level again to clear.`
+                : 'Rate the intensity to plot this scene on the pacing curve.'}
+            </p>
           </div>
 
           {/* Status picker */}

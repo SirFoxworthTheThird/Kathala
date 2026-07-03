@@ -9,7 +9,7 @@ function event(id: string, chapterId: string, sortOrder: number, involved: strin
   return {
     id, worldId: 'w', chapterId, timelineId: 't1', title: '', description: '',
     locationMarkerId: null, involvedCharacterIds: involved, involvedItemIds: [], tags: [], sortOrder,
-    travelDays: null, inWorldTime: null, status: 'draft', povCharacterId: pov, isFlashback: false,
+    travelDays: null, inWorldTime: null, tension: null, status: 'draft', povCharacterId: pov, isFlashback: false,
     createdAt: 0, updatedAt: 0,
   }
 }

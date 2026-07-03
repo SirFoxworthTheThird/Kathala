@@ -516,6 +516,13 @@ class PlotWeaveDB extends Dexie {
         if (f.originEventId === undefined) f.originEventId = null
       })
     })
+
+    // v37: dramatic-intensity rating on events for the pacing curve. Backfill null.
+    this.version(37).stores({}).upgrade(async (tx) => {
+      await tx.table('events').toCollection().modify((e: Record<string, unknown>) => {
+        if (e.tension === undefined) e.tension = null
+      })
+    })
   }
 }
 

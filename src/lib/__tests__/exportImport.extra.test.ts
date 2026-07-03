@@ -456,6 +456,7 @@ describe('importWorld — travelModes', () => {
         sortOrder: 0,
         travelDays: 7,
         inWorldTime: null,
+        tension: null,
         status: 'draft' as const,
         povCharacterId: null,
         isFlashback: false,
@@ -467,6 +468,74 @@ describe('importWorld — travelModes', () => {
 
     const stored = await db.events.get('ev-days')
     expect(stored!.travelDays).toBe(7)
+  })
+
+  it('backfills tension to null on events from a pre-pacing export', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      version: 11 as never, // pre-tension export
+      events: [{
+        id: 'ev-no-tension',
+        worldId: 'world-extra',
+        chapterId: 'ch-1',
+        timelineId: 'tl-1',
+        title: 'Pre-pacing Event',
+        description: '',
+        locationMarkerId: null,
+        involvedCharacterIds: [],
+        involvedItemIds: [],
+        tags: [],
+        sortOrder: 0,
+        travelDays: null,
+        inWorldTime: null,
+        // deliberately omit tension — simulates a v11 export
+        status: 'draft' as const,
+        povCharacterId: null,
+        isFlashback: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      } as never],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.events.get('ev-no-tension')
+    expect(stored).toBeDefined()
+    expect((stored as unknown as Record<string, unknown>).tension).toBeNull()
+  })
+
+  it('preserves an explicit tension rating through export/import', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      events: [{
+        id: 'ev-rated',
+        worldId: 'world-extra',
+        chapterId: 'ch-1',
+        timelineId: 'tl-1',
+        title: 'Climax',
+        description: '',
+        locationMarkerId: null,
+        involvedCharacterIds: [],
+        involvedItemIds: [],
+        tags: [],
+        sortOrder: 0,
+        travelDays: null,
+        inWorldTime: null,
+        tension: 5,
+        status: 'draft' as const,
+        povCharacterId: null,
+        isFlashback: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      }],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.events.get('ev-rated')
+    expect(stored!.tension).toBe(5)
   })
 
   it('backfills inWorldTime to null on events that lack it (older export)', async () => {
@@ -522,6 +591,7 @@ describe('importWorld — travelModes', () => {
         sortOrder: 0,
         travelDays: null,
         inWorldTime: 3,
+        tension: null,
         status: 'draft' as const,
         povCharacterId: null,
         isFlashback: true,
@@ -658,8 +728,8 @@ describe('importWorld — v1 → v2 migration', () => {
       version: 1,
       chapters: [{ id: 'ch-1', worldId: 'world-extra', timelineId: 'tl-1', number: 1, title: 'Ch1', synopsis: '', notes: '', createdAt: 1000, updatedAt: 1000 }],
       events: [
-        { id: 'ev-b', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'B', description: '', locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 10, travelDays: null, inWorldTime: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 },
-        { id: 'ev-a', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'A', description: '', locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, inWorldTime: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 },
+        { id: 'ev-b', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'B', description: '', locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 10, travelDays: null, inWorldTime: null, tension: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 },
+        { id: 'ev-a', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'A', description: '', locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, inWorldTime: null, tension: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 },
       ],
       characterSnapshots: [{
         id: 'snap-v1',
@@ -729,7 +799,7 @@ describe('importWorld — v1 → v2 migration', () => {
     const data = makeExport({
       version: 1,
       chapters: [{ id: 'ch-rel', worldId: 'world-extra', timelineId: 'tl-1', number: 1, title: 'Ch', synopsis: '', notes: '', createdAt: 1000, updatedAt: 1000 }],
-      events: [{ id: 'ev-rel', worldId: 'world-extra', chapterId: 'ch-rel', timelineId: 'tl-1', title: 'Ev', description: '', locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, inWorldTime: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 }],
+      events: [{ id: 'ev-rel', worldId: 'world-extra', chapterId: 'ch-rel', timelineId: 'tl-1', title: 'Ev', description: '', locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, inWorldTime: null, tension: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 }],
       relationships: [{
         id: 'rel-v1',
         worldId: 'world-extra',
@@ -800,7 +870,7 @@ describe('importWorld — full optional arrays', () => {
         id: 'ev-1', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1',
         title: 'Battle Begins', description: '', locationMarkerId: null,
         involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0,
-        travelDays: null, inWorldTime: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000,
+        travelDays: null, inWorldTime: null, tension: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000,
       }],
     })
 
