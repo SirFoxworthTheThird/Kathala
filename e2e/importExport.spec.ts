@@ -109,6 +109,12 @@ test.describe('Import / Export', () => {
     // Go to world selector and export
     await goHome(page)
 
+    // Force the download fallback: with the File System Access API present,
+    // export writes via showSaveFilePicker and fires no 'download' event.
+    await page.evaluate(() => {
+      ;(window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker = undefined
+    })
+
     const downloadPromise = page.waitForEvent('download')
     await page.getByTitle('Export world (single file)').click()
     const download = await downloadPromise
