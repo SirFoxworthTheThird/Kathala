@@ -41,6 +41,7 @@ export async function deleteTimeline(id: string) {
     db.characterSnapshots, db.itemPlacements, db.locationSnapshots,
     db.itemSnapshots, db.characterMovements, db.relationshipSnapshots,
     db.mapRegionSnapshots, db.timelineRelationships, db.crossTimelineArtifacts,
+    db.sceneTexts,
   ], async () => {
     const events = await db.events.where('timelineId').equals(id).toArray()
     await db.timelines.delete(id)
@@ -54,6 +55,7 @@ export async function deleteTimeline(id: string) {
       await db.characterMovements.where('eventId').equals(ev.id).delete()
       await db.relationshipSnapshots.where('eventId').equals(ev.id).delete()
       await db.mapRegionSnapshots.where('eventId').equals(ev.id).delete()
+      await db.sceneTexts.where('eventId').equals(ev.id).delete()
     }
     await db.timelineRelationships
       .filter((r) => r.sourceTimelineId === id || r.targetTimelineId === id)
@@ -118,6 +120,7 @@ export async function deleteChapter(id: string) {
     db.chapters, db.events, db.characterSnapshots,
     db.itemPlacements, db.locationSnapshots, db.itemSnapshots,
     db.characterMovements, db.relationshipSnapshots, db.mapRegionSnapshots,
+    db.sceneTexts,
   ], async () => {
     const events = await db.events.where('chapterId').equals(id).toArray()
     await db.chapters.delete(id)
@@ -130,6 +133,7 @@ export async function deleteChapter(id: string) {
       await db.characterMovements.where('eventId').equals(ev.id).delete()
       await db.relationshipSnapshots.where('eventId').equals(ev.id).delete()
       await db.mapRegionSnapshots.where('eventId').equals(ev.id).delete()
+      await db.sceneTexts.where('eventId').equals(ev.id).delete()
     }
   })
 }
@@ -173,9 +177,11 @@ export function useEvent(id: string | null) {
 /** Creates an event. In the delta/last-known model, no snapshot inheritance is needed —
  *  state is resolved by looking back to the most recent prior snapshot at read time. */
 export async function createEvent(
-  data: Omit<WorldEvent, 'id' | 'createdAt' | 'updatedAt' | 'travelDays' | 'inWorldTime' | 'status' | 'povCharacterId' | 'isFlashback'> & {
+  data: Omit<WorldEvent, 'id' | 'createdAt' | 'updatedAt' | 'travelDays' | 'inWorldTime' | 'tension' | 'structureBeat' | 'status' | 'povCharacterId' | 'isFlashback'> & {
     travelDays?: number | null
     inWorldTime?: number | null
+    tension?: number | null
+    structureBeat?: string | null
     status?: EventStatus
     povCharacterId?: string | null
     isFlashback?: boolean
@@ -186,6 +192,8 @@ export async function createEvent(
     id: generateId(),
     travelDays: null,
     inWorldTime: null,
+    tension: null,
+    structureBeat: null,
     status: 'draft',
     povCharacterId: null,
     isFlashback: false,
@@ -209,7 +217,7 @@ export async function deleteEvent(id: string) {
   await db.transaction('rw', [
     db.events, db.characterSnapshots, db.itemPlacements,
     db.locationSnapshots, db.itemSnapshots, db.characterMovements,
-    db.relationshipSnapshots, db.mapRegionSnapshots,
+    db.relationshipSnapshots, db.mapRegionSnapshots, db.sceneTexts,
   ], async () => {
     await db.events.delete(id)
     await db.characterSnapshots.where('eventId').equals(id).delete()
@@ -219,6 +227,7 @@ export async function deleteEvent(id: string) {
     await db.characterMovements.where('eventId').equals(id).delete()
     await db.relationshipSnapshots.where('eventId').equals(id).delete()
     await db.mapRegionSnapshots.where('eventId').equals(id).delete()
+    await db.sceneTexts.where('eventId').equals(id).delete()
   })
 }
 
@@ -227,7 +236,7 @@ export async function bulkDeleteEvents(ids: string[]): Promise<void> {
   await db.transaction('rw', [
     db.events, db.characterSnapshots, db.itemPlacements,
     db.locationSnapshots, db.itemSnapshots, db.characterMovements,
-    db.relationshipSnapshots, db.mapRegionSnapshots,
+    db.relationshipSnapshots, db.mapRegionSnapshots, db.sceneTexts,
   ], async () => {
     for (const id of ids) {
       await db.events.delete(id)
@@ -238,6 +247,7 @@ export async function bulkDeleteEvents(ids: string[]): Promise<void> {
       await db.characterMovements.where('eventId').equals(id).delete()
       await db.relationshipSnapshots.where('eventId').equals(id).delete()
       await db.mapRegionSnapshots.where('eventId').equals(id).delete()
+      await db.sceneTexts.where('eventId').equals(id).delete()
     }
   })
 }

@@ -32,6 +32,7 @@ import type {
   FactionRelationship,
   KnowledgeFact,
   KnowledgeReveal,
+  SceneText,
   ContinuitySuppression,
 } from '@/types'
 
@@ -67,6 +68,7 @@ class PlotWeaveDB extends Dexie {
   factionRelationships!: EntityTable<FactionRelationship, 'id'>
   knowledgeFacts!: EntityTable<KnowledgeFact, 'id'>
   knowledgeReveals!: EntityTable<KnowledgeReveal, 'id'>
+  sceneTexts!: EntityTable<SceneText, 'id'>
   continuitySuppressions!: EntityTable<ContinuitySuppression, 'id'>
 
   constructor() {
@@ -515,6 +517,25 @@ class PlotWeaveDB extends Dexie {
       await tx.table('knowledgeFacts').toCollection().modify((f: Record<string, unknown>) => {
         if (f.originEventId === undefined) f.originEventId = null
       })
+    })
+
+    // v37: dramatic-intensity rating on events for the pacing curve. Backfill null.
+    this.version(37).stores({}).upgrade(async (tx) => {
+      await tx.table('events').toCollection().modify((e: Record<string, unknown>) => {
+        if (e.tension === undefined) e.tension = null
+      })
+    })
+
+    // v38: story-structure beat marker on events (Inciting Incident, Midpoint, …). Backfill null.
+    this.version(38).stores({}).upgrade(async (tx) => {
+      await tx.table('events').toCollection().modify((e: Record<string, unknown>) => {
+        if (e.structureBeat === undefined) e.structureBeat = null
+      })
+    })
+
+    // v39: manuscript prose per scene, keyed to its event.
+    this.version(39).stores({
+      sceneTexts: 'id, worldId, eventId',
     })
   }
 }

@@ -189,7 +189,7 @@ describe('post-migration invariant', () => {
       worldId: 'w', chapterId: 'ch', timelineId: 'tl',
       title: 'Bulk', description: '',
       locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [],
-      tags: [], sortOrder: 0, travelDays: null, inWorldTime: null,
+      tags: [], sortOrder: 0, travelDays: null, inWorldTime: null, tension: null, structureBeat: null,
       status: 'draft', povCharacterId: 'char-z', isFlashback: false,
       createdAt: now, updatedAt: now,
     }])

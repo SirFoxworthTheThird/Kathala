@@ -13,6 +13,7 @@ import { BulkActionToolbar } from './BulkActionToolbar'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { AddChapterDialog } from './AddChapterDialog'
 import { ChapterAIDialog } from './ChapterAIDialog'
+import { PacingCurve } from './PacingCurve'
 import { TimelineRelationshipPanel } from './TimelineRelationshipPanel'
 import type { WorldEvent, Chapter } from '@/types'
 
@@ -266,19 +267,29 @@ export default function TimelineView() {
               </Button>
             }
           />
-        ) : viewMode === 'narrative' ? (
-          <div className="flex flex-col gap-3">
-            {chapters.map((ch) => (
-              <ChapterRow key={ch.id} chapter={ch} />
-            ))}
-          </div>
         ) : (
-          <ChronologicalList
-            events={timelineEvents}
-            chapters={chapters}
-            activeEventId={activeEventId}
-            onSelect={setActiveEventId}
-          />
+          <div className="flex flex-col gap-3">
+            <PacingCurve
+              worldId={worldId!}
+              events={timelineEvents}
+              chapters={chapters}
+              order={viewMode}
+              activeEventId={activeEventId}
+              onSelect={setActiveEventId}
+            />
+            {viewMode === 'narrative' ? (
+              chapters.map((ch) => (
+                <ChapterRow key={ch.id} chapter={ch} />
+              ))
+            ) : (
+              <ChronologicalList
+                events={timelineEvents}
+                chapters={chapters}
+                activeEventId={activeEventId}
+                onSelect={setActiveEventId}
+              />
+            )}
+          </div>
         )}
       </div>
       {currentTimelineId && viewMode === 'narrative' && <BulkActionToolbar timelineId={currentTimelineId} />}

@@ -181,6 +181,8 @@ describe('computeSortKey', () => {
       tags: [],
       travelDays: null,
       inWorldTime: null,
+      tension: null,
+      structureBeat: null,
       status: 'draft',
       povCharacterId: null,
       isFlashback: false,
