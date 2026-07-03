@@ -38,11 +38,15 @@ describe('bundled example worlds stay importable', () => {
         expect(ev).toHaveProperty('travelDays')
         expect(ev).toHaveProperty('isFlashback')
         expect(ev).toHaveProperty('inWorldTime')
+        // Backfilled by later versions — must be present and null on old exports.
+        expect(ev.tension).toBeNull()
+        expect(ev.structureBeat).toBeNull()
       }
 
-      // Knowledge tables exist and default to empty for pre-feature exports.
+      // Knowledge and manuscript tables exist and default to empty for pre-feature exports.
       expect(await db.knowledgeFacts.where('worldId').equals(worldId).count()).toBe(0)
       expect(await db.knowledgeReveals.where('worldId').equals(worldId).count()).toBe(0)
+      expect(await db.sceneTexts.where('worldId').equals(worldId).count()).toBe(0)
     })
   }
 })
