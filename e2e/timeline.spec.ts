@@ -73,7 +73,7 @@ test.describe('Timeline and chapters', () => {
     await page.getByTitle('Open chapter detail').click()
     await expect(page).toHaveURL(/#\/worlds\/.+\/timeline\/.+/)
 
-    await page.getByRole('button', { name: 'Add Event' }).click()
+    await page.getByRole('button', { name: 'Add Event' }).first().click()
     await expect(page.getByRole('heading', { name: 'Add Event' })).toBeVisible()
 
     await page.getByPlaceholder('Event title').fill('The Departure')
@@ -90,7 +90,7 @@ test.describe('Timeline and chapters', () => {
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
     await page.getByTitle('Open chapter detail').click()
 
-    await page.getByRole('button', { name: 'Add Event' }).click()
+    await page.getByRole('button', { name: 'Add Event' }).first().click()
     await expect(page.getByRole('heading', { name: 'Add Event' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Add Event' }).last()).toBeDisabled()
   })
@@ -103,12 +103,12 @@ test.describe('Timeline and chapters', () => {
     await page.getByTitle('Open chapter detail').click()
 
     // Create two events
-    await page.getByRole('button', { name: 'Add Event' }).click()
+    await page.getByRole('button', { name: 'Add Event' }).first().click()
     await page.getByPlaceholder('Event title').fill('First Event')
     await page.getByRole('button', { name: 'Add Event' }).last().click()
     await expect(page.getByText('First Event')).toBeVisible()
 
-    await page.getByRole('button', { name: 'Add Event' }).click()
+    await page.getByRole('button', { name: 'Add Event' }).first().click()
     await page.getByPlaceholder('Event title').fill('Second Event')
     await page.getByRole('button', { name: 'Add Event' }).last().click()
     await expect(page.getByText('Second Event')).toBeVisible()
