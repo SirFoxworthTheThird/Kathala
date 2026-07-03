@@ -33,7 +33,7 @@ test.describe("Writer's Brief panel", () => {
 
   test('shows chapter content when an event is active', async ({ page }) => {
     // Create a timeline with a chapter and event
-    await page.getByTitle('Timeline').click()
+    await page.getByRole('link', { name: 'Timeline' }).click()
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await expect(page.getByText('Main Timeline')).toBeVisible()
 
@@ -52,7 +52,7 @@ test.describe("Writer's Brief panel", () => {
     await expect(page.getByText('First Encounter')).toBeVisible()
 
     // Set the event as active via the timeline bar
-    await page.getByTitle('Timeline').click()
+    await page.getByRole('link', { name: 'Timeline' }).click()
     await page.getByTitle('First Encounter').click()
 
     // Open brief — should show chapter info
@@ -73,7 +73,7 @@ test.describe("Writer's Brief panel", () => {
     await expect(page.getByText('Aragorn')).toBeVisible()
 
     // Create timeline with chapter + event involving the character
-    await page.getByTitle('Timeline').click()
+    await page.getByRole('link', { name: 'Timeline' }).click()
     await page.getByRole('button', { name: 'Create Timeline' }).click()
 
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
@@ -86,7 +86,7 @@ test.describe("Writer's Brief panel", () => {
     await page.getByRole('button', { name: 'Add Event' }).last().click()
 
     // Activate the event
-    await page.getByTitle('Timeline').click()
+    await page.getByRole('link', { name: 'Timeline' }).click()
     await page.getByTitle('Council Scene').click()
 
     // Open brief

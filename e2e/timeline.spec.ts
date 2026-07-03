@@ -119,13 +119,13 @@ test.describe('Timeline and chapters', () => {
     await page.getByRole('link', { name: /timeline/i }).click()
 
     // Click the 'First Event' marker in the timeline bar
-    await page.getByTitle('First Event').click()
+    await page.getByTitle('First Event', { exact: true }).click()
 
     // The active event label appears in the timeline bar
-    await expect(page.getByTitle('First Event')).toBeVisible()
+    await expect(page.getByTitle('First Event', { exact: true })).toBeVisible()
 
     // Click the second event and verify the active marker shifts
-    await page.getByTitle('Second Event').click()
-    await expect(page.getByTitle('Second Event')).toBeVisible()
+    await page.getByTitle('Second Event', { exact: true }).click()
+    await expect(page.getByTitle('Second Event', { exact: true })).toBeVisible()
   })
 })

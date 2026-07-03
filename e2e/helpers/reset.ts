@@ -25,5 +25,8 @@ export async function resetDB(page: Page): Promise<void> {
   // Navigate to / so the app re-opens the fresh DB.
   // Use goto instead of reload to avoid conflicts when a prior test's import
   // navigation is still in flight (which would cause reload to be interrupted).
-  await page.goto('/', { waitUntil: 'networkidle' })
+  // Wait for 'load' rather than 'networkidle': Vite's HMR websocket keeps the
+  // network perpetually "busy", so networkidle can time out under load. The
+  // subsequent auto-waiting locators handle readiness.
+  await page.goto('/', { waitUntil: 'load' })
 }
