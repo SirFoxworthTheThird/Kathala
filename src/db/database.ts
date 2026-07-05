@@ -554,6 +554,12 @@ db.on('blocked', () => {
   window.location.reload()
 })
 
+// Dev-only seam so e2e tests can seed records through Dexie (which updates live
+// queries in place, unlike a raw IndexedDB write). Stripped from production.
+if (import.meta.env.DEV) {
+  ;(window as unknown as { __pwdb?: typeof db }).__pwdb = db
+}
+
 db.on('versionchange', () => {
   db.close()
   window.location.reload()
