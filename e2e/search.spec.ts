@@ -32,17 +32,17 @@ test.describe('Search palette', () => {
 
   test('opens search palette via toolbar button', async ({ page }) => {
     await page.getByTitle('Search (Ctrl+K)').click()
-    await expect(page.getByPlaceholder('Search characters, locations, chapters…')).toBeVisible()
+    await expect(page.getByPlaceholder('Search characters, factions, locations, lore…')).toBeVisible()
   })
 
   test('opens search palette via Ctrl+K keyboard shortcut', async ({ page }) => {
     await page.keyboard.press('Control+k')
-    await expect(page.getByPlaceholder('Search characters, locations, chapters…')).toBeVisible()
+    await expect(page.getByPlaceholder('Search characters, factions, locations, lore…')).toBeVisible()
   })
 
   test('closes palette with Escape key', async ({ page }) => {
     await page.getByTitle('Search (Ctrl+K)').click()
-    const input = page.getByPlaceholder('Search characters, locations, chapters…')
+    const input = page.getByPlaceholder('Search characters, factions, locations, lore…')
     await expect(input).toBeVisible()
     // Press Escape directly on the focused input
     await input.press('Escape')
@@ -56,30 +56,30 @@ test.describe('Search palette', () => {
 
   test('finds a character by name', async ({ page }) => {
     await page.getByTitle('Search (Ctrl+K)').click()
-    await page.getByPlaceholder('Search characters, locations, chapters…').fill('Gandalf')
+    await page.getByPlaceholder('Search characters, factions, locations, lore…').fill('Gandalf')
     await expect(page.getByRole('button', { name: 'Gandalf' })).toBeVisible()
   })
 
   test('finds an item by name', async ({ page }) => {
     await page.getByTitle('Search (Ctrl+K)').click()
-    await page.getByPlaceholder('Search characters, locations, chapters…').fill('Staff')
+    await page.getByPlaceholder('Search characters, factions, locations, lore…').fill('Staff')
     // The result renders as a button with the item name
     await expect(page.getByRole('button', { name: 'Staff of Power' })).toBeVisible()
   })
 
   test('navigates to character from search result', async ({ page }) => {
     await page.getByTitle('Search (Ctrl+K)').click()
-    await page.getByPlaceholder('Search characters, locations, chapters…').fill('Gandalf')
+    await page.getByPlaceholder('Search characters, factions, locations, lore…').fill('Gandalf')
     await page.getByRole('button', { name: 'Gandalf' }).click()
 
     // Palette closes and we navigate to character detail
-    await expect(page.getByPlaceholder('Search characters, locations, chapters…')).not.toBeVisible()
+    await expect(page.getByPlaceholder('Search characters, factions, locations, lore…')).not.toBeVisible()
     await expect(page).toHaveURL(/#\/worlds\/.+\/characters\//)
   })
 
   test('no results message when search has no matches', async ({ page }) => {
     await page.getByTitle('Search (Ctrl+K)').click()
-    await page.getByPlaceholder('Search characters, locations, chapters…').fill('xyzzy-no-match-12345')
+    await page.getByPlaceholder('Search characters, factions, locations, lore…').fill('xyzzy-no-match-12345')
     // With no results the list should be empty — the empty-state text is gone
     await expect(page.getByText('Start typing to search your world…')).not.toBeVisible()
     // And no result items visible

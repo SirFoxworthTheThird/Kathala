@@ -33,7 +33,7 @@ test.describe("Writer's Brief panel", () => {
 
   test('shows chapter content when an event is active', async ({ page }) => {
     // Create a timeline with a chapter and event
-    await page.getByTitle('Timeline').click()
+    await page.getByRole('link', { name: 'Timeline' }).click()
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await expect(page.getByText('Main Timeline')).toBeVisible()
 
@@ -41,17 +41,18 @@ test.describe("Writer's Brief panel", () => {
     await page.getByPlaceholder('Chapter title').fill('Opening Act')
     await page.getByPlaceholder('Brief synopsis...').fill('The story begins.')
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
-    await expect(page.getByText('Opening Act')).toBeVisible()
+    // Appears in both the chapter list and the timeline bar — first() is fine.
+    await expect(page.getByText('Opening Act').first()).toBeVisible()
 
     // Open chapter detail and create an event
     await page.getByTitle('Open chapter detail').click()
-    await page.getByRole('button', { name: 'Add Event' }).click()
+    await page.getByRole('button', { name: 'Add Event' }).first().click()
     await page.getByPlaceholder('Event title').fill('First Encounter')
     await page.getByRole('button', { name: 'Add Event' }).last().click()
     await expect(page.getByText('First Encounter')).toBeVisible()
 
     // Set the event as active via the timeline bar
-    await page.getByTitle('Timeline').click()
+    await page.getByRole('link', { name: 'Timeline' }).click()
     await page.getByTitle('First Encounter').click()
 
     // Open brief — should show chapter info
@@ -72,7 +73,7 @@ test.describe("Writer's Brief panel", () => {
     await expect(page.getByText('Aragorn')).toBeVisible()
 
     // Create timeline with chapter + event involving the character
-    await page.getByTitle('Timeline').click()
+    await page.getByRole('link', { name: 'Timeline' }).click()
     await page.getByRole('button', { name: 'Create Timeline' }).click()
 
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
@@ -80,12 +81,12 @@ test.describe("Writer's Brief panel", () => {
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
 
     await page.getByTitle('Open chapter detail').click()
-    await page.getByRole('button', { name: 'Add Event' }).click()
+    await page.getByRole('button', { name: 'Add Event' }).first().click()
     await page.getByPlaceholder('Event title').fill('Council Scene')
     await page.getByRole('button', { name: 'Add Event' }).last().click()
 
     // Activate the event
-    await page.getByTitle('Timeline').click()
+    await page.getByRole('link', { name: 'Timeline' }).click()
     await page.getByTitle('Council Scene').click()
 
     // Open brief

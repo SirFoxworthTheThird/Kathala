@@ -78,7 +78,7 @@ test.describe('Item management', () => {
     await expect(page.getByText('Shield of Aegis').first()).toBeVisible()
 
     // Filter by search
-    await page.getByPlaceholder('Search items...').fill('Mjolnir')
+    await page.getByPlaceholder('Search items…').fill('Mjolnir')
     await expect(page.getByText('Mjolnir').first()).toBeVisible()
     await expect(page.getByText('Shield of Aegis')).not.toBeVisible()
   })
