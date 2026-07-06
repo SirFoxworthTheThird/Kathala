@@ -108,6 +108,15 @@ Grab the latest installer for your platform from the [Releases page](https://git
 
 ---
 
+## Documentation
+
+For a full, screenshot-by-screenshot walkthrough of every part of the app — the
+time cursor, timeline, characters, maps, Cast Balance, Plot Threads, relationships,
+lore, factions, knowledge, the Writer's Brief, the Continuity Checker, and more —
+see the **[User Guide](docs/GUIDE.md)**.
+
+---
+
 ## Development
 
 ```bash
