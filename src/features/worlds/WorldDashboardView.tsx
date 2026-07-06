@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, type ElementType, type ReactNode } from '
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   Map as MapIcon, Users, Network, BookOpen,
-  Package, BarChart2, ShieldAlert, Clock, Layers, Pencil, FileEdit,
+  Package, BarChart2, ShieldAlert, Clock, Layers, Pencil, FileEdit, Spline,
 } from 'lucide-react'
 import type { EventStatus } from '@/types'
 import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils'
 import { OnboardingWizard } from '@/features/onboarding'
 import { DashboardSuggestion } from './DashboardSuggestion'
 import { CastBalance } from './CastBalance'
+import { ThreadCadence } from './ThreadCadence'
 import { evaluateSuggestions, type WorldSummaryData } from './suggestionRules'
 
 // ── Stat pill ────────────────────────────────────────────────────────────────
@@ -427,6 +428,14 @@ export default function WorldDashboardView() {
         <div>
           <SectionHeading icon={Users}>Cast Balance</SectionHeading>
           <CastBalance worldId={worldId ?? ''} characters={characters} chapters={chapters} events={allEvents} />
+        </div>
+      )}
+
+      {/* Plot threads — subplot cadence & dangling threads */}
+      {chapters.length > 0 && (
+        <div>
+          <SectionHeading icon={Spline}>Plot Threads</SectionHeading>
+          <ThreadCadence worldId={worldId ?? ''} chapters={chapters} events={allEvents} />
         </div>
       )}
 

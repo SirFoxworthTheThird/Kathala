@@ -42,12 +42,15 @@ describe('bundled example worlds stay importable', () => {
         expect(ev.tension).toBeNull()
         expect(ev.structureBeat).toBeNull()
         expect(ev.mentionedCharacterIds).toEqual([])
+        expect(ev.threadIds).toEqual([])
       }
 
       // Knowledge and manuscript tables exist and default to empty for pre-feature exports.
       expect(await db.knowledgeFacts.where('worldId').equals(worldId).count()).toBe(0)
       expect(await db.knowledgeReveals.where('worldId').equals(worldId).count()).toBe(0)
       expect(await db.sceneTexts.where('worldId').equals(worldId).count()).toBe(0)
+      // Plot threads were added later, so old exports have none.
+      expect(await db.plotThreads.where('worldId').equals(worldId).count()).toBe(0)
     })
   }
 })

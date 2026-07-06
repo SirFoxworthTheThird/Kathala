@@ -8,7 +8,7 @@ function chapter(id: string, number: number): Chapter {
 function event(id: string, chapterId: string, sortOrder: number, title = id): WorldEvent {
   return {
     id, worldId: 'w', chapterId, timelineId: 't1', title, description: '',
-    locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder,
+    locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], threadIds: [], involvedItemIds: [], tags: [], sortOrder,
     travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft', povCharacterId: null, isFlashback: false,
     createdAt: 0, updatedAt: 0,
   }

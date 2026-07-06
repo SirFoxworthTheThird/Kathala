@@ -177,7 +177,7 @@ describe('computeSortKey', () => {
       sortOrder: 5,
       locationMarkerId: null,
       involvedCharacterIds: [],
-      mentionedCharacterIds: [],
+      mentionedCharacterIds: [], threadIds: [],
       involvedItemIds: [],
       tags: [],
       travelDays: null,

@@ -7,11 +7,12 @@ import type {
   MapAnnotation, LoreCategory, LorePage, Faction, FactionMembership, FactionRelationship,
   KnowledgeFact, KnowledgeReveal,
   SceneText,
+  PlotThread,
   ContinuitySuppression,
 } from '@/types'
 import { generateId } from '@/lib/id'
 
-const EXPORT_VERSION = 15
+const EXPORT_VERSION = 16
 
 interface BlobExport {
   id: string
@@ -59,6 +60,7 @@ export interface WorldExportFile {
   knowledgeFacts?: KnowledgeFact[]
   knowledgeReveals?: KnowledgeReveal[]
   sceneTexts?: SceneText[]
+  plotThreads?: PlotThread[]
   continuitySuppressions?: ContinuitySuppression[]
   relationshipPositions?: Record<string, { x: number; y: number }>
   /** @deprecated v6 and earlier stored only IDs via localStorage; superseded by continuitySuppressions */
@@ -130,6 +132,7 @@ interface CollectedWorldData {
   knowledgeFacts: KnowledgeFact[]
   knowledgeReveals: KnowledgeReveal[]
   sceneTexts: SceneText[]
+  plotThreads: PlotThread[]
   continuitySuppressions: ContinuitySuppression[]
 }
 
@@ -166,6 +169,7 @@ async function collectWorldData(worldId: string): Promise<CollectedWorldData> {
     knowledgeFacts,
     knowledgeReveals,
     sceneTexts,
+    plotThreads,
     continuitySuppressions,
   ] = await Promise.all([
     db.worlds.get(worldId),
@@ -199,6 +203,7 @@ async function collectWorldData(worldId: string): Promise<CollectedWorldData> {
     db.knowledgeFacts.where('worldId').equals(worldId).toArray(),
     db.knowledgeReveals.where('worldId').equals(worldId).toArray(),
     db.sceneTexts.where('worldId').equals(worldId).toArray(),
+    db.plotThreads.where('worldId').equals(worldId).toArray(),
     db.continuitySuppressions.where('worldId').equals(worldId).toArray(),
   ])
 
@@ -236,6 +241,7 @@ async function collectWorldData(worldId: string): Promise<CollectedWorldData> {
     knowledgeFacts,
     knowledgeReveals,
     sceneTexts,
+    plotThreads,
     continuitySuppressions,
   }
 }
@@ -377,6 +383,7 @@ export async function exportWorld(
     knowledgeFacts: d.knowledgeFacts,
     knowledgeReveals: d.knowledgeReveals,
     sceneTexts: d.sceneTexts,
+    plotThreads: d.plotThreads,
     continuitySuppressions: d.continuitySuppressions,
     ...extras,
   }
@@ -448,6 +455,7 @@ export async function exportWorldSplit(
     knowledgeFacts: d.knowledgeFacts,
     knowledgeReveals: d.knowledgeReveals,
     sceneTexts: d.sceneTexts,
+    plotThreads: d.plotThreads,
     continuitySuppressions: d.continuitySuppressions,
     ...extras,
   }
@@ -516,6 +524,7 @@ export async function serializeWorldForSync(worldId: string): Promise<string> {
     knowledgeFacts: d.knowledgeFacts,
     knowledgeReveals: d.knowledgeReveals,
     sceneTexts: d.sceneTexts,
+    plotThreads: d.plotThreads,
     continuitySuppressions: d.continuitySuppressions,
     ...extras,
   }
@@ -651,6 +660,10 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
     throw new Error('Invalid file: sceneTexts is not an array')
   }
   if (!d.sceneTexts) (d as Record<string, unknown>).sceneTexts = []
+  if (d.plotThreads !== undefined && !Array.isArray(d.plotThreads)) {
+    throw new Error('Invalid file: plotThreads is not an array')
+  }
+  if (!d.plotThreads) (d as Record<string, unknown>).plotThreads = []
 }
 
 function normalizeImport(data: WorldExportFile): void {
@@ -700,6 +713,7 @@ function normalizeImport(data: WorldExportFile): void {
     if (e.tension === undefined) e.tension = null
     if (e.structureBeat === undefined) e.structureBeat = null
     if (e.mentionedCharacterIds === undefined) e.mentionedCharacterIds = []
+    if (e.threadIds === undefined) e.threadIds = []
   }
   // Backfill the reader-clock and origin on knowledge facts (added after knowledge shipped)
   for (const fact of data.knowledgeFacts ?? []) {
@@ -764,6 +778,7 @@ function normalizeImport(data: WorldExportFile): void {
           mentionedCharacterIds: [],
           involvedItemIds: [],
           tags: [],
+          threadIds: [],
           sortOrder: 0,
           travelDays: (c.travelDays as number | null) ?? null,
           inWorldTime: null,
@@ -876,7 +891,7 @@ async function importWorldData(data: WorldExportFile): Promise<string> {
     db.timelineRelationships, db.crossTimelineArtifacts,
     db.mapRoutes, db.mapRegions, db.mapRegionSnapshots, db.mapAnnotations,
     db.loreCategories, db.lorePages, db.factions, db.factionMemberships, db.factionRelationships,
-    db.knowledgeFacts, db.knowledgeReveals, db.sceneTexts,
+    db.knowledgeFacts, db.knowledgeReveals, db.sceneTexts, db.plotThreads,
     db.continuitySuppressions,
   ], async () => {
     await db.worlds.put(data.world)
@@ -909,6 +924,7 @@ async function importWorldData(data: WorldExportFile): Promise<string> {
     await db.knowledgeFacts.bulkPut(data.knowledgeFacts ?? [])
     await db.knowledgeReveals.bulkPut(data.knowledgeReveals ?? [])
     await db.sceneTexts.bulkPut(data.sceneTexts ?? [])
+    await db.plotThreads.bulkPut(data.plotThreads ?? [])
     if (suppressionsToImport.length > 0) {
       await db.continuitySuppressions.bulkPut(suppressionsToImport)
     }
@@ -1052,7 +1068,7 @@ export async function applyWorldImport(
     localRoutes, localRegions, localRegSnaps, localAnnotations,
     localLoreCats, localLorePages,
     localFactions, localFactionMemberships, localFactionRelationships,
-    localKnowledgeFacts, localKnowledgeReveals, localSceneTexts,
+    localKnowledgeFacts, localKnowledgeReveals, localSceneTexts, localPlotThreads,
   ] = await Promise.all([
     db.characters.where('worldId').equals(worldId).toArray(),
     db.items.where('worldId').equals(worldId).toArray(),
@@ -1083,6 +1099,7 @@ export async function applyWorldImport(
     db.knowledgeFacts.where('worldId').equals(worldId).toArray(),
     db.knowledgeReveals.where('worldId').equals(worldId).toArray(),
     db.sceneTexts.where('worldId').equals(worldId).toArray(),
+    db.plotThreads.where('worldId').equals(worldId).toArray(),
   ])
 
   const merged = {
@@ -1116,6 +1133,7 @@ export async function applyWorldImport(
     knowledgeFacts:       mergeTable(parsed.knowledgeFacts ?? [], localKnowledgeFacts).result,
     knowledgeReveals:     mergeTable(parsed.knowledgeReveals ?? [], localKnowledgeReveals).result,
     sceneTexts:           mergeTable(parsed.sceneTexts ?? [], localSceneTexts).result,
+    plotThreads:          mergeTable(parsed.plotThreads ?? [], localPlotThreads).result,
     blobs:                parsed.blobs, // blobs: always use incoming (binary, no updatedAt)
     relationshipPositions: parsed.relationshipPositions,
     suppressedIssueIds:   parsed.suppressedIssueIds,
