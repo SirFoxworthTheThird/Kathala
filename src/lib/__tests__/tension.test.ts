@@ -14,7 +14,7 @@ function event(
 ): WorldEvent {
   return {
     id, worldId: 'w', chapterId, timelineId: 't1', title: id, description: '',
-    locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder,
+    locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], threadIds: [], involvedItemIds: [], tags: [], sortOrder,
     travelDays: null, inWorldTime: null, tension, structureBeat: null, status: 'draft', povCharacterId: null, isFlashback: false,
     createdAt: 0, updatedAt: 0, ...extra,
   }

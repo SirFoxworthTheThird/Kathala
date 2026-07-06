@@ -33,6 +33,7 @@ import type {
   KnowledgeFact,
   KnowledgeReveal,
   SceneText,
+  PlotThread,
   ContinuitySuppression,
 } from '@/types'
 
@@ -69,6 +70,7 @@ class PlotWeaveDB extends Dexie {
   knowledgeFacts!: EntityTable<KnowledgeFact, 'id'>
   knowledgeReveals!: EntityTable<KnowledgeReveal, 'id'>
   sceneTexts!: EntityTable<SceneText, 'id'>
+  plotThreads!: EntityTable<PlotThread, 'id'>
   continuitySuppressions!: EntityTable<ContinuitySuppression, 'id'>
 
   constructor() {
@@ -542,6 +544,15 @@ class PlotWeaveDB extends Dexie {
     this.version(40).stores({}).upgrade(async (tx) => {
       await tx.table('events').toCollection().modify((e: Record<string, unknown>) => {
         if (e.mentionedCharacterIds === undefined) e.mentionedCharacterIds = []
+      })
+    })
+
+    // v41: plot-thread / subplot tracking. New table + backfill threadIds on events.
+    this.version(41).stores({
+      plotThreads: 'id, worldId',
+    }).upgrade(async (tx) => {
+      await tx.table('events').toCollection().modify((e: Record<string, unknown>) => {
+        if (e.threadIds === undefined) e.threadIds = []
       })
     })
   }

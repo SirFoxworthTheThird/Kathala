@@ -16,7 +16,7 @@ FILE STRUCTURE
 ═══════════════════════════════════════════════════════════
 
 {
-  "version": 15,
+  "version": 16,
   "type": "full",
   "exportedAt": <current unix timestamp in ms, e.g. 1700000000000>,
   "world": { ... },
@@ -35,6 +35,7 @@ FILE STRUCTURE
   "knowledgeFacts": [ ... ],
   "knowledgeReveals": [ ... ],
   "sceneTexts": [],                    // leave empty — scene prose is authored in-app, not generated here
+  "plotThreads": [ ... ],              // named subplots/threads (see schema below); [] if none
   "mapLayers": [],
   "locationMarkers": [],
   "mapAnnotations": [],
@@ -148,6 +149,7 @@ Events are the primary time unit. Each chapter contains ordered events.
   "mentionedCharacterIds": [],        // ids of characters referenced but NOT present in the scene; [] if none
   "involvedItemIds": ["<item id>"],   // empty array if none
   "tags": ["battle", "revelation"],   // thematic tags
+  "threadIds": [],                    // ids of plotThreads this event advances; [] if none
   "sortOrder": 0,                     // ascending within a chapter, starting at 0
   "travelDays": null,                 // days of travel before this event; null if unknown
   "inWorldTime": null,                // explicit absolute in-world day; null unless this event (e.g. a flashback) sits out of narrative order
@@ -253,6 +255,17 @@ showing their state at that point in the story.
   "characterId": "<character.id>",
   "eventId": "<event.id at which they learn it>",
   "note": "",
+  "createdAt": <timestamp>,
+  "updatedAt": <timestamp>
+}
+
+── plotThreads (named subplots; events reference these via threadIds) ──
+{
+  "id": "<uuid>",
+  "worldId": "<world.id>",
+  "name": "<short thread name, e.g. 'The Rebellion' or 'Aria & Cael'>",
+  "color": "<hex like #f59e0b>",
+  "description": "<one line on what this thread is about>",
   "createdAt": <timestamp>,
   "updatedAt": <timestamp>
 }

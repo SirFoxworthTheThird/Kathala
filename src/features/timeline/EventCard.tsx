@@ -2,9 +2,10 @@ import { useState, useRef, type KeyboardEvent } from 'react'
 import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye, History, Flame, Milestone, PenLine, Plus } from 'lucide-react'
 import { TENSION_LEVELS, tensionColor, tensionLabel } from '@/lib/tension'
 import { STORY_BEATS, beatById, beatActColor } from '@/lib/storyBeats'
-import { AtSign } from 'lucide-react'
+import { AtSign, Spline } from 'lucide-react'
 import { wordCount, detectMentions } from '@/lib/manuscript'
 import { useSceneText, setSceneText } from '@/db/hooks/useManuscript'
+import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { SceneDraftEditor } from './SceneDraftEditor'
 import type { WorldEvent, EventStatus } from '@/types'
 import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
@@ -38,6 +39,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
   const [description, setDescription] = useState(event.description)
   const [involvedIds, setInvolvedIds] = useState<string[]>(event.involvedCharacterIds)
   const [mentionedIds, setMentionedIds] = useState<string[]>(event.mentionedCharacterIds ?? [])
+  const [threadIds, setThreadIds] = useState<string[]>(event.threadIds ?? [])
   const [involvedItemIds, setInvolvedItemIds] = useState<string[]>(event.involvedItemIds)
   const [locationMarkerId, setLocationMarkerId] = useState<string | null>(event.locationMarkerId)
   const [tags, setTags] = useState<string[]>(event.tags)
@@ -57,6 +59,10 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
   const characters = useCharacters(event.worldId)
   const items = useItems(event.worldId)
   const locationMarkers = useAllLocationMarkers(event.worldId)
+  const plotThreads = usePlotThreads(event.worldId)
+
+  const assignedThreads = plotThreads.filter((t) => threadIds.includes(t.id))
+  const availableThreads = plotThreads.filter((t) => !threadIds.includes(t.id))
 
   const involvedChars = characters.filter((c) => involvedIds.includes(c.id))
   const availableChars = characters.filter((c) => !involvedIds.includes(c.id))
@@ -187,6 +193,20 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
     const newIds = mentionedIds.filter((id) => id !== characterId)
     setMentionedIds(newIds)
     await updateEvent(event.id, { mentionedCharacterIds: newIds })
+  }
+
+  // ── Plot-thread helpers ──────────────────────────────────────────────────────
+  async function addThread(threadId: string) {
+    if (threadIds.includes(threadId)) return
+    const newIds = [...threadIds, threadId]
+    setThreadIds(newIds)
+    await updateEvent(event.id, { threadIds: newIds })
+  }
+
+  async function removeThread(threadId: string) {
+    const newIds = threadIds.filter((id) => id !== threadId)
+    setThreadIds(newIds)
+    await updateEvent(event.id, { threadIds: newIds })
   }
 
   // ── Item helpers ───────────────────────────────────────────────────────────
@@ -591,6 +611,41 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
               </Select>
             )}
           </div>
+
+          {/* Plot threads (created on the dashboard; tagged here) */}
+          {plotThreads.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
+                <Spline className="h-3 w-3" /> Plot Threads
+              </span>
+              {assignedThreads.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {assignedThreads.map((t) => (
+                    <span key={t.id} className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]"
+                      style={{ background: `${t.color}22`, border: `1px solid ${t.color}55` }}>
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: t.color }} />
+                      <span className="text-[hsl(var(--foreground))]">{t.name}</span>
+                      <button onClick={() => removeThread(t.id)} className="ml-0.5 hover:text-red-400" aria-label={`Remove thread ${t.name}`}>
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {availableThreads.length > 0 && (
+                <Select onValueChange={addThread}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="+ Tag a thread…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableThreads.map((t) => (
+                      <SelectItem key={t.id} value={t.id} className="text-xs">{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
 
           {/* Involved Items */}
           {(involvedItems.length > 0 || availableItems.length > 0) && (

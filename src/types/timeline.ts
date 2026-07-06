@@ -46,6 +46,8 @@ export interface WorldEvent {
   tension: number | null
   /** Story-structure beat this event fulfils (beat id, e.g. 'midpoint'). null = none. */
   structureBeat: string | null
+  /** Plot threads / subplots this event advances (PlotThread ids). */
+  threadIds: string[]
   status: EventStatus
   povCharacterId: string | null
   /** Marks the event as a flashback/retrospective — suppresses present-state continuity checks. */

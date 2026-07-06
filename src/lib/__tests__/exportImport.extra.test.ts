@@ -422,7 +422,7 @@ describe('importWorld — travelModes', () => {
         description: '',
         locationMarkerId: null,
         involvedCharacterIds: [],
-        mentionedCharacterIds: [],
+        mentionedCharacterIds: [], threadIds: [],
         involvedItemIds: [],
         tags: [],
         sortOrder: 0,
@@ -452,7 +452,7 @@ describe('importWorld — travelModes', () => {
         description: '',
         locationMarkerId: null,
         involvedCharacterIds: [],
-        mentionedCharacterIds: [],
+        mentionedCharacterIds: [], threadIds: [],
         involvedItemIds: [],
         tags: [],
         sortOrder: 0,
@@ -488,7 +488,7 @@ describe('importWorld — travelModes', () => {
         description: '',
         locationMarkerId: null,
         involvedCharacterIds: [],
-        mentionedCharacterIds: [],
+        mentionedCharacterIds: [], threadIds: [],
         involvedItemIds: [],
         tags: [],
         sortOrder: 0,
@@ -523,7 +523,7 @@ describe('importWorld — travelModes', () => {
         description: '',
         locationMarkerId: null,
         involvedCharacterIds: [],
-        mentionedCharacterIds: [],
+        mentionedCharacterIds: [], threadIds: [],
         involvedItemIds: [],
         tags: [],
         sortOrder: 0,
@@ -559,7 +559,7 @@ describe('importWorld — travelModes', () => {
         description: '',
         locationMarkerId: null,
         involvedCharacterIds: [],
-        mentionedCharacterIds: [],
+        mentionedCharacterIds: [], threadIds: [],
         involvedItemIds: [],
         tags: [],
         sortOrder: 0,
@@ -595,7 +595,7 @@ describe('importWorld — travelModes', () => {
         description: '',
         locationMarkerId: null,
         involvedCharacterIds: [],
-        mentionedCharacterIds: [],
+        mentionedCharacterIds: [], threadIds: [],
         involvedItemIds: [],
         tags: [],
         sortOrder: 0,
@@ -700,6 +700,7 @@ describe('importWorld — travelModes', () => {
         locationMarkerId: null,
         involvedCharacterIds: ['c1'],
         mentionedCharacterIds: ['c2', 'c3'],
+        threadIds: [],
         involvedItemIds: [],
         tags: [],
         sortOrder: 0,
@@ -720,6 +721,96 @@ describe('importWorld — travelModes', () => {
     expect(stored!.mentionedCharacterIds).toEqual(['c2', 'c3'])
   })
 
+  it('round-trips plotThreads and the threadIds tagged on events', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      plotThreads: [
+        { id: 'th-1', worldId: 'world-extra', name: 'The Missing Heir', color: '#c084fc', description: 'Who inherits?', createdAt: 1000, updatedAt: 1000 },
+        { id: 'th-2', worldId: 'world-extra', name: 'The Siege', color: '#f87171', description: '', createdAt: 1000, updatedAt: 1000 },
+      ],
+      events: [{
+        id: 'ev-threaded',
+        worldId: 'world-extra',
+        chapterId: 'ch-1',
+        timelineId: 'tl-1',
+        title: 'Council',
+        description: '',
+        locationMarkerId: null,
+        involvedCharacterIds: [],
+        mentionedCharacterIds: [],
+        threadIds: ['th-1', 'th-2'],
+        involvedItemIds: [],
+        tags: [],
+        sortOrder: 0,
+        travelDays: null,
+        inWorldTime: null,
+        tension: null,
+        structureBeat: null,
+        status: 'draft' as const,
+        povCharacterId: null,
+        isFlashback: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      }],
+    })
+    await importWorld(makeFile(data))
+
+    const threads = await db.plotThreads.where('worldId').equals('world-extra').toArray()
+    expect(threads.map((t) => t.id).sort()).toEqual(['th-1', 'th-2'])
+    expect(threads.find((t) => t.id === 'th-1')?.name).toBe('The Missing Heir')
+
+    const stored = await db.events.get('ev-threaded')
+    expect(stored!.threadIds).toEqual(['th-1', 'th-2'])
+  })
+
+  it('defaults plotThreads to [] and backfills threadIds on a pre-threads export', async () => {
+    await db.delete()
+    await db.open()
+
+    const { plotThreads: _pt, ...without } = makeExport({
+      version: 15 as never, // pre-threads export
+      events: [{
+        id: 'ev-no-threads',
+        worldId: 'world-extra',
+        chapterId: 'ch-1',
+        timelineId: 'tl-1',
+        title: 'Pre-threads Event',
+        description: '',
+        locationMarkerId: null,
+        involvedCharacterIds: [],
+        mentionedCharacterIds: [],
+        // deliberately omit threadIds — simulates a pre-threads export
+        involvedItemIds: [],
+        tags: [],
+        sortOrder: 0,
+        travelDays: null,
+        inWorldTime: null,
+        tension: null,
+        structureBeat: null,
+        status: 'draft' as const,
+        povCharacterId: null,
+        isFlashback: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      } as never],
+    })
+    await importWorld(makeFile(without))
+
+    expect(await db.plotThreads.where('worldId').equals('world-extra').count()).toBe(0)
+    const stored = await db.events.get('ev-no-threads')
+    expect((stored as unknown as Record<string, unknown>).threadIds).toEqual([])
+  })
+
+  it('rejects a plotThreads value that is not an array', async () => {
+    await db.delete()
+    await db.open()
+
+    const bad = { ...makeExport(), plotThreads: 'nope' }
+    await expect(importWorld(makeFile(bad))).rejects.toThrow('plotThreads is not an array')
+  })
+
   it('backfills inWorldTime to null on events that lack it (older export)', async () => {
     await db.delete()
     await db.open()
@@ -735,7 +826,7 @@ describe('importWorld — travelModes', () => {
         description: '',
         locationMarkerId: null,
         involvedCharacterIds: [],
-        mentionedCharacterIds: [],
+        mentionedCharacterIds: [], threadIds: [],
         involvedItemIds: [],
         tags: [],
         sortOrder: 0,
@@ -769,7 +860,7 @@ describe('importWorld — travelModes', () => {
         description: '',
         locationMarkerId: null,
         involvedCharacterIds: [],
-        mentionedCharacterIds: [],
+        mentionedCharacterIds: [], threadIds: [],
         involvedItemIds: [],
         tags: [],
         sortOrder: 0,
@@ -913,8 +1004,8 @@ describe('importWorld — v1 → v2 migration', () => {
       version: 1,
       chapters: [{ id: 'ch-1', worldId: 'world-extra', timelineId: 'tl-1', number: 1, title: 'Ch1', synopsis: '', notes: '', createdAt: 1000, updatedAt: 1000 }],
       events: [
-        { id: 'ev-b', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'B', description: '', locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 10, travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 },
-        { id: 'ev-a', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'A', description: '', locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 },
+        { id: 'ev-b', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'B', description: '', locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], threadIds: [], involvedItemIds: [], tags: [], sortOrder: 10, travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 },
+        { id: 'ev-a', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'A', description: '', locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], threadIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 },
       ],
       characterSnapshots: [{
         id: 'snap-v1',
@@ -984,7 +1075,7 @@ describe('importWorld — v1 → v2 migration', () => {
     const data = makeExport({
       version: 1,
       chapters: [{ id: 'ch-rel', worldId: 'world-extra', timelineId: 'tl-1', number: 1, title: 'Ch', synopsis: '', notes: '', createdAt: 1000, updatedAt: 1000 }],
-      events: [{ id: 'ev-rel', worldId: 'world-extra', chapterId: 'ch-rel', timelineId: 'tl-1', title: 'Ev', description: '', locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 }],
+      events: [{ id: 'ev-rel', worldId: 'world-extra', chapterId: 'ch-rel', timelineId: 'tl-1', title: 'Ev', description: '', locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], threadIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 }],
       relationships: [{
         id: 'rel-v1',
         worldId: 'world-extra',
@@ -1054,7 +1145,7 @@ describe('importWorld — full optional arrays', () => {
       events: [{
         id: 'ev-1', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1',
         title: 'Battle Begins', description: '', locationMarkerId: null,
-        involvedCharacterIds: [], mentionedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0,
+        involvedCharacterIds: [], mentionedCharacterIds: [], threadIds: [], involvedItemIds: [], tags: [], sortOrder: 0,
         travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000,
       }],
     })
