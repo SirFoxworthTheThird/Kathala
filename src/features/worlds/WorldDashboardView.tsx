@@ -426,7 +426,7 @@ export default function WorldDashboardView() {
       {characters.length > 0 && totalChapters > 0 && (
         <div>
           <SectionHeading icon={Users}>Cast Balance</SectionHeading>
-          <CastBalance characters={characters} chapters={chapters} events={allEvents} />
+          <CastBalance worldId={worldId ?? ''} characters={characters} chapters={chapters} events={allEvents} />
         </div>
       )}
 
