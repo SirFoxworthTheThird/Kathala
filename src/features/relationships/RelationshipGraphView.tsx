@@ -507,6 +507,8 @@ export default function RelationshipGraphView() {
           edgeTypes={edgeTypes}
           connectionMode={ConnectionMode.Loose}
           fitView
+          fitViewOptions={{ padding: 0.15 }}
+          minZoom={0.1}
           style={{ background: 'hsl(222,47%,9%)' }}
           onConnect={(c) => {
             // Drag between two characters → open the create dialog pre-filled.
@@ -536,6 +538,7 @@ export default function RelationshipGraphView() {
           <MiniMap
             nodeColor="hsl(222,47%,20%)"
             maskColor="rgba(0,0,0,0.4)"
+            className="!hidden md:!block"
             style={{ background: 'hsl(222,47%,11%)', border: '1px solid hsl(217,33%,22%)' }}
           />
           {allFactions.length > 0 && (

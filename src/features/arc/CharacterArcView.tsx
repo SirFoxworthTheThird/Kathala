@@ -440,7 +440,7 @@ export default function CharacterArcView() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2.5">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2.5">
         <span className="text-sm font-semibold">Character Arc</span>
         <span className="text-xs text-[hsl(var(--muted-foreground))]">
           {viewType === 'factions'
@@ -622,7 +622,7 @@ export default function CharacterArcView() {
             {/* Timeline header row — only rendered when multiple timelines exist */}
             {multiTimeline && (
               <tr>
-                <th className="sticky left-0 z-20 min-w-[180px] max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-[hsl(var(--card))]" />
+                <th className="sticky left-0 z-20 min-w-[132px] max-w-[132px] sm:min-w-[180px] sm:max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-[hsl(var(--card))]" />
                 {timelineSpans.map((span) => (
                   <th
                     key={span.id}
@@ -635,7 +635,7 @@ export default function CharacterArcView() {
               </tr>
             )}
             <tr>
-              <th className="sticky left-0 z-20 min-w-[180px] max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-2 text-left font-semibold text-[hsl(var(--muted-foreground))]">
+              <th className="sticky left-0 z-20 min-w-[132px] max-w-[132px] sm:min-w-[180px] sm:max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-2 text-left font-semibold text-[hsl(var(--muted-foreground))]">
                 Character
               </th>
 
@@ -715,7 +715,7 @@ export default function CharacterArcView() {
                 >
                   {/* Name cell — left colour border + sparkline */}
                   <td
-                    className="sticky left-0 z-10 min-w-[180px] max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-inherit px-3 py-2"
+                    className="sticky left-0 z-10 min-w-[132px] max-w-[132px] sm:min-w-[180px] sm:max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-inherit px-3 py-2"
                     style={{ borderLeft: `3px solid ${color}` }}
                   >
                     <span className="block truncate font-medium">{char.name}</span>
@@ -754,7 +754,7 @@ export default function CharacterArcView() {
             {viewType === 'factions' && allFactions.map((faction, rowIdx) => (
               <tr key={faction.id} className={cn(rowIdx % 2 === 0 ? 'bg-[hsl(var(--background))]' : 'bg-[hsl(var(--card))]')}>
                 <td
-                  className="sticky left-0 z-10 min-w-[180px] max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-inherit px-3 py-2"
+                  className="sticky left-0 z-10 min-w-[132px] max-w-[132px] sm:min-w-[180px] sm:max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-inherit px-3 py-2"
                   style={{ borderLeft: `3px solid ${faction.color}` }}
                 >
                   <div className="flex items-center gap-2">

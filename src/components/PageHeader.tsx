@@ -58,14 +58,14 @@ export function PageHeader({
             )}
           </div>
           {description && (
-            <p className="mt-0.5 truncate text-xs text-[hsl(var(--muted-foreground))]">
+            <p className="mt-0.5 text-xs text-[hsl(var(--muted-foreground))] line-clamp-2 lg:truncate">
               {description}
             </p>
           )}
         </div>
         {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
       </div>
-      {children && <div className="mt-3 flex items-center gap-2">{children}</div>}
+      {children && <div className="mt-3 flex flex-wrap items-center gap-2">{children}</div>}
     </div>
   )
 }
