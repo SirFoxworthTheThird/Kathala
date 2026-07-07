@@ -111,7 +111,7 @@ function MobileNavDrawer({ worldId, open, onClose }: { worldId: string; open: bo
     )
 
   return (
-    <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation menu">
+    <div className="fixed inset-0 z-[2000] lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation menu">
       <div className="pw-anim-fade-in absolute inset-0 bg-black/50" onClick={onClose} />
       <nav className="pw-anim-slide-in-left absolute inset-y-0 left-0 flex w-72 max-w-[85%] flex-col border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl">
         <div className="flex h-14 shrink-0 items-center gap-2 border-b border-[hsl(var(--border))] px-4">
