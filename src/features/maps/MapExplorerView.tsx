@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import L from 'leaflet'
 import { useParams } from 'react-router-dom'
-import { Plus, Upload, Map as MapIcon, Ruler, X, Route, Download, Sparkles, Type, Trash2 } from 'lucide-react'
+import { Plus, Upload, Map as MapIcon, Ruler, X, Route, Download, Sparkles, Type, Trash2, PanelLeft } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { useAppStore, useActiveMapLayerId } from '@/store'
 import { useRootMapLayers, updateMapLayer } from '@/db/hooks/useMapLayers'
 import { Button } from '@/components/ui/button'
@@ -55,6 +56,9 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
 
   // ── Local UI state ────────────────────────────────────────────────────────
   const [isDraggingCharacter, setIsDraggingCharacter] = useState(false)
+  // On phones the side panels are a slide-in drawer so the map can use the full
+  // width; on `lg`+ they're a static column (see the sidebar classes below).
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const crossLayerPanTargetRef = useRef<[number, number] | null>(null)
   const pinAnimationKeyRef = useRef(0)
   const [addLocationOpen, setAddLocationOpen] = useState(false)
@@ -371,9 +375,34 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   }
 
   return (
-    <div className="flex h-full overflow-hidden">
-      {/* ── Left sidebar ── */}
-      <div className="flex w-52 shrink-0 flex-col overflow-y-auto border-r border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+    <div className="relative flex h-full overflow-hidden">
+      {/* Backdrop for the mobile sidebar drawer */}
+      {sidebarOpen && (
+        <div
+          className="pw-anim-fade-in absolute inset-0 z-[1150] bg-black/40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      {/* ── Left sidebar (static column on lg+, slide-in drawer on mobile) ── */}
+      <div
+        className={cn(
+          'flex w-64 shrink-0 flex-col overflow-y-auto border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] transition-transform',
+          'absolute inset-y-0 left-0 z-[1200] lg:static lg:z-auto lg:w-52 lg:translate-x-0',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        )}
+      >
+        {/* Mobile-only drawer header with a close control */}
+        <div className="flex shrink-0 items-center justify-between border-b border-[hsl(var(--border))] px-3 py-2 lg:hidden">
+          <span className="text-xs font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">Map panels</span>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Close map panels"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
         <LayersSection worldId={worldId} />
         <CharactersSection
           characters={characters}
@@ -430,7 +459,16 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       {/* ── Center: header + map ── */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Map header */}
-        <div className="flex shrink-0 items-center gap-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
+        <div className="flex shrink-0 items-center gap-3 overflow-x-auto border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
+          {/* Mobile-only: open the map panels drawer */}
+          <button
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open map panels"
+            title="Map panels"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] lg:hidden"
+          >
+            <PanelLeft className="h-4 w-4" aria-hidden="true" />
+          </button>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-[hsl(var(--foreground))]">{layer.name}</p>
             <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
