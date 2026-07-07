@@ -1,0 +1,48 @@
+name: Deploy dev build to GitHub Pages
+
+# Publishes the latest `development` build to GitHub Pages on every push
+# (i.e. every merge into development), so it can be tested in a browser
+# without cloning. PlotWeave is a static, local-first app: the site is just
+# the app shell — each visitor's story data stays in their own browser.
+
+on:
+  push:
+    branches: [development]
+  workflow_dispatch: # allow manual re-deploys from the Actions tab
+
+# Allow the deploy job to publish to Pages via OIDC.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one Pages deploy at a time; newer pushes supersede in-flight ones.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build # tsc -b && vite build → dist/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
