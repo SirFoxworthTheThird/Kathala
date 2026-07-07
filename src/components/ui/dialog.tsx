@@ -40,7 +40,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTML
         <div
           ref={ref}
           className={cn(
-            'relative z-10 w-full max-w-lg rounded-lg border shadow-xl',
+            'relative z-10 max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-lg border shadow-xl',
             'border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6',
             className
           )}
