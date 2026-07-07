@@ -459,7 +459,8 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       {/* ── Center: header + map ── */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Map header */}
-        <div className="flex shrink-0 items-center gap-3 overflow-x-auto border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
+        <div className="flex shrink-0 flex-col gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2 lg:flex-row lg:items-center lg:gap-3">
+          <div className="flex min-w-0 items-center gap-3">
           {/* Mobile-only: open the map panels drawer */}
           <button
             onClick={() => setSidebarOpen(true)}
@@ -471,13 +472,14 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           </button>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-[hsl(var(--foreground))]">{layer.name}</p>
-            <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
+            <p className="truncate text-[11px] text-[hsl(var(--muted-foreground))]">
               {layer.scalePixelsPerUnit && layer.scaleUnit
                 ? `Scale: 1 ${layer.scaleUnit} = ${Math.round(layer.scalePixelsPerUnit)} px`
                 : `${layer.imageWidth} × ${layer.imageHeight}`}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          </div>
+          <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 lg:mx-0 lg:ml-auto lg:overflow-x-visible lg:px-0">
             {/* Tools */}
             <Button
               size="sm"
