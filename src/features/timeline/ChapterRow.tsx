@@ -91,7 +91,7 @@ export function ChapterRow({ chapter }: ChapterRowProps) {
             ? <ChevronDown className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />
             : <ChevronRight className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />}
           <BookOpen className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />
-          <span className="text-sm font-medium text-[hsl(var(--foreground))] shrink-0">
+          <span className="truncate text-sm font-medium text-[hsl(var(--foreground))] lg:shrink-0">
             Ch. {chapter.number} — {chapter.title}
           </span>
           {chapter.synopsis && (

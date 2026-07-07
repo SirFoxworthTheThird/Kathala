@@ -208,8 +208,8 @@ export default function TimelineView() {
         </div>
       )}
 
-      <div className="flex items-center justify-between border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Layers className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
           <span className="text-sm font-medium">
             {timelines.find((t) => t.id === currentTimelineId)?.name ?? 'Timeline'}
@@ -236,7 +236,7 @@ export default function TimelineView() {
             </button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {timelines.length >= 2 && (
             <Button size="sm" variant="outline" onClick={() => setRelPanelOpen(true)}>
               <Link2 className="h-4 w-4" /> Link Timelines
