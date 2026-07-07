@@ -312,7 +312,7 @@ export function LLMPromptDialog({ open, onOpenChange }: LLMPromptDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] w-full max-w-3xl flex-col gap-0 p-0">
+      <DialogContent className="flex max-h-[90vh] w-full max-w-3xl flex-col gap-0 overflow-y-hidden p-0">
         <DialogHeader className="shrink-0 border-b border-[hsl(var(--border))] px-6 py-4">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-[hsl(var(--ring))]" />
@@ -332,8 +332,8 @@ export function LLMPromptDialog({ open, onOpenChange }: LLMPromptDialogProps) {
           </ol>
         </div>
 
-        <div className="relative min-h-0 flex-1 overflow-hidden">
-          <pre className="h-full overflow-y-auto px-6 py-4 text-[11px] leading-relaxed text-[hsl(var(--muted-foreground))] whitespace-pre-wrap font-mono">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <pre className="px-6 py-4 text-[11px] leading-relaxed text-[hsl(var(--muted-foreground))] whitespace-pre-wrap font-mono">
             {PROMPT}
           </pre>
         </div>

@@ -249,7 +249,7 @@ export function MapAIDialog({ worldId, open, onOpenChange }: MapAIDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v) }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-y-hidden p-0 gap-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-[hsl(var(--border))] shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base">
             <Sparkles className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
