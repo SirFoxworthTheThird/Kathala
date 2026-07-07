@@ -75,7 +75,7 @@ export function RouteDetailPanel({
   const freePoints = waypointCount - namedStops
 
   return (
-    <div className="flex h-full w-72 shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl">
+    <div className="flex h-full w-[85vw] max-w-sm shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl sm:w-72 sm:max-w-none">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-3">
         <div className="flex items-center gap-2">
@@ -231,7 +231,7 @@ export function RegionDetailPanel({
   }
 
   return (
-    <div className="flex h-full w-72 shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl">
+    <div className="flex h-full w-[85vw] max-w-sm shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl sm:w-72 sm:max-w-none">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-3">
         <div className="flex items-center gap-2">

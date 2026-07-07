@@ -61,7 +61,7 @@ export function AppShell() {
   }, [setSearchOpen])
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    <div className="flex h-[100dvh] flex-col overflow-hidden">
       <TopBar />
       {showBar && <ChapterTimelineBar />}
       <main className="flex-1 overflow-auto" style={{ paddingBottom: showBar ? barHeight : undefined }}>

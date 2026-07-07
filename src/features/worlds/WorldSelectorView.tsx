@@ -89,7 +89,7 @@ export default function WorldSelectorView() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-[100dvh] flex-col">
       <header className="border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-4 sm:px-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">

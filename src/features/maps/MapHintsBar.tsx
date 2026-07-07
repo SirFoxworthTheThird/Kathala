@@ -4,15 +4,15 @@ import { X, MousePointerClick, Ruler, PanelLeft } from 'lucide-react'
 const HINTS = [
   {
     icon: MousePointerClick,
-    text: 'Right-click the map to quickly add locations, start routes, or draw regions.',
+    text: 'Add a place with the + Location button, or long-press (right-click) the map.',
   },
   {
     icon: Ruler,
-    text: 'Set a map scale (Scale button above) to unlock distance measurement.',
+    text: 'Set a map scale to unlock distance measurement.',
   },
   {
     icon: PanelLeft,
-    text: 'Routes and Regions are in the left sidebar — expand them to draw and manage overlays.',
+    text: 'Open the map panels to draw and manage routes and regions.',
   },
 ]
 
