@@ -149,7 +149,7 @@ export function WritersBriefPanel() {
         role="dialog"
         aria-modal="true"
         aria-label="Writer's Brief"
-        className="fixed right-0 top-0 z-[3001] flex h-screen w-80 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-2xl"
+        className="fixed right-0 top-0 z-[3001] flex h-[100dvh] w-80 max-w-[92vw] flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-2xl"
       >
         {/* Header */}
         <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] px-4 py-3">
