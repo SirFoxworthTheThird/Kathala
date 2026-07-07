@@ -226,7 +226,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
   const otherLayers = allLayers.filter((l) => l.id !== marker.mapLayerId)
 
   return (
-    <div className="flex h-full w-72 shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl">
+    <div className="flex h-full w-[85vw] max-w-sm shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl sm:w-72 sm:max-w-none">
       <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-3">
         <span className="text-sm font-semibold text-[hsl(var(--foreground))]">Location</span>
         <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Close location panel" onClick={onClose}>
