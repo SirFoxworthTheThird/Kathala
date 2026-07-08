@@ -236,6 +236,7 @@ describe('importWorld — normalizeImport backfills', () => {
         title: 'Chapter with Notes',
         synopsis: '',
         notes: 'Remember to foreshadow the betrayal here.',
+        wordGoal: null,
         createdAt: 1000,
         updatedAt: 1000,
       }],
@@ -244,6 +245,56 @@ describe('importWorld — normalizeImport backfills', () => {
 
     const stored = await db.chapters.get('ch-withnotes')
     expect(stored!.notes).toBe('Remember to foreshadow the betrayal here.')
+  })
+
+  it('backfills wordGoal to null on chapters that lack it (pre-goals export)', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      version: 16 as never, // pre-wordGoal export
+      chapters: [{
+        id: 'ch-nogoal',
+        worldId: 'world-extra',
+        timelineId: 'tl-1',
+        number: 1,
+        title: 'Old Chapter',
+        synopsis: '',
+        notes: '',
+        // deliberately omit wordGoal — simulates a pre-goals export
+        createdAt: 1000,
+        updatedAt: 1000,
+      } as never],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.chapters.get('ch-nogoal')
+    expect(stored).toBeDefined()
+    expect((stored as unknown as Record<string, unknown>).wordGoal).toBeNull()
+  })
+
+  it('preserves an explicit wordGoal through export/import', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      chapters: [{
+        id: 'ch-goal',
+        worldId: 'world-extra',
+        timelineId: 'tl-1',
+        number: 1,
+        title: 'Chapter with a goal',
+        synopsis: '',
+        notes: '',
+        wordGoal: 2500,
+        createdAt: 1000,
+        updatedAt: 1000,
+      }],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.chapters.get('ch-goal')
+    expect(stored!.wordGoal).toBe(2500)
   })
 
   it('preserves existing synopsis when it is already set', async () => {
@@ -259,6 +310,7 @@ describe('importWorld — normalizeImport backfills', () => {
         title: 'New Chapter',
         synopsis: 'The hero sets off.',
         notes: '',
+        wordGoal: null,
         createdAt: 1000,
         updatedAt: 1000,
       }],
@@ -1002,7 +1054,7 @@ describe('importWorld — v1 → v2 migration', () => {
 
     const data = makeExport({
       version: 1,
-      chapters: [{ id: 'ch-1', worldId: 'world-extra', timelineId: 'tl-1', number: 1, title: 'Ch1', synopsis: '', notes: '', createdAt: 1000, updatedAt: 1000 }],
+      chapters: [{ id: 'ch-1', worldId: 'world-extra', timelineId: 'tl-1', number: 1, title: 'Ch1', synopsis: '', notes: '', wordGoal: null, createdAt: 1000, updatedAt: 1000 }],
       events: [
         { id: 'ev-b', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'B', description: '', locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], threadIds: [], involvedItemIds: [], tags: [], sortOrder: 10, travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 },
         { id: 'ev-a', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'A', description: '', locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], threadIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 },
@@ -1038,7 +1090,7 @@ describe('importWorld — v1 → v2 migration', () => {
 
     const data = makeExport({
       version: 1,
-      chapters: [{ id: 'ch-noev', worldId: 'world-extra', timelineId: 'tl-1', number: 1, title: 'Ch No Ev', synopsis: '', notes: '', createdAt: 1000, updatedAt: 1000 }],
+      chapters: [{ id: 'ch-noev', worldId: 'world-extra', timelineId: 'tl-1', number: 1, title: 'Ch No Ev', synopsis: '', notes: '', wordGoal: null, createdAt: 1000, updatedAt: 1000 }],
       events: [], // no events for this chapter
       characterSnapshots: [{
         id: 'snap-noev',
@@ -1074,7 +1126,7 @@ describe('importWorld — v1 → v2 migration', () => {
 
     const data = makeExport({
       version: 1,
-      chapters: [{ id: 'ch-rel', worldId: 'world-extra', timelineId: 'tl-1', number: 1, title: 'Ch', synopsis: '', notes: '', createdAt: 1000, updatedAt: 1000 }],
+      chapters: [{ id: 'ch-rel', worldId: 'world-extra', timelineId: 'tl-1', number: 1, title: 'Ch', synopsis: '', notes: '', wordGoal: null, createdAt: 1000, updatedAt: 1000 }],
       events: [{ id: 'ev-rel', worldId: 'world-extra', chapterId: 'ch-rel', timelineId: 'tl-1', title: 'Ev', description: '', locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], threadIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 }],
       relationships: [{
         id: 'rel-v1',
@@ -1140,7 +1192,7 @@ describe('importWorld — full optional arrays', () => {
       }],
       chapters: [{
         id: 'ch-1', worldId: 'world-extra', timelineId: 'tl-1', number: 1,
-        title: 'Chapter One', synopsis: '', notes: '', createdAt: 1000, updatedAt: 1000,
+        title: 'Chapter One', synopsis: '', notes: '', wordGoal: null, createdAt: 1000, updatedAt: 1000,
       }],
       events: [{
         id: 'ev-1', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1',

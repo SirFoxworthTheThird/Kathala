@@ -3,7 +3,7 @@ import { computeInWorldDays } from '@/lib/inWorldTime'
 import type { WorldEvent, Chapter } from '@/types'
 
 function chapter(id: string, number: number, timelineId = 't1'): Chapter {
-  return { id, worldId: 'w', timelineId, number, title: '', synopsis: '', notes: '', createdAt: 0, updatedAt: 0 }
+  return { id, worldId: 'w', timelineId, number, title: '', synopsis: '', notes: '', wordGoal: null, createdAt: 0, updatedAt: 0 }
 }
 
 function event(id: string, chapterId: string, sortOrder: number, opts: Partial<WorldEvent> = {}): WorldEvent {

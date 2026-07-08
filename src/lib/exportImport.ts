@@ -12,7 +12,7 @@ import type {
 } from '@/types'
 import { generateId } from '@/lib/id'
 
-const EXPORT_VERSION = 16
+const EXPORT_VERSION = 17
 
 interface BlobExport {
   id: string
@@ -698,11 +698,12 @@ function normalizeImport(data: WorldExportFile): void {
     const m = marker as unknown as Rec
     if (m.factionId === undefined) m.factionId = null
   }
-  // Backfill synopsis and notes on chapters exported before they were added
+  // Backfill synopsis, notes and wordGoal on chapters exported before they were added
   for (const ch of data.chapters) {
     const c = ch as unknown as Rec
     if (c.synopsis === undefined) c.synopsis = ''
     if (c.notes === undefined) c.notes = ''
+    if (c.wordGoal === undefined) c.wordGoal = null
   }
   // Backfill travelDays, isFlashback, inWorldTime and tension on events (may be absent on older exports)
   for (const ev of data.events) {

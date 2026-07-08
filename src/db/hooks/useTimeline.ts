@@ -99,6 +99,7 @@ export async function createChapter(
   const chapter: Chapter = {
     id: generateId(),
     notes: '',
+    wordGoal: null,
     ...data,
     createdAt: now,
     updatedAt: now,

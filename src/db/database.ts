@@ -555,6 +555,13 @@ class PlotWeaveDB extends Dexie {
         if (e.threadIds === undefined) e.threadIds = []
       })
     })
+
+    // v42: per-chapter word-count goals. Backfill existing chapters to null.
+    this.version(42).stores({}).upgrade(async (tx) => {
+      await tx.table('chapters').toCollection().modify((c: Record<string, unknown>) => {
+        if (c.wordGoal === undefined) c.wordGoal = null
+      })
+    })
   }
 }
 

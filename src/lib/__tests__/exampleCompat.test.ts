@@ -45,6 +45,13 @@ describe('bundled example worlds stay importable', () => {
         expect(ev.threadIds).toEqual([])
       }
 
+      // Chapters gained a wordGoal after these files were exported — backfilled to null.
+      const chapters = await db.chapters.where('worldId').equals(worldId).toArray()
+      expect(chapters.length).toBeGreaterThan(0)
+      for (const ch of chapters) {
+        expect(ch.wordGoal).toBeNull()
+      }
+
       // Knowledge and manuscript tables exist and default to empty for pre-feature exports.
       expect(await db.knowledgeFacts.where('worldId').equals(worldId).count()).toBe(0)
       expect(await db.knowledgeReveals.where('worldId').equals(worldId).count()).toBe(0)

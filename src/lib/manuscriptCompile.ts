@@ -25,6 +25,8 @@ export interface ManuscriptChapter {
   title: string
   synopsis: string
   wordCount: number
+  /** The chapter's word-count target, or null if unset. */
+  wordGoal: number | null
   scenes: ManuscriptScene[]
   /** How many of this chapter's scenes have prose. */
   writtenScenes: number
@@ -86,6 +88,7 @@ export function buildManuscript({
       title: ch.title,
       synopsis: ch.synopsis,
       wordCount: chapterWords,
+      wordGoal: ch.wordGoal,
       scenes,
       writtenScenes: chapterWritten,
     }

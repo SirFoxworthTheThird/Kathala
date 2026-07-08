@@ -3,7 +3,7 @@ import { computeProseMentionIssues, computeKnowledgeLeaks } from '@/lib/proseCon
 import type { WorldEvent, Chapter, Character, CharacterSnapshot, KnowledgeFact } from '@/types'
 
 function chapter(id: string, number: number): Chapter {
-  return { id, worldId: 'w', timelineId: 't1', number, title: '', synopsis: '', notes: '', createdAt: 0, updatedAt: 0 }
+  return { id, worldId: 'w', timelineId: 't1', number, title: '', synopsis: '', notes: '', wordGoal: null, createdAt: 0, updatedAt: 0 }
 }
 function event(id: string, chapterId: string, sortOrder: number, extra: Partial<WorldEvent> = {}): WorldEvent {
   return {

@@ -183,6 +183,7 @@ OUTPUT FORMAT
     "title": "<chapter title>",
     "synopsis": "<2–4 sentence summary of what happens>",
     "notes": "",
+    "wordGoal": null,
     "createdAt": ${ts},
     "updatedAt": ${ts}
   },
@@ -380,6 +381,7 @@ async function importChapter(data: ChapterAIResponse, replacing: boolean): Promi
         await db.relationshipSnapshots.where('eventId').anyOf(existingEventIds).delete()
       }
     }
+    if (data.chapter.wordGoal === undefined) (data.chapter as Chapter).wordGoal = null
     await db.chapters.put(data.chapter)
     if (data.events.length) {
       // Ensure status and povCharacterId are always present — AI JSON may omit fields predating their schema versions

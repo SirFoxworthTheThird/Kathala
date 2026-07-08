@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { FileText, Download, BookOpen, PencilLine, Target } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
-import { useTimelines, useChapters, useTimelineEvents } from '@/db/hooks/useTimeline'
+import { useTimelines, useChapters, useTimelineEvents, updateChapter } from '@/db/hooks/useTimeline'
 import { useSceneTextsByEvent } from '@/db/hooks/useManuscript'
 import { buildManuscript } from '@/lib/manuscriptCompile'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,47 @@ const nf = new Intl.NumberFormat()
 /** Split prose into paragraphs on blank lines. */
 function paragraphs(text: string): string[] {
   return text.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean)
+}
+
+/** Editable per-chapter word goal with a progress bar; persists on blur/Enter. */
+function ChapterGoal({ chapterId, words, goal }: { chapterId: string; words: number; goal: number | null }) {
+  const [value, setValue] = useState(goal != null ? String(goal) : '')
+  useEffect(() => { setValue(goal != null ? String(goal) : '') }, [goal])
+
+  function commit() {
+    const n = Math.max(0, Math.round(Number(value)) || 0)
+    const next = n > 0 ? n : null
+    if (next !== goal) updateChapter(chapterId, { wordGoal: next })
+  }
+  const pct = goal && goal > 0 ? Math.min(100, Math.round((words / goal) * 100)) : 0
+
+  return (
+    <div className="mt-1.5 flex items-center gap-2">
+      <label className="flex items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))]">
+        <Target className="h-3.5 w-3.5" />
+        <span>Goal</span>
+        <input
+          type="number"
+          min={0}
+          step={500}
+          value={value}
+          placeholder="—"
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+          className="h-7 w-20 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 text-xs tabular-nums text-[hsl(var(--foreground))]"
+        />
+      </label>
+      {goal != null && goal > 0 && (
+        <div className="flex min-w-[100px] flex-1 items-center gap-2">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[hsl(var(--muted))]">
+            <div className="h-full rounded-full bg-[hsl(var(--ring))] transition-all" style={{ width: `${pct}%` }} />
+          </div>
+          <span className="shrink-0 text-[11px] tabular-nums text-[hsl(var(--muted-foreground))]">{pct}%</span>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function ManuscriptView() {
@@ -141,6 +182,9 @@ export default function ManuscriptView() {
                     </p>
                     {mode === 'draft' && ch.synopsis && (
                       <p className="mt-1 text-xs italic text-[hsl(var(--muted-foreground))]">{ch.synopsis}</p>
+                    )}
+                    {mode === 'draft' && (
+                      <ChapterGoal chapterId={ch.id} words={ch.wordCount} goal={ch.wordGoal} />
                     )}
                   </div>
 
