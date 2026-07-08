@@ -18,6 +18,7 @@ const LoreView = lazy(() => import('@/features/lore/LoreView'))
 const LorePageEditor = lazy(() => import('@/features/lore/LorePageEditor'))
 const FactionsView = lazy(() => import('@/features/factions/FactionsView'))
 const KnowledgeView = lazy(() => import('@/features/knowledge/KnowledgeView'))
+const ManuscriptView = lazy(() => import('@/features/manuscript/ManuscriptView'))
 
 function Loading() {
   return (
@@ -55,6 +56,7 @@ export const router = createHashRouter([
       { path: 'lore/:pageId', element: <Wrap><LorePageEditor /></Wrap> },
       { path: 'factions', element: <Wrap><FactionsView /></Wrap> },
       { path: 'knowledge', element: <Wrap><KnowledgeView /></Wrap> },
+      { path: 'manuscript', element: <Wrap><ManuscriptView /></Wrap> },
     ],
   },
 ])

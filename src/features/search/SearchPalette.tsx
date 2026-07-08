@@ -128,7 +128,7 @@ export function SearchPalette() {
     }
     for (const p of (lorePages ?? [])) {
       if (p.title?.toLowerCase().includes(q) || p.body?.toLowerCase().includes(q) || p.tags?.some((t) => t.toLowerCase().includes(q))) {
-        out.push({ id: p.id, type: 'lore', label: p.title, sublabel: p.body ? p.body.slice(0, 60).replace(/[#*`_>\-]/g, '').trim() : undefined, path: `/worlds/${worldId}/lore/${p.id}` })
+        out.push({ id: p.id, type: 'lore', label: p.title, sublabel: p.body ? p.body.slice(0, 60).replace(/[#*`_>-]/g, '').trim() : undefined, path: `/worlds/${worldId}/lore/${p.id}` })
       }
     }
     for (const f of (factions ?? [])) {

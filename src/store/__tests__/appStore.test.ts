@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useAppStore } from '@/store'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 const INITIAL = {
   activeWorldId: null,
   activeEventId: null,
@@ -20,7 +20,7 @@ const INITIAL = {
 }
 
 beforeEach(() => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   useAppStore.setState(INITIAL as any)
 })
 

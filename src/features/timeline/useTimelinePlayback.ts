@@ -46,7 +46,7 @@ export function useTimelinePlayback(
       }
     }, holdMs)
     return () => clearTimeout(t)
-  }, [ // eslint-disable-line react-hooks/exhaustive-deps
+  }, [  
     isPlayingStory, isAnimating, activeEventId, orderedEvents, playbackSpeed,
     setActiveEventId, setIsPlayingStory, frameRel, activeDepthTimelineId, innerTimelineId, setActiveOuterEventId,
   ])

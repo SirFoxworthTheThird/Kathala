@@ -52,7 +52,7 @@ test.describe('Character Arc view', () => {
     // which updates live queries in place — no reload, no dangling references.
     // Row labels come from the character list, so seeding one character is enough.
     await page.evaluate(async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const db = (window as any).__pwdb
       const [chars, events] = await Promise.all([db.characters.toArray(), db.events.toArray()])
       const frodo = chars.find((c: { name: string }) => c.name === 'Frodo')

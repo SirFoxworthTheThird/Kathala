@@ -35,7 +35,7 @@ export function RelatedLoreSection({ worldId, entityId, entityName }: Props) {
   return (
     <div className="flex flex-col gap-2">
       {pages.map((page) => {
-        const preview = page.body.slice(0, 100).replace(/[#*`_>\-]/g, '').trim()
+        const preview = page.body.slice(0, 100).replace(/[#*`_>-]/g, '').trim()
         return (
           <button
             key={page.id}

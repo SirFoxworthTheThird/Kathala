@@ -141,7 +141,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   // Clear cross-layer pan target once the new layer has mounted
   useEffect(() => {
     crossLayerPanTargetRef.current = null
-  }, [layerId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [layerId])  
 
   // ── Consume pending route/region focus from search palette ────────────────
   useEffect(() => {
@@ -351,7 +351,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       if (points.length >= 2) lines.push({ characterId: charId, color: characterColor(charId), points })
     }
     return lines
-  }, [mapFilters.showJourneys, allWorldSnaps, orderedEvents, layerId, characters, allMarkers, visibleCharIds]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mapFilters.showJourneys, allWorldSnaps, orderedEvents, layerId, characters, allMarkers, visibleCharIds])  
 
   const displayedCharPins = !mapFilters.showCharacters ? []
     : visibleCharIds ? charPins.filter((p) => visibleCharIds.has(p.character.id))
