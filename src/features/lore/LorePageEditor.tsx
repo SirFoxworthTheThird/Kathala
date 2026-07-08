@@ -221,7 +221,7 @@ export default function LorePageEditor() {
     setLinkedEntityIds(page.linkedEntityIds ?? [])
     setVisibleFromEventId(page.visibleFromEventId ?? null)
     setDirty(false)
-  }, [page?.id])
+  }, [page?.id]) // eslint-disable-line react-hooks/exhaustive-deps -- reseed the form only when a different page is opened, not on every save
 
   useEffect(() => {
     if (!dirty || !pageId) return
@@ -231,7 +231,7 @@ export default function LorePageEditor() {
       setDirty(false)
     }, 800)
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
-  }, [title, body, tags, categoryId, linkedEntityIds, visibleFromEventId, dirty])
+  }, [title, body, tags, categoryId, linkedEntityIds, visibleFromEventId, dirty]) // eslint-disable-line react-hooks/exhaustive-deps -- autosave is driven by content edits; pageId is fixed for the mount
 
   function markDirty() { setDirty(true) }
 

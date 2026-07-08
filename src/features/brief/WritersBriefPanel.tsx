@@ -458,7 +458,7 @@ export function WritersBriefPanel() {
                 <Section title="Lore" icon={BookMarked} count={relevantLore.length}>
                   <div className="space-y-1.5">
                     {relevantLore.map((page) => {
-                      const preview = page.body.slice(0, 80).replace(/[#*`_>\-]/g, '').trim()
+                      const preview = page.body.slice(0, 80).replace(/[#*`_>-]/g, '').trim()
                       const isNew = page.visibleFromEventId === activeEventId
                       return (
                         <button

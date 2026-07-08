@@ -264,7 +264,7 @@ function FitBounds({ bounds, initialCenter }: { bounds: L.LatLngBoundsExpression
       }
     }, 0)
     return () => clearTimeout(id)
-  }, [map, bounds]) // eslint-disable-line react-hooks/exhaustive-deps — initialCenter intentionally read only at mount
+  }, [map, bounds]) // eslint-disable-line react-hooks/exhaustive-deps -- initialCenter intentionally read only at mount
   return null
 }
 
@@ -728,15 +728,16 @@ export function LeafletMapCanvas({
       const group = charPinsRef.current.filter(p => Math.round(p.x) === rx && Math.round(p.y) === ry)
       if (group.length > 0) marker.setIcon(makeCharacterGroupIcon(group, zoom))
     }
-  }, [mapZoom]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mapZoom])  
 
   // Ghost marker effect — fully decoupled from the animation system.
   // Ghost pins never animate; they just snap to updated positions when outerEventId changes.
   useEffect(() => {
     const map = leafletMap ?? mapRef.current
     if (!map) return
-    for (const [, m] of ghostMarkersRef.current) { try { m.remove() } catch { /* ok */ } }
-    ghostMarkersRef.current.clear()
+    const ghosts = ghostMarkersRef.current
+    for (const [, m] of ghosts) { try { m.remove() } catch { /* ok */ } }
+    ghosts.clear()
     for (const pin of ghostPins ?? []) {
       if (!Number.isFinite(pin.x) || !Number.isFinite(pin.y)) continue
       const marker = L.marker([pin.y, pin.x], {
@@ -750,11 +751,11 @@ export function LeafletMapCanvas({
         { permanent: false, direction: 'top' }
       )
       .addTo(map)
-      ghostMarkersRef.current.set(pin.characterId, marker)
+      ghosts.set(pin.characterId, marker)
     }
     return () => {
-      for (const [, m] of ghostMarkersRef.current) { try { m.remove() } catch { /* ok */ } }
-      ghostMarkersRef.current.clear()
+      for (const [, m] of ghosts) { try { m.remove() } catch { /* ok */ } }
+      ghosts.clear()
     }
   }, [leafletMap, ghostPins, mapZoom]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -763,8 +764,9 @@ export function LeafletMapCanvas({
   useEffect(() => {
     const map = leafletMap ?? mapRef.current
     if (!map) return
-    for (const [, c] of echoMarkersRef.current) { try { c.remove() } catch { /* ok */ } }
-    echoMarkersRef.current.clear()
+    const echoes = echoMarkersRef.current
+    for (const [, c] of echoes) { try { c.remove() } catch { /* ok */ } }
+    echoes.clear()
     for (const em of echoMarkers ?? []) {
       if (!Number.isFinite(em.x) || !Number.isFinite(em.y)) continue
       const circle = L.circleMarker([em.y, em.x], {
@@ -781,22 +783,26 @@ export function LeafletMapCanvas({
         )
         .on('click', (e) => { L.DomEvent.stopPropagation(e); onEchoRingClick?.(em.markerId) })
         .addTo(map)
-      echoMarkersRef.current.set(em.markerId, circle)
+      echoes.set(em.markerId, circle)
     }
     return () => {
-      for (const [, c] of echoMarkersRef.current) { try { c.remove() } catch { /* ok */ } }
-      echoMarkersRef.current.clear()
+      for (const [, c] of echoes) { try { c.remove() } catch { /* ok */ } }
+      echoes.clear()
     }
   }, [leafletMap, echoMarkers]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Remove all character markers when the component unmounts
   useEffect(() => {
+    // Capture the (stable) ref Maps at mount so the unmount cleanup reads them
+    // without tripping the "ref may have changed" lint (they never reassign).
+    const chars = charMarkersRef.current, groups = groupMarkersRef.current
+    const ghosts = ghostMarkersRef.current, echoes = echoMarkersRef.current
     return () => {
       if (animFrameRef.current) { cancelAnimationFrame(animFrameRef.current); animFrameRef.current = null }
-      charMarkersRef.current.forEach(m => { try { m.remove() } catch { /* map may be gone */ } })
-      groupMarkersRef.current.forEach(m => { try { m.remove() } catch { /* map may be gone */ } })
-      ghostMarkersRef.current.forEach(m => { try { m.remove() } catch { /* map may be gone */ } })
-      echoMarkersRef.current.forEach(c => { try { c.remove() } catch { /* map may be gone */ } })
+      chars.forEach(m => { try { m.remove() } catch { /* map may be gone */ } })
+      groups.forEach(m => { try { m.remove() } catch { /* map may be gone */ } })
+      ghosts.forEach(m => { try { m.remove() } catch { /* map may be gone */ } })
+      echoes.forEach(c => { try { c.remove() } catch { /* map may be gone */ } })
     }
   }, [])
 

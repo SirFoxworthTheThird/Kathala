@@ -108,7 +108,7 @@ function PageCard({
   onOpen: () => void
   onDelete: () => void
 }) {
-  const preview = page.body.slice(0, 120).replace(/[#*`_>\-]/g, '').trim()
+  const preview = page.body.slice(0, 120).replace(/[#*`_>-]/g, '').trim()
 
   return (
     <div
