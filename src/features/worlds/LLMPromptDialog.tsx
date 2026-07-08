@@ -131,6 +131,7 @@ SCHEMA REFERENCE
   "title": "<chapter title>",
   "synopsis": "<2–4 sentence summary of what happens>",
   "notes": "",
+  "wordGoal": null,
   "createdAt": <timestamp>,
   "updatedAt": <timestamp>
 }

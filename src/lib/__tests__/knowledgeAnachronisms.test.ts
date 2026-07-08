@@ -3,7 +3,7 @@ import { computeKnowledgeAnachronisms } from '@/lib/knowledgeAnachronisms'
 import type { KnowledgeFact, KnowledgeReveal, WorldEvent, Chapter } from '@/types'
 
 function chapter(id: string, number: number): Chapter {
-  return { id, worldId: 'w', timelineId: 't1', number, title: '', synopsis: '', notes: '', createdAt: 0, updatedAt: 0 }
+  return { id, worldId: 'w', timelineId: 't1', number, title: '', synopsis: '', notes: '', wordGoal: null, createdAt: 0, updatedAt: 0 }
 }
 function event(id: string, chapterId: string, sortOrder: number): WorldEvent {
   return {

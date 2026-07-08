@@ -15,6 +15,8 @@ export interface Chapter {
   title: string
   synopsis: string
   notes: string
+  /** Optional per-chapter word-count target for the manuscript. null = unset. */
+  wordGoal: number | null
   createdAt: number
   updatedAt: number
 }

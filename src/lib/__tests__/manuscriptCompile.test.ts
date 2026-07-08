@@ -3,7 +3,7 @@ import { buildManuscript, compileManuscript } from '@/lib/manuscriptCompile'
 import type { Chapter, WorldEvent, SceneText } from '@/types'
 
 function chapter(id: string, number: number, title: string, synopsis = ''): Chapter {
-  return { id, worldId: 'w', timelineId: 't1', number, title, synopsis, notes: '', createdAt: 0, updatedAt: 0 }
+  return { id, worldId: 'w', timelineId: 't1', number, title, synopsis, notes: '', wordGoal: null, createdAt: 0, updatedAt: 0 }
 }
 function event(id: string, chapterId: string, sortOrder: number, title: string): WorldEvent {
   return {
@@ -48,6 +48,16 @@ describe('buildManuscript', () => {
     const empty = m.chapters[1].scenes.find((s) => s.eventId === 'e4')
     expect(empty?.written).toBe(false)
     expect(empty?.wordCount).toBe(0)
+  })
+
+  it('carries per-chapter word goals through', () => {
+    const m = buildManuscript({
+      chapters: [{ ...chapter('c1', 1, 'A'), wordGoal: 2000 }, chapter('c2', 2, 'B')],
+      events: [],
+      sceneTextByEvent: new Map(),
+    })
+    expect(m.chapters[0].wordGoal).toBe(2000)
+    expect(m.chapters[1].wordGoal).toBeNull()
   })
 })
 
