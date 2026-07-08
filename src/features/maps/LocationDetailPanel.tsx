@@ -229,7 +229,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
     <div className="flex h-full w-[85vw] max-w-sm shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl sm:w-72 sm:max-w-none">
       <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-3">
         <span className="text-sm font-semibold text-[hsl(var(--foreground))]">Location</span>
-        <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Close location panel" onClick={onClose}>
+        <Button variant="ghost" size="icon" className="pw-tap h-7 w-7" aria-label="Close location panel" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
       </div>

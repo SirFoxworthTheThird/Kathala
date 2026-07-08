@@ -124,7 +124,7 @@ function MobileNavDrawer({ worldId, open, onClose }: { worldId: string; open: bo
           <button
             onClick={onClose}
             aria-label="Close menu"
-            className="flex h-8 w-8 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]"
+            className="pw-tap flex h-8 w-8 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -173,7 +173,7 @@ export function TopBar() {
           <button
             onClick={() => setNavOpen(true)}
             aria-label="Open navigation menu"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] transition-colors lg:hidden"
+            className="pw-tap flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] transition-colors lg:hidden"
           >
             <Menu className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -217,7 +217,7 @@ export function TopBar() {
             <button
               onClick={() => setSearchOpen(true)}
               aria-label="Search"
-              className="flex h-8 w-8 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] transition-colors lg:hidden"
+              className="pw-tap flex h-8 w-8 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] transition-colors lg:hidden"
             >
               <Search className="h-4 w-4" aria-hidden="true" />
             </button>

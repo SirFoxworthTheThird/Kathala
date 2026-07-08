@@ -71,7 +71,7 @@
     --tl-accent:         hsl(212, 72%, 59%);
     --tl-glow:           rgba(88, 166, 255, 0.55);
     --tl-text:           hsl(213, 31%, 91%);
-    --tl-text-muted:     hsl(215, 20%, 50%);
+    --tl-text-muted:     hsl(215, 20%, 52%);
     --tl-callout-bg:     hsl(222, 47%, 13%);
     --tl-callout-shadow: 0 -6px 32px rgba(0,0,0,0.55), 0 0 0 1px hsl(217,33%,26%);
     --tl-backdrop:       none;
@@ -95,7 +95,7 @@
     --tl-accent:         hsl(190, 100%, 50%);
     --tl-glow:           rgba(0, 215, 255, 0.72);
     --tl-text:           hsl(195, 80%, 85%);
-    --tl-text-muted:     hsl(210, 45%, 44%);
+    --tl-text-muted:     hsl(210, 45%, 50%);
     --tl-callout-bg:     rgba(4, 9, 22, 0.88);
     --tl-callout-shadow: 0 -6px 32px rgba(0,200,255,0.12), 0 0 0 1px rgba(0,200,255,0.28);
     --tl-backdrop:       blur(18px) saturate(180%);
@@ -107,7 +107,7 @@
     --tl-accent:         hsl(55, 100%, 54%);
     --tl-glow:           rgba(255, 0, 200, 0.82);
     --tl-text:           hsl(300, 100%, 85%);
-    --tl-text-muted:     hsl(280, 30%, 48%);
+    --tl-text-muted:     hsl(280, 30%, 55%);
     --tl-callout-bg:     hsl(270, 20%, 7%);
     --tl-callout-shadow: 0 -6px 32px rgba(255,0,200,0.18), 0 0 0 1px hsl(300,100%,44%);
     --tl-backdrop:       none;
@@ -119,7 +119,7 @@
     --tl-accent:         hsl(0, 80%, 42%);
     --tl-glow:           rgba(175, 0, 0, 0.68);
     --tl-text:           hsl(0, 10%, 82%);
-    --tl-text-muted:     hsl(0, 10%, 38%);
+    --tl-text-muted:     hsl(0, 10%, 51%);
     --tl-callout-bg:     hsl(0, 14%, 6%);
     --tl-callout-shadow: 0 -6px 32px rgba(100,0,0,0.45), 0 0 0 1px hsl(0,60%,18%);
     --tl-backdrop:       none;
@@ -131,7 +131,7 @@
     --tl-accent:         hsl(34, 82%, 50%);
     --tl-glow:           rgba(196, 124, 28, 0.62);
     --tl-text:           hsl(35, 50%, 84%);
-    --tl-text-muted:     hsl(30, 26%, 44%);
+    --tl-text-muted:     hsl(30, 26%, 48%);
     --tl-callout-bg:     hsl(25, 34%, 10%);
     --tl-callout-shadow: 0 -6px 32px rgba(0,0,0,0.6), 0 0 0 1px hsl(33,52%,26%);
     --tl-backdrop:       none;
@@ -181,7 +181,7 @@
     --secondary: 270 15% 15%;
     --secondary-foreground: 300 100% 85%;
     --muted: 270 15% 15%;
-    --muted-foreground: 280 30% 55%;
+    --muted-foreground: 280 30% 58%;
     --accent: 270 18% 20%;
     --accent-foreground: 300 100% 85%;
     --destructive: 0 80% 45%;
@@ -212,7 +212,7 @@
     --secondary: 0 10% 12%;
     --secondary-foreground: 0 10% 85%;
     --muted: 0 10% 12%;
-    --muted-foreground: 0 8% 50%;
+    --muted-foreground: 0 8% 52%;
     --accent: 0 12% 16%;
     --accent-foreground: 0 10% 85%;
     --destructive: 0 80% 35%;
@@ -274,7 +274,7 @@
     --secondary: 215 12% 16%;
     --secondary-foreground: 210 12% 92%;
     --muted: 215 12% 16%;
-    --muted-foreground: 215 10% 52%;
+    --muted-foreground: 215 10% 54%;
     --accent: 215 14% 22%;
     --accent-foreground: 210 12% 92%;
     --destructive: 0 80% 45%;
@@ -295,7 +295,7 @@
     --tl-accent:         hsl(24, 100%, 52%);
     --tl-glow:           rgba(255, 120, 0, 0.78);
     --tl-text:           hsl(210, 12%, 92%);
-    --tl-text-muted:     hsl(215, 10%, 48%);
+    --tl-text-muted:     hsl(215, 10%, 51%);
     --tl-callout-bg:     hsl(215, 14%, 10%);
     --tl-callout-shadow: 0 -6px 32px rgba(255,100,0,0.22), 0 0 0 2px hsl(24,100%,40%);
     --tl-backdrop:       none;
@@ -314,7 +314,7 @@
     --secondary: 0 0% 15%;
     --secondary-foreground: 40 8% 88%;
     --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 48%;
+    --muted-foreground: 0 0% 52%;
     --accent: 0 0% 19%;
     --accent-foreground: 40 8% 88%;
     --destructive: 0 65% 35%;
@@ -335,7 +335,7 @@
     --tl-accent:         hsl(40, 8%, 75%);
     --tl-glow:           rgba(200, 190, 175, 0.42);
     --tl-text:           hsl(40, 8%, 88%);
-    --tl-text-muted:     hsl(0, 0%, 44%);
+    --tl-text-muted:     hsl(0, 0%, 49%);
     --tl-callout-bg:     hsl(0, 0%, 9%);
     --tl-callout-shadow: 0 -12px 48px rgba(0,0,0,0.9), 0 0 0 1px hsl(0,0%,22%);
     --tl-backdrop:       none;
@@ -354,7 +354,7 @@
     --secondary: 340 14% 17%;
     --secondary-foreground: 345 28% 92%;
     --muted: 340 14% 17%;
-    --muted-foreground: 340 16% 52%;
+    --muted-foreground: 340 16% 56%;
     --accent: 340 16% 22%;
     --accent-foreground: 345 28% 92%;
     --destructive: 0 75% 40%;
@@ -375,7 +375,7 @@
     --tl-accent:         hsl(340, 60%, 62%);
     --tl-glow:           rgba(220, 100, 140, 0.62);
     --tl-text:           hsl(345, 28%, 92%);
-    --tl-text-muted:     hsl(340, 16%, 48%);
+    --tl-text-muted:     hsl(340, 16%, 53%);
     --tl-callout-bg:     hsl(340, 18%, 10%);
     --tl-callout-shadow: 0 -6px 32px rgba(200,80,120,0.18), 0 0 0 1px hsl(340,35%,28%);
     --tl-backdrop:       blur(8px) saturate(140%);
@@ -614,5 +614,21 @@
 @media (hover: none), (pointer: coarse) {
   [class~="opacity-0"][class*="group-hover:opacity-"] {
     opacity: 1 !important;
+  }
+
+  /* ── Comfortable touch targets ──────────────────────────────────────────────
+     Compact icon buttons (~32px) are hard to hit on touch. `.pw-tap` overlays a
+     transparent, centred ≥44px hit area via ::after — enlarging the tappable
+     region without changing the button's visual size or the surrounding layout.
+     Only apply to well-spaced, standalone controls so hit areas never overlap. */
+  .pw-tap { position: relative; }
+  .pw-tap::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    height: 44px;
+    width: 44px;
+    transform: translate(-50%, -50%);
   }
 }

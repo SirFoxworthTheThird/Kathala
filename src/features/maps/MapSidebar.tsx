@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import {
   Users, Map as MapIcon, MapPin, Package, Layers,
   ChevronRight, ChevronDown, Trash2, Undo2, X, Search,
-  Route, Hexagon, Plus, Link,
+  Route, Hexagon, Plus, Link, Crosshair,
 } from 'lucide-react'
 import { useAppStore, useMapLayerHistory } from '@/store'
 import { useMapLayers, deleteMapLayer } from '@/db/hooks/useMapLayers'
@@ -221,6 +221,8 @@ export function CharactersSection({
   onDragStart,
   onDragEnd,
   onFocus,
+  placingCharacterId,
+  onPlace,
 }: {
   characters: Character[]
   snapshots: CharacterSnapshot[]
@@ -232,6 +234,8 @@ export function CharactersSection({
   onDragStart: () => void
   onDragEnd: () => void
   onFocus: (characterId: string) => void
+  placingCharacterId: string | null
+  onPlace: (characterId: string) => void
 }) {
   const movements = useEventMovements(worldId, activeEventId)
   const [search, setSearch] = useState('')
@@ -243,7 +247,7 @@ export function CharactersSection({
     <SidebarSection title="Characters" icon={Users} count={characters.length}>
       {!activeEventId && (
         <p className="px-3 pb-2 text-[10px] italic text-[hsl(var(--muted-foreground))]">
-          Select an event from the timeline bar below to place and drag characters onto the map.
+          Select an event from the timeline bar below to place characters onto the map.
         </p>
       )}
       {characters.length > 0 && <SidebarSearch value={search} onChange={setSearch} />}
@@ -260,6 +264,7 @@ export function CharactersSection({
               : null
             const movement = movements.find((m) => m.characterId === c.id)
             const color = characterColor(c.id)
+            const isPlacing = placingCharacterId === c.id
             return (
               <div key={c.id} className="flex flex-col gap-0.5">
                 <div
@@ -272,9 +277,9 @@ export function CharactersSection({
                   onDragEnd={onDragEnd}
                   onClick={() => onFocus(c.id)}
                   className={`flex items-center gap-2 rounded-md border bg-[hsl(var(--muted))] px-2 py-1.5 select-none cursor-pointer ${
-                    activeEventId ? 'hover:border-[hsl(var(--ring))]' : 'opacity-60'
+                    isPlacing ? 'border-[hsl(var(--ring))] ring-1 ring-[hsl(var(--ring))]' : activeEventId ? 'hover:border-[hsl(var(--ring))]' : 'opacity-60'
                   }`}
-                  style={{ borderColor: movement ? color : 'hsl(var(--border))' }}
+                  style={{ borderColor: isPlacing ? undefined : movement ? color : 'hsl(var(--border))' }}
                 >
                   <PortraitImage
                     imageId={c.portraitImageId}
@@ -287,6 +292,22 @@ export function CharactersSection({
                       <p className="truncate text-[10px] text-[hsl(var(--muted-foreground))]">{locationName}</p>
                     )}
                   </div>
+                  {activeEventId && (
+                    <button
+                      type="button"
+                      aria-label={isPlacing ? `Cancel placing ${c.name}` : `Place ${c.name} on the map`}
+                      aria-pressed={isPlacing}
+                      title={isPlacing ? 'Tap a location on the map, or tap here to cancel' : 'Place on map: tap here, then tap a location'}
+                      onClick={(e) => { e.stopPropagation(); onPlace(c.id) }}
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors ${
+                        isPlacing
+                          ? 'bg-[hsl(var(--ring))] text-[hsl(var(--background))]'
+                          : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]'
+                      }`}
+                    >
+                      <Crosshair className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  )}
                 </div>
 
                 {movement && movement.waypoints.length >= 2 && activeEventId && (

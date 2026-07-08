@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import L from 'leaflet'
 import { useParams } from 'react-router-dom'
-import { Plus, Upload, Map as MapIcon, Ruler, X, Route, Download, Sparkles, Type, Trash2, PanelLeft } from 'lucide-react'
+import { Plus, Upload, Map as MapIcon, Ruler, X, Route, Download, Sparkles, Type, Trash2, PanelLeft, Crosshair } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore, useActiveMapLayerId } from '@/store'
 import { useRootMapLayers, updateMapLayer } from '@/db/hooks/useMapLayers'
@@ -64,6 +64,8 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const [addLocationOpen, setAddLocationOpen] = useState(false)
   const [pendingPos, setPendingPos] = useState<{ x: number; y: number } | null>(null)
   const [pendingDropCharacterId, setPendingDropCharacterId] = useState<string | null>(null)
+  // Touch-friendly placement: tap a character's crosshair, then tap a location.
+  const [placingCharacterId, setPlacingCharacterId] = useState<string | null>(null)
   const [aiDialogOpen, setAiDialogOpen] = useState(false)
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null)
   const [scaleMode, setScaleMode] = useState(false)
@@ -279,6 +281,14 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       })
       return
     }
+    // Tap-to-place: if a character is armed for placement, drop it here.
+    if (placingCharacterId) {
+      const targetMarker = markers.find((m) => m.id === markerId)
+      const charId = placingCharacterId
+      setPlacingCharacterId(null)
+      if (targetMarker) void placeCharacterAtMarker(charId, targetMarker)
+      return
+    }
     setSelectedCharacterId(null)
     setSelectedLocationMarkerId(markerId)
   }
@@ -398,7 +408,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           <button
             onClick={() => setSidebarOpen(false)}
             aria-label="Close map panels"
-            className="flex h-7 w-7 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]"
+            className="pw-tap flex h-7 w-7 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -415,6 +425,11 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           onDragStart={() => setIsDraggingCharacter(true)}
           onDragEnd={() => setIsDraggingCharacter(false)}
           onFocus={focusOnCharacter}
+          placingCharacterId={placingCharacterId}
+          onPlace={(characterId) => {
+            setPlacingCharacterId((prev) => (prev === characterId ? null : characterId))
+            setSidebarOpen(false)
+          }}
         />
         <LocationsSection
           markers={markers}
@@ -466,7 +481,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             onClick={() => setSidebarOpen(true)}
             aria-label="Open map panels"
             title="Map panels"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] lg:hidden"
+            className="pw-tap flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] lg:hidden"
           >
             <PanelLeft className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -617,6 +632,14 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             onAnimationEnd={handlePlaybackAnimationEnd}
             onMarkerClick={handleMarkerClick}
             onMapClick={async (x, y) => {
+              // Tap-to-place onto empty ground: create a location there, then drop.
+              if (placingCharacterId) {
+                setPendingDropCharacterId(placingCharacterId)
+                setPlacingCharacterId(null)
+                setPendingPos({ x, y })
+                setAddLocationOpen(true)
+                return
+              }
               if (annotateMode) {
                 const ann = await createMapAnnotation({ worldId, mapLayerId: layerId, x, y, text: 'Label' })
                 setSelectedAnnotationId(ann.id)
@@ -657,7 +680,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             onCharacterClick={handleCharacterClick}
             mapRef={mapRef}
             scaleMode={scaleMode || measureMode}
-            directMapClick={drawingRegion || drawingRoute || annotateMode}
+            directMapClick={drawingRegion || drawingRoute || annotateMode || placingCharacterId != null}
             onScalePoints={measureMode ? handleMeasurePoints : handleScalePoints}
             selectedRouteId={selectedRouteId}
             selectedRegionId={selectedRegionId}
@@ -715,6 +738,28 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               onCancel={() => { setDrawingRegion(false); setRegionVertices([]) }}
               onSave={() => { setDrawingRegion(false); setRegionVertices([]) }}
             />
+          )}
+
+          {/* Character placement HUD (tap-to-place) */}
+          {placingCharacterId && (
+            <div className="absolute bottom-4 left-1/2 z-[610] -translate-x-1/2 w-[calc(100%-2rem)] max-w-md">
+              <div className="flex items-center gap-2 rounded-full border border-[hsl(var(--ring)/0.5)] bg-[hsl(var(--card))] px-4 py-2 shadow-lg text-sm">
+                <Crosshair className="h-4 w-4 shrink-0 text-[hsl(var(--ring))]" />
+                <span className="min-w-0 flex-1 truncate">
+                  Tap a location to place{' '}
+                  <span className="font-semibold">
+                    {characters.find((c) => c.id === placingCharacterId)?.name ?? 'character'}
+                  </span>
+                </span>
+                <button
+                  onClick={() => setPlacingCharacterId(null)}
+                  aria-label="Cancel placing character"
+                  className="ml-1 shrink-0 rounded p-1 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
           )}
 
           {/* Annotate placement HUD */}

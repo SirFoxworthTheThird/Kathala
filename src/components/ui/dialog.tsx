@@ -50,7 +50,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTML
           {children}
           <button
             onClick={onClose}
-            className="absolute right-4 top-4 rounded-sm p-1 text-[hsl(var(--muted-foreground))] opacity-70 hover:opacity-100 focus:outline-none"
+            className="pw-tap absolute right-4 top-4 rounded-sm p-1 text-[hsl(var(--muted-foreground))] opacity-70 hover:opacity-100 focus:outline-none"
           >
             <X className="h-4 w-4" />
             <span className="sr-only">Close</span>
