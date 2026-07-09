@@ -23,6 +23,7 @@ import { pixelDist } from '@/lib/mapScale'
 import { computeInWorldDays } from '@/lib/inWorldTime'
 import { computeKnowledgeAnachronisms } from '@/lib/knowledgeAnachronisms'
 import { computeProseMentionIssues, computeKnowledgeLeaks } from '@/lib/proseContinuity'
+import { computeItemHandoffIssues } from '@/lib/itemHandoff'
 import { useKnowledgeFacts, useKnowledgeReveals } from '@/db/hooks/useKnowledge'
 import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
 import type { CharacterSnapshot, ItemPlacement, MapRoute, MapRegion, RouteType } from '@/types'
@@ -770,6 +771,28 @@ export function ContinuityChecker() {
           eventId: snap.eventId,
         })
       }
+    }
+
+    // ── Item hand-off "teleport" check ───────────────────────────────────────
+    // An item that passes directly between two characters who were never in the
+    // same place around the hand-off has no way to physically change hands.
+    for (const h of computeItemHandoffIssues({ events: allEvents, chapters, snapshots, placements: allItemPlacements ?? [] })) {
+      const item = itemById.get(h.itemId)
+      const from = charById.get(h.fromCharacterId)
+      const to   = charById.get(h.toCharacterId)
+      const fromMarker = markerById.get(h.fromMarkerId)
+      const toMarker   = markerById.get(h.toMarkerId)
+      const ev = eventById.get(h.handoffEventId)
+      const ch = ev ? chapById.get(ev.chapterId) : undefined
+      out.push({
+        id: `item-handoff-${h.itemId}-${h.fromCharacterId}-${h.toCharacterId}-${h.handoffEventId}`,
+        severity: 'warning',
+        category: 'item',
+        message: `"${item?.name ?? h.itemId}" changes hands between characters in different places`,
+        detail: `${from?.name ?? '?'} last held it at "${fromMarker?.name ?? h.fromMarkerId}", but ${to?.name ?? '?'} has it at "${toMarker?.name ?? h.toMarkerId}" in Ch. ${ch?.number ?? '?'} — they never share a location. Add a scene where they meet, route it through a location, or suppress if intentional.`,
+        navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+        eventId: h.handoffEventId,
+      })
     }
 
     // ── Relationship checks ──────────────────────────────────────────────────
