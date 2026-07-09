@@ -58,11 +58,11 @@ async function setupTwoCharacters(page: import('@playwright/test').Page) {
 test.describe('Relationship graph', () => {
   test('shows empty graph when no relationships exist (but characters do)', async ({ page }) => {
     await setupTwoCharacters(page)
-    await page.getByTitle('Relationships').click()
+    await page.getByRole('link', { name: 'Relations' }).click()
     await expect(page.getByText('No characters yet')).not.toBeVisible()
   })
 
-  test('redirects to characters when no characters exist', async ({ page }) => {
+  test('shows an empty state (with a way to add) when no characters exist', async ({ page }) => {
     await page.goto('/')
     await resetDB(page)
 
@@ -71,9 +71,10 @@ test.describe('Relationship graph', () => {
     await page.getByRole('button', { name: 'Create World' }).last().click()
     await expect(page).toHaveURL(/#\/worlds\//)
 
-    await page.getByTitle('Relationships').click()
-    await expect(page.getByText('No characters yet')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Go to Characters' })).toBeVisible()
+    await page.getByRole('link', { name: 'Relations' }).click()
+    // With no characters the graph shows its empty state and a way to add.
+    await expect(page.getByText('No relationships yet')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Add Relationship' })).toBeVisible()
   })
 
   test('creates a relationship via character detail tab', async ({ page }) => {
@@ -98,7 +99,7 @@ test.describe('Relationship graph', () => {
     await fillRelationshipDialog(page, 'Bob', 'Rivals')
 
     // Navigate to graph — edge label renders as a button
-    await page.getByTitle('Relationships').click()
+    await page.getByRole('link', { name: 'Relations' }).click()
     await expect(page.getByRole('button', { name: 'Rivals' })).toBeVisible()
   })
 
@@ -110,7 +111,7 @@ test.describe('Relationship graph', () => {
     await page.getByRole('button', { name: 'Add Relationship' }).click()
     await fillRelationshipDialog(page, 'Bob', 'Allies')
 
-    await page.getByTitle('Relationships').click()
+    await page.getByRole('link', { name: 'Relations' }).click()
     // ReactFlow edge interaction path (stroke-opacity:0) sits on top of the
     // EdgeLabelRenderer button in Playwright's hit-test.
     // Use dispatchEvent to fire the React click handler directly.

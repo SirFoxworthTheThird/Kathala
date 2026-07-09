@@ -30,6 +30,10 @@ import type {
   Faction,
   FactionMembership,
   FactionRelationship,
+  KnowledgeFact,
+  KnowledgeReveal,
+  SceneText,
+  PlotThread,
   ContinuitySuppression,
 } from '@/types'
 
@@ -63,6 +67,10 @@ class PlotWeaveDB extends Dexie {
   factions!: EntityTable<Faction, 'id'>
   factionMemberships!: EntityTable<FactionMembership, 'id'>
   factionRelationships!: EntityTable<FactionRelationship, 'id'>
+  knowledgeFacts!: EntityTable<KnowledgeFact, 'id'>
+  knowledgeReveals!: EntityTable<KnowledgeReveal, 'id'>
+  sceneTexts!: EntityTable<SceneText, 'id'>
+  plotThreads!: EntityTable<PlotThread, 'id'>
   continuitySuppressions!: EntityTable<ContinuitySuppression, 'id'>
 
   constructor() {
@@ -479,6 +487,81 @@ class PlotWeaveDB extends Dexie {
     this.version(32).stores({
       continuitySuppressions: 'id, worldId, issueId, [worldId+issueId]',
     })
+
+    // v33: explicit in-world time on events (absolute story-day) so flashbacks
+    // and flash-forwards can be placed on the chronological timeline
+    // independent of narrative order. Non-indexed; backfill null on existing rows.
+    this.version(33).stores({}).upgrade(async (tx) => {
+      await tx.table('events').toCollection().modify((e: Record<string, unknown>) => {
+        if (e.inWorldTime === undefined) e.inWorldTime = null
+      })
+    })
+
+    // v34: character knowledge — facts and per-character "learned at" reveals,
+    // so "who knows what, when" can be read relative to the chapter cursor.
+    this.version(34).stores({
+      knowledgeFacts: 'id, worldId',
+      knowledgeReveals: 'id, worldId, factId, characterId, eventId',
+    })
+
+    // v35: a reader-clock on each fact (when the reader learns it), so the
+    // reader-vs-character knowledge gap (dramatic irony / withheld info) can be
+    // read at the cursor. Non-indexed; backfill null (= derive from POV).
+    this.version(35).stores({}).upgrade(async (tx) => {
+      await tx.table('knowledgeFacts').toCollection().modify((f: Record<string, unknown>) => {
+        if (f.readerLearnsAtEventId === undefined) f.readerLearnsAtEventId = null
+      })
+    })
+
+    // v36: an origin event on each fact (when it becomes true/knowable), so the
+    // continuity checker can flag anachronistic knowledge. Backfill null.
+    this.version(36).stores({}).upgrade(async (tx) => {
+      await tx.table('knowledgeFacts').toCollection().modify((f: Record<string, unknown>) => {
+        if (f.originEventId === undefined) f.originEventId = null
+      })
+    })
+
+    // v37: dramatic-intensity rating on events for the pacing curve. Backfill null.
+    this.version(37).stores({}).upgrade(async (tx) => {
+      await tx.table('events').toCollection().modify((e: Record<string, unknown>) => {
+        if (e.tension === undefined) e.tension = null
+      })
+    })
+
+    // v38: story-structure beat marker on events (Inciting Incident, Midpoint, …). Backfill null.
+    this.version(38).stores({}).upgrade(async (tx) => {
+      await tx.table('events').toCollection().modify((e: Record<string, unknown>) => {
+        if (e.structureBeat === undefined) e.structureBeat = null
+      })
+    })
+
+    // v39: manuscript prose per scene, keyed to its event.
+    this.version(39).stores({
+      sceneTexts: 'id, worldId, eventId',
+    })
+
+    // v40: explicit "@"-mentions on events (referenced but not present). Backfill [].
+    this.version(40).stores({}).upgrade(async (tx) => {
+      await tx.table('events').toCollection().modify((e: Record<string, unknown>) => {
+        if (e.mentionedCharacterIds === undefined) e.mentionedCharacterIds = []
+      })
+    })
+
+    // v41: plot-thread / subplot tracking. New table + backfill threadIds on events.
+    this.version(41).stores({
+      plotThreads: 'id, worldId',
+    }).upgrade(async (tx) => {
+      await tx.table('events').toCollection().modify((e: Record<string, unknown>) => {
+        if (e.threadIds === undefined) e.threadIds = []
+      })
+    })
+
+    // v42: per-chapter word-count goals. Backfill existing chapters to null.
+    this.version(42).stores({}).upgrade(async (tx) => {
+      await tx.table('chapters').toCollection().modify((c: Record<string, unknown>) => {
+        if (c.wordGoal === undefined) c.wordGoal = null
+      })
+    })
   }
 }
 
@@ -488,6 +571,12 @@ db.on('blocked', () => {
   db.close()
   window.location.reload()
 })
+
+// Dev-only seam so e2e tests can seed records through Dexie (which updates live
+// queries in place, unlike a raw IndexedDB write). Stripped from production.
+if (import.meta.env.DEV) {
+  ;(window as unknown as { __pwdb?: typeof db }).__pwdb = db
+}
 
 db.on('versionchange', () => {
   db.close()

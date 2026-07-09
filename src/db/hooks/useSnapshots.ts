@@ -54,7 +54,7 @@ export function useChapterEventSnapshots(eventIds: string[]) {
       eventIds.length > 0
         ? db.characterSnapshots.where('eventId').anyOf(eventIds).toArray()
         : [],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [key],
     []
   )
@@ -113,7 +113,7 @@ export function useBestSnapshots(
   const allChapters = useWorldChapters(worldId)
   return useMemo(
     () => selectBestCharacterSnapshots(all, activeEventId, allEvents, allChapters, timelineEventIds),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [all, activeEventId, allEvents, allChapters, timelineEventIds]
   )
 }

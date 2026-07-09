@@ -1,9 +1,10 @@
-import { X, BookOpen, Users, Network, Package, Scroll, MapPin, Heart, Skull, ChevronRight, BookMarked, Shield, Eye } from 'lucide-react'
+import { X, BookOpen, Users, Network, Package, Scroll, MapPin, Heart, Skull, ChevronRight, BookMarked, Shield, Eye, EyeOff, KeyRound, Drama } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useEffect, useRef } from 'react'
 import { useAppStore } from '@/store'
 import { useFocusTrap } from '@/lib/useFocusTrap'
-import { useChapter, useEvent, useEvents } from '@/db/hooks/useTimeline'
+import { useChapter, useEvent, useEvents, useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
+import { computeInWorldDays } from '@/lib/inWorldTime'
 import { useBestSnapshots } from '@/db/hooks/useSnapshots'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
@@ -12,10 +13,13 @@ import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useLorePages } from '@/db/hooks/useLore'
 import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
+import { useKnowledgeFacts, useKnowledgeReveals } from '@/db/hooks/useKnowledge'
+import { computeSceneKnowledgeGaps } from '@/lib/knowledgeGaps'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { cn } from '@/lib/utils'
 import { charColor } from '@/lib/characterColor'
+import { InheritedBadge } from '@/components/InheritedBadge'
 
 function Section({ title, icon: Icon, count, children }: {
   title: string
@@ -56,6 +60,9 @@ export function WritersBriefPanel() {
 
   const activeEvent = useEvent(activeEventId)
   const chapter    = useChapter(activeEvent?.chapterId ?? null)
+  const worldEvents = useWorldEvents(worldId ?? null)
+  const worldChapters = useWorldChapters(worldId ?? null)
+  const activeDay = activeEventId ? computeInWorldDays(worldEvents, worldChapters).get(activeEventId) : undefined
   const events     = useEvents(activeEvent?.chapterId ?? null)
   const snapshots  = useBestSnapshots(worldId ?? null, activeEventId)
   const characters = useCharacters(worldId ?? null)
@@ -66,6 +73,8 @@ export function WritersBriefPanel() {
   const allLorePages = useLorePages(worldId ?? null)
   const allFactions = useFactions(worldId ?? null)
   const allMemberships = useFactionMemberships(worldId ?? null)
+  const knowledgeFacts = useKnowledgeFacts(worldId ?? null)
+  const knowledgeReveals = useKnowledgeReveals(worldId ?? null)
   const itemPlacements = useLiveQuery(
     () => activeEventId ? db.itemPlacements.where('eventId').equals(activeEventId).toArray() : [],
     [activeEventId],
@@ -140,7 +149,7 @@ export function WritersBriefPanel() {
         role="dialog"
         aria-modal="true"
         aria-label="Writer's Brief"
-        className="fixed right-0 top-0 z-[3001] flex h-screen w-80 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-2xl"
+        className="fixed right-0 top-0 z-[3001] flex h-[100dvh] w-80 max-w-[92vw] flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-2xl"
       >
         {/* Header */}
         <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] px-4 py-3">
@@ -176,6 +185,9 @@ export function WritersBriefPanel() {
                   <div className="mt-2 border-t border-[hsl(var(--border))] pt-2">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Active Event</p>
                     <p className="text-xs font-medium text-[hsl(var(--foreground))]">{activeEvent.title}</p>
+                    {activeDay !== undefined && activeDay > 0 && !activeEvent.isFlashback && (
+                      <p className="mt-0.5 text-[10px] text-[hsl(var(--muted-foreground))]">In-world day {activeDay}</p>
+                    )}
                     {activeEvent.description && (
                       <p className="mt-0.5 text-[10px] text-[hsl(var(--muted-foreground))] leading-relaxed">{activeEvent.description}</p>
                     )}
@@ -245,6 +257,7 @@ export function WritersBriefPanel() {
                               : <Skull className="h-3 w-3 text-red-400" />
                             }
                             <span className={cn(!snap.isAlive && 'line-through text-[hsl(var(--muted-foreground))]')}>{char.name}</span>
+                            {snap.eventId !== activeEventId && <InheritedBadge className="ml-auto" />}
                           </div>
                           {location && (
                             <div className="mt-1 flex items-center gap-1 text-[hsl(var(--muted-foreground))]">
@@ -313,6 +326,94 @@ export function WritersBriefPanel() {
                 )
               })()}
 
+              {/* Knowledge in the room — who knows what, as of this moment */}
+              {(() => {
+                const chapterNumber = new Map(worldChapters.map((c) => [c.id, c.number]))
+                const ordered = [...worldEvents].sort((a, b) => {
+                  const byChapter = (chapterNumber.get(a.chapterId) ?? 0) - (chapterNumber.get(b.chapterId) ?? 0)
+                  return byChapter !== 0 ? byChapter : a.sortOrder - b.sortOrder
+                })
+                const pos = new Map(ordered.map((e, i) => [e.id, i]))
+                const cursorPos = activeEventId ? pos.get(activeEventId) ?? null : null
+                const knownAt = (eventId: string) => {
+                  if (cursorPos === null) return true
+                  const p = pos.get(eventId)
+                  return p !== undefined && p <= cursorPos
+                }
+                const presentIds = new Set(presentChars.map((x) => x.char.id))
+                const rows = knowledgeFacts
+                  .map((fact) => {
+                    const knowers = knowledgeReveals
+                      .filter((r) => r.factId === fact.id && presentIds.has(r.characterId) && knownAt(r.eventId))
+                      .map((r) => charById.get(r.characterId)?.name)
+                      .filter(Boolean) as string[]
+                    return { fact, knowers }
+                  })
+                  .filter((x) => x.knowers.length > 0)
+                if (rows.length === 0) return null
+                return (
+                  <Section title="Knowledge in the room" icon={KeyRound} count={rows.length}>
+                    <div className="space-y-1.5">
+                      {rows.map(({ fact, knowers }) => (
+                        <div key={fact.id} className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1.5 text-xs">
+                          <p className="font-medium text-[hsl(var(--foreground))]">{fact.title}</p>
+                          <p className="mt-0.5 text-[10px] text-[hsl(var(--muted-foreground))]">
+                            known by {knowers.join(', ')}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </Section>
+                )
+              })()}
+
+              {/* Knowledge gaps — dramatic irony (reader ahead) and withheld info (character ahead) */}
+              {(() => {
+                const present = new Set<string>()
+                if (activeEvent) {
+                  for (const id of activeEvent.involvedCharacterIds) present.add(id)
+                  if (activeEvent.povCharacterId) present.add(activeEvent.povCharacterId)
+                }
+                const gaps = computeSceneKnowledgeGaps({
+                  facts: knowledgeFacts,
+                  reveals: knowledgeReveals,
+                  events: worldEvents,
+                  chapters: worldChapters,
+                  presentCharacterIds: [...present],
+                  activeEventId,
+                })
+                if (gaps.length === 0) return null
+                const nameOf = (id: string) => charById.get(id)?.name ?? '—'
+                return (
+                  <Section title="Knowledge gaps" icon={Drama} count={gaps.length}>
+                    <div className="space-y-1.5">
+                      {gaps.map((g) => {
+                        const known = g.knownBy.map(nameOf)
+                        const unknown = g.unknownBy.map(nameOf)
+                        return (
+                          <div key={g.fact.id} className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1.5 text-xs">
+                            <div className="flex items-center gap-1.5">
+                              {g.kind === 'irony'
+                                ? <Eye className="h-3 w-3 shrink-0 text-amber-400" aria-hidden="true" />
+                                : <EyeOff className="h-3 w-3 shrink-0 text-indigo-400" aria-hidden="true" />}
+                              <span className="font-medium text-[hsl(var(--foreground))]">{g.fact.title}</span>
+                              <span className="ml-auto text-[9px] uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+                                {g.kind === 'irony' ? 'irony' : 'withheld'}
+                              </span>
+                            </div>
+                            <p className="mt-0.5 text-[10px] text-[hsl(var(--muted-foreground))]">
+                              {g.kind === 'irony'
+                                ? <>The reader knows — {unknown.join(', ')} {unknown.length === 1 ? "doesn't" : "don't"}.</>
+                                : <>{known.join(', ')} know{known.length === 1 ? 's' : ''} — the reader doesn't yet.</>}
+                            </p>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </Section>
+                )
+              })()}
+
               {/* Relationships */}
               {relSnapsWithNames.length > 0 && (
                 <Section title="Relationships" icon={Network} count={relSnapsWithNames.length}>
@@ -357,7 +458,7 @@ export function WritersBriefPanel() {
                 <Section title="Lore" icon={BookMarked} count={relevantLore.length}>
                   <div className="space-y-1.5">
                     {relevantLore.map((page) => {
-                      const preview = page.body.slice(0, 80).replace(/[#*`_>\-]/g, '').trim()
+                      const preview = page.body.slice(0, 80).replace(/[#*`_>-]/g, '').trim()
                       const isNew = page.visibleFromEventId === activeEventId
                       return (
                         <button

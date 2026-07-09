@@ -547,7 +547,7 @@ export function TimelineRelationshipPanel({
         className="fixed inset-0 z-[3000] bg-black/30"
         onClick={() => onOpenChange(false)}
       />
-      <div className="fixed right-0 top-0 z-[3001] flex h-screen w-96 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-2xl">
+      <div className="fixed right-0 top-0 z-[3001] flex h-[100dvh] w-96 max-w-[92vw] flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-2xl">
         {/* Header */}
         <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] px-4 py-3">
           <Link2 className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />

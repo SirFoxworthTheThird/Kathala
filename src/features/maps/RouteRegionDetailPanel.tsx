@@ -75,14 +75,14 @@ export function RouteDetailPanel({
   const freePoints = waypointCount - namedStops
 
   return (
-    <div className="flex h-full w-72 shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl">
+    <div className="flex h-full w-[85vw] max-w-sm shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl sm:w-72 sm:max-w-none">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-3">
         <div className="flex items-center gap-2">
           <Route className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
           <span className="text-sm font-semibold text-[hsl(var(--foreground))]">Route</span>
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+        <Button variant="ghost" size="icon" className="pw-tap h-7 w-7" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
       </div>
@@ -231,14 +231,14 @@ export function RegionDetailPanel({
   }
 
   return (
-    <div className="flex h-full w-72 shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl">
+    <div className="flex h-full w-[85vw] max-w-sm shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl sm:w-72 sm:max-w-none">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-3">
         <div className="flex items-center gap-2">
           <Hexagon className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
           <span className="text-sm font-semibold text-[hsl(var(--foreground))]">Region</span>
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+        <Button variant="ghost" size="icon" className="pw-tap h-7 w-7" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
       </div>

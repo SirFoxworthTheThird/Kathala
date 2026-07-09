@@ -89,9 +89,9 @@ export default function WorldSelectorView() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-6 py-4">
-        <div className="flex items-center justify-between">
+    <div className="flex min-h-[100dvh] flex-col">
+      <header className="border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-4 sm:px-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <img src={faviconUrl} alt="PlotWeave" className="h-10 w-10 rounded object-cover" />
             <div>
@@ -99,7 +99,7 @@ export default function WorldSelectorView() {
               <p className="text-sm text-[hsl(var(--muted-foreground))]">Story Tracker</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               onClick={() => setPromptOpen(true)}

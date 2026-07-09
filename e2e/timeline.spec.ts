@@ -37,7 +37,8 @@ test.describe('Timeline and chapters', () => {
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
 
     await expect(page.getByRole('heading', { name: /Add Chapter/ })).not.toBeVisible()
-    await expect(page.getByText('The Beginning')).toBeVisible()
+    // Chapter name appears in both the chapter list and the timeline bar.
+    await expect(page.getByText('The Beginning').first()).toBeVisible()
   })
 
   test('requires a title to create a chapter', async ({ page }) => {
@@ -57,12 +58,12 @@ test.describe('Timeline and chapters', () => {
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('Chapter One')
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
-    await expect(page.getByText('Chapter One')).toBeVisible()
+    await expect(page.getByText('Chapter One').first()).toBeVisible()
 
     // Navigate to chapter detail via the ExternalLink icon button in the chapter row
     await page.getByTitle('Open chapter detail').click()
     await expect(page).toHaveURL(/#\/worlds\/.+\/timeline\/.+/)
-    await expect(page.getByText('Chapter One')).toBeVisible()
+    await expect(page.getByText('Chapter One').first()).toBeVisible()
   })
 
   test('creates an event within a chapter', async ({ page }) => {
@@ -73,7 +74,7 @@ test.describe('Timeline and chapters', () => {
     await page.getByTitle('Open chapter detail').click()
     await expect(page).toHaveURL(/#\/worlds\/.+\/timeline\/.+/)
 
-    await page.getByRole('button', { name: 'Add Event' }).click()
+    await page.getByRole('button', { name: 'Add Event' }).first().click()
     await expect(page.getByRole('heading', { name: 'Add Event' })).toBeVisible()
 
     await page.getByPlaceholder('Event title').fill('The Departure')
@@ -90,7 +91,7 @@ test.describe('Timeline and chapters', () => {
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
     await page.getByTitle('Open chapter detail').click()
 
-    await page.getByRole('button', { name: 'Add Event' }).click()
+    await page.getByRole('button', { name: 'Add Event' }).first().click()
     await expect(page.getByRole('heading', { name: 'Add Event' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Add Event' }).last()).toBeDisabled()
   })
@@ -103,27 +104,28 @@ test.describe('Timeline and chapters', () => {
     await page.getByTitle('Open chapter detail').click()
 
     // Create two events
-    await page.getByRole('button', { name: 'Add Event' }).click()
+    await page.getByRole('button', { name: 'Add Event' }).first().click()
     await page.getByPlaceholder('Event title').fill('First Event')
     await page.getByRole('button', { name: 'Add Event' }).last().click()
-    await expect(page.getByText('First Event')).toBeVisible()
+    // Event name appears in both the event card and the timeline bar.
+    await expect(page.getByText('First Event').first()).toBeVisible()
 
-    await page.getByRole('button', { name: 'Add Event' }).click()
+    await page.getByRole('button', { name: 'Add Event' }).first().click()
     await page.getByPlaceholder('Event title').fill('Second Event')
     await page.getByRole('button', { name: 'Add Event' }).last().click()
-    await expect(page.getByText('Second Event')).toBeVisible()
+    await expect(page.getByText('Second Event').first()).toBeVisible()
 
     // Navigate back to timeline — the bottom bar renders event markers with title= attributes
     await page.getByRole('link', { name: /timeline/i }).click()
 
     // Click the 'First Event' marker in the timeline bar
-    await page.getByTitle('First Event').click()
+    await page.getByTitle('First Event', { exact: true }).click()
 
     // The active event label appears in the timeline bar
-    await expect(page.getByTitle('First Event')).toBeVisible()
+    await expect(page.getByTitle('First Event', { exact: true })).toBeVisible()
 
     // Click the second event and verify the active marker shifts
-    await page.getByTitle('Second Event').click()
-    await expect(page.getByTitle('Second Event')).toBeVisible()
+    await page.getByTitle('Second Event', { exact: true }).click()
+    await expect(page.getByTitle('Second Event', { exact: true })).toBeVisible()
   })
 })

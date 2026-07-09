@@ -32,21 +32,47 @@ test.describe('Character Arc view', () => {
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('The Shire')
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
-    await expect(page.getByText('The Shire')).toBeVisible()
+    // Chapter names appear in both the chapter list and the timeline bar.
+    await expect(page.getByText('The Shire').first()).toBeVisible()
 
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('Rivendell')
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
-    await expect(page.getByText('Rivendell')).toBeVisible()
+    await expect(page.getByText('Rivendell').first()).toBeVisible()
+
+    // Add one event so a snapshot can reference it.
+    await page.getByTitle('Open chapter detail').first().click()
+    await page.getByRole('main').getByRole('button', { name: 'Add Event' }).first().click()
+    await page.getByPlaceholder('Event title').fill('Departure')
+    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await expect(page.getByText('Departure').first()).toBeVisible()
+
+    // The arc grid renders character rows only once at least one snapshot
+    // exists. Seed a consistent one through Dexie (the dev-only __pwdb seam),
+    // which updates live queries in place — no reload, no dangling references.
+    // Row labels come from the character list, so seeding one character is enough.
+    await page.evaluate(async () => {
+       
+      const db = (window as any).__pwdb
+      const [chars, events] = await Promise.all([db.characters.toArray(), db.events.toArray()])
+      const frodo = chars.find((c: { name: string }) => c.name === 'Frodo')
+      const ev = events[0]
+      await db.characterSnapshots.add({
+        id: crypto.randomUUID(), worldId: frodo.worldId, characterId: frodo.id, eventId: ev.id,
+        isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
+        inventoryItemIds: [], inventoryNotes: '', statusNotes: '', travelModeId: null,
+        sortKey: 10_000, createdAt: Date.now(), updatedAt: Date.now(),
+      })
+    })
   })
 
   test('navigates to character arc view', async ({ page }) => {
-    await page.getByTitle('Character Arc').click()
+    await page.getByRole('link', { name: 'Arc' }).click()
     await expect(page).toHaveURL(/#\/worlds\/.+\/arc/)
   })
 
   test('arc view shows chapter columns', async ({ page }) => {
-    await page.getByTitle('Character Arc').click()
+    await page.getByRole('link', { name: 'Arc' }).click()
     await expect(page).toHaveURL(/#\/worlds\/.+\/arc/)
 
     // Chapter columns are headed "Ch. N — Title"
@@ -55,7 +81,7 @@ test.describe('Character Arc view', () => {
   })
 
   test('arc view shows character rows', async ({ page }) => {
-    await page.getByTitle('Character Arc').click()
+    await page.getByRole('link', { name: 'Arc' }).click()
     await expect(page).toHaveURL(/#\/worlds\/.+\/arc/)
 
     await expect(page.getByText('Frodo')).toBeVisible()
@@ -63,7 +89,7 @@ test.describe('Character Arc view', () => {
   })
 
   test('filter input narrows visible characters', async ({ page }) => {
-    await page.getByTitle('Character Arc').click()
+    await page.getByRole('link', { name: 'Arc' }).click()
     await expect(page).toHaveURL(/#\/worlds\/.+\/arc/)
 
     await expect(page.getByText('Frodo')).toBeVisible()

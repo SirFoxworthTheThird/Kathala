@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { useFocusTrap } from '@/lib/useFocusTrap'
-import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, Shield, ChevronRight, EyeOff, Eye, Check } from 'lucide-react'
+import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, Shield, ChevronRight, EyeOff, Eye, Check, PenLine } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store'
 import { useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
@@ -20,6 +20,13 @@ import { db } from '@/db/database'
 import { useContinuitySuppressions, toggleContinuitySuppression, setContinuitySuppressionNote } from '@/db/hooks/useContinuitySuppressions'
 import { cn } from '@/lib/utils'
 import { pixelDist } from '@/lib/mapScale'
+import { computeInWorldDays } from '@/lib/inWorldTime'
+import { computeKnowledgeAnachronisms } from '@/lib/knowledgeAnachronisms'
+import { computeDeadKnowerIssues } from '@/lib/knowledgeRevealContinuity'
+import { computeProseMentionIssues, computeKnowledgeLeaks } from '@/lib/proseContinuity'
+import { computeItemHandoffIssues } from '@/lib/itemHandoff'
+import { useKnowledgeFacts, useKnowledgeReveals } from '@/db/hooks/useKnowledge'
+import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
 import type { CharacterSnapshot, ItemPlacement, MapRoute, MapRegion, RouteType } from '@/types'
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────
@@ -82,7 +89,7 @@ type IssueSeverity = 'error' | 'warning'
 interface Issue {
   id: string
   severity: IssueSeverity
-  category: 'character' | 'item' | 'relationship' | 'faction' | 'pov'
+  category: 'character' | 'item' | 'relationship' | 'faction' | 'pov' | 'prose'
   message: string
   detail?: string
   navigatePath?: string
@@ -267,6 +274,9 @@ export function ContinuityChecker() {
   const rels        = useRelationships(worldId ?? null)
   const items       = useItems(worldId ?? null)
   const snapshots   = useWorldSnapshots(worldId ?? null)
+  const knowledgeFacts   = useKnowledgeFacts(worldId ?? null)
+  const knowledgeReveals = useKnowledgeReveals(worldId ?? null)
+  const sceneTexts       = useWorldSceneTexts(worldId ?? null)
   const allMarkers  = useAllLocationMarkers(worldId ?? null)
   const allLayers   = useMapLayers(worldId ?? null)
   const travelModes = useTravelModes(worldId ?? null)
@@ -312,6 +322,10 @@ export function ContinuityChecker() {
     const charById  = new Map(characters.map((c) => [c.id, c]))
     const itemById  = new Map(items.map((i) => [i.id, i]))
     const eventById = new Map(allEvents.map((e) => [e.id, e]))
+    // Absolute in-world day per event, so travel checks can use the elapsed
+    // time between two points (which spans every event in between, and honors
+    // explicit inWorldTime pins) rather than a single event's travelDays.
+    const inWorldDay = computeInWorldDays(allEvents, chapters)
 
     // Global event order: chapter.number * 10_000 + event.sortOrder
     const chapNumById = new Map(chapters.map((c) => [c.id, c.number]))
@@ -760,6 +774,28 @@ export function ContinuityChecker() {
       }
     }
 
+    // ── Item hand-off "teleport" check ───────────────────────────────────────
+    // An item that passes directly between two characters who were never in the
+    // same place around the hand-off has no way to physically change hands.
+    for (const h of computeItemHandoffIssues({ events: allEvents, chapters, snapshots, placements: allItemPlacements ?? [] })) {
+      const item = itemById.get(h.itemId)
+      const from = charById.get(h.fromCharacterId)
+      const to   = charById.get(h.toCharacterId)
+      const fromMarker = markerById.get(h.fromMarkerId)
+      const toMarker   = markerById.get(h.toMarkerId)
+      const ev = eventById.get(h.handoffEventId)
+      const ch = ev ? chapById.get(ev.chapterId) : undefined
+      out.push({
+        id: `item-handoff-${h.itemId}-${h.fromCharacterId}-${h.toCharacterId}-${h.handoffEventId}`,
+        severity: 'warning',
+        category: 'item',
+        message: `"${item?.name ?? h.itemId}" changes hands between characters in different places`,
+        detail: `${from?.name ?? '?'} last held it at "${fromMarker?.name ?? h.fromMarkerId}", but ${to?.name ?? '?'} has it at "${toMarker?.name ?? h.toMarkerId}" in Ch. ${ch?.number ?? '?'} — they never share a location. Add a scene where they meet, route it through a location, or suppress if intentional.`,
+        navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+        eventId: h.handoffEventId,
+      })
+    }
+
     // ── Relationship checks ──────────────────────────────────────────────────
 
     for (const rel of rels) {
@@ -879,7 +915,12 @@ export function ContinuityChecker() {
         }
 
         // ── Travel time check ─────────────────────────────────────────────────
-        if (!currEvent || currEvent.travelDays === null || currEvent.travelDays <= 0) continue
+        // Days available = elapsed in-world time between the two snapshots. This
+        // spans every event in between (not just this one's travelDays) and
+        // respects explicit inWorldTime. <= 0 means no tracked time (or a
+        // flashback jump), so there's nothing to check.
+        const daysAvailable = (inWorldDay.get(curr.eventId) ?? 0) - (inWorldDay.get(prev.eventId) ?? 0)
+        if (!currEvent || daysAvailable <= 0) continue
 
         const mov = movementByKey.get(movementKey(charId, curr.eventId))
         const travelModeId = mov?.travelModeId ?? curr.travelModeId
@@ -904,7 +945,7 @@ export function ContinuityChecker() {
         const distUnits = distPx / layer.scalePixelsPerUnit
         const daysNeeded = distUnits / effectiveSpeed
 
-        if (daysNeeded > currEvent.travelDays) {
+        if (daysNeeded > daysAvailable) {
           const currCh = chapById.get(currEvent.chapterId)
           const dist = distUnits < 10 ? distUnits.toFixed(1) : Math.round(distUnits).toString()
           const routeNote = connectingRoute
@@ -915,7 +956,7 @@ export function ContinuityChecker() {
             severity: 'warning',
             category: 'character',
             message: `${char.name} can't reach ${toMarker.name} in time`,
-            detail: `${fromMarker.name} → ${toMarker.name} is ~${dist} ${layer.scaleUnit} · ${travelMode.name} at ${effectiveSpeed.toFixed(1)} ${layer.scaleUnit}/day${routeNote} — needs ${daysNeeded.toFixed(1)} days but only ${currEvent.travelDays} available (Ch. ${currCh?.number ?? '?'})`,
+            detail: `${fromMarker.name} → ${toMarker.name} is ~${dist} ${layer.scaleUnit} · ${travelMode.name} at ${effectiveSpeed.toFixed(1)} ${layer.scaleUnit}/day${routeNote} — needs ${daysNeeded.toFixed(1)} days but only ${daysAvailable} in-world day${daysAvailable === 1 ? '' : 's'} available (Ch. ${currCh?.number ?? '?'})`,
             navigatePath: `/worlds/${worldId}/timeline/${currEvent.chapterId}`,
             eventId: curr.eventId,
           })
@@ -1115,8 +1156,85 @@ export function ContinuityChecker() {
       runStart = runEnd
     }
 
+    // ── Anachronistic knowledge: knowing a fact before it becomes true ────────
+    for (const a of computeKnowledgeAnachronisms({ facts: knowledgeFacts, reveals: knowledgeReveals, events: allEvents, chapters })) {
+      const knownCh  = chapById.get(eventById.get(a.knownAtEventId)?.chapterId ?? '')
+      const originCh = chapById.get(eventById.get(a.originEventId)?.chapterId ?? '')
+      const who = a.characterId ? (charById.get(a.characterId)?.name ?? 'A character') : 'The reader'
+      out.push({
+        id: `knowledge-anachronism-${a.fact.id}-${a.characterId ?? 'reader'}-${a.knownAtEventId}`,
+        severity: 'warning',
+        category: 'character',
+        message: `${who} knows "${a.fact.title}" before it happens`,
+        detail: `"${a.fact.title}" isn't true until Ch. ${originCh?.number ?? '?'}, but ${who.toLowerCase()} knows it in Ch. ${knownCh?.number ?? '?'}.`,
+        navigatePath: `/worlds/${worldId}/timeline/${eventById.get(a.knownAtEventId)?.chapterId ?? ''}`,
+        eventId: a.knownAtEventId,
+      })
+    }
+
+    // ── Dead character learns a fact after dying ─────────────────────────────
+    for (const d of computeDeadKnowerIssues({ facts: knowledgeFacts, reveals: knowledgeReveals, snapshots, events: allEvents, chapters })) {
+      const char = charById.get(d.characterId)
+      const ev = eventById.get(d.revealEventId)
+      const ch = ev ? chapById.get(ev.chapterId) : undefined
+      out.push({
+        id: `dead-knower-${d.fact.id}-${d.characterId}-${d.revealEventId}`,
+        severity: 'warning',
+        category: 'character',
+        message: `${char?.name ?? '?'} learns "${d.fact.title}" after dying`,
+        detail: `A reveal places this knowledge with ${char?.name ?? '?'} in Ch. ${ch?.number ?? '?'}, but they're already dead by then. Move the reveal earlier, or mark the event a flashback if intentional.`,
+        navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+        eventId: d.revealEventId,
+      })
+    }
+
+    // ── Prose ↔ metadata drift (scene text vs. the event's cast) ─────────────
+    const sceneTextByEvent = new Map(sceneTexts.map((s) => [s.eventId, s.text]))
+
+    for (const p of computeProseMentionIssues({ events: allEvents, chapters, characters, snapshots, sceneTextByEvent })) {
+      const ev = eventById.get(p.eventId)
+      const ch = ev ? chapById.get(ev.chapterId) : undefined
+      if (p.kind === 'dead') {
+        out.push({
+          id: `prose-dead-${p.characterId}-${p.eventId}`,
+          severity: 'warning',
+          category: 'prose',
+          message: `Dead character ${p.characterName} is named in the prose of "${ev?.title || 'untitled'}"`,
+          detail: `Ch. ${ch?.number ?? '?'} — ${p.characterName} is dead at this point. Mark the event as a flashback or update their status if intentional.`,
+          navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+          eventId: p.eventId,
+        })
+      } else {
+        out.push({
+          id: `prose-untagged-${p.characterId}-${p.eventId}`,
+          severity: 'warning',
+          category: 'prose',
+          message: `${p.characterName} is named in the prose but not in the cast of "${ev?.title || 'untitled'}"`,
+          detail: `Ch. ${ch?.number ?? '?'} — appears ${p.count}× in the scene text. Add them to the event or check the reference.`,
+          navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+          eventId: p.eventId,
+        })
+      }
+    }
+
+    // ── Reader knowledge leaks (fact referenced in prose before its reveal) ──
+    for (const leak of computeKnowledgeLeaks({ facts: knowledgeFacts, events: allEvents, chapters, sceneTextByEvent })) {
+      const leakEv = eventById.get(leak.leakEventId)
+      const leakCh = leakEv ? chapById.get(leakEv.chapterId) : undefined
+      const revealCh = chapById.get(eventById.get(leak.revealEventId)?.chapterId ?? '')
+      out.push({
+        id: `prose-leak-${leak.fact.id}-${leak.leakEventId}`,
+        severity: 'warning',
+        category: 'prose',
+        message: `Possible early reveal: "${leak.fact.title}"`,
+        detail: `The reader is set to learn this in Ch. ${revealCh?.number ?? '?'}, but "${leakEv?.title || 'untitled'}" (Ch. ${leakCh?.number ?? '?'}) already references it (matched "${leak.matchedTerm}").`,
+        navigatePath: leakEv ? `/worlds/${worldId}/timeline/${leakEv.chapterId}` : undefined,
+        eventId: leak.leakEventId,
+      })
+    }
+
     return out
-  }, [chapters, allEvents, characters, rels, items, snapshots, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId, world, allItemSnapshots])
+  }, [chapters, allEvents, characters, rels, items, snapshots, knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId, world, allItemSnapshots])
 
   // Focus modal on open so keyboard navigation works immediately
   useEffect(() => {
@@ -1169,12 +1287,14 @@ export function ContinuityChecker() {
   const relIssues     = issues.filter((i) => i.category === 'relationship')
   const factionIssues = issues.filter((i) => i.category === 'faction')
   const povIssues     = issues.filter((i) => i.category === 'pov')
+  const proseIssues   = issues.filter((i) => i.category === 'prose')
 
   // Compute base indices for keyboard focus mapping per category
   const visibleChar    = charIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
   const visibleItem    = itemIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
   const visibleRel     = relIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
   const visibleFaction = factionIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
+  const visiblePov     = povIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
 
   // focusedIdx is into navigableIssues; map back to category position
   function categoryFocusedIdx(categoryIssues: Issue[]): number {
@@ -1258,6 +1378,10 @@ export function ContinuityChecker() {
                 onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="POV" icon={Eye} issues={povIssues}
                 focusedIdx={categoryFocusedIdx(povIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length + visibleFaction.length}
+                suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
+                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+              <CategorySection title="Prose vs. record" icon={PenLine} issues={proseIssues}
+                focusedIdx={categoryFocusedIdx(proseIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length + visibleFaction.length + visiblePov.length}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
                 onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
             </>

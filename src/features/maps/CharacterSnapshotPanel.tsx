@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PortraitImage } from '@/components/PortraitImage'
+import { InheritedBadge } from '@/components/InheritedBadge'
 import { useCharacterRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
@@ -71,6 +72,7 @@ export function CharacterSnapshotPanel({
   onClose,
 }: CharacterSnapshotPanelProps) {
   const activeEventId = useActiveEventId()
+  const isInherited = !!snapshot && !!activeEventId && snapshot.eventId !== activeEventId
   const relationships = useCharacterRelationships(character.id)
   const items = useItems(worldId)
   const travelModes = useTravelModes(worldId)
@@ -159,7 +161,7 @@ export function CharacterSnapshotPanel({
   }
 
   return (
-    <div className="flex h-full w-72 shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl">
+    <div className="flex h-full w-[85vw] max-w-sm shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl sm:w-72 sm:max-w-none">
 
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-3">
@@ -169,7 +171,7 @@ export function CharacterSnapshotPanel({
             <p className="text-[10px] text-[hsl(var(--muted-foreground))]">{activeChapterTitle}</p>
           )}
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
+        <Button variant="ghost" size="icon" className="pw-tap h-7 w-7 shrink-0" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
       </div>
@@ -196,6 +198,8 @@ export function CharacterSnapshotPanel({
 
           {activeEventId && (
             <>
+              {isInherited && <InheritedBadge className="self-start" />}
+
               {/* Alive toggle */}
               <button
                 onClick={handleAliveToggle}

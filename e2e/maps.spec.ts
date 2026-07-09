@@ -214,4 +214,52 @@ test.describe('Map management', () => {
     // Remove button present means Aragorn was successfully added to this location
     await expect(page.getByRole('button', { name: 'Remove character from location' })).toBeVisible()
   })
+
+  // ── Tap-to-place a character (touch-friendly, no HTML5 drag) ────────────────
+
+  test('places a character by arming the crosshair then tapping a location', async ({ page }) => {
+    // The Leaflet map + timeline round-trip is heavy; give slow renders headroom.
+    test.setTimeout(120_000)
+    page.setDefaultTimeout(60_000)
+
+    // Upload a map and add a location first (no active-event cursor yet).
+    await page.getByRole('button', { name: 'Upload Map' }).first().click()
+    await uploadMap(page, MAIN_MAP, 'Middle Earth')
+    await expect(page.locator('.leaflet-container')).toBeVisible()
+
+    await addLocationViaButton(page, { x: 300, y: 250 })
+    await page.getByPlaceholder('e.g. Thornwall City').fill('Rivendell')
+    await page.getByRole('button', { name: 'Add Location' }).last().click()
+    await expect(page.getByRole('heading', { name: 'Add Location' })).not.toBeVisible()
+
+    // A chapter + event are needed so an active event cursor exists to place into.
+    await page.getByRole('link', { name: /timeline/i }).click()
+    await page.getByRole('button', { name: 'Create Timeline' }).click()
+    await page.getByRole('button', { name: 'Add Chapter' }).first().click()
+    await page.getByPlaceholder('Chapter title').fill('Chapter One')
+    await page.getByRole('button', { name: 'Add Chapter' }).last().click()
+    await page.getByTitle('Open chapter detail').click()
+
+    await page.getByRole('button', { name: 'Add Event' }).first().click()
+    await page.getByPlaceholder('Event title').fill('The Departure')
+    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await expect(page.getByText('The Departure').first()).toBeVisible()
+
+    // Select the event in the timeline bar to set the active cursor.
+    await page.getByRole('link', { name: /timeline/i }).click()
+    await page.getByTitle('The Departure', { exact: true }).click()
+
+    // Back to the map — arm placement for Aragorn; the placement HUD appears.
+    await page.getByRole('link', { name: /maps/i }).click()
+    await expect(page.locator('.leaflet-container')).toBeVisible()
+    await page.getByRole('button', { name: 'Place Aragorn on the map' }).click()
+    await expect(page.getByText(/Tap a location to place/)).toBeVisible()
+
+    // Tap the location marker to drop the character there.
+    await page.getByText('Rivendell').first().click()
+    await expect(page.getByText(/Tap a location to place/)).not.toBeVisible()
+
+    // Aragorn's pin now renders on the map.
+    await expect(page.locator('.leaflet-container').getByText('Aragorn')).toBeVisible()
+  })
 })

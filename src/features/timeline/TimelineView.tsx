@@ -1,8 +1,11 @@
 import { useState, useRef } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, BookOpen, Layers, Sparkles, Link2, X } from 'lucide-react'
-import { useTimelines, useChapters, createTimeline, updateTimeline, deleteTimeline } from '@/db/hooks/useTimeline'
+import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History } from 'lucide-react'
+import { useTimelines, useChapters, useTimelineEvents, createTimeline, updateTimeline, deleteTimeline } from '@/db/hooks/useTimeline'
 import { useWorld } from '@/db/hooks/useWorlds'
+import { useAppStore } from '@/store'
+import { computeInWorldDays } from '@/lib/inWorldTime'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/EmptyState'
 import { ChapterRow } from './ChapterRow'
@@ -10,7 +13,79 @@ import { BulkActionToolbar } from './BulkActionToolbar'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { AddChapterDialog } from './AddChapterDialog'
 import { ChapterAIDialog } from './ChapterAIDialog'
+import { PacingCurve } from './PacingCurve'
 import { TimelineRelationshipPanel } from './TimelineRelationshipPanel'
+import type { WorldEvent, Chapter } from '@/types'
+
+// ── Chronological (in-world) order ──────────────────────────────────────────
+// Events flattened across chapters and ordered by their effective in-world day,
+// so flashbacks and out-of-order scenes surface where they actually happen.
+function ChronologicalList({ events, chapters, activeEventId, onSelect }: {
+  events: WorldEvent[]
+  chapters: Chapter[]
+  activeEventId: string | null
+  onSelect: (id: string) => void
+}) {
+  const inWorldDays = computeInWorldDays(events, chapters)
+  const chapterById = new Map(chapters.map((c) => [c.id, c]))
+  const ordered = [...events].sort((a, b) => {
+    const da = inWorldDays.get(a.id) ?? 0
+    const db = inWorldDays.get(b.id) ?? 0
+    if (da !== db) return da - db
+    // Tiebreak on narrative order so same-day events read naturally.
+    const ca = chapterById.get(a.chapterId)?.number ?? 0
+    const cb = chapterById.get(b.chapterId)?.number ?? 0
+    return ca !== cb ? ca - cb : a.sortOrder - b.sortOrder
+  })
+
+  if (events.length === 0) {
+    return (
+      <p className="text-sm text-[hsl(var(--muted-foreground))]">
+        No events yet — add events to chapters to place them on the in-world timeline.
+      </p>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      {ordered.map((ev) => {
+        const day = inWorldDays.get(ev.id) ?? 0
+        const ch = chapterById.get(ev.chapterId)
+        const isActive = ev.id === activeEventId
+        const pinnedFlashback = ev.isFlashback && ev.inWorldTime == null
+        return (
+          <button
+            key={ev.id}
+            onClick={() => onSelect(ev.id)}
+            className={cn(
+              'flex items-center gap-3 rounded-md border px-3 py-2 text-left transition-colors',
+              isActive
+                ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))]'
+                : 'border-[hsl(var(--border))] bg-[hsl(var(--card))] hover:border-[hsl(var(--ring)/0.4)]'
+            )}
+          >
+            <div className="w-16 shrink-0 text-right">
+              {pinnedFlashback ? (
+                <span className="text-[10px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">flashback</span>
+              ) : (
+                <span className="text-sm font-semibold tabular-nums text-[hsl(var(--foreground))]">Day {day}</span>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-[hsl(var(--foreground))]">{ev.title || 'Untitled event'}</p>
+              <p className="truncate text-xs text-[hsl(var(--muted-foreground))]">{ch ? `Ch. ${ch.number} — ${ch.title}` : ''}</p>
+            </div>
+            {ev.isFlashback && (
+              <span title="Flashback / retrospective" className="shrink-0">
+                <History className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+              </span>
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 export default function TimelineView() {
   const { worldId } = useParams<{ worldId: string }>()
@@ -18,6 +93,10 @@ export default function TimelineView() {
   const [activeTimelineId, setActiveTimelineId] = useState<string | null>(null)
   const currentTimelineId = activeTimelineId ?? timelines[0]?.id ?? null
   const chapters = useChapters(currentTimelineId)
+  const timelineEvents = useTimelineEvents(currentTimelineId)
+  const [viewMode, setViewMode] = useState<'narrative' | 'chronological'>('narrative')
+  const setActiveEventId = useAppStore((s) => s.setActiveEventId)
+  const activeEventId = useAppStore((s) => s.activeEventId)
   const world = useWorld(worldId ?? null)
   const currentTimeline = timelines.find((t) => t.id === currentTimelineId)
   const [addChapterOpen, setAddChapterOpen] = useState(false)
@@ -129,15 +208,35 @@ export default function TimelineView() {
         </div>
       )}
 
-      <div className="flex items-center justify-between border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Layers className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
           <span className="text-sm font-medium">
             {timelines.find((t) => t.id === currentTimelineId)?.name ?? 'Timeline'}
           </span>
           <span className="text-xs text-[hsl(var(--muted-foreground))]">({chapters.length} chapters)</span>
+          <div className="ml-2 flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-xs" role="group" aria-label="Timeline order">
+            <button
+              onClick={() => setViewMode('narrative')}
+              aria-pressed={viewMode === 'narrative'}
+              className={cn('flex items-center gap-1 px-2 py-1 transition-colors',
+                viewMode === 'narrative' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
+              title="Reading order — chapters as written"
+            >
+              <AlignLeft className="h-3.5 w-3.5" /> Narrative
+            </button>
+            <button
+              onClick={() => setViewMode('chronological')}
+              aria-pressed={viewMode === 'chronological'}
+              className={cn('flex items-center gap-1 border-l border-[hsl(var(--border))] px-2 py-1 transition-colors',
+                viewMode === 'chronological' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
+              title="In-world order — events by when they actually happen"
+            >
+              <Clock className="h-3.5 w-3.5" /> Chronological
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {timelines.length >= 2 && (
             <Button size="sm" variant="outline" onClick={() => setRelPanelOpen(true)}>
               <Link2 className="h-4 w-4" /> Link Timelines
@@ -170,13 +269,30 @@ export default function TimelineView() {
           />
         ) : (
           <div className="flex flex-col gap-3">
-            {chapters.map((ch) => (
-              <ChapterRow key={ch.id} chapter={ch} />
-            ))}
+            <PacingCurve
+              worldId={worldId!}
+              events={timelineEvents}
+              chapters={chapters}
+              order={viewMode}
+              activeEventId={activeEventId}
+              onSelect={setActiveEventId}
+            />
+            {viewMode === 'narrative' ? (
+              chapters.map((ch) => (
+                <ChapterRow key={ch.id} chapter={ch} />
+              ))
+            ) : (
+              <ChronologicalList
+                events={timelineEvents}
+                chapters={chapters}
+                activeEventId={activeEventId}
+                onSelect={setActiveEventId}
+              />
+            )}
           </div>
         )}
       </div>
-      {currentTimelineId && <BulkActionToolbar timelineId={currentTimelineId} />}
+      {currentTimelineId && viewMode === 'narrative' && <BulkActionToolbar timelineId={currentTimelineId} />}
       </div>
 
       {worldId && currentTimelineId && (

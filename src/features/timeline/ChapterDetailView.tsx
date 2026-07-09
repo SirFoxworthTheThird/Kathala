@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus, Users, Network, StickyNote, ChevronDown, ChevronRight, Scroll } from 'lucide-react'
-import { useChapter, useEvents, updateChapter, updateEvent } from '@/db/hooks/useTimeline'
+import { useChapter, useEvents, useWorldEvents, useWorldChapters, updateChapter, updateEvent } from '@/db/hooks/useTimeline'
 import { useChapterEventSnapshots } from '@/db/hooks/useSnapshots'
+import { computeInWorldDays } from '@/lib/inWorldTime'
 import { useEventRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
@@ -55,6 +56,9 @@ export default function ChapterDetailView() {
   const navigate = useNavigate()
   const chapter = useChapter(chapterId ?? null)
   const events = useEvents(chapterId ?? null)
+  const worldEvents = useWorldEvents(worldId ?? null)
+  const worldChapters = useWorldChapters(worldId ?? null)
+  const inWorldDays = computeInWorldDays(worldEvents, worldChapters)
   const characters = useCharacters(worldId ?? null)
   const relationships = useRelationships(worldId ?? null)
   const [addEventOpen, setAddEventOpen] = useState(false)
@@ -121,16 +125,16 @@ export default function ChapterDetailView() {
       </div>
 
       {/* Three-column layout */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
         {/* Events */}
-        <div className="flex flex-1 flex-col border-r border-[hsl(var(--border))]">
+        <div className="flex flex-col border-b border-[hsl(var(--border))] lg:flex-1 lg:border-b-0 lg:border-r">
           <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-2">
             <span className="text-sm font-medium">Events ({events.length})</span>
             <Button size="sm" onClick={() => setAddEventOpen(true)}>
               <Plus className="h-4 w-4" /> Add Event
             </Button>
           </div>
-          <div className="flex-1 overflow-auto p-4 flex flex-col gap-3">
+          <div className="flex flex-col gap-3 p-4 lg:flex-1 lg:overflow-auto">
             {events.length === 0 ? (
               <EmptyState
                 icon={Scroll}
@@ -147,6 +151,7 @@ export default function ChapterDetailView() {
                   isLast={i === sortedEvents.length - 1}
                   onMoveUp={() => moveEvent(e.id, 'up')}
                   onMoveDown={() => moveEvent(e.id, 'down')}
+                  inWorldDay={inWorldDays.get(e.id)}
                 />
               ))
             )}
@@ -154,12 +159,12 @@ export default function ChapterDetailView() {
         </div>
 
         {/* Character snapshots — per-event breakdown */}
-        <div className="flex w-80 shrink-0 flex-col overflow-hidden">
+        <div className="flex flex-col border-b border-[hsl(var(--border))] lg:w-80 lg:shrink-0 lg:overflow-hidden lg:border-b-0">
           <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] px-4 py-2">
             <Users className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
             <span className="text-sm font-medium">Character States</span>
           </div>
-          <div className="flex-1 overflow-auto p-3 flex flex-col gap-2">
+          <div className="flex flex-col gap-2 p-3 lg:flex-1 lg:overflow-auto">
             {events.length === 0 && (
               <EmptyState icon={Scroll} title="No events yet" className="py-4" />
             )}
@@ -224,14 +229,14 @@ export default function ChapterDetailView() {
         </div>
 
         {/* Writer's Notes */}
-        <div className="flex w-72 shrink-0 flex-col overflow-hidden border-l border-[hsl(var(--border))]">
+        <div className="flex flex-col lg:w-72 lg:shrink-0 lg:overflow-hidden lg:border-l lg:border-[hsl(var(--border))]">
           <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] px-4 py-2">
             <StickyNote className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
             <span className="text-sm font-medium">Writer's Notes</span>
           </div>
-          <div className="flex flex-1 flex-col p-3">
+          <div className="flex flex-col p-3 lg:flex-1">
             <textarea
-              className="flex-1 resize-none rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-2.5 text-xs text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] outline-none focus:border-[hsl(var(--ring))] transition-colors leading-relaxed"
+              className="min-h-[10rem] resize-y rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] outline-none transition-colors focus:border-[hsl(var(--ring))] leading-relaxed lg:min-h-0 lg:flex-1 lg:resize-none lg:text-xs"
               placeholder="Freeform notes for this chapter — reminders, things to fix, ideas, open questions…"
               value={notes}
               onChange={(e) => handleNotesChange(e.target.value)}

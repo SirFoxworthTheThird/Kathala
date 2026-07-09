@@ -16,7 +16,7 @@ FILE STRUCTURE
 ═══════════════════════════════════════════════════════════
 
 {
-  "version": 6,
+  "version": 16,
   "type": "full",
   "exportedAt": <current unix timestamp in ms, e.g. 1700000000000>,
   "world": { ... },
@@ -29,10 +29,16 @@ FILE STRUCTURE
   "characterSnapshots": [ ... ],
   "factions": [ ... ],
   "factionMemberships": [ ... ],
+  "factionRelationships": [],
   "loreCategories": [ ... ],
   "lorePages": [ ... ],
+  "knowledgeFacts": [ ... ],
+  "knowledgeReveals": [ ... ],
+  "sceneTexts": [],                    // leave empty — scene prose is authored in-app, not generated here
+  "plotThreads": [ ... ],              // named subplots/threads (see schema below); [] if none
   "mapLayers": [],
   "locationMarkers": [],
+  "mapAnnotations": [],
   "characterMovements": [],
   "itemPlacements": [],
   "locationSnapshots": [],
@@ -125,6 +131,7 @@ SCHEMA REFERENCE
   "title": "<chapter title>",
   "synopsis": "<2–4 sentence summary of what happens>",
   "notes": "",
+  "wordGoal": null,
   "createdAt": <timestamp>,
   "updatedAt": <timestamp>
 }
@@ -140,10 +147,18 @@ Events are the primary time unit. Each chapter contains ordered events.
   "description": "<what happens in detail>",
   "locationMarkerId": null,
   "involvedCharacterIds": ["<char id>", "..."],
+  "mentionedCharacterIds": [],        // ids of characters referenced but NOT present in the scene; [] if none
   "involvedItemIds": ["<item id>"],   // empty array if none
   "tags": ["battle", "revelation"],   // thematic tags
+  "threadIds": [],                    // ids of plotThreads this event advances; [] if none
   "sortOrder": 0,                     // ascending within a chapter, starting at 0
   "travelDays": null,                 // days of travel before this event; null if unknown
+  "inWorldTime": null,                // explicit absolute in-world day; null unless this event (e.g. a flashback) sits out of narrative order
+  "tension": null,                    // dramatic intensity 1–5 for the pacing curve; null if unrated
+  "structureBeat": null,              // story beat, one of: hook | inciting-incident | plot-point-1 | midpoint | plot-point-2 | climax | resolution; null if none
+  "status": "draft",                  // one of: idea | outline | draft | revised | final
+  "povCharacterId": null,             // id of the POV character, or null
+  "isFlashback": false,               // true if this event is a flashback/retrospective
   "createdAt": <timestamp>,
   "updatedAt": <timestamp>
 }
@@ -220,6 +235,42 @@ showing their state at that point in the story.
   "updatedAt": <timestamp>
 }
 
+── knowledgeFacts (secrets / key information whose spread matters) ──
+{
+  "id": "<uuid>",
+  "worldId": "<world.id>",
+  "title": "<short label, e.g. 'The king is dead'>",
+  "description": "<what the information is>",
+  "tags": [],
+  "readerLearnsAtEventId": null,       // event where the reader learns it; null = derive from POV (only set to withhold or reveal early)
+  "originEventId": null,               // event where the fact becomes true/knowable (e.g. the death happens); null = true from the start
+  "createdAt": <timestamp>,
+  "updatedAt": <timestamp>
+}
+
+── knowledgeReveals (one per character learning a fact) ──────
+{
+  "id": "<uuid>",
+  "worldId": "<world.id>",
+  "factId": "<knowledgeFact.id>",
+  "characterId": "<character.id>",
+  "eventId": "<event.id at which they learn it>",
+  "note": "",
+  "createdAt": <timestamp>,
+  "updatedAt": <timestamp>
+}
+
+── plotThreads (named subplots; events reference these via threadIds) ──
+{
+  "id": "<uuid>",
+  "worldId": "<world.id>",
+  "name": "<short thread name, e.g. 'The Rebellion' or 'Aria & Cael'>",
+  "color": "<hex like #f59e0b>",
+  "description": "<one line on what this thread is about>",
+  "createdAt": <timestamp>,
+  "updatedAt": <timestamp>
+}
+
 ═══════════════════════════════════════════════════════════
 INSTRUCTIONS
 ═══════════════════════════════════════════════════════════
@@ -262,7 +313,7 @@ export function LLMPromptDialog({ open, onOpenChange }: LLMPromptDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] w-full max-w-3xl flex-col gap-0 p-0">
+      <DialogContent className="flex max-h-[90vh] w-full max-w-3xl flex-col gap-0 overflow-y-hidden p-0">
         <DialogHeader className="shrink-0 border-b border-[hsl(var(--border))] px-6 py-4">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-[hsl(var(--ring))]" />
@@ -282,8 +333,8 @@ export function LLMPromptDialog({ open, onOpenChange }: LLMPromptDialogProps) {
           </ol>
         </div>
 
-        <div className="relative min-h-0 flex-1 overflow-hidden">
-          <pre className="h-full overflow-y-auto px-6 py-4 text-[11px] leading-relaxed text-[hsl(var(--muted-foreground))] whitespace-pre-wrap font-mono">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <pre className="px-6 py-4 text-[11px] leading-relaxed text-[hsl(var(--muted-foreground))] whitespace-pre-wrap font-mono">
             {PROMPT}
           </pre>
         </div>

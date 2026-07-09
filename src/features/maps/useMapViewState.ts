@@ -140,7 +140,7 @@ export function useMapViewState(worldId: string, layerId: string) {
       })
     }
     return pins
-  }, [isInnerActive, outerTimeline, outerSnapshots, characters, layerId, allLayers, allMarkers, blobUrls, outerActiveEvent]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isInnerActive, outerTimeline, outerSnapshots, characters, layerId, allLayers, allMarkers, blobUrls, outerActiveEvent])  
 
   // ── Echo rings (historical echo) ──────────────────────────────────────────
   const echoLocations = useEchoLocations(effectiveTimelineId, worldId)
@@ -177,7 +177,7 @@ export function useMapViewState(worldId: string, layerId: string) {
       })
     }
     return pins
-  }, [snapshots, characters, layerId, allLayers, allMarkers, blobUrls]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [snapshots, characters, layerId, allLayers, allMarkers, blobUrls])  
 
   // ── Route marker position lookup ──────────────────────────────────────────
   const routeMarkerPositions = useMemo(() => {

@@ -11,6 +11,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { OverviewTab } from './tabs/OverviewTab'
 import { CurrentStateTab } from './tabs/CurrentStateTab'
 import { HistoryTab } from './tabs/HistoryTab'
+import { AppearancesTab } from './tabs/AppearancesTab'
 import { RelationshipsTab } from './tabs/RelationshipsTab'
 import { RelatedLoreSection } from '@/features/lore'
 import { FactionsTab } from './tabs/FactionsTab'
@@ -95,6 +96,7 @@ export default function CharacterDetailView() {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="state">Current State</TabsTrigger>
             <TabsTrigger value="history">History</TabsTrigger>
+            <TabsTrigger value="appearances">Appearances</TabsTrigger>
             <TabsTrigger value="relationships">Relationships</TabsTrigger>
             <TabsTrigger value="lore">Lore</TabsTrigger>
             <TabsTrigger value="factions">Factions</TabsTrigger>
@@ -107,6 +109,9 @@ export default function CharacterDetailView() {
           </TabsContent>
           <TabsContent value="history">
             <HistoryTab character={character} />
+          </TabsContent>
+          <TabsContent value="appearances">
+            <AppearancesTab character={character} />
           </TabsContent>
           <TabsContent value="relationships">
             <RelationshipsTab character={character} />

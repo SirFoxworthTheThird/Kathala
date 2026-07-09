@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import L from 'leaflet'
 import { useParams } from 'react-router-dom'
-import { Plus, Upload, Map as MapIcon, Ruler, X, Route, Download, Sparkles, Type, Trash2 } from 'lucide-react'
+import { Plus, Upload, Map as MapIcon, Ruler, X, Route, Download, Sparkles, Type, Trash2, PanelLeft, Crosshair } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { useAppStore, useActiveMapLayerId } from '@/store'
 import { useRootMapLayers, updateMapLayer } from '@/db/hooks/useMapLayers'
 import { Button } from '@/components/ui/button'
@@ -55,11 +56,16 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
 
   // ── Local UI state ────────────────────────────────────────────────────────
   const [isDraggingCharacter, setIsDraggingCharacter] = useState(false)
+  // On phones the side panels are a slide-in drawer so the map can use the full
+  // width; on `lg`+ they're a static column (see the sidebar classes below).
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const crossLayerPanTargetRef = useRef<[number, number] | null>(null)
   const pinAnimationKeyRef = useRef(0)
   const [addLocationOpen, setAddLocationOpen] = useState(false)
   const [pendingPos, setPendingPos] = useState<{ x: number; y: number } | null>(null)
   const [pendingDropCharacterId, setPendingDropCharacterId] = useState<string | null>(null)
+  // Touch-friendly placement: tap a character's crosshair, then tap a location.
+  const [placingCharacterId, setPlacingCharacterId] = useState<string | null>(null)
   const [aiDialogOpen, setAiDialogOpen] = useState(false)
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null)
   const [scaleMode, setScaleMode] = useState(false)
@@ -137,7 +143,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   // Clear cross-layer pan target once the new layer has mounted
   useEffect(() => {
     crossLayerPanTargetRef.current = null
-  }, [layerId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [layerId])  
 
   // ── Consume pending route/region focus from search palette ────────────────
   useEffect(() => {
@@ -275,6 +281,14 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       })
       return
     }
+    // Tap-to-place: if a character is armed for placement, drop it here.
+    if (placingCharacterId) {
+      const targetMarker = markers.find((m) => m.id === markerId)
+      const charId = placingCharacterId
+      setPlacingCharacterId(null)
+      if (targetMarker) void placeCharacterAtMarker(charId, targetMarker)
+      return
+    }
     setSelectedCharacterId(null)
     setSelectedLocationMarkerId(markerId)
   }
@@ -347,7 +361,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       if (points.length >= 2) lines.push({ characterId: charId, color: characterColor(charId), points })
     }
     return lines
-  }, [mapFilters.showJourneys, allWorldSnaps, orderedEvents, layerId, characters, allMarkers, visibleCharIds]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mapFilters.showJourneys, allWorldSnaps, orderedEvents, layerId, characters, allMarkers, visibleCharIds])  
 
   const displayedCharPins = !mapFilters.showCharacters ? []
     : visibleCharIds ? charPins.filter((p) => visibleCharIds.has(p.character.id))
@@ -371,9 +385,34 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   }
 
   return (
-    <div className="flex h-full overflow-hidden">
-      {/* ── Left sidebar ── */}
-      <div className="flex w-52 shrink-0 flex-col overflow-y-auto border-r border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+    <div className="relative flex h-full overflow-hidden">
+      {/* Backdrop for the mobile sidebar drawer */}
+      {sidebarOpen && (
+        <div
+          className="pw-anim-fade-in absolute inset-0 z-[1150] bg-black/40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      {/* ── Left sidebar (static column on lg+, slide-in drawer on mobile) ── */}
+      <div
+        className={cn(
+          'flex w-64 shrink-0 flex-col overflow-y-auto border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] transition-transform',
+          'absolute inset-y-0 left-0 z-[1200] lg:static lg:z-auto lg:w-52 lg:translate-x-0',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        )}
+      >
+        {/* Mobile-only drawer header with a close control */}
+        <div className="flex shrink-0 items-center justify-between border-b border-[hsl(var(--border))] px-3 py-2 lg:hidden">
+          <span className="text-xs font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">Map panels</span>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Close map panels"
+            className="pw-tap flex h-7 w-7 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
         <LayersSection worldId={worldId} />
         <CharactersSection
           characters={characters}
@@ -386,6 +425,11 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           onDragStart={() => setIsDraggingCharacter(true)}
           onDragEnd={() => setIsDraggingCharacter(false)}
           onFocus={focusOnCharacter}
+          placingCharacterId={placingCharacterId}
+          onPlace={(characterId) => {
+            setPlacingCharacterId((prev) => (prev === characterId ? null : characterId))
+            setSidebarOpen(false)
+          }}
         />
         <LocationsSection
           markers={markers}
@@ -430,16 +474,28 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       {/* ── Center: header + map ── */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Map header */}
-        <div className="flex shrink-0 items-center gap-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
+        <div className="flex shrink-0 flex-col gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2 lg:flex-row lg:items-center lg:gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+          {/* Mobile-only: open the map panels drawer */}
+          <button
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open map panels"
+            title="Map panels"
+            className="pw-tap flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] lg:hidden"
+          >
+            <PanelLeft className="h-4 w-4" aria-hidden="true" />
+          </button>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-[hsl(var(--foreground))]">{layer.name}</p>
-            <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
+            <p className="truncate text-[11px] text-[hsl(var(--muted-foreground))]">
               {layer.scalePixelsPerUnit && layer.scaleUnit
                 ? `Scale: 1 ${layer.scaleUnit} = ${Math.round(layer.scalePixelsPerUnit)} px`
                 : `${layer.imageWidth} × ${layer.imageHeight}`}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          </div>
+          <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 lg:mx-0 lg:ml-auto lg:overflow-x-visible lg:px-0">
+            {/* Tools */}
             <Button
               size="sm"
               variant={scaleMode ? 'default' : 'outline'}
@@ -470,16 +526,33 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               <Route className="h-3.5 w-3.5" />
               Measure
             </Button>
+
+            <span aria-hidden="true" className="h-5 w-px bg-[hsl(var(--border))]" />
+
+            {/* Add to map */}
+            <Button
+              size="sm"
+              variant={annotateMode ? 'default' : 'outline'}
+              className="gap-1.5 text-xs"
+              onClick={() => { setAnnotateMode((v) => !v); setSelectedAnnotationId(null) }}
+              title="Place a text label on the map"
+            >
+              <Type className="h-3.5 w-3.5" />
+              Label
+            </Button>
             <Button
               size="sm"
               variant="outline"
               className="gap-1.5 text-xs"
-              onClick={handleExportMap}
-              title="Export map as PNG"
+              onClick={() => window.dispatchEvent(new CustomEvent('wb:map:startAddMarker'))}
             >
-              <Download className="h-3.5 w-3.5" />
-              Export
+              <Plus className="h-3.5 w-3.5" />
+              Location
             </Button>
+
+            <span aria-hidden="true" className="h-5 w-px bg-[hsl(var(--border))]" />
+
+            {/* Utility */}
             <Button
               size="sm"
               variant="outline"
@@ -492,23 +565,13 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             </Button>
             <Button
               size="sm"
-              variant={annotateMode ? 'default' : 'outline'}
-              className="gap-1.5 text-xs"
-              onClick={() => { setAnnotateMode((v) => !v); setSelectedAnnotationId(null) }}
-              title="Place a text label on the map"
-            >
-              <Type className="h-3.5 w-3.5" />
-              Label
-            </Button>
-
-            <Button
-              size="sm"
               variant="outline"
               className="gap-1.5 text-xs"
-              onClick={() => window.dispatchEvent(new CustomEvent('wb:map:startAddMarker'))}
+              onClick={handleExportMap}
+              title="Export map as PNG"
             >
-              <Plus className="h-3.5 w-3.5" />
-              Location
+              <Download className="h-3.5 w-3.5" />
+              Export
             </Button>
           </div>
         </div>
@@ -569,6 +632,14 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             onAnimationEnd={handlePlaybackAnimationEnd}
             onMarkerClick={handleMarkerClick}
             onMapClick={async (x, y) => {
+              // Tap-to-place onto empty ground: create a location there, then drop.
+              if (placingCharacterId) {
+                setPendingDropCharacterId(placingCharacterId)
+                setPlacingCharacterId(null)
+                setPendingPos({ x, y })
+                setAddLocationOpen(true)
+                return
+              }
               if (annotateMode) {
                 const ann = await createMapAnnotation({ worldId, mapLayerId: layerId, x, y, text: 'Label' })
                 setSelectedAnnotationId(ann.id)
@@ -609,7 +680,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             onCharacterClick={handleCharacterClick}
             mapRef={mapRef}
             scaleMode={scaleMode || measureMode}
-            directMapClick={drawingRegion || drawingRoute || annotateMode}
+            directMapClick={drawingRegion || drawingRoute || annotateMode || placingCharacterId != null}
             onScalePoints={measureMode ? handleMeasurePoints : handleScalePoints}
             selectedRouteId={selectedRouteId}
             selectedRegionId={selectedRegionId}
@@ -667,6 +738,28 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               onCancel={() => { setDrawingRegion(false); setRegionVertices([]) }}
               onSave={() => { setDrawingRegion(false); setRegionVertices([]) }}
             />
+          )}
+
+          {/* Character placement HUD (tap-to-place) */}
+          {placingCharacterId && (
+            <div className="absolute bottom-4 left-1/2 z-[610] -translate-x-1/2 w-[calc(100%-2rem)] max-w-md">
+              <div className="flex items-center gap-2 rounded-full border border-[hsl(var(--ring)/0.5)] bg-[hsl(var(--card))] px-4 py-2 shadow-lg text-sm">
+                <Crosshair className="h-4 w-4 shrink-0 text-[hsl(var(--ring))]" />
+                <span className="min-w-0 flex-1 truncate">
+                  Tap a location to place{' '}
+                  <span className="font-semibold">
+                    {characters.find((c) => c.id === placingCharacterId)?.name ?? 'character'}
+                  </span>
+                </span>
+                <button
+                  onClick={() => setPlacingCharacterId(null)}
+                  aria-label="Cancel placing character"
+                  className="ml-1 shrink-0 rounded p-1 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
           )}
 
           {/* Annotate placement HUD */}

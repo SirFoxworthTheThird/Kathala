@@ -31,11 +31,10 @@ test.describe('Import / Export', () => {
     const fileInput = page.locator('input[type="file"][accept=".pwk,.pwb,application/json"]')
     await fileInput.setInputFiles(V1_FIXTURE)
 
-    // World should appear in the list
-    await expect(page.getByText('V1 Migration World')).toBeVisible()
+    // Import navigates straight into the new world; its name is the page heading.
+    await expect(page.getByRole('heading', { name: 'V1 Migration World' })).toBeVisible()
 
-    // Navigate into the world and check characters survived the migration
-    await page.getByText('V1 Migration World').click()
+    // Check characters survived the migration
     await page.getByRole('link', { name: /characters/i }).click()
     await expect(page.getByText('Gandalf')).toBeVisible()
     await expect(page.getByText('Frodo')).toBeVisible()
@@ -44,7 +43,7 @@ test.describe('Import / Export', () => {
   test('v1 import: snapshots are re-keyed to eventId', async ({ page }) => {
     const fileInput = page.locator('input[type="file"][accept=".pwk,.pwb,application/json"]')
     await fileInput.setInputFiles(V1_FIXTURE)
-    await expect(page.getByText('V1 Migration World')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'V1 Migration World' })).toBeVisible()
 
     // Read IndexedDB to confirm no chapterId remains on characterSnapshots
     const hasChapterId = await page.evaluate(async () => {
@@ -70,7 +69,7 @@ test.describe('Import / Export', () => {
   test('v1 import: relationship startChapterId is migrated to startEventId', async ({ page }) => {
     const fileInput = page.locator('input[type="file"][accept=".pwk,.pwb,application/json"]')
     await fileInput.setInputFiles(V1_FIXTURE)
-    await expect(page.getByText('V1 Migration World')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'V1 Migration World' })).toBeVisible()
 
     const hasStartChapterId = await page.evaluate(async () => {
       const request = indexedDB.open('PlotWeaveDB')
@@ -110,6 +109,12 @@ test.describe('Import / Export', () => {
     // Go to world selector and export
     await goHome(page)
 
+    // Force the download fallback: with the File System Access API present,
+    // export writes via showSaveFilePicker and fires no 'download' event.
+    await page.evaluate(() => {
+      ;(window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker = undefined
+    })
+
     const downloadPromise = page.waitForEvent('download')
     await page.getByTitle('Export world (single file)').click()
     const download = await downloadPromise
@@ -126,9 +131,8 @@ test.describe('Import / Export', () => {
     const fileInput = page.locator('input[type="file"][accept=".pwk,.pwb,application/json"]')
     await fileInput.setInputFiles(tmpPath)
 
-    // World and character should be restored
-    await expect(page.getByText('Export Test World')).toBeVisible()
-    await page.getByText('Export Test World').click()
+    // World and character should be restored (import navigates into the world).
+    await expect(page.getByRole('heading', { name: 'Export Test World' })).toBeVisible()
     await page.getByRole('link', { name: /characters/i }).click()
     await expect(page.getByText('Aragorn')).toBeVisible()
 

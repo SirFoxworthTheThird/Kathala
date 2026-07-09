@@ -40,7 +40,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTML
         <div
           ref={ref}
           className={cn(
-            'relative z-10 w-full max-w-lg rounded-lg border shadow-xl',
+            'relative z-10 max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-lg border shadow-xl',
             'border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6',
             className
           )}
@@ -50,7 +50,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTML
           {children}
           <button
             onClick={onClose}
-            className="absolute right-4 top-4 rounded-sm p-1 text-[hsl(var(--muted-foreground))] opacity-70 hover:opacity-100 focus:outline-none"
+            className="pw-tap absolute right-4 top-4 rounded-sm p-1 text-[hsl(var(--muted-foreground))] opacity-70 hover:opacity-100 focus:outline-none"
           >
             <X className="h-4 w-4" />
             <span className="sr-only">Close</span>

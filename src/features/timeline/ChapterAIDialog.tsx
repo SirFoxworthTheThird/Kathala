@@ -183,6 +183,7 @@ OUTPUT FORMAT
     "title": "<chapter title>",
     "synopsis": "<2–4 sentence summary of what happens>",
     "notes": "",
+    "wordGoal": null,
     "createdAt": ${ts},
     "updatedAt": ${ts}
   },
@@ -196,10 +197,19 @@ OUTPUT FORMAT
       "description": "<detailed description of what happens>",
       "locationMarkerId": ${hasLocations ? '"<markerId from location list, or null>"' : 'null'},
       "involvedCharacterIds": ["<char id from list>"],
+      "mentionedCharacterIds": [],
+      "threadIds": [],
+
       "involvedItemIds": ${hasItems ? '["<item id if this event involves an item, otherwise []>"]' : '[]'},
       "tags": ["<thematic tag>"],
       "sortOrder": 0,
       "travelDays": null,
+      "inWorldTime": null,
+      "tension": null,
+      "structureBeat": null,
+      "status": "draft",
+      "povCharacterId": null,
+      "isFlashback": false,
       "createdAt": ${ts},
       "updatedAt": ${ts}
     }
@@ -371,12 +381,13 @@ async function importChapter(data: ChapterAIResponse, replacing: boolean): Promi
         await db.relationshipSnapshots.where('eventId').anyOf(existingEventIds).delete()
       }
     }
+    if (data.chapter.wordGoal === undefined) (data.chapter as Chapter).wordGoal = null
     await db.chapters.put(data.chapter)
     if (data.events.length) {
       // Ensure status and povCharacterId are always present — AI JSON may omit fields predating their schema versions
       const normalised = data.events.map((ev) => {
         const p = ev as Partial<WorldEvent>
-        return { ...ev, status: p.status ?? ('draft' as const), povCharacterId: p.povCharacterId ?? null }
+        return { ...ev, status: p.status ?? ('draft' as const), povCharacterId: p.povCharacterId ?? null, isFlashback: p.isFlashback ?? false, inWorldTime: p.inWorldTime ?? null, tension: p.tension ?? null, structureBeat: p.structureBeat ?? null, mentionedCharacterIds: p.mentionedCharacterIds ?? [], threadIds: p.threadIds ?? [] }
       })
       await db.events.bulkPut(normalised)
     }
@@ -644,7 +655,7 @@ export function ChapterAIDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="flex max-h-[90vh] w-full max-w-2xl flex-col gap-0 p-0">
+      <DialogContent className="flex max-h-[90vh] w-full max-w-2xl flex-col gap-0 overflow-y-hidden p-0">
         <DialogHeader className="shrink-0 border-b border-[hsl(var(--border))] px-6 py-4">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-[hsl(var(--ring))]" />
@@ -733,8 +744,8 @@ export function ChapterAIDialog({
                 ? 'This prompt includes the current chapter content and your world\'s IDs. Paste it into any AI assistant along with your rewritten chapter text.'
                 : 'This prompt includes your world\'s real character and item IDs so the AI can reference them correctly. Copy it, paste into any AI assistant, then add your chapter text at the end.'}
             </div>
-            <div className="min-h-0 flex-1 overflow-hidden">
-              <pre className="h-full overflow-y-auto px-6 py-2 font-mono text-[10.5px] leading-relaxed text-[hsl(var(--muted-foreground))] whitespace-pre-wrap">
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <pre className="px-6 py-2 font-mono text-[10.5px] leading-relaxed text-[hsl(var(--muted-foreground))] whitespace-pre-wrap">
                 {prompt}
               </pre>
             </div>

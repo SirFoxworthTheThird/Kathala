@@ -236,6 +236,7 @@ describe('importWorld — normalizeImport backfills', () => {
         title: 'Chapter with Notes',
         synopsis: '',
         notes: 'Remember to foreshadow the betrayal here.',
+        wordGoal: null,
         createdAt: 1000,
         updatedAt: 1000,
       }],
@@ -244,6 +245,56 @@ describe('importWorld — normalizeImport backfills', () => {
 
     const stored = await db.chapters.get('ch-withnotes')
     expect(stored!.notes).toBe('Remember to foreshadow the betrayal here.')
+  })
+
+  it('backfills wordGoal to null on chapters that lack it (pre-goals export)', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      version: 16 as never, // pre-wordGoal export
+      chapters: [{
+        id: 'ch-nogoal',
+        worldId: 'world-extra',
+        timelineId: 'tl-1',
+        number: 1,
+        title: 'Old Chapter',
+        synopsis: '',
+        notes: '',
+        // deliberately omit wordGoal — simulates a pre-goals export
+        createdAt: 1000,
+        updatedAt: 1000,
+      } as never],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.chapters.get('ch-nogoal')
+    expect(stored).toBeDefined()
+    expect((stored as unknown as Record<string, unknown>).wordGoal).toBeNull()
+  })
+
+  it('preserves an explicit wordGoal through export/import', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      chapters: [{
+        id: 'ch-goal',
+        worldId: 'world-extra',
+        timelineId: 'tl-1',
+        number: 1,
+        title: 'Chapter with a goal',
+        synopsis: '',
+        notes: '',
+        wordGoal: 2500,
+        createdAt: 1000,
+        updatedAt: 1000,
+      }],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.chapters.get('ch-goal')
+    expect(stored!.wordGoal).toBe(2500)
   })
 
   it('preserves existing synopsis when it is already set', async () => {
@@ -259,6 +310,7 @@ describe('importWorld — normalizeImport backfills', () => {
         title: 'New Chapter',
         synopsis: 'The hero sets off.',
         notes: '',
+        wordGoal: null,
         createdAt: 1000,
         updatedAt: 1000,
       }],
@@ -422,6 +474,7 @@ describe('importWorld — travelModes', () => {
         description: '',
         locationMarkerId: null,
         involvedCharacterIds: [],
+        mentionedCharacterIds: [], threadIds: [],
         involvedItemIds: [],
         tags: [],
         sortOrder: 0,
@@ -451,10 +504,14 @@ describe('importWorld — travelModes', () => {
         description: '',
         locationMarkerId: null,
         involvedCharacterIds: [],
+        mentionedCharacterIds: [], threadIds: [],
         involvedItemIds: [],
         tags: [],
         sortOrder: 0,
         travelDays: 7,
+        inWorldTime: null,
+        tension: null,
+        structureBeat: null,
         status: 'draft' as const,
         povCharacterId: null,
         isFlashback: false,
@@ -466,6 +523,462 @@ describe('importWorld — travelModes', () => {
 
     const stored = await db.events.get('ev-days')
     expect(stored!.travelDays).toBe(7)
+  })
+
+  it('backfills tension to null on events from a pre-pacing export', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      version: 11 as never, // pre-tension export
+      events: [{
+        id: 'ev-no-tension',
+        worldId: 'world-extra',
+        chapterId: 'ch-1',
+        timelineId: 'tl-1',
+        title: 'Pre-pacing Event',
+        description: '',
+        locationMarkerId: null,
+        involvedCharacterIds: [],
+        mentionedCharacterIds: [], threadIds: [],
+        involvedItemIds: [],
+        tags: [],
+        sortOrder: 0,
+        travelDays: null,
+        inWorldTime: null,
+        // deliberately omit tension — simulates a v11 export
+        status: 'draft' as const,
+        povCharacterId: null,
+        isFlashback: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      } as never],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.events.get('ev-no-tension')
+    expect(stored).toBeDefined()
+    expect((stored as unknown as Record<string, unknown>).tension).toBeNull()
+  })
+
+  it('preserves an explicit tension rating through export/import', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      events: [{
+        id: 'ev-rated',
+        worldId: 'world-extra',
+        chapterId: 'ch-1',
+        timelineId: 'tl-1',
+        title: 'Climax',
+        description: '',
+        locationMarkerId: null,
+        involvedCharacterIds: [],
+        mentionedCharacterIds: [], threadIds: [],
+        involvedItemIds: [],
+        tags: [],
+        sortOrder: 0,
+        travelDays: null,
+        inWorldTime: null,
+        tension: 5,
+        structureBeat: null,
+        status: 'draft' as const,
+        povCharacterId: null,
+        isFlashback: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      }],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.events.get('ev-rated')
+    expect(stored!.tension).toBe(5)
+  })
+
+  it('backfills structureBeat to null on events from a pre-beats export', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      version: 12 as never, // pre-structureBeat export
+      events: [{
+        id: 'ev-no-beat',
+        worldId: 'world-extra',
+        chapterId: 'ch-1',
+        timelineId: 'tl-1',
+        title: 'Pre-beats Event',
+        description: '',
+        locationMarkerId: null,
+        involvedCharacterIds: [],
+        mentionedCharacterIds: [], threadIds: [],
+        involvedItemIds: [],
+        tags: [],
+        sortOrder: 0,
+        travelDays: null,
+        inWorldTime: null,
+        tension: null,
+        // deliberately omit structureBeat — simulates a v12 export
+        status: 'draft' as const,
+        povCharacterId: null,
+        isFlashback: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      } as never],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.events.get('ev-no-beat')
+    expect(stored).toBeDefined()
+    expect((stored as unknown as Record<string, unknown>).structureBeat).toBeNull()
+  })
+
+  it('preserves an explicit structureBeat through export/import', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      events: [{
+        id: 'ev-midpoint',
+        worldId: 'world-extra',
+        chapterId: 'ch-1',
+        timelineId: 'tl-1',
+        title: 'The Reversal',
+        description: '',
+        locationMarkerId: null,
+        involvedCharacterIds: [],
+        mentionedCharacterIds: [], threadIds: [],
+        involvedItemIds: [],
+        tags: [],
+        sortOrder: 0,
+        travelDays: null,
+        inWorldTime: null,
+        tension: 4,
+        structureBeat: 'midpoint',
+        status: 'draft' as const,
+        povCharacterId: null,
+        isFlashback: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      }],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.events.get('ev-midpoint')
+    expect(stored!.structureBeat).toBe('midpoint')
+  })
+
+  it('round-trips scene texts through export/import', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      sceneTexts: [
+        { id: 'st-1', worldId: 'world-extra', eventId: 'ev-1', text: 'The storm broke at dawn.', wordCount: 5, createdAt: 1000, updatedAt: 1000 },
+      ],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.sceneTexts.get('st-1')
+    expect(stored).toBeDefined()
+    expect(stored!.text).toBe('The storm broke at dawn.')
+    expect(stored!.wordCount).toBe(5)
+    expect(stored!.eventId).toBe('ev-1')
+  })
+
+  it('defaults sceneTexts to [] on older exports that lack them', async () => {
+    await db.delete()
+    await db.open()
+
+    // Base makeExport (v2) carries no sceneTexts — simulates a pre-feature file.
+    await importWorld(makeFile(makeExport()))
+    expect(await db.sceneTexts.count()).toBe(0)
+  })
+
+  it('rejects when sceneTexts is present but not an array', async () => {
+    const bad = { ...makeExport(), sceneTexts: 'bad' }
+    await expect(importWorld(makeFile(bad))).rejects.toThrow('sceneTexts is not an array')
+  })
+
+  it('backfills mentionedCharacterIds to [] on a pre-mentions export', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      version: 14 as never, // pre-mentions export
+      events: [{
+        id: 'ev-no-mentions',
+        worldId: 'world-extra',
+        chapterId: 'ch-1',
+        timelineId: 'tl-1',
+        title: 'Pre-mentions Event',
+        description: '',
+        locationMarkerId: null,
+        involvedCharacterIds: ['c1'],
+        // deliberately omit mentionedCharacterIds — simulates a v14 export
+        involvedItemIds: [],
+        tags: [],
+        sortOrder: 0,
+        travelDays: null,
+        inWorldTime: null,
+        tension: null,
+        structureBeat: null,
+        status: 'draft' as const,
+        povCharacterId: null,
+        isFlashback: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      } as never],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.events.get('ev-no-mentions')
+    expect(stored).toBeDefined()
+    expect((stored as unknown as Record<string, unknown>).mentionedCharacterIds).toEqual([])
+  })
+
+  it('preserves explicit mentionedCharacterIds through export/import', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      events: [{
+        id: 'ev-mentions',
+        worldId: 'world-extra',
+        chapterId: 'ch-1',
+        timelineId: 'tl-1',
+        title: 'Council',
+        description: '',
+        locationMarkerId: null,
+        involvedCharacterIds: ['c1'],
+        mentionedCharacterIds: ['c2', 'c3'],
+        threadIds: [],
+        involvedItemIds: [],
+        tags: [],
+        sortOrder: 0,
+        travelDays: null,
+        inWorldTime: null,
+        tension: null,
+        structureBeat: null,
+        status: 'draft' as const,
+        povCharacterId: null,
+        isFlashback: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      }],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.events.get('ev-mentions')
+    expect(stored!.mentionedCharacterIds).toEqual(['c2', 'c3'])
+  })
+
+  it('round-trips plotThreads and the threadIds tagged on events', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      plotThreads: [
+        { id: 'th-1', worldId: 'world-extra', name: 'The Missing Heir', color: '#c084fc', description: 'Who inherits?', createdAt: 1000, updatedAt: 1000 },
+        { id: 'th-2', worldId: 'world-extra', name: 'The Siege', color: '#f87171', description: '', createdAt: 1000, updatedAt: 1000 },
+      ],
+      events: [{
+        id: 'ev-threaded',
+        worldId: 'world-extra',
+        chapterId: 'ch-1',
+        timelineId: 'tl-1',
+        title: 'Council',
+        description: '',
+        locationMarkerId: null,
+        involvedCharacterIds: [],
+        mentionedCharacterIds: [],
+        threadIds: ['th-1', 'th-2'],
+        involvedItemIds: [],
+        tags: [],
+        sortOrder: 0,
+        travelDays: null,
+        inWorldTime: null,
+        tension: null,
+        structureBeat: null,
+        status: 'draft' as const,
+        povCharacterId: null,
+        isFlashback: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      }],
+    })
+    await importWorld(makeFile(data))
+
+    const threads = await db.plotThreads.where('worldId').equals('world-extra').toArray()
+    expect(threads.map((t) => t.id).sort()).toEqual(['th-1', 'th-2'])
+    expect(threads.find((t) => t.id === 'th-1')?.name).toBe('The Missing Heir')
+
+    const stored = await db.events.get('ev-threaded')
+    expect(stored!.threadIds).toEqual(['th-1', 'th-2'])
+  })
+
+  it('defaults plotThreads to [] and backfills threadIds on a pre-threads export', async () => {
+    await db.delete()
+    await db.open()
+
+    const { plotThreads: _pt, ...without } = makeExport({
+      version: 15 as never, // pre-threads export
+      events: [{
+        id: 'ev-no-threads',
+        worldId: 'world-extra',
+        chapterId: 'ch-1',
+        timelineId: 'tl-1',
+        title: 'Pre-threads Event',
+        description: '',
+        locationMarkerId: null,
+        involvedCharacterIds: [],
+        mentionedCharacterIds: [],
+        // deliberately omit threadIds — simulates a pre-threads export
+        involvedItemIds: [],
+        tags: [],
+        sortOrder: 0,
+        travelDays: null,
+        inWorldTime: null,
+        tension: null,
+        structureBeat: null,
+        status: 'draft' as const,
+        povCharacterId: null,
+        isFlashback: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      } as never],
+    })
+    await importWorld(makeFile(without))
+
+    expect(await db.plotThreads.where('worldId').equals('world-extra').count()).toBe(0)
+    const stored = await db.events.get('ev-no-threads')
+    expect((stored as unknown as Record<string, unknown>).threadIds).toEqual([])
+  })
+
+  it('rejects a plotThreads value that is not an array', async () => {
+    await db.delete()
+    await db.open()
+
+    const bad = { ...makeExport(), plotThreads: 'nope' }
+    await expect(importWorld(makeFile(bad))).rejects.toThrow('plotThreads is not an array')
+  })
+
+  it('backfills inWorldTime to null on events that lack it (older export)', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      version: 7 as never, // pre-inWorldTime export
+      events: [{
+        id: 'ev-old-time',
+        worldId: 'world-extra',
+        chapterId: 'ch-1',
+        timelineId: 'tl-1',
+        title: 'Pre-chronology Event',
+        description: '',
+        locationMarkerId: null,
+        involvedCharacterIds: [],
+        mentionedCharacterIds: [], threadIds: [],
+        involvedItemIds: [],
+        tags: [],
+        sortOrder: 0,
+        travelDays: null,
+        // deliberately omit inWorldTime — simulates a v7 export
+        status: 'draft' as const,
+        povCharacterId: null,
+        isFlashback: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      } as never],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.events.get('ev-old-time')
+    expect(stored).toBeDefined()
+    expect((stored as unknown as Record<string, unknown>).inWorldTime).toBeNull()
+  })
+
+  it('preserves an explicit inWorldTime through export/import', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      events: [{
+        id: 'ev-flashback',
+        worldId: 'world-extra',
+        chapterId: 'ch-1',
+        timelineId: 'tl-1',
+        title: 'Flashback',
+        description: '',
+        locationMarkerId: null,
+        involvedCharacterIds: [],
+        mentionedCharacterIds: [], threadIds: [],
+        involvedItemIds: [],
+        tags: [],
+        sortOrder: 0,
+        travelDays: null,
+        inWorldTime: 3,
+        tension: null,
+        structureBeat: null,
+        status: 'draft' as const,
+        povCharacterId: null,
+        isFlashback: true,
+        createdAt: 1000,
+        updatedAt: 1000,
+      }],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.events.get('ev-flashback')
+    expect(stored!.inWorldTime).toBe(3)
+  })
+
+  it('round-trips knowledge facts and reveals through export/import', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      knowledgeFacts: [
+        { id: 'kf-1', worldId: 'world-extra', title: 'The king is dead', description: 'Only the council knows.', tags: [], readerLearnsAtEventId: 'ev-1', originEventId: 'ev-1', createdAt: 1000, updatedAt: 1000 },
+      ],
+      knowledgeReveals: [
+        { id: 'kr-1', worldId: 'world-extra', factId: 'kf-1', characterId: 'char-x', eventId: 'ev-1', note: 'overheard', createdAt: 1000, updatedAt: 1000 },
+      ],
+    })
+    await importWorld(makeFile(data))
+
+    expect((await db.knowledgeFacts.get('kf-1'))?.title).toBe('The king is dead')
+    expect((await db.knowledgeFacts.get('kf-1'))?.readerLearnsAtEventId).toBe('ev-1')
+    expect((await db.knowledgeReveals.get('kr-1'))?.factId).toBe('kf-1')
+  })
+
+  it('backfills readerLearnsAtEventId to null on facts from a pre-reader-clock export', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      version: 9 as never, // knowledge existed, reader-clock did not
+      knowledgeFacts: [
+        // deliberately omit readerLearnsAtEventId — simulates a v9 export
+        { id: 'kf-old', worldId: 'world-extra', title: 'A secret', description: '', tags: [], createdAt: 1000, updatedAt: 1000 } as never,
+      ],
+    })
+    await importWorld(makeFile(data))
+
+    const stored = await db.knowledgeFacts.get('kf-old')
+    expect(stored).toBeDefined()
+    expect(stored!.readerLearnsAtEventId).toBeNull()
+  })
+
+  it('backfills knowledge arrays to empty on older exports that lack them', async () => {
+    await db.delete()
+    await db.open()
+
+    // Base makeExport (v2) carries no knowledge arrays — simulates a pre-feature file.
+    await importWorld(makeFile(makeExport()))
+
+    expect(await db.knowledgeFacts.count()).toBe(0)
+    expect(await db.knowledgeReveals.count()).toBe(0)
   })
 
   it('backfills travelModeId to null on snapshots that lack it', async () => {
@@ -541,10 +1054,10 @@ describe('importWorld — v1 → v2 migration', () => {
 
     const data = makeExport({
       version: 1,
-      chapters: [{ id: 'ch-1', worldId: 'world-extra', timelineId: 'tl-1', number: 1, title: 'Ch1', synopsis: '', notes: '', createdAt: 1000, updatedAt: 1000 }],
+      chapters: [{ id: 'ch-1', worldId: 'world-extra', timelineId: 'tl-1', number: 1, title: 'Ch1', synopsis: '', notes: '', wordGoal: null, createdAt: 1000, updatedAt: 1000 }],
       events: [
-        { id: 'ev-b', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'B', description: '', locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 10, travelDays: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 },
-        { id: 'ev-a', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'A', description: '', locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 },
+        { id: 'ev-b', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'B', description: '', locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], threadIds: [], involvedItemIds: [], tags: [], sortOrder: 10, travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 },
+        { id: 'ev-a', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1', title: 'A', description: '', locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], threadIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 },
       ],
       characterSnapshots: [{
         id: 'snap-v1',
@@ -577,7 +1090,7 @@ describe('importWorld — v1 → v2 migration', () => {
 
     const data = makeExport({
       version: 1,
-      chapters: [{ id: 'ch-noev', worldId: 'world-extra', timelineId: 'tl-1', number: 1, title: 'Ch No Ev', synopsis: '', notes: '', createdAt: 1000, updatedAt: 1000 }],
+      chapters: [{ id: 'ch-noev', worldId: 'world-extra', timelineId: 'tl-1', number: 1, title: 'Ch No Ev', synopsis: '', notes: '', wordGoal: null, createdAt: 1000, updatedAt: 1000 }],
       events: [], // no events for this chapter
       characterSnapshots: [{
         id: 'snap-noev',
@@ -613,8 +1126,8 @@ describe('importWorld — v1 → v2 migration', () => {
 
     const data = makeExport({
       version: 1,
-      chapters: [{ id: 'ch-rel', worldId: 'world-extra', timelineId: 'tl-1', number: 1, title: 'Ch', synopsis: '', notes: '', createdAt: 1000, updatedAt: 1000 }],
-      events: [{ id: 'ev-rel', worldId: 'world-extra', chapterId: 'ch-rel', timelineId: 'tl-1', title: 'Ev', description: '', locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 }],
+      chapters: [{ id: 'ch-rel', worldId: 'world-extra', timelineId: 'tl-1', number: 1, title: 'Ch', synopsis: '', notes: '', wordGoal: null, createdAt: 1000, updatedAt: 1000 }],
+      events: [{ id: 'ev-rel', worldId: 'world-extra', chapterId: 'ch-rel', timelineId: 'tl-1', title: 'Ev', description: '', locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], threadIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000 }],
       relationships: [{
         id: 'rel-v1',
         worldId: 'world-extra',
@@ -679,13 +1192,13 @@ describe('importWorld — full optional arrays', () => {
       }],
       chapters: [{
         id: 'ch-1', worldId: 'world-extra', timelineId: 'tl-1', number: 1,
-        title: 'Chapter One', synopsis: '', notes: '', createdAt: 1000, updatedAt: 1000,
+        title: 'Chapter One', synopsis: '', notes: '', wordGoal: null, createdAt: 1000, updatedAt: 1000,
       }],
       events: [{
         id: 'ev-1', worldId: 'world-extra', chapterId: 'ch-1', timelineId: 'tl-1',
         title: 'Battle Begins', description: '', locationMarkerId: null,
-        involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0,
-        travelDays: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000,
+        involvedCharacterIds: [], mentionedCharacterIds: [], threadIds: [], involvedItemIds: [], tags: [], sortOrder: 0,
+        travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft' as const, povCharacterId: null, isFlashback: false, createdAt: 1000, updatedAt: 1000,
       }],
     })
 

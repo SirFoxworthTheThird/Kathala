@@ -167,7 +167,7 @@ export function Scrubber({
     const ro = new ResizeObserver(updateArrows)
     ro.observe(el)
     return () => { el.removeEventListener('scroll', updateArrows); ro.disconnect() }
-  }, [chapters, updateArrows])
+  }, [chapters, updateArrows, scrollerRef])
 
   useEffect(() => {
     const el = scrollerRef.current

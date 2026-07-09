@@ -1,5 +1,12 @@
 import { useState, useRef, type KeyboardEvent } from 'react'
-import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye, History } from 'lucide-react'
+import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye, History, Flame, Milestone, PenLine, Plus } from 'lucide-react'
+import { TENSION_LEVELS, tensionColor, tensionLabel } from '@/lib/tension'
+import { STORY_BEATS, beatById, beatActColor } from '@/lib/storyBeats'
+import { AtSign, Spline } from 'lucide-react'
+import { wordCount, detectMentions } from '@/lib/manuscript'
+import { useSceneText, setSceneText } from '@/db/hooks/useManuscript'
+import { usePlotThreads } from '@/db/hooks/usePlotThreads'
+import { SceneDraftEditor } from './SceneDraftEditor'
 import type { WorldEvent, EventStatus } from '@/types'
 import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
@@ -20,15 +27,19 @@ interface EventCardProps {
   isLast: boolean
   onMoveUp: () => void
   onMoveDown: () => void
+  /** Derived in-world day (cumulative travel days along narrative order). */
+  inWorldDay?: number
 }
 
-export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: EventCardProps) {
+export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorldDay }: EventCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [title, setTitle] = useState(event.title)
   const [description, setDescription] = useState(event.description)
   const [involvedIds, setInvolvedIds] = useState<string[]>(event.involvedCharacterIds)
+  const [mentionedIds, setMentionedIds] = useState<string[]>(event.mentionedCharacterIds ?? [])
+  const [threadIds, setThreadIds] = useState<string[]>(event.threadIds ?? [])
   const [involvedItemIds, setInvolvedItemIds] = useState<string[]>(event.involvedItemIds)
   const [locationMarkerId, setLocationMarkerId] = useState<string | null>(event.locationMarkerId)
   const [tags, setTags] = useState<string[]>(event.tags)
@@ -36,11 +47,22 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
   const [status, setStatus] = useState<EventStatus>(event.status ?? 'draft')
   const [povCharacterId, setPovCharacterId] = useState<string | null>(event.povCharacterId ?? null)
   const [isFlashback, setIsFlashback] = useState(event.isFlashback ?? false)
+  const [travelDays, setTravelDays] = useState<number | null>(event.travelDays ?? null)
+  const [inWorldTime, setInWorldTime] = useState<number | null>(event.inWorldTime ?? null)
+  const [tension, setTension] = useState<number | null>(event.tension ?? null)
+  const [structureBeat, setStructureBeat] = useState<string | null>(event.structureBeat ?? null)
+  // Scene prose: `draft === null` means "show the stored value"; a string means unsaved edits.
+  const sceneText = useSceneText(event.id)
+  const [draft, setDraft] = useState<string | null>(null)
   const tagInputRef = useRef<HTMLInputElement>(null)
 
   const characters = useCharacters(event.worldId)
   const items = useItems(event.worldId)
   const locationMarkers = useAllLocationMarkers(event.worldId)
+  const plotThreads = usePlotThreads(event.worldId)
+
+  const assignedThreads = plotThreads.filter((t) => threadIds.includes(t.id))
+  const availableThreads = plotThreads.filter((t) => !threadIds.includes(t.id))
 
   const involvedChars = characters.filter((c) => involvedIds.includes(c.id))
   const availableChars = characters.filter((c) => !involvedIds.includes(c.id))
@@ -49,6 +71,16 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
   const currentLocation = locationMarkers.find((m) => m.id === locationMarkerId) ?? null
   const povChar = characters.find((c) => c.id === povCharacterId) ?? null
   const nonInvolvedChars = characters.filter((c) => !involvedIds.includes(c.id))
+
+  const mentionedChars = characters.filter((c) => mentionedIds.includes(c.id))
+  const availableForMention = characters.filter((c) => !mentionedIds.includes(c.id) && !involvedIds.includes(c.id))
+
+  // Scene prose derived values
+  const sceneValue = draft ?? sceneText?.text ?? ''
+  const sceneWords = draft === null ? (sceneText?.wordCount ?? 0) : wordCount(sceneValue)
+  const mentions = detectMentions(sceneValue, characters)
+  // Nudge only for names that aren't accounted for as present OR mentioned.
+  const untaggedMentions = mentions.filter((m) => !involvedIds.includes(m.characterId) && !mentionedIds.includes(m.characterId))
 
   async function saveEdit() {
     await updateEvent(event.id, {
@@ -91,6 +123,38 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
     await updateEvent(event.id, { isFlashback: next })
   }
 
+  async function changeTension(level: number | null) {
+    // Clicking the active level clears it back to unrated.
+    const next = level !== null && level === tension ? null : level
+    setTension(next)
+    await updateEvent(event.id, { tension: next })
+  }
+
+  async function changeBeat(id: string | null) {
+    setStructureBeat(id)
+    await updateEvent(event.id, { structureBeat: id })
+  }
+
+  async function saveScene() {
+    if (draft === null) return
+    await setSceneText(event.worldId, event.id, draft)
+    setDraft(null) // fall back to the freshly-stored live value
+  }
+
+  function handleTravelDaysChange(raw: string) {
+    const parsed = raw.trim() === '' ? null : Math.max(0, parseFloat(raw))
+    const val = parsed === null || Number.isNaN(parsed) ? null : parsed
+    setTravelDays(val)
+    updateEvent(event.id, { travelDays: val })
+  }
+
+  function handleInWorldTimeChange(raw: string) {
+    const parsed = raw.trim() === '' ? null : parseFloat(raw)
+    const val = parsed === null || Number.isNaN(parsed) ? null : parsed
+    setInWorldTime(val)
+    updateEvent(event.id, { inWorldTime: val })
+  }
+
   function startEdit() {
     setTitle(event.title)
     setDescription(event.description)
@@ -114,6 +178,35 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
     const newIds = involvedIds.filter((id) => id !== characterId)
     setInvolvedIds(newIds)
     if (!editing) await updateEvent(event.id, { involvedCharacterIds: newIds })
+  }
+
+  // ── Mention helpers (referenced but not present) ─────────────────────────────
+  async function addMention(characterId: string) {
+    // Present characters are on-stage, not merely mentioned.
+    if (involvedIds.includes(characterId) || mentionedIds.includes(characterId)) return
+    const newIds = [...mentionedIds, characterId]
+    setMentionedIds(newIds)
+    await updateEvent(event.id, { mentionedCharacterIds: newIds })
+  }
+
+  async function removeMention(characterId: string) {
+    const newIds = mentionedIds.filter((id) => id !== characterId)
+    setMentionedIds(newIds)
+    await updateEvent(event.id, { mentionedCharacterIds: newIds })
+  }
+
+  // ── Plot-thread helpers ──────────────────────────────────────────────────────
+  async function addThread(threadId: string) {
+    if (threadIds.includes(threadId)) return
+    const newIds = [...threadIds, threadId]
+    setThreadIds(newIds)
+    await updateEvent(event.id, { threadIds: newIds })
+  }
+
+  async function removeThread(threadId: string) {
+    const newIds = threadIds.filter((id) => id !== threadId)
+    setThreadIds(newIds)
+    await updateEvent(event.id, { threadIds: newIds })
   }
 
   // ── Item helpers ───────────────────────────────────────────────────────────
@@ -184,6 +277,27 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
           )}
         </button>
 
+        {/* Scene word-count chip — only when this scene has prose */}
+        {sceneWords > 0 && (
+          <span
+            className="shrink-0 flex items-center gap-1 rounded-full bg-[hsl(var(--muted))] px-2 py-0.5 text-[10px] font-medium tabular-nums text-[hsl(var(--muted-foreground))]"
+            title={`${sceneWords} words of scene draft`}
+          >
+            <PenLine className="h-2.5 w-2.5" />
+            {sceneWords >= 1000 ? `${(sceneWords / 1000).toFixed(1)}k` : sceneWords}
+          </span>
+        )}
+
+        {/* In-world day chip — only when the story tracks elapsed time */}
+        {inWorldDay !== undefined && inWorldDay > 0 && !isFlashback && (
+          <span
+            className="shrink-0 rounded-full bg-[hsl(var(--muted))] px-2 py-0.5 text-[10px] font-medium tabular-nums text-[hsl(var(--muted-foreground))]"
+            title={`In-world day ${inWorldDay} — ${inWorldDay} day${inWorldDay === 1 ? '' : 's'} after the story's start`}
+          >
+            Day {inWorldDay}
+          </span>
+        )}
+
         {/* Status badge — always visible, click to cycle */}
         <button
           onClick={(e) => {
@@ -208,6 +322,32 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
           >
             <History className="h-2.5 w-2.5 text-[hsl(var(--muted-foreground))]" />
             <span className="text-[hsl(var(--muted-foreground))]">Flashback</span>
+          </button>
+        )}
+
+        {/* Story-beat badge — visible when set */}
+        {beatById(structureBeat) && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setExpanded(true) }}
+            className="shrink-0 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-[hsl(var(--muted))] hover:opacity-80"
+            title={`Story beat: ${beatById(structureBeat)!.label} — click to change`}
+            aria-label={`Story beat: ${beatById(structureBeat)!.label}`}
+          >
+            <Milestone className="h-2.5 w-2.5" style={{ color: beatActColor(beatById(structureBeat)!.act) }} />
+            <span className="text-[hsl(var(--foreground))]">{beatById(structureBeat)!.label}</span>
+          </button>
+        )}
+
+        {/* Tension badge — visible when rated, click to expand and adjust */}
+        {tension !== null && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setExpanded(true) }}
+            className="shrink-0 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-[hsl(var(--muted))] hover:opacity-80"
+            title={`Tension: ${tensionLabel(tension)} (${tension}/5) — click to adjust`}
+            aria-label={`Tension: ${tensionLabel(tension)}`}
+          >
+            <Flame className="h-2.5 w-2.5" style={{ color: tensionColor(tension) }} />
+            <span className="tabular-nums text-[hsl(var(--foreground))]">{tension}/5</span>
           </button>
         )}
 
@@ -315,6 +455,42 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
             )}
           </div>
 
+          {/* Scene draft (manuscript prose) */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
+                <PenLine className="h-3 w-3" /> Scene Draft
+              </span>
+              <span className="text-[10px] tabular-nums text-[hsl(var(--muted-foreground))]">
+                {sceneWords} {sceneWords === 1 ? 'word' : 'words'}
+              </span>
+            </div>
+            <SceneDraftEditor
+              value={sceneValue}
+              onChange={setDraft}
+              onBlur={saveScene}
+              characters={characters}
+              onMention={addMention}
+              placeholder="Write or paste this scene's prose… (type @ to mention a character; word count feeds the pacing curve)"
+              rows={5}
+            />
+            {untaggedMentions.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] text-[hsl(var(--muted-foreground))]">In the text but not on this event:</span>
+                {untaggedMentions.map((m) => (
+                  <button
+                    key={m.characterId}
+                    onClick={() => addCharacter(m.characterId)}
+                    className="flex items-center gap-1 rounded-full border border-dashed border-[hsl(var(--border))] px-2 py-0.5 text-[10px] text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--ring))] hover:text-[hsl(var(--foreground))] transition-colors"
+                    title={`${m.name} appears ${m.count}× — click to add to this event`}
+                  >
+                    <Plus className="h-2.5 w-2.5" /> {m.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Location */}
           {locationMarkers.length > 0 && (
             <div className="flex flex-col gap-1.5">
@@ -397,6 +573,79 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
               </Select>
             )}
           </div>
+
+          {/* Mentioned (referenced but not present) */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
+              <AtSign className="h-3 w-3" /> Mentioned
+            </span>
+            {mentionedChars.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {mentionedChars.map((c) => (
+                  <span key={c.id} className="flex items-center gap-1 rounded-full bg-[hsl(var(--muted))] pl-0.5 pr-1 py-0.5">
+                    <PortraitImage
+                      imageId={c.portraitImageId}
+                      className="h-4 w-4 rounded-full object-cover"
+                      fallbackClassName="h-4 w-4 rounded-full"
+                    />
+                    <span className="text-[10px] text-[hsl(var(--foreground))]">{c.name}</span>
+                    <button onClick={() => removeMention(c.id)} className="ml-0.5 hover:text-red-400" aria-label={`Remove mention of ${c.name}`}>
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs italic text-[hsl(var(--muted-foreground))]">No one mentioned. Type @ in the scene draft, or add below.</p>
+            )}
+            {availableForMention.length > 0 && (
+              <Select onValueChange={addMention}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="+ Mention character…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableForMention.map((c) => (
+                    <SelectItem key={c.id} value={c.id} className="text-xs">{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          {/* Plot threads (created on the dashboard; tagged here) */}
+          {plotThreads.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
+                <Spline className="h-3 w-3" /> Plot Threads
+              </span>
+              {assignedThreads.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {assignedThreads.map((t) => (
+                    <span key={t.id} className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]"
+                      style={{ background: `${t.color}22`, border: `1px solid ${t.color}55` }}>
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: t.color }} />
+                      <span className="text-[hsl(var(--foreground))]">{t.name}</span>
+                      <button onClick={() => removeThread(t.id)} className="ml-0.5 hover:text-red-400" aria-label={`Remove thread ${t.name}`}>
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {availableThreads.length > 0 && (
+                <Select onValueChange={addThread}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="+ Tag a thread…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableThreads.map((t) => (
+                      <SelectItem key={t.id} value={t.id} className="text-xs">{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
 
           {/* Involved Items */}
           {(involvedItems.length > 0 || availableItems.length > 0) && (
@@ -483,6 +732,42 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
             </div>
           )}
 
+          {/* Elapsed time before this event */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
+              <History className="h-3 w-3" /> Elapsed Time
+            </span>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={0}
+                step="any"
+                className="h-8 w-24 text-xs"
+                placeholder="0"
+                value={travelDays ?? ''}
+                onChange={(e) => handleTravelDaysChange(e.target.value)}
+              />
+              <span className="text-xs text-[hsl(var(--muted-foreground))]">days since the previous event</span>
+            </div>
+            <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
+              Builds the in-world clock and powers the travel-time continuity check.
+            </p>
+            <div className="mt-1 flex items-center gap-2">
+              <Input
+                type="number"
+                step="any"
+                className="h-8 w-24 text-xs"
+                placeholder="auto"
+                value={inWorldTime ?? ''}
+                onChange={(e) => handleInWorldTimeChange(e.target.value)}
+              />
+              <span className="text-xs text-[hsl(var(--muted-foreground))]">pin to an exact in-world day</span>
+            </div>
+            <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
+              Overrides the derived clock — use for flashbacks or scenes out of narrative order.
+            </p>
+          </div>
+
           {/* Flashback toggle */}
           <div className="flex items-center gap-2">
             <button
@@ -497,6 +782,67 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown }: Even
               <History className="h-3 w-3" />
               Flashback / Retrospective
             </button>
+          </div>
+
+          {/* Story-structure beat */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
+              <Milestone className="h-3 w-3" /> Story Beat
+            </span>
+            <Select value={structureBeat ?? '__none__'} onValueChange={(v) => changeBeat(v === '__none__' ? null : v)}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="No beat…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__" className="text-xs italic text-[hsl(var(--muted-foreground))]">No beat</SelectItem>
+                {[1, 2, 3].map((act) => (
+                  <SelectGroup key={act}>
+                    <SelectLabel className="text-[10px] uppercase tracking-wide">Act {act}</SelectLabel>
+                    {STORY_BEATS.filter((b) => b.act === act).map((b) => (
+                      <SelectItem key={b.id} value={b.id} className="text-xs">
+                        <span className="flex items-center gap-1.5">
+                          <span className="inline-block h-2 w-2 rounded-full shrink-0" style={{ background: beatActColor(b.act) }} />
+                          {b.label}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))}
+              </SelectContent>
+            </Select>
+            {beatById(structureBeat) && (
+              <p className="text-[10px] text-[hsl(var(--muted-foreground))]">{beatById(structureBeat)!.hint}</p>
+            )}
+          </div>
+
+          {/* Tension picker */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
+              <Flame className="h-3 w-3" /> Dramatic Tension
+            </span>
+            <div className="flex gap-1">
+              {TENSION_LEVELS.map((level) => (
+                <button
+                  key={level}
+                  onClick={() => changeTension(level)}
+                  className="flex-1 rounded py-1 text-[10px] font-medium tabular-nums transition-opacity hover:opacity-90"
+                  style={
+                    tension === level
+                      ? { background: tensionColor(level), color: '#fff' }
+                      : { background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }
+                  }
+                  title={`${tensionLabel(level)} (${level}/5)`}
+                  aria-pressed={tension === level}
+                >
+                  {level}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
+              {tension !== null
+                ? `${tensionLabel(tension)} — click the same level again to clear.`
+                : 'Rate the intensity to plot this scene on the pacing curve.'}
+            </p>
           </div>
 
           {/* Status picker */}
