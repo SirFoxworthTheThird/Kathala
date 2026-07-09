@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils'
 import { pixelDist } from '@/lib/mapScale'
 import { computeInWorldDays } from '@/lib/inWorldTime'
 import { computeKnowledgeAnachronisms } from '@/lib/knowledgeAnachronisms'
+import { computeDeadKnowerIssues } from '@/lib/knowledgeRevealContinuity'
 import { computeProseMentionIssues, computeKnowledgeLeaks } from '@/lib/proseContinuity'
 import { computeItemHandoffIssues } from '@/lib/itemHandoff'
 import { useKnowledgeFacts, useKnowledgeReveals } from '@/db/hooks/useKnowledge'
@@ -1168,6 +1169,22 @@ export function ContinuityChecker() {
         detail: `"${a.fact.title}" isn't true until Ch. ${originCh?.number ?? '?'}, but ${who.toLowerCase()} knows it in Ch. ${knownCh?.number ?? '?'}.`,
         navigatePath: `/worlds/${worldId}/timeline/${eventById.get(a.knownAtEventId)?.chapterId ?? ''}`,
         eventId: a.knownAtEventId,
+      })
+    }
+
+    // ── Dead character learns a fact after dying ─────────────────────────────
+    for (const d of computeDeadKnowerIssues({ facts: knowledgeFacts, reveals: knowledgeReveals, snapshots, events: allEvents, chapters })) {
+      const char = charById.get(d.characterId)
+      const ev = eventById.get(d.revealEventId)
+      const ch = ev ? chapById.get(ev.chapterId) : undefined
+      out.push({
+        id: `dead-knower-${d.fact.id}-${d.characterId}-${d.revealEventId}`,
+        severity: 'warning',
+        category: 'character',
+        message: `${char?.name ?? '?'} learns "${d.fact.title}" after dying`,
+        detail: `A reveal places this knowledge with ${char?.name ?? '?'} in Ch. ${ch?.number ?? '?'}, but they're already dead by then. Move the reveal earlier, or mark the event a flashback if intentional.`,
+        navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+        eventId: d.revealEventId,
       })
     }
 
