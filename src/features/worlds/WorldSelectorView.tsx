@@ -202,7 +202,11 @@ export default function WorldSelectorView() {
         onOpenChange={setManuscriptOpen}
         onImported={(id) => navigate(`/worlds/${id}`)}
       />
-      <LLMPromptDialog open={promptOpen} onOpenChange={setPromptOpen} />
+      <LLMPromptDialog
+        open={promptOpen}
+        onOpenChange={setPromptOpen}
+        onImported={(id) => navigate(`/worlds/${id}`)}
+      />
     </div>
   )
 }

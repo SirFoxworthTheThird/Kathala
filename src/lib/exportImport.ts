@@ -12,7 +12,7 @@ import type {
 } from '@/types'
 import { generateId } from '@/lib/id'
 
-const EXPORT_VERSION = 17
+export const EXPORT_VERSION = 17
 
 interface BlobExport {
   id: string

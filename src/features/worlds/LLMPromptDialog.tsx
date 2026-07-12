@@ -1,296 +1,81 @@
-import { useState } from 'react'
-import { Copy, Check, Sparkles } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Copy, Check, Sparkles, Wand2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { parseWorldSpec, worldSpecStats, createWorldFromSpec } from '@/lib/worldSpec'
 
 // ---------------------------------------------------------------------------
-// Prompt template
+// Prompt template — asks for a compact "story spec" (names, not UUIDs; state as
+// deltas). The app expands it on import, so large stories don't overflow the
+// model's output limit and truncate.
 // ---------------------------------------------------------------------------
 
-const PROMPT = `You are helping me import my story into PlotWeave, a story-tracking application. Your task is to read the story document I provide and generate a valid PlotWeave export file in JSON format that I can import directly.
+const PROMPT = `You are helping me import my story into PlotWeave, a story-tracking app. Read the story I provide and output a compact "story spec" as JSON that PlotWeave expands on import.
 
-Output ONLY the raw JSON — no explanation, no markdown fences, no commentary.
+Output ONLY the raw JSON — no explanation, no markdown fences.
 
-═══════════════════════════════════════════════════════════
-FILE STRUCTURE
-═══════════════════════════════════════════════════════════
+TWO RULES THAT KEEP THE OUTPUT SMALL (so long stories don't get cut off):
+1. Reference everything BY NAME — never invent ids/UUIDs.
+2. Give character state as CHANGES only. Add a "changes" entry for a character solely when something changes for them at that event (they first appear, move, gain/lose an item, die, or their situation shifts). Do NOT repeat unchanged state every scene.
 
+SHAPE:
 {
-  "version": 16,
-  "type": "full",
-  "exportedAt": <current unix timestamp in ms, e.g. 1700000000000>,
-  "world": { ... },
-  "characters": [ ... ],
-  "items": [ ... ],
-  "relationships": [ ... ],
-  "timelines": [ ... ],
-  "chapters": [ ... ],
-  "events": [ ... ],
-  "characterSnapshots": [ ... ],
-  "factions": [ ... ],
-  "factionMemberships": [ ... ],
-  "factionRelationships": [],
-  "loreCategories": [ ... ],
-  "lorePages": [ ... ],
-  "knowledgeFacts": [ ... ],
-  "knowledgeReveals": [ ... ],
-  "sceneTexts": [],                    // leave empty — scene prose is authored in-app, not generated here
-  "plotThreads": [ ... ],              // named subplots/threads (see schema below); [] if none
-  "mapLayers": [],
-  "locationMarkers": [],
-  "mapAnnotations": [],
-  "characterMovements": [],
-  "itemPlacements": [],
-  "locationSnapshots": [],
-  "itemSnapshots": [],
-  "relationshipSnapshots": [],
-  "travelModes": [],
-  "timelineRelationships": [],
-  "crossTimelineArtifacts": [],
-  "mapRoutes": [],
-  "mapRegions": [],
-  "mapRegionSnapshots": [],
-  "blobs": []
+  "format": "plotweave-spec",
+  "version": 1,
+  "world": { "name": "<title>", "description": "<1-2 sentences>" },
+  "characters": [
+    { "name": "<full name>", "aliases": ["<nickname>"], "description": "<role & key traits>", "tags": ["protagonist"], "alive": true }
+  ],
+  "items": [
+    { "name": "<item>", "description": "<why it matters>", "icon": "weapon|armor|potion|scroll|ring|key|treasure|book|artifact|other" }
+  ],
+  "factions": [
+    { "name": "<group>", "description": "<purpose>", "members": ["<char name>", { "name": "<char name>", "role": "Leader" }] }
+  ],
+  "relationships": [
+    { "a": "<char>", "b": "<char>", "label": "mentor|rival|siblings|lover|allies|enemy", "strength": "weak|moderate|strong|bond", "sentiment": "positive|neutral|negative|complex", "description": "<optional>" }
+  ],
+  "chapters": [
+    {
+      "title": "<chapter title>",
+      "synopsis": "<2-4 sentence summary>",
+      "events": [
+        {
+          "id": "e1",
+          "title": "<short event title>",
+          "description": "<what happens>",
+          "characters": ["<names present in the scene>"],
+          "pov": "<name, or omit>",
+          "mentioned": ["<names referenced but absent>"],
+          "items": ["<item names involved>"],
+          "tags": ["battle", "revelation"],
+          "tension": 3,
+          "beat": "hook|inciting-incident|plot-point-1|midpoint|plot-point-2|climax|resolution",
+          "flashback": false,
+          "changes": [
+            { "who": "<name>", "location": "<place>", "gains": ["<item>"], "loses": ["<item>"], "dies": true, "note": "<what they're doing/feeling now>" }
+          ]
+        }
+      ]
+    }
+  ],
+  "lore": [
+    { "category": "Magic|History|Geography|Religion|...", "title": "<page title>", "body": "<markdown>" }
+  ],
+  "knowledge": [
+    { "title": "<secret, e.g. 'The king is dead'>", "description": "<what it is>", "origin": "<event id where it becomes true>", "readerLearnsAt": "<event id, or omit>", "revealedTo": [ { "who": "<name>", "at": "<event id>" } ] }
+  ]
 }
 
-Use UUIDs in the format "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx" for every id field.
-Use the same timestamp (milliseconds) for all createdAt / updatedAt fields.
+GUIDANCE:
+- Divide the story into chapters (roughly one per major scene or act), 1-5 events each, in order.
+- Every name in characters/pov/members/relationships/changes must match a character "name" (or alias).
+- Put an "id" slug (e.g. "e1", "e2") on an event only if a knowledge entry needs to point at it. Slugs must be unique.
+- tension (1-5), beat, and knowledge are optional — include them when the story supports it.
+- Omit fields you have nothing for (empty arrays are fine too). Every field is optional except world.name and chapters.
+- Output ONLY the JSON object, starting with { and ending with }.
 
-═══════════════════════════════════════════════════════════
-SCHEMA REFERENCE
-═══════════════════════════════════════════════════════════
-
-── world (single object) ──────────────────────────────────
-{
-  "id": "<uuid>",
-  "name": "<story/world title>",
-  "description": "<brief description>",
-  "coverImageId": null,
-  "createdAt": <timestamp>,
-  "updatedAt": <timestamp>
-}
-
-── characters (one per named character) ───────────────────
-{
-  "id": "<uuid>",
-  "worldId": "<world.id>",
-  "name": "<full name>",
-  "aliases": ["<nickname>", "<title>"],   // empty array if none
-  "description": "<bio, role, key traits>",
-  "portraitImageId": null,
-  "color": null,                          // hex color for this character's pins, or null
-  "tags": ["protagonist", "mage"],        // role/archetype tags
-  "isAlive": true,                        // false if they die before the story ends
-  "createdAt": <timestamp>,
-  "updatedAt": <timestamp>
-}
-
-── items (notable objects, weapons, artifacts) ─────────────
-{
-  "id": "<uuid>",
-  "worldId": "<world.id>",
-  "name": "<item name>",
-  "description": "<description and significance>",
-  "iconType": "<weapon|armor|potion|scroll|ring|key|treasure|book|artifact|other>",
-  "imageId": null,
-  "tags": []
-}
-
-── relationships (one per pair of related characters) ──────
-{
-  "id": "<uuid>",
-  "worldId": "<world.id>",
-  "characterAId": "<character id>",
-  "characterBId": "<character id>",
-  "label": "<mentor|rival|siblings|lover|allies|enemy|...>",
-  "strength": "<weak|moderate|strong|bond>",
-  "sentiment": "<positive|neutral|negative|complex>",
-  "description": "<optional detail about this relationship>",
-  "isBidirectional": true,
-  "startEventId": null,
-  "createdAt": <timestamp>,
-  "updatedAt": <timestamp>
-}
-
-── timelines (at least one; use more for parallel storylines) ─
-{
-  "id": "<uuid>",
-  "worldId": "<world.id>",
-  "name": "Main Story",
-  "description": "",
-  "color": "#6366f1",
-  "createdAt": <timestamp>
-}
-
-── chapters (one per chapter / act / major scene) ──────────
-{
-  "id": "<uuid>",
-  "worldId": "<world.id>",
-  "timelineId": "<timeline.id>",
-  "number": 1,                  // sequential, starting at 1
-  "title": "<chapter title>",
-  "synopsis": "<2–4 sentence summary of what happens>",
-  "notes": "",
-  "wordGoal": null,
-  "createdAt": <timestamp>,
-  "updatedAt": <timestamp>
-}
-
-── events (key plot moments, 2–5 per chapter) ──────────────
-Events are the primary time unit. Each chapter contains ordered events.
-{
-  "id": "<uuid>",
-  "worldId": "<world.id>",
-  "chapterId": "<chapter.id>",
-  "timelineId": "<timeline.id>",
-  "title": "<short event title>",
-  "description": "<what happens in detail>",
-  "locationMarkerId": null,
-  "involvedCharacterIds": ["<char id>", "..."],
-  "mentionedCharacterIds": [],        // ids of characters referenced but NOT present in the scene; [] if none
-  "involvedItemIds": ["<item id>"],   // empty array if none
-  "tags": ["battle", "revelation"],   // thematic tags
-  "threadIds": [],                    // ids of plotThreads this event advances; [] if none
-  "sortOrder": 0,                     // ascending within a chapter, starting at 0
-  "travelDays": null,                 // days of travel before this event; null if unknown
-  "inWorldTime": null,                // explicit absolute in-world day; null unless this event (e.g. a flashback) sits out of narrative order
-  "tension": null,                    // dramatic intensity 1–5 for the pacing curve; null if unrated
-  "structureBeat": null,              // story beat, one of: hook | inciting-incident | plot-point-1 | midpoint | plot-point-2 | climax | resolution; null if none
-  "status": "draft",                  // one of: idea | outline | draft | revised | final
-  "povCharacterId": null,             // id of the POV character, or null
-  "isFlashback": false,               // true if this event is a flashback/retrospective
-  "createdAt": <timestamp>,
-  "updatedAt": <timestamp>
-}
-
-── characterSnapshots (one per character × event) ──────────
-Create a snapshot for EVERY character in EVERY event they appear in,
-showing their state at that point in the story.
-{
-  "id": "<uuid>",
-  "worldId": "<world.id>",
-  "characterId": "<character.id>",
-  "eventId": "<event.id>",
-  "isAlive": true,              // set to false once the character dies
-  "currentLocationMarkerId": null,
-  "currentMapLayerId": null,
-  "inventoryItemIds": [],
-  "inventoryNotes": "",
-  "statusNotes": "<what this character is doing / experiencing at this event>",
-  "travelModeId": null,
-  "sortKey": null,              // leave null; the app assigns sort order on import
-  "createdAt": <timestamp>,
-  "updatedAt": <timestamp>
-}
-
-── factions (named groups, guilds, kingdoms, organisations) ──
-{
-  "id": "<uuid>",
-  "worldId": "<world.id>",
-  "name": "<faction name>",
-  "description": "<purpose, ideology, history>",
-  "color": "<hex color, e.g. #6366f1>",
-  "coverImageId": null,
-  "tags": ["military", "political"],   // empty array if none
-  "createdAt": <timestamp>,
-  "updatedAt": <timestamp>
-}
-
-── factionMemberships (one per character × faction) ──────────
-{
-  "id": "<uuid>",
-  "worldId": "<world.id>",
-  "factionId": "<faction.id>",
-  "characterId": "<character.id>",
-  "role": "<Leader|Member|Spy|...>",   // null if unspecified
-  "startEventId": null,                // event when they joined, or null
-  "endEventId": null,                  // event when they left, or null
-  "notes": "",
-  "createdAt": <timestamp>,
-  "updatedAt": <timestamp>
-}
-
-── loreCategories (groupings for lore pages) ─────────────────
-{
-  "id": "<uuid>",
-  "worldId": "<world.id>",
-  "name": "<category name, e.g. Magic, History, Geography>",
-  "color": "<hex color>",
-  "sortOrder": 0,                      // sequential, starting at 0
-  "createdAt": <timestamp>,
-  "updatedAt": <timestamp>
-}
-
-── lorePages (world-building reference pages) ────────────────
-{
-  "id": "<uuid>",
-  "worldId": "<world.id>",
-  "categoryId": "<loreCategory.id>",   // null if uncategorised
-  "title": "<page title>",
-  "body": "<markdown content>",
-  "tags": [],
-  "linkedEntityIds": [],               // character/item/location ids this page is about
-  "visibleFromEventId": null,
-  "createdAt": <timestamp>,
-  "updatedAt": <timestamp>
-}
-
-── knowledgeFacts (secrets / key information whose spread matters) ──
-{
-  "id": "<uuid>",
-  "worldId": "<world.id>",
-  "title": "<short label, e.g. 'The king is dead'>",
-  "description": "<what the information is>",
-  "tags": [],
-  "readerLearnsAtEventId": null,       // event where the reader learns it; null = derive from POV (only set to withhold or reveal early)
-  "originEventId": null,               // event where the fact becomes true/knowable (e.g. the death happens); null = true from the start
-  "createdAt": <timestamp>,
-  "updatedAt": <timestamp>
-}
-
-── knowledgeReveals (one per character learning a fact) ──────
-{
-  "id": "<uuid>",
-  "worldId": "<world.id>",
-  "factId": "<knowledgeFact.id>",
-  "characterId": "<character.id>",
-  "eventId": "<event.id at which they learn it>",
-  "note": "",
-  "createdAt": <timestamp>,
-  "updatedAt": <timestamp>
-}
-
-── plotThreads (named subplots; events reference these via threadIds) ──
-{
-  "id": "<uuid>",
-  "worldId": "<world.id>",
-  "name": "<short thread name, e.g. 'The Rebellion' or 'Aria & Cael'>",
-  "color": "<hex like #f59e0b>",
-  "description": "<one line on what this thread is about>",
-  "createdAt": <timestamp>,
-  "updatedAt": <timestamp>
-}
-
-═══════════════════════════════════════════════════════════
-INSTRUCTIONS
-═══════════════════════════════════════════════════════════
-
-1. Read the full story document.
-2. Extract every named character; infer their role, traits, and fate.
-3. Extract every meaningful relationship between characters.
-4. Extract significant items/objects that appear in the story.
-5. Extract named groups, organisations, factions, or kingdoms; create a faction record for each and a factionMembership for every character who belongs to one (include their role and start/end events if known).
-6. Divide the story into logical chapters (aim for 1 chapter per major scene or act).
-7. For each chapter, write a synopsis and list 2–5 key events (each event gets its own record).
-8. For each character × event combination where the character is present, write a statusNotes sentence describing their situation.
-9. Create lore pages for significant world-building concepts (magic systems, religions, historical events, geography, languages). Group them into loreCategories. Use markdown in the body field.
-10. Cross-reference all ids consistently — every characterId in events/snapshots must match a character in the characters array, and every eventId in snapshots must match an event.
-11. Output ONLY the final JSON object, starting with { and ending with }.
-
-═══════════════════════════════════════════════════════════
-MY STORY
-═══════════════════════════════════════════════════════════
-
+MY STORY:
 [PASTE YOUR STORY DOCUMENT HERE]`
 
 // ---------------------------------------------------------------------------
@@ -300,10 +85,20 @@ MY STORY
 interface LLMPromptDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onImported?: (worldId: string) => void
 }
 
-export function LLMPromptDialog({ open, onOpenChange }: LLMPromptDialogProps) {
+const nf = new Intl.NumberFormat()
+
+export function LLMPromptDialog({ open, onOpenChange, onImported }: LLMPromptDialogProps) {
   const [copied, setCopied] = useState(false)
+  const [raw, setRaw] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const parsed = useMemo(() => (raw.trim() ? parseWorldSpec(raw) : null), [raw])
+  const spec = parsed?.spec
+  const stats = useMemo(() => (spec ? worldSpecStats(spec) : null), [spec])
 
   async function handleCopy() {
     await navigator.clipboard.writeText(PROMPT)
@@ -311,8 +106,29 @@ export function LLMPromptDialog({ open, onOpenChange }: LLMPromptDialogProps) {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  function reset() {
+    setRaw('')
+    setError(null)
+  }
+
+  async function handleImport() {
+    if (!spec) return
+    setImporting(true)
+    setError(null)
+    try {
+      const worldId = await createWorldFromSpec(spec)
+      reset()
+      onOpenChange(false)
+      onImported?.(worldId)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Import failed')
+    } finally {
+      setImporting(false)
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o) }}>
       <DialogContent className="flex max-h-[90vh] w-full max-w-3xl flex-col gap-0 overflow-y-hidden p-0">
         <DialogHeader className="shrink-0 border-b border-[hsl(var(--border))] px-6 py-4">
           <DialogTitle className="flex items-center gap-2">
@@ -321,29 +137,69 @@ export function LLMPromptDialog({ open, onOpenChange }: LLMPromptDialogProps) {
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex shrink-0 flex-col gap-3 border-b border-[hsl(var(--border))] px-6 py-4">
-          <p className="text-sm text-[hsl(var(--foreground))]">
-            Use this prompt with any AI assistant (ChatGPT, Claude, Gemini, etc.) to turn a story document into a PlotWeave world file.
-          </p>
-          <ol className="flex flex-col gap-1 text-xs text-[hsl(var(--muted-foreground))]">
-            <li><span className="mr-1.5 font-semibold text-[hsl(var(--foreground))]">1.</span>Copy the prompt below.</li>
-            <li><span className="mr-1.5 font-semibold text-[hsl(var(--foreground))]">2.</span>Paste it into your AI assistant, then paste your story after the last line.</li>
-            <li><span className="mr-1.5 font-semibold text-[hsl(var(--foreground))]">3.</span>The AI will reply with a JSON block — save it as a <code className="font-mono">.pwk</code> file.</li>
-            <li><span className="mr-1.5 font-semibold text-[hsl(var(--foreground))]">4.</span>Import the file here using the <span className="font-semibold text-[hsl(var(--foreground))]">Import World</span> button.</li>
-          </ol>
-        </div>
-
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <pre className="px-6 py-4 text-[11px] leading-relaxed text-[hsl(var(--muted-foreground))] whitespace-pre-wrap font-mono">
-            {PROMPT}
-          </pre>
+          <div className="flex flex-col gap-3 border-b border-[hsl(var(--border))] px-6 py-4">
+            <p className="text-sm text-[hsl(var(--foreground))]">
+              Turn a story document into a PlotWeave world using any AI assistant (ChatGPT, Claude, Gemini…).
+              The prompt asks for a <span className="font-medium">compact spec</span> — names instead of ids, and only
+              state <span className="font-medium">changes</span> — so even long books fit without getting cut off.
+            </p>
+            <ol className="flex flex-col gap-1 text-xs text-[hsl(var(--muted-foreground))]">
+              <li><span className="mr-1.5 font-semibold text-[hsl(var(--foreground))]">1.</span>Copy the prompt.</li>
+              <li><span className="mr-1.5 font-semibold text-[hsl(var(--foreground))]">2.</span>Paste it into your AI assistant, then paste your story after the last line.</li>
+              <li><span className="mr-1.5 font-semibold text-[hsl(var(--foreground))]">3.</span>Copy the JSON it returns and paste it in the box below.</li>
+              <li><span className="mr-1.5 font-semibold text-[hsl(var(--foreground))]">4.</span>Review the preview and click <span className="font-semibold text-[hsl(var(--foreground))]">Import</span>.</li>
+            </ol>
+          </div>
+
+          {/* The prompt */}
+          <div className="relative border-b border-[hsl(var(--border))]">
+            <div className="sticky top-0 flex justify-end bg-gradient-to-b from-[hsl(var(--card))] to-transparent px-6 pt-3">
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={handleCopy}>
+                {copied ? <><Check className="h-3.5 w-3.5" /> Copied!</> : <><Copy className="h-3.5 w-3.5" /> Copy prompt</>}
+              </Button>
+            </div>
+            <pre className="max-h-64 overflow-y-auto px-6 pb-4 text-[11px] leading-relaxed text-[hsl(var(--muted-foreground))] whitespace-pre-wrap font-mono">
+              {PROMPT}
+            </pre>
+          </div>
+
+          {/* Paste the result */}
+          <div className="flex flex-col gap-3 px-6 py-4">
+            <div className="flex items-center gap-2 text-sm font-medium text-[hsl(var(--foreground))]">
+              <Wand2 className="h-4 w-4 text-[hsl(var(--ring))]" />
+              Paste the AI’s JSON result
+            </div>
+            <textarea
+              aria-label="Story spec JSON"
+              placeholder={'{\n  "world": { "name": "…" },\n  "characters": [ … ],\n  "chapters": [ … ]\n}'}
+              value={raw}
+              onChange={(e) => setRaw(e.target.value)}
+              rows={6}
+              className="w-full resize-y rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 font-mono text-xs text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
+            />
+
+            {raw.trim() && parsed?.error && (
+              <p className="text-xs text-red-400" role="alert">{parsed.error}</p>
+            )}
+            {spec && stats && (
+              <div className="rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-2 text-xs text-[hsl(var(--muted-foreground))]">
+                <span className="font-medium text-[hsl(var(--foreground))]">{spec.world.name}</span>
+                {' — '}
+                {nf.format(stats.characters)} character{stats.characters !== 1 ? 's' : ''} ·{' '}
+                {nf.format(stats.chapters)} chapter{stats.chapters !== 1 ? 's' : ''} ·{' '}
+                {nf.format(stats.events)} event{stats.events !== 1 ? 's' : ''}
+                {stats.factions > 0 && <> · {nf.format(stats.factions)} faction{stats.factions !== 1 ? 's' : ''}</>}
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="shrink-0 border-t border-[hsl(var(--border))] px-6 py-3">
-          <Button className="w-full gap-2" onClick={handleCopy}>
-            {copied
-              ? <><Check className="h-4 w-4" /> Copied!</>
-              : <><Copy className="h-4 w-4" /> Copy Prompt</>}
+        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-[hsl(var(--border))] px-6 py-3">
+          {error ? <p className="text-xs text-red-400" role="alert">{error}</p> : <span />}
+          <Button className="gap-2" onClick={handleImport} disabled={!spec || importing}>
+            <Sparkles className="h-4 w-4" />
+            {importing ? 'Importing…' : 'Import world'}
           </Button>
         </div>
       </DialogContent>
