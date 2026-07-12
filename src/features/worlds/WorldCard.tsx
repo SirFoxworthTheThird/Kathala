@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trash2, Globe, Download, Loader2, ChevronDown, Files } from 'lucide-react'
+import { Trash2, Globe, Download, Loader2, ChevronDown, Files, BookCopy } from 'lucide-react'
 import type { World } from '@/types'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { StartSequelDialog } from './StartSequelDialog'
 import { deleteWorld } from '@/db/hooks/useWorlds'
 import { exportWorld, exportWorldSplit } from '@/lib/exportImport'
 
@@ -17,6 +18,7 @@ export function WorldCard({ world }: WorldCardProps) {
   const [exportProgress, setExportProgress] = useState<{ done: number; total: number } | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [sequelOpen, setSequelOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   // Close the export dropdown when clicking outside
@@ -120,6 +122,17 @@ export function WorldCard({ world }: WorldCardProps) {
                     <div className="text-[10px] text-[hsl(var(--muted-foreground))]">data file + images file</div>
                   </div>
                 </button>
+                <div className="border-t border-[hsl(var(--border))]" />
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-[hsl(var(--accent))] transition-colors"
+                  onClick={() => { setMenuOpen(false); setSequelOpen(true) }}
+                >
+                  <BookCopy className="h-3.5 w-3.5 shrink-0" />
+                  <div>
+                    <div>Start a sequel</div>
+                    <div className="text-[10px] text-[hsl(var(--muted-foreground))]">new book from this one</div>
+                  </div>
+                </button>
               </div>
             )}
           </div>
@@ -147,6 +160,14 @@ export function WorldCard({ world }: WorldCardProps) {
         description="This will permanently delete the world and all its data. This cannot be undone."
         onConfirm={doDelete}
       />
+      <div onClick={(e) => e.stopPropagation()}>
+        <StartSequelDialog
+          open={sequelOpen}
+          onOpenChange={setSequelOpen}
+          world={world}
+          onCreated={(id) => navigate(`/worlds/${id}`)}
+        />
+      </div>
     </div>
   )
 }

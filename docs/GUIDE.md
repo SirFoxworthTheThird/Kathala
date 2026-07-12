@@ -2,10 +2,10 @@
 
 **PlotWeave** is a local-first story bible for fiction writers. It tracks your
 characters, timeline, maps, items, relationships, lore, and continuity as your
-story evolves, stitches your scene prose into a manuscript, and can even build a
-whole world from a draft or an AI assistant — all stored privately in your
-browser (IndexedDB), with no account and no backend. You can run it in the
-browser or as a desktop app.
+story evolves, stitches your scene prose into a manuscript, can build a whole
+world from a draft or an AI assistant, and can carry a series forward into a
+sequel — all stored privately in your browser (IndexedDB), with no account and
+no backend. You can run it in the browser or as a desktop app.
 
 This guide walks through every part of the app. All screenshots use the bundled
 example world, *Middle Earth* (a Lord of the Rings sample you can import to
@@ -19,25 +19,26 @@ explore).
 2. [Getting started — the world selector](#getting-started--the-world-selector)
 3. [Import a manuscript](#import-a-manuscript)
 4. [Generate a world from AI](#generate-a-world-from-ai)
-5. [The world dashboard](#the-world-dashboard)
-6. [Timeline & events](#timeline--events)
-7. [Chapter detail](#chapter-detail)
-8. [Manuscript](#manuscript)
-9. [Characters](#characters)
-10. [Cast Balance](#cast-balance)
-11. [Plot Threads](#plot-threads)
-12. [Maps](#maps)
-13. [Items](#items)
-14. [Relationships](#relationships)
-15. [Character Arc grid](#character-arc-grid)
-16. [Lore](#lore)
-17. [Factions](#factions)
-18. [Knowledge](#knowledge)
-19. [Search](#search)
-20. [Writer's Brief](#writers-brief)
-21. [Continuity Checker](#continuity-checker)
-22. [World settings & export](#world-settings--export)
-23. [Help](#help)
+5. [Start a sequel](#start-a-sequel)
+6. [The world dashboard](#the-world-dashboard)
+7. [Timeline & events](#timeline--events)
+8. [Chapter detail](#chapter-detail)
+9. [Manuscript](#manuscript)
+10. [Characters](#characters)
+11. [Cast Balance](#cast-balance)
+12. [Plot Threads](#plot-threads)
+13. [Maps](#maps)
+14. [Items](#items)
+15. [Relationships](#relationships)
+16. [Character Arc grid](#character-arc-grid)
+17. [Lore](#lore)
+18. [Factions](#factions)
+19. [Knowledge](#knowledge)
+20. [Search](#search)
+21. [Writer's Brief](#writers-brief)
+22. [Continuity Checker](#continuity-checker)
+23. [World settings & export](#world-settings--export)
+24. [Help](#help)
 
 ---
 
@@ -134,6 +135,36 @@ nothing is lost.
 > **Tip:** you don't need a polished manuscript. A detailed synopsis, an outline,
 > or a wiki-style summary all work — the more detail you give, the richer the
 > generated world.
+
+---
+
+## Start a sequel
+
+Writing a series? **Start a sequel** builds book two (or three…) from an existing
+world, so you don't rebuild your cast and setting from scratch. Find it on a world
+card's menu (the ▾ next to Export) on the world selector.
+
+![Start a sequel](images/25-start-sequel.png)
+
+A wizard lets you choose exactly what carries over — everything is selected by
+default, and you tick off what doesn't return:
+
+- **Characters, factions, items, and maps** — pick which come along. Each is
+  copied with a fresh identity into the new book (portraits and map images
+  included).
+- **Relationships continue** — a carried-over relationship starts book two in the
+  state it *ended* book one (its final label, sentiment, and strength), and each
+  character arrives at their book-one ending status (alive or dead).
+- **“Previously…” lore** — optionally turn book one's chapters into a recap: one
+  lore page per chapter, grouped in a *Previously — {book one}* category. Your
+  existing world-building lore can carry forward too.
+- **Seed an opening chapter** — optionally start book two with an opening chapter
+  in which every returning character is already placed at their book-one ending
+  location and inventory, so continuity is wired from page one.
+
+The sequel is a **copy**: it's a fully independent world, so editing it never
+changes the original. Book one's chapters, events, and scene prose are *not*
+copied — book two is a fresh narrative that begins where the last one left off.
 
 ---
 

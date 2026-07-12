@@ -136,7 +136,9 @@ interface CollectedWorldData {
   continuitySuppressions: ContinuitySuppression[]
 }
 
-async function collectWorldData(worldId: string): Promise<CollectedWorldData> {
+export type { CollectedWorldData }
+
+export async function collectWorldData(worldId: string): Promise<CollectedWorldData> {
   const [
     world,
     mapLayers,
