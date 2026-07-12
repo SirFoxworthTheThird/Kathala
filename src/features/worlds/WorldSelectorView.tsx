@@ -1,11 +1,12 @@
 import { useState, useRef } from 'react'
 import faviconUrl from '/favicon.png'
-import { Plus, Scroll, Upload, Sparkles, AlertCircle } from 'lucide-react'
+import { Plus, Scroll, Upload, Sparkles, AlertCircle, FileText } from 'lucide-react'
 import { useWorlds } from '@/db/hooks/useWorlds'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/EmptyState'
 import { WorldCard } from './WorldCard'
 import { CreateWorldDialog } from './CreateWorldDialog'
+import { ImportManuscriptDialog } from './ImportManuscriptDialog'
 import { LLMPromptDialog } from './LLMPromptDialog'
 import { useNavigate } from 'react-router-dom'
 import { importWorld, importWorldImages } from '@/lib/exportImport'
@@ -21,6 +22,7 @@ declare global {
 export default function WorldSelectorView() {
   const worlds = useWorlds()
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [manuscriptOpen, setManuscriptOpen] = useState(false)
   const [promptOpen, setPromptOpen] = useState(false)
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
@@ -115,6 +117,13 @@ export default function WorldSelectorView() {
               <Upload className="h-4 w-4" />
               {importing ? 'Importing...' : 'Import World'}
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => setManuscriptOpen(true)}
+            >
+              <FileText className="h-4 w-4" />
+              Import Manuscript
+            </Button>
             <input
               ref={importRef}
               type="file"
@@ -151,10 +160,14 @@ export default function WorldSelectorView() {
             title="No worlds yet"
             description="Create your first world or story to start tracking characters, locations, and events."
             action={
-              <div className="flex gap-2">
+              <div className="flex flex-wrap justify-center gap-2">
                 <Button variant="outline" onClick={handleImportClick}>
                   <Upload className="h-4 w-4" />
                   Import World
+                </Button>
+                <Button variant="outline" onClick={() => setManuscriptOpen(true)}>
+                  <FileText className="h-4 w-4" />
+                  Import Manuscript
                 </Button>
                 <Button onClick={() => setDialogOpen(true)}>
                   <Plus className="h-4 w-4" />
@@ -183,6 +196,11 @@ export default function WorldSelectorView() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onCreated={(id) => navigate(`/worlds/${id}`)}
+      />
+      <ImportManuscriptDialog
+        open={manuscriptOpen}
+        onOpenChange={setManuscriptOpen}
+        onImported={(id) => navigate(`/worlds/${id}`)}
       />
       <LLMPromptDialog open={promptOpen} onOpenChange={setPromptOpen} />
     </div>

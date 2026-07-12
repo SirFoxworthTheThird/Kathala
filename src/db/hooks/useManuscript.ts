@@ -3,6 +3,9 @@ import { db } from '@/db/database'
 import type { SceneText } from '@/types'
 import { generateId } from '@/lib/id'
 import { wordCount } from '@/lib/manuscript'
+import { createWorld } from '@/db/hooks/useWorlds'
+import { createTimeline, createChapter, createEvent } from '@/db/hooks/useTimeline'
+import type { ParsedManuscript } from '@/lib/manuscriptImport'
 
 /** The scene prose for a single event (or undefined while loading / none yet). */
 export function useSceneText(eventId: string | null) {
@@ -64,4 +67,53 @@ export async function setSceneText(
     updatedAt: now,
   }
   await db.sceneTexts.add(record)
+}
+
+/**
+ * Create a fresh world from a parsed manuscript: one Main Timeline, a chapter
+ * per parsed chapter (numbered in order), a scene event per parsed scene, and
+ * the prose stored as that event's SceneText. Returns the new world's id.
+ */
+export async function createWorldFromManuscript(
+  parsed: ParsedManuscript,
+  worldName: string
+): Promise<string> {
+  const name = worldName.trim() || parsed.title?.trim() || 'Imported Manuscript'
+  const world = await createWorld({ name, description: '' })
+  const timeline = await createTimeline({
+    worldId: world.id,
+    name: 'Main Timeline',
+    description: '',
+    color: '#60a5fa',
+  })
+
+  let chapterNumber = 1
+  for (const pc of parsed.chapters) {
+    const chapter = await createChapter({
+      worldId: world.id,
+      timelineId: timeline.id,
+      number: chapterNumber++,
+      title: pc.title,
+      synopsis: '',
+    })
+
+    let sortOrder = 0
+    for (let i = 0; i < pc.scenes.length; i++) {
+      const event = await createEvent({
+        worldId: world.id,
+        chapterId: chapter.id,
+        timelineId: timeline.id,
+        title: `Scene ${i + 1}`,
+        description: '',
+        locationMarkerId: null,
+        involvedCharacterIds: [],
+        involvedItemIds: [],
+        tags: [],
+        sortOrder: sortOrder++,
+      })
+      await setSceneText(world.id, event.id, pc.scenes[i].text)
+    }
+  }
+
+  return world.id
 }
