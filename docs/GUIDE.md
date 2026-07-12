@@ -2,8 +2,10 @@
 
 **PlotWeave** is a local-first story bible for fiction writers. It tracks your
 characters, timeline, maps, items, relationships, lore, and continuity as your
-story evolves — all stored privately in your browser (IndexedDB), with no
-account and no backend. You can run it in the browser or as a desktop app.
+story evolves, stitches your scene prose into a manuscript, and can even build a
+whole world from a draft or an AI assistant — all stored privately in your
+browser (IndexedDB), with no account and no backend. You can run it in the
+browser or as a desktop app.
 
 This guide walks through every part of the app. All screenshots use the bundled
 example world, *Middle Earth* (a Lord of the Rings sample you can import to
@@ -16,24 +18,26 @@ explore).
 1. [Core concept: the time cursor](#core-concept-the-time-cursor)
 2. [Getting started — the world selector](#getting-started--the-world-selector)
 3. [Import a manuscript](#import-a-manuscript)
-4. [The world dashboard](#the-world-dashboard)
-5. [Timeline & events](#timeline--events)
-6. [Chapter detail](#chapter-detail)
-7. [Characters](#characters)
-8. [Cast Balance](#cast-balance)
-9. [Plot Threads](#plot-threads)
-10. [Maps](#maps)
-11. [Items](#items)
-12. [Relationships](#relationships)
-13. [Character Arc grid](#character-arc-grid)
-14. [Lore](#lore)
-15. [Factions](#factions)
-16. [Knowledge](#knowledge)
-17. [Search](#search)
-18. [Writer's Brief](#writers-brief)
-19. [Continuity Checker](#continuity-checker)
-20. [World settings & export](#world-settings--export)
-21. [Help](#help)
+4. [Generate a world from AI](#generate-a-world-from-ai)
+5. [The world dashboard](#the-world-dashboard)
+6. [Timeline & events](#timeline--events)
+7. [Chapter detail](#chapter-detail)
+8. [Manuscript](#manuscript)
+9. [Characters](#characters)
+10. [Cast Balance](#cast-balance)
+11. [Plot Threads](#plot-threads)
+12. [Maps](#maps)
+13. [Items](#items)
+14. [Relationships](#relationships)
+15. [Character Arc grid](#character-arc-grid)
+16. [Lore](#lore)
+17. [Factions](#factions)
+18. [Knowledge](#knowledge)
+19. [Search](#search)
+20. [Writer's Brief](#writers-brief)
+21. [Continuity Checker](#continuity-checker)
+22. [World settings & export](#world-settings--export)
+23. [Help](#help)
 
 ---
 
@@ -104,6 +108,35 @@ flows straight into the Manuscript view and reads back as one continuous documen
 
 ---
 
+## Generate a world from AI
+
+If your story lives in your head or in a synopsis rather than a finished draft,
+**Generate World from AI** builds the whole structure — characters, factions,
+relationships, chapters, events, and who-knows-what — from a story document, using
+any AI assistant (ChatGPT, Claude, Gemini…).
+
+![Generate world from AI](images/23-generate-ai.png)
+
+1. **Copy the prompt** from the dialog and paste it into your AI assistant,
+   followed by your story text.
+2. The assistant replies with a compact JSON **story spec**.
+3. **Paste that JSON** back into the box in the dialog. A live preview shows what
+   it found — character, chapter, event, and faction counts.
+4. Click **Import world** and you land in the finished world.
+
+The prompt deliberately asks for a *compact* spec — entities are referenced by
+**name** rather than long ids, and a character's state is recorded only when it
+**changes** (they appear, move, gain or lose an item, or die). That keeps the
+AI's output small, so even a full novel fits in one response without getting cut
+off — PlotWeave expands the compact spec back into the full model on import, so
+nothing is lost.
+
+> **Tip:** you don't need a polished manuscript. A detailed synopsis, an outline,
+> or a wiki-style summary all work — the more detail you give, the richer the
+> generated world.
+
+---
+
 ## The world dashboard
 
 Opening a world lands you on its dashboard — a bird's-eye view of the whole
@@ -133,6 +166,9 @@ shape of your story at a glance.
   **Generate with AI** all live in the header.
 - Each chapter row has **Set Active** (move the time cursor here) and an
   **open** button for its detail page.
+- The chapter bar at the bottom of the screen also lets you **play the story**
+  and **Compare chapters** — a diff of exactly what changed between any two points
+  (who moved, gained or lost items, died, or shifted relationships).
 
 ### Chapter detail
 
@@ -142,6 +178,33 @@ location, tags, and draft/written status. The right side holds a live
 **Writer's Notes** field that auto-saves.
 
 ![Chapter detail](images/05-chapter-detail.png)
+
+**Generate / Update Chapter with AI.** From a chapter you can hand your scene
+text to an AI assistant (via a copy-paste prompt, like the world generator) and
+have it fill in the events, character states, and a dramatic-**tension** rating
+for each event — the ratings feed the pacing curve on the Timeline. *Generate*
+drafts a new chapter; *Update* re-derives an existing one from its prose.
+
+---
+
+## Manuscript
+
+The **Manuscript** view stitches every scene's prose into one continuous
+document, in reading order, so you can read and export your book without leaving
+PlotWeave. Write a scene's prose on its event, and it appears here automatically.
+
+![Manuscript view](images/24-manuscript.png)
+
+- **Draft vs. Reading** — Draft shows per-scene and per-chapter word counts, scene
+  labels, and links back to each event; Reading hides the scaffolding for a clean
+  read-through of only the written scenes.
+- **Word goals** — set a target for the whole manuscript (in the header) and a
+  per-chapter goal (in Draft mode); a progress bar tracks words against each.
+  Per-chapter goals are saved with the chapter.
+- **Export** — download or copy the manuscript as Markdown, HTML, or plain text.
+
+Empty scenes are flagged with a "write this scene" link, so the manuscript
+doubles as a checklist of what's left to draft.
 
 ---
 
@@ -208,9 +271,14 @@ geographic tiles). Place **location markers**, group them into **layers** and
 ![Maps](images/08-maps.png)
 
 The left sidebar lists map layers and locations; the right-hand tools toggle
-characters, trails, labels, journeys, and locations. Drag a character (selected
-from an event in the timeline bar) onto the map to place them. **AI Moves** and
-**Export** round out the toolbar.
+characters, trails, labels, journeys, and locations. To place a character
+(selected from an event in the timeline bar), drag them onto the map — or, on
+touch devices, tap the crosshair on their card and then tap a location. **AI
+Moves** and **Export** round out the toolbar.
+
+Press **play** in the chapter bar and the map becomes a playback stage: as the
+story advances event by event, character pins glide between locations along their
+routes, so you can watch your cast move through the world.
 
 ---
 
