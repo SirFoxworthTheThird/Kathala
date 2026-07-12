@@ -15,24 +15,25 @@ explore).
 
 1. [Core concept: the time cursor](#core-concept-the-time-cursor)
 2. [Getting started — the world selector](#getting-started--the-world-selector)
-3. [The world dashboard](#the-world-dashboard)
-4. [Timeline & events](#timeline--events)
-5. [Chapter detail](#chapter-detail)
-6. [Characters](#characters)
-7. [Cast Balance](#cast-balance)
-8. [Plot Threads](#plot-threads)
-9. [Maps](#maps)
-10. [Items](#items)
-11. [Relationships](#relationships)
-12. [Character Arc grid](#character-arc-grid)
-13. [Lore](#lore)
-14. [Factions](#factions)
-15. [Knowledge](#knowledge)
-16. [Search](#search)
-17. [Writer's Brief](#writers-brief)
-18. [Continuity Checker](#continuity-checker)
-19. [World settings & export](#world-settings--export)
-20. [Help](#help)
+3. [Import a manuscript](#import-a-manuscript)
+4. [The world dashboard](#the-world-dashboard)
+5. [Timeline & events](#timeline--events)
+6. [Chapter detail](#chapter-detail)
+7. [Characters](#characters)
+8. [Cast Balance](#cast-balance)
+9. [Plot Threads](#plot-threads)
+10. [Maps](#maps)
+11. [Items](#items)
+12. [Relationships](#relationships)
+13. [Character Arc grid](#character-arc-grid)
+14. [Lore](#lore)
+15. [Factions](#factions)
+16. [Knowledge](#knowledge)
+17. [Search](#search)
+18. [Writer's Brief](#writers-brief)
+19. [Continuity Checker](#continuity-checker)
+20. [World settings & export](#world-settings--export)
+21. [Help](#help)
 
 ---
 
@@ -68,6 +69,38 @@ description. Click a card to open it; the ⋯ menu on each card exports or delet
 that world.
 
 ![World selector with worlds](images/02-home-worlds.png)
+
+---
+
+## Import a manuscript
+
+Already have a draft? **Import Manuscript** (on the world selector) turns it into a
+new world in one step, so you don't have to re-enter every chapter by hand. It's
+the mirror image of the manuscript *export* — bring a draft in, and everything
+else (word counts, continuity, pacing, the reading view) works on it immediately.
+
+Choose a `.md` or `.txt` file, or just paste your text. PlotWeave parses it with
+a few predictable rules:
+
+- **Chapters** — a Markdown `#`/`##` heading, or a line that starts with
+  *Chapter*, *Prologue*, *Epilogue*, or *Part*, begins a new chapter. A `Chapter 7:
+  The Reckoning` heading keeps *The Reckoning* as the title.
+- **Book title** — if the file opens with a single `#` heading (your title) followed
+  by a chapter, that heading becomes the world's name rather than a chapter.
+- **Scenes** — a line of only symbols — `* * *`, `***`, `---`, a lone `#` — splits a
+  chapter into scenes. Paragraph breaks inside a scene are preserved. Prose before
+  the first heading becomes an untitled opening chapter.
+
+A live **preview** shows exactly how it will land — chapter, scene, and word
+counts, plus the chapter list — before anything is created. The world name is
+prefilled from a detected title (edit it if you like), and **Import** drops you
+straight into the new world.
+
+![Import a manuscript](images/22-import-manuscript.png)
+
+Each parsed scene becomes an event with its prose attached, so the imported draft
+flows straight into the Manuscript view and reads back as one continuous document.
+(Import handles Markdown and plain text today; `.docx` is planned.)
 
 ---
 
