@@ -44,7 +44,7 @@ export async function createSequelWorld(
 
     for (const { from, to } of plan.blobCopies) {
       const b = blobById.get(from)
-      if (b) await db.blobs.put({ id: to, worldId: plan.world.id, mimeType: b.mimeType, data: b.data, createdAt: Date.now() })
+      if (b) await db.blobs.put({ id: to, worldId: plan.world.id, mimeType: b.mimeType, data: b.data, url: b.url, createdAt: Date.now() })
     }
   })
 

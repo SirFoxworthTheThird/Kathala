@@ -12,17 +12,33 @@ import type {
 } from '@/types'
 import { generateId } from '@/lib/id'
 
-export const EXPORT_VERSION = 17
+export const EXPORT_VERSION = 18
 
 interface BlobExport {
   id: string
   worldId: string
   mimeType: string
-  dataBase64: string
+  /** Present for uploaded images. Absent for linked images (see `url`). */
+  dataBase64?: string
+  /** Present for linked (external-URL) images. */
+  url?: string
   createdAt: number
 }
 
-type RawBlob = { id: string; worldId: string; mimeType: string; data: Blob; createdAt: number }
+type RawBlob = { id: string; worldId: string; mimeType: string; data?: Blob; url?: string; createdAt: number }
+
+/** Serialize a stored blob to its export form — the external URL for a linked
+ *  image, or base64 for uploaded binary data. */
+async function blobToExport(b: RawBlob): Promise<BlobExport> {
+  if (b.url) return { id: b.id, worldId: b.worldId, mimeType: b.mimeType, url: b.url, createdAt: b.createdAt }
+  return { id: b.id, worldId: b.worldId, mimeType: b.mimeType, dataBase64: b.data ? await blobToBase64(b.data) : '', createdAt: b.createdAt }
+}
+
+/** Rebuild a stored blob record from its export form. */
+function blobRecordFromExport(b: BlobExport): RawBlob {
+  if (b.url) return { id: b.id, worldId: b.worldId, mimeType: b.mimeType, url: b.url, createdAt: b.createdAt }
+  return { id: b.id, worldId: b.worldId, mimeType: b.mimeType, data: base64ToBlob(b.dataBase64 ?? '', b.mimeType), createdAt: b.createdAt }
+}
 
 export interface WorldExportFile {
   version: number
@@ -304,13 +320,7 @@ async function writeJsonWithBlobs(
       await writable.write(prefix)
       for (let i = 0; i < rawBlobs.length; i++) {
         const b = rawBlobs[i]
-        const entry: BlobExport = {
-          id: b.id,
-          worldId: b.worldId,
-          mimeType: b.mimeType,
-          dataBase64: await blobToBase64(b.data),
-          createdAt: b.createdAt,
-        }
+        const entry = await blobToExport(b)
         await writable.write((i > 0 ? ',' : '') + JSON.stringify(entry))
         onProgress?.(i + 1, total)
       }
@@ -329,13 +339,7 @@ async function writeJsonWithBlobs(
   const parts: string[] = [prefix]
   for (let i = 0; i < rawBlobs.length; i++) {
     const b = rawBlobs[i]
-    const entry: BlobExport = {
-      id: b.id,
-      worldId: b.worldId,
-      mimeType: b.mimeType,
-      dataBase64: await blobToBase64(b.data),
-      createdAt: b.createdAt,
-    }
+    const entry = await blobToExport(b)
     parts.push((i > 0 ? ',' : '') + JSON.stringify(entry))
     onProgress?.(i + 1, total)
   }
@@ -483,13 +487,7 @@ export async function serializeWorldForSync(worldId: string): Promise<string> {
   const extras = readLocalStorageExtras(worldId)
   const blobs: BlobExport[] = []
   for (const b of d.rawBlobs) {
-    blobs.push({
-      id: b.id,
-      worldId: b.worldId,
-      mimeType: b.mimeType,
-      dataBase64: await blobToBase64(b.data),
-      createdAt: b.createdAt,
-    })
+    blobs.push(await blobToExport(b))
   }
   const exportData: WorldExportFile = {
     version: EXPORT_VERSION,
@@ -555,13 +553,7 @@ export async function importWorldImages(file: File): Promise<string> {
   const blobs = d.blobs as BlobExport[]
   await db.transaction('rw', [db.blobs], async () => {
     for (const b of blobs) {
-      await db.blobs.put({
-        id: b.id,
-        worldId: b.worldId,
-        mimeType: b.mimeType,
-        data: base64ToBlob(b.dataBase64, b.mimeType),
-        createdAt: b.createdAt,
-      })
+      await db.blobs.put(blobRecordFromExport(b))
     }
   })
 
@@ -933,13 +925,7 @@ async function importWorldData(data: WorldExportFile): Promise<string> {
     }
 
     for (const b of data.blobs) {
-      await db.blobs.put({
-        id: b.id,
-        worldId: b.worldId,
-        mimeType: b.mimeType,
-        data: base64ToBlob(b.dataBase64, b.mimeType),
-        createdAt: b.createdAt,
-      })
+      await db.blobs.put(blobRecordFromExport(b))
     }
   })
 

@@ -246,6 +246,12 @@ count badge tracks how many characters you're following.
 
 ![Character roster](images/06-characters.png)
 
+> **Images: upload or link.** For a character's portrait — and likewise for item
+> images and maps — you can either **upload** a file or **link an image URL**
+> (the ⬆ upload and 🔗 link controls sit on the image). Linked images aren't
+> stored in your browser, so they need an internet connection to display and can
+> break if the source goes away; uploads are self-contained.
+
 Opening a character gives you a tabbed profile:
 
 - **Overview** — biography and portrait.
@@ -295,9 +301,12 @@ Tag a thread onto an event from the event's card; create threads inline with the
 ## Maps
 
 PlotWeave renders custom, hand-drawn fantasy maps (pixel-coordinate images, not
-geographic tiles). Place **location markers**, group them into **layers** and
-**sub-maps** (drill into a city from the world map), draw **regions** and
-**routes**, and set a **map scale** to unlock distance measurement.
+geographic tiles). Upload a map image or **link one by URL** in the upload
+dialog, place **location markers**, group them into **layers** and **sub-maps**
+(drill into a city from the world map), draw **regions** and **routes**, and set
+a **map scale** to unlock distance measurement. (A *linked* map may not be
+included in *Export map as PNG*, since browsers restrict drawing cross-origin
+images to a canvas — uploaded maps always export.)
 
 ![Maps](images/08-maps.png)
 
