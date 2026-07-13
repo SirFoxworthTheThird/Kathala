@@ -327,7 +327,7 @@ function FactionDetailPanel({
   }
 
   return (
-    <div className="flex h-full w-80 shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl">
+    <div className="absolute inset-0 z-30 flex h-full flex-col bg-[hsl(var(--card))] shadow-xl lg:static lg:z-auto lg:w-80 lg:shrink-0 lg:border-l lg:border-[hsl(var(--border))]">
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] px-4 py-3">
         <div className="h-3 w-3 rounded-full shrink-0" style={{ background: faction.color }} />
@@ -621,7 +621,7 @@ export default function FactionsView() {
   }
 
   return (
-    <div className="flex h-full">
+    <div className="relative flex h-full">
       {/* Main list */}
       <div className="flex flex-1 flex-col min-w-0">
         <PageHeader
@@ -718,7 +718,7 @@ export default function FactionsView() {
           onClose={() => setSelectedId(null)}
         />
       ) : factions.length > 0 ? (
-        <div className="flex w-80 shrink-0 items-center justify-center border-l border-[hsl(var(--border))]">
+        <div className="hidden w-80 shrink-0 items-center justify-center border-l border-[hsl(var(--border))] lg:flex">
           <p className="text-sm text-[hsl(var(--muted-foreground))]">Select a faction to view its details</p>
         </div>
       ) : null}
