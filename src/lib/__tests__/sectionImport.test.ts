@@ -84,6 +84,20 @@ describe('addCharactersToWorld', () => {
     const res = await addCharactersToWorld(worldId, [{ name: 'Aria' }])
     expect(res.added).toBe(1) // same name, different world — still added here
   })
+
+  it('overwrites supplied fields on an existing character and leaves omitted ones', async () => {
+    await db.characters.put({ id: 'c1', worldId, name: 'Aria', aliases: ['Old Alias'], description: 'old', portraitImageId: null, tags: ['a'], isAlive: true, color: null, createdAt: 0, updatedAt: 0 })
+    const res = await addCharactersToWorld(worldId, [{ name: 'aria', description: 'A cunning thief', tags: ['thief'], alive: false }])
+    expect(res).toMatchObject({ added: 0, updated: 1, skipped: 0, updatedNames: ['aria'] })
+    const c = await db.characters.get('c1')
+    expect(c).toMatchObject({ description: 'A cunning thief', tags: ['thief'], isAlive: false, aliases: ['Old Alias'] })
+  })
+
+  it('counts a match as unchanged (skipped) when nothing new is supplied', async () => {
+    await db.characters.put({ id: 'c1', worldId, name: 'Aria', aliases: [], description: 'set', portraitImageId: null, tags: [], isAlive: true, color: null, createdAt: 0, updatedAt: 0 })
+    const res = await addCharactersToWorld(worldId, [{ name: 'Aria', description: 'set' }])
+    expect(res).toMatchObject({ added: 0, updated: 0, skipped: 1 })
+  })
 })
 
 describe('parseItemsSpec', () => {
@@ -120,10 +134,17 @@ describe('addItemsToWorld', () => {
     expect(items[1]).toMatchObject({ name: 'Pebble', iconType: 'other', tags: [] })
   })
 
-  it('skips names already present (case-insensitive) and repeats within the batch', async () => {
+  it('adds new items but leaves an unchanged match and in-batch repeat alone', async () => {
     await db.items.put({ id: 'x', worldId, name: 'Sword', description: '', iconType: 'weapon', imageId: null, tags: [] })
     const res = await addItemsToWorld(worldId, [{ name: 'sword' }, { name: 'Shield' }, { name: 'Shield' }])
-    expect(res).toMatchObject({ added: 1, skipped: 2, addedNames: ['Shield'] })
+    expect(res).toMatchObject({ added: 1, updated: 0, skipped: 2, addedNames: ['Shield'] })
+  })
+
+  it('overwrites supplied fields on an existing item', async () => {
+    await db.items.put({ id: 'i1', worldId, name: 'Sword', description: 'old', iconType: 'other', imageId: null, tags: [] })
+    const res = await addItemsToWorld(worldId, [{ name: 'sword', icon: 'weapon', description: 'A fine blade' }])
+    expect(res).toMatchObject({ added: 0, updated: 1 })
+    expect(await db.items.get('i1')).toMatchObject({ iconType: 'weapon', description: 'A fine blade' })
   })
 })
 
@@ -170,16 +191,31 @@ describe('addFactionsToWorld', () => {
     expect(memberships.find((m) => m.characterId === 'c-bran')?.role).toBe('Captain')
   })
 
-  it('skips duplicate faction names and honours an explicit colour', async () => {
+  it('adds new factions, honours an explicit colour, and leaves unchanged matches', async () => {
     await db.factions.put({ id: 'f0', worldId, name: 'The Watch', description: '', color: '#000', coverImageId: null, tags: [], createdAt: 0, updatedAt: 0 })
     const res = await addFactionsToWorld(worldId, [
-      { name: 'the watch' },                    // dupe
+      { name: 'the watch' },                    // unchanged match
       { name: 'Mages Guild', color: '#abcdef' },
       { name: 'Mages Guild' },                  // dupe within batch
     ])
-    expect(res).toMatchObject({ added: 1, skipped: 2, addedNames: ['Mages Guild'] })
+    expect(res).toMatchObject({ added: 1, updated: 0, skipped: 2, addedNames: ['Mages Guild'] })
     const guild = (await db.factions.where('worldId').equals(worldId).toArray()).find((f) => f.name === 'Mages Guild')
     expect(guild?.color).toBe('#abcdef')
+  })
+
+  it('updates an existing faction in place and unions its members', async () => {
+    await putChar('c-aria', 'Aria Vale')
+    await putChar('c-bran', 'Bran Holt')
+    await db.factions.put({ id: 'f1', worldId, name: 'The Watch', description: 'old', color: '#000', coverImageId: null, tags: [], createdAt: 0, updatedAt: 0 })
+    await db.factionMemberships.put({ id: 'm1', worldId, factionId: 'f1', characterId: 'c-aria', role: null, startEventId: null, endEventId: null, notes: '', createdAt: 0, updatedAt: 0 })
+    const res = await addFactionsToWorld(worldId, [
+      { name: 'the watch', description: 'City guard', members: ['Aria Vale', { name: 'Bran Holt', role: 'Captain' }] },
+    ])
+    expect(res).toMatchObject({ added: 0, updated: 1 })
+    expect(await db.factions.get('f1')).toMatchObject({ description: 'City guard' })
+    const memberships = await db.factionMemberships.where('factionId').equals('f1').toArray()
+    expect(memberships.map((m) => m.characterId).sort()).toEqual(['c-aria', 'c-bran']) // Aria not duplicated
+    expect(memberships.find((m) => m.characterId === 'c-bran')?.role).toBe('Captain')
   })
 })
 
@@ -228,15 +264,24 @@ describe('addRelationshipsToWorld', () => {
     expect(rel).toMatchObject({ characterAId: 'c-aria', characterBId: 'c-bran', label: 'allies', strength: 'strong', sentiment: 'positive', isBidirectional: true })
   })
 
-  it('skips self-pairs and pairs that already have a relationship (either order)', async () => {
+  it('skips self-pairs and leaves an unchanged existing pair (either order)', async () => {
     await putChar('c-a', 'A')
     await putChar('c-b', 'B')
     await db.relationships.put({ id: 'r0', worldId, characterAId: 'c-a', characterBId: 'c-b', label: 'x', strength: 'moderate', sentiment: 'neutral', description: '', isBidirectional: true, startEventId: null, createdAt: 0, updatedAt: 0 })
     const res = await addRelationshipsToWorld(worldId, [
-      { a: 'B', b: 'A' },   // reverse of existing → skipped
+      { a: 'B', b: 'A' },   // reverse of existing, no new fields → unchanged
       { a: 'A', b: 'A' },   // self → skipped
     ])
-    expect(res).toMatchObject({ added: 0, skipped: 2 })
+    expect(res).toMatchObject({ added: 0, updated: 0, skipped: 2 })
+  })
+
+  it('updates an existing pair in place (matched in either order)', async () => {
+    await putChar('c-a', 'A')
+    await putChar('c-b', 'B')
+    await db.relationships.put({ id: 'r0', worldId, characterAId: 'c-a', characterBId: 'c-b', label: 'x', strength: 'moderate', sentiment: 'neutral', description: '', isBidirectional: true, startEventId: null, createdAt: 0, updatedAt: 0 })
+    const res = await addRelationshipsToWorld(worldId, [{ a: 'B', b: 'A', label: 'rivals', sentiment: 'negative' }])
+    expect(res).toMatchObject({ added: 0, updated: 1 })
+    expect(await db.relationships.get('r0')).toMatchObject({ label: 'rivals', sentiment: 'negative', strength: 'moderate' })
   })
 
   it('defaults the label to "connected" when none is given', async () => {
@@ -290,19 +335,27 @@ describe('addLoreToWorld', () => {
     expect(pages.find((p) => p.title === 'Loose Note')!.categoryId).toBeNull()
   })
 
-  it('reuses an existing category by name and skips duplicate page titles', async () => {
+  it('reuses an existing category by name and leaves unchanged page titles', async () => {
     await db.loreCategories.put({ id: 'cat-magic', worldId, name: 'Magic', color: null, sortOrder: 0 })
     await db.lorePages.put({ id: 'p0', worldId, categoryId: 'cat-magic', title: 'The Weave', body: '', tags: [], coverImageId: null, linkedEntityIds: [], visibleFromEventId: null, createdAt: 0, updatedAt: 0 })
     const res = await addLoreToWorld(worldId, [
-      { category: 'magic', title: 'the weave' },   // dupe title
+      { category: 'magic', title: 'the weave' },   // same category, no body → unchanged
       { category: 'Magic', title: 'Runes' },        // reuse existing category
       { category: 'Magic', title: 'Runes' },        // dupe within batch
     ])
-    expect(res).toMatchObject({ added: 1, skipped: 2, addedNames: ['Runes'] })
+    expect(res).toMatchObject({ added: 1, updated: 0, skipped: 2, addedNames: ['Runes'] })
     const cats = await db.loreCategories.where('worldId').equals(worldId).toArray()
     expect(cats).toHaveLength(1) // no new "Magic" category created
     const runes = (await db.lorePages.where('worldId').equals(worldId).toArray()).find((p) => p.title === 'Runes')
     expect(runes?.categoryId).toBe('cat-magic')
+  })
+
+  it('updates an existing page body and can refile its category', async () => {
+    await db.loreCategories.put({ id: 'cat-hist', worldId, name: 'History', color: null, sortOrder: 0 })
+    await db.lorePages.put({ id: 'p0', worldId, categoryId: null, title: 'The Weave', body: 'old', tags: [], coverImageId: null, linkedEntityIds: [], visibleFromEventId: null, createdAt: 0, updatedAt: 0 })
+    const res = await addLoreToWorld(worldId, [{ title: 'the weave', body: 'new body', category: 'History' }])
+    expect(res).toMatchObject({ added: 0, updated: 1 })
+    expect(await db.lorePages.get('p0')).toMatchObject({ body: 'new body', categoryId: 'cat-hist' })
   })
 })
 
@@ -364,9 +417,23 @@ describe('addKnowledgeToWorld', () => {
     expect(fact).toMatchObject({ title: 'A secret', originEventId: null, readerLearnsAtEventId: null })
   })
 
-  it('skips duplicate fact titles (case-insensitive) and repeats within the batch', async () => {
+  it('adds new fact titles and leaves an unchanged match and in-batch repeat', async () => {
     await db.knowledgeFacts.put({ id: 'f0', worldId, title: 'A secret', description: '', tags: [], readerLearnsAtEventId: null, originEventId: null, createdAt: 0, updatedAt: 0 })
     const res = await addKnowledgeToWorld(worldId, [{ title: 'a secret' }, { title: 'New one' }, { title: 'New one' }])
-    expect(res).toMatchObject({ added: 1, skipped: 2, addedNames: ['New one'] })
+    expect(res).toMatchObject({ added: 1, updated: 0, skipped: 2, addedNames: ['New one'] })
+  })
+
+  it('updates an existing fact in place and unions its reveals', async () => {
+    await putChar('c-aria', 'Aria Vale')
+    await putEvent('e-murder', 'The Murder')
+    await db.knowledgeFacts.put({ id: 'f1', worldId, title: 'The king is dead', description: 'old', tags: [], readerLearnsAtEventId: null, originEventId: null, createdAt: 0, updatedAt: 0 })
+    const res = await addKnowledgeToWorld(worldId, [
+      { title: 'the king is dead', description: 'A guarded secret', origin: 'The Murder', revealedTo: [{ who: 'Aria Vale', at: 'The Murder' }] },
+    ])
+    expect(res).toMatchObject({ added: 0, updated: 1 })
+    expect(await db.knowledgeFacts.get('f1')).toMatchObject({ description: 'A guarded secret', originEventId: 'e-murder' })
+    const reveals = await db.knowledgeReveals.where('factId').equals('f1').toArray()
+    expect(reveals).toHaveLength(1)
+    expect(reveals[0]).toMatchObject({ characterId: 'c-aria', eventId: 'e-murder' })
   })
 })

@@ -126,14 +126,15 @@ export function GenerateSectionDialog<T>({
             )}
             {data != null && (
               <div className="rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-2 text-xs text-[hsl(var(--muted-foreground))]">
-                Ready to add <span className="font-medium text-[hsl(var(--foreground))]">{nf.format(total)}</span>{' '}
-                {total === 1 ? singular : plural}. Names already in this world are skipped.
+                Ready to import <span className="font-medium text-[hsl(var(--foreground))]">{nf.format(total)}</span>{' '}
+                {total === 1 ? singular : plural}. New ones are added; ones that already exist are updated in place.
               </div>
             )}
             {result && (
               <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300" role="status">
                 Added {nf.format(result.added)} {result.added === 1 ? singular : plural}
-                {result.skipped > 0 && <> · skipped {nf.format(result.skipped)} already present</>}.
+                {result.updated > 0 && <> · updated {nf.format(result.updated)}</>}
+                {result.skipped > 0 && <> · {nf.format(result.skipped)} unchanged</>}.
               </div>
             )}
           </div>

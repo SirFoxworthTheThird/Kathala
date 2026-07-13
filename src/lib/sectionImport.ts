@@ -25,17 +25,46 @@ const FACTION_COLORS = [
  * {@link createWorldFromSpec} does.
  *
  * Each section has a `parse*` (pure, forgiving JSON → typed spec) and an
- * `add*ToWorld` (idempotent merge that skips names already present). Entities are
- * referenced by name — no ids — matching the compact spec used for full worlds.
+ * `add*ToWorld`. Entities are referenced by name — no ids. New names are created;
+ * a name that already exists in the world is **updated in place**: the fields the
+ * AI supplies (non-empty) overwrite the current values, while fields it omits are
+ * left untouched, so nothing is silently blanked out. A match whose supplied
+ * values change nothing is left alone (counted as skipped). Within a single
+ * batch, a repeated name is applied only once.
  */
 
 const key = (s: string) => s.trim().toLowerCase()
 
 export interface SectionMergeResult {
+  /** New entities created. */
   added: number
+  /** Existing entities whose fields (or associations) changed. */
+  updated: number
+  /** Entries that produced no change: unchanged matches, invalid entries,
+   *  unresolved references, or in-batch duplicates. */
   skipped: number
   /** Names that were added, in order. */
   addedNames: string[]
+  /** Names that were updated, in order. */
+  updatedNames: string[]
+}
+
+/**
+ * Keep only the entries of `patch` that actually differ from `existing` (arrays
+ * compared by value), so we never issue a no-op write or bump updatedAt for
+ * nothing.
+ */
+function changedFields<T extends object>(existing: T, patch: Partial<T>): Partial<T> {
+  const out: Partial<T> = {}
+  for (const k of Object.keys(patch) as (keyof T)[]) {
+    const nv = patch[k]
+    const ov = existing[k]
+    const differs = Array.isArray(nv) || Array.isArray(ov)
+      ? JSON.stringify(nv) !== JSON.stringify(ov ?? null)
+      : nv !== ov
+    if (differs) out[k] = nv
+  }
+  return out
 }
 
 /**
@@ -81,44 +110,69 @@ export function parseCharactersSpec(text: string): { characters?: SpecCharacter[
   return { characters }
 }
 
+/** Fields the spec explicitly supplies (non-empty), for overwriting a match. */
+function characterPatch(sc: SpecCharacter): Partial<Character> {
+  const patch: Partial<Character> = {}
+  const desc = sc.description?.trim()
+  if (desc) patch.description = desc
+  const aliases = (sc.aliases ?? []).map((a) => a.trim()).filter(Boolean)
+  if (aliases.length) patch.aliases = aliases
+  const tags = (sc.tags ?? []).filter(Boolean)
+  if (tags.length) patch.tags = tags
+  if (typeof sc.alive === 'boolean') patch.isAlive = sc.alive
+  if (sc.color) patch.color = sc.color
+  return patch
+}
+
 /**
- * Add characters to a world, skipping any whose name already exists there
- * (case-insensitive) or repeats within the batch. Returns how many were added.
+ * Add or update characters in a world. A new name is created; an existing name
+ * is updated in place (supplied fields overwrite current values). Repeats within
+ * the batch are applied once.
  */
 export async function addCharactersToWorld(
   worldId: string,
   characters: SpecCharacter[],
 ): Promise<SectionMergeResult> {
   const existing = await db.characters.where('worldId').equals(worldId).toArray()
-  const seen = new Set(existing.map((c) => key(c.name)))
+  const byName = new Map(existing.map((c) => [key(c.name), c]))
+  const seen = new Set<string>()
   const now = Date.now()
   const toAdd: Character[] = []
+  const updates: { id: string; patch: Partial<Character> }[] = []
   const addedNames: string[] = []
+  const updatedNames: string[] = []
   let skipped = 0
 
   for (const sc of characters) {
     const name = sc.name?.trim()
     if (!name) { skipped++; continue }
-    if (seen.has(key(name))) { skipped++; continue }
-    seen.add(key(name))
+    const k = key(name)
+    if (seen.has(k)) { skipped++; continue }
+    seen.add(k)
+
+    const match = byName.get(k)
+    if (match) {
+      const patch = changedFields(match, characterPatch(sc))
+      if (Object.keys(patch).length) { updates.push({ id: match.id, patch }); updatedNames.push(name) }
+      else skipped++
+      continue
+    }
     addedNames.push(name)
     toAdd.push({
-      id: generateId(),
-      worldId,
-      name,
+      id: generateId(), worldId, name,
       aliases: (sc.aliases ?? []).map((a) => a.trim()).filter(Boolean),
       description: sc.description?.trim() ?? '',
       portraitImageId: null,
       tags: (sc.tags ?? []).filter(Boolean),
       isAlive: sc.alive ?? true,
       color: sc.color ?? null,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: now, updatedAt: now,
     })
   }
 
   if (toAdd.length > 0) await db.characters.bulkAdd(toAdd)
-  return { added: toAdd.length, skipped, addedNames }
+  for (const u of updates) await db.characters.update(u.id, { ...u.patch, updatedAt: now })
+  return { added: toAdd.length, updated: updatedNames.length, skipped, addedNames, updatedNames }
 }
 
 // ── Items ─────────────────────────────────────────────────────────────────────
@@ -143,30 +197,48 @@ export function parseItemsSpec(text: string): { items?: SpecItem[]; error?: stri
   return { items }
 }
 
-/**
- * Add items to a world, skipping any whose name already exists there
- * (case-insensitive) or repeats within the batch.
- */
+function itemPatch(si: SpecItem): Partial<Item> {
+  const patch: Partial<Item> = {}
+  const desc = si.description?.trim()
+  if (desc) patch.description = desc
+  const icon = si.icon?.trim()
+  if (icon) patch.iconType = icon
+  const tags = (si.tags ?? []).filter(Boolean)
+  if (tags.length) patch.tags = tags
+  return patch
+}
+
+/** Add or update items in a world (see {@link addCharactersToWorld}). */
 export async function addItemsToWorld(
   worldId: string,
   items: SpecItem[],
 ): Promise<SectionMergeResult> {
   const existing = await db.items.where('worldId').equals(worldId).toArray()
-  const seen = new Set(existing.map((i) => key(i.name)))
+  const byName = new Map(existing.map((i) => [key(i.name), i]))
+  const seen = new Set<string>()
   const toAdd: Item[] = []
+  const updates: { id: string; patch: Partial<Item> }[] = []
   const addedNames: string[] = []
+  const updatedNames: string[] = []
   let skipped = 0
 
   for (const si of items) {
     const name = si.name?.trim()
     if (!name) { skipped++; continue }
-    if (seen.has(key(name))) { skipped++; continue }
-    seen.add(key(name))
+    const k = key(name)
+    if (seen.has(k)) { skipped++; continue }
+    seen.add(k)
+
+    const match = byName.get(k)
+    if (match) {
+      const patch = changedFields(match, itemPatch(si))
+      if (Object.keys(patch).length) { updates.push({ id: match.id, patch }); updatedNames.push(name) }
+      else skipped++
+      continue
+    }
     addedNames.push(name)
     toAdd.push({
-      id: generateId(),
-      worldId,
-      name,
+      id: generateId(), worldId, name,
       description: si.description?.trim() ?? '',
       iconType: si.icon?.trim() || 'other',
       imageId: null,
@@ -175,7 +247,8 @@ export async function addItemsToWorld(
   }
 
   if (toAdd.length > 0) await db.items.bulkAdd(toAdd)
-  return { added: toAdd.length, skipped, addedNames }
+  for (const u of updates) await db.items.update(u.id, u.patch)
+  return { added: toAdd.length, updated: updatedNames.length, skipped, addedNames, updatedNames }
 }
 
 // ── Factions ──────────────────────────────────────────────────────────────────
@@ -213,19 +286,29 @@ export function parseFactionsSpec(text: string): { factions?: SpecFaction[]; err
   return { factions }
 }
 
+function factionPatch(sf: SpecFaction): Partial<Faction> {
+  const patch: Partial<Faction> = {}
+  const desc = sf.description?.trim()
+  if (desc) patch.description = desc
+  const color = sf.color?.trim()
+  if (color) patch.color = color
+  const tags = (sf.tags ?? []).filter(Boolean)
+  if (tags.length) patch.tags = tags
+  return patch
+}
+
 /**
- * Add factions to a world, skipping names already present (case-insensitive) or
- * repeated within the batch. Members are matched to existing characters by name
- * or alias; unknown names are ignored (no characters are created here).
+ * Add or update factions in a world. Existing factions are updated in place;
+ * their members are **unioned** (missing memberships added, none removed).
+ * Members reference existing characters by name/alias; unknown names are ignored.
  */
 export async function addFactionsToWorld(
   worldId: string,
   factions: SpecFaction[],
 ): Promise<SectionMergeResult> {
   const existingFactions = await db.factions.where('worldId').equals(worldId).toArray()
-  const seen = new Set(existingFactions.map((f) => key(f.name)))
+  const byName = new Map(existingFactions.map((f) => [key(f.name), f]))
 
-  // name/alias → character id, for resolving members.
   const chars = await db.characters.where('worldId').equals(worldId).toArray()
   const charIdByName = new Map<string, string>()
   for (const c of chars) {
@@ -233,49 +316,89 @@ export async function addFactionsToWorld(
     for (const a of c.aliases ?? []) if (a?.trim()) charIdByName.set(key(a), c.id)
   }
 
+  // Existing memberships per faction, so updates only add what's missing.
+  const allMemberships = await db.factionMemberships.where('worldId').equals(worldId).toArray()
+  const memberIdsByFaction = new Map<string, Set<string>>()
+  for (const m of allMemberships) {
+    if (!memberIdsByFaction.has(m.factionId)) memberIdsByFaction.set(m.factionId, new Set())
+    memberIdsByFaction.get(m.factionId)!.add(m.characterId)
+  }
+
   const now = Date.now()
   const factionsToAdd: Faction[] = []
   const membershipsToAdd: FactionMembership[] = []
+  const updates: { id: string; patch: Partial<Faction> }[] = []
+  const seen = new Set<string>()
   const addedNames: string[] = []
+  const updatedNames: string[] = []
   let skipped = 0
   let colorIx = existingFactions.length
 
-  for (const sf of factions) {
-    const name = sf.name?.trim()
-    if (!name) { skipped++; continue }
-    if (seen.has(key(name))) { skipped++; continue }
-    seen.add(key(name))
-    addedNames.push(name)
-    const factionId = generateId()
-    factionsToAdd.push({
-      id: factionId,
-      worldId,
-      name,
-      description: sf.description?.trim() ?? '',
-      color: sf.color?.trim() || FACTION_COLORS[colorIx++ % FACTION_COLORS.length],
-      coverImageId: null,
-      tags: (sf.tags ?? []).filter(Boolean),
-      createdAt: now,
-      updatedAt: now,
-    })
-    const usedChars = new Set<string>()
+  /** Resolve the spec's members to (characterId, role), de-duped. */
+  function resolveMembers(sf: SpecFaction): { charId: string; role: string | null }[] {
+    const out: { charId: string; role: string | null }[] = []
+    const used = new Set<string>()
     for (const m of sf.members ?? []) {
       const memberName = typeof m === 'string' ? m : m?.name
       const role = typeof m === 'string' ? null : (m?.role?.trim() || null)
       const charId = memberName ? charIdByName.get(key(memberName)) : undefined
-      if (!charId || usedChars.has(charId)) continue
-      usedChars.add(charId)
+      if (!charId || used.has(charId)) continue
+      used.add(charId)
+      out.push({ charId, role })
+    }
+    return out
+  }
+
+  for (const sf of factions) {
+    const name = sf.name?.trim()
+    if (!name) { skipped++; continue }
+    const k = key(name)
+    if (seen.has(k)) { skipped++; continue }
+    seen.add(k)
+
+    const match = byName.get(k)
+    if (match) {
+      const patch = changedFields(match, factionPatch(sf))
+      const existingMembers = memberIdsByFaction.get(match.id) ?? new Set<string>()
+      let addedMember = false
+      for (const { charId, role } of resolveMembers(sf)) {
+        if (existingMembers.has(charId)) continue
+        existingMembers.add(charId)
+        addedMember = true
+        membershipsToAdd.push({
+          id: generateId(), worldId, factionId: match.id, characterId: charId,
+          role, startEventId: null, endEventId: null, notes: '', createdAt: now, updatedAt: now,
+        })
+      }
+      const changed = Object.keys(patch).length > 0 || addedMember
+      if (Object.keys(patch).length) updates.push({ id: match.id, patch })
+      if (changed) updatedNames.push(name)
+      else skipped++
+      continue
+    }
+
+    addedNames.push(name)
+    const factionId = generateId()
+    factionsToAdd.push({
+      id: factionId, worldId, name,
+      description: sf.description?.trim() ?? '',
+      color: sf.color?.trim() || FACTION_COLORS[colorIx++ % FACTION_COLORS.length],
+      coverImageId: null,
+      tags: (sf.tags ?? []).filter(Boolean),
+      createdAt: now, updatedAt: now,
+    })
+    for (const { charId, role } of resolveMembers(sf)) {
       membershipsToAdd.push({
         id: generateId(), worldId, factionId, characterId: charId,
-        role, startEventId: null, endEventId: null, notes: '',
-        createdAt: now, updatedAt: now,
+        role, startEventId: null, endEventId: null, notes: '', createdAt: now, updatedAt: now,
       })
     }
   }
 
   if (factionsToAdd.length > 0) await db.factions.bulkAdd(factionsToAdd)
   if (membershipsToAdd.length > 0) await db.factionMemberships.bulkAdd(membershipsToAdd)
-  return { added: factionsToAdd.length, skipped, addedNames }
+  for (const u of updates) await db.factions.update(u.id, { ...u.patch, updatedAt: now })
+  return { added: factionsToAdd.length, updated: updatedNames.length, skipped, addedNames, updatedNames }
 }
 
 // ── Relationships ─────────────────────────────────────────────────────────────
@@ -305,11 +428,22 @@ export function parseRelationshipsSpec(text: string): { relationships?: SpecRela
 /** Unordered key for a character pair, so A–B and B–A count as the same edge. */
 const pairKey = (x: string, y: string) => [x, y].sort().join('::')
 
+function relationshipPatch(sr: SpecRelationship): Partial<Relationship> {
+  const patch: Partial<Relationship> = {}
+  const label = sr.label?.trim()
+  if (label) patch.label = label
+  if (sr.strength) patch.strength = sr.strength
+  if (sr.sentiment) patch.sentiment = sr.sentiment
+  const desc = sr.description?.trim()
+  if (desc) patch.description = desc
+  return patch
+}
+
 /**
- * Add relationships to a world. Endpoints are matched to existing characters by
- * name or alias; a relationship is skipped when either endpoint is unknown, both
- * endpoints are the same character, or that pair already has a relationship
- * (in the world or earlier in this batch).
+ * Add or update relationships in a world. Endpoints match existing characters by
+ * name/alias; an entry is skipped when either endpoint is unknown or both are the
+ * same character. An existing pair (either order) is updated in place; a new pair
+ * is created.
  */
 export async function addRelationshipsToWorld(
   worldId: string,
@@ -323,11 +457,14 @@ export async function addRelationshipsToWorld(
   }
 
   const existing = await db.relationships.where('worldId').equals(worldId).toArray()
-  const seenPairs = new Set(existing.map((r) => pairKey(r.characterAId, r.characterBId)))
+  const byPair = new Map(existing.map((r) => [pairKey(r.characterAId, r.characterBId), r]))
 
   const now = Date.now()
   const toAdd: Relationship[] = []
+  const updates: { id: string; patch: Partial<Relationship> }[] = []
+  const seen = new Set<string>()
   const addedNames: string[] = []
+  const updatedNames: string[] = []
   let skipped = 0
 
   for (const sr of relationships) {
@@ -335,9 +472,18 @@ export async function addRelationshipsToWorld(
     const bId = sr.b ? charIdByName.get(key(sr.b)) : undefined
     if (!aId || !bId || aId === bId) { skipped++; continue }
     const pk = pairKey(aId, bId)
-    if (seenPairs.has(pk)) { skipped++; continue }
-    seenPairs.add(pk)
-    addedNames.push(`${sr.a.trim()} ↔ ${sr.b.trim()}`)
+    if (seen.has(pk)) { skipped++; continue }
+    seen.add(pk)
+    const label = `${sr.a.trim()} ↔ ${sr.b.trim()}`
+
+    const match = byPair.get(pk)
+    if (match) {
+      const patch = changedFields(match, relationshipPatch(sr))
+      if (Object.keys(patch).length) { updates.push({ id: match.id, patch }); updatedNames.push(label) }
+      else skipped++
+      continue
+    }
+    addedNames.push(label)
     toAdd.push({
       id: generateId(), worldId, characterAId: aId, characterBId: bId,
       label: sr.label?.trim() || 'connected',
@@ -351,7 +497,8 @@ export async function addRelationshipsToWorld(
   }
 
   if (toAdd.length > 0) await db.relationships.bulkAdd(toAdd)
-  return { added: toAdd.length, skipped, addedNames }
+  for (const u of updates) await db.relationships.update(u.id, { ...u.patch, updatedAt: now })
+  return { added: toAdd.length, updated: updatedNames.length, skipped, addedNames, updatedNames }
 }
 
 // ── Lore ──────────────────────────────────────────────────────────────────────
@@ -377,16 +524,15 @@ export function parseLoreSpec(text: string): { lore?: SpecLore[]; error?: string
 }
 
 /**
- * Add lore pages to a world, skipping page titles already present
- * (case-insensitive) or repeated within the batch. Categories are matched to
- * existing ones by name and created on demand when new.
+ * Add or update lore pages in a world (matched by title). Categories are matched
+ * to existing ones by name and created on demand.
  */
 export async function addLoreToWorld(
   worldId: string,
   lore: SpecLore[],
 ): Promise<SectionMergeResult> {
   const existingPages = await db.lorePages.where('worldId').equals(worldId).toArray()
-  const seenTitles = new Set(existingPages.map((p) => key(p.title)))
+  const byTitle = new Map(existingPages.map((p) => [key(p.title), p]))
 
   const existingCats = await db.loreCategories.where('worldId').equals(worldId).toArray()
   const categoryIdByName = new Map<string, string>()
@@ -396,29 +542,49 @@ export async function addLoreToWorld(
   const now = Date.now()
   const categoriesToAdd: LoreCategory[] = []
   const pagesToAdd: LorePage[] = []
+  const updates: { id: string; patch: Partial<LorePage> }[] = []
+  const seen = new Set<string>()
   const addedNames: string[] = []
+  const updatedNames: string[] = []
   let skipped = 0
+
+  /** Resolve a category name to an id, creating the category if new. */
+  function categoryFor(name: string | undefined): string | null {
+    if (!name?.trim()) return null
+    const ck = key(name)
+    let id = categoryIdByName.get(ck) ?? null
+    if (!id) {
+      id = generateId()
+      categoryIdByName.set(ck, id)
+      categoriesToAdd.push({ id, worldId, name: name.trim(), color: null, sortOrder: categoryOrder++ })
+    }
+    return id
+  }
 
   for (const sl of lore) {
     const title = sl.title?.trim()
     if (!title) { skipped++; continue }
-    if (seenTitles.has(key(title))) { skipped++; continue }
-    seenTitles.add(key(title))
-    addedNames.push(title)
+    const k = key(title)
+    if (seen.has(k)) { skipped++; continue }
+    seen.add(k)
 
-    let categoryId: string | null = null
-    if (sl.category?.trim()) {
-      const ck = key(sl.category)
-      categoryId = categoryIdByName.get(ck) ?? null
-      if (!categoryId) {
-        categoryId = generateId()
-        categoryIdByName.set(ck, categoryId)
-        categoriesToAdd.push({ id: categoryId, worldId, name: sl.category.trim(), color: null, sortOrder: categoryOrder++ })
-      }
+    const match = byTitle.get(k)
+    if (match) {
+      const patch: Partial<LorePage> = {}
+      const body = sl.body?.trim()
+      if (body) patch.body = body
+      const tags = (sl.tags ?? []).filter(Boolean)
+      if (tags.length) patch.tags = tags
+      if (sl.category?.trim()) patch.categoryId = categoryFor(sl.category)
+      const pruned = changedFields(match, patch)
+      if (Object.keys(pruned).length) { updates.push({ id: match.id, patch: pruned }); updatedNames.push(title) }
+      else skipped++
+      continue
     }
 
+    addedNames.push(title)
     pagesToAdd.push({
-      id: generateId(), worldId, categoryId,
+      id: generateId(), worldId, categoryId: categoryFor(sl.category),
       title,
       body: sl.body?.trim() ?? '',
       tags: (sl.tags ?? []).filter(Boolean),
@@ -431,7 +597,8 @@ export async function addLoreToWorld(
 
   if (categoriesToAdd.length > 0) await db.loreCategories.bulkAdd(categoriesToAdd)
   if (pagesToAdd.length > 0) await db.lorePages.bulkAdd(pagesToAdd)
-  return { added: pagesToAdd.length, skipped, addedNames }
+  for (const u of updates) await db.lorePages.update(u.id, { ...u.patch, updatedAt: now })
+  return { added: pagesToAdd.length, updated: updatedNames.length, skipped, addedNames, updatedNames }
 }
 
 // ── Knowledge ─────────────────────────────────────────────────────────────────
@@ -470,20 +637,18 @@ export function parseKnowledgeSpec(text: string): { knowledge?: SpecKnowledge[];
 }
 
 /**
- * Add knowledge facts to a world, skipping fact titles already present
- * (case-insensitive) or repeated within the batch. `origin` / `readerLearnsAt`
- * and each reveal's `at` reference existing events BY TITLE; `who` references
- * existing characters by name/alias. References that don't resolve are dropped
- * (the fact is still created; only that link is skipped).
+ * Add or update knowledge facts in a world (matched by title). `origin` /
+ * `readerLearnsAt` and each reveal's `at` reference existing events BY TITLE;
+ * `who` references existing characters by name/alias. Unresolved references are
+ * dropped. On an existing fact, reveals are **unioned** (missing ones added).
  */
 export async function addKnowledgeToWorld(
   worldId: string,
   knowledge: SpecKnowledge[],
 ): Promise<SectionMergeResult> {
   const existingFacts = await db.knowledgeFacts.where('worldId').equals(worldId).toArray()
-  const seenTitles = new Set(existingFacts.map((f) => key(f.title)))
+  const byTitle = new Map(existingFacts.map((f) => [key(f.title), f]))
 
-  // event title → id (first occurrence wins), character name/alias → id.
   const events = await db.events.where('worldId').equals(worldId).toArray()
   const eventIdByTitle = new Map<string, string>()
   for (const e of events) if (!eventIdByTitle.has(key(e.title))) eventIdByTitle.set(key(e.title), e.id)
@@ -497,19 +662,70 @@ export async function addKnowledgeToWorld(
     for (const a of c.aliases ?? []) if (a?.trim()) charIdByName.set(key(a), c.id)
   }
 
+  const allReveals = await db.knowledgeReveals.where('worldId').equals(worldId).toArray()
+  const revealKeysByFact = new Map<string, Set<string>>()
+  for (const r of allReveals) {
+    if (!revealKeysByFact.has(r.factId)) revealKeysByFact.set(r.factId, new Set())
+    revealKeysByFact.get(r.factId)!.add(`${r.characterId}::${r.eventId}`)
+  }
+
   const now = Date.now()
   const factsToAdd: KnowledgeFact[] = []
   const revealsToAdd: KnowledgeReveal[] = []
+  const updates: { id: string; patch: Partial<KnowledgeFact> }[] = []
+  const seen = new Set<string>()
   const addedNames: string[] = []
+  const updatedNames: string[] = []
   let skipped = 0
+
+  /** Resolve the spec's reveals to (characterId, eventId), both required. */
+  function resolveReveals(sk: SpecKnowledge): { characterId: string; eventId: string }[] {
+    const out: { characterId: string; eventId: string }[] = []
+    for (const rv of sk.revealedTo ?? []) {
+      const characterId = rv?.who ? charIdByName.get(key(rv.who)) : undefined
+      const eventId = resolveEvent(rv?.at)
+      if (characterId && eventId) out.push({ characterId, eventId })
+    }
+    return out
+  }
 
   for (const sk of knowledge) {
     const title = sk.title?.trim()
     if (!title) { skipped++; continue }
-    if (seenTitles.has(key(title))) { skipped++; continue }
-    seenTitles.add(key(title))
-    addedNames.push(title)
+    const k = key(title)
+    if (seen.has(k)) { skipped++; continue }
+    seen.add(k)
 
+    const match = byTitle.get(k)
+    if (match) {
+      const patch: Partial<KnowledgeFact> = {}
+      const desc = sk.description?.trim()
+      if (desc) patch.description = desc
+      const tags = (sk.tags ?? []).filter(Boolean)
+      if (tags.length) patch.tags = tags
+      const origin = resolveEvent(sk.origin)
+      if (origin) patch.originEventId = origin
+      const reader = resolveEvent(sk.readerLearnsAt)
+      if (reader) patch.readerLearnsAtEventId = reader
+      const pruned = changedFields(match, patch)
+
+      const existingKeys = revealKeysByFact.get(match.id) ?? new Set<string>()
+      let addedReveal = false
+      for (const { characterId, eventId } of resolveReveals(sk)) {
+        const rk = `${characterId}::${eventId}`
+        if (existingKeys.has(rk)) continue
+        existingKeys.add(rk)
+        addedReveal = true
+        revealsToAdd.push({ id: generateId(), worldId, factId: match.id, characterId, eventId, note: '', createdAt: now, updatedAt: now })
+      }
+      const changed = Object.keys(pruned).length > 0 || addedReveal
+      if (Object.keys(pruned).length) updates.push({ id: match.id, patch: pruned })
+      if (changed) updatedNames.push(title)
+      else skipped++
+      continue
+    }
+
+    addedNames.push(title)
     const factId = generateId()
     factsToAdd.push({
       id: factId, worldId, title,
@@ -519,18 +735,13 @@ export async function addKnowledgeToWorld(
       originEventId: resolveEvent(sk.origin),
       createdAt: now, updatedAt: now,
     })
-    for (const rv of sk.revealedTo ?? []) {
-      const charId = rv?.who ? charIdByName.get(key(rv.who)) : undefined
-      const eventId = resolveEvent(rv?.at)
-      if (!charId || !eventId) continue
-      revealsToAdd.push({
-        id: generateId(), worldId, factId, characterId: charId, eventId, note: '',
-        createdAt: now, updatedAt: now,
-      })
+    for (const { characterId, eventId } of resolveReveals(sk)) {
+      revealsToAdd.push({ id: generateId(), worldId, factId, characterId, eventId, note: '', createdAt: now, updatedAt: now })
     }
   }
 
   if (factsToAdd.length > 0) await db.knowledgeFacts.bulkAdd(factsToAdd)
   if (revealsToAdd.length > 0) await db.knowledgeReveals.bulkAdd(revealsToAdd)
-  return { added: factsToAdd.length, skipped, addedNames }
+  for (const u of updates) await db.knowledgeFacts.update(u.id, { ...u.patch, updatedAt: now })
+  return { added: factsToAdd.length, updated: updatedNames.length, skipped, addedNames, updatedNames }
 }

@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 
 test.describe('Generate a section with AI', () => {
-  test('adds pasted characters to the current world, skipping duplicates', async ({ page }) => {
+  test('adds new characters and updates an existing one in place', async ({ page }) => {
     await page.goto('/')
     await resetDB(page)
 
@@ -12,7 +12,7 @@ test.describe('Generate a section with AI', () => {
     await expect(page).toHaveURL(/#\/worlds\//)
     const worldId = page.url().match(/#\/worlds\/([^/]+)/)![1]
 
-    // Seed one existing character so we can prove duplicates are skipped.
+    // Seed one existing character so we can prove a match is updated, not duplicated.
     await page.goto(`/#/worlds/${worldId}/characters`, { waitUntil: 'load' })
     await page.getByRole('button', { name: 'Add Character' }).first().click()
     await page.getByPlaceholder('Character name').fill('Aria Vale')
@@ -23,22 +23,23 @@ test.describe('Generate a section with AI', () => {
     await page.getByRole('button', { name: 'Generate with AI' }).click()
     const json = JSON.stringify({
       characters: [
-        { name: 'Aria Vale', description: 'dupe — should be skipped' },
+        { name: 'Aria Vale', description: 'A cunning thief.' }, // matches the seed → updated
         { name: 'Bran Holt', description: 'A grizzled captain.' },
         { name: 'Mira Sol', aliases: ['The Spark'] },
       ],
     })
     await page.getByRole('textbox', { name: 'characters JSON' }).fill(json)
-    await expect(page.getByText(/Ready to add 3 characters/)).toBeVisible()
+    await expect(page.getByText(/Ready to import 3 characters/)).toBeVisible()
 
     await page.getByRole('button', { name: 'Add characters' }).click()
 
-    // Result banner: 2 added, 1 skipped.
-    await expect(page.getByText(/Added 2 characters · skipped 1 already present/)).toBeVisible()
+    // Result banner: 2 added, 1 updated.
+    await expect(page.getByText(/Added 2 characters/)).toBeVisible()
+    await expect(page.getByText(/updated 1/)).toBeVisible()
 
     await page.getByRole('button', { name: 'Done' }).click()
 
-    // The two new characters are on the roster; the seed is still unique.
+    // The two new characters are on the roster; the seed is updated, not duplicated.
     await expect(page.getByText('Bran Holt')).toBeVisible()
     await expect(page.getByText('Mira Sol')).toBeVisible()
     await expect(page.getByText('Aria Vale')).toHaveCount(1)
@@ -63,7 +64,7 @@ test.describe('Generate a section with AI', () => {
       ],
     })
     await page.getByRole('textbox', { name: 'items JSON' }).fill(json)
-    await expect(page.getByText(/Ready to add 2 items/)).toBeVisible()
+    await expect(page.getByText(/Ready to import 2 items/)).toBeVisible()
 
     await page.getByRole('button', { name: 'Add items' }).click()
     await expect(page.getByText(/Added 2 items/)).toBeVisible()
@@ -98,7 +99,7 @@ test.describe('Generate a section with AI', () => {
       ],
     })
     await page.getByRole('textbox', { name: 'factions JSON' }).fill(json)
-    await expect(page.getByText(/Ready to add 1 faction/)).toBeVisible()
+    await expect(page.getByText(/Ready to import 1 faction/)).toBeVisible()
 
     await page.getByRole('button', { name: 'Add factions' }).click()
     await expect(page.getByText(/Added 1 faction/)).toBeVisible()
@@ -140,10 +141,10 @@ test.describe('Generate a section with AI', () => {
       ],
     })
     await page.getByRole('textbox', { name: 'relationships JSON' }).fill(json)
-    await expect(page.getByText(/Ready to add 2 relationships/)).toBeVisible()
+    await expect(page.getByText(/Ready to import 2 relationships/)).toBeVisible()
 
     await page.getByRole('button', { name: 'Add relationships' }).click()
-    await expect(page.getByText(/Added 1 relationship.*skipped 1/)).toBeVisible()
+    await expect(page.getByText(/Added 1 relationship.*1 unchanged/)).toBeVisible()
 
     await page.getByRole('button', { name: 'Done' }).click()
 
@@ -170,7 +171,7 @@ test.describe('Generate a section with AI', () => {
       ],
     })
     await page.getByRole('textbox', { name: 'lore pages JSON' }).fill(json)
-    await expect(page.getByText(/Ready to add 2 lore pages/)).toBeVisible()
+    await expect(page.getByText(/Ready to import 2 lore pages/)).toBeVisible()
 
     await page.getByRole('button', { name: 'Add lore pages' }).click()
     await expect(page.getByText(/Added 2 lore pages/)).toBeVisible()
@@ -201,7 +202,7 @@ test.describe('Generate a section with AI', () => {
       ],
     })
     await page.getByRole('textbox', { name: 'facts JSON' }).fill(json)
-    await expect(page.getByText(/Ready to add 2 facts/)).toBeVisible()
+    await expect(page.getByText(/Ready to import 2 facts/)).toBeVisible()
 
     await page.getByRole('button', { name: 'Add facts' }).click()
     await expect(page.getByText(/Added 2 facts/)).toBeVisible()

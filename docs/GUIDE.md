@@ -257,10 +257,13 @@ section and added to the **world you're already in** — no new world is created
 2. Paste it into ChatGPT, Claude, Gemini, or similar, then describe your story
    (or just list the characters you want) after the last line.
 3. Paste the JSON it returns into the box. A preview tells you how many
-   characters will be added.
-4. Click **Add characters**. Any name that already exists in this world is
-   skipped, so you can run it again to top up your cast without creating
-   duplicates.
+   characters it will import.
+4. Click **Add characters**. New names are created; a name that **already
+   exists is updated in place** — the fields the AI supplies overwrite the
+   current values, while anything it leaves out is untouched. So you can run it
+   again to top up your cast *and* to flesh out characters you already made,
+   without ever creating duplicates. The result banner reports how many were
+   added, updated, and left unchanged.
 
 ![Generate characters with AI](images/26-generate-characters.png)
 
@@ -351,8 +354,8 @@ thumbnails, categories, and descriptions. Like characters, items have per-chapte
 Like the cast, you can **Generate with AI** from the Items screen: copy the
 prompt, describe your story, and paste back the JSON to add a batch of items to
 the current world. It follows the same flow as
-[generating characters](#generate-characters-with-ai) — names already present are
-skipped, so re-running never duplicates.
+[generating characters](#generate-characters-with-ai) — new items are created and
+items with a matching name are updated in place, so re-running never duplicates.
 
 ---
 
@@ -367,8 +370,8 @@ graph is fully pannable/zoomable with a minimap.
 **Generate with AI** (top-left of the graph) adds relationships in bulk: copy
 the prompt, describe your story, and paste the JSON back. Each relationship's two
 endpoints reference characters by name — only pairs where **both** already exist
-are added (unknown names are ignored), and a pair that already has a
-relationship is skipped, so you can re-run safely.
+are imported (unknown names are ignored). A new pair is created; a pair that
+already has a relationship is updated in place, so you can re-run safely.
 
 Relationships are snapshot-aware too — they can change over the course of the
 story (from *rivals* to *reconciled*), and the change is tied to the event where
@@ -399,8 +402,9 @@ Places…), tag them, and optionally reveal a page only from a given event onwar
 
 **Generate with AI** builds out your wiki in bulk: copy the prompt, describe your
 world, and paste the JSON back. Pages are filed into **categories** by name
-(created automatically), and page titles already present are skipped — same flow
-as [generating characters](#generate-characters-with-ai).
+(created automatically); a page with a matching title is updated in place rather
+than duplicated — same flow as
+[generating characters](#generate-characters-with-ai).
 
 ---
 
@@ -414,8 +418,8 @@ roles and optional start/end events), plus **faction-to-faction stances**
 ![Factions](images/13-factions.png)
 
 **Generate with AI** works here too: copy the prompt, describe your story, and
-paste the JSON back to add factions to the current world. It follows the same
-flow as [generating characters](#generate-characters-with-ai). Faction
+paste the JSON back. New factions are created and factions with a matching name
+are updated in place (their members are merged in, never dropped). Faction
 **members** reference characters by name — only names that already exist in the
 world are linked (unknown names are ignored, and no characters are created), so
 generate your cast first.
@@ -436,8 +440,8 @@ your story** (for example, "Gandalf the Grey is dead · Ch. 17").
 and paste the JSON back. A fact's `origin`, `readerLearnsAt`, and each reveal
 reference **existing events by title** and **existing characters by name** — so
 add your timeline and cast first. Anything that doesn't match is simply left
-unlinked (the fact is still created), and fact titles already present are
-skipped.
+unlinked (the fact is still created). A fact with a matching title is updated in
+place (its reveals merged in), so re-running never duplicates.
 
 Paired with the Continuity Checker, this catches a character acting on
 information they shouldn't have yet.
