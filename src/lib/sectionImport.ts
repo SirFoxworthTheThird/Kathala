@@ -1,7 +1,13 @@
 import { db } from '@/db/database'
 import { generateId } from '@/lib/id'
-import type { Character, Item, Faction, FactionMembership } from '@/types'
-import type { SpecCharacter, SpecItem, SpecFaction } from '@/lib/worldSpec'
+import type {
+  Character, Item, Faction, FactionMembership, Relationship,
+  RelationshipStrength, RelationshipSentiment,
+} from '@/types'
+import type { SpecCharacter, SpecItem, SpecFaction, SpecRelationship } from '@/lib/worldSpec'
+
+const STRENGTHS: RelationshipStrength[] = ['weak', 'moderate', 'strong', 'bond']
+const SENTIMENTS: RelationshipSentiment[] = ['positive', 'neutral', 'negative', 'complex']
 
 /** Palette used to colour factions that don't specify their own colour. */
 const FACTION_COLORS = [
@@ -267,4 +273,80 @@ export async function addFactionsToWorld(
   if (factionsToAdd.length > 0) await db.factions.bulkAdd(factionsToAdd)
   if (membershipsToAdd.length > 0) await db.factionMemberships.bulkAdd(membershipsToAdd)
   return { added: factionsToAdd.length, skipped, addedNames }
+}
+
+// ── Relationships ─────────────────────────────────────────────────────────────
+
+/** Parse and lightly validate a relationships-only spec. */
+export function parseRelationshipsSpec(text: string): { relationships?: SpecRelationship[]; error?: string } {
+  const { list, error } = extractArray(text, 'relationships')
+  if (error) return { error }
+  const relationships: SpecRelationship[] = []
+  for (const raw of list!) {
+    if (!raw || typeof raw !== 'object') continue
+    const r = raw as Record<string, unknown>
+    if (typeof r.a !== 'string' || !r.a.trim() || typeof r.b !== 'string' || !r.b.trim()) continue
+    relationships.push({
+      a: r.a,
+      b: r.b,
+      label: typeof r.label === 'string' ? r.label : undefined,
+      strength: STRENGTHS.includes(r.strength as RelationshipStrength) ? r.strength as RelationshipStrength : undefined,
+      sentiment: SENTIMENTS.includes(r.sentiment as RelationshipSentiment) ? r.sentiment as RelationshipSentiment : undefined,
+      description: typeof r.description === 'string' ? r.description : undefined,
+    })
+  }
+  if (relationships.length === 0) return { error: 'No relationships with both an "a" and "b" character were found in that JSON.' }
+  return { relationships }
+}
+
+/** Unordered key for a character pair, so A–B and B–A count as the same edge. */
+const pairKey = (x: string, y: string) => [x, y].sort().join('::')
+
+/**
+ * Add relationships to a world. Endpoints are matched to existing characters by
+ * name or alias; a relationship is skipped when either endpoint is unknown, both
+ * endpoints are the same character, or that pair already has a relationship
+ * (in the world or earlier in this batch).
+ */
+export async function addRelationshipsToWorld(
+  worldId: string,
+  relationships: SpecRelationship[],
+): Promise<SectionMergeResult> {
+  const chars = await db.characters.where('worldId').equals(worldId).toArray()
+  const charIdByName = new Map<string, string>()
+  for (const c of chars) {
+    charIdByName.set(key(c.name), c.id)
+    for (const a of c.aliases ?? []) if (a?.trim()) charIdByName.set(key(a), c.id)
+  }
+
+  const existing = await db.relationships.where('worldId').equals(worldId).toArray()
+  const seenPairs = new Set(existing.map((r) => pairKey(r.characterAId, r.characterBId)))
+
+  const now = Date.now()
+  const toAdd: Relationship[] = []
+  const addedNames: string[] = []
+  let skipped = 0
+
+  for (const sr of relationships) {
+    const aId = sr.a ? charIdByName.get(key(sr.a)) : undefined
+    const bId = sr.b ? charIdByName.get(key(sr.b)) : undefined
+    if (!aId || !bId || aId === bId) { skipped++; continue }
+    const pk = pairKey(aId, bId)
+    if (seenPairs.has(pk)) { skipped++; continue }
+    seenPairs.add(pk)
+    addedNames.push(`${sr.a.trim()} ↔ ${sr.b.trim()}`)
+    toAdd.push({
+      id: generateId(), worldId, characterAId: aId, characterBId: bId,
+      label: sr.label?.trim() || 'connected',
+      strength: sr.strength ?? 'moderate',
+      sentiment: sr.sentiment ?? 'neutral',
+      description: sr.description?.trim() ?? '',
+      isBidirectional: true,
+      startEventId: null,
+      createdAt: now, updatedAt: now,
+    })
+  }
+
+  if (toAdd.length > 0) await db.relationships.bulkAdd(toAdd)
+  return { added: toAdd.length, skipped, addedNames }
 }

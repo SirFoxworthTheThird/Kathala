@@ -364,6 +364,12 @@ graph is fully pannable/zoomable with a minimap.
 
 ![Relationships graph](images/10-relationships.png)
 
+**Generate with AI** (top-left of the graph) adds relationships in bulk: copy
+the prompt, describe your story, and paste the JSON back. Each relationship's two
+endpoints reference characters by name — only pairs where **both** already exist
+are added (unknown names are ignored), and a pair that already has a
+relationship is skipped, so you can re-run safely.
+
 Relationships are snapshot-aware too — they can change over the course of the
 story (from *rivals* to *reconciled*), and the change is tied to the event where
 it happens.

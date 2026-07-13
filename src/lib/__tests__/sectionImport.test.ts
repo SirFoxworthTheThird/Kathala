@@ -5,6 +5,7 @@ import {
   parseCharactersSpec, addCharactersToWorld,
   parseItemsSpec, addItemsToWorld,
   parseFactionsSpec, addFactionsToWorld,
+  parseRelationshipsSpec, addRelationshipsToWorld,
 } from '@/lib/sectionImport'
 
 describe('parseCharactersSpec', () => {
@@ -177,5 +178,70 @@ describe('addFactionsToWorld', () => {
     expect(res).toMatchObject({ added: 1, skipped: 2, addedNames: ['Mages Guild'] })
     const guild = (await db.factions.where('worldId').equals(worldId).toArray()).find((f) => f.name === 'Mages Guild')
     expect(guild?.color).toBe('#abcdef')
+  })
+})
+
+describe('parseRelationshipsSpec', () => {
+  it('requires both endpoints and clamps strength/sentiment to known values', () => {
+    const json = JSON.stringify({ relationships: [
+      { a: 'Aria', b: 'Bran', label: 'rivals', strength: 'bond', sentiment: 'complex' },
+      { a: 'Aria', strength: 'weak' },   // missing b — dropped
+      { a: 'Aria', b: 'Cid', strength: 'huge', sentiment: 'meh' }, // invalid enums → undefined
+    ]})
+    const { relationships } = parseRelationshipsSpec(json)
+    expect(relationships).toHaveLength(2)
+    expect(relationships![0]).toMatchObject({ a: 'Aria', b: 'Bran', label: 'rivals', strength: 'bond', sentiment: 'complex' })
+    expect(relationships![1].strength).toBeUndefined()
+    expect(relationships![1].sentiment).toBeUndefined()
+  })
+
+  it('errors on invalid JSON and when nothing usable is present', () => {
+    expect(parseRelationshipsSpec('nope').error).toMatch(/valid JSON/)
+    expect(parseRelationshipsSpec('[{"a":"only"}]').error).toMatch(/No relationships/)
+  })
+})
+
+describe('addRelationshipsToWorld', () => {
+  const worldId = 'w1'
+
+  beforeEach(async () => {
+    await db.delete()
+    await db.open()
+    await db.worlds.put({ id: worldId, name: 'W', description: '', coverImageId: null, theme: null, continuityStaleThreshold: 5, createdAt: 0, updatedAt: 0 })
+  })
+
+  async function putChar(id: string, name: string, aliases: string[] = []) {
+    await db.characters.put({ id, worldId, name, aliases, description: '', portraitImageId: null, tags: [], isAlive: true, color: null, createdAt: 0, updatedAt: 0 })
+  }
+
+  it('links endpoints by name/alias and applies defaults', async () => {
+    await putChar('c-aria', 'Aria Vale', ['The Fox'])
+    await putChar('c-bran', 'Bran Holt')
+    const res = await addRelationshipsToWorld(worldId, [
+      { a: 'The Fox', b: 'Bran Holt', label: 'allies', strength: 'strong', sentiment: 'positive' },
+      { a: 'Aria Vale', b: 'Nobody' },   // unknown endpoint — skipped
+    ])
+    expect(res).toMatchObject({ added: 1, skipped: 1 })
+    const rel = (await db.relationships.where('worldId').equals(worldId).toArray())[0]
+    expect(rel).toMatchObject({ characterAId: 'c-aria', characterBId: 'c-bran', label: 'allies', strength: 'strong', sentiment: 'positive', isBidirectional: true })
+  })
+
+  it('skips self-pairs and pairs that already have a relationship (either order)', async () => {
+    await putChar('c-a', 'A')
+    await putChar('c-b', 'B')
+    await db.relationships.put({ id: 'r0', worldId, characterAId: 'c-a', characterBId: 'c-b', label: 'x', strength: 'moderate', sentiment: 'neutral', description: '', isBidirectional: true, startEventId: null, createdAt: 0, updatedAt: 0 })
+    const res = await addRelationshipsToWorld(worldId, [
+      { a: 'B', b: 'A' },   // reverse of existing → skipped
+      { a: 'A', b: 'A' },   // self → skipped
+    ])
+    expect(res).toMatchObject({ added: 0, skipped: 2 })
+  })
+
+  it('defaults the label to "connected" when none is given', async () => {
+    await putChar('c-a', 'A')
+    await putChar('c-b', 'B')
+    await addRelationshipsToWorld(worldId, [{ a: 'A', b: 'B' }])
+    const rel = (await db.relationships.where('worldId').equals(worldId).toArray())[0]
+    expect(rel).toMatchObject({ label: 'connected', strength: 'moderate', sentiment: 'neutral' })
   })
 })

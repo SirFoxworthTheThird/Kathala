@@ -110,4 +110,44 @@ test.describe('Generate a section with AI', () => {
     await expect(page.getByText('Aria Vale')).toBeVisible()
     await expect(page.getByText('Captain')).toBeVisible()
   })
+
+  test('adds pasted relationships between existing characters', async ({ page }) => {
+    test.slow() // the relationships graph mounts a heavy ReactFlow canvas
+    await page.goto('/')
+    await resetDB(page)
+
+    await page.getByRole('button', { name: 'New World' }).click()
+    await page.getByLabel('Name').fill('Aethel')
+    await page.getByRole('button', { name: 'Create World' }).last().click()
+    await expect(page).toHaveURL(/#\/worlds\//)
+    const worldId = page.url().match(/#\/worlds\/([^/]+)/)![1]
+
+    // Seed two characters so the relationship has endpoints.
+    await page.goto(`/#/worlds/${worldId}/characters`, { waitUntil: 'load' })
+    for (const name of ['Aria Vale', 'Bran Holt']) {
+      await page.getByRole('button', { name: 'Add Character' }).first().click()
+      await page.getByPlaceholder('Character name').fill(name)
+      await page.getByRole('button', { name: 'Add Character' }).last().click()
+      await expect(page.getByText(name)).toBeVisible()
+    }
+
+    await page.goto(`/#/worlds/${worldId}/relationships`, { waitUntil: 'load' })
+    await page.getByRole('button', { name: 'Generate with AI' }).click()
+    const json = JSON.stringify({
+      relationships: [
+        { a: 'Aria Vale', b: 'Bran Holt', label: 'allies', strength: 'strong', sentiment: 'positive' },
+        { a: 'Aria Vale', b: 'Ghost', label: 'haunts' }, // unknown endpoint — skipped
+      ],
+    })
+    await page.getByRole('textbox', { name: 'relationships JSON' }).fill(json)
+    await expect(page.getByText(/Ready to add 2 relationships/)).toBeVisible()
+
+    await page.getByRole('button', { name: 'Add relationships' }).click()
+    await expect(page.getByText(/Added 1 relationship.*skipped 1/)).toBeVisible()
+
+    await page.getByRole('button', { name: 'Done' }).click()
+
+    // The new edge is labelled on the graph.
+    await expect(page.getByText('allies').first()).toBeVisible()
+  })
 })
