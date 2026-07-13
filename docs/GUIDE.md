@@ -246,6 +246,24 @@ count badge tracks how many characters you're following.
 
 ![Character roster](images/06-characters.png)
 
+### Generate characters with AI
+
+Building a large cast by hand is slow. **Generate with AI** (next to *Add
+Character*) does it for you with any AI assistant. It works the same way as
+[Generate a world from AI](#generate-a-world-from-ai), but scoped to one
+section and added to the **world you're already in** — no new world is created:
+
+1. Click **Generate with AI** and **Copy prompt**.
+2. Paste it into ChatGPT, Claude, Gemini, or similar, then describe your story
+   (or just list the characters you want) after the last line.
+3. Paste the JSON it returns into the box. A preview tells you how many
+   characters will be added.
+4. Click **Add characters**. Any name that already exists in this world is
+   skipped, so you can run it again to top up your cast without creating
+   duplicates.
+
+![Generate characters with AI](images/26-generate-characters.png)
+
 > **Images: upload or link.** For a character's portrait — and likewise for item
 > images and maps — you can either **upload** a file or **link an image URL**
 > (the ⬆ upload and 🔗 link controls sit on the image). Linked images aren't
