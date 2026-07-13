@@ -150,4 +150,35 @@ test.describe('Generate a section with AI', () => {
     // The new edge is labelled on the graph.
     await expect(page.getByText('allies').first()).toBeVisible()
   })
+
+  test('adds pasted lore pages grouped into categories', async ({ page }) => {
+    await page.goto('/')
+    await resetDB(page)
+
+    await page.getByRole('button', { name: 'New World' }).click()
+    await page.getByLabel('Name').fill('Aethel')
+    await page.getByRole('button', { name: 'Create World' }).last().click()
+    await expect(page).toHaveURL(/#\/worlds\//)
+    const worldId = page.url().match(/#\/worlds\/([^/]+)/)![1]
+
+    await page.goto(`/#/worlds/${worldId}/lore`, { waitUntil: 'load' })
+    await page.getByRole('button', { name: 'Generate with AI' }).click()
+    const json = JSON.stringify({
+      lore: [
+        { category: 'Magic', title: 'The Weave', body: 'How magic flows.' },
+        { category: 'History', title: 'The Sundering', body: 'The great split.' },
+      ],
+    })
+    await page.getByRole('textbox', { name: 'lore pages JSON' }).fill(json)
+    await expect(page.getByText(/Ready to add 2 lore pages/)).toBeVisible()
+
+    await page.getByRole('button', { name: 'Add lore pages' }).click()
+    await expect(page.getByText(/Added 2 lore pages/)).toBeVisible()
+
+    await page.getByRole('button', { name: 'Done' }).click()
+
+    // The pages and their categories are listed.
+    await expect(page.getByText('The Weave')).toBeVisible()
+    await expect(page.getByText('The Sundering')).toBeVisible()
+  })
 })

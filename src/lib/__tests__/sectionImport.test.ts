@@ -6,6 +6,7 @@ import {
   parseItemsSpec, addItemsToWorld,
   parseFactionsSpec, addFactionsToWorld,
   parseRelationshipsSpec, addRelationshipsToWorld,
+  parseLoreSpec, addLoreToWorld,
 } from '@/lib/sectionImport'
 
 describe('parseCharactersSpec', () => {
@@ -243,5 +244,63 @@ describe('addRelationshipsToWorld', () => {
     await addRelationshipsToWorld(worldId, [{ a: 'A', b: 'B' }])
     const rel = (await db.relationships.where('worldId').equals(worldId).toArray())[0]
     expect(rel).toMatchObject({ label: 'connected', strength: 'moderate', sentiment: 'neutral' })
+  })
+})
+
+describe('parseLoreSpec', () => {
+  it('requires a title and keeps category/body/tags', () => {
+    const json = JSON.stringify({ lore: [
+      { category: 'Magic', title: 'The Weave', body: '# Magic\nText', tags: ['system'] },
+      { body: 'no title' },
+    ]})
+    const { lore } = parseLoreSpec(json)
+    expect(lore).toHaveLength(1)
+    expect(lore![0]).toMatchObject({ category: 'Magic', title: 'The Weave', body: '# Magic\nText', tags: ['system'] })
+  })
+
+  it('errors on invalid JSON and when nothing usable is present', () => {
+    expect(parseLoreSpec('nope').error).toMatch(/valid JSON/)
+    expect(parseLoreSpec('[{"body":"x"}]').error).toMatch(/No lore pages/)
+  })
+})
+
+describe('addLoreToWorld', () => {
+  const worldId = 'w1'
+
+  beforeEach(async () => {
+    await db.delete()
+    await db.open()
+    await db.worlds.put({ id: worldId, name: 'W', description: '', coverImageId: null, theme: null, continuityStaleThreshold: 5, createdAt: 0, updatedAt: 0 })
+  })
+
+  it('creates categories on demand, reuses them, and files pages under them', async () => {
+    const res = await addLoreToWorld(worldId, [
+      { category: 'Magic', title: 'The Weave', body: 'a' },
+      { category: 'Magic', title: 'Wild Magic', body: 'b' },
+      { category: 'History', title: 'The Sundering' },
+      { title: 'Loose Note' },   // no category → uncategorised
+    ])
+    expect(res).toMatchObject({ added: 4, skipped: 0 })
+    const cats = await db.loreCategories.where('worldId').equals(worldId).toArray()
+    expect(cats.map((c) => c.name).sort()).toEqual(['History', 'Magic'])
+    const pages = await db.lorePages.where('worldId').equals(worldId).toArray()
+    const magicId = cats.find((c) => c.name === 'Magic')!.id
+    expect(pages.filter((p) => p.categoryId === magicId)).toHaveLength(2)
+    expect(pages.find((p) => p.title === 'Loose Note')!.categoryId).toBeNull()
+  })
+
+  it('reuses an existing category by name and skips duplicate page titles', async () => {
+    await db.loreCategories.put({ id: 'cat-magic', worldId, name: 'Magic', color: null, sortOrder: 0 })
+    await db.lorePages.put({ id: 'p0', worldId, categoryId: 'cat-magic', title: 'The Weave', body: '', tags: [], coverImageId: null, linkedEntityIds: [], visibleFromEventId: null, createdAt: 0, updatedAt: 0 })
+    const res = await addLoreToWorld(worldId, [
+      { category: 'magic', title: 'the weave' },   // dupe title
+      { category: 'Magic', title: 'Runes' },        // reuse existing category
+      { category: 'Magic', title: 'Runes' },        // dupe within batch
+    ])
+    expect(res).toMatchObject({ added: 1, skipped: 2, addedNames: ['Runes'] })
+    const cats = await db.loreCategories.where('worldId').equals(worldId).toArray()
+    expect(cats).toHaveLength(1) // no new "Magic" category created
+    const runes = (await db.lorePages.where('worldId').equals(worldId).toArray()).find((p) => p.title === 'Runes')
+    expect(runes?.categoryId).toBe('cat-magic')
   })
 })

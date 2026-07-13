@@ -397,6 +397,11 @@ Places…), tag them, and optionally reveal a page only from a given event onwar
 
 ![Lore](images/12-lore.png)
 
+**Generate with AI** builds out your wiki in bulk: copy the prompt, describe your
+world, and paste the JSON back. Pages are filed into **categories** by name
+(created automatically), and page titles already present are skipped — same flow
+as [generating characters](#generate-characters-with-ai).
+
 ---
 
 ## Factions

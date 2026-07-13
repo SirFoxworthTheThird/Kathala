@@ -2,9 +2,9 @@ import { db } from '@/db/database'
 import { generateId } from '@/lib/id'
 import type {
   Character, Item, Faction, FactionMembership, Relationship,
-  RelationshipStrength, RelationshipSentiment,
+  RelationshipStrength, RelationshipSentiment, LoreCategory, LorePage,
 } from '@/types'
-import type { SpecCharacter, SpecItem, SpecFaction, SpecRelationship } from '@/lib/worldSpec'
+import type { SpecCharacter, SpecItem, SpecFaction, SpecRelationship, SpecLore } from '@/lib/worldSpec'
 
 const STRENGTHS: RelationshipStrength[] = ['weak', 'moderate', 'strong', 'bond']
 const SENTIMENTS: RelationshipSentiment[] = ['positive', 'neutral', 'negative', 'complex']
@@ -349,4 +349,84 @@ export async function addRelationshipsToWorld(
 
   if (toAdd.length > 0) await db.relationships.bulkAdd(toAdd)
   return { added: toAdd.length, skipped, addedNames }
+}
+
+// ── Lore ──────────────────────────────────────────────────────────────────────
+
+/** Parse and lightly validate a lore-only spec (categorised wiki pages). */
+export function parseLoreSpec(text: string): { lore?: SpecLore[]; error?: string } {
+  const { list, error } = extractArray(text, 'lore')
+  if (error) return { error }
+  const lore: SpecLore[] = []
+  for (const raw of list!) {
+    if (!raw || typeof raw !== 'object') continue
+    const l = raw as Record<string, unknown>
+    if (typeof l.title !== 'string' || !l.title.trim()) continue
+    lore.push({
+      title: l.title,
+      category: typeof l.category === 'string' ? l.category : undefined,
+      body: typeof l.body === 'string' ? l.body : undefined,
+      tags: Array.isArray(l.tags) ? l.tags.filter((t): t is string => typeof t === 'string') : undefined,
+    })
+  }
+  if (lore.length === 0) return { error: 'No lore pages with a "title" were found in that JSON.' }
+  return { lore }
+}
+
+/**
+ * Add lore pages to a world, skipping page titles already present
+ * (case-insensitive) or repeated within the batch. Categories are matched to
+ * existing ones by name and created on demand when new.
+ */
+export async function addLoreToWorld(
+  worldId: string,
+  lore: SpecLore[],
+): Promise<SectionMergeResult> {
+  const existingPages = await db.lorePages.where('worldId').equals(worldId).toArray()
+  const seenTitles = new Set(existingPages.map((p) => key(p.title)))
+
+  const existingCats = await db.loreCategories.where('worldId').equals(worldId).toArray()
+  const categoryIdByName = new Map<string, string>()
+  for (const c of existingCats) categoryIdByName.set(key(c.name), c.id)
+  let categoryOrder = existingCats.length
+
+  const now = Date.now()
+  const categoriesToAdd: LoreCategory[] = []
+  const pagesToAdd: LorePage[] = []
+  const addedNames: string[] = []
+  let skipped = 0
+
+  for (const sl of lore) {
+    const title = sl.title?.trim()
+    if (!title) { skipped++; continue }
+    if (seenTitles.has(key(title))) { skipped++; continue }
+    seenTitles.add(key(title))
+    addedNames.push(title)
+
+    let categoryId: string | null = null
+    if (sl.category?.trim()) {
+      const ck = key(sl.category)
+      categoryId = categoryIdByName.get(ck) ?? null
+      if (!categoryId) {
+        categoryId = generateId()
+        categoryIdByName.set(ck, categoryId)
+        categoriesToAdd.push({ id: categoryId, worldId, name: sl.category.trim(), color: null, sortOrder: categoryOrder++ })
+      }
+    }
+
+    pagesToAdd.push({
+      id: generateId(), worldId, categoryId,
+      title,
+      body: sl.body?.trim() ?? '',
+      tags: (sl.tags ?? []).filter(Boolean),
+      coverImageId: null,
+      linkedEntityIds: [],
+      visibleFromEventId: null,
+      createdAt: now, updatedAt: now,
+    })
+  }
+
+  if (categoriesToAdd.length > 0) await db.loreCategories.bulkAdd(categoriesToAdd)
+  if (pagesToAdd.length > 0) await db.lorePages.bulkAdd(pagesToAdd)
+  return { added: pagesToAdd.length, skipped, addedNames }
 }

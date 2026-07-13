@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Plus, BookMarked, Pencil, Trash2, Check, X, Eye } from 'lucide-react'
+import { Plus, BookMarked, Pencil, Trash2, Check, X, Eye, Sparkles } from 'lucide-react'
 import {
   useLoreCategories, useLorePages,
   createLoreCategory, updateLoreCategory, deleteLoreCategory,
@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/EmptyState'
 import { PageHeader } from '@/components/PageHeader'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { GenerateLoreDialog } from './GenerateLoreDialog'
 
 // ── Colour palette for categories ─────────────────────────────────────────────
 const CATEGORY_COLORS = [
@@ -163,6 +164,7 @@ export default function LoreView() {
   const [editingCategoryName, setEditingCategoryName] = useState('')
   const [deletePageId, setDeletePageId] = useState<string | null>(null)
   const [deleteCatId, setDeleteCatId] = useState<string | null>(null)
+  const [aiOpen, setAiOpen] = useState(false)
 
   const categoryColorMap = new Map(categories.map((c) => [c.id, c.color]))
 
@@ -297,9 +299,14 @@ export default function LoreView() {
           count={allPages.length}
           description="Your world's history, rules, and mythology — things that don't change with time."
           actions={
-            <Button size="sm" className="gap-1.5" onClick={handleNewPage}>
-              <Plus className="h-4 w-4" /> New Page
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAiOpen(true)}>
+                <Sparkles className="h-4 w-4" /> Generate with AI
+              </Button>
+              <Button size="sm" className="gap-1.5" onClick={handleNewPage}>
+                <Plus className="h-4 w-4" /> New Page
+              </Button>
+            </div>
           }
         >
           <Input
@@ -377,6 +384,10 @@ export default function LoreView() {
         onConfirm={async () => { await deleteLoreCategory(deleteCatId!); setDeleteCatId(null) }}
         onOpenChange={(v) => { if (!v) setDeleteCatId(null) }}
       />
+
+      {worldId && (
+        <GenerateLoreDialog open={aiOpen} onOpenChange={setAiOpen} worldId={worldId} />
+      )}
     </div>
   )
 }
