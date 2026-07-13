@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, X, Trash2, Users, ChevronRight, Shield, Map as MapIcon, MapPin, Swords, Handshake, Minus } from 'lucide-react'
+import { Plus, X, Trash2, Users, ChevronRight, Shield, Map as MapIcon, MapPin, Swords, Handshake, Minus, Sparkles } from 'lucide-react'
 import { EmptyState } from '@/components/EmptyState'
 import { PageHeader } from '@/components/PageHeader'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -21,6 +21,7 @@ import {
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useEvents, useChapters, useTimelines } from '@/db/hooks/useTimeline'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
+import { GenerateFactionsDialog } from './GenerateFactionsDialog'
 import type { Faction, FactionMembership, FactionRelationship, FactionStance } from '@/types'
 
 const PRESET_COLORS = [
@@ -596,6 +597,7 @@ export default function FactionsView() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
+  const [aiOpen, setAiOpen] = useState(false)
 
   const selectedFaction = factions.find((f) => f.id === selectedId) ?? null
 
@@ -649,9 +651,14 @@ export default function FactionsView() {
                 </Button>
               </div>
             ) : (
-              <Button size="sm" className="gap-1.5" onClick={() => setCreating(true)}>
-                <Plus className="h-3.5 w-3.5" /> New Faction
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAiOpen(true)}>
+                  <Sparkles className="h-3.5 w-3.5" /> Generate with AI
+                </Button>
+                <Button size="sm" className="gap-1.5" onClick={() => setCreating(true)}>
+                  <Plus className="h-3.5 w-3.5" /> New Faction
+                </Button>
+              </div>
             )
           }
         />
@@ -722,6 +729,10 @@ export default function FactionsView() {
           <p className="text-sm text-[hsl(var(--muted-foreground))]">Select a faction to view its details</p>
         </div>
       ) : null}
+
+      {worldId && (
+        <GenerateFactionsDialog open={aiOpen} onOpenChange={setAiOpen} worldId={worldId} />
+      )}
     </div>
   )
 }

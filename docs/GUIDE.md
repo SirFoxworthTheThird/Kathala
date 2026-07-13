@@ -402,6 +402,13 @@ roles and optional start/end events), plus **faction-to-faction stances**
 
 ![Factions](images/13-factions.png)
 
+**Generate with AI** works here too: copy the prompt, describe your story, and
+paste the JSON back to add factions to the current world. It follows the same
+flow as [generating characters](#generate-characters-with-ai). Faction
+**members** reference characters by name — only names that already exist in the
+world are linked (unknown names are ignored, and no characters are created), so
+generate your cast first.
+
 ---
 
 ## Knowledge

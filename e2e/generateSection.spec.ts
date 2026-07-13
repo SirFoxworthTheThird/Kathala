@@ -72,4 +72,42 @@ test.describe('Generate a section with AI', () => {
     await expect(page.getByText('Excalibur')).toBeVisible()
     await expect(page.getByText('Healing Draught')).toBeVisible()
   })
+
+  test('adds pasted factions and links members to existing characters', async ({ page }) => {
+    await page.goto('/')
+    await resetDB(page)
+
+    await page.getByRole('button', { name: 'New World' }).click()
+    await page.getByLabel('Name').fill('Aethel')
+    await page.getByRole('button', { name: 'Create World' }).last().click()
+    await expect(page).toHaveURL(/#\/worlds\//)
+    const worldId = page.url().match(/#\/worlds\/([^/]+)/)![1]
+
+    // Seed a character so the faction has a member to link.
+    await page.goto(`/#/worlds/${worldId}/characters`, { waitUntil: 'load' })
+    await page.getByRole('button', { name: 'Add Character' }).first().click()
+    await page.getByPlaceholder('Character name').fill('Aria Vale')
+    await page.getByRole('button', { name: 'Add Character' }).last().click()
+    await expect(page.getByText('Aria Vale')).toBeVisible()
+
+    await page.goto(`/#/worlds/${worldId}/factions`, { waitUntil: 'load' })
+    await page.getByRole('button', { name: 'Generate with AI' }).click()
+    const json = JSON.stringify({
+      factions: [
+        { name: 'The Harbor Watch', description: 'City guard', members: [{ name: 'Aria Vale', role: 'Captain' }, 'Unknown Person'] },
+      ],
+    })
+    await page.getByRole('textbox', { name: 'factions JSON' }).fill(json)
+    await expect(page.getByText(/Ready to add 1 faction/)).toBeVisible()
+
+    await page.getByRole('button', { name: 'Add factions' }).click()
+    await expect(page.getByText(/Added 1 faction/)).toBeVisible()
+
+    await page.getByRole('button', { name: 'Done' }).click()
+
+    // The faction is listed, and opening it shows the linked member.
+    await page.getByText('The Harbor Watch').first().click()
+    await expect(page.getByText('Aria Vale')).toBeVisible()
+    await expect(page.getByText('Captain')).toBeVisible()
+  })
 })

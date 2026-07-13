@@ -1,7 +1,14 @@
 import { db } from '@/db/database'
 import { generateId } from '@/lib/id'
-import type { Character, Item } from '@/types'
-import type { SpecCharacter, SpecItem } from '@/lib/worldSpec'
+import type { Character, Item, Faction, FactionMembership } from '@/types'
+import type { SpecCharacter, SpecItem, SpecFaction } from '@/lib/worldSpec'
+
+/** Palette used to colour factions that don't specify their own colour. */
+const FACTION_COLORS = [
+  '#ef4444', '#f97316', '#eab308', '#22c55e',
+  '#14b8a6', '#3b82f6', '#8b5cf6', '#ec4899',
+  '#64748b', '#a16207',
+]
 
 /**
  * Section-scoped AI import: merge one kind of entity (characters, items, …) into
@@ -160,4 +167,104 @@ export async function addItemsToWorld(
 
   if (toAdd.length > 0) await db.items.bulkAdd(toAdd)
   return { added: toAdd.length, skipped, addedNames }
+}
+
+// ── Factions ──────────────────────────────────────────────────────────────────
+
+/** Parse and lightly validate a factions-only spec. */
+export function parseFactionsSpec(text: string): { factions?: SpecFaction[]; error?: string } {
+  const { list, error } = extractArray(text, 'factions')
+  if (error) return { error }
+  const factions: SpecFaction[] = []
+  for (const raw of list!) {
+    if (!raw || typeof raw !== 'object') continue
+    const f = raw as Record<string, unknown>
+    if (typeof f.name !== 'string' || !f.name.trim()) continue
+    const members: SpecFaction['members'] = []
+    if (Array.isArray(f.members)) {
+      for (const m of f.members) {
+        if (typeof m === 'string') { if (m.trim()) members!.push(m) }
+        else if (m && typeof m === 'object') {
+          const mm = m as Record<string, unknown>
+          if (typeof mm.name === 'string' && mm.name.trim()) {
+            members!.push({ name: mm.name, role: typeof mm.role === 'string' ? mm.role : undefined })
+          }
+        }
+      }
+    }
+    factions.push({
+      name: f.name,
+      description: typeof f.description === 'string' ? f.description : undefined,
+      color: typeof f.color === 'string' ? f.color : undefined,
+      tags: Array.isArray(f.tags) ? f.tags.filter((t): t is string => typeof t === 'string') : undefined,
+      members,
+    })
+  }
+  if (factions.length === 0) return { error: 'No factions with a "name" were found in that JSON.' }
+  return { factions }
+}
+
+/**
+ * Add factions to a world, skipping names already present (case-insensitive) or
+ * repeated within the batch. Members are matched to existing characters by name
+ * or alias; unknown names are ignored (no characters are created here).
+ */
+export async function addFactionsToWorld(
+  worldId: string,
+  factions: SpecFaction[],
+): Promise<SectionMergeResult> {
+  const existingFactions = await db.factions.where('worldId').equals(worldId).toArray()
+  const seen = new Set(existingFactions.map((f) => key(f.name)))
+
+  // name/alias → character id, for resolving members.
+  const chars = await db.characters.where('worldId').equals(worldId).toArray()
+  const charIdByName = new Map<string, string>()
+  for (const c of chars) {
+    charIdByName.set(key(c.name), c.id)
+    for (const a of c.aliases ?? []) if (a?.trim()) charIdByName.set(key(a), c.id)
+  }
+
+  const now = Date.now()
+  const factionsToAdd: Faction[] = []
+  const membershipsToAdd: FactionMembership[] = []
+  const addedNames: string[] = []
+  let skipped = 0
+  let colorIx = existingFactions.length
+
+  for (const sf of factions) {
+    const name = sf.name?.trim()
+    if (!name) { skipped++; continue }
+    if (seen.has(key(name))) { skipped++; continue }
+    seen.add(key(name))
+    addedNames.push(name)
+    const factionId = generateId()
+    factionsToAdd.push({
+      id: factionId,
+      worldId,
+      name,
+      description: sf.description?.trim() ?? '',
+      color: sf.color?.trim() || FACTION_COLORS[colorIx++ % FACTION_COLORS.length],
+      coverImageId: null,
+      tags: (sf.tags ?? []).filter(Boolean),
+      createdAt: now,
+      updatedAt: now,
+    })
+    const usedChars = new Set<string>()
+    for (const m of sf.members ?? []) {
+      const memberName = typeof m === 'string' ? m : m?.name
+      const role = typeof m === 'string' ? null : (m?.role?.trim() || null)
+      const charId = memberName ? charIdByName.get(key(memberName)) : undefined
+      if (!charId || usedChars.has(charId)) continue
+      usedChars.add(charId)
+      membershipsToAdd.push({
+        id: generateId(), worldId, factionId, characterId: charId,
+        role, startEventId: null, endEventId: null, notes: '',
+        createdAt: now, updatedAt: now,
+      })
+    }
+  }
+
+  if (factionsToAdd.length > 0) await db.factions.bulkAdd(factionsToAdd)
+  if (membershipsToAdd.length > 0) await db.factionMemberships.bulkAdd(membershipsToAdd)
+  return { added: factionsToAdd.length, skipped, addedNames }
 }

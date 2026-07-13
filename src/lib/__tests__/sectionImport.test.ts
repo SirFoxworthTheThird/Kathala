@@ -1,7 +1,11 @@
 import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { db } from '@/db/database'
-import { parseCharactersSpec, addCharactersToWorld, parseItemsSpec, addItemsToWorld } from '@/lib/sectionImport'
+import {
+  parseCharactersSpec, addCharactersToWorld,
+  parseItemsSpec, addItemsToWorld,
+  parseFactionsSpec, addFactionsToWorld,
+} from '@/lib/sectionImport'
 
 describe('parseCharactersSpec', () => {
   it('accepts a bare array of characters', () => {
@@ -117,5 +121,61 @@ describe('addItemsToWorld', () => {
     await db.items.put({ id: 'x', worldId, name: 'Sword', description: '', iconType: 'weapon', imageId: null, tags: [] })
     const res = await addItemsToWorld(worldId, [{ name: 'sword' }, { name: 'Shield' }, { name: 'Shield' }])
     expect(res).toMatchObject({ added: 1, skipped: 2, addedNames: ['Shield'] })
+  })
+})
+
+describe('parseFactionsSpec', () => {
+  it('normalises members into names and {name, role}', () => {
+    const json = JSON.stringify({ factions: [
+      { name: 'The Watch', members: ['Aria', { name: 'Bran', role: 'Captain' }, { role: 'no name' }, '  '] },
+    ]})
+    const { factions } = parseFactionsSpec(json)
+    expect(factions![0].members).toEqual(['Aria', { name: 'Bran', role: 'Captain' }])
+  })
+
+  it('errors on invalid JSON and when nothing usable is present', () => {
+    expect(parseFactionsSpec('nope').error).toMatch(/valid JSON/)
+    expect(parseFactionsSpec('[]').error).toMatch(/No factions/)
+  })
+})
+
+describe('addFactionsToWorld', () => {
+  const worldId = 'w1'
+
+  beforeEach(async () => {
+    await db.delete()
+    await db.open()
+    await db.worlds.put({ id: worldId, name: 'W', description: '', coverImageId: null, theme: null, continuityStaleThreshold: 5, createdAt: 0, updatedAt: 0 })
+  })
+
+  async function putChar(id: string, name: string, aliases: string[] = []) {
+    await db.characters.put({ id, worldId, name, aliases, description: '', portraitImageId: null, tags: [], isAlive: true, color: null, createdAt: 0, updatedAt: 0 })
+  }
+
+  it('adds factions and links members to existing characters by name or alias', async () => {
+    await putChar('c-aria', 'Aria Vale', ['The Fox'])
+    await putChar('c-bran', 'Bran Holt')
+    const res = await addFactionsToWorld(worldId, [
+      { name: 'The Watch', description: 'City guard', members: ['The Fox', { name: 'Bran Holt', role: 'Captain' }, 'Nobody'] },
+    ])
+    expect(res).toMatchObject({ added: 1, skipped: 0 })
+    const faction = (await db.factions.where('worldId').equals(worldId).toArray())[0]
+    expect(faction).toMatchObject({ name: 'The Watch', description: 'City guard' })
+    expect(faction.color).toMatch(/^#/)
+    const memberships = await db.factionMemberships.where('worldId').equals(worldId).toArray()
+    expect(memberships.map((m) => m.characterId).sort()).toEqual(['c-aria', 'c-bran'])
+    expect(memberships.find((m) => m.characterId === 'c-bran')?.role).toBe('Captain')
+  })
+
+  it('skips duplicate faction names and honours an explicit colour', async () => {
+    await db.factions.put({ id: 'f0', worldId, name: 'The Watch', description: '', color: '#000', coverImageId: null, tags: [], createdAt: 0, updatedAt: 0 })
+    const res = await addFactionsToWorld(worldId, [
+      { name: 'the watch' },                    // dupe
+      { name: 'Mages Guild', color: '#abcdef' },
+      { name: 'Mages Guild' },                  // dupe within batch
+    ])
+    expect(res).toMatchObject({ added: 1, skipped: 2, addedNames: ['Mages Guild'] })
+    const guild = (await db.factions.where('worldId').equals(worldId).toArray()).find((f) => f.name === 'Mages Guild')
+    expect(guild?.color).toBe('#abcdef')
   })
 })
