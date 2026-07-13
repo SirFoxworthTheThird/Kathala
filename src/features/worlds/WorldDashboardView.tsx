@@ -20,6 +20,7 @@ import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useLorePages } from '@/db/hooks/useLore'
 import { useFactions } from '@/db/hooks/useFactions'
 import { Button } from '@/components/ui/button'
+import { PortraitImage } from '@/components/PortraitImage'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { OnboardingWizard } from '@/features/onboarding'
@@ -265,6 +266,14 @@ export default function WorldDashboardView() {
 
       {/* World header */}
       <div className="flex items-start justify-between gap-4">
+        {world?.coverImageId && (
+          <PortraitImage
+            imageId={world.coverImageId}
+            alt=""
+            className="h-16 w-24 shrink-0 rounded-md border border-[hsl(var(--border))] object-cover"
+            fallbackClassName="h-16 w-24 shrink-0 rounded-md border border-[hsl(var(--border))]"
+          />
+        )}
         <div className="flex-1">
           <p className="text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
             World

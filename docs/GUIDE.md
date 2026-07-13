@@ -441,10 +441,15 @@ The stale-snapshot sensitivity is configurable in Settings.
 
 ## World settings & export
 
-Per-world settings let you rename the world, pick a **theme** (Default, Fantasy,
-Sci-Fi, Cyberpunk, Horror, Western, Action, Noir, Romance), define **travel
-modes** with speeds for map distance calculations, and set the **continuity
-stale-snapshot threshold**.
+Per-world settings let you rename the world, set a **cover image**, pick a
+**theme** (Default, Fantasy, Sci-Fi, Cyberpunk, Horror, Western, Action, Noir,
+Romance), define **travel modes** with speeds for map distance calculations, and
+set the **continuity stale-snapshot threshold**.
+
+The **cover image** appears on the world's card in the selector and in the
+dashboard header. **Upload** an image file or **link** one by URL (the link
+icon), and **Remove** it at any time — the same as portraits elsewhere in the
+app.
 
 ![World settings](images/15-settings.png)
 

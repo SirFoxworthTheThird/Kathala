@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Trash2, Globe, Download, Loader2, ChevronDown, Files, BookCopy } from 'lucide-react'
 import type { World } from '@/types'
 import { Button } from '@/components/ui/button'
+import { PortraitImage } from '@/components/PortraitImage'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { StartSequelDialog } from './StartSequelDialog'
 import { deleteWorld } from '@/db/hooks/useWorlds'
@@ -61,9 +62,13 @@ export function WorldCard({ world }: WorldCardProps) {
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-3">
-          <div className="rounded-md bg-[hsl(var(--muted))] p-2">
-            <Globe className="h-5 w-5 text-[hsl(var(--muted-foreground))]" />
-          </div>
+          <PortraitImage
+            imageId={world.coverImageId}
+            alt=""
+            className="h-9 w-9 shrink-0 rounded-md object-cover"
+            fallbackClassName="h-9 w-9 shrink-0 rounded-md"
+            fallbackIcon={Globe}
+          />
           <div>
             <h3 className="font-semibold text-[hsl(var(--foreground))]">{world.name}</h3>
             <p className="text-xs text-[hsl(var(--muted-foreground))]">

@@ -1,10 +1,13 @@
 import { useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
-import { Footprints, Plus, Pencil, Check, X, Trash2, FileCode2 } from 'lucide-react'
+import { Footprints, Plus, Pencil, Check, X, Trash2, FileCode2, Upload, Image as ImageIcon } from 'lucide-react'
 import { useWorld, updateWorld } from '@/db/hooks/useWorlds'
 import type { AppTheme } from '@/store'
 import { useRootMapLayers } from '@/db/hooks/useMapLayers'
 import { useTravelModes, createTravelMode, updateTravelMode, deleteTravelMode } from '@/db/hooks/useTravelModes'
+import { storeBlob } from '@/db/hooks/useBlobs'
+import { LinkImageButton } from '@/components/LinkImageButton'
+import { PortraitImage } from '@/components/PortraitImage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -112,6 +115,19 @@ export default function WorldSettingsView() {
     setDescEditing(false)
   }
 
+  // Cover image
+  async function handleCoverUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !worldId) return
+    const blob = await storeBlob(worldId, file)
+    await updateWorld(worldId, { coverImageId: blob.id })
+    e.target.value = '' // allow re-selecting the same file
+  }
+  async function removeCover() {
+    if (!worldId) return
+    await updateWorld(worldId, { coverImageId: null })
+  }
+
   // Scale unit from first calibrated map
   const scaleUnit = useMemo(() => {
     const m = maps.find((m) => (m as unknown as Record<string, unknown>).scaleUnit)
@@ -198,6 +214,45 @@ export default function WorldSettingsView() {
               </button>
             </div>
           )}
+        </div>
+
+        {/* Cover image */}
+        <div className="space-y-1.5">
+          <Label>Cover image</Label>
+          <div className="flex items-center gap-4">
+            <PortraitImage
+              imageId={world?.coverImageId}
+              alt={world?.name ? `${world.name} cover` : 'World cover'}
+              className="h-24 w-40 rounded-md border border-[hsl(var(--border))] object-cover"
+              fallbackClassName="h-24 w-40 rounded-md border border-[hsl(var(--border))]"
+              fallbackIcon={ImageIcon}
+            />
+            <div className="flex flex-col items-start gap-2">
+              <div className="flex items-center gap-2">
+                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1.5 text-xs text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--accent))]">
+                  <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+                  Upload
+                  <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} aria-label="Upload cover image" />
+                </label>
+                {worldId && (
+                  <LinkImageButton
+                    worldId={worldId}
+                    onLinked={(blobId) => updateWorld(worldId, { coverImageId: blobId })}
+                    triggerClassName="rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-2 text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--accent))]"
+                    triggerAriaLabel="Link cover image by URL"
+                  />
+                )}
+              </div>
+              {world?.coverImageId && (
+                <button
+                  onClick={removeCover}
+                  className="inline-flex items-center gap-1 text-xs text-[hsl(var(--muted-foreground))] transition-colors hover:text-destructive"
+                >
+                  <Trash2 className="h-3 w-3" /> Remove
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </section>
 
