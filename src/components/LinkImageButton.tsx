@@ -62,7 +62,7 @@ export function LinkImageButton({ worldId, onLinked, triggerClassName, triggerAr
 
       {open && (
         <div
-          className="absolute right-0 top-full z-[60] mt-1 w-60 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-2 shadow-xl"
+          className="absolute left-0 top-full z-[60] mt-1 w-60 max-w-[calc(100vw-2rem)] rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-2 shadow-xl"
           onClick={(e) => e.stopPropagation()}
         >
           <p className="mb-1.5 text-[11px] text-[hsl(var(--muted-foreground))]">Paste a direct image URL</p>
