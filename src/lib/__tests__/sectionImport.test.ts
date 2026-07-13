@@ -292,6 +292,36 @@ describe('addRelationshipsToWorld', () => {
     const rel = (await db.relationships.where('worldId').equals(worldId).toArray())[0]
     expect(rel).toMatchObject({ label: 'connected', strength: 'moderate', sentiment: 'neutral' })
   })
+
+  it('writes per-event snapshots from "changes" and re-runs idempotently', async () => {
+    await putChar('c-a', 'A')
+    await putChar('c-b', 'B')
+    await db.chapters.put({ id: 'ch1', worldId, timelineId: 't', number: 1, title: 'Ch1', synopsis: '', notes: '', wordGoal: null, createdAt: 0, updatedAt: 0 })
+    await db.events.put({ id: 'e-betray', worldId, chapterId: 'ch1', timelineId: 't', title: 'The Betrayal', description: '', locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], threadIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft', povCharacterId: null, isFlashback: false, createdAt: 0, updatedAt: 0 })
+
+    const res = await addRelationshipsToWorld(worldId, [
+      { a: 'A', b: 'B', label: 'allies', sentiment: 'positive', changes: [
+        { at: 'The Betrayal', label: 'enemies', sentiment: 'negative' },
+        { at: 'Nowhere', label: 'x' }, // unresolved event — dropped
+      ]},
+    ])
+    expect(res).toMatchObject({ added: 1 })
+    const rel = (await db.relationships.where('worldId').equals(worldId).toArray())[0]
+    const snaps = await db.relationshipSnapshots.where('relationshipId').equals(rel.id).toArray()
+    expect(snaps).toHaveLength(1) // only "The Betrayal" resolved
+    // Unspecified fields (strength) inherit the base relationship.
+    expect(snaps[0]).toMatchObject({ eventId: 'e-betray', label: 'enemies', sentiment: 'negative', strength: 'moderate', isActive: true })
+    expect(snaps[0].sortKey).toBe(1) // chapter 1, sortOrder 0
+
+    // Re-run: the snapshot at that event is updated in place, not duplicated.
+    const res2 = await addRelationshipsToWorld(worldId, [
+      { a: 'B', b: 'A', changes: [{ at: 'The Betrayal', label: 'rivals', ended: true }] },
+    ])
+    expect(res2).toMatchObject({ added: 0, updated: 1 })
+    const snaps2 = await db.relationshipSnapshots.where('relationshipId').equals(rel.id).toArray()
+    expect(snaps2).toHaveLength(1)
+    expect(snaps2[0]).toMatchObject({ label: 'rivals', isActive: false, sentiment: 'positive' }) // sentiment inherits base
+  })
 })
 
 describe('parseLoreSpec', () => {

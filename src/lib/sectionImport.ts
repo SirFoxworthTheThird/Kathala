@@ -1,12 +1,13 @@
 import { db } from '@/db/database'
 import { generateId } from '@/lib/id'
+import { computeSortKey } from '@/lib/sortKey'
 import type {
-  Character, Item, Faction, FactionMembership, Relationship,
+  Character, Item, Faction, FactionMembership, Relationship, RelationshipSnapshot,
   RelationshipStrength, RelationshipSentiment, LoreCategory, LorePage,
   KnowledgeFact, KnowledgeReveal, MapLayer, LocationMarker, LocationIconType, BlobEntry,
 } from '@/types'
 import type {
-  SpecCharacter, SpecItem, SpecFaction, SpecRelationship, SpecLore, SpecKnowledge, SpecReveal,
+  SpecCharacter, SpecItem, SpecFaction, SpecLore, SpecKnowledge, SpecReveal,
 } from '@/lib/worldSpec'
 
 const STRENGTHS: RelationshipStrength[] = ['weak', 'moderate', 'strong', 'bond']
@@ -403,6 +404,34 @@ export async function addFactionsToWorld(
 
 // ── Relationships ─────────────────────────────────────────────────────────────
 
+/**
+ * How a relationship stands at one event. Relationships are snapshot-aware — they
+ * evolve over the story (allies → rivals → reconciled) — so a change records the
+ * state from a given event onward. Fields omitted here inherit the base
+ * relationship's values.
+ */
+export interface SpecRelationshipChange {
+  /** Event title (must already exist) where this state takes effect. */
+  at: string
+  label?: string
+  strength?: RelationshipStrength
+  sentiment?: RelationshipSentiment
+  description?: string
+  /** true = the relationship has ended (or not yet formed) at this event. */
+  ended?: boolean
+}
+
+export interface SpecRelationship {
+  a: string
+  b: string
+  label?: string
+  strength?: RelationshipStrength
+  sentiment?: RelationshipSentiment
+  description?: string
+  /** Per-event snapshots capturing how the relationship changes over time. */
+  changes?: SpecRelationshipChange[]
+}
+
 /** Parse and lightly validate a relationships-only spec. */
 export function parseRelationshipsSpec(text: string): { relationships?: SpecRelationship[]; error?: string } {
   const { list, error } = extractArray(text, 'relationships')
@@ -412,6 +441,22 @@ export function parseRelationshipsSpec(text: string): { relationships?: SpecRela
     if (!raw || typeof raw !== 'object') continue
     const r = raw as Record<string, unknown>
     if (typeof r.a !== 'string' || !r.a.trim() || typeof r.b !== 'string' || !r.b.trim()) continue
+    const changes: SpecRelationshipChange[] = []
+    if (Array.isArray(r.changes)) {
+      for (const rc of r.changes) {
+        if (!rc || typeof rc !== 'object') continue
+        const c = rc as Record<string, unknown>
+        if (typeof c.at !== 'string' || !c.at.trim()) continue
+        changes.push({
+          at: c.at,
+          label: typeof c.label === 'string' ? c.label : undefined,
+          strength: STRENGTHS.includes(c.strength as RelationshipStrength) ? c.strength as RelationshipStrength : undefined,
+          sentiment: SENTIMENTS.includes(c.sentiment as RelationshipSentiment) ? c.sentiment as RelationshipSentiment : undefined,
+          description: typeof c.description === 'string' ? c.description : undefined,
+          ended: typeof c.ended === 'boolean' ? c.ended : undefined,
+        })
+      }
+    }
     relationships.push({
       a: r.a,
       b: r.b,
@@ -419,6 +464,7 @@ export function parseRelationshipsSpec(text: string): { relationships?: SpecRela
       strength: STRENGTHS.includes(r.strength as RelationshipStrength) ? r.strength as RelationshipStrength : undefined,
       sentiment: SENTIMENTS.includes(r.sentiment as RelationshipSentiment) ? r.sentiment as RelationshipSentiment : undefined,
       description: typeof r.description === 'string' ? r.description : undefined,
+      changes,
     })
   }
   if (relationships.length === 0) return { error: 'No relationships with both an "a" and "b" character were found in that JSON.' }
@@ -439,11 +485,56 @@ function relationshipPatch(sr: SpecRelationship): Partial<Relationship> {
   return patch
 }
 
+/** The default (base-relationship) fields a snapshot inherits when unspecified. */
+interface RelBase { label: string; strength: RelationshipStrength; sentiment: RelationshipSentiment; description: string }
+
+/**
+ * Write the per-event snapshots for one relationship. Each change's `at` resolves
+ * to an existing event by title; unresolved changes are dropped. Returns whether
+ * any snapshot was written. Reuses (relationshipId, eventId) so re-running is
+ * idempotent.
+ */
+async function applyRelationshipChanges(
+  worldId: string,
+  relationshipId: string,
+  base: RelBase,
+  changes: SpecRelationshipChange[] | undefined,
+  eventIdByTitle: Map<string, string>,
+): Promise<boolean> {
+  let wrote = false
+  const now = Date.now()
+  for (const ch of changes ?? []) {
+    const eventId = ch.at ? eventIdByTitle.get(key(ch.at)) : undefined
+    if (!eventId) continue
+    const data = {
+      worldId, relationshipId, eventId,
+      label: ch.label?.trim() || base.label,
+      strength: ch.strength ?? base.strength,
+      sentiment: ch.sentiment ?? base.sentiment,
+      description: ch.description?.trim() ?? base.description,
+      isActive: !ch.ended,
+    }
+    const sortKey = await computeSortKey(eventId)
+    const existing = await db.relationshipSnapshots
+      .where('[relationshipId+eventId]').equals([relationshipId, eventId]).first()
+    if (existing) {
+      await db.relationshipSnapshots.put({ ...existing, ...data, sortKey, updatedAt: now })
+    } else {
+      const snap: RelationshipSnapshot = { id: generateId(), ...data, sortKey, createdAt: now, updatedAt: now }
+      await db.relationshipSnapshots.add(snap)
+    }
+    wrote = true
+  }
+  return wrote
+}
+
 /**
  * Add or update relationships in a world. Endpoints match existing characters by
  * name/alias; an entry is skipped when either endpoint is unknown or both are the
  * same character. An existing pair (either order) is updated in place; a new pair
- * is created.
+ * is created. Relationships are snapshot-aware: a change's per-event state is
+ * written as a RelationshipSnapshot (its `at` references an existing event by
+ * title), so the graph reflects how the bond evolves as the time cursor moves.
  */
 export async function addRelationshipsToWorld(
   worldId: string,
@@ -456,12 +547,17 @@ export async function addRelationshipsToWorld(
     for (const a of c.aliases ?? []) if (a?.trim()) charIdByName.set(key(a), c.id)
   }
 
+  // Event title → id (first occurrence wins), for resolving change `at` refs.
+  const events = await db.events.where('worldId').equals(worldId).toArray()
+  const eventIdByTitle = new Map<string, string>()
+  for (const e of events) if (!eventIdByTitle.has(key(e.title))) eventIdByTitle.set(key(e.title), e.id)
+
   const existing = await db.relationships.where('worldId').equals(worldId).toArray()
   const byPair = new Map(existing.map((r) => [pairKey(r.characterAId, r.characterBId), r]))
 
   const now = Date.now()
   const toAdd: Relationship[] = []
-  const updates: { id: string; patch: Partial<Relationship> }[] = []
+  const pendingChanges: { relationshipId: string; base: RelBase; changes?: SpecRelationshipChange[] }[] = []
   const seen = new Set<string>()
   const addedNames: string[] = []
   const updatedNames: string[] = []
@@ -479,12 +575,21 @@ export async function addRelationshipsToWorld(
     const match = byPair.get(pk)
     if (match) {
       const patch = changedFields(match, relationshipPatch(sr))
-      if (Object.keys(patch).length) { updates.push({ id: match.id, patch }); updatedNames.push(label) }
+      const base: RelBase = {
+        label: (patch.label ?? match.label),
+        strength: (patch.strength ?? match.strength),
+        sentiment: (patch.sentiment ?? match.sentiment),
+        description: (patch.description ?? match.description),
+      }
+      const wroteSnap = await applyRelationshipChanges(worldId, match.id, base, sr.changes, eventIdByTitle)
+      if (Object.keys(patch).length) await db.relationships.update(match.id, { ...patch, updatedAt: now })
+      if (Object.keys(patch).length > 0 || wroteSnap) updatedNames.push(label)
       else skipped++
       continue
     }
+
     addedNames.push(label)
-    toAdd.push({
+    const rel: Relationship = {
       id: generateId(), worldId, characterAId: aId, characterBId: bId,
       label: sr.label?.trim() || 'connected',
       strength: sr.strength ?? 'moderate',
@@ -493,11 +598,19 @@ export async function addRelationshipsToWorld(
       isBidirectional: true,
       startEventId: null,
       createdAt: now, updatedAt: now,
-    })
+    }
+    toAdd.push(rel)
+    if (sr.changes && sr.changes.length > 0) {
+      pendingChanges.push({
+        relationshipId: rel.id,
+        base: { label: rel.label, strength: rel.strength, sentiment: rel.sentiment, description: rel.description },
+        changes: sr.changes,
+      })
+    }
   }
 
   if (toAdd.length > 0) await db.relationships.bulkAdd(toAdd)
-  for (const u of updates) await db.relationships.update(u.id, { ...u.patch, updatedAt: now })
+  for (const p of pendingChanges) await applyRelationshipChanges(worldId, p.relationshipId, p.base, p.changes, eventIdByTitle)
   return { added: toAdd.length, updated: updatedNames.length, skipped, addedNames, updatedNames }
 }
 

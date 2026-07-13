@@ -390,6 +390,13 @@ endpoints reference characters by name — only pairs where **both** already exi
 are imported (unknown names are ignored). A new pair is created; a pair that
 already has a relationship is updated in place, so you can re-run safely.
 
+Because relationships are **snapshot-aware**, the prompt also captures how a bond
+*evolves*: each relationship can carry a list of **changes**, and each change
+names an **existing event** where the state shifts (*allies → rivals →
+reconciled*). Those become per-event snapshots, so as you move the time cursor
+the graph shows the relationship as it stood then. Add your timeline events
+first, since a change whose event doesn't exist yet is skipped.
+
 Relationships are snapshot-aware too — they can change over the course of the
 story (from *rivals* to *reconciled*), and the change is tied to the event where
 it happens.
