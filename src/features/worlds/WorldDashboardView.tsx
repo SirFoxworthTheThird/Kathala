@@ -270,7 +270,7 @@ export default function WorldDashboardView() {
           <PortraitImage
             imageId={world.coverImageId}
             alt=""
-            className="h-16 w-24 shrink-0 rounded-md border border-[hsl(var(--border))] object-cover"
+            className="h-16 w-24 shrink-0 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))] object-contain"
             fallbackClassName="h-16 w-24 shrink-0 rounded-md border border-[hsl(var(--border))]"
           />
         )}

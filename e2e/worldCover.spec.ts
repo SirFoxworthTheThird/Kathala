@@ -21,8 +21,11 @@ test.describe('World cover image', () => {
     await page.getByPlaceholder('https://…/image.png').fill(imageUrl)
     await page.getByRole('button', { name: 'Add linked image' }).click()
 
-    // The settings preview now renders the linked cover.
-    await expect(page.locator(`img[src="${imageUrl}"]`).first()).toBeVisible()
+    // The settings preview now renders the linked cover, fitted (not cropped)
+    // into its box so nothing is cut off.
+    const preview = page.locator(`img[src="${imageUrl}"]`).first()
+    await expect(preview).toBeVisible()
+    await expect(preview).toHaveCSS('object-fit', 'contain')
 
     // Removing clears it, then we re-add so the card assertion has something to show.
     await page.getByRole('button', { name: 'Remove' }).click()

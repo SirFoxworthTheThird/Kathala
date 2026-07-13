@@ -223,7 +223,7 @@ export default function WorldSettingsView() {
             <PortraitImage
               imageId={world?.coverImageId}
               alt={world?.name ? `${world.name} cover` : 'World cover'}
-              className="h-24 w-40 rounded-md border border-[hsl(var(--border))] object-cover"
+              className="h-24 w-40 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))] object-contain"
               fallbackClassName="h-24 w-40 rounded-md border border-[hsl(var(--border))]"
               fallbackIcon={ImageIcon}
             />

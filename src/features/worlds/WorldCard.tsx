@@ -65,7 +65,7 @@ export function WorldCard({ world }: WorldCardProps) {
           <PortraitImage
             imageId={world.coverImageId}
             alt=""
-            className="h-9 w-9 shrink-0 rounded-md object-cover"
+            className="h-9 w-9 shrink-0 rounded-md bg-[hsl(var(--muted))] object-contain"
             fallbackClassName="h-9 w-9 shrink-0 rounded-md"
             fallbackIcon={Globe}
           />
