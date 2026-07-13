@@ -8,6 +8,7 @@ import {
   parseRelationshipsSpec, addRelationshipsToWorld,
   parseLoreSpec, addLoreToWorld,
   parseKnowledgeSpec, addKnowledgeToWorld,
+  parseLocationsSpec, addLocationsToWorld, countLocations, LOCATIONS_MAP_NAME,
 } from '@/lib/sectionImport'
 
 describe('parseCharactersSpec', () => {
@@ -435,5 +436,103 @@ describe('addKnowledgeToWorld', () => {
     const reveals = await db.knowledgeReveals.where('factId').equals('f1').toArray()
     expect(reveals).toHaveLength(1)
     expect(reveals[0]).toMatchObject({ characterId: 'c-aria', eventId: 'e-murder' })
+  })
+})
+
+describe('parseLocationsSpec / countLocations', () => {
+  it('parses a nested tree, dropping nameless nodes', () => {
+    const json = JSON.stringify({ locations: [
+      { name: 'Aethel', type: 'region', children: [
+        { name: 'Ironhold', type: 'city', children: [{ name: 'The Keep' }, { description: 'no name' }] },
+        { name: 'Greywood' },
+      ]},
+      { name: '   ' },
+    ]})
+    const { locations, error } = parseLocationsSpec(json)
+    expect(error).toBeUndefined()
+    expect(locations).toHaveLength(1)
+    expect(locations![0].children).toHaveLength(2)
+    expect(locations![0].children![0].children).toEqual([{ name: 'The Keep', description: undefined, type: undefined, children: undefined }])
+    expect(countLocations(locations!)).toBe(4) // Aethel, Ironhold, The Keep, Greywood
+  })
+
+  it('errors on invalid JSON and when nothing usable is present', () => {
+    expect(parseLocationsSpec('nope').error).toMatch(/valid JSON/)
+    expect(parseLocationsSpec('[{"description":"x"}]').error).toMatch(/No locations/)
+  })
+})
+
+describe('addLocationsToWorld', () => {
+  const worldId = 'w1'
+  // Inject a fake placeholder image so tests don't need a real canvas.
+  const fakeImage = async () => ({ blob: new Blob(['x'], { type: 'image/png' }), width: 1600, height: 1000 })
+
+  beforeEach(async () => {
+    await db.delete()
+    await db.open()
+    await db.worlds.put({ id: worldId, name: 'W', description: '', coverImageId: null, theme: null, continuityStaleThreshold: 5, createdAt: 0, updatedAt: 0 })
+  })
+
+  it('creates a Locations map with markers and a linked sub-map for children', async () => {
+    const res = await addLocationsToWorld(worldId, [
+      { name: 'Aethel', type: 'region', children: [
+        { name: 'Ironhold', type: 'city' },
+        { name: 'Greywood', type: 'town' },
+      ]},
+    ], fakeImage)
+    expect(res).toMatchObject({ added: 3, updated: 0 })
+
+    const layers = await db.mapLayers.where('worldId').equals(worldId).toArray()
+    const root = layers.find((l) => l.parentMapId === null)!
+    expect(root.name).toBe(LOCATIONS_MAP_NAME)
+
+    const rootMarkers = await db.locationMarkers.where('mapLayerId').equals(root.id).toArray()
+    expect(rootMarkers.map((m) => m.name)).toEqual(['Aethel'])
+    const aethel = rootMarkers[0]
+    // Aethel drills into a sub-map holding its children.
+    const sub = layers.find((l) => l.id === aethel.linkedMapLayerId)!
+    expect(sub.parentMapId).toBe(root.id)
+    const subMarkers = await db.locationMarkers.where('mapLayerId').equals(sub.id).toArray()
+    expect(subMarkers.map((m) => m.name).sort()).toEqual(['Greywood', 'Ironhold'])
+    // Markers sit within the map bounds.
+    for (const m of [...rootMarkers, ...subMarkers]) {
+      expect(m.x).toBeGreaterThanOrEqual(0)
+      expect(m.x).toBeLessThanOrEqual(root.imageWidth)
+      expect(m.y).toBeGreaterThanOrEqual(0)
+      expect(m.y).toBeLessThanOrEqual(root.imageHeight)
+    }
+  })
+
+  it('reuses the Locations map on re-run, extending the tree without duplicating', async () => {
+    await addLocationsToWorld(worldId, [{ name: 'Aethel', children: [{ name: 'Ironhold' }] }], fakeImage)
+    const res = await addLocationsToWorld(worldId, [
+      { name: 'Aethel', description: 'A northern realm', children: [{ name: 'Ironhold' }, { name: 'Greywood' }] },
+      { name: 'Suden' },
+    ], fakeImage)
+    // Aethel updated (gained a description), Greywood + Suden added, Ironhold unchanged.
+    expect(res).toMatchObject({ added: 2, updated: 1 })
+
+    const roots = (await db.mapLayers.where('worldId').equals(worldId).toArray()).filter((l) => l.parentMapId === null)
+    expect(roots).toHaveLength(1) // no second Locations map
+    const rootMarkers = await db.locationMarkers.where('mapLayerId').equals(roots[0].id).toArray()
+    expect(rootMarkers.map((m) => m.name).sort()).toEqual(['Aethel', 'Suden'])
+    const aethel = rootMarkers.find((m) => m.name === 'Aethel')!
+    expect(aethel.description).toBe('A northern realm')
+    const subMarkers = await db.locationMarkers.where('mapLayerId').equals(aethel.linkedMapLayerId!).toArray()
+    expect(subMarkers.map((m) => m.name).sort()).toEqual(['Greywood', 'Ironhold']) // Ironhold not duplicated
+  })
+
+  it('adds a sub-map when an existing leaf later gains children', async () => {
+    await addLocationsToWorld(worldId, [{ name: 'Ironhold' }], fakeImage)
+    let markers = await db.locationMarkers.where('worldId').equals(worldId).toArray()
+    expect(markers[0].linkedMapLayerId).toBeNull()
+
+    const res = await addLocationsToWorld(worldId, [{ name: 'Ironhold', children: [{ name: 'The Keep' }] }], fakeImage)
+    expect(res).toMatchObject({ added: 1, updated: 1 }) // The Keep added, Ironhold linked
+    markers = await db.locationMarkers.where('worldId').equals(worldId).toArray()
+    const ironhold = markers.find((m) => m.name === 'Ironhold')!
+    expect(ironhold.linkedMapLayerId).not.toBeNull()
+    const children = await db.locationMarkers.where('mapLayerId').equals(ironhold.linkedMapLayerId!).toArray()
+    expect(children.map((m) => m.name)).toEqual(['The Keep'])
   })
 })

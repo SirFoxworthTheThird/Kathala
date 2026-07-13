@@ -11,6 +11,7 @@ import { LeafletMapCanvas } from './LeafletMapCanvas'
 import { LocationDetailPanel } from './LocationDetailPanel'
 import { CharacterSnapshotPanel } from './CharacterSnapshotPanel'
 import { UploadMapDialog } from './UploadMapDialog'
+import { GenerateLocationsDialog } from './GenerateLocationsDialog'
 import { AddLocationDialog } from './AddLocationDialog'
 import { StoryNotesOverlay } from './StoryNotesOverlay'
 import type { ScaleCalibrationPoint, MeasureLine, JourneyLine } from './LeafletMapCanvas'
@@ -67,6 +68,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   // Touch-friendly placement: tap a character's crosshair, then tap a location.
   const [placingCharacterId, setPlacingCharacterId] = useState<string | null>(null)
   const [aiDialogOpen, setAiDialogOpen] = useState(false)
+  const [genLocOpen, setGenLocOpen] = useState(false)
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null)
   const [scaleMode, setScaleMode] = useState(false)
   const [scaleDialog, setScaleDialog] = useState<{ pixelDist: number } | null>(null)
@@ -557,6 +559,16 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               size="sm"
               variant="outline"
               className="gap-1.5 text-xs"
+              onClick={() => setGenLocOpen(true)}
+              title="Generate a tree of locations with AI"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              AI Locations
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs"
               onClick={() => setAiDialogOpen(true)}
               title="Extract location moves from prose with AI"
             >
@@ -995,6 +1007,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
         open={aiDialogOpen}
         onOpenChange={setAiDialogOpen}
       />
+      <GenerateLocationsDialog worldId={worldId} open={genLocOpen} onOpenChange={setGenLocOpen} />
     </div>
   )
 }
@@ -1007,6 +1020,7 @@ export default function MapExplorerView() {
   const rootLayers = useRootMapLayers(worldId ?? null)
   const { setActiveMapLayerId } = useAppStore()
   const [uploadOpen, setUploadOpen] = useState(false)
+  const [genLocOpen, setGenLocOpen] = useState(false)
 
   if (!worldId) return null
 
@@ -1019,20 +1033,32 @@ export default function MapExplorerView() {
       <div className="flex h-full flex-col">
         <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-2">
           <span className="text-sm font-medium">Maps</span>
-          <Button size="sm" onClick={() => setUploadOpen(true)}>
-            <Upload className="h-4 w-4" />
-            Upload Map
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setGenLocOpen(true)}>
+              <Sparkles className="h-4 w-4" />
+              Generate with AI
+            </Button>
+            <Button size="sm" onClick={() => setUploadOpen(true)}>
+              <Upload className="h-4 w-4" />
+              Upload Map
+            </Button>
+          </div>
         </div>
         <EmptyState
           icon={MapIcon}
           title="No maps yet"
-          description="Upload an image of your world and place locations on it."
+          description="Upload an image of your world and place locations on it — or generate a tree of locations with AI and PlotWeave will lay them out on a map for you."
           action={
-            <Button onClick={() => setUploadOpen(true)}>
-              <Upload className="h-4 w-4" />
-              Add Map
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button onClick={() => setUploadOpen(true)}>
+                <Upload className="h-4 w-4" />
+                Add Map
+              </Button>
+              <Button variant="outline" className="gap-1.5" onClick={() => setGenLocOpen(true)}>
+                <Sparkles className="h-4 w-4" />
+                Generate locations with AI
+              </Button>
+            </div>
           }
         />
         <UploadMapDialog
@@ -1041,6 +1067,7 @@ export default function MapExplorerView() {
           worldId={worldId}
           onCreated={setActiveMapLayerId}
         />
+        <GenerateLocationsDialog open={genLocOpen} onOpenChange={setGenLocOpen} worldId={worldId} />
       </div>
     )
   }

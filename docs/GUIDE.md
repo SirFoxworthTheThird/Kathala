@@ -341,6 +341,23 @@ Press **play** in the chapter bar and the map becomes a playback stage: as the
 story advances event by event, character pins glide between locations along their
 routes, so you can watch your cast move through the world.
 
+### Generate locations with AI
+
+Don't have a map image? **Generate with AI** (on the empty Maps screen, and as
+**AI Locations** in the map toolbar) builds a whole **tree of places** for you.
+Copy the prompt, describe your world, and paste back a nested JSON tree
+(continent → kingdom → city → district). PlotWeave creates a blank **Locations**
+map and drops each place on it as a pin; a place with children becomes a pin that
+**drills into a sub-map** holding them, as deep as your tree goes — no map image
+required.
+
+![Generate locations with AI](images/27-generate-locations.png)
+
+Re-running extends the same Locations map: new places are added, existing ones
+(matched by name) are updated in place, and a place that gains children grows its
+sub-map — so you can build the world out in passes. You can always upload a real
+map image later and move the pins onto it.
+
 ---
 
 ## Items

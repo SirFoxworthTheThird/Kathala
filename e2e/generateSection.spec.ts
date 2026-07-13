@@ -211,4 +211,37 @@ test.describe('Generate a section with AI', () => {
     await expect(page.getByText('The king is dead')).toBeVisible()
     await expect(page.getByText('The heir is illegitimate')).toBeVisible()
   })
+
+  test('generates a location tree onto an auto-created map', async ({ page }) => {
+    test.slow() // rendering the generated map mounts a Leaflet canvas
+    await page.goto('/')
+    await resetDB(page)
+
+    await page.getByRole('button', { name: 'New World' }).click()
+    await page.getByLabel('Name').fill('Aethel')
+    await page.getByRole('button', { name: 'Create World' }).last().click()
+    await expect(page).toHaveURL(/#\/worlds\//)
+    const worldId = page.url().match(/#\/worlds\/([^/]+)/)![1]
+
+    // Maps view starts empty; generate a small tree.
+    await page.goto(`/#/worlds/${worldId}/maps`, { waitUntil: 'load' })
+    await page.getByRole('button', { name: 'Generate locations with AI' }).click()
+    const json = JSON.stringify({
+      locations: [
+        { name: 'Aethelgard', type: 'region', children: [
+          { name: 'Ironhold', type: 'city' },
+          { name: 'Greywood', type: 'town' },
+        ]},
+      ],
+    })
+    await page.getByRole('textbox', { name: 'locations JSON' }).fill(json)
+    await expect(page.getByText(/Ready to import 3 locations/)).toBeVisible()
+
+    // Applying draws the placeholder image on a real canvas and saves the map.
+    // As soon as the first map exists the empty state is replaced by the map
+    // view (unmounting this dialog), so the map's own toolbar is the signal that
+    // generation succeeded — reaching it also proves the canvas path worked.
+    await page.getByRole('button', { name: 'Add locations' }).click()
+    await expect(page.getByRole('button', { name: 'AI Locations' })).toBeVisible({ timeout: 15_000 })
+  })
 })
