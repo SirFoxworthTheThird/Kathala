@@ -181,4 +181,33 @@ test.describe('Generate a section with AI', () => {
     await expect(page.getByText('The Weave')).toBeVisible()
     await expect(page.getByText('The Sundering')).toBeVisible()
   })
+
+  test('adds pasted knowledge facts to the current world', async ({ page }) => {
+    await page.goto('/')
+    await resetDB(page)
+
+    await page.getByRole('button', { name: 'New World' }).click()
+    await page.getByLabel('Name').fill('Aethel')
+    await page.getByRole('button', { name: 'Create World' }).last().click()
+    await expect(page).toHaveURL(/#\/worlds\//)
+    const worldId = page.url().match(/#\/worlds\/([^/]+)/)![1]
+
+    await page.goto(`/#/worlds/${worldId}/knowledge`, { waitUntil: 'load' })
+    await page.getByRole('button', { name: 'Generate with AI' }).click()
+    const json = JSON.stringify({
+      knowledge: [
+        { title: 'The king is dead', description: 'Only a few know.' },
+        { title: 'The heir is illegitimate' },
+      ],
+    })
+    await page.getByRole('textbox', { name: 'facts JSON' }).fill(json)
+    await expect(page.getByText(/Ready to add 2 facts/)).toBeVisible()
+
+    await page.getByRole('button', { name: 'Add facts' }).click()
+    await expect(page.getByText(/Added 2 facts/)).toBeVisible()
+
+    await page.getByRole('button', { name: 'Done' }).click()
+    await expect(page.getByText('The king is dead')).toBeVisible()
+    await expect(page.getByText('The heir is illegitimate')).toBeVisible()
+  })
 })

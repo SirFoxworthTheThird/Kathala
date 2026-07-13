@@ -432,6 +432,13 @@ your story** (for example, "Gandalf the Grey is dead · Ch. 17").
 
 ![Knowledge](images/14-knowledge.png)
 
+**Generate with AI** adds facts in bulk: copy the prompt, describe your story,
+and paste the JSON back. A fact's `origin`, `readerLearnsAt`, and each reveal
+reference **existing events by title** and **existing characters by name** — so
+add your timeline and cast first. Anything that doesn't match is simply left
+unlinked (the fact is still created), and fact titles already present are
+skipped.
+
 Paired with the Continuity Checker, this catches a character acting on
 information they shouldn't have yet.
 

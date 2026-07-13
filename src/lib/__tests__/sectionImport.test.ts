@@ -7,6 +7,7 @@ import {
   parseFactionsSpec, addFactionsToWorld,
   parseRelationshipsSpec, addRelationshipsToWorld,
   parseLoreSpec, addLoreToWorld,
+  parseKnowledgeSpec, addKnowledgeToWorld,
 } from '@/lib/sectionImport'
 
 describe('parseCharactersSpec', () => {
@@ -302,5 +303,70 @@ describe('addLoreToWorld', () => {
     expect(cats).toHaveLength(1) // no new "Magic" category created
     const runes = (await db.lorePages.where('worldId').equals(worldId).toArray()).find((p) => p.title === 'Runes')
     expect(runes?.categoryId).toBe('cat-magic')
+  })
+})
+
+describe('parseKnowledgeSpec', () => {
+  it('requires a title and keeps well-formed reveals only', () => {
+    const json = JSON.stringify({ knowledge: [
+      { title: 'The king is dead', origin: 'The Murder', readerLearnsAt: 'The Reveal',
+        revealedTo: [{ who: 'Aria', at: 'The Murder' }, { who: 'Bran' }, { at: 'x' }] },
+      { description: 'no title' },
+    ]})
+    const { knowledge } = parseKnowledgeSpec(json)
+    expect(knowledge).toHaveLength(1)
+    expect(knowledge![0]).toMatchObject({ title: 'The king is dead', origin: 'The Murder', readerLearnsAt: 'The Reveal' })
+    expect(knowledge![0].revealedTo).toEqual([{ who: 'Aria', at: 'The Murder' }])
+  })
+
+  it('errors on invalid JSON and when nothing usable is present', () => {
+    expect(parseKnowledgeSpec('nope').error).toMatch(/valid JSON/)
+    expect(parseKnowledgeSpec('[{"description":"x"}]').error).toMatch(/No knowledge facts/)
+  })
+})
+
+describe('addKnowledgeToWorld', () => {
+  const worldId = 'w1'
+
+  beforeEach(async () => {
+    await db.delete()
+    await db.open()
+    await db.worlds.put({ id: worldId, name: 'W', description: '', coverImageId: null, theme: null, continuityStaleThreshold: 5, createdAt: 0, updatedAt: 0 })
+  })
+
+  async function putChar(id: string, name: string, aliases: string[] = []) {
+    await db.characters.put({ id, worldId, name, aliases, description: '', portraitImageId: null, tags: [], isAlive: true, color: null, createdAt: 0, updatedAt: 0 })
+  }
+  async function putEvent(id: string, title: string) {
+    await db.events.put({ id, worldId, chapterId: 'ch', timelineId: 't', title, description: '', locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], threadIds: [], involvedItemIds: [], tags: [], sortOrder: 0, travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft', povCharacterId: null, isFlashback: false, createdAt: 0, updatedAt: 0 })
+  }
+
+  it('links origin/reader events by title and reveals by character + event', async () => {
+    await putChar('c-aria', 'Aria Vale', ['The Fox'])
+    await putEvent('e-murder', 'The Murder')
+    await putEvent('e-reveal', 'The Reveal')
+    const res = await addKnowledgeToWorld(worldId, [
+      { title: 'The king is dead', origin: 'The Murder', readerLearnsAt: 'The Reveal',
+        revealedTo: [{ who: 'The Fox', at: 'The Murder' }, { who: 'Ghost', at: 'The Reveal' }] },
+    ])
+    expect(res).toMatchObject({ added: 1, skipped: 0 })
+    const fact = (await db.knowledgeFacts.where('worldId').equals(worldId).toArray())[0]
+    expect(fact).toMatchObject({ title: 'The king is dead', originEventId: 'e-murder', readerLearnsAtEventId: 'e-reveal' })
+    const reveals = await db.knowledgeReveals.where('worldId').equals(worldId).toArray()
+    expect(reveals).toHaveLength(1) // "Ghost" doesn't resolve, so only Aria's reveal is kept
+    expect(reveals[0]).toMatchObject({ characterId: 'c-aria', eventId: 'e-murder' })
+  })
+
+  it('still creates the fact when event references do not resolve', async () => {
+    const res = await addKnowledgeToWorld(worldId, [{ title: 'A secret', origin: 'Nonexistent Event' }])
+    expect(res.added).toBe(1)
+    const fact = (await db.knowledgeFacts.where('worldId').equals(worldId).toArray())[0]
+    expect(fact).toMatchObject({ title: 'A secret', originEventId: null, readerLearnsAtEventId: null })
+  })
+
+  it('skips duplicate fact titles (case-insensitive) and repeats within the batch', async () => {
+    await db.knowledgeFacts.put({ id: 'f0', worldId, title: 'A secret', description: '', tags: [], readerLearnsAtEventId: null, originEventId: null, createdAt: 0, updatedAt: 0 })
+    const res = await addKnowledgeToWorld(worldId, [{ title: 'a secret' }, { title: 'New one' }, { title: 'New one' }])
+    expect(res).toMatchObject({ added: 1, skipped: 2, addedNames: ['New one'] })
   })
 })

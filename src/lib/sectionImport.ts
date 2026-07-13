@@ -3,8 +3,11 @@ import { generateId } from '@/lib/id'
 import type {
   Character, Item, Faction, FactionMembership, Relationship,
   RelationshipStrength, RelationshipSentiment, LoreCategory, LorePage,
+  KnowledgeFact, KnowledgeReveal,
 } from '@/types'
-import type { SpecCharacter, SpecItem, SpecFaction, SpecRelationship, SpecLore } from '@/lib/worldSpec'
+import type {
+  SpecCharacter, SpecItem, SpecFaction, SpecRelationship, SpecLore, SpecKnowledge, SpecReveal,
+} from '@/lib/worldSpec'
 
 const STRENGTHS: RelationshipStrength[] = ['weak', 'moderate', 'strong', 'bond']
 const SENTIMENTS: RelationshipSentiment[] = ['positive', 'neutral', 'negative', 'complex']
@@ -429,4 +432,105 @@ export async function addLoreToWorld(
   if (categoriesToAdd.length > 0) await db.loreCategories.bulkAdd(categoriesToAdd)
   if (pagesToAdd.length > 0) await db.lorePages.bulkAdd(pagesToAdd)
   return { added: pagesToAdd.length, skipped, addedNames }
+}
+
+// ── Knowledge ─────────────────────────────────────────────────────────────────
+
+/** Parse and lightly validate a knowledge-only spec (facts + reveals). */
+export function parseKnowledgeSpec(text: string): { knowledge?: SpecKnowledge[]; error?: string } {
+  const { list, error } = extractArray(text, 'knowledge')
+  if (error) return { error }
+  const knowledge: SpecKnowledge[] = []
+  for (const raw of list!) {
+    if (!raw || typeof raw !== 'object') continue
+    const k = raw as Record<string, unknown>
+    if (typeof k.title !== 'string' || !k.title.trim()) continue
+    const revealedTo: SpecReveal[] = []
+    if (Array.isArray(k.revealedTo)) {
+      for (const rv of k.revealedTo) {
+        if (rv && typeof rv === 'object') {
+          const r = rv as Record<string, unknown>
+          if (typeof r.who === 'string' && r.who.trim() && typeof r.at === 'string' && r.at.trim()) {
+            revealedTo.push({ who: r.who, at: r.at })
+          }
+        }
+      }
+    }
+    knowledge.push({
+      title: k.title,
+      description: typeof k.description === 'string' ? k.description : undefined,
+      tags: Array.isArray(k.tags) ? k.tags.filter((t): t is string => typeof t === 'string') : undefined,
+      origin: typeof k.origin === 'string' ? k.origin : undefined,
+      readerLearnsAt: typeof k.readerLearnsAt === 'string' ? k.readerLearnsAt : undefined,
+      revealedTo,
+    })
+  }
+  if (knowledge.length === 0) return { error: 'No knowledge facts with a "title" were found in that JSON.' }
+  return { knowledge }
+}
+
+/**
+ * Add knowledge facts to a world, skipping fact titles already present
+ * (case-insensitive) or repeated within the batch. `origin` / `readerLearnsAt`
+ * and each reveal's `at` reference existing events BY TITLE; `who` references
+ * existing characters by name/alias. References that don't resolve are dropped
+ * (the fact is still created; only that link is skipped).
+ */
+export async function addKnowledgeToWorld(
+  worldId: string,
+  knowledge: SpecKnowledge[],
+): Promise<SectionMergeResult> {
+  const existingFacts = await db.knowledgeFacts.where('worldId').equals(worldId).toArray()
+  const seenTitles = new Set(existingFacts.map((f) => key(f.title)))
+
+  // event title → id (first occurrence wins), character name/alias → id.
+  const events = await db.events.where('worldId').equals(worldId).toArray()
+  const eventIdByTitle = new Map<string, string>()
+  for (const e of events) if (!eventIdByTitle.has(key(e.title))) eventIdByTitle.set(key(e.title), e.id)
+  const resolveEvent = (ref: string | undefined): string | null =>
+    ref ? eventIdByTitle.get(key(ref)) ?? null : null
+
+  const chars = await db.characters.where('worldId').equals(worldId).toArray()
+  const charIdByName = new Map<string, string>()
+  for (const c of chars) {
+    charIdByName.set(key(c.name), c.id)
+    for (const a of c.aliases ?? []) if (a?.trim()) charIdByName.set(key(a), c.id)
+  }
+
+  const now = Date.now()
+  const factsToAdd: KnowledgeFact[] = []
+  const revealsToAdd: KnowledgeReveal[] = []
+  const addedNames: string[] = []
+  let skipped = 0
+
+  for (const sk of knowledge) {
+    const title = sk.title?.trim()
+    if (!title) { skipped++; continue }
+    if (seenTitles.has(key(title))) { skipped++; continue }
+    seenTitles.add(key(title))
+    addedNames.push(title)
+
+    const factId = generateId()
+    factsToAdd.push({
+      id: factId, worldId, title,
+      description: sk.description?.trim() ?? '',
+      tags: (sk.tags ?? []).filter(Boolean),
+      readerLearnsAtEventId: resolveEvent(sk.readerLearnsAt),
+      originEventId: resolveEvent(sk.origin),
+      createdAt: now, updatedAt: now,
+    })
+    for (const rv of sk.revealedTo ?? []) {
+      const charId = rv?.who ? charIdByName.get(key(rv.who)) : undefined
+      const eventId = resolveEvent(rv?.at)
+      if (!charId || !eventId) continue
+      revealsToAdd.push({
+        id: generateId(), worldId, factId, characterId: charId, eventId, note: '',
+        createdAt: now, updatedAt: now,
+      })
+    }
+  }
+
+  if (factsToAdd.length > 0) await db.knowledgeFacts.bulkAdd(factsToAdd)
+  if (revealsToAdd.length > 0) await db.knowledgeReveals.bulkAdd(revealsToAdd)
+  return { added: factsToAdd.length, skipped, addedNames }
 }
