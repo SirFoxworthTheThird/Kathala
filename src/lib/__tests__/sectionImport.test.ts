@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { db } from '@/db/database'
-import { parseCharactersSpec, addCharactersToWorld } from '@/lib/sectionImport'
+import { parseCharactersSpec, addCharactersToWorld, parseItemsSpec, addItemsToWorld } from '@/lib/sectionImport'
 
 describe('parseCharactersSpec', () => {
   it('accepts a bare array of characters', () => {
@@ -76,5 +76,46 @@ describe('addCharactersToWorld', () => {
     await db.characters.put({ id: 'other', worldId: 'w2', name: 'Aria', aliases: [], description: '', portraitImageId: null, tags: [], isAlive: true, color: null, createdAt: 0, updatedAt: 0 })
     const res = await addCharactersToWorld(worldId, [{ name: 'Aria' }])
     expect(res.added).toBe(1) // same name, different world — still added here
+  })
+})
+
+describe('parseItemsSpec', () => {
+  it('accepts a bare array and an object form, keeping icon + tags', () => {
+    expect(parseItemsSpec('[{"name":"Sword"}]').items?.map((i) => i.name)).toEqual(['Sword'])
+    const { items } = parseItemsSpec('{"items":[{"name":"Amulet","icon":"ring","tags":["cursed"],"description":"glows"}]}')
+    expect(items![0]).toMatchObject({ name: 'Amulet', icon: 'ring', tags: ['cursed'], description: 'glows' })
+  })
+
+  it('errors on invalid JSON and when nothing usable is present', () => {
+    expect(parseItemsSpec('nope').error).toMatch(/valid JSON/)
+    expect(parseItemsSpec('[]').error).toMatch(/No items/)
+    expect(parseItemsSpec('{"foo":1}').error).toMatch(/Expected a JSON array/)
+  })
+})
+
+describe('addItemsToWorld', () => {
+  const worldId = 'w1'
+
+  beforeEach(async () => {
+    await db.delete()
+    await db.open()
+    await db.worlds.put({ id: worldId, name: 'W', description: '', coverImageId: null, theme: null, continuityStaleThreshold: 5, createdAt: 0, updatedAt: 0 })
+  })
+
+  it('adds new items with fields set and default icon', async () => {
+    const res = await addItemsToWorld(worldId, [
+      { name: 'Excalibur', icon: 'weapon', description: 'A famous sword.', tags: ['legendary'] },
+      { name: 'Pebble' },
+    ])
+    expect(res).toMatchObject({ added: 2, skipped: 0 })
+    const items = (await db.items.where('worldId').equals(worldId).toArray()).sort((a, b) => a.name.localeCompare(b.name))
+    expect(items[0]).toMatchObject({ name: 'Excalibur', iconType: 'weapon', description: 'A famous sword.', tags: ['legendary'], imageId: null })
+    expect(items[1]).toMatchObject({ name: 'Pebble', iconType: 'other', tags: [] })
+  })
+
+  it('skips names already present (case-insensitive) and repeats within the batch', async () => {
+    await db.items.put({ id: 'x', worldId, name: 'Sword', description: '', iconType: 'weapon', imageId: null, tags: [] })
+    const res = await addItemsToWorld(worldId, [{ name: 'sword' }, { name: 'Shield' }, { name: 'Shield' }])
+    expect(res).toMatchObject({ added: 1, skipped: 2, addedNames: ['Shield'] })
   })
 })

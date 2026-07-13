@@ -1,7 +1,7 @@
 import { db } from '@/db/database'
 import { generateId } from '@/lib/id'
-import type { Character } from '@/types'
-import type { SpecCharacter } from '@/lib/worldSpec'
+import type { Character, Item } from '@/types'
+import type { SpecCharacter, SpecItem } from '@/lib/worldSpec'
 
 /**
  * Section-scoped AI import: merge one kind of entity (characters, items, …) into
@@ -102,5 +102,62 @@ export async function addCharactersToWorld(
   }
 
   if (toAdd.length > 0) await db.characters.bulkAdd(toAdd)
+  return { added: toAdd.length, skipped, addedNames }
+}
+
+// ── Items ─────────────────────────────────────────────────────────────────────
+
+/** Parse and lightly validate an items-only spec. */
+export function parseItemsSpec(text: string): { items?: SpecItem[]; error?: string } {
+  const { list, error } = extractArray(text, 'items')
+  if (error) return { error }
+  const items: SpecItem[] = []
+  for (const raw of list!) {
+    if (!raw || typeof raw !== 'object') continue
+    const i = raw as Record<string, unknown>
+    if (typeof i.name !== 'string' || !i.name.trim()) continue
+    items.push({
+      name: i.name,
+      description: typeof i.description === 'string' ? i.description : undefined,
+      icon: typeof i.icon === 'string' ? i.icon : undefined,
+      tags: Array.isArray(i.tags) ? i.tags.filter((t): t is string => typeof t === 'string') : undefined,
+    })
+  }
+  if (items.length === 0) return { error: 'No items with a "name" were found in that JSON.' }
+  return { items }
+}
+
+/**
+ * Add items to a world, skipping any whose name already exists there
+ * (case-insensitive) or repeats within the batch.
+ */
+export async function addItemsToWorld(
+  worldId: string,
+  items: SpecItem[],
+): Promise<SectionMergeResult> {
+  const existing = await db.items.where('worldId').equals(worldId).toArray()
+  const seen = new Set(existing.map((i) => key(i.name)))
+  const toAdd: Item[] = []
+  const addedNames: string[] = []
+  let skipped = 0
+
+  for (const si of items) {
+    const name = si.name?.trim()
+    if (!name) { skipped++; continue }
+    if (seen.has(key(name))) { skipped++; continue }
+    seen.add(key(name))
+    addedNames.push(name)
+    toAdd.push({
+      id: generateId(),
+      worldId,
+      name,
+      description: si.description?.trim() ?? '',
+      iconType: si.icon?.trim() || 'other',
+      imageId: null,
+      tags: (si.tags ?? []).filter(Boolean),
+    })
+  }
+
+  if (toAdd.length > 0) await db.items.bulkAdd(toAdd)
   return { added: toAdd.length, skipped, addedNames }
 }

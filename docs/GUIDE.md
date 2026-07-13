@@ -348,6 +348,12 @@ thumbnails, categories, and descriptions. Like characters, items have per-chapte
 
 ![Items](images/09-items.png)
 
+Like the cast, you can **Generate with AI** from the Items screen: copy the
+prompt, describe your story, and paste back the JSON to add a batch of items to
+the current world. It follows the same flow as
+[generating characters](#generate-characters-with-ai) — names already present are
+skipped, so re-running never duplicates.
+
 ---
 
 ## Relationships

@@ -43,4 +43,33 @@ test.describe('Generate a section with AI', () => {
     await expect(page.getByText('Mira Sol')).toBeVisible()
     await expect(page.getByText('Aria Vale')).toHaveCount(1)
   })
+
+  test('adds pasted items to the current world', async ({ page }) => {
+    await page.goto('/')
+    await resetDB(page)
+
+    await page.getByRole('button', { name: 'New World' }).click()
+    await page.getByLabel('Name').fill('Aethel')
+    await page.getByRole('button', { name: 'Create World' }).last().click()
+    await expect(page).toHaveURL(/#\/worlds\//)
+    const worldId = page.url().match(/#\/worlds\/([^/]+)/)![1]
+
+    await page.goto(`/#/worlds/${worldId}/items`, { waitUntil: 'load' })
+    await page.getByRole('button', { name: 'Generate with AI' }).click()
+    const json = JSON.stringify({
+      items: [
+        { name: 'Excalibur', icon: 'weapon', description: 'A famous sword.' },
+        { name: 'Healing Draught', icon: 'potion' },
+      ],
+    })
+    await page.getByRole('textbox', { name: 'items JSON' }).fill(json)
+    await expect(page.getByText(/Ready to add 2 items/)).toBeVisible()
+
+    await page.getByRole('button', { name: 'Add items' }).click()
+    await expect(page.getByText(/Added 2 items/)).toBeVisible()
+
+    await page.getByRole('button', { name: 'Done' }).click()
+    await expect(page.getByText('Excalibur')).toBeVisible()
+    await expect(page.getByText('Healing Draught')).toBeVisible()
+  })
 })
