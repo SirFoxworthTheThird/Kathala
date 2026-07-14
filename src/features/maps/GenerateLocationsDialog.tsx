@@ -31,8 +31,8 @@ SHAPE:
 }
 
 GUIDANCE:
-- Do NOT wrap everything in a single root node (such as "Locations", "World", or "Map"). The "locations" array IS your list of top-level places — put your continents / regions / major places directly as its elements.
-- A "location" is any PLACE — a continent, a kingdom, a city, a tavern, a forest, a single room. It is NOT a map. Don't limit yourself to big, map-worthy places; include small and specific ones too.
+- The "locations" array holds the highest-level places. If the story has ONE overarching place — a world, realm, or continent that contains everything (e.g. a named setting) — you MAY make it the single top-level entry and nest everything else under it; otherwise list several top-level places. Follow the story and any instruction below. The only forbidden name is a generic container literally called "Locations" — that name is reserved, so never use it.
+- A "location" is any PLACE — a world, a continent, a kingdom, a city, a tavern, a forest, a single room. It is NOT a map. Don't limit yourself to big, map-worthy places; include small and specific ones too.
 - "children" means "places contained within this place" (a city inside a kingdom, a room inside an inn). Nest as deep as makes sense; a place with no sub-places just omits "children".
 - "name" is required; "description" and "type" are optional. "type" is one of: city, town, dungeon, landmark, building, region, custom — pick the closest.
 - If a place from "PLACES ALREADY IN THIS WORLD" above should gain sub-places, include it by its exact name with the new sub-places under "children"; otherwise don't repeat it.
