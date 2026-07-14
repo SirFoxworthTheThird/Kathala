@@ -12,7 +12,7 @@ ${existingTree}
 `
     : ''
 
-  return `You are helping me populate my story in PlotWeave, a story-tracking app. Output ONLY a compact JSON tree of LOCATIONS — the places in your world, nested from broad to specific — no explanation, no markdown fences.
+  return `You are helping me populate my story in PlotWeave, a story-tracking app. Output ONLY a compact JSON tree of LOCATIONS — the places in your world — no explanation, no markdown fences.
 
 SHAPE:
 {
@@ -30,9 +30,9 @@ SHAPE:
 }
 
 GUIDANCE:
-- "name" is required; everything else is optional. Nest places with "children" (continent → kingdom → city → district), as deep as makes sense.
-- "type" is one of: city, town, dungeon, landmark, building, region, custom. Pick the closest.
-- PlotWeave has no standalone "places" list, so these are created as pins on an auto-generated **Locations map**; a place with children becomes a pin that drills into a sub-map holding them. No image is needed — a blank map is created for you.
+- A "location" is any PLACE — a continent, a kingdom, a city, a tavern, a forest, a single room. It is NOT a map. Don't limit yourself to big, map-worthy places; include small and specific ones too.
+- "children" means "places contained within this place" (a city inside a kingdom, a room inside an inn). Nest as deep as makes sense; a place with no sub-places just omits "children".
+- "name" is required; "description" and "type" are optional. "type" is one of: city, town, dungeon, landmark, building, region, custom — pick the closest.
 - To add a place UNDER one that already exists, use that place's exact name as a parent and put the new place in its "children". Reusing an existing name updates it in place rather than duplicating it.
 - Output ONLY the JSON object, starting with { and ending with }.
 ${existingBlock}
