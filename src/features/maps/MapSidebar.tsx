@@ -5,7 +5,8 @@ import {
   Route, Hexagon, Plus, Link, Crosshair,
 } from 'lucide-react'
 import { useAppStore, useMapLayerHistory } from '@/store'
-import { useMapLayers, deleteMapLayer } from '@/db/hooks/useMapLayers'
+import { useMapLayers, deleteMapLayer, updateMapLayer } from '@/db/hooks/useMapLayers'
+import { canReparentLayer } from '@/lib/mapTree'
 import { useEventMovements, clearMovement, removeLastWaypoint } from '@/db/hooks/useMovements'
 import { useItems } from '@/db/hooks/useItems'
 import { useEventItemPlacements } from '@/db/hooks/useItemPlacements'
@@ -93,6 +94,9 @@ function LayerTreeNode({
   depth,
   onSelect,
   onDeleted,
+  draggingId,
+  setDraggingId,
+  onReparent,
 }: {
   layer: MapLayer
   allLayers: MapLayer[]
@@ -100,13 +104,18 @@ function LayerTreeNode({
   depth: number
   onSelect: (id: string) => void
   onDeleted: (id: string) => void
+  draggingId: string | null
+  setDraggingId: (id: string | null) => void
+  onReparent: (draggedId: string, targetId: string | null) => void
 }) {
   const children = allLayers.filter((l) => l.parentMapId === layer.id)
   const [open, setOpen] = useState(true)
   const [hovered, setHovered] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const isActive = layer.id === activeLayerId
   const childCount = allLayers.filter((l) => l.parentMapId === layer.id).length
+  const isValidTarget = !!draggingId && canReparentLayer(allLayers, draggingId, layer.id)
 
   async function handleDelete() {
     await deleteMapLayer(layer.id)
@@ -116,8 +125,37 @@ function LayerTreeNode({
   return (
     <div>
       <div
+        draggable
+        onDragStart={(e) => {
+          e.stopPropagation()
+          e.dataTransfer.setData('text/plain', layer.id)
+          e.dataTransfer.effectAllowed = 'move'
+          setDraggingId(layer.id)
+        }}
+        onDragEnd={() => { setDraggingId(null); setDragOver(false) }}
+        onDragOver={(e) => {
+          if (!isValidTarget) return
+          e.preventDefault()
+          e.stopPropagation()
+          e.dataTransfer.dropEffect = 'move'
+          if (!dragOver) setDragOver(true)
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          setDragOver(false)
+          const id = e.dataTransfer.getData('text/plain') || draggingId
+          if (id && canReparentLayer(allLayers, id, layer.id)) {
+            setOpen(true)
+            onReparent(id, layer.id)
+          }
+          setDraggingId(null)
+        }}
         className={`group flex items-center gap-1 cursor-pointer select-none transition-colors rounded-sm mx-1 ${
-          isActive
+          dragOver && isValidTarget
+            ? 'ring-1 ring-[hsl(var(--ring))] bg-[hsl(var(--accent))]'
+            : isActive
             ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
             : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]'
         }`}
@@ -125,6 +163,7 @@ function LayerTreeNode({
         onClick={() => onSelect(layer.id)}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
+        title="Drag onto another map to nest it inside"
       >
         {children.length > 0 ? (
           <button
@@ -164,6 +203,9 @@ function LayerTreeNode({
           depth={depth + 1}
           onSelect={onSelect}
           onDeleted={onDeleted}
+          draggingId={draggingId}
+          setDraggingId={setDraggingId}
+          onReparent={onReparent}
         />
       ))}
     </div>
@@ -176,6 +218,8 @@ export function LayersSection({ worldId }: { worldId: string }) {
   const { resetMapHistory, setActiveMapLayerId } = useAppStore()
   const activeLayerId = history[history.length - 1] ?? null
   const roots = allLayers.filter((l) => l.parentMapId === null)
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [rootDragOver, setRootDragOver] = useState(false)
 
   function handleDeleted(deletedId: string) {
     if (history.includes(deletedId)) {
@@ -185,23 +229,57 @@ export function LayersSection({ worldId }: { worldId: string }) {
     }
   }
 
+  function handleReparent(draggedId: string, targetId: string | null) {
+    if (canReparentLayer(allLayers, draggedId, targetId)) {
+      updateMapLayer(draggedId, { parentMapId: targetId })
+    }
+  }
+
+  // A drop target for un-nesting to the top level, shown only while dragging a
+  // non-root layer.
+  const canDropToRoot = !!draggingId && canReparentLayer(allLayers, draggingId, null)
+
   return (
     <SidebarSection title="Map Layers" icon={Layers} count={roots.length}>
       <div className="py-1">
         {roots.length === 0 ? (
           <p className="px-3 py-2 text-xs italic text-[hsl(var(--muted-foreground))]">No maps yet.</p>
         ) : (
-          roots.map((root) => (
-            <LayerTreeNode
-              key={root.id}
-              layer={root}
-              allLayers={allLayers}
-              activeLayerId={activeLayerId}
-              depth={0}
-              onSelect={(id) => resetMapHistory(id)}
-              onDeleted={handleDeleted}
-            />
-          ))
+          <>
+            {canDropToRoot && (
+              <div
+                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setRootDragOver(true) }}
+                onDragLeave={() => setRootDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  const id = e.dataTransfer.getData('text/plain') || draggingId
+                  if (id) handleReparent(id, null)
+                  setRootDragOver(false); setDraggingId(null)
+                }}
+                className={`mx-1 mb-1 rounded-sm border border-dashed px-2 py-1 text-[10px] uppercase tracking-wide transition-colors ${
+                  rootDragOver
+                    ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                    : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]'
+                }`}
+              >
+                Drop here for top level
+              </div>
+            )}
+            {roots.map((root) => (
+              <LayerTreeNode
+                key={root.id}
+                layer={root}
+                allLayers={allLayers}
+                activeLayerId={activeLayerId}
+                depth={0}
+                onSelect={(id) => resetMapHistory(id)}
+                onDeleted={handleDeleted}
+                draggingId={draggingId}
+                setDraggingId={setDraggingId}
+                onReparent={handleReparent}
+              />
+            ))}
+          </>
         )}
       </div>
     </SidebarSection>
