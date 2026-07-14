@@ -596,6 +596,31 @@ describe('addLocationsToWorld', () => {
     expect(subMarkers.map((m) => m.name).sort()).toEqual(['Greywood', 'Ironhold']) // Ironhold not duplicated
   })
 
+  it('never duplicates a place, even when the AI re-nests it under a different parent', async () => {
+    // First run: London › Diagon Alley
+    await addLocationsToWorld(worldId, [{ name: 'London', children: [{ name: 'Diagon Alley' }] }], fakeImage)
+
+    // Re-run: the AI moves Diagon Alley under a new "The Leaky Cauldron" and adds a shop.
+    const res = await addLocationsToWorld(worldId, [
+      { name: 'London', children: [
+        { name: 'The Leaky Cauldron', children: [
+          { name: 'Diagon Alley', children: [{ name: 'Flourish and Blotts' }] },
+        ]},
+      ]},
+    ], fakeImage)
+
+    const all = await db.locationMarkers.where('worldId').equals(worldId).toArray()
+    // Each place exists exactly once, despite the re-nesting.
+    expect(all.filter((m) => m.name === 'Diagon Alley')).toHaveLength(1)
+    expect(all.filter((m) => m.name === 'London')).toHaveLength(1)
+    // Diagon Alley stayed where it first was; the new shop landed under it.
+    const diagon = all.find((m) => m.name === 'Diagon Alley')!
+    const flourish = all.find((m) => m.name === 'Flourish and Blotts')!
+    expect(flourish.mapLayerId).toBe(diagon.linkedMapLayerId)
+    // Only the genuinely new places are added.
+    expect(res.addedNames.sort()).toEqual(['Flourish and Blotts', 'The Leaky Cauldron'])
+  })
+
   it('adds a sub-map when an existing leaf later gains children', async () => {
     await addLocationsToWorld(worldId, [{ name: 'Ironhold' }], fakeImage)
     let markers = await db.locationMarkers.where('worldId').equals(worldId).toArray()

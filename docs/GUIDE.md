@@ -353,9 +353,11 @@ required.
 
 ![Generate locations with AI](images/27-generate-locations.png)
 
-Re-running extends the same Locations map: new places are added, existing ones
-(matched by name) are updated in place, and a place that gains children grows its
-sub-map — so you can build the world out in passes. To help with that, the
+Re-running extends the same Locations map: new places are added, and existing
+ones are **matched by name across the whole world** — updated in place and never
+duplicated, even if the AI puts a place under a different parent than before. A
+place's position in the tree is fixed the first time it's created; new children
+still attach under it. So you can build the world out in passes. To help with that, the
 prompt **lists the places you already have** (as an indented tree) and tells the
 AI to extend them rather than repeat them — reuse a place's exact name to nest new
 children under it. You can always upload a real map image later and move the pins

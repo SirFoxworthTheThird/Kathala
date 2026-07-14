@@ -966,23 +966,17 @@ function iconTypeFor(node: SpecLocation): LocationIconType {
   return node.children && node.children.length > 0 ? 'region' : 'landmark'
 }
 
-/** Evenly spread `n` markers across a `w`×`h` map, with margins. */
-function gridPositions(n: number, w: number, h: number): { x: number; y: number }[] {
-  if (n <= 0) return []
-  const cols = Math.ceil(Math.sqrt(n))
-  const rows = Math.ceil(n / cols)
-  const mx = w * 0.12, my = h * 0.12
-  const cw = cols > 1 ? (w - 2 * mx) / (cols - 1) : 0
-  const ch = rows > 1 ? (h - 2 * my) / (rows - 1) : 0
-  const out: { x: number; y: number }[] = []
-  for (let i = 0; i < n; i++) {
-    const r = Math.floor(i / cols), c = i % cols
-    out.push({
-      x: Math.round(cols > 1 ? mx + c * cw : w / 2),
-      y: Math.round(rows > 1 ? my + r * ch : h / 2),
-    })
+/** Grid position for the i-th marker on a `w`×`h` map, clamped within margins. */
+function positionForIndex(i: number, w: number, h: number): { x: number; y: number } {
+  const cols = 6
+  const mx = w * 0.1, my = h * 0.1
+  const cw = (w - 2 * mx) / Math.max(1, cols - 1)
+  const rh = (h - 2 * my) / 8
+  const col = i % cols, row = Math.floor(i / cols)
+  return {
+    x: Math.round(mx + col * cw),
+    y: Math.round(Math.min(h - my, my + row * rh)),
   }
-  return out
 }
 
 /** A blank placeholder map image + its dimensions. */
@@ -1008,10 +1002,13 @@ async function defaultPlaceholderImage(): Promise<PlaceholderImage> {
 /**
  * Add a location tree to a world. Locations are markers on an auto-created
  * "Locations" placeholder map (reused across runs); a location with children
- * gets a linked sub-map holding them, recursively. Markers are matched by name
- * within their map: new ones are created, existing ones updated in place, and a
- * parent that gains children grows its sub-map — so re-running extends the tree
- * without duplicating. `makeImage` is injectable for testing.
+ * gets a linked sub-map holding them, recursively.
+ *
+ * Markers are matched by name **globally across the whole world**, not per map:
+ * a place that already exists anywhere is updated in place and its new children
+ * are added under it — so re-running (or an AI that re-nests an existing place
+ * under a different parent) never creates a duplicate. A place's position in the
+ * tree is fixed when it's first created. `makeImage` is injectable for testing.
  */
 export async function addLocationsToWorld(
   worldId: string,
@@ -1026,17 +1023,16 @@ export async function addLocationsToWorld(
   // One placeholder image, shared by the root map and every sub-map. Created
   // lazily so an all-unchanged re-run needn't render anything.
   let sharedImageId: string | null = null
+  let imageDims: { width: number; height: number } = { width: PLACEHOLDER_W, height: PLACEHOLDER_H }
   async function imageId(): Promise<string> {
     if (sharedImageId) return sharedImageId
     const { blob, width, height } = await makeImage()
     const entry: BlobEntry = { id: generateId(), worldId, mimeType: blob.type || 'image/png', data: blob, createdAt: now }
     await db.blobs.add(entry)
     sharedImageId = entry.id
-    // Stash dims for callers that create layers.
     imageDims = { width, height }
     return entry.id
   }
-  let imageDims: { width: number; height: number } = { width: PLACEHOLDER_W, height: PLACEHOLDER_H }
 
   async function createLayer(parentMapId: string | null, name: string): Promise<MapLayer> {
     const id = await imageId()
@@ -1051,60 +1047,64 @@ export async function addLocationsToWorld(
     return layer
   }
 
+  // Global, world-wide index: place name → its (single) marker. First occurrence
+  // wins, so a name that somehow already repeats collapses to one canonical place.
+  const allMarkers = await db.locationMarkers.where('worldId').equals(worldId).toArray()
+  const markerByName = new Map<string, LocationMarker>()
+  for (const m of allMarkers) if (!markerByName.has(key(m.name))) markerByName.set(key(m.name), m)
+  const countByLayer = new Map<string, number>()
+  for (const m of allMarkers) countByLayer.set(m.mapLayerId, (countByLayer.get(m.mapLayerId) ?? 0) + 1)
+
   // Reuse an existing root "Locations" map if one is already there.
   const rootLayers = await db.mapLayers.where('worldId').equals(worldId).toArray()
   let rootMap = rootLayers.find((l) => l.parentMapId === null && key(l.name) === key(LOCATIONS_MAP_NAME)) ?? null
 
-  async function placeNodes(nodes: SpecLocation[], mapLayerId: string, mapW: number, mapH: number): Promise<void> {
-    const existing = await db.locationMarkers.where('mapLayerId').equals(mapLayerId).toArray()
-    const byName = new Map(existing.map((m) => [key(m.name), m]))
-    const newNodes = nodes.filter((n) => n.name.trim() && !byName.has(key(n.name.trim())))
-    const positions = gridPositions(existing.length + newNodes.length, mapW, mapH).slice(existing.length)
-    let posIx = 0
-    const seen = new Set<string>()
+  /** Ensure a marker has a sub-map to hold children; returns its id. */
+  async function ensureSubMap(marker: LocationMarker): Promise<string> {
+    if (marker.linkedMapLayerId) return marker.linkedMapLayerId
+    const sub = await createLayer(marker.mapLayerId, marker.name)
+    await db.locationMarkers.update(marker.id, { linkedMapLayerId: sub.id, updatedAt: now })
+    marker.linkedMapLayerId = sub.id
+    return sub.id
+  }
 
+  async function placeNodes(nodes: SpecLocation[], mapLayerId: string): Promise<void> {
     for (const node of nodes) {
       const name = node.name.trim()
-      if (!name || seen.has(key(name))) { skipped++; continue }
-      seen.add(key(name))
-      const match = byName.get(key(name))
+      if (!name) { skipped++; continue }
+      const k = key(name)
+      const existing = markerByName.get(k)
 
-      if (match) {
+      if (existing) {
+        // Update the canonical place in place, wherever it lives — never re-parent
+        // or duplicate it. New children still attach under it.
         const patch: Partial<LocationMarker> = {}
         const desc = node.description?.trim()
         if (desc) patch.description = desc
         patch.iconType = iconTypeFor(node)
-        const pruned = changedFields(match, patch)
-
-        // A parent that gained children needs (or reuses) a sub-map.
-        let subMapId = match.linkedMapLayerId
-        let linkedNow = false
-        if (node.children && node.children.length > 0 && !subMapId) {
-          const sub = await createLayer(mapLayerId, name)
-          subMapId = sub.id
-          linkedNow = true
+        const pruned = changedFields(existing, patch)
+        let structural = false
+        let subId = existing.linkedMapLayerId
+        if (node.children && node.children.length > 0 && !subId) {
+          subId = await ensureSubMap(existing) // counts as a structural change
+          structural = true
         }
-        if (linkedNow) pruned.linkedMapLayerId = subMapId
-
-        const changed = Object.keys(pruned).length > 0
-        if (changed) { await db.locationMarkers.update(match.id, { ...pruned, updatedAt: now }); updated++; updatedNames.push(name) }
+        if (Object.keys(pruned).length) await db.locationMarkers.update(existing.id, { ...pruned, updatedAt: now })
+        if (Object.keys(pruned).length > 0 || structural) { updated++; updatedNames.push(name) }
         else skipped++
-        if (node.children && node.children.length > 0 && subMapId) {
-          await placeNodes(node.children, subMapId, imageDims.width, imageDims.height)
-        }
+        if (node.children && node.children.length > 0 && subId) await placeNodes(node.children, subId)
         continue
       }
 
-      // New marker.
-      const pos = positions[posIx++] ?? { x: Math.round(mapW / 2), y: Math.round(mapH / 2) }
-      let subMapId: string | null = null
-      if (node.children && node.children.length > 0) {
-        const sub = await createLayer(mapLayerId, name)
-        subMapId = sub.id
-      }
+      // New place — create it on the current map layer.
+      const idx = countByLayer.get(mapLayerId) ?? 0
+      countByLayer.set(mapLayerId, idx + 1)
+      const pos = positionForIndex(idx, imageDims.width, imageDims.height)
+      let subId: string | null = null
+      if (node.children && node.children.length > 0) subId = (await createLayer(mapLayerId, name)).id
       const marker: LocationMarker = {
         id: generateId(), worldId, mapLayerId,
-        linkedMapLayerId: subMapId,
+        linkedMapLayerId: subId,
         name,
         description: node.description?.trim() ?? '',
         x: pos.x, y: pos.y,
@@ -1113,15 +1113,14 @@ export async function addLocationsToWorld(
         createdAt: now, updatedAt: now,
       }
       await db.locationMarkers.add(marker)
+      markerByName.set(k, marker)
       added++; addedNames.push(name)
-      if (node.children && node.children.length > 0 && subMapId) {
-        await placeNodes(node.children, subMapId, imageDims.width, imageDims.height)
-      }
+      if (subId) await placeNodes(node.children!, subId)
     }
   }
 
   if (!rootMap) rootMap = await createLayer(null, LOCATIONS_MAP_NAME)
-  await placeNodes(locations, rootMap.id, rootMap.imageWidth, rootMap.imageHeight)
+  await placeNodes(locations, rootMap.id)
 
   return { added, updated, skipped, addedNames, updatedNames }
 }
