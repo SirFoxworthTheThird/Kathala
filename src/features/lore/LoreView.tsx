@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Plus, BookMarked, Pencil, Trash2, Check, X, Eye, Sparkles } from 'lucide-react'
+import { Plus, BookMarked, Pencil, Trash2, Check, X, Eye, Sparkles, PanelLeft } from 'lucide-react'
 import {
   useLoreCategories, useLorePages,
   createLoreCategory, updateLoreCategory, deleteLoreCategory,
@@ -165,6 +165,7 @@ export default function LoreView() {
   const [deletePageId, setDeletePageId] = useState<string | null>(null)
   const [deleteCatId, setDeleteCatId] = useState<string | null>(null)
   const [aiOpen, setAiOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const categoryColorMap = new Map(categories.map((c) => [c.id, c.color]))
 
@@ -208,22 +209,35 @@ export default function LoreView() {
     setEditingCategoryId(null)
   }
 
+  function pickCategory(id: string | null | 'all') {
+    setActiveCategoryId(id)
+    setSidebarOpen(false)
+  }
+
   return (
-    <div className="flex h-full">
-      {/* Sidebar */}
-      <div className="flex w-52 shrink-0 flex-col border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-y-auto">
+    <div className="relative flex h-full">
+      {/* Mobile backdrop when the category drawer is open */}
+      {sidebarOpen && (
+        <div
+          className="absolute inset-0 z-30 bg-black/40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      {/* Sidebar — a slide-in drawer on mobile, a fixed column on desktop */}
+      <div className={`absolute inset-y-0 left-0 z-40 flex w-52 shrink-0 flex-col overflow-y-auto border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] transition-transform lg:static lg:z-auto lg:translate-x-0 ${sidebarOpen ? 'translate-x-0 shadow-xl' : '-translate-x-full'}`}>
         <div className="p-3 space-y-0.5">
           <CategoryRow
             id="all" name="All pages" color={null}
             count={allPages.length}
             active={activeCategoryId === 'all'}
-            onClick={() => setActiveCategoryId('all')}
+            onClick={() => pickCategory('all')}
           />
           <CategoryRow
             id={null} name="Uncategorised" color={null}
             count={countForCategory(null)}
             active={activeCategoryId === null}
-            onClick={() => setActiveCategoryId(null)}
+            onClick={() => pickCategory(null)}
           />
         </div>
 
@@ -252,7 +266,7 @@ export default function LoreView() {
                       id={cat.id} name={cat.name} color={cat.color}
                       count={countForCategory(cat.id)}
                       active={activeCategoryId === cat.id}
-                      onClick={() => setActiveCategoryId(cat.id)}
+                      onClick={() => pickCategory(cat.id)}
                     />
                   )}
                   {editingCategoryId !== cat.id && (
@@ -300,15 +314,23 @@ export default function LoreView() {
           description="Your world's history, rules, and mythology — things that don't change with time."
           actions={
             <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAiOpen(true)}>
-                <Sparkles className="h-4 w-4" /> Generate with AI
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAiOpen(true)} aria-label="Generate with AI">
+                <Sparkles className="h-4 w-4" /> <span className="hidden sm:inline">Generate with AI</span>
               </Button>
-              <Button size="sm" className="gap-1.5" onClick={handleNewPage}>
-                <Plus className="h-4 w-4" /> New Page
+              <Button size="sm" className="gap-1.5" onClick={handleNewPage} aria-label="New page">
+                <Plus className="h-4 w-4" /> <span className="hidden sm:inline">New Page</span>
               </Button>
             </div>
           }
         >
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5 lg:hidden"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <PanelLeft className="h-3.5 w-3.5" /> Categories
+          </Button>
           <Input
             placeholder="Search lore…"
             value={search}
