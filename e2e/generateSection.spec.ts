@@ -243,5 +243,13 @@ test.describe('Generate a section with AI', () => {
     // generation succeeded — reaching it also proves the canvas path worked.
     await page.getByRole('button', { name: 'Add locations' }).click()
     await expect(page.getByRole('button', { name: 'AI Locations' })).toBeVisible({ timeout: 15_000 })
+
+    // Re-opening from the toolbar, the prompt now lists the places that exist,
+    // so the AI extends the tree instead of repeating it.
+    await page.getByRole('button', { name: 'AI Locations' }).click()
+    const promptBlock = page.locator('pre')
+    await expect(promptBlock).toContainText('ALREADY IN THIS WORLD')
+    await expect(promptBlock).toContainText('Aethelgard')
+    await expect(promptBlock).toContainText('Ironhold')
   })
 })

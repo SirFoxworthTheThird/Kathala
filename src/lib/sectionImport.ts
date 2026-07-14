@@ -910,6 +910,37 @@ export function countLocations(nodes: SpecLocation[]): number {
   return n
 }
 
+/**
+ * Render a world's existing location markers as an indented tree (following
+ * sub-map links), so a generation prompt can tell the AI what's already there
+ * and it can extend rather than repeat. Returns '' when there are none.
+ */
+export function formatLocationTree(
+  layers: Pick<MapLayer, 'id' | 'parentMapId'>[],
+  markers: Pick<LocationMarker, 'name' | 'mapLayerId' | 'linkedMapLayerId'>[],
+): string {
+  type M = Pick<LocationMarker, 'name' | 'mapLayerId' | 'linkedMapLayerId'>
+  const byLayer = new Map<string, M[]>()
+  for (const m of markers) {
+    if (!byLayer.has(m.mapLayerId)) byLayer.set(m.mapLayerId, [])
+    byLayer.get(m.mapLayerId)!.push(m)
+  }
+  const lines: string[] = []
+  const visited = new Set<string>()
+  function walk(layerId: string, depth: number) {
+    if (visited.has(layerId)) return
+    visited.add(layerId)
+    for (const m of byLayer.get(layerId) ?? []) {
+      lines.push(`${'  '.repeat(depth)}- ${m.name}`)
+      if (m.linkedMapLayerId) walk(m.linkedMapLayerId, depth + 1)
+    }
+  }
+  for (const root of layers.filter((l) => l.parentMapId === null)) walk(root.id, 0)
+  // List any markers on layers not reached from a root, so nothing is missed.
+  for (const l of layers) if (!visited.has(l.id) && byLayer.has(l.id)) walk(l.id, 0)
+  return lines.join('\n')
+}
+
 function iconTypeFor(node: SpecLocation): LocationIconType {
   const t = node.type?.trim().toLowerCase()
   if (t && LOCATION_ICON_TYPES.includes(t as LocationIconType)) return t as LocationIconType

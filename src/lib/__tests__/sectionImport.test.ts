@@ -9,6 +9,7 @@ import {
   parseLoreSpec, addLoreToWorld,
   parseKnowledgeSpec, addKnowledgeToWorld,
   parseLocationsSpec, addLocationsToWorld, countLocations, LOCATIONS_MAP_NAME,
+  formatLocationTree,
 } from '@/lib/sectionImport'
 
 describe('parseCharactersSpec', () => {
@@ -489,6 +490,28 @@ describe('parseLocationsSpec / countLocations', () => {
   it('errors on invalid JSON and when nothing usable is present', () => {
     expect(parseLocationsSpec('nope').error).toMatch(/valid JSON/)
     expect(parseLocationsSpec('[{"description":"x"}]').error).toMatch(/No locations/)
+  })
+})
+
+describe('formatLocationTree', () => {
+  it('renders markers as an indented tree following sub-map links', () => {
+    const layers = [
+      { id: 'root', parentMapId: null },
+      { id: 'sub-aethel', parentMapId: 'root' },
+    ]
+    const markers = [
+      { name: 'Aethelgard', mapLayerId: 'root', linkedMapLayerId: 'sub-aethel' },
+      { name: 'Suden Reach', mapLayerId: 'root', linkedMapLayerId: null },
+      { name: 'Ironhold', mapLayerId: 'sub-aethel', linkedMapLayerId: null },
+      { name: 'Greywood', mapLayerId: 'sub-aethel', linkedMapLayerId: null },
+    ]
+    expect(formatLocationTree(layers, markers)).toBe(
+      ['- Aethelgard', '  - Ironhold', '  - Greywood', '- Suden Reach'].join('\n')
+    )
+  })
+
+  it('returns empty string when there are no markers', () => {
+    expect(formatLocationTree([{ id: 'root', parentMapId: null }], [])).toBe('')
   })
 })
 

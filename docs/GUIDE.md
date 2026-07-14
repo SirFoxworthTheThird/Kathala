@@ -355,8 +355,11 @@ required.
 
 Re-running extends the same Locations map: new places are added, existing ones
 (matched by name) are updated in place, and a place that gains children grows its
-sub-map — so you can build the world out in passes. You can always upload a real
-map image later and move the pins onto it.
+sub-map — so you can build the world out in passes. To help with that, the
+prompt **lists the places you already have** (as an indented tree) and tells the
+AI to extend them rather than repeat them — reuse a place's exact name to nest new
+children under it. You can always upload a real map image later and move the pins
+onto it.
 
 ---
 
