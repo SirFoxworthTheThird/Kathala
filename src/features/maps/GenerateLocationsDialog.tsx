@@ -13,7 +13,7 @@ ${existingTree}
 `
     : ''
 
-  return `You are helping me populate my story in PlotWeave, a story-tracking app. Output ONLY a compact JSON tree of LOCATIONS — the places in your world — no explanation, no markdown fences.
+  return `You are helping me populate my story in PlotWeave, a story-tracking app. Output ONLY a compact JSON list of the PLACES in your world (each place may nest others via "children") — no explanation, no markdown fences.
 ${existingBlock}
 SHAPE:
 {
@@ -31,6 +31,7 @@ SHAPE:
 }
 
 GUIDANCE:
+- Do NOT wrap everything in a single root node (such as "Locations", "World", or "Map"). The "locations" array IS your list of top-level places — put your continents / regions / major places directly as its elements.
 - A "location" is any PLACE — a continent, a kingdom, a city, a tavern, a forest, a single room. It is NOT a map. Don't limit yourself to big, map-worthy places; include small and specific ones too.
 - "children" means "places contained within this place" (a city inside a kingdom, a room inside an inn). Nest as deep as makes sense; a place with no sub-places just omits "children".
 - "name" is required; "description" and "type" are optional. "type" is one of: city, town, dungeon, landmark, building, region, custom — pick the closest.

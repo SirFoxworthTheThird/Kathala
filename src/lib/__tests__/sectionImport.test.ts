@@ -491,6 +491,27 @@ describe('parseLocationsSpec / countLocations', () => {
     expect(parseLocationsSpec('nope').error).toMatch(/valid JSON/)
     expect(parseLocationsSpec('[{"description":"x"}]').error).toMatch(/No locations/)
   })
+
+  it('unwraps a stray "Locations" root, promoting its children to the top level', () => {
+    const json = JSON.stringify({ locations: [
+      { name: 'Locations', children: [
+        { name: 'Aethelgard', children: [{ name: 'Ironhold' }] },
+        { name: 'Suden Reach' },
+      ]},
+    ]})
+    const { locations } = parseLocationsSpec(json)
+    expect(locations!.map((l) => l.name)).toEqual(['Aethelgard', 'Suden Reach'])
+    expect(locations![0].children!.map((c) => c.name)).toEqual(['Ironhold'])
+    expect(countLocations(locations!)).toBe(3) // the wrapper is gone
+  })
+
+  it('drops a bare "Locations" node but keeps real siblings', () => {
+    const { locations } = parseLocationsSpec(JSON.stringify({ locations: [
+      { name: 'locations' }, // case-insensitive, no children → dropped
+      { name: 'Aethelgard' },
+    ]}))
+    expect(locations!.map((l) => l.name)).toEqual(['Aethelgard'])
+  })
 })
 
 describe('formatLocationTree', () => {

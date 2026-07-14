@@ -894,11 +894,30 @@ function parseLocationNodes(list: unknown[]): SpecLocation[] {
   return out
 }
 
+/**
+ * Strip a stray wrapper node named after the reserved map (e.g. an AI that
+ * puts every place under a single "Locations" root): promote such a node's
+ * children to the top level so we never create a "Locations" location that then
+ * perpetuates itself in the next prompt.
+ */
+function unwrapReservedRoots(nodes: SpecLocation[]): SpecLocation[] {
+  const out: SpecLocation[] = []
+  for (const n of nodes) {
+    if (key(n.name) === key(LOCATIONS_MAP_NAME)) {
+      if (n.children && n.children.length) out.push(...unwrapReservedRoots(n.children))
+      // A bare "Locations" node with no children is dropped entirely.
+    } else {
+      out.push(n)
+    }
+  }
+  return out
+}
+
 /** Parse and lightly validate a locations tree. */
 export function parseLocationsSpec(text: string): { locations?: SpecLocation[]; error?: string } {
   const { list, error } = extractArray(text, 'locations')
   if (error) return { error }
-  const locations = parseLocationNodes(list!)
+  const locations = unwrapReservedRoots(parseLocationNodes(list!))
   if (locations.length === 0) return { error: 'No locations with a "name" were found in that JSON.' }
   return { locations }
 }

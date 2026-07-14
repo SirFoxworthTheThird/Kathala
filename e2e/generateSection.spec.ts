@@ -251,5 +251,12 @@ test.describe('Generate a section with AI', () => {
     await expect(promptBlock).toContainText('ALREADY IN THIS WORLD')
     await expect(promptBlock).toContainText('Aethelgard')
     await expect(promptBlock).toContainText('Ironhold')
+
+    // A stray "Locations" wrapper root is unwrapped, not counted/created:
+    // this 3-node payload (Locations + 2 children) imports as just 2 places.
+    await page.getByRole('textbox', { name: 'locations JSON' }).fill(JSON.stringify({
+      locations: [{ name: 'Locations', children: [{ name: 'New Region' }, { name: 'Another Region' }] }],
+    }))
+    await expect(page.getByText(/Ready to import 2 locations/)).toBeVisible()
   })
 })
