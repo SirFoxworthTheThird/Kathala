@@ -7,13 +7,14 @@ import type { SpecLocation } from '@/lib/sectionImport'
 
 function buildPrompt(existingTree: string): string {
   const existingBlock = existingTree
-    ? `\nALREADY IN THIS WORLD — these places already exist (indentation shows nesting). Do NOT recreate them. Add NEW places, or extend the tree by nesting new children under one of these — reuse a place's EXACT name to add under it (a matching name is updated in place, never duplicated):
+    ? `
+PLACES ALREADY IN THIS WORLD (indentation shows nesting) — do NOT recreate these; only ADD new places or nest new children under one of them. To add under an existing place, reuse its EXACT name as a parent and put the new place in its "children" (a matching name is updated in place, never duplicated):
 ${existingTree}
 `
     : ''
 
   return `You are helping me populate my story in PlotWeave, a story-tracking app. Output ONLY a compact JSON tree of LOCATIONS — the places in your world — no explanation, no markdown fences.
-
+${existingBlock}
 SHAPE:
 {
   "format": "plotweave-locations",
@@ -33,9 +34,9 @@ GUIDANCE:
 - A "location" is any PLACE — a continent, a kingdom, a city, a tavern, a forest, a single room. It is NOT a map. Don't limit yourself to big, map-worthy places; include small and specific ones too.
 - "children" means "places contained within this place" (a city inside a kingdom, a room inside an inn). Nest as deep as makes sense; a place with no sub-places just omits "children".
 - "name" is required; "description" and "type" are optional. "type" is one of: city, town, dungeon, landmark, building, region, custom — pick the closest.
-- To add a place UNDER one that already exists, use that place's exact name as a parent and put the new place in its "children". Reusing an existing name updates it in place rather than duplicating it.
+- If a place from "PLACES ALREADY IN THIS WORLD" above should gain sub-places, include it by its exact name with the new sub-places under "children"; otherwise don't repeat it.
 - Output ONLY the JSON object, starting with { and ending with }.
-${existingBlock}
+
 MY STORY / WORLD:
 [DESCRIBE YOUR WORLD, OR LIST THE PLACES YOU WANT, HERE]`
 }
