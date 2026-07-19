@@ -2,6 +2,10 @@ import type { MutableRefObject } from 'react'
 import type { PlaybackSpeed } from '@/store'
 import type { CharacterSnapshot, LocationMarker, CharacterMovement, MapRoute } from '@/types'
 import type { CharacterPin, PinAnimation } from './LeafletMapCanvas'
+import { buildingLinkTargetId, type LevelLayer } from '@/lib/mapLevels'
+
+/** Minimal layer shape the map math needs: tree position plus level grouping. */
+export type PinLayer = { id: string; parentMapId: string | null } & LevelLayer
 
 /** How long character pins animate across the map per playback speed (ms) */
 export const PIN_TRAVEL_MS: Record<PlaybackSpeed, number> = { slow: 6500, normal: 4000, fast: 2200 }
@@ -36,7 +40,7 @@ export const ICON_COLORS: Record<string, string> = {
 export function resolveCharacterPin(
   snap: CharacterSnapshot,
   currentLayerId: string,
-  allLayers: { id: string; parentMapId: string | null }[],
+  allLayers: PinLayer[],
   allMarkers: LocationMarker[],
 ): ResolvedPinPosition | null {
   if (!snap.currentLocationMarkerId || !snap.currentMapLayerId) return null
@@ -50,8 +54,11 @@ export function resolveCharacterPin(
     const childLayer = allLayers.find((l) => l.id === childLayerId)
     if (!childLayer?.parentMapId) return null
     const parentLayerId = childLayer.parentMapId
+    // A building's pin links to the group's representative floor, so a character
+    // on any floor is reached through that pin.
+    const linkTarget = buildingLinkTargetId(allLayers, childLayerId)
     const linkMarker = allMarkers.find(
-      (m) => m.mapLayerId === parentLayerId && m.linkedMapLayerId === childLayerId
+      (m) => m.mapLayerId === parentLayerId && m.linkedMapLayerId === linkTarget
     )
     if (!linkMarker) return null
     if (parentLayerId === currentLayerId) {
@@ -77,6 +84,7 @@ export function buildSequentialQueue(
   duration: number,
   keyRef: MutableRefObject<number>,
   mapRoutes: MapRoute[] = [],
+  allLayers: PinLayer[] = [],
 ): PlaybackStep[] {
   const steps: PlaybackStep[] = []
   const markerById = new Map(allMarkers.map((m) => [m.id, m]))
@@ -303,11 +311,16 @@ export function buildSequentialQueue(
     } else {
       // ── Cross-layer move: departure step then arrival step ─────────────────
       const prevMarker = prevMarkerId ? markerById.get(prevMarkerId) : undefined
+      // A building is entered/left through the pin that links to its group's
+      // representative floor, so normalise both ends to their link targets — this
+      // routes cross-floor and building moves through the right pin.
+      const currLinkTarget = buildingLinkTargetId(allLayers, currLayerId)
+      const prevLinkTarget = buildingLinkTargetId(allLayers, prevLayerId)
       const portalOnPrev = allMarkers.find(
-        (m) => m.mapLayerId === prevLayerId && m.linkedMapLayerId === currLayerId,
+        (m) => m.mapLayerId === prevLayerId && m.linkedMapLayerId === currLinkTarget,
       )
       const portalOnCurr = allMarkers.find(
-        (m) => m.mapLayerId === currLayerId && m.linkedMapLayerId === prevLayerId,
+        (m) => m.mapLayerId === currLayerId && m.linkedMapLayerId === prevLinkTarget,
       )
 
       // ── Departure step ────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   levelsInGroup, groupRepresentativeId, isTreeVisible, treeVisibleLayers, nextLevelIndexAbove,
-  type LevelLayer,
+  buildingLinkTargetId, type LevelLayer,
 } from '@/lib/mapLevels'
 
 // A world: standalone map S; a castle group G with dungeons(-1), ground(0), first(1).
@@ -45,5 +45,16 @@ describe('isTreeVisible / treeVisibleLayers', () => {
 describe('nextLevelIndexAbove', () => {
   it('is one above the top floor', () => {
     expect(nextLevelIndexAbove(layers, 'G')).toBe(2)
+  })
+})
+
+describe('buildingLinkTargetId', () => {
+  it('returns a standalone layer unchanged', () => {
+    expect(buildingLinkTargetId(layers, 'S')).toBe('S')
+  })
+  it('maps any floor to the group representative (the pin target)', () => {
+    expect(buildingLinkTargetId(layers, 'G1')).toBe('Gg')   // first floor → ground
+    expect(buildingLinkTargetId(layers, 'Gd')).toBe('Gg')   // dungeon → ground
+    expect(buildingLinkTargetId(layers, 'Gg')).toBe('Gg')   // ground → itself
   })
 })

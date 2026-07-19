@@ -42,6 +42,17 @@ export function treeVisibleLayers<T extends LevelLayer>(layers: T[]): T[] {
   return layers.filter((l) => isTreeVisible(layers, l))
 }
 
+/**
+ * The layer a parent-map pin actually links to for `layerId`. A building's pin
+ * links to its group's representative floor, so a character on ANY floor is
+ * reached through that one pin. For a standalone layer this is the layer itself.
+ */
+export function buildingLinkTargetId<T extends LevelLayer>(layers: T[], layerId: string): string {
+  const layer = layers.find((l) => l.id === layerId)
+  if (layer?.levelGroupId) return groupRepresentativeId(layers, layer.levelGroupId) ?? layerId
+  return layerId
+}
+
 /** The next levelIndex above the top of a group (or 1 for a group that only has its base at 0). */
 export function nextLevelIndexAbove<T extends LevelLayer>(layers: T[], groupId: string): number {
   const members = levelsInGroup(layers, groupId)

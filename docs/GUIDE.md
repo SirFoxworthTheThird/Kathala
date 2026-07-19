@@ -366,6 +366,12 @@ reachable. Levels differ from sub-maps: sub-maps are places you *drill into*
 (Grounds → Castle), while floors are levels of the same place you *flip between* —
 and the two compose, so a castle reached from the grounds can itself have floors.
 
+Characters move between floors just by being at a location on a different floor
+in the next chapter — no special "stairs" needed. On the parent map a character
+on **any** floor shows at the building's pin, and during **playback** the map
+follows them: as the story reaches a chapter where a character has crossed to
+another floor, it switches to that floor and lands their pin at the right spot.
+
 ![Map levels](images/29-map-levels.png)
 
 Press **play** in the chapter bar and the map becomes a playback stage: as the

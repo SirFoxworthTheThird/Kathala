@@ -145,7 +145,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   // ── Playback queue ─────────────────────────────────────────────────────────
   const { pinAnimation, handlePlaybackAnimationEnd } = usePlaybackQueue({
     worldId, layerId, isPlayingStory, playbackSpeed, activeEventId,
-    prevSnapshots, snapshots, allMarkers, mapRoutes,
+    prevSnapshots, snapshots, allMarkers, mapRoutes, allLayers,
     pinAnimationKeyRef, requestLayerSwitch,
   })
 
