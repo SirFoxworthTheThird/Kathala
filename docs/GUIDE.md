@@ -378,7 +378,11 @@ Copy the prompt, describe your world, and paste back a nested JSON tree
 (continent → kingdom → city → district). PlotWeave creates a blank **Locations**
 map and drops each place on it as a pin; a place with children becomes a pin that
 **drills into a sub-map** holding them, as deep as your tree goes — no map image
-required.
+required. A multi-storey place (a castle, tower or keep) can use **`levels`**
+instead of `children`: the AI lists its floors, each with its own locations, and
+PlotWeave builds them as a [level group](#maps) with a floor switcher — so *Great
+Hall* on the ground floor and *Library* on the first floor land on the right
+floors automatically.
 
 ![Generate locations with AI](images/27-generate-locations.png)
 
@@ -387,9 +391,10 @@ ones are **matched by name across the whole world** — updated in place and nev
 duplicated, even if the AI puts a place under a different parent than before. A
 place's position in the tree is fixed the first time it's created; new children
 still attach under it. So you can build the world out in passes. To help with that, the
-prompt **lists the places you already have** (as an indented tree) and tells the
-AI to extend them rather than repeat them — reuse a place's exact name to nest new
-children under it. You can always upload a real map image later and move the pins
+prompt **lists the places you already have** (as an indented tree, floors shown
+as `[bracketed]` headers) and tells the AI to extend them rather than repeat them
+— reuse a place's exact name to nest new children under it, or add floors to a
+leveled place by reusing its floor names. You can always upload a real map image later and move the pins
 onto it.
 
 ---

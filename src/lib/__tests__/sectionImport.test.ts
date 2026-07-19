@@ -487,6 +487,22 @@ describe('parseLocationsSpec / countLocations', () => {
     expect(countLocations(locations!)).toBe(4) // Aethel, Ironhold, The Keep, Greywood
   })
 
+  it('parses a place with "levels" and counts the floor locations', () => {
+    const json = JSON.stringify({ locations: [
+      { name: 'Castle', type: 'building', levels: [
+        { name: 'Ground floor', children: [{ name: 'Great Hall' }, { name: '  ' }] },
+        { name: 'First floor', children: [{ name: 'Library' }] },
+        { description: 'no name' },
+      ]},
+    ]})
+    const { locations, error } = parseLocationsSpec(json)
+    expect(error).toBeUndefined()
+    expect(locations![0].levels).toHaveLength(2) // nameless level dropped
+    expect(locations![0].levels![0].children!.map((c) => c.name)).toEqual(['Great Hall'])
+    // Castle + Great Hall + Library.
+    expect(countLocations(locations!)).toBe(3)
+  })
+
   it('errors on invalid JSON and when nothing usable is present', () => {
     expect(parseLocationsSpec('nope').error).toMatch(/valid JSON/)
     expect(parseLocationsSpec('[{"description":"x"}]').error).toMatch(/No locations/)
@@ -533,6 +549,29 @@ describe('formatLocationTree', () => {
 
   it('returns empty string when there are no markers', () => {
     expect(formatLocationTree([{ id: 'root', parentMapId: null }], [])).toBe('')
+  })
+
+  it('shows a leveled place as floor headers with each floor\'s own locations', () => {
+    // A castle (sub-map of the root) that is a level group with two floors.
+    const layers = [
+      { id: 'root', parentMapId: null },
+      { id: 'ground', parentMapId: 'root', levelGroupId: 'G', levelIndex: 0, levelLabel: 'Ground floor' },
+      { id: 'first', parentMapId: 'root', levelGroupId: 'G', levelIndex: 1, levelLabel: 'First floor' },
+    ]
+    const markers = [
+      { name: 'Hogwarts Castle', mapLayerId: 'root', linkedMapLayerId: 'ground' },
+      { name: 'Great Hall', mapLayerId: 'ground', linkedMapLayerId: null },
+      { name: 'Library', mapLayerId: 'first', linkedMapLayerId: null },
+    ]
+    expect(formatLocationTree(layers, markers)).toBe(
+      [
+        '- Hogwarts Castle',
+        '  [Ground floor]',
+        '    - Great Hall',
+        '  [First floor]',
+        '    - Library',
+      ].join('\n'),
+    )
   })
 })
 
@@ -633,5 +672,80 @@ describe('addLocationsToWorld', () => {
     expect(ironhold.linkedMapLayerId).not.toBeNull()
     const children = await db.locationMarkers.where('mapLayerId').equals(ironhold.linkedMapLayerId!).toArray()
     expect(children.map((m) => m.name)).toEqual(['The Keep'])
+  })
+
+  it('builds a level group from a place with "levels", each floor holding its own locations', async () => {
+    const res = await addLocationsToWorld(worldId, [
+      { name: 'Hogwarts Castle', type: 'building', levels: [
+        { name: 'Ground floor', children: [{ name: 'Great Hall' }] },
+        { name: 'First floor', children: [{ name: 'Library' }] },
+      ]},
+    ], fakeImage)
+    // Castle + Great Hall + Library.
+    expect(res).toMatchObject({ added: 3 })
+
+    const layers = await db.mapLayers.where('worldId').equals(worldId).toArray()
+    const root = layers.find((l) => l.parentMapId === null)!
+    const castle = (await db.locationMarkers.where('mapLayerId').equals(root.id).toArray())[0]
+    expect(castle.name).toBe('Hogwarts Castle')
+
+    // The castle drills into its ground floor (the group representative).
+    const ground = layers.find((l) => l.id === castle.linkedMapLayerId)!
+    expect(ground.levelGroupId).toBeTruthy()
+    expect(ground.levelIndex).toBe(0)
+    expect(ground.levelLabel).toBe('Ground floor')
+    expect(ground.parentMapId).toBe(root.id)
+
+    const floors = layers.filter((l) => l.levelGroupId === ground.levelGroupId)
+    expect(floors).toHaveLength(2)
+    const first = floors.find((l) => l.levelIndex === 1)!
+    expect(first.levelLabel).toBe('First floor')
+    expect(first.parentMapId).toBe(root.id)
+
+    // Each floor keeps its own locations.
+    const groundMarkers = await db.locationMarkers.where('mapLayerId').equals(ground.id).toArray()
+    const firstMarkers = await db.locationMarkers.where('mapLayerId').equals(first.id).toArray()
+    expect(groundMarkers.map((m) => m.name)).toEqual(['Great Hall'])
+    expect(firstMarkers.map((m) => m.name)).toEqual(['Library'])
+  })
+
+  it('is idempotent: re-running the same levels reuses floors instead of duplicating', async () => {
+    const spec = [
+      { name: 'Keep', type: 'building', levels: [
+        { name: 'Cellar', children: [{ name: 'Wine Store' }] },
+        { name: 'Hall', children: [{ name: 'Throne Room' }] },
+      ]},
+    ]
+    await addLocationsToWorld(worldId, spec, fakeImage)
+    const res2 = await addLocationsToWorld(worldId, spec, fakeImage)
+    expect(res2.added).toBe(0) // nothing new the second time
+
+    const layers = await db.mapLayers.where('worldId').equals(worldId).toArray()
+    const groupIds = new Set(layers.filter((l) => l.levelGroupId).map((l) => l.levelGroupId))
+    expect(groupIds.size).toBe(1) // one group
+    expect(layers.filter((l) => l.levelGroupId).length).toBe(2) // still two floors, not four
+    const markers = await db.locationMarkers.where('worldId').equals(worldId).toArray()
+    expect(markers.filter((m) => m.name === 'Throne Room')).toHaveLength(1)
+  })
+
+  it('adds a new floor to an existing level group on a later run', async () => {
+    await addLocationsToWorld(worldId, [
+      { name: 'Tower', type: 'building', levels: [{ name: 'Base', children: [{ name: 'Gate' }] }] },
+    ], fakeImage)
+    // Second run adds an upper floor to the same tower.
+    await addLocationsToWorld(worldId, [
+      { name: 'Tower', type: 'building', levels: [
+        { name: 'Base', children: [{ name: 'Gate' }] },
+        { name: 'Top', children: [{ name: 'Beacon' }] },
+      ]},
+    ], fakeImage)
+
+    const layers = await db.mapLayers.where('worldId').equals(worldId).toArray()
+    const floors = layers.filter((l) => l.levelGroupId)
+    expect(floors).toHaveLength(2)
+    expect(floors.map((l) => l.levelLabel).sort()).toEqual(['Base', 'Top'])
+    const beacon = (await db.locationMarkers.where('worldId').equals(worldId).toArray()).find((m) => m.name === 'Beacon')!
+    const top = floors.find((l) => l.levelLabel === 'Top')!
+    expect(beacon.mapLayerId).toBe(top.id)
   })
 })

@@ -862,12 +862,20 @@ export async function addKnowledgeToWorld(
 // ── Locations ─────────────────────────────────────────────────────────────────
 
 /** A node in a location tree. Children nest into a sub-map of their parent. */
+/** One floor/level of a place, holding the locations on that floor. */
+export interface SpecLevel {
+  name: string
+  children?: SpecLocation[]
+}
+
 export interface SpecLocation {
   name: string
   description?: string
   /** city | town | dungeon | landmark | building | region | custom */
   type?: string
   children?: SpecLocation[]
+  /** Floors of this place (a castle's dungeons, ground floor, upper floors…). */
+  levels?: SpecLevel[]
 }
 
 const LOCATION_ICON_TYPES: LocationIconType[] = ['city', 'town', 'dungeon', 'landmark', 'building', 'region', 'custom']
@@ -888,6 +896,21 @@ function parseLocationNodes(list: unknown[]): SpecLocation[] {
       name: l.name,
       description: typeof l.description === 'string' ? l.description : undefined,
       type: typeof l.type === 'string' ? l.type : undefined,
+      children: Array.isArray(l.children) ? parseLocationNodes(l.children) : undefined,
+      levels: Array.isArray(l.levels) ? parseLevelNodes(l.levels) : undefined,
+    })
+  }
+  return out
+}
+
+function parseLevelNodes(list: unknown[]): SpecLevel[] {
+  const out: SpecLevel[] = []
+  for (const raw of list) {
+    if (!raw || typeof raw !== 'object') continue
+    const l = raw as Record<string, unknown>
+    if (typeof l.name !== 'string' || !l.name.trim()) continue
+    out.push({
+      name: l.name,
       children: Array.isArray(l.children) ? parseLocationNodes(l.children) : undefined,
     })
   }
@@ -922,10 +945,13 @@ export function parseLocationsSpec(text: string): { locations?: SpecLocation[]; 
   return { locations }
 }
 
-/** Total number of nodes in a location tree (all levels). */
+/** Total number of place nodes in a location tree (children and floor locations). */
 export function countLocations(nodes: SpecLocation[]): number {
   let n = 0
-  for (const node of nodes) n += 1 + (node.children ? countLocations(node.children) : 0)
+  for (const node of nodes) {
+    n += 1 + (node.children ? countLocations(node.children) : 0)
+    for (const lvl of node.levels ?? []) n += lvl.children ? countLocations(lvl.children) : 0
+  }
   return n
 }
 
@@ -935,7 +961,7 @@ export function countLocations(nodes: SpecLocation[]): number {
  * and it can extend rather than repeat. Returns '' when there are none.
  */
 export function formatLocationTree(
-  layers: Pick<MapLayer, 'id' | 'parentMapId'>[],
+  layers: (Pick<MapLayer, 'id' | 'parentMapId'> & Partial<Pick<MapLayer, 'levelGroupId' | 'levelIndex' | 'levelLabel'>>)[],
   markers: Pick<LocationMarker, 'name' | 'mapLayerId' | 'linkedMapLayerId'>[],
 ): string {
   type M = Pick<LocationMarker, 'name' | 'mapLayerId' | 'linkedMapLayerId'>
@@ -944,16 +970,40 @@ export function formatLocationTree(
     if (!byLayer.has(m.mapLayerId)) byLayer.set(m.mapLayerId, [])
     byLayer.get(m.mapLayerId)!.push(m)
   }
+  const byId = new Map(layers.map((l) => [l.id, l]))
   const lines: string[] = []
   const visited = new Set<string>()
-  function walk(layerId: string, depth: number) {
-    if (visited.has(layerId)) return
-    visited.add(layerId)
+  const pad = (d: number) => '  '.repeat(d)
+
+  function listMarkers(layerId: string, depth: number) {
     for (const m of byLayer.get(layerId) ?? []) {
-      lines.push(`${'  '.repeat(depth)}- ${m.name}`)
+      lines.push(`${pad(depth)}- ${m.name}`)
       if (m.linkedMapLayerId) walk(m.linkedMapLayerId, depth + 1)
     }
   }
+
+  function walk(layerId: string, depth: number) {
+    if (visited.has(layerId)) return
+    const layer = byId.get(layerId)
+    // A leveled place: show each floor as a header with its own locations nested.
+    if (layer?.levelGroupId) {
+      const floors = layers
+        .filter((l) => l.levelGroupId === layer.levelGroupId)
+        .sort((a, b) => (a.levelIndex ?? 0) - (b.levelIndex ?? 0) || a.id.localeCompare(b.id))
+      for (const f of floors) visited.add(f.id)
+      if (floors.length > 1) {
+        for (const f of floors) {
+          lines.push(`${pad(depth)}[${f.levelLabel || 'Level'}]`)
+          listMarkers(f.id, depth + 1)
+        }
+        return
+      }
+      // A degenerate one-floor group reads like a normal map.
+    }
+    visited.add(layerId)
+    listMarkers(layerId, depth)
+  }
+
   for (const root of layers.filter((l) => l.parentMapId === null)) walk(root.id, 0)
   // List any markers on layers not reached from a root, so nothing is missed.
   for (const l of layers) if (!visited.has(l.id) && byLayer.has(l.id)) walk(l.id, 0)
@@ -963,6 +1013,7 @@ export function formatLocationTree(
 function iconTypeFor(node: SpecLocation): LocationIconType {
   const t = node.type?.trim().toLowerCase()
   if (t && LOCATION_ICON_TYPES.includes(t as LocationIconType)) return t as LocationIconType
+  if (node.levels && node.levels.length > 0) return 'building' // a floored place
   return node.children && node.children.length > 0 ? 'region' : 'landmark'
 }
 
@@ -1034,14 +1085,20 @@ export async function addLocationsToWorld(
     return entry.id
   }
 
-  async function createLayer(parentMapId: string | null, name: string): Promise<MapLayer> {
+  async function createLayer(
+    parentMapId: string | null,
+    name: string,
+    level?: { levelGroupId: string; levelIndex: number; levelLabel: string },
+  ): Promise<MapLayer> {
     const id = await imageId()
     const layer: MapLayer = {
       id: generateId(), worldId, parentMapId, name,
       description: '', imageId: id,
       imageWidth: imageDims.width, imageHeight: imageDims.height,
       scalePixelsPerUnit: null, scaleUnit: null,
-      levelGroupId: null, levelIndex: 0, levelLabel: '',
+      levelGroupId: level?.levelGroupId ?? null,
+      levelIndex: level?.levelIndex ?? 0,
+      levelLabel: level?.levelLabel ?? '',
       createdAt: now, updatedAt: now,
     }
     await db.mapLayers.add(layer)
@@ -1069,6 +1126,61 @@ export async function addLocationsToWorld(
     return sub.id
   }
 
+  /**
+   * Turn a marker's sub-map into a level group and place each floor's locations.
+   * The marker's sub-map is the ground floor (representative); further levels are
+   * stacked above. Re-runs reuse a floor by its label instead of duplicating it.
+   * Returns true if it created or changed any floor structure.
+   */
+  async function placeLevels(marker: LocationMarker, levels: SpecLevel[]): Promise<boolean> {
+    if (levels.length === 0) return false
+    let structural = false
+
+    // Ground floor = the marker's sub-map.
+    const groundId = await ensureSubMap(marker) // may create it (structural, but tracked by caller)
+    const ground = (await db.mapLayers.get(groundId))!
+    let groupId = ground.levelGroupId
+    if (!groupId) {
+      groupId = generateId()
+      await db.mapLayers.update(groundId, {
+        levelGroupId: groupId,
+        levelIndex: 0,
+        levelLabel: levels[0].name.trim() || ground.levelLabel || 'Ground floor',
+        updatedAt: now,
+      })
+      structural = true
+    }
+
+    // Existing floors, indexed by label, plus the next free index above the top.
+    const groupLayers = await db.mapLayers.where('levelGroupId').equals(groupId).toArray()
+    const floorByLabel = new Map<string, MapLayer>()
+    for (const l of groupLayers) floorByLabel.set(key(l.levelLabel), l)
+    let nextIndex = groupLayers.length ? Math.max(...groupLayers.map((l) => l.levelIndex)) + 1 : 1
+
+    for (let i = 0; i < levels.length; i++) {
+      const lvl = levels[i]
+      const label = lvl.name.trim()
+      let floorId: string
+      if (i === 0) {
+        floorId = groundId // the representative is always the first level
+      } else {
+        const existingFloor = floorByLabel.get(key(label))
+        if (existingFloor) {
+          floorId = existingFloor.id
+        } else {
+          const floor = await createLayer(marker.mapLayerId, marker.name, {
+            levelGroupId: groupId, levelIndex: nextIndex++, levelLabel: label || `Level ${i}`,
+          })
+          floorByLabel.set(key(label), floor)
+          floorId = floor.id
+          structural = true
+        }
+      }
+      if (lvl.children && lvl.children.length > 0) await placeNodes(lvl.children, floorId)
+    }
+    return structural
+  }
+
   async function placeNodes(nodes: SpecLocation[], mapLayerId: string): Promise<void> {
     for (const node of nodes) {
       const name = node.name.trim()
@@ -1086,14 +1198,18 @@ export async function addLocationsToWorld(
         const pruned = changedFields(existing, patch)
         let structural = false
         let subId = existing.linkedMapLayerId
-        if (node.children && node.children.length > 0 && !subId) {
+        if (node.levels && node.levels.length > 0) {
+          // Floors take over the sub-map; build/extend the level group.
+          if (await placeLevels(existing, node.levels)) structural = true
+          subId = existing.linkedMapLayerId
+        } else if (node.children && node.children.length > 0 && !subId) {
           subId = await ensureSubMap(existing) // counts as a structural change
           structural = true
         }
         if (Object.keys(pruned).length) await db.locationMarkers.update(existing.id, { ...pruned, updatedAt: now })
         if (Object.keys(pruned).length > 0 || structural) { updated++; updatedNames.push(name) }
         else skipped++
-        if (node.children && node.children.length > 0 && subId) await placeNodes(node.children, subId)
+        if (!node.levels?.length && node.children && node.children.length > 0 && subId) await placeNodes(node.children, subId)
         continue
       }
 
@@ -1101,8 +1217,9 @@ export async function addLocationsToWorld(
       const idx = countByLayer.get(mapLayerId) ?? 0
       countByLayer.set(mapLayerId, idx + 1)
       const pos = positionForIndex(idx, imageDims.width, imageDims.height)
+      const hasLevels = !!(node.levels && node.levels.length > 0)
       let subId: string | null = null
-      if (node.children && node.children.length > 0) subId = (await createLayer(mapLayerId, name)).id
+      if (!hasLevels && node.children && node.children.length > 0) subId = (await createLayer(mapLayerId, name)).id
       const marker: LocationMarker = {
         id: generateId(), worldId, mapLayerId,
         linkedMapLayerId: subId,
@@ -1116,7 +1233,8 @@ export async function addLocationsToWorld(
       await db.locationMarkers.add(marker)
       markerByName.set(k, marker)
       added++; addedNames.push(name)
-      if (subId) await placeNodes(node.children!, subId)
+      if (hasLevels) await placeLevels(marker, node.levels!)
+      else if (subId) await placeNodes(node.children!, subId)
     }
   }
 
