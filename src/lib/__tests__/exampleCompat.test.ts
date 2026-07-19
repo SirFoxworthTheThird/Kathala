@@ -52,6 +52,17 @@ describe('bundled example worlds stay importable', () => {
         expect(ch.wordGoal).toBeNull()
       }
 
+      // Map layers gained level (floor) fields after these files were exported —
+      // backfilled so every layer imports as a standalone map, and parentMapId
+      // normalised to null (v43/v44). No fix to the example files needed.
+      const mapLayers = await db.mapLayers.where('worldId').equals(worldId).toArray()
+      for (const l of mapLayers) {
+        expect(l.levelGroupId).toBeNull()
+        expect(l.levelIndex).toBe(0)
+        expect(l.levelLabel).toBe('')
+        expect(l.parentMapId === null || typeof l.parentMapId === 'string').toBe(true)
+      }
+
       // Knowledge and manuscript tables exist and default to empty for pre-feature exports.
       expect(await db.knowledgeFacts.where('worldId').equals(worldId).count()).toBe(0)
       expect(await db.knowledgeReveals.where('worldId').equals(worldId).count()).toBe(0)
