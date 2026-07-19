@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom'
 import { Plus, Upload, Map as MapIcon, Ruler, X, Route, Download, Sparkles, Type, Trash2, PanelLeft, Crosshair, ImageUp, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore, useActiveMapLayerId } from '@/store'
-import { useRootMapLayers, updateMapLayer, deleteMapLayer } from '@/db/hooks/useMapLayers'
+import { useRootMapLayers, updateMapLayer, deleteMapLevel } from '@/db/hooks/useMapLayers'
 import { levelsInGroup } from '@/lib/mapLevels'
 import { FloorSwitcher } from './FloorSwitcher'
 import { Button } from '@/components/ui/button'
@@ -174,7 +174,12 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       const other = groupFloors.find((f) => f.id !== floorId)
       if (other) swapActiveMapLayer(other.id)
     }
-    await deleteMapLayer(floorId)
+    // Re-points the building's drill-in link if the representative floor goes.
+    await deleteMapLevel(floorId)
+  }
+
+  function renameFloor(floorId: string, label: string) {
+    updateMapLayer(floorId, { levelLabel: label.trim() || 'Level' })
   }
 
   // ── Consume pending route/region focus from search palette ────────────────
@@ -787,6 +792,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               onSwitch={switchFloor}
               onAddLevel={() => setAddLevelOpen(true)}
               onDeleteFloor={deleteFloor}
+              onRenameFloor={renameFloor}
             />
           )}
 

@@ -3,6 +3,7 @@ import { db } from '@/db/database'
 import type { MapLayer } from '@/types'
 import { generateId } from '@/lib/id'
 import { descendantLayerIds } from '@/lib/mapTree'
+import { groupRepresentativeId } from '@/lib/mapLevels'
 
 const MAP_DELETE_TABLES = [
   db.mapLayers, db.locationMarkers, db.locationSnapshots, db.characterSnapshots,
@@ -173,6 +174,43 @@ export async function addMapLevel(
     await db.mapLayers.add(floor)
     return floor.id
   })
+}
+
+/**
+ * Delete one floor of a level group. If it was the group's representative (the
+ * floor that markers/regions drill into) and other floors remain, those links
+ * are re-pointed to the new representative so the place stays reachable from the
+ * map. A standalone layer just deletes normally.
+ */
+export async function deleteMapLevel(floorId: string): Promise<void> {
+  const floor = await db.mapLayers.get(floorId)
+  if (!floor || !floor.levelGroupId) {
+    await deleteMapLayer(floorId)
+    return
+  }
+  const groupId = floor.levelGroupId
+  const members = await db.mapLayers.where('levelGroupId').equals(groupId).toArray()
+  const wasRepresentative = groupRepresentativeId(members, groupId) === floorId
+  const remaining = members.filter((l) => l.id !== floorId)
+
+  // Capture what drills into this floor before the cascade clears those links.
+  let linkingMarkerIds: string[] = []
+  let linkingRegionIds: string[] = []
+  if (wasRepresentative && remaining.length > 0) {
+    linkingMarkerIds = (await db.locationMarkers.filter((m) => m.linkedMapLayerId === floorId).toArray()).map((m) => m.id)
+    linkingRegionIds = (await db.mapRegions.filter((r) => r.linkedMapLayerId === floorId).toArray()).map((r) => r.id)
+  }
+
+  await deleteMapLayer(floorId)
+
+  if (wasRepresentative && remaining.length > 0) {
+    const newRep = groupRepresentativeId(remaining, groupId)
+    if (newRep) {
+      const now = Date.now()
+      for (const id of linkingMarkerIds) await db.locationMarkers.update(id, { linkedMapLayerId: newRep, updatedAt: now })
+      for (const id of linkingRegionIds) await db.mapRegions.update(id, { linkedMapLayerId: newRep, updatedAt: now })
+    }
+  }
 }
 
 /**

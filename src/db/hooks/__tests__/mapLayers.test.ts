@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
-import { createMapLayer, deleteMapLayer, replaceMapLayerImage, addMapLevel } from '@/db/hooks/useMapLayers'
+import { createMapLayer, deleteMapLayer, replaceMapLayerImage, addMapLevel, deleteMapLevel } from '@/db/hooks/useMapLayers'
 import { createLocationMarker } from '@/db/hooks/useLocationMarkers'
 import type { MapRegion, MapRoute } from '@/types'
 
@@ -280,5 +280,47 @@ describe('addMapLevel', () => {
     expect(await db.locationMarkers.get(onFirst.id)).toBeUndefined()
     expect(await db.mapLayers.get(base.id)).toBeDefined()
     expect(await db.locationMarkers.get(onGround.id)).toBeDefined()
+  })
+})
+
+describe('deleteMapLevel', () => {
+  it('re-points a building\'s drill-in link when the representative floor is deleted', async () => {
+    const root = await createMapLayer(makeLayerData({ name: 'Grounds' }))
+    const ground = await createMapLayer(makeLayerData({ name: 'Castle', parentMapId: root.id }))
+    // A pin on the grounds that drills into the castle's ground floor.
+    const pin = await createLocationMarker({
+      worldId: 'world-1', mapLayerId: root.id, name: 'Castle', description: '', x: 1, y: 1,
+      iconType: 'building', linkedMapLayerId: ground.id,
+    })
+    const upId = await addMapLevel(ground.id, { imageId: 'f1', imageWidth: 10, imageHeight: 10 }, 'First floor')
+
+    // Delete the ground floor (the representative that the pin links to).
+    await deleteMapLevel(ground.id)
+
+    expect(await db.mapLayers.get(ground.id)).toBeUndefined()
+    // The pin now drills into the surviving first floor — not left dangling.
+    expect((await db.locationMarkers.get(pin.id))!.linkedMapLayerId).toBe(upId)
+  })
+
+  it('leaves links alone when a non-representative floor is deleted', async () => {
+    const root = await createMapLayer(makeLayerData({ name: 'Grounds' }))
+    const ground = await createMapLayer(makeLayerData({ name: 'Castle', parentMapId: root.id }))
+    const pin = await createLocationMarker({
+      worldId: 'world-1', mapLayerId: root.id, name: 'Castle', description: '', x: 1, y: 1,
+      iconType: 'building', linkedMapLayerId: ground.id,
+    })
+    const upId = await addMapLevel(ground.id, { imageId: 'f1', imageWidth: 10, imageHeight: 10 }, 'First floor')
+
+    await deleteMapLevel(upId!) // remove the upper floor
+
+    expect(await db.mapLayers.get(upId!)).toBeUndefined()
+    // Pin still points at the (unchanged) ground floor.
+    expect((await db.locationMarkers.get(pin.id))!.linkedMapLayerId).toBe(ground.id)
+  })
+
+  it('deletes a standalone layer normally', async () => {
+    const layer = await createMapLayer(makeLayerData())
+    await deleteMapLevel(layer.id)
+    expect(await db.mapLayers.get(layer.id)).toBeUndefined()
   })
 })

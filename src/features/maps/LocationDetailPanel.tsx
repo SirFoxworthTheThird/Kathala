@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useLocationMarker, updateLocationMarker, deleteLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
+import { isTreeVisible } from '@/lib/mapLevels'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useBestSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { useTimelines, useChapters, createTimeline, createChapter } from '@/db/hooks/useTimeline'
@@ -223,7 +224,9 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
     await updateLocationMarker(markerId, { linkedMapLayerId: layerId === 'none' ? null : layerId })
   }
 
-  const otherLayers = allLayers.filter((l) => l.id !== marker.mapLayerId)
+  // Offer only standalone maps and each building's representative floor as
+  // linkable sub-maps — never the individual floors of a level group.
+  const otherLayers = allLayers.filter((l) => l.id !== marker.mapLayerId && isTreeVisible(allLayers, l))
 
   return (
     <div className="flex h-full w-[85vw] max-w-sm shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl sm:w-72 sm:max-w-none">

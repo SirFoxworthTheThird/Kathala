@@ -359,8 +359,10 @@ switcher** appears on the right edge — floors stacked bottom-to-top, the curre
 one highlighted. Tap a floor to jump to it; your pan and zoom are held so a
 stairwell or tower lines up between floors. Each floor is a full map with **its
 own locations**, routes and regions, so a marker on the First floor stays on the
-First floor. Add more floors with the **+** on the switcher, or remove one with
-its trash icon. Levels differ from sub-maps: sub-maps are places you *drill into*
+First floor. Add more floors with the **+** on the switcher, **rename** a floor
+(double-click it, or the pencil), or remove one with its trash icon — deleting
+the ground floor re-points the place's pin to the next floor so it stays
+reachable. Levels differ from sub-maps: sub-maps are places you *drill into*
 (Grounds → Castle), while floors are levels of the same place you *flip between* —
 and the two compose, so a castle reached from the grounds can itself have floors.
 
