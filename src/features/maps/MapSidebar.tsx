@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import {
   Users, Map as MapIcon, MapPin, Package, Layers,
   ChevronRight, ChevronDown, Trash2, Undo2, X, Search,
@@ -92,30 +92,29 @@ function LayerTreeNode({
   allLayers,
   activeLayerId,
   depth,
-  onSelect,
   onDeleted,
   draggingId,
-  setDraggingId,
-  onReparent,
+  hoverId,
+  onBeginDrag,
 }: {
   layer: MapLayer
   allLayers: MapLayer[]
   activeLayerId: string | null
   depth: number
-  onSelect: (id: string) => void
   onDeleted: (id: string) => void
   draggingId: string | null
-  setDraggingId: (id: string | null) => void
-  onReparent: (draggedId: string, targetId: string | null) => void
+  hoverId: string | null
+  onBeginDrag: (id: string, x: number, y: number) => void
 }) {
   const children = allLayers.filter((l) => l.parentMapId === layer.id)
   const [open, setOpen] = useState(true)
   const [hovered, setHovered] = useState(false)
-  const [dragOver, setDragOver] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const isActive = layer.id === activeLayerId
-  const childCount = allLayers.filter((l) => l.parentMapId === layer.id).length
-  const isValidTarget = !!draggingId && canReparentLayer(allLayers, draggingId, layer.id)
+  const childCount = children.length
+  const isDropTarget =
+    hoverId === layer.id && !!draggingId && canReparentLayer(allLayers, draggingId, layer.id)
+  const isDragged = draggingId === layer.id
 
   async function handleDelete() {
     await deleteMapLayer(layer.id)
@@ -125,42 +124,21 @@ function LayerTreeNode({
   return (
     <div>
       <div
-        draggable
-        onDragStart={(e) => {
-          e.stopPropagation()
-          e.dataTransfer.setData('text/plain', layer.id)
-          e.dataTransfer.effectAllowed = 'move'
-          setDraggingId(layer.id)
-        }}
-        onDragEnd={() => { setDraggingId(null); setDragOver(false) }}
-        onDragOver={(e) => {
-          if (!isValidTarget) return
-          e.preventDefault()
-          e.stopPropagation()
-          e.dataTransfer.dropEffect = 'move'
-          if (!dragOver) setDragOver(true)
-        }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          setDragOver(false)
-          const id = e.dataTransfer.getData('text/plain') || draggingId
-          if (id && canReparentLayer(allLayers, id, layer.id)) {
-            setOpen(true)
-            onReparent(id, layer.id)
-          }
-          setDraggingId(null)
+        data-layer-drop={layer.id}
+        onMouseDown={(e) => {
+          // Left button only; ignore clicks that start on a control button.
+          if (e.button !== 0) return
+          if ((e.target as HTMLElement).closest('button')) return
+          onBeginDrag(layer.id, e.clientX, e.clientY)
         }}
         className={`group flex items-center gap-1 cursor-pointer select-none transition-colors rounded-sm mx-1 ${
-          dragOver && isValidTarget
+          isDropTarget
             ? 'ring-1 ring-[hsl(var(--ring))] bg-[hsl(var(--accent))]'
             : isActive
             ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
             : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]'
-        }`}
+        } ${isDragged ? 'opacity-50' : ''}`}
         style={{ paddingLeft: `${8 + depth * 12}px`, paddingRight: 4, paddingTop: 4, paddingBottom: 4 }}
-        onClick={() => onSelect(layer.id)}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         title="Drag onto another map to nest it inside"
@@ -201,11 +179,10 @@ function LayerTreeNode({
           allLayers={allLayers}
           activeLayerId={activeLayerId}
           depth={depth + 1}
-          onSelect={onSelect}
           onDeleted={onDeleted}
           draggingId={draggingId}
-          setDraggingId={setDraggingId}
-          onReparent={onReparent}
+          hoverId={hoverId}
+          onBeginDrag={onBeginDrag}
         />
       ))}
     </div>
@@ -219,7 +196,14 @@ export function LayersSection({ worldId }: { worldId: string }) {
   const activeLayerId = history[history.length - 1] ?? null
   const roots = allLayers.filter((l) => l.parentMapId === null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
-  const [rootDragOver, setRootDragOver] = useState(false)
+  const [hoverId, setHoverId] = useState<string | null>(null)
+
+  // Refs let the global mouse listeners read live state without re-subscribing.
+  const allLayersRef = useRef(allLayers)
+  useEffect(() => { allLayersRef.current = allLayers }, [allLayers])
+  const startRef = useRef<{ id: string; x: number; y: number } | null>(null)
+  const movedRef = useRef(false)
+  const hoverRef = useRef<string | null>(null)
 
   function handleDeleted(deletedId: string) {
     if (history.includes(deletedId)) {
@@ -229,11 +213,71 @@ export function LayersSection({ worldId }: { worldId: string }) {
     }
   }
 
-  function handleReparent(draggedId: string, targetId: string | null) {
-    if (canReparentLayer(allLayers, draggedId, targetId)) {
-      updateMapLayer(draggedId, { parentMapId: targetId })
-    }
+  // Native HTML5 drag-and-drop is unreliable across nesting/trackpads/browsers
+  // (and only the root row would reliably drag), so re-parenting uses a plain
+  // mouse-drag: mousedown on a row arms a drag, a small move threshold turns it
+  // into a drag, and mouseup either re-parents or — if it never moved — selects.
+  function handleBeginDrag(id: string, x: number, y: number) {
+    startRef.current = { id, x, y }
+    movedRef.current = false
   }
+
+  useEffect(() => {
+    const DRAG_THRESHOLD = 4
+
+    function targetAt(x: number, y: number): string | null {
+      const el = document.elementFromPoint(x, y)
+      const drop = el?.closest('[data-layer-drop]') as HTMLElement | null
+      return drop?.dataset.layerDrop ?? null
+    }
+
+    function onMove(e: MouseEvent) {
+      const start = startRef.current
+      if (!start) return
+      if (!movedRef.current) {
+        if (Math.abs(e.clientX - start.x) + Math.abs(e.clientY - start.y) < DRAG_THRESHOLD) return
+        movedRef.current = true
+        setDraggingId(start.id)
+      }
+      const raw = targetAt(e.clientX, e.clientY)
+      // Treat the dedicated zone as "make this a root".
+      const target = raw === '__root__' ? null : raw
+      const valid =
+        raw !== null && canReparentLayer(allLayersRef.current, start.id, target)
+      const next = valid ? raw : null
+      if (next !== hoverRef.current) {
+        hoverRef.current = next
+        setHoverId(next)
+      }
+    }
+
+    function onUp(e: MouseEvent) {
+      const start = startRef.current
+      startRef.current = null
+      if (!start) return
+      if (!movedRef.current) {
+        // A plain click selects the layer as the active map.
+        resetMapHistory(start.id)
+      } else {
+        const raw = targetAt(e.clientX, e.clientY)
+        const target = raw === '__root__' ? null : raw
+        if (raw !== null && canReparentLayer(allLayersRef.current, start.id, target)) {
+          updateMapLayer(start.id, { parentMapId: target })
+        }
+      }
+      movedRef.current = false
+      hoverRef.current = null
+      setDraggingId(null)
+      setHoverId(null)
+    }
+
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [resetMapHistory])
 
   // A drop target for un-nesting to the top level, shown only while dragging a
   // non-root layer.
@@ -246,25 +290,6 @@ export function LayersSection({ worldId }: { worldId: string }) {
           <p className="px-3 py-2 text-xs italic text-[hsl(var(--muted-foreground))]">No maps yet.</p>
         ) : (
           <>
-            {canDropToRoot && (
-              <div
-                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setRootDragOver(true) }}
-                onDragLeave={() => setRootDragOver(false)}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  const id = e.dataTransfer.getData('text/plain') || draggingId
-                  if (id) handleReparent(id, null)
-                  setRootDragOver(false); setDraggingId(null)
-                }}
-                className={`mx-1 mb-1 rounded-sm border border-dashed px-2 py-1 text-[10px] uppercase tracking-wide transition-colors ${
-                  rootDragOver
-                    ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
-                    : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]'
-                }`}
-              >
-                Drop here for top level
-              </div>
-            )}
             {roots.map((root) => (
               <LayerTreeNode
                 key={root.id}
@@ -272,13 +297,26 @@ export function LayersSection({ worldId }: { worldId: string }) {
                 allLayers={allLayers}
                 activeLayerId={activeLayerId}
                 depth={0}
-                onSelect={(id) => resetMapHistory(id)}
                 onDeleted={handleDeleted}
                 draggingId={draggingId}
-                setDraggingId={setDraggingId}
-                onReparent={handleReparent}
+                hoverId={hoverId}
+                onBeginDrag={handleBeginDrag}
               />
             ))}
+            {/* Un-nest target, appended below the tree so showing it while
+                dragging never shifts the rows the user is aiming at. */}
+            {canDropToRoot && (
+              <div
+                data-layer-drop="__root__"
+                className={`mx-1 mt-1 rounded-sm border border-dashed px-2 py-1 text-[10px] uppercase tracking-wide transition-colors ${
+                  hoverId === '__root__'
+                    ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                    : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]'
+                }`}
+              >
+                Drop here for top level
+              </div>
+            )}
           </>
         )}
       </div>
