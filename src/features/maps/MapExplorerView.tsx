@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import L from 'leaflet'
 import { useParams } from 'react-router-dom'
-import { Plus, Upload, Map as MapIcon, Ruler, X, Route, Download, Sparkles, Type, Trash2, PanelLeft, Crosshair } from 'lucide-react'
+import { Plus, Upload, Map as MapIcon, Ruler, X, Route, Download, Sparkles, Type, Trash2, PanelLeft, Crosshair, ImageUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore, useActiveMapLayerId } from '@/store'
 import { useRootMapLayers, updateMapLayer } from '@/db/hooks/useMapLayers'
@@ -69,6 +69,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const [placingCharacterId, setPlacingCharacterId] = useState<string | null>(null)
   const [aiDialogOpen, setAiDialogOpen] = useState(false)
   const [genLocOpen, setGenLocOpen] = useState(false)
+  const [replaceImageOpen, setReplaceImageOpen] = useState(false)
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null)
   const [scaleMode, setScaleMode] = useState(false)
   const [scaleDialog, setScaleDialog] = useState<{ pixelDist: number } | null>(null)
@@ -579,6 +580,16 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               size="sm"
               variant="outline"
               className="gap-1.5 text-xs"
+              onClick={() => setReplaceImageOpen(true)}
+              title="Replace this map's image, keeping its locations"
+            >
+              <ImageUp className="h-3.5 w-3.5" />
+              Replace image
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs"
               onClick={handleExportMap}
               title="Export map as PNG"
             >
@@ -1008,6 +1019,12 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
         onOpenChange={setAiDialogOpen}
       />
       <GenerateLocationsDialog worldId={worldId} open={genLocOpen} onOpenChange={setGenLocOpen} />
+      <UploadMapDialog
+        open={replaceImageOpen}
+        onOpenChange={setReplaceImageOpen}
+        worldId={worldId}
+        replaceLayerId={layer.id}
+      />
     </div>
   )
 }

@@ -1,9 +1,9 @@
 import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
-import { createMapLayer, deleteMapLayer } from '@/db/hooks/useMapLayers'
+import { createMapLayer, deleteMapLayer, replaceMapLayerImage } from '@/db/hooks/useMapLayers'
 import { createLocationMarker } from '@/db/hooks/useLocationMarkers'
-import type { MapRegion } from '@/types'
+import type { MapRegion, MapRoute } from '@/types'
 
 beforeEach(async () => {
   await db.delete()
@@ -140,5 +140,88 @@ describe('deleteMapLayer', () => {
     expect((await db.locationMarkers.get(linkingMarker.id))!.linkedMapLayerId).toBeNull()
     expect((await db.mapRegions.get(linkingRegionId))!.linkedMapLayerId).toBeNull()
     expect((await db.locationMarkers.get(keepMarker.id))!.linkedMapLayerId).toBe(root.id)
+  })
+})
+
+async function addRoute(mapLayerId: string, waypoints: MapRoute['waypoints']): Promise<string> {
+  const now = Date.now()
+  const route: MapRoute = {
+    id: `route-${Math.random().toString(36).slice(2)}`,
+    worldId: 'world-1', mapLayerId, name: 'Road', routeType: 'road',
+    waypoints, createdAt: now, updatedAt: now,
+  }
+  await db.mapRoutes.add(route)
+  return route.id
+}
+
+describe('replaceMapLayerImage', () => {
+  it('is a no-op for a non-existent layer', async () => {
+    await expect(
+      replaceMapLayerImage('ghost', { imageId: 'x', imageWidth: 10, imageHeight: 10 }),
+    ).resolves.toBeUndefined()
+  })
+
+  it('swaps the image and rescales content proportionally', async () => {
+    const layer = await createMapLayer(makeLayerData({ imageWidth: 1000, imageHeight: 800, scalePixelsPerUnit: 10, scaleUnit: 'km' }))
+    const marker = await createLocationMarker({
+      worldId: 'world-1', mapLayerId: layer.id, name: 'City', description: '', x: 500, y: 400, iconType: 'city',
+    })
+    const now = Date.now()
+    await db.mapAnnotations.add({
+      id: 'ann-1', worldId: 'world-1', mapLayerId: layer.id, x: 200, y: 100,
+      text: 'Here', fontSize: 14, color: '#fff', createdAt: now, updatedAt: now,
+    })
+    const regionId = await addRegion({ mapLayerId: layer.id, vertices: [{ x: 100, y: 200 }, { x: 300, y: 200 }, { x: 300, y: 400 }] })
+    const routeId = await addRoute(layer.id, [{ x: 0, y: 0 }, 'marker-follows', { x: 100, y: 400 }])
+
+    // New image is 2× wide, 1.5× tall.
+    await replaceMapLayerImage(layer.id, { imageId: 'img-2', imageWidth: 2000, imageHeight: 1200 })
+
+    const updated = (await db.mapLayers.get(layer.id))!
+    expect(updated.imageId).toBe('img-2')
+    expect(updated.imageWidth).toBe(2000)
+    expect(updated.imageHeight).toBe(1200)
+    // Scale tracks the horizontal factor (×2).
+    expect(updated.scalePixelsPerUnit).toBe(20)
+
+    const sx = 2, sy = 1.5
+    const m = (await db.locationMarkers.get(marker.id))!
+    expect(m.x).toBe(500 * sx); expect(m.y).toBe(400 * sy)
+    const ann = (await db.mapAnnotations.get('ann-1'))!
+    expect(ann.x).toBe(200 * sx); expect(ann.y).toBe(100 * sy)
+    const region = (await db.mapRegions.get(regionId))!
+    expect(region.vertices).toEqual([{ x: 200, y: 300 }, { x: 600, y: 300 }, { x: 600, y: 600 }])
+    const route = (await db.mapRoutes.get(routeId))!
+    // Raw points scale; a marker-id waypoint is left as-is.
+    expect(route.waypoints).toEqual([{ x: 0, y: 0 }, 'marker-follows', { x: 200, y: 600 }])
+  })
+
+  it('keeps coordinates unchanged when rescale is off', async () => {
+    const layer = await createMapLayer(makeLayerData({ imageWidth: 1000, imageHeight: 1000, scalePixelsPerUnit: 10, scaleUnit: 'km' }))
+    const marker = await createLocationMarker({
+      worldId: 'world-1', mapLayerId: layer.id, name: 'City', description: '', x: 500, y: 400, iconType: 'city',
+    })
+
+    await replaceMapLayerImage(layer.id, { imageId: 'img-2', imageWidth: 2000, imageHeight: 2000 }, { rescale: false })
+
+    const updated = (await db.mapLayers.get(layer.id))!
+    expect(updated.imageId).toBe('img-2')
+    expect(updated.imageWidth).toBe(2000)
+    expect(updated.scalePixelsPerUnit).toBe(10) // untouched
+    const m = (await db.locationMarkers.get(marker.id))!
+    expect(m.x).toBe(500); expect(m.y).toBe(400)
+  })
+
+  it('does not rescale when the new image is the same size', async () => {
+    const layer = await createMapLayer(makeLayerData({ imageWidth: 1000, imageHeight: 1000 }))
+    const marker = await createLocationMarker({
+      worldId: 'world-1', mapLayerId: layer.id, name: 'City', description: '', x: 500, y: 400, iconType: 'city',
+    })
+
+    await replaceMapLayerImage(layer.id, { imageId: 'img-2', imageWidth: 1000, imageHeight: 1000 })
+
+    const m = (await db.locationMarkers.get(marker.id))!
+    expect(m.x).toBe(500); expect(m.y).toBe(400)
+    expect((await db.mapLayers.get(layer.id))!.imageId).toBe('img-2')
   })
 })

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { storeBlob, storeImageLink } from '@/db/hooks/useBlobs'
-import { createMapLayer } from '@/db/hooks/useMapLayers'
+import { createMapLayer, replaceMapLayerImage } from '@/db/hooks/useMapLayers'
 
 interface UploadMapDialogProps {
   open: boolean
@@ -14,9 +14,13 @@ interface UploadMapDialogProps {
   worldId: string
   parentMapId?: string | null
   onCreated?: (layerId: string) => void
+  /** When set, the dialog replaces this layer's image instead of creating a new map. */
+  replaceLayerId?: string | null
+  onReplaced?: () => void
 }
 
-export function UploadMapDialog({ open, onOpenChange, worldId, parentMapId = null, onCreated }: UploadMapDialogProps) {
+export function UploadMapDialog({ open, onOpenChange, worldId, parentMapId = null, onCreated, replaceLayerId = null, onReplaced }: UploadMapDialogProps) {
+  const replacing = !!replaceLayerId
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [file, setFile] = useState<File | null>(null)
@@ -25,6 +29,7 @@ export function UploadMapDialog({ open, onOpenChange, worldId, parentMapId = nul
   const [linkUrl, setLinkUrl] = useState('')
   const [linking, setLinking] = useState(false)
   const [linkError, setLinkError] = useState<string | null>(null)
+  const [rescale, setRescale] = useState(true)
   const [saving, setSaving] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -54,12 +59,12 @@ export function UploadMapDialog({ open, onOpenChange, worldId, parentMapId = nul
 
   function reset() {
     setName(''); setDescription(''); setFile(null); setLinked(null); setPreview(null)
-    setLinkUrl(''); setLinkError(null)
+    setLinkUrl(''); setLinkError(null); setRescale(true)
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim() || (!file && !linked)) return
+    if ((!file && !linked) || (!replacing && !name.trim())) return
     setSaving(true)
     let imageId: string, imageWidth: number, imageHeight: number
     if (file) {
@@ -68,6 +73,16 @@ export function UploadMapDialog({ open, onOpenChange, worldId, parentMapId = nul
     } else {
       imageId = linked!.blobId; imageWidth = linked!.width; imageHeight = linked!.height
     }
+
+    if (replacing) {
+      await replaceMapLayerImage(replaceLayerId!, { imageId, imageWidth, imageHeight }, { rescale })
+      setSaving(false)
+      reset()
+      onOpenChange(false)
+      onReplaced?.()
+      return
+    }
+
     const layer = await createMapLayer({
       worldId, parentMapId,
       name: name.trim(),
@@ -86,7 +101,7 @@ export function UploadMapDialog({ open, onOpenChange, worldId, parentMapId = nul
     <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o) }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{parentMapId ? 'Add Sub-Map' : 'Upload Map'}</DialogTitle>
+          <DialogTitle>{replacing ? 'Replace Map Image' : parentMapId ? 'Add Sub-Map' : 'Upload Map'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div
@@ -138,20 +153,39 @@ export function UploadMapDialog({ open, onOpenChange, worldId, parentMapId = nul
             )}
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="map-name">Map Name</Label>
-            <Input id="map-name" placeholder="e.g. Continent of Velmoor" value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
+          {replacing ? (
+            <label className="flex items-start gap-2 text-xs text-[hsl(var(--foreground))]">
+              <input
+                type="checkbox"
+                checked={rescale}
+                onChange={(e) => setRescale(e.target.checked)}
+                className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-[hsl(var(--ring))]"
+              />
+              <span>
+                Reposition existing locations, routes and regions to fit the new image.
+                <span className="block text-[hsl(var(--muted-foreground))]">
+                  Recommended when the new image is a different size. Uncheck for a same-size redraw.
+                </span>
+              </span>
+            </label>
+          ) : (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="map-name">Map Name</Label>
+                <Input id="map-name" placeholder="e.g. Continent of Velmoor" value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="map-desc">Description</Label>
-            <Textarea id="map-desc" placeholder="Optional description..." value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
-          </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="map-desc">Description</Label>
+                <Textarea id="map-desc" placeholder="Optional description..." value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+              </div>
+            </>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={(!file && !linked) || !name.trim() || saving}>
-              {saving ? 'Saving...' : 'Upload'}
+            <Button type="submit" disabled={(!file && !linked) || (!replacing && !name.trim()) || saving}>
+              {saving ? 'Saving...' : replacing ? 'Replace' : 'Upload'}
             </Button>
           </DialogFooter>
         </form>

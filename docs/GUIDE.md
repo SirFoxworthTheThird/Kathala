@@ -342,6 +342,15 @@ list. To place a character
 touch devices, tap the crosshair on their card and then tap a location. **AI
 Moves** and **Export** round out the toolbar.
 
+**Replace image** swaps the picture behind the current map without losing any
+of its content — handy for upgrading a sketch to a finished map or dropping in a
+higher-resolution version. Upload (or link) the new image, and keep *Reposition
+existing locations…* checked so every marker, route and region is scaled to the
+new image's size and stays in the same relative spot (uncheck it for a same-size
+redraw). The map's scale calibration is adjusted to match.
+
+![Replace map image](images/28-replace-map-image.png)
+
 Press **play** in the chapter bar and the map becomes a playback stage: as the
 story advances event by event, character pins glide between locations along their
 routes, so you can watch your cast move through the world.

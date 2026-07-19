@@ -118,6 +118,65 @@ export async function updateMapLayer(id: string, data: Partial<Omit<MapLayer, 'i
   await db.mapLayers.update(id, { ...data, updatedAt: Date.now() })
 }
 
+/**
+ * Swap the image on an existing map layer, keeping all its content. When
+ * `rescale` is true (and the new image is a different size), every marker,
+ * annotation, region vertex and raw route waypoint on the layer is scaled
+ * proportionally so it stays in the same relative spot, and the map's scale
+ * calibration is adjusted to match. When false, pixel coordinates are left as
+ * they are (right for a same-size redraw or a higher-res copy).
+ */
+export async function replaceMapLayerImage(
+  layerId: string,
+  image: { imageId: string; imageWidth: number; imageHeight: number },
+  opts: { rescale: boolean } = { rescale: true },
+): Promise<void> {
+  await db.transaction('rw', [
+    db.mapLayers, db.locationMarkers, db.mapRegions, db.mapRoutes, db.mapAnnotations,
+  ], async () => {
+    const layer = await db.mapLayers.get(layerId)
+    if (!layer) return
+
+    const oldW = layer.imageWidth
+    const oldH = layer.imageHeight
+    const doRescale =
+      opts.rescale && oldW > 0 && oldH > 0 &&
+      (image.imageWidth !== oldW || image.imageHeight !== oldH)
+    const sx = doRescale ? image.imageWidth / oldW : 1
+    const sy = doRescale ? image.imageHeight / oldH : 1
+
+    const patch: Partial<MapLayer> = {
+      imageId: image.imageId,
+      imageWidth: image.imageWidth,
+      imageHeight: image.imageHeight,
+      updatedAt: Date.now(),
+    }
+    // A scale of "pixels per unit" must track the horizontal rescale so measured
+    // distances stay the same on screen.
+    if (doRescale && layer.scalePixelsPerUnit != null) {
+      patch.scalePixelsPerUnit = layer.scalePixelsPerUnit * sx
+    }
+    await db.mapLayers.update(layerId, patch)
+
+    if (!doRescale) return
+
+    await db.locationMarkers.where('mapLayerId').equals(layerId).modify((m) => {
+      m.x *= sx; m.y *= sy
+    })
+    await db.mapAnnotations.where('mapLayerId').equals(layerId).modify((a) => {
+      a.x *= sx; a.y *= sy
+    })
+    await db.mapRegions.where('mapLayerId').equals(layerId).modify((r) => {
+      r.vertices = r.vertices.map((v) => ({ x: v.x * sx, y: v.y * sy }))
+    })
+    await db.mapRoutes.where('mapLayerId').equals(layerId).modify((rt) => {
+      rt.waypoints = rt.waypoints.map((w) =>
+        typeof w === 'string' ? w : { x: w.x * sx, y: w.y * sy },
+      )
+    })
+  })
+}
+
 export async function deleteMapLayer(id: string) {
   await db.transaction('rw', MAP_DELETE_TABLES, async () => {
     const layer = await db.mapLayers.get(id)
