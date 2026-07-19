@@ -104,7 +104,7 @@ function LayerTreeNode({
   onDeleted: (id: string) => void
   draggingId: string | null
   hoverId: string | null
-  onBeginDrag: (id: string, x: number, y: number) => void
+  onBeginDrag: (id: string, e: React.PointerEvent) => void
 }) {
   const children = allLayers.filter((l) => l.parentMapId === layer.id)
   const [open, setOpen] = useState(true)
@@ -125,11 +125,11 @@ function LayerTreeNode({
     <div>
       <div
         data-layer-drop={layer.id}
-        onMouseDown={(e) => {
-          // Left button only; ignore clicks that start on a control button.
-          if (e.button !== 0) return
+        onPointerDown={(e) => {
+          // Ignore right/middle mouse and presses that start on a control button.
+          if (e.pointerType === 'mouse' && e.button !== 0) return
           if ((e.target as HTMLElement).closest('button')) return
-          onBeginDrag(layer.id, e.clientX, e.clientY)
+          onBeginDrag(layer.id, e)
         }}
         className={`group flex items-center gap-1 cursor-pointer select-none transition-colors rounded-sm mx-1 ${
           isDropTarget
@@ -141,7 +141,7 @@ function LayerTreeNode({
         style={{ paddingLeft: `${8 + depth * 12}px`, paddingRight: 4, paddingTop: 4, paddingBottom: 4 }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        title="Drag onto another map to nest it inside"
+        title="Drag onto another map to nest it inside (on touch, press and hold first)"
       >
         {children.length > 0 ? (
           <button
@@ -198,12 +198,15 @@ export function LayersSection({ worldId }: { worldId: string }) {
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [hoverId, setHoverId] = useState<string | null>(null)
 
-  // Refs let the global mouse listeners read live state without re-subscribing.
+  // Refs let the global pointer listeners read live state without re-subscribing.
   const allLayersRef = useRef(allLayers)
   useEffect(() => { allLayersRef.current = allLayers }, [allLayers])
-  const startRef = useRef<{ id: string; x: number; y: number } | null>(null)
-  const movedRef = useRef(false)
+  // The active press: `armed` flips true once it's an actual drag (a mouse move
+  // past the threshold, or a completed long-press on touch), at which point a
+  // release re-parents instead of selecting.
+  const pressRef = useRef<{ id: string; x: number; y: number; touch: boolean; armed: boolean } | null>(null)
   const hoverRef = useRef<string | null>(null)
+  const longPressTimer = useRef<number | null>(null)
 
   function handleDeleted(deletedId: string) {
     if (history.includes(deletedId)) {
@@ -214,16 +217,39 @@ export function LayersSection({ worldId }: { worldId: string }) {
   }
 
   // Native HTML5 drag-and-drop is unreliable across nesting/trackpads/browsers
-  // (and only the root row would reliably drag), so re-parenting uses a plain
-  // mouse-drag: mousedown on a row arms a drag, a small move threshold turns it
-  // into a drag, and mouseup either re-parents or — if it never moved — selects.
-  function handleBeginDrag(id: string, x: number, y: number) {
-    startRef.current = { id, x, y }
-    movedRef.current = false
+  // (only the root row would reliably drag), so re-parenting uses a pointer-drag
+  // that works for mouse, touch, and pen alike:
+  //   • mouse/pen — press a row, and a small move past a threshold begins the
+  //     drag; a release without moving selects the layer as the active map.
+  //   • touch — press and hold (long-press) to pick a row up, so a normal swipe
+  //     still scrolls the sidebar; a quick tap just selects.
+  // A release over another map re-parents; a release over the "top level" zone
+  // un-nests to a root.
+  function clearLongPress() {
+    if (longPressTimer.current !== null) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+  }
+
+  function handleBeginDrag(id: string, e: React.PointerEvent) {
+    const touch = e.pointerType === 'touch'
+    pressRef.current = { id, x: e.clientX, y: e.clientY, touch, armed: false }
+    clearLongPress()
+    if (touch) {
+      longPressTimer.current = window.setTimeout(() => {
+        const p = pressRef.current
+        if (p && p.id === id) {
+          p.armed = true
+          setDraggingId(id)
+        }
+      }, 250)
+    }
   }
 
   useEffect(() => {
-    const DRAG_THRESHOLD = 4
+    const MOUSE_THRESHOLD = 4
+    const TOUCH_SCROLL_TOLERANCE = 10
 
     function targetAt(x: number, y: number): string | null {
       const el = document.elementFromPoint(x, y)
@@ -231,19 +257,11 @@ export function LayersSection({ worldId }: { worldId: string }) {
       return drop?.dataset.layerDrop ?? null
     }
 
-    function onMove(e: MouseEvent) {
-      const start = startRef.current
-      if (!start) return
-      if (!movedRef.current) {
-        if (Math.abs(e.clientX - start.x) + Math.abs(e.clientY - start.y) < DRAG_THRESHOLD) return
-        movedRef.current = true
-        setDraggingId(start.id)
-      }
-      const raw = targetAt(e.clientX, e.clientY)
+    function updateHover(id: string, x: number, y: number) {
+      const raw = targetAt(x, y)
       // Treat the dedicated zone as "make this a root".
       const target = raw === '__root__' ? null : raw
-      const valid =
-        raw !== null && canReparentLayer(allLayersRef.current, start.id, target)
+      const valid = raw !== null && canReparentLayer(allLayersRef.current, id, target)
       const next = valid ? raw : null
       if (next !== hoverRef.current) {
         hoverRef.current = next
@@ -251,31 +269,68 @@ export function LayersSection({ worldId }: { worldId: string }) {
       }
     }
 
-    function onUp(e: MouseEvent) {
-      const start = startRef.current
-      startRef.current = null
-      if (!start) return
-      if (!movedRef.current) {
-        // A plain click selects the layer as the active map.
-        resetMapHistory(start.id)
-      } else {
-        const raw = targetAt(e.clientX, e.clientY)
-        const target = raw === '__root__' ? null : raw
-        if (raw !== null && canReparentLayer(allLayersRef.current, start.id, target)) {
-          updateMapLayer(start.id, { parentMapId: target })
-        }
-      }
-      movedRef.current = false
+    function reset() {
+      clearLongPress()
+      pressRef.current = null
       hoverRef.current = null
       setDraggingId(null)
       setHoverId(null)
     }
 
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
+    function onMove(e: PointerEvent) {
+      const p = pressRef.current
+      if (!p) return
+      const moved = Math.abs(e.clientX - p.x) + Math.abs(e.clientY - p.y)
+      if (!p.armed) {
+        if (p.touch) {
+          // Moved before the long-press fired → it's a scroll, not a drag.
+          if (moved > TOUCH_SCROLL_TOLERANCE) reset()
+          return
+        }
+        if (moved < MOUSE_THRESHOLD) return
+        p.armed = true
+        setDraggingId(p.id)
+      }
+      updateHover(p.id, e.clientX, e.clientY)
+    }
+
+    function onUp(e: PointerEvent) {
+      const p = pressRef.current
+      if (!p) { reset(); return }
+      if (!p.armed) {
+        // A quick tap / click without dragging selects the layer.
+        resetMapHistory(p.id)
+      } else {
+        const raw = targetAt(e.clientX, e.clientY)
+        const target = raw === '__root__' ? null : raw
+        if (raw !== null && canReparentLayer(allLayersRef.current, p.id, target)) {
+          updateMapLayer(p.id, { parentMapId: target })
+        }
+      }
+      reset()
+    }
+
+    // Interrupted (e.g. the browser took over for a scroll) — never select or
+    // re-parent; just drop the gesture.
+    function onCancel() { reset() }
+
+    // Once a touch drag is armed, stop the page from scrolling under the finger.
+    // Pointer events can't cancel scrolling, so this must be a non-passive
+    // touchmove listener.
+    function onTouchMove(e: TouchEvent) {
+      const p = pressRef.current
+      if (p && p.touch && p.armed) e.preventDefault()
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onCancel)
+    window.addEventListener('touchmove', onTouchMove, { passive: false })
     return () => {
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
+      window.removeEventListener('touchmove', onTouchMove)
     }
   }, [resetMapHistory])
 

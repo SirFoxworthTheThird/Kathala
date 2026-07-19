@@ -335,7 +335,9 @@ The left sidebar lists map layers and locations; the right-hand tools toggle
 characters, trails, labels, journeys, and locations. In the **Map Layers** tree
 you can **drag a map onto another** to nest it inside (re-parent it), or drop it
 on the *"top level"* zone to un-nest — handy for fixing a sub-map that landed in
-the wrong place. To place a character
+the wrong place. This works for any map at any depth; on a touch device,
+**press and hold** a map to pick it up first, so a normal swipe still scrolls the
+list. To place a character
 (selected from an event in the timeline bar), drag them onto the map — or, on
 touch devices, tap the crosshair on their card and then tap a location. **AI
 Moves** and **Export** round out the toolbar.
