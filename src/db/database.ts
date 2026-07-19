@@ -562,6 +562,16 @@ class PlotWeaveDB extends Dexie {
         if (c.wordGoal === undefined) c.wordGoal = null
       })
     })
+
+    // v43: normalise map layers that predate the parentMapId field so a missing
+    // value reads as a top-level map (null), not an absent/undefined one. Without
+    // this, such layers fall outside the root filter and could be mistaken for
+    // orphans by the DB-health scan.
+    this.version(43).stores({}).upgrade(async (tx) => {
+      await tx.table('mapLayers').toCollection().modify((l: Record<string, unknown>) => {
+        if (l.parentMapId === undefined) l.parentMapId = null
+      })
+    })
   }
 }
 

@@ -86,8 +86,19 @@ export async function scanOrphans(worldId: string): Promise<OrphanReport> {
     factionMemberships: factionMemberships.filter(
       (m) => !factionIds.has(m.factionId) || !characterIds.has(m.characterId)
     ).length,
-    mapLayers: orphanLayerIds(mapLayers).size,
+    mapLayers: orphanLayerIds(mapLayers, linkedLayerIdSet(locationMarkers, regions)).size,
   }
+}
+
+/** Layer ids reachable through a marker or region sub-map link. */
+function linkedLayerIdSet(
+  markers: { linkedMapLayerId: string | null }[],
+  regions: { linkedMapLayerId: string | null }[],
+): Set<string> {
+  const s = new Set<string>()
+  for (const m of markers) if (m.linkedMapLayerId) s.add(m.linkedMapLayerId)
+  for (const r of regions) if (r.linkedMapLayerId) s.add(r.linkedMapLayerId)
+  return s
 }
 
 export function totalOrphans(report: OrphanReport): number {
@@ -97,10 +108,15 @@ export function totalOrphans(report: OrphanReport): number {
 /** Delete all orphaned records. */
 export async function purgeOrphans(worldId: string): Promise<void> {
   // Orphaned sub-maps go first, via the same cascade as a manual delete (which
-  // also removes their markers/routes/regions and clears dangling links). Delete
-  // the whole set in one batched transaction rather than one delete per layer.
-  const layers = await db.mapLayers.where('worldId').equals(worldId).toArray()
-  await deleteMapLayersCascade([...orphanLayerIds(layers)])
+  // also removes their markers/routes/regions and clears dangling links). Only
+  // truly unreachable layers count as orphans — a sub-map still opened through a
+  // marker/region link is kept — so load those links to seed reachability.
+  const [layers, linkMarkers, linkRegions] = await Promise.all([
+    db.mapLayers.where('worldId').equals(worldId).toArray(),
+    db.locationMarkers.where('worldId').equals(worldId).toArray(),
+    db.mapRegions.where('worldId').equals(worldId).toArray(),
+  ])
+  await deleteMapLayersCascade([...orphanLayerIds(layers, linkedLayerIdSet(linkMarkers, linkRegions))])
 
   const [
     events,

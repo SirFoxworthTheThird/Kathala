@@ -26,13 +26,22 @@ export function descendantLayerIds(layers: LayerNode[], rootId: string): Set<str
 }
 
 /**
- * All layers whose parent chain leads to a missing layer — i.e. a sub-map whose
- * `parentMapId` points at a layer that no longer exists, plus everything nested
- * under it (since deleting the broken root would strand those too). A layer with
- * `parentMapId === null` is a legitimate root and never an orphan.
+ * Layers that are genuinely unreachable, i.e. safe to purge. A sub-map is
+ * *reachable* — and therefore NOT an orphan — if any of these hold:
+ *   • it is a top-level map (`parentMapId` null/undefined/empty), or
+ *   • it is linked from a surviving marker or region (`linkedLayerIds`), or
+ *   • it is nested (via `parentMapId`) under a layer that is itself reachable.
+ *
+ * Reachability is seeded from the roots and the linked layers, then walked down
+ * the `parentMapId` tree. Anything never reached is an orphan. This deliberately
+ * treats a sub-map with a stale/dangling `parentMapId` that is still opened
+ * through a marker link as reachable — deleting it would destroy locations the
+ * user can still see and use.
  */
-export function orphanLayerIds(layers: LayerNode[]): Set<string> {
-  const idSet = new Set(layers.map((l) => l.id))
+export function orphanLayerIds(
+  layers: LayerNode[],
+  linkedLayerIds: Set<string> = new Set(),
+): Set<string> {
   const childrenByParent = new Map<string, string[]>()
   for (const l of layers) {
     if (l.parentMapId) {
@@ -41,15 +50,24 @@ export function orphanLayerIds(layers: LayerNode[]): Set<string> {
       childrenByParent.set(l.parentMapId, arr)
     }
   }
-  const out = new Set<string>()
-  const stack = layers
-    .filter((l) => l.parentMapId !== null && !idSet.has(l.parentMapId))
-    .map((l) => l.id)
+
+  const reachable = new Set<string>()
+  const stack: string[] = []
+  for (const l of layers) {
+    const p = l.parentMapId
+    const isRoot = p == null || p === '' // == null covers null and undefined
+    if (isRoot || linkedLayerIds.has(l.id)) stack.push(l.id)
+  }
   while (stack.length) {
     const id = stack.pop()!
-    if (out.has(id)) continue
-    out.add(id)
+    if (reachable.has(id)) continue
+    reachable.add(id)
     for (const child of childrenByParent.get(id) ?? []) stack.push(child)
+  }
+
+  const out = new Set<string>()
+  for (const l of layers) {
+    if (!reachable.has(l.id)) out.add(l.id)
   }
   return out
 }

@@ -51,8 +51,8 @@ describe('orphanLayerIds', () => {
     expect([...orphanLayerIds(layers)]).toEqual([])
   })
 
-  it('flags a layer whose parent is missing, plus its descendants', () => {
-    // X's parent "gone" no longer exists; Y is nested under X.
+  it('flags an unreachable layer whose parent is missing, plus its descendants', () => {
+    // X's parent "gone" no longer exists and nothing links to X; Y is under X.
     const broken: LayerNode[] = [
       { id: 'A', parentMapId: null },
       { id: 'X', parentMapId: 'gone' },
@@ -69,14 +69,34 @@ describe('orphanLayerIds', () => {
     expect([...orphanLayerIds(roots)]).toEqual([])
   })
 
-  it('collects several disjoint orphan branches', () => {
+  it('treats an undefined parent as a root, never an orphan', () => {
+    // Legacy layers predating the parentMapId field read as undefined.
+    const legacy = [
+      { id: 'A' } as unknown as LayerNode,
+      { id: 'B', parentMapId: 'A' },
+    ]
+    expect([...orphanLayerIds(legacy)]).toEqual([])
+  })
+
+  it('keeps a dangling-parent sub-map that is still linked from a marker', () => {
+    // X's parent is gone, but a surviving marker opens it via linkedMapLayerId,
+    // so it (and its child Y) must NOT be purged.
     const world: LayerNode[] = [
       { id: 'A', parentMapId: null },
-      { id: 'B', parentMapId: 'A' },     // fine
-      { id: 'P', parentMapId: 'dead1' }, // orphan root
-      { id: 'Q', parentMapId: 'P' },     // under orphan
-      { id: 'R', parentMapId: 'dead2' }, // another orphan root
+      { id: 'X', parentMapId: 'gone' },
+      { id: 'Y', parentMapId: 'X' },
     ]
-    expect([...orphanLayerIds(world)].sort()).toEqual(['P', 'Q', 'R'])
+    expect([...orphanLayerIds(world, new Set(['X']))]).toEqual([])
+  })
+
+  it('flags only the unreachable branch, keeping linked branches', () => {
+    const world: LayerNode[] = [
+      { id: 'A', parentMapId: null },
+      { id: 'B', parentMapId: 'A' },     // reachable via root
+      { id: 'P', parentMapId: 'dead1' }, // linked → kept
+      { id: 'Q', parentMapId: 'P' },     // under linked → kept
+      { id: 'R', parentMapId: 'dead2' }, // unreachable → orphan
+    ]
+    expect([...orphanLayerIds(world, new Set(['P']))].sort()).toEqual(['R'])
   })
 })
