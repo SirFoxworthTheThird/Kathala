@@ -1,4 +1,6 @@
 import { db } from '@/db/database'
+import { deleteMapLayer } from '@/db/hooks/useMapLayers'
+import { orphanLayerIds } from '@/lib/mapTree'
 
 export interface OrphanReport {
   characterSnapshots: number
@@ -9,6 +11,8 @@ export interface OrphanReport {
   characterMovements: number
   mapRegionSnapshots: number
   factionMemberships: number
+  /** Sub-map layers whose parent map has been deleted (plus anything nested under them). */
+  mapLayers: number
 }
 
 /** Scan every snapshot/membership/placement table for records pointing to deleted parent entities. */
@@ -29,6 +33,7 @@ export async function scanOrphans(worldId: string): Promise<OrphanReport> {
     charMovements,
     regionSnaps,
     factionMemberships,
+    mapLayers,
   ] = await Promise.all([
     db.events.where('worldId').equals(worldId).toArray(),
     db.characters.where('worldId').equals(worldId).toArray(),
@@ -45,6 +50,7 @@ export async function scanOrphans(worldId: string): Promise<OrphanReport> {
     db.characterMovements.where('worldId').equals(worldId).toArray(),
     db.mapRegionSnapshots.where('worldId').equals(worldId).toArray(),
     db.factionMemberships.where('worldId').equals(worldId).toArray(),
+    db.mapLayers.where('worldId').equals(worldId).toArray(),
   ])
 
   const eventIds = new Set(events.map((e) => e.id))
@@ -80,6 +86,7 @@ export async function scanOrphans(worldId: string): Promise<OrphanReport> {
     factionMemberships: factionMemberships.filter(
       (m) => !factionIds.has(m.factionId) || !characterIds.has(m.characterId)
     ).length,
+    mapLayers: orphanLayerIds(mapLayers).size,
   }
 }
 
@@ -87,8 +94,18 @@ export function totalOrphans(report: OrphanReport): number {
   return Object.values(report).reduce((sum, n) => sum + n, 0)
 }
 
-/** Delete all orphaned records in a single transaction. */
+/** Delete all orphaned records. */
 export async function purgeOrphans(worldId: string): Promise<void> {
+  // Orphaned sub-maps go first, via the same cascade as a manual delete (which
+  // also removes their markers/routes/regions and clears dangling links). Each
+  // orphan root's subtree is disjoint, so deleting the roots covers everything.
+  const layers = await db.mapLayers.where('worldId').equals(worldId).toArray()
+  const layerIds = new Set(layers.map((l) => l.id))
+  const orphanRoots = layers.filter((l) => l.parentMapId !== null && !layerIds.has(l.parentMapId))
+  for (const root of orphanRoots) {
+    await deleteMapLayer(root.id)
+  }
+
   const [
     events,
     characters,

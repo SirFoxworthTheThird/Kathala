@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { descendantLayerIds, canReparentLayer, type LayerNode } from '@/lib/mapTree'
+import { descendantLayerIds, canReparentLayer, orphanLayerIds, type LayerNode } from '@/lib/mapTree'
 
 // world:  A(root) ─ B ─ D ,  A ─ C ,  E(root)
 const layers: LayerNode[] = [
@@ -43,5 +43,40 @@ describe('canReparentLayer', () => {
   it('rejects an unknown dragged or target', () => {
     expect(canReparentLayer(layers, 'Z', 'A')).toBe(false)
     expect(canReparentLayer(layers, 'E', 'Z')).toBe(false)
+  })
+})
+
+describe('orphanLayerIds', () => {
+  it('finds no orphans when every parent exists', () => {
+    expect([...orphanLayerIds(layers)]).toEqual([])
+  })
+
+  it('flags a layer whose parent is missing, plus its descendants', () => {
+    // X's parent "gone" no longer exists; Y is nested under X.
+    const broken: LayerNode[] = [
+      { id: 'A', parentMapId: null },
+      { id: 'X', parentMapId: 'gone' },
+      { id: 'Y', parentMapId: 'X' },
+    ]
+    expect([...orphanLayerIds(broken)].sort()).toEqual(['X', 'Y'])
+  })
+
+  it('treats roots (null parent) as legitimate, never orphans', () => {
+    const roots: LayerNode[] = [
+      { id: 'A', parentMapId: null },
+      { id: 'B', parentMapId: null },
+    ]
+    expect([...orphanLayerIds(roots)]).toEqual([])
+  })
+
+  it('collects several disjoint orphan branches', () => {
+    const world: LayerNode[] = [
+      { id: 'A', parentMapId: null },
+      { id: 'B', parentMapId: 'A' },     // fine
+      { id: 'P', parentMapId: 'dead1' }, // orphan root
+      { id: 'Q', parentMapId: 'P' },     // under orphan
+      { id: 'R', parentMapId: 'dead2' }, // another orphan root
+    ]
+    expect([...orphanLayerIds(world)].sort()).toEqual(['P', 'Q', 'R'])
   })
 })
