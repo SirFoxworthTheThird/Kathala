@@ -351,6 +351,21 @@ redraw). The map's scale calibration is adjusted to match.
 
 ![Replace map image](images/28-replace-map-image.png)
 
+**Levels (floors).** Some places are one footprint stacked into several floors —
+a castle with dungeons, a ground floor, upper floors and towers. Click **Add
+level** to give the current map a floor above it: upload that floor's image and
+name it (e.g. *First floor*). The map becomes a level group, and a **floor
+switcher** appears on the right edge — floors stacked bottom-to-top, the current
+one highlighted. Tap a floor to jump to it; your pan and zoom are held so a
+stairwell or tower lines up between floors. Each floor is a full map with **its
+own locations**, routes and regions, so a marker on the First floor stays on the
+First floor. Add more floors with the **+** on the switcher, or remove one with
+its trash icon. Levels differ from sub-maps: sub-maps are places you *drill into*
+(Grounds → Castle), while floors are levels of the same place you *flip between* —
+and the two compose, so a castle reached from the grounds can itself have floors.
+
+![Map levels](images/29-map-levels.png)
+
 Press **play** in the chapter bar and the map becomes a playback stage: as the
 story advances event by event, character pins glide between locations along their
 routes, so you can watch your cast move through the world.

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { storeBlob, storeImageLink } from '@/db/hooks/useBlobs'
-import { createMapLayer, replaceMapLayerImage } from '@/db/hooks/useMapLayers'
+import { createMapLayer, replaceMapLayerImage, addMapLevel } from '@/db/hooks/useMapLayers'
 
 interface UploadMapDialogProps {
   open: boolean
@@ -17,10 +17,14 @@ interface UploadMapDialogProps {
   /** When set, the dialog replaces this layer's image instead of creating a new map. */
   replaceLayerId?: string | null
   onReplaced?: () => void
+  /** When set, the dialog adds a floor/level to this map instead of creating a new map. */
+  addLevelToLayerId?: string | null
+  onLevelAdded?: (layerId: string) => void
 }
 
-export function UploadMapDialog({ open, onOpenChange, worldId, parentMapId = null, onCreated, replaceLayerId = null, onReplaced }: UploadMapDialogProps) {
+export function UploadMapDialog({ open, onOpenChange, worldId, parentMapId = null, onCreated, replaceLayerId = null, onReplaced, addLevelToLayerId = null, onLevelAdded }: UploadMapDialogProps) {
   const replacing = !!replaceLayerId
+  const addingLevel = !!addLevelToLayerId
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [file, setFile] = useState<File | null>(null)
@@ -83,6 +87,16 @@ export function UploadMapDialog({ open, onOpenChange, worldId, parentMapId = nul
       return
     }
 
+    if (addingLevel) {
+      // In this mode the name field holds the level's label.
+      const newId = await addMapLevel(addLevelToLayerId!, { imageId, imageWidth, imageHeight }, name.trim())
+      setSaving(false)
+      reset()
+      onOpenChange(false)
+      if (newId) onLevelAdded?.(newId)
+      return
+    }
+
     const layer = await createMapLayer({
       worldId, parentMapId,
       name: name.trim(),
@@ -101,7 +115,7 @@ export function UploadMapDialog({ open, onOpenChange, worldId, parentMapId = nul
     <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o) }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{replacing ? 'Replace Map Image' : parentMapId ? 'Add Sub-Map' : 'Upload Map'}</DialogTitle>
+          <DialogTitle>{addingLevel ? 'Add Level' : replacing ? 'Replace Map Image' : parentMapId ? 'Add Sub-Map' : 'Upload Map'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div
@@ -168,6 +182,14 @@ export function UploadMapDialog({ open, onOpenChange, worldId, parentMapId = nul
                 </span>
               </span>
             </label>
+          ) : addingLevel ? (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="level-name">Level name</Label>
+              <Input id="level-name" placeholder="e.g. First floor, Dungeons" value={name} onChange={(e) => setName(e.target.value)} />
+              <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                Added as a new floor with its own locations. Switch between floors with the selector on the map.
+              </p>
+            </div>
           ) : (
             <>
               <div className="flex flex-col gap-1.5">
@@ -184,8 +206,8 @@ export function UploadMapDialog({ open, onOpenChange, worldId, parentMapId = nul
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={(!file && !linked) || (!replacing && !name.trim()) || saving}>
-              {saving ? 'Saving...' : replacing ? 'Replace' : 'Upload'}
+            <Button type="submit" disabled={(!file && !linked) || (!replacing && !addingLevel && !name.trim()) || saving}>
+              {saving ? 'Saving...' : addingLevel ? 'Add Level' : replacing ? 'Replace' : 'Upload'}
             </Button>
           </DialogFooter>
         </form>

@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
-import { createMapLayer, deleteMapLayer, replaceMapLayerImage } from '@/db/hooks/useMapLayers'
+import { createMapLayer, deleteMapLayer, replaceMapLayerImage, addMapLevel } from '@/db/hooks/useMapLayers'
 import { createLocationMarker } from '@/db/hooks/useLocationMarkers'
 import type { MapRegion, MapRoute } from '@/types'
 
@@ -223,5 +223,62 @@ describe('replaceMapLayerImage', () => {
     const m = (await db.locationMarkers.get(marker.id))!
     expect(m.x).toBe(500); expect(m.y).toBe(400)
     expect((await db.mapLayers.get(layer.id))!.imageId).toBe('img-2')
+  })
+})
+
+describe('addMapLevel', () => {
+  it('is a no-op for a missing base layer', async () => {
+    expect(await addMapLevel('ghost', { imageId: 'x', imageWidth: 10, imageHeight: 10 }, 'Attic')).toBeNull()
+  })
+
+  it('turns a standalone map into a group and stacks a new floor above', async () => {
+    const base = await createMapLayer(makeLayerData({ name: 'Hogwarts Castle', parentMapId: 'root' }))
+    const newId = await addMapLevel(base.id, { imageId: 'floor2', imageWidth: 800, imageHeight: 600 }, 'First floor')
+    expect(newId).toBeTruthy()
+
+    const updatedBase = (await db.mapLayers.get(base.id))!
+    const floor = (await db.mapLayers.get(newId!))!
+    // Base became the ground floor of a new group.
+    expect(updatedBase.levelGroupId).toBeTruthy()
+    expect(updatedBase.levelIndex).toBe(0)
+    expect(updatedBase.levelLabel).toBe('Ground floor')
+    // New floor shares the group, parent and name; sits above; keeps its own image.
+    expect(floor.levelGroupId).toBe(updatedBase.levelGroupId)
+    expect(floor.levelIndex).toBe(1)
+    expect(floor.levelLabel).toBe('First floor')
+    expect(floor.parentMapId).toBe('root')
+    expect(floor.name).toBe('Hogwarts Castle')
+    expect(floor.imageId).toBe('floor2')
+  })
+
+  it('stacks further floors above the current top and defaults the label', async () => {
+    const base = await createMapLayer(makeLayerData({ name: 'Castle' }))
+    await addMapLevel(base.id, { imageId: 'f1', imageWidth: 10, imageHeight: 10 }, 'First')
+    const thirdId = await addMapLevel(base.id, { imageId: 'f2', imageWidth: 10, imageHeight: 10 }, '')
+    const third = (await db.mapLayers.get(thirdId!))!
+    expect(third.levelIndex).toBe(2)
+    expect(third.levelLabel).toBe('Level 2') // blank label falls back
+    // Three floors now share the group.
+    const members = (await db.mapLayers.toArray()).filter((l) => l.levelGroupId === third.levelGroupId)
+    expect(members).toHaveLength(3)
+  })
+
+  it('each floor keeps its own locations (deleting a floor removes only its markers)', async () => {
+    const base = await createMapLayer(makeLayerData({ name: 'Castle' }))
+    const onGround = await createLocationMarker({
+      worldId: 'world-1', mapLayerId: base.id, name: 'Hall', description: '', x: 1, y: 1, iconType: 'building',
+    })
+    const upId = await addMapLevel(base.id, { imageId: 'f1', imageWidth: 10, imageHeight: 10 }, 'First')
+    const onFirst = await createLocationMarker({
+      worldId: 'world-1', mapLayerId: upId!, name: 'Library', description: '', x: 2, y: 2, iconType: 'building',
+    })
+
+    await deleteMapLayer(upId!)
+
+    // The first floor and its location are gone; the ground floor and its own are intact.
+    expect(await db.mapLayers.get(upId!)).toBeUndefined()
+    expect(await db.locationMarkers.get(onFirst.id)).toBeUndefined()
+    expect(await db.mapLayers.get(base.id)).toBeDefined()
+    expect(await db.locationMarkers.get(onGround.id)).toBeDefined()
   })
 })

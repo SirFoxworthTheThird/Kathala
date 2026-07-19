@@ -572,6 +572,17 @@ class PlotWeaveDB extends Dexie {
         if (l.parentMapId === undefined) l.parentMapId = null
       })
     })
+
+    // v44: map levels (floors). Existing layers are standalone maps.
+    this.version(44).stores({
+      mapLayers: 'id, worldId, parentMapId, levelGroupId, createdAt',
+    }).upgrade(async (tx) => {
+      await tx.table('mapLayers').toCollection().modify((l: Record<string, unknown>) => {
+        if (l.levelGroupId === undefined) l.levelGroupId = null
+        if (l.levelIndex === undefined) l.levelIndex = 0
+        if (l.levelLabel === undefined) l.levelLabel = ''
+      })
+    })
   }
 }
 

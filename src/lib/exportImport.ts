@@ -675,11 +675,14 @@ function normalizeImport(data: WorldExportFile): void {
     const c = char as unknown as Rec
     if (c.color === undefined) c.color = null
   }
-  // Backfill scale fields on map layers exported before they were added
+  // Backfill scale and level fields on map layers exported before they were added
   for (const layer of data.mapLayers) {
     const l = layer as unknown as Rec
     if (l.scalePixelsPerUnit === undefined) l.scalePixelsPerUnit = null
     if (l.scaleUnit === undefined) l.scaleUnit = null
+    if (l.levelGroupId === undefined) l.levelGroupId = null
+    if (l.levelIndex === undefined) l.levelIndex = 0
+    if (l.levelLabel === undefined) l.levelLabel = ''
   }
   // Backfill linkedMapLayerId and factionId on regions exported before they were added
   for (const region of data.mapRegions) {

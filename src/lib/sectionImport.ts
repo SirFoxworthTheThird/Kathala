@@ -1041,6 +1041,7 @@ export async function addLocationsToWorld(
       description: '', imageId: id,
       imageWidth: imageDims.width, imageHeight: imageDims.height,
       scalePixelsPerUnit: null, scaleUnit: null,
+      levelGroupId: null, levelIndex: 0, levelLabel: '',
       createdAt: now, updatedAt: now,
     }
     await db.mapLayers.add(layer)

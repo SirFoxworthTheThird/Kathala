@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import L from 'leaflet'
 import { useParams } from 'react-router-dom'
-import { Plus, Upload, Map as MapIcon, Ruler, X, Route, Download, Sparkles, Type, Trash2, PanelLeft, Crosshair, ImageUp } from 'lucide-react'
+import { Plus, Upload, Map as MapIcon, Ruler, X, Route, Download, Sparkles, Type, Trash2, PanelLeft, Crosshair, ImageUp, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore, useActiveMapLayerId } from '@/store'
-import { useRootMapLayers, updateMapLayer } from '@/db/hooks/useMapLayers'
+import { useRootMapLayers, updateMapLayer, deleteMapLayer } from '@/db/hooks/useMapLayers'
+import { levelsInGroup } from '@/lib/mapLevels'
+import { FloorSwitcher } from './FloorSwitcher'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/EmptyState'
 import { LeafletMapCanvas } from './LeafletMapCanvas'
@@ -49,7 +51,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
 
   const {
     setSelectedLocationMarkerId, selectedLocationMarkerId, pushMapLayer,
-    setActiveMapLayerId, setIsAnimating, isPlayingStory, playbackSpeed,
+    setActiveMapLayerId, swapActiveMapLayer, setIsAnimating, isPlayingStory, playbackSpeed,
     pendingFocusRouteId, setPendingFocusRouteId,
     pendingFocusRegionId, setPendingFocusRegionId,
     pendingFocusMarkerId, setPendingFocusMarkerId,
@@ -61,6 +63,10 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   // width; on `lg`+ they're a static column (see the sidebar classes below).
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const crossLayerPanTargetRef = useRef<[number, number] | null>(null)
+  // Live map view + a pending zoom to restore when switching floors (keeps the camera).
+  const viewRef = useRef<{ center: [number, number]; zoom: number } | null>(null)
+  const floorZoomRef = useRef<number | null>(null)
+  const [addLevelOpen, setAddLevelOpen] = useState(false)
   const pinAnimationKeyRef = useRef(0)
   const [addLocationOpen, setAddLocationOpen] = useState(false)
   const [pendingPos, setPendingPos] = useState<{ x: number; y: number } | null>(null)
@@ -143,10 +149,33 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     pinAnimationKeyRef, requestLayerSwitch,
   })
 
-  // Clear cross-layer pan target once the new layer has mounted
+  // Clear cross-layer pan target and floor-switch zoom once the new layer has mounted
   useEffect(() => {
     crossLayerPanTargetRef.current = null
-  }, [layerId])  
+    floorZoomRef.current = null
+  }, [layerId])
+
+  // ── Floors / levels ────────────────────────────────────────────────────────
+  const groupFloors = layer?.levelGroupId ? levelsInGroup(allLayers, layer.levelGroupId) : []
+
+  function switchFloor(floorId: string) {
+    if (floorId === layerId) return
+    // Hold the camera: restore the current center + zoom on the new floor.
+    if (viewRef.current) {
+      crossLayerPanTargetRef.current = viewRef.current.center
+      floorZoomRef.current = viewRef.current.zoom
+    }
+    swapActiveMapLayer(floorId)
+  }
+
+  async function deleteFloor(floorId: string) {
+    // If deleting the floor we're on, move to another floor first.
+    if (floorId === layerId) {
+      const other = groupFloors.find((f) => f.id !== floorId)
+      if (other) swapActiveMapLayer(other.id)
+    }
+    await deleteMapLayer(floorId)
+  }
 
   // ── Consume pending route/region focus from search palette ────────────────
   useEffect(() => {
@@ -590,6 +619,16 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               size="sm"
               variant="outline"
               className="gap-1.5 text-xs"
+              onClick={() => setAddLevelOpen(true)}
+              title="Add a floor/level to this map (e.g. an upper floor)"
+            >
+              <Layers className="h-3.5 w-3.5" />
+              Add level
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs"
               onClick={handleExportMap}
               title="Export map as PNG"
             >
@@ -631,6 +670,8 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             layer={layer}
             imageUrl={imageUrl}
             initialCenter={crossLayerPanTargetRef.current}
+            initialZoom={floorZoomRef.current}
+            onViewChange={(center, zoom) => { viewRef.current = { center, zoom } }}
             markers={displayedMarkers}
             charPins={displayedCharPins}
             movementLines={displayedMovementLines}
@@ -737,6 +778,17 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
                 : null
             }
           />
+
+          {/* Floor / level switcher */}
+          {groupFloors.length >= 2 && (
+            <FloorSwitcher
+              floors={groupFloors}
+              activeId={layerId}
+              onSwitch={switchFloor}
+              onAddLevel={() => setAddLevelOpen(true)}
+              onDeleteFloor={deleteFloor}
+            />
+          )}
 
           {/* Route draw HUD */}
           {drawingRoute && (
@@ -1024,6 +1076,13 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
         onOpenChange={setReplaceImageOpen}
         worldId={worldId}
         replaceLayerId={layer.id}
+      />
+      <UploadMapDialog
+        open={addLevelOpen}
+        onOpenChange={setAddLevelOpen}
+        worldId={worldId}
+        addLevelToLayerId={layer.id}
+        onLevelAdded={(newId) => swapActiveMapLayer(newId)}
       />
     </div>
   )

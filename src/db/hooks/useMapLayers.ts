@@ -102,10 +102,14 @@ export function useChildMapLayers(parentMapId: string | null) {
 
 export async function createMapLayer(
   data: Pick<MapLayer, 'worldId' | 'parentMapId' | 'name' | 'description' | 'imageId' | 'imageWidth' | 'imageHeight' | 'scalePixelsPerUnit' | 'scaleUnit'>
+    & Partial<Pick<MapLayer, 'levelGroupId' | 'levelIndex' | 'levelLabel'>>
 ): Promise<MapLayer> {
   const now = Date.now()
   const layer: MapLayer = {
     id: generateId(),
+    levelGroupId: null,
+    levelIndex: 0,
+    levelLabel: '',
     ...data,
     createdAt: now,
     updatedAt: now,
@@ -116,6 +120,59 @@ export async function createMapLayer(
 
 export async function updateMapLayer(id: string, data: Partial<Omit<MapLayer, 'id' | 'createdAt'>>) {
   await db.mapLayers.update(id, { ...data, updatedAt: Date.now() })
+}
+
+/**
+ * Add a new floor/level to a map. The base layer becomes the ground floor of a
+ * level group (created on first use), and the new floor is stacked above it as a
+ * sibling — same parent map and name — with its own image and locations. Returns
+ * the new floor's id, or null if the base layer is missing.
+ */
+export async function addMapLevel(
+  baseLayerId: string,
+  image: { imageId: string; imageWidth: number; imageHeight: number },
+  levelLabel: string,
+): Promise<string | null> {
+  return db.transaction('rw', db.mapLayers, async () => {
+    const base = await db.mapLayers.get(baseLayerId)
+    if (!base) return null
+
+    // Ensure the base layer anchors a group as its ground floor.
+    let groupId = base.levelGroupId
+    if (!groupId) {
+      groupId = generateId()
+      await db.mapLayers.update(base.id, {
+        levelGroupId: groupId,
+        levelIndex: 0,
+        levelLabel: base.levelLabel || 'Ground floor',
+        updatedAt: Date.now(),
+      })
+    }
+
+    const members = await db.mapLayers.where('levelGroupId').equals(groupId).toArray()
+    const nextIndex = members.length ? Math.max(...members.map((l) => l.levelIndex)) + 1 : 1
+
+    const now = Date.now()
+    const floor: MapLayer = {
+      id: generateId(),
+      worldId: base.worldId,
+      parentMapId: base.parentMapId,
+      name: base.name,
+      description: '',
+      imageId: image.imageId,
+      imageWidth: image.imageWidth,
+      imageHeight: image.imageHeight,
+      scalePixelsPerUnit: null,
+      scaleUnit: null,
+      levelGroupId: groupId,
+      levelIndex: nextIndex,
+      levelLabel: levelLabel.trim() || `Level ${nextIndex}`,
+      createdAt: now,
+      updatedAt: now,
+    }
+    await db.mapLayers.add(floor)
+    return floor.id
+  })
 }
 
 /**

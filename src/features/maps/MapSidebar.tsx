@@ -7,6 +7,7 @@ import {
 import { useAppStore, useMapLayerHistory } from '@/store'
 import { useMapLayers, deleteMapLayer, updateMapLayer } from '@/db/hooks/useMapLayers'
 import { canReparentLayer } from '@/lib/mapTree'
+import { isTreeVisible } from '@/lib/mapLevels'
 import { useEventMovements, clearMovement, removeLastWaypoint } from '@/db/hooks/useMovements'
 import { useItems } from '@/db/hooks/useItems'
 import { useEventItemPlacements } from '@/db/hooks/useItemPlacements'
@@ -106,7 +107,7 @@ function LayerTreeNode({
   hoverId: string | null
   onBeginDrag: (id: string, e: React.PointerEvent) => void
 }) {
-  const children = allLayers.filter((l) => l.parentMapId === layer.id)
+  const children = allLayers.filter((l) => l.parentMapId === layer.id && isTreeVisible(allLayers, l))
   const [open, setOpen] = useState(true)
   const [hovered, setHovered] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -194,7 +195,7 @@ export function LayersSection({ worldId }: { worldId: string }) {
   const history = useMapLayerHistory()
   const { resetMapHistory, setActiveMapLayerId } = useAppStore()
   const activeLayerId = history[history.length - 1] ?? null
-  const roots = allLayers.filter((l) => l.parentMapId === null)
+  const roots = allLayers.filter((l) => l.parentMapId === null && isTreeVisible(allLayers, l))
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [hoverId, setHoverId] = useState<string | null>(null)
 
@@ -304,7 +305,12 @@ export function LayersSection({ worldId }: { worldId: string }) {
         const raw = targetAt(e.clientX, e.clientY)
         const target = raw === '__root__' ? null : raw
         if (raw !== null && canReparentLayer(allLayersRef.current, p.id, target)) {
-          updateMapLayer(p.id, { parentMapId: target })
+          // Re-parent the whole level group together, not just the visible floor.
+          const dragged = allLayersRef.current.find((l) => l.id === p.id)
+          const ids = dragged?.levelGroupId
+            ? allLayersRef.current.filter((l) => l.levelGroupId === dragged.levelGroupId).map((l) => l.id)
+            : [p.id]
+          for (const id of ids) updateMapLayer(id, { parentMapId: target })
         }
       }
       reset()
