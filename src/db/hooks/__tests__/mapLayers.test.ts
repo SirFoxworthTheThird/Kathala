@@ -92,6 +92,32 @@ describe('deleteMapLayer', () => {
     expect(await db.locationMarkers.get(onRoot.id)).toBeDefined()
   })
 
+  it('nulls currentLocationMarkerId on character snapshots whose marker is deleted', async () => {
+    const root = await createMapLayer(makeLayerData({ name: 'Locations' }))
+    const child = await createMapLayer(makeLayerData({ name: 'Grounds', parentMapId: root.id }))
+    const onChild = await createLocationMarker({
+      worldId: 'world-1', mapLayerId: child.id, name: 'Gate', description: '', x: 1, y: 1, iconType: 'landmark',
+    })
+    const onRoot = await createLocationMarker({
+      worldId: 'world-1', mapLayerId: root.id, name: 'Castle', description: '', x: 2, y: 2, iconType: 'city',
+    })
+    const now = Date.now()
+    await db.characterSnapshots.bulkAdd([
+      { id: 'cs-1', worldId: 'world-1', characterId: 'c1', eventId: 'e1', isAlive: true,
+        currentLocationMarkerId: onChild.id, currentMapLayerId: child.id, inventoryItemIds: [],
+        inventoryNotes: '', statusNotes: '', travelModeId: null, createdAt: now, updatedAt: now },
+      { id: 'cs-2', worldId: 'world-1', characterId: 'c2', eventId: 'e1', isAlive: true,
+        currentLocationMarkerId: onRoot.id, currentMapLayerId: root.id, inventoryItemIds: [],
+        inventoryNotes: '', statusNotes: '', travelModeId: null, createdAt: now, updatedAt: now },
+    ])
+
+    await deleteMapLayer(child.id)
+
+    // The snapshot on the deleted marker is unlinked; the untouched one keeps its marker.
+    expect((await db.characterSnapshots.get('cs-1'))!.currentLocationMarkerId).toBeNull()
+    expect((await db.characterSnapshots.get('cs-2'))!.currentLocationMarkerId).toBe(onRoot.id)
+  })
+
   it('clears dangling sub-map links on surviving markers and regions', async () => {
     const root = await createMapLayer(makeLayerData({ name: 'Locations' }))
     const child = await createMapLayer(makeLayerData({ name: 'Grounds', parentMapId: root.id }))

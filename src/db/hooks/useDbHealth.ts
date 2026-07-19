@@ -1,5 +1,5 @@
 import { db } from '@/db/database'
-import { deleteMapLayer } from '@/db/hooks/useMapLayers'
+import { deleteMapLayersCascade } from '@/db/hooks/useMapLayers'
 import { orphanLayerIds } from '@/lib/mapTree'
 
 export interface OrphanReport {
@@ -97,14 +97,10 @@ export function totalOrphans(report: OrphanReport): number {
 /** Delete all orphaned records. */
 export async function purgeOrphans(worldId: string): Promise<void> {
   // Orphaned sub-maps go first, via the same cascade as a manual delete (which
-  // also removes their markers/routes/regions and clears dangling links). Each
-  // orphan root's subtree is disjoint, so deleting the roots covers everything.
+  // also removes their markers/routes/regions and clears dangling links). Delete
+  // the whole set in one batched transaction rather than one delete per layer.
   const layers = await db.mapLayers.where('worldId').equals(worldId).toArray()
-  const layerIds = new Set(layers.map((l) => l.id))
-  const orphanRoots = layers.filter((l) => l.parentMapId !== null && !layerIds.has(l.parentMapId))
-  for (const root of orphanRoots) {
-    await deleteMapLayer(root.id)
-  }
+  await deleteMapLayersCascade([...orphanLayerIds(layers)])
 
   const [
     events,
