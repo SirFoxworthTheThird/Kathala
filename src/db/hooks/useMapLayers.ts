@@ -64,23 +64,58 @@ export async function deleteMapLayer(id: string) {
     db.mapLayers, db.locationMarkers, db.locationSnapshots, db.characterSnapshots,
     db.mapRoutes, db.mapRegions, db.mapRegionSnapshots, db.mapAnnotations,
   ], async () => {
-    // Cascade markers, then their own child records
-    const markerIds = (await db.locationMarkers.where('mapLayerId').equals(id).toArray()).map((m) => m.id)
-    await db.locationMarkers.where('mapLayerId').equals(id).delete()
+    const layer = await db.mapLayers.get(id)
+    if (!layer) return
+
+    // Collect this layer plus every sub-map nested under it, at any depth, so
+    // deleting a map also removes the maps it contains (matching the "and its N
+    // sub-map(s)" confirmation) instead of orphaning them — orphaned layers
+    // would keep showing up as linkable sub-maps in the location panel.
+    const worldLayers = await db.mapLayers.where('worldId').equals(layer.worldId).toArray()
+    const childrenByParent = new Map<string, string[]>()
+    for (const l of worldLayers) {
+      if (l.parentMapId) {
+        const arr = childrenByParent.get(l.parentMapId) ?? []
+        arr.push(l.id)
+        childrenByParent.set(l.parentMapId, arr)
+      }
+    }
+    const layerIds: string[] = []
+    const stack = [id]
+    while (stack.length) {
+      const cur = stack.pop()!
+      layerIds.push(cur)
+      for (const child of childrenByParent.get(cur) ?? []) stack.push(child)
+    }
+    const layerIdSet = new Set(layerIds)
+
+    // Cascade markers on all deleted layers, then their own child records.
+    const markerIds = (await db.locationMarkers.where('mapLayerId').anyOf(layerIds).toArray()).map((m) => m.id)
+    await db.locationMarkers.where('mapLayerId').anyOf(layerIds).delete()
     for (const markerId of markerIds) {
       await db.locationSnapshots.where('locationMarkerId').equals(markerId).delete()
       await db.characterSnapshots
         .filter((s) => s.currentLocationMarkerId === markerId)
         .modify({ currentLocationMarkerId: null })
     }
-    // Cascade map-layer-owned objects
-    const regionIds = (await db.mapRegions.where('mapLayerId').equals(id).toArray()).map((r) => r.id)
-    await db.mapRoutes.where('mapLayerId').equals(id).delete()
-    await db.mapRegions.where('mapLayerId').equals(id).delete()
+    // Cascade map-layer-owned objects.
+    const regionIds = (await db.mapRegions.where('mapLayerId').anyOf(layerIds).toArray()).map((r) => r.id)
+    await db.mapRoutes.where('mapLayerId').anyOf(layerIds).delete()
+    await db.mapRegions.where('mapLayerId').anyOf(layerIds).delete()
     for (const regionId of regionIds) {
       await db.mapRegionSnapshots.where('regionId').equals(regionId).delete()
     }
-    await db.mapAnnotations.where('mapLayerId').equals(id).delete()
-    await db.mapLayers.delete(id)
+    await db.mapAnnotations.where('mapLayerId').anyOf(layerIds).delete()
+
+    // Drop dangling links from surviving markers/regions that pointed at any of
+    // the deleted layers, so they no longer offer a broken sub-map link.
+    await db.locationMarkers
+      .filter((m) => m.linkedMapLayerId !== null && layerIdSet.has(m.linkedMapLayerId))
+      .modify({ linkedMapLayerId: null })
+    await db.mapRegions
+      .filter((r) => r.linkedMapLayerId !== null && layerIdSet.has(r.linkedMapLayerId))
+      .modify({ linkedMapLayerId: null })
+
+    await db.mapLayers.bulkDelete(layerIds)
   })
 }
