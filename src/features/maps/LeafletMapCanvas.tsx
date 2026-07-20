@@ -5,7 +5,7 @@ import type { MapLayer, LocationMarker, Character, MapRoute, MapRegion, MapRegio
 import { updateLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { useAppStore } from '@/store'
 import { type GhostPin, makeGhostIcon } from '@/lib/ghostMarkerIcon'
-import { playbackFocusZoom } from './mapUtils'
+import { playbackFocusTarget, playbackFocusZoom } from './mapUtils'
 
 export type { GhostPin }
 
@@ -629,8 +629,10 @@ export function LeafletMapCanvas({
         if (!pinIds.has(id)) { m.remove(); charMarkersRef.current.delete(id) }
       }
 
-      // Determine which character is the active mover (has a from position)
-      const movingCharId = Object.keys(from)[0] ?? null
+      // First appearances and cross-map arrivals may only have a destination.
+      // They still need a mover and focus point for camera follow.
+      const focusTarget = playbackFocusTarget(pinAnimation)
+      const movingCharId = focusTarget?.characterId ?? null
 
       // Create / reposition per-character markers at their FROM positions
       for (const pin of charPins) {
@@ -659,15 +661,12 @@ export function LeafletMapCanvas({
 
       // Frame the moving character more closely than the fitted full-map view.
       // Subsequent animation frames keep this zoom while following the pin.
-      if (cameraFollow && movingCharId) {
-        const startPos = from[movingCharId]
-        if (startPos) {
-          map.setView(
-            [startPos.y, startPos.x],
-            playbackFocusZoom(map.getZoom(), map.getMinZoom(), map.getMaxZoom()),
-            { animate: false },
-          )
-        }
+      if (cameraFollow && focusTarget) {
+        map.setView(
+          [focusTarget.position.y, focusTarget.position.x],
+          playbackFocusZoom(map.getZoom(), map.getMinZoom(), map.getMaxZoom()),
+          { animate: false },
+        )
       }
 
       setIsAnimating(true)

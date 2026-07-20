@@ -21,6 +21,16 @@ export function playbackFocusZoom(currentZoom: number, minZoom: number, maxZoom:
   return Math.min(maxZoom, Math.max(currentZoom, minZoom + PLAYBACK_FOCUS_ZOOM_DELTA))
 }
 
+/** Resolve the character and point the playback camera should initially frame. */
+export function playbackFocusTarget(
+  animation: Pick<PinAnimation, 'from' | 'to'>,
+): { characterId: string; position: { x: number; y: number } } | null {
+  const characterId = Object.keys(animation.from)[0] ?? Object.keys(animation.to)[0]
+  if (!characterId) return null
+  const position = animation.from[characterId] ?? animation.to[characterId]
+  return position ? { characterId, position } : null
+}
+
 /** One stop in the ordered playback map-navigation queue */
 export interface PlaybackStep {
   mapLayerId: string
