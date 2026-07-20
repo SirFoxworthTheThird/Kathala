@@ -244,7 +244,12 @@ function ZoomTracker({ onZoomChange }: { onZoomChange: (zoom: number) => void })
   return null
 }
 
-function FitBounds({ bounds, initialCenter, initialZoom }: { bounds: L.LatLngBoundsExpression; initialCenter?: [number, number] | null; initialZoom?: number | null }) {
+function FitBounds({ bounds, initialCenter, initialZoom, onReady }: {
+  bounds: L.LatLngBoundsExpression
+  initialCenter?: [number, number] | null
+  initialZoom?: number | null
+  onReady?: () => void
+}) {
   const map = useMapEvents({})
   useEffect(() => {
     // Defer to a macro-task so react-leaflet's ResizeObserver callback (which fires
@@ -267,6 +272,7 @@ function FitBounds({ bounds, initialCenter, initialZoom }: { bounds: L.LatLngBou
         if (typeof zoom === 'number') map.setView(center, zoom, { animate: false })
         else map.panTo(center, { animate: false })
       }
+      onReady?.()
     }, 0)
     return () => clearTimeout(id)
   }, [map, bounds]) // eslint-disable-line react-hooks/exhaustive-deps -- initialCenter/initialZoom intentionally read only at mount
@@ -463,6 +469,7 @@ export function LeafletMapCanvas({
   const animFrameRef    = useRef<number | null>(null)
   const runningAnimKeyRef = useRef<number | null>(null) // guard: skip re-init for same animation key
   const [leafletMap, setLeafletMap] = useState<L.Map | null>(null)
+  const [isViewportReady, setIsViewportReady] = useState(false)
   const [mapZoom, setMapZoom]         = useState(0)
   const charPinsRef     = useRef(charPins)   // always-fresh snapshot for RAF callbacks
   const mapZoomRef      = useRef(mapZoom)
@@ -598,7 +605,7 @@ export function LeafletMapCanvas({
   // its async initialisation (react-leaflet v5 creates the map via setContext).
   useEffect(() => {
     const map = leafletMap ?? mapRef.current
-    if (!map) return
+    if (!map || !isViewportReady) return
 
     if (animFrameRef.current) {
       cancelAnimationFrame(animFrameRef.current)
@@ -737,7 +744,7 @@ export function LeafletMapCanvas({
         setIsAnimating(false)
       }
     }
-  }, [pinAnimation, charPins, leafletMap]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pinAnimation, charPins, leafletMap, isViewportReady]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Update icon sizes when zoom changes, without interrupting any running animation
   useEffect(() => {
@@ -889,7 +896,12 @@ export function LeafletMapCanvas({
         maxZoom={4} zoomSnap={0.25}
       >
         <MapInstanceTracker onReady={(m) => { mapRef.current = m; setLeafletMap(m) }} />
-        <FitBounds bounds={bounds} initialCenter={initialCenter} initialZoom={initialZoom} />
+        <FitBounds
+          bounds={bounds}
+          initialCenter={initialCenter}
+          initialZoom={initialZoom}
+          onReady={() => setIsViewportReady(true)}
+        />
         <ZoomTracker onZoomChange={setMapZoom} />
         {onViewChange && <ViewTracker onViewChange={onViewChange} />}
         <ImageOverlay url={imageUrl} bounds={bounds} />
