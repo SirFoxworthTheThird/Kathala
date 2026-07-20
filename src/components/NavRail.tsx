@@ -64,7 +64,9 @@ export function NavRail() {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       className={cn(
-        'fixed left-0 top-12 bottom-0 z-40 hidden flex-col border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] transition-[width] duration-150 lg:flex',
+        // z above the fixed chapter-timeline bar (z-1000) so the expanded rail
+        // overlays it, but below modals/panels (z-3000+).
+        'fixed left-0 top-12 bottom-0 z-[1100] hidden flex-col border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] transition-[width] duration-150 lg:flex',
         expanded ? 'w-52 shadow-xl' : 'w-[3.25rem]'
       )}
     >
