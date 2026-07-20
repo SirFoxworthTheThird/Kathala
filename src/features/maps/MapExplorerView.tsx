@@ -18,7 +18,7 @@ import { AddLocationDialog } from './AddLocationDialog'
 import { StoryNotesOverlay } from './StoryNotesOverlay'
 import type { ScaleCalibrationPoint, MeasureLine, JourneyLine } from './LeafletMapCanvas'
 import { pixelDist, formatDistance } from '@/lib/mapScale'
-import { characterColor } from './mapUtils'
+import { characterColor, resolvedSnapshotLayerId } from './mapUtils'
 import { MapFilterBar, DEFAULT_MAP_FILTERS } from './MapFilterBar'
 import type { MapFilters } from './MapFilterBar'
 import { SetScaleDialog } from './SetScaleDialog'
@@ -250,10 +250,12 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       return
     }
     const snap = snapshots.find((s) => s.characterId === characterId)
-    if (!snap?.currentMapLayerId) return
+    if (!snap) return
     const targetMarker = allMarkers.find((m) => m.id === snap.currentLocationMarkerId)
+    const targetLayerId = resolvedSnapshotLayerId(snap, allMarkers)
+    if (!targetLayerId) return
     if (targetMarker) crossLayerPanTargetRef.current = [targetMarker.y, targetMarker.x]
-    pushMapLayer(snap.currentMapLayerId)
+    pushMapLayer(targetLayerId)
   }
 
   function focusOnItem(itemId: string) {
@@ -374,7 +376,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     for (let i = 0; i < orderedEvents.length; i++) eventOrderMap.set(orderedEvents[i].id, i)
     const byChar = new Map<string, typeof allWorldSnaps>()
     for (const snap of allWorldSnaps) {
-      if (!snap.currentLocationMarkerId || snap.currentMapLayerId !== layerId) continue
+      if (!snap.currentLocationMarkerId || resolvedSnapshotLayerId(snap, allMarkers) !== layerId) continue
       if (!eventOrderMap.has(snap.eventId)) continue
       const arr = byChar.get(snap.characterId) ?? []
       arr.push(snap)
