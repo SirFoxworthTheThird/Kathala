@@ -244,13 +244,16 @@ function ZoomTracker({ onZoomChange }: { onZoomChange: (zoom: number) => void })
   return null
 }
 
-function FitBounds({ bounds, initialCenter, initialZoom, onReady }: {
+function FitBounds({ bounds, initialCenter, initialZoom, playbackFocus, onReady }: {
   bounds: L.LatLngBoundsExpression
   initialCenter?: [number, number] | null
   initialZoom?: number | null
+  playbackFocus?: { position: { x: number; y: number } } | null
   onReady?: () => void
 }) {
   const map = useMapEvents({})
+  const playbackFocusRef = useRef(playbackFocus)
+  playbackFocusRef.current = playbackFocus
   useEffect(() => {
     // Defer to a macro-task so react-leaflet's ResizeObserver callback (which fires
     // asynchronously and calls invalidateSize) runs first. Without this, the observer
@@ -266,7 +269,17 @@ function FitBounds({ bounds, initialCenter, initialZoom, onReady }: {
       map.setMinZoom(minZoom)
       map.setMaxBounds(bounds)
       map.options.zoomSnap = prevSnap ?? 0.25
-      if (center && typeof center[0] === 'number' && typeof center[1] === 'number') {
+      const focus = playbackFocusRef.current
+      if (focus) {
+        // Image dimensions can settle after playback has already focused the new
+        // layer, causing this fit to run a second time. Preserve playback focus
+        // so that late fit never leaves a cross-map arrival fully zoomed out.
+        map.setView(
+          [focus.position.y, focus.position.x],
+          playbackFocusZoom(map.getZoom(), map.getMinZoom(), map.getMaxZoom()),
+          { animate: false },
+        )
+      } else if (center && typeof center[0] === 'number' && typeof center[1] === 'number') {
         // Restoring center + zoom (a floor switch) holds the camera; otherwise
         // just pan (a cross-layer focus keeps the fitted zoom).
         if (typeof zoom === 'number') map.setView(center, zoom, { animate: false })
@@ -899,6 +912,7 @@ export function LeafletMapCanvas({
           bounds={bounds}
           initialCenter={initialCenter}
           initialZoom={initialZoom}
+          playbackFocus={pinAnimation?.cameraFollow ? playbackFocusTarget(pinAnimation) : null}
           onReady={() => setIsViewportReady(true)}
         />
         <ZoomTracker onZoomChange={setMapZoom} />
