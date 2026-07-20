@@ -31,6 +31,8 @@ export interface World {
   continuityStaleThreshold: number
   /** Optional custom calendar; null/absent = no calendar (dates shown as "Day N"). */
   calendar?: WorldCalendar | null
+  /** Optional book-level manuscript word target, for the writing-progress burndown. */
+  wordTarget?: number | null
   createdAt: number
   updatedAt: number
 }

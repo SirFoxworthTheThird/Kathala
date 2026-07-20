@@ -13,3 +13,16 @@ export interface SceneText {
   createdAt: number
   updatedAt: number
 }
+
+/** A per-day rollup of net manuscript words written in a world. One row per
+ *  (world × local calendar day). Feeds the writing-progress streak and pacing. */
+export interface WritingLog {
+  id: string
+  worldId: string
+  /** Local calendar day this rollup covers, as `YYYY-MM-DD`. */
+  date: string
+  /** Net words written that day (additions minus deletions across all scenes). */
+  words: number
+  createdAt: number
+  updatedAt: number
+}

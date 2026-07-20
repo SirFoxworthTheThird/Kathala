@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, type ElementType, type ReactNode } from '
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   Map as MapIcon, Users, Network, BookOpen,
-  Package, BarChart2, ShieldAlert, Clock, Layers, Pencil, FileEdit, Spline,
+  Package, BarChart2, ShieldAlert, Clock, Layers, Pencil, FileEdit, Spline, PenLine,
 } from 'lucide-react'
 import type { EventStatus } from '@/types'
 import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
@@ -27,6 +27,7 @@ import { OnboardingWizard } from '@/features/onboarding'
 import { DashboardSuggestion } from './DashboardSuggestion'
 import { CastBalance } from './CastBalance'
 import { ThreadCadence } from './ThreadCadence'
+import { WritingProgress } from './WritingProgress'
 import { evaluateSuggestions, type WorldSummaryData } from './suggestionRules'
 
 // ── Stat pill ────────────────────────────────────────────────────────────────
@@ -429,6 +430,14 @@ export default function WorldDashboardView() {
               )
             })}
           </div>
+        </div>
+      )}
+
+      {/* Writing progress — words, streak, burndown */}
+      {totalEvents > 0 && worldId && (
+        <div>
+          <SectionHeading icon={PenLine}>Writing Progress</SectionHeading>
+          <WritingProgress worldId={worldId} wordTarget={world?.wordTarget} />
         </div>
       )}
 

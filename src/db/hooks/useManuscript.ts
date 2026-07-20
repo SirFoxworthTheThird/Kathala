@@ -3,6 +3,7 @@ import { db } from '@/db/database'
 import type { SceneText } from '@/types'
 import { generateId } from '@/lib/id'
 import { wordCount } from '@/lib/manuscript'
+import { logWritingProgress } from '@/db/hooks/useWritingLog'
 import { createWorld } from '@/db/hooks/useWorlds'
 import { createTimeline, createChapter, createEvent } from '@/db/hooks/useTimeline'
 import type { ParsedManuscript } from '@/lib/manuscriptImport'
@@ -42,18 +43,22 @@ export async function setSceneText(
 ): Promise<void> {
   const existing = await db.sceneTexts.where('eventId').equals(eventId).first()
   const now = Date.now()
+  const oldCount = existing?.wordCount ?? 0
+  const newCount = text.trim() ? wordCount(text) : 0
 
   if (!text.trim()) {
     if (existing) await db.sceneTexts.delete(existing.id)
+    await logWritingProgress(worldId, newCount - oldCount, now)
     return
   }
 
   if (existing) {
     await db.sceneTexts.update(existing.id, {
       text,
-      wordCount: wordCount(text),
+      wordCount: newCount,
       updatedAt: now,
     })
+    await logWritingProgress(worldId, newCount - oldCount, now)
     return
   }
 
@@ -62,11 +67,12 @@ export async function setSceneText(
     worldId,
     eventId,
     text,
-    wordCount: wordCount(text),
+    wordCount: newCount,
     createdAt: now,
     updatedAt: now,
   }
   await db.sceneTexts.add(record)
+  await logWritingProgress(worldId, newCount - oldCount, now)
 }
 
 /**

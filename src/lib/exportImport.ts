@@ -9,6 +9,7 @@ import type {
   SceneText,
   PlotThread,
   ContinuitySuppression,
+  WritingLog,
 } from '@/types'
 import { generateId } from '@/lib/id'
 
@@ -78,6 +79,7 @@ export interface WorldExportFile {
   sceneTexts?: SceneText[]
   plotThreads?: PlotThread[]
   continuitySuppressions?: ContinuitySuppression[]
+  writingLogs?: WritingLog[]
   relationshipPositions?: Record<string, { x: number; y: number }>
   /** @deprecated v6 and earlier stored only IDs via localStorage; superseded by continuitySuppressions */
   suppressedIssueIds?: string[]
@@ -150,6 +152,7 @@ interface CollectedWorldData {
   sceneTexts: SceneText[]
   plotThreads: PlotThread[]
   continuitySuppressions: ContinuitySuppression[]
+  writingLogs: WritingLog[]
 }
 
 export type { CollectedWorldData }
@@ -189,6 +192,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     sceneTexts,
     plotThreads,
     continuitySuppressions,
+    writingLogs,
   ] = await Promise.all([
     db.worlds.get(worldId),
     db.mapLayers.where('worldId').equals(worldId).toArray(),
@@ -223,6 +227,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     db.sceneTexts.where('worldId').equals(worldId).toArray(),
     db.plotThreads.where('worldId').equals(worldId).toArray(),
     db.continuitySuppressions.where('worldId').equals(worldId).toArray(),
+    db.writingLogs.where('worldId').equals(worldId).toArray(),
   ])
 
   if (!world) throw new Error('World not found')
@@ -261,6 +266,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     sceneTexts,
     plotThreads,
     continuitySuppressions,
+    writingLogs,
   }
 }
 
@@ -391,6 +397,7 @@ export async function exportWorld(
     sceneTexts: d.sceneTexts,
     plotThreads: d.plotThreads,
     continuitySuppressions: d.continuitySuppressions,
+    writingLogs: d.writingLogs,
     ...extras,
   }
   const filename = `${d.world.name.replace(/[^a-z0-9]/gi, '_')}.pwk`
@@ -463,6 +470,7 @@ export async function exportWorldSplit(
     sceneTexts: d.sceneTexts,
     plotThreads: d.plotThreads,
     continuitySuppressions: d.continuitySuppressions,
+    writingLogs: d.writingLogs,
     ...extras,
   }
   triggerDownload(JSON.stringify(dataFile), `${safeName}.pwk`)
@@ -526,6 +534,7 @@ export async function serializeWorldForSync(worldId: string): Promise<string> {
     sceneTexts: d.sceneTexts,
     plotThreads: d.plotThreads,
     continuitySuppressions: d.continuitySuppressions,
+    writingLogs: d.writingLogs,
     ...extras,
   }
   return JSON.stringify(exportData)
@@ -658,6 +667,10 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
     throw new Error('Invalid file: plotThreads is not an array')
   }
   if (!d.plotThreads) (d as Record<string, unknown>).plotThreads = []
+  if (d.writingLogs !== undefined && !Array.isArray(d.writingLogs)) {
+    throw new Error('Invalid file: writingLogs is not an array')
+  }
+  if (!d.writingLogs) (d as Record<string, unknown>).writingLogs = []
 }
 
 function normalizeImport(data: WorldExportFile): void {
@@ -730,6 +743,7 @@ function normalizeImport(data: WorldExportFile): void {
     const w = data.world as unknown as Rec
     if (w.continuityStaleThreshold === undefined) w.continuityStaleThreshold = 5
     if (w.calendar === undefined) w.calendar = null
+    if (w.wordTarget === undefined) w.wordTarget = null
   }
 
   // ── v1 → v2 migration ───────────────────────────────────────────────────────
@@ -892,7 +906,7 @@ async function importWorldData(data: WorldExportFile): Promise<string> {
     db.mapRoutes, db.mapRegions, db.mapRegionSnapshots, db.mapAnnotations,
     db.loreCategories, db.lorePages, db.factions, db.factionMemberships, db.factionRelationships,
     db.knowledgeFacts, db.knowledgeReveals, db.sceneTexts, db.plotThreads,
-    db.continuitySuppressions,
+    db.continuitySuppressions, db.writingLogs,
   ], async () => {
     await db.worlds.put(data.world)
     await db.mapLayers.bulkPut(data.mapLayers)
@@ -925,6 +939,7 @@ async function importWorldData(data: WorldExportFile): Promise<string> {
     await db.knowledgeReveals.bulkPut(data.knowledgeReveals ?? [])
     await db.sceneTexts.bulkPut(data.sceneTexts ?? [])
     await db.plotThreads.bulkPut(data.plotThreads ?? [])
+    await db.writingLogs.bulkPut(data.writingLogs ?? [])
     if (suppressionsToImport.length > 0) {
       await db.continuitySuppressions.bulkPut(suppressionsToImport)
     }
@@ -1063,6 +1078,7 @@ export async function applyWorldImport(
     localLoreCats, localLorePages,
     localFactions, localFactionMemberships, localFactionRelationships,
     localKnowledgeFacts, localKnowledgeReveals, localSceneTexts, localPlotThreads,
+    localWritingLogs,
   ] = await Promise.all([
     db.characters.where('worldId').equals(worldId).toArray(),
     db.items.where('worldId').equals(worldId).toArray(),
@@ -1094,6 +1110,7 @@ export async function applyWorldImport(
     db.knowledgeReveals.where('worldId').equals(worldId).toArray(),
     db.sceneTexts.where('worldId').equals(worldId).toArray(),
     db.plotThreads.where('worldId').equals(worldId).toArray(),
+    db.writingLogs.where('worldId').equals(worldId).toArray(),
   ])
 
   const merged = {
@@ -1128,6 +1145,7 @@ export async function applyWorldImport(
     knowledgeReveals:     mergeTable(parsed.knowledgeReveals ?? [], localKnowledgeReveals).result,
     sceneTexts:           mergeTable(parsed.sceneTexts ?? [], localSceneTexts).result,
     plotThreads:          mergeTable(parsed.plotThreads ?? [], localPlotThreads).result,
+    writingLogs:          mergeTable(parsed.writingLogs ?? [], localWritingLogs).result,
     blobs:                parsed.blobs, // blobs: always use incoming (binary, no updatedAt)
     relationshipPositions: parsed.relationshipPositions,
     suppressedIssueIds:   parsed.suppressedIssueIds,

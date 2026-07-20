@@ -35,6 +35,7 @@ import type {
   SceneText,
   PlotThread,
   ContinuitySuppression,
+  WritingLog,
 } from '@/types'
 
 class PlotWeaveDB extends Dexie {
@@ -72,6 +73,7 @@ class PlotWeaveDB extends Dexie {
   sceneTexts!: EntityTable<SceneText, 'id'>
   plotThreads!: EntityTable<PlotThread, 'id'>
   continuitySuppressions!: EntityTable<ContinuitySuppression, 'id'>
+  writingLogs!: EntityTable<WritingLog, 'id'>
 
   constructor() {
     super('PlotWeaveDB')
@@ -591,6 +593,15 @@ class PlotWeaveDB extends Dexie {
       })
       await tx.table('characters').toCollection().modify((c: Record<string, unknown>) => {
         if (c.birthDate === undefined) c.birthDate = null
+      })
+    })
+
+    // v46: writing-progress log (per world × day) and a book-level word target.
+    this.version(46).stores({
+      writingLogs: 'id, worldId, [worldId+date]',
+    }).upgrade(async (tx) => {
+      await tx.table('worlds').toCollection().modify((w: Record<string, unknown>) => {
+        if (w.wordTarget === undefined) w.wordTarget = null
       })
     })
   }

@@ -174,12 +174,33 @@ copied — book two is a fresh narrative that begins where the last one left off
 Opening a world lands you on its dashboard — a bird's-eye view of the whole
 project. Stat tiles summarise the timeline, cast, maps, relationships, items,
 snapshot coverage, and continuity status. Below them are recent events, scene
-status, and analytics panels (Cast Balance and Plot Threads, covered later).
+status, writing progress, and analytics panels (Cast Balance and Plot Threads,
+covered later).
 
 ![World dashboard](images/03-dashboard.png)
 
 The tiles are links — click **Timeline**, **Characters**, **Maps**, or any other
 tile to jump straight to that area.
+
+### Writing progress
+
+As you write scene prose (in the Manuscript view), PlotWeave keeps a lightweight
+per-day log of the words you add or cut. The **Writing Progress** panel on the
+dashboard turns that into an at-a-glance readout:
+
+- **Total words** across the whole manuscript.
+- **Words today** — the net change since midnight (green when you've added).
+- **Day streak** — consecutive days you've written; a blank day today doesn't
+  break a run you're still in the middle of.
+- A **burndown bar** against your book **word target** (set it under
+  *Manuscript* in [World settings](#world-settings--export)), showing percent
+  complete and words to go.
+- A **14-day strip** of daily output so you can see your recent momentum.
+
+![Writing Progress](images/31-writing-progress.png)
+
+The log travels with the world through export/import, so your streak and history
+survive a backup or a move to another device.
 
 ---
 
@@ -615,8 +636,10 @@ configurable in Settings.
 Per-world settings let you rename the world, set a **cover image**, pick a
 **theme** (Default, Fantasy, Sci-Fi, Cyberpunk, Horror, Western, Action, Noir,
 Romance), define **travel modes** with speeds for map distance calculations, set
-the **continuity stale-snapshot threshold**, and configure an in-world
-**[calendar](#calendar--character-ages)** for story dates and character ages.
+the **continuity stale-snapshot threshold**, set a book-level **word target**
+(for the dashboard's [Writing Progress](#the-world-dashboard) burndown), and
+configure an in-world **[calendar](#calendar--character-ages)** for story dates
+and character ages.
 
 The **cover image** appears on the world's card in the selector and in the
 dashboard header. **Upload** an image file or **link** one by URL (the link

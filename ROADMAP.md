@@ -387,15 +387,16 @@ Tie together the scaled map, routes, travel modes, and per-chapter elapsed days.
 - [ ] **Proactive suggest** — a per-event "suggest travelDays" affordance in the editor (before any violation) is still not built; the one-click fix covers the reactive case.
 - [ ] **Cross-map/floor journeys** — currently skipped (no shared metric); could estimate via the building pin + inner distance later.
 
-### 2. In-world calendar & character ages
+### 2. In-world calendar & character ages — DONE
 
 An in-world day is tracked but there's no calendar or ages.
 
-- [ ] **Calendar config** — per-world months[], days-per-week, epoch label; absolute in-world dates computed from chapter durations (pure date math, unit-tested).
-- [ ] **Character birth date** — optional in-world birth date on `Character`; compute age at the active event.
-- [ ] **Calendar view** — events laid out on a month/season grid.
-- [ ] **Surfacing** — age shown in the Writer's Brief and roster; season/date shown on events.
-- [ ] **Continuity (optional)** — season/date mismatches and age-inappropriate actions (likely manual-tagged).
+- [x] **Calendar config** — per-world `months[]` (name + length), start year, era suffix; pure day-number ⇄ date math in `src/lib/calendar.ts`, unit-tested. Editor in World settings.
+- [x] **Character birth date** — optional in-world `birthDate` on `Character` (date picker on the Overview tab); age computed at the active event (counts birthdays passed).
+- [x] **Surfacing** — the Writer's Brief shows the active event's in-world date (day number when no calendar) and each present character's age.
+- [x] **Round-trip** — calendar + birth dates survive export/import (with backfill).
+- [ ] **Calendar view** — events laid out on a month/season grid. Not built.
+- [ ] **Continuity (optional)** — season/date mismatches and age-inappropriate actions (likely manual-tagged). Not built.
 
 ### 3. Compile to DOCX / EPUB  — *highest-demand practical win* — DONE
 
@@ -408,14 +409,14 @@ Export is MD/HTML/TXT today; writers need a submission/reading artifact.
 - [x] **Tests** — zip signatures/CRC + docx/epub structure (parts present, prose included, only-written filtering, mimetype first).
 - [ ] **Scope by scene status** — currently filters by written/unwritten; a `final`/`revised`-only filter is still open.
 
-### 4. Writing progress dashboard
+### 4. Writing progress dashboard — DONE
 
 Per-chapter word goals and a pacing curve exist, but no progress-over-time.
 
-- [ ] **Daily word log** — lightweight per-day word-count rollup (derived from manuscript/scene word counts).
-- [ ] **Book-level target** — word target in world settings.
-- [ ] **Dashboard tile** — daily words, streak, and burndown vs the book target and per-chapter goals.
-- [ ] **Tests** — aggregation/streak logic.
+- [x] **Daily word log** — `writingLogs` table (DB v46), one row per world × local day; `setSceneText` logs the net word delta on every save. Survives export/import.
+- [x] **Book-level target** — `World.wordTarget`, editable under *Manuscript* in World settings.
+- [x] **Dashboard tile** — `WritingProgress` panel: total words, words today, day streak, burndown vs the book target, and a 14-day output strip.
+- [x] **Tests** — pure `src/lib/writingProgress.ts` (streak/series/summary) unit tests + logging & round-trip integration tests.
 
 ### 5. Corkboard / scene outliner
 
