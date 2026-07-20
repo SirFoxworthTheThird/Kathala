@@ -55,14 +55,25 @@ describe('bundled example worlds stay importable', () => {
       }
 
       // Map layers gained level (floor) fields after these files were exported —
-      // backfilled so every layer imports as a standalone map, and parentMapId
-      // normalised to null (v43/v44). No fix to the example files needed.
+      // Legacy standalone maps retain their backfilled defaults; enriched
+      // examples may also contain real floor groups with unique indices.
       const mapLayers = await db.mapLayers.where('worldId').equals(worldId).toArray()
+      const levelGroups = new Map<string, typeof mapLayers>()
       for (const l of mapLayers) {
-        expect(l.levelGroupId).toBeNull()
-        expect(l.levelIndex).toBe(0)
-        expect(l.levelLabel).toBe('')
+        if (l.levelGroupId === null) {
+          expect(l.levelIndex).toBe(0)
+          expect(l.levelLabel).toBe('')
+        } else {
+          expect(Number.isInteger(l.levelIndex)).toBe(true)
+          expect(l.levelLabel.trim().length).toBeGreaterThan(0)
+          const group = levelGroups.get(l.levelGroupId) ?? []
+          group.push(l)
+          levelGroups.set(l.levelGroupId, group)
+        }
         expect(l.parentMapId === null || typeof l.parentMapId === 'string').toBe(true)
+      }
+      for (const group of levelGroups.values()) {
+        expect(new Set(group.map((layer) => layer.levelIndex)).size).toBe(group.length)
       }
 
       // Older examples may leave lore, factions, and knowledge empty, while
