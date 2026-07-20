@@ -10,6 +10,17 @@ export type PinLayer = { id: string; parentMapId: string | null } & LevelLayer
 /** How long character pins animate across the map per playback speed (ms) */
 export const PIN_TRAVEL_MS: Record<PlaybackSpeed, number> = { slow: 6500, normal: 4000, fast: 2200 }
 
+/** How far playback moves in from the fitted full-map view when following a character. */
+export const PLAYBACK_FOCUS_ZOOM_DELTA = 1.5
+
+/**
+ * Pick a useful character-follow zoom without undoing a closer zoom selected by
+ * the user or exceeding the map's configured maximum.
+ */
+export function playbackFocusZoom(currentZoom: number, minZoom: number, maxZoom: number): number {
+  return Math.min(maxZoom, Math.max(currentZoom, minZoom + PLAYBACK_FOCUS_ZOOM_DELTA))
+}
+
 /** One stop in the ordered playback map-navigation queue */
 export interface PlaybackStep {
   mapLayerId: string
