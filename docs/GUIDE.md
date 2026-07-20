@@ -23,23 +23,24 @@ explore).
 6. [The world dashboard](#the-world-dashboard)
 7. [Timeline & events](#timeline--events)
 8. [Chapter detail](#chapter-detail)
-9. [Manuscript](#manuscript)
-10. [Characters](#characters)
-11. [Cast Balance](#cast-balance)
-12. [Plot Threads](#plot-threads)
-13. [Maps](#maps)
-14. [Items](#items)
-15. [Relationships](#relationships)
-16. [Character Arc grid](#character-arc-grid)
-17. [Lore](#lore)
-18. [Factions](#factions)
-19. [Knowledge](#knowledge)
-20. [Search](#search)
-21. [Writer's Brief](#writers-brief)
-22. [Calendar & character ages](#calendar--character-ages)
-23. [Continuity Checker](#continuity-checker)
-24. [World settings & export](#world-settings--export)
-25. [Help](#help)
+9. [Corkboard](#corkboard)
+10. [Manuscript](#manuscript)
+11. [Characters](#characters)
+12. [Cast Balance](#cast-balance)
+13. [Plot Threads](#plot-threads)
+14. [Maps](#maps)
+15. [Items](#items)
+16. [Relationships](#relationships)
+17. [Character Arc grid](#character-arc-grid)
+18. [Lore](#lore)
+19. [Factions](#factions)
+20. [Knowledge](#knowledge)
+21. [Search](#search)
+22. [Writer's Brief](#writers-brief)
+23. [Calendar & character ages](#calendar--character-ages)
+24. [Continuity Checker](#continuity-checker)
+25. [World settings & export](#world-settings--export)
+26. [Help](#help)
 
 ---
 
@@ -237,6 +238,26 @@ text to an AI assistant (via a copy-paste prompt, like the world generator) and
 have it fill in the events, character states, and a dramatic-**tension** rating
 for each event — the ratings feed the pacing curve on the Timeline. *Generate*
 drafts a new chapter; *Update* re-derives an existing one from its prose.
+
+---
+
+## Corkboard
+
+The **Corkboard** is an index-card view of your whole story — the classic way to
+see structure at a glance and shuffle it. Each chapter is a column; each scene
+(event) is a card showing its title, synopsis, POV character, and **status**
+(Idea → Outline → Draft → Revised → Final).
+
+![Corkboard](images/32-corkboard.png)
+
+- **Drag a card** to reorder scenes within a chapter, or drop it into another
+  chapter's column to move it there — the timeline order updates to match.
+- **Change a scene's status** right on the card with the status pill.
+- **Click a card's title** to jump to that scene in the chapter detail with the
+  time cursor set to it.
+
+It's the same events as the Timeline, shown as a board — reorder here or there
+and both stay in sync.
 
 ---
 

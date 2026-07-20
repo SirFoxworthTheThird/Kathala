@@ -418,10 +418,11 @@ Per-chapter word goals and a pacing curve exist, but no progress-over-time.
 - [x] **Dashboard tile** — `WritingProgress` panel: total words, words today, day streak, burndown vs the book target, and a 14-day output strip.
 - [x] **Tests** — pure `src/lib/writingProgress.ts` (streak/series/summary) unit tests + logging & round-trip integration tests.
 
-### 5. Corkboard / scene outliner
+### 5. Corkboard / scene outliner — DONE
 
-- [ ] **Card view** — events/scenes as index cards (synopsis, POV, status), drag-reorderable within and across chapters (reuses existing event reorder + status).
-- [ ] **Tests** — reorder logic.
+- [x] **Card view** — `CorkboardView` (route `corkboard`, Extended nav item): one column per chapter, one card per event showing title, synopsis, POV and a status pill. HTML5 drag-and-drop reorders cards within a chapter and moves them across chapters; status editable inline; clicking a card opens the scene with the time cursor set.
+- [x] **Reorder engine** — pure `src/lib/corkboard.ts` (`reorderInsert` / `assignSortOrders` / `sortOrderDiff`) + `moveEventOnBoard` in `useTimeline` (renumbers both columns, recomputes snapshot sortKeys).
+- [x] **Tests** — pure reorder units, a `moveEventOnBoard` integration test (within/cross chapter + sortKey recompute), and a Playwright drag e2e.
 
 ### 6. Themes & motifs tracker
 

@@ -19,6 +19,7 @@ const LorePageEditor = lazy(() => import('@/features/lore/LorePageEditor'))
 const FactionsView = lazy(() => import('@/features/factions/FactionsView'))
 const KnowledgeView = lazy(() => import('@/features/knowledge/KnowledgeView'))
 const ManuscriptView = lazy(() => import('@/features/manuscript/ManuscriptView'))
+const CorkboardView = lazy(() => import('@/features/corkboard/CorkboardView'))
 
 function Loading() {
   return (
@@ -50,6 +51,7 @@ export const router = createHashRouter([
       { path: 'relationships', element: <Wrap><RelationshipGraphView /></Wrap> },
       { path: 'timeline', element: <Wrap><TimelineView /></Wrap> },
       { path: 'timeline/:chapterId', element: <Wrap><ChapterDetailView /></Wrap> },
+      { path: 'corkboard', element: <Wrap><CorkboardView /></Wrap> },
       { path: 'arc', element: <Wrap><CharacterArcView /></Wrap> },
       { path: 'settings', element: <Wrap><WorldSettingsView /></Wrap> },
       { path: 'lore', element: <Wrap><LoreView /></Wrap> },
