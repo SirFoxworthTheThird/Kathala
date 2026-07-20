@@ -19,6 +19,26 @@ export interface PlaybackStep {
 /** Position data returned by resolveCharacterPin — character is filled in by the caller. */
 export type ResolvedPinPosition = Pick<CharacterPin, 'x' | 'y' | 'inSubMap'>
 
+/**
+ * Resolve the layer for a snapshot from its location marker.
+ *
+ * A marker can be moved to another sub-map or floor after snapshots already
+ * reference it. Those snapshots retain their original `currentMapLayerId`, so
+ * treating that denormalised field as authoritative leaves characters on the
+ * old layer during playback. The marker is the canonical location record; the
+ * snapshot layer remains a fallback for missing/deleted markers and old data.
+ */
+export function resolvedSnapshotLayerId(
+  snap: Pick<CharacterSnapshot, 'currentLocationMarkerId' | 'currentMapLayerId'>,
+  allMarkers: LocationMarker[],
+): string | null {
+  if (snap.currentLocationMarkerId) {
+    const markerLayerId = allMarkers.find((m) => m.id === snap.currentLocationMarkerId)?.mapLayerId
+    if (markerLayerId) return markerLayerId
+  }
+  return snap.currentMapLayerId
+}
+
 /** Colour palette for movement / travel lines */
 export const MOVEMENT_COLORS = [
   '#60a5fa', '#34d399', '#fbbf24', '#f87171', '#a78bfa',
@@ -43,13 +63,15 @@ export function resolveCharacterPin(
   allLayers: PinLayer[],
   allMarkers: LocationMarker[],
 ): ResolvedPinPosition | null {
-  if (!snap.currentLocationMarkerId || !snap.currentMapLayerId) return null
-  if (snap.currentMapLayerId === currentLayerId) {
-    const m = allMarkers.find((x) => x.id === snap.currentLocationMarkerId)
-    if (!m) return null
-    return { x: m.x, y: m.y, inSubMap: false }
+  if (!snap.currentLocationMarkerId) return null
+  const marker = allMarkers.find((x) => x.id === snap.currentLocationMarkerId)
+  if (!marker) return null
+  const snapshotLayerId = resolvedSnapshotLayerId(snap, allMarkers)
+  if (!snapshotLayerId) return null
+  if (snapshotLayerId === currentLayerId) {
+    return { x: marker.x, y: marker.y, inSubMap: false }
   }
-  let childLayerId = snap.currentMapLayerId
+  let childLayerId = snapshotLayerId
   for (let depth = 0; depth < 20; depth++) {
     const childLayer = allLayers.find((l) => l.id === childLayerId)
     if (!childLayer?.parentMapId) return null
@@ -250,13 +272,16 @@ export function buildSequentialQueue(
   for (const charId of sortedCharIds) {
     const currSnap = currByCharId.get(charId)
     const prevSnap = prevByCharId.get(charId)
-    if (!currSnap?.currentLocationMarkerId || !currSnap.currentMapLayerId) continue
+    if (!currSnap?.currentLocationMarkerId) continue
     const prevMarkerId = prevSnap?.currentLocationMarkerId ?? null
-    if (prevMarkerId === currSnap.currentLocationMarkerId && prevSnap?.currentMapLayerId === currSnap.currentMapLayerId) continue
+    const currLayerId = resolvedSnapshotLayerId(currSnap, allMarkers)
+    const prevLayerId = prevSnap ? resolvedSnapshotLayerId(prevSnap, allMarkers) : null
+    if (!currLayerId) continue
+    if (prevMarkerId === currSnap.currentLocationMarkerId && prevLayerId === currLayerId) continue
     allMoves.push({
       charId,
-      prevLayerId: prevSnap?.currentMapLayerId ?? null,
-      currLayerId: currSnap.currentMapLayerId,
+      prevLayerId,
+      currLayerId,
       prevMarkerId,
       currMarkerId: currSnap.currentLocationMarkerId,
     })

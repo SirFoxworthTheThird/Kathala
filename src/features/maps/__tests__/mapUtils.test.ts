@@ -41,6 +41,14 @@ describe('resolveCharacterPin — floors', () => {
   it('does not show a character on a sibling floor when viewing another floor', () => {
     expect(resolveCharacterPin(snap('c', 'library', 'first'), 'ground', layers, markers)).toBeNull()
   })
+
+  it('uses the marker layer when an older snapshot still names the previous floor', () => {
+    const stale = snap('c', 'library', 'ground')
+    expect(resolveCharacterPin(stale, 'first', layers, markers))
+      .toEqual({ x: 20, y: 30, inSubMap: false })
+    expect(resolveCharacterPin(stale, 'root', layers, markers))
+      .toEqual({ x: 50, y: 50, inSubMap: true })
+  })
 })
 
 describe('buildSequentialQueue — cross-floor travel', () => {
@@ -55,5 +63,17 @@ describe('buildSequentialQueue — cross-floor travel', () => {
     const arrival = queue[queue.length - 1]
     expect(arrival.mapLayerId).toBe('first')
     expect(arrival.pinAnimation.to['c']).toEqual({ x: 20, y: 30 })
+  })
+
+  it('detects a floor transition when the destination snapshot layer is stale', () => {
+    const keyRef = { current: 0 }
+    const queue = buildSequentialQueue(
+      [snap('c', 'hall', 'ground')],
+      [snap('c', 'library', 'ground')], // marker moved to first; snapshot was not rewritten
+      markers, [], 1000, keyRef, [], layers,
+    )
+
+    expect(queue.map((step) => step.mapLayerId)).toEqual(['first'])
+    expect(queue[0].pinAnimation.to['c']).toEqual({ x: 20, y: 30 })
   })
 })
