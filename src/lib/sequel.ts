@@ -364,7 +364,7 @@ export function planSequel(source: SequelSource, selection: SequelSelection, opt
       id: eventId, worldId, chapterId, timelineId: timeline.id,
       title: 'The story continues', description: '',
       locationMarkerId: null, involvedCharacterIds: characters.map((c) => c.id),
-      mentionedCharacterIds: [], threadIds: [], involvedItemIds: [], tags: [],
+      mentionedCharacterIds: [], threadIds: [], motifIds: [], involvedItemIds: [], tags: [],
       sortOrder: 0, travelDays: null, inWorldTime: null, tension: null, structureBeat: null,
       status: 'draft', povCharacterId: null, isFlashback: false, createdAt: now, updatedAt: now,
     })

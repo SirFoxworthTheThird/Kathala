@@ -36,6 +36,7 @@ import type {
   PlotThread,
   ContinuitySuppression,
   WritingLog,
+  Motif,
 } from '@/types'
 
 class PlotWeaveDB extends Dexie {
@@ -74,6 +75,7 @@ class PlotWeaveDB extends Dexie {
   plotThreads!: EntityTable<PlotThread, 'id'>
   continuitySuppressions!: EntityTable<ContinuitySuppression, 'id'>
   writingLogs!: EntityTable<WritingLog, 'id'>
+  motifs!: EntityTable<Motif, 'id'>
 
   constructor() {
     super('PlotWeaveDB')
@@ -602,6 +604,15 @@ class PlotWeaveDB extends Dexie {
     }).upgrade(async (tx) => {
       await tx.table('worlds').toCollection().modify((w: Record<string, unknown>) => {
         if (w.wordTarget === undefined) w.wordTarget = null
+      })
+    })
+
+    // v47: motif / theme tracking. New table + backfill motifIds on events.
+    this.version(47).stores({
+      motifs: 'id, worldId',
+    }).upgrade(async (tx) => {
+      await tx.table('events').toCollection().modify((e: Record<string, unknown>) => {
+        if (e.motifIds === undefined) e.motifIds = []
       })
     })
   }

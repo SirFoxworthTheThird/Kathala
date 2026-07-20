@@ -28,19 +28,20 @@ explore).
 11. [Characters](#characters)
 12. [Cast Balance](#cast-balance)
 13. [Plot Threads](#plot-threads)
-14. [Maps](#maps)
-15. [Items](#items)
-16. [Relationships](#relationships)
-17. [Character Arc grid](#character-arc-grid)
-18. [Lore](#lore)
-19. [Factions](#factions)
-20. [Knowledge](#knowledge)
-21. [Search](#search)
-22. [Writer's Brief](#writers-brief)
-23. [Calendar & character ages](#calendar--character-ages)
-24. [Continuity Checker](#continuity-checker)
-25. [World settings & export](#world-settings--export)
-26. [Help](#help)
+14. [Motifs & Themes](#motifs--themes)
+15. [Maps](#maps)
+16. [Items](#items)
+17. [Relationships](#relationships)
+18. [Character Arc grid](#character-arc-grid)
+19. [Lore](#lore)
+20. [Factions](#factions)
+21. [Knowledge](#knowledge)
+22. [Search](#search)
+23. [Writer's Brief](#writers-brief)
+24. [Calendar & character ages](#calendar--character-ages)
+25. [Continuity Checker](#continuity-checker)
+26. [World settings & export](#world-settings--export)
+27. [Help](#help)
 
 ---
 
@@ -175,8 +176,8 @@ copied — book two is a fresh narrative that begins where the last one left off
 Opening a world lands you on its dashboard — a bird's-eye view of the whole
 project. Stat tiles summarise the timeline, cast, maps, relationships, items,
 snapshot coverage, and continuity status. Below them are recent events, scene
-status, writing progress, and analytics panels (Cast Balance and Plot Threads,
-covered later).
+status, writing progress, and analytics panels (Cast Balance, Plot Threads, and
+Motifs & Themes, covered later).
 
 ![World dashboard](images/03-dashboard.png)
 
@@ -363,6 +364,26 @@ across your chapters and flags trouble:
 
 Tag a thread onto an event from the event's card; create threads inline with the
 **+ New thread** button.
+
+---
+
+## Motifs & Themes
+
+**Motifs & Themes** works exactly like Plot Threads, but for symbolism rather
+than plot — recurring images, symbols, and themes such as *mirrors*, *the colour
+red*, or *exile*. Define named motifs on the dashboard, give each a colour, and
+tag the scenes that carry them from the event card.
+
+![Motifs & Themes](images/33-motifs.png)
+
+The dashboard draws a **cadence strip** per motif across your chapters so you can
+see its rhythm at a glance, and flags where a motif loses momentum:
+
+- **"vanishes for N chapters"** — a motif that drops out of the middle of the book.
+- **"fades out"** — a motif introduced early and then never seen again.
+
+Use it to check that a theme you care about is woven through the whole story,
+not just raised once and forgotten.
 
 ---
 

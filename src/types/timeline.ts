@@ -50,6 +50,8 @@ export interface WorldEvent {
   structureBeat: string | null
   /** Plot threads / subplots this event advances (PlotThread ids). */
   threadIds: string[]
+  /** Motifs / themes this event carries (Motif ids). Optional; absent = none. */
+  motifIds?: string[]
   status: EventStatus
   povCharacterId: string | null
   /** Marks the event as a flashback/retrospective — suppresses present-state continuity checks. */

@@ -10,6 +10,7 @@ import type {
   PlotThread,
   ContinuitySuppression,
   WritingLog,
+  Motif,
 } from '@/types'
 import { generateId } from '@/lib/id'
 
@@ -78,6 +79,7 @@ export interface WorldExportFile {
   knowledgeReveals?: KnowledgeReveal[]
   sceneTexts?: SceneText[]
   plotThreads?: PlotThread[]
+  motifs?: Motif[]
   continuitySuppressions?: ContinuitySuppression[]
   writingLogs?: WritingLog[]
   relationshipPositions?: Record<string, { x: number; y: number }>
@@ -151,6 +153,7 @@ interface CollectedWorldData {
   knowledgeReveals: KnowledgeReveal[]
   sceneTexts: SceneText[]
   plotThreads: PlotThread[]
+  motifs: Motif[]
   continuitySuppressions: ContinuitySuppression[]
   writingLogs: WritingLog[]
 }
@@ -191,6 +194,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     knowledgeReveals,
     sceneTexts,
     plotThreads,
+    motifs,
     continuitySuppressions,
     writingLogs,
   ] = await Promise.all([
@@ -226,6 +230,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     db.knowledgeReveals.where('worldId').equals(worldId).toArray(),
     db.sceneTexts.where('worldId').equals(worldId).toArray(),
     db.plotThreads.where('worldId').equals(worldId).toArray(),
+    db.motifs.where('worldId').equals(worldId).toArray(),
     db.continuitySuppressions.where('worldId').equals(worldId).toArray(),
     db.writingLogs.where('worldId').equals(worldId).toArray(),
   ])
@@ -265,6 +270,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     knowledgeReveals,
     sceneTexts,
     plotThreads,
+    motifs,
     continuitySuppressions,
     writingLogs,
   }
@@ -396,6 +402,7 @@ export async function exportWorld(
     knowledgeReveals: d.knowledgeReveals,
     sceneTexts: d.sceneTexts,
     plotThreads: d.plotThreads,
+    motifs: d.motifs,
     continuitySuppressions: d.continuitySuppressions,
     writingLogs: d.writingLogs,
     ...extras,
@@ -469,6 +476,7 @@ export async function exportWorldSplit(
     knowledgeReveals: d.knowledgeReveals,
     sceneTexts: d.sceneTexts,
     plotThreads: d.plotThreads,
+    motifs: d.motifs,
     continuitySuppressions: d.continuitySuppressions,
     writingLogs: d.writingLogs,
     ...extras,
@@ -533,6 +541,7 @@ export async function serializeWorldForSync(worldId: string): Promise<string> {
     knowledgeReveals: d.knowledgeReveals,
     sceneTexts: d.sceneTexts,
     plotThreads: d.plotThreads,
+    motifs: d.motifs,
     continuitySuppressions: d.continuitySuppressions,
     writingLogs: d.writingLogs,
     ...extras,
@@ -667,6 +676,10 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
     throw new Error('Invalid file: plotThreads is not an array')
   }
   if (!d.plotThreads) (d as Record<string, unknown>).plotThreads = []
+  if (d.motifs !== undefined && !Array.isArray(d.motifs)) {
+    throw new Error('Invalid file: motifs is not an array')
+  }
+  if (!d.motifs) (d as Record<string, unknown>).motifs = []
   if (d.writingLogs !== undefined && !Array.isArray(d.writingLogs)) {
     throw new Error('Invalid file: writingLogs is not an array')
   }
@@ -726,6 +739,7 @@ function normalizeImport(data: WorldExportFile): void {
     if (e.structureBeat === undefined) e.structureBeat = null
     if (e.mentionedCharacterIds === undefined) e.mentionedCharacterIds = []
     if (e.threadIds === undefined) e.threadIds = []
+    if (e.motifIds === undefined) e.motifIds = []
   }
   // Backfill the reader-clock and origin on knowledge facts (added after knowledge shipped)
   for (const fact of data.knowledgeFacts ?? []) {
@@ -906,7 +920,7 @@ async function importWorldData(data: WorldExportFile): Promise<string> {
     db.mapRoutes, db.mapRegions, db.mapRegionSnapshots, db.mapAnnotations,
     db.loreCategories, db.lorePages, db.factions, db.factionMemberships, db.factionRelationships,
     db.knowledgeFacts, db.knowledgeReveals, db.sceneTexts, db.plotThreads,
-    db.continuitySuppressions, db.writingLogs,
+    db.motifs, db.continuitySuppressions, db.writingLogs,
   ], async () => {
     await db.worlds.put(data.world)
     await db.mapLayers.bulkPut(data.mapLayers)
@@ -939,6 +953,7 @@ async function importWorldData(data: WorldExportFile): Promise<string> {
     await db.knowledgeReveals.bulkPut(data.knowledgeReveals ?? [])
     await db.sceneTexts.bulkPut(data.sceneTexts ?? [])
     await db.plotThreads.bulkPut(data.plotThreads ?? [])
+    await db.motifs.bulkPut(data.motifs ?? [])
     await db.writingLogs.bulkPut(data.writingLogs ?? [])
     if (suppressionsToImport.length > 0) {
       await db.continuitySuppressions.bulkPut(suppressionsToImport)
@@ -1078,7 +1093,7 @@ export async function applyWorldImport(
     localLoreCats, localLorePages,
     localFactions, localFactionMemberships, localFactionRelationships,
     localKnowledgeFacts, localKnowledgeReveals, localSceneTexts, localPlotThreads,
-    localWritingLogs,
+    localMotifs, localWritingLogs,
   ] = await Promise.all([
     db.characters.where('worldId').equals(worldId).toArray(),
     db.items.where('worldId').equals(worldId).toArray(),
@@ -1110,6 +1125,7 @@ export async function applyWorldImport(
     db.knowledgeReveals.where('worldId').equals(worldId).toArray(),
     db.sceneTexts.where('worldId').equals(worldId).toArray(),
     db.plotThreads.where('worldId').equals(worldId).toArray(),
+    db.motifs.where('worldId').equals(worldId).toArray(),
     db.writingLogs.where('worldId').equals(worldId).toArray(),
   ])
 
@@ -1145,6 +1161,7 @@ export async function applyWorldImport(
     knowledgeReveals:     mergeTable(parsed.knowledgeReveals ?? [], localKnowledgeReveals).result,
     sceneTexts:           mergeTable(parsed.sceneTexts ?? [], localSceneTexts).result,
     plotThreads:          mergeTable(parsed.plotThreads ?? [], localPlotThreads).result,
+    motifs:               mergeTable(parsed.motifs ?? [], localMotifs).result,
     writingLogs:          mergeTable(parsed.writingLogs ?? [], localWritingLogs).result,
     blobs:                parsed.blobs, // blobs: always use incoming (binary, no updatedAt)
     relationshipPositions: parsed.relationshipPositions,

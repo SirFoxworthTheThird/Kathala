@@ -424,10 +424,10 @@ Per-chapter word goals and a pacing curve exist, but no progress-over-time.
 - [x] **Reorder engine** — pure `src/lib/corkboard.ts` (`reorderInsert` / `assignSortOrders` / `sortOrderDiff`) + `moveEventOnBoard` in `useTimeline` (renumbers both columns, recomputes snapshot sortKeys).
 - [x] **Tests** — pure reorder units, a `moveEventOnBoard` integration test (within/cross chapter + sortKey recompute), and a Playwright drag e2e.
 
-### 6. Themes & motifs tracker
+### 6. Themes & motifs tracker — DONE
 
 Mirrors the existing Plot Threads pattern, for symbols/themes rather than plot.
 
-- [ ] **Data model** — `Theme`/`Motif` entity like `PlotThread`; tag events.
-- [ ] **Distribution strip** — reuse the plot-thread cadence view to show where each motif recurs and where it goes quiet.
-- [ ] **Tests** — cadence/gap detection.
+- [x] **Data model** — `Motif` entity (DB v47) like `PlotThread`; `WorldEvent.motifIds` tags events; CRUD hooks + export/import round-trip + delete cleanup.
+- [x] **Distribution strip** — the cadence engine was generalised into `src/lib/tagCadence.ts` (both plot threads and motifs delegate to it) and the dashboard strip into a shared `CadenceManager`; a "Motifs & Themes" dashboard panel shows each motif's per-chapter presence with fade-out/vanish warnings. Motifs are tagged on the event card next to plot threads.
+- [x] **Tests** — generic `tagCadence` units, motif CRUD/delete-cleanup/round-trip integration, and the existing plot-thread tests still pass against the refactor.

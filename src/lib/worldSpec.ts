@@ -301,6 +301,7 @@ export function expandWorldSpec(spec: WorldSpec, opts: { now?: number } = {}): W
         involvedCharacterIds: cast,
         mentionedCharacterIds: (se.mentioned ?? []).map(resolveChar).filter((x): x is string => !!x),
         threadIds: [],
+        motifIds: [],
         involvedItemIds: (se.items ?? []).map(resolveItem).filter((x): x is string => !!x),
         tags: se.tags ?? [],
         sortOrder: sortOrder++,

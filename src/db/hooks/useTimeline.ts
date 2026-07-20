@@ -203,6 +203,7 @@ export async function createEvent(
     isFlashback: false,
     mentionedCharacterIds: [],
     threadIds: [],
+    motifIds: [],
     ...data,
     createdAt: now,
     updatedAt: now,

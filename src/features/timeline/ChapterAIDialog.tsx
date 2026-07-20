@@ -387,7 +387,7 @@ async function importChapter(data: ChapterAIResponse, replacing: boolean): Promi
       // Ensure status and povCharacterId are always present — AI JSON may omit fields predating their schema versions
       const normalised = data.events.map((ev) => {
         const p = ev as Partial<WorldEvent>
-        return { ...ev, status: p.status ?? ('draft' as const), povCharacterId: p.povCharacterId ?? null, isFlashback: p.isFlashback ?? false, inWorldTime: p.inWorldTime ?? null, tension: p.tension ?? null, structureBeat: p.structureBeat ?? null, mentionedCharacterIds: p.mentionedCharacterIds ?? [], threadIds: p.threadIds ?? [] }
+        return { ...ev, status: p.status ?? ('draft' as const), povCharacterId: p.povCharacterId ?? null, isFlashback: p.isFlashback ?? false, inWorldTime: p.inWorldTime ?? null, tension: p.tension ?? null, structureBeat: p.structureBeat ?? null, mentionedCharacterIds: p.mentionedCharacterIds ?? [], threadIds: p.threadIds ?? [], motifIds: p.motifIds ?? [] }
       })
       await db.events.bulkPut(normalised)
     }
