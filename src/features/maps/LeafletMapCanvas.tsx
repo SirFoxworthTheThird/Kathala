@@ -5,6 +5,7 @@ import type { MapLayer, LocationMarker, Character, MapRoute, MapRegion, MapRegio
 import { updateLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { useAppStore } from '@/store'
 import { type GhostPin, makeGhostIcon } from '@/lib/ghostMarkerIcon'
+import { playbackFocusZoom } from './mapUtils'
 
 export type { GhostPin }
 
@@ -649,10 +650,17 @@ export function LeafletMapCanvas({
         }
       }
 
-      // Pan camera to the moving character's start position
+      // Frame the moving character more closely than the fitted full-map view.
+      // Subsequent animation frames keep this zoom while following the pin.
       if (cameraFollow && movingCharId) {
         const startPos = from[movingCharId]
-        if (startPos) map.panTo([startPos.y, startPos.x], { animate: false })
+        if (startPos) {
+          map.setView(
+            [startPos.y, startPos.x],
+            playbackFocusZoom(map.getZoom(), map.getMinZoom(), map.getMaxZoom()),
+            { animate: false },
+          )
+        }
       }
 
       setIsAnimating(true)

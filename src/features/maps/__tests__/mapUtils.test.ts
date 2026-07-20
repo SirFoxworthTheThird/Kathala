@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { resolveCharacterPin, buildSequentialQueue, type PinLayer } from '../mapUtils'
+import {
+  resolveCharacterPin,
+  buildSequentialQueue,
+  playbackFocusZoom,
+  type PinLayer,
+} from '../mapUtils'
 import type { CharacterSnapshot, LocationMarker } from '@/types'
 
 // World: root map "Grounds"; a castle (sub-map of root) that is a level group
@@ -75,5 +80,19 @@ describe('buildSequentialQueue — cross-floor travel', () => {
 
     expect(queue.map((step) => step.mapLayerId)).toEqual(['first'])
     expect(queue[0].pinAnimation.to['c']).toEqual({ x: 20, y: 30 })
+  })
+})
+
+describe('playbackFocusZoom', () => {
+  it('zooms in from the fitted full-map view', () => {
+    expect(playbackFocusZoom(-0.5, -0.5, 4)).toBe(1)
+  })
+
+  it('preserves a closer user-selected zoom', () => {
+    expect(playbackFocusZoom(2.5, -0.5, 4)).toBe(2.5)
+  })
+
+  it('never exceeds the map maximum zoom', () => {
+    expect(playbackFocusZoom(0, 0, 1)).toBe(1)
   })
 })
