@@ -431,3 +431,61 @@ Mirrors the existing Plot Threads pattern, for symbols/themes rather than plot.
 - [x] **Data model** — `Motif` entity (DB v47) like `PlotThread`; `WorldEvent.motifIds` tags events; CRUD hooks + export/import round-trip + delete cleanup.
 - [x] **Distribution strip** — the cadence engine was generalised into `src/lib/tagCadence.ts` (both plot threads and motifs delegate to it) and the dashboard strip into a shared `CadenceManager`; a "Motifs & Themes" dashboard panel shows each motif's per-chapter presence with fade-out/vanish warnings. Motifs are tagged on the event card next to plot threads.
 - [x] **Tests** — generic `tagCadence` units, motif CRUD/delete-cleanup/round-trip integration, and the existing plot-thread tests still pass against the refactor.
+
+---
+
+## Product Feature Ideas — 2026-07 whole-app review (round 2)
+
+With the first 2026-07 batch (#1–#6) shipped, a second whole-app pass turned up
+these candidates, ranked by fit × value. Nothing here is started yet.
+
+### Data-hygiene fix (fold into the next PR)
+
+- [ ] **`deleteWorld` orphans data** — `deleteWorld` (`src/db/hooks/useWorlds.ts`) doesn't delete the world's `sceneTexts` (the prose!), `plotThreads`, or `continuitySuppressions`; they linger in IndexedDB after the world is gone. Add the three `where('worldId').delete()` calls (and their tables to the transaction list). Small, safe.
+
+### 7. Scene revision history — *recommended flagship*
+
+Writing progress tracks *how many* words change per day, but not *what* the prose was — a local-first writing tool must not lose a good paragraph.
+
+- [ ] **Version store** — on scene save, keep the last N prior versions of each scene (new `sceneRevisions` table: worldId, eventId, text, wordCount, createdAt; cap per scene, e.g. 20). DB migration + backfill.
+- [ ] **History UI** — a "History" affordance on the scene editor listing past versions with timestamp + word count; **view**, **diff against current**, and **restore** (restoring writes a new revision first, never destructive).
+- [ ] **Round-trip** — revisions travel with the world through export/import (optional/skippable to keep files small).
+- [ ] **Tests** — capping/pruning logic, restore-writes-a-revision, diff.
+
+### 8. Manuscript-wide find & replace
+
+Search today is entity-only (Ctrl+K). No way to rename a term or fix a tic across all scene prose.
+
+- [ ] **Find/replace panel** — search across all `sceneTexts`, per-scene preview with match counts, replace-one / replace-all, case-sensitive + whole-word toggles.
+- [ ] **Character-rename aware** — when the query matches a character name, offer to update the character's `name`/`aliases` too.
+- [ ] **Tests** — pure match/replace logic (counts, boundaries, case).
+
+### 9. Calendar view
+
+The calendar data landed in #2 but the visual grid was explicitly deferred.
+
+- [ ] **Month/season grid** — lay events on a grid by in-world date (`formatInWorldDate` / `computeInWorldDays`).
+- [ ] **Reschedule** — drag an event to set its `inWorldTime`.
+- [ ] **Tests** — date→cell placement, drag→inWorldTime mapping.
+
+### 10. Writing goals & projection
+
+Extend the writing-progress panel with a target and a projected finish.
+
+- [ ] **Target date** — per-world deadline; compute "N words/day to finish" from the remaining word gap.
+- [ ] **Projection** — projected finish date from recent pace (trailing average of `writingLogs`).
+- [ ] **Session goal** — optional per-session word goal with a progress ring.
+- [ ] **Tests** — words/day and projected-finish math (pure).
+
+### 11. Structure / beat-sheet board
+
+Events already carry `structureBeat`, but there's no board mapping them to a template.
+
+- [ ] **Templates** — Three-Act, Save the Cat, Hero's Journey beat sets (extend `storyBeats.ts`).
+- [ ] **Board** — show each template beat as filled (which event) or missing, in timeline order; click a beat to jump to (or assign) its event.
+- [ ] **Tests** — beat→event mapping and gap detection.
+
+### 12. Focus / distraction-free drafting mode
+
+- [ ] **Full-screen editor** — hide app chrome, typewriter scrolling, live session word count, ambient progress. Pure polish, low effort.
+- [ ] **Tests** — session word-count accounting (pure).
