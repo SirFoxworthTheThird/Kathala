@@ -3,7 +3,7 @@ import { useFocusTrap } from '@/lib/useFocusTrap'
 import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, Shield, ChevronRight, EyeOff, Eye, Check, PenLine } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store'
-import { useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
+import { useWorldChapters, useWorldEvents, updateEvent } from '@/db/hooks/useTimeline'
 import { useWorld } from '@/db/hooks/useWorlds'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
@@ -20,6 +20,7 @@ import { db } from '@/db/database'
 import { useContinuitySuppressions, toggleContinuitySuppression, setContinuitySuppressionNote } from '@/db/hooks/useContinuitySuppressions'
 import { cn } from '@/lib/utils'
 import { pixelDist } from '@/lib/mapScale'
+import { assessTravel, ROUTE_SPEED_MULTIPLIERS } from '@/lib/travelTime'
 import { computeInWorldDays } from '@/lib/inWorldTime'
 import { computeKnowledgeAnachronisms } from '@/lib/knowledgeAnachronisms'
 import { computeDeadKnowerIssues } from '@/lib/knowledgeRevealContinuity'
@@ -27,7 +28,7 @@ import { computeProseMentionIssues, computeKnowledgeLeaks } from '@/lib/proseCon
 import { computeItemHandoffIssues } from '@/lib/itemHandoff'
 import { useKnowledgeFacts, useKnowledgeReveals } from '@/db/hooks/useKnowledge'
 import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
-import type { CharacterSnapshot, ItemPlacement, MapRoute, MapRegion, RouteType } from '@/types'
+import type { CharacterSnapshot, ItemPlacement, MapRoute, MapRegion } from '@/types'
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────
 
@@ -71,17 +72,6 @@ function pathCrossesPolygon(
   return false
 }
 
-// ── Route type speed multipliers ──────────────────────────────────────────────
-
-const ROUTE_SPEED_MULTIPLIERS: Record<RouteType, number> = {
-  road: 1.5,
-  river: 1.2,
-  sea_route: 1.2,
-  trail: 0.6,
-  border: 1.0,
-  custom: 1.0,
-}
-
 // ── types ─────────────────────────────────────────────────────────────────────
 
 type IssueSeverity = 'error' | 'warning'
@@ -94,6 +84,8 @@ interface Issue {
   detail?: string
   navigatePath?: string
   eventId?: string
+  /** Optional one-click fix: set this event's travelDays to the given value. */
+  fix?: { label: string; eventId: string; setTravelDays: number }
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -105,6 +97,7 @@ function IssueRow({
   suppressNote,
   onNavigate,
   onSuppress,
+  onFix,
 }: {
   issue: Issue
   focused: boolean
@@ -112,6 +105,7 @@ function IssueRow({
   suppressNote: string
   onNavigate: (issue: Issue) => void
   onSuppress: (issue: Issue, note: string) => void
+  onFix: (issue: Issue) => void
 }) {
   const [justifyMode, setJustifyMode] = useState(false)
   const [noteInput, setNoteInput] = useState('')
@@ -159,6 +153,14 @@ function IssueRow({
             suppressed ? 'text-[hsl(var(--muted-foreground))]' : issue.severity === 'error' ? 'text-red-300' : 'text-amber-300'
           )}>{issue.message}</p>
           {issue.detail && <p className="mt-0.5 text-[hsl(var(--muted-foreground))]">{issue.detail}</p>}
+          {issue.fix && !suppressed && (
+            <button
+              onClick={() => onFix(issue)}
+              className="mt-1.5 rounded border border-[hsl(var(--border))] px-2 py-0.5 text-[11px] font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))] hover:bg-[hsl(var(--accent))] transition-colors"
+            >
+              {issue.fix.label}
+            </button>
+          )}
           {suppressed && suppressNote && (
             <p className="mt-1 italic text-[hsl(var(--muted-foreground))]">"{suppressNote}"</p>
           )}
@@ -217,7 +219,7 @@ function IssueRow({
   )
 }
 
-function CategorySection({ title, icon: Icon, issues, focusedIdx, baseIdx, suppressedIds, suppressedNotes, showSuppressed, onNavigate, onSuppress }: {
+function CategorySection({ title, icon: Icon, issues, focusedIdx, baseIdx, suppressedIds, suppressedNotes, showSuppressed, onNavigate, onSuppress, onFix }: {
   title: string
   icon: React.ElementType
   issues: Issue[]
@@ -228,6 +230,7 @@ function CategorySection({ title, icon: Icon, issues, focusedIdx, baseIdx, suppr
   showSuppressed: boolean
   onNavigate: (issue: Issue) => void
   onSuppress: (issue: Issue, note: string) => void
+  onFix: (issue: Issue) => void
 }) {
   const visible = issues.filter((i) => showSuppressed || !suppressedIds.has(i.id))
   if (visible.length === 0) return null
@@ -248,6 +251,7 @@ function CategorySection({ title, icon: Icon, issues, focusedIdx, baseIdx, suppr
             suppressNote={suppressedNotes[issue.id] ?? ''}
             onNavigate={onNavigate}
             onSuppress={onSuppress}
+            onFix={onFix}
           />
         ))}
       </div>
@@ -939,26 +943,32 @@ export function ContinuityChecker() {
         })
 
         const routeMultiplier = connectingRoute ? ROUTE_SPEED_MULTIPLIERS[connectingRoute.routeType] : 1.0
-        const effectiveSpeed = travelMode.speedPerDay * routeMultiplier
+        const assessment = assessTravel({
+          pixelDistance: pixelDist(fromMarker.x, fromMarker.y, toMarker.x, toMarker.y),
+          scalePixelsPerUnit: layer.scalePixelsPerUnit,
+          baseSpeedPerDay: travelMode.speedPerDay,
+          routeType: connectingRoute?.routeType ?? null,
+          daysAvailable,
+        })
 
-        const distPx = pixelDist(fromMarker.x, fromMarker.y, toMarker.x, toMarker.y)
-        const distUnits = distPx / layer.scalePixelsPerUnit
-        const daysNeeded = distUnits / effectiveSpeed
-
-        if (daysNeeded > daysAvailable) {
+        if (!assessment.feasible && Number.isFinite(assessment.shortfallDays)) {
           const currCh = chapById.get(currEvent.chapterId)
-          const dist = distUnits < 10 ? distUnits.toFixed(1) : Math.round(distUnits).toString()
+          const dist = assessment.distanceUnits < 10 ? assessment.distanceUnits.toFixed(1) : Math.round(assessment.distanceUnits).toString()
           const routeNote = connectingRoute
             ? ` via ${connectingRoute.routeType.replace('_', ' ')} (×${routeMultiplier} speed)`
             : ''
+          // Adding the shortfall to this event's own travelDays lengthens the
+          // elapsed time before it, making the journey possible.
+          const newTravelDays = (currEvent.travelDays ?? 0) + assessment.shortfallDays
           out.push({
             id: `travel-dist-${charId}-${curr.eventId}`,
             severity: 'warning',
             category: 'character',
             message: `${char.name} can't reach ${toMarker.name} in time`,
-            detail: `${fromMarker.name} → ${toMarker.name} is ~${dist} ${layer.scaleUnit} · ${travelMode.name} at ${effectiveSpeed.toFixed(1)} ${layer.scaleUnit}/day${routeNote} — needs ${daysNeeded.toFixed(1)} days but only ${daysAvailable} in-world day${daysAvailable === 1 ? '' : 's'} available (Ch. ${currCh?.number ?? '?'})`,
+            detail: `${fromMarker.name} → ${toMarker.name} is ~${dist} ${layer.scaleUnit} · ${travelMode.name} at ${assessment.effectiveSpeed.toFixed(1)} ${layer.scaleUnit}/day${routeNote} — needs ${assessment.daysNeeded.toFixed(1)} days but only ${daysAvailable} in-world day${daysAvailable === 1 ? '' : 's'} available (Ch. ${currCh?.number ?? '?'})`,
             navigatePath: `/worlds/${worldId}/timeline/${currEvent.chapterId}`,
             eventId: curr.eventId,
+            fix: { label: `Allow ${assessment.shortfallDays} more day${assessment.shortfallDays === 1 ? '' : 's'}`, eventId: curr.eventId, setTravelDays: newTravelDays },
           })
         }
       }
@@ -1259,6 +1269,10 @@ export function ContinuityChecker() {
     setCheckerOpen(false)
   }
 
+  function handleFix(issue: Issue) {
+    if (issue.fix) updateEvent(issue.fix.eventId, { travelDays: issue.fix.setTravelDays })
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Escape') { setCheckerOpen(false); return }
     if (navigableIssues.length === 0) return
@@ -1363,27 +1377,27 @@ export function ContinuityChecker() {
               <CategorySection title="Characters" icon={Users} issues={charIssues}
                 focusedIdx={categoryFocusedIdx(charIssues)} baseIdx={0}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Items" icon={Package} issues={itemIssues}
                 focusedIdx={categoryFocusedIdx(itemIssues)} baseIdx={visibleChar.length}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Relationships" icon={Network} issues={relIssues}
                 focusedIdx={categoryFocusedIdx(relIssues)} baseIdx={visibleChar.length + visibleItem.length}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Factions" icon={Shield} issues={factionIssues}
                 focusedIdx={categoryFocusedIdx(factionIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="POV" icon={Eye} issues={povIssues}
                 focusedIdx={categoryFocusedIdx(povIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length + visibleFaction.length}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Prose vs. record" icon={PenLine} issues={proseIssues}
                 focusedIdx={categoryFocusedIdx(proseIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length + visibleFaction.length + visiblePov.length}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
             </>
           )}
         </div>

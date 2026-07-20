@@ -555,11 +555,19 @@ count. Typical catches:
   flashback" if intentional).
 - A character who **appears before their first snapshot**, or is at a
   **destroyed location**.
+- A character who **can't reach a location in time** — when a move covers more
+  map distance than their travel mode can cross in the in-world days available
+  (using the map scale, the mode's speed, and any road/river/trail along the
+  way). The finding offers a one-click **"Allow N more days"** that lengthens the
+  event so the journey becomes possible.
+- A character who **travels through a destroyed or abandoned region**.
 
 ![Continuity Checker](images/18-continuity.png)
 
 Each finding links straight to the offending event so you can fix it in context.
-The stale-snapshot sensitivity is configurable in Settings.
+The travel checks rely on a **map scale** (set one on the map) and **travel
+modes** with speeds (in World settings). The stale-snapshot sensitivity is
+configurable in Settings.
 
 ---
 

@@ -375,14 +375,17 @@ here is started yet.
 
 ### 1. Travel-time feasibility (maps × timeline × continuity)  — *recommended flagship*
 
-Tie together the scaled map, routes, travel modes, and per-chapter elapsed days
-— nothing currently connects them.
+Tie together the scaled map, routes, travel modes, and per-chapter elapsed days.
+**Most of this already existed** (the continuity check was built inline in
+`ContinuityChecker`). Hardened + finished in the 2026-07 pass.
 
-- [ ] **Travel mode speed** — add `speedPerDay` (world units/day) to `TravelMode`; DB migration backfills null (unknown).
-- [ ] **Estimator (pure, `src/lib/travelTime.ts`)** — given a path length in world units (from map scale + a route or straight-line marker distance) and a mode speed → estimated days; unit-tested.
-- [ ] **Suggest `travelDays`** — on a chapter, estimate days from each moving character's start→end locations + their travel mode; one-click "use estimate".
-- [ ] **Continuity check** — flag a character whose between-chapter location change needs more days than elapsed (using map distance + their mode). Cross-map/floor moves are skipped (no shared metric).
-- [ ] **Tests** — estimator unit tests + a continuity integration test for an impossible journey.
+- [x] **Travel mode speed** — `TravelMode.speedPerDay` (world units/day) already exists and is editable in World settings.
+- [x] **Estimator (pure, `src/lib/travelTime.ts`)** — extracted `worldUnits` / `effectiveSpeed` / `daysNeeded` / `assessTravel` (+ `ROUTE_SPEED_MULTIPLIERS`) from the inline checker math; unit-tested.
+- [x] **Continuity check** — "can't reach X in time" (map distance ÷ mode speed × route multiplier vs elapsed in-world days) plus a "travels through a destroyed region" check; same-layer moves only. Now uses the pure estimator.
+- [x] **One-click fix** — the finding offers "Allow N more days", bumping the event's `travelDays` so the journey becomes feasible.
+- [x] **Tests** — `travelTime` unit tests.
+- [ ] **Proactive suggest** — a per-event "suggest travelDays" affordance in the editor (before any violation) is still not built; the one-click fix covers the reactive case.
+- [ ] **Cross-map/floor journeys** — currently skipped (no shared metric); could estimate via the building pin + inner distance later.
 
 ### 2. In-world calendar & character ages
 
