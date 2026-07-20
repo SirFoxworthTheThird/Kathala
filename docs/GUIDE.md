@@ -47,19 +47,23 @@ explore).
 
 ## Core concept: the time cursor
 
-Everything in PlotWeave is read *relative to a chapter*. The chapter selector in
-the top bar — labelled **All chapters** by default — is a **time cursor**. Move
-it to a chapter and the whole app answers the question *"what is true at this
-point in the story?"*: where each character is, what they're carrying, who's
+Everything in PlotWeave is read *relative to an event*. Events are the true units
+of story time; chapters group those events for structure and reading order. The
+pill next to the world name — labelled **All chapters** until you choose a moment
+— and the event bar along the bottom are two views of the same **time cursor**.
+Use either one to move event by event. The whole app then answers *"what is true
+at this exact moment?"*: where each character is, what they're carrying, who's
 alive, which locations are destroyed, and how relationships stand.
 
-State is never guessed across chapters. Each fact is an explicit **snapshot**
-record tied to a chapter, so a character's location in Chapter 9 is something you
-set, not something the app infers. When you create a new chapter, it inherits the
-previous chapter's snapshots so you only edit what actually changed.
+State changes are stored as explicit **snapshots** tied to events. When an entity
+has no snapshot at the selected event, PlotWeave carries forward its most recent
+state from earlier in that timeline. This is a delta model: record only what
+changes rather than entering every character, item, location, and relationship
+again at every scene. New chapters are seeded from the end of the preceding
+chapter on the same timeline.
 
-You'll see the time cursor (the pill next to the world name) on nearly every
-screen in this guide.
+Changing the cursor never edits the story; it only changes the moment you're
+viewing. You'll see the cursor on nearly every screen in this guide.
 
 ---
 
@@ -77,6 +81,15 @@ description. Click a card to open it; the ⋯ menu on each card exports or delet
 that world.
 
 ![World selector with worlds](images/02-home-worlds.png)
+
+### Set up a blank world
+
+When you create a blank world, PlotWeave opens a four-step setup guide. It helps
+you create the first timeline and event, add a main character, place that
+character at the opening moment, and then continue to the Timeline. Each optional
+step has **Skip** so you can leave the guide and build the world in any order.
+
+![Blank-world setup](images/38-onboarding.png)
 
 ---
 
@@ -177,7 +190,8 @@ Opening a world lands you on its dashboard — a bird's-eye view of the whole
 project. Stat tiles summarise the timeline, cast, maps, relationships, items,
 snapshot coverage, and continuity status. Below them are recent events, scene
 status, writing progress, and analytics panels (Cast Balance, Plot Threads, and
-Motifs & Themes, covered later).
+Motifs & Themes, covered later). Worlds with linked timelines also show a
+**Timeline Links** summary.
 
 ![World dashboard](images/03-dashboard.png)
 
@@ -233,18 +247,46 @@ shape of your story at a glance.
   in-world order (useful when you use flashbacks or in-world dates).
 - **Add Chapter**, **New Timeline** (for alternate/parallel timelines), and
   **Generate with AI** all live in the header.
-- Each chapter row has **Set Active** (move the time cursor here) and an
-  **open** button for its detail page.
+- Click an event to move the time cursor to that exact moment. Each chapter row
+  also has an **open** button for its detail page, and chapters can be dragged to
+  reorder the narrative.
+- Select events with their checkboxes; **Shift+click** selects a range. The bulk
+  toolbar can move the selection to another chapter, add a tag, or delete it.
 - The chapter bar at the bottom of the screen also lets you **play the story**
   and **Compare chapters** — a diff of exactly what changed between any two points
   (who moved, gained or lost items, died, or shifted relationships).
+
+### Multiple timelines and timeline relationships
+
+Creating another timeline adds a tab at the top of the Timeline page. Use
+**Timeline Relationships** to describe how two timelines connect:
+
+- **Frame Narrative** — an outer timeline tells or contains the inner story.
+- **Historical Echo** — the same places or patterns recur in different eras.
+- **Embedded Fiction** — a story, play, prophecy, or document inside the world
+  constitutes another timeline.
+- **Alternate** — the timelines branch from similar conditions toward different
+  outcomes.
+
+Choose an **Outer / Source** and **Inner / Target** timeline, then add optional
+character, location, or document anchors. Frame narratives can also use **sync
+points**: pair an event in the inner story with one in the outer story so playback
+keeps the framing moment aligned.
+
+![Timeline relationships](images/39-timeline-relationships.png)
+
+When a world has two timelines, the bottom cursor displays two stacked tracks.
+Click either track to make it active; playback follows that track while keeping
+the linked one available for context. A frame narrative uses its configured
+outer and inner timelines. Other two-timeline worlds use the first two timelines.
 
 ### Chapter detail
 
 Opening a chapter shows its events in order, each with the characters involved,
 location, tags, and draft/written status. The right side holds a live
-**Character States** panel (where everyone is at this chapter) and a freeform
-**Writer's Notes** field that auto-saves.
+**Character States** panel (where everyone is at the selected event), a
+**Relationship States** summary, and a freeform **Writer's Notes** field that
+auto-saves.
 
 ![Chapter detail](images/05-chapter-detail.png)
 
@@ -370,10 +412,12 @@ section and added to the **world you're already in** — no new world is created
 
 Opening a character gives you a tabbed profile:
 
-- **Overview** — biography and portrait.
-- **Current State** — location, inventory, alive status, and travel mode *at the
-  current time cursor*.
-- **History** — how their state changed chapter by chapter.
+- **Overview** — biography, aliases, portrait, map/Arc colour, and an optional
+  birth date when the world has a calendar.
+- **Current State** — location, inventory notes, alive status, and travel mode
+  *at the current event*.
+- **History** — how their state changed event by event, including carried-forward
+  states.
 - **Appearances** — every event they're in.
 - **Relationships**, **Lore**, and **Factions** — their connections and
   affiliations.
@@ -457,6 +501,27 @@ list. To place a character
 touch devices, tap the crosshair on their card and then tap a location. **AI
 Moves** and **Export** round out the toolbar.
 
+### Working with the map canvas
+
+- **Right-click** the canvas for quick actions: add a location or annotation, or
+  begin a route or region at that point. The **T** tool also places free-text
+  annotations; select one to change its text, size, colour, or delete it.
+- Routes can be roads, rivers, trails, sea routes, borders, or custom paths. Open
+  a route to edit its name, type, notes, and geometry.
+- Regions have a fill colour, opacity, notes, and an event-based condition. They
+  can belong to a faction and can link directly to a sub-map.
+- A location's detail panel stores its description, event-based condition and
+  notes, owning faction, characters and items present, and an optional linked
+  sub-map.
+- The filter bar can show the selected event's movement, complete character
+  journeys, character labels, locations, and sub-map links. Select one character
+  to focus the display.
+
+Click a character pin to open their **film strip**, a chronological list of every
+place they visited. Selecting a stop moves the global cursor to that event.
+
+![Map editing tools](images/40-map-tools.png)
+
 **Replace image** swaps the picture behind the current map without losing any
 of its content — handy for upgrading a sketch to a finished map or dropping in a
 higher-resolution version. Upload (or link) the new image, and keep *Reposition
@@ -491,7 +556,10 @@ another floor, it switches to that floor and lands their pin at the right spot.
 
 Press **play** in the chapter bar and the map becomes a playback stage: as the
 story advances event by event, character pins glide between locations along their
-routes, so you can watch your cast move through the world.
+routes, so you can watch your cast move through the world. The story-notes overlay
+shows the current chapter, synopsis, and relevant character status notes. For a
+frame narrative, the map can display outer-timeline characters as **ghost pins**;
+a historical-echo relationship marks shared places with echo rings.
 
 ### Generate locations with AI
 
@@ -525,7 +593,7 @@ onto it.
 ## Items
 
 Track the objects that matter — weapons, artefacts, documents, consumables — with
-thumbnails, categories, and descriptions. Like characters, items have per-chapter
+thumbnails, categories, and descriptions. Like characters, items have per-event
 **placements** (who holds an item, or where it is, at any point in the story).
 
 ![Items](images/09-items.png)
@@ -536,6 +604,13 @@ the current world. It follows the same flow as
 [generating characters](#generate-characters-with-ai) — new items are created and
 items with a matching name are updated in place, so re-running never duplicates.
 
+An item's detail page also lists every lore page linked to it. In a world with
+multiple timelines, **Cross-Timeline Appearances** records where an artefact
+originates, the timeline in which it is later found or encountered, and optional
+encounter notes.
+
+![Cross-timeline item](images/41-item-cross-timeline.png)
+
 ---
 
 ## Relationships
@@ -543,6 +618,12 @@ items with a matching name are updated in place, so re-running never duplicates.
 The Relationships graph visualises how your cast connects. Each edge is a
 labelled, colour-coded relationship (allies, rivals, family, lovers…), and the
 graph is fully pannable/zoomable with a minimap.
+
+Create a relationship with the form or drag from one character node to another.
+Relationships may be bidirectional or directed, can begin at a chosen event, and
+carry a label, strength, sentiment, and description. Selecting an edge opens its
+editor and an **Evolution** history of every event-based change. The faction
+overlay colours character nodes by their active memberships.
 
 ![Relationships graph](images/10-relationships.png)
 
@@ -567,10 +648,16 @@ it happens.
 
 ## Character Arc grid
 
-The Arc view is a spreadsheet of your whole cast against every chapter. Each cell
-shows a character's **status** (alive/dead), **location**, and a note at that
-chapter, with a sparkline of their trajectory. Switch the columns between
-**Characters**, **Chapters**, and **Events**, and export the grid as **PNG**.
+The Arc view is a spreadsheet of your whole cast across story time. Choose
+**Characters** or **Factions** for the rows, and **Chapters** or **Events** for
+the columns. Character cells show status, location, notes, inherited state, and
+an inventory sparkline; faction cells show who belongs at that moment.
+
+In a multi-timeline world, use **All** or a timeline pill to focus the columns.
+The search box filters character rows, while the **Factions**, **Status**, and
+**POV** overlays add membership, scene-status, and point-of-view colour cues.
+Click a column to move the time cursor, expand a notes cell for its full text, or
+export the complete grid as **PNG**.
 
 ![Character Arc grid](images/11-arc.png)
 
@@ -592,6 +679,15 @@ world, and paste the JSON back. Pages are filed into **categories** by name
 than duplicated — same flow as
 [generating characters](#generate-characters-with-ai).
 
+Each page has a Markdown editor with an **Edit / Preview** toggle. **Link
+entities** associates the page with characters, items, or locations; the page
+then appears in those entities' Lore sections and in Writer's Brief when it is
+relevant. Use **Revealed at** to choose the first event at which the page becomes
+visible, and turn on the revealed-only filter in the Lore index to hide future
+knowledge at the current cursor.
+
+![Lore editor and entity links](images/42-lore-editor.png)
+
 ---
 
 ## Factions
@@ -610,6 +706,11 @@ are updated in place (their members are merged in, never dropped). Faction
 world are linked (unknown names are ignored, and no characters are created), so
 generate your cast first.
 
+Regions and location markers can name an **owning faction**. Those assignments
+appear under **Territories** on the faction detail panel. Turn on the Factions
+overlay in the Relationships graph or Character Arc to colour characters by
+their active membership at the selected event.
+
 ---
 
 ## Knowledge
@@ -619,6 +720,10 @@ backbone of mysteries and dramatic irony. Record a **fact** (a secret or key
 piece of information), mark when the **reader** learns it, and log **reveals** to
 individual characters at specific events. PlotWeave even **suggests facts from
 your story** (for example, "Gandalf the Grey is dead · Ch. 17").
+
+After one character learns a fact, **Might also know** looks for other characters
+who shared a later scene with a knower. Accept a suggestion to add the likely
+reveal, or leave it untracked when the information was not actually shared.
 
 ![Knowledge](images/14-knowledge.png)
 
@@ -637,8 +742,10 @@ information they shouldn't have yet.
 ## Search
 
 Press **Ctrl/⌘+K** anywhere to open the command-style search palette. It searches
-across characters, items, locations, chapters, and more, grouped by type, and
-navigates you straight to any result with the keyboard.
+characters, factions, items, locations, chapters, events, timelines,
+relationships, routes, regions, and lore pages, grouped by type. Use the arrow
+keys and **Enter** to navigate; opening an event also sets the time cursor, and
+opening a location focuses its map marker.
 
 ![Search palette](images/16-search.png)
 
@@ -654,6 +761,10 @@ chapter, and a per-character state readout — including **"carried forward"**
 badges where a character's state was inherited rather than freshly set. When a
 world calendar and a character's birth date are both set, each present character
 also shows their **age** at that point in the story.
+
+The brief also collects active relationships, item placements, and relevant lore.
+Lore linked to a present character appears automatically; a page revealed at the
+active event is marked **NEW** and links directly to its editor.
 
 ![Writer's Brief](images/17-writers-brief.png)
 
@@ -724,13 +835,18 @@ count. Typical catches:
   way). The finding offers a one-click **"Allow N more days"** that lengthens the
   event so the journey becomes possible.
 - A character who **travels through a destroyed or abandoned region**.
+- An item that is used before it was acquired, an impossible item handoff, a
+  relationship or faction membership that starts at an invalid moment, or a POV
+  character who should not be available at that event.
 
 ![Continuity Checker](images/18-continuity.png)
 
 Each finding links straight to the offending event so you can fix it in context.
 The travel checks rely on a **map scale** (set one on the map) and **travel
 modes** with speeds (in World settings). The stale-snapshot sensitivity is
-configurable in Settings.
+configurable in Settings. If a finding is intentional, **suppress** it and add an
+optional reason. The checker can show suppressed findings later so you can review
+or restore them.
 
 ---
 
@@ -759,6 +875,28 @@ app.
   optionally split with a **`.pwb`** images file. These are the files you import
   back on the world selector — the app's portable, offline save format.
 
+### Database health
+
+Deleting a parent record can occasionally leave an old snapshot, membership, or
+sub-map reference behind—especially after importing older files. **Scan for
+orphans** reports those unreachable records by table, and **Clean up** removes
+only the records whose parent no longer exists.
+
+### Folder and cloud sync
+
+On Chrome, Edge, and the desktop app, choose a **sync folder** to bind the world
+to a `.pwk` file in any local folder—including one managed by Google Drive,
+OneDrive, Dropbox, or another file-sync service. **Save** writes the current
+world; **Load** previews the file before applying it.
+
+- **Smart merge** compares records and keeps the newer version of each entity,
+  which is useful when the same world was edited on two devices.
+- **Replace all** overwrites the local world with the selected file.
+- **Change folder** moves the binding. **Disconnect** removes the binding without
+  deleting the file already stored in that folder.
+
+![Database health and folder sync](images/43-settings-sync.png)
+
 ---
 
 ## Help
@@ -766,6 +904,10 @@ app.
 The **Help** panel (the ? icon, top-right) is available on every screen with
 in-app explanations of each concept — the time cursor, snapshots, timelines,
 maps, playback, and the rest.
+
+The Help panel also lists keyboard shortcuts: **Ctrl/⌘+K** opens search,
+**Shift+click** selects an event range, arrow keys and **Enter** navigate search
+or continuity results, and **Esc** closes panels or cancels inline edits.
 
 ![Help panel](images/19-help.png)
 
