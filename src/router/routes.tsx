@@ -20,6 +20,7 @@ const FactionsView = lazy(() => import('@/features/factions/FactionsView'))
 const KnowledgeView = lazy(() => import('@/features/knowledge/KnowledgeView'))
 const ManuscriptView = lazy(() => import('@/features/manuscript/ManuscriptView'))
 const CorkboardView = lazy(() => import('@/features/corkboard/CorkboardView'))
+const CalendarView = lazy(() => import('@/features/calendar/CalendarView'))
 
 function Loading() {
   return (
@@ -52,6 +53,7 @@ export const router = createHashRouter([
       { path: 'timeline', element: <Wrap><TimelineView /></Wrap> },
       { path: 'timeline/:chapterId', element: <Wrap><ChapterDetailView /></Wrap> },
       { path: 'corkboard', element: <Wrap><CorkboardView /></Wrap> },
+      { path: 'calendar', element: <Wrap><CalendarView /></Wrap> },
       { path: 'arc', element: <Wrap><CharacterArcView /></Wrap> },
       { path: 'settings', element: <Wrap><WorldSettingsView /></Wrap> },
       { path: 'lore', element: <Wrap><LoreView /></Wrap> },

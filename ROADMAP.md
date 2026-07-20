@@ -460,13 +460,13 @@ Search today is entity-only (Ctrl+K). No way to rename a term or fix a tic acros
 - [ ] **Character-rename aware** — when the query matches a character name, offer to update the character's `name`/`aliases` too.
 - [ ] **Tests** — pure match/replace logic (counts, boundaries, case).
 
-### 9. Calendar view
+### 9. Calendar view — DONE
 
 The calendar data landed in #2 but the visual grid was explicitly deferred.
 
-- [ ] **Month/season grid** — lay events on a grid by in-world date (`formatInWorldDate` / `computeInWorldDays`).
-- [ ] **Reschedule** — drag an event to set its `inWorldTime`.
-- [ ] **Tests** — date→cell placement, drag→inWorldTime mapping.
+- [x] **Month grid** — `CalendarView` (route `calendar`, Extended nav item): pure `src/lib/calendarView.ts` (`buildCalendarMonths`) turns the in-world clock (`computeInWorldDays`) + `dayNumberToDate` into month grids; events are chips on their day, flashbacks marked, contiguous months rendered (falls back to months-with-events for very long spans). Empty state when no calendar is set.
+- [x] **Reschedule** — drag a chip to another day → `updateEvent({ inWorldTime: dateToDayNumber(...) })`, pinning the event's date.
+- [x] **Tests** — `buildCalendarMonths` placement/derived-clock/pin/grouping/span units + a Playwright drag-reschedule e2e.
 
 ### 10. Writing goals & projection
 

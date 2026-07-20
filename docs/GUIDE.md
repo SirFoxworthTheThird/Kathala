@@ -659,6 +659,20 @@ moment simply shows no age.
 The calendar and every birth date travel with the world through **export /
 import**, so shared or backed-up worlds keep their dates intact.
 
+### Calendar view
+
+Once a calendar is set, the **Calendar** view (in the nav) lays your events onto
+month grids by their in-world date, so you can see the shape of your story in
+time. Each month that your story touches gets a grid; events appear as chips on
+their day, and flashbacks are marked with a small clock icon.
+
+![Calendar view](images/35-calendar-view.png)
+
+- **Click** an event chip to jump to it in the timeline.
+- **Drag** a chip to another day to **pin** its in-world date — this sets the
+  event's explicit in-world time, overriding the travel-day clock for that event
+  (handy for flashbacks/flash-forwards, or to nail a scene to a specific date).
+
 ---
 
 ## Continuity Checker

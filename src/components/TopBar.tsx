@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BookOpen, Map, Users, Network, LayoutDashboard, Package, Search, ScrollText, TableProperties, ShieldAlert, Settings, HelpCircle, BookMarked, Shield, KeyRound, Menu, X, FileText, LayoutGrid } from 'lucide-react'
+import { BookOpen, Map, Users, Network, LayoutDashboard, Package, Search, ScrollText, TableProperties, ShieldAlert, Settings, HelpCircle, BookMarked, Shield, KeyRound, Menu, X, FileText, LayoutGrid, CalendarDays } from 'lucide-react'
 import faviconUrl from '/favicon.png'
 import { useActiveWorldId, useAppStore } from '@/store'
 import { useWorld } from '@/db/hooks/useWorlds'
@@ -13,6 +13,7 @@ const navItems: { to: string; label: string; icon: typeof LayoutDashboard; end: 
   { to: '', label: 'Dashboard', icon: LayoutDashboard, end: true,  tier: 'core' },
   { to: 'timeline',       label: 'Timeline',   icon: BookOpen,        end: false, tier: 'core' },
   { to: 'corkboard',      label: 'Corkboard',  icon: LayoutGrid,      end: false, tier: 'extended' },
+  { to: 'calendar',       label: 'Calendar',   icon: CalendarDays,    end: false, tier: 'extended' },
   { to: 'manuscript',     label: 'Manuscript', icon: FileText,        end: false, tier: 'core' },
   { to: 'characters',     label: 'Characters', icon: Users,           end: false, tier: 'core' },
   { to: 'maps',           label: 'Maps',       icon: Map,             end: false, tier: 'core' },
