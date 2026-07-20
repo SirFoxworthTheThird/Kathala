@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   resolveCharacterPin,
   buildSequentialQueue,
+  playbackFocusTarget,
   playbackFocusZoom,
   type PinLayer,
 } from '../mapUtils'
@@ -68,6 +69,9 @@ describe('buildSequentialQueue — cross-floor travel', () => {
     const arrival = queue[queue.length - 1]
     expect(arrival.mapLayerId).toBe('first')
     expect(arrival.pinAnimation.to['c']).toEqual({ x: 20, y: 30 })
+    expect(arrival.pinAnimation.from).toEqual({})
+    expect(playbackFocusTarget(arrival.pinAnimation))
+      .toEqual({ characterId: 'c', position: { x: 20, y: 30 } })
   })
 
   it('detects a floor transition when the destination snapshot layer is stale', () => {
@@ -94,5 +98,21 @@ describe('playbackFocusZoom', () => {
 
   it('never exceeds the map maximum zoom', () => {
     expect(playbackFocusZoom(0, 0, 1)).toBe(1)
+  })
+})
+
+describe('playbackFocusTarget', () => {
+  it('uses the movement start when one is available', () => {
+    expect(playbackFocusTarget({
+      from: { harry: { x: 10, y: 20 } },
+      to: { harry: { x: 30, y: 40 } },
+    })).toEqual({ characterId: 'harry', position: { x: 10, y: 20 } })
+  })
+
+  it('uses the destination for a first appearance or cross-map fade-in', () => {
+    expect(playbackFocusTarget({
+      from: {},
+      to: { harry: { x: 30, y: 40 } },
+    })).toEqual({ characterId: 'harry', position: { x: 30, y: 40 } })
   })
 })
