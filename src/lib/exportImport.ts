@@ -11,6 +11,7 @@ import type {
   ContinuitySuppression,
   WritingLog,
   Motif,
+  SceneRevision,
 } from '@/types'
 import { generateId } from '@/lib/id'
 
@@ -82,6 +83,7 @@ export interface WorldExportFile {
   motifs?: Motif[]
   continuitySuppressions?: ContinuitySuppression[]
   writingLogs?: WritingLog[]
+  sceneRevisions?: SceneRevision[]
   relationshipPositions?: Record<string, { x: number; y: number }>
   /** @deprecated v6 and earlier stored only IDs via localStorage; superseded by continuitySuppressions */
   suppressedIssueIds?: string[]
@@ -156,6 +158,7 @@ interface CollectedWorldData {
   motifs: Motif[]
   continuitySuppressions: ContinuitySuppression[]
   writingLogs: WritingLog[]
+  sceneRevisions: SceneRevision[]
 }
 
 export type { CollectedWorldData }
@@ -197,6 +200,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     motifs,
     continuitySuppressions,
     writingLogs,
+    sceneRevisions,
   ] = await Promise.all([
     db.worlds.get(worldId),
     db.mapLayers.where('worldId').equals(worldId).toArray(),
@@ -233,6 +237,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     db.motifs.where('worldId').equals(worldId).toArray(),
     db.continuitySuppressions.where('worldId').equals(worldId).toArray(),
     db.writingLogs.where('worldId').equals(worldId).toArray(),
+    db.sceneRevisions.where('worldId').equals(worldId).toArray(),
   ])
 
   if (!world) throw new Error('World not found')
@@ -273,6 +278,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     motifs,
     continuitySuppressions,
     writingLogs,
+    sceneRevisions,
   }
 }
 
@@ -405,6 +411,7 @@ export async function exportWorld(
     motifs: d.motifs,
     continuitySuppressions: d.continuitySuppressions,
     writingLogs: d.writingLogs,
+    sceneRevisions: d.sceneRevisions,
     ...extras,
   }
   const filename = `${d.world.name.replace(/[^a-z0-9]/gi, '_')}.pwk`
@@ -479,6 +486,7 @@ export async function exportWorldSplit(
     motifs: d.motifs,
     continuitySuppressions: d.continuitySuppressions,
     writingLogs: d.writingLogs,
+    sceneRevisions: d.sceneRevisions,
     ...extras,
   }
   triggerDownload(JSON.stringify(dataFile), `${safeName}.pwk`)
@@ -544,6 +552,7 @@ export async function serializeWorldForSync(worldId: string): Promise<string> {
     motifs: d.motifs,
     continuitySuppressions: d.continuitySuppressions,
     writingLogs: d.writingLogs,
+    sceneRevisions: d.sceneRevisions,
     ...extras,
   }
   return JSON.stringify(exportData)
@@ -684,6 +693,10 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
     throw new Error('Invalid file: writingLogs is not an array')
   }
   if (!d.writingLogs) (d as Record<string, unknown>).writingLogs = []
+  if (d.sceneRevisions !== undefined && !Array.isArray(d.sceneRevisions)) {
+    throw new Error('Invalid file: sceneRevisions is not an array')
+  }
+  if (!d.sceneRevisions) (d as Record<string, unknown>).sceneRevisions = []
 }
 
 function normalizeImport(data: WorldExportFile): void {
@@ -920,7 +933,7 @@ async function importWorldData(data: WorldExportFile): Promise<string> {
     db.mapRoutes, db.mapRegions, db.mapRegionSnapshots, db.mapAnnotations,
     db.loreCategories, db.lorePages, db.factions, db.factionMemberships, db.factionRelationships,
     db.knowledgeFacts, db.knowledgeReveals, db.sceneTexts, db.plotThreads,
-    db.motifs, db.continuitySuppressions, db.writingLogs,
+    db.motifs, db.continuitySuppressions, db.writingLogs, db.sceneRevisions,
   ], async () => {
     await db.worlds.put(data.world)
     await db.mapLayers.bulkPut(data.mapLayers)
@@ -955,6 +968,7 @@ async function importWorldData(data: WorldExportFile): Promise<string> {
     await db.plotThreads.bulkPut(data.plotThreads ?? [])
     await db.motifs.bulkPut(data.motifs ?? [])
     await db.writingLogs.bulkPut(data.writingLogs ?? [])
+    await db.sceneRevisions.bulkPut(data.sceneRevisions ?? [])
     if (suppressionsToImport.length > 0) {
       await db.continuitySuppressions.bulkPut(suppressionsToImport)
     }
@@ -1093,7 +1107,7 @@ export async function applyWorldImport(
     localLoreCats, localLorePages,
     localFactions, localFactionMemberships, localFactionRelationships,
     localKnowledgeFacts, localKnowledgeReveals, localSceneTexts, localPlotThreads,
-    localMotifs, localWritingLogs,
+    localMotifs, localWritingLogs, localSceneRevisions,
   ] = await Promise.all([
     db.characters.where('worldId').equals(worldId).toArray(),
     db.items.where('worldId').equals(worldId).toArray(),
@@ -1127,6 +1141,7 @@ export async function applyWorldImport(
     db.plotThreads.where('worldId').equals(worldId).toArray(),
     db.motifs.where('worldId').equals(worldId).toArray(),
     db.writingLogs.where('worldId').equals(worldId).toArray(),
+    db.sceneRevisions.where('worldId').equals(worldId).toArray(),
   ])
 
   const merged = {
@@ -1163,6 +1178,7 @@ export async function applyWorldImport(
     plotThreads:          mergeTable(parsed.plotThreads ?? [], localPlotThreads).result,
     motifs:               mergeTable(parsed.motifs ?? [], localMotifs).result,
     writingLogs:          mergeTable(parsed.writingLogs ?? [], localWritingLogs).result,
+    sceneRevisions:       mergeTable(parsed.sceneRevisions ?? [], localSceneRevisions).result,
     blobs:                parsed.blobs, // blobs: always use incoming (binary, no updatedAt)
     relationshipPositions: parsed.relationshipPositions,
     suppressedIssueIds:   parsed.suppressedIssueIds,

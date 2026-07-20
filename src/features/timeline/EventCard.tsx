@@ -5,9 +5,11 @@ import { STORY_BEATS, beatById, beatActColor } from '@/lib/storyBeats'
 import { AtSign, Spline, Sparkle } from 'lucide-react'
 import { wordCount, detectMentions } from '@/lib/manuscript'
 import { useSceneText, setSceneText } from '@/db/hooks/useManuscript'
+import { useSceneRevisions } from '@/db/hooks/useSceneRevisions'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { useMotifs } from '@/db/hooks/useMotifs'
 import { SceneDraftEditor } from './SceneDraftEditor'
+import { SceneHistoryDialog } from './SceneHistoryDialog'
 import type { WorldEvent, EventStatus } from '@/types'
 import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
@@ -56,6 +58,8 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
   // Scene prose: `draft === null` means "show the stored value"; a string means unsaved edits.
   const sceneText = useSceneText(event.id)
   const [draft, setDraft] = useState<string | null>(null)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const sceneRevisions = useSceneRevisions(event.id)
   const tagInputRef = useRef<HTMLInputElement>(null)
 
   const characters = useCharacters(event.worldId)
@@ -480,9 +484,20 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
               <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
                 <PenLine className="h-3 w-3" /> Scene Draft
               </span>
-              <span className="text-[10px] tabular-nums text-[hsl(var(--muted-foreground))]">
-                {sceneWords} {sceneWords === 1 ? 'word' : 'words'}
-              </span>
+              <div className="flex items-center gap-2">
+                {sceneRevisions.length > 0 && (
+                  <button
+                    onClick={() => setHistoryOpen(true)}
+                    className="flex items-center gap-1 text-[10px] text-[hsl(var(--muted-foreground))] transition-colors hover:text-[hsl(var(--foreground))]"
+                    title="View earlier drafts of this scene"
+                  >
+                    <History className="h-3 w-3" /> History ({sceneRevisions.length})
+                  </button>
+                )}
+                <span className="text-[10px] tabular-nums text-[hsl(var(--muted-foreground))]">
+                  {sceneWords} {sceneWords === 1 ? 'word' : 'words'}
+                </span>
+              </div>
             </div>
             <SceneDraftEditor
               value={sceneValue}
@@ -508,6 +523,12 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                 ))}
               </div>
             )}
+            <SceneHistoryDialog
+              open={historyOpen}
+              onOpenChange={setHistoryOpen}
+              eventId={event.id}
+              currentText={sceneText?.text ?? ''}
+            />
           </div>
 
           {/* Location */}

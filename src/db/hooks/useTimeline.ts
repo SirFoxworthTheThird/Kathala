@@ -224,7 +224,7 @@ export async function deleteEvent(id: string) {
   await db.transaction('rw', [
     db.events, db.characterSnapshots, db.itemPlacements,
     db.locationSnapshots, db.itemSnapshots, db.characterMovements,
-    db.relationshipSnapshots, db.mapRegionSnapshots, db.sceneTexts,
+    db.relationshipSnapshots, db.mapRegionSnapshots, db.sceneTexts, db.sceneRevisions,
   ], async () => {
     await db.events.delete(id)
     await db.characterSnapshots.where('eventId').equals(id).delete()
@@ -235,6 +235,7 @@ export async function deleteEvent(id: string) {
     await db.relationshipSnapshots.where('eventId').equals(id).delete()
     await db.mapRegionSnapshots.where('eventId').equals(id).delete()
     await db.sceneTexts.where('eventId').equals(id).delete()
+    await db.sceneRevisions.where('eventId').equals(id).delete()
   })
 }
 
@@ -243,7 +244,7 @@ export async function bulkDeleteEvents(ids: string[]): Promise<void> {
   await db.transaction('rw', [
     db.events, db.characterSnapshots, db.itemPlacements,
     db.locationSnapshots, db.itemSnapshots, db.characterMovements,
-    db.relationshipSnapshots, db.mapRegionSnapshots, db.sceneTexts,
+    db.relationshipSnapshots, db.mapRegionSnapshots, db.sceneTexts, db.sceneRevisions,
   ], async () => {
     for (const id of ids) {
       await db.events.delete(id)
@@ -255,6 +256,7 @@ export async function bulkDeleteEvents(ids: string[]): Promise<void> {
       await db.relationshipSnapshots.where('eventId').equals(id).delete()
       await db.mapRegionSnapshots.where('eventId').equals(id).delete()
       await db.sceneTexts.where('eventId').equals(id).delete()
+      await db.sceneRevisions.where('eventId').equals(id).delete()
     }
   })
 }

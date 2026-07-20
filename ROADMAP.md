@@ -439,18 +439,18 @@ Mirrors the existing Plot Threads pattern, for symbols/themes rather than plot.
 With the first 2026-07 batch (#1–#6) shipped, a second whole-app pass turned up
 these candidates, ranked by fit × value. Nothing here is started yet.
 
-### Data-hygiene fix (fold into the next PR)
+### Data-hygiene fix — DONE
 
-- [ ] **`deleteWorld` orphans data** — `deleteWorld` (`src/db/hooks/useWorlds.ts`) doesn't delete the world's `sceneTexts` (the prose!), `plotThreads`, or `continuitySuppressions`; they linger in IndexedDB after the world is gone. Add the three `where('worldId').delete()` calls (and their tables to the transaction list). Small, safe.
+- [x] **`deleteWorld` orphans data** — `deleteWorld` now also deletes the world's `sceneTexts`, `plotThreads`, `continuitySuppressions` (and `sceneRevisions`); `deleteEvent` / `bulkDeleteEvents` also drop an event's `sceneRevisions`.
 
-### 7. Scene revision history — *recommended flagship*
+### 7. Scene revision history — DONE
 
 Writing progress tracks *how many* words change per day, but not *what* the prose was — a local-first writing tool must not lose a good paragraph.
 
-- [ ] **Version store** — on scene save, keep the last N prior versions of each scene (new `sceneRevisions` table: worldId, eventId, text, wordCount, createdAt; cap per scene, e.g. 20). DB migration + backfill.
-- [ ] **History UI** — a "History" affordance on the scene editor listing past versions with timestamp + word count; **view**, **diff against current**, and **restore** (restoring writes a new revision first, never destructive).
-- [ ] **Round-trip** — revisions travel with the world through export/import (optional/skippable to keep files small).
-- [ ] **Tests** — capping/pruning logic, restore-writes-a-revision, diff.
+- [x] **Version store** — `sceneRevisions` table (DB v48). `setSceneText` snapshots the outgoing prose via `captureSceneRevision` — time-coalesced (bursts of autosaves → one snapshot, `REVISION_COALESCE_MS`), exact-duplicate-skipped, pruned to `MAX_SCENE_REVISIONS` (20) per scene.
+- [x] **History UI** — a "History (N)" link above the scene draft opens `SceneHistoryDialog`: past versions with timestamp + word count, **diff against current** (word-level, `src/lib/textDiff.ts`) or plain text, per-version delete, and **restore** (force-captures the current prose first — never destructive).
+- [x] **Round-trip** — revisions travel with the world through export/import.
+- [x] **Tests** — pure `textDiff` units; `captureSceneRevision` coalesce/dedupe/prune, `setSceneText` capture, `restoreSceneRevision`, delete-cleanup and export round-trip integration; a Playwright restore e2e.
 
 ### 8. Manuscript-wide find & replace
 

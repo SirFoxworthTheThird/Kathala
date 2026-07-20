@@ -44,6 +44,7 @@ export async function deleteWorld(id: string) {
     db.loreCategories, db.lorePages,
     db.factions, db.factionMemberships, db.factionRelationships,
     db.knowledgeFacts, db.knowledgeReveals, db.writingLogs, db.motifs,
+    db.sceneTexts, db.plotThreads, db.continuitySuppressions, db.sceneRevisions,
   ], async () => {
     await db.worlds.delete(id)
     await db.mapLayers.where('worldId').equals(id).delete()
@@ -77,5 +78,9 @@ export async function deleteWorld(id: string) {
     await db.knowledgeReveals.where('worldId').equals(id).delete()
     await db.writingLogs.where('worldId').equals(id).delete()
     await db.motifs.where('worldId').equals(id).delete()
+    await db.sceneTexts.where('worldId').equals(id).delete()
+    await db.plotThreads.where('worldId').equals(id).delete()
+    await db.continuitySuppressions.where('worldId').equals(id).delete()
+    await db.sceneRevisions.where('worldId').equals(id).delete()
   })
 }

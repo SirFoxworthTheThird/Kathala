@@ -37,6 +37,7 @@ import type {
   ContinuitySuppression,
   WritingLog,
   Motif,
+  SceneRevision,
 } from '@/types'
 
 class PlotWeaveDB extends Dexie {
@@ -76,6 +77,7 @@ class PlotWeaveDB extends Dexie {
   continuitySuppressions!: EntityTable<ContinuitySuppression, 'id'>
   writingLogs!: EntityTable<WritingLog, 'id'>
   motifs!: EntityTable<Motif, 'id'>
+  sceneRevisions!: EntityTable<SceneRevision, 'id'>
 
   constructor() {
     super('PlotWeaveDB')
@@ -614,6 +616,12 @@ class PlotWeaveDB extends Dexie {
       await tx.table('events').toCollection().modify((e: Record<string, unknown>) => {
         if (e.motifIds === undefined) e.motifIds = []
       })
+    })
+
+    // v48: scene revision history. New table only; existing scenes have no past
+    // versions until their next edit.
+    this.version(48).stores({
+      sceneRevisions: 'id, worldId, eventId, [eventId+createdAt]',
     })
   }
 }

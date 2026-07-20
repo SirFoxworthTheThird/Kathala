@@ -285,6 +285,21 @@ PlotWeave. Write a scene's prose on its event, and it appears here automatically
 Empty scenes are flagged with a "write this scene" link, so the manuscript
 doubles as a checklist of what's left to draft.
 
+### Scene history
+
+Every scene keeps a **revision history**. As you revise a scene's prose,
+PlotWeave automatically saves earlier drafts (grouped so a burst of edits becomes
+one snapshot, and capped to the most recent 20). A **History** link appears above
+the scene draft once there are saved versions.
+
+![Scene history](images/34-scene-history.png)
+
+Open it to browse past versions with their timestamp and word count, **diff** any
+version against the current prose (added words in green, removed in red), and
+**restore** one. Restoring is non-destructive — the current draft is saved as a
+new version first, so you can always undo it. The full history travels with the
+world through export/import.
+
 ---
 
 ## Characters
