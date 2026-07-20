@@ -608,6 +608,16 @@
 .pw-anim-fade-in { animation: pw-fade-in 0.15s ease-out; }
 .pw-anim-slide-in-left { animation: pw-slide-in-left 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
 
+/* ── Desktop nav rail: width reserved for the collapsed/pinned left rail. The
+   rail itself is hidden below `lg`, so the reserved width is 0 on mobile (the
+   hamburger drawer is used there). Descendants — the main content column and the
+   fixed chapter-timeline bar — offset by this variable. ── */
+:root { --pw-nav-w: 0px; }
+@media (min-width: 1024px) {
+  [data-nav-rail="collapsed"] { --pw-nav-w: 3.25rem; }
+  [data-nav-rail="pinned"]    { --pw-nav-w: 13rem; }
+}
+
 /* ── Touch devices have no hover, so controls revealed only on :hover would be
    invisible and unreachable. On any coarse-pointer / hover-less device, force
    hover-reveal controls (opacity-0 + group-hover:opacity-*) to be visible. ── */

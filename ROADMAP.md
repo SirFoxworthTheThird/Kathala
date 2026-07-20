@@ -183,6 +183,7 @@ Findings from the UX audit (April 2026).
 - [x] **All `confirm()` dialogs replaced** — 12 native browser confirms replaced with `ConfirmDialog` component
 - [x] **WorldSelector import hint** — hint text only shown while importing, not always
 - [x] **Travel modes moved to Settings** — extracted from the Dashboard into a dedicated `WorldSettingsView` at `/settings`; Settings nav item added to TopBar
+- [x] **Collapsible left nav rail** — with 14 destinations the centered top-bar icon row no longer scaled. Moved navigation to a left rail (`NavRail`): icon-only by default, expands to labels on hover (overlaying content, not reflowing it) or when pinned (`navPinned`, persisted). Core/More grouping. Content + the fixed chapter-timeline bar offset by a `--pw-nav-w` CSS variable (0 below `lg`, where the existing hamburger drawer is used). Top bar keeps world name, time cursor, search, and tools.
 
 ---
 

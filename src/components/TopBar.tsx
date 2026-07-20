@@ -1,83 +1,12 @@
 import { useEffect, useState } from 'react'
-import { BookOpen, Map, Users, Network, LayoutDashboard, Package, Search, ScrollText, TableProperties, ShieldAlert, Settings, HelpCircle, BookMarked, Shield, KeyRound, Menu, X, FileText, LayoutGrid, CalendarDays } from 'lucide-react'
+import { Search, ScrollText, ShieldAlert, HelpCircle, Menu, X } from 'lucide-react'
 import faviconUrl from '/favicon.png'
 import { useActiveWorldId, useAppStore } from '@/store'
 import { useWorld } from '@/db/hooks/useWorlds'
-import { useNavigate, NavLink, useParams } from 'react-router-dom'
+import { useNavigate, NavLink } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { TimeCursor } from './TimeCursor'
-
-type NavTier = 'core' | 'extended'
-
-const navItems: { to: string; label: string; icon: typeof LayoutDashboard; end: boolean; tier: NavTier }[] = [
-  { to: '', label: 'Dashboard', icon: LayoutDashboard, end: true,  tier: 'core' },
-  { to: 'timeline',       label: 'Timeline',   icon: BookOpen,        end: false, tier: 'core' },
-  { to: 'corkboard',      label: 'Corkboard',  icon: LayoutGrid,      end: false, tier: 'extended' },
-  { to: 'calendar',       label: 'Calendar',   icon: CalendarDays,    end: false, tier: 'extended' },
-  { to: 'manuscript',     label: 'Manuscript', icon: FileText,        end: false, tier: 'core' },
-  { to: 'characters',     label: 'Characters', icon: Users,           end: false, tier: 'core' },
-  { to: 'maps',           label: 'Maps',       icon: Map,             end: false, tier: 'core' },
-  { to: 'items',          label: 'Items',      icon: Package,         end: false, tier: 'extended' },
-  { to: 'relationships',  label: 'Relations',  icon: Network,         end: false, tier: 'extended' },
-  { to: 'arc',            label: 'Arc',        icon: TableProperties, end: false, tier: 'extended' },
-  { to: 'lore',           label: 'Lore',       icon: BookMarked,      end: false, tier: 'extended' },
-  { to: 'factions',       label: 'Factions',   icon: Shield,          end: false, tier: 'extended' },
-  { to: 'knowledge',      label: 'Knowledge',  icon: KeyRound,        end: false, tier: 'extended' },
-  { to: 'settings',       label: 'Settings',   icon: Settings,        end: false, tier: 'extended' },
-]
-
-function NavIcons() {
-  const { worldId } = useParams<{ worldId: string }>()
-  if (!worldId) return null
-
-  const coreItems     = navItems.filter((n) => n.tier === 'core')
-  const extendedItems = navItems.filter((n) => n.tier === 'extended')
-
-  return (
-    <nav className="flex items-center gap-0.5" aria-label="Main navigation">
-      {coreItems.map(({ to, label, icon: Icon, end }) => (
-        <NavLink
-          key={to}
-          to={`/worlds/${worldId}/${to}`}
-          end={end}
-          aria-label={label}
-          title={label}
-          className={({ isActive }) =>
-            cn(
-              'flex h-8 w-8 items-center justify-center rounded-md transition-colors',
-              isActive
-                ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
-                : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]'
-            )
-          }
-        >
-          <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        </NavLink>
-      ))}
-      {/* Tier separator — decorative, not semantic */}
-      <span aria-hidden="true" className="mx-1 h-4 w-px bg-[hsl(var(--border))]" />
-      {extendedItems.map(({ to, label, icon: Icon, end }) => (
-        <NavLink
-          key={to}
-          to={`/worlds/${worldId}/${to}`}
-          end={end}
-          aria-label={label}
-          title={label}
-          className={({ isActive }) =>
-            cn(
-              'flex h-8 w-8 items-center justify-center rounded-md transition-colors',
-              isActive
-                ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
-                : 'text-[hsl(var(--muted-foreground)/0.6)] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]'
-            )
-          }
-        >
-          <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        </NavLink>
-      ))}
-    </nav>
-  )
-}
+import { navItems } from './navItems'
 
 /**
  * Full-height slide-in navigation for narrow screens. The desktop icon rail
@@ -203,13 +132,6 @@ export function TopBar() {
           </>
         )}
       </div>
-
-      {/* Center: nav icons (desktop only) */}
-      {world && (
-        <div className="hidden flex-1 justify-center lg:flex">
-          <NavIcons />
-        </div>
-      )}
 
       {/* Right: search + brief + continuity + help */}
       <div className="ml-auto flex shrink-0 items-center gap-1">

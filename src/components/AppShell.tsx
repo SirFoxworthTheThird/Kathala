@@ -1,5 +1,6 @@
 import { Outlet, useParams, useMatch } from 'react-router-dom'
 import { TopBar } from './TopBar'
+import { NavRail } from './NavRail'
 import { ChapterTimelineBar } from './ChapterTimelineBar'
 import { useAppStore } from '@/store'
 import { useBarHeight } from '@/lib/useBarHeight'
@@ -15,7 +16,7 @@ import { db } from '@/db/database'
 
 export function AppShell() {
   const { worldId } = useParams<{ worldId: string }>()
-  const { setActiveWorldId, setSearchOpen, setActiveWorldTheme, activeEventId, setActiveEventId } = useAppStore()
+  const { setActiveWorldId, setSearchOpen, setActiveWorldTheme, activeEventId, setActiveEventId, navPinned } = useAppStore()
   const world = useWorld(worldId ?? null)
   const isDashboard = !!useMatch('/worlds/:worldId')
   const isArc = !!useMatch('/worlds/:worldId/arc')
@@ -63,10 +64,17 @@ export function AppShell() {
   }, [setSearchOpen])
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden">
+    <div
+      data-nav-rail={navPinned ? 'pinned' : 'collapsed'}
+      className="flex h-[100dvh] flex-col overflow-hidden"
+    >
       <TopBar />
+      {world && <NavRail />}
       {showBar && <ChapterTimelineBar />}
-      <main className="flex-1 overflow-auto" style={{ paddingBottom: showBar ? barHeight : undefined }}>
+      <main
+        className="flex-1 overflow-auto"
+        style={{ paddingBottom: showBar ? barHeight : undefined, paddingLeft: 'var(--pw-nav-w)' }}
+      >
         <Outlet />
       </main>
       <SearchPalette />

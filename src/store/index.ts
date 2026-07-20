@@ -57,6 +57,9 @@ interface UISlice {
   sidebarOpen: boolean
   setSidebarOpen: (open: boolean) => void
   toggleSidebar: () => void
+  /** Whether the desktop nav rail is pinned open (labels always shown). */
+  navPinned: boolean
+  setNavPinned: (pinned: boolean) => void
   selectedLocationMarkerId: string | null
   setSelectedLocationMarkerId: (id: string | null) => void
   selectedCharacterId: string | null
@@ -167,6 +170,8 @@ export const useAppStore = create<AppStore>()(
       sidebarOpen: true,
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
+      navPinned: false,
+      setNavPinned: (pinned) => set({ navPinned: pinned }),
       selectedLocationMarkerId: null,
       setSelectedLocationMarkerId: (id) => set({ selectedLocationMarkerId: id }),
       selectedCharacterId: null,
@@ -200,6 +205,7 @@ export const useAppStore = create<AppStore>()(
         activeWorldId: state.activeWorldId,
         activeEventId: state.activeEventId,
         sidebarOpen: state.sidebarOpen,
+        navPinned: state.navPinned,
       }),
     }
   )

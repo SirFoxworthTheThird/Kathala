@@ -184,6 +184,20 @@ Motifs & Themes, covered later).
 The tiles are links — click **Timeline**, **Characters**, **Maps**, or any other
 tile to jump straight to that area.
 
+### Getting around
+
+Every screen in a world shares a **left navigation rail**. By default it's a slim
+strip of icons to keep your workspace wide; **hover** it to slide out the full
+labels, or click the **pin** at the bottom to keep it expanded. The everyday
+screens (Dashboard, Timeline, Manuscript, Characters, Maps) sit above a **More**
+divider, with the rest below.
+
+![Navigation rail](images/37-navigation.png)
+
+On a phone the rail is replaced by a **☰ menu** in the top bar. The top bar
+itself keeps the world name, the [time cursor](#core-concept-the-time-cursor),
+search (**Ctrl/⌘ K**), and the Writer's Brief, Continuity, and Help tools.
+
 ### Writing progress
 
 As you write scene prose (in the Manuscript view), PlotWeave keeps a lightweight

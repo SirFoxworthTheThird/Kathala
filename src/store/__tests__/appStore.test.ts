@@ -244,6 +244,14 @@ describe('UISlice', () => {
     expect(useAppStore.getState().sidebarOpen).toBe(true)
   })
 
+  it('pins and unpins the nav rail', () => {
+    expect(useAppStore.getState().navPinned).toBe(false)
+    useAppStore.getState().setNavPinned(true)
+    expect(useAppStore.getState().navPinned).toBe(true)
+    useAppStore.getState().setNavPinned(false)
+    expect(useAppStore.getState().navPinned).toBe(false)
+  })
+
   it('sets the active theme', () => {
     useAppStore.getState().setTheme('fantasy')
     expect(useAppStore.getState().theme).toBe('fantasy')
