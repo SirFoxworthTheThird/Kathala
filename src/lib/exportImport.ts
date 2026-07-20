@@ -670,10 +670,11 @@ function normalizeImport(data: WorldExportFile): void {
     const w = data.world as unknown as Rec
     if (w.theme === undefined) w.theme = null
   }
-  // Backfill color on characters exported before it was added
+  // Backfill color and birthDate on characters exported before they were added
   for (const char of data.characters) {
     const c = char as unknown as Rec
     if (c.color === undefined) c.color = null
+    if (c.birthDate === undefined) c.birthDate = null
   }
   // Backfill scale and level fields on map layers exported before they were added
   for (const layer of data.mapLayers) {
@@ -724,10 +725,11 @@ function normalizeImport(data: WorldExportFile): void {
     const s = snap as unknown as Rec
     if (s.travelModeId === undefined) s.travelModeId = null
   }
-  // Backfill continuityStaleThreshold on worlds exported before it was added
+  // Backfill continuityStaleThreshold and calendar on worlds exported before they were added
   {
     const w = data.world as unknown as Rec
     if (w.continuityStaleThreshold === undefined) w.continuityStaleThreshold = 5
+    if (w.calendar === undefined) w.calendar = null
   }
 
   // ── v1 → v2 migration ───────────────────────────────────────────────────────

@@ -27,6 +27,7 @@ export async function createCharacter(data: Pick<Character, 'worldId' | 'name' |
     tags: [],
     isAlive: true,
     color: null,
+    birthDate: null,
     createdAt: now,
     updatedAt: now,
   }

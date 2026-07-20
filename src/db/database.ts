@@ -583,6 +583,16 @@ class PlotWeaveDB extends Dexie {
         if (l.levelLabel === undefined) l.levelLabel = ''
       })
     })
+
+    // v45: in-world calendar (per world) and character birth dates. Backfill null.
+    this.version(45).stores({}).upgrade(async (tx) => {
+      await tx.table('worlds').toCollection().modify((w: Record<string, unknown>) => {
+        if (w.calendar === undefined) w.calendar = null
+      })
+      await tx.table('characters').toCollection().modify((c: Record<string, unknown>) => {
+        if (c.birthDate === undefined) c.birthDate = null
+      })
+    })
   }
 }
 

@@ -9,6 +9,8 @@ export interface Character {
   isAlive: boolean
   /** Optional hex color for arc-view row tinting and other visual cues */
   color: string | null
+  /** Optional birth date on the world calendar, for computing age at an event. */
+  birthDate?: import('./world').InWorldDate | null
   createdAt: number
   updatedAt: number
 }

@@ -36,9 +36,10 @@ explore).
 19. [Knowledge](#knowledge)
 20. [Search](#search)
 21. [Writer's Brief](#writers-brief)
-22. [Continuity Checker](#continuity-checker)
-23. [World settings & export](#world-settings--export)
-24. [Help](#help)
+22. [Calendar & character ages](#calendar--character-ages)
+23. [Continuity Checker](#continuity-checker)
+24. [World settings & export](#world-settings--export)
+25. [Help](#help)
 
 ---
 
@@ -537,14 +538,48 @@ navigates you straight to any result with the keyboard.
 
 The **Writer's Brief** (the scroll icon in the top bar) is a focused, at-a-glance
 panel for the event under the time cursor. Select an event and the brief shows
-the chapter synopsis, the active event's details (including in-world day), the
-other events in that chapter, and a per-character state readout — including
-**"carried forward"** badges where a character's state was inherited rather than
-freshly set.
+the chapter synopsis, the active event's details (including the in-world date —
+or day number if you haven't set up a calendar), the other events in that
+chapter, and a per-character state readout — including **"carried forward"**
+badges where a character's state was inherited rather than freshly set. When a
+world calendar and a character's birth date are both set, each present character
+also shows their **age** at that point in the story.
 
 ![Writer's Brief](images/17-writers-brief.png)
 
 It's designed to sit open beside your manuscript while you draft.
+
+---
+
+## Calendar & character ages
+
+By default PlotWeave measures story time in **in-world days** — day 0 is the
+start of a timeline, and each event's *travel days* push the clock forward. Turn
+those day numbers into real dates by giving your world a **calendar** in World
+settings.
+
+Click **Enable calendar** to start from a standard 12-month, 365-day year, then
+tailor it:
+
+- **Start year** — the year that in-world day 0 falls in.
+- **Year suffix** — an era label shown after the year, e.g. *AC* or *TA*.
+- **Months** — rename them, set each month's length in days, and add or remove
+  months. A fantasy calendar can have any number of months of any length.
+
+![Calendar editor](images/30-calendar.png)
+
+With a calendar set, in-world dates appear wherever the day clock is shown —
+most visibly the active event's date in the Writer's Brief.
+
+**Character ages.** Give a character an optional **birth date** on the Overview
+tab of their profile (the month/day/year pickers use your calendar's months).
+PlotWeave then computes and shows the character's **age** at the event under the
+time cursor in the Writer's Brief — counting birthdays passed, so it stays
+correct even with irregular month lengths. A character born after the current
+moment simply shows no age.
+
+The calendar and every birth date travel with the world through **export /
+import**, so shared or backed-up worlds keep their dates intact.
 
 ---
 
@@ -579,8 +614,9 @@ configurable in Settings.
 
 Per-world settings let you rename the world, set a **cover image**, pick a
 **theme** (Default, Fantasy, Sci-Fi, Cyberpunk, Horror, Western, Action, Noir,
-Romance), define **travel modes** with speeds for map distance calculations, and
-set the **continuity stale-snapshot threshold**.
+Romance), define **travel modes** with speeds for map distance calculations, set
+the **continuity stale-snapshot threshold**, and configure an in-world
+**[calendar](#calendar--character-ages)** for story dates and character ages.
 
 The **cover image** appears on the world's card in the selector and in the
 dashboard header. **Upload** an image file or **link** one by URL (the link

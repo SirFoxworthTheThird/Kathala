@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label'
 import type { TravelMode } from '@/types'
 import { CloudSyncPanel } from './CloudSyncPanel'
 import { DbHealthPanel } from './DbHealthPanel'
+import { CalendarEditor } from './CalendarEditor'
 
 const WORLD_THEMES: { id: AppTheme; label: string; icon: string; swatch: string }[] = [
   { id: 'default',   label: 'Default',    icon: '🌑', swatch: '#1e3a5f' },
@@ -363,6 +364,9 @@ export default function WorldSettingsView() {
           <span className="text-xs text-[hsl(var(--muted-foreground))]">events</span>
         </div>
       </section>
+
+      {/* Calendar */}
+      {world && <CalendarEditor world={world} />}
 
       {/* Share */}
       <section className="space-y-4">
