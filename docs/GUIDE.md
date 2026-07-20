@@ -232,7 +232,11 @@ PlotWeave. Write a scene's prose on its event, and it appears here automatically
 - **Word goals** — set a target for the whole manuscript (in the header) and a
   per-chapter goal (in Draft mode); a progress bar tracks words against each.
   Per-chapter goals are saved with the chapter.
-- **Export** — download or copy the manuscript as Markdown, HTML, or plain text.
+- **Export** — download or copy the manuscript as Markdown, HTML, or plain text,
+  or **compile a finished book file**: **Word (.docx)** or **EPUB**. The book
+  formats build a title page (with an optional author), start each chapter on its
+  own heading, and separate scenes — EPUB also gets a linked table of contents.
+  Both are generated right in the browser, so nothing leaves your device.
 
 Empty scenes are flagged with a "write this scene" link, so the manuscript
 doubles as a checklist of what's left to draft.

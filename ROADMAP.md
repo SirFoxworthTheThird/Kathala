@@ -397,14 +397,16 @@ An in-world day is tracked but there's no calendar or ages.
 - [ ] **Surfacing** — age shown in the Writer's Brief and roster; season/date shown on events.
 - [ ] **Continuity (optional)** — season/date mismatches and age-inappropriate actions (likely manual-tagged).
 
-### 3. Compile to DOCX / EPUB  — *highest-demand practical win*
+### 3. Compile to DOCX / EPUB  — *highest-demand practical win* — DONE
 
 Export is MD/HTML/TXT today; writers need a submission/reading artifact.
 
-- [ ] **DOCX compile** — scene texts + chapter structure → self-contained `.docx` (title page from world, chapter headings, scene separators); browser-side generation, no external host.
-- [ ] **EPUB compile** — chapters as XHTML with a spine + minimal CSS.
-- [ ] **Scope by scene status** — e.g. compile only `final`/`revised` scenes.
-- [ ] **Tests** — compile output structure (headings, chapter count, separators).
+- [x] **Store-only ZIP writer** — dependency-free `src/lib/zip.ts` (CRC32 + local/central headers), the container for both formats; unit-tested.
+- [x] **DOCX compile** — `compileDocx` builds a valid OOXML `.docx` (title page + optional author, per-chapter page-break headings, scene separators); browser-side, no external host.
+- [x] **EPUB compile** — `compileEpub` builds a valid EPUB 3 (mimetype-first zip, container, OPF metadata, nav TOC, one XHTML per chapter, CSS).
+- [x] **Export dialog** — "Word" and "EPUB" formats added; optional Author field; binary formats download (no copy/preview).
+- [x] **Tests** — zip signatures/CRC + docx/epub structure (parts present, prose included, only-written filtering, mimetype first).
+- [ ] **Scope by scene status** — currently filters by written/unwritten; a `final`/`revised`-only filter is still open.
 
 ### 4. Writing progress dashboard
 
