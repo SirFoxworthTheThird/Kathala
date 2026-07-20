@@ -18,6 +18,8 @@ interface MapSlice {
   pushMapLayer: (id: string) => void
   popMapLayer: () => void
   resetMapHistory: (rootId: string) => void
+  /** Switch the current map in place (e.g. between floors) without changing breadcrumb depth. */
+  swapActiveMapLayer: (id: string) => void
 }
 
 export type AppTheme = 'default' | 'fantasy' | 'scifi' | 'cyberpunk' | 'horror' | 'western' | 'action' | 'noir' | 'romance'
@@ -126,6 +128,13 @@ export const useAppStore = create<AppStore>()(
         }),
       resetMapHistory: (rootId) =>
         set({ activeMapLayerId: rootId, mapLayerHistory: [rootId] }),
+      swapActiveMapLayer: (id) =>
+        set((state) => {
+          const history = state.mapLayerHistory.slice()
+          if (history.length) history[history.length - 1] = id
+          else history.push(id)
+          return { activeMapLayerId: id, mapLayerHistory: history }
+        }),
 
       // Selection (not persisted)
       selectedEventIds: new Set<string>(),

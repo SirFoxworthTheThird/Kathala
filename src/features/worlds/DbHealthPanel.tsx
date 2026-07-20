@@ -12,6 +12,7 @@ const ORPHAN_LABELS: Record<keyof OrphanReport, string> = {
   characterMovements:   'Character movements',
   mapRegionSnapshots:   'Map region snapshots',
   factionMemberships:   'Faction memberships',
+  mapLayers:            'Orphaned sub-maps',
 }
 
 interface Props {
@@ -59,8 +60,9 @@ export function DbHealthPanel({ worldId }: Props) {
           DB Health
         </h2>
         <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-          Scan for snapshot or membership records whose parent entity (event, character, item, etc.) has been deleted.
-          Orphaned records can cause ghost entries in the continuity checker.
+          Scan for snapshot or membership records whose parent entity (event, character, item, etc.) has been deleted,
+          and for sub-maps whose parent map is gone. Orphaned records can cause ghost entries in the continuity
+          checker, and orphaned sub-maps keep showing up as linkable maps.
         </p>
       </div>
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, type MutableRefObject } from 'react'
 import type { CharacterSnapshot, LocationMarker } from '@/types'
 import type { PinAnimation, MovementLine } from './LeafletMapCanvas'
-import type { PlaybackStep } from './mapUtils'
+import type { PlaybackStep, PinLayer } from './mapUtils'
 import { buildSequentialQueue, PIN_TRAVEL_MS } from './mapUtils'
 import type { MapRoute } from '@/types'
 import type { PlaybackSpeed } from '@/store'
@@ -17,6 +17,7 @@ interface UsePlaybackQueueParams {
   snapshots: CharacterSnapshot[]
   allMarkers: LocationMarker[]
   mapRoutes: MapRoute[]
+  allLayers: PinLayer[]
   pinAnimationKeyRef: MutableRefObject<number>
   requestLayerSwitch: (targetId: string) => void
 }
@@ -31,6 +32,7 @@ export function usePlaybackQueue({
   snapshots,
   allMarkers,
   mapRoutes,
+  allLayers,
   pinAnimationKeyRef,
   requestLayerSwitch,
 }: UsePlaybackQueueParams) {
@@ -49,7 +51,7 @@ export function usePlaybackQueue({
 
     const queue = buildSequentialQueue(
       prevSnapshots, snapshots, allMarkers, movements,
-      PIN_TRAVEL_MS[playbackSpeed], pinAnimationKeyRef, mapRoutes,
+      PIN_TRAVEL_MS[playbackSpeed], pinAnimationKeyRef, mapRoutes, allLayers,
     )
     setPlaybackQueue(queue)
     setPlaybackStepIdx(0)

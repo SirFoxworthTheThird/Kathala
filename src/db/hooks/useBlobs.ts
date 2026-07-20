@@ -15,16 +15,25 @@ export function useWorldBlobUrls(worldId: string | null): Map<string, string> {
   return useMemo(() => {
     const map = new Map<string, string>()
     for (const e of entries) {
-      map.set(e.id, URL.createObjectURL(e.data))
+      const url = blobEntryUrl(e)
+      if (url) map.set(e.id, url)
     }
     return map
   }, [entries])
 }
 
+/** Resolve a blob entry to a usable image URL — its external link, or an object
+ *  URL for uploaded binary data. */
+export function blobEntryUrl(entry: BlobEntry | undefined): string | undefined {
+  if (!entry) return undefined
+  if (entry.url) return entry.url
+  if (entry.data) return URL.createObjectURL(entry.data)
+  return undefined
+}
+
 export function useBlobUrl(id: string | null): string | undefined {
   const entry = useLiveQuery(() => (id ? db.blobs.get(id) : undefined), [id])
-  if (!entry) return undefined
-  return URL.createObjectURL(entry.data)
+  return blobEntryUrl(entry)
 }
 
 async function compressImage(
@@ -76,14 +85,54 @@ export async function storeBlob(
   return { ...entry, width, height }
 }
 
+/** Store a linked (external-URL) image as a blob entry with no binary data.
+ *  Loads the image first to validate it and read its natural dimensions. */
+export async function storeImageLink(
+  worldId: string,
+  url: string,
+): Promise<BlobEntry & { width: number; height: number }> {
+  const trimmed = url.trim()
+  if (!/^https?:\/\//i.test(trimmed)) throw new Error('Enter a full image URL (http:// or https://).')
+  const { width, height } = await getImageDimensionsFromUrl(trimmed)
+  const entry: BlobEntry = {
+    id: generateId(),
+    worldId,
+    mimeType: guessMimeType(trimmed),
+    url: trimmed,
+    createdAt: Date.now(),
+  }
+  await db.blobs.add(entry)
+  return { ...entry, width, height }
+}
+
+function guessMimeType(url: string): string {
+  const ext = url.split('?')[0].split('.').pop()?.toLowerCase()
+  switch (ext) {
+    case 'png': return 'image/png'
+    case 'jpg': case 'jpeg': return 'image/jpeg'
+    case 'gif': return 'image/gif'
+    case 'webp': return 'image/webp'
+    case 'svg': return 'image/svg+xml'
+    default: return 'image/*'
+  }
+}
+
 export async function deleteBlob(id: string) {
   await db.blobs.delete(id)
 }
 
 export async function getBlobUrl(id: string): Promise<string | undefined> {
   const entry = await db.blobs.get(id)
-  if (!entry) return undefined
-  return URL.createObjectURL(entry.data)
+  return blobEntryUrl(entry)
+}
+
+export function getImageDimensionsFromUrl(url: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight })
+    img.onerror = () => reject(new Error('Could not load that image URL. Make sure it links directly to an image.'))
+    img.src = url
+  })
 }
 
 export function getImageDimensions(file: File): Promise<{ width: number; height: number }> {

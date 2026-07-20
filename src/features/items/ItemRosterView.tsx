@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Plus, Package } from 'lucide-react'
+import { Plus, Package, Sparkles } from 'lucide-react'
 import { useItems } from '@/db/hooks/useItems'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { PageHeader } from '@/components/PageHeader'
 import { ItemCard } from './ItemCard'
 import { CreateItemDialog } from './CreateItemDialog'
+import { GenerateItemsDialog } from './GenerateItemsDialog'
 
 export default function ItemRosterView() {
   const { worldId } = useParams<{ worldId: string }>()
@@ -15,6 +16,7 @@ export default function ItemRosterView() {
   const items = useItems(worldId ?? null)
   const [search, setSearch] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [aiOpen, setAiOpen] = useState(false)
 
   const filtered = items.filter((i) =>
     i.name.toLowerCase().includes(search.toLowerCase())
@@ -28,10 +30,16 @@ export default function ItemRosterView() {
         count={items.length}
         description="Objects characters carry, use, or lose over time."
         actions={
-          <Button size="sm" onClick={() => setDialogOpen(true)}>
-            <Plus className="h-4 w-4" />
-            Add Item
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAiOpen(true)}>
+              <Sparkles className="h-4 w-4" />
+              Generate with AI
+            </Button>
+            <Button size="sm" onClick={() => setDialogOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Add Item
+            </Button>
+          </div>
         }
       >
         <Input
@@ -67,12 +75,19 @@ export default function ItemRosterView() {
       </div>
 
       {worldId && (
-        <CreateItemDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          worldId={worldId}
-          onCreated={(id) => navigate(`/worlds/${worldId}/items/${id}`)}
-        />
+        <>
+          <CreateItemDialog
+            open={dialogOpen}
+            onOpenChange={setDialogOpen}
+            worldId={worldId}
+            onCreated={(id) => navigate(`/worlds/${worldId}/items/${id}`)}
+          />
+          <GenerateItemsDialog
+            open={aiOpen}
+            onOpenChange={setAiOpen}
+            worldId={worldId}
+          />
+        </>
       )}
     </div>
   )

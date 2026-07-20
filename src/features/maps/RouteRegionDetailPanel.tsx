@@ -9,6 +9,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
+import { isTreeVisible } from '@/lib/mapLevels'
 import { updateMapRoute, deleteMapRoute } from '@/db/hooks/useMapRoutes'
 import { updateMapRegion, deleteMapRegion } from '@/db/hooks/useMapRegions'
 import { useFactions } from '@/db/hooks/useFactions'
@@ -209,7 +210,8 @@ export function RegionDetailPanel({
 
   if (!region) return null
 
-  const otherLayers = allLayers.filter((l) => l.id !== region.mapLayerId)
+  // Only standalone maps and each building's representative floor — not floors.
+  const otherLayers = allLayers.filter((l) => l.id !== region.mapLayerId && isTreeVisible(allLayers, l))
 
   async function handleSave() {
     if (!name.trim()) return

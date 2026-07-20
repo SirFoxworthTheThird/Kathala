@@ -11,6 +11,15 @@ export interface MapLayer {
   scalePixelsPerUnit: number | null
   /** Label for the unit, e.g. "km", "miles", "leagues". */
   scaleUnit: string | null
+  /**
+   * Floors/levels: layers sharing a non-null `levelGroupId` are the levels of one
+   * place (e.g. floors of a castle) and are switched between rather than nested.
+   * Null means a standalone map. `levelIndex` orders them (higher = higher floor;
+   * negatives for basements); `levelLabel` is the floor's display name.
+   */
+  levelGroupId: string | null
+  levelIndex: number
+  levelLabel: string
   createdAt: number
   updatedAt: number
 }

@@ -1,16 +1,19 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import L from 'leaflet'
 import { useParams } from 'react-router-dom'
-import { Plus, Upload, Map as MapIcon, Ruler, X, Route, Download, Sparkles, Type, Trash2, PanelLeft, Crosshair } from 'lucide-react'
+import { Plus, Upload, Map as MapIcon, Ruler, X, Route, Download, Sparkles, Type, Trash2, PanelLeft, Crosshair, ImageUp, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore, useActiveMapLayerId } from '@/store'
-import { useRootMapLayers, updateMapLayer } from '@/db/hooks/useMapLayers'
+import { useRootMapLayers, updateMapLayer, deleteMapLevel } from '@/db/hooks/useMapLayers'
+import { levelsInGroup } from '@/lib/mapLevels'
+import { FloorSwitcher } from './FloorSwitcher'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/EmptyState'
 import { LeafletMapCanvas } from './LeafletMapCanvas'
 import { LocationDetailPanel } from './LocationDetailPanel'
 import { CharacterSnapshotPanel } from './CharacterSnapshotPanel'
 import { UploadMapDialog } from './UploadMapDialog'
+import { GenerateLocationsDialog } from './GenerateLocationsDialog'
 import { AddLocationDialog } from './AddLocationDialog'
 import { StoryNotesOverlay } from './StoryNotesOverlay'
 import type { ScaleCalibrationPoint, MeasureLine, JourneyLine } from './LeafletMapCanvas'
@@ -48,7 +51,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
 
   const {
     setSelectedLocationMarkerId, selectedLocationMarkerId, pushMapLayer,
-    setActiveMapLayerId, setIsAnimating, isPlayingStory, playbackSpeed,
+    setActiveMapLayerId, swapActiveMapLayer, setIsAnimating, isPlayingStory, playbackSpeed,
     pendingFocusRouteId, setPendingFocusRouteId,
     pendingFocusRegionId, setPendingFocusRegionId,
     pendingFocusMarkerId, setPendingFocusMarkerId,
@@ -60,6 +63,10 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   // width; on `lg`+ they're a static column (see the sidebar classes below).
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const crossLayerPanTargetRef = useRef<[number, number] | null>(null)
+  // Live map view + a pending zoom to restore when switching floors (keeps the camera).
+  const viewRef = useRef<{ center: [number, number]; zoom: number } | null>(null)
+  const floorZoomRef = useRef<number | null>(null)
+  const [addLevelOpen, setAddLevelOpen] = useState(false)
   const pinAnimationKeyRef = useRef(0)
   const [addLocationOpen, setAddLocationOpen] = useState(false)
   const [pendingPos, setPendingPos] = useState<{ x: number; y: number } | null>(null)
@@ -67,6 +74,8 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   // Touch-friendly placement: tap a character's crosshair, then tap a location.
   const [placingCharacterId, setPlacingCharacterId] = useState<string | null>(null)
   const [aiDialogOpen, setAiDialogOpen] = useState(false)
+  const [genLocOpen, setGenLocOpen] = useState(false)
+  const [replaceImageOpen, setReplaceImageOpen] = useState(false)
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null)
   const [scaleMode, setScaleMode] = useState(false)
   const [scaleDialog, setScaleDialog] = useState<{ pixelDist: number } | null>(null)
@@ -136,14 +145,42 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   // ── Playback queue ─────────────────────────────────────────────────────────
   const { pinAnimation, handlePlaybackAnimationEnd } = usePlaybackQueue({
     worldId, layerId, isPlayingStory, playbackSpeed, activeEventId,
-    prevSnapshots, snapshots, allMarkers, mapRoutes,
+    prevSnapshots, snapshots, allMarkers, mapRoutes, allLayers,
     pinAnimationKeyRef, requestLayerSwitch,
   })
 
-  // Clear cross-layer pan target once the new layer has mounted
+  // Clear cross-layer pan target and floor-switch zoom once the new layer has mounted
   useEffect(() => {
     crossLayerPanTargetRef.current = null
-  }, [layerId])  
+    floorZoomRef.current = null
+  }, [layerId])
+
+  // ── Floors / levels ────────────────────────────────────────────────────────
+  const groupFloors = layer?.levelGroupId ? levelsInGroup(allLayers, layer.levelGroupId) : []
+
+  function switchFloor(floorId: string) {
+    if (floorId === layerId) return
+    // Hold the camera: restore the current center + zoom on the new floor.
+    if (viewRef.current) {
+      crossLayerPanTargetRef.current = viewRef.current.center
+      floorZoomRef.current = viewRef.current.zoom
+    }
+    swapActiveMapLayer(floorId)
+  }
+
+  async function deleteFloor(floorId: string) {
+    // If deleting the floor we're on, move to another floor first.
+    if (floorId === layerId) {
+      const other = groupFloors.find((f) => f.id !== floorId)
+      if (other) swapActiveMapLayer(other.id)
+    }
+    // Re-points the building's drill-in link if the representative floor goes.
+    await deleteMapLevel(floorId)
+  }
+
+  function renameFloor(floorId: string, label: string) {
+    updateMapLayer(floorId, { levelLabel: label.trim() || 'Level' })
+  }
 
   // ── Consume pending route/region focus from search palette ────────────────
   useEffect(() => {
@@ -557,11 +594,41 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               size="sm"
               variant="outline"
               className="gap-1.5 text-xs"
+              onClick={() => setGenLocOpen(true)}
+              title="Generate a tree of locations with AI"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              AI Locations
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs"
               onClick={() => setAiDialogOpen(true)}
               title="Extract location moves from prose with AI"
             >
               <Sparkles className="h-3.5 w-3.5" />
               AI Moves
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs"
+              onClick={() => setReplaceImageOpen(true)}
+              title="Replace this map's image, keeping its locations"
+            >
+              <ImageUp className="h-3.5 w-3.5" />
+              Replace image
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs"
+              onClick={() => setAddLevelOpen(true)}
+              title="Add a floor/level to this map (e.g. an upper floor)"
+            >
+              <Layers className="h-3.5 w-3.5" />
+              Add level
             </Button>
             <Button
               size="sm"
@@ -608,6 +675,8 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             layer={layer}
             imageUrl={imageUrl}
             initialCenter={crossLayerPanTargetRef.current}
+            initialZoom={floorZoomRef.current}
+            onViewChange={(center, zoom) => { viewRef.current = { center, zoom } }}
             markers={displayedMarkers}
             charPins={displayedCharPins}
             movementLines={displayedMovementLines}
@@ -714,6 +783,18 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
                 : null
             }
           />
+
+          {/* Floor / level switcher */}
+          {groupFloors.length >= 2 && (
+            <FloorSwitcher
+              floors={groupFloors}
+              activeId={layerId}
+              onSwitch={switchFloor}
+              onAddLevel={() => setAddLevelOpen(true)}
+              onDeleteFloor={deleteFloor}
+              onRenameFloor={renameFloor}
+            />
+          )}
 
           {/* Route draw HUD */}
           {drawingRoute && (
@@ -995,6 +1076,20 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
         open={aiDialogOpen}
         onOpenChange={setAiDialogOpen}
       />
+      <GenerateLocationsDialog worldId={worldId} open={genLocOpen} onOpenChange={setGenLocOpen} />
+      <UploadMapDialog
+        open={replaceImageOpen}
+        onOpenChange={setReplaceImageOpen}
+        worldId={worldId}
+        replaceLayerId={layer.id}
+      />
+      <UploadMapDialog
+        open={addLevelOpen}
+        onOpenChange={setAddLevelOpen}
+        worldId={worldId}
+        addLevelToLayerId={layer.id}
+        onLevelAdded={(newId) => swapActiveMapLayer(newId)}
+      />
     </div>
   )
 }
@@ -1007,6 +1102,7 @@ export default function MapExplorerView() {
   const rootLayers = useRootMapLayers(worldId ?? null)
   const { setActiveMapLayerId } = useAppStore()
   const [uploadOpen, setUploadOpen] = useState(false)
+  const [genLocOpen, setGenLocOpen] = useState(false)
 
   if (!worldId) return null
 
@@ -1019,20 +1115,32 @@ export default function MapExplorerView() {
       <div className="flex h-full flex-col">
         <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-2">
           <span className="text-sm font-medium">Maps</span>
-          <Button size="sm" onClick={() => setUploadOpen(true)}>
-            <Upload className="h-4 w-4" />
-            Upload Map
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setGenLocOpen(true)}>
+              <Sparkles className="h-4 w-4" />
+              Generate with AI
+            </Button>
+            <Button size="sm" onClick={() => setUploadOpen(true)}>
+              <Upload className="h-4 w-4" />
+              Upload Map
+            </Button>
+          </div>
         </div>
         <EmptyState
           icon={MapIcon}
           title="No maps yet"
-          description="Upload an image of your world and place locations on it."
+          description="Upload an image of your world and place locations on it — or generate a tree of locations with AI and PlotWeave will lay them out on a map for you."
           action={
-            <Button onClick={() => setUploadOpen(true)}>
-              <Upload className="h-4 w-4" />
-              Add Map
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button onClick={() => setUploadOpen(true)}>
+                <Upload className="h-4 w-4" />
+                Add Map
+              </Button>
+              <Button variant="outline" className="gap-1.5" onClick={() => setGenLocOpen(true)}>
+                <Sparkles className="h-4 w-4" />
+                Generate locations with AI
+              </Button>
+            </div>
           }
         />
         <UploadMapDialog
@@ -1041,6 +1149,7 @@ export default function MapExplorerView() {
           worldId={worldId}
           onCreated={setActiveMapLayerId}
         />
+        <GenerateLocationsDialog open={genLocOpen} onOpenChange={setGenLocOpen} worldId={worldId} />
       </div>
     )
   }

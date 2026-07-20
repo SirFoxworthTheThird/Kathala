@@ -363,3 +363,64 @@ Track how a character looks over time — injuries, aging, haircuts, distinctive
 - [ ] **Character State tab** — appearance field shown as an editable textarea in the snapshot editor.
 - [ ] **History tab** — appearance changes surfaced in the history list (only shown when it differs from the previous snapshot).
 - [ ] **Continuity check** — warn when appearance is never recorded for a character who has snapshots (low priority nudge, not an error).
+
+---
+
+## Product Feature Ideas — 2026-07 review
+
+A whole-app review turned up these candidates, ranked by fit + value. The first
+two lean on PlotWeave's differentiators (scaled maps + the structured
+per-event snapshot model); the rest are broadly useful writer tooling. Nothing
+here is started yet.
+
+### 1. Travel-time feasibility (maps × timeline × continuity)  — *recommended flagship*
+
+Tie together the scaled map, routes, travel modes, and per-chapter elapsed days
+— nothing currently connects them.
+
+- [ ] **Travel mode speed** — add `speedPerDay` (world units/day) to `TravelMode`; DB migration backfills null (unknown).
+- [ ] **Estimator (pure, `src/lib/travelTime.ts`)** — given a path length in world units (from map scale + a route or straight-line marker distance) and a mode speed → estimated days; unit-tested.
+- [ ] **Suggest `travelDays`** — on a chapter, estimate days from each moving character's start→end locations + their travel mode; one-click "use estimate".
+- [ ] **Continuity check** — flag a character whose between-chapter location change needs more days than elapsed (using map distance + their mode). Cross-map/floor moves are skipped (no shared metric).
+- [ ] **Tests** — estimator unit tests + a continuity integration test for an impossible journey.
+
+### 2. In-world calendar & character ages
+
+An in-world day is tracked but there's no calendar or ages.
+
+- [ ] **Calendar config** — per-world months[], days-per-week, epoch label; absolute in-world dates computed from chapter durations (pure date math, unit-tested).
+- [ ] **Character birth date** — optional in-world birth date on `Character`; compute age at the active event.
+- [ ] **Calendar view** — events laid out on a month/season grid.
+- [ ] **Surfacing** — age shown in the Writer's Brief and roster; season/date shown on events.
+- [ ] **Continuity (optional)** — season/date mismatches and age-inappropriate actions (likely manual-tagged).
+
+### 3. Compile to DOCX / EPUB  — *highest-demand practical win*
+
+Export is MD/HTML/TXT today; writers need a submission/reading artifact.
+
+- [ ] **DOCX compile** — scene texts + chapter structure → self-contained `.docx` (title page from world, chapter headings, scene separators); browser-side generation, no external host.
+- [ ] **EPUB compile** — chapters as XHTML with a spine + minimal CSS.
+- [ ] **Scope by scene status** — e.g. compile only `final`/`revised` scenes.
+- [ ] **Tests** — compile output structure (headings, chapter count, separators).
+
+### 4. Writing progress dashboard
+
+Per-chapter word goals and a pacing curve exist, but no progress-over-time.
+
+- [ ] **Daily word log** — lightweight per-day word-count rollup (derived from manuscript/scene word counts).
+- [ ] **Book-level target** — word target in world settings.
+- [ ] **Dashboard tile** — daily words, streak, and burndown vs the book target and per-chapter goals.
+- [ ] **Tests** — aggregation/streak logic.
+
+### 5. Corkboard / scene outliner
+
+- [ ] **Card view** — events/scenes as index cards (synopsis, POV, status), drag-reorderable within and across chapters (reuses existing event reorder + status).
+- [ ] **Tests** — reorder logic.
+
+### 6. Themes & motifs tracker
+
+Mirrors the existing Plot Threads pattern, for symbols/themes rather than plot.
+
+- [ ] **Data model** — `Theme`/`Motif` entity like `PlotThread`; tag events.
+- [ ] **Distribution strip** — reuse the plot-thread cadence view to show where each motif recurs and where it goes quiet.
+- [ ] **Tests** — cadence/gap detection.

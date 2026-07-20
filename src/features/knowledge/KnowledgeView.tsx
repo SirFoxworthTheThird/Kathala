@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, X, Trash2, Eye, EyeOff, KeyRound, UserPlus, History } from 'lucide-react'
+import { Plus, X, Trash2, Eye, EyeOff, KeyRound, UserPlus, History, Sparkles } from 'lucide-react'
 import {
   useKnowledgeFacts, useKnowledgeReveals,
   createKnowledgeFact, updateKnowledgeFact, deleteKnowledgeFact,
@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PageHeader } from '@/components/PageHeader'
 import { EmptyState } from '@/components/EmptyState'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { GenerateKnowledgeDialog } from './GenerateKnowledgeDialog'
 import type { KnowledgeFact } from '@/types'
 
 export default function KnowledgeView() {
@@ -51,6 +52,7 @@ export default function KnowledgeView() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [newTitle, setNewTitle] = useState('')
+  const [aiOpen, setAiOpen] = useState(false)
 
   // Narrative position of each event, so "known as of the cursor" is decidable.
   const eventPos = useMemo(() => {
@@ -129,9 +131,14 @@ export default function KnowledgeView() {
                 </Button>
               </div>
             ) : (
-              <Button size="sm" className="gap-1.5" onClick={() => setCreating(true)}>
-                <Plus className="h-3.5 w-3.5" /> New Fact
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAiOpen(true)}>
+                  <Sparkles className="h-3.5 w-3.5" /> Generate with AI
+                </Button>
+                <Button size="sm" className="gap-1.5" onClick={() => setCreating(true)}>
+                  <Plus className="h-3.5 w-3.5" /> New Fact
+                </Button>
+              </div>
             )
           }
         >
@@ -350,6 +357,10 @@ export default function KnowledgeView() {
             <FactDeleteButton fact={selected} onDeleted={() => setSelectedId(null)} />
           </div>
         </div>
+      )}
+
+      {worldId && (
+        <GenerateKnowledgeDialog open={aiOpen} onOpenChange={setAiOpen} worldId={worldId} />
       )}
     </div>
   )

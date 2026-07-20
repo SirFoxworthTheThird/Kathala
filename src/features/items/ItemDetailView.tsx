@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Upload, Trash2, Check, X, Plus, Layers } from 'lucide-react'
 import { useItem, updateItem, deleteItem } from '@/db/hooks/useItems'
 import { storeBlob } from '@/db/hooks/useBlobs'
+import { LinkImageButton } from '@/components/LinkImageButton'
 import { useCrossTimelineArtifactsForItem, createCrossTimelineArtifact, deleteCrossTimelineArtifact } from '@/db/hooks/useTimelineRelationships'
 import { useTimelines } from '@/db/hooks/useTimeline'
 import { PortraitImage } from '@/components/PortraitImage'
@@ -102,10 +103,20 @@ export default function ItemDetailView() {
             fallbackClassName="h-12 w-12 rounded-md"
             fallbackIcon={Package}
           />
-          <label className="absolute -bottom-1 -right-1 cursor-pointer rounded-full bg-[hsl(var(--accent))] p-1 hover:bg-[hsl(var(--secondary))]">
-            <Upload className="h-3 w-3 text-[hsl(var(--foreground))]" />
-            <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-          </label>
+          <div className="absolute -bottom-1 -right-1 flex items-center gap-0.5 rounded-full bg-[hsl(var(--accent))] px-1 py-0.5">
+            <label aria-label="Upload item image" className="cursor-pointer text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]">
+              <Upload className="h-3 w-3" />
+              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+            </label>
+            {worldId && (
+              <LinkImageButton
+                worldId={worldId}
+                onLinked={(blobId) => updateItem(item!.id, { imageId: blobId })}
+                triggerClassName="text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]"
+                triggerAriaLabel="Link item image by URL"
+              />
+            )}
+          </div>
         </div>
 
         <div>

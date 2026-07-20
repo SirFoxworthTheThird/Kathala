@@ -73,7 +73,7 @@ describe('deleteWorld', () => {
     await db.mapLayers.add({
       id: 'layer-1', worldId: world.id, parentMapId: null,
       name: 'Root', description: '', imageId: 'img-1', imageWidth: 100, imageHeight: 100,
-      scalePixelsPerUnit: null, scaleUnit: null, createdAt: Date.now(), updatedAt: Date.now(),
+      scalePixelsPerUnit: null, scaleUnit: null, levelGroupId: null, levelIndex: 0, levelLabel: "", createdAt: Date.now(), updatedAt: Date.now(),
     })
     await deleteWorld(world.id)
     expect(await db.mapLayers.where('worldId').equals(world.id).count()).toBe(0)

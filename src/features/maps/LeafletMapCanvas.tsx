@@ -243,13 +243,14 @@ function ZoomTracker({ onZoomChange }: { onZoomChange: (zoom: number) => void })
   return null
 }
 
-function FitBounds({ bounds, initialCenter }: { bounds: L.LatLngBoundsExpression; initialCenter?: [number, number] | null }) {
+function FitBounds({ bounds, initialCenter, initialZoom }: { bounds: L.LatLngBoundsExpression; initialCenter?: [number, number] | null; initialZoom?: number | null }) {
   const map = useMapEvents({})
   useEffect(() => {
     // Defer to a macro-task so react-leaflet's ResizeObserver callback (which fires
     // asynchronously and calls invalidateSize) runs first. Without this, the observer
     // fires after our effect and resets the map's center back to [0,0].
     const center = initialCenter // capture before async gap
+    const zoom = initialZoom
     const id = setTimeout(() => {
       map.invalidateSize()
       const prevSnap = map.options.zoomSnap
@@ -260,11 +261,22 @@ function FitBounds({ bounds, initialCenter }: { bounds: L.LatLngBoundsExpression
       map.setMaxBounds(bounds)
       map.options.zoomSnap = prevSnap ?? 0.25
       if (center && typeof center[0] === 'number' && typeof center[1] === 'number') {
-        map.panTo(center, { animate: false })
+        // Restoring center + zoom (a floor switch) holds the camera; otherwise
+        // just pan (a cross-layer focus keeps the fitted zoom).
+        if (typeof zoom === 'number') map.setView(center, zoom, { animate: false })
+        else map.panTo(center, { animate: false })
       }
     }, 0)
     return () => clearTimeout(id)
-  }, [map, bounds]) // eslint-disable-line react-hooks/exhaustive-deps -- initialCenter intentionally read only at mount
+  }, [map, bounds]) // eslint-disable-line react-hooks/exhaustive-deps -- initialCenter/initialZoom intentionally read only at mount
+  return null
+}
+
+/** Reports the map's center + zoom as the user pans and zooms. */
+function ViewTracker({ onViewChange }: { onViewChange: (center: [number, number], zoom: number) => void }) {
+  const map = useMapEvents({
+    moveend: () => { const c = map.getCenter(); onViewChange([c.lat, c.lng], map.getZoom()) },
+  })
   return null
 }
 
@@ -372,6 +384,10 @@ interface LeafletMapCanvasProps {
   locationStatuses?: Record<string, string>
   /** When set, pan to this [y, x] position after FitBounds on mount (used for cross-layer character focus) */
   initialCenter?: [number, number] | null
+  /** When set with initialCenter, restore this zoom on mount instead of fitting (used to hold the view across floor switches) */
+  initialZoom?: number | null
+  /** Reports the current view (center [y, x] + zoom) as the user pans/zooms */
+  onViewChange?: (center: [number, number], zoom: number) => void
   /** When set, draws a measurement line between two points with a distance label */
   measureLine?: MeasureLine | null
   /** Ghost pins — outer-timeline characters shown as a dimmed overlay when the inner depth track is active */
@@ -426,7 +442,7 @@ export function LeafletMapCanvas({
   isDraggingCharacter, onMarkerClick, onMapClick, onDrillDown,
   onCharacterDrop, onCharacterDropOnEmpty, onCharacterClick, mapRef: externalMapRef,
   scaleMode, onScalePoints, showSubMapLinks = true, locationStatuses = {},
-  pinAnimation, onAnimationEnd, initialCenter, measureLine, ghostPins,
+  pinAnimation, onAnimationEnd, initialCenter, initialZoom, onViewChange, measureLine, ghostPins,
   echoMarkers, onEchoRingClick, showLocationLabels = true, journeyLines = [],
   mapRoutes = [], routeMarkerPositions, mapRegions = [], regionStatuses, drawRegionVertices,
   directMapClick = false, drawRoutePoints,
@@ -865,8 +881,9 @@ export function LeafletMapCanvas({
         maxZoom={4} zoomSnap={0.25}
       >
         <MapInstanceTracker onReady={(m) => { mapRef.current = m; setLeafletMap(m) }} />
-        <FitBounds bounds={bounds} initialCenter={initialCenter} />
+        <FitBounds bounds={bounds} initialCenter={initialCenter} initialZoom={initialZoom} />
         <ZoomTracker onZoomChange={setMapZoom} />
+        {onViewChange && <ViewTracker onViewChange={onViewChange} />}
         <ImageOverlay url={imageUrl} bounds={bounds} />
         <ClickHandler onMapClickRef={onMapClickRef} />
         <ContextMenuHandler onContextMenu={setContextMenu} disabled={directMapClick} />
