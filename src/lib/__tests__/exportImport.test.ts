@@ -166,4 +166,34 @@ describe('importWorld — successful import', () => {
     const stored = await db.worlds.get('world-test')
     expect(stored!.name).toBe('Second')
   })
+
+  it('removes timelines that are absent when the same world is re-imported', async () => {
+    await db.delete()
+    await db.open()
+
+    const timeline = (id: string, name: string) => ({
+      id,
+      worldId: 'world-test',
+      name,
+      description: '',
+      color: '#6366f1',
+      createdAt: 1000,
+    })
+
+    await importWorld(makeFile(makeExport({
+      timelines: [timeline('generated-main', 'Main Story')],
+    })))
+    await importWorld(makeFile(makeExport({
+      timelines: [
+        timeline('rohan', 'Rohan and Isengard'),
+        timeline('mordor', 'The Road to Mordor'),
+      ],
+    })))
+
+    const stored = await db.timelines.where('worldId').equals('world-test').toArray()
+    expect(stored.map((entry) => entry.name).sort()).toEqual([
+      'Rohan and Isengard',
+      'The Road to Mordor',
+    ])
+  })
 })

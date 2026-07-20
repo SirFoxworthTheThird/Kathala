@@ -13,6 +13,9 @@ export interface StackedTrackProps {
   innerRawEvents: WorldEvent[]
   outerTimelineId: string
   innerTimelineId: string
+  outerTimelineLabel: string
+  innerTimelineLabel: string
+  isFrameNarrative: boolean
   isOuterActive: boolean
   outerColor: string
   innerColor: string
@@ -41,7 +44,8 @@ export interface StackedTrackProps {
 
 export function StackedTrack({
   outerChapters, outerRawEvents, innerChapters, innerRawEvents,
-  outerTimelineId, innerTimelineId, isOuterActive,
+  outerTimelineId, innerTimelineId, outerTimelineLabel, innerTimelineLabel,
+  isFrameNarrative, isOuterActive,
   outerColor, innerColor, isPlayingStory, playbackSpeed,
   activeEventId, activeEvent, activeChapter, prevEvent, nextEvent,
   outerScrollerRef, innerScrollerRef, outerMarkerRef, innerMarkerRef,
@@ -75,14 +79,14 @@ export function StackedTrack({
 
         {/* ── Outer (frame) track — thin ── */}
         <div
-          style={trackStyle(isOuterActive, '2.25rem')}
+          style={trackStyle(isOuterActive, isFrameNarrative ? '2.25rem' : 'calc(50% - 0.5px)')}
           onClick={isOuterActive ? undefined : () => onActivateDepth(outerTimelineId)}
         >
           <div style={{
             padding: '0 0.5rem', height: '100%', display: 'flex', alignItems: 'center',
             borderRight: '1px solid var(--tl-border)', flexShrink: 0, gap: '0.35rem',
           }}>
-            <span style={badgeStyle(isOuterActive, outerColor)}>Frame</span>
+            <span style={badgeStyle(isOuterActive, outerColor)}>{outerTimelineLabel}</span>
           </div>
           <Controls
             isPlaying={isPlayingStory && isOuterActive}
@@ -113,7 +117,7 @@ export function StackedTrack({
             events={outerRawEvents}
             activeEventId={isOuterActive ? activeEventId : null}
             color={outerColor}
-            compact
+            compact={isFrameNarrative}
             scrollerRef={outerScrollerRef}
             activeMarkerRef={outerMarkerRef}
             onEventSelect={onEventSelect}
@@ -126,14 +130,14 @@ export function StackedTrack({
 
         {/* ── Inner (story) track — full height ── */}
         <div
-          style={trackStyle(!isOuterActive, 'calc(100% - 2.25rem - 1px)')}
+          style={trackStyle(!isOuterActive, isFrameNarrative ? 'calc(100% - 2.25rem - 1px)' : 'calc(50% - 0.5px)')}
           onClick={!isOuterActive ? undefined : () => onActivateDepth(innerTimelineId)}
         >
           <div style={{
             padding: '0 0.5rem', height: '100%', display: 'flex', alignItems: 'center',
             borderRight: '1px solid var(--tl-border)', flexShrink: 0,
           }}>
-            <span style={badgeStyle(!isOuterActive, innerColor)}>Story</span>
+            <span style={badgeStyle(!isOuterActive, innerColor)}>{innerTimelineLabel}</span>
           </div>
           <Controls
             isPlaying={isPlayingStory && !isOuterActive}
