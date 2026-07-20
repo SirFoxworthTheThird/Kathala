@@ -906,7 +906,7 @@ export async function importWorldFromJson(json: string): Promise<string> {
   return importWorldData(data)
 }
 
-async function importWorldData(data: WorldExportFile): Promise<string> {
+async function importWorldData(data: WorldExportFile, replaceExisting = true): Promise<string> {
   // Normalise continuitySuppressions: v7+ files carry the DB records directly;
   // v6 and earlier stored only issueIds via localStorage (notes were lost on export).
   // Merge both sources so that upgrading users don't lose their suppressions.
@@ -935,6 +935,53 @@ async function importWorldData(data: WorldExportFile): Promise<string> {
     db.knowledgeFacts, db.knowledgeReveals, db.sceneTexts, db.plotThreads,
     db.motifs, db.continuitySuppressions, db.writingLogs, db.sceneRevisions,
   ], async () => {
+    // A normal import and the explicit "Replace all" action must remove records
+    // that are no longer present in the incoming file. Previously this path only
+    // used bulkPut(), so re-importing an enriched sequel left its generated
+    // "Main Story" timeline (and any other local-only records) behind.
+    //
+    // Merge imports pass replaceExisting=false because their payload has already
+    // been combined with the local records above.
+    if (replaceExisting) {
+      await Promise.all([
+        db.mapLayers.where('worldId').equals(data.world.id).delete(),
+        db.locationMarkers.where('worldId').equals(data.world.id).delete(),
+        db.characters.where('worldId').equals(data.world.id).delete(),
+        db.items.where('worldId').equals(data.world.id).delete(),
+        db.characterSnapshots.where('worldId').equals(data.world.id).delete(),
+        db.characterMovements.where('worldId').equals(data.world.id).delete(),
+        db.itemPlacements.where('worldId').equals(data.world.id).delete(),
+        db.locationSnapshots.where('worldId').equals(data.world.id).delete(),
+        db.itemSnapshots.where('worldId').equals(data.world.id).delete(),
+        db.relationships.where('worldId').equals(data.world.id).delete(),
+        db.relationshipSnapshots.where('worldId').equals(data.world.id).delete(),
+        db.timelines.where('worldId').equals(data.world.id).delete(),
+        db.chapters.where('worldId').equals(data.world.id).delete(),
+        db.events.where('worldId').equals(data.world.id).delete(),
+        db.blobs.where('worldId').equals(data.world.id).delete(),
+        db.travelModes.where('worldId').equals(data.world.id).delete(),
+        db.timelineRelationships.where('worldId').equals(data.world.id).delete(),
+        db.crossTimelineArtifacts.where('worldId').equals(data.world.id).delete(),
+        db.mapRoutes.where('worldId').equals(data.world.id).delete(),
+        db.mapRegions.where('worldId').equals(data.world.id).delete(),
+        db.mapRegionSnapshots.where('worldId').equals(data.world.id).delete(),
+        db.mapAnnotations.where('worldId').equals(data.world.id).delete(),
+        db.loreCategories.where('worldId').equals(data.world.id).delete(),
+        db.lorePages.where('worldId').equals(data.world.id).delete(),
+        db.factions.where('worldId').equals(data.world.id).delete(),
+        db.factionMemberships.where('worldId').equals(data.world.id).delete(),
+        db.factionRelationships.where('worldId').equals(data.world.id).delete(),
+        db.knowledgeFacts.where('worldId').equals(data.world.id).delete(),
+        db.knowledgeReveals.where('worldId').equals(data.world.id).delete(),
+        db.sceneTexts.where('worldId').equals(data.world.id).delete(),
+        db.plotThreads.where('worldId').equals(data.world.id).delete(),
+        db.motifs.where('worldId').equals(data.world.id).delete(),
+        db.writingLogs.where('worldId').equals(data.world.id).delete(),
+        db.sceneRevisions.where('worldId').equals(data.world.id).delete(),
+        db.continuitySuppressions.where('worldId').equals(data.world.id).delete(),
+      ])
+    }
+
     await db.worlds.put(data.world)
     await db.mapLayers.bulkPut(data.mapLayers)
     await db.locationMarkers.bulkPut(data.locationMarkers)
@@ -980,6 +1027,8 @@ async function importWorldData(data: WorldExportFile): Promise<string> {
 
   if (data.relationshipPositions && typeof data.relationshipPositions === 'object') {
     localStorage.setItem(`wb-rel-pos-${data.world.id}`, JSON.stringify(data.relationshipPositions))
+  } else if (replaceExisting) {
+    localStorage.removeItem(`wb-rel-pos-${data.world.id}`)
   }
 
   return data.world.id
@@ -1184,5 +1233,5 @@ export async function applyWorldImport(
     suppressedIssueIds:   parsed.suppressedIssueIds,
   }
 
-  return importWorldData(merged as WorldExportFile)
+  return importWorldData(merged as WorldExportFile, false)
 }

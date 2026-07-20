@@ -161,19 +161,24 @@ export default function TimelineView() {
     <div className="flex h-full flex-col">
       {/* Timeline tabs */}
       {timelines.length > 1 && (
-        <div role="tablist" aria-label="Timelines" className="flex items-center gap-1 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-1">
+        <div role="tablist" aria-label="Timelines" className="flex flex-wrap items-center gap-1 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-1">
           {timelines.map((tl) => (
             <div
               key={tl.id}
               role="tab"
               aria-selected={currentTimelineId === tl.id}
               aria-controls="timeline-panel"
-              className={`group flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors ${
+              className={`group flex shrink-0 items-center gap-1 rounded px-2 py-1 text-xs transition-colors ${
                 currentTimelineId === tl.id
                   ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
                   : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
               }`}
             >
+              <span
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{ backgroundColor: tl.color }}
+                aria-hidden="true"
+              />
               {renamingId === tl.id ? (
                 <input
                   ref={renameInputRef}

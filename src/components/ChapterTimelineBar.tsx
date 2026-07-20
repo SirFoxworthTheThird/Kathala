@@ -33,33 +33,39 @@ export function ChapterTimelineBar() {
     ) ?? null
   }, [relationships, timelines])
 
-  const outerTimelineId = frameRel?.sourceTimelineId ?? null
-  const innerTimelineId = frameRel?.targetTimelineId ?? null
+  // The bottom bar can display two tracks for any two-timeline world. Frame
+  // narratives still get their specialised sync behaviour, while parallel or
+  // alternate storylines simply use the world's timeline order.
+  const showStacked = !!frameRel || timelines.length === 2
+  const outerTimelineId = frameRel?.sourceTimelineId ?? (showStacked ? timelines[0]?.id ?? null : null)
+  const innerTimelineId = frameRel?.targetTimelineId ?? (showStacked ? timelines[1]?.id ?? null : null)
+  const outerTimelineName = timelines.find((t) => t.id === outerTimelineId)?.name ?? 'Timeline 1'
+  const innerTimelineName = timelines.find((t) => t.id === innerTimelineId)?.name ?? 'Timeline 2'
 
   // ── Initialize / cleanup active depth ─────────────────────────────────────
   useEffect(() => {
-    if (frameRel) {
-      if (activeDepthTimelineId !== frameRel.sourceTimelineId && activeDepthTimelineId !== frameRel.targetTimelineId) {
-        setActiveDepthTimelineId(frameRel.sourceTimelineId)
-        setPlaybackTimelineId(frameRel.sourceTimelineId)
+    if (showStacked && outerTimelineId && innerTimelineId) {
+      if (activeDepthTimelineId !== outerTimelineId && activeDepthTimelineId !== innerTimelineId) {
+        setActiveDepthTimelineId(outerTimelineId)
+        setPlaybackTimelineId(outerTimelineId)
       }
     } else if (activeDepthTimelineId !== null) {
       setActiveDepthTimelineId(null)
       setPlaybackTimelineId(null)
     }
-  }, [frameRel?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [showStacked, outerTimelineId, innerTimelineId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Timeline data — all hooks unconditional ────────────────────────────────
   const outerChapters   = useChapters(outerTimelineId)
   const outerRawEvents  = useTimelineEvents(outerTimelineId)
   const innerChapters   = useChapters(innerTimelineId)
   const innerRawEvents  = useTimelineEvents(innerTimelineId)
-  const singleId        = frameRel ? null : (playbackTimelineId ?? timelines[0]?.id ?? null)
+  const singleId        = showStacked ? null : (playbackTimelineId ?? timelines[0]?.id ?? null)
   const singleChapters  = useChapters(singleId)
   const singleRawEvents = useTimelineEvents(singleId)
 
-  const chapters  = frameRel ? (activeDepthTimelineId === innerTimelineId ? innerChapters  : outerChapters)  : singleChapters
-  const allEvents = frameRel ? (activeDepthTimelineId === innerTimelineId ? innerRawEvents : outerRawEvents) : singleRawEvents
+  const chapters  = showStacked ? (activeDepthTimelineId === innerTimelineId ? innerChapters  : outerChapters)  : singleChapters
+  const allEvents = showStacked ? (activeDepthTimelineId === innerTimelineId ? innerRawEvents : outerRawEvents) : singleRawEvents
 
   // ── Ordered events for playback ────────────────────────────────────────────
   const orderedEvents = useMemo(() => {
@@ -94,10 +100,10 @@ export function ChapterTimelineBar() {
   }, [activeEventId])
 
   useEffect(() => {
-    if (!frameRel) return
+    if (!showStacked) return
     const ref = activeDepthTimelineId === innerTimelineId ? innerMarkerRef : outerMarkerRef
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
-  }, [activeEventId, frameRel, activeDepthTimelineId, innerTimelineId])
+  }, [activeEventId, showStacked, activeDepthTimelineId, innerTimelineId])
 
   // ── Color resolution ───────────────────────────────────────────────────────
   const accentColor = timelines.find((t) => t.id === singleId)?.color ?? 'var(--tl-accent)'
@@ -105,7 +111,7 @@ export function ChapterTimelineBar() {
   const innerColor  = timelines.find((t) => t.id === innerTimelineId)?.color ?? 'var(--tl-accent)'
 
   if (!timelines.length) return null
-  if (!frameRel && !chapters.length) return null
+  if (!showStacked && !chapters.length) return null
 
   // ── Shared handlers ────────────────────────────────────────────────────────
   const handleEventSelect = (id: string, locId?: string | null) => activateEvent(id, locId, setActiveEventId)
@@ -117,7 +123,7 @@ export function ChapterTimelineBar() {
   }
 
   // ── Stacked render (frame narrative) ──────────────────────────────────────
-  if (frameRel && outerTimelineId && innerTimelineId) {
+  if (showStacked && outerTimelineId && innerTimelineId) {
     return (
       <StackedTrack
         outerChapters={outerChapters}
@@ -126,6 +132,9 @@ export function ChapterTimelineBar() {
         innerRawEvents={innerRawEvents}
         outerTimelineId={outerTimelineId}
         innerTimelineId={innerTimelineId}
+        outerTimelineLabel={outerTimelineName}
+        innerTimelineLabel={innerTimelineName}
+        isFrameNarrative={!!frameRel}
         isOuterActive={activeDepthTimelineId !== innerTimelineId}
         outerColor={outerColor}
         innerColor={innerColor}
