@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { Check, X } from 'lucide-react'
-import type { Character } from '@/types'
+import type { Character, InWorldDate } from '@/types'
 import { updateCharacter } from '@/db/hooks/useCharacters'
+import { useWorld } from '@/db/hooks/useWorlds'
+import { formatInWorldDate, dateToDayNumber } from '@/lib/calendar'
+import { InWorldDatePicker } from '@/components/InWorldDatePicker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,11 +15,14 @@ interface OverviewTabProps {
 }
 
 export function OverviewTab({ character }: OverviewTabProps) {
+  const world = useWorld(character.worldId)
+  const calendar = world?.calendar ?? null
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(character.name)
   const [description, setDescription] = useState(character.description)
   const [aliases, setAliases] = useState(character.aliases.join(', '))
   const [color, setColor] = useState(character.color ?? '')
+  const [birthDate, setBirthDate] = useState<InWorldDate | null>(character.birthDate ?? null)
 
   async function save() {
     await updateCharacter(character.id, {
@@ -24,6 +30,7 @@ export function OverviewTab({ character }: OverviewTabProps) {
       description: description.trim(),
       aliases: aliases.split(',').map((a) => a.trim()).filter(Boolean),
       color: color || null,
+      birthDate,
     })
     setEditing(false)
   }
@@ -53,11 +60,17 @@ export function OverviewTab({ character }: OverviewTabProps) {
             setDescription(character.description)
             setAliases(character.aliases.join(', '))
             setColor(character.color ?? '')
+            setBirthDate(character.birthDate ?? null)
             setEditing(true)
           }}>
             Edit
           </Button>
         </div>
+        {calendar && character.birthDate && (
+          <p className="text-xs text-[hsl(var(--muted-foreground))]">
+            Born {formatInWorldDate(calendar, dateToDayNumber(calendar, character.birthDate))}
+          </p>
+        )}
         {character.description ? (
           <p className="text-sm text-[hsl(var(--muted-foreground))] whitespace-pre-wrap">{character.description}</p>
         ) : (
@@ -99,6 +112,16 @@ export function OverviewTab({ character }: OverviewTabProps) {
             <span className="text-xs text-[hsl(var(--muted-foreground))] italic">No colour set</span>
           )}
         </div>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label>Birth date</Label>
+        {calendar ? (
+          <InWorldDatePicker calendar={calendar} value={birthDate} onChange={setBirthDate} setLabel="Set birth date" />
+        ) : (
+          <p className="text-xs italic text-[hsl(var(--muted-foreground))]">
+            Enable a calendar in world settings to record a birth date and compute age.
+          </p>
+        )}
       </div>
       <div className="flex flex-col gap-1.5">
         <Label>Description</Label>

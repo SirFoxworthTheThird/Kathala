@@ -22,7 +22,9 @@ export function AppShell() {
   const isSettings = !!useMatch('/worlds/:worldId/settings')
   const isLore = !!useMatch('/worlds/:worldId/lore/*')
   const isFactions = !!useMatch('/worlds/:worldId/factions')
-  const showBar = !isDashboard && !isArc && !isSettings && !isLore && !isFactions
+  const isCorkboard = !!useMatch('/worlds/:worldId/corkboard')
+  const isCalendar = !!useMatch('/worlds/:worldId/calendar')
+  const showBar = !isDashboard && !isArc && !isSettings && !isLore && !isFactions && !isCorkboard && !isCalendar
   const barHeight = useBarHeight(showBar ? worldId : null)
 
   useEffect(() => {

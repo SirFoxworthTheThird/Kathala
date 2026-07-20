@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label'
 import type { TravelMode } from '@/types'
 import { CloudSyncPanel } from './CloudSyncPanel'
 import { DbHealthPanel } from './DbHealthPanel'
+import { CalendarEditor } from './CalendarEditor'
 
 const WORLD_THEMES: { id: AppTheme; label: string; icon: string; swatch: string }[] = [
   { id: 'default',   label: 'Default',    icon: '🌑', swatch: '#1e3a5f' },
@@ -363,6 +364,38 @@ export default function WorldSettingsView() {
           <span className="text-xs text-[hsl(var(--muted-foreground))]">events</span>
         </div>
       </section>
+
+      {/* Manuscript */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Manuscript</h2>
+          <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+            A book-level word target. The dashboard's Writing Progress panel shows a burndown against it.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Label htmlFor="word-target" className="shrink-0">Word target</Label>
+          <input
+            id="word-target"
+            type="number"
+            min="0"
+            step="1000"
+            placeholder="e.g. 90000"
+            className="w-32 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 py-1 text-xs text-[hsl(var(--foreground))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
+            value={world?.wordTarget ?? ''}
+            onChange={(e) => {
+              if (!worldId) return
+              const v = e.target.value.trim()
+              const n = v === '' ? null : Math.max(0, Math.floor(Number(v)))
+              updateWorld(worldId, { wordTarget: n === null || isNaN(n) ? null : n })
+            }}
+          />
+          <span className="text-xs text-[hsl(var(--muted-foreground))]">words</span>
+        </div>
+      </section>
+
+      {/* Calendar */}
+      {world && <CalendarEditor world={world} />}
 
       {/* Share */}
       <section className="space-y-4">

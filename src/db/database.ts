@@ -35,6 +35,9 @@ import type {
   SceneText,
   PlotThread,
   ContinuitySuppression,
+  WritingLog,
+  Motif,
+  SceneRevision,
 } from '@/types'
 
 class PlotWeaveDB extends Dexie {
@@ -72,6 +75,9 @@ class PlotWeaveDB extends Dexie {
   sceneTexts!: EntityTable<SceneText, 'id'>
   plotThreads!: EntityTable<PlotThread, 'id'>
   continuitySuppressions!: EntityTable<ContinuitySuppression, 'id'>
+  writingLogs!: EntityTable<WritingLog, 'id'>
+  motifs!: EntityTable<Motif, 'id'>
+  sceneRevisions!: EntityTable<SceneRevision, 'id'>
 
   constructor() {
     super('PlotWeaveDB')
@@ -582,6 +588,40 @@ class PlotWeaveDB extends Dexie {
         if (l.levelIndex === undefined) l.levelIndex = 0
         if (l.levelLabel === undefined) l.levelLabel = ''
       })
+    })
+
+    // v45: in-world calendar (per world) and character birth dates. Backfill null.
+    this.version(45).stores({}).upgrade(async (tx) => {
+      await tx.table('worlds').toCollection().modify((w: Record<string, unknown>) => {
+        if (w.calendar === undefined) w.calendar = null
+      })
+      await tx.table('characters').toCollection().modify((c: Record<string, unknown>) => {
+        if (c.birthDate === undefined) c.birthDate = null
+      })
+    })
+
+    // v46: writing-progress log (per world × day) and a book-level word target.
+    this.version(46).stores({
+      writingLogs: 'id, worldId, [worldId+date]',
+    }).upgrade(async (tx) => {
+      await tx.table('worlds').toCollection().modify((w: Record<string, unknown>) => {
+        if (w.wordTarget === undefined) w.wordTarget = null
+      })
+    })
+
+    // v47: motif / theme tracking. New table + backfill motifIds on events.
+    this.version(47).stores({
+      motifs: 'id, worldId',
+    }).upgrade(async (tx) => {
+      await tx.table('events').toCollection().modify((e: Record<string, unknown>) => {
+        if (e.motifIds === undefined) e.motifIds = []
+      })
+    })
+
+    // v48: scene revision history. New table only; existing scenes have no past
+    // versions until their next edit.
+    this.version(48).stores({
+      sceneRevisions: 'id, worldId, eventId, [eventId+createdAt]',
     })
   }
 }

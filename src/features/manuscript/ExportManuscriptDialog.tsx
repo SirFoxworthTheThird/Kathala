@@ -4,11 +4,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { compileManuscript, type BuiltManuscript, type CompileFormat } from '@/lib/manuscriptCompile'
+import { compileDocx, compileEpub } from '@/lib/manuscriptExport'
+import { Input } from '@/components/ui/input'
 
-const FORMATS: { id: CompileFormat; label: string; ext: string; mime: string }[] = [
+type ExportFormat = CompileFormat | 'docx' | 'epub'
+
+const FORMATS: { id: ExportFormat; label: string; ext: string; mime: string; binary?: boolean }[] = [
   { id: 'markdown', label: 'Markdown', ext: 'md', mime: 'text/markdown' },
   { id: 'html', label: 'HTML', ext: 'html', mime: 'text/html' },
   { id: 'text', label: 'Plain text', ext: 'txt', mime: 'text/plain' },
+  { id: 'docx', label: 'Word', ext: 'docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', binary: true },
+  { id: 'epub', label: 'EPUB', ext: 'epub', mime: 'application/epub+zip', binary: true },
 ]
 
 function slugify(s: string): string {
@@ -26,13 +32,16 @@ export function ExportManuscriptDialog({
   manuscript: BuiltManuscript
   title: string
 }) {
-  const [format, setFormat] = useState<CompileFormat>('markdown')
+  const [format, setFormat] = useState<ExportFormat>('markdown')
   const [chapterTitles, setChapterTitles] = useState(true)
   const [onlyWritten, setOnlyWritten] = useState(true)
+  const [author, setAuthor] = useState('')
   const [copied, setCopied] = useState(false)
 
   const fmt = FORMATS.find((f) => f.id === format)!
-  const output = compileManuscript(manuscript, format, { chapterTitles, onlyWritten, title })
+  const opts = { chapterTitles, onlyWritten, title, author }
+  // Text formats build a string preview; the binary book formats build on demand.
+  const output = fmt.binary ? '' : compileManuscript(manuscript, format as CompileFormat, opts)
 
   async function handleCopy() {
     try {
@@ -45,7 +54,12 @@ export function ExportManuscriptDialog({
   }
 
   function handleDownload() {
-    const blob = new Blob([output], { type: `${fmt.mime};charset=utf-8` })
+    const blob = fmt.binary
+      ? new Blob(
+          [(format === 'docx' ? compileDocx(manuscript, opts) : compileEpub(manuscript, opts)) as BlobPart],
+          { type: fmt.mime },
+        )
+      : new Blob([output], { type: `${fmt.mime};charset=utf-8` })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -94,15 +108,24 @@ export function ExportManuscriptDialog({
             </label>
           </div>
 
+          {fmt.binary && (
+            <div className="space-y-1">
+              <label htmlFor="export-author" className="text-xs font-medium text-[hsl(var(--muted-foreground))]">Author (optional)</label>
+              <Input id="export-author" value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Author name" className="h-9" />
+            </div>
+          )}
+
           <div className="flex items-center justify-between rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.4)] px-3 py-2 text-xs text-[hsl(var(--muted-foreground))]">
             <span>{new Intl.NumberFormat().format(manuscript.totalWords)} words</span>
             <span>{manuscript.writtenScenes} scenes</span>
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline" className="flex-1 gap-2" onClick={handleCopy}>
-              {copied ? <><Check className="h-4 w-4 text-green-400" /> Copied!</> : <><Copy className="h-4 w-4" /> Copy</>}
-            </Button>
+            {!fmt.binary && (
+              <Button variant="outline" className="flex-1 gap-2" onClick={handleCopy}>
+                {copied ? <><Check className="h-4 w-4 text-green-400" /> Copied!</> : <><Copy className="h-4 w-4" /> Copy</>}
+              </Button>
+            )}
             <Button className="flex-1 gap-2" onClick={handleDownload}>
               <Download className="h-4 w-4" /> Download .{fmt.ext}
             </Button>

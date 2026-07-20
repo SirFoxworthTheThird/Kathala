@@ -2,11 +2,14 @@ import { useState, useRef, type KeyboardEvent } from 'react'
 import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye, History, Flame, Milestone, PenLine, Plus } from 'lucide-react'
 import { TENSION_LEVELS, tensionColor, tensionLabel } from '@/lib/tension'
 import { STORY_BEATS, beatById, beatActColor } from '@/lib/storyBeats'
-import { AtSign, Spline } from 'lucide-react'
+import { AtSign, Spline, Sparkle } from 'lucide-react'
 import { wordCount, detectMentions } from '@/lib/manuscript'
 import { useSceneText, setSceneText } from '@/db/hooks/useManuscript'
+import { useSceneRevisions } from '@/db/hooks/useSceneRevisions'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
+import { useMotifs } from '@/db/hooks/useMotifs'
 import { SceneDraftEditor } from './SceneDraftEditor'
+import { SceneHistoryDialog } from './SceneHistoryDialog'
 import type { WorldEvent, EventStatus } from '@/types'
 import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
@@ -40,6 +43,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
   const [involvedIds, setInvolvedIds] = useState<string[]>(event.involvedCharacterIds)
   const [mentionedIds, setMentionedIds] = useState<string[]>(event.mentionedCharacterIds ?? [])
   const [threadIds, setThreadIds] = useState<string[]>(event.threadIds ?? [])
+  const [motifIds, setMotifIds] = useState<string[]>(event.motifIds ?? [])
   const [involvedItemIds, setInvolvedItemIds] = useState<string[]>(event.involvedItemIds)
   const [locationMarkerId, setLocationMarkerId] = useState<string | null>(event.locationMarkerId)
   const [tags, setTags] = useState<string[]>(event.tags)
@@ -54,15 +58,20 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
   // Scene prose: `draft === null` means "show the stored value"; a string means unsaved edits.
   const sceneText = useSceneText(event.id)
   const [draft, setDraft] = useState<string | null>(null)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const sceneRevisions = useSceneRevisions(event.id)
   const tagInputRef = useRef<HTMLInputElement>(null)
 
   const characters = useCharacters(event.worldId)
   const items = useItems(event.worldId)
   const locationMarkers = useAllLocationMarkers(event.worldId)
   const plotThreads = usePlotThreads(event.worldId)
+  const motifs = useMotifs(event.worldId)
 
   const assignedThreads = plotThreads.filter((t) => threadIds.includes(t.id))
   const availableThreads = plotThreads.filter((t) => !threadIds.includes(t.id))
+  const assignedMotifs = motifs.filter((m) => motifIds.includes(m.id))
+  const availableMotifs = motifs.filter((m) => !motifIds.includes(m.id))
 
   const involvedChars = characters.filter((c) => involvedIds.includes(c.id))
   const availableChars = characters.filter((c) => !involvedIds.includes(c.id))
@@ -207,6 +216,20 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
     const newIds = threadIds.filter((id) => id !== threadId)
     setThreadIds(newIds)
     await updateEvent(event.id, { threadIds: newIds })
+  }
+
+  // ── Motif helpers ────────────────────────────────────────────────────────────
+  async function addMotif(motifId: string) {
+    if (motifIds.includes(motifId)) return
+    const newIds = [...motifIds, motifId]
+    setMotifIds(newIds)
+    await updateEvent(event.id, { motifIds: newIds })
+  }
+
+  async function removeMotif(motifId: string) {
+    const newIds = motifIds.filter((id) => id !== motifId)
+    setMotifIds(newIds)
+    await updateEvent(event.id, { motifIds: newIds })
   }
 
   // ── Item helpers ───────────────────────────────────────────────────────────
@@ -461,9 +484,20 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
               <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
                 <PenLine className="h-3 w-3" /> Scene Draft
               </span>
-              <span className="text-[10px] tabular-nums text-[hsl(var(--muted-foreground))]">
-                {sceneWords} {sceneWords === 1 ? 'word' : 'words'}
-              </span>
+              <div className="flex items-center gap-2">
+                {sceneRevisions.length > 0 && (
+                  <button
+                    onClick={() => setHistoryOpen(true)}
+                    className="flex items-center gap-1 text-[10px] text-[hsl(var(--muted-foreground))] transition-colors hover:text-[hsl(var(--foreground))]"
+                    title="View earlier drafts of this scene"
+                  >
+                    <History className="h-3 w-3" /> History ({sceneRevisions.length})
+                  </button>
+                )}
+                <span className="text-[10px] tabular-nums text-[hsl(var(--muted-foreground))]">
+                  {sceneWords} {sceneWords === 1 ? 'word' : 'words'}
+                </span>
+              </div>
             </div>
             <SceneDraftEditor
               value={sceneValue}
@@ -489,6 +523,12 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                 ))}
               </div>
             )}
+            <SceneHistoryDialog
+              open={historyOpen}
+              onOpenChange={setHistoryOpen}
+              eventId={event.id}
+              currentText={sceneText?.text ?? ''}
+            />
           </div>
 
           {/* Location */}
@@ -640,6 +680,41 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                   <SelectContent>
                     {availableThreads.map((t) => (
                       <SelectItem key={t.id} value={t.id} className="text-xs">{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
+
+          {/* Motifs / themes (created on the dashboard; tagged here) */}
+          {motifs.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
+                <Sparkle className="h-3 w-3" /> Motifs
+              </span>
+              {assignedMotifs.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {assignedMotifs.map((m) => (
+                    <span key={m.id} className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]"
+                      style={{ background: `${m.color}22`, border: `1px solid ${m.color}55` }}>
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: m.color }} />
+                      <span className="text-[hsl(var(--foreground))]">{m.name}</span>
+                      <button onClick={() => removeMotif(m.id)} className="ml-0.5 hover:text-red-400" aria-label={`Remove motif ${m.name}`}>
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {availableMotifs.length > 0 && (
+                <Select onValueChange={addMotif}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="+ Tag a motif…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableMotifs.map((m) => (
+                      <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

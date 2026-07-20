@@ -23,22 +23,25 @@ explore).
 6. [The world dashboard](#the-world-dashboard)
 7. [Timeline & events](#timeline--events)
 8. [Chapter detail](#chapter-detail)
-9. [Manuscript](#manuscript)
-10. [Characters](#characters)
-11. [Cast Balance](#cast-balance)
-12. [Plot Threads](#plot-threads)
-13. [Maps](#maps)
-14. [Items](#items)
-15. [Relationships](#relationships)
-16. [Character Arc grid](#character-arc-grid)
-17. [Lore](#lore)
-18. [Factions](#factions)
-19. [Knowledge](#knowledge)
-20. [Search](#search)
-21. [Writer's Brief](#writers-brief)
-22. [Continuity Checker](#continuity-checker)
-23. [World settings & export](#world-settings--export)
-24. [Help](#help)
+9. [Corkboard](#corkboard)
+10. [Manuscript](#manuscript)
+11. [Characters](#characters)
+12. [Cast Balance](#cast-balance)
+13. [Plot Threads](#plot-threads)
+14. [Motifs & Themes](#motifs--themes)
+15. [Maps](#maps)
+16. [Items](#items)
+17. [Relationships](#relationships)
+18. [Character Arc grid](#character-arc-grid)
+19. [Lore](#lore)
+20. [Factions](#factions)
+21. [Knowledge](#knowledge)
+22. [Search](#search)
+23. [Writer's Brief](#writers-brief)
+24. [Calendar & character ages](#calendar--character-ages)
+25. [Continuity Checker](#continuity-checker)
+26. [World settings & export](#world-settings--export)
+27. [Help](#help)
 
 ---
 
@@ -173,12 +176,33 @@ copied — book two is a fresh narrative that begins where the last one left off
 Opening a world lands you on its dashboard — a bird's-eye view of the whole
 project. Stat tiles summarise the timeline, cast, maps, relationships, items,
 snapshot coverage, and continuity status. Below them are recent events, scene
-status, and analytics panels (Cast Balance and Plot Threads, covered later).
+status, writing progress, and analytics panels (Cast Balance, Plot Threads, and
+Motifs & Themes, covered later).
 
 ![World dashboard](images/03-dashboard.png)
 
 The tiles are links — click **Timeline**, **Characters**, **Maps**, or any other
 tile to jump straight to that area.
+
+### Writing progress
+
+As you write scene prose (in the Manuscript view), PlotWeave keeps a lightweight
+per-day log of the words you add or cut. The **Writing Progress** panel on the
+dashboard turns that into an at-a-glance readout:
+
+- **Total words** across the whole manuscript.
+- **Words today** — the net change since midnight (green when you've added).
+- **Day streak** — consecutive days you've written; a blank day today doesn't
+  break a run you're still in the middle of.
+- A **burndown bar** against your book **word target** (set it under
+  *Manuscript* in [World settings](#world-settings--export)), showing percent
+  complete and words to go.
+- A **14-day strip** of daily output so you can see your recent momentum.
+
+![Writing Progress](images/31-writing-progress.png)
+
+The log travels with the world through export/import, so your streak and history
+survive a backup or a move to another device.
 
 ---
 
@@ -218,6 +242,26 @@ drafts a new chapter; *Update* re-derives an existing one from its prose.
 
 ---
 
+## Corkboard
+
+The **Corkboard** is an index-card view of your whole story — the classic way to
+see structure at a glance and shuffle it. Each chapter is a column; each scene
+(event) is a card showing its title, synopsis, POV character, and **status**
+(Idea → Outline → Draft → Revised → Final).
+
+![Corkboard](images/32-corkboard.png)
+
+- **Drag a card** to reorder scenes within a chapter, or drop it into another
+  chapter's column to move it there — the timeline order updates to match.
+- **Change a scene's status** right on the card with the status pill.
+- **Click a card's title** to jump to that scene in the chapter detail with the
+  time cursor set to it.
+
+It's the same events as the Timeline, shown as a board — reorder here or there
+and both stay in sync.
+
+---
+
 ## Manuscript
 
 The **Manuscript** view stitches every scene's prose into one continuous
@@ -232,10 +276,47 @@ PlotWeave. Write a scene's prose on its event, and it appears here automatically
 - **Word goals** — set a target for the whole manuscript (in the header) and a
   per-chapter goal (in Draft mode); a progress bar tracks words against each.
   Per-chapter goals are saved with the chapter.
-- **Export** — download or copy the manuscript as Markdown, HTML, or plain text.
+- **Export** — download or copy the manuscript as Markdown, HTML, or plain text,
+  or **compile a finished book file**: **Word (.docx)** or **EPUB**. The book
+  formats build a title page (with an optional author), start each chapter on its
+  own heading, and separate scenes — EPUB also gets a linked table of contents.
+  Both are generated right in the browser, so nothing leaves your device.
 
 Empty scenes are flagged with a "write this scene" link, so the manuscript
 doubles as a checklist of what's left to draft.
+
+### Find & replace
+
+The **Find & replace** button (in the Manuscript header) searches across *every
+scene's prose* at once — for renaming a term or fixing a recurring tic without
+opening each scene. Type a phrase to see every scene that contains it, with a
+match count and a highlighted preview.
+
+![Find & replace](images/36-find-replace.png)
+
+- **Case sensitive** and **whole word** toggles refine the match.
+- **Replace** one scene at a time, or **Replace all** across the manuscript.
+- **Character-rename aware** — when your search exactly matches a character's
+  name, PlotWeave offers to rename that character too (its name *and* aliases),
+  so the cast list stays in sync with the prose.
+
+Every scene changed by a replace is saved as a new version, so you can undo it
+from that scene's [history](#scene-history).
+
+### Scene history
+
+Every scene keeps a **revision history**. As you revise a scene's prose,
+PlotWeave automatically saves earlier drafts (grouped so a burst of edits becomes
+one snapshot, and capped to the most recent 20). A **History** link appears above
+the scene draft once there are saved versions.
+
+![Scene history](images/34-scene-history.png)
+
+Open it to browse past versions with their timestamp and word count, **diff** any
+version against the current prose (added words in green, removed in red), and
+**restore** one. Restoring is non-destructive — the current draft is saved as a
+new version first, so you can always undo it. The full history travels with the
+world through export/import.
 
 ---
 
@@ -316,6 +397,26 @@ across your chapters and flags trouble:
 
 Tag a thread onto an event from the event's card; create threads inline with the
 **+ New thread** button.
+
+---
+
+## Motifs & Themes
+
+**Motifs & Themes** works exactly like Plot Threads, but for symbolism rather
+than plot — recurring images, symbols, and themes such as *mirrors*, *the colour
+red*, or *exile*. Define named motifs on the dashboard, give each a colour, and
+tag the scenes that carry them from the event card.
+
+![Motifs & Themes](images/33-motifs.png)
+
+The dashboard draws a **cadence strip** per motif across your chapters so you can
+see its rhythm at a glance, and flags where a motif loses momentum:
+
+- **"vanishes for N chapters"** — a motif that drops out of the middle of the book.
+- **"fades out"** — a motif introduced early and then never seen again.
+
+Use it to check that a theme you care about is woven through the whole story,
+not just raised once and forgotten.
 
 ---
 
@@ -533,14 +634,62 @@ navigates you straight to any result with the keyboard.
 
 The **Writer's Brief** (the scroll icon in the top bar) is a focused, at-a-glance
 panel for the event under the time cursor. Select an event and the brief shows
-the chapter synopsis, the active event's details (including in-world day), the
-other events in that chapter, and a per-character state readout — including
-**"carried forward"** badges where a character's state was inherited rather than
-freshly set.
+the chapter synopsis, the active event's details (including the in-world date —
+or day number if you haven't set up a calendar), the other events in that
+chapter, and a per-character state readout — including **"carried forward"**
+badges where a character's state was inherited rather than freshly set. When a
+world calendar and a character's birth date are both set, each present character
+also shows their **age** at that point in the story.
 
 ![Writer's Brief](images/17-writers-brief.png)
 
 It's designed to sit open beside your manuscript while you draft.
+
+---
+
+## Calendar & character ages
+
+By default PlotWeave measures story time in **in-world days** — day 0 is the
+start of a timeline, and each event's *travel days* push the clock forward. Turn
+those day numbers into real dates by giving your world a **calendar** in World
+settings.
+
+Click **Enable calendar** to start from a standard 12-month, 365-day year, then
+tailor it:
+
+- **Start year** — the year that in-world day 0 falls in.
+- **Year suffix** — an era label shown after the year, e.g. *AC* or *TA*.
+- **Months** — rename them, set each month's length in days, and add or remove
+  months. A fantasy calendar can have any number of months of any length.
+
+![Calendar editor](images/30-calendar.png)
+
+With a calendar set, in-world dates appear wherever the day clock is shown —
+most visibly the active event's date in the Writer's Brief.
+
+**Character ages.** Give a character an optional **birth date** on the Overview
+tab of their profile (the month/day/year pickers use your calendar's months).
+PlotWeave then computes and shows the character's **age** at the event under the
+time cursor in the Writer's Brief — counting birthdays passed, so it stays
+correct even with irregular month lengths. A character born after the current
+moment simply shows no age.
+
+The calendar and every birth date travel with the world through **export /
+import**, so shared or backed-up worlds keep their dates intact.
+
+### Calendar view
+
+Once a calendar is set, the **Calendar** view (in the nav) lays your events onto
+month grids by their in-world date, so you can see the shape of your story in
+time. Each month that your story touches gets a grid; events appear as chips on
+their day, and flashbacks are marked with a small clock icon.
+
+![Calendar view](images/35-calendar-view.png)
+
+- **Click** an event chip to jump to it in the timeline.
+- **Drag** a chip to another day to **pin** its in-world date — this sets the
+  event's explicit in-world time, overriding the travel-day clock for that event
+  (handy for flashbacks/flash-forwards, or to nail a scene to a specific date).
 
 ---
 
@@ -555,11 +704,19 @@ count. Typical catches:
   flashback" if intentional).
 - A character who **appears before their first snapshot**, or is at a
   **destroyed location**.
+- A character who **can't reach a location in time** — when a move covers more
+  map distance than their travel mode can cross in the in-world days available
+  (using the map scale, the mode's speed, and any road/river/trail along the
+  way). The finding offers a one-click **"Allow N more days"** that lengthens the
+  event so the journey becomes possible.
+- A character who **travels through a destroyed or abandoned region**.
 
 ![Continuity Checker](images/18-continuity.png)
 
 Each finding links straight to the offending event so you can fix it in context.
-The stale-snapshot sensitivity is configurable in Settings.
+The travel checks rely on a **map scale** (set one on the map) and **travel
+modes** with speeds (in World settings). The stale-snapshot sensitivity is
+configurable in Settings.
 
 ---
 
@@ -567,8 +724,11 @@ The stale-snapshot sensitivity is configurable in Settings.
 
 Per-world settings let you rename the world, set a **cover image**, pick a
 **theme** (Default, Fantasy, Sci-Fi, Cyberpunk, Horror, Western, Action, Noir,
-Romance), define **travel modes** with speeds for map distance calculations, and
-set the **continuity stale-snapshot threshold**.
+Romance), define **travel modes** with speeds for map distance calculations, set
+the **continuity stale-snapshot threshold**, set a book-level **word target**
+(for the dashboard's [Writing Progress](#the-world-dashboard) burndown), and
+configure an in-world **[calendar](#calendar--character-ages)** for story dates
+and character ages.
 
 The **cover image** appears on the world's card in the selector and in the
 dashboard header. **Upload** an image file or **link** one by URL (the link

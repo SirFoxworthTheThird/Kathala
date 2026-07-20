@@ -375,52 +375,117 @@ here is started yet.
 
 ### 1. Travel-time feasibility (maps × timeline × continuity)  — *recommended flagship*
 
-Tie together the scaled map, routes, travel modes, and per-chapter elapsed days
-— nothing currently connects them.
+Tie together the scaled map, routes, travel modes, and per-chapter elapsed days.
+**Most of this already existed** (the continuity check was built inline in
+`ContinuityChecker`). Hardened + finished in the 2026-07 pass.
 
-- [ ] **Travel mode speed** — add `speedPerDay` (world units/day) to `TravelMode`; DB migration backfills null (unknown).
-- [ ] **Estimator (pure, `src/lib/travelTime.ts`)** — given a path length in world units (from map scale + a route or straight-line marker distance) and a mode speed → estimated days; unit-tested.
-- [ ] **Suggest `travelDays`** — on a chapter, estimate days from each moving character's start→end locations + their travel mode; one-click "use estimate".
-- [ ] **Continuity check** — flag a character whose between-chapter location change needs more days than elapsed (using map distance + their mode). Cross-map/floor moves are skipped (no shared metric).
-- [ ] **Tests** — estimator unit tests + a continuity integration test for an impossible journey.
+- [x] **Travel mode speed** — `TravelMode.speedPerDay` (world units/day) already exists and is editable in World settings.
+- [x] **Estimator (pure, `src/lib/travelTime.ts`)** — extracted `worldUnits` / `effectiveSpeed` / `daysNeeded` / `assessTravel` (+ `ROUTE_SPEED_MULTIPLIERS`) from the inline checker math; unit-tested.
+- [x] **Continuity check** — "can't reach X in time" (map distance ÷ mode speed × route multiplier vs elapsed in-world days) plus a "travels through a destroyed region" check; same-layer moves only. Now uses the pure estimator.
+- [x] **One-click fix** — the finding offers "Allow N more days", bumping the event's `travelDays` so the journey becomes feasible.
+- [x] **Tests** — `travelTime` unit tests.
+- [ ] **Proactive suggest** — a per-event "suggest travelDays" affordance in the editor (before any violation) is still not built; the one-click fix covers the reactive case.
+- [ ] **Cross-map/floor journeys** — currently skipped (no shared metric); could estimate via the building pin + inner distance later.
 
-### 2. In-world calendar & character ages
+### 2. In-world calendar & character ages — DONE
 
 An in-world day is tracked but there's no calendar or ages.
 
-- [ ] **Calendar config** — per-world months[], days-per-week, epoch label; absolute in-world dates computed from chapter durations (pure date math, unit-tested).
-- [ ] **Character birth date** — optional in-world birth date on `Character`; compute age at the active event.
-- [ ] **Calendar view** — events laid out on a month/season grid.
-- [ ] **Surfacing** — age shown in the Writer's Brief and roster; season/date shown on events.
-- [ ] **Continuity (optional)** — season/date mismatches and age-inappropriate actions (likely manual-tagged).
+- [x] **Calendar config** — per-world `months[]` (name + length), start year, era suffix; pure day-number ⇄ date math in `src/lib/calendar.ts`, unit-tested. Editor in World settings.
+- [x] **Character birth date** — optional in-world `birthDate` on `Character` (date picker on the Overview tab); age computed at the active event (counts birthdays passed).
+- [x] **Surfacing** — the Writer's Brief shows the active event's in-world date (day number when no calendar) and each present character's age.
+- [x] **Round-trip** — calendar + birth dates survive export/import (with backfill).
+- [ ] **Calendar view** — events laid out on a month/season grid. Not built.
+- [ ] **Continuity (optional)** — season/date mismatches and age-inappropriate actions (likely manual-tagged). Not built.
 
-### 3. Compile to DOCX / EPUB  — *highest-demand practical win*
+### 3. Compile to DOCX / EPUB  — *highest-demand practical win* — DONE
 
 Export is MD/HTML/TXT today; writers need a submission/reading artifact.
 
-- [ ] **DOCX compile** — scene texts + chapter structure → self-contained `.docx` (title page from world, chapter headings, scene separators); browser-side generation, no external host.
-- [ ] **EPUB compile** — chapters as XHTML with a spine + minimal CSS.
-- [ ] **Scope by scene status** — e.g. compile only `final`/`revised` scenes.
-- [ ] **Tests** — compile output structure (headings, chapter count, separators).
+- [x] **Store-only ZIP writer** — dependency-free `src/lib/zip.ts` (CRC32 + local/central headers), the container for both formats; unit-tested.
+- [x] **DOCX compile** — `compileDocx` builds a valid OOXML `.docx` (title page + optional author, per-chapter page-break headings, scene separators); browser-side, no external host.
+- [x] **EPUB compile** — `compileEpub` builds a valid EPUB 3 (mimetype-first zip, container, OPF metadata, nav TOC, one XHTML per chapter, CSS).
+- [x] **Export dialog** — "Word" and "EPUB" formats added; optional Author field; binary formats download (no copy/preview).
+- [x] **Tests** — zip signatures/CRC + docx/epub structure (parts present, prose included, only-written filtering, mimetype first).
+- [ ] **Scope by scene status** — currently filters by written/unwritten; a `final`/`revised`-only filter is still open.
 
-### 4. Writing progress dashboard
+### 4. Writing progress dashboard — DONE
 
 Per-chapter word goals and a pacing curve exist, but no progress-over-time.
 
-- [ ] **Daily word log** — lightweight per-day word-count rollup (derived from manuscript/scene word counts).
-- [ ] **Book-level target** — word target in world settings.
-- [ ] **Dashboard tile** — daily words, streak, and burndown vs the book target and per-chapter goals.
-- [ ] **Tests** — aggregation/streak logic.
+- [x] **Daily word log** — `writingLogs` table (DB v46), one row per world × local day; `setSceneText` logs the net word delta on every save. Survives export/import.
+- [x] **Book-level target** — `World.wordTarget`, editable under *Manuscript* in World settings.
+- [x] **Dashboard tile** — `WritingProgress` panel: total words, words today, day streak, burndown vs the book target, and a 14-day output strip.
+- [x] **Tests** — pure `src/lib/writingProgress.ts` (streak/series/summary) unit tests + logging & round-trip integration tests.
 
-### 5. Corkboard / scene outliner
+### 5. Corkboard / scene outliner — DONE
 
-- [ ] **Card view** — events/scenes as index cards (synopsis, POV, status), drag-reorderable within and across chapters (reuses existing event reorder + status).
-- [ ] **Tests** — reorder logic.
+- [x] **Card view** — `CorkboardView` (route `corkboard`, Extended nav item): one column per chapter, one card per event showing title, synopsis, POV and a status pill. HTML5 drag-and-drop reorders cards within a chapter and moves them across chapters; status editable inline; clicking a card opens the scene with the time cursor set.
+- [x] **Reorder engine** — pure `src/lib/corkboard.ts` (`reorderInsert` / `assignSortOrders` / `sortOrderDiff`) + `moveEventOnBoard` in `useTimeline` (renumbers both columns, recomputes snapshot sortKeys).
+- [x] **Tests** — pure reorder units, a `moveEventOnBoard` integration test (within/cross chapter + sortKey recompute), and a Playwright drag e2e.
 
-### 6. Themes & motifs tracker
+### 6. Themes & motifs tracker — DONE
 
 Mirrors the existing Plot Threads pattern, for symbols/themes rather than plot.
 
-- [ ] **Data model** — `Theme`/`Motif` entity like `PlotThread`; tag events.
-- [ ] **Distribution strip** — reuse the plot-thread cadence view to show where each motif recurs and where it goes quiet.
-- [ ] **Tests** — cadence/gap detection.
+- [x] **Data model** — `Motif` entity (DB v47) like `PlotThread`; `WorldEvent.motifIds` tags events; CRUD hooks + export/import round-trip + delete cleanup.
+- [x] **Distribution strip** — the cadence engine was generalised into `src/lib/tagCadence.ts` (both plot threads and motifs delegate to it) and the dashboard strip into a shared `CadenceManager`; a "Motifs & Themes" dashboard panel shows each motif's per-chapter presence with fade-out/vanish warnings. Motifs are tagged on the event card next to plot threads.
+- [x] **Tests** — generic `tagCadence` units, motif CRUD/delete-cleanup/round-trip integration, and the existing plot-thread tests still pass against the refactor.
+
+---
+
+## Product Feature Ideas — 2026-07 whole-app review (round 2)
+
+With the first 2026-07 batch (#1–#6) shipped, a second whole-app pass turned up
+these candidates, ranked by fit × value. Nothing here is started yet.
+
+### Data-hygiene fix — DONE
+
+- [x] **`deleteWorld` orphans data** — `deleteWorld` now also deletes the world's `sceneTexts`, `plotThreads`, `continuitySuppressions` (and `sceneRevisions`); `deleteEvent` / `bulkDeleteEvents` also drop an event's `sceneRevisions`.
+
+### 7. Scene revision history — DONE
+
+Writing progress tracks *how many* words change per day, but not *what* the prose was — a local-first writing tool must not lose a good paragraph.
+
+- [x] **Version store** — `sceneRevisions` table (DB v48). `setSceneText` snapshots the outgoing prose via `captureSceneRevision` — time-coalesced (bursts of autosaves → one snapshot, `REVISION_COALESCE_MS`), exact-duplicate-skipped, pruned to `MAX_SCENE_REVISIONS` (20) per scene.
+- [x] **History UI** — a "History (N)" link above the scene draft opens `SceneHistoryDialog`: past versions with timestamp + word count, **diff against current** (word-level, `src/lib/textDiff.ts`) or plain text, per-version delete, and **restore** (force-captures the current prose first — never destructive).
+- [x] **Round-trip** — revisions travel with the world through export/import.
+- [x] **Tests** — pure `textDiff` units; `captureSceneRevision` coalesce/dedupe/prune, `setSceneText` capture, `restoreSceneRevision`, delete-cleanup and export round-trip integration; a Playwright restore e2e.
+
+### 8. Manuscript-wide find & replace — DONE
+
+Search today is entity-only (Ctrl+K). No way to rename a term or fix a tic across all scene prose.
+
+- [x] **Find/replace panel** — `FindReplaceDialog` (from the Manuscript header): searches all `sceneTexts`, per-scene preview with match counts + highlighted snippet, per-scene **Replace** and global **Replace all**, case-sensitive + whole-word toggles. Pure logic in `src/lib/findReplace.ts` (escaped literal query, word boundaries, count/replace/snippet). Changed scenes go through `setSceneText`, so each is captured as a scene revision (undoable).
+- [x] **Character-rename aware** — when the query exactly matches a character's name, offer to rename the character (name + aliases) alongside the prose replace.
+- [x] **Tests** — pure `findReplace` units (counts, boundaries, case, literal escaping, deletion, snippets) + a Playwright replace-and-rename e2e.
+
+### 9. Calendar view — DONE
+
+The calendar data landed in #2 but the visual grid was explicitly deferred.
+
+- [x] **Month grid** — `CalendarView` (route `calendar`, Extended nav item): pure `src/lib/calendarView.ts` (`buildCalendarMonths`) turns the in-world clock (`computeInWorldDays`) + `dayNumberToDate` into month grids; events are chips on their day, flashbacks marked, contiguous months rendered (falls back to months-with-events for very long spans). Empty state when no calendar is set.
+- [x] **Reschedule** — drag a chip to another day → `updateEvent({ inWorldTime: dateToDayNumber(...) })`, pinning the event's date.
+- [x] **Tests** — `buildCalendarMonths` placement/derived-clock/pin/grouping/span units + a Playwright drag-reschedule e2e.
+
+### 10. Writing goals & projection
+
+Extend the writing-progress panel with a target and a projected finish.
+
+- [ ] **Target date** — per-world deadline; compute "N words/day to finish" from the remaining word gap.
+- [ ] **Projection** — projected finish date from recent pace (trailing average of `writingLogs`).
+- [ ] **Session goal** — optional per-session word goal with a progress ring.
+- [ ] **Tests** — words/day and projected-finish math (pure).
+
+### 11. Structure / beat-sheet board
+
+Events already carry `structureBeat`, but there's no board mapping them to a template.
+
+- [ ] **Templates** — Three-Act, Save the Cat, Hero's Journey beat sets (extend `storyBeats.ts`).
+- [ ] **Board** — show each template beat as filled (which event) or missing, in timeline order; click a beat to jump to (or assign) its event.
+- [ ] **Tests** — beat→event mapping and gap detection.
+
+### 12. Focus / distraction-free drafting mode
+
+- [ ] **Full-screen editor** — hide app chrome, typewriter scrolling, live session word count, ambient progress. Pure polish, low effort.
+- [ ] **Tests** — session word-count accounting (pure).
