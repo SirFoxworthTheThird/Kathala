@@ -452,13 +452,13 @@ Writing progress tracks *how many* words change per day, but not *what* the pros
 - [x] **Round-trip** — revisions travel with the world through export/import.
 - [x] **Tests** — pure `textDiff` units; `captureSceneRevision` coalesce/dedupe/prune, `setSceneText` capture, `restoreSceneRevision`, delete-cleanup and export round-trip integration; a Playwright restore e2e.
 
-### 8. Manuscript-wide find & replace
+### 8. Manuscript-wide find & replace — DONE
 
 Search today is entity-only (Ctrl+K). No way to rename a term or fix a tic across all scene prose.
 
-- [ ] **Find/replace panel** — search across all `sceneTexts`, per-scene preview with match counts, replace-one / replace-all, case-sensitive + whole-word toggles.
-- [ ] **Character-rename aware** — when the query matches a character name, offer to update the character's `name`/`aliases` too.
-- [ ] **Tests** — pure match/replace logic (counts, boundaries, case).
+- [x] **Find/replace panel** — `FindReplaceDialog` (from the Manuscript header): searches all `sceneTexts`, per-scene preview with match counts + highlighted snippet, per-scene **Replace** and global **Replace all**, case-sensitive + whole-word toggles. Pure logic in `src/lib/findReplace.ts` (escaped literal query, word boundaries, count/replace/snippet). Changed scenes go through `setSceneText`, so each is captured as a scene revision (undoable).
+- [x] **Character-rename aware** — when the query exactly matches a character's name, offer to rename the character (name + aliases) alongside the prose replace.
+- [x] **Tests** — pure `findReplace` units (counts, boundaries, case, literal escaping, deletion, snippets) + a Playwright replace-and-rename e2e.
 
 ### 9. Calendar view — DONE
 

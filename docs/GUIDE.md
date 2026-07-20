@@ -285,6 +285,24 @@ PlotWeave. Write a scene's prose on its event, and it appears here automatically
 Empty scenes are flagged with a "write this scene" link, so the manuscript
 doubles as a checklist of what's left to draft.
 
+### Find & replace
+
+The **Find & replace** button (in the Manuscript header) searches across *every
+scene's prose* at once — for renaming a term or fixing a recurring tic without
+opening each scene. Type a phrase to see every scene that contains it, with a
+match count and a highlighted preview.
+
+![Find & replace](images/36-find-replace.png)
+
+- **Case sensitive** and **whole word** toggles refine the match.
+- **Replace** one scene at a time, or **Replace all** across the manuscript.
+- **Character-rename aware** — when your search exactly matches a character's
+  name, PlotWeave offers to rename that character too (its name *and* aliases),
+  so the cast list stays in sync with the prose.
+
+Every scene changed by a replace is saved as a new version, so you can undo it
+from that scene's [history](#scene-history).
+
 ### Scene history
 
 Every scene keeps a **revision history**. As you revise a scene's prose,
