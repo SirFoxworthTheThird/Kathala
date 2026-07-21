@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Check, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { computeSelectPosition } from '@/lib/selectPosition'
+import { selectItemLabel } from '@/lib/selectLabel'
 
 interface SelectContextValue {
   value: string
@@ -181,13 +182,15 @@ interface SelectItemProps {
   children: React.ReactNode
   className?: string
   disabled?: boolean
+  /** Overrides the text shown in the trigger; defaults to the item's own text. */
+  textValue?: string
 }
 
-function SelectItem({ value, children, className, disabled }: SelectItemProps) {
+function SelectItem({ value, children, className, disabled, textValue }: SelectItemProps) {
   const { value: selectedValue, onValueChange, registerLabel } = React.useContext(SelectContext)
   const isSelected = selectedValue === value
 
-  const label = typeof children === 'string' ? children : ''
+  const label = textValue ?? selectItemLabel(children)
   React.useEffect(() => {
     registerLabel(value, label)
   }, [value, label]) // eslint-disable-line react-hooks/exhaustive-deps
