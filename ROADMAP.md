@@ -478,13 +478,14 @@ Extend the writing-progress panel with a target and a projected finish.
 - [x] **Session goal** — per-day word goal (localStorage per world) with an SVG progress ring in the Writing Progress panel.
 - [x] **Tests** — `daysBetween`, `recentPace`, and `writingForecast` (words/day needed, projection, on-track, edge cases) unit-tested; deadline round-trips through export/import.
 
-### 11. Structure / beat-sheet board
+### 11. Structure / beat-sheet board — DONE
 
 Events already carry `structureBeat`, but there's no board mapping them to a template.
 
-- [ ] **Templates** — Three-Act, Save the Cat, Hero's Journey beat sets (extend `storyBeats.ts`).
-- [ ] **Board** — show each template beat as filled (which event) or missing, in timeline order; click a beat to jump to (or assign) its event.
-- [ ] **Tests** — beat→event mapping and gap detection.
+- [x] **Templates** — Three-Act (7), Save the Cat (15), Hero's Journey (12) beat sets in `storyBeats.ts` (`BEAT_TEMPLATES`, namespaced ids; `beatById`/`beatLabel` resolve across all). Per-world template choice persisted in localStorage.
+- [x] **Board** — `StructureView` (route `structure`, Extended nav item): each beat is a slot (in order, act-tinted) showing its tagged scene or an assign picker (sets `structureBeat`); an X/N-placed counter surfaces gaps; filled beats link to the event; out-of-order beats flagged.
+- [x] **Mapping engine** — pure `buildBeatSheet` in `src/lib/structureBoard.ts` (beat to earliest event, coverage, out-of-order detection).
+- [x] **Tests** — `buildBeatSheet` mapping / gaps / out-of-order / earliest-of-duplicates / larger-template units + a Playwright assign-and-switch-template e2e.
 
 ### 12. Focus / distraction-free drafting mode
 

@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, BookOpen, LayoutGrid, CalendarDays, FileText, Users, Map,
-  Package, Network, TableProperties, BookMarked, Shield, KeyRound, Settings,
+  Package, Network, TableProperties, BookMarked, Shield, KeyRound, Settings, ListChecks,
 } from 'lucide-react'
 
 export type NavTier = 'core' | 'extended'
@@ -20,6 +20,7 @@ export const navItems: NavItem[] = [
   { to: 'timeline',      label: 'Timeline',   icon: BookOpen,        end: false, tier: 'core' },
   { to: 'corkboard',     label: 'Corkboard',  icon: LayoutGrid,      end: false, tier: 'extended' },
   { to: 'calendar',      label: 'Calendar',   icon: CalendarDays,    end: false, tier: 'extended' },
+  { to: 'structure',     label: 'Structure',  icon: ListChecks,      end: false, tier: 'extended' },
   { to: 'manuscript',    label: 'Manuscript', icon: FileText,        end: false, tier: 'core' },
   { to: 'characters',    label: 'Characters', icon: Users,           end: false, tier: 'core' },
   { to: 'maps',          label: 'Maps',       icon: Map,             end: false, tier: 'core' },

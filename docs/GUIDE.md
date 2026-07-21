@@ -29,19 +29,20 @@ explore).
 12. [Cast Balance](#cast-balance)
 13. [Plot Threads](#plot-threads)
 14. [Motifs & Themes](#motifs--themes)
-15. [Maps](#maps)
-16. [Items](#items)
-17. [Relationships](#relationships)
-18. [Character Arc grid](#character-arc-grid)
-19. [Lore](#lore)
-20. [Factions](#factions)
-21. [Knowledge](#knowledge)
-22. [Search](#search)
-23. [Writer's Brief](#writers-brief)
-24. [Calendar & character ages](#calendar--character-ages)
-25. [Continuity Checker](#continuity-checker)
-26. [World settings & export](#world-settings--export)
-27. [Help](#help)
+15. [Structure board](#structure-board)
+16. [Maps](#maps)
+17. [Items](#items)
+18. [Relationships](#relationships)
+19. [Character Arc grid](#character-arc-grid)
+20. [Lore](#lore)
+21. [Factions](#factions)
+22. [Knowledge](#knowledge)
+23. [Search](#search)
+24. [Writer's Brief](#writers-brief)
+25. [Calendar & character ages](#calendar--character-ages)
+26. [Continuity Checker](#continuity-checker)
+27. [World settings & export](#world-settings--export)
+28. [Help](#help)
 
 ---
 
@@ -485,6 +486,28 @@ see its rhythm at a glance, and flags where a motif loses momentum:
 
 Use it to check that a theme you care about is woven through the whole story,
 not just raised once and forgotten.
+
+---
+
+## Structure board
+
+The **Structure** board checks your story against a **beat sheet**. Pick a
+template — **Three-Act**, **Save the Cat**, or **Hero's Journey** — and each of
+its beats appears as a slot, in order and tinted by act.
+
+![Structure board](images/45-structure.png)
+
+- **Assign a scene** to a beat from its "+ Assign a scene…" picker; the slot then
+  shows that scene (click it to jump to the event in the timeline).
+- A **X / N beats placed** counter tells you how much of the structure is filled,
+  so **gaps** — a missing midpoint, no clear climax — stand out.
+- A beat is flagged **out of order** when its scene falls earlier in the story
+  than a later beat's scene, catching a structure that's been shuffled.
+
+Switching templates keeps your tags — a scene tagged with a Three-Act beat simply
+won't fill a Save-the-Cat slot until you assign it there, so you can commit to one
+framework at a time. (You can also set a scene's beat from its card on the
+Timeline.)
 
 ---
 
