@@ -81,3 +81,68 @@ export function progressSummary(total: number, target: number | null | undefined
   const percent = Math.min(100, Math.round((total / target) * 100))
   return { total, target, remaining, percent }
 }
+
+/** Whole-day difference `toKey - fromKey` (local midnights). Negative if `toKey` is earlier. */
+export function daysBetween(fromKey: string, toKey: string): number {
+  const [fy, fm, fd] = fromKey.split('-').map(Number)
+  const [ty, tm, td] = toKey.split('-').map(Number)
+  const a = new Date(fy, fm - 1, fd).getTime()
+  const b = new Date(ty, tm - 1, td).getTime()
+  return Math.round((b - a) / 86_400_000)
+}
+
+/** Trailing average net words/day over the last `windowDays` calendar days (incl. today). */
+export function recentPace(logs: WritingLog[], todayKey: string, windowDays = 7): number {
+  const w = Math.max(1, windowDays)
+  const sum = lastNDays(logs, w, todayKey).reduce((s, d) => s + d.words, 0)
+  return sum / w
+}
+
+export interface WritingForecast {
+  /** Words still to write to hit the target, or null when no target. */
+  remaining: number | null
+  /** Calendar days from today to the deadline (negative if past), or null. */
+  daysToDeadline: number | null
+  /** Words/day needed to finish by the deadline, or null. */
+  wordsPerDayNeeded: number | null
+  /** Trailing average net words/day. */
+  recentPacePerDay: number
+  /** Projected finish date (`YYYY-MM-DD`) from recent pace, or null when it can't be projected. */
+  projectedFinish: string | null
+  /** Whether the projected finish lands on or before the deadline, or null. */
+  onTrack: boolean | null
+}
+
+/**
+ * Turns the word log + target + deadline into a forecast: how many words/day are
+ * needed, the current pace, and a projected finish date. Pure.
+ */
+export function writingForecast({
+  total, target, targetDate, logs, todayKey, paceWindow = 7,
+}: {
+  total: number
+  target: number | null | undefined
+  targetDate: string | null | undefined
+  logs: WritingLog[]
+  todayKey: string
+  paceWindow?: number
+}): WritingForecast {
+  const remaining = progressSummary(total, target).remaining
+  const recentPacePerDay = recentPace(logs, todayKey, paceWindow)
+  const daysToDeadline = targetDate ? daysBetween(todayKey, targetDate) : null
+
+  let wordsPerDayNeeded: number | null = null
+  if (remaining !== null && daysToDeadline !== null) {
+    wordsPerDayNeeded = daysToDeadline > 0 ? Math.ceil(remaining / daysToDeadline) : remaining
+  }
+
+  let projectedFinish: string | null = null
+  if (remaining !== null) {
+    if (remaining === 0) projectedFinish = todayKey
+    else if (recentPacePerDay > 0) projectedFinish = shiftDayKey(todayKey, Math.ceil(remaining / recentPacePerDay))
+  }
+
+  const onTrack = projectedFinish && targetDate ? projectedFinish <= targetDate : null
+
+  return { remaining, daysToDeadline, wordsPerDayNeeded, recentPacePerDay, projectedFinish, onTrack }
+}

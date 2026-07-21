@@ -469,14 +469,14 @@ The calendar data landed in #2 but the visual grid was explicitly deferred.
 - [x] **Reschedule** — drag a chip to another day → `updateEvent({ inWorldTime: dateToDayNumber(...) })`, pinning the event's date.
 - [x] **Tests** — `buildCalendarMonths` placement/derived-clock/pin/grouping/span units + a Playwright drag-reschedule e2e.
 
-### 10. Writing goals & projection
+### 10. Writing goals & projection — DONE
 
 Extend the writing-progress panel with a target and a projected finish.
 
-- [ ] **Target date** — per-world deadline; compute "N words/day to finish" from the remaining word gap.
-- [ ] **Projection** — projected finish date from recent pace (trailing average of `writingLogs`).
-- [ ] **Session goal** — optional per-session word goal with a progress ring.
-- [ ] **Tests** — words/day and projected-finish math (pure).
+- [x] **Target date** — per-world `targetDate` deadline (DB v49; settings input next to the word target); `writingForecast` computes "N words/day to finish" from the remaining gap and days left.
+- [x] **Projection** — projected finish date from recent pace (`recentPace`, trailing 7-day average of `writingLogs`), with an on-track / behind-pace badge (`daysBetween` + `writingForecast` in `src/lib/writingProgress.ts`).
+- [x] **Session goal** — per-day word goal (localStorage per world) with an SVG progress ring in the Writing Progress panel.
+- [x] **Tests** — `daysBetween`, `recentPace`, and `writingForecast` (words/day needed, projection, on-track, edge cases) unit-tested; deadline round-trips through export/import.
 
 ### 11. Structure / beat-sheet board
 

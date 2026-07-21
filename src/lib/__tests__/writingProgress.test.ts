@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   localDayKey, shiftDayKey, wordsOnDay, computeStreak, lastNDays, progressSummary,
+  daysBetween, recentPace, writingForecast,
 } from '@/lib/writingProgress'
 import type { WritingLog } from '@/types'
 
@@ -76,5 +77,76 @@ describe('progressSummary', () => {
   it('returns nulls when no usable target', () => {
     expect(progressSummary(1000, null)).toEqual({ total: 1000, target: null, remaining: null, percent: null })
     expect(progressSummary(1000, 0)).toEqual({ total: 1000, target: null, remaining: null, percent: null })
+  })
+})
+
+describe('daysBetween', () => {
+  it('counts whole days across month/year boundaries', () => {
+    expect(daysBetween('2026-07-20', '2026-07-27')).toBe(7)
+    expect(daysBetween('2026-07-20', '2026-07-20')).toBe(0)
+    expect(daysBetween('2026-07-20', '2026-07-19')).toBe(-1) // past deadline
+    expect(daysBetween('2026-12-31', '2027-01-01')).toBe(1)
+  })
+})
+
+describe('recentPace', () => {
+  it('averages net words over the window (including empty days)', () => {
+    const today = '2026-07-20'
+    const logs = [log('2026-07-20', 700), log('2026-07-19', 0), log('2026-07-18', 700)]
+    // 1400 words over a 7-day window = 200/day.
+    expect(recentPace(logs, today, 7)).toBe(200)
+  })
+})
+
+describe('writingForecast', () => {
+  const today = '2026-07-20'
+  // 300 words/day pace over the last week.
+  const logs = [
+    log('2026-07-20', 300), log('2026-07-19', 300), log('2026-07-18', 300),
+    log('2026-07-17', 300), log('2026-07-16', 300), log('2026-07-15', 300), log('2026-07-14', 300),
+  ]
+
+  it('computes words/day needed and a projected finish on pace', () => {
+    const f = writingForecast({ total: 10000, target: 16000, targetDate: '2026-07-30', logs, todayKey: today })
+    expect(f.remaining).toBe(6000)
+    expect(f.daysToDeadline).toBe(10)
+    expect(f.wordsPerDayNeeded).toBe(600)      // 6000 / 10
+    expect(f.recentPacePerDay).toBe(300)
+    expect(f.projectedFinish).toBe('2026-08-09') // today + ceil(6000/300)=20 days
+    expect(f.onTrack).toBe(false)                 // 08-09 is after the 07-30 deadline
+  })
+
+  it('flags on-track when the projection beats the deadline', () => {
+    const f = writingForecast({ total: 15400, target: 16000, targetDate: '2026-07-30', logs, todayKey: today })
+    expect(f.remaining).toBe(600)
+    expect(f.projectedFinish).toBe('2026-07-22') // ceil(600/300)=2 days
+    expect(f.onTrack).toBe(true)
+  })
+
+  it('projects "done today" when the target is already met', () => {
+    const f = writingForecast({ total: 16000, target: 16000, targetDate: null, logs, todayKey: today })
+    expect(f.remaining).toBe(0)
+    expect(f.projectedFinish).toBe(today)
+    expect(f.onTrack).toBeNull() // no deadline to compare
+  })
+
+  it('cannot project a finish with no recent progress', () => {
+    const f = writingForecast({ total: 1000, target: 90000, targetDate: '2026-07-30', logs: [], todayKey: today })
+    expect(f.recentPacePerDay).toBe(0)
+    expect(f.projectedFinish).toBeNull()
+    expect(f.wordsPerDayNeeded).toBe(8900) // 89000 / 10
+  })
+
+  it('needs all remaining words when the deadline is today or past', () => {
+    const f = writingForecast({ total: 10000, target: 16000, targetDate: today, logs, todayKey: today })
+    expect(f.daysToDeadline).toBe(0)
+    expect(f.wordsPerDayNeeded).toBe(6000) // all of it, now
+  })
+
+  it('has no target-based numbers without a target', () => {
+    const f = writingForecast({ total: 5000, target: null, targetDate: '2026-07-30', logs, todayKey: today })
+    expect(f.remaining).toBeNull()
+    expect(f.wordsPerDayNeeded).toBeNull()
+    expect(f.projectedFinish).toBeNull()
   })
 })

@@ -222,15 +222,25 @@ dashboard turns that into an at-a-glance readout:
 - **Words today** — the net change since midnight (green when you've added).
 - **Day streak** — consecutive days you've written; a blank day today doesn't
   break a run you're still in the middle of.
+- A **daily session goal** — set a per-day word goal and a ring fills as you
+  hit it today.
 - A **burndown bar** against your book **word target** (set it under
   *Manuscript* in [World settings](#world-settings--export)), showing percent
   complete and words to go.
 - A **14-day strip** of daily output so you can see your recent momentum.
 
-![Writing Progress](images/31-writing-progress.png)
+![Writing Progress](images/44-writing-goals.png)
 
-The log travels with the world through export/import, so your streak and history
-survive a backup or a move to another device.
+### Deadline & projection
+
+Give the book a **deadline** (also under *Manuscript* in World settings) and the
+panel adds a forecast: the **words/day** you'd need to finish on time, and — from
+your recent pace — a **projected finish date** with an **on track** / **behind
+pace** badge. It's an honest read on whether your current rhythm will get you
+there.
+
+The log, target, and deadline all travel with the world through export/import, so
+your streak and history survive a backup or a move to another device.
 
 ---
 
@@ -855,10 +865,10 @@ or restore them.
 Per-world settings let you rename the world, set a **cover image**, pick a
 **theme** (Default, Fantasy, Sci-Fi, Cyberpunk, Horror, Western, Action, Noir,
 Romance), define **travel modes** with speeds for map distance calculations, set
-the **continuity stale-snapshot threshold**, set a book-level **word target**
-(for the dashboard's [Writing Progress](#the-world-dashboard) burndown), and
-configure an in-world **[calendar](#calendar--character-ages)** for story dates
-and character ages.
+the **continuity stale-snapshot threshold**, set a book-level **word target** and
+**deadline** (for the dashboard's [Writing Progress](#the-world-dashboard)
+burndown and finish projection), and configure an in-world
+**[calendar](#calendar--character-ages)** for story dates and character ages.
 
 The **cover image** appears on the world's card in the selector and in the
 dashboard header. **Upload** an image file or **link** one by URL (the link

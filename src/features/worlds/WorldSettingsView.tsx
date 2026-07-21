@@ -362,11 +362,12 @@ export default function WorldSettingsView() {
         <div>
           <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Manuscript</h2>
           <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-            A book-level word target. The dashboard's Writing Progress panel shows a burndown against it.
+            A book-level word target and an optional deadline. The dashboard's Writing Progress panel
+            shows a burndown, the words/day needed, and a projected finish date.
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Label htmlFor="word-target" className="shrink-0">Word target</Label>
+          <Label htmlFor="word-target" className="w-24 shrink-0">Word target</Label>
           <input
             id="word-target"
             type="number"
@@ -383,6 +384,28 @@ export default function WorldSettingsView() {
             }}
           />
           <span className="text-xs text-[hsl(var(--muted-foreground))]">words</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <Label htmlFor="target-date" className="w-24 shrink-0">Deadline</Label>
+          <input
+            id="target-date"
+            type="date"
+            className="w-40 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 py-1 text-xs text-[hsl(var(--foreground))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
+            value={world?.targetDate ?? ''}
+            onChange={(e) => {
+              if (!worldId) return
+              const v = e.target.value.trim()
+              updateWorld(worldId, { targetDate: v === '' ? null : v })
+            }}
+          />
+          {world?.targetDate && (
+            <button
+              className="text-xs text-[hsl(var(--muted-foreground))] underline hover:text-[hsl(var(--foreground))]"
+              onClick={() => worldId && updateWorld(worldId, { targetDate: null })}
+            >
+              Clear
+            </button>
+          )}
         </div>
       </section>
 

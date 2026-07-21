@@ -253,7 +253,9 @@ function FitBounds({ bounds, initialCenter, initialZoom, playbackFocus, onReady 
 }) {
   const map = useMapEvents({})
   const playbackFocusRef = useRef(playbackFocus)
-  playbackFocusRef.current = playbackFocus
+  // Keep the ref current for the deferred setTimeout below (which reads it
+  // asynchronously). Assigned in an effect, not during render.
+  useEffect(() => { playbackFocusRef.current = playbackFocus })
   useEffect(() => {
     // Defer to a macro-task so react-leaflet's ResizeObserver callback (which fires
     // asynchronously and calls invalidateSize) runs first. Without this, the observer

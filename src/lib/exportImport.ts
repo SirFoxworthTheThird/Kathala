@@ -771,6 +771,7 @@ function normalizeImport(data: WorldExportFile): void {
     if (w.continuityStaleThreshold === undefined) w.continuityStaleThreshold = 5
     if (w.calendar === undefined) w.calendar = null
     if (w.wordTarget === undefined) w.wordTarget = null
+    if (w.targetDate === undefined) w.targetDate = null
   }
 
   // ── v1 → v2 migration ───────────────────────────────────────────────────────

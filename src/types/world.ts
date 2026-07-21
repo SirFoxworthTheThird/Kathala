@@ -33,6 +33,8 @@ export interface World {
   calendar?: WorldCalendar | null
   /** Optional book-level manuscript word target, for the writing-progress burndown. */
   wordTarget?: number | null
+  /** Optional manuscript deadline (`YYYY-MM-DD`), for the words/day and finish projection. */
+  targetDate?: string | null
   createdAt: number
   updatedAt: number
 }

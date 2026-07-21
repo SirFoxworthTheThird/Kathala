@@ -438,7 +438,7 @@ export default function WorldDashboardView() {
       {totalEvents > 0 && worldId && (
         <div>
           <SectionHeading icon={PenLine}>Writing Progress</SectionHeading>
-          <WritingProgress worldId={worldId} wordTarget={world?.wordTarget} />
+          <WritingProgress worldId={worldId} wordTarget={world?.wordTarget} targetDate={world?.targetDate} />
         </div>
       )}
 

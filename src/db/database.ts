@@ -623,6 +623,13 @@ class PlotWeaveDB extends Dexie {
     this.version(48).stores({
       sceneRevisions: 'id, worldId, eventId, [eventId+createdAt]',
     })
+
+    // v49: manuscript deadline for the writing-progress projection. Backfill null.
+    this.version(49).stores({}).upgrade(async (tx) => {
+      await tx.table('worlds').toCollection().modify((w: Record<string, unknown>) => {
+        if (w.targetDate === undefined) w.targetDate = null
+      })
+    })
   }
 }
 
