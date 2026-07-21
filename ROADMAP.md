@@ -487,7 +487,7 @@ Events already carry `structureBeat`, but there's no board mapping them to a tem
 - [x] **Mapping engine** — pure `buildBeatSheet` in `src/lib/structureBoard.ts` (beat to earliest event, coverage, out-of-order detection).
 - [x] **Tests** — `buildBeatSheet` mapping / gaps / out-of-order / earliest-of-duplicates / larger-template units + a Playwright assign-and-switch-template e2e.
 
-### 12. Focus / distraction-free drafting mode
+### 12. Focus / distraction-free drafting mode — DONE
 
-- [ ] **Full-screen editor** — hide app chrome, typewriter scrolling, live session word count, ambient progress. Pure polish, low effort.
-- [ ] **Tests** — session word-count accounting (pure).
+- [x] **Full-screen editor** — `FocusMode` (opened from **Focus** above the scene draft): portal overlay that hides all chrome, centers the prose in a column, keeps the caret line centered (typewriter scrolling via a mirror measurement), shows live word + "this session" counts, and fills an ambient bar toward the daily session goal. Autosaves through `setSceneText` (revisions + writing log still fire); Esc exits.
+- [x] **Tests** — pure `focusSession` (`sessionWordDelta`, `focusStats`, `sessionGoalPercent`) units + a Playwright open/type/session-count/save/exit e2e.

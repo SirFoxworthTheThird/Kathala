@@ -1,5 +1,5 @@
 import { useState, useRef, type KeyboardEvent } from 'react'
-import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye, History, Flame, Milestone, PenLine, Plus } from 'lucide-react'
+import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye, History, Flame, Milestone, PenLine, Plus, Maximize2 } from 'lucide-react'
 import { TENSION_LEVELS, tensionColor, tensionLabel } from '@/lib/tension'
 import { STORY_BEATS, beatById, beatActColor } from '@/lib/storyBeats'
 import { AtSign, Spline, Sparkle } from 'lucide-react'
@@ -10,6 +10,7 @@ import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { useMotifs } from '@/db/hooks/useMotifs'
 import { SceneDraftEditor } from './SceneDraftEditor'
 import { SceneHistoryDialog } from './SceneHistoryDialog'
+import { FocusMode } from './FocusMode'
 import type { WorldEvent, EventStatus } from '@/types'
 import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
@@ -59,6 +60,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
   const sceneText = useSceneText(event.id)
   const [draft, setDraft] = useState<string | null>(null)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [focusOpen, setFocusOpen] = useState(false)
   const sceneRevisions = useSceneRevisions(event.id)
   const tagInputRef = useRef<HTMLInputElement>(null)
 
@@ -485,6 +487,13 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                 <PenLine className="h-3 w-3" /> Scene Draft
               </span>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { if (draft !== null) saveScene(); setFocusOpen(true) }}
+                  className="flex items-center gap-1 text-[10px] text-[hsl(var(--muted-foreground))] transition-colors hover:text-[hsl(var(--foreground))]"
+                  title="Write this scene distraction-free"
+                >
+                  <Maximize2 className="h-3 w-3" /> Focus
+                </button>
                 {sceneRevisions.length > 0 && (
                   <button
                     onClick={() => setHistoryOpen(true)}
@@ -529,6 +538,15 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
               eventId={event.id}
               currentText={sceneText?.text ?? ''}
             />
+            {focusOpen && (
+              <FocusMode
+                worldId={event.worldId}
+                eventId={event.id}
+                title={event.title}
+                initialText={sceneText?.text ?? ''}
+                onExit={() => setFocusOpen(false)}
+              />
+            )}
           </div>
 
           {/* Location */}

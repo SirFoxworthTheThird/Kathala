@@ -385,6 +385,19 @@ version against the current prose (added words in green, removed in red), and
 new version first, so you can always undo it. The full history travels with the
 world through export/import.
 
+### Focus mode
+
+Above the scene draft, **Focus** opens a full-screen, distraction-free writing
+surface for that scene — no chrome, just your prose in a centered column. The
+caret stays vertically centered as you type (typewriter scrolling), a live
+**word count** and **words this session** sit in the slim header, and if you've
+set a [daily goal](#writing-progress) a thin bar at the bottom fills toward it.
+
+![Focus mode](images/46-focus-mode.png)
+
+It autosaves as you write (so scene history and the writing log keep working);
+press **Esc** or click the ✕ to drop back to the event.
+
 ---
 
 ## Characters
