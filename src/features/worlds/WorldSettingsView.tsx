@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { Footprints, Plus, Pencil, Check, X, Trash2, FileCode2, Upload, Image as ImageIcon } from 'lucide-react'
 import { useWorld, updateWorld } from '@/db/hooks/useWorlds'
-import type { AppTheme } from '@/store'
 import { useRootMapLayers } from '@/db/hooks/useMapLayers'
 import { useTravelModes, createTravelMode, updateTravelMode, deleteTravelMode } from '@/db/hooks/useTravelModes'
 import { storeBlob } from '@/db/hooks/useBlobs'
@@ -15,18 +14,7 @@ import type { TravelMode } from '@/types'
 import { CloudSyncPanel } from './CloudSyncPanel'
 import { DbHealthPanel } from './DbHealthPanel'
 import { CalendarEditor } from './CalendarEditor'
-
-const WORLD_THEMES: { id: AppTheme; label: string; icon: string; swatch: string }[] = [
-  { id: 'default',   label: 'Default',    icon: '🌑', swatch: '#1e3a5f' },
-  { id: 'fantasy',   label: 'Fantasy',    icon: '⚔️',  swatch: '#7c5c2a' },
-  { id: 'scifi',     label: 'Sci-Fi',     icon: '🚀', swatch: '#0a3d5c' },
-  { id: 'cyberpunk', label: 'Cyberpunk',  icon: '🤖', swatch: '#6b21a8' },
-  { id: 'horror',    label: 'Horror',     icon: '🩸', swatch: '#5c0a0a' },
-  { id: 'western',   label: 'Western',    icon: '🤠', swatch: '#5c3a1a' },
-  { id: 'action',    label: 'Action',     icon: '💥', swatch: '#b84a00' },
-  { id: 'noir',      label: 'Noir',       icon: '🎬', swatch: '#2a2a2a' },
-  { id: 'romance',   label: 'Romance',    icon: '🌹', swatch: '#8b2252' },
-]
+import { APP_THEMES, themeClass } from '@/lib/themes'
 
 // ── Travel mode row ───────────────────────────────────────────────────────────
 
@@ -265,26 +253,30 @@ export default function WorldSettingsView() {
             Override the global app theme for this world. "Default" inherits your global setting.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {WORLD_THEMES.map((t) => {
-            const worldThemeClass = t.id === 'default' ? null : `theme-${t.id}`
+        <div className="grid gap-2 sm:grid-cols-2">
+          {APP_THEMES.map((t) => {
+            const worldThemeClass = themeClass(t.id)
             const isActive = (world?.theme ?? null) === worldThemeClass
             return (
               <button
                 key={t.id}
-                title={t.label}
+                title={`${t.label}: ${t.description}`}
                 onClick={() => worldId && updateWorld(worldId, { theme: worldThemeClass })}
-                className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors ${
+                className={`group/theme grid grid-cols-[3.5rem_1fr_1rem] items-center gap-3 rounded-lg border p-2 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] ${
                   isActive
-                    ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
-                    : 'border-[hsl(var(--border))] bg-[hsl(var(--background))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
+                    ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))] shadow-[0_0_0_1px_hsl(var(--ring)/0.2)]'
+                    : 'border-[hsl(var(--border))] bg-[hsl(var(--card)/0.55)] hover:-translate-y-px hover:border-[hsl(var(--ring)/0.55)] hover:bg-[hsl(var(--accent)/0.55)]'
                 }`}
               >
                 <span
-                  className="h-3 w-3 rounded-full shrink-0 border border-white/20"
+                  className="h-10 w-14 rounded-md border border-white/15 shadow-inner"
                   style={{ background: t.swatch }}
                 />
-                {t.icon} {t.label}
+                <span className="min-w-0">
+                  <span className="block text-xs font-semibold text-[hsl(var(--foreground))]">{t.icon} {t.id === 'default' ? 'Inherit global theme' : t.label}</span>
+                  <span className="mt-0.5 block text-[10px] leading-snug text-[hsl(var(--muted-foreground))]">{t.description}</span>
+                </span>
+                {isActive && <Check className="h-4 w-4 text-[hsl(var(--ring))]" aria-hidden="true" />}
               </button>
             )
           })}
