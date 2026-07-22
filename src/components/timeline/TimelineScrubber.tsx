@@ -1,6 +1,7 @@
-import { useState, useMemo, useEffect, useCallback, type RefObject } from 'react'
+import { useState, useMemo, useEffect, useCallback, type ReactNode, type RefObject } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Chapter, WorldEvent } from '@/types'
+import type { ChapterRun } from '@/lib/combinedTimeline'
 
 // ── Chapter segment ───────────────────────────────────────────────────────────
 
@@ -18,7 +19,7 @@ interface ChapterSegmentProps {
   onChapterSelect: () => void
 }
 
-function ChapterSegment({
+export function ChapterSegment({
   chapter, events, segmentState, activeEventId, color, compact,
   activeMarkerRef, onEventSelect, onChapterSelect,
 }: ChapterSegmentProps) {
@@ -145,10 +146,17 @@ export interface ScrubberProps {
   onChapterSelect: (chapterId: string) => void
 }
 
-export function Scrubber({
-  chapters, events, activeEventId, color, compact,
-  scrollerRef, activeMarkerRef, onEventSelect, onChapterSelect,
-}: ScrubberProps) {
+/** Horizontal scroller shell shared by both scrubbers: edge fade-arrows,
+ *  wheel-to-scroll, and hidden native scrollbar. `depKey` re-measures the
+ *  arrows when the content changes. */
+function ScrubberShell({
+  scrollerRef, compact, depKey, children,
+}: {
+  scrollerRef: RefObject<HTMLDivElement | null>
+  compact: boolean
+  depKey: unknown
+  children: ReactNode
+}) {
   const [canScrollLeft,  setCanScrollLeft]  = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
 
@@ -167,7 +175,7 @@ export function Scrubber({
     const ro = new ResizeObserver(updateArrows)
     ro.observe(el)
     return () => { el.removeEventListener('scroll', updateArrows); ro.disconnect() }
-  }, [chapters, updateArrows, scrollerRef])
+  }, [depKey, updateArrows, scrollerRef])
 
   useEffect(() => {
     const el = scrollerRef.current
@@ -180,24 +188,6 @@ export function Scrubber({
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
   }, [scrollerRef])
-
-  const eventsByChapter = useMemo(() => {
-    const map = new Map<string, WorldEvent[]>()
-    for (const ch of chapters) {
-      map.set(ch.id, events.filter((e) => e.chapterId === ch.id).sort((a, b) => a.sortOrder - b.sortOrder))
-    }
-    return map
-  }, [chapters, events])
-
-  const activeChapterId  = activeEventId ? (events.find((e) => e.id === activeEventId)?.chapterId ?? null) : null
-  const activeChapterIdx = chapters.findIndex((c) => c.id === activeChapterId)
-
-  function getSegmentState(chIdx: number, chId: string): SegmentState {
-    if ((eventsByChapter.get(chId) ?? []).length === 0) return 'empty'
-    if (chId === activeChapterId) return 'active'
-    if (activeChapterId === null) return 'future'
-    return chIdx < activeChapterIdx ? 'past' : 'future'
-  }
 
   function scrollBy(amount: number) {
     scrollerRef.current?.scrollBy({ left: amount, behavior: 'smooth' })
@@ -233,21 +223,96 @@ export function Scrubber({
           scrollbarWidth: 'none', height: '100%',
         }}
       >
-        {chapters.map((ch, idx) => (
-          <ChapterSegment
-            key={ch.id}
-            chapter={ch}
-            events={eventsByChapter.get(ch.id) ?? []}
-            segmentState={getSegmentState(idx, ch.id)}
-            activeEventId={activeEventId}
-            color={color}
-            compact={compact}
-            activeMarkerRef={activeMarkerRef}
-            onEventSelect={onEventSelect}
-            onChapterSelect={() => onChapterSelect(ch.id)}
-          />
-        ))}
+        {children}
       </div>
     </div>
+  )
+}
+
+export function Scrubber({
+  chapters, events, activeEventId, color, compact,
+  scrollerRef, activeMarkerRef, onEventSelect, onChapterSelect,
+}: ScrubberProps) {
+  const eventsByChapter = useMemo(() => {
+    const map = new Map<string, WorldEvent[]>()
+    for (const ch of chapters) {
+      map.set(ch.id, events.filter((e) => e.chapterId === ch.id).sort((a, b) => a.sortOrder - b.sortOrder))
+    }
+    return map
+  }, [chapters, events])
+
+  const activeChapterId  = activeEventId ? (events.find((e) => e.id === activeEventId)?.chapterId ?? null) : null
+  const activeChapterIdx = chapters.findIndex((c) => c.id === activeChapterId)
+
+  function getSegmentState(chIdx: number, chId: string): SegmentState {
+    if ((eventsByChapter.get(chId) ?? []).length === 0) return 'empty'
+    if (chId === activeChapterId) return 'active'
+    if (activeChapterId === null) return 'future'
+    return chIdx < activeChapterIdx ? 'past' : 'future'
+  }
+
+  return (
+    <ScrubberShell scrollerRef={scrollerRef} compact={compact} depKey={chapters}>
+      {chapters.map((ch, idx) => (
+        <ChapterSegment
+          key={ch.id}
+          chapter={ch}
+          events={eventsByChapter.get(ch.id) ?? []}
+          segmentState={getSegmentState(idx, ch.id)}
+          activeEventId={activeEventId}
+          color={color}
+          compact={compact}
+          activeMarkerRef={activeMarkerRef}
+          onEventSelect={onEventSelect}
+          onChapterSelect={() => onChapterSelect(ch.id)}
+        />
+      ))}
+    </ScrubberShell>
+  )
+}
+
+// ── Combined scrubber (all timelines) ──────────────────────────────────────────
+
+export interface CombinedScrubberProps {
+  runs: ChapterRun[]
+  activeEventId: string | null
+  scrollerRef: RefObject<HTMLDivElement | null>
+  activeMarkerRef: RefObject<HTMLButtonElement | null>
+  onEventSelect: (eventId: string, locationMarkerId?: string | null) => void
+}
+
+/** Lays a merged, cross-timeline sequence out as a strip of chapter runs, each
+ *  tinted with its own timeline's colour so the braiding of storylines reads at
+ *  a glance. Reuses {@link ChapterSegment} for each run. */
+export function CombinedScrubber({
+  runs, activeEventId, scrollerRef, activeMarkerRef, onEventSelect,
+}: CombinedScrubberProps) {
+  const activeRunIdx = activeEventId
+    ? runs.findIndex((r) => r.events.some((e) => e.id === activeEventId))
+    : -1
+
+  function getSegmentState(idx: number): SegmentState {
+    if (activeRunIdx === -1) return 'future'
+    if (idx === activeRunIdx) return 'active'
+    return idx < activeRunIdx ? 'past' : 'future'
+  }
+
+  return (
+    <ScrubberShell scrollerRef={scrollerRef} compact={false} depKey={runs}>
+      {runs.map((run, idx) => (
+        <ChapterSegment
+          key={run.key}
+          chapter={run.chapter ?? { id: run.key, number: 0, title: '' } as Chapter}
+          events={run.events}
+          segmentState={getSegmentState(idx)}
+          activeEventId={activeEventId}
+          color={run.timeline?.color ?? 'var(--tl-accent)'}
+          compact={false}
+          activeMarkerRef={activeMarkerRef}
+          onEventSelect={onEventSelect}
+          onChapterSelect={() => onEventSelect(run.events[0].id, run.events[0].locationMarkerId)}
+        />
+      ))}
+    </ScrubberShell>
   )
 }

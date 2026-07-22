@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildCombinedChronology } from '@/lib/combinedTimeline'
+import { buildCombinedChronology, buildCombinedSequence, groupChapterRuns } from '@/lib/combinedTimeline'
 import type { WorldEvent, Chapter, Timeline } from '@/types'
 
 function tl(id: string, createdAt: number): Timeline {
@@ -66,5 +66,51 @@ describe('buildCombinedChronology', () => {
 
   it('returns an empty list when there are no events', () => {
     expect(buildCombinedChronology([], [cA1], [tA])).toEqual([])
+  })
+})
+
+describe('buildCombinedSequence — chapter order', () => {
+  const tA = tl('A', 1)
+  const tB = tl('B', 2)
+  const cA1 = ch('cA1', 'A', 1)
+  const cB1 = ch('cB1', 'B', 1)
+
+  it('orders by timeline then chapter, ignoring in-world day', () => {
+    // Even though B's events happen earlier in-world, chapter order keeps each
+    // timeline's chapters together (A first — created first).
+    const a0 = ev('a0', 'A', 'cA1', { sortOrder: 0 })
+    const a1 = ev('a1', 'A', 'cA1', { sortOrder: 1, travelDays: 9 })
+    const b0 = ev('b0', 'B', 'cB1', { sortOrder: 0 })
+    const rows = buildCombinedSequence([b0, a1, a0], [cA1, cB1], [tA, tB], 'chapter')
+    expect(rows.map((r) => r.event.id)).toEqual(['a0', 'a1', 'b0'])
+  })
+})
+
+describe('groupChapterRuns', () => {
+  const tA = tl('A', 1)
+  const tB = tl('B', 2)
+  const cA1 = ch('cA1', 'A', 1)
+  const cB1 = ch('cB1', 'B', 1)
+
+  it('collapses each chapter into one run in chapter order', () => {
+    const rows = buildCombinedSequence(
+      [ev('a0', 'A', 'cA1', { sortOrder: 0 }), ev('a1', 'A', 'cA1', { sortOrder: 1 }), ev('b0', 'B', 'cB1')],
+      [cA1, cB1], [tA, tB], 'chapter',
+    )
+    const runs = groupChapterRuns(rows)
+    expect(runs.map((r) => r.chapter!.id)).toEqual(['cA1', 'cB1'])
+    expect(runs[0].events.map((e) => e.id)).toEqual(['a0', 'a1'])
+    expect(runs[0].timeline).toBe(tA)
+  })
+
+  it('lets a chapter recur when scenes are braided in chrono order', () => {
+    // A day0, B day0, A day5, B day3 → chrono: a0, b0, b3, a5 → runs A,B,A.
+    const a0 = ev('a0', 'A', 'cA1', { sortOrder: 0 })
+    const a5 = ev('a5', 'A', 'cA1', { sortOrder: 1, travelDays: 5 })
+    const b0 = ev('b0', 'B', 'cB1', { sortOrder: 0 })
+    const b3 = ev('b3', 'B', 'cB1', { sortOrder: 1, travelDays: 3 })
+    const rows = buildCombinedSequence([a0, a5, b0, b3], [cA1, cB1], [tA, tB], 'chrono')
+    const runs = groupChapterRuns(rows)
+    expect(runs.map((r) => r.chapter!.id)).toEqual(['cA1', 'cB1', 'cA1'])
   })
 })

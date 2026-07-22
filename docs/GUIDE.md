@@ -286,10 +286,19 @@ keeps the framing moment aligned.
 
 ![Timeline relationships](images/39-timeline-relationships.png)
 
-When a world has two timelines, the bottom cursor displays two stacked tracks.
-Click either track to make it active; playback follows that track while keeping
-the linked one available for context. A frame narrative uses its configured
-outer and inner timelines. Other two-timeline worlds use the first two timelines.
+**Frame narratives** get a special bottom cursor: two stacked tracks (outer and
+inner). Click either track to make it active; playback follows that track while
+keeping the linked one available for context, and a ghost cursor line marks the
+corresponding moment on the other track.
+
+Every **other multi-timeline world** uses a single-height bottom bar with a
+**scope selector** on its left. Choose one timeline to scrub it on its own (with
+map playback), or pick **All · Chapter order** / **All · Chronological** to merge
+every timeline into one strip — each chapter run tinted with its timeline's
+colour, and the active event's panel showing which storyline it belongs to. The
+merged views are for navigation and overview; map playback stays per-timeline.
+
+![The multi-timeline bottom bar scope selector](images/49-timeline-bar-scope.png)
 
 #### All timelines — the real sequence across storylines
 

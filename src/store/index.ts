@@ -34,6 +34,12 @@ interface PlaybackSlice {
    *  null = fall back to timelines[0] (existing behaviour). */
   playbackTimelineId: string | null
   setPlaybackTimelineId: (id: string | null) => void
+  /** What the bottom timeline bar shows in a multi-timeline world: a specific
+   *  timeline id, or the sentinels 'all-chrono' / 'all-chapter' for a merged
+   *  view. null = the default (chapter-order merge). Frame narratives ignore
+   *  this and keep their stacked sync view. */
+  barScope: string | null
+  setBarScope: (scope: string | null) => void
   /** When a frame narrative is active: the current event on the outer (frame) timeline.
    *  Drives ghost pin positions. Separate from activeEventId which tracks the inner timeline. */
   activeOuterEventId: string | null
@@ -161,6 +167,8 @@ export const useAppStore = create<AppStore>()(
       setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
       playbackTimelineId: null,
       setPlaybackTimelineId: (id) => set({ playbackTimelineId: id }),
+      barScope: null,
+      setBarScope: (scope) => set({ barScope: scope }),
       activeOuterEventId: null,
       setActiveOuterEventId: (id) => set({ activeOuterEventId: id }),
       activeDepthTimelineId: null,

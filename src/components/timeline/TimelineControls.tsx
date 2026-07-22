@@ -18,9 +18,12 @@ export interface ControlsProps {
   onSpeedChange: () => void
   onDiffOpen: () => void
   onClear: () => void
+  /** Hide the play/speed controls — e.g. the combined all-timelines view, which
+   *  is a navigation scrubber rather than a single-timeline map playback. */
+  showPlay?: boolean
 }
 
-export function Controls({ isPlaying, speed, showStop, showDiff, showClear, color, onPlayPause, onStop, onSpeedChange, onDiffOpen, onClear }: ControlsProps) {
+export function Controls({ isPlaying, speed, showStop, showDiff, showClear, color, onPlayPause, onStop, onSpeedChange, onDiffOpen, onClear, showPlay = true }: ControlsProps) {
   const btn = (clr: string): CSSProperties => ({
     background: 'none', border: 'none', cursor: 'pointer', color: clr,
     padding: '0.2rem', display: 'flex', alignItems: 'center',
@@ -32,14 +35,17 @@ export function Controls({ isPlaying, speed, showStop, showDiff, showClear, colo
       padding: '0 0.4rem', height: '100%', flexShrink: 0,
       borderRight: '1px solid var(--tl-border)',
     }}>
+      {showPlay && (
       <button onClick={onPlayPause} title={isPlaying ? 'Pause' : 'Play story on the map'} style={btn(color)}>
         {isPlaying ? <Pause size={12} /> : <Play size={12} />}
       </button>
+      )}
       {showStop && (
         <button onClick={onStop} title="Stop" style={btn('var(--tl-text-muted)')}>
           <Square size={9} />
         </button>
       )}
+      {showPlay && (
       <button onClick={onSpeedChange} title="Playback speed" style={{
         background: 'none', border: 'none', cursor: 'pointer', borderRadius: '3px', flexShrink: 0,
         color: isPlaying ? color : 'var(--tl-text-muted)',
@@ -48,6 +54,7 @@ export function Controls({ isPlaying, speed, showStop, showDiff, showClear, colo
       }}>
         {SPEED_LABEL[speed]}
       </button>
+      )}
       {showDiff && (
         <button onClick={onDiffOpen} title="Compare chapters" style={btn('var(--tl-text-muted)')}>
           <GitCompareArrows size={11} />
@@ -73,9 +80,11 @@ export interface EventPanelProps {
   color: string
   onPrev: () => void
   onNext: () => void
+  /** Optional timeline name shown before the chapter, for the combined view. */
+  timelineLabel?: string
 }
 
-export function EventPanel({ chapterNum, chapterTitle, eventTitle, hasPrev, hasNext, color, onPrev, onNext }: EventPanelProps) {
+export function EventPanel({ chapterNum, chapterTitle, eventTitle, hasPrev, hasNext, color, onPrev, onNext, timelineLabel }: EventPanelProps) {
   const navBtn = (enabled: boolean): CSSProperties => ({
     background: 'none', border: 'none', cursor: enabled ? 'pointer' : 'default',
     color: enabled ? 'var(--tl-accent)' : 'var(--tl-border)', padding: '0.1rem',
@@ -93,6 +102,7 @@ export function EventPanel({ chapterNum, chapterTitle, eventTitle, hasPrev, hasN
           fontSize: '0.54rem', color: 'var(--tl-text-muted)', fontFamily: 'var(--font-body)',
           letterSpacing: '0.03em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
+          {timelineLabel && <span style={{ color, fontWeight: 700 }}>{timelineLabel} · </span>}
           Ch.{chapterNum} · {chapterTitle}
         </div>
         <div style={{

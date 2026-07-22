@@ -1,4 +1,4 @@
-import { type CSSProperties, type RefObject } from 'react'
+import { type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { BAR_H_SINGLE } from '@/lib/useBarHeight'
 import type { Chapter, WorldEvent } from '@/types'
 import type { PlaybackSpeed } from '@/store'
@@ -28,6 +28,8 @@ export interface SingleTrackProps {
   onNext: () => void
   onEventSelect: (eventId: string, locationMarkerId?: string | null) => void
   onChapterSelect: (chapterId: string) => void
+  /** Optional scope picker rendered at the far left (multi-timeline worlds). */
+  scopeSelector?: ReactNode
 }
 
 export function SingleTrack({
@@ -35,7 +37,7 @@ export function SingleTrack({
   prevEvent, nextEvent, accentColor, isPlayingStory, playbackSpeed,
   scrollerRef, activeMarkerRef,
   onPlayPause, onStop, onSpeedChange, onDiffOpen, onClear,
-  onPrev, onNext, onEventSelect, onChapterSelect,
+  onPrev, onNext, onEventSelect, onChapterSelect, scopeSelector,
 }: SingleTrackProps) {
   return (
     <div style={{ position: 'fixed', bottom: 0, left: 'var(--pw-nav-w, 0px)', right: 0, zIndex: 1000 }}>
@@ -49,6 +51,7 @@ export function SingleTrack({
         overflow: 'hidden',
         fontFamily: 'var(--font-body)',
       }}>
+        {scopeSelector}
         <Controls
           isPlaying={isPlayingStory}
           speed={playbackSpeed}
