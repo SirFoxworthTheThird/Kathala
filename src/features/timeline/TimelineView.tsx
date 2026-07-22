@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History } from 'lucide-react'
-import { useTimelines, useChapters, useTimelineEvents, createTimeline, updateTimeline, deleteTimeline } from '@/db/hooks/useTimeline'
+import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered } from 'lucide-react'
+import { useTimelines, useChapters, useTimelineEvents, useWorldChapters, useWorldEvents, createTimeline, updateTimeline, deleteTimeline } from '@/db/hooks/useTimeline'
+import { buildCombinedChronology, type CombinedRow } from '@/lib/combinedTimeline'
 import { useWorld } from '@/db/hooks/useWorlds'
 import { useAppStore } from '@/store'
 import { computeInWorldDays } from '@/lib/inWorldTime'
@@ -87,18 +88,91 @@ function ChronologicalList({ events, chapters, activeEventId, onSelect }: {
   )
 }
 
+// ── All timelines (combined in-world order) ──────────────────────────────────
+// Every timeline's events merged into one chronological sequence, each row
+// tagged with the timeline it belongs to, so the real order across storylines
+// is visible in one place. Ordering is computed by buildCombinedChronology.
+const ALL_TIMELINES = '__all__'
+
+function CombinedList({ rows, activeEventId, onSelect }: {
+  rows: CombinedRow[]
+  activeEventId: string | null
+  onSelect: (id: string) => void
+}) {
+  if (rows.length === 0) {
+    return (
+      <p className="text-sm text-[hsl(var(--muted-foreground))]">
+        No events yet — add events across your timelines to see them in one sequence.
+      </p>
+    )
+  }
+  return (
+    <div className="flex flex-col gap-1">
+      {rows.map(({ event: ev, chapter: ch, timeline: tl, day, pinnedFlashback }) => {
+        const isActive = ev.id === activeEventId
+        return (
+          <button
+            key={ev.id}
+            onClick={() => onSelect(ev.id)}
+            className={cn(
+              'flex items-center gap-3 rounded-md border px-3 py-2 text-left transition-colors',
+              isActive
+                ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))]'
+                : 'border-[hsl(var(--border))] bg-[hsl(var(--card))] hover:border-[hsl(var(--ring)/0.4)]'
+            )}
+          >
+            <div className="w-16 shrink-0 text-right">
+              {pinnedFlashback ? (
+                <span className="text-[10px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">flashback</span>
+              ) : (
+                <span className="text-sm font-semibold tabular-nums text-[hsl(var(--foreground))]">Day {day}</span>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-[hsl(var(--foreground))]">{ev.title || 'Untitled event'}</p>
+              <p className="flex items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))]">
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: tl?.color }}
+                  aria-hidden="true"
+                />
+                <span className="truncate">
+                  {tl?.name ?? 'Timeline'}{ch ? ` · Ch. ${ch.number} — ${ch.title}` : ''}
+                </span>
+              </p>
+            </div>
+            {ev.isFlashback && (
+              <span title="Flashback / retrospective" className="shrink-0">
+                <History className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+              </span>
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function TimelineView() {
   const { worldId } = useParams<{ worldId: string }>()
   const timelines = useTimelines(worldId ?? null)
   const [activeTimelineId, setActiveTimelineId] = useState<string | null>(null)
-  const currentTimelineId = activeTimelineId ?? timelines[0]?.id ?? null
-  const chapters = useChapters(currentTimelineId)
-  const timelineEvents = useTimelineEvents(currentTimelineId)
+  // The combined "All timelines" scope only makes sense with 2+ timelines; if
+  // the count drops to one (e.g. after a delete), fall back to that timeline.
+  const isAll = activeTimelineId === ALL_TIMELINES && timelines.length > 1
+  const currentTimelineId = isAll
+    ? ALL_TIMELINES
+    : (activeTimelineId && activeTimelineId !== ALL_TIMELINES ? activeTimelineId : timelines[0]?.id ?? null)
+  const chapters = useChapters(isAll ? null : currentTimelineId)
+  const timelineEvents = useTimelineEvents(isAll ? null : currentTimelineId)
+  const worldChapters = useWorldChapters(isAll ? worldId ?? null : null)
+  const worldEvents = useWorldEvents(isAll ? worldId ?? null : null)
   const [viewMode, setViewMode] = useState<'narrative' | 'chronological'>('narrative')
   const setActiveEventId = useAppStore((s) => s.setActiveEventId)
   const activeEventId = useAppStore((s) => s.activeEventId)
   const world = useWorld(worldId ?? null)
   const currentTimeline = timelines.find((t) => t.id === currentTimelineId)
+  const combinedRows = isAll ? buildCombinedChronology(worldEvents, worldChapters, timelines) : []
   const [addChapterOpen, setAddChapterOpen] = useState(false)
   const [aiChapterOpen, setAiChapterOpen] = useState(false)
   const [relPanelOpen, setRelPanelOpen] = useState(false)
@@ -210,36 +284,63 @@ export default function TimelineView() {
               </button>
             </div>
           ))}
+          {/* Combined view across every timeline */}
+          <button
+            role="tab"
+            aria-selected={isAll}
+            aria-controls="timeline-panel"
+            onClick={() => setActiveTimelineId(ALL_TIMELINES)}
+            title="Merge every timeline into one in-world sequence"
+            className={`flex shrink-0 items-center gap-1 rounded px-2 py-1 text-xs transition-colors ${
+              isAll
+                ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
+            }`}
+          >
+            <ListOrdered className="h-3 w-3 shrink-0" aria-hidden="true" />
+            All timelines
+          </button>
         </div>
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
         <div className="flex flex-wrap items-center gap-2">
           <Layers className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-          <span className="text-sm font-medium">
-            {timelines.find((t) => t.id === currentTimelineId)?.name ?? 'Timeline'}
-          </span>
-          <span className="text-xs text-[hsl(var(--muted-foreground))]">({chapters.length} chapters)</span>
-          <div className="ml-2 flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-xs" role="group" aria-label="Timeline order">
-            <button
-              onClick={() => setViewMode('narrative')}
-              aria-pressed={viewMode === 'narrative'}
-              className={cn('flex items-center gap-1 px-2 py-1 transition-colors',
-                viewMode === 'narrative' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
-              title="Reading order — chapters as written"
-            >
-              <AlignLeft className="h-3.5 w-3.5" /> Narrative
-            </button>
-            <button
-              onClick={() => setViewMode('chronological')}
-              aria-pressed={viewMode === 'chronological'}
-              className={cn('flex items-center gap-1 border-l border-[hsl(var(--border))] px-2 py-1 transition-colors',
-                viewMode === 'chronological' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
-              title="In-world order — events by when they actually happen"
-            >
-              <Clock className="h-3.5 w-3.5" /> Chronological
-            </button>
-          </div>
+          {isAll ? (
+            <>
+              <span className="text-sm font-medium">All timelines</span>
+              <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                ({timelines.length} timelines · {worldChapters.length} chapters, in-world order)
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="text-sm font-medium">
+                {timelines.find((t) => t.id === currentTimelineId)?.name ?? 'Timeline'}
+              </span>
+              <span className="text-xs text-[hsl(var(--muted-foreground))]">({chapters.length} chapters)</span>
+              <div className="ml-2 flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-xs" role="group" aria-label="Timeline order">
+                <button
+                  onClick={() => setViewMode('narrative')}
+                  aria-pressed={viewMode === 'narrative'}
+                  className={cn('flex items-center gap-1 px-2 py-1 transition-colors',
+                    viewMode === 'narrative' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
+                  title="Reading order — chapters as written"
+                >
+                  <AlignLeft className="h-3.5 w-3.5" /> Narrative
+                </button>
+                <button
+                  onClick={() => setViewMode('chronological')}
+                  aria-pressed={viewMode === 'chronological'}
+                  className={cn('flex items-center gap-1 border-l border-[hsl(var(--border))] px-2 py-1 transition-colors',
+                    viewMode === 'chronological' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
+                  title="In-world order — events by when they actually happen"
+                >
+                  <Clock className="h-3.5 w-3.5" /> Chronological
+                </button>
+              </div>
+            </>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {timelines.length >= 2 && (
@@ -250,10 +351,10 @@ export default function TimelineView() {
           <Button size="sm" variant="outline" onClick={handleCreateTimeline}>
             <Layers className="h-4 w-4" /> New Timeline
           </Button>
-          <Button size="sm" variant="outline" onClick={() => setAiChapterOpen(true)} disabled={!currentTimelineId}>
+          <Button size="sm" variant="outline" onClick={() => setAiChapterOpen(true)} disabled={!currentTimelineId || isAll}>
             <Sparkles className="h-4 w-4" /> Generate with AI
           </Button>
-          <Button size="sm" onClick={() => setAddChapterOpen(true)} disabled={!currentTimelineId}>
+          <Button size="sm" onClick={() => setAddChapterOpen(true)} disabled={!currentTimelineId || isAll}>
             <Plus className="h-4 w-4" /> Add Chapter
           </Button>
         </div>
@@ -261,7 +362,15 @@ export default function TimelineView() {
 
       <div id="timeline-panel" role="tabpanel" className="flex flex-col flex-1 min-h-0">
       <div className="flex-1 overflow-auto p-4">
-        {chapters.length === 0 ? (
+        {isAll ? (
+          <div className="flex flex-col gap-3">
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">
+              Every timeline merged by in-world day (each timeline clocked from its own day&nbsp;0).
+              Use the chapter number and coloured tag to see which storyline each scene belongs to.
+            </p>
+            <CombinedList rows={combinedRows} activeEventId={activeEventId} onSelect={setActiveEventId} />
+          </div>
+        ) : chapters.length === 0 ? (
           <EmptyState
             icon={BookOpen}
             title="No chapters yet"
@@ -297,10 +406,10 @@ export default function TimelineView() {
           </div>
         )}
       </div>
-      {currentTimelineId && viewMode === 'narrative' && <BulkActionToolbar timelineId={currentTimelineId} />}
+      {currentTimelineId && !isAll && viewMode === 'narrative' && <BulkActionToolbar timelineId={currentTimelineId} />}
       </div>
 
-      {worldId && currentTimelineId && (
+      {worldId && currentTimelineId && !isAll && (
         <AddChapterDialog
           open={addChapterOpen}
           onOpenChange={setAddChapterOpen}
@@ -309,7 +418,7 @@ export default function TimelineView() {
           nextNumber={chapters.length + 1}
         />
       )}
-      {worldId && currentTimelineId && currentTimeline && (
+      {worldId && currentTimelineId && !isAll && currentTimeline && (
         <ChapterAIDialog
           open={aiChapterOpen}
           onOpenChange={setAiChapterOpen}

@@ -291,6 +291,19 @@ Click either track to make it active; playback follows that track while keeping
 the linked one available for context. A frame narrative uses its configured
 outer and inner timelines. Other two-timeline worlds use the first two timelines.
 
+#### All timelines — the real sequence across storylines
+
+Each timeline numbers its chapters on its own and keeps its own in-world clock,
+so switching between tabs never shows how the storylines actually interleave.
+The **All timelines** tab (it appears alongside your timeline tabs once you have
+more than one) merges every timeline into a single **in-world sequence** — every
+scene ordered by the day it happens, with each timeline clocked from its own
+day 0. Each row is tagged with a coloured dot, its timeline name, and its chapter,
+so you can read the true order of events across parallel POVs or braided plots at
+a glance. Click any row to move the time cursor to that moment.
+
+![All timelines combined view](images/47-all-timelines.png)
+
 ### Chapter detail
 
 Opening a chapter shows its events in order, each with the characters involved,
