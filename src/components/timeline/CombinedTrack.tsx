@@ -2,6 +2,7 @@ import { type CSSProperties, type RefObject } from 'react'
 import { BAR_H_SINGLE } from '@/lib/useBarHeight'
 import type { Chapter, Timeline, WorldEvent } from '@/types'
 import type { ChapterRun } from '@/lib/combinedTimeline'
+import type { PlaybackSpeed } from '@/store'
 import { Controls, EventPanel } from './TimelineControls'
 import { CombinedScrubber } from './TimelineScrubber'
 import { TimelineScopeSelect } from './TimelineScopeSelect'
@@ -17,8 +18,13 @@ export interface CombinedTrackProps {
   activeTimeline: Timeline | null
   hasPrev: boolean
   hasNext: boolean
+  isPlaying: boolean
+  playbackSpeed: PlaybackSpeed
   scrollerRef: RefObject<HTMLDivElement | null>
   activeMarkerRef: RefObject<HTMLButtonElement | null>
+  onPlayPause: () => void
+  onStop: () => void
+  onSpeedChange: () => void
   onDiffOpen: () => void
   onClear: () => void
   onPrev: () => void
@@ -29,14 +35,15 @@ export interface CombinedTrackProps {
 /**
  * Single-height bottom bar for a multi-timeline world when the user chooses to
  * see every storyline at once: a scope selector, the active event panel, and a
- * combined scrubber of chapter runs tinted by timeline. It's a navigation
- * overview — no map playback (that stays per-timeline).
+ * combined scrubber of chapter runs tinted by timeline. Play is an in-place
+ * read-through of the merged sequence (the fill sweeps the whole strip and the
+ * side panels update) — map animation stays per-timeline.
  */
 export function CombinedTrack({
   timelines, scope, onScopeChange, runs,
   activeEventId, activeEvent, activeChapter, activeTimeline,
-  hasPrev, hasNext, scrollerRef, activeMarkerRef,
-  onDiffOpen, onClear, onPrev, onNext, onEventSelect,
+  hasPrev, hasNext, isPlaying, playbackSpeed, scrollerRef, activeMarkerRef,
+  onPlayPause, onStop, onSpeedChange, onDiffOpen, onClear, onPrev, onNext, onEventSelect,
 }: CombinedTrackProps) {
   const accent = activeTimeline?.color ?? 'var(--tl-accent)'
   return (
@@ -53,18 +60,18 @@ export function CombinedTrack({
       }}>
         <TimelineScopeSelect timelines={timelines} value={scope} onChange={onScopeChange} />
         <Controls
-          isPlaying={false}
-          speed="normal"
-          showStop={false}
+          isPlaying={isPlaying}
+          speed={playbackSpeed}
+          showStop={isPlaying}
           showDiff={!!activeEventId}
-          showClear={!!activeEventId}
+          showClear={!!activeEventId && !isPlaying}
           color={accent}
-          onPlayPause={() => {}}
-          onStop={onClear}
-          onSpeedChange={() => {}}
+          onPlayPause={onPlayPause}
+          onStop={onStop}
+          onSpeedChange={onSpeedChange}
           onDiffOpen={onDiffOpen}
           onClear={onClear}
-          showPlay={false}
+          playLabel="Play through the merged sequence"
         />
         {activeEvent && activeChapter && (
           <EventPanel

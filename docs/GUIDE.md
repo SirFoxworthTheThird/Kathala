@@ -292,11 +292,18 @@ keeping the linked one available for context, and a ghost cursor line marks the
 corresponding moment on the other track.
 
 Every **other multi-timeline world** uses a single-height bottom bar with a
-**scope selector** on its left. Choose one timeline to scrub it on its own (with
-map playback), or pick **All · Chapter order** / **All · Chronological** to merge
-every timeline into one strip — each chapter run tinted with its timeline's
-colour, and the active event's panel showing which storyline it belongs to. The
-merged views are for navigation and overview; map playback stays per-timeline.
+**scope selector** on its left. Choose one timeline to scrub it on its own, or
+pick **All · Chapter order** / **All · Chronological** to merge every timeline
+into one strip — each chapter run tinted with its timeline's colour, and the
+active event's panel showing which storyline it belongs to.
+
+**Play** behaves to match the scope. On a single timeline it's the usual
+animated run on the map (characters move along their trails). In a merged view
+it's an in-place **read-through**: the fill sweeps across every scene of every
+timeline while the Writer's Brief, character panels, and continuity update — no
+jump to the map, since a character's movements are recorded per timeline and
+don't compose across storylines. Drop into a single timeline when you want the
+animated map run.
 
 ![The multi-timeline bottom bar scope selector](images/49-timeline-bar-scope.png)
 

@@ -18,12 +18,13 @@ export interface ControlsProps {
   onSpeedChange: () => void
   onDiffOpen: () => void
   onClear: () => void
-  /** Hide the play/speed controls — e.g. the combined all-timelines view, which
-   *  is a navigation scrubber rather than a single-timeline map playback. */
+  /** Hide the play/speed controls entirely. */
   showPlay?: boolean
+  /** Tooltip for the play button — differs for the merged read-through. */
+  playLabel?: string
 }
 
-export function Controls({ isPlaying, speed, showStop, showDiff, showClear, color, onPlayPause, onStop, onSpeedChange, onDiffOpen, onClear, showPlay = true }: ControlsProps) {
+export function Controls({ isPlaying, speed, showStop, showDiff, showClear, color, onPlayPause, onStop, onSpeedChange, onDiffOpen, onClear, showPlay = true, playLabel = 'Play story on the map' }: ControlsProps) {
   const btn = (clr: string): CSSProperties => ({
     background: 'none', border: 'none', cursor: 'pointer', color: clr,
     padding: '0.2rem', display: 'flex', alignItems: 'center',
@@ -36,7 +37,7 @@ export function Controls({ isPlaying, speed, showStop, showDiff, showClear, colo
       borderRight: '1px solid var(--tl-border)',
     }}>
       {showPlay && (
-      <button onClick={onPlayPause} title={isPlaying ? 'Pause' : 'Play story on the map'} style={btn(color)}>
+      <button onClick={onPlayPause} title={isPlaying ? 'Pause' : playLabel} style={btn(color)}>
         {isPlaying ? <Pause size={12} /> : <Play size={12} />}
       </button>
       )}

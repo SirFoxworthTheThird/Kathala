@@ -116,10 +116,12 @@ export function ChapterTimelineBar() {
   const runs          = useMemo(() => groupChapterRuns(combinedRows), [combinedRows])
   const combinedOrdered = useMemo(() => combinedRows.map((r) => r.event), [combinedRows])
 
-  // ── Playback (single-timeline / frame only) ────────────────────────────────
-  const playbackOrdered = isFrame ? frameOrdered : singleOrdered
+  // ── Playback ───────────────────────────────────────────────────────────────
+  // Single track & frame → the events of that timeline (map animation). Merged
+  // view → the combined sequence, played in place (no map jump).
+  const playbackOrdered = isFrame ? frameOrdered : isCombined ? combinedOrdered : singleOrdered
   const { handlePlayPause, handleStop, cycleSpeed, isPlayingStory, playbackSpeed } =
-    useTimelinePlayback(playbackOrdered, frameRel, activeDepthTimelineId, innerTimelineId)
+    useTimelinePlayback(playbackOrdered, frameRel, activeDepthTimelineId, innerTimelineId, !isCombined)
 
   // ── Scroll refs ────────────────────────────────────────────────────────────
   const scrollerRef      = useRef<HTMLDivElement>(null)
@@ -222,8 +224,13 @@ export function ChapterTimelineBar() {
         activeTimeline={activeTimeline}
         hasPrev={!!prevEvent}
         hasNext={!!nextEvent}
+        isPlaying={isPlayingStory}
+        playbackSpeed={playbackSpeed}
         scrollerRef={scrollerRef}
         activeMarkerRef={activeMarkerRef}
+        onPlayPause={handlePlayPause}
+        onStop={handleStop}
+        onSpeedChange={cycleSpeed}
         onDiffOpen={() => setDiffOpen(true)}
         onClear={() => setActiveEventId(null)}
         onPrev={() => prevEvent && setActiveEventId(prevEvent.id)}
