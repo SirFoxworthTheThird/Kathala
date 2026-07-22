@@ -14,7 +14,7 @@ import { useBlobUrl, useWorldBlobUrls } from '@/db/hooks/useBlobs'
 import { useMapRoutes } from '@/db/hooks/useMapRoutes'
 import { useMapRegions, useBestRegionSnapshots } from '@/db/hooks/useMapRegions'
 import type { CharacterPin, GhostPin, EchoMarker, MovementLine } from './LeafletMapCanvas'
-import { characterColor, resolveCharacterPin, resolvedSnapshotLayerId } from './mapUtils'
+import { characterColor, resolveCharacterPin, resolvedSnapshotLayerId, resolveMapTimelineId } from './mapUtils'
 import { pathPixelLength, formatDistance } from '@/lib/mapScale'
 import type { MapRegionStatus } from '@/types'
 
@@ -35,9 +35,15 @@ export function useMapViewState(worldId: string, layerId: string) {
   const playbackTimelineId     = usePlaybackTimelineId()
   const activeDepthTimelineId  = useActiveDepthTimelineId()
   const activeOuterEventId     = useActiveOuterEventId()
-  const effectiveTimelineId    = playbackTimelineId ?? timelines[0]?.id ?? null
-  const chapters               = useChapters(effectiveTimelineId)
   const allWorldEvents         = useWorldEvents(worldId)
+  // The map follows the active event's own timeline, so a merged all-timelines
+  // playback that crosses storylines animates the right cast on each event.
+  const activeEventTimelineId  = useMemo(
+    () => (activeEventId ? allWorldEvents.find((e) => e.id === activeEventId)?.timelineId ?? null : null),
+    [activeEventId, allWorldEvents],
+  )
+  const effectiveTimelineId    = resolveMapTimelineId(activeEventTimelineId, playbackTimelineId, timelines[0]?.id ?? null)
+  const chapters               = useChapters(effectiveTimelineId)
 
   // ── Frame narrative context ────────────────────────────────────────────────
   const frameRel = useMemo(() => {

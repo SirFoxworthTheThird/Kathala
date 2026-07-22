@@ -15,9 +15,6 @@ export function useTimelinePlayback(
   frameRel: TimelineRelationship | null,
   activeDepthTimelineId: string | null,
   innerTimelineId: string | null,
-  /** Whether pressing play jumps to the map. False for the merged all-timelines
-   *  view, which plays as an in-place read-through (the map is per-timeline). */
-  navigateToMapOnPlay = true,
 ) {
   const worldId = useActiveWorldId()
   const activeEventId = useActiveEventId()
@@ -62,7 +59,7 @@ export function useTimelinePlayback(
         setActiveEventId(orderedEvents[0]?.id ?? null)
       }
       setIsPlayingStory(true)
-      if (navigateToMapOnPlay && worldId && !location.pathname.includes('/maps')) navigate(`/worlds/${worldId}/maps`)
+      if (worldId && !location.pathname.includes('/maps')) navigate(`/worlds/${worldId}/maps`)
     }
   }
 

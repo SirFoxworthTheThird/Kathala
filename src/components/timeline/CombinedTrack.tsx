@@ -35,9 +35,8 @@ export interface CombinedTrackProps {
 /**
  * Single-height bottom bar for a multi-timeline world when the user chooses to
  * see every storyline at once: a scope selector, the active event panel, and a
- * combined scrubber of chapter runs tinted by timeline. Play is an in-place
- * read-through of the merged sequence (the fill sweeps the whole strip and the
- * side panels update) — map animation stays per-timeline.
+ * combined scrubber of chapter runs tinted by timeline. Playing sweeps the whole
+ * merged sequence and animates on the map, following each event's own timeline.
  */
 export function CombinedTrack({
   timelines, scope, onScopeChange, runs,
@@ -71,7 +70,7 @@ export function CombinedTrack({
           onSpeedChange={onSpeedChange}
           onDiffOpen={onDiffOpen}
           onClear={onClear}
-          playLabel="Play through the merged sequence"
+          playLabel="Play all timelines on the map"
         />
         {activeEvent && activeChapter && (
           <EventPanel

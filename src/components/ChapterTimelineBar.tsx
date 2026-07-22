@@ -117,11 +117,12 @@ export function ChapterTimelineBar() {
   const combinedOrdered = useMemo(() => combinedRows.map((r) => r.event), [combinedRows])
 
   // ── Playback ───────────────────────────────────────────────────────────────
-  // Single track & frame → the events of that timeline (map animation). Merged
-  // view → the combined sequence, played in place (no map jump).
+  // Single & frame → that timeline's events. Merged → the whole combined
+  // sequence; the map follows each event's own timeline (see useMapViewState),
+  // so playing sweeps every storyline and animates the right cast per event.
   const playbackOrdered = isFrame ? frameOrdered : isCombined ? combinedOrdered : singleOrdered
   const { handlePlayPause, handleStop, cycleSpeed, isPlayingStory, playbackSpeed } =
-    useTimelinePlayback(playbackOrdered, frameRel, activeDepthTimelineId, innerTimelineId, !isCombined)
+    useTimelinePlayback(playbackOrdered, frameRel, activeDepthTimelineId, innerTimelineId)
 
   // ── Scroll refs ────────────────────────────────────────────────────────────
   const scrollerRef      = useRef<HTMLDivElement>(null)

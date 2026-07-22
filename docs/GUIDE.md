@@ -297,13 +297,18 @@ pick **All · Chapter order** / **All · Chronological** to merge every timeline
 into one strip — each chapter run tinted with its timeline's colour, and the
 active event's panel showing which storyline it belongs to.
 
-**Play** behaves to match the scope. On a single timeline it's the usual
-animated run on the map (characters move along their trails). In a merged view
-it's an in-place **read-through**: the fill sweeps across every scene of every
-timeline while the Writer's Brief, character panels, and continuity update — no
-jump to the map, since a character's movements are recorded per timeline and
-don't compose across storylines. Drop into a single timeline when you want the
-animated map run.
+**Chapter order** follows chapter numbers across all timelines, so a book
+numbered straight through (e.g. book III = ch. 1–11, book IV = ch. 12–21) reads
+in order from chapter 1. **Chronological** order instead follows the in-world day
+each scene happens.
+
+**Play** works in every scope, always on the map. On a single timeline it's the
+usual animated run (characters move along their trails). In a merged view it
+plays through the whole sequence and the **map follows each event's own
+timeline** — as the cursor crosses from one storyline into another, the map
+switches to that timeline's cast and animates their movement. Chronological order
+braids the storylines, so the map alternates between them as their scenes
+interleave.
 
 ![The multi-timeline bottom bar scope selector](images/49-timeline-bar-scope.png)
 

@@ -66,18 +66,17 @@ test('the bottom bar scope selector switches between one timeline and all', asyn
   await expect(page.getByTitle('Ash writes home')).toBeVisible()
 })
 
-test('the merged view plays through every timeline in place, without the map', async ({ page }) => {
+test('the merged view plays every timeline on the map, following each event', async ({ page }) => {
   test.setTimeout(90000)
   await setupTwoTimelines(page)
 
   await expect(page.getByLabel('Timeline bar scope')).toHaveValue('all-chapter')
 
-  // The merged Play reads through the sequence in place (no jump to the map).
-  await page.getByTitle('Play through the merged sequence').click()
-  await expect(page).toHaveURL(/#\/worlds\/[^/]+\/timeline/)
+  // The merged Play runs on the map like any playback…
+  await page.getByTitle('Play all timelines on the map').click()
+  await expect(page).toHaveURL(/#\/worlds\/[^/]+\/maps/)
 
-  // It advances the cursor from the first timeline's scene ("A stolen glance")
-  // into the second timeline's ("Ash writes home"), all while staying put.
+  // …advancing the cursor from the first timeline's scene ("A stolen glance")
+  // into the second timeline's ("Ash writes home"); the bar stays visible.
   await expect(page.getByText('Ash writes home', { exact: true })).toBeVisible({ timeout: 15000 })
-  await expect(page).toHaveURL(/#\/worlds\/[^/]+\/timeline/)
 })

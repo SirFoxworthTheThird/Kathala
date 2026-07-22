@@ -14,6 +14,20 @@ export const PIN_TRAVEL_MS: Record<PlaybackSpeed, number> = { slow: 6500, normal
 export const PLAYBACK_FOCUS_ZOOM_DELTA = 1.5
 
 /**
+ * Which timeline the map should resolve characters/chapters against. The active
+ * event's own timeline wins, so the map always matches the current cursor —
+ * including a merged all-timelines playback that crosses from one storyline into
+ * another. Falls back to the explicit playback timeline, then the first timeline.
+ */
+export function resolveMapTimelineId(
+  activeEventTimelineId: string | null,
+  playbackTimelineId: string | null,
+  firstTimelineId: string | null,
+): string | null {
+  return activeEventTimelineId ?? playbackTimelineId ?? firstTimelineId
+}
+
+/**
  * Pick a useful character-follow zoom without undoing a closer zoom selected by
  * the user or exceeding the map's configured maximum.
  */

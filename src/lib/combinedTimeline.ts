@@ -41,19 +41,29 @@ export function buildCombinedSequence(
     [...timelines].sort((a, b) => a.createdAt - b.createdAt).map((t, i) => [t.id, i] as const),
   )
 
+  const chapterNumber = (e: WorldEvent) => chapterById.get(e.chapterId)?.number ?? 0
+  const timelineRank = (e: WorldEvent) => timelineOrder.get(e.timelineId) ?? 0
+
   return [...events]
     .sort((a, b) => {
       if (order === 'chrono') {
+        // In-world day first; then timeline, chapter, sortOrder.
         const da = days.get(a.id) ?? 0
         const dbb = days.get(b.id) ?? 0
         if (da !== dbb) return da - dbb
+        const tr = timelineRank(a) - timelineRank(b)
+        if (tr !== 0) return tr
+        const cr = chapterNumber(a) - chapterNumber(b)
+        return cr !== 0 ? cr : a.sortOrder - b.sortOrder
       }
-      const ta = timelineOrder.get(a.timelineId) ?? 0
-      const tb = timelineOrder.get(b.timelineId) ?? 0
-      if (ta !== tb) return ta - tb
-      const ca = chapterById.get(a.chapterId)?.number ?? 0
-      const cb = chapterById.get(b.chapterId)?.number ?? 0
-      return ca !== cb ? ca - cb : a.sortOrder - b.sortOrder
+      // Chapter order = global reading order by chapter number. Timelines are
+      // often numbered continuously (e.g. book III = ch1–11, book IV = ch12–21),
+      // so chapter number must win over timeline — otherwise a merge starts
+      // wherever the (possibly equal-timestamped) timelines happen to sort.
+      const cr = chapterNumber(a) - chapterNumber(b)
+      if (cr !== 0) return cr
+      const tr = timelineRank(a) - timelineRank(b)
+      return tr !== 0 ? tr : a.sortOrder - b.sortOrder
     })
     .map((event) => ({
       event,

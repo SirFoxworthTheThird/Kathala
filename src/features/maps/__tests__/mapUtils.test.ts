@@ -4,6 +4,7 @@ import {
   buildSequentialQueue,
   playbackFocusTarget,
   playbackFocusZoom,
+  resolveMapTimelineId,
   type PinLayer,
 } from '../mapUtils'
 import type { CharacterSnapshot, LocationMarker } from '@/types'
@@ -114,5 +115,18 @@ describe('playbackFocusTarget', () => {
       from: {},
       to: { harry: { x: 30, y: 40 } },
     })).toEqual({ characterId: 'harry', position: { x: 30, y: 40 } })
+  })
+})
+
+describe('resolveMapTimelineId', () => {
+  it('prefers the active event\'s own timeline (so the map follows the cursor)', () => {
+    expect(resolveMapTimelineId('tl-2', 'tl-1', 'tl-1')).toBe('tl-2')
+  })
+  it('falls back to the playback timeline when no event is active', () => {
+    expect(resolveMapTimelineId(null, 'tl-1', 'tl-0')).toBe('tl-1')
+  })
+  it('falls back to the first timeline when nothing else is set', () => {
+    expect(resolveMapTimelineId(null, null, 'tl-0')).toBe('tl-0')
+    expect(resolveMapTimelineId(null, null, null)).toBeNull()
   })
 })

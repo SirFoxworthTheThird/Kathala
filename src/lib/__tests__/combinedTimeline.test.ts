@@ -75,14 +75,34 @@ describe('buildCombinedSequence — chapter order', () => {
   const cA1 = ch('cA1', 'A', 1)
   const cB1 = ch('cB1', 'B', 1)
 
-  it('orders by timeline then chapter, ignoring in-world day', () => {
-    // Even though B's events happen earlier in-world, chapter order keeps each
-    // timeline's chapters together (A first — created first).
+  it('breaks a same chapter-number tie by timeline, ignoring in-world day', () => {
+    // Both are chapter 1; A comes first (created first). B's earlier in-world
+    // day is irrelevant to chapter order.
     const a0 = ev('a0', 'A', 'cA1', { sortOrder: 0 })
     const a1 = ev('a1', 'A', 'cA1', { sortOrder: 1, travelDays: 9 })
     const b0 = ev('b0', 'B', 'cB1', { sortOrder: 0 })
     const rows = buildCombinedSequence([b0, a1, a0], [cA1, cB1], [tA, tB], 'chapter')
     expect(rows.map((r) => r.event.id)).toEqual(['a0', 'a1', 'b0'])
+  })
+
+  it('follows global chapter number for continuously-numbered timelines (The Two Towers)', () => {
+    // Two same-timestamp timelines: "Rohan" = ch1–2, "Road" = ch12–13. Chapter
+    // order must read 1,2,12,13 no matter which timeline sorts first — the bug
+    // was that an equal-timestamp tie could start the merge at chapter 12.
+    const rohan = tl('rohan', 1000)
+    const road  = tl('road', 1000) // identical createdAt
+    const cR1 = ch('cR1', 'rohan', 1)
+    const cR2 = ch('cR2', 'rohan', 2)
+    const cD12 = ch('cD12', 'road', 12)
+    const cD13 = ch('cD13', 'road', 13)
+    const evs = [
+      ev('d12', 'road', 'cD12'), ev('d13', 'road', 'cD13'),
+      ev('r1', 'rohan', 'cR1'), ev('r2', 'rohan', 'cR2'),
+    ]
+    // Pass Road first — the order that used to start the merge at chapter 12.
+    const rows = buildCombinedSequence(evs, [cD12, cD13, cR1, cR2], [road, rohan], 'chapter')
+    expect(rows.map((r) => r.chapter!.number)).toEqual([1, 2, 12, 13])
+    expect(rows[0].event.id).toBe('r1')
   })
 })
 
