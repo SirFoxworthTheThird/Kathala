@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeThreadCadence } from '@/lib/plotThreads'
+import { computeThreadCadence, eventMatchesThread, chaptersWithThread } from '@/lib/plotThreads'
 import type { WorldEvent, Chapter, PlotThread } from '@/types'
 
 function chapter(id: string, number: number): Chapter {
@@ -58,5 +58,34 @@ describe('computeThreadCadence', () => {
     expect(rows.map((r) => r.thread.id)).toEqual(['b', 'a', 'c'])
     expect(rows[2].firstChapterNumber).toBeNull()
     expect(rows[2].eventCount).toBe(0)
+  })
+})
+
+describe('eventMatchesThread', () => {
+  it('matches only events carrying the thread', () => {
+    expect(eventMatchesThread(event('e', 'c1', 0, ['romance']), 'romance')).toBe(true)
+    expect(eventMatchesThread(event('e', 'c1', 0, ['heist']), 'romance')).toBe(false)
+    expect(eventMatchesThread(event('e', 'c1', 0, []), 'romance')).toBe(false)
+  })
+  it('treats a null thread (the "All" filter) as matching everything', () => {
+    expect(eventMatchesThread(event('e', 'c1', 0, []), null)).toBe(true)
+    expect(eventMatchesThread(event('e', 'c1', 0, ['romance']), null)).toBe(true)
+  })
+})
+
+describe('chaptersWithThread', () => {
+  const events = [
+    event('e1', 'c1', 0, ['romance']),
+    event('e2', 'c2', 0, ['heist']),
+    event('e3', 'c4', 0, ['romance']),
+  ]
+  it('keeps only chapters that hold a beat on the thread, in order', () => {
+    expect(chaptersWithThread(chapters, events, 'romance').map((c) => c.id)).toEqual(['c1', 'c4'])
+  })
+  it('returns every chapter unchanged for the null filter', () => {
+    expect(chaptersWithThread(chapters, events, null)).toBe(chapters)
+  })
+  it('returns nothing for a thread with no tagged events', () => {
+    expect(chaptersWithThread(chapters, events, 'ghost')).toEqual([])
   })
 })

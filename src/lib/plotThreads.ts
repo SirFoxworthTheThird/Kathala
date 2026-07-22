@@ -45,3 +45,25 @@ export function computeThreadCadence({
     chapterCount,
   }
 }
+
+/** Whether an event advances the given thread. A null thread matches everything
+ *  (the "All" filter), so callers can pass the active filter through directly. */
+export function eventMatchesThread(event: WorldEvent, threadId: string | null): boolean {
+  if (!threadId) return true
+  return (event.threadIds ?? []).includes(threadId)
+}
+
+/** The chapters that contain at least one event advancing the given thread, in
+ *  their original order. A null thread returns every chapter unchanged, so the
+ *  timeline can hide chapters with no beat on the focused subplot. */
+export function chaptersWithThread(
+  chapters: Chapter[],
+  events: WorldEvent[],
+  threadId: string | null,
+): Chapter[] {
+  if (!threadId) return chapters
+  const chapterIds = new Set(
+    events.filter((e) => (e.threadIds ?? []).includes(threadId)).map((e) => e.chapterId),
+  )
+  return chapters.filter((c) => chapterIds.has(c.id))
+}

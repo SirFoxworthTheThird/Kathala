@@ -316,7 +316,7 @@ Tag events as belonging to named narrative threads (A-plot, romance subplot, mys
 
 - [ ] **Data model** — new `PlotThread` entity (`id, worldId, name, color, description`); events gain `threadIds: string[]` (many-to-many); DB migration.
 - [ ] **Plot Threads management** — new `Threads` nav item (or section inside Timeline); CRUD for threads with colour picker; events can be tagged to multiple threads.
-- [ ] **Timeline filter** — thread filter pill row above the chapter list; selecting a thread dims events not in that thread (or hides them); "All" resets.
+- [x] **Timeline filter** — thread filter pill row above the chapter list (Narrative view); selecting a thread hides chapters/events not on it and auto-expands the matches; "All threads" resets. Pure `eventMatchesThread` / `chaptersWithThread` in `src/lib/plotThreads.ts` (unit-tested) + a Playwright filter e2e.
 - [ ] **Arc View thread lane** — optional row per thread showing which chapters/events contain thread activity.
 - [ ] **Continuity checks** — warn on threads with a long gap (configurable N chapters with no events); warn on threads that start but never resolve (no events after chapter N).
 

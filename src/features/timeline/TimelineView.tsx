@@ -1,8 +1,10 @@
 import { useState, useRef } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered } from 'lucide-react'
+import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter } from 'lucide-react'
 import { useTimelines, useChapters, useTimelineEvents, useWorldChapters, useWorldEvents, createTimeline, updateTimeline, deleteTimeline } from '@/db/hooks/useTimeline'
+import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { buildCombinedChronology, type CombinedRow } from '@/lib/combinedTimeline'
+import { chaptersWithThread } from '@/lib/plotThreads'
 import { useWorld } from '@/db/hooks/useWorlds'
 import { useAppStore } from '@/store'
 import { computeInWorldDays } from '@/lib/inWorldTime'
@@ -168,6 +170,8 @@ export default function TimelineView() {
   const worldChapters = useWorldChapters(isAll ? worldId ?? null : null)
   const worldEvents = useWorldEvents(isAll ? worldId ?? null : null)
   const [viewMode, setViewMode] = useState<'narrative' | 'chronological'>('narrative')
+  const threads = usePlotThreads(worldId ?? null)
+  const [threadFilter, setThreadFilter] = useState<string | null>(null)
   const setActiveEventId = useAppStore((s) => s.setActiveEventId)
   const activeEventId = useAppStore((s) => s.activeEventId)
   const world = useWorld(worldId ?? null)
@@ -392,9 +396,50 @@ export default function TimelineView() {
               onSelect={setActiveEventId}
             />
             {viewMode === 'narrative' ? (
-              chapters.map((ch) => (
-                <ChapterRow key={ch.id} chapter={ch} />
-              ))
+              <>
+                {threads.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter by plot thread">
+                    <Filter className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+                    <button
+                      onClick={() => setThreadFilter(null)}
+                      aria-pressed={threadFilter === null}
+                      className={cn('rounded-full border px-2.5 py-0.5 text-xs transition-colors',
+                        threadFilter === null
+                          ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                          : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]')}
+                    >
+                      All threads
+                    </button>
+                    {threads.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => setThreadFilter(threadFilter === t.id ? null : t.id)}
+                        aria-pressed={threadFilter === t.id}
+                        className={cn('flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs transition-colors',
+                          threadFilter === t.id
+                            ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                            : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]')}
+                      >
+                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: t.color }} aria-hidden="true" />
+                        {t.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {(() => {
+                  const shown = chaptersWithThread(chapters, timelineEvents, threadFilter)
+                  if (shown.length === 0) {
+                    return (
+                      <p className="py-6 text-center text-sm text-[hsl(var(--muted-foreground))]">
+                        No chapters advance this thread yet — tag scenes with it on their event cards.
+                      </p>
+                    )
+                  }
+                  return shown.map((ch) => (
+                    <ChapterRow key={ch.id} chapter={ch} threadFilter={threadFilter} />
+                  ))
+                })()}
+              </>
             ) : (
               <ChronologicalList
                 events={timelineEvents}

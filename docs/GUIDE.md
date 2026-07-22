@@ -493,6 +493,16 @@ across your chapters and flags trouble:
 Tag a thread onto an event from the event's card; create threads inline with the
 **+ New thread** button.
 
+### Filtering the timeline to one thread
+
+Once you have threads, the **Timeline** page (in Narrative view) shows a filter
+row of thread pills above the chapters. Click a thread to focus the timeline on
+that subplot: only chapters that advance it are listed, each expanded to show
+just the scenes tagged with it, so you can read a subplot end-to-end without the
+surrounding story. Click **All threads** to clear the filter.
+
+![Filtering the timeline by plot thread](images/48-thread-filter.png)
+
 ---
 
 ## Motifs & Themes
