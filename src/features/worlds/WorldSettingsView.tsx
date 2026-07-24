@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { Footprints, Plus, Pencil, Check, X, Trash2, FileCode2, Upload, Image as ImageIcon } from 'lucide-react'
 import { useWorld, updateWorld } from '@/db/hooks/useWorlds'
+import { useTimelines, updateTimeline } from '@/db/hooks/useTimeline'
 import { useRootMapLayers } from '@/db/hooks/useMapLayers'
 import { useTravelModes, createTravelMode, updateTravelMode, deleteTravelMode } from '@/db/hooks/useTravelModes'
 import { storeBlob } from '@/db/hooks/useBlobs'
@@ -81,6 +82,7 @@ function TravelModeRow({ mode, scaleUnit }: { mode: TravelMode; scaleUnit: strin
 export default function WorldSettingsView() {
   const { worldId } = useParams<{ worldId: string }>()
   const world = useWorld(worldId ?? null)
+  const timelines = useTimelines(worldId ?? null)
   const maps = useRootMapLayers(worldId ?? null)
   const travelModes = useTravelModes(worldId ?? null)
 
@@ -408,6 +410,40 @@ export default function WorldSettingsView() {
           )}
         </div>
       </section>
+
+      {/* Timelines — per-timeline day offsets for multi-era worlds */}
+      {timelines.length > 1 && (
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Timelines</h2>
+            <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+              Each timeline's clock starts at its own day. Give a historically-shifted timeline
+              (a frame narrative's past, an earlier era) a start day so it lines up with the others
+              in chronological merges and on the calendar.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            {timelines.map((tl) => (
+              <div key={tl.id} className="flex items-center gap-3">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: tl.color }} aria-hidden="true" />
+                <span className="w-40 shrink-0 truncate text-sm text-[hsl(var(--foreground))]">{tl.name}</span>
+                <Label htmlFor={`tl-offset-${tl.id}`} className="text-xs text-[hsl(var(--muted-foreground))]">starts at day</Label>
+                <input
+                  id={`tl-offset-${tl.id}`}
+                  type="number"
+                  step="1"
+                  className="w-28 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 py-1 text-xs text-[hsl(var(--foreground))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
+                  value={tl.dayOffset ?? 0}
+                  onChange={(e) => {
+                    const n = Math.floor(Number(e.target.value))
+                    updateTimeline(tl.id, { dayOffset: isNaN(n) ? 0 : n })
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Calendar */}
       {world && <CalendarEditor world={world} />}

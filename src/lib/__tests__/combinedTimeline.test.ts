@@ -134,3 +134,20 @@ describe('groupChapterRuns', () => {
     expect(runs.map((r) => r.chapter!.id)).toEqual(['cA1', 'cB1', 'cA1'])
   })
 })
+
+describe('buildCombinedSequence — day offsets', () => {
+  it('interleaves a shifted era by its offset clock in chrono order', () => {
+    // "Past" timeline starts at day 0, "present" at day 1000: without the
+    // offset both would start at 0 and falsely interleave.
+    const past = tl('past', 1)
+    const present = { ...tl('present', 2), dayOffset: 1000 }
+    const cP = ch('cP', 'past', 1)
+    const cN = ch('cN', 'present', 1)
+    const p0 = ev('p0', 'past', 'cP', { sortOrder: 0 })
+    const p9 = ev('p9', 'past', 'cP', { sortOrder: 1, travelDays: 9 })
+    const n0 = ev('n0', 'present', 'cN', { sortOrder: 0 })
+    const rows = buildCombinedSequence([n0, p9, p0], [cP, cN], [past, present], 'chrono')
+    expect(rows.map((r) => r.event.id)).toEqual(['p0', 'p9', 'n0'])
+    expect(rows.map((r) => r.day)).toEqual([0, 9, 1000])
+  })
+})

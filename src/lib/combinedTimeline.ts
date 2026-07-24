@@ -34,7 +34,7 @@ export function buildCombinedSequence(
   timelines: Timeline[],
   order: CombinedOrder,
 ): CombinedRow[] {
-  const days = computeInWorldDays(events, chapters)
+  const days = computeInWorldDays(events, chapters, timelines)
   const chapterById = new Map(chapters.map((c) => [c.id, c]))
   const timelineById = new Map(timelines.map((t) => [t.id, t]))
   const timelineOrder = new Map(

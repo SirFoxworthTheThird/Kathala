@@ -2,7 +2,8 @@ import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 
 // Two timelines, each with a chapter + event. The "All timelines" tab merges
-// them into one in-world sequence. The ordering maths is unit-tested in
+// them into one sequence, with an order toggle shared (and persisted) with the
+// bottom bar's scope selector. The ordering maths is unit-tested in
 // src/lib/__tests__/combinedTimeline.test.ts; this drives the real view.
 
 test('All timelines tab shows events from every timeline in one sequence', async ({ page }) => {
@@ -44,14 +45,31 @@ test('All timelines tab shows events from every timeline in one sequence', async
   await gotoTimeline()
   await page.getByRole('tab', { name: 'All timelines' }).click()
 
-  // Both timelines' events appear in the one merged list.
+  // Both timelines' events appear in the one merged list — default order is
+  // the reading-order merge, matching the bottom bar's default scope.
   const main = page.getByRole('main')
-  await expect(main.getByText('Every timeline merged by in-world day', { exact: false })).toBeVisible()
+  await expect(main.getByText('Every timeline merged in reading order', { exact: false })).toBeVisible()
   await expect(main.getByText('Alpha scene', { exact: true })).toBeVisible()
   await expect(main.getByText('Beta scene', { exact: true })).toBeVisible()
-  await expect(main.getByText(/2 timelines · 2 chapters, in-world order/)).toBeVisible()
+  await expect(main.getByText(/2 timelines · 2 chapters/)).toBeVisible()
 
   // Each row is tagged with the timeline it belongs to.
   await expect(main.getByText(/Main Timeline · Ch\. 1 — One/)).toBeVisible()
   await expect(main.getByText(/Timeline 2 · Ch\. 1 — Two/)).toBeVisible()
+
+  // The order toggle is shared with the bottom bar's scope selector:
+  // switching to Chronological here updates the bar…
+  const barScope = page.getByLabel('Timeline bar scope')
+  await page.getByRole('button', { name: 'Chronological' }).click()
+  await expect(main.getByText('Every timeline merged by in-world day', { exact: false })).toBeVisible()
+  await expect(barScope).toHaveValue('all-chrono')
+
+  // …and changing the bar updates the tab.
+  await barScope.selectOption('all-chapter')
+  await expect(main.getByText('Every timeline merged in reading order', { exact: false })).toBeVisible()
+
+  // The chosen scope survives a reload (persisted store).
+  await barScope.selectOption('all-chrono')
+  await page.reload({ waitUntil: 'load' })
+  await expect(page.getByLabel('Timeline bar scope')).toHaveValue('all-chrono')
 })

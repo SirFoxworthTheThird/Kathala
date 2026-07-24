@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { CalendarDays, History } from 'lucide-react'
 import { useWorld } from '@/db/hooks/useWorlds'
-import { useWorldEvents, useWorldChapters, updateEvent } from '@/db/hooks/useTimeline'
+import { useWorldEvents, useWorldChapters, useTimelines, updateEvent } from '@/db/hooks/useTimeline'
 import { buildCalendarMonths, type CalendarEvent } from '@/lib/calendarView'
 import { dateToDayNumber } from '@/lib/calendar'
 import { useAppStore } from '@/store'
@@ -17,14 +17,15 @@ export default function CalendarView() {
   const world    = useWorld(worldId ?? null)
   const events   = useWorldEvents(worldId ?? null)
   const chapters = useWorldChapters(worldId ?? null)
+  const timelines = useTimelines(worldId ?? null)
   const calendar = world?.calendar ?? null
 
   const [dragId, setDragId] = useState<string | null>(null)
   const [overCell, setOverCell] = useState<string | null>(null)
 
   const months = useMemo(
-    () => (calendar ? buildCalendarMonths({ events, chapters, calendar }) : []),
-    [calendar, events, chapters]
+    () => (calendar ? buildCalendarMonths({ events, chapters, calendar, timelines }) : []),
+    [calendar, events, chapters, timelines]
   )
 
   function openEvent(ev: CalendarEvent) {
@@ -38,7 +39,11 @@ export default function CalendarView() {
     const id = dragId
     setDragId(null)
     if (!id || !calendar) return
-    await updateEvent(id, { inWorldTime: dateToDayNumber(calendar, { year, month, day }) })
+    // The calendar shows the global clock; an inWorldTime pin is a day on the
+    // event's own timeline, so subtract that timeline's offset.
+    const ev = events.find((e) => e.id === id)
+    const offset = timelines.find((t) => t.id === ev?.timelineId)?.dayOffset ?? 0
+    await updateEvent(id, { inWorldTime: dateToDayNumber(calendar, { year, month, day }) - offset })
   }
 
   if (!calendar) {

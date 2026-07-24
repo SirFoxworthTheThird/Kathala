@@ -25,6 +25,7 @@ export function useTimeline(id: string | null) {
 export async function createTimeline(data: Pick<Timeline, 'worldId' | 'name' | 'description' | 'color'>): Promise<Timeline> {
   const timeline: Timeline = {
     id: generateId(),
+    dayOffset: 0,
     ...data,
     createdAt: Date.now(),
   }

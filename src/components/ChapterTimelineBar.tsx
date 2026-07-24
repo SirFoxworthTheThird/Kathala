@@ -4,7 +4,6 @@ import {
   useTimelines, useChapters, useTimelineEvents, useWorldChapters, useWorldEvents,
 } from '@/db/hooks/useTimeline'
 import { useTimelineRelationships } from '@/db/hooks/useTimelineRelationships'
-import { BAR_H_SINGLE } from '@/lib/useBarHeight'
 import {
   buildCombinedSequence, groupChapterRuns, type CombinedOrder,
 } from '@/lib/combinedTimeline'
@@ -15,9 +14,6 @@ import { StackedTrack } from './timeline/StackedTrack'
 import { CombinedTrack } from './timeline/CombinedTrack'
 import { TimelineScopeSelect } from './timeline/TimelineScopeSelect'
 import { selectFirstEvent, activateEvent } from './timeline/TimelineControls'
-
-/** @deprecated import BAR_H_SINGLE from @/lib/useBarHeight instead */
-export const BAR_H = BAR_H_SINGLE
 
 /** Narrative order within a single timeline: chapter number, then sortOrder. */
 function orderByChapter(events: WorldEvent[], chapters: Chapter[]): WorldEvent[] {

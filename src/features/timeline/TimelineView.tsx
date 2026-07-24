@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter } from 'lucide-react'
 import { useTimelines, useChapters, useTimelineEvents, useWorldChapters, useWorldEvents, createTimeline, updateTimeline, deleteTimeline } from '@/db/hooks/useTimeline'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
-import { buildCombinedChronology, type CombinedRow } from '@/lib/combinedTimeline'
+import { buildCombinedSequence, type CombinedOrder, type CombinedRow } from '@/lib/combinedTimeline'
 import { chaptersWithThread } from '@/lib/plotThreads'
 import { useWorld } from '@/db/hooks/useWorlds'
 import { useAppStore } from '@/store'
@@ -18,18 +18,19 @@ import { AddChapterDialog } from './AddChapterDialog'
 import { ChapterAIDialog } from './ChapterAIDialog'
 import { PacingCurve } from './PacingCurve'
 import { TimelineRelationshipPanel } from './TimelineRelationshipPanel'
-import type { WorldEvent, Chapter } from '@/types'
+import type { WorldEvent, Chapter, Timeline } from '@/types'
 
 // ── Chronological (in-world) order ──────────────────────────────────────────
 // Events flattened across chapters and ordered by their effective in-world day,
 // so flashbacks and out-of-order scenes surface where they actually happen.
-function ChronologicalList({ events, chapters, activeEventId, onSelect }: {
+function ChronologicalList({ events, chapters, timelines, activeEventId, onSelect }: {
   events: WorldEvent[]
   chapters: Chapter[]
+  timelines: Timeline[]
   activeEventId: string | null
   onSelect: (id: string) => void
 }) {
-  const inWorldDays = computeInWorldDays(events, chapters)
+  const inWorldDays = computeInWorldDays(events, chapters, timelines)
   const chapterById = new Map(chapters.map((c) => [c.id, c]))
   const ordered = [...events].sort((a, b) => {
     const da = inWorldDays.get(a.id) ?? 0
@@ -93,7 +94,7 @@ function ChronologicalList({ events, chapters, activeEventId, onSelect }: {
 // ── All timelines (combined in-world order) ──────────────────────────────────
 // Every timeline's events merged into one chronological sequence, each row
 // tagged with the timeline it belongs to, so the real order across storylines
-// is visible in one place. Ordering is computed by buildCombinedChronology.
+// is visible in one place. Ordering is computed by buildCombinedSequence.
 const ALL_TIMELINES = '__all__'
 
 function CombinedList({ rows, activeEventId, onSelect }: {
@@ -174,9 +175,14 @@ export default function TimelineView() {
   const [threadFilter, setThreadFilter] = useState<string | null>(null)
   const setActiveEventId = useAppStore((s) => s.setActiveEventId)
   const activeEventId = useAppStore((s) => s.activeEventId)
+  // The combined view's order is shared with the bottom bar's scope selector
+  // (persisted), so choosing an order in either surface updates both.
+  const barScope = useAppStore((s) => s.barScope)
+  const setBarScope = useAppStore((s) => s.setBarScope)
+  const combinedOrder: CombinedOrder = barScope === 'all-chrono' ? 'chrono' : 'chapter'
   const world = useWorld(worldId ?? null)
   const currentTimeline = timelines.find((t) => t.id === currentTimelineId)
-  const combinedRows = isAll ? buildCombinedChronology(worldEvents, worldChapters, timelines) : []
+  const combinedRows = isAll ? buildCombinedSequence(worldEvents, worldChapters, timelines, combinedOrder) : []
   const [addChapterOpen, setAddChapterOpen] = useState(false)
   const [aiChapterOpen, setAiChapterOpen] = useState(false)
   const [relPanelOpen, setRelPanelOpen] = useState(false)
@@ -314,8 +320,29 @@ export default function TimelineView() {
             <>
               <span className="text-sm font-medium">All timelines</span>
               <span className="text-xs text-[hsl(var(--muted-foreground))]">
-                ({timelines.length} timelines · {worldChapters.length} chapters, in-world order)
+                ({timelines.length} timelines · {worldChapters.length} chapters)
               </span>
+              {/* Shared with the bottom bar's scope selector (persisted). */}
+              <div className="ml-2 flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-xs" role="group" aria-label="Combined order">
+                <button
+                  onClick={() => setBarScope('all-chapter')}
+                  aria-pressed={combinedOrder === 'chapter'}
+                  className={cn('flex items-center gap-1 px-2 py-1 transition-colors',
+                    combinedOrder === 'chapter' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
+                  title="Reading order — chapter numbers across all timelines"
+                >
+                  <AlignLeft className="h-3.5 w-3.5" /> Chapter order
+                </button>
+                <button
+                  onClick={() => setBarScope('all-chrono')}
+                  aria-pressed={combinedOrder === 'chrono'}
+                  className={cn('flex items-center gap-1 border-l border-[hsl(var(--border))] px-2 py-1 transition-colors',
+                    combinedOrder === 'chrono' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
+                  title="In-world order — events by when they actually happen"
+                >
+                  <Clock className="h-3.5 w-3.5" /> Chronological
+                </button>
+              </div>
             </>
           ) : (
             <>
@@ -369,8 +396,10 @@ export default function TimelineView() {
         {isAll ? (
           <div className="flex flex-col gap-3">
             <p className="text-xs text-[hsl(var(--muted-foreground))]">
-              Every timeline merged by in-world day (each timeline clocked from its own day&nbsp;0).
-              Use the chapter number and coloured tag to see which storyline each scene belongs to.
+              {combinedOrder === 'chrono'
+                ? 'Every timeline merged by in-world day (each timeline clocked from its own day 0).'
+                : 'Every timeline merged in reading order, following chapter numbers across all timelines.'}
+              {' '}Use the chapter number and coloured tag to see which storyline each scene belongs to.
             </p>
             <CombinedList rows={combinedRows} activeEventId={activeEventId} onSelect={setActiveEventId} />
           </div>
@@ -444,6 +473,7 @@ export default function TimelineView() {
               <ChronologicalList
                 events={timelineEvents}
                 chapters={chapters}
+                timelines={timelines}
                 activeEventId={activeEventId}
                 onSelect={setActiveEventId}
               />

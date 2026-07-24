@@ -4,6 +4,10 @@ export interface Timeline {
   name: string
   description: string
   color: string
+  /** In-world day this timeline's clock starts at (default 0). Lets a
+   *  historically-shifted timeline (frame narrative past, earlier era) line up
+   *  with the others in chronological merges and on the calendar. */
+  dayOffset?: number
   createdAt: number
 }
 

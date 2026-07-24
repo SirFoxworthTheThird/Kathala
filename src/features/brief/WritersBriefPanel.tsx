@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useEffect, useRef } from 'react'
 import { useAppStore } from '@/store'
 import { useFocusTrap } from '@/lib/useFocusTrap'
-import { useChapter, useEvent, useEvents, useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
+import { useChapter, useEvent, useEvents, useWorldEvents, useWorldChapters, useTimelines } from '@/db/hooks/useTimeline'
 import { computeInWorldDays } from '@/lib/inWorldTime'
 import { formatInWorldDate, ageInYears } from '@/lib/calendar'
 import { useWorld } from '@/db/hooks/useWorlds'
@@ -66,7 +66,8 @@ export function WritersBriefPanel() {
   const chapter    = useChapter(activeEvent?.chapterId ?? null)
   const worldEvents = useWorldEvents(worldId ?? null)
   const worldChapters = useWorldChapters(worldId ?? null)
-  const activeDay = activeEventId ? computeInWorldDays(worldEvents, worldChapters).get(activeEventId) : undefined
+  const worldTimelines = useTimelines(worldId ?? null)
+  const activeDay = activeEventId ? computeInWorldDays(worldEvents, worldChapters, worldTimelines).get(activeEventId) : undefined
   const events     = useEvents(activeEvent?.chapterId ?? null)
   const snapshots  = useBestSnapshots(worldId ?? null, activeEventId)
   const characters = useCharacters(worldId ?? null)

@@ -87,3 +87,34 @@ describe('computeInWorldDays', () => {
     expect(days.get('b1')).toBe(9)
   })
 })
+
+describe('computeInWorldDays — per-timeline day offsets', () => {
+  const chapters = [chapter('c1', 1, 't1'), chapter('c2', 1, 't2')]
+
+  it('starts each timeline clock at its dayOffset', () => {
+    const events = [
+      event('a1', 'c1', 0, { timelineId: 't1' }),
+      event('a2', 'c1', 1, { travelDays: 3, timelineId: 't1' }),
+      event('b1', 'c2', 0, { timelineId: 't2' }),
+    ]
+    const days = computeInWorldDays(events, chapters, [
+      { id: 't1', dayOffset: 0 },
+      { id: 't2', dayOffset: 1000 },
+    ])
+    expect(days.get('a1')).toBe(0)
+    expect(days.get('a2')).toBe(3)
+    expect(days.get('b1')).toBe(1000)
+  })
+
+  it('applies the offset to pinned inWorldTime too (pins are on the timeline clock)', () => {
+    const events = [event('b1', 'c2', 0, { timelineId: 't2', inWorldTime: 7 })]
+    const days = computeInWorldDays(events, chapters, [{ id: 't2', dayOffset: 1000 }])
+    expect(days.get('b1')).toBe(1007)
+  })
+
+  it('is unchanged when timelines are omitted or the offset is undefined', () => {
+    const events = [event('b1', 'c2', 0, { travelDays: 2, timelineId: 't2' })]
+    expect(computeInWorldDays(events, chapters).get('b1')).toBe(2)
+    expect(computeInWorldDays(events, chapters, [{ id: 't2' }]).get('b1')).toBe(2)
+  })
+})

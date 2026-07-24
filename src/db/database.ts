@@ -630,6 +630,14 @@ class PlotWeaveDB extends Dexie {
         if (w.targetDate === undefined) w.targetDate = null
       })
     })
+
+    // v50: per-timeline day offset so historically-shifted timelines line up in
+    // chronological merges and on the calendar. Backfill 0.
+    this.version(50).stores({}).upgrade(async (tx) => {
+      await tx.table('timelines').toCollection().modify((t: Record<string, unknown>) => {
+        if (t.dayOffset === undefined) t.dayOffset = 0
+      })
+    })
   }
 }
 

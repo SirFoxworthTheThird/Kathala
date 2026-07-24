@@ -26,7 +26,7 @@ npx vitest run src/db/hooks/__tests__/timeline.test.ts
 **PlotWeave** (package name: `plotweave`) is a local-first story-tracking app. All data lives in IndexedDB via Dexie — no backend.
 
 ### The time-cursor pattern
-The global chapter selector in `TopBar` drives everything. `activeChapterId` (Zustand, persisted) acts as a "time cursor" — all character/item/location state is read relative to it. Never auto-compute state across chapters; always use explicit snapshot records.
+The global event selector in `TopBar` drives everything. `activeEventId` (Zustand, persisted) acts as a "time cursor" — all character/item/location state is read relative to it. Never auto-compute state across events; always use explicit snapshot records.
 
 ### Data layer (`src/db/`)
 - `database.ts` — single `PlotWeaveDB` (Dexie) instance, versioned schema with migrations. Add new tables or fields as new `.version(N)` blocks with upgrade functions.
@@ -35,7 +35,7 @@ The global chapter selector in `TopBar` drives everything. `activeChapterId` (Zu
 - Images are stored as Blobs in a separate `blobs` table (`BlobStore`) — never inline in entity records.
 
 ### State (`src/store/index.ts`)
-Single Zustand store (`useAppStore`) with slices for: active world/chapter/map, map drill-down history stack, playback, and UI panel open/close state. Only `activeWorldId`, `activeChapterId`, `sidebarOpen`, and `theme` are persisted (localStorage key: `plotweave-ui`).
+Single Zustand store (`useAppStore`) with slices for: active world/event/map, map drill-down history stack, playback, and UI panel open/close state. Only `activeWorldId`, `activeEventId`, `sidebarOpen`, `navPinned`, `barScope`, and `theme` are persisted (localStorage key: `plotweave-ui`).
 
 ### Snapshot model
 Per-chapter state is stored as explicit snapshot records — not computed:
