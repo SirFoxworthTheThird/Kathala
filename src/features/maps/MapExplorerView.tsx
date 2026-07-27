@@ -93,8 +93,40 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   // Any of the right-hand detail panels being open narrows the room available
   // to the floating toolbar (see the controls band below).
   const rightPanelOpen = !!(selectedLocationMarkerId || selectedCharacterId || selectedRouteId || selectedRegionId)
+  // "Click the canvas to do something" modes. The floating controls overlay the
+  // top of the map, so while one of these is running they must let clicks
+  // through — otherwise a location, label, or route/region vertex simply can't
+  // be placed up there.
+  const [addMarkerMode, setAddMarkerMode] = useState(false)
+  const canvasClickMode =
+    addMarkerMode || scaleMode || measureMode || annotateMode ||
+    drawingRoute || drawingRegion || placingCharacterId != null
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null)
   const mapRef = useRef<L.Map | null>(null)
+
+  // Escape backs out of any canvas-click mode. Until the controls started
+  // floating over the map these modes were always cancellable by clicking their
+  // toolbar button; now that the controls go click-through mid-mode, the
+  // keyboard is the reliable way out.
+  useEffect(() => {
+    if (!canvasClickMode) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      setAddMarkerMode(false)
+      window.dispatchEvent(new CustomEvent('wb:map:cancelAddMarker'))
+      setScaleMode(false)
+      setMeasureMode(false)
+      setMeasureResult(null)
+      setAnnotateMode(false)
+      setPlacingCharacterId(null)
+      setDrawingRoute(false)
+      setRouteWaypoints([])
+      setDrawingRegion(false)
+      setRegionVertices([])
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [canvasClickMode])
 
   // ── Layer-switch transition (zoom-out → switch → zoom-in) ──────────────────
   type TransitionPhase = 'idle' | 'zooming-out' | 'zoomed-out' | 'zooming-in'
@@ -567,6 +599,9 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             onAnimationEnd={handlePlaybackAnimationEnd}
             onMarkerClick={handleMarkerClick}
             onMapClick={async (x, y) => {
+              // The canvas clears its own one-shot add-marker mode on click;
+              // mirror that here so the controls come back.
+              setAddMarkerMode(false)
               // Tap-to-place onto empty ground: create a location there, then drop.
               if (placingCharacterId) {
                 setPendingDropCharacterId(placingCharacterId)
@@ -660,6 +695,9 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             className={cn(
               'pointer-events-none absolute inset-x-0 top-0 z-[1100] flex flex-wrap items-start justify-between gap-2 p-2',
               rightPanelOpen && 'max-sm:hidden sm:pr-[19rem]',
+              // Click-through while placing/drawing, so the whole canvas is
+              // reachable. Escape (below) is the way out of these modes.
+              canvasClickMode && 'opacity-40 [&_*]:pointer-events-none',
             )}
           >
             <div className="flex min-w-0 max-w-full flex-col items-start gap-2">
@@ -675,7 +713,10 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               onToggleMeasure={() => { setMeasureMode((v) => !v); setScaleMode(false); setMeasureResult(null) }}
               onToggleAnnotate={() => { setAnnotateMode((v) => !v); setSelectedAnnotationId(null) }}
               onClearScale={() => updateMapLayer(layer.id, { scalePixelsPerUnit: null, scaleUnit: null })}
-              onAddLocation={() => window.dispatchEvent(new CustomEvent('wb:map:startAddMarker'))}
+              onAddLocation={() => {
+                setAddMarkerMode(true)
+                window.dispatchEvent(new CustomEvent('wb:map:startAddMarker'))
+              }}
               onGenerateLocations={() => setGenLocOpen(true)}
               onAIMoves={() => setAiDialogOpen(true)}
               onReplaceImage={() => setReplaceImageOpen(true)}

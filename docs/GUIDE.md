@@ -663,6 +663,10 @@ touch devices, tap the crosshair on their card and then tap a location.
 - **Right-click** the canvas for quick actions: add a location or annotation, or
   begin a route or region at that point. The **Label** tool does the same from the
   toolbar; select an annotation to change its text, size, colour, or delete it.
+- While you're placing or drawing — a location, a label, a route or region's
+  vertices, a scale calibration — the floating controls fade and stop taking
+  clicks, so the whole canvas underneath them stays reachable. Press
+  **Escape** to back out of any of these modes.
 - Routes can be roads, rivers, trails, sea routes, borders, or custom paths. Open
   a route to edit its name, type, notes, and geometry.
 - Regions have a fill colour, opacity, notes, and an event-based condition. They

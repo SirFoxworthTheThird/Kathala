@@ -47,6 +47,15 @@ test('AI location generation can create a leveled place with per-floor locations
   await page.getByRole('button', { name: 'Add locations' }).click()
   await waitForMapReady(page)
 
+  // The map renders as soon as the first layer exists, which is before the
+  // generator has written the floors — poll for the level group itself rather
+  // than trusting the view being up to mean generation finished.
+  await expect
+    .poll(async () => (await levelSnapshot(page)).layers.filter((l) => l.levelGroupId).length, {
+      timeout: 15_000,
+    })
+    .toBe(2)
+
   // The generator built a level group with each floor holding its own location.
   const snap = await levelSnapshot(page)
   const floors = snap.layers.filter((l) => l.levelGroupId)

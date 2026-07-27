@@ -534,8 +534,13 @@ export function LeafletMapCanvas({
 
   useEffect(() => {
     const handler = () => { addModeRef.current = true; setAddMode(true) }
+    const cancel = () => { addModeRef.current = false; setAddMode(false) }
     window.addEventListener('wb:map:startAddMarker', handler)
-    return () => window.removeEventListener('wb:map:startAddMarker', handler)
+    window.addEventListener('wb:map:cancelAddMarker', cancel)
+    return () => {
+      window.removeEventListener('wb:map:startAddMarker', handler)
+      window.removeEventListener('wb:map:cancelAddMarker', cancel)
+    }
   }, [])
 
   useEffect(() => {

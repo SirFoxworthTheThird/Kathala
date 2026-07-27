@@ -534,8 +534,14 @@ What genuinely remains, ranked by value per effort:
   `+ Location` / `Label` / `Measure` top-right with the set-up-once and
   occasional commands behind a `⋯` menu — and Leaflet's zoom moved to the
   bottom-right. Canvas grew 584px → 708px (+21%). The hints bar retired into the
-  Help panel, which already documented all three tips. Follow-up left open: move
-  the map name into the TopBar breadcrumb.
+  Help panel, which already documented all three tips.
+  - Two follow-on fixes: the panels' original z-order had to be restored (the
+    zoom control, floor switcher and film strip are all built to draw above
+    them), and the controls go click-through while placing or drawing so the
+    canvas underneath stays reachable — with **Escape** added as the way out of
+    every canvas-click mode.
+  - Follow-ups left open: move the map name into the TopBar breadcrumb; on
+    phones an open detail panel (85vw) still hides most of the film strip.
 - [ ] **Proactive travel-day suggestion** — a per-event "suggest travelDays"
   affordance before any violation (the reactive one-click fix already exists).
 - [ ] **Export scope by scene status** — a `final`/`revised`-only filter for the

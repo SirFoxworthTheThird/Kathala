@@ -190,6 +190,79 @@ test('clicking a character keeps its panel, film strip and zoom all usable', asy
   }
 })
 
+// The controls overlay the top of the canvas, so anything that works by
+// clicking the map — placing a location or label, drawing a route or region,
+// calibrating a scale — has to be able to reach the pixels underneath them.
+
+test('a location can be placed under the floating controls', async ({ page }) => {
+  test.setTimeout(120000)
+  await setupMap(page)
+
+  const canvas = page.locator('.leaflet-container')
+  const cb = (await canvas.boundingBox())!
+  // Right where the Show chips sit, which would otherwise swallow the click.
+  const under = { x: 60, y: 62 }
+
+  await page.getByRole('button', { name: 'Location', exact: true }).click()
+  await expect(page.getByText('Click on the map to place the location')).toBeVisible()
+  await page.mouse.click(cb.x + under.x, cb.y + under.y)
+
+  await expect(page.getByPlaceholder('e.g. Thornwall City')).toBeVisible()
+  await page.getByPlaceholder('e.g. Thornwall City').fill('Under The Chips')
+  await page.getByRole('button', { name: 'Add Location' }).last().click()
+  await expect(page.getByText('Under The Chips').first()).toBeVisible()
+})
+
+test('a region can take vertices under the floating controls', async ({ page }) => {
+  test.setTimeout(120000)
+  await setupMap(page)
+
+  const cb = (await page.locator('.leaflet-container').boundingBox())!
+  await page.getByRole('button', { name: 'Open map panels' }).click({ timeout: 3000 }).catch(() => {})
+  await page.getByRole('button', { name: /REGIONS/i }).first().click()
+  await page.getByRole('button', { name: 'New region' }).click()
+
+  // Four vertices, two of them inside the band the controls occupy. The draw
+  // HUD's live point count is the check: a swallowed click never arrives.
+  for (const p of [{ x: 60, y: 62 }, { x: 320, y: 30 }, { x: 320, y: 300 }, { x: 60, y: 300 }]) {
+    await page.mouse.click(cb.x + p.x, cb.y + p.y)
+    await page.waitForTimeout(200)
+  }
+  await expect(page.getByText('4 points')).toBeVisible()
+
+  // Escape backs out — the draw HUD goes away and the controls come back.
+  await page.keyboard.press('Escape')
+  await expect(page.getByText('Drawing region — click map to place vertices')).toHaveCount(0)
+  await openMapTools(page)
+  await expect(page.getByRole('button', { name: 'Add level' })).toBeVisible()
+})
+
+test('Escape cancels a canvas-click mode and restores the controls', async ({ page }) => {
+  test.setTimeout(120000)
+  await setupMap(page)
+
+  await page.getByRole('button', { name: 'Location', exact: true }).click()
+  const banner = page.getByText('Click on the map to place the location')
+  await expect(banner).toBeVisible()
+
+  // While placing, the controls are click-through so the canvas underneath is
+  // reachable; the toolbar itself must not answer a click.
+  const toolsBox = (await page.getByRole('button', { name: 'Map tools' }).boundingBox())!
+  const hits = await page.evaluate(
+    ({ x, y }) => {
+      const el = document.elementFromPoint(x, y)
+      return !!el?.closest('[aria-label="Map tools"]')
+    },
+    { x: toolsBox.x + toolsBox.width / 2, y: toolsBox.y + toolsBox.height / 2 },
+  )
+  expect(hits).toBe(false)
+
+  await page.keyboard.press('Escape')
+  await expect(banner).toHaveCount(0)
+  await openMapTools(page)
+  await expect(page.getByRole('button', { name: 'Add level' })).toBeVisible()
+})
+
 test('Measure surfaces only once the map has a scale', async ({ page }) => {
   test.setTimeout(120000)
   await setupMap(page)
