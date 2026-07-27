@@ -637,22 +637,32 @@ images to a canvas — uploaded maps always export.)
 
 ![Maps](images/08-maps.png)
 
-The left sidebar lists map layers and locations; the right-hand tools toggle
-characters, trails, labels, journeys, and locations. In the **Map Layers** tree
+The map's own controls **float over the canvas** rather than sitting in header
+rows above it, so the map itself runs from the top of the view to the chapter
+bar. Top-left is the map's name and scale, with the **Show** chips beneath it —
+toggles for characters, trails, labels, journeys, and locations (the chevrons
+narrow those to particular characters or location types). Top-right holds the
+two commands you reach for while working a map, **+ Location** and **Label**,
+plus a **⋯** menu for everything you set up once or use occasionally: map
+scale, add level, replace image, export as PNG, and the AI tools. Zoom sits in
+the bottom-right corner of the canvas.
+
+![Map tools menu](images/52-map-tools-menu.png)
+
+The left sidebar lists map layers and locations. In the **Map Layers** tree
 you can **drag a map onto another** to nest it inside (re-parent it), or drop it
 on the *"top level"* zone to un-nest — handy for fixing a sub-map that landed in
 the wrong place. This works for any map at any depth; on a touch device,
 **press and hold** a map to pick it up first, so a normal swipe still scrolls the
 list. To place a character
 (selected from an event in the timeline bar), drag them onto the map — or, on
-touch devices, tap the crosshair on their card and then tap a location. **AI
-Moves** and **Export** round out the toolbar.
+touch devices, tap the crosshair on their card and then tap a location.
 
 ### Working with the map canvas
 
 - **Right-click** the canvas for quick actions: add a location or annotation, or
-  begin a route or region at that point. The **T** tool also places free-text
-  annotations; select one to change its text, size, colour, or delete it.
+  begin a route or region at that point. The **Label** tool does the same from the
+  toolbar; select an annotation to change its text, size, colour, or delete it.
 - Routes can be roads, rivers, trails, sea routes, borders, or custom paths. Open
   a route to edit its name, type, notes, and geometry.
 - Regions have a fill colour, opacity, notes, and an event-based condition. They
@@ -660,16 +670,19 @@ Moves** and **Export** round out the toolbar.
 - A location's detail panel stores its description, event-based condition and
   notes, owning faction, characters and items present, and an optional linked
   sub-map.
-- The filter bar can show the selected event's movement, complete character
-  journeys, character labels, locations, and sub-map links. Select one character
-  to focus the display.
+- The **Show** chips can display the selected event's movement, complete
+  character journeys, character labels, locations, and sub-map links. Select one
+  character to focus the display.
+- **Measure** only appears in the toolbar once the map has a scale — until then
+  it sits greyed out in the **⋯** menu, next to the *Set map scale* entry that
+  unlocks it.
 
 Click a character pin to open their **film strip**, a chronological list of every
 place they visited. Selecting a stop moves the global cursor to that event.
 
 ![Map editing tools](images/40-map-tools.png)
 
-**Replace image** swaps the picture behind the current map without losing any
+**Replace image** (in the **⋯** menu) swaps the picture behind the current map without losing any
 of its content — handy for upgrading a sketch to a finished map or dropping in a
 higher-resolution version. Upload (or link) the new image, and keep *Reposition
 existing locations…* checked so every marker, route and region is scaled to the
@@ -679,8 +692,8 @@ redraw). The map's scale calibration is adjusted to match.
 ![Replace map image](images/28-replace-map-image.png)
 
 **Levels (floors).** Some places are one footprint stacked into several floors —
-a castle with dungeons, a ground floor, upper floors and towers. Click **Add
-level** to give the current map a floor above it: upload that floor's image and
+a castle with dungeons, a ground floor, upper floors and towers. Choose **Add
+level** from the **⋯** menu to give the current map a floor above it: upload that floor's image and
 name it (e.g. *First floor*). The map becomes a level group, and a **floor
 switcher** appears on the right edge — floors stacked bottom-to-top, the current
 one highlighted. Tap a floor to jump to it; your pan and zoom are held so a
@@ -711,7 +724,7 @@ a historical-echo relationship marks shared places with echo rings.
 ### Generate locations with AI
 
 Don't have a map image? **Generate with AI** (on the empty Maps screen, and as
-**AI Locations** in the map toolbar) builds a whole **tree of places** for you.
+**AI Locations** in the map toolbar’s **⋯** menu) builds a whole **tree of places** for you.
 Copy the prompt, describe your world, and paste back a nested JSON tree
 (continent → kingdom → city → district). PlotWeave creates a blank **Locations**
 map and drops each place on it as a pin; a place with children becomes a pin that

@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { openMapTools, waitForMapReady } from './helpers/map'
 
 /** Map layers grouped by levelGroupId, with their level info and marker counts. */
 function levelSnapshot(page: Page) {
@@ -43,7 +44,7 @@ test('add a level to a map and switch between floors, each with its own location
     locations: [{ name: 'Great Hall' }, { name: 'Courtyard' }],
   }))
   await page.getByRole('button', { name: 'Add locations' }).click()
-  await expect(page.getByRole('button', { name: 'AI Locations' })).toBeVisible({ timeout: 15_000 })
+  await waitForMapReady(page)
 
   const before = await levelSnapshot(page)
   expect(before.layers).toHaveLength(1) // just the ground map
@@ -51,6 +52,7 @@ test('add a level to a map and switch between floors, each with its own location
   expect(before.markerLayerIds.every((id) => id === groundId)).toBe(true)
 
   // Add a "First floor" level, feeding a fresh image.
+  await openMapTools(page)
   await page.getByRole('button', { name: 'Add level' }).click()
   await expect(page.getByLabel('Level name')).toBeVisible()
   await page.getByLabel('Level name').fill('First floor')

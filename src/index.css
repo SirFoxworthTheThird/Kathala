@@ -502,6 +502,16 @@
   color: hsl(var(--leaflet-fg)) !important;
 }
 
+/* Leaflet's default disabled state is a light grey that reads as a broken,
+   empty button on a dark map — most visible at min zoom, where zoom-out is
+   always disabled. */
+.leaflet-bar a.leaflet-disabled,
+.leaflet-bar a.leaflet-disabled:hover {
+  background-color: hsl(var(--leaflet-card));
+  color: hsl(var(--leaflet-muted)) !important;
+  opacity: 0.45;
+}
+
 .movement-distance-tooltip {
   background: hsl(var(--leaflet-card));
   color: hsl(var(--leaflet-fg));

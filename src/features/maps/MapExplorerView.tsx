@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import L from 'leaflet'
 import { useParams } from 'react-router-dom'
-import { Plus, Upload, Map as MapIcon, Ruler, X, Route, Download, Sparkles, Type, Trash2, PanelLeft, Crosshair, ImageUp, Layers } from 'lucide-react'
+import { Upload, Map as MapIcon, X, Route, Sparkles, Type, Trash2, Crosshair } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore, useActiveMapLayerId } from '@/store'
 import { useRootMapLayers, updateMapLayer, deleteMapLevel } from '@/db/hooks/useMapLayers'
@@ -27,7 +27,7 @@ import { CharacterFilmStrip } from './CharacterFilmStrip'
 import { RouteDrawHud, RegionDrawHud } from './DrawHuds'
 import { RouteDetailPanel, RegionDetailPanel } from './RouteRegionDetailPanel'
 import { MapAIDialog } from './MapAIDialog'
-import { MapHintsBar } from './MapHintsBar'
+import { MapToolbar, MapInfoChip } from './MapToolbar'
 import { useMapViewState } from './useMapViewState'
 import { usePlaybackQueue } from './usePlaybackQueue'
 import { upsertSnapshot, fetchSnapshot, useWorldSnapshots } from '@/db/hooks/useSnapshots'
@@ -90,6 +90,9 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const [regionVertices, setRegionVertices] = useState<Array<{ x: number; y: number }>>([])
   const [echoPopoverMarkerId, setEchoPopoverMarkerId] = useState<string | null>(null)
   const [annotateMode, setAnnotateMode] = useState(false)
+  // Any of the right-hand detail panels being open narrows the room available
+  // to the floating toolbar (see the controls band below).
+  const rightPanelOpen = !!(selectedLocationMarkerId || selectedCharacterId || selectedRouteId || selectedRegionId)
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null)
   const mapRef = useRef<L.Map | null>(null)
 
@@ -510,149 +513,8 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
         />
       </div>
 
-      {/* ── Center: header + map ── */}
+      {/* ── Center: map ── */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Map header */}
-        <div className="flex shrink-0 flex-col gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2 lg:flex-row lg:items-center lg:gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-          {/* Mobile-only: open the map panels drawer */}
-          <button
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Open map panels"
-            title="Map panels"
-            className="pw-tap flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] lg:hidden"
-          >
-            <PanelLeft className="h-4 w-4" aria-hidden="true" />
-          </button>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-[hsl(var(--foreground))]">{layer.name}</p>
-            <p className="truncate text-[11px] text-[hsl(var(--muted-foreground))]">
-              {layer.scalePixelsPerUnit && layer.scaleUnit
-                ? `Scale: 1 ${layer.scaleUnit} = ${Math.round(layer.scalePixelsPerUnit)} px`
-                : `${layer.imageWidth} × ${layer.imageHeight}`}
-            </p>
-          </div>
-          </div>
-          <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 lg:mx-0 lg:ml-auto lg:overflow-x-visible lg:px-0">
-            {/* Tools */}
-            <Button
-              size="sm"
-              variant={scaleMode ? 'default' : 'outline'}
-              className="gap-1.5 text-xs"
-              onClick={() => { setScaleMode((v) => !v); setMeasureMode(false); setMeasureResult(null) }}
-              title={layer.scalePixelsPerUnit ? 'Recalibrate scale' : 'Set map scale'}
-            >
-              <Ruler className="h-3.5 w-3.5" />
-              {layer.scalePixelsPerUnit && layer.scaleUnit ? layer.scaleUnit : 'Scale'}
-              {layer.scalePixelsPerUnit && !scaleMode && (
-                <button
-                  className="ml-0.5 opacity-50 hover:opacity-100"
-                  onClick={(e) => { e.stopPropagation(); updateMapLayer(layer.id, { scalePixelsPerUnit: null, scaleUnit: null }) }}
-                  title="Clear scale"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </Button>
-            <Button
-              size="sm"
-              variant={measureMode ? 'default' : 'outline'}
-              className="gap-1.5 text-xs"
-              disabled={!layer.scalePixelsPerUnit || !layer.scaleUnit}
-              onClick={() => { setMeasureMode((v) => !v); setScaleMode(false); setMeasureResult(null) }}
-              title={layer.scalePixelsPerUnit && layer.scaleUnit ? 'Measure distance between two points' : 'Set a map scale first to enable distance measurement'}
-            >
-              <Route className="h-3.5 w-3.5" />
-              Measure
-            </Button>
-
-            <span aria-hidden="true" className="h-5 w-px bg-[hsl(var(--border))]" />
-
-            {/* Add to map */}
-            <Button
-              size="sm"
-              variant={annotateMode ? 'default' : 'outline'}
-              className="gap-1.5 text-xs"
-              onClick={() => { setAnnotateMode((v) => !v); setSelectedAnnotationId(null) }}
-              title="Place a text label on the map"
-            >
-              <Type className="h-3.5 w-3.5" />
-              Label
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5 text-xs"
-              onClick={() => window.dispatchEvent(new CustomEvent('wb:map:startAddMarker'))}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Location
-            </Button>
-
-            <span aria-hidden="true" className="h-5 w-px bg-[hsl(var(--border))]" />
-
-            {/* Utility */}
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5 text-xs"
-              onClick={() => setGenLocOpen(true)}
-              title="Generate a tree of locations with AI"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              AI Locations
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5 text-xs"
-              onClick={() => setAiDialogOpen(true)}
-              title="Extract location moves from prose with AI"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              AI Moves
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5 text-xs"
-              onClick={() => setReplaceImageOpen(true)}
-              title="Replace this map's image, keeping its locations"
-            >
-              <ImageUp className="h-3.5 w-3.5" />
-              Replace image
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5 text-xs"
-              onClick={() => setAddLevelOpen(true)}
-              title="Add a floor/level to this map (e.g. an upper floor)"
-            >
-              <Layers className="h-3.5 w-3.5" />
-              Add level
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5 text-xs"
-              onClick={handleExportMap}
-              title="Export map as PNG"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Export
-            </Button>
-          </div>
-        </div>
-
-        {/* Filter bar */}
-        <div className="relative z-[1100] shrink-0">
-          <MapFilterBar filters={mapFilters} characters={characters} onChange={setMapFilters} />
-        </div>
-
-        {/* Map hints bar — dismissable first-use tips */}
-        <MapHintsBar worldId={worldId} />
-
         {/* Story playback notes overlay */}
         {isPlayingStory && activeEventId && activeChapter && worldId && (
           <StoryNotesOverlay
@@ -785,6 +647,39 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
                 : null
             }
           />
+
+          {/* Floating map controls — the map runs edge to edge underneath them.
+              pointer-events-none on the band lets drags pass through the gap.
+              A right-hand detail panel (w-72 on sm+) sits above this band, so
+              the band is inset to keep the toolbar clear of it rather than
+              buried under it; on phones the panel is 85vw and simply covers. */}
+          <div
+            className={cn(
+              'pointer-events-none absolute inset-x-0 top-0 z-[1100] flex flex-wrap items-start justify-between gap-2 p-2',
+              rightPanelOpen && 'sm:pr-[19rem]',
+            )}
+          >
+            <div className="flex min-w-0 max-w-full flex-col items-start gap-2">
+              <MapInfoChip layer={layer} onOpenPanels={() => setSidebarOpen(true)} />
+              <MapFilterBar filters={mapFilters} characters={characters} onChange={setMapFilters} />
+            </div>
+            <MapToolbar
+              layer={layer}
+              scaleMode={scaleMode}
+              measureMode={measureMode}
+              annotateMode={annotateMode}
+              onToggleScale={() => { setScaleMode((v) => !v); setMeasureMode(false); setMeasureResult(null) }}
+              onToggleMeasure={() => { setMeasureMode((v) => !v); setScaleMode(false); setMeasureResult(null) }}
+              onToggleAnnotate={() => { setAnnotateMode((v) => !v); setSelectedAnnotationId(null) }}
+              onClearScale={() => updateMapLayer(layer.id, { scalePixelsPerUnit: null, scaleUnit: null })}
+              onAddLocation={() => window.dispatchEvent(new CustomEvent('wb:map:startAddMarker'))}
+              onGenerateLocations={() => setGenLocOpen(true)}
+              onAIMoves={() => setAiDialogOpen(true)}
+              onReplaceImage={() => setReplaceImageOpen(true)}
+              onAddLevel={() => setAddLevelOpen(true)}
+              onExport={handleExportMap}
+            />
+          </div>
 
           {/* Floor / level switcher */}
           {groupFloors.length >= 2 && (
@@ -983,9 +878,12 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             </div>
           )}
 
-          {/* Detail panels */}
+          {/* Detail panels. z-1120 threads a needle: above the floating controls
+              band (1100) so the toolbar can't cover a panel's close button, but
+              below the mobile drawer's backdrop (1150) and the drawer itself
+              (1200), which must stay on top on phones. */}
           {selectedLocationMarkerId && (
-            <div className="absolute inset-y-0 right-0 z-[500] flex">
+            <div className="absolute inset-y-0 right-0 z-[1120] flex">
               <LocationDetailPanel
                 markerId={selectedLocationMarkerId}
                 worldId={worldId}
@@ -995,12 +893,12 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             </div>
           )}
           {selectedRouteId && !selectedLocationMarkerId && !selectedCharacterId && (
-            <div className="absolute inset-y-0 right-0 z-[500] flex">
+            <div className="absolute inset-y-0 right-0 z-[1120] flex">
               <RouteDetailPanel routeId={selectedRouteId} onClose={() => setSelectedRouteId(null)} />
             </div>
           )}
           {selectedRegionId && !selectedLocationMarkerId && !selectedCharacterId && (
-            <div className="absolute inset-y-0 right-0 z-[500] flex">
+            <div className="absolute inset-y-0 right-0 z-[1120] flex">
               <RegionDetailPanel regionId={selectedRegionId} worldId={worldId} onClose={() => setSelectedRegionId(null)} onDrillDown={pushMapLayer} />
             </div>
           )}
@@ -1009,7 +907,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             const snap = snapshots.find((s) => s.characterId === selectedCharacterId)
             if (!char) return null
             return (
-              <div className="absolute inset-y-0 right-0 z-[500] flex">
+              <div className="absolute inset-y-0 right-0 z-[1120] flex">
                 <CharacterSnapshotPanel
                   character={char}
                   snapshot={snap}

@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { waitForMapReady } from './helpers/map'
 
 function labels(page: Page) {
   return page.evaluate(
@@ -39,7 +40,7 @@ test('rename a floor from the switcher', async ({ page }) => {
     ],
   }))
   await page.getByRole('button', { name: 'Add locations' }).click()
-  await expect(page.getByRole('button', { name: 'AI Locations' })).toBeVisible({ timeout: 15_000 })
+  await waitForMapReady(page)
 
   // Open the castle so the floor switcher appears.
   await page.locator('[data-layer-drop]').filter({ hasText: 'Castle' }).first().click()

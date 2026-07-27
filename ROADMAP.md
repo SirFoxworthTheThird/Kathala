@@ -528,6 +528,14 @@ What genuinely remains, ranked by value per effort:
 
 ### Smaller polish
 
+- [x] **Reclaim map vertical space** — shipped: the map's three stacked header
+  rows (title/tools, Show filters, first-use hints) cost ~120px of an ~820px
+  window. They now float over the canvas — identity + Show chips top-left,
+  `+ Location` / `Label` / `Measure` top-right with the set-up-once and
+  occasional commands behind a `⋯` menu — and Leaflet's zoom moved to the
+  bottom-right. Canvas grew 584px → 708px (+21%). The hints bar retired into the
+  Help panel, which already documented all three tips. Follow-up left open: move
+  the map name into the TopBar breadcrumb.
 - [ ] **Proactive travel-day suggestion** — a per-event "suggest travelDays"
   affordance before any violation (the reactive one-click fix already exists).
 - [ ] **Export scope by scene status** — a `final`/`revised`-only filter for the

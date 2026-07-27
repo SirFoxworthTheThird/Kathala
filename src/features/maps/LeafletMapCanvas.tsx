@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { MapContainer, ImageOverlay, Marker, Popup, Polyline, Polygon, CircleMarker, Tooltip, useMapEvents, useMap } from 'react-leaflet'
+import { MapContainer, ImageOverlay, Marker, Popup, Polyline, Polygon, CircleMarker, Tooltip, ZoomControl, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import type { MapLayer, LocationMarker, Character, MapRoute, MapRegion, MapRegionStatus, MapAnnotation } from '@/types'
 import { updateLocationMarker } from '@/db/hooks/useLocationMarkers'
@@ -908,7 +908,11 @@ export function LeafletMapCanvas({
         zoom={0}
         style={{ height: '100%', width: '100%' }}
         maxZoom={4} zoomSnap={0.25}
+        // The top band belongs to the floating map controls (MapToolbar /
+        // MapFilterBar), so zoom moves to the bottom-right corner.
+        zoomControl={false}
       >
+        <ZoomControl position="bottomright" />
         <MapInstanceTracker onReady={(m) => { mapRef.current = m; setLeafletMap(m) }} />
         <FitBounds
           bounds={bounds}

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { openMapTools, waitForMapReady } from './helpers/map'
 
 test.describe('Generate a section with AI', () => {
   test('adds new characters and updates an existing one in place', async ({ page }) => {
@@ -242,10 +243,11 @@ test.describe('Generate a section with AI', () => {
     // view (unmounting this dialog), so the map's own toolbar is the signal that
     // generation succeeded — reaching it also proves the canvas path worked.
     await page.getByRole('button', { name: 'Add locations' }).click()
-    await expect(page.getByRole('button', { name: 'AI Locations' })).toBeVisible({ timeout: 15_000 })
+    await waitForMapReady(page)
 
     // Re-opening from the toolbar, the prompt now lists the places that exist,
     // so the AI extends the tree instead of repeating it.
+    await openMapTools(page)
     await page.getByRole('button', { name: 'AI Locations' }).click()
     const promptBlock = page.locator('pre')
     await expect(promptBlock).toContainText('ALREADY IN THIS WORLD')

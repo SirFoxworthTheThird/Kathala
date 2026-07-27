@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { waitForMapReady } from './helpers/map'
 
 function levelSnapshot(page: Page) {
   return page.evaluate(
@@ -44,7 +45,7 @@ test('AI location generation can create a leveled place with per-floor locations
     ],
   }))
   await page.getByRole('button', { name: 'Add locations' }).click()
-  await expect(page.getByRole('button', { name: 'AI Locations' })).toBeVisible({ timeout: 15_000 })
+  await waitForMapReady(page)
 
   // The generator built a level group with each floor holding its own location.
   const snap = await levelSnapshot(page)

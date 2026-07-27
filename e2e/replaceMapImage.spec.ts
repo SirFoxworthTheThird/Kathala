@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { openMapTools, waitForMapReady } from './helpers/map'
 
 /** Read all map layers and markers straight from IndexedDB. */
 function dbSnapshot(page: Page) {
@@ -41,7 +42,7 @@ test('replace an existing map image and rescale its locations', async ({ page })
     locations: [{ name: 'Northshire' }, { name: 'Southvale' }],
   }))
   await page.getByRole('button', { name: 'Add locations' }).click()
-  await expect(page.getByRole('button', { name: 'AI Locations' })).toBeVisible({ timeout: 15_000 })
+  await waitForMapReady(page)
 
   // The active (root) map and a marker on it, before replacing.
   const before = await dbSnapshot(page)
@@ -52,6 +53,7 @@ test('replace an existing map image and rescale its locations', async ({ page })
   expect(oldWidth).toBeGreaterThan(0)
 
   // Open the replace dialog and feed it a fresh 640×480 image.
+  await openMapTools(page)
   await page.getByRole('button', { name: 'Replace image' }).click()
   await expect(page.getByText('Replace Map Image')).toBeVisible()
   await page.evaluate(async () => {

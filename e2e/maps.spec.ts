@@ -27,6 +27,13 @@ async function uploadMap(page: Page, imagePath: string, mapName: string) {
   await expect(page.getByRole('heading', { name: /Upload Map|Add Sub-Map/ })).not.toBeVisible()
 }
 
+/**
+ * Hovering a nav link expands the left rail, which then overlays the page —
+ * including the timeline bar at the bottom. Move the pointer back over the
+ * content so the rail collapses before clicking anything underneath it.
+ */
+const settleNav = (page: Page) => page.mouse.move(700, 400).then(() => page.waitForTimeout(150))
+
 /** Click the "Location" button then click the Leaflet canvas to place a pin. */
 async function addLocationViaButton(page: Page, position?: { x: number; y: number }) {
   await page.getByRole('button', { name: 'Location', exact: true }).click()
@@ -45,6 +52,10 @@ async function addLocationViaButton(page: Page, position?: { x: number; y: numbe
 // ─── Setup ────────────────────────────────────────────────────────────────────
 
 test.describe('Map management', () => {
+  // Each test uploads a real JPEG, renders Leaflet, and round-trips through the
+  // timeline — genuinely ~30s of work, right on Playwright's default budget.
+  test.describe.configure({ timeout: 90_000 })
+
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
     await resetDB(page)
@@ -247,10 +258,12 @@ test.describe('Map management', () => {
 
     // Select the event in the timeline bar to set the active cursor.
     await page.getByRole('link', { name: /timeline/i }).click()
+    await settleNav(page)
     await page.getByTitle('The Departure', { exact: true }).click()
 
     // Back to the map — arm placement for Aragorn; the placement HUD appears.
     await page.getByRole('link', { name: /maps/i }).click()
+    await settleNav(page)
     await expect(page.locator('.leaflet-container')).toBeVisible()
     await page.getByRole('button', { name: 'Place Aragorn on the map' }).click()
     await expect(page.getByText(/Tap a location to place/)).toBeVisible()

@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { waitForMapReady } from './helpers/map'
 
 /** Read each map layer's parent *name* straight from IndexedDB. */
 function layerParents(page: Page): Promise<Record<string, string | null>> {
@@ -43,7 +44,7 @@ async function setupTwoSubMaps(page: Page): Promise<void> {
     ],
   }))
   await page.getByRole('button', { name: 'Add locations' }).click()
-  await expect(page.getByRole('button', { name: 'AI Locations' })).toBeVisible({ timeout: 15_000 })
+  await waitForMapReady(page)
 
   // Both sub-maps start under the root "Locations" map.
   await expect.poll(async () => (await layerParents(page)).Southvale).toBe('Locations')
