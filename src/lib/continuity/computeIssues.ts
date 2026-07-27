@@ -5,10 +5,11 @@ import { computeKnowledgeAnachronisms } from '@/lib/knowledgeAnachronisms'
 import { computeDeadKnowerIssues } from '@/lib/knowledgeRevealContinuity'
 import { computeProseMentionIssues, computeKnowledgeLeaks } from '@/lib/proseContinuity'
 import { computeItemHandoffIssues } from '@/lib/itemHandoff'
+import { computeThreadIssues } from '@/lib/threadContinuity'
 import type {
   Chapter, Character, CharacterMovement, CharacterSnapshot, CrossTimelineArtifact,
   Faction, FactionMembership, FactionRelationship, Item, ItemPlacement, ItemSnapshot,
-  KnowledgeFact, KnowledgeReveal, LocationMarker, LocationSnapshot, MapLayer,
+  KnowledgeFact, KnowledgeReveal, LocationMarker, LocationSnapshot, MapLayer, PlotThread,
   MapRegion, MapRegionSnapshot, MapRoute, Relationship, RelationshipSnapshot,
   SceneText, TravelMode, World, WorldEvent,
 } from '@/types'
@@ -62,7 +63,7 @@ export type IssueSeverity = 'error' | 'warning'
 export interface Issue {
   id: string
   severity: IssueSeverity
-  category: 'character' | 'item' | 'relationship' | 'faction' | 'pov' | 'prose'
+  category: 'character' | 'item' | 'relationship' | 'faction' | 'pov' | 'prose' | 'thread'
   message: string
   detail?: string
   navigatePath?: string
@@ -100,6 +101,7 @@ export interface ContinuityInput {
   allMemberships: FactionMembership[]
   allFactionRels: FactionRelationship[]
   allItemSnapshots: ItemSnapshot[]
+  plotThreads: PlotThread[]
 }
 
 /**
@@ -114,7 +116,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
     knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements,
     allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements,
     artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions,
-    allMemberships, allFactionRels, allItemSnapshots,
+    allMemberships, allFactionRels, allItemSnapshots, plotThreads,
   } = input
 
     const out: Issue[] = []
@@ -1037,6 +1039,27 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         detail: `The reader is set to learn this in Ch. ${revealCh?.number ?? '?'}, but "${leakEv?.title || 'untitled'}" (Ch. ${leakCh?.number ?? '?'}) already references it (matched "${leak.matchedTerm}").`,
         navigatePath: leakEv ? `/worlds/${worldId}/timeline/${leakEv.chapterId}` : undefined,
         eventId: leak.leakEventId,
+      })
+    }
+
+    // ── Plot-thread cadence: dangling / dormant / unstarted subplots ─────────
+    const chaptersByNumber = [...chapters].sort((a, b) => a.number - b.number)
+    for (const ti of computeThreadIssues({ threads: plotThreads, events: allEvents, chapters })) {
+      // Send the writer to the chapter where the thread was last (or first) seen.
+      const targetChapter = ti.chapterNumber !== null
+        ? chaptersByNumber.find((c) => c.number === ti.chapterNumber)
+        : undefined
+      const firstEvent = targetChapter
+        ? allEvents.filter((e) => e.chapterId === targetChapter.id).sort((a, b) => a.sortOrder - b.sortOrder)[0]
+        : undefined
+      out.push({
+        id: `thread-${ti.kind}-${ti.threadId}`,
+        severity: 'warning',
+        category: 'thread',
+        message: ti.message,
+        detail: ti.detail,
+        navigatePath: targetChapter ? `/worlds/${worldId}/timeline/${targetChapter.id}` : undefined,
+        eventId: firstEvent?.id,
       })
     }
 

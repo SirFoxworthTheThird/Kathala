@@ -1,17 +1,18 @@
 import { useState, useRef, useCallback } from 'react'
 import { toPng } from 'html-to-image'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Heart, Skull, MapPin, Minus, Search, Download, X, Shield, FileEdit, Eye, History } from 'lucide-react'
+import { Heart, Skull, MapPin, Minus, Search, Download, X, Shield, FileEdit, Eye, History, Spline } from 'lucide-react'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
+import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/EmptyState'
 import { BookOpen } from 'lucide-react'
-import type { EventStatus } from '@/types'
+import type { EventStatus, WorldEvent } from '@/types'
 import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
 
@@ -48,7 +49,7 @@ export default function CharacterArcView() {
   const navigate = useNavigate()
   const { activeEventId, setActiveEventId } = useAppStore()
   const [viewMode, setViewMode]             = useState<'chapter' | 'event'>('chapter')
-  const [viewType, setViewType]             = useState<'characters' | 'factions'>('characters')
+  const [viewType, setViewType]             = useState<'characters' | 'factions' | 'threads'>('characters')
   const [filterText, setFilterText]         = useState('')
   const [expandedKey, setExpandedKey]       = useState<string | null>(null) // `${charId}:${colId}`
   const [selectedTimelineId, setSelectedTimelineId] = useState<string | null>(null) // null = all
@@ -64,6 +65,7 @@ export default function CharacterArcView() {
   const snapshots      = useWorldSnapshots(worldId ?? null)
   const markers        = useAllLocationMarkers(worldId ?? null)
   const allFactions    = useFactions(worldId ?? null)
+  const plotThreads    = usePlotThreads(worldId ?? null)
   const allMemberships = useFactionMemberships(worldId ?? null)
 
   // Sort chapters by timeline order then chapter number
@@ -225,6 +227,27 @@ export default function CharacterArcView() {
     if (pos === undefined) continue
     const existing = lastEventPosByChapter.get(ev.chapterId)
     if (existing === undefined || pos > existing) lastEventPosByChapter.set(ev.chapterId, pos)
+  }
+
+  // ── Plot-thread lanes ──────────────────────────────────────────────────────
+  // A thread "beats" on an event tagged with it; a chapter carries the thread
+  // when any of its events do.
+  const threadEventsByChapter = new Map<string, Map<string, WorldEvent[]>>()
+  for (const ev of allSortedEvents) {
+    for (const threadId of ev.threadIds ?? []) {
+      let byChapter = threadEventsByChapter.get(threadId)
+      if (!byChapter) { byChapter = new Map(); threadEventsByChapter.set(threadId, byChapter) }
+      const arr = byChapter.get(ev.chapterId)
+      if (arr) arr.push(ev)
+      else byChapter.set(ev.chapterId, [ev])
+    }
+  }
+
+  function threadBeatsInChapter(threadId: string, chapterId: string): WorldEvent[] {
+    return threadEventsByChapter.get(threadId)?.get(chapterId) ?? []
+  }
+  function eventCarriesThread(threadId: string, ev: WorldEvent): boolean {
+    return (ev.threadIds ?? []).includes(threadId)
   }
 
   function getActiveMembersAtPos(factionId: string, targetPos: number): string[] {
@@ -407,6 +430,43 @@ export default function CharacterArcView() {
     )
   }
 
+  function ThreadCell({ threadId, color, colId, beats, isActive }: {
+    threadId: string
+    color: string
+    colId: string
+    /** Events on this thread in this column (a chapter's beats, or the one event). */
+    beats: WorldEvent[]
+    isActive: boolean
+  }) {
+    void threadId
+    if (beats.length === 0) {
+      return (
+        <td
+          key={colId}
+          style={{ minWidth: colWidth, maxWidth: colWidth }}
+          className={cn('border-b border-r border-[hsl(var(--border))] px-2 py-1.5 text-center', isActive && 'bg-[hsl(var(--accent)/0.15)]')}
+        >
+          <Minus className="mx-auto h-3 w-3 text-[hsl(var(--border))]" />
+        </td>
+      )
+    }
+    return (
+      <td
+        key={colId}
+        style={{ minWidth: colWidth, maxWidth: colWidth }}
+        className={cn('border-b border-r border-[hsl(var(--border))] px-2 py-1.5', isActive && 'bg-[hsl(var(--accent)/0.15)]')}
+        title={beats.map((b) => b.title || 'untitled').join(', ')}
+      >
+        <div className="flex items-center gap-1">
+          <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: color }} />
+          <p className="truncate text-[10px] text-[hsl(var(--foreground))]">
+            {beats.length === 1 ? (beats[0].title || 'untitled') : `${beats.length} beats`}
+          </p>
+        </div>
+      </td>
+    )
+  }
+
   function FactionSnapCell({ factionId, colId, targetPos, isActive }: {
     factionId: string
     colId: string
@@ -445,6 +505,8 @@ export default function CharacterArcView() {
         <span className="text-xs text-[hsl(var(--muted-foreground))]">
           {viewType === 'factions'
             ? `${allFactions.length} faction${allFactions.length !== 1 ? 's' : ''} · `
+            : viewType === 'threads'
+            ? `${plotThreads.length} thread${plotThreads.length !== 1 ? 's' : ''} · `
             : `${displayedChars.length}${q ? `/${characters.length}` : ''} chars · `}
           {viewMode === 'chapter' ? `${sortedChapters.length} ch` : `${sortedEvents.length} ev`}
         </span>
@@ -473,6 +535,19 @@ export default function CharacterArcView() {
               onClick={() => setViewType('factions')}
             >
               Factions
+            </button>
+          )}
+          {plotThreads.length > 0 && (
+            <button
+              className={cn(
+                'px-2.5 py-1 border-l border-[hsl(var(--border))] transition-colors',
+                viewType === 'threads'
+                  ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                  : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
+              )}
+              onClick={() => setViewType('threads')}
+            >
+              Threads
             </button>
           )}
         </div>
@@ -636,7 +711,7 @@ export default function CharacterArcView() {
             )}
             <tr>
               <th className="sticky left-0 z-20 min-w-[132px] max-w-[132px] sm:min-w-[180px] sm:max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-2 text-left font-semibold text-[hsl(var(--muted-foreground))]">
-                Character
+                {viewType === 'factions' ? 'Faction' : viewType === 'threads' ? 'Thread' : 'Character'}
               </th>
 
               {viewMode === 'chapter' && sortedChapters.map((ch) => {
@@ -772,6 +847,42 @@ export default function CharacterArcView() {
                   const pos = eventPosition.get(ev.id) ?? -1
                   return <FactionSnapCell key={ev.id} factionId={faction.id} colId={ev.id} targetPos={pos} isActive={ev.id === activeEventId} />
                 })}
+              </tr>
+            ))}
+
+            {viewType === 'threads' && plotThreads.map((thread, rowIdx) => (
+              <tr key={thread.id} className={cn(rowIdx % 2 === 0 ? 'bg-[hsl(var(--background))]' : 'bg-[hsl(var(--card))]')}>
+                <td
+                  className="sticky left-0 z-10 min-w-[132px] max-w-[132px] sm:min-w-[180px] sm:max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-inherit px-3 py-2"
+                  style={{ borderLeft: `3px solid ${thread.color}` }}
+                >
+                  <div className="flex items-center gap-2">
+                    <Spline className="h-3 w-3 shrink-0 text-[hsl(var(--muted-foreground))]" />
+                    <span className="truncate text-xs font-medium">{thread.name}</span>
+                  </div>
+                </td>
+
+                {viewMode === 'chapter' && sortedChapters.map((ch) => (
+                  <ThreadCell
+                    key={ch.id}
+                    threadId={thread.id}
+                    color={thread.color}
+                    colId={ch.id}
+                    beats={threadBeatsInChapter(thread.id, ch.id)}
+                    isActive={ch.id === activeChapterId}
+                  />
+                ))}
+
+                {viewMode === 'event' && sortedEvents.map((ev) => (
+                  <ThreadCell
+                    key={ev.id}
+                    threadId={thread.id}
+                    color={thread.color}
+                    colId={ev.id}
+                    beats={eventCarriesThread(thread.id, ev) ? [ev] : []}
+                    isActive={ev.id === activeEventId}
+                  />
+                ))}
               </tr>
             ))}
           </tbody>

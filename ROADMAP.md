@@ -275,7 +275,7 @@ Full audit findings in `docs/features/ux-audit.md`.
 ### High
 
 - [x] **`aria-label` on all icon-only buttons** — added `aria-label` to all icon-only buttons in TopBar (brand, nav items, search, Writer's Brief, Continuity, Help), CharacterDetailView (back, delete), and ContinuityChecker (suppress, navigate, close).
-- [ ] **`aria-current="page"` on active nav item** — React Router v6 NavLink sets `aria-current="page"` automatically; verified it is handled by the framework.
+- [x] **`aria-current="page"` on active nav item** — React Router v6 NavLink sets `aria-current="page"` automatically; verified it is handled by the framework.
 - [x] **Character detail back button** — replaced `navigate(-1)` with `navigate(\`/worlds/${worldId}/characters\`)`.
 - [x] **Portrait upload label accessible name** — added `aria-label="Upload portrait image"` to the upload label.
 - [x] **Timeline multi-timeline selector** — added `role="tablist"` / `role="tab"` / `aria-selected` / `role="tabpanel"` to the multi-timeline tab structure.
@@ -316,11 +316,11 @@ Track which character's point-of-view each event/scene is told from. Useful for 
 
 Tag events as belonging to named narrative threads (A-plot, romance subplot, mystery, etc.) and filter the timeline to a single thread.
 
-- [ ] **Data model** — new `PlotThread` entity (`id, worldId, name, color, description`); events gain `threadIds: string[]` (many-to-many); DB migration.
-- [ ] **Plot Threads management** — new `Threads` nav item (or section inside Timeline); CRUD for threads with colour picker; events can be tagged to multiple threads.
+- [x] **Data model** — `PlotThread` entity (`id, worldId, name, color, description`); events carry `threadIds: string[]`; CRUD hooks in `usePlotThreads`; export/import round-trip.
+- [x] **Plot Threads management** — the dashboard's **Plot Threads** panel (`ThreadCadence` → shared `CadenceManager`): inline create/delete with auto-assigned colours, plus a per-chapter cadence strip. Events are tagged from the event card.
 - [x] **Timeline filter** — thread filter pill row above the chapter list (Narrative view); selecting a thread hides chapters/events not on it and auto-expands the matches; "All threads" resets. Pure `eventMatchesThread` / `chaptersWithThread` in `src/lib/plotThreads.ts` (unit-tested) + a Playwright filter e2e.
-- [ ] **Arc View thread lane** — optional row per thread showing which chapters/events contain thread activity.
-- [ ] **Continuity checks** — warn on threads with a long gap (configurable N chapters with no events); warn on threads that start but never resolve (no events after chapter N).
+- [x] **Arc View thread lane** — a **Threads** row type in the Arc grid: one lane per thread across chapters/events, each cell naming the scene (or counting the beats) that carries it; the row-header label follows the row type.
+- [x] **Continuity checks** — pure `src/lib/threadContinuity.ts` (`computeThreadIssues`: dangling / dormant / unstarted, configurable thresholds) surfaced as a **Plot threads** category in the Continuity Checker, navigable and suppressible. Unit-tested + e2e.
 
 ---
 
@@ -347,14 +347,14 @@ Structured inner-life tracking alongside the existing external-state snapshots.
 
 ---
 
-### Clue & Secret Tracking
+### Clue & Secret Tracking — DONE (shipped as **Knowledge**)
 
-For mysteries and complex plots: track information objects, when they're introduced, and which characters know them.
+For mysteries and complex plots: track information objects, when they're introduced, and which characters know them. Built as the Knowledge feature rather than a separate "Clues" entity.
 
-- [ ] **Data model** — new `Clue` entity (`id, worldId, name, description, plantedEventId, revealedEventId | null`); new `ClueKnowledge` entity (`id, worldId, clueId, characterId, learnedEventId`) recording when each character learns each clue.
-- [ ] **Clues view** — new `Clues` nav item; list/grid of clues with planted/revealed events; per-clue panel showing which characters know it and when they learned it.
-- [ ] **Character panel** — "Knows" section listing clues the character has knowledge of at the active event.
-- [ ] **Continuity check** — warn when a character acts on a clue (tagged on an event) before their `learnedEventId` for that clue.
+- [x] **Data model** — `KnowledgeFact` (title, description, tags, `readerLearnsAtEventId`, `originEventId` — the event at which the fact becomes true in-world) and `KnowledgeReveal` (fact × character × event, i.e. "learned at").
+- [x] **Knowledge view** — `Knowledge` nav item with per-fact panels showing who knows it and when they learned it, plus an AI generate dialog.
+- [x] **Character panel** — knowledge surfaced per character at the active event.
+- [x] **Continuity checks** — anachronistic knowledge (knowing a fact before its `originEventId`), a dead character learning a fact, and reader-knowledge leaks (prose referencing a fact before its reveal).
 
 ---
 
@@ -398,7 +398,7 @@ An in-world day is tracked but there's no calendar or ages.
 - [x] **Character birth date** — optional in-world `birthDate` on `Character` (date picker on the Overview tab); age computed at the active event (counts birthdays passed).
 - [x] **Surfacing** — the Writer's Brief shows the active event's in-world date (day number when no calendar) and each present character's age.
 - [x] **Round-trip** — calendar + birth dates survive export/import (with backfill).
-- [ ] **Calendar view** — events laid out on a month/season grid. Not built.
+- [x] **Calendar view** — built later as item #9 below (`CalendarView`, month grids + drag-to-reschedule).
 - [ ] **Continuity (optional)** — season/date mismatches and age-inappropriate actions (likely manual-tagged). Not built.
 
 ### 3. Compile to DOCX / EPUB  — *highest-demand practical win* — DONE
@@ -493,3 +493,57 @@ Events already carry `structureBeat`, but there's no board mapping them to a tem
 
 - [x] **Full-screen editor** — `FocusMode` (opened from **Focus** above the scene draft): portal overlay that hides all chrome, centers the prose in a column, keeps the caret line centered (typewriter scrolling via a mirror measurement), shows live word + "this session" counts, and fills an ambient bar toward the daily session goal. Autosaves through `setSceneText` (revisions + writing log still fire); Esc exits.
 - [x] **Tests** — pure `focusSession` (`sessionWordDelta`, `focusStats`, `sessionGoalPercent`) units + a Playwright open/type/session-count/save/exit e2e.
+
+---
+
+## Gap review — 2026-07 (round 3)
+
+A pass reconciling the roadmap against what's actually built. Two sections above
+were stale and are now corrected: **Clue & Secret Tracking** shipped as the
+**Knowledge** feature, and the **Calendar view** was built as round-2 item #9.
+What genuinely remains, ranked by value per effort:
+
+### Finish Plot Threads (infrastructure already exists)
+
+- [x] **Arc View thread lane** — shipped: a **Threads** row type in Arc View.
+- [x] **Thread continuity checks** — shipped: `computeThreadIssues` feeds a
+  **Plot threads** category in the Continuity Checker.
+
+### Test coverage
+
+- [ ] **Backfill continuity-check unit tests** — extracting `computeIssues.ts`
+  made ~15 checks directly testable but only 3 have tests. Cover the rest
+  (items before acquired / after destroyed, item hand-off, travel time + region
+  traversal, stale snapshots, faction membership gaps, hostile-faction
+  locations, cross-timeline artifacts, prose drift).
+- [ ] **Map logic coverage** — the map e2e suite is heavy and flaky under load;
+  push more of the behaviour into pure `src/lib` units.
+
+### Feature work (net new)
+
+- [ ] **Character Goals & Motivations** — see the section above; purely additive
+  and feeds the Writer's Brief and Arc View.
+- [ ] **Physical Description Snapshots** — see the section above; smallest of the
+  remaining features (one field on `CharacterSnapshot`).
+
+### Smaller polish
+
+- [ ] **Proactive travel-day suggestion** — a per-event "suggest travelDays"
+  affordance before any violation (the reactive one-click fix already exists).
+- [ ] **Export scope by scene status** — a `final`/`revised`-only filter for the
+  DOCX/EPUB compile (today it filters written vs. unwritten).
+- [ ] **Calendar continuity** — season/date mismatches, age-inappropriate actions.
+- [ ] **Cross-map/floor journeys** — travel-time estimates across map layers
+  (currently skipped for lack of a shared metric).
+
+### Structural gaps (out of scope today — recorded deliberately)
+
+These follow from the local-first design rather than being oversights; listed so
+the trade-off stays visible:
+
+- [ ] **Backup / sync** — data lives in one browser's IndexedDB and backup is a
+  manual `.pwk` export; clearing site data loses work. Even without cloud sync,
+  an automatic periodic local backup (or an export reminder) would de-risk this.
+- [ ] **Global undo/redo** — only per-scene revision history exists today.
+- [ ] **Full-text prose search** — Ctrl+K covers entities and find & replace
+  covers scene text, but there's no read-only search across all prose.

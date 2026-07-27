@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { useFocusTrap } from '@/lib/useFocusTrap'
-import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, Shield, ChevronRight, EyeOff, Eye, Check, PenLine } from 'lucide-react'
+import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, Shield, ChevronRight, EyeOff, Eye, Check, PenLine, Spline } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store'
 import { useWorldChapters, useWorldEvents, updateEvent } from '@/db/hooks/useTimeline'
@@ -15,6 +15,7 @@ import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
 import { useWorldMovements } from '@/db/hooks/useMovements'
 import { useFactions, useFactionMemberships, useFactionRelationships } from '@/db/hooks/useFactions'
+import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useContinuitySuppressions, toggleContinuitySuppression, setContinuitySuppressionNote } from '@/db/hooks/useContinuitySuppressions'
@@ -248,6 +249,7 @@ export function ContinuityChecker() {
     () => worldId ? db.mapRegionSnapshots.where('worldId').equals(worldId).toArray() : [],
     [worldId], []
   )
+  const plotThreads       = usePlotThreads(worldId ?? null)
   const allFactions       = useFactions(worldId ?? null)
   const allMemberships    = useFactionMemberships(worldId ?? null)
   const allFactionRels    = useFactionRelationships(worldId ?? null)
@@ -262,8 +264,8 @@ export function ContinuityChecker() {
     knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements,
     allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements,
     artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions,
-    allMemberships, allFactionRels, allItemSnapshots,
-  }), [chapters, allEvents, characters, rels, items, snapshots, knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId, world, allItemSnapshots])
+    allMemberships, allFactionRels, allItemSnapshots, plotThreads,
+  }), [chapters, allEvents, characters, rels, items, snapshots, knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId, world, allItemSnapshots, plotThreads])
 
   // Focus modal on open so keyboard navigation works immediately
   useEffect(() => {
@@ -321,6 +323,7 @@ export function ContinuityChecker() {
   const factionIssues = issues.filter((i) => i.category === 'faction')
   const povIssues     = issues.filter((i) => i.category === 'pov')
   const proseIssues   = issues.filter((i) => i.category === 'prose')
+  const threadIssues  = issues.filter((i) => i.category === 'thread')
 
   // Compute base indices for keyboard focus mapping per category
   const visibleChar    = charIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
@@ -328,6 +331,7 @@ export function ContinuityChecker() {
   const visibleRel     = relIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
   const visibleFaction = factionIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
   const visiblePov     = povIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
+  const visibleProse   = proseIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
 
   // focusedIdx is into navigableIssues; map back to category position
   function categoryFocusedIdx(categoryIssues: Issue[]): number {
@@ -415,6 +419,10 @@ export function ContinuityChecker() {
                 onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Prose vs. record" icon={PenLine} issues={proseIssues}
                 focusedIdx={categoryFocusedIdx(proseIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length + visibleFaction.length + visiblePov.length}
+                suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
+                onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+              <CategorySection title="Plot threads" icon={Spline} issues={threadIssues}
+                focusedIdx={categoryFocusedIdx(threadIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length + visibleFaction.length + visiblePov.length + visibleProse.length}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
                 onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
             </>

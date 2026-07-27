@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { computeContinuityIssues, type ContinuityInput } from '@/lib/continuity/computeIssues'
-import type { Chapter, Character, CharacterSnapshot, WorldEvent } from '@/types'
+import type { Chapter, Character, CharacterSnapshot, PlotThread, WorldEvent } from '@/types'
 
 // Direct tests against the extracted checker core — previously these checks
 // were only exercisable through the ContinuityChecker component.
@@ -13,7 +13,7 @@ function emptyInput(): ContinuityInput {
     allItemPlacements: [], allLocationSnapshots: [], allMarkers: [], allLayers: [],
     travelModes: [], allMovements: [], artifacts: [], allMapRoutes: [],
     allMapRegions: [], allRegionSnapshots: [], allFactions: [], allMemberships: [],
-    allFactionRels: [], allItemSnapshots: [],
+    allFactionRels: [], allItemSnapshots: [], plotThreads: [],
   }
 }
 
@@ -86,5 +86,23 @@ describe('computeContinuityIssues', () => {
     const pov = issues.filter((i) => i.category === 'pov')
     expect(pov.length).toBeGreaterThanOrEqual(1)
     expect(pov.some((i) => i.eventId === 'e1' && i.message.includes('Sam'))).toBe(true)
+  })
+
+  it('surfaces dangling plot threads as navigable thread issues', () => {
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1), chapter('c2', 2), chapter('c3', 3), chapter('c4', 4)]
+    const heist: PlotThread = { id: 'heist', worldId: 'w', name: 'The Heist', color: '#f00', description: '', createdAt: 0, updatedAt: 0 }
+    input.plotThreads = [heist]
+    input.allEvents = [
+      event('e1', 'c1', 0, { threadIds: ['heist'] }), // raised, never returned to
+      event('e2', 'c4', 0),
+    ]
+    const threadIssues = computeContinuityIssues(input).filter((i) => i.category === 'thread')
+    expect(threadIssues).toHaveLength(1)
+    expect(threadIssues[0].id).toBe('thread-dangling-heist')
+    expect(threadIssues[0].message).toContain('The Heist')
+    // Navigates to the chapter where the thread was last advanced.
+    expect(threadIssues[0].navigatePath).toContain('/timeline/c1')
+    expect(threadIssues[0].eventId).toBe('e1')
   })
 })

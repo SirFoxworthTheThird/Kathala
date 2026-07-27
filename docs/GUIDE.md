@@ -531,6 +531,28 @@ surrounding story. Click **All threads** to clear the filter.
 
 ![Filtering the timeline by plot thread](images/48-thread-filter.png)
 
+### A lane per thread in the Arc grid
+
+The [Character Arc grid](#character-arc-grid) has a **Threads** row type: one
+lane per thread across your chapters (or events), each cell naming the scene
+that carries it. Where a lane goes blank, the subplot is off-stage — the fastest
+way to see a thread's rhythm across the whole book.
+
+![A lane per plot thread in the Arc grid](images/50-arc-thread-lane.png)
+
+### Threads in the Continuity Checker
+
+The same cadence analysis is reported as findings under **Plot threads** in the
+[Continuity Checker](#continuity-checker), so they're actionable rather than
+just visible:
+
+- **left dangling** — raised, then quiet for the last three chapters or more.
+- **goes quiet mid-story** — a run of three or more chapters with no beat.
+- **has no scenes** — a thread that exists but was never tagged onto an event.
+
+Each finding links to the chapter where the thread was last (or first) seen, and
+can be suppressed with a note like any other continuity issue.
+
 ---
 
 ## Motifs & Themes
@@ -746,9 +768,12 @@ it happens.
 ## Character Arc grid
 
 The Arc view is a spreadsheet of your whole cast across story time. Choose
-**Characters** or **Factions** for the rows, and **Chapters** or **Events** for
-the columns. Character cells show status, location, notes, inherited state, and
-an inventory sparkline; faction cells show who belongs at that moment.
+**Characters**, **Factions**, or **Threads** for the rows, and **Chapters** or
+**Events** for the columns. Character cells show status, location, notes,
+inherited state, and an inventory sparkline; faction cells show who belongs at
+that moment; thread cells name the scene (or count the beats) that carries each
+[plot thread](#plot-threads), so a subplot's rhythm — and its silences — read
+straight down the row.
 
 In a multi-timeline world, use **All** or a timeline pill to focus the columns.
 The search box filters character rows, while the **Factions**, **Status**, and
