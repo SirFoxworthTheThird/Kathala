@@ -69,8 +69,9 @@ export function CharacterFilmStrip({
   if (stops.length === 0) return null
 
   return (
-    // z-1050 clears Leaflet's controls (z 1000) so the strip covers the zoom
-    // buttons, which now sit bottom-right, rather than being punched through.
+    // z-1050 sits above the detail panels (500) — the strip is a full-width bar
+    // and shouldn't be clipped by one. Leaflet's bottom controls are lifted
+    // clear of it by the [data-film-strip] rule in index.css rather than by z.
     <div className="absolute bottom-0 inset-x-0 z-[1050] border-t border-[hsl(var(--border))] bg-[hsl(var(--card)/0.95)] backdrop-blur-sm">
       <div className="flex items-center gap-2 px-3 py-1.5">
         {/* Label */}

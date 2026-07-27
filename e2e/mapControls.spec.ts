@@ -4,6 +4,8 @@ import * as path from 'path'
 import { resetDB } from './helpers/reset'
 import { openMapTools, waitForMapReady } from './helpers/map'
 
+const settleNav = (page: Page) => page.mouse.move(700, 400).then(() => page.waitForTimeout(150))
+
 // The map's controls float over the canvas rather than sitting in header rows,
 // so the canvas can run edge to edge. These tests cover the layout consequence
 // (no chrome above the canvas), the overflow menu that holds the rare commands,
@@ -12,13 +14,22 @@ import { openMapTools, waitForMapReady } from './helpers/map'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const MAIN_MAP = path.resolve(__dirname, 'map_example/main_map.jpg')
 
-async function setupMap(page: Page) {
+async function setupMap(page: Page, opts: { withCharacter?: boolean } = {}) {
   await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Cartography')
   await page.getByRole('button', { name: 'Create World' }).last().click()
   await expect(page).toHaveURL(/#\/worlds\//)
+
+  if (opts.withCharacter) {
+    await page.getByRole('link', { name: /characters/i }).first().click()
+    await page.mouse.move(700, 400)
+    await page.getByRole('button', { name: 'Add Character' }).first().click()
+    await page.getByPlaceholder('Character name').fill('Frodo')
+    await page.getByRole('button', { name: 'Add Character' }).last().click()
+    await expect(page.getByText('Frodo')).toBeVisible()
+  }
 
   await page.getByRole('link', { name: /maps/i }).first().click()
   await page.mouse.move(700, 400)
@@ -105,6 +116,78 @@ test('an open detail panel does not sit under the floating toolbar', async ({ pa
   await expect(page.getByRole('button', { name: 'Map tools' })).toBeVisible()
   await close.click()
   await expect(close).toHaveCount(0)
+})
+
+test('clicking a character keeps its panel, film strip and zoom all usable', async ({ page }) => {
+  test.setTimeout(150000)
+  await setupMap(page, { withCharacter: true })
+
+  await page.getByRole('button', { name: 'Location', exact: true }).click()
+  await expect(page.getByText('Click on the map to place the location')).toBeVisible()
+  await page.locator('.leaflet-container').click({ position: { x: 300, y: 250 } })
+  await page.getByPlaceholder('e.g. Thornwall City').fill('Rivendell')
+  await page.getByRole('button', { name: 'Add Location' }).last().click()
+
+  // A chapter *and* event: the film strip is built from events, so a chapter
+  // alone leaves it empty.
+  await page.getByRole('link', { name: /timeline/i }).first().click()
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Create Timeline' }).click()
+  await page.getByRole('button', { name: 'Add Chapter' }).first().click()
+  await page.getByPlaceholder('Chapter title').fill('One')
+  await page.getByRole('button', { name: 'Add Chapter' }).last().click()
+  await page.getByTitle('Open chapter detail').first().click()
+  await page.getByRole('main').getByRole('button', { name: 'Add Event' }).first().click()
+  await page.getByPlaceholder('Event title').fill('The Departure')
+  await page.getByRole('button', { name: 'Add Event' }).last().click()
+
+  await page.getByRole('link', { name: /timeline/i }).first().click()
+  await settleNav(page)
+  await page.getByTitle('The Departure', { exact: true }).click()
+
+  await page.getByRole('link', { name: /maps/i }).first().click()
+  await settleNav(page)
+  await waitForMapReady(page)
+  await page.getByText('Rivendell').first().click()
+  await page.getByRole('button', { name: 'Add character here' }).click()
+  await page.getByRole('button', { name: 'Choose character...' }).click()
+  await page.getByRole('option', { name: 'Frodo' }).click()
+  await page.getByRole('button', { name: 'Close location panel' }).click()
+
+  // Click Frodo's pin: this opens the snapshot panel AND the film strip, the
+  // one place on the map where three floating surfaces share the canvas.
+  await page.locator('.leaflet-marker-icon').filter({ hasText: 'Frodo' }).first().click()
+  const strip = page.locator('[data-film-strip] .absolute.bottom-0')
+  await expect(page.getByRole('button', { name: 'Close character panel' })).toBeVisible()
+  await expect(strip).toBeVisible()
+
+  // The toolbar stays reachable beside the panel rather than under it, and the
+  // film strip is not clipped by the panel.
+  await expect(page.getByRole('button', { name: 'Map tools' })).toBeVisible()
+  const clipped = await page.evaluate(() => {
+    const el = document.querySelector('[data-film-strip] .absolute.bottom-0') as HTMLElement
+    const b = el.getBoundingClientRect()
+    const top = document.elementFromPoint(b.right - 40, b.y + b.height / 2)
+    return !el.contains(top)
+  })
+  expect(clipped).toBe(false)
+
+  // Both zoom buttons sit above the strip rather than behind it.
+  for (const [selector, label] of [
+    ['.leaflet-control-zoom-in', 'Zoom in'],
+    ['.leaflet-control-zoom-out', 'Zoom out'],
+  ] as const) {
+    const box = (await page.locator(selector).boundingBox())!
+    const topmost = await page.evaluate(
+      ({ x, y }) => {
+        const el = document.elementFromPoint(x, y)
+        // Leaflet nests a <span> inside the control's <a>.
+        return el?.closest('a')?.getAttribute('aria-label') ?? el?.tagName ?? null
+      },
+      { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+    )
+    expect(topmost).toBe(label)
+  }
 })
 
 test('Measure surfaces only once the map has a scale', async ({ page }) => {

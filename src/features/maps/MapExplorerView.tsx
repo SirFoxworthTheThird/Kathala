@@ -528,9 +528,11 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           />
         )}
 
-        {/* Map canvas */}
+        {/* Map canvas. data-film-strip lifts Leaflet's bottom controls clear of
+            the character film strip, which shares the canvas's bottom edge. */}
         <div
           className="relative flex-1 overflow-hidden"
+          data-film-strip={selectedCharacterId ? '' : undefined}
           style={canvasTransitionStyle}
           onTransitionEnd={handleCanvasTransitionEnd}
         >
@@ -650,13 +652,14 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
 
           {/* Floating map controls — the map runs edge to edge underneath them.
               pointer-events-none on the band lets drags pass through the gap.
-              A right-hand detail panel (w-72 on sm+) sits above this band, so
-              the band is inset to keep the toolbar clear of it rather than
-              buried under it; on phones the panel is 85vw and simply covers. */}
+              The band sits above the right-hand detail panels, so when one is
+              open it insets by the panel's width (w-72 on sm+) to keep the
+              toolbar reachable beside it. On phones the panel takes 85vw and
+              there is no room left, so the band steps aside entirely. */}
           <div
             className={cn(
               'pointer-events-none absolute inset-x-0 top-0 z-[1100] flex flex-wrap items-start justify-between gap-2 p-2',
-              rightPanelOpen && 'sm:pr-[19rem]',
+              rightPanelOpen && 'max-sm:hidden sm:pr-[19rem]',
             )}
           >
             <div className="flex min-w-0 max-w-full flex-col items-start gap-2">
@@ -878,12 +881,12 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             </div>
           )}
 
-          {/* Detail panels. z-1120 threads a needle: above the floating controls
-              band (1100) so the toolbar can't cover a panel's close button, but
-              below the mobile drawer's backdrop (1150) and the drawer itself
-              (1200), which must stay on top on phones. */}
+          {/* Detail panels stay at z-500, below Leaflet's controls (1000), the
+              film strip (1050) and the mobile drawer — the ordering everything
+              else on the canvas was built against. The floating controls band
+              keeps clear of them by inset, not by z (see above). */}
           {selectedLocationMarkerId && (
-            <div className="absolute inset-y-0 right-0 z-[1120] flex">
+            <div className="absolute inset-y-0 right-0 z-[500] flex">
               <LocationDetailPanel
                 markerId={selectedLocationMarkerId}
                 worldId={worldId}
@@ -893,12 +896,12 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             </div>
           )}
           {selectedRouteId && !selectedLocationMarkerId && !selectedCharacterId && (
-            <div className="absolute inset-y-0 right-0 z-[1120] flex">
+            <div className="absolute inset-y-0 right-0 z-[500] flex">
               <RouteDetailPanel routeId={selectedRouteId} onClose={() => setSelectedRouteId(null)} />
             </div>
           )}
           {selectedRegionId && !selectedLocationMarkerId && !selectedCharacterId && (
-            <div className="absolute inset-y-0 right-0 z-[1120] flex">
+            <div className="absolute inset-y-0 right-0 z-[500] flex">
               <RegionDetailPanel regionId={selectedRegionId} worldId={worldId} onClose={() => setSelectedRegionId(null)} onDrillDown={pushMapLayer} />
             </div>
           )}
@@ -907,7 +910,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             const snap = snapshots.find((s) => s.characterId === selectedCharacterId)
             if (!char) return null
             return (
-              <div className="absolute inset-y-0 right-0 z-[1120] flex">
+              <div className="absolute inset-y-0 right-0 z-[500] flex">
                 <CharacterSnapshotPanel
                   character={char}
                   snapshot={snap}

@@ -83,7 +83,7 @@ export function RouteDetailPanel({
           <Route className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
           <span className="text-sm font-semibold text-[hsl(var(--foreground))]">Route</span>
         </div>
-        <Button variant="ghost" size="icon" className="pw-tap h-7 w-7" onClick={onClose}>
+        <Button variant="ghost" size="icon" className="pw-tap h-7 w-7" aria-label="Close route panel" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
       </div>
@@ -240,7 +240,7 @@ export function RegionDetailPanel({
           <Hexagon className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
           <span className="text-sm font-semibold text-[hsl(var(--foreground))]">Region</span>
         </div>
-        <Button variant="ghost" size="icon" className="pw-tap h-7 w-7" onClick={onClose}>
+        <Button variant="ghost" size="icon" className="pw-tap h-7 w-7" aria-label="Close region panel" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
       </div>

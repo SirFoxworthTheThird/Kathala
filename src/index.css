@@ -502,6 +502,12 @@
   color: hsl(var(--leaflet-fg)) !important;
 }
 
+/* The character film strip occupies the canvas's bottom edge, where the zoom
+   control now lives. Lift Leaflet's bottom controls above it while it's open. */
+[data-film-strip] .leaflet-bottom {
+  margin-bottom: 3.25rem;
+}
+
 /* Leaflet's default disabled state is a light grey that reads as a broken,
    empty button on a dark map — most visible at min zoom, where zoom-out is
    always disabled. */
