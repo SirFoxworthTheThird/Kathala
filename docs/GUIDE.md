@@ -484,10 +484,38 @@ Opening a character gives you a tabbed profile:
 - **History** — how their state changed event by event, including carried-forward
   states.
 - **Appearances** — every event they're in.
+- **Goals** — their inner life (see below).
 - **Relationships**, **Lore**, and **Factions** — their connections and
   affiliations.
 
 ![Character detail](images/07-character-detail.png)
+
+### Goals & motivations
+
+The **Goals** tab tracks the inner life behind a character's scenes, along the
+four classic axes:
+
+- **Want** — the conscious objective they're chasing.
+- **Need** — what they actually require, often at odds with the want.
+- **Fear** — what they're avoiding.
+- **Flaw** — the trait that keeps getting in their way.
+
+Each goal can be **scoped in time** — *From* an event *until* another — so a want
+they pick up in chapter three and abandon in chapter nine is recorded as exactly
+that. Leave either end open for a drive they carry from the start, or to the end.
+Goals that aren't held at the current time cursor stay listed but dimmed and
+marked *inactive here*, so the whole arc is visible while you edit.
+
+![Character goals](images/51-character-goals.png)
+
+Goals surface where you're writing, not just where you set them:
+
+- The **[Writer's Brief](#writers-brief)** lists each present character's active
+  goals alongside their location and inventory, so the moment's motivations are
+  in front of you.
+- The **[Character Arc grid](#character-arc-grid)** has a **Goals** overlay that
+  prints them under each character's name, and every row's name carries them as
+  a tooltip.
 
 ---
 

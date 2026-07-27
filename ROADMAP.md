@@ -339,10 +339,10 @@ Track the writing-progress state of each event so the writer knows what's drafte
 
 Structured inner-life tracking alongside the existing external-state snapshots.
 
-- [ ] **Data model** — new `CharacterGoal` entity (`id, worldId, characterId, type: 'want'|'need'|'fear'|'flaw', text, startEventId, endEventId`); purely additive DB table.
-- [ ] **Character panel tab** — "Goals" tab in `CharacterDetailView` (alongside Overview, State, History, Relationships, Factions); CRUD for goals with type selector, free-text field, and optional time-scoping.
-- [ ] **Arc View overlay** — goals listed in the row header tooltip or a collapsible sub-row per character.
-- [ ] **Writer's Brief** — active goals (those with no `endEventId` or ending after the current event) shown in the character summary card.
+- [x] **Data model** — `CharacterGoal` entity (`type: want|need|fear|flaw`, `text`, optional `startEventId`/`endEventId`); DB v51, additive table; CRUD hooks in `useCharacterGoals`; cascades on character/world delete and reference-clearing on event delete; export/import round-trip.
+- [x] **Character panel tab** — a **Goals** tab: colour-coded rows per type, inline text editing, From/until event pickers for time scoping, and goals not held at the cursor dimmed and marked "inactive here".
+- [x] **Arc View overlay** — a **Goals** toggle prints each character's active goals under their name in the row header; the name also carries them as a tooltip.
+- [x] **Writer's Brief** — each present character's active goals listed in their summary card, beneath location and inventory.
 - [ ] **Continuity check** — warn when a character acts in a way that directly contradicts a declared fear or goal (requires tagging events with character motivations — lower priority, may stay manual).
 
 ---
@@ -521,8 +521,8 @@ What genuinely remains, ranked by value per effort:
 
 ### Feature work (net new)
 
-- [ ] **Character Goals & Motivations** — see the section above; purely additive
-  and feeds the Writer's Brief and Arc View.
+- [x] **Character Goals & Motivations** — shipped (see the section above). The
+  optional contradiction continuity check remains unbuilt and stays manual.
 - [ ] **Physical Description Snapshots** — see the section above; smallest of the
   remaining features (one field on `CharacterSnapshot`).
 

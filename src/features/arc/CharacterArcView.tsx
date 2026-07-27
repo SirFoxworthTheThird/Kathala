@@ -1,13 +1,15 @@
 import { useState, useRef, useCallback } from 'react'
 import { toPng } from 'html-to-image'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Heart, Skull, MapPin, Minus, Search, Download, X, Shield, FileEdit, Eye, History, Spline } from 'lucide-react'
+import { Heart, Skull, MapPin, Minus, Search, Download, X, Shield, FileEdit, Eye, History, Spline, Target } from 'lucide-react'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
+import { useCharacterGoals } from '@/db/hooks/useCharacterGoals'
+import { GOAL_TYPE_CONFIG, eventPositions, activeGoalsAt, summariseGoals } from '@/lib/characterGoals'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/EmptyState'
@@ -56,6 +58,7 @@ export default function CharacterArcView() {
   const [showFactionOverlay, setShowFactionOverlay] = useState(false)
   const [showStatusOverlay, setShowStatusOverlay]   = useState(false)
   const [showPovOverlay, setShowPovOverlay]         = useState(false)
+  const [showGoalsOverlay, setShowGoalsOverlay]     = useState(false)
   const tableRef = useRef<HTMLDivElement>(null)
 
   const timelines      = useTimelines(worldId ?? null)
@@ -66,6 +69,7 @@ export default function CharacterArcView() {
   const markers        = useAllLocationMarkers(worldId ?? null)
   const allFactions    = useFactions(worldId ?? null)
   const plotThreads    = usePlotThreads(worldId ?? null)
+  const characterGoals = useCharacterGoals(worldId ?? null)
   const allMemberships = useFactionMemberships(worldId ?? null)
 
   // Sort chapters by timeline order then chapter number
@@ -75,6 +79,7 @@ export default function CharacterArcView() {
     return tlDiff !== 0 ? tlDiff : a.number - b.number
   })
 
+  const goalPositions = eventPositions(allEvents, chapters)
   const chapterById = new Map(chapters.map((c) => [c.id, c]))
   const markerById  = new Map(markers.map((m) => [m.id, m]))
 
@@ -679,6 +684,21 @@ export default function CharacterArcView() {
             <Eye className="h-3 w-3" />
             POV
           </button>
+          {characterGoals.length > 0 && viewType === 'characters' && (
+            <button
+              onClick={() => setShowGoalsOverlay((v) => !v)}
+              className={cn(
+                'flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors',
+                showGoalsOverlay
+                  ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                  : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
+              )}
+              title="Show each character's goals at the current cursor"
+            >
+              <Target className="h-3 w-3" />
+              Goals
+            </button>
+          )}
           <button
             onClick={handleExport}
             className="flex items-center gap-1 rounded-md border border-[hsl(var(--border))] px-2 py-1 text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent)/0.4)] transition-colors"
@@ -780,6 +800,8 @@ export default function CharacterArcView() {
             {viewType === 'characters' && displayedChars.map((char, rowIdx) => {
               const color     = charColor(char)
               const sparkline = sparklineData.get(char.id) ?? []
+              const charGoals = activeGoalsAt(characterGoals, char.id, activeEventId, goalPositions)
+              const goalSummary = summariseGoals(charGoals)
 
               return (
                 <tr
@@ -793,7 +815,19 @@ export default function CharacterArcView() {
                     className="sticky left-0 z-10 min-w-[132px] max-w-[132px] sm:min-w-[180px] sm:max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-inherit px-3 py-2"
                     style={{ borderLeft: `3px solid ${color}` }}
                   >
-                    <span className="block truncate font-medium">{char.name}</span>
+                    <span className="block truncate font-medium" title={goalSummary || undefined}>{char.name}</span>
+                    {showGoalsOverlay && charGoals.length > 0 && (
+                      <div className="mt-0.5 flex flex-col gap-px">
+                        {charGoals.map((g) => (
+                          <div key={g.id} className="flex items-start gap-1 text-[9px] leading-tight">
+                            <span className="shrink-0 font-semibold uppercase" style={{ color: GOAL_TYPE_CONFIG[g.type].color }}>
+                              {GOAL_TYPE_CONFIG[g.type].label}
+                            </span>
+                            <span className="truncate text-[hsl(var(--muted-foreground))]">{g.text}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     <div className="mt-1 text-[hsl(var(--muted-foreground))]">
                       <InventorySparkline counts={sparkline} />
                     </div>

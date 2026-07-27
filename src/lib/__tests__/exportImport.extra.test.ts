@@ -970,6 +970,35 @@ describe('importWorld — travelModes', () => {
     expect(stored!.readerLearnsAtEventId).toBeNull()
   })
 
+  it('round-trips character goals through export/import', async () => {
+    await db.delete()
+    await db.open()
+
+    const data = makeExport({
+      characterGoals: [
+        { id: 'cg-1', worldId: 'world-extra', characterId: 'char-1', type: 'want', text: 'Reclaim the throne', startEventId: 'ev-1', endEventId: null, createdAt: 1000, updatedAt: 1000 },
+        { id: 'cg-2', worldId: 'world-extra', characterId: 'char-1', type: 'fear', text: 'Becoming his father', startEventId: null, endEventId: 'ev-1', createdAt: 1001, updatedAt: 1001 },
+      ],
+    })
+    await importWorld(makeFile(data))
+
+    const want = await db.characterGoals.get('cg-1')
+    expect(want?.text).toBe('Reclaim the throne')
+    expect(want?.type).toBe('want')
+    expect(want?.startEventId).toBe('ev-1')
+    expect(want?.endEventId).toBeNull()
+    expect((await db.characterGoals.get('cg-2'))?.endEventId).toBe('ev-1')
+  })
+
+  it('backfills characterGoals to empty on exports made before the feature', async () => {
+    await db.delete()
+    await db.open()
+
+    await importWorld(makeFile(makeExport()))
+
+    expect(await db.characterGoals.count()).toBe(0)
+  })
+
   it('backfills knowledge arrays to empty on older exports that lack them', async () => {
     await db.delete()
     await db.open()

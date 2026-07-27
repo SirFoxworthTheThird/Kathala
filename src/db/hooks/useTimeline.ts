@@ -226,8 +226,12 @@ export async function deleteEvent(id: string) {
     db.events, db.characterSnapshots, db.itemPlacements,
     db.locationSnapshots, db.itemSnapshots, db.characterMovements,
     db.relationshipSnapshots, db.mapRegionSnapshots, db.sceneTexts, db.sceneRevisions,
+    db.characterGoals,
   ], async () => {
     await db.events.delete(id)
+    // Goals scoped to this event lose that bound rather than dangling.
+    await db.characterGoals.where('startEventId').equals(id).modify({ startEventId: null })
+    await db.characterGoals.where('endEventId').equals(id).modify({ endEventId: null })
     await db.characterSnapshots.where('eventId').equals(id).delete()
     await db.itemPlacements.where('eventId').equals(id).delete()
     await db.locationSnapshots.where('eventId').equals(id).delete()

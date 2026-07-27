@@ -1,5 +1,6 @@
 import { db } from '@/db/database'
 import type {
+  CharacterGoal,
   World, MapLayer, LocationMarker, Character, Item,
   CharacterSnapshot, CharacterMovement, ItemPlacement, LocationSnapshot, ItemSnapshot,
   Relationship, RelationshipSnapshot, Timeline, Chapter, WorldEvent, TravelMode,
@@ -78,6 +79,7 @@ export interface WorldExportFile {
   factionRelationships: FactionRelationship[]
   knowledgeFacts?: KnowledgeFact[]
   knowledgeReveals?: KnowledgeReveal[]
+  characterGoals?: CharacterGoal[]
   sceneTexts?: SceneText[]
   plotThreads?: PlotThread[]
   motifs?: Motif[]
@@ -153,6 +155,7 @@ interface CollectedWorldData {
   factionRelationships: FactionRelationship[]
   knowledgeFacts: KnowledgeFact[]
   knowledgeReveals: KnowledgeReveal[]
+  characterGoals: CharacterGoal[]
   sceneTexts: SceneText[]
   plotThreads: PlotThread[]
   motifs: Motif[]
@@ -195,6 +198,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     factionRelationships,
     knowledgeFacts,
     knowledgeReveals,
+    characterGoals,
     sceneTexts,
     plotThreads,
     motifs,
@@ -232,6 +236,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     db.factionRelationships.where('worldId').equals(worldId).toArray(),
     db.knowledgeFacts.where('worldId').equals(worldId).toArray(),
     db.knowledgeReveals.where('worldId').equals(worldId).toArray(),
+    db.characterGoals.where('worldId').equals(worldId).toArray(),
     db.sceneTexts.where('worldId').equals(worldId).toArray(),
     db.plotThreads.where('worldId').equals(worldId).toArray(),
     db.motifs.where('worldId').equals(worldId).toArray(),
@@ -273,6 +278,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     factionRelationships,
     knowledgeFacts,
     knowledgeReveals,
+    characterGoals,
     sceneTexts,
     plotThreads,
     motifs,
@@ -406,6 +412,7 @@ export async function exportWorld(
     factionRelationships: d.factionRelationships,
     knowledgeFacts: d.knowledgeFacts,
     knowledgeReveals: d.knowledgeReveals,
+    characterGoals: d.characterGoals,
     sceneTexts: d.sceneTexts,
     plotThreads: d.plotThreads,
     motifs: d.motifs,
@@ -481,6 +488,7 @@ export async function exportWorldSplit(
     factionRelationships: d.factionRelationships,
     knowledgeFacts: d.knowledgeFacts,
     knowledgeReveals: d.knowledgeReveals,
+    characterGoals: d.characterGoals,
     sceneTexts: d.sceneTexts,
     plotThreads: d.plotThreads,
     motifs: d.motifs,
@@ -547,6 +555,7 @@ export async function serializeWorldForSync(worldId: string): Promise<string> {
     factionRelationships: d.factionRelationships,
     knowledgeFacts: d.knowledgeFacts,
     knowledgeReveals: d.knowledgeReveals,
+    characterGoals: d.characterGoals,
     sceneTexts: d.sceneTexts,
     plotThreads: d.plotThreads,
     motifs: d.motifs,
@@ -677,6 +686,10 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
     throw new Error('Invalid file: knowledgeReveals is not an array')
   }
   if (!d.knowledgeReveals) (d as Record<string, unknown>).knowledgeReveals = []
+  if (d.characterGoals !== undefined && !Array.isArray(d.characterGoals)) {
+    throw new Error('Invalid file: characterGoals is not an array')
+  }
+  if (!d.characterGoals) (d as Record<string, unknown>).characterGoals = []
   if (d.sceneTexts !== undefined && !Array.isArray(d.sceneTexts)) {
     throw new Error('Invalid file: sceneTexts is not an array')
   }
@@ -933,7 +946,7 @@ async function importWorldData(data: WorldExportFile, replaceExisting = true): P
     db.timelineRelationships, db.crossTimelineArtifacts,
     db.mapRoutes, db.mapRegions, db.mapRegionSnapshots, db.mapAnnotations,
     db.loreCategories, db.lorePages, db.factions, db.factionMemberships, db.factionRelationships,
-    db.knowledgeFacts, db.knowledgeReveals, db.sceneTexts, db.plotThreads,
+    db.knowledgeFacts, db.knowledgeReveals, db.characterGoals, db.sceneTexts, db.plotThreads,
     db.motifs, db.continuitySuppressions, db.writingLogs, db.sceneRevisions,
   ], async () => {
     // A normal import and the explicit "Replace all" action must remove records
@@ -974,6 +987,7 @@ async function importWorldData(data: WorldExportFile, replaceExisting = true): P
         db.factionRelationships.where('worldId').equals(data.world.id).delete(),
         db.knowledgeFacts.where('worldId').equals(data.world.id).delete(),
         db.knowledgeReveals.where('worldId').equals(data.world.id).delete(),
+        db.characterGoals.where('worldId').equals(data.world.id).delete(),
         db.sceneTexts.where('worldId').equals(data.world.id).delete(),
         db.plotThreads.where('worldId').equals(data.world.id).delete(),
         db.motifs.where('worldId').equals(data.world.id).delete(),
@@ -1012,6 +1026,7 @@ async function importWorldData(data: WorldExportFile, replaceExisting = true): P
     await db.factionRelationships.bulkPut(data.factionRelationships)
     await db.knowledgeFacts.bulkPut(data.knowledgeFacts ?? [])
     await db.knowledgeReveals.bulkPut(data.knowledgeReveals ?? [])
+    await db.characterGoals.bulkPut(data.characterGoals ?? [])
     await db.sceneTexts.bulkPut(data.sceneTexts ?? [])
     await db.plotThreads.bulkPut(data.plotThreads ?? [])
     await db.motifs.bulkPut(data.motifs ?? [])
@@ -1156,7 +1171,8 @@ export async function applyWorldImport(
     localRoutes, localRegions, localRegSnaps, localAnnotations,
     localLoreCats, localLorePages,
     localFactions, localFactionMemberships, localFactionRelationships,
-    localKnowledgeFacts, localKnowledgeReveals, localSceneTexts, localPlotThreads,
+    localKnowledgeFacts, localKnowledgeReveals, localCharacterGoals,
+    localSceneTexts, localPlotThreads,
     localMotifs, localWritingLogs, localSceneRevisions,
   ] = await Promise.all([
     db.characters.where('worldId').equals(worldId).toArray(),
@@ -1187,6 +1203,7 @@ export async function applyWorldImport(
     db.factionRelationships.where('worldId').equals(worldId).toArray(),
     db.knowledgeFacts.where('worldId').equals(worldId).toArray(),
     db.knowledgeReveals.where('worldId').equals(worldId).toArray(),
+    db.characterGoals.where('worldId').equals(worldId).toArray(),
     db.sceneTexts.where('worldId').equals(worldId).toArray(),
     db.plotThreads.where('worldId').equals(worldId).toArray(),
     db.motifs.where('worldId').equals(worldId).toArray(),
@@ -1224,6 +1241,7 @@ export async function applyWorldImport(
     factionRelationships: mergeTable(parsed.factionRelationships, localFactionRelationships).result,
     knowledgeFacts:       mergeTable(parsed.knowledgeFacts ?? [], localKnowledgeFacts).result,
     knowledgeReveals:     mergeTable(parsed.knowledgeReveals ?? [], localKnowledgeReveals).result,
+    characterGoals:       mergeTable(parsed.characterGoals ?? [], localCharacterGoals).result,
     sceneTexts:           mergeTable(parsed.sceneTexts ?? [], localSceneTexts).result,
     plotThreads:          mergeTable(parsed.plotThreads ?? [], localPlotThreads).result,
     motifs:               mergeTable(parsed.motifs ?? [], localMotifs).result,

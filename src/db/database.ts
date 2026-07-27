@@ -38,6 +38,7 @@ import type {
   WritingLog,
   Motif,
   SceneRevision,
+  CharacterGoal,
 } from '@/types'
 
 class PlotWeaveDB extends Dexie {
@@ -72,6 +73,7 @@ class PlotWeaveDB extends Dexie {
   factionRelationships!: EntityTable<FactionRelationship, 'id'>
   knowledgeFacts!: EntityTable<KnowledgeFact, 'id'>
   knowledgeReveals!: EntityTable<KnowledgeReveal, 'id'>
+  characterGoals!: EntityTable<CharacterGoal, 'id'>
   sceneTexts!: EntityTable<SceneText, 'id'>
   plotThreads!: EntityTable<PlotThread, 'id'>
   continuitySuppressions!: EntityTable<ContinuitySuppression, 'id'>
@@ -637,6 +639,12 @@ class PlotWeaveDB extends Dexie {
       await tx.table('timelines').toCollection().modify((t: Record<string, unknown>) => {
         if (t.dayOffset === undefined) t.dayOffset = 0
       })
+    })
+
+    // v51: character goals & motivations (want / need / fear / flaw), optionally
+    // scoped to a stretch of the story. Purely additive — a new table only.
+    this.version(51).stores({
+      characterGoals: 'id, worldId, characterId, type, startEventId, endEventId',
     })
   }
 }

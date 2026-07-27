@@ -1,6 +1,7 @@
 export * from './world'
 export * from './map'
 export * from './character'
+export * from './characterGoal'
 export * from './relationship'
 export * from './timeline'
 export * from './thread'

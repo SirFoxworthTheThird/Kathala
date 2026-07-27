@@ -21,6 +21,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { cn } from '@/lib/utils'
 import { charColor } from '@/lib/characterColor'
+import { useCharacterGoals } from '@/db/hooks/useCharacterGoals'
+import { GOAL_TYPE_CONFIG, eventPositions, activeGoalsAt } from '@/lib/characterGoals'
 import { InheritedBadge } from '@/components/InheritedBadge'
 
 function Section({ title, icon: Icon, count, children }: {
@@ -67,6 +69,8 @@ export function WritersBriefPanel() {
   const worldEvents = useWorldEvents(worldId ?? null)
   const worldChapters = useWorldChapters(worldId ?? null)
   const worldTimelines = useTimelines(worldId ?? null)
+  const characterGoals = useCharacterGoals(worldId ?? null)
+  const goalPositions = eventPositions(worldEvents, worldChapters)
   const activeDay = activeEventId ? computeInWorldDays(worldEvents, worldChapters, worldTimelines).get(activeEventId) : undefined
   const events     = useEvents(activeEvent?.chapterId ?? null)
   const snapshots  = useBestSnapshots(worldId ?? null, activeEventId)
@@ -288,6 +292,25 @@ export function WritersBriefPanel() {
                               ))}
                             </div>
                           )}
+                          {(() => {
+                            const goals = activeGoalsAt(characterGoals, char.id, activeEventId, goalPositions)
+                            if (goals.length === 0) return null
+                            return (
+                              <div className="mt-1 flex flex-col gap-0.5">
+                                {goals.map((g) => {
+                                  const cfg = GOAL_TYPE_CONFIG[g.type]
+                                  return (
+                                    <div key={g.id} className="flex items-start gap-1.5 text-[10px] leading-relaxed">
+                                      <span className="shrink-0 font-semibold uppercase tracking-wide" style={{ color: cfg.color }}>
+                                        {cfg.label}
+                                      </span>
+                                      <span className="text-[hsl(var(--muted-foreground))]">{g.text}</span>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )
+                          })()}
                           {(() => {
                             const facs = charFactions.get(char.id) ?? []
                             if (facs.length === 0) return null
