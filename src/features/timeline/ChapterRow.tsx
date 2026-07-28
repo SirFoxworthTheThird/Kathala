@@ -13,9 +13,12 @@ import { EmptyState } from '@/components/EmptyState'
 
 interface ChapterRowProps {
   chapter: Chapter
+  /** When set, only events advancing this plot thread are shown, and the row
+   *  starts expanded so the matching beats are visible without a manual click. */
+  threadFilter?: string | null
 }
 
-export function ChapterRow({ chapter }: ChapterRowProps) {
+export function ChapterRow({ chapter, threadFilter = null }: ChapterRowProps) {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
   const { activeEventId, setActiveEventId, selectedEventIds, selectEventRange, clearSelection } = useAppStore()
@@ -24,8 +27,12 @@ export function ChapterRow({ chapter }: ChapterRowProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const events = useEvents(chapter.id)
 
-  const sortedEvents = [...events].sort((a, b) => a.sortOrder - b.sortOrder)
+  const allSorted = [...events].sort((a, b) => a.sortOrder - b.sortOrder)
+  const sortedEvents = threadFilter
+    ? allSorted.filter((e) => (e.threadIds ?? []).includes(threadFilter))
+    : allSorted
   const isActive = sortedEvents.some((e) => e.id === activeEventId)
+  const effectiveExpanded = expanded || !!threadFilter
   const chapterEventIds = sortedEvents.map((e) => e.id)
   const selectedInChapter = chapterEventIds.filter((id) => selectedEventIds.has(id))
   const allSelected = chapterEventIds.length > 0 && selectedInChapter.length === chapterEventIds.length
@@ -47,12 +54,13 @@ export function ChapterRow({ chapter }: ChapterRowProps) {
   }
 
   async function moveEvent(eventId: string, direction: 'up' | 'down') {
-    const idx = sortedEvents.findIndex((e) => e.id === eventId)
+    // Reorder against the true chapter order, not the thread-filtered view.
+    const idx = allSorted.findIndex((e) => e.id === eventId)
     if (direction === 'up' && idx === 0) return
-    if (direction === 'down' && idx === sortedEvents.length - 1) return
+    if (direction === 'down' && idx === allSorted.length - 1) return
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1
-    const a = sortedEvents[idx]
-    const b = sortedEvents[swapIdx]
+    const a = allSorted[idx]
+    const b = allSorted[swapIdx]
     await Promise.all([
       updateEvent(a.id, { sortOrder: b.sortOrder }),
       updateEvent(b.id, { sortOrder: a.sortOrder }),
@@ -87,7 +95,7 @@ export function ChapterRow({ chapter }: ChapterRowProps) {
           />
         </div>
         <button onClick={() => setExpanded((v) => !v)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
-          {expanded
+          {effectiveExpanded
             ? <ChevronDown className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />
             : <ChevronRight className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />}
           <BookOpen className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />
@@ -138,10 +146,10 @@ export function ChapterRow({ chapter }: ChapterRowProps) {
       </div>
 
       {/* Expanded events */}
-      {expanded && (
+      {effectiveExpanded && (
         <div className="border-t border-[hsl(var(--border))] px-4 pt-3 pb-2 flex flex-col">
           {sortedEvents.length === 0 ? (
-            <EmptyState icon={Scroll} title="No events yet" className="py-3" />
+            <EmptyState icon={Scroll} title={threadFilter ? 'No scenes on this thread' : 'No events yet'} className="py-3" />
           ) : (
             <div className="flex flex-col">
               {sortedEvents.map((e, i) => (

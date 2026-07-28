@@ -171,7 +171,7 @@ export function CharacterSnapshotPanel({
             <p className="text-[10px] text-[hsl(var(--muted-foreground))]">{activeChapterTitle}</p>
           )}
         </div>
-        <Button variant="ghost" size="icon" className="pw-tap h-7 w-7 shrink-0" onClick={onClose}>
+        <Button variant="ghost" size="icon" className="pw-tap h-7 w-7 shrink-0" aria-label="Close character panel" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
       </div>

@@ -17,7 +17,7 @@ import ReactFlow, {
   useEdgesState,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
-import { X, Trash2, Network, Plus, Check, Shield } from 'lucide-react'
+import { X, Trash2, Network, Plus, Check, Shield, Sparkles } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships, createRelationship, deleteRelationship, updateRelationship } from '@/db/hooks/useRelationships'
@@ -31,6 +31,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { GenerateRelationshipsDialog } from './GenerateRelationshipsDialog'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { EmptyState } from '@/components/EmptyState'
 import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
@@ -373,6 +374,7 @@ export default function RelationshipGraphView() {
   const [editingSnapshot, setEditingSnapshot] = useState(false)
   const [editingBase, setEditingBase] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [aiOpen, setAiOpen] = useState(false)
   const [pendingConn, setPendingConn] = useState<{ a: string; b: string } | null>(null)
   const [showFactionOverlay, setShowFactionOverlay] = useState(false)
   const [nodes, setNodes, onNodesChange] = useNodesState([])
@@ -530,9 +532,14 @@ export default function RelationshipGraphView() {
         >
           <Background color="#334155" gap={20} />
           <Panel position="top-left">
-            <Button size="sm" className="gap-1.5 shadow-md" onClick={() => { setPendingConn(null); setCreating(true) }} disabled={characters.length < 2}>
-              <Plus className="h-4 w-4" /> New Relationship
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button size="sm" className="gap-1.5 shadow-md" onClick={() => { setPendingConn(null); setCreating(true) }} disabled={characters.length < 2}>
+                <Plus className="h-4 w-4" /> New Relationship
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5 shadow-md" onClick={() => setAiOpen(true)}>
+                <Sparkles className="h-4 w-4" /> Generate with AI
+              </Button>
+            </div>
           </Panel>
           <Controls style={{ background: 'hsl(222,47%,14%)', borderColor: 'hsl(217,33%,22%)' }} />
           <MiniMap
@@ -758,6 +765,9 @@ export default function RelationshipGraphView() {
           initialA={pendingConn?.a ?? ''}
           initialB={pendingConn?.b ?? ''}
         />
+      )}
+      {worldId && (
+        <GenerateRelationshipsDialog open={aiOpen} onOpenChange={setAiOpen} worldId={worldId} />
       )}
     </div>
   )

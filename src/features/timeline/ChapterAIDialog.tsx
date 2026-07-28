@@ -27,7 +27,7 @@ interface ChapterAIResponse {
 
 // ── Prompt builder ────────────────────────────────────────────────────────────
 
-function buildPrompt(
+export function buildPrompt(
   worldId: string,
   worldName: string,
   timelineId: string,
@@ -205,15 +205,15 @@ OUTPUT FORMAT
       "sortOrder": 0,
       "travelDays": null,
       "inWorldTime": null,
-      "tension": null,
-      "structureBeat": null,
+      "tension": <integer 1–5 rating this event's dramatic intensity for the pacing curve — 1 = calm, 5 = peak; use null only if genuinely unclear>,
+      "structureBeat": <one of "hook","inciting-incident","plot-point-1","midpoint","plot-point-2","climax","resolution" if this event is a major structural beat, otherwise null>,
       "status": "draft",
       "povCharacterId": null,
       "isFlashback": false,
       "createdAt": ${ts},
       "updatedAt": ${ts}
     }
-    // ... 2–5 events total, sortOrder increments by 1
+    // ... 2–5 events total, sortOrder increments by 1. Rate every event's "tension" (1–5) so the pacing curve is populated.
   ],
   "characterSnapshots": [
     // One entry per character PER EVENT
@@ -387,7 +387,7 @@ async function importChapter(data: ChapterAIResponse, replacing: boolean): Promi
       // Ensure status and povCharacterId are always present — AI JSON may omit fields predating their schema versions
       const normalised = data.events.map((ev) => {
         const p = ev as Partial<WorldEvent>
-        return { ...ev, status: p.status ?? ('draft' as const), povCharacterId: p.povCharacterId ?? null, isFlashback: p.isFlashback ?? false, inWorldTime: p.inWorldTime ?? null, tension: p.tension ?? null, structureBeat: p.structureBeat ?? null, mentionedCharacterIds: p.mentionedCharacterIds ?? [], threadIds: p.threadIds ?? [] }
+        return { ...ev, status: p.status ?? ('draft' as const), povCharacterId: p.povCharacterId ?? null, isFlashback: p.isFlashback ?? false, inWorldTime: p.inWorldTime ?? null, tension: p.tension ?? null, structureBeat: p.structureBeat ?? null, mentionedCharacterIds: p.mentionedCharacterIds ?? [], threadIds: p.threadIds ?? [], motifIds: p.motifIds ?? [] }
       })
       await db.events.bulkPut(normalised)
     }

@@ -2,9 +2,48 @@ import type { MutableRefObject } from 'react'
 import type { PlaybackSpeed } from '@/store'
 import type { CharacterSnapshot, LocationMarker, CharacterMovement, MapRoute } from '@/types'
 import type { CharacterPin, PinAnimation } from './LeafletMapCanvas'
+import { buildingLinkTargetId, type LevelLayer } from '@/lib/mapLevels'
+
+/** Minimal layer shape the map math needs: tree position plus level grouping. */
+export type PinLayer = { id: string; parentMapId: string | null } & LevelLayer
 
 /** How long character pins animate across the map per playback speed (ms) */
 export const PIN_TRAVEL_MS: Record<PlaybackSpeed, number> = { slow: 6500, normal: 4000, fast: 2200 }
+
+/** How far playback moves in from the fitted full-map view when following a character. */
+export const PLAYBACK_FOCUS_ZOOM_DELTA = 1.5
+
+/**
+ * Which timeline the map should resolve characters/chapters against. The active
+ * event's own timeline wins, so the map always matches the current cursor —
+ * including a merged all-timelines playback that crosses from one storyline into
+ * another. Falls back to the explicit playback timeline, then the first timeline.
+ */
+export function resolveMapTimelineId(
+  activeEventTimelineId: string | null,
+  playbackTimelineId: string | null,
+  firstTimelineId: string | null,
+): string | null {
+  return activeEventTimelineId ?? playbackTimelineId ?? firstTimelineId
+}
+
+/**
+ * Pick a useful character-follow zoom without undoing a closer zoom selected by
+ * the user or exceeding the map's configured maximum.
+ */
+export function playbackFocusZoom(currentZoom: number, minZoom: number, maxZoom: number): number {
+  return Math.min(maxZoom, Math.max(currentZoom, minZoom + PLAYBACK_FOCUS_ZOOM_DELTA))
+}
+
+/** Resolve the character and point the playback camera should initially frame. */
+export function playbackFocusTarget(
+  animation: Pick<PinAnimation, 'from' | 'to'>,
+): { characterId: string; position: { x: number; y: number } } | null {
+  const characterId = Object.keys(animation.from)[0] ?? Object.keys(animation.to)[0]
+  if (!characterId) return null
+  const position = animation.from[characterId] ?? animation.to[characterId]
+  return position ? { characterId, position } : null
+}
 
 /** One stop in the ordered playback map-navigation queue */
 export interface PlaybackStep {
@@ -14,6 +53,26 @@ export interface PlaybackStep {
 
 /** Position data returned by resolveCharacterPin — character is filled in by the caller. */
 export type ResolvedPinPosition = Pick<CharacterPin, 'x' | 'y' | 'inSubMap'>
+
+/**
+ * Resolve the layer for a snapshot from its location marker.
+ *
+ * A marker can be moved to another sub-map or floor after snapshots already
+ * reference it. Those snapshots retain their original `currentMapLayerId`, so
+ * treating that denormalised field as authoritative leaves characters on the
+ * old layer during playback. The marker is the canonical location record; the
+ * snapshot layer remains a fallback for missing/deleted markers and old data.
+ */
+export function resolvedSnapshotLayerId(
+  snap: Pick<CharacterSnapshot, 'currentLocationMarkerId' | 'currentMapLayerId'>,
+  allMarkers: LocationMarker[],
+): string | null {
+  if (snap.currentLocationMarkerId) {
+    const markerLayerId = allMarkers.find((m) => m.id === snap.currentLocationMarkerId)?.mapLayerId
+    if (markerLayerId) return markerLayerId
+  }
+  return snap.currentMapLayerId
+}
 
 /** Colour palette for movement / travel lines */
 export const MOVEMENT_COLORS = [
@@ -36,22 +95,27 @@ export const ICON_COLORS: Record<string, string> = {
 export function resolveCharacterPin(
   snap: CharacterSnapshot,
   currentLayerId: string,
-  allLayers: { id: string; parentMapId: string | null }[],
+  allLayers: PinLayer[],
   allMarkers: LocationMarker[],
 ): ResolvedPinPosition | null {
-  if (!snap.currentLocationMarkerId || !snap.currentMapLayerId) return null
-  if (snap.currentMapLayerId === currentLayerId) {
-    const m = allMarkers.find((x) => x.id === snap.currentLocationMarkerId)
-    if (!m) return null
-    return { x: m.x, y: m.y, inSubMap: false }
+  if (!snap.currentLocationMarkerId) return null
+  const marker = allMarkers.find((x) => x.id === snap.currentLocationMarkerId)
+  if (!marker) return null
+  const snapshotLayerId = resolvedSnapshotLayerId(snap, allMarkers)
+  if (!snapshotLayerId) return null
+  if (snapshotLayerId === currentLayerId) {
+    return { x: marker.x, y: marker.y, inSubMap: false }
   }
-  let childLayerId = snap.currentMapLayerId
+  let childLayerId = snapshotLayerId
   for (let depth = 0; depth < 20; depth++) {
     const childLayer = allLayers.find((l) => l.id === childLayerId)
     if (!childLayer?.parentMapId) return null
     const parentLayerId = childLayer.parentMapId
+    // A building's pin links to the group's representative floor, so a character
+    // on any floor is reached through that pin.
+    const linkTarget = buildingLinkTargetId(allLayers, childLayerId)
     const linkMarker = allMarkers.find(
-      (m) => m.mapLayerId === parentLayerId && m.linkedMapLayerId === childLayerId
+      (m) => m.mapLayerId === parentLayerId && m.linkedMapLayerId === linkTarget
     )
     if (!linkMarker) return null
     if (parentLayerId === currentLayerId) {
@@ -77,6 +141,7 @@ export function buildSequentialQueue(
   duration: number,
   keyRef: MutableRefObject<number>,
   mapRoutes: MapRoute[] = [],
+  allLayers: PinLayer[] = [],
 ): PlaybackStep[] {
   const steps: PlaybackStep[] = []
   const markerById = new Map(allMarkers.map((m) => [m.id, m]))
@@ -242,13 +307,16 @@ export function buildSequentialQueue(
   for (const charId of sortedCharIds) {
     const currSnap = currByCharId.get(charId)
     const prevSnap = prevByCharId.get(charId)
-    if (!currSnap?.currentLocationMarkerId || !currSnap.currentMapLayerId) continue
+    if (!currSnap?.currentLocationMarkerId) continue
     const prevMarkerId = prevSnap?.currentLocationMarkerId ?? null
-    if (prevMarkerId === currSnap.currentLocationMarkerId && prevSnap?.currentMapLayerId === currSnap.currentMapLayerId) continue
+    const currLayerId = resolvedSnapshotLayerId(currSnap, allMarkers)
+    const prevLayerId = prevSnap ? resolvedSnapshotLayerId(prevSnap, allMarkers) : null
+    if (!currLayerId) continue
+    if (prevMarkerId === currSnap.currentLocationMarkerId && prevLayerId === currLayerId) continue
     allMoves.push({
       charId,
-      prevLayerId: prevSnap?.currentMapLayerId ?? null,
-      currLayerId: currSnap.currentMapLayerId,
+      prevLayerId,
+      currLayerId,
       prevMarkerId,
       currMarkerId: currSnap.currentLocationMarkerId,
     })
@@ -303,11 +371,16 @@ export function buildSequentialQueue(
     } else {
       // ── Cross-layer move: departure step then arrival step ─────────────────
       const prevMarker = prevMarkerId ? markerById.get(prevMarkerId) : undefined
+      // A building is entered/left through the pin that links to its group's
+      // representative floor, so normalise both ends to their link targets — this
+      // routes cross-floor and building moves through the right pin.
+      const currLinkTarget = buildingLinkTargetId(allLayers, currLayerId)
+      const prevLinkTarget = buildingLinkTargetId(allLayers, prevLayerId)
       const portalOnPrev = allMarkers.find(
-        (m) => m.mapLayerId === prevLayerId && m.linkedMapLayerId === currLayerId,
+        (m) => m.mapLayerId === prevLayerId && m.linkedMapLayerId === currLinkTarget,
       )
       const portalOnCurr = allMarkers.find(
-        (m) => m.mapLayerId === currLayerId && m.linkedMapLayerId === prevLayerId,
+        (m) => m.mapLayerId === currLayerId && m.linkedMapLayerId === prevLinkTarget,
       )
 
       // ── Departure step ────────────────────────────────────────────────────

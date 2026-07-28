@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Users, Route, MapPin, ChevronDown, Tag, History } from 'lucide-react'
 import type { Character } from '@/types'
 import { ICON_COLORS } from './mapUtils'
+import { FLOAT_PANEL } from './MapToolbar'
 
 export interface MapFilters {
   showCharacters: boolean
@@ -74,17 +75,17 @@ export function MapFilterBar({
   const typeCount = filters.locationTypes.size
 
   return (
-    <div className="flex shrink-0 items-center gap-1.5 border-b border-[hsl(var(--border))] bg-[hsl(var(--card)/0.6)] px-4 py-1.5">
-      <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Show</span>
-
+    <div className={`pointer-events-auto flex flex-wrap items-center gap-1 p-1 ${FLOAT_PANEL}`}>
       {/* Characters */}
       <div ref={charRef} className="relative flex items-center">
         <button
           onClick={() => onChange({ ...filters, showCharacters: !filters.showCharacters })}
+          aria-label="Characters"
+          title="Show character pins"
           className={`flex items-center gap-1 rounded-l-md border px-2 py-1 text-[10px] font-medium transition-colors ${filters.showCharacters ? activeBtn : inactiveBtn}`}
         >
           <Users className="h-3 w-3" />
-          Characters
+          <span className="hidden sm:inline">Characters</span>
           {charCount > 0 && (
             <span className="ml-0.5 rounded-full bg-[hsl(var(--ring))] px-1 text-[9px] font-bold text-[hsl(var(--background))]">{charCount}</span>
           )}
@@ -99,7 +100,7 @@ export function MapFilterBar({
         )}
         {!filters.showCharacters && <div className="w-[1px]" />}
         {charOpen && (
-          <div className="absolute left-0 top-full z-50 mt-1 min-w-[170px] rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--card))] py-1 shadow-lg">
+          <div className="absolute left-0 top-full z-[1200] mt-1 min-w-[170px] rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--card))] py-1 shadow-lg">
             <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-3 py-1">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Filter characters</span>
               {charCount > 0 && (
@@ -126,40 +127,46 @@ export function MapFilterBar({
       {/* Trails */}
       <button
         onClick={() => onChange({ ...filters, showTrails: !filters.showTrails })}
+        aria-label="Trails"
         title="Show character movement paths within the active event"
         className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-medium transition-colors ${filters.showTrails ? activeBtn : inactiveBtn}`}
       >
         <Route className="h-3 w-3" />
-        Trails
+        <span className="hidden sm:inline">Trails</span>
       </button>
 
       {/* Labels */}
       <button
         onClick={() => onChange({ ...filters, showLocationLabels: !filters.showLocationLabels })}
+        aria-label="Labels"
+        title="Show location name labels"
         className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-medium transition-colors ${filters.showLocationLabels ? activeBtn : inactiveBtn}`}
       >
         <Tag className="h-3 w-3" />
-        Labels
+        <span className="hidden sm:inline">Labels</span>
       </button>
 
       {/* Journeys */}
       <button
         onClick={() => onChange({ ...filters, showJourneys: !filters.showJourneys })}
+        aria-label="Journeys"
         title="Show each character's complete path across all events"
         className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-medium transition-colors ${filters.showJourneys ? activeBtn : inactiveBtn}`}
       >
         <History className="h-3 w-3" />
-        Journeys
+        <span className="hidden sm:inline">Journeys</span>
       </button>
 
       {/* Locations */}
       <div ref={typeRef} className="relative flex items-center">
         <button
           onClick={() => onChange({ ...filters, showLocations: !filters.showLocations })}
+          aria-label="Locations"
+          title="Show location markers"
           className={`flex items-center gap-1 rounded-l-md border px-2 py-1 text-[10px] font-medium transition-colors ${filters.showLocations ? activeBtn : inactiveBtn}`}
         >
           <MapPin className="h-3 w-3" />
-          Locations
+          <span className="hidden sm:inline">Locations</span>
           {typeCount > 0 && (
             <span className="ml-0.5 rounded-full bg-[hsl(var(--ring))] px-1 text-[9px] font-bold text-[hsl(var(--background))]">{typeCount}</span>
           )}
@@ -174,7 +181,7 @@ export function MapFilterBar({
         )}
         {!filters.showLocations && <div className="w-[1px]" />}
         {typeOpen && (
-          <div className="absolute left-0 top-full z-50 mt-1 min-w-[170px] rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--card))] py-1 shadow-lg">
+          <div className="absolute left-0 top-full z-[1200] mt-1 min-w-[170px] rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--card))] py-1 shadow-lg">
             <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-3 py-1">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Filter types</span>
               {typeCount > 0 && (

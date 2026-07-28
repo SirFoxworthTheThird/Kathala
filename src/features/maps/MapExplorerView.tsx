@@ -1,21 +1,24 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import L from 'leaflet'
 import { useParams } from 'react-router-dom'
-import { Plus, Upload, Map as MapIcon, Ruler, X, Route, Download, Sparkles, Type, Trash2, PanelLeft, Crosshair } from 'lucide-react'
+import { Upload, Map as MapIcon, X, Route, Sparkles, Type, Trash2, Crosshair, ImageUp, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore, useActiveMapLayerId } from '@/store'
-import { useRootMapLayers, updateMapLayer } from '@/db/hooks/useMapLayers'
+import { useRootMapLayers, updateMapLayer, deleteMapLevel } from '@/db/hooks/useMapLayers'
+import { levelsInGroup } from '@/lib/mapLevels'
+import { FloorSwitcher } from './FloorSwitcher'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/EmptyState'
 import { LeafletMapCanvas } from './LeafletMapCanvas'
 import { LocationDetailPanel } from './LocationDetailPanel'
 import { CharacterSnapshotPanel } from './CharacterSnapshotPanel'
 import { UploadMapDialog } from './UploadMapDialog'
+import { GenerateLocationsDialog } from './GenerateLocationsDialog'
 import { AddLocationDialog } from './AddLocationDialog'
 import { StoryNotesOverlay } from './StoryNotesOverlay'
 import type { ScaleCalibrationPoint, MeasureLine, JourneyLine } from './LeafletMapCanvas'
 import { pixelDist, formatDistance } from '@/lib/mapScale'
-import { characterColor } from './mapUtils'
+import { characterColor, resolvedSnapshotLayerId } from './mapUtils'
 import { MapFilterBar, DEFAULT_MAP_FILTERS } from './MapFilterBar'
 import type { MapFilters } from './MapFilterBar'
 import { SetScaleDialog } from './SetScaleDialog'
@@ -24,7 +27,7 @@ import { CharacterFilmStrip } from './CharacterFilmStrip'
 import { RouteDrawHud, RegionDrawHud } from './DrawHuds'
 import { RouteDetailPanel, RegionDetailPanel } from './RouteRegionDetailPanel'
 import { MapAIDialog } from './MapAIDialog'
-import { MapHintsBar } from './MapHintsBar'
+import { MapToolbar, MapInfoChip } from './MapToolbar'
 import { useMapViewState } from './useMapViewState'
 import { usePlaybackQueue } from './usePlaybackQueue'
 import { upsertSnapshot, fetchSnapshot, useWorldSnapshots } from '@/db/hooks/useSnapshots'
@@ -48,7 +51,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
 
   const {
     setSelectedLocationMarkerId, selectedLocationMarkerId, pushMapLayer,
-    setActiveMapLayerId, setIsAnimating, isPlayingStory, playbackSpeed,
+    setActiveMapLayerId, swapActiveMapLayer, setIsAnimating, isPlayingStory, playbackSpeed,
     pendingFocusRouteId, setPendingFocusRouteId,
     pendingFocusRegionId, setPendingFocusRegionId,
     pendingFocusMarkerId, setPendingFocusMarkerId,
@@ -60,6 +63,10 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   // width; on `lg`+ they're a static column (see the sidebar classes below).
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const crossLayerPanTargetRef = useRef<[number, number] | null>(null)
+  // Live map view + a pending zoom to restore when switching floors (keeps the camera).
+  const viewRef = useRef<{ center: [number, number]; zoom: number } | null>(null)
+  const floorZoomRef = useRef<number | null>(null)
+  const [addLevelOpen, setAddLevelOpen] = useState(false)
   const pinAnimationKeyRef = useRef(0)
   const [addLocationOpen, setAddLocationOpen] = useState(false)
   const [pendingPos, setPendingPos] = useState<{ x: number; y: number } | null>(null)
@@ -67,6 +74,8 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   // Touch-friendly placement: tap a character's crosshair, then tap a location.
   const [placingCharacterId, setPlacingCharacterId] = useState<string | null>(null)
   const [aiDialogOpen, setAiDialogOpen] = useState(false)
+  const [genLocOpen, setGenLocOpen] = useState(false)
+  const [replaceImageOpen, setReplaceImageOpen] = useState(false)
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null)
   const [scaleMode, setScaleMode] = useState(false)
   const [scaleDialog, setScaleDialog] = useState<{ pixelDist: number } | null>(null)
@@ -81,8 +90,43 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const [regionVertices, setRegionVertices] = useState<Array<{ x: number; y: number }>>([])
   const [echoPopoverMarkerId, setEchoPopoverMarkerId] = useState<string | null>(null)
   const [annotateMode, setAnnotateMode] = useState(false)
+  // Any of the right-hand detail panels being open narrows the room available
+  // to the floating toolbar (see the controls band below).
+  const rightPanelOpen = !!(selectedLocationMarkerId || selectedCharacterId || selectedRouteId || selectedRegionId)
+  // "Click the canvas to do something" modes. The floating controls overlay the
+  // top of the map, so while one of these is running they must let clicks
+  // through — otherwise a location, label, or route/region vertex simply can't
+  // be placed up there.
+  const [addMarkerMode, setAddMarkerMode] = useState(false)
+  const canvasClickMode =
+    addMarkerMode || scaleMode || measureMode || annotateMode ||
+    drawingRoute || drawingRegion || placingCharacterId != null
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null)
   const mapRef = useRef<L.Map | null>(null)
+
+  // Escape backs out of any canvas-click mode. Until the controls started
+  // floating over the map these modes were always cancellable by clicking their
+  // toolbar button; now that the controls go click-through mid-mode, the
+  // keyboard is the reliable way out.
+  useEffect(() => {
+    if (!canvasClickMode) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      setAddMarkerMode(false)
+      window.dispatchEvent(new CustomEvent('wb:map:cancelAddMarker'))
+      setScaleMode(false)
+      setMeasureMode(false)
+      setMeasureResult(null)
+      setAnnotateMode(false)
+      setPlacingCharacterId(null)
+      setDrawingRoute(false)
+      setRouteWaypoints([])
+      setDrawingRegion(false)
+      setRegionVertices([])
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [canvasClickMode])
 
   // ── Layer-switch transition (zoom-out → switch → zoom-in) ──────────────────
   type TransitionPhase = 'idle' | 'zooming-out' | 'zoomed-out' | 'zooming-in'
@@ -136,14 +180,42 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   // ── Playback queue ─────────────────────────────────────────────────────────
   const { pinAnimation, handlePlaybackAnimationEnd } = usePlaybackQueue({
     worldId, layerId, isPlayingStory, playbackSpeed, activeEventId,
-    prevSnapshots, snapshots, allMarkers, mapRoutes,
+    prevSnapshots, snapshots, allMarkers, mapRoutes, allLayers,
     pinAnimationKeyRef, requestLayerSwitch,
   })
 
-  // Clear cross-layer pan target once the new layer has mounted
+  // Clear cross-layer pan target and floor-switch zoom once the new layer has mounted
   useEffect(() => {
     crossLayerPanTargetRef.current = null
-  }, [layerId])  
+    floorZoomRef.current = null
+  }, [layerId])
+
+  // ── Floors / levels ────────────────────────────────────────────────────────
+  const groupFloors = layer?.levelGroupId ? levelsInGroup(allLayers, layer.levelGroupId) : []
+
+  function switchFloor(floorId: string) {
+    if (floorId === layerId) return
+    // Hold the camera: restore the current center + zoom on the new floor.
+    if (viewRef.current) {
+      crossLayerPanTargetRef.current = viewRef.current.center
+      floorZoomRef.current = viewRef.current.zoom
+    }
+    swapActiveMapLayer(floorId)
+  }
+
+  async function deleteFloor(floorId: string) {
+    // If deleting the floor we're on, move to another floor first.
+    if (floorId === layerId) {
+      const other = groupFloors.find((f) => f.id !== floorId)
+      if (other) swapActiveMapLayer(other.id)
+    }
+    // Re-points the building's drill-in link if the representative floor goes.
+    await deleteMapLevel(floorId)
+  }
+
+  function renameFloor(floorId: string, label: string) {
+    updateMapLayer(floorId, { levelLabel: label.trim() || 'Level' })
+  }
 
   // ── Consume pending route/region focus from search palette ────────────────
   useEffect(() => {
@@ -213,10 +285,12 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       return
     }
     const snap = snapshots.find((s) => s.characterId === characterId)
-    if (!snap?.currentMapLayerId) return
+    if (!snap) return
     const targetMarker = allMarkers.find((m) => m.id === snap.currentLocationMarkerId)
+    const targetLayerId = resolvedSnapshotLayerId(snap, allMarkers)
+    if (!targetLayerId) return
     if (targetMarker) crossLayerPanTargetRef.current = [targetMarker.y, targetMarker.x]
-    pushMapLayer(snap.currentMapLayerId)
+    pushMapLayer(targetLayerId)
   }
 
   function focusOnItem(itemId: string) {
@@ -337,7 +411,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     for (let i = 0; i < orderedEvents.length; i++) eventOrderMap.set(orderedEvents[i].id, i)
     const byChar = new Map<string, typeof allWorldSnaps>()
     for (const snap of allWorldSnaps) {
-      if (!snap.currentLocationMarkerId || snap.currentMapLayerId !== layerId) continue
+      if (!snap.currentLocationMarkerId || resolvedSnapshotLayerId(snap, allMarkers) !== layerId) continue
       if (!eventOrderMap.has(snap.eventId)) continue
       const arr = byChar.get(snap.characterId) ?? []
       arr.push(snap)
@@ -376,7 +450,57 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const echoPopoverInfo   = echoPopoverMarkerId ? echoLocations.get(echoPopoverMarkerId) ?? null : null
   const echoPopoverMarker = echoPopoverMarkerId ? allMarkers.find((m) => m.id === echoPopoverMarkerId) ?? null : null
 
-  if (!layer || !imageUrl) {
+  if (!layer) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[hsl(var(--border))] border-t-[hsl(var(--ring))]" />
+      </div>
+    )
+  }
+
+  if (!layer.imageId) {
+    return (
+      <div className="flex h-full flex-col overflow-hidden">
+        <div className="flex shrink-0 items-center justify-between border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-[hsl(var(--foreground))]">{layer.name}</p>
+            <p className="truncate text-[11px] text-[hsl(var(--muted-foreground))]">Sub-map image not set</p>
+          </div>
+          {layer.parentMapId && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs"
+              onClick={() => setActiveMapLayerId(layer.parentMapId!)}
+            >
+              <Layers className="h-3.5 w-3.5" />
+              Parent map
+            </Button>
+          )}
+        </div>
+        <EmptyState
+          icon={ImageUp}
+          title="This map needs an image"
+          description="Upload an image or link to one. Existing locations will remain attached to this map and will be rescaled to the new image if needed."
+          className="flex-1"
+          action={
+            <Button className="gap-1.5" onClick={() => setReplaceImageOpen(true)}>
+              <Upload className="h-4 w-4" />
+              Add map image
+            </Button>
+          }
+        />
+        <UploadMapDialog
+          open={replaceImageOpen}
+          onOpenChange={setReplaceImageOpen}
+          worldId={worldId}
+          replaceLayerId={layer.id}
+        />
+      </div>
+    )
+  }
+
+  if (!imageUrl) {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-[hsl(var(--border))] border-t-[hsl(var(--ring))]" />
@@ -471,119 +595,8 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
         />
       </div>
 
-      {/* ── Center: header + map ── */}
+      {/* ── Center: map ── */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Map header */}
-        <div className="flex shrink-0 flex-col gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2 lg:flex-row lg:items-center lg:gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-          {/* Mobile-only: open the map panels drawer */}
-          <button
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Open map panels"
-            title="Map panels"
-            className="pw-tap flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] lg:hidden"
-          >
-            <PanelLeft className="h-4 w-4" aria-hidden="true" />
-          </button>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-[hsl(var(--foreground))]">{layer.name}</p>
-            <p className="truncate text-[11px] text-[hsl(var(--muted-foreground))]">
-              {layer.scalePixelsPerUnit && layer.scaleUnit
-                ? `Scale: 1 ${layer.scaleUnit} = ${Math.round(layer.scalePixelsPerUnit)} px`
-                : `${layer.imageWidth} × ${layer.imageHeight}`}
-            </p>
-          </div>
-          </div>
-          <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 lg:mx-0 lg:ml-auto lg:overflow-x-visible lg:px-0">
-            {/* Tools */}
-            <Button
-              size="sm"
-              variant={scaleMode ? 'default' : 'outline'}
-              className="gap-1.5 text-xs"
-              onClick={() => { setScaleMode((v) => !v); setMeasureMode(false); setMeasureResult(null) }}
-              title={layer.scalePixelsPerUnit ? 'Recalibrate scale' : 'Set map scale'}
-            >
-              <Ruler className="h-3.5 w-3.5" />
-              {layer.scalePixelsPerUnit && layer.scaleUnit ? layer.scaleUnit : 'Scale'}
-              {layer.scalePixelsPerUnit && !scaleMode && (
-                <button
-                  className="ml-0.5 opacity-50 hover:opacity-100"
-                  onClick={(e) => { e.stopPropagation(); updateMapLayer(layer.id, { scalePixelsPerUnit: null, scaleUnit: null }) }}
-                  title="Clear scale"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </Button>
-            <Button
-              size="sm"
-              variant={measureMode ? 'default' : 'outline'}
-              className="gap-1.5 text-xs"
-              disabled={!layer.scalePixelsPerUnit || !layer.scaleUnit}
-              onClick={() => { setMeasureMode((v) => !v); setScaleMode(false); setMeasureResult(null) }}
-              title={layer.scalePixelsPerUnit && layer.scaleUnit ? 'Measure distance between two points' : 'Set a map scale first to enable distance measurement'}
-            >
-              <Route className="h-3.5 w-3.5" />
-              Measure
-            </Button>
-
-            <span aria-hidden="true" className="h-5 w-px bg-[hsl(var(--border))]" />
-
-            {/* Add to map */}
-            <Button
-              size="sm"
-              variant={annotateMode ? 'default' : 'outline'}
-              className="gap-1.5 text-xs"
-              onClick={() => { setAnnotateMode((v) => !v); setSelectedAnnotationId(null) }}
-              title="Place a text label on the map"
-            >
-              <Type className="h-3.5 w-3.5" />
-              Label
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5 text-xs"
-              onClick={() => window.dispatchEvent(new CustomEvent('wb:map:startAddMarker'))}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Location
-            </Button>
-
-            <span aria-hidden="true" className="h-5 w-px bg-[hsl(var(--border))]" />
-
-            {/* Utility */}
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5 text-xs"
-              onClick={() => setAiDialogOpen(true)}
-              title="Extract location moves from prose with AI"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              AI Moves
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5 text-xs"
-              onClick={handleExportMap}
-              title="Export map as PNG"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Export
-            </Button>
-          </div>
-        </div>
-
-        {/* Filter bar */}
-        <div className="relative z-[1100] shrink-0">
-          <MapFilterBar filters={mapFilters} characters={characters} onChange={setMapFilters} />
-        </div>
-
-        {/* Map hints bar — dismissable first-use tips */}
-        <MapHintsBar worldId={worldId} />
-
         {/* Story playback notes overlay */}
         {isPlayingStory && activeEventId && activeChapter && worldId && (
           <StoryNotesOverlay
@@ -597,9 +610,11 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           />
         )}
 
-        {/* Map canvas */}
+        {/* Map canvas. data-film-strip lifts Leaflet's bottom controls clear of
+            the character film strip, which shares the canvas's bottom edge. */}
         <div
           className="relative flex-1 overflow-hidden"
+          data-film-strip={selectedCharacterId ? '' : undefined}
           style={canvasTransitionStyle}
           onTransitionEnd={handleCanvasTransitionEnd}
         >
@@ -608,6 +623,8 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             layer={layer}
             imageUrl={imageUrl}
             initialCenter={crossLayerPanTargetRef.current}
+            initialZoom={floorZoomRef.current}
+            onViewChange={(center, zoom) => { viewRef.current = { center, zoom } }}
             markers={displayedMarkers}
             charPins={displayedCharPins}
             movementLines={displayedMovementLines}
@@ -632,6 +649,9 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             onAnimationEnd={handlePlaybackAnimationEnd}
             onMarkerClick={handleMarkerClick}
             onMapClick={async (x, y) => {
+              // The canvas clears its own one-shot add-marker mode on click;
+              // mirror that here so the controls come back.
+              setAddMarkerMode(false)
               // Tap-to-place onto empty ground: create a location there, then drop.
               if (placingCharacterId) {
                 setPendingDropCharacterId(placingCharacterId)
@@ -714,6 +734,58 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
                 : null
             }
           />
+
+          {/* Floating map controls — the map runs edge to edge underneath them.
+              pointer-events-none on the band lets drags pass through the gap.
+              The band sits above the right-hand detail panels, so when one is
+              open it insets by the panel's width (w-72 on sm+) to keep the
+              toolbar reachable beside it. On phones the panel takes 85vw and
+              there is no room left, so the band steps aside entirely. */}
+          <div
+            className={cn(
+              'pointer-events-none absolute inset-x-0 top-0 z-[1100] flex flex-wrap items-start justify-between gap-2 p-2',
+              rightPanelOpen && 'max-sm:hidden sm:pr-[19rem]',
+              // Click-through while placing/drawing, so the whole canvas is
+              // reachable. Escape (below) is the way out of these modes.
+              canvasClickMode && 'opacity-40 [&_*]:pointer-events-none',
+            )}
+          >
+            <div className="flex min-w-0 max-w-full flex-col items-start gap-2">
+              <MapInfoChip onOpenPanels={() => setSidebarOpen(true)} />
+              <MapFilterBar filters={mapFilters} characters={characters} onChange={setMapFilters} />
+            </div>
+            <MapToolbar
+              layer={layer}
+              scaleMode={scaleMode}
+              measureMode={measureMode}
+              annotateMode={annotateMode}
+              onToggleScale={() => { setScaleMode((v) => !v); setMeasureMode(false); setMeasureResult(null) }}
+              onToggleMeasure={() => { setMeasureMode((v) => !v); setScaleMode(false); setMeasureResult(null) }}
+              onToggleAnnotate={() => { setAnnotateMode((v) => !v); setSelectedAnnotationId(null) }}
+              onClearScale={() => updateMapLayer(layer.id, { scalePixelsPerUnit: null, scaleUnit: null })}
+              onAddLocation={() => {
+                setAddMarkerMode(true)
+                window.dispatchEvent(new CustomEvent('wb:map:startAddMarker'))
+              }}
+              onGenerateLocations={() => setGenLocOpen(true)}
+              onAIMoves={() => setAiDialogOpen(true)}
+              onReplaceImage={() => setReplaceImageOpen(true)}
+              onAddLevel={() => setAddLevelOpen(true)}
+              onExport={handleExportMap}
+            />
+          </div>
+
+          {/* Floor / level switcher */}
+          {groupFloors.length >= 2 && (
+            <FloorSwitcher
+              floors={groupFloors}
+              activeId={layerId}
+              onSwitch={switchFloor}
+              onAddLevel={() => setAddLevelOpen(true)}
+              onDeleteFloor={deleteFloor}
+              onRenameFloor={renameFloor}
+            />
+          )}
 
           {/* Route draw HUD */}
           {drawingRoute && (
@@ -900,7 +972,10 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             </div>
           )}
 
-          {/* Detail panels */}
+          {/* Detail panels stay at z-500, below Leaflet's controls (1000), the
+              film strip (1050) and the mobile drawer — the ordering everything
+              else on the canvas was built against. The floating controls band
+              keeps clear of them by inset, not by z (see above). */}
           {selectedLocationMarkerId && (
             <div className="absolute inset-y-0 right-0 z-[500] flex">
               <LocationDetailPanel
@@ -995,6 +1070,20 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
         open={aiDialogOpen}
         onOpenChange={setAiDialogOpen}
       />
+      <GenerateLocationsDialog worldId={worldId} open={genLocOpen} onOpenChange={setGenLocOpen} />
+      <UploadMapDialog
+        open={replaceImageOpen}
+        onOpenChange={setReplaceImageOpen}
+        worldId={worldId}
+        replaceLayerId={layer.id}
+      />
+      <UploadMapDialog
+        open={addLevelOpen}
+        onOpenChange={setAddLevelOpen}
+        worldId={worldId}
+        addLevelToLayerId={layer.id}
+        onLevelAdded={(newId) => swapActiveMapLayer(newId)}
+      />
     </div>
   )
 }
@@ -1007,6 +1096,7 @@ export default function MapExplorerView() {
   const rootLayers = useRootMapLayers(worldId ?? null)
   const { setActiveMapLayerId } = useAppStore()
   const [uploadOpen, setUploadOpen] = useState(false)
+  const [genLocOpen, setGenLocOpen] = useState(false)
 
   if (!worldId) return null
 
@@ -1019,20 +1109,32 @@ export default function MapExplorerView() {
       <div className="flex h-full flex-col">
         <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-2">
           <span className="text-sm font-medium">Maps</span>
-          <Button size="sm" onClick={() => setUploadOpen(true)}>
-            <Upload className="h-4 w-4" />
-            Upload Map
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setGenLocOpen(true)}>
+              <Sparkles className="h-4 w-4" />
+              Generate with AI
+            </Button>
+            <Button size="sm" onClick={() => setUploadOpen(true)}>
+              <Upload className="h-4 w-4" />
+              Upload Map
+            </Button>
+          </div>
         </div>
         <EmptyState
           icon={MapIcon}
           title="No maps yet"
-          description="Upload an image of your world and place locations on it."
+          description="Upload an image of your world and place locations on it — or generate a tree of locations with AI and PlotWeave will lay them out on a map for you."
           action={
-            <Button onClick={() => setUploadOpen(true)}>
-              <Upload className="h-4 w-4" />
-              Add Map
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button onClick={() => setUploadOpen(true)}>
+                <Upload className="h-4 w-4" />
+                Add Map
+              </Button>
+              <Button variant="outline" className="gap-1.5" onClick={() => setGenLocOpen(true)}>
+                <Sparkles className="h-4 w-4" />
+                Generate locations with AI
+              </Button>
+            </div>
           }
         />
         <UploadMapDialog
@@ -1041,6 +1143,7 @@ export default function MapExplorerView() {
           worldId={worldId}
           onCreated={setActiveMapLayerId}
         />
+        <GenerateLocationsDialog open={genLocOpen} onOpenChange={setGenLocOpen} worldId={worldId} />
       </div>
     )
   }

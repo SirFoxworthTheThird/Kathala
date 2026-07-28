@@ -18,6 +18,8 @@ interface MapSlice {
   pushMapLayer: (id: string) => void
   popMapLayer: () => void
   resetMapHistory: (rootId: string) => void
+  /** Switch the current map in place (e.g. between floors) without changing breadcrumb depth. */
+  swapActiveMapLayer: (id: string) => void
 }
 
 export type AppTheme = 'default' | 'fantasy' | 'scifi' | 'cyberpunk' | 'horror' | 'western' | 'action' | 'noir' | 'romance'
@@ -32,6 +34,12 @@ interface PlaybackSlice {
    *  null = fall back to timelines[0] (existing behaviour). */
   playbackTimelineId: string | null
   setPlaybackTimelineId: (id: string | null) => void
+  /** What the bottom timeline bar shows in a multi-timeline world: a specific
+   *  timeline id, or the sentinels 'all-chrono' / 'all-chapter' for a merged
+   *  view. null = the default (chapter-order merge). Frame narratives ignore
+   *  this and keep their stacked sync view. */
+  barScope: string | null
+  setBarScope: (scope: string | null) => void
   /** When a frame narrative is active: the current event on the outer (frame) timeline.
    *  Drives ghost pin positions. Separate from activeEventId which tracks the inner timeline. */
   activeOuterEventId: string | null
@@ -55,6 +63,9 @@ interface UISlice {
   sidebarOpen: boolean
   setSidebarOpen: (open: boolean) => void
   toggleSidebar: () => void
+  /** Whether the desktop nav rail is pinned open (labels always shown). */
+  navPinned: boolean
+  setNavPinned: (pinned: boolean) => void
   selectedLocationMarkerId: string | null
   setSelectedLocationMarkerId: (id: string | null) => void
   selectedCharacterId: string | null
@@ -126,6 +137,13 @@ export const useAppStore = create<AppStore>()(
         }),
       resetMapHistory: (rootId) =>
         set({ activeMapLayerId: rootId, mapLayerHistory: [rootId] }),
+      swapActiveMapLayer: (id) =>
+        set((state) => {
+          const history = state.mapLayerHistory.slice()
+          if (history.length) history[history.length - 1] = id
+          else history.push(id)
+          return { activeMapLayerId: id, mapLayerHistory: history }
+        }),
 
       // Selection (not persisted)
       selectedEventIds: new Set<string>(),
@@ -149,6 +167,8 @@ export const useAppStore = create<AppStore>()(
       setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
       playbackTimelineId: null,
       setPlaybackTimelineId: (id) => set({ playbackTimelineId: id }),
+      barScope: null,
+      setBarScope: (scope) => set({ barScope: scope }),
       activeOuterEventId: null,
       setActiveOuterEventId: (id) => set({ activeOuterEventId: id }),
       activeDepthTimelineId: null,
@@ -158,6 +178,8 @@ export const useAppStore = create<AppStore>()(
       sidebarOpen: true,
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
+      navPinned: false,
+      setNavPinned: (pinned) => set({ navPinned: pinned }),
       selectedLocationMarkerId: null,
       setSelectedLocationMarkerId: (id) => set({ selectedLocationMarkerId: id }),
       selectedCharacterId: null,
@@ -191,6 +213,9 @@ export const useAppStore = create<AppStore>()(
         activeWorldId: state.activeWorldId,
         activeEventId: state.activeEventId,
         sidebarOpen: state.sidebarOpen,
+        navPinned: state.navPinned,
+        barScope: state.barScope,
+        theme: state.theme,
       }),
     }
   )

@@ -14,7 +14,7 @@ import { useBlobUrl, useWorldBlobUrls } from '@/db/hooks/useBlobs'
 import { useMapRoutes } from '@/db/hooks/useMapRoutes'
 import { useMapRegions, useBestRegionSnapshots } from '@/db/hooks/useMapRegions'
 import type { CharacterPin, GhostPin, EchoMarker, MovementLine } from './LeafletMapCanvas'
-import { characterColor, resolveCharacterPin } from './mapUtils'
+import { characterColor, resolveCharacterPin, resolvedSnapshotLayerId, resolveMapTimelineId } from './mapUtils'
 import { pathPixelLength, formatDistance } from '@/lib/mapScale'
 import type { MapRegionStatus } from '@/types'
 
@@ -35,9 +35,15 @@ export function useMapViewState(worldId: string, layerId: string) {
   const playbackTimelineId     = usePlaybackTimelineId()
   const activeDepthTimelineId  = useActiveDepthTimelineId()
   const activeOuterEventId     = useActiveOuterEventId()
-  const effectiveTimelineId    = playbackTimelineId ?? timelines[0]?.id ?? null
-  const chapters               = useChapters(effectiveTimelineId)
   const allWorldEvents         = useWorldEvents(worldId)
+  // The map follows the active event's own timeline, so a merged all-timelines
+  // playback that crosses storylines animates the right cast on each event.
+  const activeEventTimelineId  = useMemo(
+    () => (activeEventId ? allWorldEvents.find((e) => e.id === activeEventId)?.timelineId ?? null : null),
+    [activeEventId, allWorldEvents],
+  )
+  const effectiveTimelineId    = resolveMapTimelineId(activeEventTimelineId, playbackTimelineId, timelines[0]?.id ?? null)
+  const chapters               = useChapters(effectiveTimelineId)
 
   // ── Frame narrative context ────────────────────────────────────────────────
   const frameRel = useMemo(() => {
@@ -227,10 +233,10 @@ export function useMapViewState(worldId: string, layerId: string) {
     // Inter-chapter travel lines (previous chapter → current)
     if (prevChapterSnapshots.length > 0) {
       for (const snap of snapshots) {
-        if (!snap.currentLocationMarkerId || snap.currentMapLayerId !== layerId) continue
+        if (!snap.currentLocationMarkerId || resolvedSnapshotLayerId(snap, allMarkers) !== layerId) continue
         const prev = prevChapterSnapshots.find((s) => s.characterId === snap.characterId)
         if (!prev?.currentLocationMarkerId || prev.currentLocationMarkerId === snap.currentLocationMarkerId) continue
-        if (prev.currentMapLayerId !== layerId) continue
+        if (resolvedSnapshotLayerId(prev, allMarkers) !== layerId) continue
         const fromMarker = markers.find((m) => m.id === prev.currentLocationMarkerId)
         const toMarker = markers.find((m) => m.id === snap.currentLocationMarkerId)
         if (!fromMarker || !toMarker) continue

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { MapContainer, ImageOverlay, Marker, Popup, Polyline, Polygon, CircleMarker, Tooltip, useMapEvents, useMap } from 'react-leaflet'
+import { MapContainer, ImageOverlay, Marker, Popup, Polyline, Polygon, CircleMarker, Tooltip, ZoomControl, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import type { MapLayer, LocationMarker, Character, MapRoute, MapRegion, MapRegionStatus, MapAnnotation } from '@/types'
 import { updateLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { useAppStore } from '@/store'
 import { type GhostPin, makeGhostIcon } from '@/lib/ghostMarkerIcon'
+import { playbackFocusTarget, playbackFocusZoom } from './mapUtils'
 
 export type { GhostPin }
 
@@ -243,13 +244,24 @@ function ZoomTracker({ onZoomChange }: { onZoomChange: (zoom: number) => void })
   return null
 }
 
-function FitBounds({ bounds, initialCenter }: { bounds: L.LatLngBoundsExpression; initialCenter?: [number, number] | null }) {
+function FitBounds({ bounds, initialCenter, initialZoom, playbackFocus, onReady }: {
+  bounds: L.LatLngBoundsExpression
+  initialCenter?: [number, number] | null
+  initialZoom?: number | null
+  playbackFocus?: { position: { x: number; y: number } } | null
+  onReady?: () => void
+}) {
   const map = useMapEvents({})
+  const playbackFocusRef = useRef(playbackFocus)
+  // Keep the ref current for the deferred setTimeout below (which reads it
+  // asynchronously). Assigned in an effect, not during render.
+  useEffect(() => { playbackFocusRef.current = playbackFocus })
   useEffect(() => {
     // Defer to a macro-task so react-leaflet's ResizeObserver callback (which fires
     // asynchronously and calls invalidateSize) runs first. Without this, the observer
     // fires after our effect and resets the map's center back to [0,0].
     const center = initialCenter // capture before async gap
+    const zoom = initialZoom
     const id = setTimeout(() => {
       map.invalidateSize()
       const prevSnap = map.options.zoomSnap
@@ -259,12 +271,34 @@ function FitBounds({ bounds, initialCenter }: { bounds: L.LatLngBoundsExpression
       map.setMinZoom(minZoom)
       map.setMaxBounds(bounds)
       map.options.zoomSnap = prevSnap ?? 0.25
-      if (center && typeof center[0] === 'number' && typeof center[1] === 'number') {
-        map.panTo(center, { animate: false })
+      const focus = playbackFocusRef.current
+      if (focus) {
+        // Image dimensions can settle after playback has already focused the new
+        // layer, causing this fit to run a second time. Preserve playback focus
+        // so that late fit never leaves a cross-map arrival fully zoomed out.
+        map.setView(
+          [focus.position.y, focus.position.x],
+          playbackFocusZoom(map.getZoom(), map.getMinZoom(), map.getMaxZoom()),
+          { animate: false },
+        )
+      } else if (center && typeof center[0] === 'number' && typeof center[1] === 'number') {
+        // Restoring center + zoom (a floor switch) holds the camera; otherwise
+        // just pan (a cross-layer focus keeps the fitted zoom).
+        if (typeof zoom === 'number') map.setView(center, zoom, { animate: false })
+        else map.panTo(center, { animate: false })
       }
+      onReady?.()
     }, 0)
     return () => clearTimeout(id)
-  }, [map, bounds]) // eslint-disable-line react-hooks/exhaustive-deps -- initialCenter intentionally read only at mount
+  }, [map, bounds]) // eslint-disable-line react-hooks/exhaustive-deps -- initialCenter/initialZoom intentionally read only at mount
+  return null
+}
+
+/** Reports the map's center + zoom as the user pans and zooms. */
+function ViewTracker({ onViewChange }: { onViewChange: (center: [number, number], zoom: number) => void }) {
+  const map = useMapEvents({
+    moveend: () => { const c = map.getCenter(); onViewChange([c.lat, c.lng], map.getZoom()) },
+  })
   return null
 }
 
@@ -372,6 +406,10 @@ interface LeafletMapCanvasProps {
   locationStatuses?: Record<string, string>
   /** When set, pan to this [y, x] position after FitBounds on mount (used for cross-layer character focus) */
   initialCenter?: [number, number] | null
+  /** When set with initialCenter, restore this zoom on mount instead of fitting (used to hold the view across floor switches) */
+  initialZoom?: number | null
+  /** Reports the current view (center [y, x] + zoom) as the user pans/zooms */
+  onViewChange?: (center: [number, number], zoom: number) => void
   /** When set, draws a measurement line between two points with a distance label */
   measureLine?: MeasureLine | null
   /** Ghost pins — outer-timeline characters shown as a dimmed overlay when the inner depth track is active */
@@ -426,7 +464,7 @@ export function LeafletMapCanvas({
   isDraggingCharacter, onMarkerClick, onMapClick, onDrillDown,
   onCharacterDrop, onCharacterDropOnEmpty, onCharacterClick, mapRef: externalMapRef,
   scaleMode, onScalePoints, showSubMapLinks = true, locationStatuses = {},
-  pinAnimation, onAnimationEnd, initialCenter, measureLine, ghostPins,
+  pinAnimation, onAnimationEnd, initialCenter, initialZoom, onViewChange, measureLine, ghostPins,
   echoMarkers, onEchoRingClick, showLocationLabels = true, journeyLines = [],
   mapRoutes = [], routeMarkerPositions, mapRegions = [], regionStatuses, drawRegionVertices,
   directMapClick = false, drawRoutePoints,
@@ -446,6 +484,7 @@ export function LeafletMapCanvas({
   const animFrameRef    = useRef<number | null>(null)
   const runningAnimKeyRef = useRef<number | null>(null) // guard: skip re-init for same animation key
   const [leafletMap, setLeafletMap] = useState<L.Map | null>(null)
+  const [isViewportReady, setIsViewportReady] = useState(false)
   const [mapZoom, setMapZoom]         = useState(0)
   const charPinsRef     = useRef(charPins)   // always-fresh snapshot for RAF callbacks
   const mapZoomRef      = useRef(mapZoom)
@@ -495,8 +534,13 @@ export function LeafletMapCanvas({
 
   useEffect(() => {
     const handler = () => { addModeRef.current = true; setAddMode(true) }
+    const cancel = () => { addModeRef.current = false; setAddMode(false) }
     window.addEventListener('wb:map:startAddMarker', handler)
-    return () => window.removeEventListener('wb:map:startAddMarker', handler)
+    window.addEventListener('wb:map:cancelAddMarker', cancel)
+    return () => {
+      window.removeEventListener('wb:map:startAddMarker', handler)
+      window.removeEventListener('wb:map:cancelAddMarker', cancel)
+    }
   }, [])
 
   useEffect(() => {
@@ -581,7 +625,7 @@ export function LeafletMapCanvas({
   // its async initialisation (react-leaflet v5 creates the map via setContext).
   useEffect(() => {
     const map = leafletMap ?? mapRef.current
-    if (!map) return
+    if (!map || !isViewportReady) return
 
     if (animFrameRef.current) {
       cancelAnimationFrame(animFrameRef.current)
@@ -605,8 +649,10 @@ export function LeafletMapCanvas({
         if (!pinIds.has(id)) { m.remove(); charMarkersRef.current.delete(id) }
       }
 
-      // Determine which character is the active mover (has a from position)
-      const movingCharId = Object.keys(from)[0] ?? null
+      // First appearances and cross-map arrivals may only have a destination.
+      // They still need a mover and focus point for camera follow.
+      const focusTarget = playbackFocusTarget(pinAnimation)
+      const movingCharId = focusTarget?.characterId ?? null
 
       // Create / reposition per-character markers at their FROM positions
       for (const pin of charPins) {
@@ -633,10 +679,14 @@ export function LeafletMapCanvas({
         }
       }
 
-      // Pan camera to the moving character's start position
-      if (cameraFollow && movingCharId) {
-        const startPos = from[movingCharId]
-        if (startPos) map.panTo([startPos.y, startPos.x], { animate: false })
+      // Frame the moving character more closely than the fitted full-map view.
+      // Subsequent animation frames keep this zoom while following the pin.
+      if (cameraFollow && focusTarget) {
+        map.setView(
+          [focusTarget.position.y, focusTarget.position.x],
+          playbackFocusZoom(map.getZoom(), map.getMinZoom(), map.getMaxZoom()),
+          { animate: false },
+        )
       }
 
       setIsAnimating(true)
@@ -713,7 +763,7 @@ export function LeafletMapCanvas({
         setIsAnimating(false)
       }
     }
-  }, [pinAnimation, charPins, leafletMap]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pinAnimation, charPins, leafletMap, isViewportReady]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Update icon sizes when zoom changes, without interrupting any running animation
   useEffect(() => {
@@ -863,10 +913,21 @@ export function LeafletMapCanvas({
         zoom={0}
         style={{ height: '100%', width: '100%' }}
         maxZoom={4} zoomSnap={0.25}
+        // The top band belongs to the floating map controls (MapToolbar /
+        // MapFilterBar), so zoom moves to the bottom-right corner.
+        zoomControl={false}
       >
+        <ZoomControl position="bottomright" />
         <MapInstanceTracker onReady={(m) => { mapRef.current = m; setLeafletMap(m) }} />
-        <FitBounds bounds={bounds} initialCenter={initialCenter} />
+        <FitBounds
+          bounds={bounds}
+          initialCenter={initialCenter}
+          initialZoom={initialZoom}
+          playbackFocus={pinAnimation?.cameraFollow ? playbackFocusTarget(pinAnimation) : null}
+          onReady={() => setIsViewportReady(true)}
+        />
         <ZoomTracker onZoomChange={setMapZoom} />
+        {onViewChange && <ViewTracker onViewChange={onViewChange} />}
         <ImageOverlay url={imageUrl} bounds={bounds} />
         <ClickHandler onMapClickRef={onMapClickRef} />
         <ContextMenuHandler onContextMenu={setContextMenu} disabled={directMapClick} />

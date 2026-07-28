@@ -3,8 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useEffect, useRef } from 'react'
 import { useAppStore } from '@/store'
 import { useFocusTrap } from '@/lib/useFocusTrap'
-import { useChapter, useEvent, useEvents, useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
+import { useChapter, useEvent, useEvents, useWorldEvents, useWorldChapters, useTimelines } from '@/db/hooks/useTimeline'
 import { computeInWorldDays } from '@/lib/inWorldTime'
+import { formatInWorldDate, ageInYears } from '@/lib/calendar'
+import { useWorld } from '@/db/hooks/useWorlds'
 import { useBestSnapshots } from '@/db/hooks/useSnapshots'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
@@ -19,6 +21,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { cn } from '@/lib/utils'
 import { charColor } from '@/lib/characterColor'
+import { useCharacterGoals } from '@/db/hooks/useCharacterGoals'
+import { GOAL_TYPE_CONFIG, eventPositions, activeGoalsAt } from '@/lib/characterGoals'
 import { InheritedBadge } from '@/components/InheritedBadge'
 
 function Section({ title, icon: Icon, count, children }: {
@@ -58,11 +62,16 @@ export function WritersBriefPanel() {
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [briefOpen, setBriefOpen])
 
+  const world      = useWorld(worldId ?? null)
+  const calendar   = world?.calendar ?? null
   const activeEvent = useEvent(activeEventId)
   const chapter    = useChapter(activeEvent?.chapterId ?? null)
   const worldEvents = useWorldEvents(worldId ?? null)
   const worldChapters = useWorldChapters(worldId ?? null)
-  const activeDay = activeEventId ? computeInWorldDays(worldEvents, worldChapters).get(activeEventId) : undefined
+  const worldTimelines = useTimelines(worldId ?? null)
+  const characterGoals = useCharacterGoals(worldId ?? null)
+  const goalPositions = eventPositions(worldEvents, worldChapters)
+  const activeDay = activeEventId ? computeInWorldDays(worldEvents, worldChapters, worldTimelines).get(activeEventId) : undefined
   const events     = useEvents(activeEvent?.chapterId ?? null)
   const snapshots  = useBestSnapshots(worldId ?? null, activeEventId)
   const characters = useCharacters(worldId ?? null)
@@ -185,8 +194,10 @@ export function WritersBriefPanel() {
                   <div className="mt-2 border-t border-[hsl(var(--border))] pt-2">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Active Event</p>
                     <p className="text-xs font-medium text-[hsl(var(--foreground))]">{activeEvent.title}</p>
-                    {activeDay !== undefined && activeDay > 0 && !activeEvent.isFlashback && (
-                      <p className="mt-0.5 text-[10px] text-[hsl(var(--muted-foreground))]">In-world day {activeDay}</p>
+                    {activeDay !== undefined && !activeEvent.isFlashback && (calendar || activeDay > 0) && (
+                      <p className="mt-0.5 text-[10px] text-[hsl(var(--muted-foreground))]">
+                        {calendar ? formatInWorldDate(calendar, activeDay) : `In-world day ${activeDay}`}
+                      </p>
                     )}
                     {activeEvent.description && (
                       <p className="mt-0.5 text-[10px] text-[hsl(var(--muted-foreground))] leading-relaxed">{activeEvent.description}</p>
@@ -257,6 +268,12 @@ export function WritersBriefPanel() {
                               : <Skull className="h-3 w-3 text-red-400" />
                             }
                             <span className={cn(!snap.isAlive && 'line-through text-[hsl(var(--muted-foreground))]')}>{char.name}</span>
+                            {(() => {
+                              if (!calendar || !char.birthDate || activeDay === undefined) return null
+                              const age = ageInYears(calendar, char.birthDate, activeDay)
+                              if (age === null) return null
+                              return <span className="text-[10px] font-normal text-[hsl(var(--muted-foreground))]">· age {age}</span>
+                            })()}
                             {snap.eventId !== activeEventId && <InheritedBadge className="ml-auto" />}
                           </div>
                           {location && (
@@ -275,6 +292,25 @@ export function WritersBriefPanel() {
                               ))}
                             </div>
                           )}
+                          {(() => {
+                            const goals = activeGoalsAt(characterGoals, char.id, activeEventId, goalPositions)
+                            if (goals.length === 0) return null
+                            return (
+                              <div className="mt-1 flex flex-col gap-0.5">
+                                {goals.map((g) => {
+                                  const cfg = GOAL_TYPE_CONFIG[g.type]
+                                  return (
+                                    <div key={g.id} className="flex items-start gap-1.5 text-[10px] leading-relaxed">
+                                      <span className="shrink-0 font-semibold uppercase tracking-wide" style={{ color: cfg.color }}>
+                                        {cfg.label}
+                                      </span>
+                                      <span className="text-[hsl(var(--muted-foreground))]">{g.text}</span>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )
+                          })()}
                           {(() => {
                             const facs = charFactions.get(char.id) ?? []
                             if (facs.length === 0) return null

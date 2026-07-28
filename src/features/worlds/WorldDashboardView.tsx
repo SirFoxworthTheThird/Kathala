@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, type ElementType, type ReactNode } from '
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   Map as MapIcon, Users, Network, BookOpen,
-  Package, BarChart2, ShieldAlert, Clock, Layers, Pencil, FileEdit, Spline,
+  Package, BarChart2, ShieldAlert, Clock, Layers, Pencil, FileEdit, Spline, PenLine, Sparkle,
 } from 'lucide-react'
 import type { EventStatus } from '@/types'
 import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
@@ -20,12 +20,15 @@ import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useLorePages } from '@/db/hooks/useLore'
 import { useFactions } from '@/db/hooks/useFactions'
 import { Button } from '@/components/ui/button'
+import { PortraitImage } from '@/components/PortraitImage'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { OnboardingWizard } from '@/features/onboarding'
 import { DashboardSuggestion } from './DashboardSuggestion'
 import { CastBalance } from './CastBalance'
 import { ThreadCadence } from './ThreadCadence'
+import { MotifCadence } from './MotifCadence'
+import { WritingProgress } from './WritingProgress'
 import { evaluateSuggestions, type WorldSummaryData } from './suggestionRules'
 
 // ── Stat pill ────────────────────────────────────────────────────────────────
@@ -265,6 +268,14 @@ export default function WorldDashboardView() {
 
       {/* World header */}
       <div className="flex items-start justify-between gap-4">
+        {world?.coverImageId && (
+          <PortraitImage
+            imageId={world.coverImageId}
+            alt=""
+            className="h-16 w-24 shrink-0 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))] object-contain"
+            fallbackClassName="h-16 w-24 shrink-0 rounded-md border border-[hsl(var(--border))]"
+          />
+        )}
         <div className="flex-1">
           <p className="text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
             World
@@ -423,6 +434,14 @@ export default function WorldDashboardView() {
         </div>
       )}
 
+      {/* Writing progress — words, streak, burndown */}
+      {totalEvents > 0 && worldId && (
+        <div>
+          <SectionHeading icon={PenLine}>Writing Progress</SectionHeading>
+          <WritingProgress worldId={worldId} wordTarget={world?.wordTarget} targetDate={world?.targetDate} />
+        </div>
+      )}
+
       {/* Cast balance — who's underused / absent lately */}
       {characters.length > 0 && totalChapters > 0 && (
         <div>
@@ -436,6 +455,14 @@ export default function WorldDashboardView() {
         <div>
           <SectionHeading icon={Spline}>Plot Threads</SectionHeading>
           <ThreadCadence worldId={worldId ?? ''} chapters={chapters} events={allEvents} />
+        </div>
+      )}
+
+      {/* Motifs — recurring theme/symbol cadence */}
+      {chapters.length > 0 && (
+        <div>
+          <SectionHeading icon={Sparkle}>Motifs &amp; Themes</SectionHeading>
+          <MotifCadence worldId={worldId ?? ''} chapters={chapters} events={allEvents} />
         </div>
       )}
 

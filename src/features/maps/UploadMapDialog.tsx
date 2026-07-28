@@ -1,12 +1,12 @@
 import { useState, useRef } from 'react'
-import { Upload } from 'lucide-react'
+import { Upload, Link2, Loader2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { storeBlob } from '@/db/hooks/useBlobs'
-import { createMapLayer } from '@/db/hooks/useMapLayers'
+import { storeBlob, storeImageLink } from '@/db/hooks/useBlobs'
+import { createMapLayer, replaceMapLayerImage, addMapLevel } from '@/db/hooks/useMapLayers'
 
 interface UploadMapDialogProps {
   open: boolean
@@ -14,52 +14,108 @@ interface UploadMapDialogProps {
   worldId: string
   parentMapId?: string | null
   onCreated?: (layerId: string) => void
+  /** When set, the dialog replaces this layer's image instead of creating a new map. */
+  replaceLayerId?: string | null
+  onReplaced?: () => void
+  /** When set, the dialog adds a floor/level to this map instead of creating a new map. */
+  addLevelToLayerId?: string | null
+  onLevelAdded?: (layerId: string) => void
 }
 
-export function UploadMapDialog({ open, onOpenChange, worldId, parentMapId = null, onCreated }: UploadMapDialogProps) {
+export function UploadMapDialog({ open, onOpenChange, worldId, parentMapId = null, onCreated, replaceLayerId = null, onReplaced, addLevelToLayerId = null, onLevelAdded }: UploadMapDialogProps) {
+  const replacing = !!replaceLayerId
+  const addingLevel = !!addLevelToLayerId
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  const [linked, setLinked] = useState<{ blobId: string; width: number; height: number } | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
+  const [linkUrl, setLinkUrl] = useState('')
+  const [linking, setLinking] = useState(false)
+  const [linkError, setLinkError] = useState<string | null>(null)
+  const [rescale, setRescale] = useState(true)
   const [saving, setSaving] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   function handleFile(f: File) {
     setFile(f)
+    setLinked(null)
     setPreview(URL.createObjectURL(f))
     if (!name) setName(f.name.replace(/\.[^.]+$/, ''))
   }
 
+  async function handleLink() {
+    if (!linkUrl.trim() || linking) return
+    setLinking(true)
+    setLinkError(null)
+    try {
+      const entry = await storeImageLink(worldId, linkUrl)
+      setLinked({ blobId: entry.id, width: entry.width, height: entry.height })
+      setFile(null)
+      setPreview(entry.url ?? linkUrl.trim())
+      if (!name) setName('Map')
+    } catch (e) {
+      setLinkError(e instanceof Error ? e.message : 'Could not link that image.')
+    } finally {
+      setLinking(false)
+    }
+  }
+
+  function reset() {
+    setName(''); setDescription(''); setFile(null); setLinked(null); setPreview(null)
+    setLinkUrl(''); setLinkError(null); setRescale(true)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!file || !name.trim()) return
+    if ((!file && !linked) || (!replacing && !name.trim())) return
     setSaving(true)
-    const blob = await storeBlob(worldId, file)
+    let imageId: string, imageWidth: number, imageHeight: number
+    if (file) {
+      const blob = await storeBlob(worldId, file)
+      imageId = blob.id; imageWidth = blob.width; imageHeight = blob.height
+    } else {
+      imageId = linked!.blobId; imageWidth = linked!.width; imageHeight = linked!.height
+    }
+
+    if (replacing) {
+      await replaceMapLayerImage(replaceLayerId!, { imageId, imageWidth, imageHeight }, { rescale })
+      setSaving(false)
+      reset()
+      onOpenChange(false)
+      onReplaced?.()
+      return
+    }
+
+    if (addingLevel) {
+      // In this mode the name field holds the level's label.
+      const newId = await addMapLevel(addLevelToLayerId!, { imageId, imageWidth, imageHeight }, name.trim())
+      setSaving(false)
+      reset()
+      onOpenChange(false)
+      if (newId) onLevelAdded?.(newId)
+      return
+    }
+
     const layer = await createMapLayer({
-      worldId,
-      parentMapId,
+      worldId, parentMapId,
       name: name.trim(),
       description: description.trim(),
-      imageId: blob.id,
-      imageWidth: blob.width,
-      imageHeight: blob.height,
+      imageId, imageWidth, imageHeight,
       scalePixelsPerUnit: null,
       scaleUnit: null,
     })
     setSaving(false)
-    setName('')
-    setDescription('')
-    setFile(null)
-    setPreview(null)
+    reset()
     onOpenChange(false)
     onCreated?.(layer.id)
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o) }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{parentMapId ? 'Add Sub-Map' : 'Upload Map'}</DialogTitle>
+          <DialogTitle>{addingLevel ? 'Add Level' : replacing ? 'Replace Map Image' : parentMapId ? 'Add Sub-Map' : 'Upload Map'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div
@@ -84,31 +140,74 @@ export function UploadMapDialog({ open, onOpenChange, worldId, parentMapId = nul
             />
           </div>
 
+          {/* Or link by URL */}
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="map-name">Map Name</Label>
-            <Input
-              id="map-name"
-              placeholder="e.g. Continent of Velmoor"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+            <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+              <span className="h-px flex-1 bg-[hsl(var(--border))]" /> or link a URL <span className="h-px flex-1 bg-[hsl(var(--border))]" />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Input
+                type="url"
+                placeholder="https://…/map.jpg"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleLink() } }}
+                className="h-9"
+              />
+              <Button type="button" variant="outline" size="sm" onClick={handleLink} disabled={!linkUrl.trim() || linking} className="shrink-0 gap-1.5">
+                {linking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+                Use link
+              </Button>
+            </div>
+            {linkError && <p className="text-[11px] text-red-400">{linkError}</p>}
+            {linked && (
+              <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                Linked ({linked.width}×{linked.height}). Note: linked maps may not include in <span className="italic">Export map as PNG</span>.
+              </p>
+            )}
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="map-desc">Description</Label>
-            <Textarea
-              id="map-desc"
-              placeholder="Optional description..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={2}
-            />
-          </div>
+          {replacing ? (
+            <label className="flex items-start gap-2 text-xs text-[hsl(var(--foreground))]">
+              <input
+                type="checkbox"
+                checked={rescale}
+                onChange={(e) => setRescale(e.target.checked)}
+                className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-[hsl(var(--ring))]"
+              />
+              <span>
+                Reposition existing locations, routes and regions to fit the new image.
+                <span className="block text-[hsl(var(--muted-foreground))]">
+                  Recommended when the new image is a different size. Uncheck for a same-size redraw.
+                </span>
+              </span>
+            </label>
+          ) : addingLevel ? (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="level-name">Level name</Label>
+              <Input id="level-name" placeholder="e.g. First floor, Dungeons" value={name} onChange={(e) => setName(e.target.value)} />
+              <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                Added as a new floor with its own locations. Switch between floors with the selector on the map.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="map-name">Map Name</Label>
+                <Input id="map-name" placeholder="e.g. Continent of Velmoor" value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="map-desc">Description</Label>
+                <Textarea id="map-desc" placeholder="Optional description..." value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+              </div>
+            </>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={!file || !name.trim() || saving}>
-              {saving ? 'Uploading...' : 'Upload'}
+            <Button type="submit" disabled={(!file && !linked) || (!replacing && !addingLevel && !name.trim()) || saving}>
+              {saving ? 'Saving...' : addingLevel ? 'Add Level' : replacing ? 'Replace' : 'Upload'}
             </Button>
           </DialogFooter>
         </form>

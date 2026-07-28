@@ -2,6 +2,8 @@ import * as React from 'react'
 import { createPortal } from 'react-dom'
 import { Check, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { computeSelectPosition } from '@/lib/selectPosition'
+import { selectItemLabel } from '@/lib/selectLabel'
 
 interface SelectContextValue {
   value: string
@@ -121,31 +123,48 @@ function SelectContent({ children, className }: SelectContentProps) {
   const [rect, setRect] = React.useState<DOMRect | null>(null)
 
   React.useEffect(() => {
-    if (open && triggerRef.current) {
-      setRect(triggerRef.current.getBoundingClientRect())
+    if (!open || !triggerRef.current) return
+    const measure = () => {
+      if (triggerRef.current) setRect(triggerRef.current.getBoundingClientRect())
+    }
+    measure()
+    // Keep the panel anchored if the viewport changes (rotation, keyboard, scroll).
+    window.addEventListener('resize', measure)
+    window.addEventListener('scroll', measure, true)
+    return () => {
+      window.removeEventListener('resize', measure)
+      window.removeEventListener('scroll', measure, true)
     }
   }, [open, triggerRef])
+
+  // Fit the panel to the viewport so no options end up off-screen (it flips
+  // above the trigger when there's more room up top, and scrolls internally).
+  const pos = rect
+    ? computeSelectPosition(rect, { width: window.innerWidth, height: window.innerHeight })
+    : null
 
   return (
     <>
       {/* Always render hidden copy so SelectItems can register their labels */}
       <div style={{ display: 'none' }}>{children}</div>
 
-      {open && rect && createPortal(
+      {open && pos && createPortal(
         <div
           style={{
             position: 'fixed',
-            top: rect.bottom + 4,
-            left: rect.left,
-            width: rect.width,
+            top: pos.top,
+            bottom: pos.bottom,
+            left: pos.left,
+            width: pos.width,
             zIndex: 99999,
           }}
           onMouseDown={(e) => e.stopPropagation()}
         >
           <div
             role="listbox"
+            style={{ maxHeight: pos.maxHeight }}
             className={cn(
-              'max-h-64 overflow-auto rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--popover))] p-1 shadow-lg',
+              'overflow-auto rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--popover))] p-1 shadow-lg',
               className
             )}
           >
@@ -163,13 +182,15 @@ interface SelectItemProps {
   children: React.ReactNode
   className?: string
   disabled?: boolean
+  /** Overrides the text shown in the trigger; defaults to the item's own text. */
+  textValue?: string
 }
 
-function SelectItem({ value, children, className, disabled }: SelectItemProps) {
+function SelectItem({ value, children, className, disabled, textValue }: SelectItemProps) {
   const { value: selectedValue, onValueChange, registerLabel } = React.useContext(SelectContext)
   const isSelected = selectedValue === value
 
-  const label = typeof children === 'string' ? children : ''
+  const label = textValue ?? selectItemLabel(children)
   React.useEffect(() => {
     registerLabel(value, label)
   }, [value, label]) // eslint-disable-line react-hooks/exhaustive-deps

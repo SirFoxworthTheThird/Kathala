@@ -1,9 +1,9 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { useFocusTrap } from '@/lib/useFocusTrap'
-import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, Shield, ChevronRight, EyeOff, Eye, Check, PenLine } from 'lucide-react'
+import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, Shield, ChevronRight, EyeOff, Eye, Check, PenLine, Spline } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store'
-import { useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
+import { useWorldChapters, useWorldEvents, updateEvent } from '@/db/hooks/useTimeline'
 import { useWorld } from '@/db/hooks/useWorlds'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
@@ -15,86 +15,17 @@ import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
 import { useWorldMovements } from '@/db/hooks/useMovements'
 import { useFactions, useFactionMemberships, useFactionRelationships } from '@/db/hooks/useFactions'
+import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useContinuitySuppressions, toggleContinuitySuppression, setContinuitySuppressionNote } from '@/db/hooks/useContinuitySuppressions'
 import { cn } from '@/lib/utils'
-import { pixelDist } from '@/lib/mapScale'
-import { computeInWorldDays } from '@/lib/inWorldTime'
-import { computeKnowledgeAnachronisms } from '@/lib/knowledgeAnachronisms'
-import { computeDeadKnowerIssues } from '@/lib/knowledgeRevealContinuity'
-import { computeProseMentionIssues, computeKnowledgeLeaks } from '@/lib/proseContinuity'
-import { computeItemHandoffIssues } from '@/lib/itemHandoff'
 import { useKnowledgeFacts, useKnowledgeReveals } from '@/db/hooks/useKnowledge'
 import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
-import type { CharacterSnapshot, ItemPlacement, MapRoute, MapRegion, RouteType } from '@/types'
 
-// ── Geometry helpers ──────────────────────────────────────────────────────────
+// Issue computation lives in src/lib/continuity/computeIssues.ts (pure, unit-tested).
+import { computeContinuityIssues, type Issue } from '@/lib/continuity/computeIssues'
 
-/** Point-in-polygon test using ray casting */
-function pointInPolygon(px: number, py: number, polygon: Array<{ x: number; y: number }>): boolean {
-  let inside = false
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const xi = polygon[i].x, yi = polygon[i].y
-    const xj = polygon[j].x, yj = polygon[j].y
-    if (((yi > py) !== (yj > py)) && (px < ((xj - xi) * (py - yi)) / (yj - yi) + xi)) {
-      inside = !inside
-    }
-  }
-  return inside
-}
-
-/** Check if line segment (ax,ay)→(bx,by) intersects segment (cx,cy)→(dx,dy) */
-function segmentsIntersect(
-  ax: number, ay: number, bx: number, by: number,
-  cx: number, cy: number, dx: number, dy: number
-): boolean {
-  const d1x = bx - ax, d1y = by - ay
-  const d2x = dx - cx, d2y = dy - cy
-  const cross = d1x * d2y - d1y * d2x
-  if (Math.abs(cross) < 1e-10) return false // parallel
-  const t = ((cx - ax) * d2y - (cy - ay) * d2x) / cross
-  const u = ((cx - ax) * d1y - (cy - ay) * d1x) / cross
-  return t >= 0 && t <= 1 && u >= 0 && u <= 1
-}
-
-/** Check if segment AB crosses or touches polygon (path traversal test) */
-function pathCrossesPolygon(
-  ax: number, ay: number, bx: number, by: number,
-  polygon: Array<{ x: number; y: number }>
-): boolean {
-  if (polygon.length < 3) return false
-  if (pointInPolygon(ax, ay, polygon) || pointInPolygon(bx, by, polygon)) return true
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    if (segmentsIntersect(ax, ay, bx, by, polygon[i].x, polygon[i].y, polygon[j].x, polygon[j].y)) return true
-  }
-  return false
-}
-
-// ── Route type speed multipliers ──────────────────────────────────────────────
-
-const ROUTE_SPEED_MULTIPLIERS: Record<RouteType, number> = {
-  road: 1.5,
-  river: 1.2,
-  sea_route: 1.2,
-  trail: 0.6,
-  border: 1.0,
-  custom: 1.0,
-}
-
-// ── types ─────────────────────────────────────────────────────────────────────
-
-type IssueSeverity = 'error' | 'warning'
-
-interface Issue {
-  id: string
-  severity: IssueSeverity
-  category: 'character' | 'item' | 'relationship' | 'faction' | 'pov' | 'prose'
-  message: string
-  detail?: string
-  navigatePath?: string
-  eventId?: string
-}
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -105,6 +36,7 @@ function IssueRow({
   suppressNote,
   onNavigate,
   onSuppress,
+  onFix,
 }: {
   issue: Issue
   focused: boolean
@@ -112,6 +44,7 @@ function IssueRow({
   suppressNote: string
   onNavigate: (issue: Issue) => void
   onSuppress: (issue: Issue, note: string) => void
+  onFix: (issue: Issue) => void
 }) {
   const [justifyMode, setJustifyMode] = useState(false)
   const [noteInput, setNoteInput] = useState('')
@@ -159,6 +92,14 @@ function IssueRow({
             suppressed ? 'text-[hsl(var(--muted-foreground))]' : issue.severity === 'error' ? 'text-red-300' : 'text-amber-300'
           )}>{issue.message}</p>
           {issue.detail && <p className="mt-0.5 text-[hsl(var(--muted-foreground))]">{issue.detail}</p>}
+          {issue.fix && !suppressed && (
+            <button
+              onClick={() => onFix(issue)}
+              className="mt-1.5 rounded border border-[hsl(var(--border))] px-2 py-0.5 text-[11px] font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))] hover:bg-[hsl(var(--accent))] transition-colors"
+            >
+              {issue.fix.label}
+            </button>
+          )}
           {suppressed && suppressNote && (
             <p className="mt-1 italic text-[hsl(var(--muted-foreground))]">"{suppressNote}"</p>
           )}
@@ -217,7 +158,7 @@ function IssueRow({
   )
 }
 
-function CategorySection({ title, icon: Icon, issues, focusedIdx, baseIdx, suppressedIds, suppressedNotes, showSuppressed, onNavigate, onSuppress }: {
+function CategorySection({ title, icon: Icon, issues, focusedIdx, baseIdx, suppressedIds, suppressedNotes, showSuppressed, onNavigate, onSuppress, onFix }: {
   title: string
   icon: React.ElementType
   issues: Issue[]
@@ -228,6 +169,7 @@ function CategorySection({ title, icon: Icon, issues, focusedIdx, baseIdx, suppr
   showSuppressed: boolean
   onNavigate: (issue: Issue) => void
   onSuppress: (issue: Issue, note: string) => void
+  onFix: (issue: Issue) => void
 }) {
   const visible = issues.filter((i) => showSuppressed || !suppressedIds.has(i.id))
   if (visible.length === 0) return null
@@ -248,6 +190,7 @@ function CategorySection({ title, icon: Icon, issues, focusedIdx, baseIdx, suppr
             suppressNote={suppressedNotes[issue.id] ?? ''}
             onNavigate={onNavigate}
             onSuppress={onSuppress}
+            onFix={onFix}
           />
         ))}
       </div>
@@ -306,6 +249,7 @@ export function ContinuityChecker() {
     () => worldId ? db.mapRegionSnapshots.where('worldId').equals(worldId).toArray() : [],
     [worldId], []
   )
+  const plotThreads       = usePlotThreads(worldId ?? null)
   const allFactions       = useFactions(worldId ?? null)
   const allMemberships    = useFactionMemberships(worldId ?? null)
   const allFactionRels    = useFactionRelationships(worldId ?? null)
@@ -315,926 +259,13 @@ export function ContinuityChecker() {
     [worldId], []
   )
 
-  const issues = useMemo(() => {
-    const out: Issue[] = []
-
-    const chapById  = new Map(chapters.map((c) => [c.id, c]))
-    const charById  = new Map(characters.map((c) => [c.id, c]))
-    const itemById  = new Map(items.map((i) => [i.id, i]))
-    const eventById = new Map(allEvents.map((e) => [e.id, e]))
-    // Absolute in-world day per event, so travel checks can use the elapsed
-    // time between two points (which spans every event in between, and honors
-    // explicit inWorldTime pins) rather than a single event's travelDays.
-    const inWorldDay = computeInWorldDays(allEvents, chapters)
-
-    // Global event order: chapter.number * 10_000 + event.sortOrder
-    const chapNumById = new Map(chapters.map((c) => [c.id, c.number]))
-    function eventOrder(eventId: string): number {
-      const ev = eventById.get(eventId)
-      if (!ev) return -1
-      return (chapNumById.get(ev.chapterId) ?? 0) * 10_000 + ev.sortOrder
-    }
-
-    // ── Shared lookup maps ──────────────────────────────────────────────────
-
-    const markerById = new Map(allMarkers.map((m) => [m.id, m]))
-    const layerById  = new Map(allLayers.map((l) => [l.id, l]))
-
-    // Best region snapshot per region at a given event order
-    const regionSnapHistory = new Map<string, Array<{ order: number; status: string }>>()
-    for (const rs of allRegionSnapshots ?? []) {
-      if (!regionSnapHistory.has(rs.regionId)) regionSnapHistory.set(rs.regionId, [])
-      regionSnapHistory.get(rs.regionId)!.push({ order: eventOrder(rs.eventId), status: rs.status })
-    }
-    for (const hist of regionSnapHistory.values()) hist.sort((a, b) => a.order - b.order)
-
-    function bestRegionStatus(regionId: string, atOrder: number): string | null {
-      const hist = regionSnapHistory.get(regionId)
-      if (!hist || hist.length === 0) return null
-      let best: string | null = null
-      for (const entry of hist) {
-        if (entry.order <= atOrder) best = entry.status
-        else break
-      }
-      return best
-    }
-
-    const regionsByLayer = new Map<string, MapRegion[]>()
-    for (const region of allMapRegions ?? []) {
-      if (!regionsByLayer.has(region.mapLayerId)) regionsByLayer.set(region.mapLayerId, [])
-      regionsByLayer.get(region.mapLayerId)!.push(region)
-    }
-
-    const staleThreshold = world?.continuityStaleThreshold ?? 5
-
-    // ── Character checks ────────────────────────────────────────────────────
-
-    // Group snapshots by character
-    const snapsByChar = new Map<string, CharacterSnapshot[]>()
-    for (const snap of snapshots) {
-      if (!snapsByChar.has(snap.characterId)) snapsByChar.set(snap.characterId, [])
-      snapsByChar.get(snap.characterId)!.push(snap)
-    }
-
-    // Sorted alive-history per character (for dead-in-cast / before-intro checks)
-    const snapsByCharSorted = new Map<string, Array<{ order: number; isAlive: boolean; eventId: string }>>()
-    for (const snap of snapshots) {
-      if (!snapsByCharSorted.has(snap.characterId)) snapsByCharSorted.set(snap.characterId, [])
-      snapsByCharSorted.get(snap.characterId)!.push({ order: eventOrder(snap.eventId), isAlive: snap.isAlive, eventId: snap.eventId })
-    }
-    for (const arr of snapsByCharSorted.values()) arr.sort((a, b) => a.order - b.order)
-
-    function isDeadAtOrder(charId: string, order: number): boolean {
-      const hist = snapsByCharSorted.get(charId)
-      if (!hist) return false
-      let lastAlive: boolean | null = null
-      for (const entry of hist) {
-        if (entry.order > order) break
-        lastAlive = entry.isAlive
-      }
-      return lastAlive === false
-    }
-
-    // Event IDs where each character has a snapshot (for stale-snapshot check)
-    const snapEventIdsByChar = new Map<string, Set<string>>()
-    for (const snap of snapshots) {
-      if (!snapEventIdsByChar.has(snap.characterId)) snapEventIdsByChar.set(snap.characterId, new Set())
-      snapEventIdsByChar.get(snap.characterId)!.add(snap.eventId)
-    }
-
-    for (const [charId, charSnaps] of snapsByChar) {
-      const char = charById.get(charId)
-      if (!char) continue
-
-      // Find the earliest "dead" snapshot
-      const deathSnap = charSnaps
-        .filter((s) => !s.isAlive)
-        .sort((a, b) => eventOrder(a.eventId) - eventOrder(b.eventId))[0]
-
-      if (!deathSnap) continue
-
-      const deathOrder = eventOrder(deathSnap.eventId)
-      const deathChapNum = chapNumById.get(eventById.get(deathSnap.eventId)?.chapterId ?? '') ?? 0
-
-      // Any alive snapshot AFTER the death event
-      const aliveAfterDeath = charSnaps.filter((s) => {
-        if (s.isAlive === false) return false
-        return eventOrder(s.eventId) > deathOrder
-      })
-
-      for (const snap of aliveAfterDeath) {
-        const ev = eventById.get(snap.eventId)
-        const ch = ev ? chapById.get(ev.chapterId) : undefined
-        out.push({
-          id: `dead-then-alive-${charId}-${snap.eventId}`,
-          severity: 'error',
-          category: 'character',
-          message: `${char.name} is alive in Ch. ${ch?.number ?? '?'} after dying in Ch. ${deathChapNum}`,
-          detail: `Death recorded in Ch. ${deathChapNum} — ${chapById.get(eventById.get(deathSnap.eventId)?.chapterId ?? '')?.title ?? ''}`,
-          navigatePath: `/worlds/${worldId}/timeline/${ev?.chapterId ?? snap.eventId}`,
-          eventId: snap.eventId,
-        })
-      }
-
-      // Snapshot referencing a deleted event
-      for (const snap of charSnaps) {
-        if (!eventById.has(snap.eventId)) {
-          out.push({
-            id: `orphan-snap-${snap.id}`,
-            severity: 'warning',
-            category: 'character',
-            message: `${char.name} has a snapshot for a deleted event`,
-            detail: `Snapshot ID ${snap.id} — event no longer exists`,
-          })
-        }
-      }
-    }
-
-    // ── Dead character in non-flashback event cast ──────────────────────────────
-    for (const ev of allEvents) {
-      if (ev.isFlashback) continue
-      const evOrder = eventOrder(ev.id)
-      const ch = chapById.get(ev.chapterId)
-      const checkedDead = new Set<string>()
-      const castIds = [
-        ...ev.involvedCharacterIds,
-        ...(ev.povCharacterId ? [ev.povCharacterId] : []),
-      ]
-      for (const charId of castIds) {
-        if (checkedDead.has(charId)) continue
-        checkedDead.add(charId)
-        if (!isDeadAtOrder(charId, evOrder)) continue
-        const char = charById.get(charId)
-        const isPov = ev.povCharacterId === charId
-        out.push({
-          id: `dead-in-event-${charId}-${ev.id}`,
-          severity: 'warning',
-          category: 'character',
-          message: `Dead character ${char?.name ?? '?'} in "${ev.title || 'untitled'}"`,
-          detail: `${char?.name ?? '?'} is dead at this point${isPov ? ' and is the POV' : ''} — Ch. ${ch?.number ?? '?'}. Mark as Flashback if intentional.`,
-          navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
-          eventId: ev.id,
-        })
-      }
-    }
-
-    // ── Character referenced before first snapshot ───────────────────────────
-    // For each character, find their first event appearance and first snapshot order.
-    // If first appearance precedes first snapshot (or no snapshot at all), raise one warning.
-    const charFirstAppearance = new Map<string, { evOrder: number; ev: (typeof allEvents)[0] }>()
-    const sortedEventsAsc = [...allEvents].sort((a, b) => eventOrder(a.id) - eventOrder(b.id))
-    for (const ev of sortedEventsAsc) {
-      if (ev.isFlashback) continue
-      const castIds = [
-        ...ev.involvedCharacterIds,
-        ...(ev.povCharacterId ? [ev.povCharacterId] : []),
-      ]
-      for (const charId of castIds) {
-        if (!charFirstAppearance.has(charId)) {
-          charFirstAppearance.set(charId, { evOrder: eventOrder(ev.id), ev })
-        }
-      }
-    }
-    for (const [charId, { evOrder, ev }] of charFirstAppearance) {
-      if (!charById.has(charId)) continue
-      const charHist = snapsByCharSorted.get(charId)
-      const firstSnapOrder = charHist && charHist.length > 0 ? charHist[0].order : undefined
-      if (firstSnapOrder !== undefined && firstSnapOrder <= evOrder) continue
-      const char = charById.get(charId)
-      const ch = chapById.get(ev.chapterId)
-      out.push({
-        id: `char-before-intro-${charId}`,
-        severity: 'warning',
-        category: 'character',
-        message: `${char?.name ?? '?'} appears before any snapshot record`,
-        detail: firstSnapOrder === undefined
-          ? `First appears in "${ev.title || 'untitled'}" (Ch. ${ch?.number ?? '?'}) but has no snapshots at all`
-          : `First appears in "${ev.title || 'untitled'}" (Ch. ${ch?.number ?? '?'}) but first snapshot is later in the timeline`,
-        navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
-        eventId: ev.id,
-      })
-    }
-
-    // ── Stale snapshot warning ────────────────────────────────────────────────
-    // Warn when a character is involved in staleThreshold+ consecutive events without a snapshot update.
-    const involvedEventsByChar = new Map<string, Array<(typeof allEvents)[0]>>()
-    for (const ev of sortedEventsAsc) {
-      for (const charId of ev.involvedCharacterIds) {
-        if (!involvedEventsByChar.has(charId)) involvedEventsByChar.set(charId, [])
-        involvedEventsByChar.get(charId)!.push(ev)
-      }
-    }
-    for (const [charId, charEvents] of involvedEventsByChar) {
-      const char = charById.get(charId)
-      if (!char) continue
-      const snapEventSet = snapEventIdsByChar.get(charId) ?? new Set<string>()
-      let streakStart: (typeof allEvents)[0] | null = null
-      let streakCount = 0
-      for (const ev of charEvents) {
-        if (snapEventSet.has(ev.id)) {
-          streakStart = null
-          streakCount = 0
-        } else {
-          streakCount++
-          if (!streakStart) streakStart = ev
-          if (streakCount === staleThreshold) {
-            const startCh = chapById.get(streakStart.chapterId)
-            const endCh = chapById.get(ev.chapterId)
-            out.push({
-              id: `stale-snapshot-${charId}-${streakStart.id}`,
-              severity: 'warning',
-              category: 'character',
-              message: `${char.name}'s state may be stale (${streakCount}+ events without update)`,
-              detail: `Involved from Ch. ${startCh?.number ?? '?'} to Ch. ${endCh?.number ?? '?'} with no snapshot update`,
-              navigatePath: `/worlds/${worldId}/timeline/${streakStart.chapterId}`,
-              eventId: streakStart.id,
-            })
-          }
-        }
-      }
-    }
-
-    // ── Location destroyed check ─────────────────────────────────────────────
-
-    // Group location snapshots by locationMarkerId
-    const locSnapsByMarker = new Map<string, { order: number; status: string }[]>()
-    for (const ls of allLocationSnapshots ?? []) {
-      if (!locSnapsByMarker.has(ls.locationMarkerId)) locSnapsByMarker.set(ls.locationMarkerId, [])
-      locSnapsByMarker.get(ls.locationMarkerId)!.push({ order: eventOrder(ls.eventId), status: ls.status })
-    }
-
-    for (const snap of snapshots) {
-      if (!snap.currentLocationMarkerId) continue
-      const snapOrder = eventOrder(snap.eventId)
-      const locHistory = locSnapsByMarker.get(snap.currentLocationMarkerId)
-      if (!locHistory) continue
-
-      // Any destroyed/ruined snapshot at or before this event
-      const wasDestroyed = locHistory.some(
-        (ls) => ls.order <= snapOrder && (ls.status === 'destroyed' || ls.status === 'ruined')
-      )
-      if (!wasDestroyed) continue
-
-      const char = charById.get(snap.characterId)
-      const ev = eventById.get(snap.eventId)
-      const ch = ev ? chapById.get(ev.chapterId) : undefined
-      const marker = allMarkers.find((m) => m.id === snap.currentLocationMarkerId)
-      out.push({
-        id: `loc-destroyed-${snap.characterId}-${snap.eventId}`,
-        severity: 'warning',
-        category: 'character',
-        message: `${char?.name ?? '?'} is at a destroyed location in Ch. ${ch?.number ?? '?'}`,
-        detail: `"${marker?.name ?? snap.currentLocationMarkerId}" was destroyed at or before this event`,
-        navigatePath: `/worlds/${worldId}/timeline/${ev?.chapterId ?? snap.eventId}`,
-        eventId: snap.eventId,
-      })
-    }
-
-    // ── Character inside destroyed/occupied region ───────────────────────────
-
-    for (const snap of snapshots) {
-      if (!snap.currentLocationMarkerId || !snap.currentMapLayerId) continue
-      const marker = markerById.get(snap.currentLocationMarkerId)
-      if (!marker) continue
-
-      const snapOrder = eventOrder(snap.eventId)
-      const char = charById.get(snap.characterId)
-      const ev = eventById.get(snap.eventId)
-      const ch = ev ? chapById.get(ev.chapterId) : undefined
-
-      const layerRegions = regionsByLayer.get(snap.currentMapLayerId) ?? []
-      for (const region of layerRegions) {
-        if (region.vertices.length < 3) continue
-        const status = bestRegionStatus(region.id, snapOrder)
-        if (status !== 'destroyed' && status !== 'occupied') continue
-        if (!pointInPolygon(marker.x, marker.y, region.vertices)) continue
-
-        out.push({
-          id: `char-in-region-${snap.characterId}-${snap.eventId}-${region.id}`,
-          severity: 'warning',
-          category: 'character',
-          message: `${char?.name ?? '?'} is inside a ${status} region in Ch. ${ch?.number ?? '?'}`,
-          detail: `"${marker.name}" is inside "${region.name}" which is ${status} at this event`,
-          navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
-          eventId: snap.eventId,
-        })
-      }
-    }
-
-    // ── Item checks ─────────────────────────────────────────────────────────
-
-    // Group item placements by eventId
-    const placementsByEvent = new Map<string, ItemPlacement[]>()
-    for (const p of (allItemPlacements ?? [])) {
-      if (!placementsByEvent.has(p.eventId)) placementsByEvent.set(p.eventId, [])
-      placementsByEvent.get(p.eventId)!.push(p)
-    }
-
-    // Group snapshots by eventId to check inventory duplication
-    const snapsByEvent = new Map<string, CharacterSnapshot[]>()
-    for (const snap of snapshots) {
-      if (!snapsByEvent.has(snap.eventId)) snapsByEvent.set(snap.eventId, [])
-      snapsByEvent.get(snap.eventId)!.push(snap)
-    }
-
-    for (const [evId, evSnaps] of snapsByEvent) {
-      const ev = eventById.get(evId)
-      const ch = ev ? chapById.get(ev.chapterId) : undefined
-      if (!ch) continue
-
-      // Build a count of each item across all inventories in this event
-      const itemOwnerCount = new Map<string, string[]>()
-      for (const snap of evSnaps) {
-        for (const itemId of snap.inventoryItemIds) {
-          if (!itemOwnerCount.has(itemId)) itemOwnerCount.set(itemId, [])
-          itemOwnerCount.get(itemId)!.push(snap.characterId)
-        }
-      }
-
-      // Also count items placed at locations
-      const evPlacements = placementsByEvent.get(evId) ?? []
-      for (const p of evPlacements) {
-        if (!itemOwnerCount.has(p.itemId)) itemOwnerCount.set(p.itemId, [])
-        itemOwnerCount.get(p.itemId)!.push(`location:${p.locationMarkerId}`)
-      }
-
-      for (const [itemId, owners] of itemOwnerCount) {
-        if (owners.length > 1) {
-          const item = itemById.get(itemId)
-          const ownerNames = owners.map((o) => {
-            if (o.startsWith('location:')) return 'a location'
-            return charById.get(o)?.name ?? 'unknown'
-          })
-          out.push({
-            id: `dup-item-${itemId}-${evId}`,
-            severity: 'error',
-            category: 'item',
-            message: `"${item?.name ?? itemId}" appears in multiple places in Ch. ${ch.number}`,
-            detail: `Held by: ${ownerNames.join(', ')}`,
-            navigatePath: `/worlds/${worldId}/timeline/${ch.id}`,
-            eventId: evId,
-          })
-        }
-      }
-    }
-
-    // ── Item used before acquired check ─────────────────────────────────────
-
-    // Find the earliest event order where each item first appears in any inventory
-    const itemFirstAcquiredOrder = new Map<string, number>()
-    for (const snap of snapshots) {
-      const order = eventOrder(snap.eventId)
-      for (const itemId of snap.inventoryItemIds) {
-        const current = itemFirstAcquiredOrder.get(itemId) ?? Infinity
-        if (order < current) itemFirstAcquiredOrder.set(itemId, order)
-      }
-    }
-
-    for (const ev of allEvents) {
-      if (!ev.involvedItemIds || ev.involvedItemIds.length === 0) continue
-      const ch = chapById.get(ev.chapterId)
-      if (!ch) continue
-      const evOrder = eventOrder(ev.id)
-
-      for (const itemId of ev.involvedItemIds) {
-        const firstOrder = itemFirstAcquiredOrder.get(itemId)
-        if (firstOrder !== undefined && evOrder < firstOrder) {
-          const item = itemById.get(itemId)
-          out.push({
-            id: `item-before-acquired-${itemId}-${ev.id}`,
-            severity: 'warning',
-            category: 'item',
-            message: `"${item?.name ?? itemId}" used before acquired in Ch. ${ch.number}`,
-            detail: `Appears in event "${ev.title}" but isn't in any inventory until later`,
-            navigatePath: `/worlds/${worldId}/timeline/${ch.id}`,
-            eventId: ev.id,
-          })
-        }
-      }
-    }
-
-    // ── Item used after destroyed ─────────────────────────────────────────────
-    // An item's condition is tracked via ItemSnapshot. If the last condition at or before
-    // a reference point is 'destroyed', flag it. A later non-destroyed snapshot acts as restoration.
-    const itemSnapHistory = new Map<string, Array<{ order: number; condition: string }>>()
-    for (const is of allItemSnapshots ?? []) {
-      if (!itemSnapHistory.has(is.itemId)) itemSnapHistory.set(is.itemId, [])
-      itemSnapHistory.get(is.itemId)!.push({ order: eventOrder(is.eventId), condition: is.condition })
-    }
-    for (const hist of itemSnapHistory.values()) hist.sort((a, b) => a.order - b.order)
-
-    function isItemDestroyedAtOrder(itemId: string, order: number): boolean {
-      const hist = itemSnapHistory.get(itemId)
-      if (!hist) return false
-      let lastCondition: string | null = null
-      for (const entry of hist) {
-        if (entry.order > order) break
-        lastCondition = entry.condition
-      }
-      return lastCondition === 'destroyed'
-    }
-
-    for (const ev of allEvents) {
-      if (!ev.involvedItemIds?.length) continue
-      const evOrder = eventOrder(ev.id)
-      const ch = chapById.get(ev.chapterId)
-      for (const itemId of ev.involvedItemIds) {
-        if (!isItemDestroyedAtOrder(itemId, evOrder)) continue
-        const item = itemById.get(itemId)
-        out.push({
-          id: `item-after-destroyed-ev-${itemId}-${ev.id}`,
-          severity: 'warning',
-          category: 'item',
-          message: `"${item?.name ?? itemId}" used after being destroyed`,
-          detail: `Referenced in "${ev.title || 'untitled'}" (Ch. ${ch?.number ?? '?'}) — condition is "destroyed". Update the item snapshot to restore it if intentional.`,
-          navigatePath: `/worlds/${worldId}/timeline/${ch?.id ?? ev.chapterId}`,
-          eventId: ev.id,
-        })
-      }
-    }
-
-    for (const snap of snapshots) {
-      if (!snap.inventoryItemIds?.length) continue
-      const snapOrder = eventOrder(snap.eventId)
-      const ev = eventById.get(snap.eventId)
-      const ch = ev ? chapById.get(ev.chapterId) : undefined
-      for (const itemId of snap.inventoryItemIds) {
-        if (!isItemDestroyedAtOrder(itemId, snapOrder)) continue
-        const item = itemById.get(itemId)
-        const char = charById.get(snap.characterId)
-        out.push({
-          id: `item-after-destroyed-inv-${itemId}-${snap.eventId}-${snap.characterId}`,
-          severity: 'warning',
-          category: 'item',
-          message: `Destroyed item "${item?.name ?? itemId}" in ${char?.name ?? '?'}'s inventory`,
-          detail: `Held in Ch. ${ch?.number ?? '?'} — condition is "destroyed". Update the item snapshot to restore it if intentional.`,
-          navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
-          eventId: snap.eventId,
-        })
-      }
-    }
-
-    // ── Item hand-off "teleport" check ───────────────────────────────────────
-    // An item that passes directly between two characters who were never in the
-    // same place around the hand-off has no way to physically change hands.
-    for (const h of computeItemHandoffIssues({ events: allEvents, chapters, snapshots, placements: allItemPlacements ?? [] })) {
-      const item = itemById.get(h.itemId)
-      const from = charById.get(h.fromCharacterId)
-      const to   = charById.get(h.toCharacterId)
-      const fromMarker = markerById.get(h.fromMarkerId)
-      const toMarker   = markerById.get(h.toMarkerId)
-      const ev = eventById.get(h.handoffEventId)
-      const ch = ev ? chapById.get(ev.chapterId) : undefined
-      out.push({
-        id: `item-handoff-${h.itemId}-${h.fromCharacterId}-${h.toCharacterId}-${h.handoffEventId}`,
-        severity: 'warning',
-        category: 'item',
-        message: `"${item?.name ?? h.itemId}" changes hands between characters in different places`,
-        detail: `${from?.name ?? '?'} last held it at "${fromMarker?.name ?? h.fromMarkerId}", but ${to?.name ?? '?'} has it at "${toMarker?.name ?? h.toMarkerId}" in Ch. ${ch?.number ?? '?'} — they never share a location. Add a scene where they meet, route it through a location, or suppress if intentional.`,
-        navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
-        eventId: h.handoffEventId,
-      })
-    }
-
-    // ── Relationship checks ──────────────────────────────────────────────────
-
-    for (const rel of rels) {
-      if (!rel.startEventId) continue
-      const startOrder = eventOrder(rel.startEventId)
-      const startChapNum = chapNumById.get(eventById.get(rel.startEventId)?.chapterId ?? '') ?? 0
-
-      // Any snapshot for an event BEFORE the relationship started
-      const earlySnaps = (allRelSnaps ?? []).filter((rs) => {
-        if (rs.relationshipId !== rel.id) return false
-        return eventOrder(rs.eventId) < startOrder
-      })
-
-      for (const rs of earlySnaps) {
-        const rsEv = eventById.get(rs.eventId)
-        const rsCh = rsEv ? chapById.get(rsEv.chapterId) : undefined
-        const charA = charById.get(rel.characterAId)
-        const charB = charById.get(rel.characterBId)
-        out.push({
-          id: `rel-before-start-${rs.id}`,
-          severity: 'warning',
-          category: 'relationship',
-          message: `Relationship snapshot exists before it started`,
-          detail: `${charA?.name ?? '?'} ↔ ${charB?.name ?? '?'} — snapshot in Ch. ${rsCh?.number ?? '?'} but relationship starts in Ch. ${startChapNum}`,
-          navigatePath: `/worlds/${worldId}/timeline/${rsEv?.chapterId ?? rs.eventId}`,
-          eventId: rs.eventId,
-        })
-      }
-    }
-
-    // ── Dead character in relationship snapshot ──────────────────────────────
-
-    // Map: characterId → eventId → isAlive
-    const charAliveAtEvent = new Map<string, Map<string, boolean>>()
-    for (const snap of snapshots) {
-      if (!charAliveAtEvent.has(snap.characterId)) charAliveAtEvent.set(snap.characterId, new Map())
-      charAliveAtEvent.get(snap.characterId)!.set(snap.eventId, snap.isAlive)
-    }
-
-    for (const rs of allRelSnaps ?? []) {
-      const rel = rels.find((r) => r.id === rs.relationshipId)
-      if (!rel) continue
-
-      const charAAlive = charAliveAtEvent.get(rel.characterAId)?.get(rs.eventId)
-      const charBAlive = charAliveAtEvent.get(rel.characterBId)?.get(rs.eventId)
-
-      if (charAAlive === false || charBAlive === false) {
-        const deadCharId = charAAlive === false ? rel.characterAId : rel.characterBId
-        const deadChar = charById.get(deadCharId)
-        const charA = charById.get(rel.characterAId)
-        const charB = charById.get(rel.characterBId)
-        const rsEv = eventById.get(rs.eventId)
-        const rsCh = rsEv ? chapById.get(rsEv.chapterId) : undefined
-        out.push({
-          id: `dead-char-in-rel-snap-${rs.id}`,
-          severity: 'warning',
-          category: 'relationship',
-          message: `Relationship snapshot references deceased ${deadChar?.name ?? '?'}`,
-          detail: `${charA?.name ?? '?'} ↔ ${charB?.name ?? '?'} in Ch. ${rsCh?.number ?? '?'}`,
-          navigatePath: `/worlds/${worldId}/timeline/${rsEv?.chapterId ?? rs.eventId}`,
-          eventId: rs.eventId,
-        })
-      }
-    }
-
-    // ── Travel distance checks (with route speed multipliers) ───────────────
-
-    const travelModeById = new Map(travelModes.map((t) => [t.id, t]))
-    const movementKey = (charId: string, eventId: string) => `${charId}:${eventId}`
-    const movementByKey = new Map(allMovements.map((m) => [movementKey(m.characterId, m.eventId), m]))
-
-    // Group routes by mapLayerId for fast lookup
-    const routesByLayer = new Map<string, MapRoute[]>()
-    for (const route of allMapRoutes ?? []) {
-      if (!routesByLayer.has(route.mapLayerId)) routesByLayer.set(route.mapLayerId, [])
-      routesByLayer.get(route.mapLayerId)!.push(route)
-    }
-
-    for (const [charId, charSnaps] of snapsByChar) {
-      const char = charById.get(charId)
-      if (!char) continue
-
-      const snapsWithLocation = charSnaps
-        .filter((s) => s.currentLocationMarkerId && s.currentMapLayerId)
-        .sort((a, b) => eventOrder(a.eventId) - eventOrder(b.eventId))
-
-      for (let i = 1; i < snapsWithLocation.length; i++) {
-        const prev = snapsWithLocation[i - 1]
-        const curr = snapsWithLocation[i]
-
-        if (prev.currentLocationMarkerId === curr.currentLocationMarkerId &&
-            prev.currentMapLayerId === curr.currentMapLayerId) continue
-
-        const fromMarker = prev.currentLocationMarkerId ? markerById.get(prev.currentLocationMarkerId) : undefined
-        const toMarker   = curr.currentLocationMarkerId ? markerById.get(curr.currentLocationMarkerId) : undefined
-        if (!fromMarker || !toMarker || fromMarker.mapLayerId !== toMarker.mapLayerId) continue
-
-        const currEvent = eventById.get(curr.eventId)
-        const currOrder = eventOrder(curr.eventId)
-
-        // ── Region traversal: warn if path crosses a destroyed/abandoned region ──
-        const layerRegions = regionsByLayer.get(fromMarker.mapLayerId) ?? []
-        for (const region of layerRegions) {
-          const status = bestRegionStatus(region.id, currOrder)
-          if (status !== 'destroyed' && status !== 'abandoned') continue
-          if (!pathCrossesPolygon(fromMarker.x, fromMarker.y, toMarker.x, toMarker.y, region.vertices)) continue
-
-          out.push({
-            id: `region-traversal-${charId}-${curr.eventId}-${region.id}`,
-            severity: 'warning',
-            category: 'character',
-            message: `${char.name} travels through a ${status} region`,
-            detail: `"${region.name}" is ${status} when ${char.name} moves from ${fromMarker.name} → ${toMarker.name}${currEvent ? ` (Ch. ${chapById.get(currEvent.chapterId)?.number ?? '?'})` : ''}`,
-            navigatePath: currEvent ? `/worlds/${worldId}/timeline/${currEvent.chapterId}` : undefined,
-            eventId: curr.eventId,
-          })
-        }
-
-        // ── Travel time check ─────────────────────────────────────────────────
-        // Days available = elapsed in-world time between the two snapshots. This
-        // spans every event in between (not just this one's travelDays) and
-        // respects explicit inWorldTime. <= 0 means no tracked time (or a
-        // flashback jump), so there's nothing to check.
-        const daysAvailable = (inWorldDay.get(curr.eventId) ?? 0) - (inWorldDay.get(prev.eventId) ?? 0)
-        if (!currEvent || daysAvailable <= 0) continue
-
-        const mov = movementByKey.get(movementKey(charId, curr.eventId))
-        const travelModeId = mov?.travelModeId ?? curr.travelModeId
-        const travelMode = travelModeId ? travelModeById.get(travelModeId) : undefined
-        if (!travelMode) continue
-
-        const layer = layerById.get(fromMarker.mapLayerId)
-        if (!layer?.scalePixelsPerUnit || !layer.scaleUnit) continue
-
-        // Find a route connecting the two markers (on the same layer)
-        const layerRoutes = routesByLayer.get(fromMarker.mapLayerId) ?? []
-        const connectingRoute = layerRoutes.find((r) => {
-          const wps = r.waypoints
-          return wps.some((wp) => wp === prev.currentLocationMarkerId) &&
-                 wps.some((wp) => wp === curr.currentLocationMarkerId)
-        })
-
-        const routeMultiplier = connectingRoute ? ROUTE_SPEED_MULTIPLIERS[connectingRoute.routeType] : 1.0
-        const effectiveSpeed = travelMode.speedPerDay * routeMultiplier
-
-        const distPx = pixelDist(fromMarker.x, fromMarker.y, toMarker.x, toMarker.y)
-        const distUnits = distPx / layer.scalePixelsPerUnit
-        const daysNeeded = distUnits / effectiveSpeed
-
-        if (daysNeeded > daysAvailable) {
-          const currCh = chapById.get(currEvent.chapterId)
-          const dist = distUnits < 10 ? distUnits.toFixed(1) : Math.round(distUnits).toString()
-          const routeNote = connectingRoute
-            ? ` via ${connectingRoute.routeType.replace('_', ' ')} (×${routeMultiplier} speed)`
-            : ''
-          out.push({
-            id: `travel-dist-${charId}-${curr.eventId}`,
-            severity: 'warning',
-            category: 'character',
-            message: `${char.name} can't reach ${toMarker.name} in time`,
-            detail: `${fromMarker.name} → ${toMarker.name} is ~${dist} ${layer.scaleUnit} · ${travelMode.name} at ${effectiveSpeed.toFixed(1)} ${layer.scaleUnit}/day${routeNote} — needs ${daysNeeded.toFixed(1)} days but only ${daysAvailable} in-world day${daysAvailable === 1 ? '' : 's'} available (Ch. ${currCh?.number ?? '?'})`,
-            navigatePath: `/worlds/${worldId}/timeline/${currEvent.chapterId}`,
-            eventId: curr.eventId,
-          })
-        }
-      }
-    }
-
-    // ── Cross-timeline artifact anachronism check ────────────────────────────
-
-    // Build a map: timelineId → Set<chapterId>
-    const chaptersByTimeline = new Map<string, Set<string>>()
-    for (const ch of chapters) {
-      if (!chaptersByTimeline.has(ch.timelineId)) chaptersByTimeline.set(ch.timelineId, new Set())
-      chaptersByTimeline.get(ch.timelineId)!.add(ch.id)
-    }
-
-    for (const artifact of artifacts) {
-      const item = itemById.get(artifact.itemId)
-      if (!item) continue
-
-      const allowedTimelines = new Set([artifact.originTimelineId, artifact.encounterTimelineId])
-
-      // Find snapshots where this item is in inventory
-      for (const snap of snapshots) {
-        if (!snap.inventoryItemIds.includes(artifact.itemId)) continue
-        const ev = eventById.get(snap.eventId)
-        if (!ev) continue
-        const ch = chapById.get(ev.chapterId)
-        if (!ch) continue
-
-        // If the snapshot's chapter belongs to a timeline outside the two declared timelines, flag it
-        if (!allowedTimelines.has(ch.timelineId)) {
-          const char = charById.get(snap.characterId)
-          out.push({
-            id: `artifact-wrong-timeline-${artifact.id}-${snap.id}`,
-            severity: 'warning',
-            category: 'item',
-            message: `"${item.name}" appears outside its declared timelines`,
-            detail: `${char?.name ?? '?'} holds it in Ch. ${ch.number} — not in origin or encounter timeline`,
-            navigatePath: `/worlds/${worldId}/timeline/${ch.id}`,
-            eventId: snap.eventId,
-          })
-        }
-      }
-    }
-
-    // ── Faction membership gap check ────────────────────────────────────────
-    const factionById = new Map(allFactions.map((f) => [f.id, f]))
-    const membershipsByChar = new Map<string, typeof allMemberships>()
-    for (const m of allMemberships) {
-      if (!membershipsByChar.has(m.characterId)) membershipsByChar.set(m.characterId, [])
-      membershipsByChar.get(m.characterId)!.push(m)
-    }
-
-    for (const [charId, memberships] of membershipsByChar) {
-      const char = charById.get(charId)
-      if (!char) continue
-      for (const m of memberships) {
-        if (!m.endEventId) continue
-        const endOrder = eventOrder(m.endEventId)
-        const endEvent = eventById.get(m.endEventId)
-        const faction  = factionById.get(m.factionId)
-        const hasOtherActive = memberships.some((other) => {
-          if (other.id === m.id) return false
-          const otherStart = other.startEventId ? eventOrder(other.startEventId) : 0
-          const otherEnd   = other.endEventId   ? eventOrder(other.endEventId)   : Infinity
-          return otherStart <= endOrder + 1 && otherEnd > endOrder
-        })
-        if (!hasOtherActive) {
-          const endCh = endEvent ? chapById.get(endEvent.chapterId) : undefined
-          out.push({
-            id: `faction-gap-${charId}-${m.id}`,
-            severity: 'warning',
-            category: 'faction',
-            message: `${char.name} leaves "${faction?.name ?? '?'}" with no replacement faction`,
-            detail: `Membership ends at "${endEvent?.title ?? '?'}" (Ch. ${endCh?.number ?? '?'}) — no other faction active from this point.`,
-            navigatePath: endEvent ? `/worlds/${worldId}/timeline/${endEvent.chapterId}` : undefined,
-            eventId: m.endEventId,
-          })
-        }
-      }
-    }
-
-    // ── Hostile faction location check ──────────────────────────────────────
-    // Warn when a character is at a location controlled by a faction that is
-    // hostile to one of the character's own active factions.
-
-    const hostileRels = allFactionRels.filter((r) => r.stance === 'hostile')
-
-    function areHostile(fA: string, fB: string): boolean {
-      return hostileRels.some(
-        (r) => (r.factionAId === fA && r.factionBId === fB) ||
-               (r.factionAId === fB && r.factionBId === fA)
-      )
-    }
-
-    for (const snap of snapshots) {
-      if (!snap.currentLocationMarkerId) continue
-      const marker = markerById.get(snap.currentLocationMarkerId)
-      if (!marker?.factionId) continue
-
-      const snapOrder = eventOrder(snap.eventId)
-      const charMemberships = membershipsByChar.get(snap.characterId) ?? []
-      const activeCharFactionIds = charMemberships
-        .filter((m) => {
-          const start = m.startEventId ? eventOrder(m.startEventId) : 0
-          const end   = m.endEventId   ? eventOrder(m.endEventId)   : Infinity
-          return start <= snapOrder && snapOrder < end
-        })
-        .map((m) => m.factionId)
-
-      for (const charFactionId of activeCharFactionIds) {
-        if (!areHostile(charFactionId, marker.factionId)) continue
-
-        const char       = charById.get(snap.characterId)
-        const ev         = eventById.get(snap.eventId)
-        const ch         = ev ? chapById.get(ev.chapterId) : undefined
-        const charFaction = factionById.get(charFactionId)
-        const locFaction  = factionById.get(marker.factionId)
-        out.push({
-          id: `hostile-loc-${snap.characterId}-${snap.eventId}-${charFactionId}`,
-          severity: 'warning',
-          category: 'faction',
-          message: `${char?.name ?? '?'} is at hostile territory in Ch. ${ch?.number ?? '?'}`,
-          detail: `"${marker.name}" is controlled by "${locFaction?.name ?? '?'}" — hostile to "${charFaction?.name ?? '?'}"`,
-          navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
-          eventId: snap.eventId,
-        })
-      }
-    }
-
-    // ── POV checks ──────────────────────────────────────────────────────────────
-
-    // Check 3: POV character not listed in involvedCharacterIds
-    for (const ev of allEvents) {
-      if (!ev.povCharacterId) continue
-      if (!ev.involvedCharacterIds.includes(ev.povCharacterId)) {
-        const char = charById.get(ev.povCharacterId)
-        const ch = chapById.get(ev.chapterId)
-        out.push({
-          id: `pov-not-involved-${ev.id}`,
-          severity: 'warning',
-          category: 'pov',
-          message: `POV "${char?.name ?? '?'}" is not in the cast of "${ev.title || 'untitled'}"`,
-          detail: `Ch. ${ch?.number ?? '?'} — add them to Characters or clear the POV`,
-          navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
-          eventId: ev.id,
-        })
-      }
-    }
-
-    // Check 2: POV character dead at that event (non-flashback only)
-    for (const ev of allEvents) {
-      if (!ev.povCharacterId || ev.isFlashback) continue
-      const evOrder = eventOrder(ev.id)
-      if (!isDeadAtOrder(ev.povCharacterId, evOrder)) continue
-      const char = charById.get(ev.povCharacterId)
-      const ch = chapById.get(ev.chapterId)
-      out.push({
-        id: `dead-pov-${ev.povCharacterId}-${ev.id}`,
-        severity: 'warning',
-        category: 'pov',
-        message: `POV "${char?.name ?? '?'}" is dead at "${ev.title || 'untitled'}"`,
-        detail: `Ch. ${ch?.number ?? '?'} — mark event as Flashback if intentional`,
-        navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
-        eventId: ev.id,
-      })
-    }
-
-    // Check 4: 3+ consecutive events with the same POV character (considers only events with POV set)
-    const povEvents = allEvents
-      .filter((ev) => !!ev.povCharacterId)
-      .sort((a, b) => eventOrder(a.id) - eventOrder(b.id))
-
-    let runStart = 0
-    while (runStart < povEvents.length) {
-      const charId = povEvents[runStart].povCharacterId!
-      let runEnd = runStart + 1
-      while (runEnd < povEvents.length && povEvents[runEnd].povCharacterId === charId) runEnd++
-      const runLen = runEnd - runStart
-      if (runLen >= 3) {
-        const char = charById.get(charId)
-        const firstEv = povEvents[runStart]
-        const lastEv  = povEvents[runEnd - 1]
-        const firstCh = chapById.get(firstEv.chapterId)
-        const lastCh  = chapById.get(lastEv.chapterId)
-        out.push({
-          id: `pov-consecutive-${charId}-${firstEv.id}`,
-          severity: 'warning',
-          category: 'pov',
-          message: `${char?.name ?? '?'} is POV for ${runLen} consecutive events`,
-          detail: `Ch. ${firstCh?.number ?? '?'} → Ch. ${lastCh?.number ?? '?'} — consider alternating perspectives`,
-          navigatePath: `/worlds/${worldId}/timeline/${firstEv.chapterId}`,
-          eventId: firstEv.id,
-        })
-      }
-      runStart = runEnd
-    }
-
-    // ── Anachronistic knowledge: knowing a fact before it becomes true ────────
-    for (const a of computeKnowledgeAnachronisms({ facts: knowledgeFacts, reveals: knowledgeReveals, events: allEvents, chapters })) {
-      const knownCh  = chapById.get(eventById.get(a.knownAtEventId)?.chapterId ?? '')
-      const originCh = chapById.get(eventById.get(a.originEventId)?.chapterId ?? '')
-      const who = a.characterId ? (charById.get(a.characterId)?.name ?? 'A character') : 'The reader'
-      out.push({
-        id: `knowledge-anachronism-${a.fact.id}-${a.characterId ?? 'reader'}-${a.knownAtEventId}`,
-        severity: 'warning',
-        category: 'character',
-        message: `${who} knows "${a.fact.title}" before it happens`,
-        detail: `"${a.fact.title}" isn't true until Ch. ${originCh?.number ?? '?'}, but ${who.toLowerCase()} knows it in Ch. ${knownCh?.number ?? '?'}.`,
-        navigatePath: `/worlds/${worldId}/timeline/${eventById.get(a.knownAtEventId)?.chapterId ?? ''}`,
-        eventId: a.knownAtEventId,
-      })
-    }
-
-    // ── Dead character learns a fact after dying ─────────────────────────────
-    for (const d of computeDeadKnowerIssues({ facts: knowledgeFacts, reveals: knowledgeReveals, snapshots, events: allEvents, chapters })) {
-      const char = charById.get(d.characterId)
-      const ev = eventById.get(d.revealEventId)
-      const ch = ev ? chapById.get(ev.chapterId) : undefined
-      out.push({
-        id: `dead-knower-${d.fact.id}-${d.characterId}-${d.revealEventId}`,
-        severity: 'warning',
-        category: 'character',
-        message: `${char?.name ?? '?'} learns "${d.fact.title}" after dying`,
-        detail: `A reveal places this knowledge with ${char?.name ?? '?'} in Ch. ${ch?.number ?? '?'}, but they're already dead by then. Move the reveal earlier, or mark the event a flashback if intentional.`,
-        navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
-        eventId: d.revealEventId,
-      })
-    }
-
-    // ── Prose ↔ metadata drift (scene text vs. the event's cast) ─────────────
-    const sceneTextByEvent = new Map(sceneTexts.map((s) => [s.eventId, s.text]))
-
-    for (const p of computeProseMentionIssues({ events: allEvents, chapters, characters, snapshots, sceneTextByEvent })) {
-      const ev = eventById.get(p.eventId)
-      const ch = ev ? chapById.get(ev.chapterId) : undefined
-      if (p.kind === 'dead') {
-        out.push({
-          id: `prose-dead-${p.characterId}-${p.eventId}`,
-          severity: 'warning',
-          category: 'prose',
-          message: `Dead character ${p.characterName} is named in the prose of "${ev?.title || 'untitled'}"`,
-          detail: `Ch. ${ch?.number ?? '?'} — ${p.characterName} is dead at this point. Mark the event as a flashback or update their status if intentional.`,
-          navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
-          eventId: p.eventId,
-        })
-      } else {
-        out.push({
-          id: `prose-untagged-${p.characterId}-${p.eventId}`,
-          severity: 'warning',
-          category: 'prose',
-          message: `${p.characterName} is named in the prose but not in the cast of "${ev?.title || 'untitled'}"`,
-          detail: `Ch. ${ch?.number ?? '?'} — appears ${p.count}× in the scene text. Add them to the event or check the reference.`,
-          navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
-          eventId: p.eventId,
-        })
-      }
-    }
-
-    // ── Reader knowledge leaks (fact referenced in prose before its reveal) ──
-    for (const leak of computeKnowledgeLeaks({ facts: knowledgeFacts, events: allEvents, chapters, sceneTextByEvent })) {
-      const leakEv = eventById.get(leak.leakEventId)
-      const leakCh = leakEv ? chapById.get(leakEv.chapterId) : undefined
-      const revealCh = chapById.get(eventById.get(leak.revealEventId)?.chapterId ?? '')
-      out.push({
-        id: `prose-leak-${leak.fact.id}-${leak.leakEventId}`,
-        severity: 'warning',
-        category: 'prose',
-        message: `Possible early reveal: "${leak.fact.title}"`,
-        detail: `The reader is set to learn this in Ch. ${revealCh?.number ?? '?'}, but "${leakEv?.title || 'untitled'}" (Ch. ${leakCh?.number ?? '?'}) already references it (matched "${leak.matchedTerm}").`,
-        navigatePath: leakEv ? `/worlds/${worldId}/timeline/${leakEv.chapterId}` : undefined,
-        eventId: leak.leakEventId,
-      })
-    }
-
-    return out
-  }, [chapters, allEvents, characters, rels, items, snapshots, knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId, world, allItemSnapshots])
+  const issues = useMemo(() => computeContinuityIssues({
+    worldId, world, chapters, allEvents, characters, rels, items, snapshots,
+    knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements,
+    allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements,
+    artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions,
+    allMemberships, allFactionRels, allItemSnapshots, plotThreads,
+  }), [chapters, allEvents, characters, rels, items, snapshots, knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId, world, allItemSnapshots, plotThreads])
 
   // Focus modal on open so keyboard navigation works immediately
   useEffect(() => {
@@ -1257,6 +288,10 @@ export function ContinuityChecker() {
     setActiveEventId(issue.eventId)
     navigate(issue.navigatePath)
     setCheckerOpen(false)
+  }
+
+  function handleFix(issue: Issue) {
+    if (issue.fix) updateEvent(issue.fix.eventId, { travelDays: issue.fix.setTravelDays })
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -1288,6 +323,7 @@ export function ContinuityChecker() {
   const factionIssues = issues.filter((i) => i.category === 'faction')
   const povIssues     = issues.filter((i) => i.category === 'pov')
   const proseIssues   = issues.filter((i) => i.category === 'prose')
+  const threadIssues  = issues.filter((i) => i.category === 'thread')
 
   // Compute base indices for keyboard focus mapping per category
   const visibleChar    = charIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
@@ -1295,6 +331,7 @@ export function ContinuityChecker() {
   const visibleRel     = relIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
   const visibleFaction = factionIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
   const visiblePov     = povIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
+  const visibleProse   = proseIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
 
   // focusedIdx is into navigableIssues; map back to category position
   function categoryFocusedIdx(categoryIssues: Issue[]): number {
@@ -1363,27 +400,31 @@ export function ContinuityChecker() {
               <CategorySection title="Characters" icon={Users} issues={charIssues}
                 focusedIdx={categoryFocusedIdx(charIssues)} baseIdx={0}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Items" icon={Package} issues={itemIssues}
                 focusedIdx={categoryFocusedIdx(itemIssues)} baseIdx={visibleChar.length}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Relationships" icon={Network} issues={relIssues}
                 focusedIdx={categoryFocusedIdx(relIssues)} baseIdx={visibleChar.length + visibleItem.length}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Factions" icon={Shield} issues={factionIssues}
                 focusedIdx={categoryFocusedIdx(factionIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="POV" icon={Eye} issues={povIssues}
                 focusedIdx={categoryFocusedIdx(povIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length + visibleFaction.length}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Prose vs. record" icon={PenLine} issues={proseIssues}
                 focusedIdx={categoryFocusedIdx(proseIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length + visibleFaction.length + visiblePov.length}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+              <CategorySection title="Plot threads" icon={Spline} issues={threadIssues}
+                focusedIdx={categoryFocusedIdx(threadIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length + visibleFaction.length + visiblePov.length + visibleProse.length}
+                suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
+                onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
             </>
           )}
         </div>

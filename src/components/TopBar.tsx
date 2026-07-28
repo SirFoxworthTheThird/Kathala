@@ -1,81 +1,13 @@
 import { useEffect, useState } from 'react'
-import { BookOpen, Map, Users, Network, LayoutDashboard, Package, Search, ScrollText, TableProperties, ShieldAlert, Settings, HelpCircle, BookMarked, Shield, KeyRound, Menu, X, FileText } from 'lucide-react'
+import { Search, ScrollText, ShieldAlert, HelpCircle, Menu, X } from 'lucide-react'
 import faviconUrl from '/favicon.png'
-import { useActiveWorldId, useAppStore } from '@/store'
+import { useActiveWorldId, useActiveMapLayerId, useAppStore } from '@/store'
 import { useWorld } from '@/db/hooks/useWorlds'
-import { useNavigate, NavLink, useParams } from 'react-router-dom'
+import { useMapLayer } from '@/db/hooks/useMapLayers'
+import { useNavigate, NavLink, useMatch } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { TimeCursor } from './TimeCursor'
-
-type NavTier = 'core' | 'extended'
-
-const navItems: { to: string; label: string; icon: typeof LayoutDashboard; end: boolean; tier: NavTier }[] = [
-  { to: '', label: 'Dashboard', icon: LayoutDashboard, end: true,  tier: 'core' },
-  { to: 'timeline',       label: 'Timeline',   icon: BookOpen,        end: false, tier: 'core' },
-  { to: 'manuscript',     label: 'Manuscript', icon: FileText,        end: false, tier: 'core' },
-  { to: 'characters',     label: 'Characters', icon: Users,           end: false, tier: 'core' },
-  { to: 'maps',           label: 'Maps',       icon: Map,             end: false, tier: 'core' },
-  { to: 'items',          label: 'Items',      icon: Package,         end: false, tier: 'extended' },
-  { to: 'relationships',  label: 'Relations',  icon: Network,         end: false, tier: 'extended' },
-  { to: 'arc',            label: 'Arc',        icon: TableProperties, end: false, tier: 'extended' },
-  { to: 'lore',           label: 'Lore',       icon: BookMarked,      end: false, tier: 'extended' },
-  { to: 'factions',       label: 'Factions',   icon: Shield,          end: false, tier: 'extended' },
-  { to: 'knowledge',      label: 'Knowledge',  icon: KeyRound,        end: false, tier: 'extended' },
-  { to: 'settings',       label: 'Settings',   icon: Settings,        end: false, tier: 'extended' },
-]
-
-function NavIcons() {
-  const { worldId } = useParams<{ worldId: string }>()
-  if (!worldId) return null
-
-  const coreItems     = navItems.filter((n) => n.tier === 'core')
-  const extendedItems = navItems.filter((n) => n.tier === 'extended')
-
-  return (
-    <nav className="flex items-center gap-0.5" aria-label="Main navigation">
-      {coreItems.map(({ to, label, icon: Icon, end }) => (
-        <NavLink
-          key={to}
-          to={`/worlds/${worldId}/${to}`}
-          end={end}
-          aria-label={label}
-          title={label}
-          className={({ isActive }) =>
-            cn(
-              'flex h-8 w-8 items-center justify-center rounded-md transition-colors',
-              isActive
-                ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
-                : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]'
-            )
-          }
-        >
-          <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        </NavLink>
-      ))}
-      {/* Tier separator — decorative, not semantic */}
-      <span aria-hidden="true" className="mx-1 h-4 w-px bg-[hsl(var(--border))]" />
-      {extendedItems.map(({ to, label, icon: Icon, end }) => (
-        <NavLink
-          key={to}
-          to={`/worlds/${worldId}/${to}`}
-          end={end}
-          aria-label={label}
-          title={label}
-          className={({ isActive }) =>
-            cn(
-              'flex h-8 w-8 items-center justify-center rounded-md transition-colors',
-              isActive
-                ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
-                : 'text-[hsl(var(--muted-foreground)/0.6)] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]'
-            )
-          }
-        >
-          <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        </NavLink>
-      ))}
-    </nav>
-  )
-}
+import { navItems } from './navItems'
 
 /**
  * Full-height slide-in navigation for narrow screens. The desktop icon rail
@@ -164,6 +96,14 @@ export function TopBar() {
   const navigate = useNavigate()
   const { setSearchOpen, setBriefOpen, setCheckerOpen, setHelpOpen } = useAppStore()
   const [navOpen, setNavOpen] = useState(false)
+  // On the map, the breadcrumb carries which layer is open and its scale, so
+  // the canvas doesn't have to give up a corner to a floating name chip.
+  const onMaps = !!useMatch('/worlds/:worldId/maps')
+  const activeMapLayerId = useActiveMapLayerId()
+  const mapLayer = useMapLayer(onMaps ? activeMapLayerId : null)
+  const mapScale = mapLayer?.scalePixelsPerUnit && mapLayer.scaleUnit
+    ? `1 ${mapLayer.scaleUnit} = ${Math.round(mapLayer.scalePixelsPerUnit)} px`
+    : null
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 sm:px-4">
@@ -194,6 +134,22 @@ export function TopBar() {
             <span className="hidden max-w-[120px] truncate text-sm text-[hsl(var(--foreground))] lg:inline" title={world.name}>{world.name}</span>
           </>
         )}
+        {world && mapLayer && (
+          <>
+            <span aria-hidden="true" className="hidden text-[hsl(var(--muted-foreground))] lg:inline">/</span>
+            <span
+              className="hidden max-w-[160px] truncate text-sm text-[hsl(var(--foreground))] lg:inline"
+              title={mapScale ? `${mapLayer.name} — ${mapScale}` : mapLayer.name}
+            >
+              {mapLayer.name}
+            </span>
+            {mapScale && (
+              <span className="hidden shrink-0 text-[11px] text-[hsl(var(--muted-foreground))] xl:inline">
+                · {mapScale}
+              </span>
+            )}
+          </>
+        )}
         {world && worldId && (
           <>
             <span aria-hidden="true" className="mx-0.5 h-5 w-px shrink-0 bg-[hsl(var(--border))]" />
@@ -201,13 +157,6 @@ export function TopBar() {
           </>
         )}
       </div>
-
-      {/* Center: nav icons (desktop only) */}
-      {world && (
-        <div className="hidden flex-1 justify-center lg:flex">
-          <NavIcons />
-        </div>
-      )}
 
       {/* Right: search + brief + continuity + help */}
       <div className="ml-auto flex shrink-0 items-center gap-1">

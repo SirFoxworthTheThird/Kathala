@@ -1,4 +1,5 @@
 import type { PlotThread, WorldEvent, Chapter } from '@/types'
+import { computeTagCadence } from '@/lib/tagCadence'
 
 /** How a single plot thread is paced across the story. */
 export interface ThreadCadence {
@@ -24,7 +25,7 @@ export interface ThreadCadenceResult {
  * For each plot thread, derives where it's advanced across the chapters, how
  * long it's been dormant, and its longest interior gap — so dangling or
  * neglected subplots are visible. Rows are in order of first appearance
- * (unstarted threads last). Pure — nothing stored.
+ * (unstarted threads last). Thin wrapper over the generic tag-cadence engine.
  */
 export function computeThreadCadence({
   threads, events, chapters,
@@ -33,49 +34,36 @@ export function computeThreadCadence({
   events: WorldEvent[]
   chapters: Chapter[]
 }): ThreadCadenceResult {
-  const sortedChapters = [...chapters].sort((a, b) => a.number - b.number)
-  const eventsByChapter = new Map<string, WorldEvent[]>()
-  for (const e of events) {
-    const arr = eventsByChapter.get(e.chapterId)
-    if (arr) arr.push(e)
-    else eventsByChapter.set(e.chapterId, [e])
+  const { rows, chapterCount } = computeTagCadence({
+    entities: threads,
+    events,
+    chapters,
+    tagIdsOf: (e) => e.threadIds ?? [],
+  })
+  return {
+    rows: rows.map(({ entity, ...rest }) => ({ thread: entity, ...rest })),
+    chapterCount,
   }
+}
 
-  const rows: ThreadCadence[] = threads.map((thread) => {
-    const eventCount = events.reduce((n, e) => n + ((e.threadIds ?? []).includes(thread.id) ? 1 : 0), 0)
+/** Whether an event advances the given thread. A null thread matches everything
+ *  (the "All" filter), so callers can pass the active filter through directly. */
+export function eventMatchesThread(event: WorldEvent, threadId: string | null): boolean {
+  if (!threadId) return true
+  return (event.threadIds ?? []).includes(threadId)
+}
 
-    const presenceByChapter = sortedChapters.map((ch) =>
-      (eventsByChapter.get(ch.id) ?? []).some((e) => (e.threadIds ?? []).includes(thread.id))
-    )
-    const firstIdx = presenceByChapter.indexOf(true)
-    const lastIdx = presenceByChapter.lastIndexOf(true)
-
-    let longestDormancy = 0
-    if (firstIdx !== -1) {
-      let run = 0
-      for (let i = firstIdx + 1; i < lastIdx; i++) {
-        if (!presenceByChapter[i]) { run++; longestDormancy = Math.max(longestDormancy, run) }
-        else run = 0
-      }
-    }
-
-    return {
-      thread,
-      eventCount,
-      presenceByChapter,
-      firstChapterNumber: firstIdx >= 0 ? sortedChapters[firstIdx].number : null,
-      lastChapterNumber: lastIdx >= 0 ? sortedChapters[lastIdx].number : null,
-      trailingGap: lastIdx === -1 ? sortedChapters.length : sortedChapters.length - 1 - lastIdx,
-      longestDormancy,
-    }
-  })
-
-  // Narrative order: by first appearance; threads never advanced sort last.
-  rows.sort((a, b) => {
-    const fa = a.firstChapterNumber ?? Infinity
-    const fb = b.firstChapterNumber ?? Infinity
-    return fa - fb || a.thread.name.localeCompare(b.thread.name)
-  })
-
-  return { rows, chapterCount: sortedChapters.length }
+/** The chapters that contain at least one event advancing the given thread, in
+ *  their original order. A null thread returns every chapter unchanged, so the
+ *  timeline can hide chapters with no beat on the focused subplot. */
+export function chaptersWithThread(
+  chapters: Chapter[],
+  events: WorldEvent[],
+  threadId: string | null,
+): Chapter[] {
+  if (!threadId) return chapters
+  const chapterIds = new Set(
+    events.filter((e) => (e.threadIds ?? []).includes(threadId)).map((e) => e.chapterId),
+  )
+  return chapters.filter((c) => chapterIds.has(c.id))
 }

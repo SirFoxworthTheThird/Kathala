@@ -41,15 +41,21 @@ test.describe('Continuity Checker', () => {
   })
 
   test('marks character as deceased via current state tab', async ({ page }) => {
+    // Hovering a nav link expands the left rail (it overlays content); move the
+    // cursor back into the content afterwards so it collapses.
+    const settleNav = async () => { await page.mouse.move(700, 400); await page.waitForTimeout(150) }
+
     // Create a character
-    await page.getByTitle('Characters').click()
+    await page.getByRole('link', { name: /characters/i }).first().click()
+    await settleNav()
     await page.getByRole('button', { name: 'Add Character' }).first().click()
     await page.getByPlaceholder('Character name').fill('Boromir')
     await page.getByRole('button', { name: 'Add Character' }).last().click()
     await expect(page.getByText('Boromir')).toBeVisible()
 
     // Create a timeline with a chapter and an event
-    await page.getByRole('link', { name: 'Timeline' }).click()
+    await page.getByRole('link', { name: /timeline/i }).first().click()
+    await settleNav()
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await expect(page.getByText('Main Timeline')).toBeVisible()
 
@@ -64,11 +70,13 @@ test.describe('Continuity Checker', () => {
     await expect(page.getByText('Death Scene').first()).toBeVisible()
 
     // Set event as active via timeline bar
-    await page.getByRole('link', { name: 'Timeline' }).click()
+    await page.getByRole('link', { name: /timeline/i }).first().click()
+    await settleNav()
     await page.getByTitle('Death Scene', { exact: true }).click()
 
     // Go to character, mark as deceased in current state tab
-    await page.getByTitle('Characters').click()
+    await page.getByRole('link', { name: /characters/i }).first().click()
+    await settleNav()
     await page.getByText('Boromir').click()
     await page.getByRole('tab', { name: /current state/i }).click()
     // Current state uses Alive / Deceased buttons (not a switch)

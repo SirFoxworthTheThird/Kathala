@@ -27,6 +27,7 @@ export async function createCharacter(data: Pick<Character, 'worldId' | 'name' |
     tags: [],
     isAlive: true,
     color: null,
+    birthDate: null,
     createdAt: now,
     updatedAt: now,
   }
@@ -42,11 +43,13 @@ export async function deleteCharacter(id: string) {
   await db.transaction('rw', [
     db.characters, db.characterSnapshots, db.characterMovements,
     db.relationships, db.relationshipSnapshots, db.factionMemberships,
+    db.characterGoals,
   ], async () => {
     await db.characters.delete(id)
     await db.characterSnapshots.where('characterId').equals(id).delete()
     await db.characterMovements.where('characterId').equals(id).delete()
     await db.factionMemberships.where('characterId').equals(id).delete()
+    await db.characterGoals.where('characterId').equals(id).delete()
     // Collect relationship ids involving this character, then delete snapshots too
     const relIds = (await db.relationships
       .filter((r) => r.characterAId === id || r.characterBId === id)

@@ -4,6 +4,10 @@ export interface Timeline {
   name: string
   description: string
   color: string
+  /** In-world day this timeline's clock starts at (default 0). Lets a
+   *  historically-shifted timeline (frame narrative past, earlier era) line up
+   *  with the others in chronological merges and on the calendar. */
+  dayOffset?: number
   createdAt: number
 }
 
@@ -50,6 +54,8 @@ export interface WorldEvent {
   structureBeat: string | null
   /** Plot threads / subplots this event advances (PlotThread ids). */
   threadIds: string[]
+  /** Motifs / themes this event carries (Motif ids). Optional; absent = none. */
+  motifIds?: string[]
   status: EventStatus
   povCharacterId: string | null
   /** Marks the event as a flashback/retrospective — suppresses present-state continuity checks. */

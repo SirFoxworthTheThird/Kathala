@@ -1,4 +1,6 @@
 import { db } from '@/db/database'
+import { deleteMapLayersCascade } from '@/db/hooks/useMapLayers'
+import { orphanLayerIds } from '@/lib/mapTree'
 
 export interface OrphanReport {
   characterSnapshots: number
@@ -9,6 +11,8 @@ export interface OrphanReport {
   characterMovements: number
   mapRegionSnapshots: number
   factionMemberships: number
+  /** Sub-map layers whose parent map has been deleted (plus anything nested under them). */
+  mapLayers: number
 }
 
 /** Scan every snapshot/membership/placement table for records pointing to deleted parent entities. */
@@ -29,6 +33,7 @@ export async function scanOrphans(worldId: string): Promise<OrphanReport> {
     charMovements,
     regionSnaps,
     factionMemberships,
+    mapLayers,
   ] = await Promise.all([
     db.events.where('worldId').equals(worldId).toArray(),
     db.characters.where('worldId').equals(worldId).toArray(),
@@ -45,6 +50,7 @@ export async function scanOrphans(worldId: string): Promise<OrphanReport> {
     db.characterMovements.where('worldId').equals(worldId).toArray(),
     db.mapRegionSnapshots.where('worldId').equals(worldId).toArray(),
     db.factionMemberships.where('worldId').equals(worldId).toArray(),
+    db.mapLayers.where('worldId').equals(worldId).toArray(),
   ])
 
   const eventIds = new Set(events.map((e) => e.id))
@@ -80,15 +86,38 @@ export async function scanOrphans(worldId: string): Promise<OrphanReport> {
     factionMemberships: factionMemberships.filter(
       (m) => !factionIds.has(m.factionId) || !characterIds.has(m.characterId)
     ).length,
+    mapLayers: orphanLayerIds(mapLayers, linkedLayerIdSet(locationMarkers, regions)).size,
   }
+}
+
+/** Layer ids reachable through a marker or region sub-map link. */
+function linkedLayerIdSet(
+  markers: { linkedMapLayerId: string | null }[],
+  regions: { linkedMapLayerId: string | null }[],
+): Set<string> {
+  const s = new Set<string>()
+  for (const m of markers) if (m.linkedMapLayerId) s.add(m.linkedMapLayerId)
+  for (const r of regions) if (r.linkedMapLayerId) s.add(r.linkedMapLayerId)
+  return s
 }
 
 export function totalOrphans(report: OrphanReport): number {
   return Object.values(report).reduce((sum, n) => sum + n, 0)
 }
 
-/** Delete all orphaned records in a single transaction. */
+/** Delete all orphaned records. */
 export async function purgeOrphans(worldId: string): Promise<void> {
+  // Orphaned sub-maps go first, via the same cascade as a manual delete (which
+  // also removes their markers/routes/regions and clears dangling links). Only
+  // truly unreachable layers count as orphans — a sub-map still opened through a
+  // marker/region link is kept — so load those links to seed reachability.
+  const [layers, linkMarkers, linkRegions] = await Promise.all([
+    db.mapLayers.where('worldId').equals(worldId).toArray(),
+    db.locationMarkers.where('worldId').equals(worldId).toArray(),
+    db.mapRegions.where('worldId').equals(worldId).toArray(),
+  ])
+  await deleteMapLayersCascade([...orphanLayerIds(layers, linkedLayerIdSet(linkMarkers, linkRegions))])
+
   const [
     events,
     characters,

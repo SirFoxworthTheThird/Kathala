@@ -31,14 +31,14 @@ interface ThemeTokens {
 
 const THEMES: Record<string, ThemeTokens> = {
   default:   { background: [222, 47, 11], card: [222, 47, 14], mutedForeground: [215, 20, 65], tlBg: [222, 47, 9],  tlTextMuted: [215, 20, 52] },
-  fantasy:   { background: [35, 30, 10],  card: [35, 28, 14],  mutedForeground: [35, 30, 58],  tlBg: [35, 32, 9],   tlTextMuted: [35, 28, 48] },
-  scifi:     { background: [220, 60, 5],  card: [220, 55, 8],  mutedForeground: [210, 40, 55], tlBg: [220, 60, 6],  tlTextMuted: [210, 45, 50] },
-  cyberpunk: { background: [270, 20, 6],  card: [270, 18, 10], mutedForeground: [280, 30, 58], tlBg: [270, 22, 5],  tlTextMuted: [280, 30, 55] },
-  horror:    { background: [0, 15, 5],    card: [0, 12, 8],    mutedForeground: [0, 8, 52],    tlBg: [0, 18, 4],    tlTextMuted: [0, 10, 51] },
-  western:   { background: [25, 35, 8],   card: [25, 32, 12],  mutedForeground: [30, 25, 52],  tlBg: [25, 38, 7],   tlTextMuted: [30, 26, 48] },
-  action:    { background: [215, 14, 8],  card: [215, 13, 12], mutedForeground: [215, 10, 54], tlBg: [215, 14, 7],  tlTextMuted: [215, 10, 51] },
-  noir:      { background: [0, 0, 7],     card: [0, 0, 11],    mutedForeground: [0, 0, 52],    tlBg: [0, 0, 6],     tlTextMuted: [0, 0, 49] },
-  romance:   { background: [340, 18, 8],  card: [340, 16, 12], mutedForeground: [340, 16, 56], tlBg: [340, 18, 7],  tlTextMuted: [340, 16, 53] },
+  fantasy:   { background: [42, 24, 8],   card: [40, 22, 13],  mutedForeground: [40, 24, 63],  tlBg: [42, 27, 7],   tlTextMuted: [39, 22, 62] },
+  scifi:     { background: [222, 52, 5],  card: [218, 45, 9],  mutedForeground: [203, 30, 63], tlBg: [222, 55, 4],  tlTextMuted: [199, 28, 62] },
+  cyberpunk: { background: [266, 31, 6],  card: [264, 26, 11], mutedForeground: [275, 22, 66], tlBg: [266, 34, 5],  tlTextMuted: [278, 20, 66] },
+  horror:    { background: [350, 13, 5],  card: [350, 11, 9],  mutedForeground: [25, 12, 62],   tlBg: [350, 15, 4],  tlTextMuted: [25, 11, 62] },
+  western:   { background: [24, 34, 8],   card: [27, 31, 13],  mutedForeground: [34, 25, 63],  tlBg: [24, 38, 7],   tlTextMuted: [33, 22, 62] },
+  action:    { background: [214, 18, 7],  card: [214, 17, 11], mutedForeground: [210, 10, 64], tlBg: [214, 18, 6],  tlTextMuted: [210, 9, 63] },
+  noir:      { background: [45, 5, 6],    card: [45, 4, 11],   mutedForeground: [40, 8, 63],   tlBg: [45, 5, 5],    tlTextMuted: [40, 7, 62] },
+  romance:   { background: [330, 20, 8],  card: [332, 18, 13], mutedForeground: [338, 18, 67], tlBg: [330, 21, 7],  tlTextMuted: [338, 17, 66] },
 }
 
 const AA_NORMAL = 4.5

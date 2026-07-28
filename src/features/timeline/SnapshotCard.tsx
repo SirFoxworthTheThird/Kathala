@@ -65,7 +65,7 @@ export function SnapshotCard({ snapshot }: SnapshotCardProps) {
       )}
 
       {snapshot.statusNotes && (
-        <p className="mt-1 text-xs italic text-[hsl(var(--muted-foreground))] line-clamp-2">{snapshot.statusNotes}</p>
+        <p className="mt-1 whitespace-pre-wrap break-words text-xs italic text-[hsl(var(--muted-foreground))]">{snapshot.statusNotes}</p>
       )}
     </div>
   )

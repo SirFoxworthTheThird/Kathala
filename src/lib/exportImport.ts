@@ -1,5 +1,6 @@
 import { db } from '@/db/database'
 import type {
+  CharacterGoal,
   World, MapLayer, LocationMarker, Character, Item,
   CharacterSnapshot, CharacterMovement, ItemPlacement, LocationSnapshot, ItemSnapshot,
   Relationship, RelationshipSnapshot, Timeline, Chapter, WorldEvent, TravelMode,
@@ -9,20 +10,39 @@ import type {
   SceneText,
   PlotThread,
   ContinuitySuppression,
+  WritingLog,
+  Motif,
+  SceneRevision,
 } from '@/types'
 import { generateId } from '@/lib/id'
 
-const EXPORT_VERSION = 17
+export const EXPORT_VERSION = 18
 
 interface BlobExport {
   id: string
   worldId: string
   mimeType: string
-  dataBase64: string
+  /** Present for uploaded images. Absent for linked images (see `url`). */
+  dataBase64?: string
+  /** Present for linked (external-URL) images. */
+  url?: string
   createdAt: number
 }
 
-type RawBlob = { id: string; worldId: string; mimeType: string; data: Blob; createdAt: number }
+type RawBlob = { id: string; worldId: string; mimeType: string; data?: Blob; url?: string; createdAt: number }
+
+/** Serialize a stored blob to its export form — the external URL for a linked
+ *  image, or base64 for uploaded binary data. */
+async function blobToExport(b: RawBlob): Promise<BlobExport> {
+  if (b.url) return { id: b.id, worldId: b.worldId, mimeType: b.mimeType, url: b.url, createdAt: b.createdAt }
+  return { id: b.id, worldId: b.worldId, mimeType: b.mimeType, dataBase64: b.data ? await blobToBase64(b.data) : '', createdAt: b.createdAt }
+}
+
+/** Rebuild a stored blob record from its export form. */
+function blobRecordFromExport(b: BlobExport): RawBlob {
+  if (b.url) return { id: b.id, worldId: b.worldId, mimeType: b.mimeType, url: b.url, createdAt: b.createdAt }
+  return { id: b.id, worldId: b.worldId, mimeType: b.mimeType, data: base64ToBlob(b.dataBase64 ?? '', b.mimeType), createdAt: b.createdAt }
+}
 
 export interface WorldExportFile {
   version: number
@@ -59,9 +79,13 @@ export interface WorldExportFile {
   factionRelationships: FactionRelationship[]
   knowledgeFacts?: KnowledgeFact[]
   knowledgeReveals?: KnowledgeReveal[]
+  characterGoals?: CharacterGoal[]
   sceneTexts?: SceneText[]
   plotThreads?: PlotThread[]
+  motifs?: Motif[]
   continuitySuppressions?: ContinuitySuppression[]
+  writingLogs?: WritingLog[]
+  sceneRevisions?: SceneRevision[]
   relationshipPositions?: Record<string, { x: number; y: number }>
   /** @deprecated v6 and earlier stored only IDs via localStorage; superseded by continuitySuppressions */
   suppressedIssueIds?: string[]
@@ -131,12 +155,18 @@ interface CollectedWorldData {
   factionRelationships: FactionRelationship[]
   knowledgeFacts: KnowledgeFact[]
   knowledgeReveals: KnowledgeReveal[]
+  characterGoals: CharacterGoal[]
   sceneTexts: SceneText[]
   plotThreads: PlotThread[]
+  motifs: Motif[]
   continuitySuppressions: ContinuitySuppression[]
+  writingLogs: WritingLog[]
+  sceneRevisions: SceneRevision[]
 }
 
-async function collectWorldData(worldId: string): Promise<CollectedWorldData> {
+export type { CollectedWorldData }
+
+export async function collectWorldData(worldId: string): Promise<CollectedWorldData> {
   const [
     world,
     mapLayers,
@@ -168,9 +198,13 @@ async function collectWorldData(worldId: string): Promise<CollectedWorldData> {
     factionRelationships,
     knowledgeFacts,
     knowledgeReveals,
+    characterGoals,
     sceneTexts,
     plotThreads,
+    motifs,
     continuitySuppressions,
+    writingLogs,
+    sceneRevisions,
   ] = await Promise.all([
     db.worlds.get(worldId),
     db.mapLayers.where('worldId').equals(worldId).toArray(),
@@ -202,9 +236,13 @@ async function collectWorldData(worldId: string): Promise<CollectedWorldData> {
     db.factionRelationships.where('worldId').equals(worldId).toArray(),
     db.knowledgeFacts.where('worldId').equals(worldId).toArray(),
     db.knowledgeReveals.where('worldId').equals(worldId).toArray(),
+    db.characterGoals.where('worldId').equals(worldId).toArray(),
     db.sceneTexts.where('worldId').equals(worldId).toArray(),
     db.plotThreads.where('worldId').equals(worldId).toArray(),
+    db.motifs.where('worldId').equals(worldId).toArray(),
     db.continuitySuppressions.where('worldId').equals(worldId).toArray(),
+    db.writingLogs.where('worldId').equals(worldId).toArray(),
+    db.sceneRevisions.where('worldId').equals(worldId).toArray(),
   ])
 
   if (!world) throw new Error('World not found')
@@ -240,9 +278,13 @@ async function collectWorldData(worldId: string): Promise<CollectedWorldData> {
     factionRelationships,
     knowledgeFacts,
     knowledgeReveals,
+    characterGoals,
     sceneTexts,
     plotThreads,
+    motifs,
     continuitySuppressions,
+    writingLogs,
+    sceneRevisions,
   }
 }
 
@@ -302,13 +344,7 @@ async function writeJsonWithBlobs(
       await writable.write(prefix)
       for (let i = 0; i < rawBlobs.length; i++) {
         const b = rawBlobs[i]
-        const entry: BlobExport = {
-          id: b.id,
-          worldId: b.worldId,
-          mimeType: b.mimeType,
-          dataBase64: await blobToBase64(b.data),
-          createdAt: b.createdAt,
-        }
+        const entry = await blobToExport(b)
         await writable.write((i > 0 ? ',' : '') + JSON.stringify(entry))
         onProgress?.(i + 1, total)
       }
@@ -327,13 +363,7 @@ async function writeJsonWithBlobs(
   const parts: string[] = [prefix]
   for (let i = 0; i < rawBlobs.length; i++) {
     const b = rawBlobs[i]
-    const entry: BlobExport = {
-      id: b.id,
-      worldId: b.worldId,
-      mimeType: b.mimeType,
-      dataBase64: await blobToBase64(b.data),
-      createdAt: b.createdAt,
-    }
+    const entry = await blobToExport(b)
     parts.push((i > 0 ? ',' : '') + JSON.stringify(entry))
     onProgress?.(i + 1, total)
   }
@@ -382,9 +412,13 @@ export async function exportWorld(
     factionRelationships: d.factionRelationships,
     knowledgeFacts: d.knowledgeFacts,
     knowledgeReveals: d.knowledgeReveals,
+    characterGoals: d.characterGoals,
     sceneTexts: d.sceneTexts,
     plotThreads: d.plotThreads,
+    motifs: d.motifs,
     continuitySuppressions: d.continuitySuppressions,
+    writingLogs: d.writingLogs,
+    sceneRevisions: d.sceneRevisions,
     ...extras,
   }
   const filename = `${d.world.name.replace(/[^a-z0-9]/gi, '_')}.pwk`
@@ -454,9 +488,13 @@ export async function exportWorldSplit(
     factionRelationships: d.factionRelationships,
     knowledgeFacts: d.knowledgeFacts,
     knowledgeReveals: d.knowledgeReveals,
+    characterGoals: d.characterGoals,
     sceneTexts: d.sceneTexts,
     plotThreads: d.plotThreads,
+    motifs: d.motifs,
     continuitySuppressions: d.continuitySuppressions,
+    writingLogs: d.writingLogs,
+    sceneRevisions: d.sceneRevisions,
     ...extras,
   }
   triggerDownload(JSON.stringify(dataFile), `${safeName}.pwk`)
@@ -481,13 +519,7 @@ export async function serializeWorldForSync(worldId: string): Promise<string> {
   const extras = readLocalStorageExtras(worldId)
   const blobs: BlobExport[] = []
   for (const b of d.rawBlobs) {
-    blobs.push({
-      id: b.id,
-      worldId: b.worldId,
-      mimeType: b.mimeType,
-      dataBase64: await blobToBase64(b.data),
-      createdAt: b.createdAt,
-    })
+    blobs.push(await blobToExport(b))
   }
   const exportData: WorldExportFile = {
     version: EXPORT_VERSION,
@@ -523,9 +555,13 @@ export async function serializeWorldForSync(worldId: string): Promise<string> {
     factionRelationships: d.factionRelationships,
     knowledgeFacts: d.knowledgeFacts,
     knowledgeReveals: d.knowledgeReveals,
+    characterGoals: d.characterGoals,
     sceneTexts: d.sceneTexts,
     plotThreads: d.plotThreads,
+    motifs: d.motifs,
     continuitySuppressions: d.continuitySuppressions,
+    writingLogs: d.writingLogs,
+    sceneRevisions: d.sceneRevisions,
     ...extras,
   }
   return JSON.stringify(exportData)
@@ -553,13 +589,7 @@ export async function importWorldImages(file: File): Promise<string> {
   const blobs = d.blobs as BlobExport[]
   await db.transaction('rw', [db.blobs], async () => {
     for (const b of blobs) {
-      await db.blobs.put({
-        id: b.id,
-        worldId: b.worldId,
-        mimeType: b.mimeType,
-        data: base64ToBlob(b.dataBase64, b.mimeType),
-        createdAt: b.createdAt,
-      })
+      await db.blobs.put(blobRecordFromExport(b))
     }
   })
 
@@ -656,6 +686,10 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
     throw new Error('Invalid file: knowledgeReveals is not an array')
   }
   if (!d.knowledgeReveals) (d as Record<string, unknown>).knowledgeReveals = []
+  if (d.characterGoals !== undefined && !Array.isArray(d.characterGoals)) {
+    throw new Error('Invalid file: characterGoals is not an array')
+  }
+  if (!d.characterGoals) (d as Record<string, unknown>).characterGoals = []
   if (d.sceneTexts !== undefined && !Array.isArray(d.sceneTexts)) {
     throw new Error('Invalid file: sceneTexts is not an array')
   }
@@ -664,6 +698,18 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
     throw new Error('Invalid file: plotThreads is not an array')
   }
   if (!d.plotThreads) (d as Record<string, unknown>).plotThreads = []
+  if (d.motifs !== undefined && !Array.isArray(d.motifs)) {
+    throw new Error('Invalid file: motifs is not an array')
+  }
+  if (!d.motifs) (d as Record<string, unknown>).motifs = []
+  if (d.writingLogs !== undefined && !Array.isArray(d.writingLogs)) {
+    throw new Error('Invalid file: writingLogs is not an array')
+  }
+  if (!d.writingLogs) (d as Record<string, unknown>).writingLogs = []
+  if (d.sceneRevisions !== undefined && !Array.isArray(d.sceneRevisions)) {
+    throw new Error('Invalid file: sceneRevisions is not an array')
+  }
+  if (!d.sceneRevisions) (d as Record<string, unknown>).sceneRevisions = []
 }
 
 function normalizeImport(data: WorldExportFile): void {
@@ -676,16 +722,20 @@ function normalizeImport(data: WorldExportFile): void {
     const w = data.world as unknown as Rec
     if (w.theme === undefined) w.theme = null
   }
-  // Backfill color on characters exported before it was added
+  // Backfill color and birthDate on characters exported before they were added
   for (const char of data.characters) {
     const c = char as unknown as Rec
     if (c.color === undefined) c.color = null
+    if (c.birthDate === undefined) c.birthDate = null
   }
-  // Backfill scale fields on map layers exported before they were added
+  // Backfill scale and level fields on map layers exported before they were added
   for (const layer of data.mapLayers) {
     const l = layer as unknown as Rec
     if (l.scalePixelsPerUnit === undefined) l.scalePixelsPerUnit = null
     if (l.scaleUnit === undefined) l.scaleUnit = null
+    if (l.levelGroupId === undefined) l.levelGroupId = null
+    if (l.levelIndex === undefined) l.levelIndex = 0
+    if (l.levelLabel === undefined) l.levelLabel = ''
   }
   // Backfill linkedMapLayerId and factionId on regions exported before they were added
   for (const region of data.mapRegions) {
@@ -715,6 +765,7 @@ function normalizeImport(data: WorldExportFile): void {
     if (e.structureBeat === undefined) e.structureBeat = null
     if (e.mentionedCharacterIds === undefined) e.mentionedCharacterIds = []
     if (e.threadIds === undefined) e.threadIds = []
+    if (e.motifIds === undefined) e.motifIds = []
   }
   // Backfill the reader-clock and origin on knowledge facts (added after knowledge shipped)
   for (const fact of data.knowledgeFacts ?? []) {
@@ -727,10 +778,13 @@ function normalizeImport(data: WorldExportFile): void {
     const s = snap as unknown as Rec
     if (s.travelModeId === undefined) s.travelModeId = null
   }
-  // Backfill continuityStaleThreshold on worlds exported before it was added
+  // Backfill continuityStaleThreshold and calendar on worlds exported before they were added
   {
     const w = data.world as unknown as Rec
     if (w.continuityStaleThreshold === undefined) w.continuityStaleThreshold = 5
+    if (w.calendar === undefined) w.calendar = null
+    if (w.wordTarget === undefined) w.wordTarget = null
+    if (w.targetDate === undefined) w.targetDate = null
   }
 
   // ── v1 → v2 migration ───────────────────────────────────────────────────────
@@ -866,7 +920,7 @@ export async function importWorldFromJson(json: string): Promise<string> {
   return importWorldData(data)
 }
 
-async function importWorldData(data: WorldExportFile): Promise<string> {
+async function importWorldData(data: WorldExportFile, replaceExisting = true): Promise<string> {
   // Normalise continuitySuppressions: v7+ files carry the DB records directly;
   // v6 and earlier stored only issueIds via localStorage (notes were lost on export).
   // Merge both sources so that upgrading users don't lose their suppressions.
@@ -892,9 +946,57 @@ async function importWorldData(data: WorldExportFile): Promise<string> {
     db.timelineRelationships, db.crossTimelineArtifacts,
     db.mapRoutes, db.mapRegions, db.mapRegionSnapshots, db.mapAnnotations,
     db.loreCategories, db.lorePages, db.factions, db.factionMemberships, db.factionRelationships,
-    db.knowledgeFacts, db.knowledgeReveals, db.sceneTexts, db.plotThreads,
-    db.continuitySuppressions,
+    db.knowledgeFacts, db.knowledgeReveals, db.characterGoals, db.sceneTexts, db.plotThreads,
+    db.motifs, db.continuitySuppressions, db.writingLogs, db.sceneRevisions,
   ], async () => {
+    // A normal import and the explicit "Replace all" action must remove records
+    // that are no longer present in the incoming file. Previously this path only
+    // used bulkPut(), so re-importing an enriched sequel left its generated
+    // "Main Story" timeline (and any other local-only records) behind.
+    //
+    // Merge imports pass replaceExisting=false because their payload has already
+    // been combined with the local records above.
+    if (replaceExisting) {
+      await Promise.all([
+        db.mapLayers.where('worldId').equals(data.world.id).delete(),
+        db.locationMarkers.where('worldId').equals(data.world.id).delete(),
+        db.characters.where('worldId').equals(data.world.id).delete(),
+        db.items.where('worldId').equals(data.world.id).delete(),
+        db.characterSnapshots.where('worldId').equals(data.world.id).delete(),
+        db.characterMovements.where('worldId').equals(data.world.id).delete(),
+        db.itemPlacements.where('worldId').equals(data.world.id).delete(),
+        db.locationSnapshots.where('worldId').equals(data.world.id).delete(),
+        db.itemSnapshots.where('worldId').equals(data.world.id).delete(),
+        db.relationships.where('worldId').equals(data.world.id).delete(),
+        db.relationshipSnapshots.where('worldId').equals(data.world.id).delete(),
+        db.timelines.where('worldId').equals(data.world.id).delete(),
+        db.chapters.where('worldId').equals(data.world.id).delete(),
+        db.events.where('worldId').equals(data.world.id).delete(),
+        db.blobs.where('worldId').equals(data.world.id).delete(),
+        db.travelModes.where('worldId').equals(data.world.id).delete(),
+        db.timelineRelationships.where('worldId').equals(data.world.id).delete(),
+        db.crossTimelineArtifacts.where('worldId').equals(data.world.id).delete(),
+        db.mapRoutes.where('worldId').equals(data.world.id).delete(),
+        db.mapRegions.where('worldId').equals(data.world.id).delete(),
+        db.mapRegionSnapshots.where('worldId').equals(data.world.id).delete(),
+        db.mapAnnotations.where('worldId').equals(data.world.id).delete(),
+        db.loreCategories.where('worldId').equals(data.world.id).delete(),
+        db.lorePages.where('worldId').equals(data.world.id).delete(),
+        db.factions.where('worldId').equals(data.world.id).delete(),
+        db.factionMemberships.where('worldId').equals(data.world.id).delete(),
+        db.factionRelationships.where('worldId').equals(data.world.id).delete(),
+        db.knowledgeFacts.where('worldId').equals(data.world.id).delete(),
+        db.knowledgeReveals.where('worldId').equals(data.world.id).delete(),
+        db.characterGoals.where('worldId').equals(data.world.id).delete(),
+        db.sceneTexts.where('worldId').equals(data.world.id).delete(),
+        db.plotThreads.where('worldId').equals(data.world.id).delete(),
+        db.motifs.where('worldId').equals(data.world.id).delete(),
+        db.writingLogs.where('worldId').equals(data.world.id).delete(),
+        db.sceneRevisions.where('worldId').equals(data.world.id).delete(),
+        db.continuitySuppressions.where('worldId').equals(data.world.id).delete(),
+      ])
+    }
+
     await db.worlds.put(data.world)
     await db.mapLayers.bulkPut(data.mapLayers)
     await db.locationMarkers.bulkPut(data.locationMarkers)
@@ -924,25 +1026,25 @@ async function importWorldData(data: WorldExportFile): Promise<string> {
     await db.factionRelationships.bulkPut(data.factionRelationships)
     await db.knowledgeFacts.bulkPut(data.knowledgeFacts ?? [])
     await db.knowledgeReveals.bulkPut(data.knowledgeReveals ?? [])
+    await db.characterGoals.bulkPut(data.characterGoals ?? [])
     await db.sceneTexts.bulkPut(data.sceneTexts ?? [])
     await db.plotThreads.bulkPut(data.plotThreads ?? [])
+    await db.motifs.bulkPut(data.motifs ?? [])
+    await db.writingLogs.bulkPut(data.writingLogs ?? [])
+    await db.sceneRevisions.bulkPut(data.sceneRevisions ?? [])
     if (suppressionsToImport.length > 0) {
       await db.continuitySuppressions.bulkPut(suppressionsToImport)
     }
 
     for (const b of data.blobs) {
-      await db.blobs.put({
-        id: b.id,
-        worldId: b.worldId,
-        mimeType: b.mimeType,
-        data: base64ToBlob(b.dataBase64, b.mimeType),
-        createdAt: b.createdAt,
-      })
+      await db.blobs.put(blobRecordFromExport(b))
     }
   })
 
   if (data.relationshipPositions && typeof data.relationshipPositions === 'object') {
     localStorage.setItem(`wb-rel-pos-${data.world.id}`, JSON.stringify(data.relationshipPositions))
+  } else if (replaceExisting) {
+    localStorage.removeItem(`wb-rel-pos-${data.world.id}`)
   }
 
   return data.world.id
@@ -1069,7 +1171,9 @@ export async function applyWorldImport(
     localRoutes, localRegions, localRegSnaps, localAnnotations,
     localLoreCats, localLorePages,
     localFactions, localFactionMemberships, localFactionRelationships,
-    localKnowledgeFacts, localKnowledgeReveals, localSceneTexts, localPlotThreads,
+    localKnowledgeFacts, localKnowledgeReveals, localCharacterGoals,
+    localSceneTexts, localPlotThreads,
+    localMotifs, localWritingLogs, localSceneRevisions,
   ] = await Promise.all([
     db.characters.where('worldId').equals(worldId).toArray(),
     db.items.where('worldId').equals(worldId).toArray(),
@@ -1099,8 +1203,12 @@ export async function applyWorldImport(
     db.factionRelationships.where('worldId').equals(worldId).toArray(),
     db.knowledgeFacts.where('worldId').equals(worldId).toArray(),
     db.knowledgeReveals.where('worldId').equals(worldId).toArray(),
+    db.characterGoals.where('worldId').equals(worldId).toArray(),
     db.sceneTexts.where('worldId').equals(worldId).toArray(),
     db.plotThreads.where('worldId').equals(worldId).toArray(),
+    db.motifs.where('worldId').equals(worldId).toArray(),
+    db.writingLogs.where('worldId').equals(worldId).toArray(),
+    db.sceneRevisions.where('worldId').equals(worldId).toArray(),
   ])
 
   const merged = {
@@ -1133,12 +1241,16 @@ export async function applyWorldImport(
     factionRelationships: mergeTable(parsed.factionRelationships, localFactionRelationships).result,
     knowledgeFacts:       mergeTable(parsed.knowledgeFacts ?? [], localKnowledgeFacts).result,
     knowledgeReveals:     mergeTable(parsed.knowledgeReveals ?? [], localKnowledgeReveals).result,
+    characterGoals:       mergeTable(parsed.characterGoals ?? [], localCharacterGoals).result,
     sceneTexts:           mergeTable(parsed.sceneTexts ?? [], localSceneTexts).result,
     plotThreads:          mergeTable(parsed.plotThreads ?? [], localPlotThreads).result,
+    motifs:               mergeTable(parsed.motifs ?? [], localMotifs).result,
+    writingLogs:          mergeTable(parsed.writingLogs ?? [], localWritingLogs).result,
+    sceneRevisions:       mergeTable(parsed.sceneRevisions ?? [], localSceneRevisions).result,
     blobs:                parsed.blobs, // blobs: always use incoming (binary, no updatedAt)
     relationshipPositions: parsed.relationshipPositions,
     suppressedIssueIds:   parsed.suppressedIssueIds,
   }
 
-  return importWorldData(merged as WorldExportFile)
+  return importWorldData(merged as WorldExportFile, false)
 }

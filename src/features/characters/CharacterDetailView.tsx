@@ -4,6 +4,7 @@ import { ArrowLeft, Upload, Trash2 } from 'lucide-react'
 import { useCharacter, deleteCharacter } from '@/db/hooks/useCharacters'
 import { updateCharacter } from '@/db/hooks/useCharacters'
 import { storeBlob } from '@/db/hooks/useBlobs'
+import { LinkImageButton } from '@/components/LinkImageButton'
 import { PortraitImage } from '@/components/PortraitImage'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -15,6 +16,7 @@ import { AppearancesTab } from './tabs/AppearancesTab'
 import { RelationshipsTab } from './tabs/RelationshipsTab'
 import { RelatedLoreSection } from '@/features/lore'
 import { FactionsTab } from './tabs/FactionsTab'
+import { GoalsTab } from './tabs/GoalsTab'
 
 export default function CharacterDetailView() {
   const { worldId, characterId } = useParams<{ worldId: string; characterId: string }>()
@@ -58,10 +60,20 @@ export default function CharacterDetailView() {
             className="h-12 w-12 rounded-full object-cover"
             fallbackClassName="h-12 w-12 rounded-full"
           />
-          <label aria-label="Upload portrait image" className="absolute -bottom-1 -right-1 cursor-pointer rounded-full bg-[hsl(var(--accent))] p-1 hover:bg-[hsl(var(--secondary))]">
-            <Upload className="h-3 w-3 text-[hsl(var(--foreground))]" aria-hidden="true" />
-            <input type="file" accept="image/*" className="hidden" onChange={handlePortraitUpload} />
-          </label>
+          <div className="absolute -bottom-1 -right-1 flex items-center gap-0.5 rounded-full bg-[hsl(var(--accent))] px-1 py-0.5">
+            <label aria-label="Upload portrait image" className="cursor-pointer text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]">
+              <Upload className="h-3 w-3" aria-hidden="true" />
+              <input type="file" accept="image/*" className="hidden" onChange={handlePortraitUpload} />
+            </label>
+            {worldId && (
+              <LinkImageButton
+                worldId={worldId}
+                onLinked={(blobId) => updateCharacter(character!.id, { portraitImageId: blobId })}
+                triggerClassName="text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]"
+                triggerAriaLabel="Link portrait by URL"
+              />
+            )}
+          </div>
         </div>
 
         <div>
@@ -97,6 +109,7 @@ export default function CharacterDetailView() {
             <TabsTrigger value="state">Current State</TabsTrigger>
             <TabsTrigger value="history">History</TabsTrigger>
             <TabsTrigger value="appearances">Appearances</TabsTrigger>
+            <TabsTrigger value="goals">Goals</TabsTrigger>
             <TabsTrigger value="relationships">Relationships</TabsTrigger>
             <TabsTrigger value="lore">Lore</TabsTrigger>
             <TabsTrigger value="factions">Factions</TabsTrigger>
@@ -112,6 +125,9 @@ export default function CharacterDetailView() {
           </TabsContent>
           <TabsContent value="appearances">
             <AppearancesTab character={character} />
+          </TabsContent>
+          <TabsContent value="goals">
+            <GoalsTab character={character} />
           </TabsContent>
           <TabsContent value="relationships">
             <RelationshipsTab character={character} />

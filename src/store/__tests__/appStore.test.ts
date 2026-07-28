@@ -244,6 +244,14 @@ describe('UISlice', () => {
     expect(useAppStore.getState().sidebarOpen).toBe(true)
   })
 
+  it('pins and unpins the nav rail', () => {
+    expect(useAppStore.getState().navPinned).toBe(false)
+    useAppStore.getState().setNavPinned(true)
+    expect(useAppStore.getState().navPinned).toBe(true)
+    useAppStore.getState().setNavPinned(false)
+    expect(useAppStore.getState().navPinned).toBe(false)
+  })
+
   it('sets the active theme', () => {
     useAppStore.getState().setTheme('fantasy')
     expect(useAppStore.getState().theme).toBe('fantasy')
@@ -416,3 +424,33 @@ describe('PlaybackSlice — frame narrative', () => {
 
 // Suppression logic has moved to the DB (continuitySuppressions table) and is
 // covered by the useContinuitySuppressions hook. Store no longer owns this state.
+
+// ── barScope (bottom-bar timeline scope) ─────────────────────────────────────
+
+describe('barScope', () => {
+  it('defaults to null (the bar falls back to the chapter-order merge)', () => {
+    useAppStore.setState({ barScope: null })
+    expect(useAppStore.getState().barScope).toBeNull()
+  })
+
+  it('stores a timeline id or a merge sentinel', () => {
+    useAppStore.getState().setBarScope('tl-1')
+    expect(useAppStore.getState().barScope).toBe('tl-1')
+    useAppStore.getState().setBarScope('all-chrono')
+    expect(useAppStore.getState().barScope).toBe('all-chrono')
+  })
+
+  it('is persisted so the chosen scope survives a reload', () => {
+    useAppStore.getState().setBarScope('all-chrono')
+    const persisted = JSON.parse(localStorage.getItem('plotweave-ui') ?? '{}')
+    expect(persisted.state?.barScope).toBe('all-chrono')
+  })
+})
+
+describe('theme persistence', () => {
+  it('persists the app theme so it survives a reload', () => {
+    useAppStore.getState().setTheme('parchment' as never)
+    const persisted = JSON.parse(localStorage.getItem('plotweave-ui') ?? '{}')
+    expect(persisted.state?.theme).toBe('parchment')
+  })
+})

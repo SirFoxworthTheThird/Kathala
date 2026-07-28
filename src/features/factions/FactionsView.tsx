@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, X, Trash2, Users, ChevronRight, Shield, Map as MapIcon, MapPin, Swords, Handshake, Minus } from 'lucide-react'
+import { Plus, X, Trash2, Users, ChevronRight, Shield, Map as MapIcon, MapPin, Swords, Handshake, Minus, Sparkles } from 'lucide-react'
 import { EmptyState } from '@/components/EmptyState'
 import { PageHeader } from '@/components/PageHeader'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -21,6 +21,7 @@ import {
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useEvents, useChapters, useTimelines } from '@/db/hooks/useTimeline'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
+import { GenerateFactionsDialog } from './GenerateFactionsDialog'
 import type { Faction, FactionMembership, FactionRelationship, FactionStance } from '@/types'
 
 const PRESET_COLORS = [
@@ -327,7 +328,7 @@ function FactionDetailPanel({
   }
 
   return (
-    <div className="flex h-full w-80 shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl">
+    <div className="absolute inset-0 z-30 flex h-full flex-col bg-[hsl(var(--card))] shadow-xl lg:static lg:z-auto lg:w-80 lg:shrink-0 lg:border-l lg:border-[hsl(var(--border))]">
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] px-4 py-3">
         <div className="h-3 w-3 rounded-full shrink-0" style={{ background: faction.color }} />
@@ -337,6 +338,7 @@ function FactionDetailPanel({
         )}
         <button
           onClick={onClose}
+          aria-label="Close faction panel"
           className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
         >
           <X className="h-4 w-4" />
@@ -596,6 +598,7 @@ export default function FactionsView() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
+  const [aiOpen, setAiOpen] = useState(false)
 
   const selectedFaction = factions.find((f) => f.id === selectedId) ?? null
 
@@ -621,7 +624,7 @@ export default function FactionsView() {
   }
 
   return (
-    <div className="flex h-full">
+    <div className="relative flex h-full">
       {/* Main list */}
       <div className="flex flex-1 flex-col min-w-0">
         <PageHeader
@@ -649,9 +652,14 @@ export default function FactionsView() {
                 </Button>
               </div>
             ) : (
-              <Button size="sm" className="gap-1.5" onClick={() => setCreating(true)}>
-                <Plus className="h-3.5 w-3.5" /> New Faction
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAiOpen(true)}>
+                  <Sparkles className="h-3.5 w-3.5" /> Generate with AI
+                </Button>
+                <Button size="sm" className="gap-1.5" onClick={() => setCreating(true)}>
+                  <Plus className="h-3.5 w-3.5" /> New Faction
+                </Button>
+              </div>
             )
           }
         />
@@ -709,19 +717,20 @@ export default function FactionsView() {
         </div>
       </div>
 
-      {/* Detail panel */}
-      {selectedFaction ? (
+      {/* Detail panel — only once a faction is selected, so the grid gets the
+          full width the rest of the app's list views use. */}
+      {selectedFaction && (
         <FactionDetailPanel
           key={selectedFaction.id}
           faction={selectedFaction}
           worldId={worldId ?? ''}
           onClose={() => setSelectedId(null)}
         />
-      ) : factions.length > 0 ? (
-        <div className="flex w-80 shrink-0 items-center justify-center border-l border-[hsl(var(--border))]">
-          <p className="text-sm text-[hsl(var(--muted-foreground))]">Select a faction to view its details</p>
-        </div>
-      ) : null}
+      )}
+
+      {worldId && (
+        <GenerateFactionsDialog open={aiOpen} onOpenChange={setAiOpen} worldId={worldId} />
+      )}
     </div>
   )
 }

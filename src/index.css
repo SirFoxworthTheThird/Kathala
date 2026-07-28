@@ -26,6 +26,10 @@
     --radius: 0.5rem;
     --font-body: ui-sans-serif, system-ui, sans-serif;
     --font-heading: ui-sans-serif, system-ui, sans-serif;
+    --canvas: 218 34% 9%;
+    --app-image: url('/background.png');
+    --theme-backdrop: radial-gradient(circle at 18% 12%, hsl(211 48% 22% / 0.5), transparent 34%), linear-gradient(145deg, hsl(222 47% 8%), hsl(215 38% 13%));
+    --theme-atmosphere: linear-gradient(115deg, transparent 0 48%, hsl(210 70% 65% / 0.025) 48% 49%, transparent 49% 100%);
     --leaflet-bg: 222, 47%, 8%;
     --leaflet-card: 222, 47%, 22%;
     --leaflet-border: 217, 33%, 22%;
@@ -35,33 +39,36 @@
 
   /* ── Fantasy (Aged Parchment) ── */
   .theme-fantasy {
-    --background: 35 30% 10%;
-    --foreground: 38 60% 88%;
-    --card: 35 28% 14%;
-    --card-foreground: 38 60% 88%;
-    --popover: 35 30% 10%;
-    --popover-foreground: 38 60% 88%;
-    --primary: 38 60% 88%;
-    --primary-foreground: 35 30% 10%;
-    --secondary: 35 25% 19%;
-    --secondary-foreground: 38 60% 88%;
-    --muted: 35 25% 19%;
-    --muted-foreground: 35 30% 58%;
-    --accent: 35 28% 24%;
-    --accent-foreground: 38 60% 88%;
+    --background: 42 24% 8%;
+    --foreground: 43 44% 89%;
+    --card: 40 22% 13%;
+    --card-foreground: 43 44% 89%;
+    --popover: 42 24% 8%;
+    --popover-foreground: 43 44% 89%;
+    --primary: 43 44% 89%;
+    --primary-foreground: 42 24% 8%;
+    --secondary: 83 16% 16%;
+    --secondary-foreground: 43 44% 89%;
+    --muted: 42 18% 17%;
+    --muted-foreground: 40 24% 63%;
+    --accent: 83 18% 22%;
+    --accent-foreground: 43 44% 89%;
     --destructive: 0 55% 35%;
     --destructive-foreground: 38 60% 88%;
-    --border: 35 28% 24%;
-    --input: 35 28% 24%;
-    --ring: 38 72% 55%;
+    --border: 42 24% 25%;
+    --input: 42 24% 25%;
+    --ring: 43 70% 58%;
     --radius: 0.25rem;
-    --font-body: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
-    --font-heading: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
-    --leaflet-bg: 35, 30%, 7%;
-    --leaflet-card: 35, 28%, 22%;
-    --leaflet-border: 35, 28%, 24%;
-    --leaflet-fg: 38, 60%, 88%;
-    --leaflet-muted: 35, 30%, 58%;
+    --font-body: Georgia, 'Palatino Linotype', 'Book Antiqua', serif;
+    --font-heading: Copperplate, 'Copperplate Gothic Light', 'Palatino Linotype', serif;
+    --leaflet-bg: 42, 24%, 6%;
+    --leaflet-card: 40, 22%, 19%;
+    --leaflet-border: 42, 24%, 27%;
+    --leaflet-fg: 43, 44%, 89%;
+    --leaflet-muted: 40, 24%, 63%;
+    --canvas: 42 31% 6%;
+    --theme-backdrop: radial-gradient(circle at 78% 8%, hsl(43 72% 42% / 0.18), transparent 30%), radial-gradient(circle at 14% 80%, hsl(88 30% 24% / 0.2), transparent 35%), linear-gradient(145deg, hsl(42 28% 6%), hsl(35 26% 11%));
+    --theme-atmosphere: repeating-linear-gradient(45deg, transparent 0 23px, hsl(43 55% 65% / 0.018) 23px 24px), repeating-linear-gradient(-45deg, transparent 0 23px, hsl(89 35% 60% / 0.014) 23px 24px);
   }
 
   /* ── Timeline overlay variables (Default) ── */
@@ -78,307 +85,339 @@
   }
 
   .theme-fantasy {
-    --tl-bg:             hsl(35, 32%, 9%);
-    --tl-border:         hsl(38, 50%, 28%);
-    --tl-accent:         hsl(42, 82%, 54%);
-    --tl-glow:           rgba(210, 162, 48, 0.6);
-    --tl-text:           hsl(38, 60%, 88%);
-    --tl-text-muted:     hsl(35, 28%, 48%);
-    --tl-callout-bg:     hsl(35, 30%, 12%);
-    --tl-callout-shadow: 0 -6px 32px rgba(0,0,0,0.65), 0 0 0 1px hsl(38,50%,28%);
+    --tl-bg:             hsl(42, 27%, 7%);
+    --tl-border:         hsl(43, 38%, 28%);
+    --tl-accent:         hsl(43, 74%, 58%);
+    --tl-glow:           rgba(205, 157, 68, 0.58);
+    --tl-text:           hsl(43, 44%, 89%);
+    --tl-text-muted:     hsl(39, 22%, 62%);
+    --tl-callout-bg:     hsl(40, 24%, 11%);
+    --tl-callout-shadow: 0 -8px 34px rgba(0,0,0,0.68), 0 0 0 1px hsl(43,38%,28%);
     --tl-backdrop:       none;
   }
 
   .theme-scifi {
-    --tl-bg:             rgba(4, 9, 22, 0.9);
-    --tl-border:         rgba(0, 200, 255, 0.28);
-    --tl-accent:         hsl(190, 100%, 50%);
-    --tl-glow:           rgba(0, 215, 255, 0.72);
-    --tl-text:           hsl(195, 80%, 85%);
-    --tl-text-muted:     hsl(210, 45%, 50%);
-    --tl-callout-bg:     rgba(4, 9, 22, 0.88);
-    --tl-callout-shadow: 0 -6px 32px rgba(0,200,255,0.12), 0 0 0 1px rgba(0,200,255,0.28);
+    --tl-bg:             hsl(222, 55%, 4%);
+    --tl-border:         hsl(190, 45%, 25%);
+    --tl-accent:         hsl(185, 78%, 57%);
+    --tl-glow:           rgba(70, 215, 230, 0.68);
+    --tl-text:           hsl(188, 42%, 91%);
+    --tl-text-muted:     hsl(199, 28%, 62%);
+    --tl-callout-bg:     hsl(218, 48%, 7%);
+    --tl-callout-shadow: 0 -8px 34px rgba(38,185,210,0.14), 0 0 0 1px hsl(190,45%,25%);
     --tl-backdrop:       blur(18px) saturate(180%);
   }
 
   .theme-cyberpunk {
-    --tl-bg:             hsl(270, 22%, 5%);
-    --tl-border:         hsl(300, 100%, 44%);
-    --tl-accent:         hsl(55, 100%, 54%);
-    --tl-glow:           rgba(255, 0, 200, 0.82);
-    --tl-text:           hsl(300, 100%, 85%);
-    --tl-text-muted:     hsl(280, 30%, 55%);
-    --tl-callout-bg:     hsl(270, 20%, 7%);
-    --tl-callout-shadow: 0 -6px 32px rgba(255,0,200,0.18), 0 0 0 1px hsl(300,100%,44%);
+    --tl-bg:             hsl(266, 34%, 5%);
+    --tl-border:         hsl(304, 65%, 38%);
+    --tl-accent:         hsl(72, 86%, 66%);
+    --tl-glow:           rgba(233, 62, 210, 0.78);
+    --tl-text:           hsl(286, 30%, 92%);
+    --tl-text-muted:     hsl(278, 20%, 66%);
+    --tl-callout-bg:     hsl(264, 28%, 8%);
+    --tl-callout-shadow: 0 -8px 36px rgba(233,62,210,0.2), 0 0 0 1px hsl(304,65%,38%);
     --tl-backdrop:       none;
   }
 
   .theme-horror {
-    --tl-bg:             hsl(0, 18%, 4%);
-    --tl-border:         hsl(0, 60%, 18%);
-    --tl-accent:         hsl(0, 80%, 42%);
-    --tl-glow:           rgba(175, 0, 0, 0.68);
-    --tl-text:           hsl(0, 10%, 82%);
-    --tl-text-muted:     hsl(0, 10%, 51%);
-    --tl-callout-bg:     hsl(0, 14%, 6%);
-    --tl-callout-shadow: 0 -6px 32px rgba(100,0,0,0.45), 0 0 0 1px hsl(0,60%,18%);
+    --tl-bg:             hsl(350, 15%, 4%);
+    --tl-border:         hsl(353, 42%, 22%);
+    --tl-accent:         hsl(354, 63%, 48%);
+    --tl-glow:           rgba(149, 31, 42, 0.68);
+    --tl-text:           hsl(40, 18%, 85%);
+    --tl-text-muted:     hsl(25, 11%, 62%);
+    --tl-callout-bg:     hsl(350, 13%, 7%);
+    --tl-callout-shadow: 0 -10px 40px rgba(80,0,10,0.5), 0 0 0 1px hsl(353,42%,22%);
     --tl-backdrop:       none;
   }
 
   .theme-western {
-    --tl-bg:             hsl(25, 38%, 7%);
-    --tl-border:         hsl(33, 52%, 26%);
-    --tl-accent:         hsl(34, 82%, 50%);
-    --tl-glow:           rgba(196, 124, 28, 0.62);
-    --tl-text:           hsl(35, 50%, 84%);
-    --tl-text-muted:     hsl(30, 26%, 48%);
-    --tl-callout-bg:     hsl(25, 34%, 10%);
-    --tl-callout-shadow: 0 -6px 32px rgba(0,0,0,0.6), 0 0 0 1px hsl(33,52%,26%);
+    --tl-bg:             hsl(24, 38%, 7%);
+    --tl-border:         hsl(33, 42%, 29%);
+    --tl-accent:         hsl(34, 70%, 55%);
+    --tl-glow:           rgba(205, 139, 55, 0.58);
+    --tl-text:           hsl(39, 40%, 87%);
+    --tl-text-muted:     hsl(33, 22%, 62%);
+    --tl-callout-bg:     hsl(27, 32%, 10%);
+    --tl-callout-shadow: 0 -8px 34px rgba(0,0,0,0.62), 0 0 0 1px hsl(33,42%,29%);
     --tl-backdrop:       none;
   }
 
   /* ── Sci-Fi (Deep Space) ── */
   .theme-scifi {
-    --background: 220 60% 5%;
-    --foreground: 195 80% 85%;
-    --card: 220 55% 8%;
-    --card-foreground: 195 80% 85%;
-    --popover: 220 60% 5%;
-    --popover-foreground: 195 80% 85%;
-    --primary: 195 80% 85%;
-    --primary-foreground: 220 60% 5%;
-    --secondary: 220 50% 12%;
-    --secondary-foreground: 195 80% 85%;
-    --muted: 220 50% 12%;
-    --muted-foreground: 210 40% 55%;
-    --accent: 220 50% 16%;
-    --accent-foreground: 195 80% 85%;
+    --background: 222 52% 5%;
+    --foreground: 188 42% 91%;
+    --card: 218 45% 9%;
+    --card-foreground: 188 42% 91%;
+    --popover: 222 52% 5%;
+    --popover-foreground: 188 42% 91%;
+    --primary: 188 42% 91%;
+    --primary-foreground: 222 52% 5%;
+    --secondary: 216 40% 13%;
+    --secondary-foreground: 188 42% 91%;
+    --muted: 216 35% 14%;
+    --muted-foreground: 203 30% 63%;
+    --accent: 193 42% 16%;
+    --accent-foreground: 188 42% 91%;
     --destructive: 0 70% 40%;
     --destructive-foreground: 195 80% 85%;
-    --border: 210 60% 18%;
-    --input: 210 60% 18%;
-    --ring: 190 100% 50%;
+    --border: 196 43% 24%;
+    --input: 196 43% 24%;
+    --ring: 185 78% 57%;
     --radius: 0.125rem;
-    --font-body: 'Share Tech Mono', 'Courier New', monospace;
-    --font-heading: 'Share Tech Mono', 'Courier New', monospace;
-    --leaflet-bg: 220, 60%, 3%;
-    --leaflet-card: 220, 55%, 16%;
-    --leaflet-border: 210, 60%, 18%;
-    --leaflet-fg: 195, 80%, 85%;
-    --leaflet-muted: 210, 40%, 55%;
+    --font-body: 'Segoe UI', Arial, sans-serif;
+    --font-heading: 'Arial Narrow', 'Segoe UI Semibold', sans-serif;
+    --leaflet-bg: 222, 52%, 3%;
+    --leaflet-card: 218, 42%, 15%;
+    --leaflet-border: 196, 43%, 25%;
+    --leaflet-fg: 188, 42%, 91%;
+    --leaflet-muted: 203, 30%, 63%;
+    --canvas: 222 60% 3%;
+    --theme-backdrop: radial-gradient(circle at 72% 18%, hsl(187 70% 44% / 0.18), transparent 24%), radial-gradient(circle at 18% 76%, hsl(225 65% 30% / 0.22), transparent 36%), linear-gradient(145deg, hsl(226 58% 3%), hsl(216 47% 9%));
+    --theme-atmosphere: radial-gradient(circle at 18% 22%, white 0 1px, transparent 1.5px), radial-gradient(circle at 76% 68%, hsl(185 80% 80% / 0.7) 0 1px, transparent 1.5px), repeating-linear-gradient(90deg, transparent 0 79px, hsl(185 65% 60% / 0.025) 79px 80px), repeating-linear-gradient(0deg, transparent 0 79px, hsl(185 65% 60% / 0.025) 79px 80px);
   }
 
   /* ── Cyberpunk (Neon Noir) ── */
   .theme-cyberpunk {
-    --background: 270 20% 6%;
-    --foreground: 300 100% 85%;
-    --card: 270 18% 10%;
-    --card-foreground: 300 100% 85%;
-    --popover: 270 20% 6%;
-    --popover-foreground: 300 100% 85%;
-    --primary: 300 100% 85%;
-    --primary-foreground: 270 20% 6%;
-    --secondary: 270 15% 15%;
-    --secondary-foreground: 300 100% 85%;
-    --muted: 270 15% 15%;
-    --muted-foreground: 280 30% 58%;
-    --accent: 270 18% 20%;
-    --accent-foreground: 300 100% 85%;
+    --background: 266 31% 6%;
+    --foreground: 286 30% 92%;
+    --card: 264 26% 11%;
+    --card-foreground: 286 30% 92%;
+    --popover: 266 31% 6%;
+    --popover-foreground: 286 30% 92%;
+    --primary: 286 30% 92%;
+    --primary-foreground: 266 31% 6%;
+    --secondary: 269 24% 16%;
+    --secondary-foreground: 286 30% 92%;
+    --muted: 270 20% 17%;
+    --muted-foreground: 275 22% 66%;
+    --accent: 294 42% 19%;
+    --accent-foreground: 286 30% 92%;
     --destructive: 0 80% 45%;
     --destructive-foreground: 300 100% 85%;
-    --border: 285 40% 22%;
-    --input: 285 40% 22%;
-    --ring: 300 100% 60%;
+    --border: 300 40% 26%;
+    --input: 300 40% 26%;
+    --ring: 304 90% 64%;
     --radius: 0rem;
-    --font-body: 'Share Tech Mono', 'Courier New', monospace;
-    --font-heading: 'Share Tech Mono', 'Courier New', monospace;
-    --leaflet-bg: 270, 20%, 4%;
-    --leaflet-card: 270, 18%, 18%;
-    --leaflet-border: 285, 40%, 22%;
-    --leaflet-fg: 300, 100%, 85%;
-    --leaflet-muted: 280, 30%, 55%;
+    --font-body: 'Segoe UI', Arial, sans-serif;
+    --font-heading: 'Arial Black', 'Segoe UI Black', sans-serif;
+    --leaflet-bg: 266, 31%, 4%;
+    --leaflet-card: 264, 26%, 17%;
+    --leaflet-border: 300, 40%, 28%;
+    --leaflet-fg: 286, 30%, 92%;
+    --leaflet-muted: 275, 22%, 66%;
+    --canvas: 266 38% 4%;
+    --theme-backdrop: radial-gradient(circle at 84% 16%, hsl(304 88% 52% / 0.22), transparent 28%), radial-gradient(circle at 12% 82%, hsl(72 82% 50% / 0.1), transparent 28%), linear-gradient(145deg, hsl(267 38% 4%), hsl(250 31% 10%));
+    --theme-atmosphere: repeating-linear-gradient(90deg, transparent 0 39px, hsl(304 90% 65% / 0.035) 39px 40px), repeating-linear-gradient(0deg, transparent 0 39px, hsl(72 85% 65% / 0.025) 39px 40px), linear-gradient(115deg, transparent 0 73%, hsl(304 88% 58% / 0.045) 73% 73.5%, transparent 73.5% 100%);
   }
 
   /* ── Horror (Blood & Shadow) ── */
   .theme-horror {
-    --background: 0 15% 5%;
-    --foreground: 0 10% 85%;
-    --card: 0 12% 8%;
-    --card-foreground: 0 10% 85%;
-    --popover: 0 15% 5%;
-    --popover-foreground: 0 10% 85%;
-    --primary: 0 10% 85%;
-    --primary-foreground: 0 15% 5%;
-    --secondary: 0 10% 12%;
-    --secondary-foreground: 0 10% 85%;
-    --muted: 0 10% 12%;
-    --muted-foreground: 0 8% 52%;
-    --accent: 0 12% 16%;
-    --accent-foreground: 0 10% 85%;
+    --background: 350 13% 5%;
+    --foreground: 40 18% 85%;
+    --card: 350 11% 9%;
+    --card-foreground: 40 18% 85%;
+    --popover: 350 13% 5%;
+    --popover-foreground: 40 18% 85%;
+    --primary: 40 18% 85%;
+    --primary-foreground: 350 13% 5%;
+    --secondary: 350 14% 13%;
+    --secondary-foreground: 40 18% 85%;
+    --muted: 350 12% 14%;
+    --muted-foreground: 25 12% 62%;
+    --accent: 352 28% 16%;
+    --accent-foreground: 40 18% 85%;
     --destructive: 0 80% 35%;
     --destructive-foreground: 0 10% 85%;
-    --border: 0 15% 18%;
-    --input: 0 15% 18%;
-    --ring: 0 80% 45%;
+    --border: 353 24% 22%;
+    --input: 353 24% 22%;
+    --ring: 354 63% 48%;
     --radius: 0rem;
-    --font-body: 'Palatino Linotype', Palatino, Georgia, serif;
-    --font-heading: 'Palatino Linotype', Palatino, Georgia, serif;
-    --leaflet-bg: 0, 15%, 3%;
-    --leaflet-card: 0, 12%, 16%;
-    --leaflet-border: 0, 15%, 18%;
-    --leaflet-fg: 0, 10%, 85%;
-    --leaflet-muted: 0, 8%, 50%;
+    --font-body: Georgia, 'Times New Roman', serif;
+    --font-heading: Baskerville, 'Palatino Linotype', Georgia, serif;
+    --leaflet-bg: 350, 13%, 3%;
+    --leaflet-card: 350, 11%, 15%;
+    --leaflet-border: 353, 24%, 24%;
+    --leaflet-fg: 40, 18%, 85%;
+    --leaflet-muted: 25, 12%, 62%;
+    --canvas: 350 18% 3%;
+    --theme-backdrop: radial-gradient(circle at 50% 0%, hsl(354 48% 25% / 0.22), transparent 32%), linear-gradient(160deg, hsl(350 18% 3%), hsl(20 8% 7%));
+    --theme-atmosphere: radial-gradient(circle at 50% 0%, hsl(354 55% 35% / 0.035), transparent 38%), repeating-linear-gradient(96deg, transparent 0 91px, hsl(35 15% 75% / 0.024) 91px 92px, transparent 92px 137px);
   }
 
   /* ── Western (Dusty Frontier) ── */
   .theme-western {
-    --background: 25 35% 8%;
-    --foreground: 35 50% 85%;
-    --card: 25 32% 12%;
-    --card-foreground: 35 50% 85%;
-    --popover: 25 35% 8%;
-    --popover-foreground: 35 50% 85%;
-    --primary: 35 50% 85%;
-    --primary-foreground: 25 35% 8%;
-    --secondary: 25 28% 17%;
-    --secondary-foreground: 35 50% 85%;
-    --muted: 25 28% 17%;
-    --muted-foreground: 30 25% 52%;
-    --accent: 25 30% 22%;
-    --accent-foreground: 35 50% 85%;
+    --background: 24 34% 8%;
+    --foreground: 39 40% 87%;
+    --card: 27 31% 13%;
+    --card-foreground: 39 40% 87%;
+    --popover: 24 34% 8%;
+    --popover-foreground: 39 40% 87%;
+    --primary: 39 40% 87%;
+    --primary-foreground: 24 34% 8%;
+    --secondary: 24 28% 18%;
+    --secondary-foreground: 39 40% 87%;
+    --muted: 25 25% 18%;
+    --muted-foreground: 34 25% 63%;
+    --accent: 30 35% 21%;
+    --accent-foreground: 39 40% 87%;
     --destructive: 5 65% 35%;
     --destructive-foreground: 35 50% 85%;
-    --border: 25 30% 22%;
-    --input: 25 30% 22%;
-    --ring: 35 80% 50%;
+    --border: 30 32% 26%;
+    --input: 30 32% 26%;
+    --ring: 34 70% 55%;
     --radius: 0.125rem;
-    --font-body: 'Palatino Linotype', Palatino, Georgia, serif;
-    --font-heading: 'Palatino Linotype', Palatino, Georgia, serif;
-    --leaflet-bg: 25, 35%, 5%;
-    --leaflet-card: 25, 32%, 20%;
-    --leaflet-border: 25, 30%, 22%;
-    --leaflet-fg: 35, 50%, 85%;
-    --leaflet-muted: 30, 25%, 52%;
+    --font-body: 'Bookman Old Style', Georgia, serif;
+    --font-heading: Rockwell, 'Courier New', serif;
+    --leaflet-bg: 24, 34%, 5%;
+    --leaflet-card: 27, 31%, 19%;
+    --leaflet-border: 30, 32%, 28%;
+    --leaflet-fg: 39, 40%, 87%;
+    --leaflet-muted: 34, 25%, 63%;
+    --canvas: 24 40% 5%;
+    --theme-backdrop: radial-gradient(ellipse at 78% 10%, hsl(32 70% 46% / 0.24), transparent 32%), radial-gradient(ellipse at 20% 95%, hsl(13 50% 25% / 0.2), transparent 38%), linear-gradient(155deg, hsl(25 37% 6%), hsl(30 32% 12%));
+    --theme-atmosphere: repeating-linear-gradient(8deg, transparent 0 31px, hsl(35 45% 72% / 0.018) 31px 32px), repeating-linear-gradient(98deg, transparent 0 67px, hsl(15 28% 20% / 0.025) 67px 68px);
   }
 
   /* ── Action (Gunmetal & Orange) ── */
   .theme-action {
-    --background: 215 14% 8%;
-    --foreground: 210 12% 92%;
-    --card: 215 13% 12%;
-    --card-foreground: 210 12% 92%;
-    --popover: 215 14% 8%;
-    --popover-foreground: 210 12% 92%;
-    --primary: 210 12% 92%;
-    --primary-foreground: 215 14% 8%;
-    --secondary: 215 12% 16%;
-    --secondary-foreground: 210 12% 92%;
-    --muted: 215 12% 16%;
-    --muted-foreground: 215 10% 54%;
-    --accent: 215 14% 22%;
-    --accent-foreground: 210 12% 92%;
+    --background: 214 18% 7%;
+    --foreground: 210 15% 93%;
+    --card: 214 17% 11%;
+    --card-foreground: 210 15% 93%;
+    --popover: 214 18% 7%;
+    --popover-foreground: 210 15% 93%;
+    --primary: 210 15% 93%;
+    --primary-foreground: 214 18% 7%;
+    --secondary: 213 15% 16%;
+    --secondary-foreground: 210 15% 93%;
+    --muted: 213 14% 17%;
+    --muted-foreground: 210 10% 64%;
+    --accent: 25 35% 20%;
+    --accent-foreground: 210 15% 93%;
     --destructive: 0 80% 45%;
     --destructive-foreground: 210 12% 92%;
-    --border: 215 12% 20%;
-    --input: 215 12% 20%;
-    --ring: 24 100% 52%;
+    --border: 213 14% 25%;
+    --input: 213 14% 25%;
+    --ring: 24 95% 57%;
     --radius: 0.125rem;
-    --font-body: Impact, 'Arial Black', 'Franklin Gothic Medium', sans-serif;
+    --font-body: 'Segoe UI', Arial, sans-serif;
     --font-heading: Impact, 'Arial Black', 'Franklin Gothic Medium', sans-serif;
-    --leaflet-bg: 215, 14%, 5%;
-    --leaflet-card: 215, 13%, 20%;
-    --leaflet-border: 215, 12%, 20%;
-    --leaflet-fg: 210, 12%, 92%;
-    --leaflet-muted: 215, 10%, 52%;
-    --tl-bg:             hsl(215, 14%, 7%);
-    --tl-border:         hsl(24, 100%, 40%);
-    --tl-accent:         hsl(24, 100%, 52%);
+    --leaflet-bg: 214, 18%, 5%;
+    --leaflet-card: 214, 17%, 18%;
+    --leaflet-border: 213, 14%, 27%;
+    --leaflet-fg: 210, 15%, 93%;
+    --leaflet-muted: 210, 10%, 64%;
+    --tl-bg:             hsl(214, 18%, 6%);
+    --tl-border:         hsl(24, 82%, 43%);
+    --tl-accent:         hsl(24, 95%, 57%);
     --tl-glow:           rgba(255, 120, 0, 0.78);
-    --tl-text:           hsl(210, 12%, 92%);
-    --tl-text-muted:     hsl(215, 10%, 51%);
-    --tl-callout-bg:     hsl(215, 14%, 10%);
-    --tl-callout-shadow: 0 -6px 32px rgba(255,100,0,0.22), 0 0 0 2px hsl(24,100%,40%);
+    --tl-text:           hsl(210, 15%, 93%);
+    --tl-text-muted:     hsl(210, 9%, 63%);
+    --tl-callout-bg:     hsl(214, 17%, 10%);
+    --tl-callout-shadow: 0 -8px 34px rgba(255,100,0,0.24), 0 0 0 2px hsl(24,82%,43%);
     --tl-backdrop:       none;
+    --canvas: 214 22% 5%;
+    --theme-backdrop: radial-gradient(circle at 88% 14%, hsl(24 95% 50% / 0.2), transparent 25%), linear-gradient(145deg, hsl(215 20% 5%), hsl(210 15% 12%));
+    --theme-atmosphere: repeating-linear-gradient(-45deg, transparent 0 14px, hsl(24 95% 58% / 0.025) 14px 15px), linear-gradient(110deg, transparent 0 70%, hsl(24 95% 55% / 0.04) 70% 71%, transparent 71% 100%);
   }
 
   /* ── Noir (Moody Grayscale) ── */
   .theme-noir {
-    --background: 0 0% 7%;
-    --foreground: 40 8% 88%;
-    --card: 0 0% 11%;
-    --card-foreground: 40 8% 88%;
-    --popover: 0 0% 7%;
-    --popover-foreground: 40 8% 88%;
-    --primary: 40 8% 88%;
-    --primary-foreground: 0 0% 7%;
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 40 8% 88%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 52%;
-    --accent: 0 0% 19%;
-    --accent-foreground: 40 8% 88%;
+    --background: 45 5% 6%;
+    --foreground: 45 16% 88%;
+    --card: 45 4% 11%;
+    --card-foreground: 45 16% 88%;
+    --popover: 45 5% 6%;
+    --popover-foreground: 45 16% 88%;
+    --primary: 45 16% 88%;
+    --primary-foreground: 45 5% 6%;
+    --secondary: 45 3% 15%;
+    --secondary-foreground: 45 16% 88%;
+    --muted: 45 3% 15%;
+    --muted-foreground: 40 8% 63%;
+    --accent: 0 0% 18%;
+    --accent-foreground: 45 16% 88%;
     --destructive: 0 65% 35%;
     --destructive-foreground: 40 8% 88%;
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
-    --ring: 40 8% 72%;
+    --border: 40 4% 24%;
+    --input: 40 4% 24%;
+    --ring: 3 48% 50%;
     --radius: 0rem;
-    --font-body: 'Playfair Display', Georgia, 'Times New Roman', serif;
-    --font-heading: 'Playfair Display', Georgia, 'Times New Roman', serif;
-    --leaflet-bg: 0, 0%, 4%;
-    --leaflet-card: 0, 0%, 19%;
-    --leaflet-border: 0, 0%, 20%;
-    --leaflet-fg: 40, 8%, 88%;
-    --leaflet-muted: 0, 0%, 48%;
-    --tl-bg:             hsl(0, 0%, 6%);
-    --tl-border:         hsl(0, 0%, 22%);
-    --tl-accent:         hsl(40, 8%, 75%);
+    --font-body: 'Courier New', Courier, monospace;
+    --font-heading: Didot, Bodoni MT, Georgia, serif;
+    --leaflet-bg: 45, 5%, 4%;
+    --leaflet-card: 45, 4%, 18%;
+    --leaflet-border: 40, 4%, 25%;
+    --leaflet-fg: 45, 16%, 88%;
+    --leaflet-muted: 40, 8%, 63%;
+    --tl-bg:             hsl(45, 5%, 5%);
+    --tl-border:         hsl(40, 4%, 25%);
+    --tl-accent:         hsl(3, 48%, 50%);
     --tl-glow:           rgba(200, 190, 175, 0.42);
-    --tl-text:           hsl(40, 8%, 88%);
-    --tl-text-muted:     hsl(0, 0%, 49%);
-    --tl-callout-bg:     hsl(0, 0%, 9%);
-    --tl-callout-shadow: 0 -12px 48px rgba(0,0,0,0.9), 0 0 0 1px hsl(0,0%,22%);
+    --tl-text:           hsl(45, 16%, 88%);
+    --tl-text-muted:     hsl(40, 7%, 62%);
+    --tl-callout-bg:     hsl(45, 4%, 9%);
+    --tl-callout-shadow: 0 -12px 48px rgba(0,0,0,0.9), 0 0 0 1px hsl(40,4%,25%);
     --tl-backdrop:       none;
+    --canvas: 45 6% 3%;
+    --theme-backdrop: radial-gradient(circle at 72% 16%, hsl(45 10% 55% / 0.12), transparent 28%), linear-gradient(145deg, hsl(0 0% 3%), hsl(45 5% 9%));
+    --theme-atmosphere: repeating-linear-gradient(105deg, transparent 0 42px, hsl(45 18% 92% / 0.035) 42px 49px, transparent 49px 73px), radial-gradient(ellipse at center, transparent 55%, hsl(0 0% 0% / 0.24) 100%);
   }
 
   /* ── Romance (Cream & Rose-Gold) ── */
   .theme-romance {
-    --background: 340 18% 8%;
-    --foreground: 345 28% 92%;
-    --card: 340 16% 12%;
-    --card-foreground: 345 28% 92%;
-    --popover: 340 18% 8%;
-    --popover-foreground: 345 28% 92%;
-    --primary: 345 28% 92%;
-    --primary-foreground: 340 18% 8%;
-    --secondary: 340 14% 17%;
-    --secondary-foreground: 345 28% 92%;
-    --muted: 340 14% 17%;
-    --muted-foreground: 340 16% 56%;
-    --accent: 340 16% 22%;
-    --accent-foreground: 345 28% 92%;
+    --background: 330 20% 8%;
+    --foreground: 34 30% 92%;
+    --card: 332 18% 13%;
+    --card-foreground: 34 30% 92%;
+    --popover: 330 20% 8%;
+    --popover-foreground: 34 30% 92%;
+    --primary: 34 30% 92%;
+    --primary-foreground: 330 20% 8%;
+    --secondary: 333 17% 18%;
+    --secondary-foreground: 34 30% 92%;
+    --muted: 334 15% 18%;
+    --muted-foreground: 338 18% 67%;
+    --accent: 340 25% 22%;
+    --accent-foreground: 34 30% 92%;
     --destructive: 0 75% 40%;
     --destructive-foreground: 345 28% 92%;
-    --border: 340 22% 24%;
-    --input: 340 22% 24%;
-    --ring: 340 60% 62%;
-    --radius: 1rem;
+    --border: 338 25% 27%;
+    --input: 338 25% 27%;
+    --ring: 344 55% 67%;
+    --radius: 0.75rem;
     --font-body: Georgia, 'Palatino Linotype', 'Times New Roman', serif;
-    --font-heading: Georgia, 'Palatino Linotype', 'Times New Roman', serif;
-    --leaflet-bg: 340, 18%, 5%;
-    --leaflet-card: 340, 16%, 20%;
-    --leaflet-border: 340, 22%, 24%;
-    --leaflet-fg: 345, 28%, 92%;
-    --leaflet-muted: 340, 16%, 52%;
-    --tl-bg:             hsl(340, 18%, 7%);
-    --tl-border:         hsl(340, 35%, 28%);
-    --tl-accent:         hsl(340, 60%, 62%);
-    --tl-glow:           rgba(220, 100, 140, 0.62);
-    --tl-text:           hsl(345, 28%, 92%);
-    --tl-text-muted:     hsl(340, 16%, 53%);
-    --tl-callout-bg:     hsl(340, 18%, 10%);
-    --tl-callout-shadow: 0 -6px 32px rgba(200,80,120,0.18), 0 0 0 1px hsl(340,35%,28%);
+    --font-heading: Baskerville, 'Palatino Linotype', Georgia, serif;
+    --leaflet-bg: 330, 20%, 5%;
+    --leaflet-card: 332, 18%, 20%;
+    --leaflet-border: 338, 25%, 29%;
+    --leaflet-fg: 34, 30%, 92%;
+    --leaflet-muted: 338, 18%, 67%;
+    --tl-bg:             hsl(330, 21%, 7%);
+    --tl-border:         hsl(340, 32%, 30%);
+    --tl-accent:         hsl(344, 55%, 67%);
+    --tl-glow:           rgba(222, 130, 155, 0.58);
+    --tl-text:           hsl(34, 30%, 92%);
+    --tl-text-muted:     hsl(338, 17%, 66%);
+    --tl-callout-bg:     hsl(332, 19%, 11%);
+    --tl-callout-shadow: 0 -8px 36px rgba(180,70,110,0.2), 0 0 0 1px hsl(340,32%,30%);
     --tl-backdrop:       blur(8px) saturate(140%);
+    --canvas: 330 24% 5%;
+    --theme-backdrop: radial-gradient(circle at 20% 12%, hsl(345 55% 56% / 0.16), transparent 30%), radial-gradient(circle at 82% 82%, hsl(35 55% 56% / 0.1), transparent 34%), linear-gradient(145deg, hsl(330 24% 6%), hsl(342 20% 12%));
+    --theme-atmosphere: radial-gradient(ellipse at 24% 16%, hsl(345 58% 68% / 0.08), transparent 46%), repeating-radial-gradient(circle at 80% 10%, transparent 0 28px, hsl(35 38% 80% / 0.018) 29px 30px);
+  }
+
+  .theme-fantasy,
+  .theme-scifi,
+  .theme-cyberpunk,
+  .theme-horror,
+  .theme-western,
+  .theme-action,
+  .theme-noir,
+  .theme-romance {
+    --app-image: none;
   }
 
   * {
@@ -387,8 +426,9 @@
   }
 
   html {
-    background-color: #1a2535;
-    background-image: url('/background.png');
+    background-color: hsl(var(--canvas));
+    background-image: var(--theme-backdrop), var(--app-image);
+    background-blend-mode: normal, soft-light;
     background-size: cover;
     background-position: center center;
     background-repeat: no-repeat;
@@ -397,10 +437,31 @@
 
   body {
     margin: 0;
-    background-color: hsl(var(--background) / 0.82);
+    background-color: hsl(var(--background) / 0.92);
     color: hsl(var(--foreground));
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
+    transition: background-color 180ms ease, color 180ms ease;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: var(--theme-atmosphere);
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-heading);
+  }
+
+  ::selection {
+    background: hsl(var(--ring) / 0.3);
+    color: hsl(var(--foreground));
   }
 
   #root {
@@ -439,6 +500,22 @@
 .leaflet-control-zoom-in,
 .leaflet-control-zoom-out {
   color: hsl(var(--leaflet-fg)) !important;
+}
+
+/* The character film strip occupies the canvas's bottom edge, where the zoom
+   control now lives. Lift Leaflet's bottom controls above it while it's open. */
+[data-film-strip] .leaflet-bottom {
+  margin-bottom: 3.25rem;
+}
+
+/* Leaflet's default disabled state is a light grey that reads as a broken,
+   empty button on a dark map — most visible at min zoom, where zoom-out is
+   always disabled. */
+.leaflet-bar a.leaflet-disabled,
+.leaflet-bar a.leaflet-disabled:hover {
+  background-color: hsl(var(--leaflet-card));
+  color: hsl(var(--leaflet-muted)) !important;
+  opacity: 0.45;
 }
 
 .movement-distance-tooltip {
@@ -500,13 +577,13 @@
 
 /* ── Cyberpunk neon glow accents ── */
 .theme-cyberpunk .leaflet-popup-content-wrapper {
-  box-shadow: 0 0 12px hsl(300, 100%, 40%), 0 4px 16px rgba(0,0,0,0.8);
+  box-shadow: 0 0 14px hsl(304 88% 50% / 0.55), 0 4px 18px rgba(0,0,0,0.82);
 }
 
 /* ── Action orange border glow ── */
 .theme-action .leaflet-popup-content-wrapper {
-  box-shadow: 0 0 8px rgba(255,120,0,0.35), 0 4px 16px rgba(0,0,0,0.8);
-  border-color: hsl(24, 100%, 40%);
+  box-shadow: 0 0 8px hsl(24 95% 57% / 0.34), 0 4px 16px rgba(0,0,0,0.8);
+  border-color: hsl(24 82% 43%);
 }
 
 /* ── Noir dramatic shadow ── */
@@ -516,61 +593,49 @@
 
 /* ── Romance rose glow ── */
 .theme-romance .leaflet-popup-content-wrapper {
-  box-shadow: 0 0 12px rgba(220,80,120,0.22), 0 4px 16px rgba(0,0,0,0.6);
+  box-shadow: 0 0 14px hsl(344 55% 67% / 0.2), 0 6px 20px rgba(0,0,0,0.62);
+}
+
+.theme-fantasy h1,
+.theme-fantasy h2,
+.theme-fantasy h3 {
+  letter-spacing: 0.025em;
+  text-shadow: 0 1px 12px hsl(43 70% 58% / 0.12);
+}
+
+.theme-scifi h1,
+.theme-scifi h2,
+.theme-scifi h3 {
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.theme-cyberpunk h1,
+.theme-cyberpunk h2,
+.theme-cyberpunk h3 {
+  letter-spacing: 0.035em;
+  text-shadow: 1px 0 hsl(304 90% 64% / 0.36), -1px 0 hsl(72 86% 66% / 0.18);
+}
+
+.theme-horror h1,
+.theme-horror h2,
+.theme-horror h3 {
+  font-weight: 600;
+  letter-spacing: 0.045em;
+}
+
+.theme-western h1,
+.theme-western h2,
+.theme-western h3 {
+  font-weight: 700;
+  letter-spacing: 0.045em;
 }
 
 /* ── Sci-Fi scan line texture ── */
-.theme-scifi body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 255, 255, 0.015) 2px,
-    rgba(0, 255, 255, 0.015) 4px
-  );
-  pointer-events: none;
-  z-index: 9999;
-}
-
 /* ── Action diagonal crosshatch texture ── */
-.theme-action body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(
-    -45deg,
-    transparent,
-    transparent 4px,
-    rgba(255, 120, 0, 0.016) 4px,
-    rgba(255, 120, 0, 0.016) 5px
-  );
-  pointer-events: none;
-  z-index: 9999;
-}
-
 /* ── Noir vignette ── */
-.theme-noir body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(ellipse at center, transparent 52%, rgba(0,0,0,0.68) 100%);
-  pointer-events: none;
-  z-index: 9999;
-}
-
 /* ── Romance soft rose glow ── */
-.theme-romance body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(ellipse at 25% 15%, rgba(220,80,120,0.07) 0%, transparent 65%);
-  pointer-events: none;
-  z-index: 9999;
-}
-
 /* ── Action: sharp italic headers ── */
 .theme-action h1,
 .theme-action h2,
@@ -596,6 +661,18 @@
   letter-spacing: 0.03em;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  body {
+    transition: none;
+  }
+
+  .tl-dot-active,
+  .theme-cyberpunk .tl-dot-active,
+  .theme-action .tl-dot-active {
+    animation: none;
+  }
+}
+
 /* ── Mobile nav drawer animations (Tailwind v4 has no animate plugin here) ── */
 @keyframes pw-fade-in {
   from { opacity: 0; }
@@ -607,6 +684,16 @@
 }
 .pw-anim-fade-in { animation: pw-fade-in 0.15s ease-out; }
 .pw-anim-slide-in-left { animation: pw-slide-in-left 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* ── Desktop nav rail: width reserved for the collapsed/pinned left rail. The
+   rail itself is hidden below `lg`, so the reserved width is 0 on mobile (the
+   hamburger drawer is used there). Descendants — the main content column and the
+   fixed chapter-timeline bar — offset by this variable. ── */
+:root { --pw-nav-w: 0px; }
+@media (min-width: 1024px) {
+  [data-nav-rail="collapsed"] { --pw-nav-w: 3.25rem; }
+  [data-nav-rail="pinned"]    { --pw-nav-w: 13rem; }
+}
 
 /* ── Touch devices have no hover, so controls revealed only on :hover would be
    invisible and unreachable. On any coarse-pointer / hover-less device, force

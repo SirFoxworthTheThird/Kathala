@@ -6,6 +6,7 @@ import {
   recomputeSnapshotSortKeysForEvent,
   recomputeSnapshotSortKeysForChapter,
 } from '@/lib/sortKey'
+import { reorderInsert, sortOrderDiff } from '@/lib/corkboard'
 
 // ─── Timelines ─────────────────────────────────────────────────────────────
 
@@ -24,6 +25,7 @@ export function useTimeline(id: string | null) {
 export async function createTimeline(data: Pick<Timeline, 'worldId' | 'name' | 'description' | 'color'>): Promise<Timeline> {
   const timeline: Timeline = {
     id: generateId(),
+    dayOffset: 0,
     ...data,
     createdAt: Date.now(),
   }
@@ -202,6 +204,7 @@ export async function createEvent(
     isFlashback: false,
     mentionedCharacterIds: [],
     threadIds: [],
+    motifIds: [],
     ...data,
     createdAt: now,
     updatedAt: now,
@@ -222,9 +225,13 @@ export async function deleteEvent(id: string) {
   await db.transaction('rw', [
     db.events, db.characterSnapshots, db.itemPlacements,
     db.locationSnapshots, db.itemSnapshots, db.characterMovements,
-    db.relationshipSnapshots, db.mapRegionSnapshots, db.sceneTexts,
+    db.relationshipSnapshots, db.mapRegionSnapshots, db.sceneTexts, db.sceneRevisions,
+    db.characterGoals,
   ], async () => {
     await db.events.delete(id)
+    // Goals scoped to this event lose that bound rather than dangling.
+    await db.characterGoals.where('startEventId').equals(id).modify({ startEventId: null })
+    await db.characterGoals.where('endEventId').equals(id).modify({ endEventId: null })
     await db.characterSnapshots.where('eventId').equals(id).delete()
     await db.itemPlacements.where('eventId').equals(id).delete()
     await db.locationSnapshots.where('eventId').equals(id).delete()
@@ -233,6 +240,7 @@ export async function deleteEvent(id: string) {
     await db.relationshipSnapshots.where('eventId').equals(id).delete()
     await db.mapRegionSnapshots.where('eventId').equals(id).delete()
     await db.sceneTexts.where('eventId').equals(id).delete()
+    await db.sceneRevisions.where('eventId').equals(id).delete()
   })
 }
 
@@ -241,7 +249,7 @@ export async function bulkDeleteEvents(ids: string[]): Promise<void> {
   await db.transaction('rw', [
     db.events, db.characterSnapshots, db.itemPlacements,
     db.locationSnapshots, db.itemSnapshots, db.characterMovements,
-    db.relationshipSnapshots, db.mapRegionSnapshots, db.sceneTexts,
+    db.relationshipSnapshots, db.mapRegionSnapshots, db.sceneTexts, db.sceneRevisions,
   ], async () => {
     for (const id of ids) {
       await db.events.delete(id)
@@ -253,6 +261,7 @@ export async function bulkDeleteEvents(ids: string[]): Promise<void> {
       await db.relationshipSnapshots.where('eventId').equals(id).delete()
       await db.mapRegionSnapshots.where('eventId').equals(id).delete()
       await db.sceneTexts.where('eventId').equals(id).delete()
+      await db.sceneRevisions.where('eventId').equals(id).delete()
     }
   })
 }
@@ -278,6 +287,67 @@ export async function bulkMoveEvents(ids: string[], targetChapterId: string): Pr
   for (const id of ids) {
     await recomputeSnapshotSortKeysForEvent(id)
   }
+}
+
+/**
+ * Move an event to a position on the corkboard: into `toChapterId` at
+ * `toIndex`, renumbering that chapter's cards (and the source chapter's, when
+ * the move crosses chapters). Handles the within-chapter reorder too. Only the
+ * rows whose sortOrder actually changes are written.
+ */
+export async function moveEventOnBoard(
+  eventId: string,
+  toChapterId: string,
+  toIndex: number,
+): Promise<void> {
+  const [moved, targetChapter] = await Promise.all([
+    db.events.get(eventId),
+    db.chapters.get(toChapterId),
+  ])
+  if (!moved || !targetChapter) return
+
+  const fromChapterId = moved.chapterId
+  const crossesChapter = fromChapterId !== toChapterId
+
+  await db.transaction('rw', [db.events], async () => {
+    // Target column: current order (moved card excluded when arriving from
+    // elsewhere), then insert the moved card at the requested index.
+    const targetEvents = (await db.events.where('chapterId').equals(toChapterId).toArray())
+      .filter((e) => e.id !== eventId)
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+    const targetIds = reorderInsert(targetEvents.map((e) => e.id), eventId, toIndex)
+
+    // The moved card changes chapter/timeline (a no-op update when it doesn't).
+    if (crossesChapter) {
+      await db.events.update(eventId, {
+        chapterId: toChapterId,
+        timelineId: targetChapter.timelineId,
+        updatedAt: Date.now(),
+      })
+    }
+
+    // Renumber the target column, writing only what changed. The moved card's
+    // baseline sortOrder is unknown in the new column, so force-write it.
+    const targetCurrent = new Map(targetEvents.map((e) => [e.id, e.sortOrder]))
+    for (const { id, sortOrder } of sortOrderDiff(targetIds, targetCurrent)) {
+      await db.events.update(id, { sortOrder, updatedAt: Date.now() })
+    }
+
+    // Close the gap left in the source column.
+    if (crossesChapter) {
+      const sourceEvents = (await db.events.where('chapterId').equals(fromChapterId).toArray())
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+      const sourceCurrent = new Map(sourceEvents.map((e) => [e.id, e.sortOrder]))
+      for (const { id, sortOrder } of sortOrderDiff(sourceEvents.map((e) => e.id), sourceCurrent)) {
+        await db.events.update(id, { sortOrder, updatedAt: Date.now() })
+      }
+    }
+  })
+
+  // Renumbering shifts snapshot sortKeys for every card whose sortOrder moved,
+  // and a cross-chapter move changes the moved card's chapter number too.
+  await recomputeSnapshotSortKeysForChapter(toChapterId)
+  if (crossesChapter) await recomputeSnapshotSortKeysForChapter(fromChapterId)
 }
 
 export async function bulkAddTag(ids: string[], tag: string): Promise<void> {

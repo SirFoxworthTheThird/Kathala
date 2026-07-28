@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { FileText, Download, BookOpen, PencilLine, Target } from 'lucide-react'
+import { FileText, Download, BookOpen, PencilLine, Target, Replace } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,7 @@ import { useSceneTextsByEvent } from '@/db/hooks/useManuscript'
 import { buildManuscript } from '@/lib/manuscriptCompile'
 import { cn } from '@/lib/utils'
 import { ExportManuscriptDialog } from './ExportManuscriptDialog'
+import { FindReplaceDialog } from './FindReplaceDialog'
 
 const nf = new Intl.NumberFormat()
 
@@ -77,6 +78,7 @@ export default function ManuscriptView() {
 
   const [mode, setMode] = useState<'draft' | 'reading'>('draft')
   const [exportOpen, setExportOpen] = useState(false)
+  const [findOpen, setFindOpen] = useState(false)
 
   const goalKey = `plotweave-ms-goal-${worldId}`
   const [goal, setGoal] = useState<number>(() => {
@@ -101,9 +103,14 @@ export default function ManuscriptView() {
         count={manuscript.totalWords}
         description={`${nf.format(manuscript.writtenScenes)} of ${nf.format(manuscript.totalScenes)} scenes written · ${nf.format(manuscript.totalWords)} words`}
         actions={
-          <Button size="sm" onClick={() => setExportOpen(true)} disabled={!hasProse}>
-            <Download className="h-4 w-4" /> Export
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setFindOpen(true)} disabled={!hasProse}>
+              <Replace className="h-4 w-4" /> Find &amp; replace
+            </Button>
+            <Button size="sm" onClick={() => setExportOpen(true)} disabled={!hasProse}>
+              <Download className="h-4 w-4" /> Export
+            </Button>
+          </div>
         }
       >
         {/* Toolbar row: timeline picker, reading/draft toggle, word goal */}
@@ -237,6 +244,7 @@ export default function ManuscriptView() {
         manuscript={manuscript}
         title={ordered.find((t) => t.id === activeTimelineId)?.name ?? 'Manuscript'}
       />
+      {worldId && <FindReplaceDialog open={findOpen} onOpenChange={setFindOpen} worldId={worldId} />}
     </div>
   )
 }

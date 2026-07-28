@@ -183,6 +183,9 @@ Findings from the UX audit (April 2026).
 - [x] **All `confirm()` dialogs replaced** — 12 native browser confirms replaced with `ConfirmDialog` component
 - [x] **WorldSelector import hint** — hint text only shown while importing, not always
 - [x] **Travel modes moved to Settings** — extracted from the Dashboard into a dedicated `WorldSettingsView` at `/settings`; Settings nav item added to TopBar
+- [x] **Multi-timeline bottom bar scope selector** — the two-stacked-track bar is now reserved for frame narratives; every other multi-timeline world gets a single-height bar with a scope picker (view one timeline, or merge all in chapter / chronological order). Pure `buildCombinedSequence` / `groupChapterRuns` in `src/lib/combinedTimeline.ts` (unit-tested), a shared `ScrubberShell` + reused `ChapterSegment`, and a `CombinedTrack`; `store.barScope` drives it and `useBarHeight` reserves the tall height only for frame narratives. Playwright bar e2e.
+
+- [x] **Collapsible left nav rail** — with 14 destinations the centered top-bar icon row no longer scaled. Moved navigation to a left rail (`NavRail`): icon-only by default, expands to labels on hover (overlaying content, not reflowing it) or when pinned (`navPinned`, persisted). Core/More grouping. Content + the fixed chapter-timeline bar offset by a `--pw-nav-w` CSS variable (0 below `lg`, where the existing hamburger drawer is used). Top bar keeps world name, time cursor, search, and tools.
 
 ---
 
@@ -272,7 +275,7 @@ Full audit findings in `docs/features/ux-audit.md`.
 ### High
 
 - [x] **`aria-label` on all icon-only buttons** — added `aria-label` to all icon-only buttons in TopBar (brand, nav items, search, Writer's Brief, Continuity, Help), CharacterDetailView (back, delete), and ContinuityChecker (suppress, navigate, close).
-- [ ] **`aria-current="page"` on active nav item** — React Router v6 NavLink sets `aria-current="page"` automatically; verified it is handled by the framework.
+- [x] **`aria-current="page"` on active nav item** — React Router v6 NavLink sets `aria-current="page"` automatically; verified it is handled by the framework.
 - [x] **Character detail back button** — replaced `navigate(-1)` with `navigate(\`/worlds/${worldId}/characters\`)`.
 - [x] **Portrait upload label accessible name** — added `aria-label="Upload portrait image"` to the upload label.
 - [x] **Timeline multi-timeline selector** — added `role="tablist"` / `role="tab"` / `aria-selected` / `role="tabpanel"` to the multi-timeline tab structure.
@@ -313,11 +316,11 @@ Track which character's point-of-view each event/scene is told from. Useful for 
 
 Tag events as belonging to named narrative threads (A-plot, romance subplot, mystery, etc.) and filter the timeline to a single thread.
 
-- [ ] **Data model** — new `PlotThread` entity (`id, worldId, name, color, description`); events gain `threadIds: string[]` (many-to-many); DB migration.
-- [ ] **Plot Threads management** — new `Threads` nav item (or section inside Timeline); CRUD for threads with colour picker; events can be tagged to multiple threads.
-- [ ] **Timeline filter** — thread filter pill row above the chapter list; selecting a thread dims events not in that thread (or hides them); "All" resets.
-- [ ] **Arc View thread lane** — optional row per thread showing which chapters/events contain thread activity.
-- [ ] **Continuity checks** — warn on threads with a long gap (configurable N chapters with no events); warn on threads that start but never resolve (no events after chapter N).
+- [x] **Data model** — `PlotThread` entity (`id, worldId, name, color, description`); events carry `threadIds: string[]`; CRUD hooks in `usePlotThreads`; export/import round-trip.
+- [x] **Plot Threads management** — the dashboard's **Plot Threads** panel (`ThreadCadence` → shared `CadenceManager`): inline create/delete with auto-assigned colours, plus a per-chapter cadence strip. Events are tagged from the event card.
+- [x] **Timeline filter** — thread filter pill row above the chapter list (Narrative view); selecting a thread hides chapters/events not on it and auto-expands the matches; "All threads" resets. Pure `eventMatchesThread` / `chaptersWithThread` in `src/lib/plotThreads.ts` (unit-tested) + a Playwright filter e2e.
+- [x] **Arc View thread lane** — a **Threads** row type in the Arc grid: one lane per thread across chapters/events, each cell naming the scene (or counting the beats) that carries it; the row-header label follows the row type.
+- [x] **Continuity checks** — pure `src/lib/threadContinuity.ts` (`computeThreadIssues`: dangling / dormant / unstarted, configurable thresholds) surfaced as a **Plot threads** category in the Continuity Checker, navigable and suppressible. Unit-tested + e2e.
 
 ---
 
@@ -336,22 +339,22 @@ Track the writing-progress state of each event so the writer knows what's drafte
 
 Structured inner-life tracking alongside the existing external-state snapshots.
 
-- [ ] **Data model** — new `CharacterGoal` entity (`id, worldId, characterId, type: 'want'|'need'|'fear'|'flaw', text, startEventId, endEventId`); purely additive DB table.
-- [ ] **Character panel tab** — "Goals" tab in `CharacterDetailView` (alongside Overview, State, History, Relationships, Factions); CRUD for goals with type selector, free-text field, and optional time-scoping.
-- [ ] **Arc View overlay** — goals listed in the row header tooltip or a collapsible sub-row per character.
-- [ ] **Writer's Brief** — active goals (those with no `endEventId` or ending after the current event) shown in the character summary card.
+- [x] **Data model** — `CharacterGoal` entity (`type: want|need|fear|flaw`, `text`, optional `startEventId`/`endEventId`); DB v51, additive table; CRUD hooks in `useCharacterGoals`; cascades on character/world delete and reference-clearing on event delete; export/import round-trip.
+- [x] **Character panel tab** — a **Goals** tab: colour-coded rows per type, inline text editing, From/until event pickers for time scoping, and goals not held at the cursor dimmed and marked "inactive here".
+- [x] **Arc View overlay** — a **Goals** toggle prints each character's active goals under their name in the row header; the name also carries them as a tooltip.
+- [x] **Writer's Brief** — each present character's active goals listed in their summary card, beneath location and inventory.
 - [ ] **Continuity check** — warn when a character acts in a way that directly contradicts a declared fear or goal (requires tagging events with character motivations — lower priority, may stay manual).
 
 ---
 
-### Clue & Secret Tracking
+### Clue & Secret Tracking — DONE (shipped as **Knowledge**)
 
-For mysteries and complex plots: track information objects, when they're introduced, and which characters know them.
+For mysteries and complex plots: track information objects, when they're introduced, and which characters know them. Built as the Knowledge feature rather than a separate "Clues" entity.
 
-- [ ] **Data model** — new `Clue` entity (`id, worldId, name, description, plantedEventId, revealedEventId | null`); new `ClueKnowledge` entity (`id, worldId, clueId, characterId, learnedEventId`) recording when each character learns each clue.
-- [ ] **Clues view** — new `Clues` nav item; list/grid of clues with planted/revealed events; per-clue panel showing which characters know it and when they learned it.
-- [ ] **Character panel** — "Knows" section listing clues the character has knowledge of at the active event.
-- [ ] **Continuity check** — warn when a character acts on a clue (tagged on an event) before their `learnedEventId` for that clue.
+- [x] **Data model** — `KnowledgeFact` (title, description, tags, `readerLearnsAtEventId`, `originEventId` — the event at which the fact becomes true in-world) and `KnowledgeReveal` (fact × character × event, i.e. "learned at").
+- [x] **Knowledge view** — `Knowledge` nav item with per-fact panels showing who knows it and when they learned it, plus an AI generate dialog.
+- [x] **Character panel** — knowledge surfaced per character at the active event.
+- [x] **Continuity checks** — anachronistic knowledge (knowing a fact before its `originEventId`), a dead character learning a fact, and reader-knowledge leaks (prose referencing a fact before its reveal).
 
 ---
 
@@ -363,3 +366,202 @@ Track how a character looks over time — injuries, aging, haircuts, distinctive
 - [ ] **Character State tab** — appearance field shown as an editable textarea in the snapshot editor.
 - [ ] **History tab** — appearance changes surfaced in the history list (only shown when it differs from the previous snapshot).
 - [ ] **Continuity check** — warn when appearance is never recorded for a character who has snapshots (low priority nudge, not an error).
+
+---
+
+## Product Feature Ideas — 2026-07 review
+
+A whole-app review turned up these candidates, ranked by fit + value. The first
+two lean on PlotWeave's differentiators (scaled maps + the structured
+per-event snapshot model); the rest are broadly useful writer tooling. Nothing
+here is started yet.
+
+### 1. Travel-time feasibility (maps × timeline × continuity)  — *recommended flagship*
+
+Tie together the scaled map, routes, travel modes, and per-chapter elapsed days.
+**Most of this already existed** (the continuity check was built inline in
+`ContinuityChecker`). Hardened + finished in the 2026-07 pass.
+
+- [x] **Travel mode speed** — `TravelMode.speedPerDay` (world units/day) already exists and is editable in World settings.
+- [x] **Estimator (pure, `src/lib/travelTime.ts`)** — extracted `worldUnits` / `effectiveSpeed` / `daysNeeded` / `assessTravel` (+ `ROUTE_SPEED_MULTIPLIERS`) from the inline checker math; unit-tested.
+- [x] **Continuity check** — "can't reach X in time" (map distance ÷ mode speed × route multiplier vs elapsed in-world days) plus a "travels through a destroyed region" check; same-layer moves only. Now uses the pure estimator.
+- [x] **One-click fix** — the finding offers "Allow N more days", bumping the event's `travelDays` so the journey becomes feasible.
+- [x] **Tests** — `travelTime` unit tests.
+- [ ] **Proactive suggest** — a per-event "suggest travelDays" affordance in the editor (before any violation) is still not built; the one-click fix covers the reactive case.
+- [ ] **Cross-map/floor journeys** — currently skipped (no shared metric); could estimate via the building pin + inner distance later.
+
+### 2. In-world calendar & character ages — DONE
+
+An in-world day is tracked but there's no calendar or ages.
+
+- [x] **Calendar config** — per-world `months[]` (name + length), start year, era suffix; pure day-number ⇄ date math in `src/lib/calendar.ts`, unit-tested. Editor in World settings.
+- [x] **Character birth date** — optional in-world `birthDate` on `Character` (date picker on the Overview tab); age computed at the active event (counts birthdays passed).
+- [x] **Surfacing** — the Writer's Brief shows the active event's in-world date (day number when no calendar) and each present character's age.
+- [x] **Round-trip** — calendar + birth dates survive export/import (with backfill).
+- [x] **Calendar view** — built later as item #9 below (`CalendarView`, month grids + drag-to-reschedule).
+- [ ] **Continuity (optional)** — season/date mismatches and age-inappropriate actions (likely manual-tagged). Not built.
+
+### 3. Compile to DOCX / EPUB  — *highest-demand practical win* — DONE
+
+Export is MD/HTML/TXT today; writers need a submission/reading artifact.
+
+- [x] **Store-only ZIP writer** — dependency-free `src/lib/zip.ts` (CRC32 + local/central headers), the container for both formats; unit-tested.
+- [x] **DOCX compile** — `compileDocx` builds a valid OOXML `.docx` (title page + optional author, per-chapter page-break headings, scene separators); browser-side, no external host.
+- [x] **EPUB compile** — `compileEpub` builds a valid EPUB 3 (mimetype-first zip, container, OPF metadata, nav TOC, one XHTML per chapter, CSS).
+- [x] **Export dialog** — "Word" and "EPUB" formats added; optional Author field; binary formats download (no copy/preview).
+- [x] **Tests** — zip signatures/CRC + docx/epub structure (parts present, prose included, only-written filtering, mimetype first).
+- [ ] **Scope by scene status** — currently filters by written/unwritten; a `final`/`revised`-only filter is still open.
+
+### 4. Writing progress dashboard — DONE
+
+Per-chapter word goals and a pacing curve exist, but no progress-over-time.
+
+- [x] **Daily word log** — `writingLogs` table (DB v46), one row per world × local day; `setSceneText` logs the net word delta on every save. Survives export/import.
+- [x] **Book-level target** — `World.wordTarget`, editable under *Manuscript* in World settings.
+- [x] **Dashboard tile** — `WritingProgress` panel: total words, words today, day streak, burndown vs the book target, and a 14-day output strip.
+- [x] **Tests** — pure `src/lib/writingProgress.ts` (streak/series/summary) unit tests + logging & round-trip integration tests.
+
+### 5. Corkboard / scene outliner — DONE
+
+- [x] **Card view** — `CorkboardView` (route `corkboard`, Extended nav item): one column per chapter, one card per event showing title, synopsis, POV and a status pill. HTML5 drag-and-drop reorders cards within a chapter and moves them across chapters; status editable inline; clicking a card opens the scene with the time cursor set.
+- [x] **Reorder engine** — pure `src/lib/corkboard.ts` (`reorderInsert` / `assignSortOrders` / `sortOrderDiff`) + `moveEventOnBoard` in `useTimeline` (renumbers both columns, recomputes snapshot sortKeys).
+- [x] **Tests** — pure reorder units, a `moveEventOnBoard` integration test (within/cross chapter + sortKey recompute), and a Playwright drag e2e.
+
+### 6. Themes & motifs tracker — DONE
+
+Mirrors the existing Plot Threads pattern, for symbols/themes rather than plot.
+
+- [x] **Data model** — `Motif` entity (DB v47) like `PlotThread`; `WorldEvent.motifIds` tags events; CRUD hooks + export/import round-trip + delete cleanup.
+- [x] **Distribution strip** — the cadence engine was generalised into `src/lib/tagCadence.ts` (both plot threads and motifs delegate to it) and the dashboard strip into a shared `CadenceManager`; a "Motifs & Themes" dashboard panel shows each motif's per-chapter presence with fade-out/vanish warnings. Motifs are tagged on the event card next to plot threads.
+- [x] **Tests** — generic `tagCadence` units, motif CRUD/delete-cleanup/round-trip integration, and the existing plot-thread tests still pass against the refactor.
+
+---
+
+## Product Feature Ideas — 2026-07 whole-app review (round 2)
+
+With the first 2026-07 batch (#1–#6) shipped, a second whole-app pass turned up
+these candidates, ranked by fit × value. Nothing here is started yet.
+
+### Data-hygiene fix — DONE
+
+- [x] **`deleteWorld` orphans data** — `deleteWorld` now also deletes the world's `sceneTexts`, `plotThreads`, `continuitySuppressions` (and `sceneRevisions`); `deleteEvent` / `bulkDeleteEvents` also drop an event's `sceneRevisions`.
+
+### 7. Scene revision history — DONE
+
+Writing progress tracks *how many* words change per day, but not *what* the prose was — a local-first writing tool must not lose a good paragraph.
+
+- [x] **Version store** — `sceneRevisions` table (DB v48). `setSceneText` snapshots the outgoing prose via `captureSceneRevision` — time-coalesced (bursts of autosaves → one snapshot, `REVISION_COALESCE_MS`), exact-duplicate-skipped, pruned to `MAX_SCENE_REVISIONS` (20) per scene.
+- [x] **History UI** — a "History (N)" link above the scene draft opens `SceneHistoryDialog`: past versions with timestamp + word count, **diff against current** (word-level, `src/lib/textDiff.ts`) or plain text, per-version delete, and **restore** (force-captures the current prose first — never destructive).
+- [x] **Round-trip** — revisions travel with the world through export/import.
+- [x] **Tests** — pure `textDiff` units; `captureSceneRevision` coalesce/dedupe/prune, `setSceneText` capture, `restoreSceneRevision`, delete-cleanup and export round-trip integration; a Playwright restore e2e.
+
+### 8. Manuscript-wide find & replace — DONE
+
+Search today is entity-only (Ctrl+K). No way to rename a term or fix a tic across all scene prose.
+
+- [x] **Find/replace panel** — `FindReplaceDialog` (from the Manuscript header): searches all `sceneTexts`, per-scene preview with match counts + highlighted snippet, per-scene **Replace** and global **Replace all**, case-sensitive + whole-word toggles. Pure logic in `src/lib/findReplace.ts` (escaped literal query, word boundaries, count/replace/snippet). Changed scenes go through `setSceneText`, so each is captured as a scene revision (undoable).
+- [x] **Character-rename aware** — when the query exactly matches a character's name, offer to rename the character (name + aliases) alongside the prose replace.
+- [x] **Tests** — pure `findReplace` units (counts, boundaries, case, literal escaping, deletion, snippets) + a Playwright replace-and-rename e2e.
+
+### 9. Calendar view — DONE
+
+The calendar data landed in #2 but the visual grid was explicitly deferred.
+
+- [x] **Month grid** — `CalendarView` (route `calendar`, Extended nav item): pure `src/lib/calendarView.ts` (`buildCalendarMonths`) turns the in-world clock (`computeInWorldDays`) + `dayNumberToDate` into month grids; events are chips on their day, flashbacks marked, contiguous months rendered (falls back to months-with-events for very long spans). Empty state when no calendar is set.
+- [x] **Reschedule** — drag a chip to another day → `updateEvent({ inWorldTime: dateToDayNumber(...) })`, pinning the event's date.
+- [x] **Tests** — `buildCalendarMonths` placement/derived-clock/pin/grouping/span units + a Playwright drag-reschedule e2e.
+
+### 10. Writing goals & projection — DONE
+
+Extend the writing-progress panel with a target and a projected finish.
+
+- [x] **Target date** — per-world `targetDate` deadline (DB v49; settings input next to the word target); `writingForecast` computes "N words/day to finish" from the remaining gap and days left.
+- [x] **Projection** — projected finish date from recent pace (`recentPace`, trailing 7-day average of `writingLogs`), with an on-track / behind-pace badge (`daysBetween` + `writingForecast` in `src/lib/writingProgress.ts`).
+- [x] **Session goal** — per-day word goal (localStorage per world) with an SVG progress ring in the Writing Progress panel.
+- [x] **Tests** — `daysBetween`, `recentPace`, and `writingForecast` (words/day needed, projection, on-track, edge cases) unit-tested; deadline round-trips through export/import.
+
+### 11. Structure / beat-sheet board — DONE
+
+Events already carry `structureBeat`, but there's no board mapping them to a template.
+
+- [x] **Templates** — Three-Act (7), Save the Cat (15), Hero's Journey (12) beat sets in `storyBeats.ts` (`BEAT_TEMPLATES`, namespaced ids; `beatById`/`beatLabel` resolve across all). Per-world template choice persisted in localStorage.
+- [x] **Board** — `StructureView` (route `structure`, Extended nav item): each beat is a slot (in order, act-tinted) showing its tagged scene or an assign picker (sets `structureBeat`); an X/N-placed counter surfaces gaps; filled beats link to the event; out-of-order beats flagged.
+- [x] **Mapping engine** — pure `buildBeatSheet` in `src/lib/structureBoard.ts` (beat to earliest event, coverage, out-of-order detection).
+- [x] **Tests** — `buildBeatSheet` mapping / gaps / out-of-order / earliest-of-duplicates / larger-template units + a Playwright assign-and-switch-template e2e.
+
+### 12. Focus / distraction-free drafting mode — DONE
+
+- [x] **Full-screen editor** — `FocusMode` (opened from **Focus** above the scene draft): portal overlay that hides all chrome, centers the prose in a column, keeps the caret line centered (typewriter scrolling via a mirror measurement), shows live word + "this session" counts, and fills an ambient bar toward the daily session goal. Autosaves through `setSceneText` (revisions + writing log still fire); Esc exits.
+- [x] **Tests** — pure `focusSession` (`sessionWordDelta`, `focusStats`, `sessionGoalPercent`) units + a Playwright open/type/session-count/save/exit e2e.
+
+---
+
+## Gap review — 2026-07 (round 3)
+
+A pass reconciling the roadmap against what's actually built. Two sections above
+were stale and are now corrected: **Clue & Secret Tracking** shipped as the
+**Knowledge** feature, and the **Calendar view** was built as round-2 item #9.
+What genuinely remains, ranked by value per effort:
+
+### Finish Plot Threads (infrastructure already exists)
+
+- [x] **Arc View thread lane** — shipped: a **Threads** row type in Arc View.
+- [x] **Thread continuity checks** — shipped: `computeThreadIssues` feeds a
+  **Plot threads** category in the Continuity Checker.
+
+### Test coverage
+
+- [ ] **Backfill continuity-check unit tests** — extracting `computeIssues.ts`
+  made ~15 checks directly testable but only 3 have tests. Cover the rest
+  (items before acquired / after destroyed, item hand-off, travel time + region
+  traversal, stale snapshots, faction membership gaps, hostile-faction
+  locations, cross-timeline artifacts, prose drift).
+- [ ] **Map logic coverage** — the map e2e suite is heavy and flaky under load;
+  push more of the behaviour into pure `src/lib` units.
+
+### Feature work (net new)
+
+- [x] **Character Goals & Motivations** — shipped (see the section above). The
+  optional contradiction continuity check remains unbuilt and stays manual.
+- [ ] **Physical Description Snapshots** — see the section above; smallest of the
+  remaining features (one field on `CharacterSnapshot`).
+
+### Smaller polish
+
+- [x] **Reclaim map vertical space** — shipped: the map's three stacked header
+  rows (title/tools, Show filters, first-use hints) cost ~120px of an ~820px
+  window. They now float over the canvas — identity + Show chips top-left,
+  `+ Location` / `Label` / `Measure` top-right with the set-up-once and
+  occasional commands behind a `⋯` menu — and Leaflet's zoom moved to the
+  bottom-right. Canvas grew 584px → 708px (+21%). The hints bar retired into the
+  Help panel, which already documented all three tips.
+  - Two follow-on fixes: the panels' original z-order had to be restored (the
+    zoom control, floor switcher and film strip are all built to draw above
+    them), and the controls go click-through while placing or drawing so the
+    canvas underneath stays reachable — with **Escape** added as the way out of
+    every canvas-click mode.
+  - The map name and scale then moved into the **TopBar breadcrumb**
+    (*PlotWeave / world / layer · 1 km = 2 px*), so the canvas gives up no
+    corner at all; on phones the floating chip is just the panels-drawer
+    handle. A suspected mobile limitation — an 85vw detail panel hiding the
+    film strip — was measured and does not occur: the strip draws above the
+    panels, so it stays fully visible.
+- [ ] **Proactive travel-day suggestion** — a per-event "suggest travelDays"
+  affordance before any violation (the reactive one-click fix already exists).
+- [ ] **Export scope by scene status** — a `final`/`revised`-only filter for the
+  DOCX/EPUB compile (today it filters written vs. unwritten).
+- [ ] **Calendar continuity** — season/date mismatches, age-inappropriate actions.
+- [ ] **Cross-map/floor journeys** — travel-time estimates across map layers
+  (currently skipped for lack of a shared metric).
+
+### Structural gaps (out of scope today — recorded deliberately)
+
+These follow from the local-first design rather than being oversights; listed so
+the trade-off stays visible:
+
+- [ ] **Backup / sync** — data lives in one browser's IndexedDB and backup is a
+  manual `.pwk` export; clearing site data loses work. Even without cloud sync,
+  an automatic periodic local backup (or an export reminder) would de-risk this.
+- [ ] **Global undo/redo** — only per-scene revision history exists today.
+- [ ] **Full-text prose search** — Ctrl+K covers entities and find & replace
+  covers scene text, but there's no read-only search across all prose.

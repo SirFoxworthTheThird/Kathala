@@ -35,6 +35,10 @@ import type {
   SceneText,
   PlotThread,
   ContinuitySuppression,
+  WritingLog,
+  Motif,
+  SceneRevision,
+  CharacterGoal,
 } from '@/types'
 
 class PlotWeaveDB extends Dexie {
@@ -69,9 +73,13 @@ class PlotWeaveDB extends Dexie {
   factionRelationships!: EntityTable<FactionRelationship, 'id'>
   knowledgeFacts!: EntityTable<KnowledgeFact, 'id'>
   knowledgeReveals!: EntityTable<KnowledgeReveal, 'id'>
+  characterGoals!: EntityTable<CharacterGoal, 'id'>
   sceneTexts!: EntityTable<SceneText, 'id'>
   plotThreads!: EntityTable<PlotThread, 'id'>
   continuitySuppressions!: EntityTable<ContinuitySuppression, 'id'>
+  writingLogs!: EntityTable<WritingLog, 'id'>
+  motifs!: EntityTable<Motif, 'id'>
+  sceneRevisions!: EntityTable<SceneRevision, 'id'>
 
   constructor() {
     super('PlotWeaveDB')
@@ -561,6 +569,82 @@ class PlotWeaveDB extends Dexie {
       await tx.table('chapters').toCollection().modify((c: Record<string, unknown>) => {
         if (c.wordGoal === undefined) c.wordGoal = null
       })
+    })
+
+    // v43: normalise map layers that predate the parentMapId field so a missing
+    // value reads as a top-level map (null), not an absent/undefined one. Without
+    // this, such layers fall outside the root filter and could be mistaken for
+    // orphans by the DB-health scan.
+    this.version(43).stores({}).upgrade(async (tx) => {
+      await tx.table('mapLayers').toCollection().modify((l: Record<string, unknown>) => {
+        if (l.parentMapId === undefined) l.parentMapId = null
+      })
+    })
+
+    // v44: map levels (floors). Existing layers are standalone maps.
+    this.version(44).stores({
+      mapLayers: 'id, worldId, parentMapId, levelGroupId, createdAt',
+    }).upgrade(async (tx) => {
+      await tx.table('mapLayers').toCollection().modify((l: Record<string, unknown>) => {
+        if (l.levelGroupId === undefined) l.levelGroupId = null
+        if (l.levelIndex === undefined) l.levelIndex = 0
+        if (l.levelLabel === undefined) l.levelLabel = ''
+      })
+    })
+
+    // v45: in-world calendar (per world) and character birth dates. Backfill null.
+    this.version(45).stores({}).upgrade(async (tx) => {
+      await tx.table('worlds').toCollection().modify((w: Record<string, unknown>) => {
+        if (w.calendar === undefined) w.calendar = null
+      })
+      await tx.table('characters').toCollection().modify((c: Record<string, unknown>) => {
+        if (c.birthDate === undefined) c.birthDate = null
+      })
+    })
+
+    // v46: writing-progress log (per world × day) and a book-level word target.
+    this.version(46).stores({
+      writingLogs: 'id, worldId, [worldId+date]',
+    }).upgrade(async (tx) => {
+      await tx.table('worlds').toCollection().modify((w: Record<string, unknown>) => {
+        if (w.wordTarget === undefined) w.wordTarget = null
+      })
+    })
+
+    // v47: motif / theme tracking. New table + backfill motifIds on events.
+    this.version(47).stores({
+      motifs: 'id, worldId',
+    }).upgrade(async (tx) => {
+      await tx.table('events').toCollection().modify((e: Record<string, unknown>) => {
+        if (e.motifIds === undefined) e.motifIds = []
+      })
+    })
+
+    // v48: scene revision history. New table only; existing scenes have no past
+    // versions until their next edit.
+    this.version(48).stores({
+      sceneRevisions: 'id, worldId, eventId, [eventId+createdAt]',
+    })
+
+    // v49: manuscript deadline for the writing-progress projection. Backfill null.
+    this.version(49).stores({}).upgrade(async (tx) => {
+      await tx.table('worlds').toCollection().modify((w: Record<string, unknown>) => {
+        if (w.targetDate === undefined) w.targetDate = null
+      })
+    })
+
+    // v50: per-timeline day offset so historically-shifted timelines line up in
+    // chronological merges and on the calendar. Backfill 0.
+    this.version(50).stores({}).upgrade(async (tx) => {
+      await tx.table('timelines').toCollection().modify((t: Record<string, unknown>) => {
+        if (t.dayOffset === undefined) t.dayOffset = 0
+      })
+    })
+
+    // v51: character goals & motivations (want / need / fear / flaw), optionally
+    // scoped to a stretch of the story. Purely additive — a new table only.
+    this.version(51).stores({
+      characterGoals: 'id, worldId, characterId, type, startEventId, endEventId',
     })
   }
 }
