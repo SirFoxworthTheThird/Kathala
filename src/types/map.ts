@@ -4,7 +4,8 @@ export interface MapLayer {
   parentMapId: string | null
   name: string
   description: string
-  imageId: string
+  /** Null while an image-ready placeholder map is awaiting its first upload. */
+  imageId: string | null
   imageWidth: number
   imageHeight: number
   /** Pixels per real-world unit. Null means no scale has been set. */

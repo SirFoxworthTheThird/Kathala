@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import L from 'leaflet'
 import { useParams } from 'react-router-dom'
-import { Upload, Map as MapIcon, X, Route, Sparkles, Type, Trash2, Crosshair } from 'lucide-react'
+import { Upload, Map as MapIcon, X, Route, Sparkles, Type, Trash2, Crosshair, ImageUp, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore, useActiveMapLayerId } from '@/store'
 import { useRootMapLayers, updateMapLayer, deleteMapLevel } from '@/db/hooks/useMapLayers'
@@ -450,7 +450,57 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const echoPopoverInfo   = echoPopoverMarkerId ? echoLocations.get(echoPopoverMarkerId) ?? null : null
   const echoPopoverMarker = echoPopoverMarkerId ? allMarkers.find((m) => m.id === echoPopoverMarkerId) ?? null : null
 
-  if (!layer || !imageUrl) {
+  if (!layer) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[hsl(var(--border))] border-t-[hsl(var(--ring))]" />
+      </div>
+    )
+  }
+
+  if (!layer.imageId) {
+    return (
+      <div className="flex h-full flex-col overflow-hidden">
+        <div className="flex shrink-0 items-center justify-between border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-[hsl(var(--foreground))]">{layer.name}</p>
+            <p className="truncate text-[11px] text-[hsl(var(--muted-foreground))]">Sub-map image not set</p>
+          </div>
+          {layer.parentMapId && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs"
+              onClick={() => setActiveMapLayerId(layer.parentMapId!)}
+            >
+              <Layers className="h-3.5 w-3.5" />
+              Parent map
+            </Button>
+          )}
+        </div>
+        <EmptyState
+          icon={ImageUp}
+          title="This map needs an image"
+          description="Upload an image or link to one. Existing locations will remain attached to this map and will be rescaled to the new image if needed."
+          className="flex-1"
+          action={
+            <Button className="gap-1.5" onClick={() => setReplaceImageOpen(true)}>
+              <Upload className="h-4 w-4" />
+              Add map image
+            </Button>
+          }
+        />
+        <UploadMapDialog
+          open={replaceImageOpen}
+          onOpenChange={setReplaceImageOpen}
+          worldId={worldId}
+          replaceLayerId={layer.id}
+        />
+      </div>
+    )
+  }
+
+  if (!imageUrl) {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-[hsl(var(--border))] border-t-[hsl(var(--ring))]" />

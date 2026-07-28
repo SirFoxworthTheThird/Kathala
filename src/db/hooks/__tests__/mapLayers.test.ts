@@ -161,6 +161,33 @@ describe('replaceMapLayerImage', () => {
     ).resolves.toBeUndefined()
   })
 
+  it('adds the first image to a placeholder map and preserves its locations', async () => {
+    const layer = await createMapLayer(makeLayerData({
+      imageId: null,
+      imageWidth: 1200,
+      imageHeight: 800,
+    }))
+    const marker = await createLocationMarker({
+      worldId: 'world-1', mapLayerId: layer.id, name: 'Court', description: '',
+      x: 600, y: 400, iconType: 'building',
+    })
+
+    await replaceMapLayerImage(
+      layer.id,
+      { imageId: 'uploaded-map', imageWidth: 2400, imageHeight: 1600 },
+      { rescale: true },
+    )
+
+    const updated = (await db.mapLayers.get(layer.id))!
+    expect(updated.imageId).toBe('uploaded-map')
+    expect(updated.imageWidth).toBe(2400)
+    expect(updated.imageHeight).toBe(1600)
+    expect((await db.locationMarkers.get(marker.id))!).toMatchObject({
+      x: 1200,
+      y: 800,
+    })
+  })
+
   it('swaps the image and rescales content proportionally', async () => {
     const layer = await createMapLayer(makeLayerData({ imageWidth: 1000, imageHeight: 800, scalePixelsPerUnit: 10, scaleUnit: 'km' }))
     const marker = await createLocationMarker({

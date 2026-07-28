@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { db } from '@/db/database'
 import { importWorldFromJson } from '@/lib/exportImport'
+import { GOAL_TYPE_CONFIG, summariseGoals } from '@/lib/characterGoals'
 
 // The shipped example worlds (in /example) must keep importing as the schema
 // and export format evolve. These are older exports (v7), so this also
@@ -103,6 +104,20 @@ describe('bundled example worlds stay importable', () => {
       for (const ev of events) {
         for (const threadId of ev.threadIds) expect(plotThreadIds.has(threadId)).toBe(true)
       }
+
+      // Goal formatting is used eagerly by the Arc view, so malformed goal
+      // types or missing text must never make it into a bundled example.
+      const characterIds = new Set((await db.characters.where('worldId').equals(worldId).toArray()).map((char) => char.id))
+      const eventIds = new Set(events.map((event) => event.id))
+      const characterGoals = await db.characterGoals.where('worldId').equals(worldId).toArray()
+      for (const goal of characterGoals) {
+        expect(GOAL_TYPE_CONFIG[goal.type]).toBeDefined()
+        expect(goal.text.trim().length).toBeGreaterThan(0)
+        expect(characterIds.has(goal.characterId)).toBe(true)
+        if (goal.startEventId !== null) expect(eventIds.has(goal.startEventId)).toBe(true)
+        if (goal.endEventId !== null) expect(eventIds.has(goal.endEventId)).toBe(true)
+      }
+      expect(() => summariseGoals(characterGoals)).not.toThrow()
     })
   }
 })
