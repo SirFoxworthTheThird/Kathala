@@ -338,6 +338,7 @@ function FactionDetailPanel({
         )}
         <button
           onClick={onClose}
+          aria-label="Close faction panel"
           className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
         >
           <X className="h-4 w-4" />
@@ -716,19 +717,16 @@ export default function FactionsView() {
         </div>
       </div>
 
-      {/* Detail panel */}
-      {selectedFaction ? (
+      {/* Detail panel — only once a faction is selected, so the grid gets the
+          full width the rest of the app's list views use. */}
+      {selectedFaction && (
         <FactionDetailPanel
           key={selectedFaction.id}
           faction={selectedFaction}
           worldId={worldId ?? ''}
           onClose={() => setSelectedId(null)}
         />
-      ) : factions.length > 0 ? (
-        <div className="hidden w-80 shrink-0 items-center justify-center border-l border-[hsl(var(--border))] lg:flex">
-          <p className="text-sm text-[hsl(var(--muted-foreground))]">Select a faction to view its details</p>
-        </div>
-      ) : null}
+      )}
 
       {worldId && (
         <GenerateFactionsDialog open={aiOpen} onOpenChange={setAiOpen} worldId={worldId} />

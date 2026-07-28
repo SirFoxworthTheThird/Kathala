@@ -639,7 +639,9 @@ images to a canvas — uploaded maps always export.)
 
 The map's own controls **float over the canvas** rather than sitting in header
 rows above it, so the map itself runs from the top of the view to the chapter
-bar. Top-left is the map's name and scale, with the **Show** chips beneath it —
+bar. Which layer is open — and its scale — reads from the breadcrumb at the top
+of the window (*PlotWeave / your world / Middle Earth · 1 km = 2 px*), leaving
+the canvas corners free. Top-left holds the **Show** chips —
 toggles for characters, trails, labels, journeys, and locations (the chevrons
 narrow those to particular characters or location types). Top-right holds the
 two commands you reach for while working a map, **+ Location** and **Label**,

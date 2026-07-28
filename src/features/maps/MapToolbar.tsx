@@ -217,34 +217,23 @@ export function MapToolbar({
 }
 
 /**
- * Map identity, floated top-left. Replaces the old header row's name/scale
- * block — the sidebar already highlights the active layer, so this stays small.
+ * The drawer handle for the map's side panels, floated top-left on phones.
+ *
+ * Which layer is open and its scale live in the TopBar breadcrumb on `lg`+, so
+ * nothing but this button needs to sit on the canvas; below `lg` the breadcrumb
+ * is hidden and the sidebar drawer carries the layer name instead.
  */
-export function MapInfoChip({
-  layer, onOpenPanels,
-}: {
-  layer: MapLayer
-  onOpenPanels: () => void
-}) {
-  const hasScale = !!layer.scalePixelsPerUnit && !!layer.scaleUnit
+export function MapInfoChip({ onOpenPanels }: { onOpenPanels: () => void }) {
   return (
-    <div className={cn('pointer-events-auto flex items-center gap-2 py-1 pl-1 pr-2.5', FLOAT_PANEL)}>
+    <div className={cn('pointer-events-auto p-1 lg:hidden', FLOAT_PANEL)}>
       <button
         onClick={onOpenPanels}
         aria-label="Open map panels"
         title="Map panels"
-        className="pw-tap flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] lg:hidden"
+        className="pw-tap flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
       >
         <PanelLeft className="h-4 w-4" aria-hidden="true" />
       </button>
-      <div className="min-w-0">
-        <p className="truncate text-xs font-semibold leading-tight text-[hsl(var(--foreground))]">{layer.name}</p>
-        <p className="truncate text-[10px] leading-tight text-[hsl(var(--muted-foreground))]">
-          {hasScale
-            ? `1 ${layer.scaleUnit} = ${Math.round(layer.scalePixelsPerUnit!)} px`
-            : `${layer.imageWidth} × ${layer.imageHeight}`}
-        </p>
-      </div>
     </div>
   )
 }

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Search, ScrollText, ShieldAlert, HelpCircle, Menu, X } from 'lucide-react'
 import faviconUrl from '/favicon.png'
-import { useActiveWorldId, useAppStore } from '@/store'
+import { useActiveWorldId, useActiveMapLayerId, useAppStore } from '@/store'
 import { useWorld } from '@/db/hooks/useWorlds'
-import { useNavigate, NavLink } from 'react-router-dom'
+import { useMapLayer } from '@/db/hooks/useMapLayers'
+import { useNavigate, NavLink, useMatch } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { TimeCursor } from './TimeCursor'
 import { navItems } from './navItems'
@@ -95,6 +96,14 @@ export function TopBar() {
   const navigate = useNavigate()
   const { setSearchOpen, setBriefOpen, setCheckerOpen, setHelpOpen } = useAppStore()
   const [navOpen, setNavOpen] = useState(false)
+  // On the map, the breadcrumb carries which layer is open and its scale, so
+  // the canvas doesn't have to give up a corner to a floating name chip.
+  const onMaps = !!useMatch('/worlds/:worldId/maps')
+  const activeMapLayerId = useActiveMapLayerId()
+  const mapLayer = useMapLayer(onMaps ? activeMapLayerId : null)
+  const mapScale = mapLayer?.scalePixelsPerUnit && mapLayer.scaleUnit
+    ? `1 ${mapLayer.scaleUnit} = ${Math.round(mapLayer.scalePixelsPerUnit)} px`
+    : null
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 sm:px-4">
@@ -123,6 +132,22 @@ export function TopBar() {
           <>
             <span aria-hidden="true" className="hidden text-[hsl(var(--muted-foreground))] lg:inline">/</span>
             <span className="hidden max-w-[120px] truncate text-sm text-[hsl(var(--foreground))] lg:inline" title={world.name}>{world.name}</span>
+          </>
+        )}
+        {world && mapLayer && (
+          <>
+            <span aria-hidden="true" className="hidden text-[hsl(var(--muted-foreground))] lg:inline">/</span>
+            <span
+              className="hidden max-w-[160px] truncate text-sm text-[hsl(var(--foreground))] lg:inline"
+              title={mapScale ? `${mapLayer.name} — ${mapScale}` : mapLayer.name}
+            >
+              {mapLayer.name}
+            </span>
+            {mapScale && (
+              <span className="hidden shrink-0 text-[11px] text-[hsl(var(--muted-foreground))] xl:inline">
+                · {mapScale}
+              </span>
+            )}
           </>
         )}
         {world && worldId && (

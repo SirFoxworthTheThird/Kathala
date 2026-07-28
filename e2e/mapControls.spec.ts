@@ -61,8 +61,31 @@ test('the canvas starts at the top of the map region, with controls floating ove
   // The two commands used while working a map are on the surface…
   await expect(page.getByRole('button', { name: 'Location', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Label', exact: true })).toBeVisible()
-  // …and the map's identity is a floating chip rather than a header row.
-  await expect(page.getByText('Middle Earth').last()).toBeVisible()
+  // …and the map's identity moved to the TopBar breadcrumb, so the canvas
+  // doesn't give up a corner to a name chip.
+  await expect(page.getByRole('banner').getByText('Middle Earth')).toBeVisible()
+})
+
+test('the breadcrumb names the open map layer and its scale', async ({ page }) => {
+  test.setTimeout(120000)
+  await setupMap(page)
+
+  const banner = page.getByRole('banner')
+  await expect(banner.getByText('Middle Earth')).toBeVisible()
+  // No scale set yet, so no scale segment.
+  await expect(banner.getByText(/= \d+ px/)).toHaveCount(0)
+
+  await page.evaluate(async () => {
+    const db = (window as { __pwdb?: any }).__pwdb
+    const layers = await db.mapLayers.toArray()
+    await db.mapLayers.update(layers[0].id, { scalePixelsPerUnit: 4, scaleUnit: 'km' })
+  })
+  await expect(banner.getByText('· 1 km = 4 px')).toBeVisible()
+
+  // It is scoped to the map: leaving the view drops the layer segment.
+  await page.getByRole('link', { name: /characters/i }).first().click()
+  await settleNav(page)
+  await expect(banner.getByText('Middle Earth')).toHaveCount(0)
 })
 
 test('rare map commands live behind the overflow menu', async ({ page }) => {
@@ -285,5 +308,5 @@ test('Measure surfaces only once the map has a scale', async ({ page }) => {
   })
 
   await expect(page.getByRole('button', { name: 'Measure' })).toBeVisible()
-  await expect(page.getByText('1 km = 4 px')).toBeVisible()
+  await expect(page.getByRole('banner').getByText('· 1 km = 4 px')).toBeVisible()
 })

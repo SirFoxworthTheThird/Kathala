@@ -701,7 +701,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             )}
           >
             <div className="flex min-w-0 max-w-full flex-col items-start gap-2">
-              <MapInfoChip layer={layer} onOpenPanels={() => setSidebarOpen(true)} />
+              <MapInfoChip onOpenPanels={() => setSidebarOpen(true)} />
               <MapFilterBar filters={mapFilters} characters={characters} onChange={setMapFilters} />
             </div>
             <MapToolbar
