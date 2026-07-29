@@ -7,7 +7,9 @@ import {
   ensurePermission, isFolderSyncSupported,
 } from '@/lib/folderSync'
 import type { FolderBinding } from '@/lib/folderSync'
-import { exportWorldData, previewWorldMerge, applyWorldImport } from './cloudSyncHelpers'
+import { previewWorldMerge, applyWorldImport } from './cloudSyncHelpers'
+import { pushWorldToFolder, markPulled, readFolderSyncState } from './folderSyncRunner'
+import { FOLDER_SYNC_LABELS, needsAttention, type FolderSyncState } from '@/lib/folderSyncState'
 import type { MergePreview, WorldExportFile } from './cloudSyncHelpers'
 import { LoadPreviewDialog } from './LoadPreviewDialog'
 
@@ -19,10 +21,22 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
   const [statusMsg, setStatusMsg] = useState<string | null>(null)
   const [confirmDisconnect, setConfirmDisconnect] = useState(false)
   const [loadPreview, setLoadPreview] = useState<{ preview: MergePreview; parsed: WorldExportFile } | null>(null)
+  const [folderState, setFolderState] = useState<FolderSyncState | null>(null)
 
   useEffect(() => {
     loadFolderBinding(worldId).then(setBinding)
   }, [worldId])
+
+  // Re-check on mount and whenever the binding changes: the file may have been
+  // written by another device while this tab was closed or idle.
+  useEffect(() => {
+    let cancelled = false
+    if (!binding) { setFolderState(null); return }
+    readFolderSyncState(worldId, binding)
+      .then(({ state }) => { if (!cancelled) setFolderState(state) })
+      .catch(() => { if (!cancelled) setFolderState(null) })
+    return () => { cancelled = true }
+  }, [worldId, binding])
 
   const supported = isFolderSyncSupported()
 
@@ -49,14 +63,9 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
     try {
       const granted = await ensurePermission(binding.handle)
       if (!granted) throw new Error('Folder access denied — click "Change folder" to re-select it')
-      const json       = await exportWorldData(worldId)
-      const fileHandle = await binding.handle.getFileHandle(binding.fileName, { create: true })
-      const writable   = await fileHandle.createWritable()
-      await writable.write(json)
-      await writable.close()
-      const updated = { ...binding, lastSyncedAt: Date.now() }
-      await saveFolderBinding(updated)
+      const updated = await pushWorldToFolder(worldId, binding)
       setBinding(updated)
+      setFolderState('in-sync')
       setSyncState('idle')
       setStatusMsg(`Saved — ${new Date().toLocaleTimeString()}`)
     } catch (e) {
@@ -90,9 +99,11 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
     setSyncState('loading')
     try {
       await applyWorldImport(parsed, mode)
-      const updated = { ...binding, lastSyncedAt: Date.now() }
-      await saveFolderBinding(updated)
+      // The folder's copy is now what we hold, so the next auto-save must not
+      // read it as the folder being ahead of us.
+      const updated = await markPulled(worldId, binding)
       setBinding(updated)
+      setFolderState('in-sync')
       setStatusMsg(`Loaded (${mode === 'merge' ? 'merged' : 'replaced'}) — ${new Date().toLocaleTimeString()}`)
     } catch (e) {
       setSyncState('error')
@@ -156,6 +167,26 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
             </p>
           )}
 
+          {/* Sync state — the folder is shared with the author's other machines,
+              so anything it holds that this device hasn't seen has to be shown
+              rather than quietly overwritten. */}
+          {folderState && (
+            <div
+              className={
+                needsAttention(folderState)
+                  ? 'rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2'
+                  : 'rounded-md border border-[hsl(var(--border))] px-3 py-2'
+              }
+            >
+              <p className={`text-xs font-semibold ${needsAttention(folderState) ? 'text-amber-400' : 'text-[hsl(var(--foreground))]'}`}>
+                {FOLDER_SYNC_LABELS[folderState].label}
+              </p>
+              <p className="mt-0.5 text-[11px] leading-snug text-[hsl(var(--muted-foreground))]">
+                {FOLDER_SYNC_LABELS[folderState].detail}
+              </p>
+            </div>
+          )}
+
           {/* Save / Load */}
           <div className="flex gap-2">
             <Button
@@ -165,7 +196,7 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
               {syncState === 'saving'
                 ? <RefreshCw className="h-3.5 w-3.5 animate-spin" />
                 : <Upload className="h-3.5 w-3.5" />}
-              Save
+              {folderState && needsAttention(folderState) ? 'Save over' : 'Save'}
             </Button>
             <Button
               size="sm" variant="outline" className="flex-1 gap-1.5"

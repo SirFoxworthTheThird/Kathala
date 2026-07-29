@@ -1,14 +1,21 @@
 import { useEffect, useRef } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
-import { loadFolderBinding, saveFolderBinding, checkPermission } from '@/lib/folderSync'
+import { loadFolderBinding, checkPermission } from '@/lib/folderSync'
+import { pushWorldToFolder, readFolderSyncState } from './folderSyncRunner'
 
 const DEBOUNCE_MS = 30_000 // save 30 s after the last change
 
 /**
  * Watches all world data via liveQuery and auto-saves to the bound folder
- * 30 seconds after the last change. Silent on failure — the user can always
- * save manually from World Settings.
+ * 30 seconds after the last change.
+ *
+ * The bound folder is usually inside Dropbox/iCloud/OneDrive, so the file is
+ * shared state between the author's machines. Auto-save therefore refuses to
+ * write whenever the file has changed since we last wrote it — otherwise
+ * whichever device saved last would silently destroy the other's work. Those
+ * cases surface in the Cloud Sync panel for the user to resolve; see
+ * src/lib/folderSyncState.ts.
  *
  * Must be called from a component that stays mounted for the lifetime of a
  * world session (e.g. AppShell).
@@ -57,15 +64,15 @@ export function useAutoFolderSync(worldId: string | undefined) {
       const granted = await checkPermission(binding.handle)
       if (!granted) return
       try {
-        const { exportWorldData } = await import('./cloudSyncHelpers')
-        const json       = await exportWorldData(worldId)
-        const fileHandle = await binding.handle.getFileHandle(binding.fileName, { create: true })
-        const writable   = await fileHandle.createWritable()
-        await writable.write(json)
-        await writable.close()
-        await saveFolderBinding({ ...binding, lastSyncedAt: Date.now() })
+        const { state } = await readFolderSyncState(worldId, binding)
+        // Anything the folder holds that we have not seen has to be the user's
+        // decision, not a background write.
+        if (state === 'remote-ahead' || state === 'conflict') return
+        if (state === 'in-sync') return
+        await pushWorldToFolder(worldId, binding)
       } catch {
-        // Auto-save failures are silent — the user can manually save from Settings.
+        // A failed auto-save is not silent data loss: the world is already
+        // committed locally, and the panel shows the folder is behind.
       }
     }, DEBOUNCE_MS)
 

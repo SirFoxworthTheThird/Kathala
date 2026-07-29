@@ -9,6 +9,15 @@ export interface FolderBinding {
   handle: FileSystemDirectoryHandle
   fileName: string   // e.g. "My_World.pwk"
   lastSyncedAt: number // epoch ms, 0 if never synced
+  /**
+   * The journal seq at our last successful write, and the file's lastModified
+   * immediately after it. Together these let sync tell "we have new edits" from
+   * "another device wrote this file" — see src/lib/folderSyncState.ts. Both are
+   * optional: bindings created before conflict detection existed have neither,
+   * and are treated as never-synced (the safe reading).
+   */
+  lastSyncedSeq?: number
+  lastPushedFileModified?: number
 }
 
 const DB_NAME    = 'pw-folder-sync'

@@ -13,6 +13,7 @@ import { upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { addCharactersToWorld } from '@/lib/sectionImport'
 import {
   listOperations, operationsForEntity, listTombstones, isDeleted, pruneJournal, clearJournal,
+  latestSeq,
 } from '@/db/hooks/useOperations'
 import { replay, invertOperation } from '@/lib/operations'
 import { getDeviceId } from '@/lib/deviceId'
@@ -400,5 +401,35 @@ describe('per-event snapshots on the seam', () => {
     expect(after.map((o) => o.type)).toEqual(['create', 'update'])
     expect(after[1].changedFields).toContain('statusNotes')
     expect((await db.characterSnapshots.get(snap.id))?.isAlive).toBe(false)
+  })
+})
+
+describe('latestSeq (folder sync uses this to spot local edits)', () => {
+  it('is 0 for a world with no journal', async () => {
+    const world = await createWorld({ name: 'Quiet', description: '' })
+    expect(await latestSeq(world.id)).toBe(0)
+  })
+
+  it('tracks the highest seq and is scoped per world', async () => {
+    const w1 = await createWorld({ name: 'One', description: '' })
+    const w2 = await createWorld({ name: 'Two', description: '' })
+    await createCharacter({ worldId: w1.id, name: 'A', description: '' })
+    await createCharacter({ worldId: w1.id, name: 'B', description: '' })
+    await createCharacter({ worldId: w2.id, name: 'C', description: '' })
+
+    expect(await latestSeq(w1.id)).toBe(2)
+    expect(await latestSeq(w2.id)).toBe(1)
+  })
+
+  it('goes backwards after a discontinuity, which sync reads as dirty', async () => {
+    const world = await createWorld({ name: 'Reset', description: '' })
+    await createCharacter({ worldId: world.id, name: 'A', description: '' })
+    await createCharacter({ worldId: world.id, name: 'B', description: '' })
+    expect(await latestSeq(world.id)).toBe(2)
+
+    await addCharactersToWorld(world.id, [{ name: 'Imported' }] as never)
+    // The journal was reset, so seq drops — resolveFolderSyncState treats a
+    // seq below the last synced value as "everything changed", not "clean".
+    expect(await latestSeq(world.id)).toBe(0)
   })
 })

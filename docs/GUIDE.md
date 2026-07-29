@@ -1073,6 +1073,23 @@ world; **Load** previews the file before applying it.
 - **Change folder** moves the binding. **Disconnect** removes the binding without
   deleting the file already stored in that folder.
 
+The panel shows where the folder stands relative to this device:
+
+| State | Meaning |
+| --- | --- |
+| **Up to date** | The folder holds the same version as this device. |
+| **Unsaved changes** | You have edits the folder hasn't received yet. |
+| **Newer copy in folder** | Another device saved to this folder — **Load** to catch up. |
+| **Both changed** | You edited here *and* another device saved. |
+
+Because the bound folder is usually shared between your machines, PlotWeave
+**auto-saves only when it cannot destroy anything** — when the file still holds
+exactly what this device last wrote. If another device has saved since, the
+background save pauses and the panel says so, so whichever machine you happened
+to open last can't quietly overwrite the other's work. **Load** compares the two
+copies first; **Save over** replaces the folder's copy with this device's, and is
+only offered once you've been told what you'd be replacing.
+
 ![Database health and folder sync](images/43-settings-sync.png)
 
 ---

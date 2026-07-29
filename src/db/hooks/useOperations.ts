@@ -204,6 +204,19 @@ export async function operationsForEntity(
   return ops.sort((a, b) => a.seq - b.seq)
 }
 
+/**
+ * Highest journal seq for a world, or 0 for an empty journal. Folder sync uses
+ * this to answer "do we have edits the folder hasn't seen?" without diffing the
+ * whole store.
+ */
+export async function latestSeq(worldId: string): Promise<number> {
+  const latest = await db.operations
+    .where('[worldId+seq]')
+    .between([worldId, Dexie.minKey], [worldId, Dexie.maxKey])
+    .last()
+  return latest?.seq ?? 0
+}
+
 export async function listTombstones(worldId: string): Promise<Tombstone[]> {
   return db.tombstones.where('worldId').equals(worldId).toArray()
 }
