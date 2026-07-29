@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
-import { journalCreate, journalUpdate, journalDelete } from './useOperations'
+import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
 import type { Timeline, Chapter, WorldEvent, EventStatus } from '@/types'
 import { generateId } from '@/lib/id'
 import {
@@ -109,8 +109,12 @@ export async function createChapter(
   return journalCreate('chapter', db.chapters, chapter)
 }
 
-export async function updateChapter(id: string, data: Partial<Omit<Chapter, 'id' | 'createdAt'>>) {
-  await journalUpdate('chapter', db.chapters, id, { ...data, updatedAt: Date.now() })
+export async function updateChapter(
+  id: string,
+  data: Partial<Omit<Chapter, 'id' | 'createdAt'>>,
+  options: { coalesce?: boolean } = {},
+) {
+  await journalUpdate('chapter', db.chapters, id, { ...data, updatedAt: Date.now() }, [], options)
   // If chapter number changed, recompute sortKeys for all events in this chapter
   if (data.number !== undefined) {
     await recomputeSnapshotSortKeysForChapter(id)
@@ -247,7 +251,10 @@ export async function bulkDeleteEvents(ids: string[]): Promise<void> {
   // One journalled delete per event rather than a single wholesale sweep: the
   // journal has to account for every record that left the store, and a bulk
   // path that skipped it would make the journal quietly disagree with reality.
-  for (const id of ids) await deleteEvent(id)
+  // Grouped so the selection comes back in one undo, not one per event.
+  await journalGroup(async () => {
+    for (const id of ids) await deleteEvent(id)
+  })
 }
 
 export async function bulkMoveEvents(ids: string[], targetChapterId: string): Promise<void> {

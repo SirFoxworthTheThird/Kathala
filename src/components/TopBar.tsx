@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Search, ScrollText, ShieldAlert, HelpCircle, Menu, X } from 'lucide-react'
+import { Search, ScrollText, ShieldAlert, HelpCircle, Menu, X, Undo2, History } from 'lucide-react'
 import faviconUrl from '/favicon.png'
 import { useActiveWorldId, useActiveMapLayerId, useAppStore } from '@/store'
 import { useWorld } from '@/db/hooks/useWorlds'
@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { TimeCursor } from './TimeCursor'
 import { FolderSyncIndicator } from './FolderSyncIndicator'
 import { navItems } from './navItems'
+import { useUndoNext } from '@/features/history/useUndo'
 
 /**
  * Full-height slide-in navigation for narrow screens. The desktop icon rail
@@ -18,7 +19,7 @@ import { navItems } from './navItems'
  */
 function MobileNavDrawer({ worldId, open, onClose }: { worldId: string; open: boolean; onClose: () => void }) {
   const world = useWorld(worldId)
-  const { setBriefOpen, setCheckerOpen, setHelpOpen } = useAppStore()
+  const { setBriefOpen, setCheckerOpen, setHelpOpen, setHistoryOpen } = useAppStore()
 
   // Close on Escape, and lock body scroll while open.
   useEffect(() => {
@@ -31,6 +32,9 @@ function MobileNavDrawer({ worldId, open, onClose }: { worldId: string; open: bo
   if (!open) return null
 
   const tools: { label: string; icon: typeof ScrollText; action: () => void }[] = [
+    // Undo has no keyboard shortcut on a phone, so the history list is its only
+    // durable home here — first in the list rather than buried under the tools.
+    { label: 'Recent changes', icon: History, action: () => setHistoryOpen(true) },
     { label: "Writer's Brief", icon: ScrollText, action: () => setBriefOpen(true) },
     { label: 'Continuity Checker', icon: ShieldAlert, action: () => setCheckerOpen(true) },
     { label: 'Help', icon: HelpCircle, action: () => setHelpOpen(true) },
@@ -95,8 +99,9 @@ export function TopBar() {
   const worldId = useActiveWorldId()
   const world = useWorld(worldId)
   const navigate = useNavigate()
-  const { setSearchOpen, setBriefOpen, setCheckerOpen, setHelpOpen } = useAppStore()
+  const { setSearchOpen, setBriefOpen, setCheckerOpen, setHelpOpen, setHistoryOpen } = useAppStore()
   const [navOpen, setNavOpen] = useState(false)
+  const { undo, canUndo, nextLabel } = useUndoNext(worldId)
   // On the map, the breadcrumb carries which layer is open and its scale, so
   // the canvas doesn't have to give up a corner to a floating name chip.
   const onMaps = !!useMatch('/worlds/:worldId/maps')
@@ -164,6 +169,34 @@ export function TopBar() {
       <div className="ml-auto flex shrink-0 items-center gap-1">
         {world && (
           <>
+            {/* Undo — shown at every width, since it is the one control a
+                writer reaches for reflexively. Disabled state explains itself
+                rather than looking broken after a bulk import resets history.
+                The accessible name stays short and stable: naming the record in
+                it made every tab-stop announce a whole sentence. The detail
+                lives in the tooltip instead. */}
+            <button
+              onClick={() => { void undo() }}
+              disabled={!canUndo}
+              aria-label={canUndo ? 'Undo' : 'Nothing to undo'}
+              title={
+                canUndo
+                  ? `Undo: ${nextLabel} (${isMac ? '⌘Z' : 'Ctrl+Z'})`
+                  : 'Nothing to undo — importing or generating starts a fresh history'
+              }
+              className="pw-tap flex h-8 w-8 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] transition-colors enabled:hover:bg-[hsl(var(--accent))] enabled:hover:text-[hsl(var(--foreground))] disabled:opacity-40"
+            >
+              <Undo2 className="h-4 w-4 lg:h-3.5 lg:w-3.5" aria-hidden="true" />
+            </button>
+            <button
+              onClick={() => setHistoryOpen(true)}
+              aria-label="Recent changes"
+              title="Recent changes"
+              className="pw-tap hidden h-8 w-8 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] transition-colors lg:flex"
+            >
+              <History className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+            <div className="mx-0.5 hidden h-5 w-px bg-[hsl(var(--border))] lg:block" aria-hidden="true" />
             {/* Compact search (mobile) */}
             <button
               onClick={() => setSearchOpen(true)}

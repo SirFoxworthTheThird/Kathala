@@ -12,6 +12,10 @@ import { WritersBriefPanel } from '@/features/brief/WritersBriefPanel'
 import { ChapterDiffModal } from '@/features/diff/ChapterDiffModal'
 import { ContinuityChecker } from '@/features/continuity/ContinuityChecker'
 import { HelpPanel } from '@/features/help/HelpPanel'
+import { RecentChangesPanel } from '@/features/history/RecentChangesPanel'
+import { UndoToastBridge } from '@/features/history/UndoToastBridge'
+import { useUndoAction } from '@/features/history/useUndo'
+import { Toaster } from '@/components/ui/toast'
 import { db } from '@/db/database'
 
 export function AppShell() {
@@ -52,17 +56,29 @@ export function AppShell() {
 
   useAutoFolderSync(worldId)
 
-  // Global Cmd/Ctrl+K to open search
+  const undo = useUndoAction(worldId ?? null)
+
+  // Global Cmd/Ctrl+K to open search, Cmd/Ctrl+Z to undo
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
         setSearchOpen(true)
+        return
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        // Inside a text field the browser's own undo is the one the user means
+        // — it works at keystroke granularity and this one does not.
+        const el = e.target as HTMLElement | null
+        const tag = el?.tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || el?.isContentEditable) return
+        e.preventDefault()
+        void undo()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [setSearchOpen])
+  }, [setSearchOpen, undo])
 
   return (
     <div
@@ -83,6 +99,9 @@ export function AppShell() {
       <ChapterDiffModal />
       <ContinuityChecker />
       <HelpPanel />
+      <RecentChangesPanel worldId={worldId ?? null} />
+      <UndoToastBridge worldId={worldId ?? null} />
+      <Toaster />
     </div>
   )
 }

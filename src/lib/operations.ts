@@ -1,3 +1,4 @@
+import { ENTITY_LABEL } from '@/lib/entityTables'
 import type { Operation, OperationEntity, OperationType, Tombstone } from '@/types/operation'
 
 /**
@@ -16,6 +17,10 @@ export interface MakeOperationInput {
   deviceId: string
   baseVersion: number
   payload: Record<string, unknown>
+  /** Prior values of the changed fields — what undo restores to. */
+  previous?: Record<string, unknown>
+  groupId?: string
+  undoOf?: string
   now?: number
 }
 
@@ -28,7 +33,8 @@ export function contentFields(payload: Record<string, unknown>): string[] {
 }
 
 export function makeOperation(input: MakeOperationInput): Operation {
-  return {
+  const changedFields = input.type === 'update' ? contentFields(input.payload) : []
+  const op: Operation = {
     id: input.id,
     worldId: input.worldId,
     entityType: input.entityType,
@@ -38,9 +44,79 @@ export function makeOperation(input: MakeOperationInput): Operation {
     deviceId: input.deviceId,
     baseVersion: input.baseVersion,
     payload: input.payload,
-    changedFields: input.type === 'update' ? contentFields(input.payload) : [],
+    changedFields,
     createdAt: input.now ?? Date.now(),
   }
+  // Only carry `previous` for updates — a create has nothing before it, and a
+  // delete already stores the whole record in `payload`.
+  if (input.type === 'update' && input.previous) {
+    const prior: Record<string, unknown> = {}
+    for (const field of changedFields) prior[field] = input.previous[field]
+    op.previous = prior
+  }
+  if (input.groupId) op.groupId = input.groupId
+  if (input.undoOf) op.undoOf = input.undoOf
+  return op
+}
+
+/** How long a burst of edits to the same field stays one undo step. */
+export const COALESCE_WINDOW_MS = 5_000
+
+/**
+ * Whether `next` continues the same act as `prev` and should fold into it.
+ *
+ * A debounced prose editor writes an operation every time the user pauses
+ * typing, so a single paragraph becomes dozens of journal entries. Undoing one
+ * of those steps back a fraction of a sentence — useless on its own, and it
+ * fights the textarea's own undo, which the user already has. Folding a burst
+ * into one entry makes undo mean "take back what I just wrote".
+ *
+ * Deliberately strict: same entity, same device, the same field set, both plain
+ * updates, and inside the window. Anything else is a separate act.
+ */
+export function shouldCoalesce(
+  prev: Operation | undefined,
+  next: { entityType: OperationEntity; entityId: string; deviceId: string; type: OperationType; payload: Record<string, unknown> },
+  now: number,
+  windowMs = COALESCE_WINDOW_MS,
+): boolean {
+  if (!prev) return false
+  if (prev.type !== 'update' || next.type !== 'update') return false
+  if (prev.undoOf || prev.undoneBy) return false
+  if (prev.groupId) return false
+  if (prev.entityType !== next.entityType || prev.entityId !== next.entityId) return false
+  if (prev.deviceId !== next.deviceId) return false
+  if (now - prev.createdAt > windowMs) return false
+  const fields = contentFields(next.payload)
+  if (fields.length !== prev.changedFields.length) return false
+  return fields.every((f, i) => prev.changedFields[i] === f)
+}
+
+/**
+ * Fold a continuing edit into the operation it extends.
+ *
+ * Keeps the earlier operation's identity, `seq`, `baseVersion` and `previous` —
+ * undo has to restore the state from before the *burst* began, not before its
+ * last keystroke — while taking the newer values and timestamp.
+ */
+export function coalesceOperations(prev: Operation, next: Operation): Operation {
+  return {
+    ...prev,
+    payload: { ...prev.payload, ...next.payload },
+    createdAt: next.createdAt,
+  }
+}
+
+/** A short human description of an operation, for the history list and toasts. */
+export function describeOperation(op: Operation): string {
+  const label = ENTITY_LABEL[op.entityType] ?? 'record'
+  const name = typeof op.payload.name === 'string' && op.payload.name.trim()
+    ? op.payload.name.trim()
+    : typeof op.payload.title === 'string' && op.payload.title.trim()
+      ? op.payload.title.trim()
+      : null
+  const verb = op.type === 'create' ? 'Added' : op.type === 'delete' ? 'Deleted' : 'Edited'
+  return name ? `${verb} ${label} “${name}”` : `${verb} ${label}`
 }
 
 /**
@@ -101,7 +177,7 @@ export function replay<T extends { id: string; version: number }>(
 export function invertOperation(
   op: Operation,
   before: Record<string, unknown> | undefined,
-  next: { id: string; seq: number; now?: number },
+  next: { id: string; seq: number; now?: number; groupId?: string },
 ): Operation | null {
   const base: Omit<Operation, 'type' | 'payload' | 'changedFields' | 'id' | 'seq' | 'createdAt'> = {
     worldId: op.worldId,
@@ -109,6 +185,10 @@ export function invertOperation(
     entityId: op.entityId,
     deviceId: op.deviceId,
     baseVersion: op.baseVersion + 1,
+    // Marks the result as an undo, so it never appears in the undo stack
+    // itself — otherwise pressing undo twice would redo the first one.
+    undoOf: op.id,
+    ...(next.groupId ? { groupId: next.groupId } : {}),
   }
   const shell = { id: next.id, seq: next.seq, createdAt: next.now ?? Date.now() }
 
@@ -128,9 +208,12 @@ export function invertOperation(
     }
   }
 
-  if (!before) return null
+  // The operation carries its own before-image; the explicit argument is a
+  // fallback for callers that still have the record in hand.
+  const prior = before ?? op.previous
+  if (!prior) return null
   const restored: Record<string, unknown> = {}
-  for (const field of op.changedFields) restored[field] = before[field]
+  for (const field of op.changedFields) restored[field] = prior[field]
   return {
     ...base,
     ...shell,
@@ -138,6 +221,21 @@ export function invertOperation(
     payload: restored,
     changedFields: [...op.changedFields].sort(),
   }
+}
+
+/**
+ * The operations an undo would take back: the newest act that hasn't already
+ * been undone, and isn't itself an undo. Returns the whole group when the act
+ * spanned several records, newest first.
+ */
+export function undoableBatch(ops: Operation[]): Operation[] {
+  const candidates = ops
+    .filter((op) => !op.undoOf && !op.undoneBy)
+    .sort((a, b) => b.seq - a.seq)
+  const head = candidates[0]
+  if (!head) return []
+  if (!head.groupId) return [head]
+  return candidates.filter((op) => op.groupId === head.groupId)
 }
 
 export function makeTombstone(input: {

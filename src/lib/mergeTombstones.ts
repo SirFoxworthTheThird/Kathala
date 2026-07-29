@@ -1,4 +1,5 @@
-import type { OperationEntity, Tombstone } from '@/types/operation'
+import { ENTITY_TABLE } from '@/lib/entityTables'
+import type { Tombstone } from '@/types/operation'
 
 /**
  * Making a deletion survive a merge.
@@ -11,28 +12,11 @@ import type { OperationEntity, Tombstone } from '@/types/operation'
  * Pure functions over plain data; the wiring lives in `exportImport.ts`.
  */
 
-/** Which export array each journalled entity group lives in. */
-export const TOMBSTONE_TABLE: Record<OperationEntity, string> = {
-  character: 'characters',
-  characterGoal: 'characterGoals',
-  item: 'items',
-  location: 'locationMarkers',
-  timeline: 'timelines',
-  chapter: 'chapters',
-  event: 'events',
-  relationship: 'relationships',
-  lorePage: 'lorePages',
-  faction: 'factions',
-  plotThread: 'plotThreads',
-  motif: 'motifs',
-  knowledgeFact: 'knowledgeFacts',
-  characterSnapshot: 'characterSnapshots',
-  itemPlacement: 'itemPlacements',
-  locationSnapshot: 'locationSnapshots',
-  itemSnapshot: 'itemSnapshots',
-  relationshipSnapshot: 'relationshipSnapshots',
-  mapRegionSnapshot: 'mapRegionSnapshots',
-}
+/**
+ * Which export array each journalled entity group lives in — the same map undo
+ * uses to find the Dexie table, since the two names coincide.
+ */
+export const TOMBSTONE_TABLE = ENTITY_TABLE
 
 export interface RecordLike {
   id: string

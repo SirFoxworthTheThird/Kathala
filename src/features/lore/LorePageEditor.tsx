@@ -227,7 +227,12 @@ export default function LorePageEditor() {
     if (!dirty || !pageId) return
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(async () => {
-      await updateLorePage(pageId, { title: title.trim() || 'Untitled', body, tags, categoryId, linkedEntityIds, visibleFromEventId })
+      // Autosave, so one editing burst collapses to one undo step.
+      await updateLorePage(
+        pageId,
+        { title: title.trim() || 'Untitled', body, tags, categoryId, linkedEntityIds, visibleFromEventId },
+        { coalesce: true },
+      )
       setDirty(false)
     }, 800)
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
@@ -238,7 +243,11 @@ export default function LorePageEditor() {
   async function flushSave() {
     if (!pageId) return
     if (saveTimer.current) clearTimeout(saveTimer.current)
-    await updateLorePage(pageId, { title: title.trim() || 'Untitled', body, tags, categoryId, linkedEntityIds, visibleFromEventId })
+    await updateLorePage(
+      pageId,
+      { title: title.trim() || 'Untitled', body, tags, categoryId, linkedEntityIds, visibleFromEventId },
+      { coalesce: true },
+    )
     setDirty(false)
   }
 

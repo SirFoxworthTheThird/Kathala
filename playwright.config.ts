@@ -7,6 +7,12 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: 1,
+  // Playwright's per-test default is 30s, and a great many of these specs land
+  // between 28s and 30s because each rebuilds a world through the real UI. That
+  // one-second margin makes them fail on a loaded machine for no reason to do
+  // with the code under test. Individual specs still narrow this where they
+  // want a tighter guarantee.
+  timeout: 90_000,
   reporter: 'html',
   use: {
     baseURL: 'http://localhost:5173',

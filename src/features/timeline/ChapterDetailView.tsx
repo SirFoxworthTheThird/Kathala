@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus, Users, Network, StickyNote, ChevronDown, ChevronRight, Scroll } from 'lucide-react'
 import { useChapter, useEvents, useWorldEvents, useWorldChapters, useTimelines, updateChapter, updateEvent } from '@/db/hooks/useTimeline'
+import { journalGroup } from '@/db/hooks/useOperations'
 import { useChapterEventSnapshots } from '@/db/hooks/useSnapshots'
 import { computeInWorldDays } from '@/lib/inWorldTime'
 import { useEventRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
@@ -79,10 +80,12 @@ export default function ChapterDetailView() {
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1
     const a = sortedEvents[idx]
     const b = sortedEvents[swapIdx]
-    await Promise.all([
+    // Two records, one act: undo has to swap them back together, or the
+    // ordering is left half-applied.
+    await journalGroup(() => Promise.all([
       updateEvent(a.id, { sortOrder: b.sortOrder }),
       updateEvent(b.id, { sortOrder: a.sortOrder }),
-    ])
+    ]))
   }
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -94,7 +97,8 @@ export default function ChapterDetailView() {
     setNotes(value)
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
-      if (chapterId) updateChapter(chapterId, { notes: value })
+      // One writing burst is one undo step, not one per typing pause.
+      if (chapterId) updateChapter(chapterId, { notes: value }, { coalesce: true })
     }, 600)
   }
 

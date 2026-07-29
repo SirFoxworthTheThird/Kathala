@@ -95,9 +95,30 @@ interface UISlice {
   /** Set before navigating to Maps to auto-pan to a location marker on arrival. */
   pendingFocusMarkerId: string | null
   setPendingFocusMarkerId: (id: string | null) => void
+  /** History panel — the persistent home for undo, and the only one on mobile. */
+  historyOpen: boolean
+  setHistoryOpen: (open: boolean) => void
 }
 
-type AppStore = WorldSlice & EventSlice & MapSlice & UISlice & PlaybackSlice & SelectionSlice
+/**
+ * Transient messages. Deliberately not persisted: a toast that survived a
+ * reload would be offering to undo something the user did in another session.
+ */
+export interface Toast {
+  id: string
+  message: string
+  /** Shown as an action button; omitted for a plain notice. */
+  actionLabel?: string
+  onAction?: () => void
+}
+
+interface ToastSlice {
+  toasts: Toast[]
+  pushToast: (toast: Omit<Toast, 'id'> & { id?: string }) => string
+  dismissToast: (id: string) => void
+}
+
+type AppStore = WorldSlice & EventSlice & MapSlice & UISlice & PlaybackSlice & SelectionSlice & ToastSlice
 
 export const useAppStore = create<AppStore>()(
   persist(
@@ -206,6 +227,17 @@ export const useAppStore = create<AppStore>()(
       setPendingFocusRegionId: (id) => set({ pendingFocusRegionId: id }),
       pendingFocusMarkerId: null,
       setPendingFocusMarkerId: (id) => set({ pendingFocusMarkerId: id }),
+      historyOpen: false,
+      setHistoryOpen: (open) => set({ historyOpen: open }),
+
+      // Toasts
+      toasts: [],
+      pushToast: (toast) => {
+        const id = toast.id ?? `toast-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+        set((state) => ({ toasts: [...state.toasts.filter((t) => t.id !== id), { ...toast, id }] }))
+        return id
+      },
+      dismissToast: (id) => set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
     }),
     {
       name: 'plotweave-ui',

@@ -76,8 +76,12 @@ export function useLorePagesForEntity(worldId: string | null, entityId: string |
   )
 }
 
-export async function updateLorePage(id: string, data: Partial<Omit<LorePage, 'id' | 'createdAt'>>) {
-  await journalUpdate('lorePage', db.lorePages, id, { ...data, updatedAt: Date.now() })
+export async function updateLorePage(
+  id: string,
+  data: Partial<Omit<LorePage, 'id' | 'createdAt'>>,
+  options: { coalesce?: boolean } = {},
+) {
+  await journalUpdate('lorePage', db.lorePages, id, { ...data, updatedAt: Date.now() }, [], options)
 }
 
 export async function deleteLorePage(id: string) {

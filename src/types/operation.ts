@@ -73,6 +73,36 @@ export interface Operation {
    * field-level merge (#118) doesn't have to infer intent from key presence.
    */
   changedFields: string[]
+  /**
+   * For an `update`, the prior values of exactly `changedFields`.
+   *
+   * Undo needs to know what a field held *before* the edit, and the journal is
+   * the only place that can still answer once the record has been overwritten.
+   * Storing just the touched fields keeps this far smaller than a full
+   * before-image, and makes `invertOperation` self-sufficient rather than
+   * dependent on replaying from the start of a journal that may have been
+   * pruned or reset by a bulk import.
+   */
+  previous?: Record<string, unknown>
+  /**
+   * Rows a `delete` removed *besides* the record itself, keyed by table name.
+   *
+   * Deleting a character also clears its snapshots, movements, goals, faction
+   * memberships and relationships. Without these, undo would hand back a
+   * hollow character and quietly drop the rest — so the cascade is recorded
+   * with the deletion that caused it.
+   */
+  cascade?: Record<string, unknown[]>
+  /**
+   * Operations that form one user act. A chapter reorder writes two records;
+   * undo has to take back both or the ordering is left half-applied, which is
+   * worse than not undoing at all.
+   */
+  groupId?: string
+  /** Set on an operation produced by undoing another — excluded from the undo stack. */
+  undoOf?: string
+  /** Set on an operation that has been undone — excluded from the undo stack. */
+  undoneBy?: string
   createdAt: number
 }
 
