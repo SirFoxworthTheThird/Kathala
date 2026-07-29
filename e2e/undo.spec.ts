@@ -154,3 +154,45 @@ test('Ctrl+Shift+Z redoes, and a new edit clears the redo', async ({ page }) => 
   await addCharacter(page, 'Bree')
   await expect(page.getByRole('banner').getByRole('button', { name: 'Nothing to redo' })).toBeDisabled()
 })
+
+test('the top bar does not overlap the chapter cursor on a phone', async ({ page }) => {
+  // Reported from the app: undo/redo/search were drawn on top of the time
+  // cursor. The cursor could not shrink — a `truncate` inside a flex item does
+  // nothing without `min-w-0` on the way down — so a long chapter title pushed
+  // it straight through the buttons.
+  await setupWorld(page)
+
+  // A timeline, a chapter and an event, so the cursor shows a real label.
+  await page.getByRole('link', { name: /timeline/i }).first().click()
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Create Timeline' }).click()
+  await page.getByRole('button', { name: 'Add Chapter' }).first().click()
+  await page.getByPlaceholder('Chapter title').fill('The Long Road North Through Emberfall')
+  await page.getByRole('button', { name: 'Add Chapter' }).last().click()
+  await page.getByTitle('Open chapter detail').first().click()
+  await page.getByRole('main').getByRole('button', { name: 'Add Event' }).first().click()
+  await page.getByPlaceholder('Event title').fill('The oath sworn at dawn beneath the broken tower')
+  await page.getByRole('button', { name: 'Add Event' }).last().click()
+
+  await page.getByRole('button', { name: 'Next moment' }).click()
+  await expect(page.getByRole('banner').getByText(/^Ch\.1/)).toBeVisible()
+
+  for (const width of [320, 360, 390, 414]) {
+    await page.setViewportSize({ width, height: 844 })
+    await page.waitForTimeout(250)
+
+    const geometry = await page.evaluate(() => {
+      const header = document.querySelector('header')!
+      const [left, right] = [...header.children].map((c) => c.getBoundingClientRect())
+      return {
+        gap: Math.round(right.left - left.right),
+        overflows: header.scrollWidth > header.clientWidth,
+      }
+    })
+
+    expect(geometry.gap, `clusters must not overlap at ${width}px`).toBeGreaterThanOrEqual(0)
+    expect(geometry.overflows, `header must not scroll sideways at ${width}px`).toBe(false)
+    // The chapter number is the one thing the cursor must still say.
+    await expect(page.getByRole('banner').getByText(/^Ch\.1/)).toBeVisible()
+  }
+})

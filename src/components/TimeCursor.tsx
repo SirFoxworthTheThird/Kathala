@@ -54,10 +54,13 @@ export function TimeCursor({ worldId }: { worldId: string }) {
   if (orderedEvents.length === 0) return null
 
   const stepBtn =
-    'flex h-6 w-5 items-center justify-center rounded text-[hsl(var(--muted-foreground))] transition-colors enabled:hover:text-[hsl(var(--foreground))] disabled:opacity-30'
+    'flex h-6 w-5 shrink-0 items-center justify-center rounded text-[hsl(var(--muted-foreground))] transition-colors enabled:hover:text-[hsl(var(--foreground))] disabled:opacity-30'
 
   return (
-    <div className="flex items-center gap-0.5">
+    // `min-w-0` matters: without it this flex item refuses to shrink below its
+    // content, so a long chapter title pushes the cursor straight through the
+    // top bar's right-hand buttons instead of truncating.
+    <div className="flex min-w-0 items-center gap-0.5">
       <button
         onClick={() => prevEvent && setActiveEventId(prevEvent.id)}
         disabled={!prevEvent || isPlayingStory}
@@ -79,17 +82,25 @@ export function TimeCursor({ worldId }: { worldId: string }) {
             : 'Viewing all chapters — open the timeline to pick a moment'
         }
         className={cn(
-          'flex h-7 max-w-[200px] items-center gap-1.5 rounded-md border px-2 text-xs transition-colors',
+          // Narrower cap on a phone, where the top bar also carries undo, redo
+          // and search: at 200px the pill claimed more than half the header.
+          'flex h-7 min-w-0 max-w-[110px] items-center gap-1.5 rounded-md border px-2 text-xs transition-colors sm:max-w-[200px]',
           activeEvent
             ? 'border-[hsl(var(--ring)/0.4)] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
             : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
         )}
       >
-        <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        {/* Decoration, so it yields to the label on the narrowest phones —
+            "Ch.4" tells you where you are; the clock does not. */}
+        <Clock className="hidden h-3.5 w-3.5 shrink-0 min-[360px]:block" aria-hidden="true" />
         {activeEvent ? (
           <span className="truncate">
             <span className="font-semibold">Ch.{activeChapter?.number ?? '—'}</span>
-            <span className="text-[hsl(var(--muted-foreground))]">
+            {/* The event title is dropped on a phone rather than squeezed to a
+                couple of letters. The chapter number is the part that still
+                reads at that size; the full label is in the tooltip and on the
+                timeline the pill opens. */}
+            <span className="hidden text-[hsl(var(--muted-foreground))] sm:inline">
               {' · '}
               {activeEvent.title || activeChapter?.title || 'Untitled'}
             </span>
@@ -115,7 +126,10 @@ export function TimeCursor({ worldId }: { worldId: string }) {
           disabled={isPlayingStory}
           aria-label="View all chapters"
           title="View all chapters"
-          className={stepBtn}
+          // Hidden on the narrowest phones so the chapter number itself still
+          // fits. It is the most redundant control here — the timeline reaches
+          // "all chapters" too, and stepping back does the same job.
+          className={cn(stepBtn, 'hidden min-[360px]:flex')}
         >
           <X className="h-3 w-3" aria-hidden="true" />
         </button>
