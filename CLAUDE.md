@@ -34,6 +34,31 @@ The global event selector in `TopBar` drives everything. `activeEventId` (Zustan
 - `db/hooks/` — one file per entity group. Each exports `useFoo(id)` hooks (built on `useLiveQuery`) and standalone async CRUD functions (`createFoo`, `updateFoo`, `deleteFoo`). Hooks are the only way components read data.
 - Images are stored as Blobs in a separate `blobs` table (`BlobStore`) — never inline in entity records.
 
+### Operation journal (`src/lib/operations.ts`, `src/db/hooks/useOperations.ts`)
+Journalled mutations write the record **and** an `Operation` describing the change in one Dexie
+transaction, so the journal can never disagree with the store. This is the local-first foundation
+(issue #115) — it is what makes the store replayable rather than only current, and it underpins undo
+and durable backup. It is entirely local: no network work is required for a mutation to be committed.
+
+- Wrap a mutation in `withJournal([tables], { … })` rather than writing the table directly. Pass the
+  entity's existing cascade logic as `apply` so it stays where it lives.
+- Journalled records carry an optional `version`, incremented per write. **Read it as `?? 1`** —
+  records predating v52, and older `.pwk` imports, have none.
+- Deletes also write a `Tombstone`, so a deletion is recorded rather than inferred from absence.
+- `OperationEntity` lists the 19 entity groups on the seam: character, characterGoal, item,
+  location, timeline, chapter, event, relationship, lorePage, faction, plotThread, motif,
+  knowledgeFact, plus the per-event snapshots (characterSnapshot, itemPlacement, locationSnapshot,
+  itemSnapshot, relationshipSnapshot, mapRegionSnapshot). Snapshots are only written by a direct
+  user edit — chapter-to-chapter inheritance is resolved at read time, so there is no bulk
+  snapshot write.
+- **A partial journal is worse than none.** If a path writes a journalled table directly — bulk AI
+  generation, chapter AI import, world import — it must call `markJournalDiscontinuity(worldId)`,
+  which resets the journal rather than leaving one that claims to be complete and isn't. Bulk
+  operations that are ordinary user edits (`bulkDeleteEvents`, `bulkAddTag`, `moveEventOnBoard`)
+  instead route through the journalled singles.
+- The journal is device-local and is deliberately **not** part of `.pwk`/`.pwb` exports — a portable
+  file is a snapshot of current state, not another device's history.
+
 ### State (`src/store/index.ts`)
 Single Zustand store (`useAppStore`) with slices for: active world/event/map, map drill-down history stack, playback, and UI panel open/close state. Only `activeWorldId`, `activeEventId`, `sidebarOpen`, `navPinned`, `barScope`, and `theme` are persisted (localStorage key: `plotweave-ui`).
 

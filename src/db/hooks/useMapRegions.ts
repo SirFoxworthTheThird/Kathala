@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { journalCreate, journalUpdate } from './useOperations'
 import { generateId } from '@/lib/id'
 import type { MapRegion, MapRegionSnapshot, MapRegionStatus } from '@/types'
 import { selectBestSnapshots } from '@/lib/snapshotUtils'
@@ -89,7 +90,7 @@ export async function upsertMapRegionSnapshot(data: {
     .equals([data.regionId, data.eventId])
     .first()
   if (existing) {
-    await db.mapRegionSnapshots.update(existing.id, { status: data.status, notes: data.notes, updatedAt: Date.now() })
+    await journalUpdate('mapRegionSnapshot', db.mapRegionSnapshots, existing.id, { status: data.status, notes: data.notes, updatedAt: Date.now() })
   } else {
     const snap: MapRegionSnapshot = {
       id: generateId(),
@@ -100,6 +101,6 @@ export async function upsertMapRegionSnapshot(data: {
       notes: data.notes,
       updatedAt: Date.now(),
     }
-    await db.mapRegionSnapshots.add(snap)
+    await journalCreate('mapRegionSnapshot', db.mapRegionSnapshots, snap)
   }
 }

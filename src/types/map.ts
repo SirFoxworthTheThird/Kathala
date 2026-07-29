@@ -48,6 +48,8 @@ export interface LocationMarker {
   factionId: string | null
   createdAt: number
   updatedAt: number
+  /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */
+  version?: number
 }
 
 export type RouteType = 'road' | 'river' | 'trail' | 'sea_route' | 'border' | 'custom'
@@ -95,6 +97,8 @@ export interface MapRegionSnapshot {
   sortKey?: number
   notes?: string
   updatedAt: number
+  /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */
+  version?: number
 }
 
 export interface MapAnnotation {

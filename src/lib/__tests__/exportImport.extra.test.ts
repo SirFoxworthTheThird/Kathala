@@ -1,6 +1,8 @@
 import 'fake-indexeddb/auto'
 import { describe, it, expect } from 'vitest'
-import { importWorld, type WorldExportFile } from '@/lib/exportImport'
+import { importWorld, importWorldFromJson, serializeWorldForSync, type WorldExportFile } from '@/lib/exportImport'
+import { createWorld, deleteWorld } from '@/db/hooks/useWorlds'
+import { createCharacter, updateCharacter } from '@/db/hooks/useCharacters'
 import { db } from '@/db/database'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -1241,5 +1243,35 @@ describe('importWorld — full optional arrays', () => {
 
     const ev = await db.events.get('ev-1')
     expect(ev!.title).toBe('Battle Begins')
+  })
+})
+
+describe('operation journal fields (#115)', () => {
+  it('backfills a character version when importing a file that predates it', async () => {
+    const world = await createWorld({ name: 'Old Export', description: '' })
+    const char = await createCharacter({ worldId: world.id, name: 'Vela', description: '' })
+    const exported = await serializeWorldForSync(world.id)
+
+    // Strip version to mimic a .pwk written before v52.
+    const parsed = JSON.parse(exported) as { characters: Array<Record<string, unknown>> }
+    for (const c of parsed.characters) delete c.version
+
+    await deleteWorld(world.id)
+    const importedId = await importWorldFromJson(JSON.stringify(parsed))
+    const restored = await db.characters.where('worldId').equals(importedId).first()
+    expect(restored?.name).toBe('Vela')
+    expect(restored?.version).toBe(1)
+    expect(restored?.id).toBe(char.id)
+  })
+
+  it('does not carry the operation journal into the export', async () => {
+    const world = await createWorld({ name: 'Journalled', description: '' })
+    const char = await createCharacter({ worldId: world.id, name: 'Vela', description: '' })
+    await updateCharacter(char.id, { name: 'Vela Reyn' })
+    expect(await db.operations.where('worldId').equals(world.id).count()).toBeGreaterThan(0)
+
+    const parsed = JSON.parse(await serializeWorldForSync(world.id)) as Record<string, unknown>
+    expect(parsed.operations).toBeUndefined()
+    expect(parsed.tombstones).toBeUndefined()
   })
 })

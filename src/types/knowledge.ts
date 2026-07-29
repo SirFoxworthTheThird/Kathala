@@ -16,6 +16,8 @@ export interface KnowledgeFact {
   originEventId: string | null
   createdAt: number
   updatedAt: number
+  /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */
+  version?: number
 }
 
 /** Records that a character learns a fact at a specific event (their

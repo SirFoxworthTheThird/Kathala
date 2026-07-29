@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import type { ItemPlacement } from '@/types'
 import { generateId } from '@/lib/id'
 
@@ -61,14 +62,14 @@ export async function placeItemAtLocation(
   locationMarkerId: string,
   notes = '',
 ): Promise<void> {
-  await db.transaction('rw', [db.itemPlacements, db.characterSnapshots], async () => {
+  await db.transaction('rw', [db.itemPlacements, db.characterSnapshots, db.operations, db.tombstones], async () => {
     // Remove from any character's inventory in this event
     const snapshotsWithItem = await db.characterSnapshots
       .where('eventId').equals(eventId)
       .filter((s) => s.inventoryItemIds.includes(itemId))
       .toArray()
     for (const snap of snapshotsWithItem) {
-      await db.characterSnapshots.update(snap.id, {
+      await journalUpdate('characterSnapshot', db.characterSnapshots, snap.id, {
         inventoryItemIds: snap.inventoryItemIds.filter((id) => id !== itemId),
         updatedAt: Date.now(),
       })
@@ -79,7 +80,7 @@ export async function placeItemAtLocation(
       .where('[itemId+eventId]').equals([itemId, eventId]).first()
     const now = Date.now()
     if (existing) {
-      await db.itemPlacements.update(existing.id, { locationMarkerId, notes, updatedAt: now })
+      await journalUpdate('itemPlacement', db.itemPlacements, existing.id, { locationMarkerId, notes, updatedAt: now })
     } else {
       const placement: ItemPlacement = {
         id: generateId(),
@@ -91,12 +92,16 @@ export async function placeItemAtLocation(
         createdAt: now,
         updatedAt: now,
       }
-      await db.itemPlacements.add(placement)
+      await journalCreate('itemPlacement', db.itemPlacements, placement)
     }
   })
 }
 
 /** Remove an item's location placement (item becomes "nowhere" / untracked). */
 export async function removeItemPlacement(itemId: string, eventId: string): Promise<void> {
-  await db.itemPlacements.where('[itemId+eventId]').equals([itemId, eventId]).delete()
+  const existing = await db.itemPlacements.where('[itemId+eventId]').equals([itemId, eventId]).first()
+  if (!existing) return
+  await journalDelete('itemPlacement', db.itemPlacements, existing.id, async () => {
+    await db.itemPlacements.delete(existing.id)
+  })
 }

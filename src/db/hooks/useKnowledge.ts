@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import { generateId } from '@/lib/id'
 import type { KnowledgeFact, KnowledgeReveal } from '@/types'
 
@@ -26,19 +27,19 @@ export async function createKnowledgeFact(
 ): Promise<KnowledgeFact> {
   const now = Date.now()
   const fact: KnowledgeFact = { readerLearnsAtEventId: null, originEventId: null, ...data, id: generateId(), createdAt: now, updatedAt: now }
-  await db.knowledgeFacts.add(fact)
+  await journalCreate('knowledgeFact', db.knowledgeFacts, fact)
   return fact
 }
 
 export async function updateKnowledgeFact(id: string, data: Partial<Omit<KnowledgeFact, 'id' | 'createdAt'>>) {
-  await db.knowledgeFacts.update(id, { ...data, updatedAt: Date.now() })
+  await journalUpdate('knowledgeFact', db.knowledgeFacts, id, { ...data, updatedAt: Date.now() })
 }
 
 export async function deleteKnowledgeFact(id: string) {
-  await db.transaction('rw', [db.knowledgeFacts, db.knowledgeReveals], async () => {
+  await journalDelete('knowledgeFact', db.knowledgeFacts, id, async () => {
     await db.knowledgeReveals.where('factId').equals(id).delete()
     await db.knowledgeFacts.delete(id)
-  })
+  }, [db.knowledgeReveals])
 }
 
 // ── Reveals (who learns a fact, and when) ──────────────────────────────────

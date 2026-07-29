@@ -18,4 +18,6 @@ export interface LorePage {
   visibleFromEventId: string | null
   createdAt: number
   updatedAt: number
+  /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */
+  version?: number
 }

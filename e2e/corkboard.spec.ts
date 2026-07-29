@@ -1,5 +1,11 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+
+/**
+ * Hovering a nav link expands the left rail, which then overlays the board and
+ * swallows drag gestures. Move the pointer back over the content first.
+ */
+const settleNav = (page: Page) => page.mouse.move(700, 400).then(() => page.waitForTimeout(150))
 
 // The corkboard renders one card per event; dragging a card reorders it. This
 // drives the real HTML5 drag-and-drop wiring (the ordering maths is unit-tested
@@ -18,6 +24,7 @@ test.describe('Corkboard', () => {
 
     // Timeline → one chapter.
     await page.getByRole('link', { name: /timeline/i }).click()
+    await settleNav(page)
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('Alpha')
@@ -35,6 +42,7 @@ test.describe('Corkboard', () => {
 
     // Go to the corkboard.
     await page.getByRole('link', { name: /corkboard/i }).click()
+    await settleNav(page)
     // First navigation can trigger a cold Vite compile of the lazy chunk.
     await expect(page.getByRole('heading', { name: 'Corkboard' })).toBeVisible({ timeout: 30000 })
 

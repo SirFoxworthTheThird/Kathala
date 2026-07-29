@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import type { LoreCategory, LorePage } from '@/types'
 import { generateId } from '@/lib/id'
 
@@ -59,7 +60,7 @@ export async function createLorePage(data: Pick<LorePage, 'worldId' | 'categoryI
     updatedAt: now,
     ...data,
   }
-  await db.lorePages.add(page)
+  await journalCreate('lorePage', db.lorePages, page)
   return page
 }
 
@@ -76,9 +77,9 @@ export function useLorePagesForEntity(worldId: string | null, entityId: string |
 }
 
 export async function updateLorePage(id: string, data: Partial<Omit<LorePage, 'id' | 'createdAt'>>) {
-  await db.lorePages.update(id, { ...data, updatedAt: Date.now() })
+  await journalUpdate('lorePage', db.lorePages, id, { ...data, updatedAt: Date.now() })
 }
 
 export async function deleteLorePage(id: string) {
-  await db.lorePages.delete(id)
+  await journalDelete('lorePage', db.lorePages, id, async () => { await db.lorePages.delete(id) })
 }

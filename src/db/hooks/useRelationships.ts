@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import type { Relationship, RelationshipStrength, RelationshipSentiment } from '@/types'
 import { generateId } from '@/lib/id'
 
@@ -43,17 +44,16 @@ export async function createRelationship(data: {
     createdAt: now,
     updatedAt: now,
   }
-  await db.relationships.add(rel)
-  return rel
+  return journalCreate('relationship', db.relationships, rel)
 }
 
 export async function updateRelationship(id: string, data: Partial<Omit<Relationship, 'id' | 'createdAt'>>) {
-  await db.relationships.update(id, { ...data, updatedAt: Date.now() })
+  await journalUpdate('relationship', db.relationships, id, { ...data, updatedAt: Date.now() })
 }
 
 export async function deleteRelationship(id: string) {
-  await db.transaction('rw', [db.relationships, db.relationshipSnapshots], async () => {
+  await journalDelete('relationship', db.relationships, id, async () => {
     await db.relationships.delete(id)
     await db.relationshipSnapshots.where('relationshipId').equals(id).delete()
-  })
+  }, [db.relationshipSnapshots])
 }

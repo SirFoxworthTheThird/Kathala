@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { journalCreate, journalUpdate } from './useOperations'
 import type { LocationSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
@@ -113,9 +114,8 @@ export async function upsertLocationSnapshot(
     .first()
 
   if (existing) {
-    const updated = { ...existing, ...data, sortKey, updatedAt: now }
-    await db.locationSnapshots.put(updated)
-    return updated
+    await journalUpdate('locationSnapshot', db.locationSnapshots, existing.id, { ...data, sortKey, updatedAt: now })
+    return (await db.locationSnapshots.get(existing.id))!
   }
 
   // Dedup: skip write if state matches the last-known snapshot
@@ -131,6 +131,5 @@ export async function upsertLocationSnapshot(
   }
 
   const snap: LocationSnapshot = { id: generateId(), ...data, sortKey, createdAt: now, updatedAt: now }
-  await db.locationSnapshots.add(snap)
-  return snap
+  return journalCreate('locationSnapshot', db.locationSnapshots, snap)
 }

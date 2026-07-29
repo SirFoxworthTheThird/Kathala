@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import type { Motif } from '@/types'
 import { generateId } from '@/lib/id'
 
@@ -20,20 +21,20 @@ export async function createMotif(
 ): Promise<Motif> {
   const now = Date.now()
   const motif: Motif = { description: '', ...data, id: generateId(), createdAt: now, updatedAt: now }
-  await db.motifs.add(motif)
+  await journalCreate('motif', db.motifs, motif)
   return motif
 }
 
 export async function updateMotif(id: string, data: Partial<Omit<Motif, 'id' | 'createdAt'>>) {
-  await db.motifs.update(id, { ...data, updatedAt: Date.now() })
+  await journalUpdate('motif', db.motifs, id, { ...data, updatedAt: Date.now() })
 }
 
 /** Deletes a motif and removes it from every event's motifIds. */
 export async function deleteMotif(id: string) {
-  await db.transaction('rw', [db.motifs, db.events], async () => {
+  await journalDelete('motif', db.motifs, id, async () => {
     await db.motifs.delete(id)
     await db.events.filter((e) => (e.motifIds ?? []).includes(id)).modify((e) => {
       e.motifIds = (e.motifIds ?? []).filter((m) => m !== id)
     })
-  })
+  }, [db.events])
 }

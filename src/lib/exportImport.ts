@@ -1,4 +1,5 @@
 import { db } from '@/db/database'
+import { markJournalDiscontinuity } from '@/db/hooks/useOperations'
 import type {
   CharacterGoal,
   World, MapLayer, LocationMarker, Character, Item,
@@ -727,6 +728,11 @@ function normalizeImport(data: WorldExportFile): void {
     const c = char as unknown as Rec
     if (c.color === undefined) c.color = null
     if (c.birthDate === undefined) c.birthDate = null
+    // Journal versions (#115) start fresh on import: a `.pwk` is a snapshot of
+    // a world's current state, and the exporting device's history means nothing
+    // in the importing one. The operation journal itself is deliberately not
+    // part of the file for the same reason.
+    if (c.version === undefined) c.version = 1
   }
   // Backfill scale and level fields on map layers exported before they were added
   for (const layer of data.mapLayers) {
@@ -1047,6 +1053,10 @@ async function importWorldData(data: WorldExportFile, replaceExisting = true): P
     localStorage.removeItem(`wb-rel-pos-${data.world.id}`)
   }
 
+  // Import writes the whole world wholesale and reuses its ids, so any journal
+  // left under that id describes a different history. Reset it rather than
+  // leave a partial one — see markJournalDiscontinuity.
+  await markJournalDiscontinuity(data.world.id)
   return data.world.id
 }
 
