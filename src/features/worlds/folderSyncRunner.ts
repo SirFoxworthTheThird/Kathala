@@ -1,6 +1,6 @@
 import { saveFolderBinding, type FolderBinding } from '@/lib/folderSync'
 import { latestSeq } from '@/db/hooks/useOperations'
-import { resolveFolderSyncState, type FolderSyncState } from '@/lib/folderSyncState'
+import { resolveFolderSyncState, conflictCopyName, type FolderSyncState } from '@/lib/folderSyncState'
 import { exportWorldData } from './cloudSyncHelpers'
 
 /**
@@ -78,6 +78,48 @@ export async function pushWorldToFolder(
     lastSyncedSeq: seq,
     lastPushedFileModified: written,
   }
+  // Writing the bound file ends the divergence; the side copy stays on disk as
+  // a record but is no longer where auto-save goes.
+  delete next.conflictFileName
+  delete next.conflictSince
+  await saveFolderBinding(next)
+  return next
+}
+
+/**
+ * Write this device's world to a *side* file, leaving the bound file untouched.
+ *
+ * Used when the folder diverged: pausing would protect the other device while
+ * stranding this one, so the author's work still lands on disk — the same
+ * conflicted-copy convention Dropbox and friends use. The bound file's
+ * bookkeeping is deliberately not updated, because we have not written it.
+ */
+export async function pushConflictCopy(
+  worldId: string,
+  binding: FolderBinding,
+): Promise<FolderBinding> {
+  const name = binding.conflictFileName ?? conflictCopyName(binding.fileName, new Date())
+  const json = await exportWorldData(worldId)
+  const fileHandle = await binding.handle.getFileHandle(name, { create: true })
+  const writable = await fileHandle.createWritable()
+  await writable.write(json)
+  await writable.close()
+
+  const next: FolderBinding = {
+    ...binding,
+    conflictFileName: name,
+    conflictSince: binding.conflictSince ?? Date.now(),
+  }
+  await saveFolderBinding(next)
+  return next
+}
+
+/** Forget the conflict copy — the divergence has been resolved either way. */
+export async function clearConflictCopy(binding: FolderBinding): Promise<FolderBinding> {
+  if (!binding.conflictFileName) return binding
+  const next = { ...binding }
+  delete next.conflictFileName
+  delete next.conflictSince
   await saveFolderBinding(next)
   return next
 }
@@ -99,6 +141,8 @@ export async function markPulled(
     lastSyncedSeq: seq,
     lastPushedFileModified: fileModified,
   }
+  delete next.conflictFileName
+  delete next.conflictSince
   await saveFolderBinding(next)
   return next
 }

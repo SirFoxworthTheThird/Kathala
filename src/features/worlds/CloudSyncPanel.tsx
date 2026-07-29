@@ -184,6 +184,11 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
               <p className="mt-0.5 text-[11px] leading-snug text-[hsl(var(--muted-foreground))]">
                 {FOLDER_SYNC_LABELS[folderState].detail}
               </p>
+              {binding?.conflictFileName && (
+                <p className="mt-1 text-[11px] text-[hsl(var(--muted-foreground))]">
+                  Your changes are going to <code className="font-mono">{binding.conflictFileName}</code>.
+                </p>
+              )}
             </div>
           )}
 

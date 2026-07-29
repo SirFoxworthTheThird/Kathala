@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { loadFolderBinding, checkPermission } from '@/lib/folderSync'
-import { pushWorldToFolder, readFolderSyncState } from './folderSyncRunner'
+import { pushWorldToFolder, pushConflictCopy, readFolderSyncState } from './folderSyncRunner'
 
 const DEBOUNCE_MS = 30_000 // save 30 s after the last change
 
@@ -65,10 +65,17 @@ export function useAutoFolderSync(worldId: string | undefined) {
       if (!granted) return
       try {
         const { state } = await readFolderSyncState(worldId, binding)
-        // Anything the folder holds that we have not seen has to be the user's
-        // decision, not a background write.
-        if (state === 'remote-ahead' || state === 'conflict') return
         if (state === 'in-sync') return
+        if (state === 'conflict') {
+          // Both sides moved. Writing the bound file would destroy the other
+          // device's work; writing nothing would strand this one. A side copy
+          // keeps both, without the author having to notice anything.
+          await pushConflictCopy(worldId, binding)
+          return
+        }
+        // remote-ahead: the folder has work we don't, and we have none of our
+        // own to lose. Leave it for the user to load.
+        if (state === 'remote-ahead') return
         await pushWorldToFolder(worldId, binding)
       } catch {
         // A failed auto-save is not silent data loss: the world is already

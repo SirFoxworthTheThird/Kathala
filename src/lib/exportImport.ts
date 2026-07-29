@@ -1,5 +1,7 @@
 import { db } from '@/db/database'
 import { markJournalDiscontinuity } from '@/db/hooks/useOperations'
+import type { Tombstone } from '@/types/operation'
+import { applyTombstones, mergeTombstoneSets, pruneStaleTombstones } from '@/lib/mergeTombstones'
 import type {
   CharacterGoal,
   World, MapLayer, LocationMarker, Character, Item,
@@ -87,6 +89,13 @@ export interface WorldExportFile {
   continuitySuppressions?: ContinuitySuppression[]
   writingLogs?: WritingLog[]
   sceneRevisions?: SceneRevision[]
+  /**
+   * Deletions, so a merge on another device removes what this one removed
+   * instead of treating the absence as "never existed" and resurrecting it.
+   * The operation journal itself stays out of the file — it is device-local
+   * history — but a tombstone is world state.
+   */
+  tombstones?: Tombstone[]
   relationshipPositions?: Record<string, { x: number; y: number }>
   /** @deprecated v6 and earlier stored only IDs via localStorage; superseded by continuitySuppressions */
   suppressedIssueIds?: string[]
@@ -163,6 +172,7 @@ interface CollectedWorldData {
   continuitySuppressions: ContinuitySuppression[]
   writingLogs: WritingLog[]
   sceneRevisions: SceneRevision[]
+  tombstones: Tombstone[]
 }
 
 export type { CollectedWorldData }
@@ -206,6 +216,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     continuitySuppressions,
     writingLogs,
     sceneRevisions,
+    tombstones,
   ] = await Promise.all([
     db.worlds.get(worldId),
     db.mapLayers.where('worldId').equals(worldId).toArray(),
@@ -244,6 +255,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     db.continuitySuppressions.where('worldId').equals(worldId).toArray(),
     db.writingLogs.where('worldId').equals(worldId).toArray(),
     db.sceneRevisions.where('worldId').equals(worldId).toArray(),
+    db.tombstones.where('worldId').equals(worldId).toArray(),
   ])
 
   if (!world) throw new Error('World not found')
@@ -286,6 +298,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     continuitySuppressions,
     writingLogs,
     sceneRevisions,
+    tombstones,
   }
 }
 
@@ -420,6 +433,7 @@ export async function exportWorld(
     continuitySuppressions: d.continuitySuppressions,
     writingLogs: d.writingLogs,
     sceneRevisions: d.sceneRevisions,
+    tombstones: d.tombstones,
     ...extras,
   }
   const filename = `${d.world.name.replace(/[^a-z0-9]/gi, '_')}.pwk`
@@ -496,6 +510,7 @@ export async function exportWorldSplit(
     continuitySuppressions: d.continuitySuppressions,
     writingLogs: d.writingLogs,
     sceneRevisions: d.sceneRevisions,
+    tombstones: d.tombstones,
     ...extras,
   }
   triggerDownload(JSON.stringify(dataFile), `${safeName}.pwk`)
@@ -563,6 +578,7 @@ export async function serializeWorldForSync(worldId: string): Promise<string> {
     continuitySuppressions: d.continuitySuppressions,
     writingLogs: d.writingLogs,
     sceneRevisions: d.sceneRevisions,
+    tombstones: d.tombstones,
     ...extras,
   }
   return JSON.stringify(exportData)
@@ -691,6 +707,10 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
     throw new Error('Invalid file: characterGoals is not an array')
   }
   if (!d.characterGoals) (d as Record<string, unknown>).characterGoals = []
+  if (d.tombstones !== undefined && !Array.isArray(d.tombstones)) {
+    throw new Error('Invalid file: tombstones is not an array')
+  }
+  if (!d.tombstones) (d as Record<string, unknown>).tombstones = []
   if (d.sceneTexts !== undefined && !Array.isArray(d.sceneTexts)) {
     throw new Error('Invalid file: sceneTexts is not an array')
   }
@@ -954,6 +974,7 @@ async function importWorldData(data: WorldExportFile, replaceExisting = true): P
     db.loreCategories, db.lorePages, db.factions, db.factionMemberships, db.factionRelationships,
     db.knowledgeFacts, db.knowledgeReveals, db.characterGoals, db.sceneTexts, db.plotThreads,
     db.motifs, db.continuitySuppressions, db.writingLogs, db.sceneRevisions,
+    db.tombstones,
   ], async () => {
     // A normal import and the explicit "Replace all" action must remove records
     // that are no longer present in the incoming file. Previously this path only
@@ -1038,6 +1059,10 @@ async function importWorldData(data: WorldExportFile, replaceExisting = true): P
     await db.motifs.bulkPut(data.motifs ?? [])
     await db.writingLogs.bulkPut(data.writingLogs ?? [])
     await db.sceneRevisions.bulkPut(data.sceneRevisions ?? [])
+    // Deletions travel with the world so the far side removes what this side
+    // removed. Written after markJournalDiscontinuity clears the journal (which
+    // is device-local history) — a tombstone is world state, not history.
+    await db.tombstones.bulkPut(data.tombstones ?? [])
     if (suppressionsToImport.length > 0) {
       await db.continuitySuppressions.bulkPut(suppressionsToImport)
     }
@@ -1183,7 +1208,7 @@ export async function applyWorldImport(
     localFactions, localFactionMemberships, localFactionRelationships,
     localKnowledgeFacts, localKnowledgeReveals, localCharacterGoals,
     localSceneTexts, localPlotThreads,
-    localMotifs, localWritingLogs, localSceneRevisions,
+    localMotifs, localWritingLogs, localSceneRevisions, localTombstones,
   ] = await Promise.all([
     db.characters.where('worldId').equals(worldId).toArray(),
     db.items.where('worldId').equals(worldId).toArray(),
@@ -1219,6 +1244,7 @@ export async function applyWorldImport(
     db.motifs.where('worldId').equals(worldId).toArray(),
     db.writingLogs.where('worldId').equals(worldId).toArray(),
     db.sceneRevisions.where('worldId').equals(worldId).toArray(),
+    db.tombstones.where('worldId').equals(worldId).toArray(),
   ])
 
   const merged = {
@@ -1261,6 +1287,32 @@ export async function applyWorldImport(
     relationshipPositions: parsed.relationshipPositions,
     suppressedIssueIds:   parsed.suppressedIssueIds,
   }
+
+  // ── Deletions ──────────────────────────────────────────────────────────────
+  // mergeTable unions by id, so a record the *other* device deleted looks
+  // local-only here and would come straight back. Tombstones are what turn "not
+  // in the incoming file" into "deliberately removed", so they are applied
+  // after the union rather than left to inference.
+  const allTombstones = mergeTombstoneSets(localTombstones, parsed.tombstones ?? [])
+  const record = merged as unknown as Record<string, Array<{ id: string; updatedAt?: number }>>
+  const revived = new Set<string>()
+  for (const table of Object.keys(record)) {
+    const rows = record[table]
+    if (!Array.isArray(rows)) continue
+    const out = applyTombstones(rows, allTombstones, table)
+    record[table] = out.kept
+    for (const id of out.revived) revived.add(id)
+  }
+
+  // A record edited after its deletion was kept (see applyTombstones), so its
+  // headstone is stale — leaving it would delete the record on the next merge.
+  // Merge writes with bulkPut and never deletes, so stale rows have to go
+  // explicitly rather than by omission from the merged set.
+  const pruned = pruneStaleTombstones(allTombstones, revived)
+  const keptIds = new Set(pruned.map((t) => t.id))
+  const staleIds = allTombstones.filter((t) => !keptIds.has(t.id)).map((t) => t.id)
+  if (staleIds.length > 0) await db.tombstones.bulkDelete(staleIds)
+  ;(merged as unknown as Record<string, unknown>).tombstones = pruned
 
   return importWorldData(merged as WorldExportFile, false)
 }

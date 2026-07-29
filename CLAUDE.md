@@ -56,8 +56,12 @@ and durable backup. It is entirely local: no network work is required for a muta
   which resets the journal rather than leaving one that claims to be complete and isn't. Bulk
   operations that are ordinary user edits (`bulkDeleteEvents`, `bulkAddTag`, `moveEventOnBoard`)
   instead route through the journalled singles.
-- The journal is device-local and is deliberately **not** part of `.pwk`/`.pwb` exports — a portable
-  file is a snapshot of current state, not another device's history.
+- **Operations** are device-local history and stay out of `.pwk`/`.pwb`. **Tombstones do travel**:
+  they are world state, and without them a merge on the other device treats a deleted record as
+  merely absent and resurrects it. `markJournalDiscontinuity` therefore clears operations only.
+- Merge (`applyWorldImport('merge')`) unions records by id, so deletions are applied afterwards from
+  the tombstone set (`src/lib/mergeTombstones.ts`). A record edited *after* its deletion is kept —
+  keeping is recoverable, discarding later work is not — and its stale tombstone is dropped.
 
 ### State (`src/store/index.ts`)
 Single Zustand store (`useAppStore`) with slices for: active world/event/map, map drill-down history stack, playback, and UI panel open/close state. Only `activeWorldId`, `activeEventId`, `sidebarOpen`, `navPinned`, `barScope`, and `theme` are persisted (localStorage key: `plotweave-ui`).

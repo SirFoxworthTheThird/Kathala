@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  resolveFolderSyncState, canAutoPush, needsAttention, MODIFIED_TOLERANCE_MS,
+  resolveFolderSyncState, canAutoPush, needsAttention, conflictCopyName, MODIFIED_TOLERANCE_MS,
 } from '@/lib/folderSyncState'
 
 // A world that has been pushed once: 10 operations, file written at t=1000.
@@ -79,6 +79,30 @@ describe('canAutoPush', () => {
     for (const state of ['remote-ahead', 'conflict'] as const) {
       expect(canAutoPush(state)).toBe(false)
       expect(needsAttention(state)).toBe(true)
+    }
+  })
+})
+
+describe('conflictCopyName', () => {
+  const at = new Date(2026, 6, 29, 3, 15) // 2026-07-29 03:15 local
+
+  it('keeps the extension and marks the copy', () => {
+    expect(conflictCopyName('Middle Earth.pwk', at))
+      .toBe('Middle Earth (conflict copy 2026-07-29 0315).pwk')
+  })
+
+  it('handles a name with dots in it', () => {
+    expect(conflictCopyName('Book 2.draft.pwk', at))
+      .toBe('Book 2.draft (conflict copy 2026-07-29 0315).pwk')
+  })
+
+  it('handles a name with no extension', () => {
+    expect(conflictCopyName('World', at)).toBe('World (conflict copy 2026-07-29 0315)')
+  })
+
+  it('never returns the original name — the bound file must not be touched', () => {
+    for (const name of ['a.pwk', 'World', 'x.y.z']) {
+      expect(conflictCopyName(name, at)).not.toBe(name)
     }
   })
 })

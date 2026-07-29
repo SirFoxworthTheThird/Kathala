@@ -258,7 +258,11 @@ export async function pruneJournal(worldId: string, keep = 500): Promise<number>
  * is losing undo history across a bulk import, which is the honest trade.
  */
 export async function markJournalDiscontinuity(worldId: string): Promise<void> {
-  await clearJournal(worldId)
+  // Operations only. Tombstones are *world state* — the fact that a record was
+  // deleted — not device-local history, and they travel in `.pwk` so a merge on
+  // another device removes what this one removed. Clearing them here would wipe
+  // what an import had just written and bring deleted records back.
+  await db.operations.where('worldId').equals(worldId).delete()
 }
 
 /** Drops a world's journal and tombstones — used by world deletion. */

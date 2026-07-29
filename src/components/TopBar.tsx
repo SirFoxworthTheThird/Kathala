@@ -7,6 +7,7 @@ import { useMapLayer } from '@/db/hooks/useMapLayers'
 import { useNavigate, NavLink, useMatch } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { TimeCursor } from './TimeCursor'
+import { FolderSyncIndicator } from './FolderSyncIndicator'
 import { navItems } from './navItems'
 
 /**
@@ -154,6 +155,7 @@ export function TopBar() {
           <>
             <span aria-hidden="true" className="mx-0.5 h-5 w-px shrink-0 bg-[hsl(var(--border))]" />
             <TimeCursor worldId={worldId} />
+            <FolderSyncIndicator worldId={worldId} />
           </>
         )}
       </div>

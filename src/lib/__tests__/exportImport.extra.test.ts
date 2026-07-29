@@ -2,7 +2,9 @@ import 'fake-indexeddb/auto'
 import { describe, it, expect } from 'vitest'
 import { importWorld, importWorldFromJson, serializeWorldForSync, type WorldExportFile } from '@/lib/exportImport'
 import { createWorld, deleteWorld } from '@/db/hooks/useWorlds'
-import { createCharacter, updateCharacter } from '@/db/hooks/useCharacters'
+import { createCharacter, updateCharacter, deleteCharacter } from '@/db/hooks/useCharacters'
+import { applyWorldImport } from '@/lib/exportImport'
+import { addCharactersToWorld } from '@/lib/sectionImport'
 import { db } from '@/db/database'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -1264,14 +1266,82 @@ describe('operation journal fields (#115)', () => {
     expect(restored?.id).toBe(char.id)
   })
 
-  it('does not carry the operation journal into the export', async () => {
+  it('carries deletions but not the operation journal', async () => {
     const world = await createWorld({ name: 'Journalled', description: '' })
     const char = await createCharacter({ worldId: world.id, name: 'Vela', description: '' })
     await updateCharacter(char.id, { name: 'Vela Reyn' })
     expect(await db.operations.where('worldId').equals(world.id).count()).toBeGreaterThan(0)
 
     const parsed = JSON.parse(await serializeWorldForSync(world.id)) as Record<string, unknown>
+    // Operations are device-local history and stay out of a portable file…
     expect(parsed.operations).toBeUndefined()
-    expect(parsed.tombstones).toBeUndefined()
+    // …but tombstones are world state: without them a merge on another device
+    // resurrects whatever this one deleted.
+    expect(Array.isArray(parsed.tombstones)).toBe(true)
+  })
+})
+
+describe('deletions survive a merge (#116 follow-up)', () => {
+  it('does not resurrect a record the other device deleted', async () => {
+    const world = await createWorld({ name: 'Two Devices', description: '' })
+    const keeper = await createCharacter({ worldId: world.id, name: 'Keeper', description: '' })
+    const doomed = await createCharacter({ worldId: world.id, name: 'Doomed', description: '' })
+
+    // Device B's file still has both — it was written before the deletion.
+    const fileFromB = await serializeWorldForSync(world.id)
+
+    // Device A deletes one, then merges B's older file.
+    await deleteCharacter(doomed.id)
+    await applyWorldImport(JSON.parse(fileFromB), 'merge')
+
+    const names = (await db.characters.where('worldId').equals(world.id).toArray())
+      .map((c) => c.name).sort()
+    expect(names).toEqual(['Keeper'])
+    expect(keeper.id).toBeTruthy()
+  })
+
+  it('carries the deletion onward so the far side removes it too', async () => {
+    const world = await createWorld({ name: 'Onward', description: '' })
+    await createCharacter({ worldId: world.id, name: 'Keeper', description: '' })
+    const doomed = await createCharacter({ worldId: world.id, name: 'Doomed', description: '' })
+    await deleteCharacter(doomed.id)
+
+    // The deletion has to reach the other device, so it must be in the file.
+    const parsed = JSON.parse(await serializeWorldForSync(world.id)) as {
+      tombstones?: Array<{ entityId: string; entityType: string }>
+    }
+    expect(parsed.tombstones?.some((t) => t.entityId === doomed.id && t.entityType === 'character'))
+      .toBe(true)
+  })
+
+  it('keeps a record the other device deleted but this one edited afterwards', async () => {
+    const world = await createWorld({ name: 'Contested', description: '' })
+    const c = await createCharacter({ worldId: world.id, name: 'Contested', description: '' })
+    await deleteCharacter(c.id)
+    const fileWithDeletion = await serializeWorldForSync(world.id)
+
+    // The other device still had it and kept working on it after the deletion.
+    const revived = { ...c, name: 'Still Wanted', updatedAt: Date.now() + 60_000, version: 5 }
+    await db.characters.put(revived)
+
+    await applyWorldImport(JSON.parse(fileWithDeletion), 'merge')
+    const after = await db.characters.get(c.id)
+    // Deleting someone's later work is worse than keeping something they removed.
+    expect(after?.name).toBe('Still Wanted')
+    // …and the stale headstone is gone, so it isn't deleted on the next merge.
+    expect(await db.tombstones.where('entityId').equals(c.id).count()).toBe(0)
+  })
+
+  it('a bulk import no longer wipes the record of deletions', async () => {
+    const world = await createWorld({ name: 'Discontinuity', description: '' })
+    const doomed = await createCharacter({ worldId: world.id, name: 'Doomed', description: '' })
+    await deleteCharacter(doomed.id)
+    expect(await db.tombstones.where('worldId').equals(world.id).count()).toBe(1)
+
+    // markJournalDiscontinuity resets the journal, but a tombstone is world
+    // state — clearing it would bring the record back on the next merge.
+    await addCharactersToWorld(world.id, [{ name: 'Imported' }] as never)
+    expect(await db.operations.where('worldId').equals(world.id).count()).toBe(0)
+    expect(await db.tombstones.where('worldId').equals(world.id).count()).toBe(1)
   })
 })

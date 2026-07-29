@@ -80,6 +80,34 @@ export function needsAttention(state: FolderSyncState): boolean {
   return state === 'conflict' || state === 'remote-ahead'
 }
 
+/**
+ * The name of the side file a conflicted auto-save writes to.
+ *
+ * Pausing auto-save protects the *other* device but strands this one: the
+ * author keeps writing with nothing reaching the folder, and finds out only if
+ * they happen to open Settings. Writing a conflicted copy — the convention
+ * Dropbox and friends use — keeps both invariants at once: the other device's
+ * file is untouched, and this device's work is still on disk.
+ *
+ * One copy per divergence, not one per auto-save tick: the name is stored on
+ * the binding and reused until the conflict is resolved.
+ */
+export function conflictCopyName(fileName: string, at: Date): string {
+  const stamp = [
+    at.getFullYear(),
+    String(at.getMonth() + 1).padStart(2, '0'),
+    String(at.getDate()).padStart(2, '0'),
+  ].join('-') + ' ' + [
+    String(at.getHours()).padStart(2, '0'),
+    String(at.getMinutes()).padStart(2, '0'),
+  ].join('')
+
+  const dot = fileName.lastIndexOf('.')
+  const base = dot > 0 ? fileName.slice(0, dot) : fileName
+  const ext = dot > 0 ? fileName.slice(dot) : ''
+  return `${base} (conflict copy ${stamp})${ext}`
+}
+
 export const FOLDER_SYNC_LABELS: Record<FolderSyncState, { label: string; detail: string }> = {
   'never-synced': {
     label: 'Not saved yet',
@@ -98,8 +126,8 @@ export const FOLDER_SYNC_LABELS: Record<FolderSyncState, { label: string; detail
     detail: 'Another device saved to this folder. Load it to catch up.',
   },
   conflict: {
-    label: 'Both changed',
+    label: 'Saved to a conflict copy',
     detail:
-      'You have edits here and another device saved to the folder. Auto-save is paused so neither is lost — load the folder copy to compare, or save yours over it.',
+      'Another device saved to this folder while you were working, so your changes go to a separate conflict copy instead — neither version is lost. Load the folder copy to compare, or save yours over it.',
   },
 }
