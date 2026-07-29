@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
-import { undoLast, useUndoHead, useUndoStack } from '@/db/hooks/useOperations'
-import { describeOperation } from '@/lib/operations'
+import { redoLast, undoLast, useRedoHead, useUndoHead, useUndoStack } from '@/db/hooks/useOperations'
+import { describeInverse, describeOperation } from '@/lib/operations'
 import { useAppStore } from '@/store'
 
 /**
@@ -29,19 +29,45 @@ export function useUndoAction(worldId: string | null) {
   }, [worldId, pushToast])
 }
 
+/** The redo action, likewise without subscribing to the journal. */
+export function useRedoAction(worldId: string | null) {
+  const pushToast = useAppStore((s) => s.pushToast)
+
+  return useCallback(async () => {
+    if (!worldId) return
+    const redone = await redoLast(worldId)
+    if (redone.length === 0) {
+      pushToast({ message: 'Nothing to redo' })
+      return
+    }
+    pushToast({
+      message: redone.length > 1
+        ? `Redid ${redone.length} changes`
+        : `Redid: ${describeInverse(redone[0])}`,
+    })
+  }, [worldId, pushToast])
+}
+
 /**
- * Undo, plus what it would take back — for the toolbar button, which needs a
- * label and a disabled state but never the rest of the history.
+ * Undo and redo, plus what each would do — for the toolbar buttons, which need
+ * a label and a disabled state but never the rest of the history.
  */
 export function useUndoNext(worldId: string | null) {
   const head = useUndoHead(worldId)
+  const redoHead = useRedoHead(worldId)
   const undo = useUndoAction(worldId)
+  const redo = useRedoAction(worldId)
 
   return {
     undo,
+    redo,
     canUndo: !!head,
     /** Empty right after a bulk import, which resets the journal. */
     nextLabel: head ? describeOperation(head) : null,
+    canRedo: !!redoHead,
+    // The head is the *undo*, so describing it plainly would say the opposite
+    // of what redo is about to do.
+    redoLabel: redoHead ? describeInverse(redoHead) : null,
   }
 }
 

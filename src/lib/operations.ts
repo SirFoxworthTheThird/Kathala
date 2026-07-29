@@ -107,6 +107,19 @@ export function coalesceOperations(prev: Operation, next: Operation): Operation 
   }
 }
 
+/**
+ * What *reversing* an operation would do, described from the user's side.
+ *
+ * Redo works by inverting an undo, so the entry it points at is the undo — for
+ * a created character that reads "Deleted…", the opposite of what the button is
+ * about to do. This flips the verb so the label matches the effect.
+ */
+export function describeInverse(op: Operation): string {
+  const flipped: OperationType =
+    op.type === 'create' ? 'delete' : op.type === 'delete' ? 'create' : 'update'
+  return describeOperation({ ...op, type: flipped })
+}
+
 /** A short human description of an operation, for the history list and toasts. */
 export function describeOperation(op: Operation): string {
   const label = ENTITY_LABEL[op.entityType] ?? 'record'
@@ -177,7 +190,7 @@ export function replay<T extends { id: string; version: number }>(
 export function invertOperation(
   op: Operation,
   before: Record<string, unknown> | undefined,
-  next: { id: string; seq: number; now?: number; groupId?: string },
+  next: { id: string; seq: number; now?: number; groupId?: string; as?: 'undo' | 'redo' },
 ): Operation | null {
   const base: Omit<Operation, 'type' | 'payload' | 'changedFields' | 'id' | 'seq' | 'createdAt'> = {
     worldId: op.worldId,
@@ -185,9 +198,11 @@ export function invertOperation(
     entityId: op.entityId,
     deviceId: op.deviceId,
     baseVersion: op.baseVersion + 1,
-    // Marks the result as an undo, so it never appears in the undo stack
-    // itself — otherwise pressing undo twice would redo the first one.
-    undoOf: op.id,
+    // An undo is marked so it never appears in the undo stack itself —
+    // otherwise pressing undo twice would redo the first one. A redo is marked
+    // differently *because* it should be undoable: it puts a change back with
+    // nothing else accounting for it.
+    ...(next.as === 'redo' ? { redoOf: op.id } : { undoOf: op.id }),
     ...(next.groupId ? { groupId: next.groupId } : {}),
   }
   const shell = { id: next.id, seq: next.seq, createdAt: next.now ?? Date.now() }
@@ -205,6 +220,10 @@ export function invertOperation(
       payload: op.payload,
       changedFields: [],
       baseVersion: 0,
+      // Carry the cascade onto the restoring create. Redoing the delete means
+      // inverting *this* operation, and without the list of what the original
+      // delete swept up, the redo would remove the record and orphan the rest.
+      ...(op.cascade ? { cascade: op.cascade } : {}),
     }
   }
 
@@ -213,12 +232,20 @@ export function invertOperation(
   const prior = before ?? op.previous
   if (!prior) return null
   const restored: Record<string, unknown> = {}
-  for (const field of op.changedFields) restored[field] = prior[field]
+  const overwritten: Record<string, unknown> = {}
+  for (const field of op.changedFields) {
+    restored[field] = prior[field]
+    // What this inverse is about to overwrite — the values the original edit
+    // put there. Without it the inverse has no before-image of its own, and
+    // inverting it again (which is exactly what redo does) restores nothing.
+    overwritten[field] = op.payload[field]
+  }
   return {
     ...base,
     ...shell,
     type: 'update',
     payload: restored,
+    previous: overwritten,
     changedFields: [...op.changedFields].sort(),
   }
 }
@@ -236,6 +263,32 @@ export function undoableBatch(ops: Operation[]): Operation[] {
   if (!head) return []
   if (!head.groupId) return [head]
   return candidates.filter((op) => op.groupId === head.groupId)
+}
+
+/**
+ * The operations a redo would put back, or empty when there is nothing.
+ *
+ * Redo survives only while nothing new has been done since the undo — the rule
+ * every text editor follows. Make a fresh edit after undoing and the redo is
+ * gone, because putting the change back would land it on a world that has since
+ * moved on, producing a state the user never had.
+ */
+export function redoableBatch(ops: Operation[]): Operation[] {
+  if (ops.length === 0) return []
+  const ordered = [...ops].sort((a, b) => b.seq - a.seq)
+
+  // Ordinary work at the head clears the redo history. The head may equally be
+  // a *redo* — pressing redo twice has to keep working — so this test only
+  // rules out new edits; it does not pick the target.
+  const head = ordered[0]
+  if (!head.undoOf && !head.redoOf) return []
+
+  // The most recent undo not yet put back, which walks the undos in reverse:
+  // the same last-in-first-out order the undo stack uses.
+  const target = ordered.find((op) => op.undoOf && !op.redoneBy)
+  if (!target) return []
+  if (!target.groupId) return [target]
+  return ordered.filter((op) => op.groupId === target.groupId)
 }
 
 export function makeTombstone(input: {

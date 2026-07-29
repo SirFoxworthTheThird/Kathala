@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Search, ScrollText, ShieldAlert, HelpCircle, Menu, X, Undo2, History } from 'lucide-react'
+import { Search, ScrollText, ShieldAlert, HelpCircle, Menu, X, Undo2, Redo2, History } from 'lucide-react'
 import faviconUrl from '/favicon.png'
 import { useActiveWorldId, useActiveMapLayerId, useAppStore } from '@/store'
 import { useWorld } from '@/db/hooks/useWorlds'
@@ -101,7 +101,7 @@ export function TopBar() {
   const navigate = useNavigate()
   const { setSearchOpen, setBriefOpen, setCheckerOpen, setHelpOpen, setHistoryOpen } = useAppStore()
   const [navOpen, setNavOpen] = useState(false)
-  const { undo, canUndo, nextLabel } = useUndoNext(worldId)
+  const { undo, redo, canUndo, canRedo, nextLabel, redoLabel } = useUndoNext(worldId)
   // On the map, the breadcrumb carries which layer is open and its scale, so
   // the canvas doesn't have to give up a corner to a floating name chip.
   const onMaps = !!useMatch('/worlds/:worldId/maps')
@@ -187,6 +187,22 @@ export function TopBar() {
               className="pw-tap flex h-8 w-8 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] transition-colors enabled:hover:bg-[hsl(var(--accent))] enabled:hover:text-[hsl(var(--foreground))] disabled:opacity-40"
             >
               <Undo2 className="h-4 w-4 lg:h-3.5 lg:w-3.5" aria-hidden="true" />
+            </button>
+            {/* Redo sits beside undo rather than behind a menu: one Ctrl+Z too
+                many is exactly when people look for it, and hunting for it in
+                that moment is its own small panic. */}
+            <button
+              onClick={() => { void redo() }}
+              disabled={!canRedo}
+              aria-label={canRedo ? 'Redo' : 'Nothing to redo'}
+              title={
+                canRedo
+                  ? `Redo: ${redoLabel} (${isMac ? '⇧⌘Z' : 'Ctrl+Shift+Z'})`
+                  : 'Nothing to redo — making a new edit clears the redo history'
+              }
+              className="pw-tap flex h-8 w-8 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] transition-colors enabled:hover:bg-[hsl(var(--accent))] enabled:hover:text-[hsl(var(--foreground))] disabled:opacity-40"
+            >
+              <Redo2 className="h-4 w-4 lg:h-3.5 lg:w-3.5" aria-hidden="true" />
             </button>
             <button
               onClick={() => setHistoryOpen(true)}

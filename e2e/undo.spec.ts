@@ -11,6 +11,7 @@ const settleNav = (page: Page) => page.mouse.move(700, 400).then(() => page.wait
 
 /** The top bar's undo button. Scoped, since the toast and panel have one too. */
 const topBarUndo = (page: Page) => page.getByRole('banner').getByRole('button', { name: 'Undo', exact: true })
+const topBarRedo = (page: Page) => page.getByRole('banner').getByRole('button', { name: 'Redo', exact: true })
 
 async function setupWorld(page: Page) {
   await page.goto('/')
@@ -122,4 +123,34 @@ test('undo is reachable on a phone, where there is no keyboard', async ({ page }
   await page.getByRole('button', { name: 'Open navigation menu' }).click()
   await page.getByRole('button', { name: 'Recent changes' }).click()
   await expect(page.getByRole('dialog', { name: 'Recent changes' })).toBeVisible()
+})
+
+test('redo puts back what undo took away', async ({ page }) => {
+  await setupWorld(page)
+  await addCharacter(page, 'Vela')
+
+  // Nothing has been undone, so there is nothing to put back.
+  await expect(page.getByRole('banner').getByRole('button', { name: 'Nothing to redo' })).toBeDisabled()
+
+  await topBarUndo(page).click()
+  await expect(page.getByRole('main').getByText('Vela')).toHaveCount(0)
+
+  await topBarRedo(page).click()
+  await expect(page.getByRole('main').getByText('Vela').first()).toBeVisible()
+})
+
+test('Ctrl+Shift+Z redoes, and a new edit clears the redo', async ({ page }) => {
+  await setupWorld(page)
+  await addCharacter(page, 'Vela')
+
+  await page.locator('body').press('Control+z')
+  await expect(page.getByRole('main').getByText('Vela')).toHaveCount(0)
+
+  await page.locator('body').press('Control+Shift+z')
+  await expect(page.getByRole('main').getByText('Vela').first()).toBeVisible()
+
+  // Undo again, then do something new — the redo must not survive it.
+  await page.locator('body').press('Control+z')
+  await addCharacter(page, 'Bree')
+  await expect(page.getByRole('banner').getByRole('button', { name: 'Nothing to redo' })).toBeDisabled()
 })

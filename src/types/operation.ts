@@ -112,6 +112,16 @@ export interface Operation {
   undoOf?: string
   /** Set on an operation that has been undone — excluded from the undo stack. */
   undoneBy?: string
+  /**
+   * Set on an operation produced by redoing an undo.
+   *
+   * Unlike an undo, a redo *is* undoable: it puts a change back into the world
+   * with nothing else accounting for it, so the next Ctrl+Z should take it away
+   * again. That asymmetry is why this is a separate mark rather than `undoOf`.
+   */
+  redoOf?: string
+  /** Set on an undo that has since been redone. */
+  redoneBy?: string
   createdAt: number
 }
 

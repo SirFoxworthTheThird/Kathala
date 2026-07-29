@@ -38,7 +38,7 @@ explore).
 21. [Factions](#factions)
 22. [Knowledge](#knowledge)
 23. [Search](#search)
-24. [Undo & recent changes](#undo--recent-changes)
+24. [Undo, redo & recent changes](#undo-redo--recent-changes)
 25. [Writer's Brief](#writers-brief)
 26. [Calendar & character ages](#calendar--character-ages)
 27. [Continuity Checker](#continuity-checker)
@@ -921,14 +921,19 @@ opening a location focuses its map marker.
 
 ---
 
-## Undo & recent changes
+## Undo, redo & recent changes
 
 PlotWeave records every edit you make as you make it, so a mistake is a step
 backwards rather than a rebuild.
 
-**Undo** is the arrow in the top bar, and **Ctrl/⌘+Z** anywhere outside a text
-box. Inside a text box, Ctrl/⌘+Z is your browser's own undo, working letter by
-letter — PlotWeave deliberately stays out of the way there.
+**Undo** is the left arrow in the top bar, and **Ctrl/⌘+Z** anywhere outside a
+text box. Inside a text box, Ctrl/⌘+Z is your browser's own undo, working letter
+by letter — PlotWeave deliberately stays out of the way there.
+
+**Redo** is the right arrow, **Ctrl/⌘+Shift+Z**, or **Ctrl+Y**. It puts back
+whatever you just undid, and you can walk forward through several undos in turn.
+As in any editor, making a *new* edit clears the redo: putting the old change
+back at that point would land it on a story that has since moved on.
 
 Press it repeatedly to walk back through your recent edits. Each press takes
 back one *action*, which is not always one record:
@@ -951,6 +956,10 @@ newest can be undone — history is a stack, so taking one from the middle would
 leave the later edits resting on a state that never existed.
 
 ![Recent changes](images/53-recent-changes.png)
+
+Redo is as careful as undo about acting in whole steps: redoing a deleted
+character removes their relationships and goals again, and redoing a reorder
+moves both events.
 
 > **Note:** importing a world, generating one from AI, or importing a manuscript
 > starts a fresh history. Those are single large acts rather than hundreds of

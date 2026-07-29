@@ -14,7 +14,7 @@ import { ContinuityChecker } from '@/features/continuity/ContinuityChecker'
 import { HelpPanel } from '@/features/help/HelpPanel'
 import { RecentChangesPanel } from '@/features/history/RecentChangesPanel'
 import { UndoToastBridge } from '@/features/history/UndoToastBridge'
-import { useUndoAction } from '@/features/history/useUndo'
+import { useRedoAction, useUndoAction } from '@/features/history/useUndo'
 import { Toaster } from '@/components/ui/toast'
 import { db } from '@/db/database'
 
@@ -57,6 +57,7 @@ export function AppShell() {
   useAutoFolderSync(worldId)
 
   const undo = useUndoAction(worldId ?? null)
+  const redo = useRedoAction(worldId ?? null)
 
   // Global Cmd/Ctrl+K to open search, Cmd/Ctrl+Z to undo
   useEffect(() => {
@@ -66,19 +67,23 @@ export function AppShell() {
         setSearchOpen(true)
         return
       }
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+      const key = e.key.toLowerCase()
+      const isUndoKey = (e.metaKey || e.ctrlKey) && key === 'z' && !e.shiftKey
+      // Both conventions: ⇧⌘Z on Mac and most editors, Ctrl+Y on Windows.
+      const isRedoKey = (e.metaKey || e.ctrlKey) && ((key === 'z' && e.shiftKey) || key === 'y')
+      if (isUndoKey || isRedoKey) {
         // Inside a text field the browser's own undo is the one the user means
         // — it works at keystroke granularity and this one does not.
         const el = e.target as HTMLElement | null
         const tag = el?.tagName
         if (tag === 'INPUT' || tag === 'TEXTAREA' || el?.isContentEditable) return
         e.preventDefault()
-        void undo()
+        void (isRedoKey ? redo() : undo())
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [setSearchOpen, undo])
+  }, [setSearchOpen, undo, redo])
 
   return (
     <div

@@ -11,6 +11,7 @@ import {
   prunableOperations,
   shouldCoalesce,
   undoableBatch,
+  redoableBatch,
 } from '@/lib/operations'
 import { ENTITY_TABLE } from '@/lib/entityTables'
 import type { Operation, OperationEntity, OperationType, Tombstone } from '@/types/operation'
@@ -506,7 +507,68 @@ function tableFor(entityType: OperationEntity): Table<Record<string, unknown>, s
  * Returns the operations undone, so the caller can describe what it did.
  */
 export async function undoLast(worldId: string): Promise<Operation[]> {
-  const batch = await pendingUndo(worldId)
+  return reverseBatch(worldId, await pendingUndo(worldId), 'undo')
+}
+
+/** The act redo would put back, or empty when there is nothing. */
+export async function pendingRedo(worldId: string): Promise<Operation[]> {
+  if (!(await redoHead(worldId))) return []
+  return redoableBatch(await listOperations(worldId))
+}
+
+/**
+ * The undo a redo would put back, or undefined.
+ *
+ * Two steps, so the common case stays cheap: the head test rules out a redo
+ * outright whenever the newest entry is ordinary work — nearly always — without
+ * reading the journal at all. Only once something has been undone does it walk
+ * the index back for the target.
+ */
+async function redoHead(worldId: string): Promise<Operation | undefined> {
+  const head = await latestOperation(worldId)
+  if (!head || (!head.undoOf && !head.redoOf)) return undefined
+  return db.operations
+    .where('[worldId+seq]')
+    .between([worldId, Dexie.minKey], [worldId, Dexie.maxKey])
+    .reverse()
+    .filter((op) => !!op.undoOf && !op.redoneBy)
+    .first()
+}
+
+/** The undo a redo would put back — for the toolbar button's label and state. */
+export function useRedoHead(worldId: string | null) {
+  return useLiveQuery(
+    async () => (worldId ? redoHead(worldId) : undefined),
+    [worldId],
+    undefined,
+  )
+}
+
+/**
+ * Put back the act that was just undone.
+ *
+ * Redo is the same machinery as undo pointed at the undo itself: inverting an
+ * inverse restores the original change. The result is marked `redoOf` rather
+ * than `undoOf` so it lands back on the undo stack — Ctrl+Z after a redo should
+ * take the change away again.
+ */
+export async function redoLast(worldId: string): Promise<Operation[]> {
+  return reverseBatch(worldId, await pendingRedo(worldId), 'redo')
+}
+
+/**
+ * Apply the inverse of every operation in `batch`, writing each inverse to the
+ * journal rather than deleting what it reverses — the journal stays a complete
+ * account of what happened, which is the whole point of having one.
+ *
+ * Shared by undo and redo because they are the same operation in opposite
+ * directions; only the mark left behind differs.
+ */
+async function reverseBatch(
+  worldId: string,
+  batch: Operation[],
+  as: 'undo' | 'redo',
+): Promise<Operation[]> {
   if (batch.length === 0) return []
 
   const tables = new Set<Table>([db.operations, db.tombstones])
@@ -521,16 +583,17 @@ export async function undoLast(worldId: string): Promise<Operation[]> {
     }
   }
 
-  const undoGroupId = batch.length > 1 ? generateId() : undefined
+  const reversalGroupId = batch.length > 1 ? generateId() : undefined
 
   await db.transaction('rw', [...tables], async () => {
     let seq = (await latestOperation(worldId))?.seq ?? 0
-    // Newest first: a group's later writes are undone before earlier ones.
+    // Newest first: a group's later writes are reversed before earlier ones.
     for (const op of batch) {
       const inverse = invertOperation(op, op.previous, {
         id: generateId(),
         seq: ++seq,
-        groupId: undoGroupId,
+        groupId: reversalGroupId,
+        as,
       })
       if (!inverse) continue
 
@@ -538,6 +601,16 @@ export async function undoLast(worldId: string): Promise<Operation[]> {
       if (t) {
         if (inverse.type === 'delete') {
           await t.delete(op.entityId)
+          // Redoing a delete has to sweep up what the original delete did, or
+          // the record goes while its snapshots, goals and memberships are left
+          // behind pointing at nothing.
+          for (const [name, rows] of Object.entries(op.cascade ?? {})) {
+            const ct = (db as unknown as Record<string, unknown>)[name] as
+              | Table<Record<string, unknown>, string>
+              | undefined
+            if (!ct) continue
+            await ct.bulkDelete((rows as { id: string }[]).map((r) => r.id))
+          }
           // Undoing a create is still a deletion as far as the rest of the
           // world is concerned. Without a headstone, a device that already
           // received the record would treat it as merely absent on the next
@@ -581,7 +654,10 @@ export async function undoLast(worldId: string): Promise<Operation[]> {
       }
 
       await db.operations.add(inverse)
-      await db.operations.update(op.id, { undoneBy: inverse.id })
+      await db.operations.update(
+        op.id,
+        as === 'redo' ? { redoneBy: inverse.id } : { undoneBy: inverse.id },
+      )
     }
   })
 

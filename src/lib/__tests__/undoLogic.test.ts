@@ -7,6 +7,8 @@ import {
   makeOperation,
   shouldCoalesce,
   undoableBatch,
+  redoableBatch,
+  describeInverse,
 } from '@/lib/operations'
 import type { Operation } from '@/types/operation'
 
@@ -28,6 +30,8 @@ function op(over: Partial<Operation> & Pick<Operation, 'type' | 'seq'>): Operati
       now: over.createdAt ?? 10_000,
     }),
     ...(over.undoneBy ? { undoneBy: over.undoneBy } : {}),
+    ...(over.redoneBy ? { redoneBy: over.redoneBy } : {}),
+    ...(over.redoOf ? { redoOf: over.redoOf } : {}),
   }
 }
 
@@ -194,5 +198,105 @@ describe('describeOperation', () => {
   it('copes with a nameless record', () => {
     expect(describeOperation(op({ type: 'create', seq: 1, entityType: 'characterSnapshot', payload: {} })))
       .toBe('Added character state')
+  })
+})
+
+describe('redoableBatch', () => {
+  it('offers the undo sitting at the head', () => {
+    const ops = [
+      op({ type: 'create', seq: 1, undoneBy: 'op-2' }),
+      op({ type: 'delete', seq: 2, undoOf: 'op-1' }),
+    ]
+    expect(redoableBatch(ops).map((o) => o.seq)).toEqual([2])
+  })
+
+  it('keeps working for a second consecutive redo', () => {
+    // The first attempt required the head itself to be an undo, so after one
+    // redo the head was a *redo* and the remaining undo became unreachable.
+    const ops = [
+      op({ type: 'update', seq: 1, undoneBy: 'op-4' }),
+      op({ type: 'update', seq: 2, undoneBy: 'op-3' }),
+      op({ type: 'update', seq: 3, undoOf: 'op-2', redoneBy: 'op-5' }),
+      op({ type: 'update', seq: 4, undoOf: 'op-1' }),
+      op({ type: 'update', seq: 5, redoOf: 'op-3' }),
+    ]
+    expect(redoableBatch(ops).map((o) => o.seq)).toEqual([4])
+  })
+
+  it('is cleared by a new edit', () => {
+    // Putting the change back would land it on a world that has moved on.
+    const ops = [
+      op({ type: 'create', seq: 1, undoneBy: 'op-2' }),
+      op({ type: 'delete', seq: 2, undoOf: 'op-1' }),
+      op({ type: 'update', seq: 3 }),
+    ]
+    expect(redoableBatch(ops)).toEqual([])
+  })
+
+  it('offers nothing once every undo has been redone', () => {
+    const ops = [
+      op({ type: 'delete', seq: 2, undoOf: 'op-1', redoneBy: 'op-3' }),
+      op({ type: 'create', seq: 3, redoOf: 'op-2' }),
+    ]
+    expect(redoableBatch(ops)).toEqual([])
+  })
+
+  it('offers nothing on an empty journal', () => {
+    expect(redoableBatch([])).toEqual([])
+  })
+
+  it('returns the whole group when the undone act spanned several records', () => {
+    const ops = [
+      op({ type: 'update', seq: 3, entityId: 'e1', undoOf: 'a', groupId: 'g1' }),
+      op({ type: 'update', seq: 4, entityId: 'e2', undoOf: 'b', groupId: 'g1' }),
+    ]
+    expect(redoableBatch(ops).map((o) => o.seq)).toEqual([4, 3])
+  })
+})
+
+describe('invertOperation, for redo', () => {
+  it('gives the inverse its own before-image, so it can be inverted again', () => {
+    // Without this the undo carried no `previous`, so redoing an edit found
+    // nothing to restore and silently did nothing.
+    const original = op({
+      type: 'update', seq: 1, payload: { notes: 'after' }, previous: { notes: 'before' },
+    })
+    const undone = invertOperation(original, undefined, { id: 'u', seq: 2 })!
+    expect(undone.payload).toEqual({ notes: 'before' })
+    expect(undone.previous).toEqual({ notes: 'after' })
+
+    const redone = invertOperation(undone, undefined, { id: 'r', seq: 3, as: 'redo' })!
+    expect(redone.payload).toEqual({ notes: 'after' })
+  })
+
+  it('carries the cascade onto a restoring create', () => {
+    // So redoing the delete removes what the delete originally swept up,
+    // instead of orphaning it.
+    const deletion: Operation = {
+      ...op({ type: 'delete', seq: 1, payload: { id: 'c1', name: 'Aldric' } }),
+      cascade: { characterGoals: [{ id: 'g1' }] },
+    }
+    const restored = invertOperation(deletion, undefined, { id: 'u', seq: 2 })!
+    expect(restored.type).toBe('create')
+    expect(restored.cascade).toEqual({ characterGoals: [{ id: 'g1' }] })
+  })
+
+  it('marks a redo differently from an undo, so the redo stays undoable', () => {
+    const original = op({ type: 'create', seq: 1, payload: { name: 'X' } })
+    const undone = invertOperation(original, undefined, { id: 'u', seq: 2 })!
+    const redone = invertOperation(undone, undefined, { id: 'r', seq: 3, as: 'redo' })!
+
+    expect(undone.undoOf).toBe(original.id)
+    expect(redone.redoOf).toBe(undone.id)
+    expect(redone.undoOf).toBeUndefined()
+    // The redo is a live change with nothing else accounting for it.
+    expect(undoableBatch([original, undone, redone]).map((o) => o.id)).toEqual(['r'])
+  })
+})
+
+describe('describeInverse', () => {
+  it('flips the verb, so a redo label says what it will do', () => {
+    const undoOfACreate = op({ type: 'delete', seq: 1, entityType: 'character', payload: { name: 'Aldric' } })
+    expect(describeInverse(undoOfACreate)).toBe('Added character “Aldric”')
   })
 })

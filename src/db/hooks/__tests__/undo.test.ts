@@ -9,7 +9,8 @@ import {
   createTimeline, createChapter, createEvent, updateChapter, updateEvent, bulkDeleteEvents,
 } from '@/db/hooks/useTimeline'
 import {
-  listOperations, pendingUndo, undoLast, journalGroup, onDeletion, markJournalDiscontinuity,
+  listOperations, pendingUndo, undoLast, pendingRedo, redoLast, journalGroup, onDeletion,
+  markJournalDiscontinuity,
 } from '@/db/hooks/useOperations'
 import { appendWaypoint } from '@/db/hooks/useMovements'
 import { upsertSnapshot } from '@/db/hooks/useSnapshots'
@@ -405,5 +406,162 @@ describe('the journal seam covers every user-editable table', () => {
       expect(table, entity).toBeTruthy()
       expect((db as unknown as Record<string, unknown>)[table], `db.${table} for ${entity}`).toBeTruthy()
     }
+  })
+})
+
+describe('redo', () => {
+  it('puts back an undone create', async () => {
+    const world = await seed()
+    const char = await createCharacter({ worldId: world.id, name: 'Aldric', description: '' })
+    await undoLast(world.id)
+    expect(await db.characters.get(char.id)).toBeUndefined()
+
+    await redoLast(world.id)
+
+    expect((await db.characters.get(char.id))?.name).toBe('Aldric')
+  })
+
+  it('puts back an undone edit', async () => {
+    const world = await seed()
+    const char = await createCharacter({ worldId: world.id, name: 'One', description: '' })
+    await updateCharacter(char.id, { name: 'Two' })
+    await undoLast(world.id)
+    expect((await db.characters.get(char.id))?.name).toBe('One')
+
+    await redoLast(world.id)
+
+    expect((await db.characters.get(char.id))?.name).toBe('Two')
+  })
+
+  it('puts back an undone delete, cascade and all', async () => {
+    const world = await seed()
+    const a = await createCharacter({ worldId: world.id, name: 'Aldric', description: '' })
+    const goal = await createCharacterGoal({
+      worldId: world.id, characterId: a.id, type: 'want', text: 'Find the sword',
+    })
+    await deleteCharacter(a.id)
+    await undoLast(world.id)
+    expect(await db.characterGoals.get(goal.id)).toBeDefined()
+
+    await redoLast(world.id)
+
+    // The redo must sweep up the cascade too, or the goal is orphaned.
+    expect(await db.characters.get(a.id)).toBeUndefined()
+    expect(await db.characterGoals.get(goal.id)).toBeUndefined()
+  })
+
+  it('survives a full undo/redo/undo/redo cycle', async () => {
+    const world = await seed()
+    const char = await createCharacter({ worldId: world.id, name: 'One', description: '' })
+    await updateCharacter(char.id, { name: 'Two' })
+
+    await undoLast(world.id)
+    expect((await db.characters.get(char.id))?.name).toBe('One')
+    await redoLast(world.id)
+    expect((await db.characters.get(char.id))?.name).toBe('Two')
+    await undoLast(world.id)
+    expect((await db.characters.get(char.id))?.name).toBe('One')
+    await redoLast(world.id)
+    expect((await db.characters.get(char.id))?.name).toBe('Two')
+  })
+
+  it('leaves the redone change undoable', async () => {
+    // The asymmetry that makes redo work: an undo is excluded from the undo
+    // stack, but a redo puts a live change back and must be takeable again.
+    const world = await seed()
+    const char = await createCharacter({ worldId: world.id, name: 'Aldric', description: '' })
+    await undoLast(world.id)
+    await redoLast(world.id)
+
+    expect(await pendingUndo(world.id)).toHaveLength(1)
+
+    await undoLast(world.id)
+    expect(await db.characters.get(char.id)).toBeUndefined()
+  })
+
+  it('walks forward through several undos in order', async () => {
+    const world = await seed()
+    const char = await createCharacter({ worldId: world.id, name: 'One', description: '' })
+    await updateCharacter(char.id, { name: 'Two' })
+    await updateCharacter(char.id, { name: 'Three' })
+
+    await undoLast(world.id)
+    await undoLast(world.id)
+    expect((await db.characters.get(char.id))?.name).toBe('One')
+
+    await redoLast(world.id)
+    expect((await db.characters.get(char.id))?.name).toBe('Two')
+    await redoLast(world.id)
+    expect((await db.characters.get(char.id))?.name).toBe('Three')
+  })
+
+  it('is cleared by a new edit, as every editor does', async () => {
+    const world = await seed()
+    const char = await createCharacter({ worldId: world.id, name: 'Aldric', description: '' })
+    await undoLast(world.id)
+    expect(await pendingRedo(world.id)).toHaveLength(1)
+
+    await createCharacter({ worldId: world.id, name: 'Someone else', description: '' })
+
+    expect(await pendingRedo(world.id)).toEqual([])
+    expect(await redoLast(world.id)).toEqual([])
+    expect(await db.characters.get(char.id)).toBeUndefined()
+  })
+
+  it('offers nothing before anything has been undone', async () => {
+    const world = await seed()
+    await createCharacter({ worldId: world.id, name: 'Aldric', description: '' })
+
+    expect(await pendingRedo(world.id)).toEqual([])
+    expect(await redoLast(world.id)).toEqual([])
+  })
+
+  it('puts back a whole grouped act', async () => {
+    const world = await seed()
+    const timeline = await createTimeline({ worldId: world.id, name: 'Main', description: '', color: '#888' })
+    const chapter = await createChapter({ worldId: world.id, timelineId: timeline.id, number: 1, title: 'One', synopsis: '' })
+    const e1 = await createEvent({
+      worldId: world.id, chapterId: chapter.id, timelineId: timeline.id, title: 'First', description: '',
+      locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0,
+    })
+    const e2 = await createEvent({
+      worldId: world.id, chapterId: chapter.id, timelineId: timeline.id, title: 'Second', description: '',
+      locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 1,
+    })
+
+    await bulkDeleteEvents([e1.id, e2.id])
+    await undoLast(world.id)
+    expect(await db.events.where('chapterId').equals(chapter.id).count()).toBe(2)
+
+    await redoLast(world.id)
+
+    expect(await db.events.where('chapterId').equals(chapter.id).count()).toBe(0)
+  })
+
+  it('puts back the character route alongside the placement', async () => {
+    const world = await seed()
+    const timeline = await createTimeline({ worldId: world.id, name: 'Main', description: '', color: '#888' })
+    const chapter = await createChapter({ worldId: world.id, timelineId: timeline.id, number: 1, title: 'One', synopsis: '' })
+    const event = await createEvent({
+      worldId: world.id, chapterId: chapter.id, timelineId: timeline.id, title: 'Scene', description: '',
+      locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0,
+    })
+    const char = await createCharacter({ worldId: world.id, name: 'Aldric', description: '' })
+
+    await journalGroup(async () => {
+      await upsertSnapshot({
+        worldId: world.id, characterId: char.id, eventId: event.id, isAlive: true,
+        currentLocationMarkerId: 'loc-2', currentMapLayerId: 'layer-1',
+        inventoryItemIds: [], inventoryNotes: '', statusNotes: '', travelModeId: null,
+      })
+      await appendWaypoint(world.id, char.id, event.id, 'loc-2', 'loc-1')
+    })
+
+    await undoLast(world.id)
+    expect(await db.characterMovements.where('characterId').equals(char.id).count()).toBe(0)
+
+    await redoLast(world.id)
+
+    expect(await db.characterMovements.where('characterId').equals(char.id).count()).toBe(1)
   })
 })
