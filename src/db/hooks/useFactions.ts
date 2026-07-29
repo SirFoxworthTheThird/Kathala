@@ -72,16 +72,18 @@ export async function createFactionMembership(
 ): Promise<FactionMembership> {
   const now = Date.now()
   const membership: FactionMembership = { ...data, id: generateId(), createdAt: now, updatedAt: now }
-  await db.factionMemberships.add(membership)
+  await journalCreate('factionMembership', db.factionMemberships, membership)
   return membership
 }
 
 export async function updateFactionMembership(id: string, data: Partial<Omit<FactionMembership, 'id' | 'createdAt'>>) {
-  await db.factionMemberships.update(id, { ...data, updatedAt: Date.now() })
+  await journalUpdate('factionMembership', db.factionMemberships, id, { ...data, updatedAt: Date.now() })
 }
 
 export async function deleteFactionMembership(id: string) {
-  await db.factionMemberships.delete(id)
+  await journalDelete('factionMembership', db.factionMemberships, id, async () => {
+    await db.factionMemberships.delete(id)
+  })
 }
 
 // ── Faction Relationships ─────────────────────────────────────────────────────
@@ -99,16 +101,18 @@ export async function createFactionRelationship(
 ): Promise<FactionRelationship> {
   const now = Date.now()
   const rel: FactionRelationship = { ...data, id: generateId(), createdAt: now, updatedAt: now }
-  await db.factionRelationships.add(rel)
+  await journalCreate('factionRelationship', db.factionRelationships, rel)
   return rel
 }
 
 export async function updateFactionRelationship(id: string, data: Partial<Omit<FactionRelationship, 'id' | 'createdAt'>>) {
-  await db.factionRelationships.update(id, { ...data, updatedAt: Date.now() })
+  await journalUpdate('factionRelationship', db.factionRelationships, id, { ...data, updatedAt: Date.now() })
 }
 
 export async function deleteFactionRelationship(id: string) {
-  await db.factionRelationships.delete(id)
+  await journalDelete('factionRelationship', db.factionRelationships, id, async () => {
+    await db.factionRelationships.delete(id)
+  })
 }
 
 // ── Active membership helper ──────────────────────────────────────────────────

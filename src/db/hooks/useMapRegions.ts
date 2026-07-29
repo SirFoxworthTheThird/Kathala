@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
-import { journalCreate, journalUpdate } from './useOperations'
+import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import { generateId } from '@/lib/id'
 import type { MapRegion, MapRegionSnapshot, MapRegionStatus } from '@/types'
 import { selectBestSnapshots } from '@/lib/snapshotUtils'
@@ -26,17 +26,19 @@ export async function createMapRegion(data: {
 }): Promise<MapRegion> {
   const now = Date.now()
   const region: MapRegion = { id: generateId(), linkedMapLayerId: null, factionId: null, ...data, createdAt: now, updatedAt: now }
-  await db.mapRegions.add(region)
+  await journalCreate('mapRegion', db.mapRegions, region)
   return region
 }
 
 export async function updateMapRegion(id: string, changes: Partial<Omit<MapRegion, 'id' | 'createdAt'>>) {
-  await db.mapRegions.update(id, { ...changes, updatedAt: Date.now() })
+  await journalUpdate('mapRegion', db.mapRegions, id, { ...changes, updatedAt: Date.now() })
 }
 
 export async function deleteMapRegion(id: string) {
-  await db.mapRegions.delete(id)
-  await db.mapRegionSnapshots.where('regionId').equals(id).delete()
+  await journalDelete('mapRegion', db.mapRegions, id, async () => {
+    await db.mapRegions.delete(id)
+    await db.mapRegionSnapshots.where('regionId').equals(id).delete()
+  }, [db.mapRegionSnapshots])
 }
 
 // ── Region snapshots ─────────────────────────────────────────────────────────

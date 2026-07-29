@@ -11,6 +11,9 @@ import {
 import {
   listOperations, pendingUndo, undoLast, journalGroup, onDeletion, markJournalDiscontinuity,
 } from '@/db/hooks/useOperations'
+import { appendWaypoint } from '@/db/hooks/useMovements'
+import { upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { ENTITY_TABLE } from '@/lib/entityTables'
 
 beforeEach(async () => {
   await db.delete()
@@ -342,5 +345,65 @@ describe('undo and the merge story', () => {
 
     expect(await db.characters.get(char.id)).toBeUndefined()
     expect(await db.tombstones.where('entityId').equals(char.id).count()).toBe(1)
+  })
+})
+
+describe('moving a character on the map', () => {
+  it('takes back the placement and the route it drew, together', async () => {
+    // Reported from the app: the character returned to their old location but
+    // the trail showing the move stayed drawn. The move writes two records —
+    // a snapshot and a movement — and only one of them was journalled.
+    const world = await seed()
+    const timeline = await createTimeline({ worldId: world.id, name: 'Main', description: '', color: '#888' })
+    const chapter = await createChapter({ worldId: world.id, timelineId: timeline.id, number: 1, title: 'One', synopsis: '' })
+    const event = await createEvent({
+      worldId: world.id, chapterId: chapter.id, timelineId: timeline.id, title: 'Scene', description: '',
+      locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0,
+    })
+    const char = await createCharacter({ worldId: world.id, name: 'Aldric', description: '' })
+
+    await journalGroup(async () => {
+      await upsertSnapshot({
+        worldId: world.id, characterId: char.id, eventId: event.id, isAlive: true,
+        currentLocationMarkerId: 'loc-2', currentMapLayerId: 'layer-1',
+        inventoryItemIds: [], inventoryNotes: '', statusNotes: '', travelModeId: null,
+      })
+      await appendWaypoint(world.id, char.id, event.id, 'loc-2', 'loc-1')
+    })
+
+    expect(await db.characterMovements.where('characterId').equals(char.id).count()).toBe(1)
+
+    await undoLast(world.id)
+
+    // Both halves of the act, not just the placement.
+    expect(await db.characterMovements.where('characterId').equals(char.id).count()).toBe(0)
+    const snap = await db.characterSnapshots.where('[characterId+eventId]').equals([char.id, event.id]).first()
+    expect(snap?.currentLocationMarkerId ?? null).not.toBe('loc-2')
+  })
+
+  it('journals a waypoint appended to an existing route', async () => {
+    const world = await seed()
+    await appendWaypoint(world.id, 'char-1', 'ev-1', 'loc-1')
+    await appendWaypoint(world.id, 'char-1', 'ev-1', 'loc-2')
+
+    const movement = await db.characterMovements.where('characterId').equals('char-1').first()
+    expect(movement?.waypoints).toEqual(['loc-1', 'loc-2'])
+
+    await undoLast(world.id)
+
+    expect((await db.characterMovements.where('characterId').equals('char-1').first())?.waypoints)
+      .toEqual(['loc-1'])
+  })
+})
+
+describe('the journal seam covers every user-editable table', () => {
+  it('names a table for every entity group', () => {
+    // A group added to OperationEntity without a table would be journalled into
+    // nowhere, and undo would silently skip it — how the character route was
+    // missed in the first place.
+    for (const [entity, table] of Object.entries(ENTITY_TABLE)) {
+      expect(table, entity).toBeTruthy()
+      expect((db as unknown as Record<string, unknown>)[table], `db.${table} for ${entity}`).toBeTruthy()
+    }
   })
 })

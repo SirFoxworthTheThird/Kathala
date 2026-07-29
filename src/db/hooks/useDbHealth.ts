@@ -1,4 +1,5 @@
 import { db } from '@/db/database'
+import { markJournalDiscontinuity } from './useOperations'
 import { deleteMapLayersCascade } from '@/db/hooks/useMapLayers'
 import { orphanLayerIds } from '@/lib/mapTree'
 
@@ -174,4 +175,9 @@ export async function purgeOrphans(worldId: string): Promise<void> {
       .filter((m) => !factionIds.has(m.factionId) || !characterIds.has(m.characterId))
       .delete()
   })
+  // Every table swept above is on the journal seam, so records have just left
+  // the store without an operation describing it. Resetting is the honest
+  // outcome: a journal that still claimed to explain the world would be wrong,
+  // and undoing across a repair would restore the orphans it just removed.
+  await markJournalDiscontinuity(worldId)
 }

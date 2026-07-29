@@ -32,6 +32,7 @@ import { useMapViewState } from './useMapViewState'
 import { usePlaybackQueue } from './usePlaybackQueue'
 import { upsertSnapshot, fetchSnapshot, useWorldSnapshots } from '@/db/hooks/useSnapshots'
 import { appendWaypoint } from '@/db/hooks/useMovements'
+import { journalGroup } from '@/db/hooks/useOperations'
 import { useMapAnnotations, createMapAnnotation, updateMapAnnotation, deleteMapAnnotation } from '@/db/hooks/useMapAnnotations'
 import type { LocationMarker } from '@/types'
 
@@ -378,19 +379,24 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     const existingInDb = await fetchSnapshot(characterId, activeEventId)
     const fromMarkerId = existingInDb?.currentLocationMarkerId
     const existing = snapshots.find((s) => s.characterId === characterId)
-    await upsertSnapshot({
-      worldId,
-      characterId,
-      eventId: activeEventId,
-      isAlive: existingInDb?.isAlive ?? existing?.isAlive ?? true,
-      currentLocationMarkerId: marker.id,
-      currentMapLayerId: marker.mapLayerId,
-      inventoryItemIds: existingInDb?.inventoryItemIds ?? existing?.inventoryItemIds ?? [],
-      inventoryNotes: existingInDb?.inventoryNotes ?? existing?.inventoryNotes ?? '',
-      statusNotes: existingInDb?.statusNotes ?? existing?.statusNotes ?? '',
-      travelModeId: existingInDb?.travelModeId ?? existing?.travelModeId ?? null,
+    // Moving a character writes two records — where they now are, and the trail
+    // showing how they got there. Grouped so undo takes back both; otherwise
+    // the character returns to the old location with the new route still drawn.
+    await journalGroup(async () => {
+      await upsertSnapshot({
+        worldId,
+        characterId,
+        eventId: activeEventId,
+        isAlive: existingInDb?.isAlive ?? existing?.isAlive ?? true,
+        currentLocationMarkerId: marker.id,
+        currentMapLayerId: marker.mapLayerId,
+        inventoryItemIds: existingInDb?.inventoryItemIds ?? existing?.inventoryItemIds ?? [],
+        inventoryNotes: existingInDb?.inventoryNotes ?? existing?.inventoryNotes ?? '',
+        statusNotes: existingInDb?.statusNotes ?? existing?.statusNotes ?? '',
+        travelModeId: existingInDb?.travelModeId ?? existing?.travelModeId ?? null,
+      })
+      await appendWaypoint(worldId, characterId, activeEventId, marker.id, fromMarkerId ?? undefined)
     })
-    await appendWaypoint(worldId, characterId, activeEventId, marker.id, fromMarkerId ?? undefined)
   }
 
   async function handleCharacterDrop(characterId: string, markerId: string) {

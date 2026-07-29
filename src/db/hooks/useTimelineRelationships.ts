@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import type { TimelineRelationship, CrossTimelineArtifact } from '@/types'
 import { generateId } from '@/lib/id'
 
@@ -30,7 +31,7 @@ export async function createTimelineRelationship(
     createdAt: now,
     updatedAt: now,
   }
-  await db.timelineRelationships.add(relationship)
+  await journalCreate('timelineRelationship', db.timelineRelationships, relationship)
   return relationship
 }
 
@@ -38,14 +39,12 @@ export async function updateTimelineRelationship(
   id: string,
   data: Partial<Omit<TimelineRelationship, 'id' | 'worldId' | 'createdAt'>>
 ) {
-  await db.timelineRelationships.update(id, { ...data, updatedAt: Date.now() })
+  await journalUpdate('timelineRelationship', db.timelineRelationships, id, { ...data, updatedAt: Date.now() })
 }
 
 /** Deletes a relationship and all cross-timeline artifacts that reference it. */
 export async function deleteTimelineRelationship(id: string) {
-  const rel = await db.timelineRelationships.get(id)
-  if (!rel) return
-  await db.transaction('rw', [db.timelineRelationships, db.crossTimelineArtifacts], async () => {
+  await journalDelete('timelineRelationship', db.timelineRelationships, id, async (rel) => {
     await db.timelineRelationships.delete(id)
     // Cascade: remove artifacts that belong to this relationship's timeline pair
     await db.crossTimelineArtifacts
@@ -56,7 +55,7 @@ export async function deleteTimelineRelationship(id: string) {
       .where('originTimelineId').equals(rel.targetTimelineId)
       .filter((a) => a.encounterTimelineId === rel.sourceTimelineId)
       .delete()
-  })
+  }, [db.crossTimelineArtifacts])
 }
 
 // ─── Cross-Timeline Artifacts ──────────────────────────────────────────────
@@ -90,7 +89,7 @@ export async function createCrossTimelineArtifact(
     createdAt: now,
     updatedAt: now,
   }
-  await db.crossTimelineArtifacts.add(artifact)
+  await journalCreate('crossTimelineArtifact', db.crossTimelineArtifacts, artifact)
   return artifact
 }
 
@@ -98,9 +97,11 @@ export async function updateCrossTimelineArtifact(
   id: string,
   data: Partial<Omit<CrossTimelineArtifact, 'id' | 'worldId' | 'createdAt'>>
 ) {
-  await db.crossTimelineArtifacts.update(id, { ...data, updatedAt: Date.now() })
+  await journalUpdate('crossTimelineArtifact', db.crossTimelineArtifacts, id, { ...data, updatedAt: Date.now() })
 }
 
 export async function deleteCrossTimelineArtifact(id: string) {
-  await db.crossTimelineArtifacts.delete(id)
+  await journalDelete('crossTimelineArtifact', db.crossTimelineArtifacts, id, async () => {
+    await db.crossTimelineArtifacts.delete(id)
+  })
 }

@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import type { CharacterMovement } from '@/types'
 import { generateId } from '@/lib/id'
+import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 
 export function useEventMovements(worldId: string | null, eventId: string | null): CharacterMovement[] {
   return useLiveQuery(
@@ -62,7 +63,7 @@ export async function appendWaypoint(
   if (existing) {
     const last = existing.waypoints[existing.waypoints.length - 1]
     if (last === markerId) return
-    await db.characterMovements.update(existing.id, {
+    await journalUpdate('characterMovement', db.characterMovements, existing.id, {
       waypoints: [...existing.waypoints, markerId],
       updatedAt: now,
     })
@@ -82,7 +83,7 @@ export async function appendWaypoint(
       createdAt: now,
       updatedAt: now,
     }
-    await db.characterMovements.add(movement)
+    await journalCreate('characterMovement', db.characterMovements, movement)
   }
 }
 
@@ -96,14 +97,21 @@ export async function updateMovement(
     .equals([characterId, eventId])
     .first()
   if (!existing) return
-  await db.characterMovements.update(existing.id, { ...patch, updatedAt: Date.now() })
+  await journalUpdate('characterMovement', db.characterMovements, existing.id, {
+    ...patch,
+    updatedAt: Date.now(),
+  })
 }
 
 export async function clearMovement(characterId: string, eventId: string): Promise<void> {
-  await db.characterMovements
+  const existing = await db.characterMovements
     .where('[characterId+eventId]')
     .equals([characterId, eventId])
-    .delete()
+    .first()
+  if (!existing) return
+  await journalDelete('characterMovement', db.characterMovements, existing.id, async () => {
+    await db.characterMovements.delete(existing.id)
+  })
 }
 
 export async function removeLastWaypoint(characterId: string, eventId: string): Promise<void> {
@@ -115,7 +123,7 @@ export async function removeLastWaypoint(characterId: string, eventId: string): 
     await clearMovement(characterId, eventId)
     return
   }
-  await db.characterMovements.update(existing.id, {
+  await journalUpdate('characterMovement', db.characterMovements, existing.id, {
     waypoints: existing.waypoints.slice(0, -1),
     updatedAt: Date.now(),
   })

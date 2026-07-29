@@ -65,14 +65,16 @@ export async function createKnowledgeReveal(
 ): Promise<KnowledgeReveal> {
   const now = Date.now()
   const reveal: KnowledgeReveal = { ...data, id: generateId(), createdAt: now, updatedAt: now }
-  await db.knowledgeReveals.add(reveal)
+  await journalCreate('knowledgeReveal', db.knowledgeReveals, reveal)
   return reveal
 }
 
 export async function updateKnowledgeReveal(id: string, data: Partial<Omit<KnowledgeReveal, 'id' | 'createdAt'>>) {
-  await db.knowledgeReveals.update(id, { ...data, updatedAt: Date.now() })
+  await journalUpdate('knowledgeReveal', db.knowledgeReveals, id, { ...data, updatedAt: Date.now() })
 }
 
 export async function deleteKnowledgeReveal(id: string) {
-  await db.knowledgeReveals.delete(id)
+  await journalDelete('knowledgeReveal', db.knowledgeReveals, id, async () => {
+    await db.knowledgeReveals.delete(id)
+  })
 }
