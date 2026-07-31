@@ -183,6 +183,40 @@ describe('planJournalPrune', () => {
   it('handles an empty journal', () => {
     expect(planJournalPrune([]).discard).toEqual([])
   })
+
+  it('keeps entries a peer has not seen, past the caps', () => {
+    // Discarding one of these would mean the other device never learns of the
+    // change — divergence that surfaces long afterwards, with nothing left to
+    // explain it.
+    const plan = planJournalPrune(ops, { maxOperations: 2, minOperations: 1, retainFromSeq: 3 })
+    expect(plan.discard.map((o) => o.seq)).toEqual([1, 2])
+    expect(plan.keptCount).toBe(3)
+    expect(plan.syncGap).toBe(false)
+  })
+
+  it('prunes as usual when every entry has been acknowledged', () => {
+    const plan = planJournalPrune(ops, { maxOperations: 2, minOperations: 1, retainFromSeq: 99 })
+    expect(plan.discard.map((o) => o.seq)).toEqual([1, 2, 3])
+    expect(plan.syncGap).toBe(false)
+  })
+
+  it('says so when the caps force out something a peer still needed', () => {
+    // The alternative is growing without bound behind a device that stopped
+    // syncing months ago. Reporting the gap lets the caller declare a
+    // discontinuity, which is the honest answer rather than a quiet one.
+    const many = Array.from({ length: 30 }, (_, i) =>
+      op({ type: 'update', seq: i + 1, payload: { notes: 'x'.repeat(500) } }))
+    const plan = planJournalPrune(many, {
+      maxOperations: 5, minOperations: 1, retainFromSeq: 1, maxBytes: 100,
+      hardMaxOperations: 10,
+    })
+    // Every entry is unacknowledged, so the byte cap has to give somewhere.
+    expect(plan.syncGap).toBe(true)
+  })
+
+  it('reports no gap when nothing is being retained', () => {
+    expect(planJournalPrune(ops, { maxOperations: 1, minOperations: 1 }).syncGap).toBe(false)
+  })
 })
 
 describe('operationSize', () => {

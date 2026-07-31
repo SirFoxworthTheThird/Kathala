@@ -2,7 +2,7 @@ import { db } from '@/db/database'
 import { markJournalDiscontinuity } from '@/db/hooks/useOperations'
 import type { Tombstone } from '@/types/operation'
 import { applyTombstones, mergeTombstoneSets, pruneStaleTombstones } from '@/lib/mergeTombstones'
-import { mergeRecords, type FieldConflict } from '@/lib/mergeFields'
+import { mergeRecords, type ConflictPreference, type FieldConflict } from '@/lib/mergeFields'
 import type {
   CharacterGoal,
   World, MapLayer, LocationMarker, Character, Item,
@@ -1100,6 +1100,8 @@ export async function importWorld(file: File): Promise<string> {
 /** Fields of one record that both copies changed, with what each side had. */
 export interface RecordConflict {
   id: string
+  /** What to call the record on screen — its name or title. */
+  label: string
   fields: FieldConflict[]
 }
 
@@ -1110,6 +1112,16 @@ export interface MergePreview {
   chapters:    { added: number; updated: number }
   locations:   { added: number; updated: number }
   items:       { added: number; updated: number }
+  /**
+   * Fields both copies changed, so the merge had to pick one. Surfaced so the
+   * choice can be shown and, if the user disagrees with it, reversed.
+   */
+  conflicts:   PreviewConflict[]
+}
+
+export interface PreviewConflict extends RecordConflict {
+  /** Human-facing group name, for reading rather than for logic. */
+  entity: string
 }
 
 /**
@@ -1124,6 +1136,8 @@ export interface MergePreview {
 function mergeTable<T extends { id: string }>(
   incoming: T[],
   local: T[],
+  prefer: ConflictPreference = 'newer',
+  label: (r: T) => string = () => '',
 ): { result: T[]; added: number; updated: number; conflicts: RecordConflict[] } {
   const localById    = new Map(local.map((r) => [r.id, r]))
   const incomingById = new Map(incoming.map((r) => [r.id, r]))
@@ -1137,11 +1151,11 @@ function mergeTable<T extends { id: string }>(
       result.push(loc) // local-only — keep
       continue
     }
-    const merged = mergeRecords(loc, inc)
+    const merged = mergeRecords(loc, inc, prefer)
     result.push(merged.record)
     if (merged.conflicts.length > 0) {
       updated++
-      conflicts.push({ id: loc.id, fields: merged.conflicts })
+      conflicts.push({ id: loc.id, label: label(loc), fields: merged.conflicts })
     } else if (JSON.stringify(merged.record) !== JSON.stringify(loc)) {
       updated++
     }
@@ -1178,11 +1192,12 @@ export async function previewWorldMerge(
     db.items.where('worldId').equals(worldId).toArray(),
   ])
 
-  const chars = mergeTable(parsed.characters, localChars)
-  const evts  = mergeTable(parsed.events, localEvents)
-  const chaps = mergeTable(parsed.chapters, localChapters)
-  const locs  = mergeTable(parsed.locationMarkers, localLocations)
-  const itms  = mergeTable(parsed.items, localItems)
+  const named = <T extends { name?: string; title?: string }>(r: T) => r.name ?? r.title ?? ''
+  const chars = mergeTable(parsed.characters, localChars, 'newer', named)
+  const evts  = mergeTable(parsed.events, localEvents, 'newer', named)
+  const chaps = mergeTable(parsed.chapters, localChapters, 'newer', named)
+  const locs  = mergeTable(parsed.locationMarkers, localLocations, 'newer', named)
+  const itms  = mergeTable(parsed.items, localItems, 'newer', named)
 
   return {
     parsed,
@@ -1193,6 +1208,13 @@ export async function previewWorldMerge(
       chapters:   { added: chaps.added, updated: chaps.updated },
       locations:  { added: locs.added,  updated: locs.updated  },
       items:      { added: itms.added,  updated: itms.updated  },
+      conflicts: [
+        ...chars.conflicts.map((c) => ({ ...c, entity: 'Character' })),
+        ...evts.conflicts.map((c) => ({ ...c, entity: 'Event' })),
+        ...chaps.conflicts.map((c) => ({ ...c, entity: 'Chapter' })),
+        ...locs.conflicts.map((c) => ({ ...c, entity: 'Location' })),
+        ...itms.conflicts.map((c) => ({ ...c, entity: 'Item' })),
+      ],
     },
   }
 }
@@ -1206,6 +1228,7 @@ export async function previewWorldMerge(
 export async function applyWorldImport(
   parsed: WorldExportFile,
   mode: 'replace' | 'merge',
+  prefer: ConflictPreference = 'newer',
 ): Promise<string> {
   if (mode === 'replace') return importWorldData(parsed)
 
@@ -1264,32 +1287,32 @@ export async function applyWorldImport(
 
   const merged = {
     world:                parsed.world, // world-level fields: use incoming (name, description)
-    mapLayers:            mergeTable(parsed.mapLayers, localLayers).result,
-    locationMarkers:      mergeTable(parsed.locationMarkers, localLocs).result,
-    characters:           mergeTable(parsed.characters, localChars).result,
-    items:                mergeTable(parsed.items, localItems).result,
-    characterSnapshots:   mergeTable(parsed.characterSnapshots, localCharSnaps).result,
-    characterMovements:   mergeTable(parsed.characterMovements, localMovements).result,
-    itemPlacements:       mergeTable(parsed.itemPlacements, localItemPlacements).result,
-    locationSnapshots:    mergeTable(parsed.locationSnapshots, localLocSnaps).result,
-    itemSnapshots:        mergeTable(parsed.itemSnapshots, localItemSnaps).result,
-    relationships:        mergeTable(parsed.relationships, localRels).result,
-    relationshipSnapshots:mergeTable(parsed.relationshipSnapshots, localRelSnaps).result,
-    timelines:            mergeTable(parsed.timelines, localTimelines).result,
-    chapters:             mergeTable(parsed.chapters, localChapters).result,
-    events:               mergeTable(parsed.events, localEvents).result,
-    travelModes:          mergeTable(parsed.travelModes, localTravelModes).result,
-    timelineRelationships:mergeTable(parsed.timelineRelationships, localTlRels).result,
-    crossTimelineArtifacts:mergeTable(parsed.crossTimelineArtifacts, localCta).result,
-    mapRoutes:            mergeTable(parsed.mapRoutes, localRoutes).result,
-    mapRegions:           mergeTable(parsed.mapRegions, localRegions).result,
-    mapRegionSnapshots:   mergeTable(parsed.mapRegionSnapshots, localRegSnaps).result,
-    mapAnnotations:       mergeTable(parsed.mapAnnotations, localAnnotations).result,
-    loreCategories:       mergeTable(parsed.loreCategories, localLoreCats).result,
-    lorePages:            mergeTable(parsed.lorePages, localLorePages).result,
-    factions:             mergeTable(parsed.factions, localFactions).result,
-    factionMemberships:   mergeTable(parsed.factionMemberships, localFactionMemberships).result,
-    factionRelationships: mergeTable(parsed.factionRelationships, localFactionRelationships).result,
+    mapLayers:            mergeTable(parsed.mapLayers, localLayers, prefer).result,
+    locationMarkers:      mergeTable(parsed.locationMarkers, localLocs, prefer).result,
+    characters:           mergeTable(parsed.characters, localChars, prefer).result,
+    items:                mergeTable(parsed.items, localItems, prefer).result,
+    characterSnapshots:   mergeTable(parsed.characterSnapshots, localCharSnaps, prefer).result,
+    characterMovements:   mergeTable(parsed.characterMovements, localMovements, prefer).result,
+    itemPlacements:       mergeTable(parsed.itemPlacements, localItemPlacements, prefer).result,
+    locationSnapshots:    mergeTable(parsed.locationSnapshots, localLocSnaps, prefer).result,
+    itemSnapshots:        mergeTable(parsed.itemSnapshots, localItemSnaps, prefer).result,
+    relationships:        mergeTable(parsed.relationships, localRels, prefer).result,
+    relationshipSnapshots:mergeTable(parsed.relationshipSnapshots, localRelSnaps, prefer).result,
+    timelines:            mergeTable(parsed.timelines, localTimelines, prefer).result,
+    chapters:             mergeTable(parsed.chapters, localChapters, prefer).result,
+    events:               mergeTable(parsed.events, localEvents, prefer).result,
+    travelModes:          mergeTable(parsed.travelModes, localTravelModes, prefer).result,
+    timelineRelationships:mergeTable(parsed.timelineRelationships, localTlRels, prefer).result,
+    crossTimelineArtifacts:mergeTable(parsed.crossTimelineArtifacts, localCta, prefer).result,
+    mapRoutes:            mergeTable(parsed.mapRoutes, localRoutes, prefer).result,
+    mapRegions:           mergeTable(parsed.mapRegions, localRegions, prefer).result,
+    mapRegionSnapshots:   mergeTable(parsed.mapRegionSnapshots, localRegSnaps, prefer).result,
+    mapAnnotations:       mergeTable(parsed.mapAnnotations, localAnnotations, prefer).result,
+    loreCategories:       mergeTable(parsed.loreCategories, localLoreCats, prefer).result,
+    lorePages:            mergeTable(parsed.lorePages, localLorePages, prefer).result,
+    factions:             mergeTable(parsed.factions, localFactions, prefer).result,
+    factionMemberships:   mergeTable(parsed.factionMemberships, localFactionMemberships, prefer).result,
+    factionRelationships: mergeTable(parsed.factionRelationships, localFactionRelationships, prefer).result,
     knowledgeFacts:       mergeTable(parsed.knowledgeFacts ?? [], localKnowledgeFacts).result,
     knowledgeReveals:     mergeTable(parsed.knowledgeReveals ?? [], localKnowledgeReveals).result,
     characterGoals:       mergeTable(parsed.characterGoals ?? [], localCharacterGoals).result,

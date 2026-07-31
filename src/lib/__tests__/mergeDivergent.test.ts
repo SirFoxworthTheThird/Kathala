@@ -184,6 +184,37 @@ describe('two devices editing the same world apart', () => {
     expect(order).toEqual(['C', 'A', 'B'])
   })
 
+  it('honours "keep mine" through the whole import path', async () => {
+    // The end of the loop the conflict dialog opens: the user is shown both
+    // versions, says which they trust, and that answer reaches the database.
+    await applyWorldImport(exportFile({ characters: [character()] as never }), 'replace')
+    await db.characters.update('c-ana', { description: 'A quiet thief.', updatedAt: 2_000 })
+
+    await applyWorldImport(exportFile({
+      characters: [character({ description: 'A loud thief.', updatedAt: 9_000 })] as never,
+    }), 'merge', 'local')
+
+    // Newer, and still overruled — which is the point.
+    expect((await db.characters.get('c-ana'))?.description).toBe('A quiet thief.')
+  })
+
+  it('reports conflicting fields in the preview, with both values', async () => {
+    const { previewWorldMerge } = await import('@/lib/exportImport')
+    await applyWorldImport(exportFile({ characters: [character()] as never }), 'replace')
+    await db.characters.update('c-ana', { description: 'A quiet thief.', updatedAt: 2_000 })
+
+    const { preview } = await previewWorldMerge(JSON.stringify(exportFile({
+      characters: [character({ description: 'A loud thief.', updatedAt: 9_000 })] as never,
+    })))
+
+    expect(preview.conflicts).toHaveLength(1)
+    expect(preview.conflicts[0].entity).toBe('Character')
+    expect(preview.conflicts[0].label).toBe('Ana')
+    expect(preview.conflicts[0].fields[0]).toMatchObject({
+      field: 'description', local: 'A quiet thief.', incoming: 'A loud thief.',
+    })
+  })
+
   it('is idempotent — merging the same file twice changes nothing the second time', async () => {
     // A retry after a dropped connection must not double anything up.
     await applyWorldImport(exportFile({ events: [event()] as never }), 'replace')

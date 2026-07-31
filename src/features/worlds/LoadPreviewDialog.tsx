@@ -1,14 +1,73 @@
-import { GitMerge, RefreshCw } from 'lucide-react'
+import { useState } from 'react'
+import { AlertTriangle, GitMerge, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { MergePreview, WorldExportFile } from './cloudSyncHelpers'
+import type { ConflictPreference, MergePreview, PreviewConflict, WorldExportFile } from './cloudSyncHelpers'
 
 interface Props {
   preview: MergePreview
   parsed: WorldExportFile
   onReplace: (parsed: WorldExportFile) => void
-  onMerge:   (parsed: WorldExportFile) => void
+  onMerge:   (parsed: WorldExportFile, prefer: ConflictPreference) => void
   onCancel:  () => void
   isApplying: boolean
+}
+
+/** A value as a reader can take it in, not as JSON. */
+function show(value: unknown): string {
+  if (value === null || value === undefined || value === '') return '(empty)'
+  if (Array.isArray(value)) return value.join(', ') || '(empty)'
+  const text = String(value)
+  return text.length > 90 ? `${text.slice(0, 90)}…` : text
+}
+
+/** Turn a field name into something worth reading: povCharacterId → Pov character. */
+function fieldLabel(field: string): string {
+  const spaced = field.replace(/([A-Z])/g, ' $1').replace(/\bId\b/i, '').trim()
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1)
+}
+
+function ConflictList({ conflicts, prefer }: { conflicts: PreviewConflict[]; prefer: ConflictPreference }) {
+  // Only the first few: the point is to show what kind of disagreement this is,
+  // not to make someone read a hundred of them in a modal.
+  const shown = conflicts.slice(0, 4)
+  const rest = conflicts.length - shown.length
+
+  return (
+    <div className="space-y-2">
+      {shown.map((c) =>
+        c.fields.map((f) => {
+          // Which side this preference will actually take, so the highlight
+          // matches what pressing Merge does rather than what the default did.
+          const takingIncoming = prefer === 'incoming' || (prefer === 'newer' && f.kept === 'incoming')
+          return (
+            <div key={`${c.id}-${f.field}`} className="rounded border border-[hsl(var(--border))] p-2 text-[11px]">
+              <p className="font-medium text-[hsl(var(--foreground))]">
+                {c.entity}{c.label ? ` · ${c.label}` : ''} — {fieldLabel(f.field)}
+              </p>
+              <div className="mt-1 grid grid-cols-2 gap-2">
+                <div className={takingIncoming ? 'opacity-50' : ''}>
+                  <p className="text-[10px] uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+                    Yours{takingIncoming ? '' : ' · kept'}
+                  </p>
+                  <p className="break-words text-[hsl(var(--foreground))]">{show(f.local)}</p>
+                </div>
+                <div className={takingIncoming ? '' : 'opacity-50'}>
+                  <p className="text-[10px] uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+                    Theirs{takingIncoming ? ' · kept' : ''}
+                  </p>
+                  <p className="break-words text-[hsl(var(--foreground))]">{show(f.incoming)}</p>
+                </div>
+              </div>
+            </div>
+          )
+        }))}
+      {rest > 0 && (
+        <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
+          and {rest} more {rest === 1 ? 'record' : 'records'} with changes on both sides
+        </p>
+      )}
+    </div>
+  )
 }
 
 interface StatRowProps { label: string; added: number; updated: number }
@@ -27,6 +86,8 @@ function StatRow({ label, added, updated }: StatRowProps) {
 }
 
 export function LoadPreviewDialog({ preview, parsed, onReplace, onMerge, onCancel, isApplying }: Props) {
+  const [prefer, setPrefer] = useState<ConflictPreference>('newer')
+  const conflicts = preview.conflicts ?? []
   const hasChanges =
     preview.characters.added + preview.characters.updated +
     preview.events.added     + preview.events.updated     +
@@ -59,10 +120,44 @@ export function LoadPreviewDialog({ preview, parsed, onReplace, onMerge, onCance
           </p>
         )}
 
+        {conflicts.length > 0 && (
+          <div className="space-y-2 rounded border border-amber-500/40 bg-amber-500/5 p-3">
+            <p className="flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              Changed in both copies
+            </p>
+            <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+              Lists, tags and casts are combined automatically. These are single
+              values that cannot be, so one version has to win.
+            </p>
+
+            <ConflictList conflicts={conflicts} prefer={prefer} />
+
+            <div className="flex gap-1 pt-1">
+              {([
+                ['newer', 'Most recent'],
+                ['local', 'Keep mine'],
+                ['incoming', 'Use theirs'],
+              ] as const).map(([value, label]) => (
+                <Button
+                  key={value}
+                  size="sm"
+                  variant={prefer === value ? 'default' : 'outline'}
+                  className="flex-1 text-[11px]"
+                  onClick={() => setPrefer(value)}
+                  disabled={isApplying}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="space-y-2">
           <Button
             size="sm" className="w-full gap-2"
-            onClick={() => onMerge(parsed)}
+            onClick={() => onMerge(parsed, prefer)}
             disabled={isApplying}
           >
             {isApplying

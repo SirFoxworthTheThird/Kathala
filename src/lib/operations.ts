@@ -332,6 +332,19 @@ export const JOURNAL_MAX_BYTES = 2 * 1024 * 1024
  */
 export const JOURNAL_MIN_OPERATIONS = 20
 
+/**
+ * The point past which even an unacknowledged entry is dropped.
+ *
+ * Retaining what a peer has not seen is right up to a point, and that point
+ * has to exist: a device that stopped syncing months ago would otherwise grow
+ * this journal for ever on every other device. Beyond the ceiling the prune
+ * proceeds and reports a gap, and the caller declares a discontinuity so the
+ * absent peer resynchronises in full instead of trusting a history with a hole
+ * in it. Generous enough that an ordinary offline stretch never reaches it.
+ */
+export const JOURNAL_HARD_MAX_OPERATIONS = 5_000
+export const JOURNAL_HARD_MAX_BYTES = 16 * 1024 * 1024
+
 /** Roughly what an operation costs to store. Stable enough to bound growth. */
 export function operationSize(op: Operation): number {
   return JSON.stringify(op).length
@@ -341,6 +354,22 @@ export interface PruneLimits {
   maxOperations?: number
   maxBytes?: number
   minOperations?: number
+  /**
+   * The oldest sequence another device has yet to see.
+   *
+   * The caps exist to stop the journal growing without bound, which is the
+   * right instinct while the journal is only local undo history. Once it is
+   * also what a sync sends, an entry discarded before a peer has taken it is a
+   * change that peer will never learn about — silent divergence, discovered
+   * weeks later when two copies disagree and neither can say why.
+   *
+   * Entries from here on are therefore kept past the caps, up to the hard
+   * ceiling below. There is no caller yet; the point is that pruning is already
+   * safe when there is one.
+   */
+  retainFromSeq?: number
+  hardMaxOperations?: number
+  hardMaxBytes?: number
 }
 
 export interface PrunePlan {
@@ -348,6 +377,16 @@ export interface PrunePlan {
   discard: Operation[]
   keptCount: number
   keptBytes: number
+  /**
+   * True when the caps forced entries out that a peer had not acknowledged.
+   *
+   * Better to say so than to let the journal grow for ever behind a device
+   * that stopped syncing months ago. The caller's answer is the one the app
+   * already uses for a journal it cannot vouch for: declare a discontinuity,
+   * so the peer resynchronises in full rather than trusting a history with a
+   * hole in it.
+   */
+  syncGap: boolean
 }
 
 /**
@@ -365,23 +404,35 @@ export function planJournalPrune(ops: Operation[], limits: PruneLimits = {}): Pr
   const maxBytes = limits.maxBytes ?? JOURNAL_MAX_BYTES
   const minOperations = Math.min(limits.minOperations ?? JOURNAL_MIN_OPERATIONS, maxOperations)
 
+  const retainFromSeq = limits.retainFromSeq
+  const hardMaxOperations = limits.hardMaxOperations ?? JOURNAL_HARD_MAX_OPERATIONS
+  const hardMaxBytes = limits.hardMaxBytes ?? JOURNAL_HARD_MAX_BYTES
+
   const newestFirst = [...ops].sort((a, b) => b.seq - a.seq)
   let keptCount = 0
   let keptBytes = 0
   const cut = newestFirst.findIndex((op) => {
     const size = operationSize(op)
+    // Unacknowledged entries are kept past the soft caps, but not past the
+    // hard ceiling — otherwise one silent peer grows this for ever. Walking
+    // newest-first means everything before the watermark is also newer than
+    // it, so this never resurrects an older entry that was already past.
+    const withinCeiling = keptCount < hardMaxOperations && keptBytes + size <= hardMaxBytes
+    const unacknowledged = retainFromSeq !== undefined && op.seq >= retainFromSeq && withinCeiling
     const wouldExceed =
       keptCount >= maxOperations || (keptCount >= minOperations && keptBytes + size > maxBytes)
-    if (wouldExceed) return true
+    if (wouldExceed && !unacknowledged) return true
     keptCount += 1
     keptBytes += size
     return false
   })
 
-  if (cut === -1) return { discard: [], keptCount, keptBytes }
+  if (cut === -1) return { discard: [], keptCount, keptBytes, syncGap: false }
+  const discard = newestFirst.slice(cut).reverse()
   return {
-    discard: newestFirst.slice(cut).reverse(),
+    discard,
     keptCount,
     keptBytes,
+    syncGap: retainFromSeq !== undefined && discard.some((op) => op.seq >= retainFromSeq),
   }
 }

@@ -93,6 +93,39 @@ describe('mergeRecords', () => {
     expect(record).toEqual(event())
   })
 
+  it('lets an explicit preference overrule the timestamp', () => {
+    // Once someone has been shown both versions, their answer beats a clock —
+    // which is the whole reason for showing them.
+    const local = event({ title: 'The Meeting', updatedAt: 2_000 })
+    const incoming = event({ title: 'The Reckoning', updatedAt: 9_000 })
+
+    expect(mergeRecords(local, incoming, 'newer').record.title).toBe('The Reckoning')
+    expect(mergeRecords(local, incoming, 'local').record.title).toBe('The Meeting')
+    expect(mergeRecords(local, incoming, 'incoming').record.title).toBe('The Reckoning')
+  })
+
+  it('reports which side a preference took, not which the clock would have', () => {
+    const local = event({ title: 'The Meeting', updatedAt: 2_000 })
+    const incoming = event({ title: 'The Reckoning', updatedAt: 9_000 })
+
+    const { conflicts } = mergeRecords(local, incoming, 'local')
+    expect(conflicts).toEqual([
+      { field: 'title', local: 'The Meeting', incoming: 'The Reckoning', kept: 'local' },
+    ])
+  })
+
+  it('still unions sets whatever the preference says', () => {
+    // A union is not a choice between two versions, so there is nothing for a
+    // preference to settle — picking "keep mine" must not throw away a tag
+    // somebody else added.
+    const local = event({ tags: ['heist'], updatedAt: 9_000 })
+    const incoming = event({ tags: ['rain'], updatedAt: 1_000 })
+
+    for (const prefer of ['newer', 'local', 'incoming'] as const) {
+      expect(mergeRecords(local, incoming, prefer).record.tags.sort()).toEqual(['heist', 'rain'])
+    }
+  })
+
   it('does not lose a set edit to a scalar edit made later elsewhere', () => {
     // The shipped behaviour this replaces took the whole newer record, so the
     // local cast addition vanished because someone else retitled the scene.

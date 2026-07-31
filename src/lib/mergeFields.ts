@@ -66,20 +66,33 @@ function sameScalar(a: unknown, b: unknown): boolean {
   return false
 }
 
+/** Which copy wins a field both sides changed. */
+export type ConflictPreference = 'newer' | 'local' | 'incoming'
+
 /**
  * Merge `incoming` into `local`, field by field.
  *
- * `updatedAt` decides scalar conflicts. A record without one is treated as
- * older than any record with one, which matches the import path's existing
- * habit of trusting incoming when it cannot tell.
+ * `updatedAt` decides scalar conflicts unless `prefer` overrides it. A record
+ * without one is treated as older than any record with one, which matches the
+ * import path's existing habit of trusting incoming when it cannot tell.
+ *
+ * Set-like fields ignore `prefer` entirely — a union is not a choice between
+ * two versions, so there is nothing for a preference to settle.
  */
-export function mergeRecords<T extends { id: string }>(local: T, incoming: T): MergeResult<T> {
+export function mergeRecords<T extends { id: string }>(
+  local: T,
+  incoming: T,
+  prefer: ConflictPreference = 'newer',
+): MergeResult<T> {
   const l = local as unknown as Record<string, unknown>
   const i = incoming as unknown as Record<string, unknown>
 
   const localAt = typeof l.updatedAt === 'number' ? l.updatedAt : -Infinity
   const incomingAt = typeof i.updatedAt === 'number' ? i.updatedAt : -Infinity
-  const incomingWins = incomingAt >= localAt
+  // 'newer' is the default because it is the only rule available without being
+  // asked. Once someone has been shown the conflicts they can say which copy
+  // they trust, and that answer beats a timestamp.
+  const incomingWins = prefer === 'newer' ? incomingAt >= localAt : prefer === 'incoming'
 
   const merged: Record<string, unknown> = { ...l }
   const conflicts: FieldConflict[] = []

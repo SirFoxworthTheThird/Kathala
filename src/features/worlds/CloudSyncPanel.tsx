@@ -10,7 +10,7 @@ import type { FolderBinding } from '@/lib/folderSync'
 import { previewWorldMerge, applyWorldImport } from './cloudSyncHelpers'
 import { pushWorldToFolder, markPulled, readFolderSyncState } from './folderSyncRunner'
 import { FOLDER_SYNC_LABELS, needsAttention, type FolderSyncState } from '@/lib/folderSyncState'
-import type { MergePreview, WorldExportFile } from './cloudSyncHelpers'
+import type { ConflictPreference, MergePreview, WorldExportFile } from './cloudSyncHelpers'
 import { LoadPreviewDialog } from './LoadPreviewDialog'
 
 type SyncState = 'idle' | 'saving' | 'loading' | 'error'
@@ -94,11 +94,15 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
     }
   }
 
-  async function handleApplyLoad(parsed: WorldExportFile, mode: 'replace' | 'merge') {
+  async function handleApplyLoad(
+    parsed: WorldExportFile,
+    mode: 'replace' | 'merge',
+    prefer: ConflictPreference = 'newer',
+  ) {
     if (!binding) return
     setSyncState('loading')
     try {
-      await applyWorldImport(parsed, mode)
+      await applyWorldImport(parsed, mode, prefer)
       // The folder's copy is now what we hold, so the next auto-save must not
       // read it as the folder being ahead of us.
       const updated = await markPulled(worldId, binding)
@@ -240,7 +244,7 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
         <LoadPreviewDialog
           preview={loadPreview.preview}
           parsed={loadPreview.parsed}
-          onMerge={(p)   => handleApplyLoad(p, 'merge')}
+          onMerge={(p, prefer) => handleApplyLoad(p, 'merge', prefer)}
           onReplace={(p) => handleApplyLoad(p, 'replace')}
           onCancel={() => setLoadPreview(null)}
           isApplying={syncState === 'loading'}

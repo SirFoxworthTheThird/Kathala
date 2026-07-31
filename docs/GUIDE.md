@@ -1222,11 +1222,26 @@ to a `.pwk` file in any local folder—including one managed by Google Drive,
 OneDrive, Dropbox, or another file-sync service. **Save** writes the current
 world; **Load** previews the file before applying it.
 
-- **Smart merge** compares records and keeps the newer version of each entity,
-  which is useful when the same world was edited on two devices. Anything you
-  deleted stays deleted — deletions travel with the file rather than reappearing
-  because the other copy still had them. If you deleted something on one device
-  and then edited it on the other, the edit wins and the record is kept.
+- **Smart merge** combines the two copies field by field, which is useful when
+  the same world was edited on two devices. Lists are combined rather than
+  replaced: if you added one character to a scene's cast and someone else added
+  another, the scene ends up with both. Tags, aliases, inventories and plot
+  threads work the same way, and the order you each had is kept.
+
+  Reordering survives too. Moving a card writes only that card's position, so
+  two people rearranging different scenes both get their way, and both devices
+  end up with the same sequence.
+
+  Single values — a name, a description, a status — cannot be combined, because
+  the file records what each copy *says*, not what each person *changed*. Where
+  both copies changed one, PlotWeave shows you the two versions side by side
+  before anything is applied, and you choose: **Most recent**, **Keep mine**, or
+  **Use theirs**.
+
+  Anything you deleted stays deleted — deletions travel with the file rather
+  than reappearing because the other copy still had them. If you deleted
+  something on one device and then edited it on the other, the edit wins and the
+  record is kept.
 - **Replace all** overwrites the local world with the selected file.
 - **Change folder** moves the binding. **Disconnect** removes the binding without
   deleting the file already stored in that folder.
