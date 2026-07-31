@@ -1,4 +1,5 @@
 import { db } from '@/db/database'
+import type { Table } from 'dexie'
 import { markJournalDiscontinuity } from '@/db/hooks/useOperations'
 import type { Tombstone } from '@/types/operation'
 import { applyTombstones, mergeTombstoneSets, pruneStaleTombstones } from '@/lib/mergeTombstones'
@@ -1334,12 +1335,29 @@ export async function applyWorldImport(
   const allTombstones = mergeTombstoneSets(localTombstones, parsed.tombstones ?? [])
   const record = merged as unknown as Record<string, Array<{ id: string; updatedAt?: number }>>
   const revived = new Set<string>()
+  const removedByTable = new Map<string, string[]>()
   for (const table of Object.keys(record)) {
     const rows = record[table]
     if (!Array.isArray(rows)) continue
     const out = applyTombstones(rows, allTombstones, table)
     record[table] = out.kept
+    if (out.removed.length > 0) removedByTable.set(table, out.removed)
     for (const id of out.revived) revived.add(id)
+  }
+
+  // Dropping a record from the merged set is not the same as deleting it here.
+  // A merge import writes with bulkPut and never deletes (replaceExisting is
+  // false, because the payload is already the union), so a record *this* device
+  // still holds and the other device deleted is simply left untouched — it
+  // survives, and the next push carries it back. Deletions that arrived by
+  // tombstone therefore have to be applied to the store explicitly.
+  //
+  // The other direction — deleted here, still present in the incoming file —
+  // needs none of this, since the record is not in the store to begin with.
+  // That asymmetry is why only one half of it was covered for so long.
+  for (const [table, ids] of removedByTable) {
+    const dexieTable = (db as unknown as Record<string, Table<unknown, string> | undefined>)[table]
+    if (dexieTable?.bulkDelete) await dexieTable.bulkDelete(ids)
   }
 
   // A record edited after its deletion was kept (see applyTombstones), so its
