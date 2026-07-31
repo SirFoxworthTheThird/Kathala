@@ -82,7 +82,7 @@ export function useReadingGate(worldId: string | null): ReadingGate {
       if (!worldId || !readingMode) return null
       const [
         events, chapters, charSnaps, itemPlacements, locSnaps, itemSnaps,
-        characters, items, markers,
+        regionSnaps, characters, items, markers,
       ] = await Promise.all([
         db.events.where('worldId').equals(worldId).toArray(),
         db.chapters.where('worldId').equals(worldId).toArray(),
@@ -90,11 +90,12 @@ export function useReadingGate(worldId: string | null): ReadingGate {
         db.itemPlacements.where('worldId').equals(worldId).toArray(),
         db.locationSnapshots.where('worldId').equals(worldId).toArray(),
         db.itemSnapshots.where('worldId').equals(worldId).toArray(),
+        db.mapRegionSnapshots.where('worldId').equals(worldId).toArray(),
         db.characters.where('worldId').equals(worldId).toArray(),
         db.items.where('worldId').equals(worldId).toArray(),
         db.locationMarkers.where('worldId').equals(worldId).toArray(),
       ])
-      return { events, chapters, charSnaps, itemPlacements, locSnaps, itemSnaps, characters, items, markers }
+      return { events, chapters, charSnaps, itemPlacements, locSnaps, itemSnaps, regionSnaps, characters, items, markers }
     },
     [worldId, readingMode],
     null,
@@ -133,6 +134,12 @@ export function useReadingGate(worldId: string | null): ReadingGate {
     for (const s of data.itemSnaps) appearances.push({ entityId: s.itemId, eventId: s.eventId })
     for (const s of data.locSnaps) {
       appearances.push({ entityId: s.locationMarkerId, eventId: s.eventId })
+    }
+    // A region's snapshots are the same shape as a location's — regionId and
+    // eventId — so a territory enters the story the moment its state is first
+    // recorded, on exactly the rule already used for the places inside it.
+    for (const s of data.regionSnaps) {
+      appearances.push({ entityId: s.regionId, eventId: s.eventId })
     }
 
     const firstSeen = firstAppearances(appearances, sortKeyByEvent)

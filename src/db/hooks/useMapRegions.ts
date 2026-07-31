@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { useGate } from './ReadingGateContext'
 import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import { generateId } from '@/lib/id'
 import type { MapRegion, MapRegionSnapshot, MapRegionStatus } from '@/types'
@@ -8,11 +9,16 @@ import { selectBestSnapshots } from '@/lib/snapshotUtils'
 import { useWorldEvents, useWorldChapters } from './useTimeline'
 
 export function useMapRegions(mapLayerId: string | null) {
-  return useLiveQuery(
+  const gate = useGate()
+  const all = useLiveQuery(
     () => mapLayerId ? db.mapRegions.where('mapLayerId').equals(mapLayerId).toArray() : [],
     [mapLayerId],
     []
   )
+  // A territory is named on the map — "Mordor", "the Blight" — and its name is
+  // as much of a spoiler as a location's. Its snapshots give it the same reveal
+  // point a location gets, and one with no snapshots has nothing to wait for.
+  return useMemo(() => gate.filter(all), [all, gate])
 }
 
 export async function createMapRegion(data: {

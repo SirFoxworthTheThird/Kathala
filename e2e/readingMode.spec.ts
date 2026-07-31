@@ -296,6 +296,78 @@ test('the map list keeps back places the reader has not been', async ({ page }) 
   expect(listed, `maps listed for places not yet reached: ${listed.join(', ')}`).toEqual([])
 })
 
+test('map territories wait for the story to reach them', async ({ page }) => {
+  await downloadFirstLibraryWorld(page)
+  await page.getByRole('button', { name: 'Next moment' }).click()
+  await page.waitForTimeout(1200)
+
+  // No library world records region state yet, so the rule would go untested on
+  // the fixture as it stands — and a skipped test protects nothing. Seed both
+  // cases instead: one territory whose state is first recorded at the moment
+  // the reader is on, and one whose state is not recorded until the last event
+  // in the book. The first should be on the map; the second gives away that the
+  // story goes somewhere the reader has not been.
+  const seeded = await page.evaluate(`(() => new Promise((resolve) => {
+    const req = indexedDB.open('PlotWeaveDB')
+    req.onsuccess = () => {
+      const db = req.result
+      const read = (s) => new Promise((r) => {
+        const q = db.transaction(s, 'readonly').objectStore(s).getAll(); q.onsuccess = () => r(q.result)
+      })
+      Promise.all([read('events'), read('chapters'), read('mapLayers'), read('worlds')])
+        .then(([events, chapters, layers, worlds]) => {
+          const chapNum = new Map(chapters.map((c) => [c.id, c.number]))
+          const key = (e) => (chapNum.get(e.chapterId) ?? 0) + e.sortOrder / 1e6
+          const ordered = [...events].sort((a, b) => key(a) - key(b))
+          const first = ordered[0]
+          const last = ordered[ordered.length - 1]
+          const worldId = worlds[0].id
+          const now = Date.now()
+          const region = (id, layerId, name) => ({
+            id, worldId, mapLayerId: layerId, name,
+            vertices: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }],
+            fillColor: '#888888', opacity: 0.3,
+            linkedMapLayerId: null, factionId: null, createdAt: now, updatedAt: now,
+          })
+          const snap = (id, regionId, eventId) => ({
+            id, worldId, regionId, eventId, status: 'held', updatedAt: now,
+          })
+          // Which layer the map opens on is the view's business, not this
+          // test's, so put a pair on every one of them.
+          const tx = db.transaction(['mapRegions', 'mapRegionSnapshots'], 'readwrite')
+          layers.forEach((l, i) => {
+            tx.objectStore('mapRegions').put(region('rgn-early-' + i, l.id, 'Marchlands of Testing'))
+            tx.objectStore('mapRegions').put(region('rgn-late-' + i, l.id, 'Sundered Vale of Testing'))
+            tx.objectStore('mapRegionSnapshots').put(snap('rs-early-' + i, 'rgn-early-' + i, first.id))
+            tx.objectStore('mapRegionSnapshots').put(snap('rs-late-' + i, 'rgn-late-' + i, last.id))
+          })
+          tx.oncomplete = () => resolve({ layers: layers.length, lastEvent: last.id })
+        })
+    }
+  }))()`) as { layers: number; lastEvent: string }
+  expect(seeded.layers, 'the fixture should carry maps to put a territory on').toBeGreaterThan(0)
+
+  // Seeding through raw IndexedDB is invisible to Dexie's live queries, and
+  // moving between hash routes does not reload the document — so reload, or the
+  // gate answers from the data it read before any of this existed.
+  await page.reload()
+  await page.waitForTimeout(1500)
+
+  // The reload drops the persisted cursor, and a null cursor means "all
+  // chapters", where everything is revealed on purpose. Step back onto the
+  // opening moment or this asserts against a gate that is deliberately open.
+  await page.getByRole('button', { name: 'Next moment' }).click()
+  await page.waitForTimeout(1200)
+  await page.goto(`/#${await worldPath(page)}/maps`)
+  await page.waitForTimeout(3000)
+  const shown = await page.evaluate(`(() => document.body.innerText)()`) as string
+
+  // Both directions: the rule has to hide the later one *and* keep the earlier
+  // one, or it is not gating, it is just hiding regions.
+  expect(shown, 'a territory recorded at the cursor should still be on the map').toContain('Marchlands of Testing')
+  expect(shown, 'a territory not recorded until the end of the book should not').not.toContain('Sundered Vale of Testing')
+})
+
 test('the map can be read and exported but not redrawn', async ({ page }) => {
   await downloadFirstLibraryWorld(page)
   await page.goto(`/#${await worldPath(page)}/maps`)

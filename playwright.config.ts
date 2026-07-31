@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { resolveChromium } from './e2e/chromium-path'
 
 export default defineConfig({
   testDir: './e2e',
@@ -23,11 +24,14 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        // Opt-in escape hatch: point at a pre-installed Chromium when the
-        // sandbox can't download Playwright's pinned build. Unset in normal
-        // CI/local runs, where Playwright uses its own managed browser.
         launchOptions: {
-          ...(process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : {}),
+          // Falls back to a pre-installed browser where Playwright's own
+          // pinned build is unavailable; undefined everywhere else, which is
+          // the normal managed-browser path. See e2e/chromium-path.ts.
+          ...(() => {
+            const executablePath = resolveChromium()
+            return executablePath ? { executablePath } : {}
+          })(),
           // index.html pulls Playfair Display from Google Fonts. Where that host
           // is unreachable — a sandbox, a firewall, an aeroplane — the request
           // does not fail, it hangs, and every `waitUntil: 'load'` waits out the
