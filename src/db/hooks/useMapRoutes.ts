@@ -1,14 +1,24 @@
+import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { useGate } from './ReadingGateContext'
 import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import { generateId } from '@/lib/id'
 import type { MapRoute, RouteType } from '@/types'
 
 export function useMapRoutes(mapLayerId: string | null) {
-  return useLiveQuery(
+  const gate = useGate()
+  const all = useLiveQuery(
     () => mapLayerId ? db.mapRoutes.where('mapLayerId').equals(mapLayerId).toArray() : [],
     [mapLayerId],
     []
+  )
+  // A route is drawn between markers, so it waits for them: "the road to X"
+  // names X as surely as the marker does. Waypoints can also be bare
+  // coordinates, which have nothing to reveal and nothing to wait for.
+  return useMemo(
+    () => all.filter((r) => gate.linksRevealed(r.waypoints.filter((w): w is string => typeof w === 'string'))),
+    [all, gate],
   )
 }
 
