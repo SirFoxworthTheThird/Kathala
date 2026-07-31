@@ -102,6 +102,82 @@ test('the dashboard does not give away the body count', async ({ page }) => {
   await expect(page.getByRole('main')).not.toContainText('dead')
 })
 
+test('the dashboard drops the draft scorecard and speaks to a reader', async ({ page }) => {
+  await downloadFirstLibraryWorld(page)
+  const main = page.getByRole('main')
+
+  // Everything here measures the manuscript, not the story: what is left to
+  // write, how fast it is being written, and who the author is neglecting.
+  for (const heading of ['Recent Events', 'Scene Status', 'Writing Progress', 'Cast Balance', 'Plot Threads']) {
+    await expect(main.getByText(heading, { exact: true })).toHaveCount(0)
+  }
+  await expect(main).not.toContainText('snapshot coverage')
+
+  // The tiles belong to whoever owns the world, and a reader owns none of it.
+  await expect(main).not.toContainText('in your cast')
+  await expect(main).not.toContainText('in your catalogue')
+  await expect(main).not.toContainText('root map layers')
+  await expect(main).toContainText('you have met so far')
+})
+
+test('settings keeps only what a reader can decide', async ({ page }) => {
+  await downloadFirstLibraryWorld(page)
+  await page.goto(`/#${await worldPath(page)}/settings`)
+  await settleNav(page)
+
+  const sections = async () =>
+    (await page.evaluate(`(() => [...document.querySelectorAll('main h2')].map((h) => h.textContent?.trim()))()`)) as string[]
+
+  // How it looks, and whether to keep reading this way. Nothing else here is
+  // the reader's to decide, and Export as HTML would write out the whole book.
+  await expect.poll(sections, { timeout: 15_000 }).toEqual(['Reading mode', 'Theme'])
+  await expect(page.getByRole('button', { name: 'Export as HTML' })).toHaveCount(0)
+
+  // Turning reading mode off is the escape hatch, and it brings the rest back.
+  await page.getByRole('button', { name: 'Reading mode is on' }).click()
+  await expect.poll(async () => (await sections()).length, { timeout: 15_000 }).toBeGreaterThan(2)
+  await expect(page.getByRole('button', { name: 'Export as HTML' })).toBeVisible()
+})
+
+test('the corkboard is a plotting board, not a reading screen', async ({ page }) => {
+  await downloadFirstLibraryWorld(page)
+  const nav = page.getByRole('navigation', { name: 'Main navigation' })
+  await expect(nav.getByRole('link', { name: 'Corkboard' })).toHaveCount(0)
+})
+
+test('relationship counts do not betray the size of the cast', async ({ page }) => {
+  await downloadFirstLibraryWorld(page)
+  await page.getByRole('button', { name: 'Next moment' }).click()
+  await page.waitForTimeout(1200)
+
+  // Every relationship on show must join two characters the reader has met —
+  // otherwise "61 connections" between three people gives the game away.
+  const unmet = await unmetNames(page)
+  const stray = await page.evaluate(`(() => new Promise((resolve) => {
+    const req = indexedDB.open('PlotWeaveDB')
+    req.onsuccess = () => {
+      const db = req.result
+      const read = (s) => new Promise((r) => {
+        const q = db.transaction(s, 'readonly').objectStore(s).getAll(); q.onsuccess = () => r(q.result)
+      })
+      Promise.all([read('relationships'), read('characters')]).then(([rels, chars]) => {
+        const nameById = new Map(chars.map((c) => [c.id, c.name]))
+        resolve(rels.map((r) => [nameById.get(r.characterAId), nameById.get(r.characterBId)]))
+      })
+    }
+  }))()`) as [string, string][]
+
+  const unmetSet = new Set(unmet.characters)
+  const hidden = stray.filter(([a, b]) => unmetSet.has(a) || unmetSet.has(b))
+  expect(hidden.length, 'the fixture should hold relationships involving unmet characters').toBeGreaterThan(0)
+
+  await page.goto(`/#${await worldPath(page)}/relationships`)
+  await page.waitForTimeout(2000)
+  const shown = await page.getByRole('main').innerText()
+  const leaked = hidden.filter(([a, b]) => shown.includes(a) && shown.includes(b))
+  expect(leaked, `relationships shown between unmet characters: ${JSON.stringify(leaked)}`).toEqual([])
+})
+
 test('a character page has nothing to edit and no future', async ({ page }) => {
   await downloadFirstLibraryWorld(page)
   await page.getByRole('button', { name: 'Next moment' }).click()

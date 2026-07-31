@@ -1,14 +1,25 @@
+import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { useGate } from './ReadingGateContext'
 import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import type { Relationship, RelationshipStrength, RelationshipSentiment } from '@/types'
 import { generateId } from '@/lib/id'
 
 export function useRelationships(worldId: string | null) {
-  return useLiveQuery(
+  const gate = useGate()
+  const all = useLiveQuery(
     () => (worldId ? db.relationships.where('worldId').equals(worldId).toArray() : []),
     [worldId],
     []
+  )
+  // A relationship names both of its characters, and often what passes between
+  // them. It waits for both to be met, and for the moment it begins — otherwise
+  // a reader who has met three people is told the book holds sixty-one bonds,
+  // which gives away the size of the cast if nothing else.
+  return useMemo(
+    () => all.filter((r) => gate.linksRevealed([r.characterAId, r.characterBId]) && gate.hasReached(r.startEventId)),
+    [all, gate],
   )
 }
 

@@ -209,7 +209,7 @@ export default function WorldDashboardView() {
         ...(aliveCount > 0 ? [{ label: 'alive', value: aliveCount }] : []),
         ...(deadCount > 0  ? [{ label: 'dead',  value: deadCount  }] : []),
       ],
-      description: 'in your cast',
+      description: gate.active ? 'you have met so far' : 'in your cast',
     },
     {
       label: 'Maps',
@@ -217,7 +217,7 @@ export default function WorldDashboardView() {
       count: maps.length,
       onClick: () => navigate('maps'),
       pills: locationMarkers.length > 0 ? [{ label: 'markers', value: locationMarkers.length }] : [],
-      description: 'root map layers',
+      description: gate.active ? 'maps you have reached' : 'root map layers',
     },
     {
       label: 'Relationships',
@@ -225,7 +225,7 @@ export default function WorldDashboardView() {
       count: relationships.length,
       onClick: () => navigate('relationships'),
       pills: [],
-      description: 'character connections',
+      description: gate.active ? 'between characters you have met' : 'character connections',
     },
     {
       label: 'Items',
@@ -233,7 +233,7 @@ export default function WorldDashboardView() {
       count: items.length,
       onClick: () => navigate('items'),
       pills: [],
-      description: 'in your catalogue',
+      description: gate.active ? 'you have seen so far' : 'in your catalogue',
     },
     {
       label: 'Character Arc',
@@ -339,8 +339,9 @@ export default function WorldDashboardView() {
         </div>
       </div>
 
-      {/* Suggestions */}
-      {activeSuggestions.length > 0 && (
+      {/* Suggestions are prompts to go and build something — "add your first
+          character", "draw a map". There is nothing for a reader to act on. */}
+      {!gate.active && activeSuggestions.length > 0 && (
         <section aria-live="polite" aria-label="Suggested next steps">
           <div className="flex flex-col gap-2">
             {activeSuggestions.map((rule) => (
@@ -386,8 +387,10 @@ export default function WorldDashboardView() {
         ))}
       </div>
 
-      {/* Recent events */}
-      {recentEvents.length > 0 && (
+      {/* "Recent" here means recently *edited*, ordered by updatedAt. That is a
+          record of the author's last working session, and it says nothing about
+          where the reader is in the book. */}
+      {!gate.active && recentEvents.length > 0 && (
         <div>
           <SectionHeading icon={Clock}>Recent Events</SectionHeading>
           <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
@@ -418,8 +421,9 @@ export default function WorldDashboardView() {
         </div>
       )}
 
-      {/* Scene status progress */}
-      {totalEvents > 0 && (
+      {/* Idea, outline, draft, revised, final — the state of the manuscript,
+          which a finished book does not have. */}
+      {!gate.active && totalEvents > 0 && (
         <div>
           <SectionHeading
             icon={FileEdit}
@@ -456,16 +460,18 @@ export default function WorldDashboardView() {
         </div>
       )}
 
-      {/* Writing progress — words, streak, burndown */}
-      {totalEvents > 0 && worldId && (
+      {/* Word counts, a writing streak and a burndown against a deadline — the
+          author's productivity, which is nobody else's business. */}
+      {!gate.active && totalEvents > 0 && worldId && (
         <div>
           <SectionHeading icon={PenLine}>Writing Progress</SectionHeading>
           <WritingProgress worldId={worldId} wordTarget={world?.wordTarget} targetDate={world?.targetDate} />
         </div>
       )}
 
-      {/* Cast balance — who's underused / absent lately */}
-      {characters.length > 0 && totalChapters > 0 && (
+      {/* Cast balance answers "who am I neglecting?" — a craft diagnostic about
+          the draft, and one that weighs a character's whole run in the book. */}
+      {!gate.active && characters.length > 0 && totalChapters > 0 && (
         <div>
           <SectionHeading icon={Users}>Cast Balance</SectionHeading>
           <CastBalance worldId={worldId ?? ''} characters={characters} chapters={chapters} events={allEvents} />

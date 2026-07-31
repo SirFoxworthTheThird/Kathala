@@ -25,7 +25,7 @@ export interface NavItem {
 export const navItems: NavItem[] = [
   { to: '',              label: 'Dashboard',  icon: LayoutDashboard, end: true,  tier: 'core' },
   { to: 'timeline',      label: 'Timeline',   icon: BookOpen,        end: false, tier: 'core' },
-  { to: 'corkboard',     label: 'Corkboard',  icon: LayoutGrid,      end: false, tier: 'extended' },
+  { to: 'corkboard',     label: 'Corkboard',  icon: LayoutGrid,      end: false, tier: 'extended', writingOnly: true },
   { to: 'calendar',      label: 'Calendar',   icon: CalendarDays,    end: false, tier: 'extended' },
   { to: 'structure',     label: 'Structure',  icon: ListChecks,      end: false, tier: 'extended', writingOnly: true },
   { to: 'manuscript',    label: 'Manuscript', icon: FileText,        end: false, tier: 'core', writingOnly: true },

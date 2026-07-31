@@ -148,13 +148,19 @@ Reading mode also clears out everything that only makes sense to the person
 writing the book, so what is left reads as a companion rather than a workspace
 you have wandered into.
 
-The writing screens — Manuscript and Structure — step aside. Undo, redo, Recent
+The writing screens — Manuscript, Structure and the Corkboard — step aside. Undo, redo, Recent
 changes, the Writer's Brief and the Continuity Checker leave the top bar (and
 Ctrl+Z along with them), and the dashboard drops its continuity card and its
 snapshot-coverage figure. No
 screen offers to add, generate or delete anything: no **Add Character**, no
 **New Page**, no **Generate with AI**, no delete buttons on cards, rows or map
 layers.
+
+The dashboard becomes a way in rather than a progress report. Recent Events,
+Scene Status, Writing Progress, Cast Balance, Plot Threads and Motifs all
+measure the manuscript rather than the story, so they go, and the tiles stop
+talking about *your* cast and *your* catalogue — they count what you have met
+so far.
 
 Detail screens show the same information without the editing furniture. A
 character's page is read straight through — their description, where they
@@ -163,6 +169,13 @@ button and no form fields. Lore pages render as articles. A knowledge fact shows
 what it is and who knows it, without the controls that set when the reader is
 let in on it. On the map you can still measure distances and export the picture;
 you cannot move a marker, relabel it, or replace the image.
+
+**Settings** keeps only what a reader can decide — the theme, and whether to
+carry on reading this way. Travel speeds, the continuity threshold, word target
+and deadline, the calendar's own definition, folder sync and the HTML export
+all describe the draft rather than the story, so they wait. (The HTML export
+would write out the whole world regardless of your chapter cursor, so offering
+it here would hand you the ending in a file.)
 
 To edit a world anyway, turn reading mode off in **Settings**. Everything comes
 back exactly as it was.

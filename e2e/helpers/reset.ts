@@ -43,14 +43,14 @@ export async function resetDB(page: Page): Promise<void> {
   //
   // The router rewrites "/" to "/#/" on mount. That rewrite is a client-side
   // navigation, so 'load' does not wait for it, and when it lands mid-goto
-  // Playwright reports "interrupted by another navigation". Let it happen
-  // first, then navigate — and retry if one fires anyway, since an interrupted
-  // goto leaves the page somewhere harmless rather than broken.
+  // Playwright reports "interrupted by another navigation" — so retry, since an
+  // interrupted goto leaves the page somewhere harmless rather than broken.
+  // (Waiting for the rewrite up front instead cost five seconds of every test
+  // and caught nothing: by this point it has almost always already happened.)
   //
   // It has to stay a full document load: going to "/#/" would dodge the race
   // but only as a hash change, leaving the app running against the database we
   // just deleted with the previous test's world still on screen.
-  await page.waitForURL(/#/, { timeout: 5_000 }).catch(() => {})
   for (let attempt = 0; ; attempt++) {
     try {
       await page.goto('/', { waitUntil: 'load', timeout: 60_000 })
