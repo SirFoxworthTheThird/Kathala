@@ -138,7 +138,7 @@ theme so each project keeps its own atmosphere.
 ## Try or download
 
 Use PlotWeave in the browser at
-**[sirfoxworththethird.github.io/PlotWeave](https://sirfoxworththethird.github.io/PlotWeave/)**
+**[plotweave.netlify.app](https://plotweave.netlify.app/)**
 or download the latest desktop build from the
 **[Releases page](https://github.com/SirFoxworthTheThird/PlotWeave/releases)**.
 
