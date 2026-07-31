@@ -142,7 +142,9 @@ that would give the game away — the alive/dead split on the dashboard, for
 instance — are simply not shown while reading.
 
 Selecting **All chapters** reveals everything. That is a deliberate choice you
-make, not the default.
+make, not the default — and while reading, PlotWeave asks before doing it, since
+the control is a small ✕ beside the cursor and one stray click would hand you
+the whole book. Stepping the cursor back never asks: it only ever un-reveals.
 
 ### What reading mode puts away
 

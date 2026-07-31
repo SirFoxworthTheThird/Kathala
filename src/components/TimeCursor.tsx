@@ -1,8 +1,10 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Clock, X } from 'lucide-react'
 import { useActiveEventId, useAppStore } from '@/store'
 import { useWorldChapters, useAllWorldEvents } from '@/db/hooks/useTimeline'
+import { useGate } from '@/db/hooks/ReadingGateContext'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { cn } from '@/lib/utils'
 
 /**
@@ -26,6 +28,12 @@ export function TimeCursor({ worldId }: { worldId: string }) {
   // controls inert so a stray click can't fight or restart the playback timer.
   const isPlayingStory = useAppStore((s) => s.isPlayingStory)
   const chapters = useWorldChapters(worldId)
+  // "All chapters" is a full reveal by design. For a writer that is just the
+  // default view; for a reader it undoes the thing they turned reading mode on
+  // for, and this button is an X beside the stepper — which reads as "dismiss",
+  // not "show me the ending". So while reading, it asks first.
+  const gate = useGate()
+  const [confirmRevealAll, setConfirmRevealAll] = useState(false)
   // Ungated: the cursor has to be able to step forward into what has not been
   // revealed yet — stepping forward is how a reader reveals it.
   const events = useAllWorldEvents(worldId)
@@ -124,7 +132,7 @@ export function TimeCursor({ worldId }: { worldId: string }) {
 
       {activeEvent && (
         <button
-          onClick={() => setActiveEventId(null)}
+          onClick={() => (gate.active ? setConfirmRevealAll(true) : setActiveEventId(null))}
           disabled={isPlayingStory}
           aria-label="View all chapters"
           title="View all chapters"
@@ -136,6 +144,16 @@ export function TimeCursor({ worldId }: { worldId: string }) {
           <X className="h-3 w-3" aria-hidden="true" />
         </button>
       )}
+
+      <ConfirmDialog
+        open={confirmRevealAll}
+        onOpenChange={setConfirmRevealAll}
+        title="Show the whole book?"
+        description="Viewing all chapters drops back to the full world — every character, place and subplot, including the ones the story has not introduced yet. Step the cursor instead to keep reading spoiler-free."
+        confirmLabel="Show everything"
+        destructive={false}
+        onConfirm={() => setActiveEventId(null)}
+      />
     </div>
   )
 }

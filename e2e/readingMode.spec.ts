@@ -139,6 +139,37 @@ test('settings keeps only what a reader can decide', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Export as HTML' })).toBeVisible()
 })
 
+test('showing the whole book asks first, but only while reading', async ({ page }) => {
+  await downloadFirstLibraryWorld(page)
+  await page.getByRole('button', { name: 'Next moment' }).click()
+  await page.waitForTimeout(1200)
+  await page.getByRole('link', { name: /characters/i }).first().click()
+  await settleNav(page)
+  const met = await shownCount(page)
+
+  // The control is an X beside the cursor, which reads as "dismiss" — so while
+  // reading it must not silently hand over the whole cast.
+  await page.getByRole('button', { name: 'View all chapters' }).click()
+  await expect(page.getByRole('heading', { name: 'Show the whole book?' })).toBeVisible()
+  await expect.poll(() => shownCount(page), { timeout: 10_000 }).toBe(met)
+
+  // Confirming is the reader's deliberate choice, and it does reveal everything.
+  await page.getByRole('button', { name: 'Show everything' }).click()
+  await expect.poll(() => shownCount(page), { timeout: 15_000 }).toBeGreaterThan(met)
+
+  // A writer reaches for this constantly; it must stay a single click for them.
+  await page.goto(`/#${await worldPath(page)}/settings`)
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Reading mode is on' }).click()
+  await page.waitForTimeout(800)
+  await page.goto(`/#${await worldPath(page)}/characters`)
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Next moment' }).click()
+  await page.waitForTimeout(1000)
+  await page.getByRole('button', { name: 'View all chapters' }).click()
+  await expect(page.getByRole('heading', { name: 'Show the whole book?' })).toHaveCount(0)
+})
+
 test('the corkboard is a plotting board, not a reading screen', async ({ page }) => {
   await downloadFirstLibraryWorld(page)
   const nav = page.getByRole('navigation', { name: 'Main navigation' })
