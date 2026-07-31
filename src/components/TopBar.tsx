@@ -19,6 +19,7 @@ import { useUndoNext } from '@/features/history/useUndo'
  */
 function MobileNavDrawer({ worldId, open, onClose }: { worldId: string; open: boolean; onClose: () => void }) {
   const world = useWorld(worldId)
+  const readingMode = !!world?.readingMode
   const { setBriefOpen, setCheckerOpen, setHelpOpen, setHistoryOpen } = useAppStore()
 
   // Close on Escape, and lock body scroll while open.
@@ -34,9 +35,11 @@ function MobileNavDrawer({ worldId, open, onClose }: { worldId: string; open: bo
   const tools: { label: string; icon: typeof ScrollText; action: () => void }[] = [
     // Undo has no keyboard shortcut on a phone, so the history list is its only
     // durable home here — first in the list rather than buried under the tools.
-    { label: 'Recent changes', icon: History, action: () => setHistoryOpen(true) },
-    { label: "Writer's Brief", icon: ScrollText, action: () => setBriefOpen(true) },
-    { label: 'Continuity Checker', icon: ShieldAlert, action: () => setCheckerOpen(true) },
+    ...(readingMode ? [] : [
+      { label: 'Recent changes', icon: History, action: () => setHistoryOpen(true) },
+      { label: "Writer's Brief", icon: ScrollText, action: () => setBriefOpen(true) },
+      { label: 'Continuity Checker', icon: ShieldAlert, action: () => setCheckerOpen(true) },
+    ]),
     { label: 'Help', icon: HelpCircle, action: () => setHelpOpen(true) },
   ]
 
@@ -68,7 +71,7 @@ function MobileNavDrawer({ worldId, open, onClose }: { worldId: string; open: bo
         </div>
 
         <div className="flex-1 overflow-y-auto py-1">
-          {navItems.map(({ to, label, icon: Icon, end }) => (
+          {navItems.filter((n) => !(readingMode && n.writingOnly)).map(({ to, label, icon: Icon, end }) => (
             <NavLink key={to} to={`/worlds/${worldId}/${to}`} end={end} onClick={onClose} className={itemClass}>
               <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
               {label}
@@ -102,6 +105,16 @@ export function TopBar() {
   const { setSearchOpen, setBriefOpen, setCheckerOpen, setHelpOpen, setHistoryOpen } = useAppStore()
   const [navOpen, setNavOpen] = useState(false)
   const { undo, redo, canUndo, canRedo, nextLabel, redoLabel } = useUndoNext(worldId)
+  /**
+   * Reading mode drops the authoring tools entirely. Undo and redo have nothing
+   * to act on when nobody is editing; Recent changes is a journal of edits that
+   * were never made; and the Writer's Brief and Continuity Checker are named
+   * for, and built for, the person writing the book rather than reading it.
+   *
+   * The Continuity Checker is also the one panel that scans the whole world
+   * regardless of the cursor, so leaving it reachable would undo the gating.
+   */
+  const readingMode = !!world?.readingMode
   // On the map, the breadcrumb carries which layer is open and its scale, so
   // the canvas doesn't have to give up a corner to a floating name chip.
   const onMaps = !!useMatch('/worlds/:worldId/maps')
@@ -169,50 +182,54 @@ export function TopBar() {
       <div className="ml-auto flex shrink-0 items-center gap-1">
         {world && (
           <>
-            {/* Undo — shown at every width, since it is the one control a
-                writer reaches for reflexively. Disabled state explains itself
-                rather than looking broken after a bulk import resets history.
-                The accessible name stays short and stable: naming the record in
-                it made every tab-stop announce a whole sentence. The detail
-                lives in the tooltip instead. */}
-            <button
-              onClick={() => { void undo() }}
-              disabled={!canUndo}
-              aria-label={canUndo ? 'Undo' : 'Nothing to undo'}
-              title={
-                canUndo
-                  ? `Undo: ${nextLabel} (${isMac ? '⌘Z' : 'Ctrl+Z'})`
-                  : 'Nothing to undo — importing or generating starts a fresh history'
-              }
-              className="pw-tap flex h-8 w-8 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] transition-colors enabled:hover:bg-[hsl(var(--accent))] enabled:hover:text-[hsl(var(--foreground))] disabled:opacity-40"
-            >
-              <Undo2 className="h-4 w-4 lg:h-3.5 lg:w-3.5" aria-hidden="true" />
-            </button>
-            {/* Redo sits beside undo rather than behind a menu: one Ctrl+Z too
-                many is exactly when people look for it, and hunting for it in
-                that moment is its own small panic. */}
-            <button
-              onClick={() => { void redo() }}
-              disabled={!canRedo}
-              aria-label={canRedo ? 'Redo' : 'Nothing to redo'}
-              title={
-                canRedo
-                  ? `Redo: ${redoLabel} (${isMac ? '⇧⌘Z' : 'Ctrl+Shift+Z'})`
-                  : 'Nothing to redo — making a new edit clears the redo history'
-              }
-              className="pw-tap flex h-8 w-8 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] transition-colors enabled:hover:bg-[hsl(var(--accent))] enabled:hover:text-[hsl(var(--foreground))] disabled:opacity-40"
-            >
-              <Redo2 className="h-4 w-4 lg:h-3.5 lg:w-3.5" aria-hidden="true" />
-            </button>
-            <button
-              onClick={() => setHistoryOpen(true)}
-              aria-label="Recent changes"
-              title="Recent changes"
-              className="pw-tap hidden h-8 w-8 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] transition-colors lg:flex"
-            >
-              <History className="h-3.5 w-3.5" aria-hidden="true" />
-            </button>
-            <div className="mx-0.5 hidden h-5 w-px bg-[hsl(var(--border))] lg:block" aria-hidden="true" />
+            {!readingMode && (
+              <>
+                {/* Undo — shown at every width, since it is the one control a
+                    writer reaches for reflexively. Disabled state explains itself
+                    rather than looking broken after a bulk import resets history.
+                    The accessible name stays short and stable: naming the record in
+                    it made every tab-stop announce a whole sentence. The detail
+                    lives in the tooltip instead. */}
+                <button
+                  onClick={() => { void undo() }}
+                  disabled={!canUndo}
+                  aria-label={canUndo ? 'Undo' : 'Nothing to undo'}
+                  title={
+                    canUndo
+                      ? `Undo: ${nextLabel} (${isMac ? '⌘Z' : 'Ctrl+Z'})`
+                      : 'Nothing to undo — importing or generating starts a fresh history'
+                  }
+                  className="pw-tap flex h-8 w-8 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] transition-colors enabled:hover:bg-[hsl(var(--accent))] enabled:hover:text-[hsl(var(--foreground))] disabled:opacity-40"
+                >
+                  <Undo2 className="h-4 w-4 lg:h-3.5 lg:w-3.5" aria-hidden="true" />
+                </button>
+                {/* Redo sits beside undo rather than behind a menu: one Ctrl+Z too
+                    many is exactly when people look for it, and hunting for it in
+                    that moment is its own small panic. */}
+                <button
+                  onClick={() => { void redo() }}
+                  disabled={!canRedo}
+                  aria-label={canRedo ? 'Redo' : 'Nothing to redo'}
+                  title={
+                    canRedo
+                      ? `Redo: ${redoLabel} (${isMac ? '⇧⌘Z' : 'Ctrl+Shift+Z'})`
+                      : 'Nothing to redo — making a new edit clears the redo history'
+                  }
+                  className="pw-tap flex h-8 w-8 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] transition-colors enabled:hover:bg-[hsl(var(--accent))] enabled:hover:text-[hsl(var(--foreground))] disabled:opacity-40"
+                >
+                  <Redo2 className="h-4 w-4 lg:h-3.5 lg:w-3.5" aria-hidden="true" />
+                </button>
+                <button
+                  onClick={() => setHistoryOpen(true)}
+                  aria-label="Recent changes"
+                  title="Recent changes"
+                  className="pw-tap hidden h-8 w-8 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] transition-colors lg:flex"
+                >
+                  <History className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+                <div className="mx-0.5 hidden h-5 w-px bg-[hsl(var(--border))] lg:block" aria-hidden="true" />
+              </>
+            )}
             {/* Compact search (mobile) */}
             <button
               onClick={() => setSearchOpen(true)}
@@ -233,23 +250,27 @@ export function TopBar() {
                 {isMac ? '⌘K' : 'Ctrl+K'}
               </kbd>
             </button>
-            <div className="mx-0.5 hidden h-5 w-px bg-[hsl(var(--border))] lg:block" aria-hidden="true" />
-            <button
-              onClick={() => setBriefOpen(true)}
-              aria-label="Writer's Brief"
-              title="Writer's Brief"
-              className="hidden h-8 w-8 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] transition-colors lg:flex"
-            >
-              <ScrollText className="h-3.5 w-3.5" aria-hidden="true" />
-            </button>
-            <button
-              onClick={() => setCheckerOpen(true)}
-              aria-label="Continuity Checker"
-              title="Continuity Checker"
-              className="hidden h-8 w-8 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] transition-colors lg:flex"
-            >
-              <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />
-            </button>
+            {!readingMode && (
+              <>
+                <div className="mx-0.5 hidden h-5 w-px bg-[hsl(var(--border))] lg:block" aria-hidden="true" />
+                <button
+                  onClick={() => setBriefOpen(true)}
+                  aria-label="Writer's Brief"
+                  title="Writer's Brief"
+                  className="hidden h-8 w-8 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] transition-colors lg:flex"
+                >
+                  <ScrollText className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+                <button
+                  onClick={() => setCheckerOpen(true)}
+                  aria-label="Continuity Checker"
+                  title="Continuity Checker"
+                  className="hidden h-8 w-8 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] transition-colors lg:flex"
+                >
+                  <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </>
+            )}
           </>
         )}
         <div className="mx-0.5 hidden h-5 w-px bg-[hsl(var(--border))] lg:block" aria-hidden="true" />

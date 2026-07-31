@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Clock, X } from 'lucide-react'
 import { useActiveEventId, useAppStore } from '@/store'
-import { useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
+import { useWorldChapters, useAllWorldEvents } from '@/db/hooks/useTimeline'
 import { cn } from '@/lib/utils'
 
 /**
@@ -26,7 +26,9 @@ export function TimeCursor({ worldId }: { worldId: string }) {
   // controls inert so a stray click can't fight or restart the playback timer.
   const isPlayingStory = useAppStore((s) => s.isPlayingStory)
   const chapters = useWorldChapters(worldId)
-  const events = useWorldEvents(worldId)
+  // Ungated: the cursor has to be able to step forward into what has not been
+  // revealed yet — stepping forward is how a reader reveals it.
+  const events = useAllWorldEvents(worldId)
 
   // Order events the same way the timeline bar does: by chapter number, then
   // by the event's sort order within its chapter.

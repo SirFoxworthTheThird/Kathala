@@ -4,10 +4,11 @@ import type { Character } from '@/types'
 import { useResolvedCharacterSnapshot, useBestSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { removeItemPlacement } from '@/db/hooks/useItemPlacements'
 import { useItems, createItem } from '@/db/hooks/useItems'
-import { useLocationMarkers } from '@/db/hooks/useLocationMarkers'
+import { useLocationMarkers, useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useRootMapLayers } from '@/db/hooks/useMapLayers'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
 import { useActiveEventId } from '@/store'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -29,6 +30,8 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
   const firstMapId = maps[0]?.id ?? null
   const locationMarkers = useLocationMarkers(firstMapId)
   const travelModes = useTravelModes(character.worldId)
+  const allMarkers = useAllLocationMarkers(character.worldId)
+  const gate = useGate()
 
   const [isAlive, setIsAlive] = useState(true)
   const [locationId, setLocationId] = useState<string>('')
@@ -63,6 +66,96 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     return (
       <div className="flex flex-col items-center gap-2 py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">
         <p>Select an event from the timeline bar to view and edit state.</p>
+      </div>
+    )
+  }
+
+  // The whole tab is a form, so reading mode gets its own rendering of the same
+  // snapshot rather than a disabled copy of the editor. It reads from the
+  // record, not the form state, which is what a reader is actually asking for:
+  // where this character stands at the moment they have read to.
+  if (gate.active) {
+    const locationName = snapshot?.currentLocationMarkerId
+      ? allMarkers.find((m) => m.id === snapshot.currentLocationMarkerId)?.name ?? null
+      : null
+    const travelName = snapshot?.travelModeId
+      ? travelModes.find((m) => m.id === snapshot.travelModeId)?.name ?? null
+      : null
+    const inventory = (snapshot?.inventoryItemIds ?? [])
+      .map((id) => ({ id, item: items.find((i) => i.id === id) ?? null }))
+
+    if (!snapshot) {
+      return (
+        <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">
+          Nothing recorded for {character.name} at this point in the story.
+        </p>
+      )
+    }
+
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-1.5">
+          <Label>Status</Label>
+          <span className="flex w-fit items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-2.5 py-1 text-sm">
+            {snapshot.isAlive
+              ? <><Heart className="h-3.5 w-3.5 text-green-400" aria-hidden="true" /> Alive</>
+              : <><Skull className="h-3.5 w-3.5 text-red-400" aria-hidden="true" /> Deceased</>}
+          </span>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label className="flex items-center gap-1.5">
+            <MapPin className="h-3.5 w-3.5" aria-hidden="true" /> Current Location
+          </Label>
+          <p className="text-sm text-[hsl(var(--muted-foreground))]">
+            {locationName ?? <span className="italic">Unknown</span>}
+          </p>
+        </div>
+
+        {travelName && (
+          <div className="flex flex-col gap-1.5">
+            <Label className="flex items-center gap-1.5">
+              <Footprints className="h-3.5 w-3.5" aria-hidden="true" /> Arrived by
+            </Label>
+            <p className="text-sm text-[hsl(var(--muted-foreground))]">{travelName}</p>
+          </div>
+        )}
+
+        {snapshot.statusNotes && (
+          <div className="flex flex-col gap-1.5">
+            <Label>Status Notes</Label>
+            <p className="whitespace-pre-wrap text-sm text-[hsl(var(--muted-foreground))]">{snapshot.statusNotes}</p>
+          </div>
+        )}
+
+        {inventory.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <Label className="flex items-center gap-1.5">
+              <Package className="h-3.5 w-3.5" aria-hidden="true" /> Inventory
+            </Label>
+            <div className="flex flex-col gap-1">
+              {inventory.map(({ id, item }) => (
+                <div
+                  key={id}
+                  className="flex items-center gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-2 py-1.5"
+                >
+                  <PortraitImage
+                    imageId={item?.imageId ?? null}
+                    fallbackIcon={Package}
+                    className="h-6 w-6 rounded object-cover shrink-0"
+                    fallbackClassName="h-6 w-6 rounded shrink-0"
+                  />
+                  <span className="flex-1 text-sm">{item?.name ?? id}</span>
+                </div>
+              ))}
+            </div>
+            {snapshot.inventoryNotes && (
+              <p className="whitespace-pre-wrap text-xs text-[hsl(var(--muted-foreground))]">
+                {snapshot.inventoryNotes}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     )
   }

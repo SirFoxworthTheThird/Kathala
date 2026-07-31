@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { cn } from '@/lib/utils'
 
 interface PageHeaderProps {
@@ -32,6 +33,13 @@ export function PageHeader({
   children,
   className,
 }: PageHeaderProps) {
+  // Page-header actions are, without exception, authoring controls — Add,
+  // New, Generate with AI. Dropping them here rather than in each view means a
+  // screen added later is right by default, which is the same reason gating
+  // lives in the hooks rather than the lists.
+  const gate = useGate()
+  const showActions = actions && !gate.active
+
   return (
     <div
       className={cn(
@@ -63,7 +71,7 @@ export function PageHeader({
             </p>
           )}
         </div>
-        {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+        {showActions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
       </div>
       {children && <div className="mt-3 flex flex-wrap items-center gap-2">{children}</div>}
     </div>

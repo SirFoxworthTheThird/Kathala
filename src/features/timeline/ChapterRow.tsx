@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ChevronDown, ChevronRight, Trash2, BookOpen, Plus, ExternalLink, Scroll } from 'lucide-react'
 import type { Chapter } from '@/types'
 import { deleteChapter, useEvents, updateEvent } from '@/db/hooks/useTimeline'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -26,6 +27,13 @@ export function ChapterRow({ chapter, threadFilter = null }: ChapterRowProps) {
   const [addEventOpen, setAddEventOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const events = useEvents(chapter.id)
+
+  // A chapter is reached once the cursor is at or past its number. Comparing
+  // numbers rather than events means a chapter the reader has not opened yet
+  // still keeps its summary back even if it has no events recorded.
+  const gate = useGate()
+  const synopsisHidden =
+    gate.active && gate.chapterNumber !== null && chapter.number > gate.chapterNumber
 
   const allSorted = [...events].sort((a, b) => a.sortOrder - b.sortOrder)
   const sortedEvents = threadFilter
@@ -78,22 +86,26 @@ export function ChapterRow({ chapter, threadFilter = null }: ChapterRowProps) {
     )}>
       {/* Chapter header */}
       <div className="flex items-center gap-2 px-4 py-3">
-        {/* Select-all checkbox — visible on hover or when any events in chapter are selected */}
-        <div
-          className={cn(
-            'shrink-0 flex items-center justify-center cursor-pointer transition-opacity',
-            someSelected || allSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-          )}
-          onClick={handleSelectAll}
-        >
-          <input
-            type="checkbox"
-            ref={(el) => { if (el) el.indeterminate = someSelected }}
-            checked={allSelected}
-            onChange={() => {}}
-            className="h-3.5 w-3.5 cursor-pointer accent-[hsl(var(--ring))]"
-          />
-        </div>
+        {/* Select-all checkbox — visible on hover or when any events in chapter are
+            selected. It exists to feed the bulk toolbar (delete, tag, move), so
+            reading mode has nothing to select for. */}
+        {!gate.active && (
+          <div
+            className={cn(
+              'shrink-0 flex items-center justify-center cursor-pointer transition-opacity',
+              someSelected || allSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+            )}
+            onClick={handleSelectAll}
+          >
+            <input
+              type="checkbox"
+              ref={(el) => { if (el) el.indeterminate = someSelected }}
+              checked={allSelected}
+              onChange={() => {}}
+              className="h-3.5 w-3.5 cursor-pointer accent-[hsl(var(--ring))]"
+            />
+          </div>
+        )}
         <button onClick={() => setExpanded((v) => !v)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
           {effectiveExpanded
             ? <ChevronDown className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />
@@ -102,7 +114,11 @@ export function ChapterRow({ chapter, threadFilter = null }: ChapterRowProps) {
           <span className="truncate text-sm font-medium text-[hsl(var(--foreground))] lg:shrink-0">
             Ch. {chapter.number} — {chapter.title}
           </span>
-          {chapter.synopsis && (
+          {/* The chapter's own title is on the book's contents page, so it
+              stays. The synopsis is an authored summary of what happens in it,
+              which is precisely what a reader who has not got there yet must
+              not be shown. */}
+          {chapter.synopsis && !synopsisHidden && (
             <span className="hidden lg:block text-xs text-[hsl(var(--muted-foreground))] truncate min-w-0">
               — {chapter.synopsis}
             </span>

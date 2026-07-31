@@ -50,20 +50,20 @@ test('the bottom bar scope selector switches between one timeline and all', asyn
   // Defaults to the merged view (chapter order), showing both timelines' scenes.
   const scope = page.getByLabel('Timeline bar scope')
   await expect(scope).toHaveValue('all-chapter')
-  await expect(page.getByTitle('A stolen glance')).toBeVisible()
-  await expect(page.getByTitle('Ash writes home')).toBeVisible()
+  await expect(page.getByTitle('A stolen glance', { exact: true })).toBeVisible()
+  await expect(page.getByTitle('Ash writes home', { exact: true })).toBeVisible()
 
   // Focus one timeline → the map play control returns and the other timeline's
   // scene drops out of the bar.
   await scope.selectOption('Main Timeline')
   await expect(page.getByTitle('Play story on the map')).toBeVisible()
-  await expect(page.getByTitle('A stolen glance')).toBeVisible()
-  await expect(page.getByTitle('Ash writes home')).toHaveCount(0)
+  await expect(page.getByTitle('A stolen glance', { exact: true })).toBeVisible()
+  await expect(page.getByTitle('Ash writes home', { exact: true })).toHaveCount(0)
 
   // Back to a merged view (chronological) → both scenes return.
   await scope.selectOption('all-chrono')
-  await expect(page.getByTitle('A stolen glance')).toBeVisible()
-  await expect(page.getByTitle('Ash writes home')).toBeVisible()
+  await expect(page.getByTitle('A stolen glance', { exact: true })).toBeVisible()
+  await expect(page.getByTitle('Ash writes home', { exact: true })).toBeVisible()
 })
 
 test('the merged view plays every timeline on the map, following each event', async ({ page }) => {

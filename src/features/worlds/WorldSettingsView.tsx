@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
-import { Footprints, Plus, Pencil, Check, X, Trash2, FileCode2, Upload, Image as ImageIcon } from 'lucide-react'
+import { Footprints, Plus, Pencil, Check, X, Trash2, FileCode2, Upload, Image as ImageIcon, BookOpen } from 'lucide-react'
 import { useWorld, updateWorld } from '@/db/hooks/useWorlds'
 import { useTimelines, updateTimeline } from '@/db/hooks/useTimeline'
 import { useRootMapLayers } from '@/db/hooks/useMapLayers'
@@ -246,6 +246,38 @@ export default function WorldSettingsView() {
           </div>
         </div>
       </section>
+
+      {/* Reading mode. `world` loads asynchronously, so guard it — the rest of
+          this view uses `world?.` for the same reason. */}
+      {world && (
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Reading mode</h2>
+          <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+            Present this world to someone reading the book rather than writing it. Characters,
+            items and places the story has not introduced yet are hidden until the chapter
+            cursor reaches them, and the writing screens step aside.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant={world.readingMode ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => void updateWorld(world.id, { readingMode: !world.readingMode })}
+          >
+            <BookOpen className="h-4 w-4" />
+            {world.readingMode ? 'Reading mode is on' : 'Turn on reading mode'}
+          </Button>
+        </div>
+        {world.readingMode && (
+          <p className="text-xs text-[hsl(var(--muted-foreground))]">
+            Turn it off whenever you want to edit. If this world came from the example library,
+            note that downloading it again restores the original and discards your changes —
+            export it first if you want to keep them.
+          </p>
+        )}
+      </section>
+      )}
 
       {/* World theme */}
       <section className="space-y-4">

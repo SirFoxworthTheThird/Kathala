@@ -6,6 +6,7 @@ import type { CharacterSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
 import { useWorldEvents, useWorldChapters } from './useTimeline'
+import { useGate } from './ReadingGateContext'
 import { resolveSnapshot, selectBestSnapshots as selectBestSnapshotsGeneric } from '@/lib/snapshotUtils'
 import type { EventStub, ChapterStub } from '@/lib/snapshotUtils'
 
@@ -23,7 +24,8 @@ export function useSnapshot(characterId: string | null, eventId: string | null) 
 }
 
 export function useCharacterSnapshots(characterId: string | null) {
-  return useLiveQuery(
+  const gate = useGate()
+  const all = useLiveQuery(
     () =>
       characterId
         ? db.characterSnapshots.where('characterId').equals(characterId).toArray()
@@ -31,6 +33,10 @@ export function useCharacterSnapshots(characterId: string | null) {
     [characterId],
     []
   )
+  // A character's snapshot list is their whole future — where they end up, what
+  // they carry, whether they are still alive. Cut it at the cursor: resolving
+  // the *current* state only ever looks backwards, so nothing else loses out.
+  return useMemo(() => all.filter((s) => gate.hasReached(s.eventId)), [all, gate])
 }
 
 export function useEventSnapshots(eventId: string | null) {
@@ -62,7 +68,8 @@ export function useChapterEventSnapshots(eventIds: string[]) {
 }
 
 export function useWorldSnapshots(worldId: string | null) {
-  return useLiveQuery(
+  const gate = useGate()
+  const all = useLiveQuery(
     () =>
       worldId
         ? db.characterSnapshots.where('worldId').equals(worldId).toArray()
@@ -70,6 +77,7 @@ export function useWorldSnapshots(worldId: string | null) {
     [worldId],
     []
   )
+  return useMemo(() => all.filter((s) => gate.hasReached(s.eventId)), [all, gate])
 }
 
 /** Pure selection logic — exported for testing.

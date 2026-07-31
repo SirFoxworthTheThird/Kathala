@@ -312,18 +312,76 @@ export function makeTombstone(input: {
 }
 
 /**
- * Journal entries safe to discard: everything below `keepFromSeq`, except the
- * newest operation per entity, which is retained so an entity's last-known
- * state stays explainable after pruning.
+ * Pruning the journal.
+ *
+ * The journal grows on every edit and nothing ever needed it to stop, because
+ * nothing called this. In a world that never syncs — the common case — it grows
+ * for the life of the world, and a failed IndexedDB write in a local-first app
+ * with no backend is lost work.
+ *
+ * Two caps rather than one. A count alone is not a bound on size: an ordinary
+ * rename is a few hundred bytes, while deleting a character with forty
+ * per-chapter snapshots stores all forty rows in a single entry. Five hundred
+ * entries can therefore be kilobytes or megabytes.
  */
-export function prunableOperations(ops: Operation[], keepFromSeq: number): Operation[] {
-  const newestByEntity = new Map<string, number>()
-  for (const op of ops) {
-    const key = `${op.entityType}:${op.entityId}`
-    newestByEntity.set(key, Math.max(newestByEntity.get(key) ?? -1, op.seq))
-  }
-  return ops.filter((op) => {
-    if (op.seq >= keepFromSeq) return false
-    return newestByEntity.get(`${op.entityType}:${op.entityId}`) !== op.seq
+export const JOURNAL_MAX_OPERATIONS = 500
+export const JOURNAL_MAX_BYTES = 2 * 1024 * 1024
+/**
+ * Kept whatever the byte cap says, so a run of very large entries can never
+ * leave the writer unable to undo what they just did.
+ */
+export const JOURNAL_MIN_OPERATIONS = 20
+
+/** Roughly what an operation costs to store. Stable enough to bound growth. */
+export function operationSize(op: Operation): number {
+  return JSON.stringify(op).length
+}
+
+export interface PruneLimits {
+  maxOperations?: number
+  maxBytes?: number
+  minOperations?: number
+}
+
+export interface PrunePlan {
+  /** Oldest first. */
+  discard: Operation[]
+  keptCount: number
+  keptBytes: number
+}
+
+/**
+ * Which entries to discard to bring a journal back inside its caps.
+ *
+ * Walks newest-first and keeps until a cap is hit; everything older goes. There
+ * is deliberately no per-entity retention: that rule existed to keep every
+ * entity's last change explainable, which belonged to a replay-from-zero story
+ * the app never adopted — nothing replays the journal, the store is the source
+ * of truth for current state. Retaining one entry per entity would also make
+ * the byte cap unenforceable, since a large world has thousands of entities.
+ */
+export function planJournalPrune(ops: Operation[], limits: PruneLimits = {}): PrunePlan {
+  const maxOperations = limits.maxOperations ?? JOURNAL_MAX_OPERATIONS
+  const maxBytes = limits.maxBytes ?? JOURNAL_MAX_BYTES
+  const minOperations = Math.min(limits.minOperations ?? JOURNAL_MIN_OPERATIONS, maxOperations)
+
+  const newestFirst = [...ops].sort((a, b) => b.seq - a.seq)
+  let keptCount = 0
+  let keptBytes = 0
+  const cut = newestFirst.findIndex((op) => {
+    const size = operationSize(op)
+    const wouldExceed =
+      keptCount >= maxOperations || (keptCount >= minOperations && keptBytes + size > maxBytes)
+    if (wouldExceed) return true
+    keptCount += 1
+    keptBytes += size
+    return false
   })
+
+  if (cut === -1) return { discard: [], keptCount, keptBytes }
+  return {
+    discard: newestFirst.slice(cut).reverse(),
+    keptCount,
+    keptBytes,
+  }
 }

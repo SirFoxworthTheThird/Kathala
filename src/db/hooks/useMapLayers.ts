@@ -1,5 +1,7 @@
+import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { useGate } from './ReadingGateContext'
 import type { MapLayer } from '@/types'
 import { generateId } from '@/lib/id'
 import { descendantLayerIds } from '@/lib/mapTree'
@@ -63,12 +65,59 @@ export async function deleteMapLayersCascade(layerIds: string[]): Promise<void> 
   await db.transaction('rw', MAP_DELETE_TABLES, () => cascadeDeleteLayerSet(layerIds))
 }
 
+/**
+ * Whether a map is one the reader has been to.
+ *
+ * Location markers are gated, but the maps holding them were not — so a world
+ * with a map per setting listed every place in the book by name before the
+ * reader arrived, which is the gating defeated by its own sidebar. The rule
+ * here makes the map list agree with the locations list:
+ *
+ * 1. A sub-map is reached through the marker that links to it, so it waits for
+ *    that marker. A map called "Diagon Alley" is exactly as much of a spoiler
+ *    as the marker of the same name, and must keep step with it.
+ * 2. Otherwise a map is shown once any marker on it is revealed.
+ * 3. A map with neither — nothing on it and nothing pointing at it — has no
+ *    reveal point to wait for, and stays. That is the same choice made for an
+ *    entity that never appears anywhere.
+ */
+function useLayerRevealed(worldId: string | null): (layerId: string) => boolean {
+  const gate = useGate()
+  const markers = useLiveQuery(
+    () => (worldId ? db.locationMarkers.where('worldId').equals(worldId).toArray() : []),
+    [worldId],
+    []
+  )
+  return useMemo(() => {
+    if (!gate.active) return () => true
+    const linked = new Set<string>()
+    const linkedRevealed = new Set<string>()
+    const populated = new Set<string>()
+    const populatedRevealed = new Set<string>()
+    for (const m of markers) {
+      const shown = gate.isRevealed(m.id)
+      populated.add(m.mapLayerId)
+      if (shown) populatedRevealed.add(m.mapLayerId)
+      if (m.linkedMapLayerId) {
+        linked.add(m.linkedMapLayerId)
+        if (shown) linkedRevealed.add(m.linkedMapLayerId)
+      }
+    }
+    return (id: string) => {
+      if (linked.has(id)) return linkedRevealed.has(id)
+      return !populated.has(id) || populatedRevealed.has(id)
+    }
+  }, [gate, markers])
+}
+
 export function useMapLayers(worldId: string | null) {
-  return useLiveQuery(
+  const isRevealed = useLayerRevealed(worldId)
+  const all = useLiveQuery(
     () => (worldId ? db.mapLayers.where('worldId').equals(worldId).toArray() : []),
     [worldId],
     []
   )
+  return useMemo(() => all.filter((l) => isRevealed(l.id)), [all, isRevealed])
 }
 
 export function useMapLayer(id: string | null) {
@@ -76,7 +125,8 @@ export function useMapLayer(id: string | null) {
 }
 
 export function useRootMapLayers(worldId: string | null) {
-  return useLiveQuery(
+  const isRevealed = useLayerRevealed(worldId)
+  const all = useLiveQuery(
     () =>
       worldId
         ? db.mapLayers
@@ -88,6 +138,7 @@ export function useRootMapLayers(worldId: string | null) {
     [worldId],
     []
   )
+  return useMemo(() => all.filter((l) => isRevealed(l.id)), [all, isRevealed])
 }
 
 export function useChildMapLayers(parentMapId: string | null) {

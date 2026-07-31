@@ -8,6 +8,7 @@ import { deleteEvent } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useAppStore } from '@/store'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { Button } from '@/components/ui/button'
 import { PortraitImage } from '@/components/PortraitImage'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -27,6 +28,7 @@ export function EventRow({ event, isFirst, isLast, onMoveUp, onMoveDown, chapter
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
   const [expanded, setExpanded] = useState(false)
+  const gate = useGate()
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   const { selectedEventIds, toggleEventSelected, selectEventRange, setLastSelectedEventId, lastSelectedEventId } = useAppStore()
@@ -62,21 +64,23 @@ export function EventRow({ event, isFirst, isLast, onMoveUp, onMoveDown, chapter
     <div className={cn('flex gap-0 group', isSelected && 'opacity-100')}>
       {/* Left gutter — checkbox or timeline dot */}
       <div className="flex w-6 shrink-0 flex-col items-center">
-        <div
-          className={cn(
-            'mt-2.5 shrink-0 flex items-center justify-center cursor-pointer',
-            anySelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
-            'transition-opacity'
-          )}
-          onClick={handleCheckboxClick}
-        >
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={() => {}} // controlled via onClick
-            className="h-3 w-3 cursor-pointer accent-[hsl(var(--ring))]"
-          />
-        </div>
+        {!gate.active && (
+          <div
+            className={cn(
+              'mt-2.5 shrink-0 flex items-center justify-center cursor-pointer',
+              anySelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+              'transition-opacity'
+            )}
+            onClick={handleCheckboxClick}
+          >
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => {}} // controlled via onClick
+              className="h-3 w-3 cursor-pointer accent-[hsl(var(--ring))]"
+            />
+          </div>
+        )}
         <div className="flex-1 w-px bg-[hsl(var(--border))]" />
       </div>
 

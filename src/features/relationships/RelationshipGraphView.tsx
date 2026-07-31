@@ -37,6 +37,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
 import { cn } from '@/lib/utils'
 import type { Character, Relationship, RelationshipSentiment, RelationshipStrength, RelationshipSnapshot } from '@/types'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 
 // ─── Custom Node ────────────────────────────────────────────────────────────
 
@@ -361,6 +362,7 @@ function CreateRelationshipDialog({ open, onOpenChange, worldId, characters, sta
 // ─── Main View ──────────────────────────────────────────────────────────────
 
 export default function RelationshipGraphView() {
+  const gate = useGate()
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
   const activeEventId = useActiveEventId()
@@ -532,14 +534,16 @@ export default function RelationshipGraphView() {
         >
           <Background color="#334155" gap={20} />
           <Panel position="top-left">
-            <div className="flex items-center gap-2">
-              <Button size="sm" className="gap-1.5 shadow-md" onClick={() => { setPendingConn(null); setCreating(true) }} disabled={characters.length < 2}>
-                <Plus className="h-4 w-4" /> New Relationship
-              </Button>
-              <Button size="sm" variant="outline" className="gap-1.5 shadow-md" onClick={() => setAiOpen(true)}>
-                <Sparkles className="h-4 w-4" /> Generate with AI
-              </Button>
-            </div>
+            {!gate.active && (
+              <div className="flex items-center gap-2">
+                <Button size="sm" className="gap-1.5 shadow-md" onClick={() => { setPendingConn(null); setCreating(true) }} disabled={characters.length < 2}>
+                  <Plus className="h-4 w-4" /> New Relationship
+                </Button>
+                <Button size="sm" variant="outline" className="gap-1.5 shadow-md" onClick={() => setAiOpen(true)}>
+                  <Sparkles className="h-4 w-4" /> Generate with AI
+                </Button>
+              </div>
+            )}
           </Panel>
           <Controls style={{ background: 'hsl(222,47%,14%)', borderColor: 'hsl(217,33%,22%)' }} />
           <MiniMap

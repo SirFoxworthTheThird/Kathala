@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Plus, Users, Sparkles } from 'lucide-react'
 import { useCharacters } from '@/db/hooks/useCharacters'
+import { useGate } from '@/db/hooks/ReadingGateContext'
+import { SpoilerNote } from '@/components/SpoilerNote'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/EmptyState'
@@ -17,6 +19,11 @@ export default function CharacterRosterView() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
 
+  // `useCharacters` is already gated, so the count of what is being held back
+  // comes from the gate rather than from re-fetching the ungated cast.
+  const gate = useGate()
+  const hidden = gate.hiddenCounts.characters
+
   const filtered = characters.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase())
   )
@@ -29,16 +36,21 @@ export default function CharacterRosterView() {
         count={characters.length}
         description="The cast you're tracking across the story."
         actions={
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAiOpen(true)}>
-              <Sparkles className="h-4 w-4" />
-              Generate with AI
-            </Button>
-            <Button size="sm" onClick={() => setDialogOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Add Character
-            </Button>
-          </div>
+          // Reading mode is for someone following a published book; offering to
+          // add to its cast is noise at best and an invitation to damage the
+          // reference at worst. "Make a copy" in world settings is the way out.
+          gate.active ? undefined : (
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAiOpen(true)}>
+                <Sparkles className="h-4 w-4" />
+                Generate with AI
+              </Button>
+              <Button size="sm" onClick={() => setDialogOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Add Character
+              </Button>
+            </div>
+          )
         }
       >
         <Input
@@ -50,13 +62,20 @@ export default function CharacterRosterView() {
       </PageHeader>
 
       <div className="flex-1 overflow-auto p-4">
+        <SpoilerNote gate={gate} hidden={hidden} noun="characters" />
         {filtered.length === 0 ? (
           <EmptyState
             icon={Users}
             title={characters.length === 0 ? 'No characters yet' : 'No matches'}
-            description={characters.length === 0 ? 'Add your first character to start tracking.' : 'Try a different search.'}
+            description={
+              characters.length === 0
+                ? gate.active
+                  ? 'Nobody has appeared yet at this point in the story.'
+                  : 'Add your first character to start tracking.'
+                : 'Try a different search.'
+            }
             action={
-              characters.length === 0 ? (
+              characters.length === 0 && !gate.active ? (
                 <Button onClick={() => setDialogOpen(true)}>
                   <Plus className="h-4 w-4" />
                   Add Character

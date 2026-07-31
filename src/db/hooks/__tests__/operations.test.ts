@@ -160,21 +160,21 @@ describe('journal maintenance', () => {
     const before = await listOperations(world.id)
     expect(before.length).toBe(8)
 
-    const removed = await pruneJournal(world.id, 3)
-    expect(removed).toBeGreaterThan(0)
+    const removed = await pruneJournal(world.id, { maxOperations: 3, minOperations: 1 })
+    expect(removed).toBe(5)
 
     const after = await listOperations(world.id)
-    // Both entities still explainable: each retains at least its newest entry.
-    const entities = new Set(after.map((o) => o.entityId))
-    expect(entities.has(a.id)).toBe(true)
-    expect(entities.has(b.id)).toBe(true)
-    expect(after.length).toBeLessThan(before.length)
+    expect(after).toHaveLength(3)
+    // The newest survive; the oldest go. There is no per-entity retention any
+    // more — see planJournalPrune for why that rule was dropped.
+    expect(after.map((o) => o.seq)).toEqual(before.slice(-3).map((o) => o.seq))
+    void b
   })
 
   it('does nothing when the journal is already short', async () => {
     const world = await seed()
     await createCharacter({ worldId: world.id, name: 'A', description: '' })
-    expect(await pruneJournal(world.id, 500)).toBe(0)
+    expect(await pruneJournal(world.id)).toBe(0)
   })
 
   it('clearJournal drops operations and tombstones for one world only', async () => {

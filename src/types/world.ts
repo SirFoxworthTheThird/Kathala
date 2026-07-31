@@ -35,6 +35,15 @@ export interface World {
   wordTarget?: number | null
   /** Optional manuscript deadline (`YYYY-MM-DD`), for the words/day and finish projection. */
   targetDate?: string | null
+  /**
+   * Reading mode: the world is presented to someone reading the book rather
+   * than writing it. Entities the story has not introduced yet are hidden, the
+   * manuscript is out of the way, and editing is not offered.
+   *
+   * Stored on the world rather than in UI state so it travels in `.pwk` — the
+   * library worlds arrive with it on, which is the point of them.
+   */
+  readingMode?: boolean
   createdAt: number
   updatedAt: number
 }

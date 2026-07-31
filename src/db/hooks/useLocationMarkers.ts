@@ -1,15 +1,19 @@
+import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { useGate } from './ReadingGateContext'
 import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import type { LocationMarker, LocationIconType } from '@/types'
 import { generateId } from '@/lib/id'
 
 export function useLocationMarkers(mapLayerId: string | null) {
-  return useLiveQuery(
+  const gate = useGate()
+  const all = useLiveQuery(
     () => (mapLayerId ? db.locationMarkers.where('mapLayerId').equals(mapLayerId).toArray() : []),
     [mapLayerId],
     []
   )
+  return useMemo(() => gate.filter(all), [gate, all])
 }
 
 export function useLocationMarker(id: string | null) {
@@ -17,11 +21,13 @@ export function useLocationMarker(id: string | null) {
 }
 
 export function useAllLocationMarkers(worldId: string | null) {
-  return useLiveQuery(
+  const gate = useGate()
+  const all = useLiveQuery(
     () => (worldId ? db.locationMarkers.where('worldId').equals(worldId).toArray() : []),
     [worldId],
     []
   )
+  return useMemo(() => gate.filter(all), [gate, all])
 }
 
 export async function createLocationMarker(data: {

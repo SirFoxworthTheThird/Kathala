@@ -1,15 +1,22 @@
+import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { useGate } from './ReadingGateContext'
 import type { Character } from '@/types'
 import { generateId } from '@/lib/id'
 import { withJournal } from './useOperations'
 
 export function useCharacters(worldId: string | null) {
-  return useLiveQuery(
+  // Gated here rather than in each view: a roster, a graph, an arc grid and a
+  // map all read this, and a screen added later would otherwise leak by
+  // default. The default has to be safe.
+  const gate = useGate()
+  const all = useLiveQuery(
     () => (worldId ? db.characters.where('worldId').equals(worldId).sortBy('name') : []),
     [worldId],
     []
   )
+  return useMemo(() => gate.filter(all), [gate, all])
 }
 
 export function useCharacter(id: string | null) {

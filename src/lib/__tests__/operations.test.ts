@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
-  makeOperation, applyOperation, replay, invertOperation, contentFields, prunableOperations,
+  makeOperation, applyOperation, replay, invertOperation, contentFields,
+  planJournalPrune, operationSize,
 } from '@/lib/operations'
 import type { Operation } from '@/types/operation'
 
@@ -134,21 +135,60 @@ describe('invertOperation', () => {
   })
 })
 
-describe('prunableOperations', () => {
-  const ops = [
-    op({ type: 'create', seq: 1, entityId: 'c1', payload: {} }),
-    op({ type: 'update', seq: 2, entityId: 'c1', payload: {} }),
-    op({ type: 'create', seq: 3, entityId: 'c2', payload: {} }),
-    op({ type: 'update', seq: 4, entityId: 'c1', payload: {} }),
-  ]
+describe('planJournalPrune', () => {
+  const ops = [1, 2, 3, 4, 5].map((seq) => op({ type: 'update', seq, payload: { notes: 'x' } }))
 
-  it('keeps everything at or above the cutoff', () => {
-    expect(prunableOperations(ops, 1)).toEqual([])
+  it('discards nothing while inside both caps', () => {
+    expect(planJournalPrune(ops, { maxOperations: 10 }).discard).toEqual([])
   })
 
-  it('drops old entries but keeps the newest per entity', () => {
-    const doomed = prunableOperations(ops, 5).map((o) => o.seq)
-    // c1's newest is 4 and c2's is 3, so only 1 and 2 are prunable.
-    expect(doomed).toEqual([1, 2])
+  it('keeps the newest entries and discards the oldest', () => {
+    const plan = planJournalPrune(ops, { maxOperations: 2, minOperations: 1 })
+    expect(plan.discard.map((o) => o.seq)).toEqual([1, 2, 3])
+    expect(plan.keptCount).toBe(2)
+  })
+
+  it('returns the discard list oldest first, so a bulk delete reads in order', () => {
+    const plan = planJournalPrune(ops, { maxOperations: 1, minOperations: 1 })
+    expect(plan.discard.map((o) => o.seq)).toEqual([1, 2, 3, 4])
+  })
+
+  it('caps by bytes, not only by count', () => {
+    // The reason a count is not a bound: one delete carrying a cascade can
+    // outweigh hundreds of renames.
+    const fat = op({
+      type: 'delete', seq: 6,
+      payload: { id: 'c1', name: 'x'.repeat(4000) },
+    })
+    const plan = planJournalPrune([...ops, fat], { maxOperations: 100, maxBytes: 500, minOperations: 1 })
+    expect(plan.discard.length).toBeGreaterThan(0)
+    expect(plan.keptBytes).toBeLessThanOrEqual(4200)
+  })
+
+  it('keeps minOperations even when they blow the byte cap', () => {
+    // Otherwise a run of large entries would leave the writer unable to undo
+    // the thing they just did.
+    const fat = [7, 8, 9].map((seq) =>
+      op({ type: 'delete', seq, payload: { id: `c${seq}`, name: 'x'.repeat(4000) } }))
+    const plan = planJournalPrune(fat, { maxOperations: 100, maxBytes: 10, minOperations: 3 })
+    expect(plan.discard).toEqual([])
+    expect(plan.keptCount).toBe(3)
+  })
+
+  it('never keeps more than maxOperations, even below the byte cap', () => {
+    const plan = planJournalPrune(ops, { maxOperations: 2, maxBytes: 10_000_000, minOperations: 5 })
+    expect(plan.keptCount).toBe(2)
+  })
+
+  it('handles an empty journal', () => {
+    expect(planJournalPrune([]).discard).toEqual([])
+  })
+})
+
+describe('operationSize', () => {
+  it('grows with the payload it has to store', () => {
+    const small = op({ type: 'update', seq: 1, payload: { notes: 'a' } })
+    const large = op({ type: 'update', seq: 2, payload: { notes: 'a'.repeat(1000) } })
+    expect(operationSize(large)).toBeGreaterThan(operationSize(small) + 900)
   })
 })

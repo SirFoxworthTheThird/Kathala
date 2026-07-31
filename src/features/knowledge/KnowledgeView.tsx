@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PageHeader } from '@/components/PageHeader'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { EmptyState } from '@/components/EmptyState'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { GenerateKnowledgeDialog } from './GenerateKnowledgeDialog'
@@ -100,6 +101,7 @@ export default function KnowledgeView() {
     setSelectedId(f.id)
   }
 
+  const gate = useGate()
   const revealedCharIds = new Set(revealsForSelected.map((r) => r.characterId))
   const unrevealedChars = characters.filter((c) => !revealedCharIds.has(c.id))
 
@@ -156,7 +158,7 @@ export default function KnowledgeView() {
         </PageHeader>
 
         <div className="flex-1 overflow-auto p-4">
-          {deathSuggestions.length > 0 && (
+          {!gate.active && deathSuggestions.length > 0 && (
             <div className="mb-4 rounded-lg border border-dashed border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)] p-3">
               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
                 Suggested from your story
@@ -206,11 +208,17 @@ export default function KnowledgeView() {
         <div className="flex h-full w-96 shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl">
           <div className="flex items-start gap-2 border-b border-[hsl(var(--border))] px-4 py-3">
             <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />
-            <input
-              className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-[hsl(var(--foreground))] outline-none"
-              value={selected.title}
-              onChange={(e) => updateKnowledgeFact(selected.id, { title: e.target.value })}
-            />
+            {gate.active ? (
+              <h2 className="min-w-0 flex-1 text-sm font-semibold text-[hsl(var(--foreground))]">
+                {selected.title}
+              </h2>
+            ) : (
+              <input
+                className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-[hsl(var(--foreground))] outline-none"
+                value={selected.title}
+                onChange={(e) => updateKnowledgeFact(selected.id, { title: e.target.value })}
+              />
+            )}
             <button
               onClick={() => setSelectedId(null)}
               className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
@@ -220,58 +228,70 @@ export default function KnowledgeView() {
           </div>
 
           <div className="flex-1 overflow-auto p-4 flex flex-col gap-4">
-            <div>
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Description</p>
-              <Textarea
-                className="resize-none text-sm"
-                rows={3}
-                placeholder="What is this information?"
-                value={selected.description}
-                onChange={(e) => updateKnowledgeFact(selected.id, { description: e.target.value })}
-              />
-            </div>
+            {gate.active ? (
+              selected.description ? (
+                <p className="whitespace-pre-wrap text-sm text-[hsl(var(--muted-foreground))]">
+                  {selected.description}
+                </p>
+              ) : null
+            ) : (
+              <div>
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Description</p>
+                <Textarea
+                  className="resize-none text-sm"
+                  rows={3}
+                  placeholder="What is this information?"
+                  value={selected.description}
+                  onChange={(e) => updateKnowledgeFact(selected.id, { description: e.target.value })}
+                />
+              </div>
+            )}
 
-            <div>
-              <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                <Eye className="h-3 w-3" /> Reader learns at
-              </p>
-              <Select
-                value={selected.readerLearnsAtEventId ?? '__auto__'}
-                onValueChange={(v) => updateKnowledgeFact(selected.id, { readerLearnsAtEventId: v === '__auto__' ? null : v })}
-              >
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__auto__">Auto — when a POV character knows it</SelectItem>
-                  {events.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>{eventLabel.get(e.id) ?? e.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="mt-1 text-[10px] text-[hsl(var(--muted-foreground))]">
-                Set an event to withhold from (or reveal early to) the reader; leave on Auto otherwise.
-              </p>
-            </div>
+            {!gate.active && (
+              <div>
+                <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                  <Eye className="h-3 w-3" /> Reader learns at
+                </p>
+                <Select
+                  value={selected.readerLearnsAtEventId ?? '__auto__'}
+                  onValueChange={(v) => updateKnowledgeFact(selected.id, { readerLearnsAtEventId: v === '__auto__' ? null : v })}
+                >
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__auto__">Auto — when a POV character knows it</SelectItem>
+                    {events.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>{eventLabel.get(e.id) ?? e.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-[10px] text-[hsl(var(--muted-foreground))]">
+                  Set an event to withhold from (or reveal early to) the reader; leave on Auto otherwise.
+                </p>
+              </div>
+            )}
 
-            <div>
-              <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                <History className="h-3 w-3" /> Becomes true at
-              </p>
-              <Select
-                value={selected.originEventId ?? '__origin_none__'}
-                onValueChange={(v) => updateKnowledgeFact(selected.id, { originEventId: v === '__origin_none__' ? null : v })}
-              >
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__origin_none__">True from the start</SelectItem>
-                  {events.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>{eventLabel.get(e.id) ?? e.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="mt-1 text-[10px] text-[hsl(var(--muted-foreground))]">
-                Anyone who knows it before this is flagged by the continuity checker.
-              </p>
-            </div>
+            {!gate.active && (
+              <div>
+                <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                  <History className="h-3 w-3" /> Becomes true at
+                </p>
+                <Select
+                  value={selected.originEventId ?? '__origin_none__'}
+                  onValueChange={(v) => updateKnowledgeFact(selected.id, { originEventId: v === '__origin_none__' ? null : v })}
+                >
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__origin_none__">True from the start</SelectItem>
+                    {events.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>{eventLabel.get(e.id) ?? e.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-[10px] text-[hsl(var(--muted-foreground))]">
+                  Anyone who knows it before this is flagged by the continuity checker.
+                </p>
+              </div>
+            )}
 
             <div>
               <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
@@ -295,20 +315,22 @@ export default function KnowledgeView() {
                           {eventLabel.get(r.eventId) ?? 'learns it'}
                         </span>
                         {!known && <EyeOff className="h-3 w-3 shrink-0 text-[hsl(var(--muted-foreground))]" />}
-                        <button
-                          onClick={() => deleteKnowledgeReveal(r.id)}
-                          className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
-                          title="Remove"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
+                        {!gate.active && (
+                          <button
+                            onClick={() => deleteKnowledgeReveal(r.id)}
+                            className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
+                            title="Remove"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </div>
                     )
                   })}
                 </div>
               )}
 
-              {unrevealedChars.length > 0 && events.length > 0 && (
+              {!gate.active && unrevealedChars.length > 0 && events.length > 0 && (
                 <AddRevealRow
                   chars={unrevealedChars}
                   eventOptions={events}
@@ -318,12 +340,12 @@ export default function KnowledgeView() {
                   }
                 />
               )}
-              {events.length === 0 && (
+              {!gate.active && events.length === 0 && (
                 <p className="mt-2 text-[10px] text-[hsl(var(--muted-foreground))]">Add events on the timeline to record when characters learn this.</p>
               )}
 
               {/* Co-presence suggestions: who shared a scene with a knower */}
-              {(() => {
+              {!gate.active && (() => {
                 const suggestions = suggestReveals({ fact: selected, reveals, events, chapters })
                   .filter((s) => !revealedCharIds.has(s.characterId))
                 if (suggestions.length === 0) return null
@@ -353,9 +375,11 @@ export default function KnowledgeView() {
             </div>
           </div>
 
-          <div className="border-t border-[hsl(var(--border))] p-3">
-            <FactDeleteButton fact={selected} onDeleted={() => setSelectedId(null)} />
-          </div>
+          {!gate.active && (
+            <div className="border-t border-[hsl(var(--border))] p-3">
+              <FactDeleteButton fact={selected} onDeleted={() => setSelectedId(null)} />
+            </div>
+          )}
         </div>
       )}
 

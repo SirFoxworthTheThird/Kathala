@@ -1,12 +1,13 @@
 import { useState, useRef } from 'react'
 import faviconUrl from '/favicon.png'
-import { Plus, Scroll, Upload, Sparkles, AlertCircle, FileText } from 'lucide-react'
+import { Plus, Scroll, Upload, Sparkles, AlertCircle, FileText, BookOpen } from 'lucide-react'
 import { useWorlds } from '@/db/hooks/useWorlds'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/EmptyState'
 import { WorldCard } from './WorldCard'
 import { CreateWorldDialog } from './CreateWorldDialog'
 import { ImportManuscriptDialog } from './ImportManuscriptDialog'
+import { LibraryDialog } from './LibraryDialog'
 import { LLMPromptDialog } from './LLMPromptDialog'
 import { useNavigate } from 'react-router-dom'
 import { importWorld, importWorldImages } from '@/lib/exportImport'
@@ -24,6 +25,7 @@ export default function WorldSelectorView() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [manuscriptOpen, setManuscriptOpen] = useState(false)
   const [promptOpen, setPromptOpen] = useState(false)
+  const [libraryOpen, setLibraryOpen] = useState(false)
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
   const importRef = useRef<HTMLInputElement>(null)
@@ -102,6 +104,13 @@ export default function WorldSelectorView() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setLibraryOpen(true)}
+            >
+              <BookOpen className="h-4 w-4" />
+              Example Library
+            </Button>
             <Button
               variant="outline"
               onClick={() => setPromptOpen(true)}
@@ -206,6 +215,12 @@ export default function WorldSelectorView() {
         open={promptOpen}
         onOpenChange={setPromptOpen}
         onImported={(id) => navigate(`/worlds/${id}`)}
+      />
+      <LibraryDialog
+        open={libraryOpen}
+        onClose={() => setLibraryOpen(false)}
+        onOpenWorld={(worldId) => { setLibraryOpen(false); navigate(`/worlds/${worldId}`) }}
+        installedWorldIds={new Set(worlds.map((w) => w.id))}
       />
     </div>
   )

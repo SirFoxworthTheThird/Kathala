@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settleNav } from './helpers/nav'
 
 // Covers the browser-only parts of the pacing curve that unit tests can't reach:
 // the EventCard tension picker, the SVG curve reflecting a rating, and clicking
@@ -49,6 +50,7 @@ test.describe('Pacing curve', () => {
 
     // Back on the timeline the curve now has a rated point (the hint is gone).
     await page.getByRole('link', { name: /timeline/i }).click()
+    await settleNav(page)
     await expect(page.getByText('rate scenes on their cards to draw the curve')).not.toBeVisible()
 
     // Clicking the curve point moves the global time cursor to that event —

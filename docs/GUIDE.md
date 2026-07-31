@@ -17,33 +17,34 @@ explore).
 
 1. [Core concept: the time cursor](#core-concept-the-time-cursor)
 2. [Getting started — the world selector](#getting-started--the-world-selector)
-3. [Import a manuscript](#import-a-manuscript)
-4. [Generate a world from AI](#generate-a-world-from-ai)
-5. [Start a sequel](#start-a-sequel)
-6. [The world dashboard](#the-world-dashboard)
-7. [Timeline & events](#timeline--events)
-8. [Chapter detail](#chapter-detail)
-9. [Corkboard](#corkboard)
-10. [Manuscript](#manuscript)
-11. [Characters](#characters)
-12. [Cast Balance](#cast-balance)
-13. [Plot Threads](#plot-threads)
-14. [Motifs & Themes](#motifs--themes)
-15. [Structure board](#structure-board)
-16. [Maps](#maps)
-17. [Items](#items)
-18. [Relationships](#relationships)
-19. [Character Arc grid](#character-arc-grid)
-20. [Lore](#lore)
-21. [Factions](#factions)
-22. [Knowledge](#knowledge)
-23. [Search](#search)
-24. [Undo, redo & recent changes](#undo-redo--recent-changes)
-25. [Writer's Brief](#writers-brief)
-26. [Calendar & character ages](#calendar--character-ages)
-27. [Continuity Checker](#continuity-checker)
-28. [World settings & export](#world-settings--export)
-29. [Help](#help)
+3. [The example library](#the-example-library)
+4. [Import a manuscript](#import-a-manuscript)
+5. [Generate a world from AI](#generate-a-world-from-ai)
+6. [Start a sequel](#start-a-sequel)
+7. [The world dashboard](#the-world-dashboard)
+8. [Timeline & events](#timeline--events)
+9. [Chapter detail](#chapter-detail)
+10. [Corkboard](#corkboard)
+11. [Manuscript](#manuscript)
+12. [Characters](#characters)
+13. [Cast Balance](#cast-balance)
+14. [Plot Threads](#plot-threads)
+15. [Motifs & Themes](#motifs--themes)
+16. [Structure board](#structure-board)
+17. [Maps](#maps)
+18. [Items](#items)
+19. [Relationships](#relationships)
+20. [Character Arc grid](#character-arc-grid)
+21. [Lore](#lore)
+22. [Factions](#factions)
+23. [Knowledge](#knowledge)
+24. [Search](#search)
+25. [Undo, redo & recent changes](#undo-redo--recent-changes)
+26. [Writer's Brief](#writers-brief)
+27. [Calendar & character ages](#calendar--character-ages)
+28. [Continuity Checker](#continuity-checker)
+29. [World settings & export](#world-settings--export)
+30. [Help](#help)
 
 ---
 
@@ -92,6 +93,94 @@ character at the opening moment, and then continue to the Timeline. Each optiona
 step has **Skip** so you can leave the guide and build the world in any order.
 
 ![Blank-world setup](images/38-onboarding.png)
+
+---
+
+## The example library
+
+**Example Library** on the world selector lists worlds built from published
+books and downloads them straight into your browser. Nothing is uploaded and no
+account is needed — a downloaded world is an ordinary world you own outright,
+which you can edit, export, or delete like any other.
+
+Each entry shows its cast, chapter and event counts, and the download size. Map
+images and portraits are a separate, much larger download, so they sit behind
+their own button rather than coming along by default — useful if you're on a
+phone.
+
+### Reading alongside a book
+
+Library worlds arrive in **reading mode**, which is what makes them safe to open
+while you are still part-way through the book.
+
+Set the chapter cursor to where you have read up to, and PlotWeave hides
+characters, items and places the story has not introduced yet — everywhere, not
+just on one screen. The Characters page in chapter one shows the handful of
+people you have actually met, with a note saying how many are still to come, so
+a short list reads as deliberate rather than broken. Move the cursor forward and
+they appear, in the order the book introduces them.
+
+The same cut-off applies across the app: the timeline stops at your place and
+keeps later chapter summaries back, lore pages wait until you have met what they
+are about, and a knowledge fact stays hidden until the point the reader is meant
+to learn it. A character's page shows where they stand now rather than every
+chapter still to come, and the map list holds back the maps for places you have
+not been to yet. **Search** answers on the same terms — it will not find a
+character you have not met.
+
+Chapter *titles* stay visible throughout — they are printed on your own book's
+contents page, so hiding them would gain nothing. One thing the cut-off cannot
+do is edit prose: if a place you *have* reached is described in a sentence that
+names one you have not, that sentence is shown as written.
+
+The rest follows the same rule PlotWeave always follows: everything is shown
+relative to the cursor, so you can ask *where is everyone, who knows what, who
+has met whom* without being told anything that happens later. Summary figures
+that would give the game away — the alive/dead split on the dashboard, for
+instance — are simply not shown while reading.
+
+Selecting **All chapters** reveals everything. That is a deliberate choice you
+make, not the default.
+
+### What reading mode puts away
+
+Reading mode also clears out everything that only makes sense to the person
+writing the book, so what is left reads as a companion rather than a workspace
+you have wandered into.
+
+The writing screens — Manuscript and Structure — step aside. Undo, redo, Recent
+changes, the Writer's Brief and the Continuity Checker leave the top bar (and
+Ctrl+Z along with them), and the dashboard drops its continuity card and its
+snapshot-coverage figure. No
+screen offers to add, generate or delete anything: no **Add Character**, no
+**New Page**, no **Generate with AI**, no delete buttons on cards, rows or map
+layers.
+
+Detail screens show the same information without the editing furniture. A
+character's page is read straight through — their description, where they
+stand, what they carry, their goals, relationships and factions — with no Edit
+button and no form fields. Lore pages render as articles. A knowledge fact shows
+what it is and who knows it, without the controls that set when the reader is
+let in on it. On the map you can still measure distances and export the picture;
+you cannot move a marker, relabel it, or replace the image.
+
+To edit a world anyway, turn reading mode off in **Settings**. Everything comes
+back exactly as it was.
+
+The library worlds carry **no text from the books**. They are structural
+references only: characters, chapters, events, places, relationships and lore.
+They are unofficial and fan-made, and are not affiliated with or endorsed by the
+authors or publishers.
+
+### Reading mode on your own world
+
+Reading mode is a per-world setting, so it works on anything — not just library
+worlds. Turn it on in **Settings** before handing a world to a beta reader and
+they can follow along without the ending being spoiled by the cast list.
+
+> **Note:** downloading a world you already have **replaces** your copy and
+> discards any changes you made in it, so PlotWeave asks first. Use it
+> deliberately when you want the original back.
 
 ---
 

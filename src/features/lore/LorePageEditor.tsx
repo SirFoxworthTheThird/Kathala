@@ -5,6 +5,7 @@ import {
   useLorePage, useLoreCategories,
   updateLorePage, deleteLorePage,
 } from '@/db/hooks/useLore'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
@@ -199,6 +200,7 @@ export default function LorePageEditor() {
   const navigate = useNavigate()
   const page = useLorePage(pageId ?? null)
   const categories = useLoreCategories(worldId ?? null)
+  const gate = useGate()
 
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
@@ -277,6 +279,57 @@ export default function LorePageEditor() {
     return (
       <div className="flex h-full items-center justify-center text-[hsl(var(--muted-foreground))]">
         Page not found.
+      </div>
+    )
+  }
+
+  // A lore page in reading mode is an article, not a document being written:
+  // the same words, without the title field, the body textarea, the tag input
+  // or the autosave indicator. Returning early keeps the editor's save path
+  // from ever being mounted for a reader.
+  if (gate.active) {
+    const category = categories.find((c) => c.id === page.categoryId) ?? null
+    return (
+      <div className="flex h-full flex-col">
+        <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-2">
+          <Button
+            variant="ghost" size="sm" className="gap-1.5"
+            onClick={() => navigate(`/worlds/${worldId}/lore`)}
+          >
+            <ArrowLeft className="h-4 w-4" /> Back
+          </Button>
+          {category && (
+            <span className="ml-auto flex items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))]">
+              <span
+                className="inline-block h-2 w-2 rounded-full"
+                style={{ background: category.color ?? '#94a3b8' }}
+              />
+              {category.name}
+            </span>
+          )}
+        </div>
+
+        <div className="border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-6 py-3">
+          <h1 className="text-2xl font-bold text-[hsl(var(--foreground))]">{page.title}</h1>
+        </div>
+
+        <div className="flex-1 overflow-auto">
+          <MarkdownPreview body={page.body} />
+        </div>
+
+        {page.tags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 border-t border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
+            <Tag className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+            {page.tags.map((t) => (
+              <span
+                key={t}
+                className="rounded bg-[hsl(var(--border))] px-2 py-0.5 text-xs text-[hsl(var(--foreground))]"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     )
   }

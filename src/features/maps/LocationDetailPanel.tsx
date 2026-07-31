@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { X, Trash2, Map, Link, Upload, Users, Plus, UserMinus, Package, BookOpen, ChevronDown } from 'lucide-react'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -38,6 +39,7 @@ function LocationItemRow({ item, eventId, worldId, onRemove }: {
   const snap = useItemSnapshot(item.id, worldId, eventId)
   const [expanded, setExpanded] = useState(false)
   const condition = snap?.condition ?? 'intact'
+  const gate = useGate()
 
   return (
     <div className="rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
@@ -54,20 +56,24 @@ function LocationItemRow({ item, eventId, worldId, onRemove }: {
           style={{ background: CONDITION_COLORS[condition] ?? '#94a3b8' }}
           title={condition}
         />
-        <button
-          onClick={() => setExpanded((v) => !v)}
-          className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
-          title="Edit item state"
-        >
-          <ChevronDown className={`h-3 w-3 transition-transform ${expanded ? 'rotate-180' : ''}`} />
-        </button>
-        <button
-          onClick={onRemove}
-          className="text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
-          title="Remove from location"
-        >
-          <X className="h-3 w-3" />
-        </button>
+        {!gate.active && (
+          <>
+            <button
+              onClick={() => setExpanded((v) => !v)}
+              className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+              title="Edit item state"
+            >
+              <ChevronDown className={`h-3 w-3 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+            </button>
+            <button
+              onClick={onRemove}
+              className="text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
+              title="Remove from location"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </>
+        )}
       </div>
 
       {expanded && (
@@ -134,6 +140,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
   const allPlacements = useWorldItemPlacements(worldId)
   const locationSnap = useLocationSnapshot(markerId, worldId, activeEventId)
   const factions = useFactions(worldId)
+  const gate = useGate()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -264,7 +271,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
                 <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">{marker.description}</p>
               )}
             </div>
-            <Button size="sm" variant="outline" onClick={startEdit}>Edit</Button>
+            {!gate.active && <Button size="sm" variant="outline" onClick={startEdit}>Edit</Button>}
           </>
         )}
 
@@ -275,7 +282,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
           </Label>
 
           {/* No chapter selected → prompt */}
-          {!activeEventId && (
+          {!activeEventId && !gate.active && (
             <div className="rounded-md border border-dashed border-[hsl(var(--border))] p-3 flex flex-col gap-2">
               <p className="text-xs text-[hsl(var(--muted-foreground))]">
                 Select an event to place characters, or create one now:
@@ -325,7 +332,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
                     fallbackClassName="h-6 w-6 rounded-full"
                   />
                   <span className="flex-1 text-xs font-medium truncate">{c.name}</span>
-                  {activeEventId && (
+                  {activeEventId && !gate.active && (
                     <Button
                       variant="ghost"
                       size="icon"
@@ -342,7 +349,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
           )}
 
           {/* Add a character */}
-          {activeEventId && charsElsewhere.length > 0 && (
+          {activeEventId && !gate.active && charsElsewhere.length > 0 && (
             addingChar ? (
               <Select onValueChange={assignCharacter}>
                 <SelectTrigger className="text-xs h-8">
@@ -361,7 +368,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
             )
           )}
 
-          {activeEventId && characters.length === 0 && (
+          {activeEventId && !gate.active && characters.length === 0 && (
             <p className="text-xs text-[hsl(var(--muted-foreground))]">No characters in this world yet.</p>
           )}
         </div>
@@ -391,7 +398,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
               </div>
             )}
 
-            {(() => {
+            {!gate.active && (() => {
               // Items not in any character's inventory AND not already here
               const hereIds = new Set(itemsHere.map((p) => p.itemId))
               const inInventory = new Set(
@@ -432,106 +439,143 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
             <Label className="flex items-center gap-1.5">
               <BookOpen className="h-3.5 w-3.5" /> Chapter State
             </Label>
-            <Select
-              value={locationSnap?.status ?? 'active'}
-              onValueChange={(v) =>
-                upsertLocationSnapshot({
-                  worldId,
-                  locationMarkerId: markerId,
-                  eventId: activeEventId,
-                  status: v,
-                  notes: locationSnap?.notes ?? '',
-                })
-              }
-            >
-              <SelectTrigger className="text-xs h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {['active', 'occupied', 'sieged', 'abandoned', 'ruined', 'destroyed', 'unknown'].map((s) => (
-                  <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Textarea
-              className="text-xs resize-none"
-              rows={3}
-              placeholder="Notes for this chapter..."
-              value={locationSnap?.notes ?? ''}
-              onChange={(e) =>
-                upsertLocationSnapshot({
-                  worldId,
-                  locationMarkerId: markerId,
-                  eventId: activeEventId,
-                  status: locationSnap?.status ?? 'active',
-                  notes: e.target.value,
-                })
-              }
-            />
+            {gate.active ? (
+              <>
+                <p className="text-xs capitalize text-[hsl(var(--muted-foreground))]">
+                  {locationSnap?.status ?? 'active'}
+                </p>
+                {locationSnap?.notes && (
+                  <p className="whitespace-pre-wrap text-xs text-[hsl(var(--muted-foreground))]">
+                    {locationSnap.notes}
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <Select
+                  value={locationSnap?.status ?? 'active'}
+                  onValueChange={(v) =>
+                    upsertLocationSnapshot({
+                      worldId,
+                      locationMarkerId: markerId,
+                      eventId: activeEventId,
+                      status: v,
+                      notes: locationSnap?.notes ?? '',
+                    })
+                  }
+                >
+                  <SelectTrigger className="text-xs h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {['active', 'occupied', 'sieged', 'abandoned', 'ruined', 'destroyed', 'unknown'].map((s) => (
+                      <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Textarea
+                  className="text-xs resize-none"
+                  rows={3}
+                  placeholder="Notes for this chapter..."
+                  value={locationSnap?.notes ?? ''}
+                  onChange={(e) =>
+                    upsertLocationSnapshot({
+                      worldId,
+                      locationMarkerId: markerId,
+                      eventId: activeEventId,
+                      status: locationSnap?.status ?? 'active',
+                      notes: e.target.value,
+                    })
+                  }
+                />
+              </>
+            )}
           </div>
         )}
 
         {/* ── Controlling Faction ── */}
-        <div className="flex flex-col gap-1.5">
-          <Label className="flex items-center gap-1.5">
-            <Users className="h-3.5 w-3.5" /> Controlling Faction
-          </Label>
-          {factions.length === 0 ? (
-            <p className="text-xs text-[hsl(var(--muted-foreground))]">
-              No factions yet — create one in the Factions view.
-            </p>
-          ) : (
-            <Select
-              value={marker.factionId ?? 'none'}
-              onValueChange={(v) => updateLocationMarker(markerId, { factionId: v === 'none' ? null : v })}
-            >
-              <SelectTrigger className="text-xs gap-1.5">
-                {marker.factionId && (() => {
-                  const sel = factions.find((f) => f.id === marker.factionId)
-                  return sel ? <span className="h-3 w-3 rounded-full shrink-0" style={{ background: sel.color }} /> : null
-                })()}
-                <SelectValue placeholder="Unassigned" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Unassigned</SelectItem>
-                {factions.map((f) => (
-                  <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
+        {gate.active ? (
+          (() => {
+            const owner = factions.find((f) => f.id === marker.factionId)
+            if (!owner) return null
+            return (
+              <div className="flex flex-col gap-1.5">
+                <Label className="flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5" /> Controlling Faction
+                </Label>
+                <span className="flex items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))]">
+                  <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: owner.color }} />
+                  {owner.name}
+                </span>
+              </div>
+            )
+          })()
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            <Label className="flex items-center gap-1.5">
+              <Users className="h-3.5 w-3.5" /> Controlling Faction
+            </Label>
+            {factions.length === 0 ? (
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                No factions yet — create one in the Factions view.
+              </p>
+            ) : (
+              <Select
+                value={marker.factionId ?? 'none'}
+                onValueChange={(v) => updateLocationMarker(markerId, { factionId: v === 'none' ? null : v })}
+              >
+                <SelectTrigger className="text-xs gap-1.5">
+                  {marker.factionId && (() => {
+                    const sel = factions.find((f) => f.id === marker.factionId)
+                    return sel ? <span className="h-3 w-3 rounded-full shrink-0" style={{ background: sel.color }} /> : null
+                  })()}
+                  <SelectValue placeholder="Unassigned" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Unassigned</SelectItem>
+                  {factions.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        )}
 
         {/* ── Related Lore ── */}
         <RelatedLoreSection worldId={worldId} entityId={markerId} entityName={marker.name} />
 
         {/* ── Sub-map ── */}
-        <div className="flex flex-col gap-1.5">
-          <Label className="flex items-center gap-1.5">
-            <Link className="h-3.5 w-3.5" /> Sub-map
-          </Label>
-          <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setUploadSubMapOpen(true)}>
-            <Upload className="h-3.5 w-3.5" /> Upload Sub-map
-          </Button>
-          {otherLayers.length > 0 && (
-            <Select value={marker.linkedMapLayerId ?? 'none'} onValueChange={handleLinkSubMap}>
-              <SelectTrigger className="text-xs">
-                <SelectValue placeholder="Or link existing map..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {otherLayers.map((l) => (
-                  <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          {marker.linkedMapLayerId && (
-            <Button size="sm" variant="secondary" className="gap-1.5" onClick={() => onDrillDown(marker.linkedMapLayerId!)}>
-              <Map className="h-3.5 w-3.5" /> Open Sub-map
-            </Button>
-          )}
-        </div>
+        {(!gate.active || marker.linkedMapLayerId) && (
+          <div className="flex flex-col gap-1.5">
+            <Label className="flex items-center gap-1.5">
+              <Link className="h-3.5 w-3.5" /> Sub-map
+            </Label>
+            {!gate.active && (
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setUploadSubMapOpen(true)}>
+                <Upload className="h-3.5 w-3.5" /> Upload Sub-map
+              </Button>
+            )}
+            {!gate.active && otherLayers.length > 0 && (
+              <Select value={marker.linkedMapLayerId ?? 'none'} onValueChange={handleLinkSubMap}>
+                <SelectTrigger className="text-xs">
+                  <SelectValue placeholder="Or link existing map..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {otherLayers.map((l) => (
+                    <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {marker.linkedMapLayerId && (
+              <Button size="sm" variant="secondary" className="gap-1.5" onClick={() => onDrillDown(marker.linkedMapLayerId!)}>
+                <Map className="h-3.5 w-3.5" /> Open Sub-map
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       <UploadMapDialog
@@ -545,11 +589,13 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
         }}
       />
 
-      <div className="border-t border-[hsl(var(--border))] p-3">
-        <Button variant="destructive" size="sm" className="w-full gap-1.5" onClick={() => setConfirmOpen(true)}>
-          <Trash2 className="h-3.5 w-3.5" /> Delete Location
-        </Button>
-      </div>
+      {!gate.active && (
+        <div className="border-t border-[hsl(var(--border))] p-3">
+          <Button variant="destructive" size="sm" className="w-full gap-1.5" onClick={() => setConfirmOpen(true)}>
+            <Trash2 className="h-3.5 w-3.5" /> Delete Location
+          </Button>
+        </div>
+      )}
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}

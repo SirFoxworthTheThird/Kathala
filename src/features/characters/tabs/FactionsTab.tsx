@@ -12,6 +12,7 @@ import {
   createFactionMembership, updateFactionMembership, deleteFactionMembership,
 } from '@/db/hooks/useFactions'
 import { useEvents, useChapters, useTimelines } from '@/db/hooks/useTimeline'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import type { Character, FactionMembership } from '@/types'
 
 function MembershipCard({
@@ -26,6 +27,7 @@ function MembershipCard({
 }) {
   const [expanded, setExpanded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const gate = useGate()
   const startEv = allEvents.find((e) => e.id === membership.startEventId)
   const endEv = allEvents.find((e) => e.id === membership.endEventId)
 
@@ -44,12 +46,14 @@ function MembershipCard({
         >
           <ExternalLink className="h-3.5 w-3.5" />
         </button>
-        <button
-          onClick={() => setExpanded((v) => !v)}
-          className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
-        >
-          <ChevronRight className={`h-3.5 w-3.5 transition-transform ${expanded ? 'rotate-90' : ''}`} />
-        </button>
+        {!gate.active && (
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+          >
+            <ChevronRight className={`h-3.5 w-3.5 transition-transform ${expanded ? 'rotate-90' : ''}`} />
+          </button>
+        )}
       </div>
 
       <ConfirmDialog
@@ -137,6 +141,7 @@ export function FactionsTab({ character }: { character: Character }) {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
   const memberships = useMembershipsForCharacter(character.id)
+  const gate = useGate()
   const allFactions = useFactions(worldId ?? null)
   const timelines = useTimelines(worldId ?? null)
   const firstTimelineId = timelines[0]?.id ?? null
@@ -202,7 +207,7 @@ export function FactionsTab({ character }: { character: Character }) {
         </div>
       )}
 
-      {adding ? (
+      {gate.active ? null : adding ? (
         <Select onValueChange={handleJoin}>
           <SelectTrigger className="text-xs h-8">
             <SelectValue placeholder="Choose faction…" />

@@ -4,6 +4,7 @@ import {
   MoreHorizontal, PanelLeft,
 } from 'lucide-react'
 import type { MapLayer } from '@/types'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { cn } from '@/lib/utils'
 
 /**
@@ -108,6 +109,9 @@ export function MapToolbar({
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const hasScale = !!layer.scalePixelsPerUnit && !!layer.scaleUnit
+  // A reader still gets the two commands that read the map — measuring a
+  // journey and exporting the picture. Everything else here changes the map.
+  const authoring = !useGate().active
 
   useEffect(() => {
     if (!menuOpen) return
@@ -124,14 +128,18 @@ export function MapToolbar({
 
   return (
     <div className={cn('pointer-events-auto flex items-center gap-0.5 p-1', FLOAT_PANEL)}>
-      <ToolButton icon={Plus} label="Location" title="Add a location marker" onClick={onAddLocation} />
-      <ToolButton
-        icon={Type}
-        label="Label"
-        title="Place a text label on the map"
-        active={annotateMode}
-        onClick={onToggleAnnotate}
-      />
+      {authoring && (
+        <>
+          <ToolButton icon={Plus} label="Location" title="Add a location marker" onClick={onAddLocation} />
+          <ToolButton
+            icon={Type}
+            label="Label"
+            title="Place a text label on the map"
+            active={annotateMode}
+            onClick={onToggleAnnotate}
+          />
+        </>
+      )}
 
       {/* Measure earns a spot only once the map has a scale to measure against. */}
       {hasScale && (
@@ -144,7 +152,9 @@ export function MapToolbar({
         />
       )}
 
-      <span aria-hidden="true" className="mx-0.5 h-5 w-px bg-[hsl(var(--border))]" />
+      {(authoring || hasScale) && (
+        <span aria-hidden="true" className="mx-0.5 h-5 w-px bg-[hsl(var(--border))]" />
+      )}
 
       <div ref={menuRef} className="relative">
         <button
@@ -163,52 +173,60 @@ export function MapToolbar({
         </button>
         {menuOpen && (
           <div className={cn('absolute right-0 top-full z-[1200] mt-1 min-w-[190px] py-1', FLOAT_PANEL)}>
-            <div className="flex items-center justify-between px-3 py-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                Scale
-              </span>
-              {hasScale && (
-                <button
-                  onClick={run(onClearScale)}
-                  title="Clear scale"
-                  className="text-[hsl(var(--muted-foreground))] transition-colors hover:text-[hsl(var(--foreground))]"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-            <MenuItem
-              icon={Ruler}
-              label={hasScale ? `Recalibrate (1 ${layer.scaleUnit} = ${Math.round(layer.scalePixelsPerUnit!)} px)` : 'Set map scale'}
-              active={scaleMode}
-              onClick={run(onToggleScale)}
-            />
-            {!hasScale && (
-              <MenuItem
-                icon={Route}
-                label="Measure distance"
-                hint="Set a map scale first to enable distance measurement"
-                disabled
-                onClick={() => {}}
-              />
-            )}
+            {authoring && (
+              <>
+                <div className="flex items-center justify-between px-3 py-1">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                    Scale
+                  </span>
+                  {hasScale && (
+                    <button
+                      onClick={run(onClearScale)}
+                      title="Clear scale"
+                      className="text-[hsl(var(--muted-foreground))] transition-colors hover:text-[hsl(var(--foreground))]"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+                <MenuItem
+                  icon={Ruler}
+                  label={hasScale ? `Recalibrate (1 ${layer.scaleUnit} = ${Math.round(layer.scalePixelsPerUnit!)} px)` : 'Set map scale'}
+                  active={scaleMode}
+                  onClick={run(onToggleScale)}
+                />
+                {!hasScale && (
+                  <MenuItem
+                    icon={Route}
+                    label="Measure distance"
+                    hint="Set a map scale first to enable distance measurement"
+                    disabled
+                    onClick={() => {}}
+                  />
+                )}
 
-            <div className="mt-1 border-t border-[hsl(var(--border))] px-3 pb-1 pt-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                This map
-              </span>
-            </div>
-            <MenuItem icon={Layers} label="Add level" hint="Add a floor/level to this map" onClick={run(onAddLevel)} />
-            <MenuItem icon={ImageUp} label="Replace image" hint="Replace this map's image, keeping its locations" onClick={run(onReplaceImage)} />
+                <div className="mt-1 border-t border-[hsl(var(--border))] px-3 pb-1 pt-1.5">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                    This map
+                  </span>
+                </div>
+                <MenuItem icon={Layers} label="Add level" hint="Add a floor/level to this map" onClick={run(onAddLevel)} />
+                <MenuItem icon={ImageUp} label="Replace image" hint="Replace this map's image, keeping its locations" onClick={run(onReplaceImage)} />
+              </>
+            )}
             <MenuItem icon={Download} label="Export as PNG" onClick={run(onExport)} />
 
-            <div className="mt-1 border-t border-[hsl(var(--border))] px-3 pb-1 pt-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                AI
-              </span>
-            </div>
-            <MenuItem icon={Sparkles} label="AI Locations" hint="Generate a tree of locations with AI" onClick={run(onGenerateLocations)} />
-            <MenuItem icon={Sparkles} label="AI Moves" hint="Extract location moves from prose with AI" onClick={run(onAIMoves)} />
+            {authoring && (
+              <>
+                <div className="mt-1 border-t border-[hsl(var(--border))] px-3 pb-1 pt-1.5">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                    AI
+                  </span>
+                </div>
+                <MenuItem icon={Sparkles} label="AI Locations" hint="Generate a tree of locations with AI" onClick={run(onGenerateLocations)} />
+                <MenuItem icon={Sparkles} label="AI Moves" hint="Extract location moves from prose with AI" onClick={run(onAIMoves)} />
+              </>
+            )}
           </div>
         )}
       </div>

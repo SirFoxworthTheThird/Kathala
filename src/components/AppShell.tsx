@@ -15,6 +15,9 @@ import { HelpPanel } from '@/features/help/HelpPanel'
 import { RecentChangesPanel } from '@/features/history/RecentChangesPanel'
 import { UndoToastBridge } from '@/features/history/UndoToastBridge'
 import { useRedoAction, useUndoAction } from '@/features/history/useUndo'
+import { useJournalPruning } from '@/db/hooks/useOperations'
+import { ReadingGateProvider } from '@/db/hooks/ReadingGateContext'
+import { useReadingMode } from '@/db/hooks/useReading'
 import { Toaster } from '@/components/ui/toast'
 import { db } from '@/db/database'
 
@@ -55,9 +58,13 @@ export function AppShell() {
   }, [world?.theme, setActiveWorldTheme])
 
   useAutoFolderSync(worldId)
+  useJournalPruning(worldId ?? null)
 
   const undo = useUndoAction(worldId ?? null)
   const redo = useRedoAction(worldId ?? null)
+  // Reading mode takes undo and redo off the top bar; the shortcuts have to go
+  // with them, or the one route left into editing is the one nobody sees.
+  const readingMode = useReadingMode(worldId ?? null)
 
   // Global Cmd/Ctrl+K to open search, Cmd/Ctrl+Z to undo
   useEffect(() => {
@@ -71,7 +78,7 @@ export function AppShell() {
       const isUndoKey = (e.metaKey || e.ctrlKey) && key === 'z' && !e.shiftKey
       // Both conventions: ⇧⌘Z on Mac and most editors, Ctrl+Y on Windows.
       const isRedoKey = (e.metaKey || e.ctrlKey) && ((key === 'z' && e.shiftKey) || key === 'y')
-      if (isUndoKey || isRedoKey) {
+      if ((isUndoKey || isRedoKey) && !readingMode) {
         // Inside a text field the browser's own undo is the one the user means
         // — it works at keystroke granularity and this one does not.
         const el = e.target as HTMLElement | null
@@ -83,9 +90,10 @@ export function AppShell() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [setSearchOpen, undo, redo])
+  }, [setSearchOpen, undo, redo, readingMode])
 
   return (
+    <ReadingGateProvider worldId={worldId ?? null}>
     <div
       data-nav-rail={navPinned ? 'pinned' : 'collapsed'}
       className="flex h-[100dvh] flex-col overflow-hidden"
@@ -108,5 +116,6 @@ export function AppShell() {
       <UndoToastBridge worldId={worldId ?? null} />
       <Toaster />
     </div>
+    </ReadingGateProvider>
   )
 }

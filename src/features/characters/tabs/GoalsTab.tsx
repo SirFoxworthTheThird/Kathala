@@ -12,6 +12,7 @@ import {
 } from '@/db/hooks/useCharacterGoals'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import { useAppStore } from '@/store'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { GOAL_TYPE_CONFIG, eventPositions, isGoalActiveAt } from '@/lib/characterGoals'
 import { CHARACTER_GOAL_TYPES, type Character, type CharacterGoal, type CharacterGoalType } from '@/types'
 import { cn } from '@/lib/utils'
@@ -42,6 +43,32 @@ function GoalRow({ goal, isActive, options, onDelete }: {
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const cfg = GOAL_TYPE_CONFIG[goal.type]
+  const gate = useGate()
+
+  // A reader sees the same want, need, fear or flaw — as a line of text rather
+  // than a field, and without the scoping controls that place it in the draft.
+  if (gate.active) {
+    return (
+      <div
+        className={cn(
+          'rounded-lg border bg-[hsl(var(--card))] px-3 py-2.5',
+          isActive ? 'border-[hsl(var(--border))]' : 'border-[hsl(var(--border))] opacity-60',
+        )}
+        style={{ borderLeft: `3px solid ${cfg.color}` }}
+      >
+        <div className="flex items-center gap-2.5">
+          <span
+            className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+            style={{ background: `${cfg.color}22`, color: cfg.color }}
+            title={cfg.hint}
+          >
+            {cfg.label}
+          </span>
+          <span className="flex-1 text-sm text-[hsl(var(--foreground))]">{goal.text}</span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div
@@ -138,7 +165,9 @@ export function GoalsTab({ character }: { character: Character }) {
   })
   const options = useEventOptions(worldId ?? '')
   const activeEventId = useAppStore((s) => s.activeEventId)
+  const gate = useGate()
   const positions = eventPositions(options.events, options.chapters)
+  const visibleGoals = goals.filter((g) => gate.hasReached(g.startEventId))
 
   const [adding, setAdding] = useState(false)
   const [newType, setNewType] = useState<CharacterGoalType>('want')
@@ -154,7 +183,7 @@ export function GoalsTab({ character }: { character: Character }) {
 
   return (
     <div className="flex flex-col gap-3">
-      {goals.length === 0 && !adding ? (
+      {visibleGoals.length === 0 && !adding ? (
         <EmptyState
           icon={Target}
           title="No goals yet"
@@ -164,7 +193,7 @@ export function GoalsTab({ character }: { character: Character }) {
       ) : (
         <>
           <div className="flex flex-col gap-2">
-            {goals.map((goal) => (
+            {visibleGoals.map((goal) => (
               <GoalRow
                 key={goal.id}
                 goal={goal}
@@ -199,11 +228,11 @@ export function GoalsTab({ character }: { character: Character }) {
               <Button size="sm" onClick={addGoal} disabled={!newText.trim()}>Add</Button>
               <Button size="sm" variant="ghost" onClick={() => { setAdding(false); setNewText('') }}>Cancel</Button>
             </div>
-          ) : (
+          ) : !gate.active ? (
             <Button size="sm" variant="outline" className="gap-1.5 self-start" onClick={() => setAdding(true)}>
               <Plus className="h-3.5 w-3.5" /> Add a goal
             </Button>
-          )}
+          ) : null}
         </>
       )}
     </div>

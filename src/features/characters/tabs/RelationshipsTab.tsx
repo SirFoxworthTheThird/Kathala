@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import type { RelationshipStrength, RelationshipSentiment } from '@/types'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/EmptyState'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 
 const SENTIMENT_COLORS: Record<RelationshipSentiment, string> = {
   positive: 'text-green-400',
@@ -146,6 +147,7 @@ export function RelationshipsTab({ character }: RelationshipsTabProps) {
   const allChapters = useWorldChapters(character.worldId)
   const allEvents = useWorldEvents(character.worldId)
   const activeEventId = useActiveEventId()
+  const gate = useGate()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingRel, setEditingRel] = useState<Relationship | null>(null)
 
@@ -186,11 +188,13 @@ export function RelationshipsTab({ character }: RelationshipsTabProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex justify-end">
-        <Button size="sm" onClick={() => setDialogOpen(true)} disabled={otherChars.length === 0}>
-          <Plus className="h-3.5 w-3.5" /> Add Relationship
-        </Button>
-      </div>
+      {!gate.active && (
+        <div className="flex justify-end">
+          <Button size="sm" onClick={() => setDialogOpen(true)} disabled={otherChars.length === 0}>
+            <Plus className="h-3.5 w-3.5" /> Add Relationship
+          </Button>
+        </div>
+      )}
 
       {visibleRelationships.length === 0 ? (
         <EmptyState
@@ -225,24 +229,26 @@ export function RelationshipsTab({ character }: RelationshipsTabProps) {
                   <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">{rel.description}</p>
                 )}
               </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => setEditingRel(rel)}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 hover:text-red-400"
-                  onClick={() => deleteRelationship(rel.id)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
+              {!gate.active && (
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setEditingRel(rel)}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 hover:text-red-400"
+                    onClick={() => deleteRelationship(rel.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
             </div>
           )
         })

@@ -1,4 +1,5 @@
 import Dexie, { type Table, type EntityTable } from 'dexie'
+import { useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { generateId } from '@/lib/id'
@@ -8,12 +9,13 @@ import {
   invertOperation,
   makeOperation,
   makeTombstone,
-  prunableOperations,
+  planJournalPrune,
   shouldCoalesce,
   undoableBatch,
   redoableBatch,
 } from '@/lib/operations'
 import { ENTITY_TABLE } from '@/lib/entityTables'
+import type { PruneLimits } from '@/lib/operations'
 import type { Operation, OperationEntity, OperationType, Tombstone } from '@/types/operation'
 
 /**
@@ -667,18 +669,38 @@ async function reverseBatch(
 // ── Maintenance ──────────────────────────────────────────────────────────────
 
 /**
- * Trim the journal for a world, keeping the most recent `keep` operations plus
- * the newest entry per entity. Without this the journal grows without bound in
- * a world that never syncs, which is the common case today.
+ * Trim a world's journal back inside its size caps. Returns how many entries
+ * went.
+ *
+ * Tombstones are deliberately untouched. They are world state rather than
+ * device-local history — they travel in `.pwk`, and dropping one lets a merge
+ * treat a deleted record as merely absent and bring it back. They are also
+ * tiny, being a fixed handful of fields with no payload.
  */
-export async function pruneJournal(worldId: string, keep = 500): Promise<number> {
-  const all = await listOperations(worldId)
-  if (all.length <= keep) return 0
-  const keepFromSeq = all[all.length - keep].seq
-  const doomed = prunableOperations(all, keepFromSeq)
-  if (doomed.length === 0) return 0
-  await db.operations.bulkDelete(doomed.map((o) => o.id))
-  return doomed.length
+export async function pruneJournal(worldId: string, limits?: PruneLimits): Promise<number> {
+  const plan = planJournalPrune(await listOperations(worldId), limits)
+  if (plan.discard.length === 0) return 0
+  await db.operations.bulkDelete(plan.discard.map((o) => o.id))
+  return plan.discard.length
+}
+
+/**
+ * Prune once when a world is opened.
+ *
+ * On open rather than on close: an unload handler is not reliably given time to
+ * finish an IndexedDB write, and pruning is exactly the kind of work that must
+ * not be half-done. Once per world per mount is enough — the caps are generous
+ * relative to a single session's editing, and the point is to stop unbounded
+ * growth across months, not to hold a precise ceiling minute to minute.
+ */
+export function useJournalPruning(worldId: string | null): void {
+  useEffect(() => {
+    if (!worldId) return
+    // Fire and forget, and swallow failures: this is housekeeping, and it must
+    // never stop a writer from opening their world. There is nothing to cancel
+    // on unmount — the prune is a single bounded delete either way.
+    void pruneJournal(worldId).catch(() => {})
+  }, [worldId])
 }
 
 /**

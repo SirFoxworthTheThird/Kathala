@@ -1,5 +1,8 @@
+import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { useGate } from './ReadingGateContext'
+import { sortKeysByEvent } from '@/lib/spoilers'
 import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
 import type { Timeline, Chapter, WorldEvent, EventStatus } from '@/types'
 import { generateId } from '@/lib/id'
@@ -168,12 +171,40 @@ export function useTimelineEvents(timelineId: string | null) {
   )
 }
 
-export function useWorldEvents(worldId: string | null) {
+/**
+ * Every event in the world, ungated.
+ *
+ * The time cursor needs this: it has to know what comes next in order to step
+ * there, and gating its own list would strand the reader at the moment they had
+ * reached. Anything that *displays* events should use `useWorldEvents`.
+ */
+export function useAllWorldEvents(worldId: string | null) {
   return useLiveQuery(
     () => (worldId ? db.events.where('worldId').equals(worldId).toArray() : []),
     [worldId],
     []
   )
+}
+
+/**
+ * Events up to the reader's position.
+ *
+ * An event title is an authored summary of what happens in it — "Nicolas
+ * Flamel" or "The Mirror of Erised" as a heading gives away the thing itself,
+ * so in reading mode the list stops at the cursor.
+ */
+export function useWorldEvents(worldId: string | null) {
+  const gate = useGate()
+  const all = useAllWorldEvents(worldId)
+  const chapters = useWorldChapters(worldId)
+  return useMemo(() => {
+    if (!gate.active || gate.cursor === null) return all
+    const keys = sortKeysByEvent(all, new Map(chapters.map((c) => [c.id, c.number])))
+    const cursor = gate.cursor
+    // An event we cannot place has no position to compare, so it stays — the
+    // same choice `isRevealed` makes for an entity that never appears.
+    return all.filter((e) => (keys.get(e.id) ?? -Infinity) <= cursor)
+  }, [gate.active, gate.cursor, all, chapters])
 }
 
 export function useEvent(id: string | null) {

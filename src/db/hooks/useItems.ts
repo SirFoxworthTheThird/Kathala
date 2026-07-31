@@ -1,15 +1,19 @@
+import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { useGate } from './ReadingGateContext'
 import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import type { Item } from '@/types'
 import { generateId } from '@/lib/id'
 
 export function useItems(worldId: string | null) {
-  return useLiveQuery(
+  const gate = useGate()
+  const all = useLiveQuery(
     () => (worldId ? db.items.where('worldId').equals(worldId).sortBy('name') : []),
     [worldId],
     []
   )
+  return useMemo(() => gate.filter(all), [gate, all])
 }
 
 export function useItem(id: string | null) {

@@ -10,7 +10,7 @@ import {
 } from '@/db/hooks/useTimeline'
 import {
   listOperations, pendingUndo, undoLast, pendingRedo, redoLast, journalGroup, onDeletion,
-  markJournalDiscontinuity,
+  markJournalDiscontinuity, pruneJournal,
 } from '@/db/hooks/useOperations'
 import { appendWaypoint } from '@/db/hooks/useMovements'
 import { upsertSnapshot } from '@/db/hooks/useSnapshots'
@@ -563,5 +563,73 @@ describe('redo', () => {
     await redoLast(world.id)
 
     expect(await db.characterMovements.where('characterId').equals(char.id).count()).toBe(1)
+  })
+})
+
+describe('pruning and undo', () => {
+  it('leaves the recent undo stack intact', async () => {
+    // The whole risk of pruning: trimming away the entries undo needs. The
+    // newest are kept, so recent depth survives.
+    const world = await seed()
+    const char = await createCharacter({ worldId: world.id, name: 'v0', description: '' })
+    for (let i = 1; i <= 12; i++) await updateCharacter(char.id, { name: `v${i}` })
+
+    await pruneJournal(world.id, { maxOperations: 5, minOperations: 1 })
+
+    expect(await pendingUndo(world.id)).toHaveLength(1)
+    await undoLast(world.id)
+    expect((await db.characters.get(char.id))?.name).toBe('v11')
+    await undoLast(world.id)
+    expect((await db.characters.get(char.id))?.name).toBe('v10')
+  })
+
+  it('keeps redo working across a prune', async () => {
+    const world = await seed()
+    const char = await createCharacter({ worldId: world.id, name: 'One', description: '' })
+    await updateCharacter(char.id, { name: 'Two' })
+    await undoLast(world.id)
+
+    await pruneJournal(world.id, { maxOperations: 4, minOperations: 1 })
+
+    expect(await pendingRedo(world.id)).toHaveLength(1)
+    await redoLast(world.id)
+    expect((await db.characters.get(char.id))?.name).toBe('Two')
+  })
+
+  it('never prunes tombstones, which would resurrect deletions on merge', async () => {
+    const world = await seed()
+    for (let i = 0; i < 6; i++) {
+      const c = await createCharacter({ worldId: world.id, name: `C${i}`, description: '' })
+      await deleteCharacter(c.id)
+    }
+    const before = await db.tombstones.where('worldId').equals(world.id).count()
+    expect(before).toBe(6)
+
+    await pruneJournal(world.id, { maxOperations: 1, minOperations: 1 })
+
+    expect(await db.tombstones.where('worldId').equals(world.id).count()).toBe(6)
+  })
+
+  it('bounds a journal made of large entries by size, not just count', async () => {
+    // A delete carrying a cascade is orders of magnitude larger than a rename,
+    // so a count alone would not have held the journal down.
+    const world = await seed()
+    for (let i = 0; i < 8; i++) {
+      const c = await createCharacter({ worldId: world.id, name: `C${i}`, description: 'x'.repeat(2000) })
+      await deleteCharacter(c.id)
+    }
+    const bytesOf = async () =>
+      (await listOperations(world.id)).reduce((n, o) => n + JSON.stringify(o).length, 0)
+    expect(await bytesOf()).toBeGreaterThan(20_000)
+
+    await pruneJournal(world.id, { maxOperations: 1000, maxBytes: 8_000, minOperations: 1 })
+
+    expect(await bytesOf()).toBeLessThanOrEqual(10_000)
+  })
+
+  it('does nothing to a journal already inside its caps', async () => {
+    const world = await seed()
+    await createCharacter({ worldId: world.id, name: 'Vela', description: '' })
+    expect(await pruneJournal(world.id)).toBe(0)
   })
 })
