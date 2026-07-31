@@ -2,6 +2,7 @@ import { db } from '@/db/database'
 import { markJournalDiscontinuity } from '@/db/hooks/useOperations'
 import type { Tombstone } from '@/types/operation'
 import { applyTombstones, mergeTombstoneSets, pruneStaleTombstones } from '@/lib/mergeTombstones'
+import { mergeRecords, type FieldConflict } from '@/lib/mergeFields'
 import type {
   CharacterGoal,
   World, MapLayer, LocationMarker, Character, Item,
@@ -1096,6 +1097,12 @@ export async function importWorld(file: File): Promise<string> {
 
 // ── Merge / collaboration helpers ─────────────────────────────────────────────
 
+/** Fields of one record that both copies changed, with what each side had. */
+export interface RecordConflict {
+  id: string
+  fields: FieldConflict[]
+}
+
 export interface MergePreview {
   exportedAt: number
   characters:  { added: number; updated: number }
@@ -1105,30 +1112,38 @@ export interface MergePreview {
   items:       { added: number; updated: number }
 }
 
-/** Merge two arrays by ID. Records only in `incoming` are added; records in
- *  both use whichever has the higher `updatedAt` (falling back to incoming). */
+/**
+ * Merge two arrays by ID.
+ *
+ * Records only in `incoming` are added. Records in both are merged field by
+ * field (see `mergeRecords`) rather than one whole record replacing the other:
+ * taking the newer record entire meant that retitling a scene on one device
+ * silently discarded a cast change made on another, which is data loss that
+ * looked like a successful merge.
+ */
 function mergeTable<T extends { id: string }>(
   incoming: T[],
   local: T[],
-): { result: T[]; added: number; updated: number } {
+): { result: T[]; added: number; updated: number; conflicts: RecordConflict[] } {
   const localById    = new Map(local.map((r) => [r.id, r]))
   const incomingById = new Map(incoming.map((r) => [r.id, r]))
   const result: T[]  = []
+  const conflicts: RecordConflict[] = []
   let added = 0, updated = 0
 
   for (const loc of local) {
     const inc = incomingById.get(loc.id)
     if (!inc) {
       result.push(loc) // local-only — keep
-    } else {
-      const locTs = (loc  as unknown as Record<string, unknown>).updatedAt as number | undefined
-      const incTs = (inc  as unknown as Record<string, unknown>).updatedAt as number | undefined
-      if (locTs !== undefined && incTs !== undefined && locTs >= incTs) {
-        result.push(loc) // local is same age or newer
-      } else {
-        result.push(inc) // incoming is newer, or no timestamp — trust incoming
-        updated++
-      }
+      continue
+    }
+    const merged = mergeRecords(loc, inc)
+    result.push(merged.record)
+    if (merged.conflicts.length > 0) {
+      updated++
+      conflicts.push({ id: loc.id, fields: merged.conflicts })
+    } else if (JSON.stringify(merged.record) !== JSON.stringify(loc)) {
+      updated++
     }
   }
   for (const inc of incoming) {
@@ -1137,7 +1152,7 @@ function mergeTable<T extends { id: string }>(
       added++
     }
   }
-  return { result, added, updated }
+  return { result, added, updated, conflicts }
 }
 
 /**

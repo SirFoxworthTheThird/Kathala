@@ -145,6 +145,10 @@ test('showing the whole book asks first, but only while reading', async ({ page 
   await page.waitForTimeout(1200)
   await page.getByRole('link', { name: /characters/i }).first().click()
   await settleNav(page)
+  // The badge renders 0 until the live query resolves, so wait for the real
+  // number before taking it as the baseline — otherwise "unchanged" is
+  // measured against a count that was never on screen.
+  await expect.poll(() => shownCount(page), { timeout: 15_000 }).toBeGreaterThan(0)
   const met = await shownCount(page)
 
   // The control is an X beside the cursor, which reads as "dismiss" — so while
