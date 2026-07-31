@@ -42,13 +42,17 @@ test('no unmet name appears anywhere in reading mode', async ({ page }) => {
     ...unmet.characters.map((n) => ['character', n] as const),
     ...unmet.items.map((n) => ['item', n] as const),
     ...unmet.locations.map((n) => ['location', n] as const),
+    ...unmet.threads.map((n) => ['subplot', n] as const),
   ].filter(([, n]) => n && n.trim().length >= 5 && !benign.includes(n.toLowerCase()))
 
   const leaks: string[] = []
   for (const route of ROUTES) {
     await page.goto(`/#/worlds/${worldId}/${route}`)
     await page.waitForTimeout(1200)
-    const text = (await page.evaluate(`(() => document.querySelector('main')?.innerText ?? '')()`)) as string
+    // The whole document, not just <main>. The time-cursor bar, the top bar and
+    // the nav rail all sit outside it, and checking only <main> is how a
+    // subplot filter listing "The Philosopher's Stone Mystery" went unnoticed.
+    const text = (await page.evaluate(`(() => document.body.innerText)()`)) as string
     for (const [kind, name] of needles) {
       const pattern = new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i')
       if (pattern.test(text)) leaks.push(`/${route || 'dashboard'} → ${kind} “${name}”`)

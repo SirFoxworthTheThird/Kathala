@@ -122,6 +122,12 @@ export function useReadingGate(worldId: string | null): ReadingGate {
       if (ev.povCharacterId) appearances.push({ entityId: ev.povCharacterId, eventId: ev.id })
       for (const id of ev.involvedItemIds) appearances.push({ entityId: id, eventId: ev.id })
       if (ev.locationMarkerId) appearances.push({ entityId: ev.locationMarkerId, eventId: ev.id })
+      // Threads and motifs are carried by the events that advance them, so the
+      // first such event is when the reader meets the subplot. Their names are
+      // among the sharpest a world holds — "The Philosopher's Stone Mystery"
+      // gives away the book on its own.
+      for (const id of ev.threadIds ?? []) appearances.push({ entityId: id, eventId: ev.id })
+      for (const id of ev.motifIds ?? []) appearances.push({ entityId: id, eventId: ev.id })
     }
     for (const s of data.charSnaps) {
       appearances.push({ entityId: s.characterId, eventId: s.eventId })

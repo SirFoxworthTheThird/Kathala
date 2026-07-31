@@ -125,7 +125,9 @@ keeps later chapter summaries back, lore pages wait until you have met what they
 are about, and a knowledge fact stays hidden until the point the reader is meant
 to learn it. A character's page shows where they stand now rather than every
 chapter still to come, and the map list holds back the maps for places you have
-not been to yet. **Search** answers on the same terms — it will not find a
+not been to yet. Subplots and motifs are named for where they end up — *The
+Philosopher's Stone Mystery* gives away a book on its own — so they wait for
+the first scene that takes them up. **Search** answers on the same terms — it will not find a
 character you have not met.
 
 Chapter *titles* stay visible throughout — they are printed on your own book's

@@ -1,15 +1,21 @@
+import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { useGate } from './ReadingGateContext'
 import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import type { PlotThread } from '@/types'
 import { generateId } from '@/lib/id'
 
 export function usePlotThreads(worldId: string | null) {
-  return useLiveQuery(
+  const gate = useGate()
+  const all = useLiveQuery(
     () => (worldId ? db.plotThreads.where('worldId').equals(worldId).sortBy('createdAt') : []),
     [worldId],
     [] as PlotThread[]
   )
+  // Named for where the subplot goes rather than where it starts, so it waits
+  // for the first event that advances it.
+  return useMemo(() => gate.filter(all), [all, gate])
 }
 
 export function usePlotThread(id: string | null) {

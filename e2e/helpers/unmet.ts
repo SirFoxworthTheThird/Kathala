@@ -13,6 +13,8 @@ export interface Unmet {
   characters: string[]
   items: string[]
   locations: string[]
+  /** Subplots and motifs the reader has not reached — named for where they go. */
+  threads: string[]
 }
 
 /** Names the reader has not met, read from the store rather than assumed. */
@@ -28,8 +30,8 @@ export async function unmetNames(page: Page): Promise<Unmet> {
       Promise.all([
         read('events'), read('chapters'), read('characters'), read('items'),
         read('locationMarkers'), read('characterSnapshots'), read('itemPlacements'),
-        read('itemSnapshots'), read('locationSnapshots'),
-      ]).then(([events, chapters, characters, items, markers, cs, ip, isn, ls]) => {
+        read('itemSnapshots'), read('locationSnapshots'), read('plotThreads'), read('motifs'),
+      ]).then(([events, chapters, characters, items, markers, cs, ip, isn, ls, threads, motifs]) => {
         const chapNum = new Map(chapters.map(c => [c.id, c.number]))
         const key = new Map(events.map(e => [e.id, (chapNum.get(e.chapterId) ?? 0) + e.sortOrder / 1e6]))
         const cursorId = JSON.parse(localStorage.getItem('plotweave-ui') || '{}')?.state?.activeEventId
@@ -53,10 +55,13 @@ export async function unmetNames(page: Page): Promise<Unmet> {
         for (const s of isn) add(s.itemId, s.eventId)
         for (const s of ls) add(s.locationMarkerId, s.eventId)
         const hidden = (rec) => { const f = first.get(rec.id); return f !== undefined && f > cursor }
+        for (const e of events) for (const id of (e.threadIds || [])) add(id, e.id)
+        for (const e of events) for (const id of (e.motifIds || [])) add(id, e.id)
         resolve({
           characters: characters.filter(hidden).map(c => c.name),
           items: items.filter(hidden).map(i => i.name),
           locations: markers.filter(hidden).map(m => m.name),
+          threads: [...threads, ...motifs].filter(hidden).map(t => t.name),
         })
       })
     }
