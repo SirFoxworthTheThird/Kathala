@@ -155,6 +155,35 @@ describe('two devices editing the same world apart', () => {
     expect((await db.characters.get('c-ana'))?.name).toBe('Ana the Quick')
   })
 
+  it('keeps both reorders when two devices move different cards', async () => {
+    // Dense indices made this impossible: each device renumbered the whole
+    // column, so merging interleaved two renumberings and the order that came
+    // out was nobody's. A fractional position means each move writes one row.
+    const three = [
+      event({ id: 'ev-a', title: 'A', sortOrder: 1 }),
+      event({ id: 'ev-b', title: 'B', sortOrder: 2 }),
+      event({ id: 'ev-c', title: 'C', sortOrder: 3 }),
+    ]
+    await applyWorldImport(exportFile({ events: three as never }), 'replace')
+
+    // Here: C moves to the front, between nothing and A.
+    await db.events.update('ev-c', { sortOrder: 0.5, updatedAt: 2_000 })
+
+    // There: B moves to the end, past C.
+    await applyWorldImport(exportFile({
+      events: [
+        event({ id: 'ev-a', title: 'A', sortOrder: 1 }),
+        event({ id: 'ev-b', title: 'B', sortOrder: 4, updatedAt: 3_000 }),
+        event({ id: 'ev-c', title: 'C', sortOrder: 3 }),
+      ] as never,
+    }), 'merge')
+
+    const order = (await db.events.toArray())
+      .sort((x, y) => x.sortOrder - y.sortOrder || (x.id < y.id ? -1 : 1))
+      .map((e) => e.title)
+    expect(order).toEqual(['C', 'A', 'B'])
+  })
+
   it('is idempotent — merging the same file twice changes nothing the second time', async () => {
     // A retry after a dropped connection must not double anything up.
     await applyWorldImport(exportFile({ events: [event()] as never }), 'replace')

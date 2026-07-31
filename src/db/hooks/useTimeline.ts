@@ -10,7 +10,7 @@ import {
   recomputeSnapshotSortKeysForEvent,
   recomputeSnapshotSortKeysForChapter,
 } from '@/lib/sortKey'
-import { reorderInsert, sortOrderDiff } from '@/lib/corkboard'
+import { moveTo } from '@/lib/fractionalOrder'
 
 // ─── Timelines ─────────────────────────────────────────────────────────────
 
@@ -313,9 +313,16 @@ export async function bulkMoveEvents(ids: string[], targetChapterId: string): Pr
 
 /**
  * Move an event to a position on the corkboard: into `toChapterId` at
- * `toIndex`, renumbering that chapter's cards (and the source chapter's, when
- * the move crosses chapters). Handles the within-chapter reorder too. Only the
- * rows whose sortOrder actually changes are written.
+ * `toIndex`. Handles the within-chapter reorder too.
+ *
+ * The moved card takes a position *between* its new neighbours rather than the
+ * column being renumbered, so an ordinary move writes one row. That is what
+ * lets two devices reorder at once: separate moves touch separate rows, and a
+ * merge has nothing to choose between. Only an exhausted gap renumbers, and
+ * only the column it happens in.
+ *
+ * The source column needs nothing at all — removing a card from between two
+ * positions leaves the rest still in order.
  */
 export async function moveEventOnBoard(
   eventId: string,
@@ -337,7 +344,7 @@ export async function moveEventOnBoard(
     const targetEvents = (await db.events.where('chapterId').equals(toChapterId).toArray())
       .filter((e) => e.id !== eventId)
       .sort((a, b) => a.sortOrder - b.sortOrder)
-    const targetIds = reorderInsert(targetEvents.map((e) => e.id), eventId, toIndex)
+    const writes = moveTo([...targetEvents, { id: eventId, sortOrder: moved.sortOrder }], eventId, toIndex)
 
     // The moved card changes chapter/timeline (a no-op update when it doesn't).
     if (crossesChapter) {
@@ -348,22 +355,11 @@ export async function moveEventOnBoard(
       })
     }
 
-    // Renumber the target column, writing only what changed. The moved card's
-    // baseline sortOrder is unknown in the new column, so force-write it.
-    const targetCurrent = new Map(targetEvents.map((e) => [e.id, e.sortOrder]))
-    for (const { id, sortOrder } of sortOrderDiff(targetIds, targetCurrent)) {
+    // Usually a single row: the card that moved.
+    for (const { id, sortOrder } of writes) {
       await journalUpdate('event', db.events, id, { sortOrder, updatedAt: Date.now() })
     }
 
-    // Close the gap left in the source column.
-    if (crossesChapter) {
-      const sourceEvents = (await db.events.where('chapterId').equals(fromChapterId).toArray())
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-      const sourceCurrent = new Map(sourceEvents.map((e) => [e.id, e.sortOrder]))
-      for (const { id, sortOrder } of sortOrderDiff(sourceEvents.map((e) => e.id), sourceCurrent)) {
-        await journalUpdate('event', db.events, id, { sortOrder, updatedAt: Date.now() })
-      }
-    }
   })
 
   // Renumbering shifts snapshot sortKeys for every card whose sortOrder moved,
