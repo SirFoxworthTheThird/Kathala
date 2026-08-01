@@ -1,4 +1,5 @@
 import { db } from '@/db/database'
+import { markJournalDiscontinuity } from '@/db/hooks/useOperations'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
 import type {
@@ -173,6 +174,10 @@ export async function addCharactersToWorld(
 
   if (toAdd.length > 0) await db.characters.bulkAdd(toAdd)
   for (const u of updates) await db.characters.update(u.id, { ...u.patch, updatedAt: now })
+  // Bulk AI writes bypass the per-record journal; see
+  // markJournalDiscontinuity for why that resets it rather than
+  // leaving a partial history behind.
+  await markJournalDiscontinuity(worldId)
   return { added: toAdd.length, updated: updatedNames.length, skipped, addedNames, updatedNames }
 }
 
@@ -249,6 +254,10 @@ export async function addItemsToWorld(
 
   if (toAdd.length > 0) await db.items.bulkAdd(toAdd)
   for (const u of updates) await db.items.update(u.id, u.patch)
+  // Bulk AI writes bypass the per-record journal; see
+  // markJournalDiscontinuity for why that resets it rather than
+  // leaving a partial history behind.
+  await markJournalDiscontinuity(worldId)
   return { added: toAdd.length, updated: updatedNames.length, skipped, addedNames, updatedNames }
 }
 
@@ -399,6 +408,10 @@ export async function addFactionsToWorld(
   if (factionsToAdd.length > 0) await db.factions.bulkAdd(factionsToAdd)
   if (membershipsToAdd.length > 0) await db.factionMemberships.bulkAdd(membershipsToAdd)
   for (const u of updates) await db.factions.update(u.id, { ...u.patch, updatedAt: now })
+  // Bulk AI writes bypass the per-record journal; see
+  // markJournalDiscontinuity for why that resets it rather than
+  // leaving a partial history behind.
+  await markJournalDiscontinuity(worldId)
   return { added: factionsToAdd.length, updated: updatedNames.length, skipped, addedNames, updatedNames }
 }
 
@@ -611,6 +624,10 @@ export async function addRelationshipsToWorld(
 
   if (toAdd.length > 0) await db.relationships.bulkAdd(toAdd)
   for (const p of pendingChanges) await applyRelationshipChanges(worldId, p.relationshipId, p.base, p.changes, eventIdByTitle)
+  // Bulk AI writes bypass the per-record journal; see
+  // markJournalDiscontinuity for why that resets it rather than
+  // leaving a partial history behind.
+  await markJournalDiscontinuity(worldId)
   return { added: toAdd.length, updated: updatedNames.length, skipped, addedNames, updatedNames }
 }
 
@@ -711,6 +728,10 @@ export async function addLoreToWorld(
   if (categoriesToAdd.length > 0) await db.loreCategories.bulkAdd(categoriesToAdd)
   if (pagesToAdd.length > 0) await db.lorePages.bulkAdd(pagesToAdd)
   for (const u of updates) await db.lorePages.update(u.id, { ...u.patch, updatedAt: now })
+  // Bulk AI writes bypass the per-record journal; see
+  // markJournalDiscontinuity for why that resets it rather than
+  // leaving a partial history behind.
+  await markJournalDiscontinuity(worldId)
   return { added: pagesToAdd.length, updated: updatedNames.length, skipped, addedNames, updatedNames }
 }
 
@@ -856,6 +877,10 @@ export async function addKnowledgeToWorld(
   if (factsToAdd.length > 0) await db.knowledgeFacts.bulkAdd(factsToAdd)
   if (revealsToAdd.length > 0) await db.knowledgeReveals.bulkAdd(revealsToAdd)
   for (const u of updates) await db.knowledgeFacts.update(u.id, { ...u.patch, updatedAt: now })
+  // Bulk AI writes bypass the per-record journal; see
+  // markJournalDiscontinuity for why that resets it rather than
+  // leaving a partial history behind.
+  await markJournalDiscontinuity(worldId)
   return { added: factsToAdd.length, updated: updatedNames.length, skipped, addedNames, updatedNames }
 }
 
@@ -1241,5 +1266,9 @@ export async function addLocationsToWorld(
   if (!rootMap) rootMap = await createLayer(null, LOCATIONS_MAP_NAME)
   await placeNodes(locations, rootMap.id)
 
+  // Bulk AI writes bypass the per-record journal; see
+  // markJournalDiscontinuity for why that resets it rather than
+  // leaving a partial history behind.
+  await markJournalDiscontinuity(worldId)
   return { added, updated, skipped, addedNames, updatedNames }
 }

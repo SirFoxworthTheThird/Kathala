@@ -34,18 +34,26 @@ async function orderOf(chapterId: string): Promise<string[]> {
 }
 
 describe('moveEventOnBoard', () => {
-  it('reorders cards within a chapter and keeps sortOrder contiguous', async () => {
+  it('reorders cards within a chapter by moving one row, not renumbering the column', async () => {
     const { ch1, mk } = await seed()
     await mk(ch1.id, 'A', 0)
     await mk(ch1.id, 'B', 1)
     const c = await mk(ch1.id, 'C', 2)
 
-    // Move C to the front.
+    await db.operations.clear()
     await moveEventOnBoard(c.id, ch1.id, 0)
     expect(await orderOf(ch1.id)).toEqual(['C', 'A', 'B'])
+
+    // The point of fractional positions: A and B were not touched, so another
+    // device's moves cannot be overwritten by this one. Positions are no longer
+    // contiguous — only distinct and increasing, which is all ordering needs.
+    const touched = new Set((await db.operations.where('entityType').equals('event').toArray())
+      .map((o) => o.entityId))
+    expect([...touched]).toEqual([c.id])
+
     const sorts = (await db.events.where('chapterId').equals(ch1.id).toArray())
       .map((e) => e.sortOrder).sort((a, b) => a - b)
-    expect(sorts).toEqual([0, 1, 2])
+    expect(new Set(sorts).size).toBe(sorts.length)
   })
 
   it('moves a card to another chapter at a given index and renumbers both', async () => {
@@ -63,9 +71,13 @@ describe('moveEventOnBoard', () => {
 
     const moved = (await db.events.get(a.id))!
     expect(moved.chapterId).toBe(ch2.id)
-    // Source chapter closed its gap (B renumbered to 0).
+
+    // The source column is deliberately left alone. Taking a card out from
+    // between two positions leaves the rest in order, so there is no gap to
+    // close — and not writing those rows is what keeps a concurrent reorder
+    // over there from being clobbered by a move over here.
     const b = (await db.events.where('chapterId').equals(ch1.id).first())!
-    expect(b.sortOrder).toBe(0)
+    expect(b.sortOrder).toBe(1)
   })
 
   it('updates snapshot sortKeys when a card changes chapter', async () => {

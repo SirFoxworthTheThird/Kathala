@@ -12,6 +12,13 @@ import { WritersBriefPanel } from '@/features/brief/WritersBriefPanel'
 import { ChapterDiffModal } from '@/features/diff/ChapterDiffModal'
 import { ContinuityChecker } from '@/features/continuity/ContinuityChecker'
 import { HelpPanel } from '@/features/help/HelpPanel'
+import { RecentChangesPanel } from '@/features/history/RecentChangesPanel'
+import { UndoToastBridge } from '@/features/history/UndoToastBridge'
+import { useRedoAction, useUndoAction } from '@/features/history/useUndo'
+import { useJournalPruning } from '@/db/hooks/useOperations'
+import { ReadingGateProvider } from '@/db/hooks/ReadingGateContext'
+import { useReadingMode } from '@/db/hooks/useReading'
+import { Toaster } from '@/components/ui/toast'
 import { db } from '@/db/database'
 
 export function AppShell() {
@@ -51,20 +58,42 @@ export function AppShell() {
   }, [world?.theme, setActiveWorldTheme])
 
   useAutoFolderSync(worldId)
+  useJournalPruning(worldId ?? null)
 
-  // Global Cmd/Ctrl+K to open search
+  const undo = useUndoAction(worldId ?? null)
+  const redo = useRedoAction(worldId ?? null)
+  // Reading mode takes undo and redo off the top bar; the shortcuts have to go
+  // with them, or the one route left into editing is the one nobody sees.
+  const readingMode = useReadingMode(worldId ?? null)
+
+  // Global Cmd/Ctrl+K to open search, Cmd/Ctrl+Z to undo
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
         setSearchOpen(true)
+        return
+      }
+      const key = e.key.toLowerCase()
+      const isUndoKey = (e.metaKey || e.ctrlKey) && key === 'z' && !e.shiftKey
+      // Both conventions: ⇧⌘Z on Mac and most editors, Ctrl+Y on Windows.
+      const isRedoKey = (e.metaKey || e.ctrlKey) && ((key === 'z' && e.shiftKey) || key === 'y')
+      if ((isUndoKey || isRedoKey) && !readingMode) {
+        // Inside a text field the browser's own undo is the one the user means
+        // — it works at keystroke granularity and this one does not.
+        const el = e.target as HTMLElement | null
+        const tag = el?.tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || el?.isContentEditable) return
+        e.preventDefault()
+        void (isRedoKey ? redo() : undo())
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [setSearchOpen])
+  }, [setSearchOpen, undo, redo, readingMode])
 
   return (
+    <ReadingGateProvider worldId={worldId ?? null}>
     <div
       data-nav-rail={navPinned ? 'pinned' : 'collapsed'}
       className="flex h-[100dvh] flex-col overflow-hidden"
@@ -83,6 +112,10 @@ export function AppShell() {
       <ChapterDiffModal />
       <ContinuityChecker />
       <HelpPanel />
+      <RecentChangesPanel worldId={worldId ?? null} />
+      <UndoToastBridge worldId={worldId ?? null} />
+      <Toaster />
     </div>
+    </ReadingGateProvider>
   )
 }

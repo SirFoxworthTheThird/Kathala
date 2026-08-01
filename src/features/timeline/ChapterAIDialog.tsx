@@ -14,6 +14,7 @@ import { useEventSnapshots } from '@/db/hooks/useSnapshots'
 import { useEventRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
 import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
 import { db } from '@/db/database'
+import { markJournalDiscontinuity } from '@/db/hooks/useOperations'
 import type { Chapter, WorldEvent, CharacterSnapshot, RelationshipSnapshot, Faction, FactionMembership } from '@/types'
 
 // ── Types for the LLM response ────────────────────────────────────────────────
@@ -394,6 +395,9 @@ async function importChapter(data: ChapterAIResponse, replacing: boolean): Promi
     if (data.characterSnapshots.length) await db.characterSnapshots.bulkPut(data.characterSnapshots)
     if (data.relationshipSnapshots?.length) await db.relationshipSnapshots.bulkPut(data.relationshipSnapshots)
   })
+  // A whole chapter written at once is one authorial act, not N operations —
+  // and a partial journal would be worse than none. See markJournalDiscontinuity.
+  await markJournalDiscontinuity(data.chapter.worldId)
   return data.chapter.id
 }
 

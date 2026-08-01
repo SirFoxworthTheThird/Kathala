@@ -5,6 +5,7 @@ import { ArrowLeft, Upload, Trash2, Check, X, Plus, Layers } from 'lucide-react'
 import { useItem, updateItem, deleteItem } from '@/db/hooks/useItems'
 import { storeBlob } from '@/db/hooks/useBlobs'
 import { LinkImageButton } from '@/components/LinkImageButton'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { useCrossTimelineArtifactsForItem, createCrossTimelineArtifact, deleteCrossTimelineArtifact } from '@/db/hooks/useTimelineRelationships'
 import { useTimelines } from '@/db/hooks/useTimeline'
 import { PortraitImage } from '@/components/PortraitImage'
@@ -23,6 +24,7 @@ export default function ItemDetailView() {
   const artifacts = useCrossTimelineArtifactsForItem(itemId ?? null)
   const timelines = useTimelines(worldId ?? null)
 
+  const gate = useGate()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -102,21 +104,24 @@ export default function ItemDetailView() {
             className="h-12 w-12 rounded-md object-cover"
             fallbackClassName="h-12 w-12 rounded-md"
             fallbackIcon={Package}
+            zoomable
           />
-          <div className="absolute -bottom-1 -right-1 flex items-center gap-0.5 rounded-full bg-[hsl(var(--accent))] px-1 py-0.5">
-            <label aria-label="Upload item image" className="cursor-pointer text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]">
-              <Upload className="h-3 w-3" />
-              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-            </label>
-            {worldId && (
-              <LinkImageButton
-                worldId={worldId}
-                onLinked={(blobId) => updateItem(item!.id, { imageId: blobId })}
-                triggerClassName="text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]"
-                triggerAriaLabel="Link item image by URL"
-              />
-            )}
-          </div>
+          {!gate.active && (
+            <div className="absolute -bottom-1 -right-1 flex items-center gap-0.5 rounded-full bg-[hsl(var(--accent))] px-1 py-0.5">
+              <label aria-label="Upload item image" className="cursor-pointer text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]">
+                <Upload className="h-3 w-3" />
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+              </label>
+              {worldId && (
+                <LinkImageButton
+                  worldId={worldId}
+                  onLinked={(blobId) => updateItem(item!.id, { imageId: blobId })}
+                  triggerClassName="text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]"
+                  triggerAriaLabel="Link item image by URL"
+                />
+              )}
+            </div>
+          )}
         </div>
 
         <div>
@@ -126,14 +131,17 @@ export default function ItemDetailView() {
           )}
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="ml-auto h-8 w-8 hover:text-red-400"
-          onClick={() => setConfirmOpen(true)}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        {!gate.active && (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Delete item"
+            className="ml-auto h-8 w-8 hover:text-red-400"
+            onClick={() => setConfirmOpen(true)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
       </div>
       <ConfirmDialog
         open={confirmOpen}
@@ -154,9 +162,11 @@ export default function ItemDetailView() {
                   <p className="text-xs capitalize text-[hsl(var(--muted-foreground))]">{item.iconType}</p>
                 )}
               </div>
-              <Button size="sm" variant="outline" onClick={startEditing}>
-                Edit
-              </Button>
+              {!gate.active && (
+                <Button size="sm" variant="outline" onClick={startEditing}>
+                  Edit
+                </Button>
+              )}
             </div>
             {item.description ? (
               <p className="text-sm text-[hsl(var(--muted-foreground))] whitespace-pre-wrap">{item.description}</p>

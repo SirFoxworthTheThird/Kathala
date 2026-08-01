@@ -3,6 +3,7 @@ import { Check, X } from 'lucide-react'
 import type { Character, InWorldDate } from '@/types'
 import { updateCharacter } from '@/db/hooks/useCharacters'
 import { useWorld } from '@/db/hooks/useWorlds'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { formatInWorldDate, dateToDayNumber } from '@/lib/calendar'
 import { InWorldDatePicker } from '@/components/InWorldDatePicker'
 import { Button } from '@/components/ui/button'
@@ -17,6 +18,7 @@ interface OverviewTabProps {
 export function OverviewTab({ character }: OverviewTabProps) {
   const world = useWorld(character.worldId)
   const calendar = world?.calendar ?? null
+  const gate = useGate()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(character.name)
   const [description, setDescription] = useState(character.description)
@@ -55,16 +57,18 @@ export function OverviewTab({ character }: OverviewTabProps) {
               )}
             </div>
           </div>
-          <Button size="sm" variant="outline" onClick={() => {
-            setName(character.name)
-            setDescription(character.description)
-            setAliases(character.aliases.join(', '))
-            setColor(character.color ?? '')
-            setBirthDate(character.birthDate ?? null)
-            setEditing(true)
-          }}>
-            Edit
-          </Button>
+          {!gate.active && (
+            <Button size="sm" variant="outline" onClick={() => {
+              setName(character.name)
+              setDescription(character.description)
+              setAliases(character.aliases.join(', '))
+              setColor(character.color ?? '')
+              setBirthDate(character.birthDate ?? null)
+              setEditing(true)
+            }}>
+              Edit
+            </Button>
+          )}
         </div>
         {calendar && character.birthDate && (
           <p className="text-xs text-[hsl(var(--muted-foreground))]">

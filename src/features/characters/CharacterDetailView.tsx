@@ -4,6 +4,7 @@ import { ArrowLeft, Upload, Trash2 } from 'lucide-react'
 import { useCharacter, deleteCharacter } from '@/db/hooks/useCharacters'
 import { updateCharacter } from '@/db/hooks/useCharacters'
 import { storeBlob } from '@/db/hooks/useBlobs'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { LinkImageButton } from '@/components/LinkImageButton'
 import { PortraitImage } from '@/components/PortraitImage'
 import { Button } from '@/components/ui/button'
@@ -22,6 +23,7 @@ export default function CharacterDetailView() {
   const { worldId, characterId } = useParams<{ worldId: string; characterId: string }>()
   const navigate = useNavigate()
   const character = useCharacter(characterId ?? null)
+  const gate = useGate()
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   if (!character) {
@@ -59,21 +61,24 @@ export default function CharacterDetailView() {
             alt={character.name}
             className="h-12 w-12 rounded-full object-cover"
             fallbackClassName="h-12 w-12 rounded-full"
+            zoomable
           />
-          <div className="absolute -bottom-1 -right-1 flex items-center gap-0.5 rounded-full bg-[hsl(var(--accent))] px-1 py-0.5">
-            <label aria-label="Upload portrait image" className="cursor-pointer text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]">
-              <Upload className="h-3 w-3" aria-hidden="true" />
-              <input type="file" accept="image/*" className="hidden" onChange={handlePortraitUpload} />
-            </label>
-            {worldId && (
-              <LinkImageButton
-                worldId={worldId}
-                onLinked={(blobId) => updateCharacter(character!.id, { portraitImageId: blobId })}
-                triggerClassName="text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]"
-                triggerAriaLabel="Link portrait by URL"
-              />
-            )}
-          </div>
+          {!gate.active && (
+            <div className="absolute -bottom-1 -right-1 flex items-center gap-0.5 rounded-full bg-[hsl(var(--accent))] px-1 py-0.5">
+              <label aria-label="Upload portrait image" className="cursor-pointer text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]">
+                <Upload className="h-3 w-3" aria-hidden="true" />
+                <input type="file" accept="image/*" className="hidden" onChange={handlePortraitUpload} />
+              </label>
+              {worldId && (
+                <LinkImageButton
+                  worldId={worldId}
+                  onLinked={(blobId) => updateCharacter(character!.id, { portraitImageId: blobId })}
+                  triggerClassName="text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]"
+                  triggerAriaLabel="Link portrait by URL"
+                />
+              )}
+            </div>
+          )}
         </div>
 
         <div>
@@ -83,15 +88,17 @@ export default function CharacterDetailView() {
           )}
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Delete character"
-          className="ml-auto h-8 w-8 hover:text-red-400"
-          onClick={() => setConfirmOpen(true)}
-        >
-          <Trash2 className="h-4 w-4" aria-hidden="true" />
-        </Button>
+        {!gate.active && (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Delete character"
+            className="ml-auto h-8 w-8 hover:text-red-400"
+            onClick={() => setConfirmOpen(true)}
+          >
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        )}
       </div>
       <ConfirmDialog
         open={confirmOpen}

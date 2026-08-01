@@ -11,6 +11,13 @@ export interface Character {
   color: string | null
   /** Optional birth date on the world calendar, for computing age at an event. */
   birthDate?: import('./world').InWorldDate | null
+  /**
+   * Operation-journal bookkeeping (#115), incremented on every journalled
+   * write. Optional because records created before v52 — and worlds imported
+   * from older `.pwk` files — won't carry one; the journal reads a missing
+   * version as 1.
+   */
+  version?: number
   createdAt: number
   updatedAt: number
 }
@@ -23,6 +30,8 @@ export interface Item {
   iconType: string
   imageId: string | null
   tags: string[]
+  /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */
+  version?: number
 }
 
 export interface ItemPlacement {
@@ -35,6 +44,8 @@ export interface ItemPlacement {
   notes: string
   createdAt: number
   updatedAt: number
+  /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */
+  version?: number
 }
 
 export interface CharacterSnapshot {
@@ -53,6 +64,8 @@ export interface CharacterSnapshot {
   travelModeId: string | null
   createdAt: number
   updatedAt: number
+  /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */
+  version?: number
 }
 
 export interface LocationSnapshot {
@@ -66,6 +79,8 @@ export interface LocationSnapshot {
   notes: string
   createdAt: number
   updatedAt: number
+  /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */
+  version?: number
 }
 
 export interface ItemSnapshot {
@@ -79,4 +94,6 @@ export interface ItemSnapshot {
   notes: string
   createdAt: number
   updatedAt: number
+  /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */
+  version?: number
 }

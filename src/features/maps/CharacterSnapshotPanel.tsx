@@ -182,8 +182,10 @@ export function CharacterSnapshotPanel({
         <div className="flex justify-center border-b border-[hsl(var(--border))] p-4">
           <PortraitImage
             imageId={character.portraitImageId}
+            alt={character.name}
             className="h-20 w-20 rounded-full object-cover ring-2 ring-[hsl(var(--border))]"
             fallbackClassName="h-20 w-20 rounded-full ring-2 ring-[hsl(var(--border))]"
+            zoomable
           />
         </div>
 

@@ -19,6 +19,7 @@ import {
   createFactionRelationship, updateFactionRelationship, deleteFactionRelationship,
 } from '@/db/hooks/useFactions'
 import { useCharacters } from '@/db/hooks/useCharacters'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { useEvents, useChapters, useTimelines } from '@/db/hooks/useTimeline'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { GenerateFactionsDialog } from './GenerateFactionsDialog'
@@ -45,6 +46,7 @@ function MembershipRow({
   const endEv = allEvents.find((e) => e.id === membership.endEventId)
   const [expanded, setExpanded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const gate = useGate()
 
   if (!char) return null
 
@@ -60,18 +62,22 @@ function MembershipRow({
             )}
           </span>
         )}
-        <button
-          onClick={() => setExpanded((v) => !v)}
-          className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
-        >
-          <ChevronRight className={`h-3.5 w-3.5 transition-transform ${expanded ? 'rotate-90' : ''}`} />
-        </button>
-        <button
-          onClick={() => setConfirmDelete(true)}
-          className="text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
+        {!gate.active && (
+          <>
+            <button
+              onClick={() => setExpanded((v) => !v)}
+              className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+            >
+              <ChevronRight className={`h-3.5 w-3.5 transition-transform ${expanded ? 'rotate-90' : ''}`} />
+            </button>
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </>
+        )}
       </div>
 
       <ConfirmDialog
@@ -180,6 +186,22 @@ function RelationRow({
   onDelete: () => void
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const gate = useGate()
+
+  // The stance still shows — it is world state a reader wants — but as a label
+  // rather than a picker that would rewrite it.
+  if (gate.active) {
+    return (
+      <div className="flex items-center gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2">
+        <div className="h-3 w-3 rounded-full shrink-0" style={{ background: otherFaction.color }} />
+        <span className="flex-1 text-sm truncate">{otherFaction.name}</span>
+        <span className={`flex shrink-0 items-center gap-1 text-[11px] ${STANCE_COLORS[rel.stance]}`}>
+          <StanceIcon stance={rel.stance} />
+          {STANCE_LABELS[rel.stance]}
+        </span>
+      </div>
+    )
+  }
 
   return (
     <div className="flex items-center gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2">
@@ -242,6 +264,7 @@ function FactionDetailPanel({
   const [savedFlash, setSavedFlash] = useState(false)
 
   const [addingRelation, setAddingRelation] = useState(false)
+  const gate = useGate()
 
   const memberships = useMembershipsForFaction(faction.id)
   const allFactions = useFactions(worldId)
@@ -347,63 +370,77 @@ function FactionDetailPanel({
 
       <div className="flex-1 overflow-auto p-4 flex flex-col gap-4">
         {/* Edit fields */}
-        <div className="flex flex-col gap-3">
-          <div>
-            <Label>Name</Label>
-            <Input className="mt-1" value={name} onChange={(e) => setName(e.target.value)} onBlur={save} />
-          </div>
-          <div>
-            <Label>Description</Label>
-            <Textarea className="mt-1 resize-none text-sm" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} onBlur={save} />
-          </div>
-          <div>
-            <Label>Colour</Label>
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {PRESET_COLORS.map((c) => (
-                <button
-                  key={c}
-                  className={`h-6 w-6 rounded-full border-2 transition-transform ${color === c ? 'border-white scale-110' : 'border-transparent'}`}
-                  style={{ background: c }}
-                  onClick={() => { setColor(c); updateFaction(faction.id, { color: c }); setSavedFlash(true); setTimeout(() => setSavedFlash(false), 1500) }}
+        {gate.active ? (
+          faction.description ? (
+            <p className="whitespace-pre-wrap text-sm text-[hsl(var(--muted-foreground))]">
+              {faction.description}
+            </p>
+          ) : null
+        ) : (
+          <div className="flex flex-col gap-3">
+            <div>
+              <Label>Name</Label>
+              <Input className="mt-1" value={name} onChange={(e) => setName(e.target.value)} onBlur={save} />
+            </div>
+            <div>
+              <Label>Description</Label>
+              <Textarea className="mt-1 resize-none text-sm" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} onBlur={save} />
+            </div>
+            <div>
+              <Label>Colour</Label>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {PRESET_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    className={`h-6 w-6 rounded-full border-2 transition-transform ${color === c ? 'border-white scale-110' : 'border-transparent'}`}
+                    style={{ background: c }}
+                    onClick={() => { setColor(c); updateFaction(faction.id, { color: c }); setSavedFlash(true); setTimeout(() => setSavedFlash(false), 1500) }}
+                  />
+                ))}
+                <input
+                  type="color"
+                  className="h-6 w-6 cursor-pointer rounded-full border-0 bg-transparent p-0"
+                  value={color}
+                  onChange={(e) => setColor(e.target.value)}
+                  onBlur={() => save()}
+                  title="Custom colour"
                 />
-              ))}
-              <input
-                type="color"
-                className="h-6 w-6 cursor-pointer rounded-full border-0 bg-transparent p-0"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                onBlur={() => save()}
-                title="Custom colour"
-              />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Tags */}
-        <div>
-          <Label>Tags</Label>
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            {tags.map((t) => (
-              <span key={t} className="flex items-center gap-1 rounded bg-[hsl(var(--border))] px-2 py-0.5 text-xs text-[hsl(var(--foreground))]">
-                {t}
-                <button onClick={() => removeTag(t)} className="text-[hsl(var(--muted-foreground))] hover:text-destructive">
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            ))}
-            <Input
-              className="h-6 w-24 text-xs"
-              placeholder="Add tag…"
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag() }
-                if (e.key === 'Backspace' && !tagInput && tags.length) removeTag(tags[tags.length - 1])
-              }}
-              onBlur={addTag}
-            />
+        {(gate.active ? tags.length > 0 : true) && (
+          <div>
+            <Label>Tags</Label>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              {tags.map((t) => (
+                <span key={t} className="flex items-center gap-1 rounded bg-[hsl(var(--border))] px-2 py-0.5 text-xs text-[hsl(var(--foreground))]">
+                  {t}
+                  {!gate.active && (
+                    <button onClick={() => removeTag(t)} className="text-[hsl(var(--muted-foreground))] hover:text-destructive">
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </span>
+              ))}
+              {!gate.active && (
+                <Input
+                  className="h-6 w-24 text-xs"
+                  placeholder="Add tag…"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag() }
+                    if (e.key === 'Backspace' && !tagInput && tags.length) removeTag(tags[tags.length - 1])
+                  }}
+                  onBlur={addTag}
+                />
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Members */}
         <div className="flex flex-col gap-2">
@@ -430,7 +467,7 @@ function FactionDetailPanel({
             ))}
           </div>
 
-          {addingMember ? (
+          {gate.active ? null : addingMember ? (
             <Select onValueChange={addMember}>
               <SelectTrigger className="text-xs h-8">
                 <SelectValue placeholder="Choose character…" />
@@ -488,7 +525,7 @@ function FactionDetailPanel({
               })}
             </div>
 
-            {addingRelation ? (
+            {gate.active ? null : addingRelation ? (
               <Select onValueChange={addRelation}>
                 <SelectTrigger className="text-xs h-8">
                   <SelectValue placeholder="Choose faction…" />
@@ -567,16 +604,18 @@ function FactionDetailPanel({
       </div>
 
       {/* Footer */}
-      <div className="border-t border-[hsl(var(--border))] p-3">
-        <Button
-          variant="destructive"
-          size="sm"
-          className="w-full gap-1.5"
-          onClick={() => setConfirmOpen(true)}
-        >
-          <Trash2 className="h-3.5 w-3.5" /> Delete Faction
-        </Button>
-      </div>
+      {!gate.active && (
+        <div className="border-t border-[hsl(var(--border))] p-3">
+          <Button
+            variant="destructive"
+            size="sm"
+            className="w-full gap-1.5"
+            onClick={() => setConfirmOpen(true)}
+          >
+            <Trash2 className="h-3.5 w-3.5" /> Delete Faction
+          </Button>
+        </div>
+      )}
 
       <ConfirmDialog
         open={confirmOpen}

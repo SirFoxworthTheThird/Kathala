@@ -17,6 +17,7 @@ import { useMapRoutes, deleteMapRoute } from '@/db/hooks/useMapRoutes'
 import { useMapRegions, deleteMapRegion, useBestRegionSnapshots, upsertMapRegionSnapshot } from '@/db/hooks/useMapRegions'
 import { PortraitImage } from '@/components/PortraitImage'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import type { Character, CharacterSnapshot, Item, LocationMarker, MapLayer, RouteType, MapRegionStatus } from '@/types'
 import { pathPixelLength, formatDistance } from '@/lib/mapScale'
 import { characterColor, ICON_COLORS } from './mapUtils'
@@ -110,6 +111,7 @@ function LayerTreeNode({
   const children = allLayers.filter((l) => l.parentMapId === layer.id && isTreeVisible(allLayers, l))
   const [open, setOpen] = useState(true)
   const [hovered, setHovered] = useState(false)
+  const gate = useGate()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const isActive = layer.id === activeLayerId
   const childCount = children.length
@@ -155,8 +157,8 @@ function LayerTreeNode({
           <MapPin className="h-3 w-3 shrink-0 opacity-40" />
         )}
         {depth === 0 && <MapIcon className="h-3 w-3 shrink-0 opacity-70" />}
-        <span className="flex-1 truncate text-xs">{layer.name}</span>
-        {hovered && (
+        <span data-map-layer className="flex-1 truncate text-xs">{layer.name}</span>
+        {hovered && !gate.active && (
           <button
             className="shrink-0 rounded p-0.5 hover:text-red-400 transition-colors"
             onClick={(e) => { e.stopPropagation(); setConfirmOpen(true) }}

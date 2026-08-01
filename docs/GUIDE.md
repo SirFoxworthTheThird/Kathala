@@ -17,32 +17,34 @@ explore).
 
 1. [Core concept: the time cursor](#core-concept-the-time-cursor)
 2. [Getting started — the world selector](#getting-started--the-world-selector)
-3. [Import a manuscript](#import-a-manuscript)
-4. [Generate a world from AI](#generate-a-world-from-ai)
-5. [Start a sequel](#start-a-sequel)
-6. [The world dashboard](#the-world-dashboard)
-7. [Timeline & events](#timeline--events)
-8. [Chapter detail](#chapter-detail)
-9. [Corkboard](#corkboard)
-10. [Manuscript](#manuscript)
-11. [Characters](#characters)
-12. [Cast Balance](#cast-balance)
-13. [Plot Threads](#plot-threads)
-14. [Motifs & Themes](#motifs--themes)
-15. [Structure board](#structure-board)
-16. [Maps](#maps)
-17. [Items](#items)
-18. [Relationships](#relationships)
-19. [Character Arc grid](#character-arc-grid)
-20. [Lore](#lore)
-21. [Factions](#factions)
-22. [Knowledge](#knowledge)
-23. [Search](#search)
-24. [Writer's Brief](#writers-brief)
-25. [Calendar & character ages](#calendar--character-ages)
-26. [Continuity Checker](#continuity-checker)
-27. [World settings & export](#world-settings--export)
-28. [Help](#help)
+3. [The example library](#the-example-library)
+4. [Import a manuscript](#import-a-manuscript)
+5. [Generate a world from AI](#generate-a-world-from-ai)
+6. [Start a sequel](#start-a-sequel)
+7. [The world dashboard](#the-world-dashboard)
+8. [Timeline & events](#timeline--events)
+9. [Chapter detail](#chapter-detail)
+10. [Corkboard](#corkboard)
+11. [Manuscript](#manuscript)
+12. [Characters](#characters)
+13. [Cast Balance](#cast-balance)
+14. [Plot Threads](#plot-threads)
+15. [Motifs & Themes](#motifs--themes)
+16. [Structure board](#structure-board)
+17. [Maps](#maps)
+18. [Items](#items)
+19. [Relationships](#relationships)
+20. [Character Arc grid](#character-arc-grid)
+21. [Lore](#lore)
+22. [Factions](#factions)
+23. [Knowledge](#knowledge)
+24. [Search](#search)
+25. [Undo, redo & recent changes](#undo-redo--recent-changes)
+26. [Writer's Brief](#writers-brief)
+27. [Calendar & character ages](#calendar--character-ages)
+28. [Continuity Checker](#continuity-checker)
+29. [World settings & export](#world-settings--export)
+30. [Help](#help)
 
 ---
 
@@ -91,6 +93,111 @@ character at the opening moment, and then continue to the Timeline. Each optiona
 step has **Skip** so you can leave the guide and build the world in any order.
 
 ![Blank-world setup](images/38-onboarding.png)
+
+---
+
+## The example library
+
+**Example Library** on the world selector lists worlds built from published
+books and downloads them straight into your browser. Nothing is uploaded and no
+account is needed — a downloaded world is an ordinary world you own outright,
+which you can edit, export, or delete like any other.
+
+Each entry shows its cast, chapter and event counts, and the download size. Map
+images and portraits are a separate, much larger download, so they sit behind
+their own button rather than coming along by default — useful if you're on a
+phone.
+
+### Reading alongside a book
+
+Library worlds arrive in **reading mode**, which is what makes them safe to open
+while you are still part-way through the book.
+
+Set the chapter cursor to where you have read up to, and PlotWeave hides
+characters, items and places the story has not introduced yet — everywhere, not
+just on one screen. The Characters page in chapter one shows the handful of
+people you have actually met, with a note saying how many are still to come, so
+a short list reads as deliberate rather than broken. Move the cursor forward and
+they appear, in the order the book introduces them.
+
+The same cut-off applies across the app: the timeline stops at your place and
+keeps later chapter summaries back, lore pages wait until you have met what they
+are about, and a knowledge fact stays hidden until the point the reader is meant
+to learn it. A character's page shows where they stand now rather than every
+chapter still to come, and the map list holds back the maps for places you have
+not been to yet. Subplots and motifs are named for where they end up — *The
+Philosopher's Stone Mystery* gives away a book on its own — so they wait for
+the first scene that takes them up. **Search** answers on the same terms — it will not find a
+character you have not met.
+
+Chapter *titles* stay visible throughout — they are printed on your own book's
+contents page, so hiding them would gain nothing. One thing the cut-off cannot
+do is edit prose: if a place you *have* reached is described in a sentence that
+names one you have not, that sentence is shown as written.
+
+The rest follows the same rule PlotWeave always follows: everything is shown
+relative to the cursor, so you can ask *where is everyone, who knows what, who
+has met whom* without being told anything that happens later. Summary figures
+that would give the game away — the alive/dead split on the dashboard, for
+instance — are simply not shown while reading.
+
+Selecting **All chapters** reveals everything. That is a deliberate choice you
+make, not the default — and while reading, PlotWeave asks before doing it, since
+the control is a small ✕ beside the cursor and one stray click would hand you
+the whole book. Stepping the cursor back never asks: it only ever un-reveals.
+
+### What reading mode puts away
+
+Reading mode also clears out everything that only makes sense to the person
+writing the book, so what is left reads as a companion rather than a workspace
+you have wandered into.
+
+The writing screens — Manuscript, Structure and the Corkboard — step aside. Undo, redo, Recent
+changes, the Writer's Brief and the Continuity Checker leave the top bar (and
+Ctrl+Z along with them), and the dashboard drops its continuity card and its
+snapshot-coverage figure. No
+screen offers to add, generate or delete anything: no **Add Character**, no
+**New Page**, no **Generate with AI**, no delete buttons on cards, rows or map
+layers.
+
+The dashboard becomes a way in rather than a progress report. Recent Events,
+Scene Status, Writing Progress, Cast Balance, Plot Threads and Motifs all
+measure the manuscript rather than the story, so they go, and the tiles stop
+talking about *your* cast and *your* catalogue — they count what you have met
+so far.
+
+Detail screens show the same information without the editing furniture. A
+character's page is read straight through — their description, where they
+stand, what they carry, their goals, relationships and factions — with no Edit
+button and no form fields. Lore pages render as articles. A knowledge fact shows
+what it is and who knows it, without the controls that set when the reader is
+let in on it. On the map you can still measure distances and export the picture;
+you cannot move a marker, relabel it, or replace the image.
+
+**Settings** keeps only what a reader can decide — the theme, and whether to
+carry on reading this way. Travel speeds, the continuity threshold, word target
+and deadline, the calendar's own definition, folder sync and the HTML export
+all describe the draft rather than the story, so they wait. (The HTML export
+would write out the whole world regardless of your chapter cursor, so offering
+it here would hand you the ending in a file.)
+
+To edit a world anyway, turn reading mode off in **Settings**. Everything comes
+back exactly as it was.
+
+The library worlds carry **no text from the books**. They are structural
+references only: characters, chapters, events, places, relationships and lore.
+They are unofficial and fan-made, and are not affiliated with or endorsed by the
+authors or publishers.
+
+### Reading mode on your own world
+
+Reading mode is a per-world setting, so it works on anything — not just library
+worlds. Turn it on in **Settings** before handing a world to a beta reader and
+they can follow along without the ending being spoiled by the cast list.
+
+> **Note:** downloading a world you already have **replaces** your copy and
+> discards any changes you made in it, so PlotWeave asks first. Use it
+> deliberately when you want the original back.
 
 ---
 
@@ -448,6 +555,22 @@ count badge tracks how many characters you're following.
 
 ![Character roster](images/06-characters.png)
 
+### Viewing pictures full size
+
+Portraits are kept at up to 2048px but shown small — 48px in a character's
+header, smaller still on a card. Click the portrait on a character's page to
+open it full size. Press **Esc**, click the space around it, or use the ✕ to
+put it away; clicking the picture itself doesn't close it, so you can lean in
+without losing your place.
+
+![A portrait opened full size](images/54-image-lightbox.png)
+
+The same works for an item's image on its detail page, for a world's cover on
+the dashboard and in [World settings](#world-settings--export), and for the
+portrait at the top of the character panel on a [map](#maps). Pictures inside
+cards and lists are left alone — there, a click still takes you to whatever the
+card is for.
+
 ### Generate characters with AI
 
 Building a large cast by hand is slow. **Generate with AI** (next to *Add
@@ -684,7 +807,9 @@ touch devices, tap the crosshair on their card and then tap a location.
   unlocks it.
 
 Click a character pin to open their **film strip**, a chronological list of every
-place they visited. Selecting a stop moves the global cursor to that event.
+place they visited. Selecting a stop moves the global cursor to that event. It
+also opens their panel on the right, where the portrait at the top opens
+[full size](#viewing-pictures-full-size) like any other.
 
 ![Map editing tools](images/40-map-tools.png)
 
@@ -761,6 +886,8 @@ onto it.
 Track the objects that matter — weapons, artefacts, documents, consumables — with
 thumbnails, categories, and descriptions. Like characters, items have per-event
 **placements** (who holds an item, or where it is, at any point in the story).
+An item's picture opens full size the same way a portrait does — see
+[Viewing pictures full size](#viewing-pictures-full-size).
 
 ![Items](images/09-items.png)
 
@@ -920,6 +1047,54 @@ opening a location focuses its map marker.
 
 ---
 
+## Undo, redo & recent changes
+
+PlotWeave records every edit you make as you make it, so a mistake is a step
+backwards rather than a rebuild.
+
+**Undo** is the left arrow in the top bar, and **Ctrl/⌘+Z** anywhere outside a
+text box. Inside a text box, Ctrl/⌘+Z is your browser's own undo, working letter
+by letter — PlotWeave deliberately stays out of the way there.
+
+**Redo** is the right arrow, **Ctrl/⌘+Shift+Z**, or **Ctrl+Y**. It puts back
+whatever you just undid, and you can walk forward through several undos in turn.
+As in any editor, making a *new* edit clears the redo: putting the old change
+back at that point would land it on a story that has since moved on.
+
+Press it repeatedly to walk back through your recent edits. Each press takes
+back one *action*, which is not always one record:
+
+- **Deleting a character** brings back their relationships, goals, faction
+  memberships, and per-chapter state along with them.
+- **Reordering two events** puts both back, never half the swap.
+- **Deleting a multi-event selection** restores the whole selection at once.
+- **A burst of typing** in chapter notes or a lore page counts as one edit, not
+  one per pause — so undo takes back what you just wrote rather than a fragment
+  of a sentence.
+
+When you delete something, a message appears at the bottom of the screen naming
+what went, with **Undo** beside it. It's the fastest way back, and on a phone
+it's right under your thumb.
+
+**Recent changes** (the clock icon in the top bar, or in the menu on a phone)
+lists your recent edits, newest first, with the time each happened. Only the
+newest can be undone — history is a stack, so taking one from the middle would
+leave the later edits resting on a state that never existed.
+
+![Recent changes](images/53-recent-changes.png)
+
+Redo is as careful as undo about acting in whole steps: redoing a deleted
+character removes their relationships and goals again, and redoing a reorder
+moves both events.
+
+> **Note:** importing a world, generating one from AI, or importing a manuscript
+> starts a fresh history. Those are single large acts rather than hundreds of
+> small ones, so undo is empty straight afterwards and the button is greyed out.
+> Your work is safe — it just can't be stepped back through. Export before a big
+> import if you want a way back.
+
+---
+
 ## Writer's Brief
 
 The **Writer's Brief** (the scroll icon in the top bar) is a focused, at-a-glance
@@ -1041,7 +1216,8 @@ timeline's clock.
 The **cover image** appears on the world's card in the selector and in the
 dashboard header. **Upload** an image file or **link** one by URL (the link
 icon), and **Remove** it at any time — the same as portraits elsewhere in the
-app.
+app. Click the cover to
+[open it full size](#viewing-pictures-full-size).
 
 ![World settings](images/15-settings.png)
 
@@ -1067,11 +1243,55 @@ to a `.pwk` file in any local folder—including one managed by Google Drive,
 OneDrive, Dropbox, or another file-sync service. **Save** writes the current
 world; **Load** previews the file before applying it.
 
-- **Smart merge** compares records and keeps the newer version of each entity,
-  which is useful when the same world was edited on two devices.
+- **Smart merge** combines the two copies field by field, which is useful when
+  the same world was edited on two devices. Lists are combined rather than
+  replaced: if you added one character to a scene's cast and someone else added
+  another, the scene ends up with both. Tags, aliases, inventories and plot
+  threads work the same way, and the order you each had is kept.
+
+  Reordering survives too. Moving a card writes only that card's position, so
+  two people rearranging different scenes both get their way, and both devices
+  end up with the same sequence.
+
+  Single values — a name, a description, a status — cannot be combined, because
+  the file records what each copy *says*, not what each person *changed*. Where
+  both copies changed one, PlotWeave shows you the two versions side by side
+  before anything is applied, and you choose: **Most recent**, **Keep mine**, or
+  **Use theirs**.
+
+  Anything you deleted stays deleted — deletions travel with the file rather
+  than reappearing because the other copy still had them. If you deleted
+  something on one device and then edited it on the other, the edit wins and the
+  record is kept.
 - **Replace all** overwrites the local world with the selected file.
 - **Change folder** moves the binding. **Disconnect** removes the binding without
   deleting the file already stored in that folder.
+
+The panel shows where the folder stands relative to this device:
+
+| State | Meaning |
+| --- | --- |
+| **Up to date** | The folder holds the same version as this device. |
+| **Unsaved changes** | You have edits the folder hasn't received yet. |
+| **Newer copy in folder** | Another device saved to this folder — **Load** to catch up. |
+| **Both changed** | You edited here *and* another device saved — see below. |
+
+The same status appears **next to the world name in the top bar**, so you can
+tell at a glance whether your work is reaching the folder without opening
+Settings.
+
+Because the bound folder is usually shared between your machines, PlotWeave
+never overwrites the folder's copy behind your back. When another device has
+saved since you last did, and you have your own unsaved changes, auto-save
+writes to a **conflict copy** beside it — `My World (conflict copy 2026-07-29
+0315).pwk` — rather than either destroying their version or leaving yours
+unsaved. Both versions survive, and you can sort it out whenever you like:
+**Load** compares the folder's copy against yours, and **Save over** replaces it
+with this device's.
+
+If PlotWeave has lost permission to the folder (browsers drop it between
+sessions), the indicator says **Reconnect folder** — auto-save does nothing
+until you re-grant access from World Settings.
 
 ![Database health and folder sync](images/43-settings-sync.png)
 

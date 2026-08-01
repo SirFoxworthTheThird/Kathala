@@ -10,6 +10,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useWorld, updateWorld } from '@/db/hooks/useWorlds'
 import { useCharacters } from '@/db/hooks/useCharacters'
+import { useReadingGate } from '@/db/hooks/useReading'
 import { useRootMapLayers } from '@/db/hooks/useMapLayers'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useRelationships } from '@/db/hooks/useRelationships'
@@ -65,7 +66,7 @@ export default function WorldDashboardView() {
   const { setActiveEventId, setCheckerOpen } = useAppStore()
 
   const world               = useWorld(worldId ?? null)
-  const characters          = useCharacters(worldId ?? null)
+  const allCharacters       = useCharacters(worldId ?? null)
   const maps                = useRootMapLayers(worldId ?? null)
   const timelines           = useTimelines(worldId ?? null)
   const chapters            = useWorldChapters(worldId ?? null)
@@ -127,6 +128,13 @@ export default function WorldDashboardView() {
     setEditingDesc(false)
   }
 
+  // Reading mode: the dashboard is a summary of the whole book, so nearly every
+  // figure on it is a spoiler. Counts are taken over what the reader has met,
+  // and the alive/dead split is dropped entirely — "7 dead" in chapter two
+  // tells you the body count of a book you have not finished.
+  const gate = useReadingGate(worldId ?? null)
+  const characters = gate.filter(allCharacters)
+
   // Derived stats
   const aliveCount = characters.filter((c) => c.isAlive).length
   const deadCount  = characters.length - aliveCount
@@ -139,12 +147,14 @@ export default function WorldDashboardView() {
   }, [snapshots, allEvents])
   const coveragePct = totalEvents > 0 ? Math.round((eventsWithSnap / totalEvents) * 100) : 0
 
-  // 5 most recently updated events
+  // 5 most recently updated events. Suppressed for a reader: "recently edited"
+  // is an author's ordering, and it surfaces late-book scenes by title.
   const recentEvents = useMemo(() => {
+    if (gate.active) return []
     return [...allEvents]
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, 5)
-  }, [allEvents])
+  }, [allEvents, gate.active])
 
   const chapterById = useMemo(() => new Map(chapters.map((c) => [c.id, c])), [chapters])
   const timelineById = useMemo(() => new Map(timelines.map((t) => [t.id, t])), [timelines])
@@ -195,11 +205,11 @@ export default function WorldDashboardView() {
       icon: Users,
       count: characters.length,
       onClick: () => navigate('characters'),
-      pills: [
+      pills: gate.active ? [] : [
         ...(aliveCount > 0 ? [{ label: 'alive', value: aliveCount }] : []),
         ...(deadCount > 0  ? [{ label: 'dead',  value: deadCount  }] : []),
       ],
-      description: 'in your cast',
+      description: gate.active ? 'you have met so far' : 'in your cast',
     },
     {
       label: 'Maps',
@@ -207,7 +217,7 @@ export default function WorldDashboardView() {
       count: maps.length,
       onClick: () => navigate('maps'),
       pills: locationMarkers.length > 0 ? [{ label: 'markers', value: locationMarkers.length }] : [],
-      description: 'root map layers',
+      description: gate.active ? 'maps you have reached' : 'root map layers',
     },
     {
       label: 'Relationships',
@@ -215,7 +225,7 @@ export default function WorldDashboardView() {
       count: relationships.length,
       onClick: () => navigate('relationships'),
       pills: [],
-      description: 'character connections',
+      description: gate.active ? 'between characters you have met' : 'character connections',
     },
     {
       label: 'Items',
@@ -223,25 +233,33 @@ export default function WorldDashboardView() {
       count: items.length,
       onClick: () => navigate('items'),
       pills: [],
-      description: 'in your catalogue',
+      description: gate.active ? 'you have seen so far' : 'in your catalogue',
     },
     {
       label: 'Character Arc',
       icon: BarChart2,
-      count: coveragePct,
+      // Snapshot coverage measures how completely the world has been filled in
+      // — a writer's progress bar. A reader gets the arc without the scorecard.
+      count: gate.active ? null : coveragePct,
       countSuffix: '%',
       onClick: () => navigate('arc'),
-      pills: eventsWithSnap > 0 ? [{ label: `/ ${totalEvents} events`, value: eventsWithSnap }] : [],
-      description: 'snapshot coverage',
+      pills: !gate.active && eventsWithSnap > 0
+        ? [{ label: `/ ${totalEvents} events`, value: eventsWithSnap }]
+        : [],
+      description: gate.active ? 'how the cast changes' : 'snapshot coverage',
     },
-    {
-      label: 'Continuity',
-      icon: ShieldAlert,
-      count: null,
-      onClick: () => setCheckerOpen(true),
-      pills: [],
-      description: 'check for issues',
-    },
+    // The continuity checker reports on a draft, and reading mode takes it off
+    // the top bar — a tile that opened it would be the one way back in.
+    ...(gate.active
+      ? []
+      : [{
+          label: 'Continuity',
+          icon: ShieldAlert,
+          count: null,
+          onClick: () => setCheckerOpen(true),
+          pills: [],
+          description: 'check for issues',
+        } as Tile]),
   ]
 
   if (!wizardReady) return (
@@ -271,9 +289,11 @@ export default function WorldDashboardView() {
         {world?.coverImageId && (
           <PortraitImage
             imageId={world.coverImageId}
-            alt=""
+            // Decorative until it became a control; now it is what names it.
+            alt={world.name ? `${world.name} cover` : 'World cover'}
             className="h-16 w-24 shrink-0 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))] object-contain"
             fallbackClassName="h-16 w-24 shrink-0 rounded-md border border-[hsl(var(--border))]"
+            zoomable
           />
         )}
         <div className="flex-1">
@@ -303,22 +323,27 @@ export default function WorldDashboardView() {
             <div className="mt-1 flex items-start gap-2">
               {world?.description
                 ? <p className="text-sm text-[hsl(var(--muted-foreground))] max-w-xl">{world.description}</p>
-                : <p className="text-sm italic text-[hsl(var(--muted-foreground)/0.5)]">No description — click to add one.</p>
+                : gate.active
+                  ? null
+                  : <p className="text-sm italic text-[hsl(var(--muted-foreground)/0.5)]">No description — click to add one.</p>
               }
-              <button
-                onClick={startEditDesc}
-                className="mt-0.5 shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
-                title="Edit description"
-              >
-                <Pencil className="h-3 w-3" />
-              </button>
+              {!gate.active && (
+                <button
+                  onClick={startEditDesc}
+                  className="mt-0.5 shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+                  title="Edit description"
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+              )}
             </div>
           )}
         </div>
       </div>
 
-      {/* Suggestions */}
-      {activeSuggestions.length > 0 && (
+      {/* Suggestions are prompts to go and build something — "add your first
+          character", "draw a map". There is nothing for a reader to act on. */}
+      {!gate.active && activeSuggestions.length > 0 && (
         <section aria-live="polite" aria-label="Suggested next steps">
           <div className="flex flex-col gap-2">
             {activeSuggestions.map((rule) => (
@@ -364,8 +389,10 @@ export default function WorldDashboardView() {
         ))}
       </div>
 
-      {/* Recent events */}
-      {recentEvents.length > 0 && (
+      {/* "Recent" here means recently *edited*, ordered by updatedAt. That is a
+          record of the author's last working session, and it says nothing about
+          where the reader is in the book. */}
+      {!gate.active && recentEvents.length > 0 && (
         <div>
           <SectionHeading icon={Clock}>Recent Events</SectionHeading>
           <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
@@ -396,8 +423,9 @@ export default function WorldDashboardView() {
         </div>
       )}
 
-      {/* Scene status progress */}
-      {totalEvents > 0 && (
+      {/* Idea, outline, draft, revised, final — the state of the manuscript,
+          which a finished book does not have. */}
+      {!gate.active && totalEvents > 0 && (
         <div>
           <SectionHeading
             icon={FileEdit}
@@ -434,24 +462,30 @@ export default function WorldDashboardView() {
         </div>
       )}
 
-      {/* Writing progress — words, streak, burndown */}
-      {totalEvents > 0 && worldId && (
+      {/* Word counts, a writing streak and a burndown against a deadline — the
+          author's productivity, which is nobody else's business. */}
+      {!gate.active && totalEvents > 0 && worldId && (
         <div>
           <SectionHeading icon={PenLine}>Writing Progress</SectionHeading>
           <WritingProgress worldId={worldId} wordTarget={world?.wordTarget} targetDate={world?.targetDate} />
         </div>
       )}
 
-      {/* Cast balance — who's underused / absent lately */}
-      {characters.length > 0 && totalChapters > 0 && (
+      {/* Cast balance answers "who am I neglecting?" — a craft diagnostic about
+          the draft, and one that weighs a character's whole run in the book. */}
+      {!gate.active && characters.length > 0 && totalChapters > 0 && (
         <div>
           <SectionHeading icon={Users}>Cast Balance</SectionHeading>
           <CastBalance worldId={worldId ?? ''} characters={characters} chapters={chapters} events={allEvents} />
         </div>
       )}
 
-      {/* Plot threads — subplot cadence & dangling threads */}
-      {chapters.length > 0 && (
+      {/* Plot threads and motifs are pacing analysis — how often a subplot
+          surfaces across the book, and which threads dangle. That is a
+          question about the draft, not about the story, and the thread names
+          themselves ("Voldemort's Return") are among the sharpest spoilers in
+          the world. Both step aside for a reader. */}
+      {!gate.active && chapters.length > 0 && (
         <div>
           <SectionHeading icon={Spline}>Plot Threads</SectionHeading>
           <ThreadCadence worldId={worldId ?? ''} chapters={chapters} events={allEvents} />
@@ -459,7 +493,7 @@ export default function WorldDashboardView() {
       )}
 
       {/* Motifs — recurring theme/symbol cadence */}
-      {chapters.length > 0 && (
+      {!gate.active && chapters.length > 0 && (
         <div>
           <SectionHeading icon={Sparkle}>Motifs &amp; Themes</SectionHeading>
           <MotifCadence worldId={worldId ?? ''} chapters={chapters} events={allEvents} />

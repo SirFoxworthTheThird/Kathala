@@ -132,9 +132,15 @@ test.describe('Import / Export', () => {
     await fileInput.setInputFiles(tmpPath)
 
     // World and character should be restored (import navigates into the world).
-    await expect(page.getByRole('heading', { name: 'Export Test World' })).toBeVisible()
+    //
+    // Don't look for the dashboard heading. This world has a character but no
+    // timeline and no events, so its dashboard is the setup wizard — the
+    // heading is only on screen for the instant before the event count loads
+    // and the wizard latches, which is a race this test used to win by luck.
+    // Landing in the world and finding the character back is the actual claim.
+    await expect(page).toHaveURL(/#\/worlds\/[^/]+/, { timeout: 30_000 })
     await page.getByRole('link', { name: /characters/i }).click()
-    await expect(page.getByText('Aragorn')).toBeVisible()
+    await expect(page.getByText('Aragorn')).toBeVisible({ timeout: 15_000 })
 
     // Cleanup
     fs.unlinkSync(tmpPath)

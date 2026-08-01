@@ -1,14 +1,19 @@
+import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { useGate } from './ReadingGateContext'
+import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import type { Item } from '@/types'
 import { generateId } from '@/lib/id'
 
 export function useItems(worldId: string | null) {
-  return useLiveQuery(
+  const gate = useGate()
+  const all = useLiveQuery(
     () => (worldId ? db.items.where('worldId').equals(worldId).sortBy('name') : []),
     [worldId],
     []
   )
+  return useMemo(() => gate.filter(all), [gate, all])
 }
 
 export function useItem(id: string | null) {
@@ -21,18 +26,17 @@ export async function createItem(data: Pick<Item, 'worldId' | 'name' | 'descript
     imageId: null,
     ...data,
   }
-  await db.items.add(item)
-  return item
+  return journalCreate('item', db.items, item)
 }
 
 export async function updateItem(id: string, data: Partial<Omit<Item, 'id'>>) {
-  await db.items.update(id, data)
+  await journalUpdate('item', db.items, id, data)
 }
 
 export async function deleteItem(id: string) {
-  await db.transaction('rw', [db.items, db.itemPlacements, db.itemSnapshots], async () => {
+  await journalDelete('item', db.items, id, async () => {
     await db.items.delete(id)
     await db.itemPlacements.where('itemId').equals(id).delete()
     await db.itemSnapshots.where('itemId').equals(id).delete()
-  })
+  }, [db.itemPlacements, db.itemSnapshots])
 }

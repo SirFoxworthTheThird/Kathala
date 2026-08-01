@@ -1,4 +1,5 @@
 import { chromium } from '@playwright/test'
+import { resolveChromium } from './chromium-path'
 
 /**
  * Warms the Vite dev server before the suite runs. The first navigation
@@ -8,7 +9,7 @@ import { chromium } from '@playwright/test'
  */
 export default async function globalSetup() {
   const browser = await chromium.launch({
-    executablePath: process.env.PW_CHROMIUM_PATH || undefined,
+    executablePath: resolveChromium(),
   })
   const page = await browser.newPage()
   try {

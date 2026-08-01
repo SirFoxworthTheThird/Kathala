@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import { generateId } from '@/lib/id'
 import type { CharacterGoal } from '@/types'
 
@@ -35,7 +36,7 @@ export async function createCharacterGoal(
     createdAt: now,
     updatedAt: now,
   }
-  await db.characterGoals.add(goal)
+  await journalCreate('characterGoal', db.characterGoals, goal)
   return goal
 }
 
@@ -43,9 +44,9 @@ export async function updateCharacterGoal(
   id: string,
   data: Partial<Omit<CharacterGoal, 'id' | 'worldId' | 'characterId' | 'createdAt'>>,
 ) {
-  await db.characterGoals.update(id, { ...data, updatedAt: Date.now() })
+  await journalUpdate('characterGoal', db.characterGoals, id, { ...data, updatedAt: Date.now() })
 }
 
 export async function deleteCharacterGoal(id: string) {
-  await db.characterGoals.delete(id)
+  await journalDelete('characterGoal', db.characterGoals, id, async () => { await db.characterGoals.delete(id) })
 }

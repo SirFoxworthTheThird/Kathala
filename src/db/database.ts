@@ -40,6 +40,7 @@ import type {
   SceneRevision,
   CharacterGoal,
 } from '@/types'
+import type { Operation, Tombstone } from '@/types/operation'
 
 class PlotWeaveDB extends Dexie {
   worlds!: EntityTable<World, 'id'>
@@ -74,6 +75,8 @@ class PlotWeaveDB extends Dexie {
   knowledgeFacts!: EntityTable<KnowledgeFact, 'id'>
   knowledgeReveals!: EntityTable<KnowledgeReveal, 'id'>
   characterGoals!: EntityTable<CharacterGoal, 'id'>
+  operations!: EntityTable<Operation, 'id'>
+  tombstones!: EntityTable<Tombstone, 'id'>
   sceneTexts!: EntityTable<SceneText, 'id'>
   plotThreads!: EntityTable<PlotThread, 'id'>
   continuitySuppressions!: EntityTable<ContinuitySuppression, 'id'>
@@ -645,6 +648,20 @@ class PlotWeaveDB extends Dexie {
     // scoped to a stretch of the story. Purely additive — a new table only.
     this.version(51).stores({
       characterGoals: 'id, worldId, characterId, type, startEventId, endEventId',
+    })
+
+    // v52: the local-first operation journal (#115). Two new tables plus a
+    // `version` field backfilled onto journalled records. Additive — a world
+    // that never syncs simply accumulates operations that get pruned.
+    this.version(52).stores({
+      operations: 'id, worldId, entityType, entityId, seq, [worldId+seq], [entityType+entityId]',
+      tombstones: 'id, worldId, entityType, entityId, [entityType+entityId]',
+    }).upgrade(async (tx) => {
+      // Existing records predate versioning; they all start at 1 so the first
+      // journalled write has a coherent baseVersion to build on.
+      await tx.table('characters').toCollection().modify((c) => {
+        if (typeof c.version !== 'number') c.version = 1
+      })
     })
   }
 }

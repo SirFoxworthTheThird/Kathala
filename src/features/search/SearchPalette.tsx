@@ -5,6 +5,7 @@ import { Search, Users, Map, Package, BookOpen, Network, Scroll, X, Route, Hexag
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useAppStore } from '@/store'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { cn } from '@/lib/utils'
 
 type ResultType = 'character' | 'item' | 'location' | 'chapter' | 'event' | 'timeline' | 'relationship' | 'route' | 'region' | 'lore' | 'faction'
@@ -59,6 +60,15 @@ export function SearchPalette() {
 
   useFocusTrap(paletteRef, searchOpen)
 
+  /**
+   * Search reads Dexie directly rather than through the entity hooks, because
+   * it spans eleven tables at once. That makes it the one screen the reveal
+   * gate does not reach on its own — and a search box that answers "a" with the
+   * whole cast list would undo the gating everywhere else. Every result is
+   * therefore put back through the gate below.
+   */
+  const gate = useGate()
+
   // Load all searchable data for the world
   const characters    = useLiveQuery(() => worldId ? db.characters.where('worldId').equals(worldId).toArray() : [], [worldId], [])
   const items         = useLiveQuery(() => worldId ? db.items.where('worldId').equals(worldId).toArray() : [], [worldId], [])
@@ -71,34 +81,60 @@ export function SearchPalette() {
   const regions       = useLiveQuery(() => worldId ? db.mapRegions.where('worldId').equals(worldId).toArray() : [], [worldId], [])
   const lorePages     = useLiveQuery(() => worldId ? db.lorePages.where('worldId').equals(worldId).toArray() : [], [worldId], [])
   const factions      = useLiveQuery(() => worldId ? db.factions.where('worldId').equals(worldId).toArray() : [], [worldId], [])
+  const memberships   = useLiveQuery(() => worldId ? db.factionMemberships.where('worldId').equals(worldId).toArray() : [], [worldId], [])
+
+  // Which chapters the reader has reached, by their first event: a chapter's
+  // synopsis waits for it even though its title does not.
+  const chapterReached = useMemo(() => {
+    const reached = new Set<string>()
+    for (const ev of (events ?? [])) if (gate.hasReached(ev.id)) reached.add(ev.chapterId)
+    return reached
+  }, [events, gate])
+
+  // A faction is known to the reader once they have met somebody in it. One
+  // with no members recorded has no basis to be withheld on, so it stays.
+  const factionRevealed = useMemo(() => {
+    const withMembers = new Set<string>()
+    const revealed = new Set<string>()
+    for (const m of (memberships ?? [])) {
+      withMembers.add(m.factionId)
+      if (gate.isRevealed(m.characterId) && gate.hasReached(m.startEventId)) revealed.add(m.factionId)
+    }
+    return { has: (id: string) => !withMembers.has(id) || revealed.has(id) }
+  }, [memberships, gate])
 
   const results: SearchResult[] = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q || !worldId) return []
 
     const out: SearchResult[] = []
+    const layerRevealed = new Set(gate.filter(markers ?? []).map((m) => m.mapLayerId))
 
-    for (const c of (characters ?? [])) {
+    for (const c of gate.filter(characters ?? [])) {
       if (c.name?.toLowerCase().includes(q) || c.aliases?.some((a) => a.toLowerCase().includes(q))) {
         out.push({ id: c.id, type: 'character', label: c.name, sublabel: c.description ? c.description.slice(0, 60) : undefined, path: `/worlds/${worldId}/characters/${c.id}` })
       }
     }
-    for (const i of (items ?? [])) {
+    for (const i of gate.filter(items ?? [])) {
       if (i.name?.toLowerCase().includes(q)) {
         out.push({ id: i.id, type: 'item', label: i.name, sublabel: i.description ? i.description.slice(0, 60) : undefined, path: `/worlds/${worldId}/items/${i.id}` })
       }
     }
-    for (const m of (markers ?? [])) {
+    for (const m of gate.filter(markers ?? [])) {
       if (m.name?.toLowerCase().includes(q) || m.description?.toLowerCase().includes(q)) {
         out.push({ id: m.id, type: 'location', label: m.name, sublabel: m.description ? m.description.slice(0, 60) : undefined, path: `/worlds/${worldId}/maps` })
       }
     }
     for (const ch of (chapters ?? [])) {
-      if (ch.title?.toLowerCase().includes(q) || ch.synopsis?.toLowerCase().includes(q)) {
-        out.push({ id: ch.id, type: 'chapter', label: `Ch. ${ch.number} — ${ch.title}`, sublabel: ch.synopsis ? ch.synopsis.slice(0, 60) : undefined, path: `/worlds/${worldId}/timeline/${ch.id}` })
+      // A chapter's title is printed on the reader's own contents page, so it
+      // stays searchable. Its synopsis is an authored summary of what happens
+      // in it, so it neither matches nor shows until the reader gets there.
+      const synopsis = chapterReached.has(ch.id) ? ch.synopsis : ''
+      if (ch.title?.toLowerCase().includes(q) || synopsis?.toLowerCase().includes(q)) {
+        out.push({ id: ch.id, type: 'chapter', label: `Ch. ${ch.number} — ${ch.title}`, sublabel: synopsis ? synopsis.slice(0, 60) : undefined, path: `/worlds/${worldId}/timeline/${ch.id}` })
       }
     }
-    for (const ev of (events ?? [])) {
+    for (const ev of (events ?? []).filter((e) => gate.hasReached(e.id))) {
       if (ev.title?.toLowerCase().includes(q) || ev.description?.toLowerCase().includes(q)) {
         out.push({ id: ev.id, type: 'event', label: ev.title, sublabel: ev.description ? ev.description.slice(0, 60) : undefined, path: `/worlds/${worldId}/timeline/${ev.chapterId}` })
       }
@@ -109,6 +145,9 @@ export function SearchPalette() {
       }
     }
     for (const r of (relationships ?? [])) {
+      // A relationship names both of its characters, and its own label often
+      // gives away what happens between them.
+      if (!gate.linksRevealed([r.characterAId, r.characterBId]) || !gate.hasReached(r.startEventId)) continue
       if (r.label?.toLowerCase().includes(q) || r.description?.toLowerCase().includes(q)) {
         const charA = (characters ?? []).find((c) => c.id === r.characterAId)
         const charB = (characters ?? []).find((c) => c.id === r.characterBId)
@@ -116,29 +155,31 @@ export function SearchPalette() {
         out.push({ id: r.id, type: 'relationship', label: r.label, sublabel: charNames, path: `/worlds/${worldId}/relationships` })
       }
     }
-    for (const r of (routes ?? [])) {
+    for (const r of (routes ?? []).filter((r) => layerRevealed.has(r.mapLayerId))) {
       if (r.name?.toLowerCase().includes(q) || r.notes?.toLowerCase().includes(q)) {
         out.push({ id: r.id, type: 'route', label: r.name, sublabel: r.routeType.replace('_', ' '), path: `/worlds/${worldId}/maps` })
       }
     }
-    for (const r of (regions ?? [])) {
+    for (const r of (regions ?? []).filter((r) => layerRevealed.has(r.mapLayerId))) {
       if (r.name?.toLowerCase().includes(q) || r.notes?.toLowerCase().includes(q)) {
         out.push({ id: r.id, type: 'region', label: r.name, sublabel: r.notes ? r.notes.slice(0, 60) : undefined, path: `/worlds/${worldId}/maps` })
       }
     }
-    for (const p of (lorePages ?? [])) {
+    for (const p of (lorePages ?? []).filter(
+      (p) => gate.hasReached(p.visibleFromEventId) && gate.linksRevealed(p.linkedEntityIds),
+    )) {
       if (p.title?.toLowerCase().includes(q) || p.body?.toLowerCase().includes(q) || p.tags?.some((t) => t.toLowerCase().includes(q))) {
         out.push({ id: p.id, type: 'lore', label: p.title, sublabel: p.body ? p.body.slice(0, 60).replace(/[#*`_>-]/g, '').trim() : undefined, path: `/worlds/${worldId}/lore/${p.id}` })
       }
     }
-    for (const f of (factions ?? [])) {
+    for (const f of (factions ?? []).filter((f) => factionRevealed.has(f.id))) {
       if (f.name?.toLowerCase().includes(q) || f.description?.toLowerCase().includes(q)) {
         out.push({ id: f.id, type: 'faction', label: f.name, sublabel: f.description ? f.description.slice(0, 60) : undefined, path: `/worlds/${worldId}/factions` })
       }
     }
 
     return out
-  }, [query, worldId, characters, items, markers, chapters, events, timelines, relationships, routes, regions, lorePages, factions])
+  }, [query, worldId, gate, chapterReached, factionRevealed, characters, items, markers, chapters, events, timelines, relationships, routes, regions, lorePages, factions])
 
   // Reset active index when results change
   useEffect(() => setActiveIdx(0), [results])
@@ -267,7 +308,9 @@ export function SearchPalette() {
                     >
                       <Icon className={cn('h-4 w-4 shrink-0', color)} aria-hidden="true" />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate font-medium">{highlight(result.label, query.trim())}</span>
+                        <span data-search-result-label className="block truncate font-medium">
+                          {highlight(result.label, query.trim())}
+                        </span>
                         {result.sublabel && (
                           <span className="block truncate text-xs text-[hsl(var(--muted-foreground))]">{result.sublabel}</span>
                         )}

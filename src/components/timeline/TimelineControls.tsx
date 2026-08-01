@@ -1,4 +1,5 @@
 import { type CSSProperties } from 'react'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { ChevronLeft, ChevronRight, Play, Pause, Square, GitCompareArrows, X } from 'lucide-react'
 import type { PlaybackSpeed } from '@/store'
 import { SPEED_LABEL } from '@/features/timeline/useTimelinePlayback'
@@ -25,6 +26,11 @@ export interface ControlsProps {
 }
 
 export function Controls({ isPlaying, speed, showStop, showDiff, showClear, color, onPlayPause, onStop, onSpeedChange, onDiffOpen, onClear, showPlay = true, playLabel = 'Play story on the map' }: ControlsProps) {
+  // Comparing two chapters exists to catch continuity drift in a draft, and it
+  // shows the later chapter's contents wholesale — the sharpest way left to
+  // read ahead by accident. Gating it here rather than at each of the four
+  // tracks that render these controls keeps a fifth one right by default.
+  const gate = useGate()
   const btn = (clr: string): CSSProperties => ({
     background: 'none', border: 'none', cursor: 'pointer', color: clr,
     padding: '0.2rem', display: 'flex', alignItems: 'center',
@@ -56,7 +62,7 @@ export function Controls({ isPlaying, speed, showStop, showDiff, showClear, colo
         {SPEED_LABEL[speed]}
       </button>
       )}
-      {showDiff && (
+      {showDiff && !gate.active && (
         <button onClick={onDiffOpen} title="Compare chapters" style={btn('var(--tl-text-muted)')}>
           <GitCompareArrows size={11} />
         </button>

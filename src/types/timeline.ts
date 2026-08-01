@@ -9,6 +9,8 @@ export interface Timeline {
    *  with the others in chronological merges and on the calendar. */
   dayOffset?: number
   createdAt: number
+  /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */
+  version?: number
 }
 
 export interface Chapter {
@@ -23,6 +25,8 @@ export interface Chapter {
   wordGoal: number | null
   createdAt: number
   updatedAt: number
+  /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */
+  version?: number
 }
 
 export type EventStatus = 'idea' | 'outline' | 'draft' | 'revised' | 'final'
@@ -62,4 +66,6 @@ export interface WorldEvent {
   isFlashback: boolean
   createdAt: number
   updatedAt: number
+  /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */
+  version?: number
 }

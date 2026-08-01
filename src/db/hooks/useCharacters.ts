@@ -1,19 +1,30 @@
+import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { useGate } from './ReadingGateContext'
 import type { Character } from '@/types'
 import { generateId } from '@/lib/id'
+import { withJournal } from './useOperations'
 
 export function useCharacters(worldId: string | null) {
-  return useLiveQuery(
+  // Gated here rather than in each view: a roster, a graph, an arc grid and a
+  // map all read this, and a screen added later would otherwise leak by
+  // default. The default has to be safe.
+  const gate = useGate()
+  const all = useLiveQuery(
     () => (worldId ? db.characters.where('worldId').equals(worldId).sortBy('name') : []),
     [worldId],
     []
   )
+  return useMemo(() => gate.filter(all), [gate, all])
 }
 
 export function useCharacter(id: string | null) {
   return useLiveQuery(() => (id ? db.characters.get(id) : undefined), [id])
 }
+
+/** Records predating v52 — and older `.pwk` imports — carry no version. */
+const versionOf = (c: Pick<Character, 'version'> | undefined) => c?.version ?? 1
 
 export async function createCharacter(data: Pick<Character, 'worldId' | 'name' | 'description'>): Promise<Character> {
   const now = Date.now()
@@ -28,36 +39,72 @@ export async function createCharacter(data: Pick<Character, 'worldId' | 'name' |
     isAlive: true,
     color: null,
     birthDate: null,
+    version: 1,
     createdAt: now,
     updatedAt: now,
   }
-  await db.characters.add(character)
-  return character
+  return withJournal([db.characters], {
+    worldId: character.worldId,
+    entityType: 'character',
+    entityId: character.id,
+    type: 'create',
+    payload: character as unknown as Record<string, unknown>,
+    apply: async () => {
+      await db.characters.add(character)
+      return character
+    },
+  })
 }
 
 export async function updateCharacter(id: string, data: Partial<Omit<Character, 'id' | 'createdAt'>>) {
-  await db.characters.update(id, { ...data, updatedAt: Date.now() })
+  const existing = await db.characters.get(id)
+  if (!existing) return
+  const base = versionOf(existing)
+  const patch = { ...data, updatedAt: Date.now(), version: base + 1 }
+  await withJournal([db.characters], {
+    worldId: existing.worldId,
+    entityType: 'character',
+    entityId: id,
+    type: 'update',
+    baseVersion: base,
+    payload: patch as unknown as Record<string, unknown>,
+    apply: () => db.characters.update(id, patch),
+  })
 }
 
 export async function deleteCharacter(id: string) {
-  await db.transaction('rw', [
-    db.characters, db.characterSnapshots, db.characterMovements,
-    db.relationships, db.relationshipSnapshots, db.factionMemberships,
-    db.characterGoals,
-  ], async () => {
-    await db.characters.delete(id)
-    await db.characterSnapshots.where('characterId').equals(id).delete()
-    await db.characterMovements.where('characterId').equals(id).delete()
-    await db.factionMemberships.where('characterId').equals(id).delete()
-    await db.characterGoals.where('characterId').equals(id).delete()
-    // Collect relationship ids involving this character, then delete snapshots too
-    const relIds = (await db.relationships
-      .filter((r) => r.characterAId === id || r.characterBId === id)
-      .toArray()
-    ).map((r) => r.id)
-    await db.relationships.bulkDelete(relIds)
-    for (const relId of relIds) {
-      await db.relationshipSnapshots.where('relationshipId').equals(relId).delete()
-    }
-  })
+  const existing = await db.characters.get(id)
+  if (!existing) return
+  await withJournal(
+    [
+      db.characters, db.characterSnapshots, db.characterMovements,
+      db.relationships, db.relationshipSnapshots, db.factionMemberships,
+      db.characterGoals,
+    ],
+    {
+      worldId: existing.worldId,
+      entityType: 'character',
+      entityId: id,
+      type: 'delete',
+      baseVersion: versionOf(existing),
+      // The whole record, so the operation can be inverted back into a create.
+      payload: existing as unknown as Record<string, unknown>,
+      apply: async () => {
+        await db.characters.delete(id)
+        await db.characterSnapshots.where('characterId').equals(id).delete()
+        await db.characterMovements.where('characterId').equals(id).delete()
+        await db.factionMemberships.where('characterId').equals(id).delete()
+        await db.characterGoals.where('characterId').equals(id).delete()
+        // Collect relationship ids involving this character, then delete snapshots too
+        const relIds = (await db.relationships
+          .filter((r) => r.characterAId === id || r.characterBId === id)
+          .toArray()
+        ).map((r) => r.id)
+        await db.relationships.bulkDelete(relIds)
+        for (const relId of relIds) {
+          await db.relationshipSnapshots.where('relationshipId').equals(relId).delete()
+        }
+      },
+    },
+  )
 }

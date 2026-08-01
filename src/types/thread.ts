@@ -10,4 +10,6 @@ export interface PlotThread {
   description: string
   createdAt: number
   updatedAt: number
+  /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */
+  version?: number
 }

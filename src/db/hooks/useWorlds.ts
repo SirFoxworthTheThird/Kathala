@@ -45,8 +45,11 @@ export async function deleteWorld(id: string) {
     db.factions, db.factionMemberships, db.factionRelationships,
     db.knowledgeFacts, db.knowledgeReveals, db.writingLogs, db.motifs, db.characterGoals,
     db.sceneTexts, db.plotThreads, db.continuitySuppressions, db.sceneRevisions,
+    db.operations, db.tombstones,
   ], async () => {
     await db.worlds.delete(id)
+    await db.operations.where('worldId').equals(id).delete()
+    await db.tombstones.where('worldId').equals(id).delete()
     await db.mapLayers.where('worldId').equals(id).delete()
     await db.locationMarkers.where('worldId').equals(id).delete()
     await db.characters.where('worldId').equals(id).delete()

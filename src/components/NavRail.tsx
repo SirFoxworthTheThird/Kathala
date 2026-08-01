@@ -4,6 +4,7 @@ import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { navItems, type NavItem } from './navItems'
+import { useReadingMode } from '@/db/hooks/useReading'
 
 function RailLink({ item, worldId, expanded, dim }: {
   item: NavItem
@@ -51,12 +52,14 @@ export function NavRail() {
   const navPinned = useAppStore((s) => s.navPinned)
   const setNavPinned = useAppStore((s) => s.setNavPinned)
   const [hovered, setHovered] = useState(false)
+  const readingMode = useReadingMode(worldId ?? null)
 
   if (!worldId) return null
   const expanded = navPinned || hovered
 
-  const core = navItems.filter((n) => n.tier === 'core')
-  const extended = navItems.filter((n) => n.tier === 'extended')
+  const visible = navItems.filter((n) => !(readingMode && n.writingOnly))
+  const core = visible.filter((n) => n.tier === 'core')
+  const extended = visible.filter((n) => n.tier === 'extended')
 
   return (
     <nav

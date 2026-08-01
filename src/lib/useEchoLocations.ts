@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 
 export interface EchoLocation {
   counterpartTimelineName: string
@@ -13,7 +14,12 @@ export interface EchoLocation {
  * relationship involving `activeTimelineId`.
  *
  * Returns an empty map when no `historical_echo` relationship exists.
- * Echo rings are always-on — they do not change with the active event.
+ *
+ * Echo rings are always-on for a writer: they do not change with the active
+ * event, which is the point — you want to see the parallel whole. For a reader
+ * that is exactly backwards, since each ring carries the title of an event in
+ * the other timeline, so while reading they are cut at the cursor like
+ * everything else.
  */
 export function useEchoLocations(
   activeTimelineId: string | null,
@@ -70,10 +76,13 @@ export function useEchoLocations(
     return { name: counterpartTimeline.name, pairs }
   }, [activeTimelineId, worldId])
 
+  const gate = useGate()
+
   return useMemo(() => {
     if (!raw) return new Map()
     const map = new Map<string, EchoLocation>()
     for (const [markerId, ev] of raw.pairs) {
+      if (!gate.hasReached(ev.id) || !gate.isRevealed(markerId)) continue
       const existing = map.get(markerId)
       if (existing) {
         existing.events.push(ev)
@@ -82,5 +91,5 @@ export function useEchoLocations(
       }
     }
     return map
-  }, [raw])
+  }, [raw, gate])
 }

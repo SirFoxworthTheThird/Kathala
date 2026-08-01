@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import { generateId } from '@/lib/id'
 import type { Faction, FactionMembership, FactionRelationship } from '@/types'
 
@@ -23,21 +24,21 @@ export function useFaction(factionId: string | null) {
 export async function createFaction(data: Omit<Faction, 'id' | 'createdAt' | 'updatedAt'>): Promise<Faction> {
   const now = Date.now()
   const faction: Faction = { ...data, id: generateId(), createdAt: now, updatedAt: now }
-  await db.factions.add(faction)
+  await journalCreate('faction', db.factions, faction)
   return faction
 }
 
 export async function updateFaction(id: string, data: Partial<Omit<Faction, 'id' | 'createdAt'>>) {
-  await db.factions.update(id, { ...data, updatedAt: Date.now() })
+  await journalUpdate('faction', db.factions, id, { ...data, updatedAt: Date.now() })
 }
 
 export async function deleteFaction(id: string) {
-  await db.transaction('rw', [db.factions, db.factionMemberships, db.factionRelationships], async () => {
+  await journalDelete('faction', db.factions, id, async () => {
     await db.factionMemberships.where('factionId').equals(id).delete()
     await db.factionRelationships.where('factionAId').equals(id).delete()
     await db.factionRelationships.where('factionBId').equals(id).delete()
     await db.factions.delete(id)
-  })
+  }, [db.factionMemberships, db.factionRelationships])
 }
 
 // ── Faction Memberships ───────────────────────────────────────────────────────
@@ -71,16 +72,18 @@ export async function createFactionMembership(
 ): Promise<FactionMembership> {
   const now = Date.now()
   const membership: FactionMembership = { ...data, id: generateId(), createdAt: now, updatedAt: now }
-  await db.factionMemberships.add(membership)
+  await journalCreate('factionMembership', db.factionMemberships, membership)
   return membership
 }
 
 export async function updateFactionMembership(id: string, data: Partial<Omit<FactionMembership, 'id' | 'createdAt'>>) {
-  await db.factionMemberships.update(id, { ...data, updatedAt: Date.now() })
+  await journalUpdate('factionMembership', db.factionMemberships, id, { ...data, updatedAt: Date.now() })
 }
 
 export async function deleteFactionMembership(id: string) {
-  await db.factionMemberships.delete(id)
+  await journalDelete('factionMembership', db.factionMemberships, id, async () => {
+    await db.factionMemberships.delete(id)
+  })
 }
 
 // ── Faction Relationships ─────────────────────────────────────────────────────
@@ -98,16 +101,18 @@ export async function createFactionRelationship(
 ): Promise<FactionRelationship> {
   const now = Date.now()
   const rel: FactionRelationship = { ...data, id: generateId(), createdAt: now, updatedAt: now }
-  await db.factionRelationships.add(rel)
+  await journalCreate('factionRelationship', db.factionRelationships, rel)
   return rel
 }
 
 export async function updateFactionRelationship(id: string, data: Partial<Omit<FactionRelationship, 'id' | 'createdAt'>>) {
-  await db.factionRelationships.update(id, { ...data, updatedAt: Date.now() })
+  await journalUpdate('factionRelationship', db.factionRelationships, id, { ...data, updatedAt: Date.now() })
 }
 
 export async function deleteFactionRelationship(id: string) {
-  await db.factionRelationships.delete(id)
+  await journalDelete('factionRelationship', db.factionRelationships, id, async () => {
+    await db.factionRelationships.delete(id)
+  })
 }
 
 // ── Active membership helper ──────────────────────────────────────────────────

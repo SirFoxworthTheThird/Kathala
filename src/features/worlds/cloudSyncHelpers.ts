@@ -16,7 +16,8 @@ export async function importWorldData(json: string): Promise<string> {
   return importWorldFromJson(json)
 }
 
-export type { MergePreview, WorldExportFile } from '@/lib/exportImport'
+export type { MergePreview, PreviewConflict, WorldExportFile } from '@/lib/exportImport'
+export type { ConflictPreference } from '@/lib/mergeFields'
 
 /** Parse a .pwk JSON string and diff it against the local DB without writing anything. */
 export async function previewWorldMerge(json: string) {
@@ -28,7 +29,8 @@ export async function previewWorldMerge(json: string) {
 export async function applyWorldImport(
   parsed: import('@/lib/exportImport').WorldExportFile,
   mode: 'replace' | 'merge',
+  prefer: import('@/lib/mergeFields').ConflictPreference = 'newer',
 ): Promise<string> {
   const { applyWorldImport: fn } = await import('@/lib/exportImport')
-  return fn(parsed, mode)
+  return fn(parsed, mode, prefer)
 }

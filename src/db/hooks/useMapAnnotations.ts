@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import { generateId } from '@/lib/id'
 import type { MapAnnotation } from '@/types'
 
@@ -29,14 +30,16 @@ export async function createMapAnnotation(data: {
     createdAt: now,
     updatedAt: now,
   }
-  await db.mapAnnotations.add(annotation)
+  await journalCreate('mapAnnotation', db.mapAnnotations, annotation)
   return annotation
 }
 
 export async function updateMapAnnotation(id: string, changes: Partial<Omit<MapAnnotation, 'id' | 'createdAt'>>) {
-  await db.mapAnnotations.update(id, { ...changes, updatedAt: Date.now() })
+  await journalUpdate('mapAnnotation', db.mapAnnotations, id, { ...changes, updatedAt: Date.now() })
 }
 
 export async function deleteMapAnnotation(id: string) {
-  await db.mapAnnotations.delete(id)
+  await journalDelete('mapAnnotation', db.mapAnnotations, id, async () => {
+    await db.mapAnnotations.delete(id)
+  })
 }

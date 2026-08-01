@@ -1,10 +1,12 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import type { CharacterSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
 import { useWorldEvents, useWorldChapters } from './useTimeline'
+import { useGate } from './ReadingGateContext'
 import { resolveSnapshot, selectBestSnapshots as selectBestSnapshotsGeneric } from '@/lib/snapshotUtils'
 import type { EventStub, ChapterStub } from '@/lib/snapshotUtils'
 
@@ -22,7 +24,8 @@ export function useSnapshot(characterId: string | null, eventId: string | null) 
 }
 
 export function useCharacterSnapshots(characterId: string | null) {
-  return useLiveQuery(
+  const gate = useGate()
+  const all = useLiveQuery(
     () =>
       characterId
         ? db.characterSnapshots.where('characterId').equals(characterId).toArray()
@@ -30,6 +33,10 @@ export function useCharacterSnapshots(characterId: string | null) {
     [characterId],
     []
   )
+  // A character's snapshot list is their whole future — where they end up, what
+  // they carry, whether they are still alive. Cut it at the cursor: resolving
+  // the *current* state only ever looks backwards, so nothing else loses out.
+  return useMemo(() => all.filter((s) => gate.hasReached(s.eventId)), [all, gate])
 }
 
 export function useEventSnapshots(eventId: string | null) {
@@ -61,7 +68,8 @@ export function useChapterEventSnapshots(eventIds: string[]) {
 }
 
 export function useWorldSnapshots(worldId: string | null) {
-  return useLiveQuery(
+  const gate = useGate()
+  const all = useLiveQuery(
     () =>
       worldId
         ? db.characterSnapshots.where('worldId').equals(worldId).toArray()
@@ -69,6 +77,7 @@ export function useWorldSnapshots(worldId: string | null) {
     [worldId],
     []
   )
+  return useMemo(() => all.filter((s) => gate.hasReached(s.eventId)), [all, gate])
 }
 
 /** Pure selection logic — exported for testing.
@@ -170,9 +179,8 @@ export async function upsertSnapshot(
     .first()
 
   if (existing) {
-    const updated = { ...existing, ...data, sortKey, updatedAt: now }
-    await db.characterSnapshots.put(updated)
-    return updated
+    await journalUpdate('characterSnapshot', db.characterSnapshots, existing.id, { ...data, sortKey, updatedAt: now })
+    return (await db.characterSnapshots.get(existing.id))!
   }
 
   // No record for this event — check last-known to avoid duplicating unchanged state
@@ -194,10 +202,11 @@ export async function upsertSnapshot(
     createdAt: now,
     updatedAt: now,
   }
-  await db.characterSnapshots.add(snapshot)
-  return snapshot
+  return journalCreate('characterSnapshot', db.characterSnapshots, snapshot)
 }
 
 export async function deleteSnapshot(id: string) {
-  await db.characterSnapshots.delete(id)
+  await journalDelete('characterSnapshot', db.characterSnapshots, id, async () => {
+    await db.characterSnapshots.delete(id)
+  })
 }

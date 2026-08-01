@@ -2,11 +2,13 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus, Users, Network, StickyNote, ChevronDown, ChevronRight, Scroll } from 'lucide-react'
 import { useChapter, useEvents, useWorldEvents, useWorldChapters, useTimelines, updateChapter, updateEvent } from '@/db/hooks/useTimeline'
+import { journalGroup } from '@/db/hooks/useOperations'
 import { useChapterEventSnapshots } from '@/db/hooks/useSnapshots'
 import { computeInWorldDays } from '@/lib/inWorldTime'
 import { useEventRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { Button } from '@/components/ui/button'
 import { EventCard } from './EventCard'
 import { SnapshotCard } from './SnapshotCard'
@@ -62,6 +64,7 @@ export default function ChapterDetailView() {
   const inWorldDays = computeInWorldDays(worldEvents, worldChapters, worldTimelines)
   const characters = useCharacters(worldId ?? null)
   const relationships = useRelationships(worldId ?? null)
+  const gate = useGate()
   const [addEventOpen, setAddEventOpen] = useState(false)
   const [notes, setNotes] = useState('')
 
@@ -79,10 +82,12 @@ export default function ChapterDetailView() {
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1
     const a = sortedEvents[idx]
     const b = sortedEvents[swapIdx]
-    await Promise.all([
+    // Two records, one act: undo has to swap them back together, or the
+    // ordering is left half-applied.
+    await journalGroup(() => Promise.all([
       updateEvent(a.id, { sortOrder: b.sortOrder }),
       updateEvent(b.id, { sortOrder: a.sortOrder }),
-    ])
+    ]))
   }
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -94,7 +99,8 @@ export default function ChapterDetailView() {
     setNotes(value)
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
-      if (chapterId) updateChapter(chapterId, { notes: value })
+      // One writing burst is one undo step, not one per typing pause.
+      if (chapterId) updateChapter(chapterId, { notes: value }, { coalesce: true })
     }, 600)
   }
 
@@ -131,9 +137,11 @@ export default function ChapterDetailView() {
         <div className="flex flex-col border-b border-[hsl(var(--border))] lg:flex-1 lg:border-b-0 lg:border-r">
           <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-2">
             <span className="text-sm font-medium">Events ({events.length})</span>
-            <Button size="sm" onClick={() => setAddEventOpen(true)}>
-              <Plus className="h-4 w-4" /> Add Event
-            </Button>
+            {!gate.active && (
+              <Button size="sm" onClick={() => setAddEventOpen(true)}>
+                <Plus className="h-4 w-4" /> Add Event
+              </Button>
+            )}
           </div>
           <div className="flex flex-col gap-3 p-4 lg:flex-1 lg:overflow-auto">
             {events.length === 0 ? (

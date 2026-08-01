@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settleNav } from './helpers/nav'
 
 // Covers the chapter-diff modal: opening it from the timeline bar (only shown
 // once an event is active), and comparing the active chapter against another.
@@ -35,6 +36,7 @@ test.describe('Chapter diff', () => {
 
     // Activate the event from the bar — this reveals the "Compare chapters" button.
     await page.getByRole('link', { name: /timeline/i }).click()
+    await settleNav(page)
     await page.getByTitle('Scene One', { exact: true }).click()
 
     // Open the diff modal.

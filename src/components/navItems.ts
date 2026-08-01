@@ -11,6 +11,13 @@ export interface NavItem {
   icon: typeof LayoutDashboard
   end: boolean
   tier: NavTier
+  /**
+   * Destinations that belong to writing rather than reading, hidden when a
+   * world is in reading mode. The Manuscript is the pointed one — a library
+   * world carries no prose, and for a reader following a published book it
+   * would be both empty and beside the point.
+   */
+  writingOnly?: boolean
 }
 
 /** The world-scoped navigation destinations, shared by the desktop rail and the
@@ -18,10 +25,10 @@ export interface NavItem {
 export const navItems: NavItem[] = [
   { to: '',              label: 'Dashboard',  icon: LayoutDashboard, end: true,  tier: 'core' },
   { to: 'timeline',      label: 'Timeline',   icon: BookOpen,        end: false, tier: 'core' },
-  { to: 'corkboard',     label: 'Corkboard',  icon: LayoutGrid,      end: false, tier: 'extended' },
+  { to: 'corkboard',     label: 'Corkboard',  icon: LayoutGrid,      end: false, tier: 'extended', writingOnly: true },
   { to: 'calendar',      label: 'Calendar',   icon: CalendarDays,    end: false, tier: 'extended' },
-  { to: 'structure',     label: 'Structure',  icon: ListChecks,      end: false, tier: 'extended' },
-  { to: 'manuscript',    label: 'Manuscript', icon: FileText,        end: false, tier: 'core' },
+  { to: 'structure',     label: 'Structure',  icon: ListChecks,      end: false, tier: 'extended', writingOnly: true },
+  { to: 'manuscript',    label: 'Manuscript', icon: FileText,        end: false, tier: 'core', writingOnly: true },
   { to: 'characters',    label: 'Characters', icon: Users,           end: false, tier: 'core' },
   { to: 'maps',          label: 'Maps',       icon: Map,             end: false, tier: 'core' },
   { to: 'items',         label: 'Items',      icon: Package,         end: false, tier: 'extended' },

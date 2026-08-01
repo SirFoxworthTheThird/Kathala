@@ -7,6 +7,7 @@ import {
   createLorePage, deleteLorePage,
 } from '@/db/hooks/useLore'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { useAppStore } from '@/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -151,6 +152,7 @@ export default function LoreView() {
   const categories = useLoreCategories(worldId ?? null)
   const allPages = useLorePages(worldId ?? null)
   const { activeEventId } = useAppStore()
+  const gate = useGate()
 
   // For timeline filter
   const worldEvents = useWorldEvents(worldId ?? null)
@@ -269,7 +271,7 @@ export default function LoreView() {
                       onClick={() => pickCategory(cat.id)}
                     />
                   )}
-                  {editingCategoryId !== cat.id && (
+                  {editingCategoryId !== cat.id && !gate.active && (
                     <div className="flex shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] p-0.5"
@@ -291,18 +293,20 @@ export default function LoreView() {
           </div>
         )}
 
-        <div className="p-3 mt-auto border-t border-[hsl(var(--border))]">
-          {addingCategory ? (
-            <AddCategoryForm worldId={worldId ?? ''} onDone={() => setAddingCategory(false)} />
-          ) : (
-            <button
-              onClick={() => setAddingCategory(true)}
-              className="flex w-full items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
-            >
-              <Plus className="h-3 w-3" /> New category
-            </button>
-          )}
-        </div>
+        {!gate.active && (
+          <div className="p-3 mt-auto border-t border-[hsl(var(--border))]">
+            {addingCategory ? (
+              <AddCategoryForm worldId={worldId ?? ''} onDone={() => setAddingCategory(false)} />
+            ) : (
+              <button
+                onClick={() => setAddingCategory(true)}
+                className="flex w-full items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+              >
+                <Plus className="h-3 w-3" /> New category
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Main area */}

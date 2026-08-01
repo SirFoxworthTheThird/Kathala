@@ -9,61 +9,176 @@
 </p>
 
 <p align="center">
-  Track where every character is, what they carry, who they know, and what's true about your world — at any point in your story.
+  Track where every character is, what they carry, who they know, and what is true about your world at any moment in the story.
 </p>
 
 ---
 
-## The problem
+## Why PlotWeave?
 
-In a long story, continuity is a memory tax. Where was she when the letter arrived? Who still has the dagger in Chapter 19? Were these two enemies yet? Most tools make you answer those questions by re-reading your own manuscript.
+Continuity becomes a memory tax as a story grows. Where was she when the letter
+arrived? Who had the dagger during the ambush? Had these two characters become
+enemies yet? Most tools make you answer those questions by searching or
+re-reading your manuscript.
 
-PlotWeave answers them for you. Everything is recorded against a **chapter cursor** — a single control that sets "when" you're looking. Move the cursor and the whole workspace snaps to that moment: characters jump to where they stood, inventories change hands, relationships shift, the map redraws. Your world becomes something you can scrub through, not just re-read.
+PlotWeave records story state against exact **events**. Select an event with the
+time cursor and the entire workspace resolves to that moment: characters move
+to their last-known locations, inventories change hands, relationships evolve,
+knowledge is revealed, and maps show the relevant world state.
 
-It's a companion to your manuscript, not a replacement — built to sit alongside Word, Scrivener, or a stack of notebooks.
+It is both a story bible and a companion to your manuscript—not a replacement
+for Word, Scrivener, or your preferred writing environment.
+
+## Local-first and standalone
+
+PlotWeave works without an account or hosted backend. Worlds are stored locally
+in IndexedDB and remain usable offline in the browser or desktop app.
+
+- Export a complete world as a portable `.pwk` backup.
+- Optionally split image data into a companion `.pwb` file.
+- Bind a world to a local folder for automatic `.pwk` saves. That folder can be
+  managed by services such as OneDrive, Dropbox, or Google Drive.
+- Import both `.pwk` and `.pwb` together when restoring a split backup.
+
+World data stays on your device unless you explicitly export it, save it to a
+selected folder, link an external image, or copy content into another service.
+AI-assisted workflows use copy-and-paste prompts; PlotWeave does not send your
+manuscript to an AI provider itself.
 
 ---
 
 ## Screenshots
 
+### Dashboard and planning
+
+![World dashboard with story analytics](docs/images/03-dashboard.png)
+
+*See writing progress, story statistics, cast balance, plot threads, motifs,
+continuity warnings, and timeline relationships at a glance.*
+
+### Timeline and event cursor
+
+![Timeline with chapters and events](docs/images/04-timeline.png)
+
+*Organize chapters and events across one or more timelines. Selecting an event
+moves the global time cursor to that exact story moment.*
+
 ### Map Explorer
-![Map with character pins and chapter timeline](screenshots/maps_1.png)
-*Upload any image as a map. Characters appear as pins at their chapter-specific locations, with the chapter timeline running along the bottom.*
 
-![Sub-map with movement trails and character panel](screenshots/maps_2.png)
-*Drill into nested maps (world → region → city). Movement paths are drawn between waypoints; selecting a character opens a snapshot of their inventory, location, status, and relationships.*
+![Map Explorer with locations, regions, and character positions](docs/images/08-maps.png)
 
-### Characters
-![Character roster](screenshots/characters.png)
-*A roster of the full cast, each showing their location and status for the active chapter.*
+*Use any image as a map, nest sub-maps and floors, place locations and
+characters, draw routes and regions, measure distance, and replay movement.*
 
-![Character detail view](screenshots/character_details.png)
-*Per-character tabs: Overview, Current State (this chapter's snapshot), History (every chapter), Relationships, and linked Lore.*
+### Manuscript
 
-### Timeline
-![Timeline with chapters and events](screenshots/chapters.png)
-*Chapters in sequence, each with attached events. Set any chapter active to focus every other view on that point in time.*
+![Continuous manuscript view](docs/images/24-manuscript.png)
 
-### Relationship Graph
-![Relationship graph](screenshots/relationships.png)
-*A network of character relationships. Edge colour signals sentiment; relationships can be chapter-scoped so they appear only once they exist in the story.*
+*Write scene prose in context, read the assembled manuscript, track revisions,
+find and replace across scenes, and export the result.*
+
+### Characters and goals
+
+![Character detail with event-aware state](docs/images/07-character-detail.png)
+
+*Track identity, portraits, event-specific state, inventory, location,
+relationships, history, faction membership, lore, and goals.*
+
+### Character Arc
+
+![Character Arc with plot-thread lanes](docs/images/50-arc-thread-lane.png)
+
+*Compare character, faction, and plot-thread state across chapters or individual
+events, with overlays for status, POV, goals, and factions.*
 
 ---
 
 ## What you can do
 
-- **Scrub through your story.** One chapter cursor drives every view. Characters, inventories, locations, relationships, and lore are all recorded per chapter and read back relative to "now."
-- **Map your world.** Upload any image as a map, place locations, nest sub-maps (world → region → city), and watch characters move along the trails you draw.
-- **Track the cast.** Per-chapter snapshots of each character's location, inventory, status, and alive/dead state — with full history and portrait art.
-- **Model relationships.** A visual graph with sentiment and strength, scoped to the chapters where each relationship is true.
-- **Keep a knowledge base.** A wiki-style Lore section for magic systems, history, and factions, with "revealed at" pinning so you can see only what the reader knows so far.
-- **Catch your own mistakes.** A Continuity Checker scans the world for dead-then-alive characters, items in two places at once, and relationships that exist before they began.
-- **Replay it.** Press Play and the story animates chapter by chapter — characters travel their trails while each chapter's notes surface as on-screen prose.
-- **Find anything.** `Ctrl/⌘ + K` opens a full-text command palette across every entity in your world.
-- **Own your data.** Everything lives locally in your browser via IndexedDB — no account, no server, works offline. Export any world to a single portable `.pwk` file.
+- **Scrub through story time.** The event cursor drives every time-aware view.
+  Snapshots carry forward until something changes.
+- **Build multiple timelines.** Model parallel plots, flashbacks, frame stories,
+  and eras with independent clocks and explicit relationships.
+- **Plan chapters and scenes.** Use the Timeline, Corkboard, pacing curve,
+  tension ratings, event statuses, POV tracking, and Structure beat sheets.
+- **Write the manuscript.** Store prose per event, read it continuously, preserve
+  revision history, set writing goals, and export to common writing formats.
+- **Track the cast.** Record location, inventory, status, travel mode,
+  alive/dead state, relationships, faction membership, and goals.
+- **Map your world.** Add nested maps, city maps, building floors, locations,
+  labels, routes, regions, scale, measurement, and event-aware character paths.
+- **Model relationships.** Track sentiment and strength with per-event snapshots
+  and visualize the cast as a graph.
+- **Manage story objects.** Follow item ownership, condition, placement, and
+  movement across events and timelines.
+- **Develop the world.** Maintain Lore, Factions, Knowledge, Plot Threads, and
+  Motifs & Themes with event-based reveal and membership information.
+- **Use an in-world calendar.** Place events on custom calendars and calculate
+  character ages at the selected moment.
+- **Catch continuity mistakes.** Detect impossible states, stale snapshots,
+  premature knowledge, conflicting placements, and other inconsistencies.
+- **Replay the story.** Animate events and character movement across maps and
+  levels while notes appear in sequence.
+- **Undo and inspect changes.** Use `Ctrl/⌘+Z` and Recent Changes to understand
+  and reverse local edits.
+- **Search everything.** Press `Ctrl/⌘+K` to find characters, events, items,
+  locations, factions, lore, relationships, routes, regions, and more.
+- **Import or generate a starting point.** Turn Markdown/plain text into a
+  manuscript, generate structured data with copy/paste AI prompts, or start a
+  sequel that carries the relevant world state forward.
 
-### Themed to match your story
-PlotWeave ships nine visual profiles — Dark Slate, Fantasy, Sci-Fi, Cyberpunk, Horror, Western, Action, Noir, and Romance — that retheme the whole workspace, fonts and all. It's not decoration for its own sake: when the tool *looks* like the world you're writing, it's easier to stay inside it.
+### Themes that match the genre
+
+PlotWeave includes nine visual profiles—Dark Slate, Fantasy, Sci-Fi, Cyberpunk,
+Horror, Western, Action, Noir, and Romance. A world can override the global
+theme so each project keeps its own atmosphere.
+
+---
+
+## Try or download
+
+Use PlotWeave in the browser at
+**[plotweave.netlify.app](https://plotweave.netlify.app/)**
+or download the latest desktop build from the
+**[Releases page](https://github.com/SirFoxworthTheThird/PlotWeave/releases)**.
+
+Current release asset patterns:
+
+| Platform | File |
+|---|---|
+| Windows | `PlotWeave-*.Setup.exe` |
+| macOS (Apple silicon) | `PlotWeave-darwin-arm64-*.zip` |
+| Linux (AMD64 Debian/Ubuntu) | `plotweave_*_amd64.deb` |
+
+The browser and desktop versions use the same local-first data model. Browser
+storage belongs to that browser profile, so export regularly or configure a
+sync folder for additional backups.
+
+---
+
+## Quick start
+
+1. **Create a blank world**, import a manuscript, generate a world from a
+   synopsis, or import an existing `.pwk` backup.
+2. **Create a timeline, chapter, and event.** Events are the moments against
+   which PlotWeave records state.
+3. **Add characters and locations**, then save character state at the selected
+   event.
+4. **Add later events** and record only what changes. PlotWeave carries earlier
+   snapshots forward automatically.
+5. **Write scene prose**, connect plot threads, add world knowledge, and use the
+   Continuity Checker as the story grows.
+6. **Export regularly** as `.pwk`, or `.pwk` + `.pwb` when using split image
+   backups.
+
+---
+
+## Documentation
+
+The **[User Guide](docs/GUIDE.md)** is a screenshot-by-screenshot walkthrough of
+the time cursor, timelines, manuscript, maps, characters, planning tools,
+calendar, continuity system, folder sync, export, and every other major feature.
+Contextual help is also available inside the app from the `?` button.
 
 ---
 
@@ -71,78 +186,58 @@ PlotWeave ships nine visual profiles — Dark Slate, Fantasy, Sci-Fi, Cyberpunk,
 
 | Concern | Library |
 |---|---|
-| Desktop shell | Electron 41 + electron-forge |
+| Desktop shell | Electron 41 + Electron Forge |
 | Framework | React 19 + TypeScript |
 | Build tool | Vite 8 |
-| Database | Dexie.js (IndexedDB) |
-| UI state | Zustand (persisted) |
-| Routing | React Router v7 |
-| Maps | Leaflet + react-leaflet (`CRS.Simple`) |
-| Relationship graph | ReactFlow v11 |
-| Styling | Tailwind CSS v4 |
-| Icons | Lucide React |
-| Testing | Vitest + Playwright |
-
----
-
-## Download
-
-Grab the latest installer for your platform from the [Releases page](https://github.com/SirFoxworthTheThird/PlotWeave/releases):
-
-| Platform | File |
-|----------|------|
-| Windows  | `PlotWeave-*-Setup.exe` — run the installer |
-| macOS    | `PlotWeave-*.zip` — unzip and drag to Applications. On first launch, right-click → Open if macOS warns about the developer. |
-| Linux    | `plotweave_*.deb` — install with `sudo dpkg -i plotweave_*.deb` |
-
----
-
-## Quick start
-
-1. **Create a world** from the home screen.
-2. **Upload a map** and click to drop location markers.
-3. **Add characters**, then drag them onto the map to place them.
-4. **Create chapters** in the Timeline, and pick one from the bottom bar to set the time cursor.
-5. **Track state per chapter** — move characters, hand off items, record relationships — and scrub the cursor to watch it all change.
-6. **Export** your world to a `.pwk` file anytime for a full backup.
-
----
-
-## Documentation
-
-For a full, screenshot-by-screenshot walkthrough of every part of the app — the
-time cursor, timeline, characters, maps, Cast Balance, Plot Threads, relationships,
-lore, factions, knowledge, the Writer's Brief, the Continuity Checker, and more —
-see the **[User Guide](docs/GUIDE.md)**.
+| Local database | Dexie.js 4 (IndexedDB) |
+| UI state | Zustand 5 |
+| Routing | React Router 7 |
+| Maps | Leaflet + React Leaflet (`CRS.Simple`) |
+| Relationship graph | React Flow 11 |
+| Styling | Tailwind CSS 4 |
+| Components | Radix UI + Lucide React |
+| Testing | Vitest 4 + Playwright |
 
 ---
 
 ## Development
 
 ```bash
-npm install            # install dependencies
-npm run electron:dev   # run the desktop app (Vite + Electron)
-npm run dev            # browser-only dev server (localhost:5173)
+npm install
 
-npm run test           # run the test suite
-npm run build          # type-check + production build
-npm run electron:make  # package installers for the current platform
+npm run dev              # browser development server
+npm run electron:dev     # Vite + Electron development
+npm run preview          # preview the production web build
+
+npm run lint             # ESLint
+npm test                 # Vitest suite
+npm run test:watch       # Vitest watch mode
+npm run test:coverage    # Vitest coverage
+npm run test:e2e         # Playwright end-to-end suite
+npm run test:e2e:ui      # Playwright interactive runner
+
+npm run build            # type-check + production web build
+npm run electron:package # package the desktop app
+npm run electron:make    # create installers for the current platform
 ```
 
-`@` is aliased to `src/`. Data is stored locally in IndexedDB; nothing leaves your machine.
-
----
+`@` is aliased to `src/`.
 
 ## Project layout
 
-```
+```text
 src/
-  features/   # self-contained feature folders (maps, characters, timeline, lore, …)
-  db/         # Dexie schema + migrations and the useLiveQuery hooks that read it
-  store/      # Zustand store (active world/chapter/map, playback, UI state)
-  lib/        # .pwk export/import, HTML export, shared utilities
-  components/ # app shell, top bar, timeline bar, shared UI primitives
-  types/      # entity interfaces
+  components/  # application shell, navigation, time cursor, and shared UI
+  db/          # Dexie schema, migrations, hooks, and the operation journal
+  features/    # timeline, manuscript, maps, characters, history, lore, etc.
+  lib/         # import/export, sync, continuity, analysis, and shared utilities
+  store/       # persisted application and cursor state
+  types/       # domain entity and operation interfaces
+
+docs/          # user guide and maintained screenshots
+e2e/           # Playwright end-to-end tests
+electron/      # desktop entry point and packaging integration
+example/       # importable example worlds
 ```
 
 ---

@@ -4,6 +4,7 @@ import { useMapLayers, deleteMapLayer } from '@/db/hooks/useMapLayers'
 import { useAppStore, useMapLayerHistory } from '@/store'
 import type { MapLayer } from '@/types'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 
 interface TreeNodeProps {
   layer: MapLayer
@@ -18,6 +19,7 @@ function TreeNode({ layer, allLayers, activeLayerId, depth, onSelect, onDeleted 
   const children = allLayers.filter((l) => l.parentMapId === layer.id)
   const [open, setOpen] = useState(true)
   const [hovered, setHovered] = useState(false)
+  const gate = useGate()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const isActive = layer.id === activeLayerId
   const childCount = allLayers.filter((l) => l.parentMapId === layer.id).length
@@ -53,8 +55,8 @@ function TreeNode({ layer, allLayers, activeLayerId, depth, onSelect, onDeleted 
           <MapPin className="h-3 w-3 shrink-0 opacity-50" />
         )}
         {depth === 0 && <Map className="h-3 w-3 shrink-0" />}
-        <span className="text-xs truncate flex-1">{layer.name}</span>
-        {hovered && (
+        <span data-map-layer className="text-xs truncate flex-1">{layer.name}</span>
+        {hovered && !gate.active && (
           <button
             className="shrink-0 p-0.5 rounded hover:text-red-400 transition-colors"
             onClick={(e) => { e.stopPropagation(); setConfirmOpen(true) }}

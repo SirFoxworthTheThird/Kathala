@@ -19,6 +19,7 @@ import { ChapterAIDialog } from './ChapterAIDialog'
 import { PacingCurve } from './PacingCurve'
 import { TimelineRelationshipPanel } from './TimelineRelationshipPanel'
 import type { WorldEvent, Chapter, Timeline } from '@/types'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 
 // ── Chronological (in-world) order ──────────────────────────────────────────
 // Events flattened across chapters and ordered by their effective in-world day,
@@ -157,6 +158,7 @@ function CombinedList({ rows, activeEventId, onSelect }: {
 }
 
 export default function TimelineView() {
+  const gate = useGate()
   const { worldId } = useParams<{ worldId: string }>()
   const timelines = useTimelines(worldId ?? null)
   const [activeTimelineId, setActiveTimelineId] = useState<string | null>(null)
@@ -374,20 +376,24 @@ export default function TimelineView() {
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {timelines.length >= 2 && (
+          {!gate.active && timelines.length >= 2 && (
             <Button size="sm" variant="outline" onClick={() => setRelPanelOpen(true)}>
               <Link2 className="h-4 w-4" /> Link Timelines
             </Button>
           )}
-          <Button size="sm" variant="outline" onClick={handleCreateTimeline}>
-            <Layers className="h-4 w-4" /> New Timeline
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => setAiChapterOpen(true)} disabled={!currentTimelineId || isAll}>
-            <Sparkles className="h-4 w-4" /> Generate with AI
-          </Button>
-          <Button size="sm" onClick={() => setAddChapterOpen(true)} disabled={!currentTimelineId || isAll}>
-            <Plus className="h-4 w-4" /> Add Chapter
-          </Button>
+          {!gate.active && (
+            <>
+              <Button size="sm" variant="outline" onClick={handleCreateTimeline}>
+                <Layers className="h-4 w-4" /> New Timeline
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setAiChapterOpen(true)} disabled={!currentTimelineId || isAll}>
+                <Sparkles className="h-4 w-4" /> Generate with AI
+              </Button>
+              <Button size="sm" onClick={() => setAddChapterOpen(true)} disabled={!currentTimelineId || isAll}>
+                <Plus className="h-4 w-4" /> Add Chapter
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -481,7 +487,7 @@ export default function TimelineView() {
           </div>
         )}
       </div>
-      {currentTimelineId && !isAll && viewMode === 'narrative' && <BulkActionToolbar timelineId={currentTimelineId} />}
+      {!gate.active && currentTimelineId && !isAll && viewMode === 'narrative' && <BulkActionToolbar timelineId={currentTimelineId} />}
       </div>
 
       {worldId && currentTimelineId && !isAll && (

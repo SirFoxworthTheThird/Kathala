@@ -1,4 +1,9 @@
 import { db } from '@/db/database'
+import type { Table } from 'dexie'
+import { markJournalDiscontinuity } from '@/db/hooks/useOperations'
+import type { Tombstone } from '@/types/operation'
+import { applyTombstones, mergeTombstoneSets, pruneStaleTombstones } from '@/lib/mergeTombstones'
+import { mergeRecords, type ConflictPreference, type FieldConflict } from '@/lib/mergeFields'
 import type {
   CharacterGoal,
   World, MapLayer, LocationMarker, Character, Item,
@@ -86,6 +91,13 @@ export interface WorldExportFile {
   continuitySuppressions?: ContinuitySuppression[]
   writingLogs?: WritingLog[]
   sceneRevisions?: SceneRevision[]
+  /**
+   * Deletions, so a merge on another device removes what this one removed
+   * instead of treating the absence as "never existed" and resurrecting it.
+   * The operation journal itself stays out of the file — it is device-local
+   * history — but a tombstone is world state.
+   */
+  tombstones?: Tombstone[]
   relationshipPositions?: Record<string, { x: number; y: number }>
   /** @deprecated v6 and earlier stored only IDs via localStorage; superseded by continuitySuppressions */
   suppressedIssueIds?: string[]
@@ -162,6 +174,7 @@ interface CollectedWorldData {
   continuitySuppressions: ContinuitySuppression[]
   writingLogs: WritingLog[]
   sceneRevisions: SceneRevision[]
+  tombstones: Tombstone[]
 }
 
 export type { CollectedWorldData }
@@ -205,6 +218,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     continuitySuppressions,
     writingLogs,
     sceneRevisions,
+    tombstones,
   ] = await Promise.all([
     db.worlds.get(worldId),
     db.mapLayers.where('worldId').equals(worldId).toArray(),
@@ -243,6 +257,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     db.continuitySuppressions.where('worldId').equals(worldId).toArray(),
     db.writingLogs.where('worldId').equals(worldId).toArray(),
     db.sceneRevisions.where('worldId').equals(worldId).toArray(),
+    db.tombstones.where('worldId').equals(worldId).toArray(),
   ])
 
   if (!world) throw new Error('World not found')
@@ -285,6 +300,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     continuitySuppressions,
     writingLogs,
     sceneRevisions,
+    tombstones,
   }
 }
 
@@ -419,6 +435,7 @@ export async function exportWorld(
     continuitySuppressions: d.continuitySuppressions,
     writingLogs: d.writingLogs,
     sceneRevisions: d.sceneRevisions,
+    tombstones: d.tombstones,
     ...extras,
   }
   const filename = `${d.world.name.replace(/[^a-z0-9]/gi, '_')}.pwk`
@@ -495,6 +512,7 @@ export async function exportWorldSplit(
     continuitySuppressions: d.continuitySuppressions,
     writingLogs: d.writingLogs,
     sceneRevisions: d.sceneRevisions,
+    tombstones: d.tombstones,
     ...extras,
   }
   triggerDownload(JSON.stringify(dataFile), `${safeName}.pwk`)
@@ -562,6 +580,7 @@ export async function serializeWorldForSync(worldId: string): Promise<string> {
     continuitySuppressions: d.continuitySuppressions,
     writingLogs: d.writingLogs,
     sceneRevisions: d.sceneRevisions,
+    tombstones: d.tombstones,
     ...extras,
   }
   return JSON.stringify(exportData)
@@ -690,6 +709,10 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
     throw new Error('Invalid file: characterGoals is not an array')
   }
   if (!d.characterGoals) (d as Record<string, unknown>).characterGoals = []
+  if (d.tombstones !== undefined && !Array.isArray(d.tombstones)) {
+    throw new Error('Invalid file: tombstones is not an array')
+  }
+  if (!d.tombstones) (d as Record<string, unknown>).tombstones = []
   if (d.sceneTexts !== undefined && !Array.isArray(d.sceneTexts)) {
     throw new Error('Invalid file: sceneTexts is not an array')
   }
@@ -727,6 +750,11 @@ function normalizeImport(data: WorldExportFile): void {
     const c = char as unknown as Rec
     if (c.color === undefined) c.color = null
     if (c.birthDate === undefined) c.birthDate = null
+    // Journal versions (#115) start fresh on import: a `.pwk` is a snapshot of
+    // a world's current state, and the exporting device's history means nothing
+    // in the importing one. The operation journal itself is deliberately not
+    // part of the file for the same reason.
+    if (c.version === undefined) c.version = 1
   }
   // Backfill scale and level fields on map layers exported before they were added
   for (const layer of data.mapLayers) {
@@ -948,6 +976,7 @@ async function importWorldData(data: WorldExportFile, replaceExisting = true): P
     db.loreCategories, db.lorePages, db.factions, db.factionMemberships, db.factionRelationships,
     db.knowledgeFacts, db.knowledgeReveals, db.characterGoals, db.sceneTexts, db.plotThreads,
     db.motifs, db.continuitySuppressions, db.writingLogs, db.sceneRevisions,
+    db.tombstones,
   ], async () => {
     // A normal import and the explicit "Replace all" action must remove records
     // that are no longer present in the incoming file. Previously this path only
@@ -1032,6 +1061,10 @@ async function importWorldData(data: WorldExportFile, replaceExisting = true): P
     await db.motifs.bulkPut(data.motifs ?? [])
     await db.writingLogs.bulkPut(data.writingLogs ?? [])
     await db.sceneRevisions.bulkPut(data.sceneRevisions ?? [])
+    // Deletions travel with the world so the far side removes what this side
+    // removed. Written after markJournalDiscontinuity clears the journal (which
+    // is device-local history) — a tombstone is world state, not history.
+    await db.tombstones.bulkPut(data.tombstones ?? [])
     if (suppressionsToImport.length > 0) {
       await db.continuitySuppressions.bulkPut(suppressionsToImport)
     }
@@ -1047,6 +1080,10 @@ async function importWorldData(data: WorldExportFile, replaceExisting = true): P
     localStorage.removeItem(`wb-rel-pos-${data.world.id}`)
   }
 
+  // Import writes the whole world wholesale and reuses its ids, so any journal
+  // left under that id describes a different history. Reset it rather than
+  // leave a partial one — see markJournalDiscontinuity.
+  await markJournalDiscontinuity(data.world.id)
   return data.world.id
 }
 
@@ -1061,6 +1098,14 @@ export async function importWorld(file: File): Promise<string> {
 
 // ── Merge / collaboration helpers ─────────────────────────────────────────────
 
+/** Fields of one record that both copies changed, with what each side had. */
+export interface RecordConflict {
+  id: string
+  /** What to call the record on screen — its name or title. */
+  label: string
+  fields: FieldConflict[]
+}
+
 export interface MergePreview {
   exportedAt: number
   characters:  { added: number; updated: number }
@@ -1068,32 +1113,52 @@ export interface MergePreview {
   chapters:    { added: number; updated: number }
   locations:   { added: number; updated: number }
   items:       { added: number; updated: number }
+  /**
+   * Fields both copies changed, so the merge had to pick one. Surfaced so the
+   * choice can be shown and, if the user disagrees with it, reversed.
+   */
+  conflicts:   PreviewConflict[]
 }
 
-/** Merge two arrays by ID. Records only in `incoming` are added; records in
- *  both use whichever has the higher `updatedAt` (falling back to incoming). */
+export interface PreviewConflict extends RecordConflict {
+  /** Human-facing group name, for reading rather than for logic. */
+  entity: string
+}
+
+/**
+ * Merge two arrays by ID.
+ *
+ * Records only in `incoming` are added. Records in both are merged field by
+ * field (see `mergeRecords`) rather than one whole record replacing the other:
+ * taking the newer record entire meant that retitling a scene on one device
+ * silently discarded a cast change made on another, which is data loss that
+ * looked like a successful merge.
+ */
 function mergeTable<T extends { id: string }>(
   incoming: T[],
   local: T[],
-): { result: T[]; added: number; updated: number } {
+  prefer: ConflictPreference = 'newer',
+  label: (r: T) => string = () => '',
+): { result: T[]; added: number; updated: number; conflicts: RecordConflict[] } {
   const localById    = new Map(local.map((r) => [r.id, r]))
   const incomingById = new Map(incoming.map((r) => [r.id, r]))
   const result: T[]  = []
+  const conflicts: RecordConflict[] = []
   let added = 0, updated = 0
 
   for (const loc of local) {
     const inc = incomingById.get(loc.id)
     if (!inc) {
       result.push(loc) // local-only — keep
-    } else {
-      const locTs = (loc  as unknown as Record<string, unknown>).updatedAt as number | undefined
-      const incTs = (inc  as unknown as Record<string, unknown>).updatedAt as number | undefined
-      if (locTs !== undefined && incTs !== undefined && locTs >= incTs) {
-        result.push(loc) // local is same age or newer
-      } else {
-        result.push(inc) // incoming is newer, or no timestamp — trust incoming
-        updated++
-      }
+      continue
+    }
+    const merged = mergeRecords(loc, inc, prefer)
+    result.push(merged.record)
+    if (merged.conflicts.length > 0) {
+      updated++
+      conflicts.push({ id: loc.id, label: label(loc), fields: merged.conflicts })
+    } else if (JSON.stringify(merged.record) !== JSON.stringify(loc)) {
+      updated++
     }
   }
   for (const inc of incoming) {
@@ -1102,7 +1167,7 @@ function mergeTable<T extends { id: string }>(
       added++
     }
   }
-  return { result, added, updated }
+  return { result, added, updated, conflicts }
 }
 
 /**
@@ -1128,11 +1193,12 @@ export async function previewWorldMerge(
     db.items.where('worldId').equals(worldId).toArray(),
   ])
 
-  const chars = mergeTable(parsed.characters, localChars)
-  const evts  = mergeTable(parsed.events, localEvents)
-  const chaps = mergeTable(parsed.chapters, localChapters)
-  const locs  = mergeTable(parsed.locationMarkers, localLocations)
-  const itms  = mergeTable(parsed.items, localItems)
+  const named = <T extends { name?: string; title?: string }>(r: T) => r.name ?? r.title ?? ''
+  const chars = mergeTable(parsed.characters, localChars, 'newer', named)
+  const evts  = mergeTable(parsed.events, localEvents, 'newer', named)
+  const chaps = mergeTable(parsed.chapters, localChapters, 'newer', named)
+  const locs  = mergeTable(parsed.locationMarkers, localLocations, 'newer', named)
+  const itms  = mergeTable(parsed.items, localItems, 'newer', named)
 
   return {
     parsed,
@@ -1143,6 +1209,13 @@ export async function previewWorldMerge(
       chapters:   { added: chaps.added, updated: chaps.updated },
       locations:  { added: locs.added,  updated: locs.updated  },
       items:      { added: itms.added,  updated: itms.updated  },
+      conflicts: [
+        ...chars.conflicts.map((c) => ({ ...c, entity: 'Character' })),
+        ...evts.conflicts.map((c) => ({ ...c, entity: 'Event' })),
+        ...chaps.conflicts.map((c) => ({ ...c, entity: 'Chapter' })),
+        ...locs.conflicts.map((c) => ({ ...c, entity: 'Location' })),
+        ...itms.conflicts.map((c) => ({ ...c, entity: 'Item' })),
+      ],
     },
   }
 }
@@ -1156,6 +1229,7 @@ export async function previewWorldMerge(
 export async function applyWorldImport(
   parsed: WorldExportFile,
   mode: 'replace' | 'merge',
+  prefer: ConflictPreference = 'newer',
 ): Promise<string> {
   if (mode === 'replace') return importWorldData(parsed)
 
@@ -1173,7 +1247,7 @@ export async function applyWorldImport(
     localFactions, localFactionMemberships, localFactionRelationships,
     localKnowledgeFacts, localKnowledgeReveals, localCharacterGoals,
     localSceneTexts, localPlotThreads,
-    localMotifs, localWritingLogs, localSceneRevisions,
+    localMotifs, localWritingLogs, localSceneRevisions, localTombstones,
   ] = await Promise.all([
     db.characters.where('worldId').equals(worldId).toArray(),
     db.items.where('worldId').equals(worldId).toArray(),
@@ -1209,36 +1283,37 @@ export async function applyWorldImport(
     db.motifs.where('worldId').equals(worldId).toArray(),
     db.writingLogs.where('worldId').equals(worldId).toArray(),
     db.sceneRevisions.where('worldId').equals(worldId).toArray(),
+    db.tombstones.where('worldId').equals(worldId).toArray(),
   ])
 
   const merged = {
     world:                parsed.world, // world-level fields: use incoming (name, description)
-    mapLayers:            mergeTable(parsed.mapLayers, localLayers).result,
-    locationMarkers:      mergeTable(parsed.locationMarkers, localLocs).result,
-    characters:           mergeTable(parsed.characters, localChars).result,
-    items:                mergeTable(parsed.items, localItems).result,
-    characterSnapshots:   mergeTable(parsed.characterSnapshots, localCharSnaps).result,
-    characterMovements:   mergeTable(parsed.characterMovements, localMovements).result,
-    itemPlacements:       mergeTable(parsed.itemPlacements, localItemPlacements).result,
-    locationSnapshots:    mergeTable(parsed.locationSnapshots, localLocSnaps).result,
-    itemSnapshots:        mergeTable(parsed.itemSnapshots, localItemSnaps).result,
-    relationships:        mergeTable(parsed.relationships, localRels).result,
-    relationshipSnapshots:mergeTable(parsed.relationshipSnapshots, localRelSnaps).result,
-    timelines:            mergeTable(parsed.timelines, localTimelines).result,
-    chapters:             mergeTable(parsed.chapters, localChapters).result,
-    events:               mergeTable(parsed.events, localEvents).result,
-    travelModes:          mergeTable(parsed.travelModes, localTravelModes).result,
-    timelineRelationships:mergeTable(parsed.timelineRelationships, localTlRels).result,
-    crossTimelineArtifacts:mergeTable(parsed.crossTimelineArtifacts, localCta).result,
-    mapRoutes:            mergeTable(parsed.mapRoutes, localRoutes).result,
-    mapRegions:           mergeTable(parsed.mapRegions, localRegions).result,
-    mapRegionSnapshots:   mergeTable(parsed.mapRegionSnapshots, localRegSnaps).result,
-    mapAnnotations:       mergeTable(parsed.mapAnnotations, localAnnotations).result,
-    loreCategories:       mergeTable(parsed.loreCategories, localLoreCats).result,
-    lorePages:            mergeTable(parsed.lorePages, localLorePages).result,
-    factions:             mergeTable(parsed.factions, localFactions).result,
-    factionMemberships:   mergeTable(parsed.factionMemberships, localFactionMemberships).result,
-    factionRelationships: mergeTable(parsed.factionRelationships, localFactionRelationships).result,
+    mapLayers:            mergeTable(parsed.mapLayers, localLayers, prefer).result,
+    locationMarkers:      mergeTable(parsed.locationMarkers, localLocs, prefer).result,
+    characters:           mergeTable(parsed.characters, localChars, prefer).result,
+    items:                mergeTable(parsed.items, localItems, prefer).result,
+    characterSnapshots:   mergeTable(parsed.characterSnapshots, localCharSnaps, prefer).result,
+    characterMovements:   mergeTable(parsed.characterMovements, localMovements, prefer).result,
+    itemPlacements:       mergeTable(parsed.itemPlacements, localItemPlacements, prefer).result,
+    locationSnapshots:    mergeTable(parsed.locationSnapshots, localLocSnaps, prefer).result,
+    itemSnapshots:        mergeTable(parsed.itemSnapshots, localItemSnaps, prefer).result,
+    relationships:        mergeTable(parsed.relationships, localRels, prefer).result,
+    relationshipSnapshots:mergeTable(parsed.relationshipSnapshots, localRelSnaps, prefer).result,
+    timelines:            mergeTable(parsed.timelines, localTimelines, prefer).result,
+    chapters:             mergeTable(parsed.chapters, localChapters, prefer).result,
+    events:               mergeTable(parsed.events, localEvents, prefer).result,
+    travelModes:          mergeTable(parsed.travelModes, localTravelModes, prefer).result,
+    timelineRelationships:mergeTable(parsed.timelineRelationships, localTlRels, prefer).result,
+    crossTimelineArtifacts:mergeTable(parsed.crossTimelineArtifacts, localCta, prefer).result,
+    mapRoutes:            mergeTable(parsed.mapRoutes, localRoutes, prefer).result,
+    mapRegions:           mergeTable(parsed.mapRegions, localRegions, prefer).result,
+    mapRegionSnapshots:   mergeTable(parsed.mapRegionSnapshots, localRegSnaps, prefer).result,
+    mapAnnotations:       mergeTable(parsed.mapAnnotations, localAnnotations, prefer).result,
+    loreCategories:       mergeTable(parsed.loreCategories, localLoreCats, prefer).result,
+    lorePages:            mergeTable(parsed.lorePages, localLorePages, prefer).result,
+    factions:             mergeTable(parsed.factions, localFactions, prefer).result,
+    factionMemberships:   mergeTable(parsed.factionMemberships, localFactionMemberships, prefer).result,
+    factionRelationships: mergeTable(parsed.factionRelationships, localFactionRelationships, prefer).result,
     knowledgeFacts:       mergeTable(parsed.knowledgeFacts ?? [], localKnowledgeFacts).result,
     knowledgeReveals:     mergeTable(parsed.knowledgeReveals ?? [], localKnowledgeReveals).result,
     characterGoals:       mergeTable(parsed.characterGoals ?? [], localCharacterGoals).result,
@@ -1251,6 +1326,49 @@ export async function applyWorldImport(
     relationshipPositions: parsed.relationshipPositions,
     suppressedIssueIds:   parsed.suppressedIssueIds,
   }
+
+  // ── Deletions ──────────────────────────────────────────────────────────────
+  // mergeTable unions by id, so a record the *other* device deleted looks
+  // local-only here and would come straight back. Tombstones are what turn "not
+  // in the incoming file" into "deliberately removed", so they are applied
+  // after the union rather than left to inference.
+  const allTombstones = mergeTombstoneSets(localTombstones, parsed.tombstones ?? [])
+  const record = merged as unknown as Record<string, Array<{ id: string; updatedAt?: number }>>
+  const revived = new Set<string>()
+  const removedByTable = new Map<string, string[]>()
+  for (const table of Object.keys(record)) {
+    const rows = record[table]
+    if (!Array.isArray(rows)) continue
+    const out = applyTombstones(rows, allTombstones, table)
+    record[table] = out.kept
+    if (out.removed.length > 0) removedByTable.set(table, out.removed)
+    for (const id of out.revived) revived.add(id)
+  }
+
+  // Dropping a record from the merged set is not the same as deleting it here.
+  // A merge import writes with bulkPut and never deletes (replaceExisting is
+  // false, because the payload is already the union), so a record *this* device
+  // still holds and the other device deleted is simply left untouched — it
+  // survives, and the next push carries it back. Deletions that arrived by
+  // tombstone therefore have to be applied to the store explicitly.
+  //
+  // The other direction — deleted here, still present in the incoming file —
+  // needs none of this, since the record is not in the store to begin with.
+  // That asymmetry is why only one half of it was covered for so long.
+  for (const [table, ids] of removedByTable) {
+    const dexieTable = (db as unknown as Record<string, Table<unknown, string> | undefined>)[table]
+    if (dexieTable?.bulkDelete) await dexieTable.bulkDelete(ids)
+  }
+
+  // A record edited after its deletion was kept (see applyTombstones), so its
+  // headstone is stale — leaving it would delete the record on the next merge.
+  // Merge writes with bulkPut and never deletes, so stale rows have to go
+  // explicitly rather than by omission from the merged set.
+  const pruned = pruneStaleTombstones(allTombstones, revived)
+  const keptIds = new Set(pruned.map((t) => t.id))
+  const staleIds = allTombstones.filter((t) => !keptIds.has(t.id)).map((t) => t.id)
+  if (staleIds.length > 0) await db.tombstones.bulkDelete(staleIds)
+  ;(merged as unknown as Record<string, unknown>).tombstones = pruned
 
   return importWorldData(merged as WorldExportFile, false)
 }

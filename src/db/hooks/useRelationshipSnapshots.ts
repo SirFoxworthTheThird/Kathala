@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import type { RelationshipSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
@@ -99,9 +100,8 @@ export async function upsertRelationshipSnapshot(
     .first()
 
   if (existing) {
-    const updated = { ...existing, ...data, sortKey, updatedAt: now }
-    await db.relationshipSnapshots.put(updated)
-    return updated
+    await journalUpdate('relationshipSnapshot', db.relationshipSnapshots, existing.id, { ...data, sortKey, updatedAt: now })
+    return (await db.relationshipSnapshots.get(existing.id))!
   }
 
   // Dedup: skip write if state matches the last-known snapshot
@@ -123,12 +123,13 @@ export async function upsertRelationshipSnapshot(
     createdAt: now,
     updatedAt: now,
   }
-  await db.relationshipSnapshots.add(snapshot)
-  return snapshot
+  return journalCreate('relationshipSnapshot', db.relationshipSnapshots, snapshot)
 }
 
 export async function deleteRelationshipSnapshot(id: string) {
-  await db.relationshipSnapshots.delete(id)
+  await journalDelete('relationshipSnapshot', db.relationshipSnapshots, id, async () => {
+    await db.relationshipSnapshots.delete(id)
+  })
 }
 
 export async function deleteRelationshipSnapshotsForRelationship(relationshipId: string) {

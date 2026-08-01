@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settleNav } from './helpers/nav'
 
 test.describe('Timeline and chapters', () => {
   test.beforeEach(async ({ page }) => {
@@ -117,6 +118,7 @@ test.describe('Timeline and chapters', () => {
 
     // Navigate back to timeline — the bottom bar renders event markers with title= attributes
     await page.getByRole('link', { name: /timeline/i }).click()
+    await settleNav(page)
 
     // Click the 'First Event' marker in the timeline bar
     await page.getByTitle('First Event', { exact: true }).click()

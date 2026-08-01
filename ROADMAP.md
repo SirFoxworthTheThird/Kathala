@@ -554,6 +554,31 @@ What genuinely remains, ranked by value per effort:
 - [ ] **Cross-map/floor journeys** — travel-time estimates across map layers
   (currently skipped for lack of a shared metric).
 
+### Local-first collaboration (GitHub issues #115–#133)
+
+Planning moved to GitHub Issues/Projects. Two epics: **#124** local-first
+collaboration (phases #115–#123) and **#133** security (#125–#132).
+
+- [x] **#115 — operation journal (first slice)** — shipped: `Operation` and
+  `Tombstone` types, pure replay/invert logic, a stable device id, DB **v52**
+  with `operations` + `tombstones`, and a `withJournal` seam wiring characters
+  end-to-end. Record and operation are written in one transaction; nothing
+  touches the network. Unlocks the undo primitive (`invertOperation`) and makes
+  the store replayable rather than only current.
+  - Seam covers 19 entity groups, including the per-event snapshots. Bulk user
+    edits route through the journalled singles; bulk AI/import paths call
+    `markJournalDiscontinuity`, which resets the journal rather than leaving a
+    partial one behind.
+  - **Fractional/stable ordering positions belong to #118**, whose scope names
+    them explicitly ("preserve concurrent ordering changes through
+    stable/fractional positions"). #115 makes ordering changes *journalled and
+    deterministic on replay*, which is what the foundation owes; conflict-free
+    concurrent ordering is a sync concern and a 152-site change to `sortOrder`.
+- [ ] The rest of #124 is **not committed**. The valuable near-term increment is
+  durability and cross-device sync for one author, not multi-user editing —
+  `useAutoFolderSync` already covers much of it via a user-supplied folder,
+  which keeps the no-backend property intact.
+
 ### Structural gaps (out of scope today — recorded deliberately)
 
 These follow from the local-first design rather than being oversights; listed so
