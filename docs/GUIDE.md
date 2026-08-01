@@ -565,10 +565,11 @@ without losing your place.
 
 ![A portrait opened full size](images/54-image-lightbox.png)
 
-The same works for an item's image on its detail page, and for a world's cover
-on the dashboard and in [World settings](#world-settings--export). Pictures
-inside cards and lists are left alone — there, a click still takes you to
-whatever the card is for.
+The same works for an item's image on its detail page, for a world's cover on
+the dashboard and in [World settings](#world-settings--export), and for the
+portrait at the top of the character panel on a [map](#maps). Pictures inside
+cards and lists are left alone — there, a click still takes you to whatever the
+card is for.
 
 ### Generate characters with AI
 
@@ -806,7 +807,9 @@ touch devices, tap the crosshair on their card and then tap a location.
   unlocks it.
 
 Click a character pin to open their **film strip**, a chronological list of every
-place they visited. Selecting a stop moves the global cursor to that event.
+place they visited. Selecting a stop moves the global cursor to that event. It
+also opens their panel on the right, where the portrait at the top opens
+[full size](#viewing-pictures-full-size) like any other.
 
 ![Map editing tools](images/40-map-tools.png)
 

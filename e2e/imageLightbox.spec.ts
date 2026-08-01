@@ -1,6 +1,12 @@
 import { test, expect } from '@playwright/test'
+import { fileURLToPath } from 'url'
+import * as path from 'path'
 import { resetDB } from './helpers/reset'
 import { settleNav } from './helpers/nav'
+import { waitForMapReady } from './helpers/map'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const MAIN_MAP = path.resolve(__dirname, 'map_example/main_map.jpg')
 
 /**
  * Opening a picture full size.
@@ -103,6 +109,75 @@ test.describe('Opening images full size', () => {
     await expect(lightbox(page)).toHaveCount(0)
     await page.getByRole('button', { name: 'Excalibur' }).click()
     await expect(lightbox(page)).toBeVisible()
+  })
+
+  test('opens the portrait in the map character panel', async ({ page }) => {
+    // The map's panel is the one place a portrait is shown large but sits on a
+    // floating surface over a canvas, so it is worth driving rather than
+    // assuming it behaves like the detail screens.
+    test.setTimeout(180_000)
+
+    await page.getByRole('link', { name: /characters/i }).click()
+    await settleNav(page)
+    await page.getByRole('button', { name: 'Add Character' }).first().click()
+    await page.getByPlaceholder('Character name').fill('Frodo')
+    await page.getByRole('button', { name: 'Add Character' }).last().click()
+    await page.getByText('Frodo').first().click()
+    await linkImage(page, 'Link portrait by URL')
+
+    await page.getByRole('link', { name: /maps/i }).first().click()
+    await settleNav(page)
+    await page.getByRole('button', { name: 'Upload Map' }).first().click()
+    await page.locator('input[type="file"][accept="image/*"]').setInputFiles(MAIN_MAP)
+    await page.getByLabel('Map Name').clear()
+    await page.getByLabel('Map Name').fill('Middle Earth')
+    await page.getByRole('button', { name: 'Upload', exact: true }).click()
+    await waitForMapReady(page)
+
+    await page.getByRole('button', { name: 'Location', exact: true }).click()
+    await page.locator('.leaflet-container').click({ position: { x: 300, y: 250 } })
+    await page.getByPlaceholder('e.g. Thornwall City').fill('Rivendell')
+    await page.getByRole('button', { name: 'Add Location' }).last().click()
+
+    // Placing someone writes a snapshot against the cursor, so there has to be
+    // an event for the cursor to be on.
+    await page.getByRole('link', { name: /timeline/i }).first().click()
+    await settleNav(page)
+    await page.getByRole('button', { name: 'Create Timeline' }).click()
+    await page.getByRole('button', { name: 'Add Chapter' }).first().click()
+    await page.getByPlaceholder('Chapter title').fill('One')
+    await page.getByRole('button', { name: 'Add Chapter' }).last().click()
+    await page.getByTitle('Open chapter detail').first().click()
+    await page.getByRole('main').getByRole('button', { name: 'Add Event' }).first().click()
+    await page.getByPlaceholder('Event title').fill('The Departure')
+    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await page.getByRole('link', { name: /timeline/i }).first().click()
+    await settleNav(page)
+    await page.getByTitle('The Departure', { exact: true }).click()
+
+    await page.getByRole('link', { name: /maps/i }).first().click()
+    await settleNav(page)
+    await waitForMapReady(page)
+    await page.getByText('Rivendell').first().click()
+    await page.getByRole('button', { name: 'Add character here' }).click()
+    await page.getByRole('button', { name: 'Choose character...' }).click()
+    await page.getByRole('option', { name: 'Frodo' }).click()
+    await page.getByRole('button', { name: 'Close location panel' }).click()
+
+    await page.locator('.leaflet-marker-icon').filter({ hasText: 'Frodo' }).first().click()
+    await expect(page.getByRole('button', { name: 'Close character panel' })).toBeVisible()
+
+    await expect(lightbox(page)).toHaveCount(0)
+    // The portrait in the panel, not the map pin — the pin draws the same
+    // picture and is a different control entirely.
+    await page.locator(`img[alt="Frodo"][role="button"]`).click()
+    await expect(lightbox(page)).toBeVisible()
+    await expect(lightbox(page).locator(`img[src="${IMAGE}"]`)).toBeVisible()
+
+    await page.keyboard.press('Escape')
+    await expect(lightbox(page)).toHaveCount(0)
+    // The panel it was opened from is still there underneath.
+    await expect(page.getByRole('button', { name: 'Close character panel' })).toBeVisible()
   })
 
   test('opens the world cover, and dismisses only from outside the picture', async ({ page }) => {
