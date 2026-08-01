@@ -55,6 +55,30 @@ test.describe('A location picture', () => {
     await page.getByRole('button', { name: 'Add linked image' }).click()
   }
 
+  test('offers a labelled way in when there is no picture yet', async ({ page }) => {
+    // The first version of this shipped with the controls copied from the
+    // character panel: a tiny icon pill in the corner of the empty box. On a
+    // 48px avatar that reads fine; on a 128px empty banner it is a speck
+    // nobody finds, and nobody did. Empty and filled are drawn differently now,
+    // and this is the half that says so.
+    await expect(page.getByText('No picture of this place yet')).toBeVisible()
+    // Both controls carry visible text here, which is the whole point — the
+    // upload one is a <label> wrapping the file input, so it is matched by that
+    // text rather than by a button role it does not have.
+    await expect(page.getByText('Upload', { exact: true })).toBeVisible()
+    const link = page.getByRole('button', { name: 'Link location image by URL' })
+    await expect(link).toBeVisible()
+    await expect(link).toHaveText(/Link/)
+
+    await linkPicture(page)
+    await expect(page.locator(`img[src="${IMAGE}"]`).first()).toBeVisible()
+
+    // Once there is something to look at, the invitation gets out of its way —
+    // the controls shrink into the corner of the picture instead.
+    await expect(page.getByText('No picture of this place yet')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Link location image by URL' })).not.toHaveText(/Link/)
+  })
+
   test('is attached, shown on the panel, and opens full size', async ({ page }) => {
     // Nothing to show yet — the other half of the assertion below, so neither
     // can pass for the wrong reason.

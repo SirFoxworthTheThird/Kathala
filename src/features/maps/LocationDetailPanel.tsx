@@ -260,43 +260,69 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
           ── Picture ──
           A banner rather than an avatar: places are drawn wide, and a square
           crop of a skyline or a coastline throws away what makes it that place.
+
+          The two states are drawn differently on purpose. Once there is a
+          picture, the controls tuck into its corner and stay out of the way —
+          the pattern characters and items use, where the pill sits on a 48px
+          avatar and reads fine. Empty, that same pill is a speck in the corner
+          of a 128px box with nothing to anchor it, and nobody finds it. So the
+          empty state is a labelled invitation instead.
+
           Hidden entirely while reading if there is none, so a reader is not
-          shown an upload slot they cannot use.
+          shown a slot they cannot fill.
         */}
-        {(marker.imageId || !gate.active) && (
+        {marker.imageId ? (
           <div className="relative">
             <PortraitImage
               imageId={marker.imageId}
               alt={marker.name}
               className="h-32 w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))] object-cover"
-              fallbackClassName="h-32 w-full rounded-md border border-dashed border-[hsl(var(--border))]"
-              fallbackIcon={ImageIcon}
               zoomable
             />
             {!gate.active && (
-              <div className="absolute bottom-1 right-1 flex items-center gap-0.5 rounded-full bg-[hsl(var(--accent))] px-1 py-0.5">
-                <label aria-label="Upload location image" className="cursor-pointer text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]">
-                  <Upload className="h-3 w-3" aria-hidden="true" />
+              <div className="absolute bottom-1 right-1 flex items-center gap-1 rounded-full bg-black/60 px-1.5 py-1">
+                <label aria-label="Upload location image" className="cursor-pointer text-white/90 hover:text-white">
+                  <Upload className="h-3.5 w-3.5" aria-hidden="true" />
                   <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                 </label>
                 <LinkImageButton
                   worldId={worldId}
                   onLinked={(blobId) => updateLocationMarker(markerId, { imageId: blobId })}
-                  triggerClassName="text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]"
+                  triggerClassName="text-white/90 hover:text-white"
                   triggerAriaLabel="Link location image by URL"
                 />
-                {marker.imageId && (
-                  <button
-                    type="button"
-                    aria-label="Remove location image"
-                    onClick={() => updateLocationMarker(markerId, { imageId: null })}
-                    className="text-[hsl(var(--foreground))] hover:text-red-400"
-                  >
-                    <X className="h-3 w-3" aria-hidden="true" />
-                  </button>
-                )}
+                <button
+                  type="button"
+                  aria-label="Remove location image"
+                  onClick={() => updateLocationMarker(markerId, { imageId: null })}
+                  className="text-white/90 hover:text-red-400"
+                >
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
               </div>
             )}
+          </div>
+        ) : !gate.active && (
+          <div className="flex h-32 w-full flex-col items-center justify-center gap-2 rounded-md border border-dashed border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
+            <ImageIcon className="h-6 w-6 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">No picture of this place yet</p>
+            <div className="flex items-center gap-2">
+              <label
+                aria-label="Upload location image"
+                className="pw-tap flex cursor-pointer items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
+              >
+                <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+                Upload
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+              </label>
+              <LinkImageButton
+                worldId={worldId}
+                onLinked={(blobId) => updateLocationMarker(markerId, { imageId: blobId })}
+                triggerClassName="pw-tap rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
+                triggerAriaLabel="Link location image by URL"
+                triggerLabel="Link"
+              />
+            </div>
           </div>
         )}
 
