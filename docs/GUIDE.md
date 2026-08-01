@@ -555,6 +555,21 @@ count badge tracks how many characters you're following.
 
 ![Character roster](images/06-characters.png)
 
+### Viewing pictures full size
+
+Portraits are kept at up to 2048px but shown small — 48px in a character's
+header, smaller still on a card. Click the portrait on a character's page to
+open it full size. Press **Esc**, click the space around it, or use the ✕ to
+put it away; clicking the picture itself doesn't close it, so you can lean in
+without losing your place.
+
+![A portrait opened full size](images/54-image-lightbox.png)
+
+The same works for an item's image on its detail page, and for a world's cover
+on the dashboard and in [World settings](#world-settings--export). Pictures
+inside cards and lists are left alone — there, a click still takes you to
+whatever the card is for.
+
 ### Generate characters with AI
 
 Building a large cast by hand is slow. **Generate with AI** (next to *Add
@@ -868,6 +883,8 @@ onto it.
 Track the objects that matter — weapons, artefacts, documents, consumables — with
 thumbnails, categories, and descriptions. Like characters, items have per-event
 **placements** (who holds an item, or where it is, at any point in the story).
+An item's picture opens full size the same way a portrait does — see
+[Viewing pictures full size](#viewing-pictures-full-size).
 
 ![Items](images/09-items.png)
 
@@ -1196,7 +1213,8 @@ timeline's clock.
 The **cover image** appears on the world's card in the selector and in the
 dashboard header. **Upload** an image file or **link** one by URL (the link
 icon), and **Remove** it at any time — the same as portraits elsewhere in the
-app.
+app. Click the cover to
+[open it full size](#viewing-pictures-full-size).
 
 ![World settings](images/15-settings.png)
 
