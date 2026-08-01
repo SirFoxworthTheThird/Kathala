@@ -278,7 +278,7 @@ export default function WorldSettingsView() {
         </div>
         {world.readingMode && (
           <p className="text-xs text-[hsl(var(--muted-foreground))]">
-            Turn it off whenever you want to edit. If this world came from the example library,
+            Turn it off whenever you want to edit. If this world came from the library,
             note that downloading it again restores the original and discards your changes —
             export it first if you want to keep them.
           </p>

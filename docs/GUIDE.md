@@ -17,7 +17,7 @@ explore).
 
 1. [Core concept: the time cursor](#core-concept-the-time-cursor)
 2. [Getting started — the world selector](#getting-started--the-world-selector)
-3. [The example library](#the-example-library)
+3. [The library](#the-library)
 4. [Import a manuscript](#import-a-manuscript)
 5. [Generate a world from AI](#generate-a-world-from-ai)
 6. [Start a sequel](#start-a-sequel)
@@ -96,9 +96,9 @@ step has **Skip** so you can leave the guide and build the world in any order.
 
 ---
 
-## The example library
+## The library
 
-**Example Library** on the world selector lists worlds built from published
+**Library** on the world selector lists worlds built from published
 books and downloads them straight into your browser. Nothing is uploaded and no
 account is needed — a downloaded world is an ordinary world you own outright,
 which you can edit, export, or delete like any other.

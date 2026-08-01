@@ -22,7 +22,7 @@ const ROUTES = [
 test('no unmet name appears anywhere in reading mode', async ({ page }) => {
   await page.goto('/')
   await resetDB(page)
-  await page.getByRole('button', { name: 'Example Library' }).click()
+  await page.getByRole('button', { name: 'Library', exact: true }).click()
   await page.getByRole('button', { name: /^Download \(/ }).first().click()
   await expect(page).toHaveURL(/#\/worlds\//, { timeout: 60_000 })
   await page.waitForTimeout(1500)
@@ -70,7 +70,7 @@ test('no unmet name appears anywhere in reading mode', async ({ page }) => {
 test('search does not answer with what the reader has not met', async ({ page }) => {
   await page.goto('/')
   await resetDB(page)
-  await page.getByRole('button', { name: 'Example Library' }).click()
+  await page.getByRole('button', { name: 'Library', exact: true }).click()
   await page.getByRole('button', { name: /^Download \(/ }).first().click()
   await expect(page).toHaveURL(/#\/worlds\//, { timeout: 60_000 })
   await page.waitForTimeout(1500)
@@ -124,7 +124,7 @@ test('search does not answer with what the reader has not met', async ({ page })
 test('no writing-mode overlay is reachable while reading', async ({ page }) => {
   await page.goto('/')
   await resetDB(page)
-  await page.getByRole('button', { name: 'Example Library' }).click()
+  await page.getByRole('button', { name: 'Library', exact: true }).click()
   await page.getByRole('button', { name: /^Download \(/ }).first().click()
   await expect(page).toHaveURL(/#\/worlds\//, { timeout: 60_000 })
   await page.waitForTimeout(1500)
