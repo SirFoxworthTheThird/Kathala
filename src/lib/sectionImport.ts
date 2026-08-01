@@ -1251,6 +1251,7 @@ export async function addLocationsToWorld(
         name,
         description: node.description?.trim() ?? '',
         x: pos.x, y: pos.y,
+        imageId: null,
         iconType: iconTypeFor(node),
         tags: [], factionId: null,
         createdAt: now, updatedAt: now,

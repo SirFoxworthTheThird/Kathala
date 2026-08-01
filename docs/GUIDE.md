@@ -17,7 +17,7 @@ explore).
 
 1. [Core concept: the time cursor](#core-concept-the-time-cursor)
 2. [Getting started — the world selector](#getting-started--the-world-selector)
-3. [The example library](#the-example-library)
+3. [The library](#the-library)
 4. [Import a manuscript](#import-a-manuscript)
 5. [Generate a world from AI](#generate-a-world-from-ai)
 6. [Start a sequel](#start-a-sequel)
@@ -96,9 +96,9 @@ step has **Skip** so you can leave the guide and build the world in any order.
 
 ---
 
-## The example library
+## The library
 
-**Example Library** on the world selector lists worlds built from published
+**Library** on the world selector lists worlds built from published
 books and downloads them straight into your browser. Nothing is uploaded and no
 account is needed — a downloaded world is an ordinary world you own outright,
 which you can edit, export, or delete like any other.
@@ -566,10 +566,10 @@ without losing your place.
 ![A portrait opened full size](images/54-image-lightbox.png)
 
 The same works for an item's image on its detail page, for a world's cover on
-the dashboard and in [World settings](#world-settings--export), and for the
-portrait at the top of the character panel on a [map](#maps). Pictures inside
-cards and lists are left alone — there, a click still takes you to whatever the
-card is for.
+the dashboard and in [World settings](#world-settings--export), and on a
+[map](#maps) for both the portrait at the top of the character panel and the
+picture on a location's panel. Pictures inside cards and lists are left alone —
+there, a click still takes you to whatever the card is for.
 
 ### Generate characters with AI
 
@@ -797,8 +797,15 @@ touch devices, tap the crosshair on their card and then tap a location.
 - Regions have a fill colour, opacity, notes, and an event-based condition. They
   can belong to a faction and can link directly to a sub-map.
 - A location's detail panel stores its description, event-based condition and
-  notes, owning faction, characters and items present, and an optional linked
-  sub-map.
+  notes, owning faction, characters and items present, an optional linked
+  sub-map, and a **picture** of the place.
+- The picture sits at the top of the panel, and is a different thing from the
+  other two visuals a location has: the pin's icon says *what kind* of place it
+  is, a linked sub-map is a map *of* it you drill into, and the picture is what
+  it looks like. **Upload** one or **link** it by URL with the buttons in its
+  corner, ✕ to take it away, and click it to open it
+  [full size](#viewing-pictures-full-size). The pin itself stays an icon, so a
+  city still reads as a city at a glance.
 - The **Show** chips can display the selected event's movement, complete
   character journeys, character labels, locations, and sub-map links. Select one
   character to focus the display.

@@ -109,7 +109,7 @@ export default function WorldSelectorView() {
               onClick={() => setLibraryOpen(true)}
             >
               <BookOpen className="h-4 w-4" />
-              Example Library
+              Library
             </Button>
             <Button
               variant="outline"

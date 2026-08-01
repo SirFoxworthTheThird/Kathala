@@ -24,7 +24,7 @@ const markers: LocationMarker[] = [
 ]
 
 function mkMarker(id: string, mapLayerId: string, linkedMapLayerId: string | null, x: number, y: number): LocationMarker {
-  return { id, worldId: 'w', mapLayerId, linkedMapLayerId, name: id, description: '', x, y, iconType: 'building', tags: [], factionId: null, createdAt: 0, updatedAt: 0 }
+  return { id, worldId: 'w', mapLayerId, linkedMapLayerId, name: id, description: '', x, y, imageId: null, iconType: 'building', tags: [], factionId: null, createdAt: 0, updatedAt: 0 }
 }
 function snap(charId: string, markerId: string | null, mapLayerId: string | null): CharacterSnapshot {
   return { id: `s-${charId}`, worldId: 'w', characterId: charId, eventId: 'e', isAlive: true, currentLocationMarkerId: markerId, currentMapLayerId: mapLayerId, inventoryItemIds: [], inventoryNotes: '', statusNotes: '', travelModeId: null, createdAt: 0, updatedAt: 0 }

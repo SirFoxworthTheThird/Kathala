@@ -14,8 +14,10 @@ async function uploadMap(page: Page, imagePath: string, mapName: string) {
   // The dialog title is either "Upload Map" or "Add Sub-Map" — wait for it
   await expect(page.getByRole('heading', { name: /Upload Map|Add Sub-Map/ })).toBeVisible()
 
-  // The file input is hidden; set the file directly
-  const fileInput = page.locator('input[type="file"][accept="image/*"]')
+  // The file input is hidden; set the file directly. Scoped to the dialog's
+  // form, because a location panel open behind it has an image upload of its
+  // own and an unscoped selector matches both.
+  const fileInput = page.locator('form input[type="file"][accept="image/*"]')
   await fileInput.setInputFiles(imagePath)
 
   // Auto-fills name from filename; override with our desired name

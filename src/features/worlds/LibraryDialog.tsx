@@ -7,7 +7,7 @@ import {
 } from '@/lib/library'
 
 /**
- * The example library.
+ * The library.
  *
  * These worlds double as a reading companion: because every view reads state
  * relative to the time cursor, a reader can set it to the chapter they have
@@ -90,7 +90,7 @@ export function LibraryDialog({
       <div className="w-full max-w-2xl rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl">
         <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] px-4 py-3">
           <BookOpen className="h-4 w-4 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
-          <h2 className="flex-1 text-sm font-semibold text-[hsl(var(--foreground))]">Example library</h2>
+          <h2 className="flex-1 text-sm font-semibold text-[hsl(var(--foreground))]">Library</h2>
           <button
             onClick={onClose}
             aria-label="Close library"

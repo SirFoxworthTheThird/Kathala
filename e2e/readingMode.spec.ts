@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { unmetNames } from './helpers/unmet'
 
-// Reading mode and spoiler gating, driven through the example library so the
+// Reading mode and spoiler gating, driven through the library so the
 // test exercises the same path a reader takes. The reveal maths itself is unit
 // tested in src/lib/__tests__/spoilers.test.ts.
 
@@ -25,7 +25,7 @@ async function worldPath(page: Page): Promise<string> {
 async function downloadFirstLibraryWorld(page: Page) {
   await page.goto('/')
   await resetDB(page)
-  await page.getByRole('button', { name: 'Example Library' }).click()
+  await page.getByRole('button', { name: 'Library', exact: true }).click()
   await page.getByRole('button', { name: /^Download \(/ }).first().click()
   await expect(page).toHaveURL(/#\/worlds\//, { timeout: 60_000 })
   await page.waitForTimeout(1000)

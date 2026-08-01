@@ -1,7 +1,7 @@
 import { importWorld, importWorldImages } from '@/lib/exportImport'
 
 /**
- * The example library: worlds published alongside the app that anyone can pull
+ * The library: worlds published alongside the app that anyone can pull
  * straight into their browser.
  *
  * There is no backend. The catalogue is a static `index.json` served from the

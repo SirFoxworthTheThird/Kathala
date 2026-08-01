@@ -9,6 +9,12 @@ interface LinkImageButtonProps {
   onLinked: (blobId: string, width: number, height: number) => void
   triggerClassName?: string
   triggerAriaLabel?: string
+  /**
+   * Visible text beside the icon. Omitted almost everywhere, where the trigger
+   * sits on an image that already explains it — but an empty slot has nothing
+   * to explain it, and an unlabelled icon there is not found.
+   */
+  triggerLabel?: string
 }
 
 /**
@@ -16,7 +22,7 @@ interface LinkImageButtonProps {
  * popover with a URL field. Stores the link as a blob entry (no binary data)
  * and hands back its id. Complements file upload wherever images are set.
  */
-export function LinkImageButton({ worldId, onLinked, triggerClassName, triggerAriaLabel = 'Link image by URL' }: LinkImageButtonProps) {
+export function LinkImageButton({ worldId, onLinked, triggerClassName, triggerAriaLabel = 'Link image by URL', triggerLabel }: LinkImageButtonProps) {
   const [open, setOpen] = useState(false)
   const [url, setUrl] = useState('')
   const [busy, setBusy] = useState(false)
@@ -55,9 +61,10 @@ export function LinkImageButton({ worldId, onLinked, triggerClassName, triggerAr
         aria-label={triggerAriaLabel}
         title={triggerAriaLabel}
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((o) => !o) }}
-        className={cn('flex items-center justify-center', triggerClassName)}
+        className={cn('flex items-center justify-center', triggerLabel && 'gap-1.5', triggerClassName)}
       >
-        <Link2 className="h-3 w-3" aria-hidden="true" />
+        <Link2 className={triggerLabel ? 'h-3.5 w-3.5' : 'h-3 w-3'} aria-hidden="true" />
+        {triggerLabel}
       </button>
 
       {open && (
