@@ -289,9 +289,11 @@ export default function WorldDashboardView() {
         {world?.coverImageId && (
           <PortraitImage
             imageId={world.coverImageId}
-            alt=""
+            // Decorative until it became a control; now it is what names it.
+            alt={world.name ? `${world.name} cover` : 'World cover'}
             className="h-16 w-24 shrink-0 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))] object-contain"
             fallbackClassName="h-16 w-24 shrink-0 rounded-md border border-[hsl(var(--border))]"
+            zoomable
           />
         )}
         <div className="flex-1">

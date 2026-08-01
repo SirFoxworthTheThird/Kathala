@@ -222,6 +222,7 @@ export default function WorldSettingsView() {
                 className="h-24 w-40 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))] object-contain"
                 fallbackClassName="h-24 w-40 rounded-md border border-[hsl(var(--border))]"
                 fallbackIcon={ImageIcon}
+                zoomable
               />
               <div className="flex flex-col items-start gap-2">
                 <div className="flex items-center gap-2">

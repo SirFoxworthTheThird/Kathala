@@ -104,6 +104,7 @@ export default function ItemDetailView() {
             className="h-12 w-12 rounded-md object-cover"
             fallbackClassName="h-12 w-12 rounded-md"
             fallbackIcon={Package}
+            zoomable
           />
           {!gate.active && (
             <div className="absolute -bottom-1 -right-1 flex items-center gap-0.5 rounded-full bg-[hsl(var(--accent))] px-1 py-0.5">

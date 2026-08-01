@@ -61,6 +61,7 @@ export default function CharacterDetailView() {
             alt={character.name}
             className="h-12 w-12 rounded-full object-cover"
             fallbackClassName="h-12 w-12 rounded-full"
+            zoomable
           />
           {!gate.active && (
             <div className="absolute -bottom-1 -right-1 flex items-center gap-0.5 rounded-full bg-[hsl(var(--accent))] px-1 py-0.5">

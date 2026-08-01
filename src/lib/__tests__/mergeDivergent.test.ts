@@ -138,6 +138,27 @@ describe('two devices editing the same world apart', () => {
     expect(await db.characters.get('c-ana')).toBeUndefined()
   })
 
+  it('removes a character the other device deleted while we still held it', async () => {
+    // The mirror of the test above, and the half that was missing: there, the
+    // record was already gone locally, so a merge that never deletes anything
+    // still looked correct — the union simply had nothing to put back. Here the
+    // record is present locally and absent from the incoming file, which is what
+    // a deletion elsewhere actually looks like. Merge writes with bulkPut, so
+    // dropping the row from the merged set is not enough to remove it.
+    await applyWorldImport(exportFile({ characters: [character()] as never }), 'replace')
+    expect(await db.characters.get('c-ana')).toBeDefined()
+
+    await applyWorldImport(exportFile({
+      characters: [] as never,
+      tombstones: [{
+        id: 't-3', worldId: WORLD, entityType: 'character', entityId: 'c-ana',
+        version: 1, deviceId: 'device-there', deletedAt: 5_000,
+      }] as never,
+    }), 'merge')
+
+    expect(await db.characters.get('c-ana')).toBeUndefined()
+  })
+
   it('brings a record back when it was edited after the deletion', async () => {
     // Keeping work is recoverable; discarding it is not. An edit that postdates
     // the tombstone means someone still wanted the record.
