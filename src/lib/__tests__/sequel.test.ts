@@ -108,7 +108,7 @@ describe('planSequel', () => {
 
   it('carries a map: layer + markers, remapping ids and clearing links to dropped layers', () => {
     const layer: MapLayer = { id: 'l1', worldId: 'w1', parentMapId: null, name: 'World', description: '', imageId: 'blob-img', imageWidth: 100, imageHeight: 100, scalePixelsPerUnit: null, scaleUnit: null, levelGroupId: null, levelIndex: 0, levelLabel: '', createdAt: 0, updatedAt: 0 }
-    const marker: LocationMarker = { id: 'mk1', worldId: 'w1', mapLayerId: 'l1', linkedMapLayerId: 'l2', name: 'City', description: '', x: 10, y: 20, iconType: 'city', tags: [], factionId: null, createdAt: 0, updatedAt: 0 }
+    const marker: LocationMarker = { id: 'mk1', worldId: 'w1', mapLayerId: 'l1', linkedMapLayerId: 'l2', name: 'City', description: '', x: 10, y: 20, imageId: null, iconType: 'city', tags: [], factionId: null, createdAt: 0, updatedAt: 0 }
     const source = emptySource({ mapLayers: [layer], locationMarkers: [marker] })
     const plan = planSequel(source, { ...NONE, mapLayerIds: ['l1'] }, { name: 'B2', now: NOW })
     expect(plan.mapLayers).toHaveLength(1)
@@ -142,7 +142,7 @@ describe('planSequel', () => {
 
   it('seeds an opening chapter with each carried character at their ending state', () => {
     const layer: MapLayer = { id: 'l1', worldId: 'w1', parentMapId: null, name: 'World', description: '', imageId: 'img', imageWidth: 1, imageHeight: 1, scalePixelsPerUnit: null, scaleUnit: null, levelGroupId: null, levelIndex: 0, levelLabel: '', createdAt: 0, updatedAt: 0 }
-    const marker: LocationMarker = { id: 'mk1', worldId: 'w1', mapLayerId: 'l1', linkedMapLayerId: null, name: 'Keep', description: '', x: 0, y: 0, iconType: 'city', tags: [], factionId: null, createdAt: 0, updatedAt: 0 }
+    const marker: LocationMarker = { id: 'mk1', worldId: 'w1', mapLayerId: 'l1', linkedMapLayerId: null, name: 'Keep', description: '', x: 0, y: 0, imageId: null, iconType: 'city', tags: [], factionId: null, createdAt: 0, updatedAt: 0 }
     const source = emptySource({
       characters: [char('c1', 'Aria')],
       items: [item('i1', 'Sword')],

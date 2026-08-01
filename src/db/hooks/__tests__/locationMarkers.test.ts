@@ -111,3 +111,67 @@ describe('deleteLocationMarker', () => {
     expect(await db.locationMarkers.get(b.id)).toBeDefined()
   })
 })
+
+// ── imageId (v53) ─────────────────────────────────────────────────────────────
+
+describe('a location picture', () => {
+  it('defaults to none, and can be given one at creation', async () => {
+    const plain = await createLocationMarker(makeMarkerData())
+    expect(plain.imageId).toBeNull()
+
+    const withPicture = await createLocationMarker(makeMarkerData({ imageId: 'blob-1' }))
+    expect(withPicture.imageId).toBe('blob-1')
+    expect((await db.locationMarkers.get(withPicture.id))!.imageId).toBe('blob-1')
+  })
+
+  it('can be set and then cleared', async () => {
+    const marker = await createLocationMarker(makeMarkerData())
+
+    await updateLocationMarker(marker.id, { imageId: 'blob-2' })
+    expect((await db.locationMarkers.get(marker.id))!.imageId).toBe('blob-2')
+
+    // Clearing has to persist as null rather than being dropped as undefined,
+    // or the field silently reverts to "never set" and a merge cannot tell the
+    // difference between removing a picture and never having had one.
+    await updateLocationMarker(marker.id, { imageId: null })
+    const cleared = await db.locationMarkers.get(marker.id)
+    expect(cleared!.imageId).toBeNull()
+    expect('imageId' in cleared!).toBe(true)
+  })
+
+  it('is backfilled onto markers written before v53', async () => {
+    // The upgrade itself, not the create path: a real pre-v53 row has no
+    // imageId key at all, and reading it as undefined would make every old
+    // location behave differently from every new one.
+    await db.close()
+    await db.delete()
+
+    await new Promise<void>((resolve, reject) => {
+      const req = indexedDB.open('PlotWeaveDB', 52)
+      req.onupgradeneeded = () => {
+        if (!req.result.objectStoreNames.contains('locationMarkers')) {
+          req.result.createObjectStore('locationMarkers', { keyPath: 'id' })
+        }
+      }
+      req.onsuccess = () => {
+        const handle = req.result
+        const tx = handle.transaction('locationMarkers', 'readwrite')
+        tx.objectStore('locationMarkers').put({
+          id: 'pre-v53', worldId: 'world-1', mapLayerId: 'layer-1',
+          linkedMapLayerId: null, name: 'Old Town', description: '',
+          x: 1, y: 2, iconType: 'town', tags: [], factionId: null,
+          createdAt: 1, updatedAt: 1,
+        })
+        tx.oncomplete = () => { handle.close(); resolve() }
+        tx.onerror = () => reject(tx.error)
+      }
+      req.onerror = () => reject(req.error)
+    })
+
+    await db.open()
+
+    const upgraded = await db.locationMarkers.get('pre-v53')
+    expect(upgraded).toBeDefined()
+    expect(upgraded!.imageId).toBeNull()
+  })
+})

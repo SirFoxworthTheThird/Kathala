@@ -40,6 +40,7 @@ export async function createLocationMarker(data: {
   iconType: LocationIconType
   linkedMapLayerId?: string | null
   tags?: string[]
+  imageId?: string | null
 }): Promise<LocationMarker> {
   const now = Date.now()
   const marker: LocationMarker = {
@@ -51,6 +52,7 @@ export async function createLocationMarker(data: {
     description: data.description,
     x: data.x,
     y: data.y,
+    imageId: data.imageId ?? null,
     iconType: data.iconType,
     tags: data.tags ?? [],
     factionId: null,

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, Trash2, Map, Link, Upload, Users, Plus, UserMinus, Package, BookOpen, ChevronDown } from 'lucide-react'
+import { X, Trash2, Map, Link, Upload, Users, Plus, UserMinus, Package, BookOpen, ChevronDown, Image as ImageIcon } from 'lucide-react'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,6 +19,8 @@ import { useItemSnapshot, upsertItemSnapshot } from '@/db/hooks/useItemSnapshots
 import { useAppStore } from '@/store'
 import { UploadMapDialog } from './UploadMapDialog'
 import { PortraitImage } from '@/components/PortraitImage'
+import { LinkImageButton } from '@/components/LinkImageButton'
+import { storeBlob } from '@/db/hooks/useBlobs'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { RelatedLoreSection } from '@/features/lore'
 import { useFactions } from '@/db/hooks/useFactions'
@@ -150,6 +152,14 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
   const [creatingChapter, setCreatingChapter] = useState(false)
   const [newChapterTitle, setNewChapterTitle] = useState('')
 
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const blob = await storeBlob(worldId, file)
+    await updateLocationMarker(markerId, { imageId: blob.id })
+    e.target.value = '' // allow re-selecting the same file
+  }
+
   if (!marker) return null
 
   // Characters currently at this location (last-known snapshot at the active event)
@@ -245,6 +255,50 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
       </div>
 
       <div className="flex-1 overflow-auto p-4 flex flex-col gap-4">
+
+        {/*
+          ── Picture ──
+          A banner rather than an avatar: places are drawn wide, and a square
+          crop of a skyline or a coastline throws away what makes it that place.
+          Hidden entirely while reading if there is none, so a reader is not
+          shown an upload slot they cannot use.
+        */}
+        {(marker.imageId || !gate.active) && (
+          <div className="relative">
+            <PortraitImage
+              imageId={marker.imageId}
+              alt={marker.name}
+              className="h-32 w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))] object-cover"
+              fallbackClassName="h-32 w-full rounded-md border border-dashed border-[hsl(var(--border))]"
+              fallbackIcon={ImageIcon}
+              zoomable
+            />
+            {!gate.active && (
+              <div className="absolute bottom-1 right-1 flex items-center gap-0.5 rounded-full bg-[hsl(var(--accent))] px-1 py-0.5">
+                <label aria-label="Upload location image" className="cursor-pointer text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]">
+                  <Upload className="h-3 w-3" aria-hidden="true" />
+                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                </label>
+                <LinkImageButton
+                  worldId={worldId}
+                  onLinked={(blobId) => updateLocationMarker(markerId, { imageId: blobId })}
+                  triggerClassName="text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]"
+                  triggerAriaLabel="Link location image by URL"
+                />
+                {marker.imageId && (
+                  <button
+                    type="button"
+                    aria-label="Remove location image"
+                    onClick={() => updateLocationMarker(markerId, { imageId: null })}
+                    className="text-[hsl(var(--foreground))] hover:text-red-400"
+                  >
+                    <X className="h-3 w-3" aria-hidden="true" />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Name / edit */}
         {editing ? (

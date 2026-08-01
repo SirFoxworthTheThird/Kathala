@@ -663,6 +663,16 @@ class PlotWeaveDB extends Dexie {
         if (typeof c.version !== 'number') c.version = 1
       })
     })
+
+    // v53: a picture for a location. Not indexed — it is only ever read through
+    // the marker that owns it, never queried by. Backfilled to null so the
+    // field exists everywhere rather than being absent on older records and
+    // present on new ones.
+    this.version(53).stores({}).upgrade(async (tx) => {
+      await tx.table('locationMarkers').toCollection().modify((m) => {
+        if (m.imageId === undefined) m.imageId = null
+      })
+    })
   }
 }
 

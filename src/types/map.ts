@@ -43,6 +43,13 @@ export interface LocationMarker {
   description: string
   x: number
   y: number
+  /**
+   * A picture *of* the place, as distinct from the two visuals a marker already
+   * has: `iconType` is what the pin looks like, and `linkedMapLayerId` is a map
+   * *of* the place you drill into. A city can want all three — a pin that reads
+   * as a city, a street plan, and a skyline. Null on records predating v53.
+   */
+  imageId: string | null
   iconType: LocationIconType
   tags: string[]
   factionId: string | null

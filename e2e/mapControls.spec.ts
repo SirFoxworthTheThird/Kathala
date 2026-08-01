@@ -35,7 +35,7 @@ async function setupMap(page: Page, opts: { withCharacter?: boolean } = {}) {
   await page.mouse.move(700, 400)
   await page.getByRole('button', { name: 'Upload Map' }).first().click()
   await expect(page.getByRole('heading', { name: /Upload Map/ })).toBeVisible()
-  await page.locator('input[type="file"][accept="image/*"]').setInputFiles(MAIN_MAP)
+  await page.locator('form input[type="file"][accept="image/*"]').setInputFiles(MAIN_MAP)
   await page.getByLabel('Map Name').clear()
   await page.getByLabel('Map Name').fill('Middle Earth')
   await page.getByRole('button', { name: 'Upload', exact: true }).click()

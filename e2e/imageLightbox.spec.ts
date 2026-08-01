@@ -128,7 +128,7 @@ test.describe('Opening images full size', () => {
     await page.getByRole('link', { name: /maps/i }).first().click()
     await settleNav(page)
     await page.getByRole('button', { name: 'Upload Map' }).first().click()
-    await page.locator('input[type="file"][accept="image/*"]').setInputFiles(MAIN_MAP)
+    await page.locator('form input[type="file"][accept="image/*"]').setInputFiles(MAIN_MAP)
     await page.getByLabel('Map Name').clear()
     await page.getByLabel('Map Name').fill('Middle Earth')
     await page.getByRole('button', { name: 'Upload', exact: true }).click()
