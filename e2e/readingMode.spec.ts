@@ -22,6 +22,18 @@ async function worldPath(page: Page): Promise<string> {
   return new URL(page.url()).hash.replace(/^#/, '').split('/').slice(0, 3).join('/')
 }
 
+/** Where the cursor pill says the reader is — the position, spelled out. */
+async function cursorTitle(page: Page): Promise<string> {
+  const pill = page.locator('button[title$="(open timeline)"], button[title^="Viewing all chapters"]').first()
+  return (await pill.getAttribute('title')) ?? ''
+}
+
+/** The reader's deliberate "show me everything", confirm and all. */
+async function revealAll(page: Page) {
+  await page.getByRole('button', { name: 'View all chapters' }).click()
+  await page.getByRole('button', { name: 'Show everything' }).click()
+}
+
 async function downloadFirstLibraryWorld(page: Page) {
   await page.goto('/')
   await resetDB(page)
@@ -46,17 +58,18 @@ test('the roster shows only characters the reader has met', async ({ page }) => 
   await page.getByRole('link', { name: /characters/i }).first().click()
   await settleNav(page)
 
-  // At "all chapters" the reader has explicitly asked for everything. Poll:
-  // the count renders as 0 until the live query resolves.
-  await expect.poll(() => shownCount(page), { timeout: 15_000 }).toBeGreaterThan(10)
-  const total = await shownCount(page)
-
-  // Step onto the opening moment: almost the whole cast is still unmet.
-  await page.getByRole('button', { name: 'Next moment' }).click()
+  // A freshly downloaded book opens at its first moment, so most of the cast is
+  // still unmet. Poll: the count renders as 0 until the live query resolves.
   await expect(page.getByRole('note')).toContainText(/not yet met by chapter 1 are hidden/)
+  await expect.poll(() => shownCount(page), { timeout: 15_000 }).toBeGreaterThan(0)
+  const atOpening = await shownCount(page)
 
-  await expect.poll(() => shownCount(page), { timeout: 15_000 }).toBeLessThan(total)
-  expect(await shownCount(page)).toBeGreaterThan(0)
+  // Asking for everything is what shows the whole cast, and it has to be asked
+  // for — the pairing is the point, since a count that is merely small proves
+  // nothing on its own.
+  await revealAll(page)
+  await expect.poll(() => shownCount(page), { timeout: 15_000 }).toBeGreaterThan(atOpening)
+  expect(await shownCount(page)).toBeGreaterThan(10)
 })
 
 test('a hidden character is revealed by moving the cursor forward', async ({ page }) => {
@@ -64,7 +77,6 @@ test('a hidden character is revealed by moving the cursor forward', async ({ pag
   await page.getByRole('link', { name: /characters/i }).first().click()
   await settleNav(page)
 
-  await page.getByRole('button', { name: 'Next moment' }).click()
   await expect(page.getByRole('note')).toBeVisible()
   await expect.poll(() => shownCount(page), { timeout: 15_000 }).toBeGreaterThan(0)
   const atOpening = await shownCount(page)
@@ -416,4 +428,97 @@ test('the map can be read and exported but not redrawn', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Export as PNG' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'AI Locations' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Replace image' })).toHaveCount(0)
+})
+
+
+test('a book opens where it was left, not at the whole plot', async ({ page }) => {
+  // The bug this replaces: leaving a world cleared the cursor, and a null
+  // cursor means "all chapters". A reader part-way through a book who closed it
+  // and came back was handed the entire plot, silently, by the one feature
+  // whose job is to prevent exactly that.
+  await downloadFirstLibraryWorld(page)
+  const book = await worldPath(page)
+
+  // A freshly downloaded book starts at its opening moment rather than revealed.
+  await expect.poll(() => cursorTitle(page), { timeout: 15_000 }).toMatch(/^Ch\.1 /)
+
+  for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Next moment' }).click()
+  await page.waitForTimeout(1000)
+  const place = await cursorTitle(page)
+  expect(place).toMatch(/^Ch\./)
+
+  await page.getByRole('link', { name: /characters/i }).first().click()
+  await settleNav(page)
+  await expect.poll(() => shownCount(page), { timeout: 15_000 }).toBeGreaterThan(0)
+  const met = await shownCount(page)
+
+  // Leave to the shelf and come back, the way a reader does between sittings.
+  await page.goto('/#/')
+  await page.waitForTimeout(1200)
+  await page.goto(`/#${book}/characters`)
+  await settleNav(page)
+  // Settle before asserting: the position is restored synchronously, but the
+  // first-open rule runs after two Dexie reads, and an assertion that fires
+  // before it would pass whatever it did.
+  await page.waitForTimeout(2500)
+
+  expect(await cursorTitle(page)).toBe(place)
+  expect(await shownCount(page)).toBe(met)
+})
+
+test('coming back honours a deliberate "show everything"', async ({ page }) => {
+  // The other half: once a reader has asked for the whole book, returning must
+  // not quietly re-hide it or drag them back to chapter one.
+  await downloadFirstLibraryWorld(page)
+  const book = await worldPath(page)
+
+  await revealAll(page)
+  await expect.poll(() => cursorTitle(page), { timeout: 15_000 }).toMatch(/^Viewing all chapters/)
+  await page.getByRole('link', { name: /characters/i }).first().click()
+  await settleNav(page)
+  await expect.poll(() => shownCount(page), { timeout: 15_000 }).toBeGreaterThan(10)
+  const all = await shownCount(page)
+
+  await page.goto('/#/')
+  await page.waitForTimeout(1200)
+  await page.goto(`/#${book}/characters`)
+  await settleNav(page)
+  await page.waitForTimeout(2500)
+
+  // Still all chapters — not snapped back to the opening moment.
+  expect(await cursorTitle(page)).toMatch(/^Viewing all chapters/)
+  expect(await shownCount(page)).toBe(all)
+})
+
+
+test('the shelf shows how far into each book the reader has got', async ({ page }) => {
+  await downloadFirstLibraryWorld(page)
+  const book = await worldPath(page)
+
+  // Freshly downloaded: chapter 1, and the card says so.
+  await page.goto('/#/')
+  await settleNav(page)
+  await expect(page.getByText(/^Chapter 1 of \d+$/)).toBeVisible()
+
+  // Read on, and the shelf follows.
+  await page.goto(`/#${book}`)
+  await settleNav(page)
+  for (let i = 0; i < 14; i++) await page.getByRole('button', { name: 'Next moment' }).click()
+  await page.waitForTimeout(1200)
+  const reached = (await cursorTitle(page)).match(/^Ch\.(\d+)/)![1]
+  expect(Number(reached)).toBeGreaterThan(1)
+
+  await page.goto('/#/')
+  await settleNav(page)
+  await expect(page.getByText(new RegExp(`^Chapter ${reached} of \\d+$`))).toBeVisible()
+
+  // Asking for the whole book is not a place in it, so the bar goes away —
+  // paired with the two assertions above so neither half can pass on its own.
+  await page.goto(`/#${book}`)
+  await settleNav(page)
+  await revealAll(page)
+  await page.waitForTimeout(800)
+  await page.goto('/#/')
+  await settleNav(page)
+  await expect(page.getByText(/^Chapter \d+ of \d+$/)).toHaveCount(0)
 })

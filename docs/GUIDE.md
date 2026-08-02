@@ -83,6 +83,14 @@ Once you have worlds, each appears as a card with its name, last-edited date, an
 description. Click a card to open it; the ⋯ menu on each card exports or deletes
 that world.
 
+Books you are reading are kept on their own shelf. As soon as one world is in
+[reading mode](#reading-alongside-a-book), the selector splits into **Your
+worlds** — the ones you are writing, where the *New World* tile lives — and
+**Reading** below it, so a shelf of downloaded books never buries your own work.
+Turning reading mode off in a world's settings moves it back up to *Your
+worlds*, since at that point you are editing it rather than reading it. With
+nothing in reading mode there is only one list and no headings at all.
+
 ![World selector with worlds](images/02-home-worlds.png)
 
 ### Set up a blank world
@@ -108,10 +116,27 @@ images and portraits are a separate, much larger download, so they sit behind
 their own button rather than coming along by default — useful if you're on a
 phone.
 
+Books whose cover is a linked image show it on the card. The cover is fetched
+from wherever it is hosted, so opening the Library makes a request to that site
+— and a card whose cover cannot be loaded simply goes without one rather than
+showing a broken frame. Books whose artwork lives inside the image bundle stay
+text-only here, since drawing them would mean downloading the very bundle the
+*With images* button exists to make optional.
+
 ### Reading alongside a book
 
 Library worlds arrive in **reading mode**, which is what makes them safe to open
-while you are still part-way through the book.
+while you are still part-way through the book. A book you have just downloaded
+opens at its first moment rather than fully revealed, so nothing is given away
+before you have read a word.
+
+**PlotWeave remembers your place in each book.** Close one, read another, come
+back a week later — the cursor is where you left it, and the world card on the
+shelf says *"Chapter 5 of 17"* with a progress bar so you can see at a glance
+how far into each you are. If you deliberately choose **All chapters**, that is
+remembered too: coming back shows you the whole book again rather than quietly
+re-hiding it, and the progress bar disappears, because seeing everything is not
+a place in the story.
 
 Set the chapter cursor to where you have read up to, and PlotWeave hides
 characters, items and places the story has not introduced yet — everywhere, not

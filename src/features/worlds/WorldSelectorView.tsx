@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import faviconUrl from '/favicon.png'
 import { Plus, Scroll, Upload, Sparkles, AlertCircle, FileText, BookOpen } from 'lucide-react'
 import { useWorlds } from '@/db/hooks/useWorlds'
@@ -11,6 +11,7 @@ import { LibraryDialog } from './LibraryDialog'
 import { LLMPromptDialog } from './LLMPromptDialog'
 import { useNavigate } from 'react-router-dom'
 import { importWorld, importWorldImages } from '@/lib/exportImport'
+import { partitionWorlds } from '@/lib/worldShelves'
 
 declare global {
   interface Window {
@@ -22,6 +23,7 @@ declare global {
 
 export default function WorldSelectorView() {
   const worlds = useWorlds()
+  const { drafts, reading } = useMemo(() => partitionWorlds(worlds), [worlds])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [manuscriptOpen, setManuscriptOpen] = useState(false)
   const [promptOpen, setPromptOpen] = useState(false)
@@ -186,17 +188,55 @@ export default function WorldSelectorView() {
             }
           />
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {worlds.map((world) => (
-              <WorldCard key={world.id} world={world} />
-            ))}
-            <button
-              onClick={() => setDialogOpen(true)}
-              className="flex min-h-32 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] transition-colors hover:border-[hsl(var(--ring))] hover:text-[hsl(var(--foreground))]"
-            >
-              <Plus className="h-6 w-6" />
-              <span className="text-sm">New World</span>
-            </button>
+          /*
+            Two shelves, not one.
+
+            A book downloaded from the library and a draft being written are
+            different things that happen to share a card. They sort together by
+            creation date, which for a download is whenever it was fetched, so a
+            reader with half the library loses their own two drafts among eight
+            other people's books. The cards already differ — a reading world
+            carries "Chapter 5 of 17" and a draft does not — and the actions do
+            too: you export and sequel a draft, you resume a book.
+
+            Your own work leads, because this is a writing tool. Either shelf is
+            dropped when empty rather than standing there as an empty heading.
+          */
+          <div className="flex flex-col gap-8">
+            <section className="flex flex-col gap-3">
+              {reading.length > 0 && (
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                  Your worlds
+                </h2>
+              )}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {drafts.map((world) => (
+                  <WorldCard key={world.id} world={world} />
+                ))}
+                {/* Stays with the drafts: it makes a world to write, not to read. */}
+                <button
+                  onClick={() => setDialogOpen(true)}
+                  className="flex min-h-32 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] transition-colors hover:border-[hsl(var(--ring))] hover:text-[hsl(var(--foreground))]"
+                >
+                  <Plus className="h-6 w-6" />
+                  <span className="text-sm">New World</span>
+                </button>
+              </div>
+            </section>
+
+            {reading.length > 0 && (
+              <section className="flex flex-col gap-3">
+                <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                  <BookOpen className="h-4 w-4" aria-hidden="true" />
+                  Reading
+                </h2>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {reading.map((world) => (
+                    <WorldCard key={world.id} world={world} />
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         )}
       </main>

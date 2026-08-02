@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trash2, Globe, Download, Loader2, ChevronDown, Files, BookCopy } from 'lucide-react'
+import { Trash2, Globe, Download, Loader2, ChevronDown, Files, BookCopy, BookMarked } from 'lucide-react'
 import type { World } from '@/types'
 import { Button } from '@/components/ui/button'
 import { PortraitImage } from '@/components/PortraitImage'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { StartSequelDialog } from './StartSequelDialog'
 import { deleteWorld } from '@/db/hooks/useWorlds'
+import { useReadingProgress } from '@/db/hooks/useReading'
 import { exportWorld, exportWorldSplit } from '@/lib/exportImport'
 
 interface WorldCardProps {
@@ -21,6 +22,7 @@ export function WorldCard({ world }: WorldCardProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [sequelOpen, setSequelOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const progress = useReadingProgress(world.id)
 
   // Close the export dropdown when clicking outside
   useEffect(() => {
@@ -157,6 +159,33 @@ export function WorldCard({ world }: WorldCardProps) {
         <p className="text-sm text-[hsl(var(--muted-foreground))] line-clamp-2">
           {world.description}
         </p>
+      )}
+
+      {/*
+        Where this book was left. Shown only for a world being read that has a
+        real position — not for a draft, and not for a reader who asked to see
+        all chapters, which is not a place in the book.
+      */}
+      {progress && (
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))]">
+            <BookMarked className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>Chapter {progress.chapter} of {progress.total}</span>
+          </div>
+          <div
+            className="h-1 w-full overflow-hidden rounded-full bg-[hsl(var(--muted))]"
+            role="progressbar"
+            aria-label={`Reading progress: chapter ${progress.chapter} of ${progress.total}`}
+            aria-valuenow={progress.chapter}
+            aria-valuemin={0}
+            aria-valuemax={progress.total}
+          >
+            <div
+              className="h-full rounded-full bg-[hsl(var(--ring))]"
+              style={{ width: `${Math.min(100, (progress.chapter / progress.total) * 100)}%` }}
+            />
+          </div>
+        </div>
       )}
       <ConfirmDialog
         open={confirmOpen}

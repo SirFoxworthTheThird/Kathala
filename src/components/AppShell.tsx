@@ -20,11 +20,16 @@ import { ReadingGateProvider } from '@/db/hooks/ReadingGateContext'
 import { useReadingMode } from '@/db/hooks/useReading'
 import { Toaster } from '@/components/ui/toast'
 import { db } from '@/db/database'
+import { firstEventId } from '@/lib/spoilers'
 
 export function AppShell() {
   const { worldId } = useParams<{ worldId: string }>()
   const { setActiveWorldId, setSearchOpen, setActiveWorldTheme, activeEventId, setActiveEventId, navPinned } = useAppStore()
   const world = useWorld(worldId ?? null)
+  // Reading mode decides where a book opens, and takes undo and redo off the
+  // top bar — the shortcuts have to go with them, or the one route left into
+  // editing is the one nobody sees.
+  const readingMode = useReadingMode(worldId ?? null)
   const isDashboard = !!useMatch('/worlds/:worldId')
   const isArc = !!useMatch('/worlds/:worldId/arc')
   const isSettings = !!useMatch('/worlds/:worldId/settings')
@@ -51,6 +56,31 @@ export function AppShell() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worldId])
 
+  // Open a book at its first moment the first time it is read.
+  //
+  // Only when there is no remembered place at all: a stored null means the
+  // reader asked for all chapters and should get it back. Reading worlds only —
+  // a writer opening their own draft wants the whole thing, which is what null
+  // already gives them.
+  useEffect(() => {
+    if (!worldId || !readingMode) return
+    if (worldId in useAppStore.getState().eventByWorld) return
+    let cancelled = false
+    void (async () => {
+      const [events, chapters] = await Promise.all([
+        db.events.where('worldId').equals(worldId).toArray(),
+        db.chapters.where('worldId').equals(worldId).toArray(),
+      ])
+      const opening = firstEventId(events, new Map(chapters.map((c) => [c.id, c.number])))
+      // Re-check on the way back: the world may have changed under the await,
+      // and the reader may have moved the cursor themselves in the meantime.
+      if (cancelled || !opening) return
+      if (worldId in useAppStore.getState().eventByWorld) return
+      setActiveEventId(opening)
+    })()
+    return () => { cancelled = true }
+  }, [worldId, readingMode, setActiveEventId])
+
   // Apply per-world theme override via store — ThemeProvider owns the DOM
   useEffect(() => {
     setActiveWorldTheme(world?.theme ?? null)
@@ -62,9 +92,6 @@ export function AppShell() {
 
   const undo = useUndoAction(worldId ?? null)
   const redo = useRedoAction(worldId ?? null)
-  // Reading mode takes undo and redo off the top bar; the shortcuts have to go
-  // with them, or the one route left into editing is the one nobody sees.
-  const readingMode = useReadingMode(worldId ?? null)
 
   // Global Cmd/Ctrl+K to open search, Cmd/Ctrl+Z to undo
   useEffect(() => {

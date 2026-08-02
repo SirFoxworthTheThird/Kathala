@@ -57,6 +57,25 @@ describe('the published library catalogue', () => {
         expect(world.sceneRevisions ?? [], 'sceneRevisions').toEqual([])
       })
 
+      it('advertises a cover only where the world really links one', () => {
+        // The manifest is hand-maintained, so a cover could drift from the
+        // world it claims to belong to, or outlive one that was swapped for an
+        // uploaded image. Both would put the wrong book on the card.
+        const world = worldFor(entry.data) as Record<string, unknown>
+        const coverId = (world.world as Record<string, unknown> | undefined)?.coverImageId
+        const blobs = (world.blobs ?? []) as Array<Record<string, unknown>>
+        const linked = coverId ? blobs.find((b) => b.id === coverId)?.url : undefined
+
+        if (entry.cover === undefined) {
+          // No claim made. Fine — but not because the world had one to give
+          // that we forgot to list.
+          expect(linked ?? null, 'world links a cover the manifest omits').toBeNull()
+        } else {
+          expect(entry.cover).toBe(linked)
+          expect(entry.cover).toMatch(/^https:\/\//)
+        }
+      })
+
       it('declares counts that match what is in the file', () => {
         if (!entry.counts) return
         const world = worldFor(entry.data) as Record<string, unknown[]>

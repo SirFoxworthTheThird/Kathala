@@ -1,11 +1,11 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
-import { useActiveEventId } from '@/store'
+import { useActiveEventId, useAppStore } from '@/store'
 import { useWorld } from '@/db/hooks/useWorlds'
 import {
-  firstAppearances, hiddenCount, isRevealed, revealed, sortKeysByEvent,
-  type Appearance, type SortKey,
+  firstAppearances, hiddenCount, isRevealed, readingProgress, revealed, sortKeysByEvent,
+  type Appearance, type ReadingProgress, type SortKey,
 } from '@/lib/spoilers'
 
 /**
@@ -175,4 +175,35 @@ export function useReadingGate(worldId: string | null): ReadingGate {
       },
     }
   }, [readingMode, data, activeEventId])
+}
+
+
+/**
+ * How far into a book the reader has got, for the shelf.
+ *
+ * Reads the remembered position rather than the live cursor, so a card shows
+ * where that book was left even while another one is open. Null whenever there
+ * is nothing truthful to draw — see `readingProgress`.
+ */
+export function useReadingProgress(worldId: string | null): ReadingProgress | null {
+  const readingMode = useReadingMode(worldId)
+  const eventId = useAppStore((s) => (worldId ? s.eventByWorld[worldId] ?? null : null))
+
+  const data = useLiveQuery(
+    async () => {
+      if (!worldId || !readingMode || !eventId) return null
+      const [events, chapters] = await Promise.all([
+        db.events.where('worldId').equals(worldId).toArray(),
+        db.chapters.where('worldId').equals(worldId).toArray(),
+      ])
+      return { events, chapters }
+    },
+    [worldId, readingMode, eventId],
+    null,
+  )
+
+  return useMemo(() => {
+    if (!data) return null
+    return readingProgress(eventId, data.events, new Map(data.chapters.map((c) => [c.id, c.number])))
+  }, [data, eventId])
 }

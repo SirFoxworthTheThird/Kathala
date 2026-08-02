@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  firstAppearances, hiddenCount, isRevealed, revealed, sortKeysByEvent,
+  firstAppearances, firstEventId, hiddenCount, isRevealed, readingProgress, revealed, sortKeysByEvent,
 } from '@/lib/spoilers'
 
 const chapters = new Map([['ch1', 1], ['ch2', 2], ['ch3', 3]])
@@ -104,5 +104,50 @@ describe('revealed and hiddenCount', () => {
     const copy = [...records]
     revealed(records, first, keys.get('e1')!)
     expect(records).toEqual(copy)
+  })
+})
+
+
+describe('firstEventId', () => {
+  it('finds the opening moment across chapters, not merely the first listed', () => {
+    // Shuffled on purpose: a plain events[0] would pass on ordered input and
+    // say nothing.
+    const shuffled = [events[3], events[1], events[2], events[0]]
+    expect(firstEventId(shuffled, chapters)).toBe('e1')
+  })
+
+  it('is null for a story with no events, and for events whose chapter is gone', () => {
+    expect(firstEventId([], chapters)).toBeNull()
+    // A chapter missing from the map has no position, so it cannot be "first".
+    expect(firstEventId([{ id: 'orphan', chapterId: 'ch-gone', sortOrder: 0 }], chapters)).toBeNull()
+  })
+
+  it('breaks a tie by id, so two devices agree', () => {
+    const tied = [
+      { id: 'zz', chapterId: 'ch1', sortOrder: 0 },
+      { id: 'aa', chapterId: 'ch1', sortOrder: 0 },
+    ]
+    expect(firstEventId(tied, chapters)).toBe('aa')
+    expect(firstEventId([...tied].reverse(), chapters)).toBe('aa')
+  })
+})
+
+
+describe('readingProgress', () => {
+  it('reports the chapter and how many the book has', () => {
+    expect(readingProgress('e3', events, chapters)).toEqual({ chapter: 2, total: 3 })
+  })
+
+  it('shows nothing rather than something wrong', () => {
+    // Each of these would otherwise draw a bar the reader cannot trust.
+    expect(readingProgress(null, events, chapters)).toBeNull()          // all chapters
+    expect(readingProgress(undefined, events, chapters)).toBeNull()     // never opened
+    expect(readingProgress('gone', events, chapters)).toBeNull()        // deleted event
+    expect(readingProgress('e1', events, new Map())).toBeNull()         // no chapters
+  })
+
+  it('counts to the highest chapter, not the number of events', () => {
+    // Two events in chapter 1 must not make the book look two chapters long.
+    expect(readingProgress('e2', events, chapters)!.total).toBe(3)
   })
 })
