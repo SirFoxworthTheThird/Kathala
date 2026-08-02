@@ -5,6 +5,7 @@ import { useAppStore } from '@/store'
 const INITIAL = {
   activeWorldId: null,
   activeEventId: null,
+  eventByWorld: {},
   activeMapLayerId: null,
   mapLayerHistory: [],
   sidebarOpen: true,
@@ -32,10 +33,51 @@ describe('WorldSlice', () => {
     expect(useAppStore.getState().activeWorldId).toBe('world-1')
   })
 
-  it('clears the active event when the world changes', () => {
+  it('starts a world with no remembered place at "all chapters"', () => {
     useAppStore.setState({ activeEventId: 'ev-1' })
     useAppStore.getState().setActiveWorldId('world-2')
     expect(useAppStore.getState().activeEventId).toBeNull()
+  })
+
+  it('resumes each world where its cursor was left', () => {
+    // The spoiler case this exists for: leaving a book part-way through and
+    // coming back used to reset the cursor to null, which means "all chapters"
+    // — the whole plot, handed over without being asked for.
+    const store = useAppStore.getState()
+    store.setActiveWorldId('book-a')
+    useAppStore.getState().setActiveEventId('ev-a5')
+
+    useAppStore.getState().setActiveWorldId('book-b')
+    expect(useAppStore.getState().activeEventId).toBeNull()
+    useAppStore.getState().setActiveEventId('ev-b2')
+
+    useAppStore.getState().setActiveWorldId('book-a')
+    expect(useAppStore.getState().activeEventId).toBe('ev-a5')
+
+    useAppStore.getState().setActiveWorldId('book-b')
+    expect(useAppStore.getState().activeEventId).toBe('ev-b2')
+  })
+
+  it('remembers a deliberate "all chapters" rather than forgetting the world', () => {
+    // Choosing to reveal everything is a decision, and it has to survive the
+    // round trip — otherwise the next visit silently re-hides the book, or the
+    // first-open rule drags the reader back to chapter one.
+    useAppStore.getState().setActiveWorldId('book-a')
+    useAppStore.getState().setActiveEventId('ev-a5')
+    useAppStore.getState().setActiveEventId(null)
+
+    useAppStore.getState().setActiveWorldId('book-b')
+    useAppStore.getState().setActiveWorldId('book-a')
+
+    expect(useAppStore.getState().activeEventId).toBeNull()
+    // Key present, so this reads as "asked for everything", not "never opened".
+    expect('book-a' in useAppStore.getState().eventByWorld).toBe(true)
+  })
+
+  it('does not record a place for an event set with no world active', () => {
+    useAppStore.getState().setActiveEventId('ev-orphan')
+    expect(useAppStore.getState().activeEventId).toBe('ev-orphan')
+    expect(useAppStore.getState().eventByWorld).toEqual({})
   })
 
   it('accepts null to clear the active world', () => {

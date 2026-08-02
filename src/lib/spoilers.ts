@@ -37,6 +37,61 @@ export function sortKeysByEvent(
   return out
 }
 
+/**
+ * The opening moment of a story, or null if it has none.
+ *
+ * Where a book with no remembered place should start. Null is *not* a neutral
+ * cursor — it means "all chapters", so opening a freshly downloaded book with
+ * no position would lay the whole plot out before the reader had read a word.
+ *
+ * Ties are broken by id so two events sharing a position give the same answer
+ * on every device, matching how the timeline orders them.
+ */
+export function firstEventId(
+  events: readonly EventPosition[],
+  chapterNumberById: ReadonlyMap<string, number>,
+): string | null {
+  const keys = sortKeysByEvent(events, chapterNumberById)
+  let best: { id: string; key: SortKey } | null = null
+  for (const [id, key] of keys) {
+    if (!best || key < best.key || (key === best.key && id < best.id)) best = { id, key }
+  }
+  return best?.id ?? null
+}
+
+export interface ReadingProgress {
+  /** The chapter the reader is in. */
+  chapter: number
+  /** How many chapters the book has. */
+  total: number
+}
+
+/**
+ * How far into a book a remembered position is, for the shelf.
+ *
+ * Null when there is nothing honest to show: no position, a position pointing
+ * at an event that no longer exists, or a story with no chapters. "All
+ * chapters" is null too — the reader asked to see everything, which is not a
+ * place in the book and should not be drawn as one.
+ */
+export function readingProgress(
+  eventId: string | null | undefined,
+  events: readonly EventPosition[],
+  chapterNumberById: ReadonlyMap<string, number>,
+): ReadingProgress | null {
+  if (!eventId) return null
+  const event = events.find((e) => e.id === eventId)
+  if (!event) return null
+  const chapter = chapterNumberById.get(event.chapterId)
+  if (chapter === undefined) return null
+
+  let total = 0
+  for (const n of chapterNumberById.values()) if (n > total) total = n
+  // Highest chapter number rather than a count, so the two halves of "Ch.5 of
+  // 17" are the same kind of number even where chapters are numbered oddly.
+  return total > 0 ? { chapter, total } : null
+}
+
 /** One "this entity is used at this event" fact. */
 export interface Appearance {
   entityId: string

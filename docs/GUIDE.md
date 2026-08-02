@@ -111,7 +111,17 @@ phone.
 ### Reading alongside a book
 
 Library worlds arrive in **reading mode**, which is what makes them safe to open
-while you are still part-way through the book.
+while you are still part-way through the book. A book you have just downloaded
+opens at its first moment rather than fully revealed, so nothing is given away
+before you have read a word.
+
+**PlotWeave remembers your place in each book.** Close one, read another, come
+back a week later — the cursor is where you left it, and the world card on the
+shelf says *"Chapter 5 of 17"* with a progress bar so you can see at a glance
+how far into each you are. If you deliberately choose **All chapters**, that is
+remembered too: coming back shows you the whole book again rather than quietly
+re-hiding it, and the progress bar disappears, because seeing everything is not
+a place in the story.
 
 Set the chapter cursor to where you have read up to, and PlotWeave hides
 characters, items and places the story has not introduced yet — everywhere, not

@@ -9,6 +9,22 @@ interface WorldSlice {
 interface EventSlice {
   activeEventId: string | null
   setActiveEventId: (id: string | null) => void
+  /**
+   * Where the cursor was left in each world, so reopening one resumes rather
+   * than restarts.
+   *
+   * This began as a spoiler leak rather than a convenience. Switching worlds
+   * cleared `activeEventId`, and a null cursor means "all chapters" — full
+   * reveal. So a reader five chapters into a book who closed it and came back
+   * was silently shown the whole thing, which is the one thing reading mode
+   * exists to prevent.
+   *
+   * Key presence is meaningful. A stored `null` is a reader who deliberately
+   * asked for all chapters and should get it back; a *missing* key is a world
+   * never opened, which is what lets a fresh book start at its first moment
+   * instead of fully revealed.
+   */
+  eventByWorld: Record<string, string | null>
 }
 
 interface MapSlice {
@@ -125,19 +141,30 @@ export const useAppStore = create<AppStore>()(
     (set, _get) => ({
       // World
       activeWorldId: null,
-      setActiveWorldId: (id) => set({
+      setActiveWorldId: (id) => set((state) => ({
         activeWorldId: id,
-        activeEventId: null,
+        // Resume where this world was left rather than resetting to null. Null
+        // is not a neutral starting point — it means "all chapters", which for
+        // a book someone is part-way through is the whole plot.
+        activeEventId: id && id in state.eventByWorld ? state.eventByWorld[id] : null,
         activeMapLayerId: null,
         mapLayerHistory: [],
         pendingFocusRouteId: null,
         pendingFocusRegionId: null,
         pendingFocusMarkerId: null,
-      }),
+      })),
 
       // Event (the global time cursor — replaces activeChapterId)
       activeEventId: null,
-      setActiveEventId: (id) => set({ activeEventId: id }),
+      eventByWorld: {},
+      setActiveEventId: (id) => set((state) => {
+        const worldId = state.activeWorldId
+        if (!worldId) return { activeEventId: id }
+        // Recorded either way, including null: choosing "all chapters" is a
+        // decision, and the next visit should honour it rather than quietly
+        // putting the reader back at the start.
+        return { activeEventId: id, eventByWorld: { ...state.eventByWorld, [worldId]: id } }
+      }),
 
       // Map
       activeMapLayerId: null,
@@ -244,6 +271,7 @@ export const useAppStore = create<AppStore>()(
       partialize: (state) => ({
         activeWorldId: state.activeWorldId,
         activeEventId: state.activeEventId,
+        eventByWorld: state.eventByWorld,
         sidebarOpen: state.sidebarOpen,
         navPinned: state.navPinned,
         barScope: state.barScope,
