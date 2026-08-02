@@ -4,6 +4,16 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  # Cutting a release by hand needs a tag push, which is not always available —
+  # a sandboxed environment may allow branch pushes and refuse tag refs. Run
+  # this from the Actions tab instead and it creates the tag itself, on the
+  # commit it builds.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, e.g. v1.0.0 (lowercase v)'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -25,6 +35,47 @@ jobs:
     name: Build — ${{ matrix.label }}
 
     steps:
+      # Fail before spending three build matrices on a version that will not
+      # trigger anything. `v*.*.*` is matched case-sensitively, so "V1.0.0"
+      # pushes a tag and builds nothing — the exact mistake this guards.
+      # The input reaches the shell through the environment, never through
+      # `${{ }}` inside a run block: Actions substitutes those before bash sees
+      # the script, so a version of `v1.0.0"; rm -rf / #` would be pasted in as
+      # code rather than read as a string. As a variable it can only ever be a
+      # value, however badly formed.
+      - name: Check the version is well formed
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          # Anchored, because it becomes a git tag: anything that is not a
+          # version has no business being one. `v*.*.*` is matched
+          # case-sensitively by the push trigger, so "V1.0.0" would tag and
+          # build nothing — the exact mistake this catches first.
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+            echo "::error::Version must look like v1.2.3, with a lowercase v. Got '$VERSION'."
+            exit 1
+          fi
+          echo "Releasing $VERSION"
+
+      # A tag push already carries the version in the ref; a manual run carries
+      # it in the input. Everything downstream reads this one value rather than
+      # branching on the event.
+      - name: Resolve the version
+        id: version
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=$REF_NAME" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -47,9 +98,14 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           draft: true
+          # Named explicitly rather than inferred from the ref: on a manual run
+          # the ref is a branch, and this is also what creates the tag — it is
+          # placed on the commit that was built, so the release and the tag
+          # cannot disagree about what shipped.
+          tag_name: ${{ steps.version.outputs.value }}
           files: out/make/**/*
           body: |
-            ## PlotWeave ${{ github.ref_name }}
+            ## PlotWeave ${{ steps.version.outputs.value }}
 
             ### Download
             | Platform | File |
