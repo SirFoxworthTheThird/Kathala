@@ -41,6 +41,16 @@ export interface LibraryEntry {
    * reader is told so on the card rather than in a footnote nobody reads.
    */
   notice: string
+  /**
+   * Cover art for the card, as an absolute URL.
+   *
+   * Only entries whose cover is a *linked* image can have one. Where the cover
+   * is binary it lives in the `.pwb` bundle, which is tens of megabytes and the
+   * one thing the reader has not agreed to download yet — so those cards stay
+   * text, rather than the catalogue quietly pulling the very payload its own
+   * "with images" button exists to make optional.
+   */
+  cover?: string
 }
 
 export interface LibraryIndex {
@@ -68,6 +78,12 @@ export function parseLibraryIndex(raw: unknown): LibraryIndex {
       }
     }
     if (typeof e.dataBytes !== 'number') throw new Error(`Library entry ${i} is missing dataBytes`)
+    // A cover is optional, but a malformed one is dropped rather than rendered:
+    // an <img> pointing at a relative path or a javascript: string is not
+    // something to hand to the browser because a catalogue file said so.
+    if (e.cover !== undefined && !(typeof e.cover === 'string' && /^https?:\/\//i.test(e.cover))) {
+      delete e.cover
+    }
     return e as unknown as LibraryEntry
   })
 

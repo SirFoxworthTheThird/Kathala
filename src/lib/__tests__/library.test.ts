@@ -36,6 +36,38 @@ describe('libraryBaseUrl', () => {
   })
 })
 
+describe('a catalogue cover', () => {
+  const parseOne = (over: Record<string, unknown>) =>
+    parseLibraryIndex({ version: 1, entries: [entry() as never] as never[] }) && parseLibraryIndex({
+      version: 1, entries: [{ ...entry(), ...over }],
+    }).entries[0]
+
+  it('is kept when it is an absolute http(s) URL', () => {
+    expect(parseOne({ cover: 'https://example.com/a.jpg' }).cover).toBe('https://example.com/a.jpg')
+    expect(parseOne({ cover: 'http://example.com/a.jpg' }).cover).toBe('http://example.com/a.jpg')
+  })
+
+  it('is dropped rather than handed to an <img> when it is not one', () => {
+    // The catalogue is a file on disk, but it still ends up as a src
+    // attribute, and "the manifest said so" is not a reason to load it.
+    for (const bad of [
+      'javascript:alert(1)',
+      'data:image/svg+xml,<svg onload=alert(1)>',
+      '/library/local.png',
+      '//example.com/protocol-relative.jpg',
+      '',
+      42,
+      null,
+    ]) {
+      expect(parseOne({ cover: bad }).cover, String(bad)).toBeUndefined()
+    }
+  })
+
+  it('is optional — an entry without one still parses', () => {
+    expect(parseOne({}).cover).toBeUndefined()
+  })
+})
+
 describe('parseLibraryIndex', () => {
   it('accepts a well-formed catalogue', () => {
     const index = parseLibraryIndex({ version: 1, entries: [entry()] })

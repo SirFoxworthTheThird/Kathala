@@ -7,6 +7,27 @@ import {
 } from '@/lib/library'
 
 /**
+ * Cover art on a catalogue card.
+ *
+ * A remote image on a card that has to stay readable without it, so a URL that
+ * 404s or is blocked takes itself off the card rather than leaving a broken
+ * frame. Lazily loaded — the list is longer than the dialog.
+ */
+function LibraryCover({ src, title }: { src: string; title: string }) {
+  const [failed, setFailed] = useState(false)
+  if (failed) return null
+  return (
+    <img
+      src={src}
+      alt={`${title} cover`}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className="h-24 w-16 shrink-0 rounded border border-[hsl(var(--border))] bg-[hsl(var(--muted))] object-cover"
+    />
+  )
+}
+
+/**
  * The library.
  *
  * These worlds double as a reading companion: because every view reads state
@@ -131,26 +152,32 @@ export function LibraryDialog({
                   key={entry.id}
                   className="rounded-md border border-[hsl(var(--border))] p-3"
                 >
-                  <div className="flex flex-wrap items-baseline gap-x-2">
-                    <h3 className="text-sm font-semibold text-[hsl(var(--foreground))]">{entry.title}</h3>
-                    <span className="text-xs text-[hsl(var(--muted-foreground))]">{entry.author}</span>
+                  <div className="flex gap-3">
+                    {entry.cover && <LibraryCover src={entry.cover} title={entry.title} />}
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-baseline gap-x-2">
+                        <h3 className="text-sm font-semibold text-[hsl(var(--foreground))]">{entry.title}</h3>
+                        <span className="text-xs text-[hsl(var(--muted-foreground))]">{entry.author}</span>
+                      </div>
+                      <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">{entry.blurb}</p>
+
+                      {entry.counts && (
+                        <p className="mt-1.5 text-[11px] text-[hsl(var(--muted-foreground))]">
+                          {[
+                            entry.counts.characters && `${entry.counts.characters} characters`,
+                            entry.counts.chapters && `${entry.counts.chapters} chapters`,
+                            entry.counts.events && `${entry.counts.events} events`,
+                            entry.counts.locations && `${entry.counts.locations} locations`,
+                          ].filter(Boolean).join(' · ')}
+                        </p>
+                      )}
+
+                      <p className="mt-2 text-[11px] italic text-[hsl(var(--muted-foreground))]">
+                        {entry.notice}
+                      </p>
+                    </div>
                   </div>
-                  <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">{entry.blurb}</p>
-
-                  {entry.counts && (
-                    <p className="mt-1.5 text-[11px] text-[hsl(var(--muted-foreground))]">
-                      {[
-                        entry.counts.characters && `${entry.counts.characters} characters`,
-                        entry.counts.chapters && `${entry.counts.chapters} chapters`,
-                        entry.counts.events && `${entry.counts.events} events`,
-                        entry.counts.locations && `${entry.counts.locations} locations`,
-                      ].filter(Boolean).join(' · ')}
-                    </p>
-                  )}
-
-                  <p className="mt-2 text-[11px] italic text-[hsl(var(--muted-foreground))]">
-                    {entry.notice}
-                  </p>
 
                   <div className="mt-2.5 flex flex-wrap items-center gap-2">
                     {installed ? (

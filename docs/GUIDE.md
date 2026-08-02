@@ -108,6 +108,13 @@ images and portraits are a separate, much larger download, so they sit behind
 their own button rather than coming along by default — useful if you're on a
 phone.
 
+Books whose cover is a linked image show it on the card. The cover is fetched
+from wherever it is hosted, so opening the Library makes a request to that site
+— and a card whose cover cannot be loaded simply goes without one rather than
+showing a broken frame. Books whose artwork lives inside the image bundle stay
+text-only here, since drawing them would mean downloading the very bundle the
+*With images* button exists to make optional.
+
 ### Reading alongside a book
 
 Library worlds arrive in **reading mode**, which is what makes them safe to open
