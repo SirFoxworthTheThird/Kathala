@@ -83,6 +83,14 @@ Once you have worlds, each appears as a card with its name, last-edited date, an
 description. Click a card to open it; the ⋯ menu on each card exports or deletes
 that world.
 
+Books you are reading are kept on their own shelf. As soon as one world is in
+[reading mode](#reading-alongside-a-book), the selector splits into **Your
+worlds** — the ones you are writing, where the *New World* tile lives — and
+**Reading** below it, so a shelf of downloaded books never buries your own work.
+Turning reading mode off in a world's settings moves it back up to *Your
+worlds*, since at that point you are editing it rather than reading it. With
+nothing in reading mode there is only one list and no headings at all.
+
 ![World selector with worlds](images/02-home-worlds.png)
 
 ### Set up a blank world

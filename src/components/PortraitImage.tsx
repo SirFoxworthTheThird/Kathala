@@ -33,8 +33,13 @@ export function PortraitImage({
 }: PortraitImageProps) {
   const url = useBlobUrl(imageId ?? null)
   const [zoomed, setZoomed] = useState(false)
+  // A *linked* image is somebody else's URL on somebody else's server, and one
+  // day it stops answering. Without this the browser draws its broken-image
+  // glyph, which is worse than the placeholder that stands in when there is no
+  // image at all — so a picture that will not load falls back to exactly that.
+  const [broken, setBroken] = useState<string | null>(null)
 
-  if (!url) {
+  if (!url || broken === url) {
     return (
       <div className={cn('flex items-center justify-center bg-[hsl(var(--muted))]', fallbackClassName ?? className)}>
         <Icon className="h-1/2 w-1/2 text-[hsl(var(--muted-foreground))]" />
@@ -43,7 +48,14 @@ export function PortraitImage({
   }
 
   if (!zoomable) {
-    return <img src={url} alt={alt ?? ''} className={cn('object-cover', className)} />
+    return (
+      <img
+        src={url}
+        alt={alt ?? ''}
+        onError={() => setBroken(url)}
+        className={cn('object-cover', className)}
+      />
+    )
   }
 
   return (
@@ -68,6 +80,7 @@ export function PortraitImage({
             setZoomed(true)
           }
         }}
+        onError={() => setBroken(url)}
         className={cn('cursor-zoom-in object-cover', className)}
       />
       <ImageLightbox url={url} alt={alt ?? ''} open={zoomed} onClose={() => setZoomed(false)} />
