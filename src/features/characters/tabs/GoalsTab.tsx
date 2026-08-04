@@ -13,7 +13,7 @@ import {
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import { useAppStore } from '@/store'
 import { useGate } from '@/db/hooks/ReadingGateContext'
-import { GOAL_TYPE_CONFIG, eventPositions, isGoalActiveAt } from '@/lib/characterGoals'
+import { eventPositions, isGoalActiveAt, goalTypeConfig } from '@/lib/characterGoals'
 import { CHARACTER_GOAL_TYPES, type Character, type CharacterGoal, type CharacterGoalType } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -42,7 +42,7 @@ function GoalRow({ goal, isActive, options, onDelete }: {
   onDelete: () => void
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const cfg = GOAL_TYPE_CONFIG[goal.type]
+  const cfg = goalTypeConfig(goal.type)
   const gate = useGate()
 
   // A reader sees the same want, need, fear or flaw — as a line of text rather
@@ -210,13 +210,13 @@ export function GoalsTab({ character }: { character: Character }) {
                 <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {CHARACTER_GOAL_TYPES.map((t) => (
-                    <SelectItem key={t} value={t} className="text-xs">{GOAL_TYPE_CONFIG[t].label}</SelectItem>
+                    <SelectItem key={t} value={t} className="text-xs">{goalTypeConfig(t).label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <Input
                 className="h-8 flex-1 text-sm"
-                placeholder={GOAL_TYPE_CONFIG[newType].hint}
+                placeholder={goalTypeConfig(newType).hint}
                 value={newText}
                 onChange={(e) => setNewText(e.target.value)}
                 onKeyDown={(e) => {

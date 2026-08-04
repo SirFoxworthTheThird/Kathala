@@ -104,7 +104,7 @@ function RelationshipEdge({
   markerEnd?: string
 }) {
   const [edgePath, labelX, labelY] = getStraightPath({ sourceX, sourceY, targetX, targetY })
-  const color = SENTIMENT_COLORS[data!.sentiment]
+  const color = SENTIMENT_COLORS[data!.sentiment] ?? '#94a3b8'
   // Inherited edges are dashed to signal "carrying forward from a previous chapter"
   const strokeDasharray = data!.isInherited ? '6 3' : undefined
 
@@ -695,7 +695,7 @@ export default function RelationshipGraphView() {
                     {points.map((p, i) => (
                       <div key={i} className="flex items-start gap-2">
                         <div className="flex flex-col items-center self-stretch">
-                          <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: SENTIMENT_COLORS[p.sentiment] }} />
+                          <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: SENTIMENT_COLORS[p.sentiment] ?? '#94a3b8' }} />
                           {i < points.length - 1 && <span className="w-px flex-1 bg-[hsl(var(--border))]" />}
                         </div>
                         <div className="min-w-0 flex-1 pb-2">

@@ -8,7 +8,7 @@ import { useMotifs } from '@/db/hooks/useMotifs'
 import { SceneDraftSection } from './SceneDraftSection'
 import { EventCardBadges } from './EventCardBadges'
 import type { WorldEvent, EventStatus } from '@/types'
-import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
+import { EVENT_STATUSES, eventStatusConfig } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
 import { deleteEvent, updateEvent } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
@@ -796,12 +796,12 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                   className="flex-1 rounded py-1 text-[10px] font-medium transition-opacity hover:opacity-90"
                   style={
                     status === s
-                      ? { background: EVENT_STATUS_CONFIG[s].color, color: EVENT_STATUS_CONFIG[s].textColor }
+                      ? { background: eventStatusConfig(s).color, color: eventStatusConfig(s).textColor }
                       : { background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }
                   }
                   aria-pressed={status === s}
                 >
-                  {EVENT_STATUS_CONFIG[s].label}
+                  {eventStatusConfig(s).label}
                 </button>
               ))}
             </div>

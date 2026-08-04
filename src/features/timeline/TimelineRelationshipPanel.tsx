@@ -223,8 +223,8 @@ function RelationshipCard({ rel, timelines, allEvents, allChapters, characters, 
           {expanded
             ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))]" />
             : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))]" />}
-          <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${REL_TYPE_COLORS[rel.type]}`}>
-            {REL_TYPE_LABELS[rel.type]}
+          <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${REL_TYPE_COLORS[rel.type] ?? 'bg-[hsl(var(--muted))]'}`}>
+            {REL_TYPE_LABELS[rel.type] ?? rel.type}
           </span>
           <span className="truncate text-xs text-[hsl(var(--foreground))] ml-1">
             {rel.label || `${sourceTimeline?.name ?? '?'} → ${targetTimeline?.name ?? '?'}`}
@@ -240,7 +240,7 @@ function RelationshipCard({ rel, timelines, allEvents, allChapters, characters, 
         <ConfirmDialog
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
-          title={`Delete "${rel.label || REL_TYPE_LABELS[rel.type]}" relationship?`}
+          title={`Delete "${rel.label || REL_TYPE_LABELS[rel.type] || rel.type}" relationship?`}
           description="This cannot be undone."
           onConfirm={handleDelete}
         />
@@ -296,7 +296,7 @@ function RelationshipCard({ rel, timelines, allEvents, allChapters, characters, 
                     key={idx}
                     className="flex items-center gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-2.5 py-1.5 text-xs"
                   >
-                    <span className="text-[hsl(var(--muted-foreground))] shrink-0">{ANCHOR_KIND_LABELS[anchor.kind]}</span>
+                    <span className="text-[hsl(var(--muted-foreground))] shrink-0">{ANCHOR_KIND_LABELS[anchor.kind] ?? anchor.kind}</span>
                     <span className="flex-1 font-medium truncate">{getAnchorEntityName(anchor)}</span>
                     <button
                       onClick={() => handleRemoveAnchor(idx)}

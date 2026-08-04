@@ -9,6 +9,30 @@ export const GOAL_TYPE_CONFIG: Record<CharacterGoalType, { label: string; color:
   flaw: { label: 'Flaw', color: '#fbbf24', hint: 'The trait that keeps getting in their way.' },
 }
 
+/** The goal types PlotWeave knows, in the order it presents them. */
+export const GOAL_TYPES: CharacterGoalType[] = ['want', 'need', 'fear', 'flaw']
+
+/**
+ * The display config for a goal type, for any value at all.
+ *
+ * Same reasoning as `eventStatusConfig`: a goal's `type` is typed but never
+ * validated on import, and the shipped Dracula example carried "escape" until
+ * it was corrected — which made `GOAL_TYPE_CONFIG[goal.type].label` throw and
+ * took the whole Goals tab down with it. Any `.pwk` can still do that.
+ *
+ * An unrecognised type keeps its own name rather than being relabelled, so the
+ * writer can see what their file actually says and fix it.
+ */
+export function goalTypeConfig(type: unknown): { label: string; color: string; hint: string } {
+  // Checked against the list rather than with `in`, which is true for
+  // inherited keys like `toString` and would return a function.
+  if (typeof type === 'string' && (GOAL_TYPES as readonly string[]).includes(type)) {
+    return GOAL_TYPE_CONFIG[type as CharacterGoalType]
+  }
+  const label = typeof type === 'string' && type.trim() ? type.trim() : 'Goal'
+  return { label, color: '#94a3b8', hint: 'This goal has a type PlotWeave does not recognise.' }
+}
+
 /**
  * Narrative position of an event: chapter number first, then order within the
  * chapter. Mirrors the ordering used elsewhere (the continuity checker, the
@@ -61,7 +85,7 @@ export function activeGoalsAt(
   activeEventId: string | null,
   positions: Map<string, number>,
 ): CharacterGoal[] {
-  const order: CharacterGoalType[] = ['want', 'need', 'fear', 'flaw']
+  const order = GOAL_TYPES
   return goals
     .filter((g) => g.characterId === characterId && isGoalActiveAt(g, activeEventId, positions))
     .sort((a, b) => {
@@ -73,5 +97,5 @@ export function activeGoalsAt(
 /** Compact one-line summary for tooltips and dense rows, e.g.
  *  "Want: reclaim the throne · Fear: becoming his father". */
 export function summariseGoals(goals: CharacterGoal[]): string {
-  return goals.map((g) => `${GOAL_TYPE_CONFIG[g.type].label}: ${g.text}`).join(' · ')
+  return goals.map((g) => `${goalTypeConfig(g.type).label}: ${g.text}`).join(' · ')
 }

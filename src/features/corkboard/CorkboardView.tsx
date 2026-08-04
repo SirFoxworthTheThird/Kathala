@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Eye, GripVertical, LayoutGrid } from 'lucide-react'
 import { useWorldChapters, useWorldEvents, useTimelines, moveEventOnBoard, updateEvent } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
-import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
+import { EVENT_STATUSES, eventStatusConfig } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
 import { useAppStore } from '@/store'
 import { EmptyState } from '@/components/EmptyState'
@@ -29,7 +29,7 @@ function SceneCard({
   dragging: boolean
 }) {
   const status = event.status ?? 'draft'
-  const cfg = EVENT_STATUS_CONFIG[status]
+  const cfg = eventStatusConfig(status)
   return (
     <div
       draggable
@@ -74,7 +74,7 @@ function SceneCard({
             className="absolute inset-0 cursor-pointer opacity-0"
           >
             {EVENT_STATUSES.map((s) => (
-              <option key={s} value={s}>{EVENT_STATUS_CONFIG[s].label}</option>
+              <option key={s} value={s}>{eventStatusConfig(s).label}</option>
             ))}
           </select>
         </label>

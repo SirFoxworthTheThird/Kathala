@@ -1,5 +1,5 @@
 import { History, Milestone, Flame, Eye, PenLine } from 'lucide-react'
-import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
+import { EVENT_STATUSES, eventStatusConfig } from '@/lib/eventStatus'
 import { beatById, beatActColor } from '@/lib/storyBeats'
 import { tensionColor, tensionLabel } from '@/lib/tension'
 import { charColor } from '@/lib/characterColor'
@@ -60,11 +60,11 @@ export function EventCardBadges({
           onChangeStatus(EVENT_STATUSES[(idx + 1) % EVENT_STATUSES.length])
         }}
         className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium transition-opacity hover:opacity-80"
-        style={{ background: EVENT_STATUS_CONFIG[status].color, color: EVENT_STATUS_CONFIG[status].textColor }}
-        title={`Status: ${EVENT_STATUS_CONFIG[status].label} — click to advance`}
-        aria-label={`Event status: ${EVENT_STATUS_CONFIG[status].label}`}
+        style={{ background: eventStatusConfig(status).color, color: eventStatusConfig(status).textColor }}
+        title={`Status: ${eventStatusConfig(status).label} — click to advance`}
+        aria-label={`Event status: ${eventStatusConfig(status).label}`}
       >
-        {EVENT_STATUS_CONFIG[status].label}
+        {eventStatusConfig(status).label}
       </button>
 
       {/* Flashback badge — visible when set */}
