@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { LeafletMapCanvas } from './LeafletMapCanvas'
 import { LocationDetailPanel } from './LocationDetailPanel'
 import { CharacterSnapshotPanel } from './CharacterSnapshotPanel'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { UploadMapDialog } from './UploadMapDialog'
 import { GenerateLocationsDialog } from './GenerateLocationsDialog'
 import { AddLocationDialog } from './AddLocationDialog'
@@ -59,6 +60,8 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   } = useAppStore()
 
   // ── Local UI state ────────────────────────────────────────────────────────
+  // Reading mode: the map is direct manipulation, so the canvas has to know.
+  const gate = useGate()
   const [isDraggingCharacter, setIsDraggingCharacter] = useState(false)
   // On phones the side panels are a slide-in drawer so the map can use the full
   // width; on `lg`+ they're a static column (see the sidebar classes below).
@@ -400,6 +403,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   }
 
   async function handleCharacterDrop(characterId: string, markerId: string) {
+    if (gate.active) return
     const targetMarker = markers.find((m) => m.id === markerId)
     if (!targetMarker) return
     await placeCharacterAtMarker(characterId, targetMarker)
@@ -694,8 +698,10 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               setAddLocationOpen(true)
             }}
             onDrillDown={pushMapLayer}
+            readOnly={gate.active}
             onCharacterDrop={handleCharacterDrop}
             onCharacterDropOnEmpty={(characterId, x, y) => {
+              if (gate.active) return
               setPendingDropCharacterId(characterId)
               setPendingPos({ x, y })
               setAddLocationOpen(true)
