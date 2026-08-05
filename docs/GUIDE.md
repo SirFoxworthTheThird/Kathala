@@ -177,7 +177,9 @@ Reading mode also clears out everything that only makes sense to the person
 writing the book, so what is left reads as a companion rather than a workspace
 you have wandered into.
 
-The writing screens — Manuscript, Structure and the Corkboard — step aside. Undo, redo, Recent
+The writing screens — Manuscript, Structure and the Corkboard — step aside, and
+their addresses close with them: typing one in takes you back to the dashboard
+rather than into a screen the book is not yours to edit from. Undo, redo, Recent
 changes, the Writer's Brief and the Continuity Checker leave the top bar (and
 Ctrl+Z along with them), and the dashboard drops its continuity card and its
 snapshot-coverage figure. No

@@ -560,3 +560,34 @@ test('the map cannot be redrawn by dragging what is on it', async ({ page }) => 
 
   await expect(page.locator('.leaflet-marker-icon').first()).toHaveClass(/leaflet-marker-draggable/)
 })
+
+
+test('the writing screens are closed by URL, not just hidden from the nav', async ({ page }) => {
+  // Hiding a link is not closing a door. All three were reachable by typing the
+  // address, and the corkboard then let a reader drag scene cards between
+  // chapters — a write, on a world that gets replaced the next time they
+  // download it.
+  test.setTimeout(180_000)
+  await downloadFirstLibraryWorld(page)
+  const world = await worldPath(page)
+
+  for (const screen of ['corkboard', 'structure', 'manuscript']) {
+    await page.goto(`/#${world}/${screen}`)
+    await page.waitForTimeout(1500)
+    // Bounced back to the dashboard rather than served the writing screen.
+    expect(new URL(page.url()).hash, screen).toBe(`#${world}`)
+  }
+
+  // Paired with the writing case, so this cannot pass because the routes are
+  // broken for everyone: turn reading mode off and all three open.
+  await page.goto(`/#${world}/settings`)
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Reading mode is on' }).click()
+  await page.waitForTimeout(800)
+
+  for (const screen of ['corkboard', 'structure', 'manuscript']) {
+    await page.goto(`/#${world}/${screen}`)
+    await page.waitForTimeout(1500)
+    expect(new URL(page.url()).hash, screen).toBe(`#${world}/${screen}`)
+  }
+})
