@@ -1,0 +1,216 @@
+import fs from 'node:fs'
+import path from 'node:path'
+
+const root = process.cwd()
+const files = [
+  path.join(root, 'example', 'The Fellowship of the Ring.pwk'),
+  path.join(root, 'public', 'library', 'the-fellowship-of-the-ring.pwk'),
+]
+
+const ted = 'https://www.tednasmith.com/wp-content/uploads'
+const images = {
+  bagEnd: `${ted}/2012/08/TN-The_Unexpected_Party.jpg`,
+  shireArrival: `${ted}/2024/04/TN-Arrival-in-the-Shire.jpg`,
+  greenCountry: `${ted}/2012/07/TN-Green_Hill_Country.jpg`,
+  greenMorning: `${ted}/2012/07/TN-Green_Hill_Morning.jpg`,
+  hobbiton: `${ted}/2012/07/TN-Last_Sight_of_Hobbiton.jpg`,
+  leavingShire: `${ted}/2012/07/TN-Leaving_the_Shire.jpg`,
+  woodyEnd: `${ted}/2012/07/TN-Elves_in_the_Woody_End.jpg`,
+  willow: `${ted}/2012/07/TN-The_Willow-man_is_Tamed.jpg`,
+  oldForest: `${ted}/2012/07/TN-Beyond_the_Old_Forest.jpg`,
+  barrow: `${ted}/2012/07/TN-Under_the_Spell_of_the_Barrow-wight.jpg`,
+  prancingPony: `${ted}/2012/07/TN-At_the_Sign_of_the_Prancing_Pony.jpg`,
+  weathertop: `${ted}/2012/07/TN-Fire_on_Weathertop.jpg`,
+  eriadorRoad: `${ted}/2012/07/TN-Fifth_Day_After_Weathertop.jpg`,
+  bruinen: `${ted}/2012/07/TN-Riders_at_The_Ford.jpg`,
+  rivendell: `${ted}/2012/07/TN-Rivendell.jpg`,
+  rivendellValley: `${ted}/2012/07/TN-Fair_Valley_of_Rivendell.jpg`,
+  trollshaws: `${ted}/2012/07/TN-A_Song_in_The_Trollshaws.jpg`,
+  caradhras: `${ted}/2012/07/TN-Company_Attempts_the_Pass_of_Caradhras.jpg`,
+  redhorn: `${ted}/2012/07/TN-The_Anger_of_The_Mountain.jpg`,
+  moriaGate: `${ted}/2021/02/TN-Moria-Gate-2021.jpg`,
+  moriaPassword: `${ted}/2012/07/TN-Password_Into_Moria.jpg`,
+  moriaApproach: `${ted}/2020/12/TN-The-Fellowship-Approaches-Moria.jpg`,
+  balrog: `${ted}/2012/07/TN-The_Balrog.jpg`,
+  khazadBridge: `${ted}/2012/07/TN-At_The_Bridge.jpg`,
+  dimrill: `${ted}/2018/08/TN-Durins_Crown_and_the_Mirrormere.jpg`,
+  caras: `${ted}/2018/05/TN-Arrival_at_Caras_Galadhon.jpg`,
+  carasTree: `${ted}/2012/07/TN-The_Great_Tree_at_Caras_Galadhon.jpg`,
+  lorienForest: `${ted}/2012/07/TN-Frodo_and_Haldir_in_Lothlorien.jpg`,
+  anduin: `${ted}/2012/07/TN-Farewell_to_Lorien.jpg`,
+  argonath: `${ted}/2012/07/TN-The_Argonath.jpg`,
+  pillars: `${ted}/2012/07/TN-The_Pillars_of_The_Kings.jpg`,
+  tolBrandir: `${ted}/2012/07/TN-Tol_Brandir.jpg`,
+  edoras: `${ted}/2019/03/TN-Approaching_Edoras.jpg`,
+  rohan: `${ted}/2012/08/TN-The_Riders_of_Rohan.jpg`,
+  fangorn: `${ted}/2012/08/TN-Fangorn_Forest.jpg`,
+  wellinghall: `${ted}/2012/08/TN-Wellinghall.jpg`,
+  isengard: `${ted}/2012/08/TN-The_Wrath_of_the_Ents.jpg`,
+  minasMorgul: `${ted}/2012/08/TN-The_Tower_of_the_Moon.jpg`,
+  hennethAnnun: `${ted}/2012/08/TN-The_Terrace_at_Henneth_Annun.jpg`,
+  crossroads: `${ted}/2012/08/TN-At_the_Cross-roads.jpg`,
+  shelob: `${ted}/2012/08/TN-Shelob.jpg`,
+  marshes: `${ted}/2012/08/TN-Through_the_Marshes.jpg`,
+  minasTirith: `${ted}/2012/07/TN-Minas_Tirith_at_Dawn.jpg`,
+  citadel: `${ted}/2012/07/TN-At_the_Court_of_the_Fountain.jpg`,
+  rathDinen: `${ted}/2012/07/TN-The_Domes_of_the_Dead.jpg`,
+  dolAmroth: `${ted}/2018/05/TN-Dol_Amroth.jpg`,
+  cracksDoom: `${ted}/2012/07/TN-At_the_Cracks_of_Doom.jpg`,
+  mountDoom: `${ted}/2012/07/TN-At_the_Foot_of_Mount_Doom.jpg`,
+  mordor: `${ted}/2012/07/TN-Across_Gorgoroth.jpg`,
+  blackGate: `${ted}/2017/04/TN-Battle_of_the_Black_Gate.jpg`,
+  baradDur: `${ted}/2018/05/TN-Rangers_Scout_the_Ruins_of_Barad-dur.jpg`,
+  pathsDead: `${ted}/2012/07/TN-The_King_of_the_Oathbreakers.jpg`,
+  carrock: `${ted}/2012/08/TN-Eagles_to_the_Carrock.jpg`,
+  rhosgobel: `${ted}/2019/02/TN-Rhosgobel.jpg`,
+  longLake: `${ted}/2012/08/TN-Barrel_Rider.jpg`,
+  mirkwood: `${ted}/2012/08/TN-Entering_Mirkwood.jpg`,
+  highPass: `${ted}/2012/08/TN-Goblin_Gate.jpg`,
+  dale: `${ted}/2018/05/TN-Smaug_Atop_Erebor.jpg`,
+}
+
+const assignments = {
+  'Moria': 'moriaApproach',
+  'The Black Gate': 'blackGate',
+  'Barrow-downs': 'barrow',
+  'Hornburg': 'edoras',
+  'The Carrock': 'carrock',
+  'Mount Doom': 'mountDoom',
+  'The Bruinen Ford': 'bruinen',
+  'Halifirien': 'rohan',
+  'Rivendell': 'rivendell',
+  'Longbottom': 'greenCountry',
+  'Minas Tirith': 'minasTirith',
+  'Mordor': 'mordor',
+  'Nardol': 'minasTirith',
+  'The Deeping Wall': 'edoras',
+  'Weather Hills': 'eriadorRoad',
+  'Lossarnach': 'dolAmroth',
+  'High Pass': 'highPass',
+  'Calenhad': 'rohan',
+  'The Prancing Pony': 'prancingPony',
+  'The Gate of Moria': 'moriaPassword',
+  'Endless Stair': 'balrog',
+  'Bag End': 'bagEnd',
+  'Archet': 'prancingPony',
+  'Gondor': 'minasTirith',
+  'Cirith Ungol': 'shelob',
+  'Nimrodel': 'lorienForest',
+  'Dol Amroth': 'dolAmroth',
+  'The Last Homely House': 'rivendellValley',
+  'Udûn': 'blackGate',
+  'Henneth Annûn': 'hennethAnnun',
+  'Staddle': 'prancingPony',
+  'Brandy Hall': 'greenMorning',
+  'Michel Delving': 'greenCountry',
+  'Amon Dîn': 'minasTirith',
+  'Long Cleeve': 'greenCountry',
+  'Citadel': 'citadel',
+  'Sammath Naur': 'cracksDoom',
+  'Bree-land': 'prancingPony',
+  'Erelas': 'minasTirith',
+  'Shelob’s Lair': 'shelob',
+  'Chamber of Mazarbul': 'balrog',
+  'Twenty-first Hall': 'moriaGate',
+  'Wellinghall': 'wellinghall',
+  'Sarn Ford': 'leavingShire',
+  'Barad-dûr': 'baradDur',
+  'Bindbale Woods': 'woodyEnd',
+  'Entwash': 'fangorn',
+  'Derndingle': 'fangorn',
+  'Dunharrow': 'pathsDead',
+  'Pelargir': 'dolAmroth',
+  'The Forbidden Pool': 'hennethAnnun',
+  'Crickhollow': 'greenMorning',
+  'Dol Guldur': 'mirkwood',
+  'Waymeet': 'greenCountry',
+  'Tuckborough': 'greenCountry',
+  'Combe': 'prancingPony',
+  'The Old Forest': 'oldForest',
+  'The Cross-roads': 'crossroads',
+  'Paths of the Dead': 'pathsDead',
+  'The Long Lake': 'longLake',
+  'Rath Dínen': 'rathDinen',
+  'Lebennin': 'dolAmroth',
+  'Anórien': 'minasTirith',
+  'Eilenach': 'rohan',
+  'The Party Tree': 'shireArrival',
+  'Amon Hen': 'tolBrandir',
+  'The Argonath': 'argonath',
+  'Bamfurlong': 'greenCountry',
+  "Tom Bombadil's House": 'willow',
+  'Bucklebury Ferry': 'leavingShire',
+  'Caras Galadhon': 'caras',
+  'Dimrill Dale': 'dimrill',
+  'Emyn Muil': 'tolBrandir',
+  "Galadriel's Garden": 'carasTree',
+  'Hollin (Eregion)': 'moriaApproach',
+  'Lothlórien': 'caras',
+  'Midgewater Marshes': 'eriadorRoad',
+  'Old Man Willow': 'willow',
+  'Parth Galen': 'tolBrandir',
+  'River Anduin': 'anduin',
+  'Sarn Gebir': 'pillars',
+  'Trollshaws': 'trollshaws',
+  'Woodhall': 'woodyEnd',
+  'Lothlórien Forest': 'lorienForest',
+  'Lower Anduin': 'anduin',
+  'Rhosgobel': 'rhosgobel',
+  'Pelennor Fields': 'minasTirith',
+  'Rohan': 'rohan',
+  'Bridge of Khazad-dûm': 'khazadBridge',
+  'Shire': 'shireArrival',
+  'Weathertop': 'weathertop',
+  'Edoras': 'edoras',
+  'Redhorn Pass': 'caradhras',
+  'Helm’s Deep': 'edoras',
+  'Cerin Amroth': 'carasTree',
+  'Orthanc': 'isengard',
+  'Thranduil’s Hall': 'mirkwood',
+  'Bree': 'prancingPony',
+  'Minas Morgul': 'minasMorgul',
+  'The Dimholt': 'pathsDead',
+  'Durin’s Tower': 'balrog',
+  'Esgaroth': 'longLake',
+  'Meduseld': 'edoras',
+  'Dale': 'dale',
+  'Min-Rimmon': 'minasTirith',
+  'Hobbiton': 'hobbiton',
+  'Nan Curunír': 'isengard',
+  'Gladden Fields': 'marshes',
+  'Isengard': 'isengard',
+}
+
+const createdAt = 1785974400000
+const usedKeys = [...new Set(Object.values(assignments))]
+
+for (const file of files) {
+  const data = JSON.parse(fs.readFileSync(file, 'utf8'))
+  const locations = data.locationMarkers ?? []
+  const names = new Set(locations.map(({ name }) => name))
+  const missing = locations.filter(({ name }) => !assignments[name])
+  const unknown = Object.keys(assignments).filter((name) => !names.has(name))
+  if (missing.length || unknown.length) {
+    throw new Error(`Location assignment mismatch in ${file}: missing=${missing.map(({ name }) => name)} unknown=${unknown}`)
+  }
+
+  data.blobs = (data.blobs ?? []).filter(({ id }) => !id.startsWith('fotr-location-image-'))
+  data.blobs.push(...usedKeys.map((key) => ({
+    id: `fotr-location-image-${key}`,
+    worldId: data.world.id,
+    mimeType: 'image/jpeg',
+    url: images[key],
+    createdAt,
+  })))
+
+  for (const location of locations) {
+    location.imageId = `fotr-location-image-${assignments[location.name]}`
+  }
+
+  const blobIds = new Set(data.blobs.map(({ id }) => id))
+  const unresolved = locations.filter(({ imageId }) => !imageId || !blobIds.has(imageId))
+  if (unresolved.length) throw new Error(`Unresolved location images in ${file}: ${unresolved.map(({ name }) => name)}`)
+
+  fs.writeFileSync(file, JSON.stringify(data))
+  console.log(`${path.relative(root, file)}: ${locations.length} locations, ${usedKeys.length} linked illustrations`)
+}

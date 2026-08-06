@@ -240,6 +240,8 @@ electron/      # desktop entry point and packaging integration
 example/       # importable example worlds
 ```
 
+Book examples follow the maintained [example authoring checklist](docs/EXAMPLE_AUTHORING_CHECKLIST.md). Its automated guardrails run as part of the Vitest suite and cover the recurring data-quality failures that are not purely visual.
+
 ---
 
 ## License
