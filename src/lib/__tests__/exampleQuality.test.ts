@@ -26,7 +26,7 @@ type Location = Ref & {
   y?: number
 }
 type MapLayer = Ref & { parentMapId: string | null; imageId: string | null }
-type Character = Ref & { portraitImageId?: string | null; imageId?: unknown }
+type Character = Ref & { portraitImageId?: string | null; imageId?: unknown; description?: string }
 type CharacterSnapshot = {
   id: string
   eventId: string
@@ -73,6 +73,11 @@ const genericStatusText = [
   /not yet (?:present|involved|introduced)/i,
   /current state (?:of|during)/i,
   /present for this event/i,
+  // The Wise Man's Fear shipped 512 notes reading "…Current state: alive at The
+  // Eolian; directly involved in 'The Eolian'." The colon form slipped past the
+  // two patterns above, so the rule held while the data did not.
+  /current state:/i,
+  /directly involved in/i,
 ]
 
 describe('published examples meet the authoring quality rules', () => {
@@ -137,6 +142,7 @@ describe('published examples meet the authoring quality rules', () => {
 
       it('stores one specific snapshot for every present character and no one else', () => {
         const characterIds = new Set(world.characters.map(({ id }) => id))
+        const characterById = new Map(world.characters.map((c) => [c.id, c]))
         const locationIds = new Set(world.locationMarkers.map(({ id }) => id))
         const eventById = new Map(world.events.map((event) => [event.id, event]))
         const expected = world.events.flatMap((event) =>
@@ -159,6 +165,14 @@ describe('published examples meet the authoring quality rules', () => {
           const notes = snapshot.statusNotes.trim()
           expect(notes.length, `${snapshot.id} status`).toBeGreaterThan(0)
           for (const pattern of genericStatusText) expect(notes, `${snapshot.id} generic status`).not.toMatch(pattern)
+
+          // A per-event note says what this character is doing now. Opening it
+          // with their biography — which the character page already carries —
+          // makes every chapter of their history read the same.
+          const bio = (characterById.get(snapshot.characterId)?.description ?? '').trim()
+          if (bio.length > 0) {
+            expect(notes.startsWith(bio), `${snapshot.id} repeats the character's description`).toBe(false)
+          }
 
           const normalized = notes.toLocaleLowerCase()
           const seen = notesByEvent.get(snapshot.eventId) ?? new Set<string>()
