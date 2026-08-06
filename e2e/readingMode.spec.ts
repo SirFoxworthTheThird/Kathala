@@ -522,3 +522,72 @@ test('the shelf shows how far into each book the reader has got', async ({ page 
   await settleNav(page)
   await expect(page.getByText(/^Chapter \d+ of \d+$/)).toHaveCount(0)
 })
+
+
+test('the map cannot be redrawn by dragging what is on it', async ({ page }) => {
+  // The toolbar buttons were already gated, but a map is direct manipulation:
+  // dragging a pin writes exactly as surely as a button does, and an edit a
+  // reader makes to a downloaded book is thrown away the next time they
+  // download it. Driven for real, because "is this draggable" is a Leaflet
+  // question rather than a React one.
+  test.setTimeout(180_000)
+  await downloadFirstLibraryWorld(page)
+  const world = await worldPath(page)
+  await page.goto(`/#${world}/maps`)
+  await page.waitForTimeout(3000)
+
+  const marker = page.locator('.leaflet-marker-icon').first()
+  await expect(marker).toBeVisible()
+
+  // Leaflet marks a draggable marker with this class, and only then binds the
+  // handler that writes x/y back to the record.
+  await expect(marker).not.toHaveClass(/leaflet-marker-draggable/)
+
+  // Right-click offers add-location, annotation, route and region — all writes.
+  await page.locator('.leaflet-container').click({ button: 'right', position: { x: 260, y: 200 } })
+  await page.waitForTimeout(500)
+  await expect(page.getByRole('button', { name: /add location/i })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /annotation/i })).toHaveCount(0)
+
+  // Paired with the writing case, so this cannot pass because the map simply
+  // failed to load: turn reading mode off and the same marker becomes draggable.
+  await page.goto(`/#${world}/settings`)
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Reading mode is on' }).click()
+  await page.waitForTimeout(800)
+  await page.goto(`/#${world}/maps`)
+  await page.waitForTimeout(3000)
+
+  await expect(page.locator('.leaflet-marker-icon').first()).toHaveClass(/leaflet-marker-draggable/)
+})
+
+
+test('the writing screens are closed by URL, not just hidden from the nav', async ({ page }) => {
+  // Hiding a link is not closing a door. All three were reachable by typing the
+  // address, and the corkboard then let a reader drag scene cards between
+  // chapters — a write, on a world that gets replaced the next time they
+  // download it.
+  test.setTimeout(180_000)
+  await downloadFirstLibraryWorld(page)
+  const world = await worldPath(page)
+
+  for (const screen of ['corkboard', 'structure', 'manuscript']) {
+    await page.goto(`/#${world}/${screen}`)
+    await page.waitForTimeout(1500)
+    // Bounced back to the dashboard rather than served the writing screen.
+    expect(new URL(page.url()).hash, screen).toBe(`#${world}`)
+  }
+
+  // Paired with the writing case, so this cannot pass because the routes are
+  // broken for everyone: turn reading mode off and all three open.
+  await page.goto(`/#${world}/settings`)
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Reading mode is on' }).click()
+  await page.waitForTimeout(800)
+
+  for (const screen of ['corkboard', 'structure', 'manuscript']) {
+    await page.goto(`/#${world}/${screen}`)
+    await page.waitForTimeout(1500)
+    expect(new URL(page.url()).hash, screen).toBe(`#${world}/${screen}`)
+  }
+})

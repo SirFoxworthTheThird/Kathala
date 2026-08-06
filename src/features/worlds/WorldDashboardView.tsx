@@ -5,7 +5,7 @@ import {
   Package, BarChart2, ShieldAlert, Clock, Layers, Pencil, FileEdit, Spline, PenLine, Sparkle,
 } from 'lucide-react'
 import type { EventStatus } from '@/types'
-import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
+import { EVENT_STATUSES, eventStatusConfig } from '@/lib/eventStatus'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useWorld, updateWorld } from '@/db/hooks/useWorlds'
@@ -161,7 +161,13 @@ export default function WorldDashboardView() {
 
   const statusCounts = useMemo(() => {
     const counts: Record<EventStatus, number> = { idea: 0, outline: 0, draft: 0, revised: 0, final: 0 }
-    for (const ev of allEvents) counts[ev.status ?? 'draft']++
+    for (const ev of allEvents) {
+      // An unrecognised status would add a key of its own and turn the count
+      // into NaN, which the bar below renders as a width of "NaN%". Anything
+      // the app does not know about is counted as a draft.
+      const s = ev.status ?? 'draft'
+      counts[EVENT_STATUSES.includes(s) ? s : 'draft']++
+    }
     return counts
   }, [allEvents])
 
@@ -440,8 +446,8 @@ export default function WorldDashboardView() {
               return (
                 <div
                   key={s}
-                  style={{ width: `${(count / totalEvents) * 100}%`, background: EVENT_STATUS_CONFIG[s].color }}
-                  title={`${EVENT_STATUS_CONFIG[s].label}: ${count}`}
+                  style={{ width: `${(count / totalEvents) * 100}%`, background: eventStatusConfig(s).color }}
+                  title={`${eventStatusConfig(s).label}: ${count}`}
                 />
               )
             })}
@@ -452,8 +458,8 @@ export default function WorldDashboardView() {
               if (count === 0) return null
               return (
                 <div key={s} className="flex items-center gap-1 text-[11px]">
-                  <span className="inline-block h-2 w-2 rounded-full" style={{ background: EVENT_STATUS_CONFIG[s].color }} />
-                  <span className="text-[hsl(var(--muted-foreground))]">{EVENT_STATUS_CONFIG[s].label}</span>
+                  <span className="inline-block h-2 w-2 rounded-full" style={{ background: eventStatusConfig(s).color }} />
+                  <span className="text-[hsl(var(--muted-foreground))]">{eventStatusConfig(s).label}</span>
                   <span className="font-semibold text-[hsl(var(--foreground))]">{count}</span>
                 </div>
               )

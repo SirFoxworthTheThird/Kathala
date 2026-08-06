@@ -416,6 +416,9 @@ export function CharactersSection({
   placingCharacterId: string | null
   onPlace: (characterId: string) => void
 }) {
+  // Dragging a card onto the map places a character, which is a write — so it
+  // goes away while reading, like the buttons that do the same thing.
+  const gate = useGate()
   const movements = useEventMovements(worldId, activeEventId)
   const [search, setSearch] = useState('')
   const filtered = search.trim()
@@ -447,7 +450,7 @@ export function CharactersSection({
             return (
               <div key={c.id} className="flex flex-col gap-0.5">
                 <div
-                  draggable={!!activeEventId}
+                  draggable={!!activeEventId && !gate.active}
                   onDragStart={(e) => {
                     e.dataTransfer.setData('characterId', c.id)
                     e.dataTransfer.effectAllowed = 'move'

@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { EventStatus } from '@/types'
-import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
+import { EVENT_STATUSES, eventStatusConfig } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
 import { createEvent } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
@@ -220,12 +220,12 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
                   className="flex-1 rounded py-1.5 text-xs font-medium transition-opacity hover:opacity-90"
                   style={
                     status === s
-                      ? { background: EVENT_STATUS_CONFIG[s].color, color: EVENT_STATUS_CONFIG[s].textColor }
+                      ? { background: eventStatusConfig(s).color, color: eventStatusConfig(s).textColor }
                       : { background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }
                   }
                   aria-pressed={status === s}
                 >
-                  {EVENT_STATUS_CONFIG[s].label}
+                  {eventStatusConfig(s).label}
                 </button>
               ))}
             </div>

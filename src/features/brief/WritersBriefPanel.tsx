@@ -22,7 +22,7 @@ import { db } from '@/db/database'
 import { cn } from '@/lib/utils'
 import { charColor } from '@/lib/characterColor'
 import { useCharacterGoals } from '@/db/hooks/useCharacterGoals'
-import { GOAL_TYPE_CONFIG, eventPositions, activeGoalsAt } from '@/lib/characterGoals'
+import { eventPositions, activeGoalsAt, goalTypeConfig } from '@/lib/characterGoals'
 import { InheritedBadge } from '@/components/InheritedBadge'
 
 function Section({ title, icon: Icon, count, children }: {
@@ -298,7 +298,7 @@ export function WritersBriefPanel() {
                             return (
                               <div className="mt-1 flex flex-col gap-0.5">
                                 {goals.map((g) => {
-                                  const cfg = GOAL_TYPE_CONFIG[g.type]
+                                  const cfg = goalTypeConfig(g.type)
                                   return (
                                     <div key={g.id} className="flex items-start gap-1.5 text-[10px] leading-relaxed">
                                       <span className="shrink-0 font-semibold uppercase tracking-wide" style={{ color: cfg.color }}>

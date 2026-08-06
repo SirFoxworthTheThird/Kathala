@@ -9,13 +9,13 @@ import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { useCharacterGoals } from '@/db/hooks/useCharacterGoals'
-import { GOAL_TYPE_CONFIG, eventPositions, activeGoalsAt, summariseGoals } from '@/lib/characterGoals'
+import { eventPositions, activeGoalsAt, summariseGoals, goalTypeConfig } from '@/lib/characterGoals'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/EmptyState'
 import { BookOpen } from 'lucide-react'
 import type { EventStatus, WorldEvent } from '@/types'
-import { EVENT_STATUSES, EVENT_STATUS_CONFIG } from '@/lib/eventStatus'
+import { EVENT_STATUSES, eventStatusConfig } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
 
 // ── Inventory sparkline (pure SVG, no library) ────────────────────────────────
@@ -172,7 +172,7 @@ export default function CharacterArcView() {
   if (showStatusOverlay) {
     for (const ev of allEvents) {
       const s = (ev.status ?? 'draft') as EventStatus
-      eventStatusColorMap.set(ev.id, EVENT_STATUS_CONFIG[s].color)
+      eventStatusColorMap.set(ev.id, eventStatusConfig(s).color)
 
       const evIdx = EVENT_STATUSES.indexOf(s)
       const existing = chapterMinStatusMap.get(ev.chapterId)
@@ -187,7 +187,7 @@ export default function CharacterArcView() {
 
   function getChapterStatusColor(chapterId: string): string | null {
     const s = chapterMinStatusMap.get(chapterId)
-    return s !== undefined ? EVENT_STATUS_CONFIG[s].color : null
+    return s !== undefined ? eventStatusConfig(s).color : null
   }
 
   // POV overlay — pre-computed Maps.
@@ -787,7 +787,7 @@ export default function CharacterArcView() {
                         : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
                     )}
                     onClick={() => setActiveEventId(isActive ? null : ev.id)}
-                    title={`Ch. ${ch?.number ?? '?'} — ${ev.title} [${EVENT_STATUS_CONFIG[(ev.status ?? 'draft') as EventStatus].label}]`}
+                    title={`Ch. ${ch?.number ?? '?'} — ${ev.title} [${eventStatusConfig(ev.status).label}]`}
                   >
                     <div className="truncate text-[10px] opacity-60">Ch. {ch?.number ?? '?'}</div>
                     <div className="truncate font-semibold">{ev.title || <span className="italic opacity-50">untitled</span>}</div>
@@ -820,8 +820,8 @@ export default function CharacterArcView() {
                       <div className="mt-0.5 flex flex-col gap-px">
                         {charGoals.map((g) => (
                           <div key={g.id} className="flex items-start gap-1 text-[9px] leading-tight">
-                            <span className="shrink-0 font-semibold uppercase" style={{ color: GOAL_TYPE_CONFIG[g.type].color }}>
-                              {GOAL_TYPE_CONFIG[g.type].label}
+                            <span className="shrink-0 font-semibold uppercase" style={{ color: goalTypeConfig(g.type).color }}>
+                              {goalTypeConfig(g.type).label}
                             </span>
                             <span className="truncate text-[hsl(var(--muted-foreground))]">{g.text}</span>
                           </div>
@@ -938,8 +938,8 @@ export default function CharacterArcView() {
         ))}
         {showStatusOverlay && EVENT_STATUSES.map((s) => (
           <div key={s} className="flex items-center gap-1">
-            <span className="inline-block h-2 w-4 rounded-sm" style={{ background: EVENT_STATUS_CONFIG[s].color }} />
-            {EVENT_STATUS_CONFIG[s].label}
+            <span className="inline-block h-2 w-4 rounded-sm" style={{ background: eventStatusConfig(s).color }} />
+            {eventStatusConfig(s).label}
           </div>
         ))}
         {showPovOverlay && characters.filter((c) => povCharSet.has(c.id)).map((c) => (

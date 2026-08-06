@@ -385,6 +385,13 @@ export interface JourneyLine {
 }
 
 interface LeafletMapCanvasProps {
+  /**
+   * Reading mode. The toolbar buttons are already hidden by the gate, but the
+   * canvas is direct manipulation — dragging a pin writes just as surely as a
+   * button does, and a reader editing a downloaded book loses the edit anyway
+   * the next time they re-download it.
+   */
+  readOnly?: boolean
   layer: MapLayer
   imageUrl: string
   markers: LocationMarker[]
@@ -460,6 +467,7 @@ interface LeafletMapCanvasProps {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function LeafletMapCanvas({
+  readOnly,
   layer, imageUrl, markers, charPins, movementLines,
   isDraggingCharacter, onMarkerClick, onMapClick, onDrillDown,
   onCharacterDrop, onCharacterDropOnEmpty, onCharacterClick, mapRef: externalMapRef,
@@ -571,7 +579,7 @@ export function LeafletMapCanvas({
       const marker = L.marker([first.y, first.x], {
         icon: makeCharacterGroupIcon(group, zoom),
         zIndexOffset: 1000,
-        draggable: isSingle && !first.inSubMap,
+        draggable: isSingle && !first.inSubMap && !readOnly,
       }).addTo(map)
 
       if (isSingle) {
@@ -763,7 +771,7 @@ export function LeafletMapCanvas({
         setIsAnimating(false)
       }
     }
-  }, [pinAnimation, charPins, leafletMap, isViewportReady]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pinAnimation, charPins, leafletMap, isViewportReady, readOnly]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Update icon sizes when zoom changes, without interrupting any running animation
   useEffect(() => {
@@ -930,7 +938,7 @@ export function LeafletMapCanvas({
         {onViewChange && <ViewTracker onViewChange={onViewChange} />}
         <ImageOverlay url={imageUrl} bounds={bounds} />
         <ClickHandler onMapClickRef={onMapClickRef} />
-        <ContextMenuHandler onContextMenu={setContextMenu} disabled={directMapClick} />
+        <ContextMenuHandler onContextMenu={setContextMenu} disabled={directMapClick || readOnly} />
 
         {/* In-progress region draw preview */}
         {drawRegionVertices && drawRegionVertices.length >= 2 && (
@@ -1094,10 +1102,14 @@ export function LeafletMapCanvas({
             position={[marker.y, marker.x]}
             icon={makeLocationIcon(marker.iconType, !!marker.linkedMapLayerId && showSubMapLinks, marker.name, isDraggingCharacter, locationStatuses[marker.id] ?? 'active', showLocationLabels)}
             zIndexOffset={isDraggingCharacter ? 2000 : -100}
-            draggable
+            draggable={!readOnly}
             eventHandlers={{
               click: () => onMarkerClickRef.current(marker.id),
               dragend: (e) => {
+                // Belt and braces: `draggable` already prevents this, but the
+                // write is the thing that matters and it should refuse on its
+                // own rather than rely on a prop somebody may flip later.
+                if (readOnly) return
                 const { lat, lng } = (e.target as L.Marker).getLatLng()
                 updateLocationMarker(marker.id, { x: lng, y: lat })
               },

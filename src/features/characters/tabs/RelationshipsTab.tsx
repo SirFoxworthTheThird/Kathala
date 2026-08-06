@@ -213,7 +213,7 @@ export function RelationshipsTab({ character }: RelationshipsTabProps) {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-medium text-sm">{other?.name ?? 'Unknown'}</span>
-                  <span className={cn('text-xs capitalize font-medium', SENTIMENT_COLORS[rel.sentiment])}>
+                  <span className={cn('text-xs capitalize font-medium', SENTIMENT_COLORS[rel.sentiment] ?? 'text-[hsl(var(--muted-foreground))]')}>
                     {rel.label}
                   </span>
                   {startCh && (
