@@ -247,9 +247,17 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   }, [pendingFocusMarkerId, allMarkers]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Focus helpers ─────────────────────────────────────────────────────────
-  function focusOnLocation(marker: LocationMarker) {
-    setSelectedCharacterId(null)
-    setSelectedLocationMarkerId(marker.id)
+  /**
+   * Bring a location into view. `select` also opens its detail panel, which is
+   * right when the user asked for that location by name and wrong when they
+   * only moved the time cursor: on a phone the panel is 85vw, so a scene change
+   * would bury the map it was meant to show.
+   */
+  function focusOnLocation(marker: LocationMarker, { select = true }: { select?: boolean } = {}) {
+    if (select) {
+      setSelectedCharacterId(null)
+      setSelectedLocationMarkerId(marker.id)
+    }
     mapRef.current?.panTo([marker.y, marker.x])
   }
 
@@ -307,12 +315,14 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     }
   }
 
-  // Listen for map-focus requests dispatched from the chapter timeline bar
+  // Listen for map-focus requests dispatched from the chapter timeline bar.
+  // Moving the time cursor pans to where the scene happens; it does not count
+  // as picking that location, so the detail panel stays shut.
   useEffect(() => {
     function handler(e: Event) {
       const markerId = (e as CustomEvent<{ markerId: string }>).detail.markerId
       const marker = allMarkers.find((m) => m.id === markerId)
-      if (marker) focusOnLocation(marker)
+      if (marker) focusOnLocation(marker, { select: false })
     }
     window.addEventListener('wb:map:focusMarker', handler)
     return () => window.removeEventListener('wb:map:focusMarker', handler)
