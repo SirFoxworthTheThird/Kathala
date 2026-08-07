@@ -832,7 +832,11 @@ touch devices, tap the crosshair on their card and then tap a location.
   can belong to a faction and can link directly to a sub-map.
 - A location's detail panel stores its description, event-based condition and
   notes, owning faction, characters and items present, an optional linked
-  sub-map, and a **picture** of the place.
+  sub-map, and a **picture** of the place. It opens when you pick a place —
+  from the sidebar, from search, or by clicking its pin. Moving the time cursor
+  along the chapter bar only *pans* the map to wherever that scene happens, so
+  reading through a chapter never buries the map under a panel you didn't ask
+  for.
 - The picture sits at the top of the panel, and is a different thing from the
   other two visuals a location has: the pin's icon says *what kind* of place it
   is, a linked sub-map is a map *of* it you drill into, and the picture is what
