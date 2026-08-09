@@ -81,7 +81,8 @@ have:
   **Import World** for an existing `.pwk` file, or **Import Manuscript** to build
   a world from a draft.
 
-If your export was split into data + images, select both the `.pwk` and its
+**Import World** asks which files to choose before opening the picker: a `.pwk`
+export on its own, or — if you exported with split files — the `.pwk` and its
 `.pwb` images file together.
 
 With nothing on the shelf yet, the page names the two routes most people want
@@ -111,6 +112,10 @@ When you create a blank world, PlotWeave opens a four-step setup guide. It helps
 you create the first timeline and event, add a main character, place that
 character at the opening moment, and then continue to the Timeline. Each optional
 step has **Skip** so you can leave the guide and build the world in any order.
+
+Step 1 creates your first moment, and PlotWeave moves the [time
+cursor](#core-concept-the-time-cursor) to it — so when the guide hands the app
+back, everything that answers "what is true right now?" already has an answer.
 
 ![Blank-world setup](images/38-onboarding.png)
 
@@ -492,6 +497,13 @@ any row to move the time cursor to that moment.
 ![All timelines combined view](images/47-all-timelines.png)
 
 ### Chapter detail
+
+Opening a chapter **puts you in it** — the time cursor moves to that chapter's
+first scene, so the Writer's Brief, the character states and everything else
+per-moment have something to answer about straight away. If your cursor is
+already on a scene inside that chapter, it stays where you put it; and while
+[reading](#reading-alongside-a-book) nothing moves at all, since there the cursor
+is your own place in the book.
 
 Opening a chapter shows its events in order, each with the characters involved,
 location, tags, and draft/written status. The right side holds a live

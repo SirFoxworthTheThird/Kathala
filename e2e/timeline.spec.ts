@@ -82,7 +82,7 @@ test.describe('Timeline and chapters', () => {
     await page.getByRole('button', { name: 'Add Event' }).last().click()
 
     await expect(page.getByRole('heading', { name: 'Add Event' })).not.toBeVisible()
-    await expect(page.getByText('The Departure')).toBeVisible()
+    await expect(page.getByRole('main').getByRole('button', { name: 'The Departure', exact: true })).toBeVisible()
   })
 
   test('requires a title to create an event', async ({ page }) => {

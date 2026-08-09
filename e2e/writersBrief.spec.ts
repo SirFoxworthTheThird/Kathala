@@ -50,7 +50,9 @@ test.describe("Writer's Brief panel", () => {
     await page.getByRole('button', { name: 'Add Event' }).first().click()
     await page.getByPlaceholder('Event title').fill('First Encounter')
     await page.getByRole('button', { name: 'Add Event' }).last().click()
-    await expect(page.getByText('First Encounter')).toBeVisible()
+    // Scoped to the card: opening a chapter now sets the time cursor, so the
+    // pill in the top bar carries the scene title too.
+    await expect(page.getByRole('main').getByRole('button', { name: 'First Encounter', exact: true })).toBeVisible()
 
     // Set the event as active via the timeline bar
     await page.getByRole('link', { name: 'Timeline' }).click()

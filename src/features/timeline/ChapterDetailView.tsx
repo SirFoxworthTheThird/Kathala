@@ -15,6 +15,8 @@ import { SnapshotCard } from './SnapshotCard'
 import { AddEventDialog } from './AddEventDialog'
 import { EmptyState } from '@/components/EmptyState'
 import type { WorldEvent } from '@/types'
+import { useAppStore } from '@/store'
+import { cursorForChapter } from '@/lib/chapterCursor'
 
 // Collapsible section for one event's character snapshots
 function EventSnapshotSection({
@@ -66,6 +68,36 @@ export default function ChapterDetailView() {
   const characters = useCharacters(worldId ?? null)
   const relationships = useRelationships(worldId ?? null)
   const gate = useGate()
+  const activeEventId = useAppStore((st) => st.activeEventId)
+  const setActiveEventId = useAppStore((st) => st.setActiveEventId)
+
+  /**
+   * Opening a chapter puts you in it.
+   *
+   * It used to leave the cursor on "All chapters", so every per-moment tool
+   * stayed dark — the Writer's Brief opened empty, still asking for an event,
+   * while the chapter was on screen. Keyed on the chapter so it fires once per
+   * arrival rather than fighting a cursor the writer moves afterwards.
+   *
+   * Never while reading: there the cursor is the reader's own place in the book,
+   * and moving it forward to wherever they happened to open would hand them the
+   * chapter they had not reached yet.
+   */
+  const settledChapterRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (gate.active || !chapterId) return
+    if (settledChapterRef.current === chapterId) return
+    // The live query still holds the previous chapter's rows for a render after
+    // the route changes. Settling on those marks this chapter done and then
+    // finds the old cursor among the old events, so nothing moves — which is
+    // exactly the bug this effect exists to fix, one chapter late.
+    const mine = events.filter((e) => e.chapterId === chapterId)
+    if (mine.length === 0) return
+    settledChapterRef.current = chapterId
+    const target = cursorForChapter(mine, activeEventId)
+    if (target) setActiveEventId(target)
+  }, [gate.active, chapterId, events, activeEventId, setActiveEventId])
+
   const [addEventOpen, setAddEventOpen] = useState(false)
   const [notes, setNotes] = useState('')
 

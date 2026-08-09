@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
+import { useAppStore } from '@/store'
 import { StepTimeline } from './steps/StepTimeline'
 import { StepCharacter } from './steps/StepCharacter'
 import { StepPlace } from './steps/StepPlace'
@@ -28,6 +29,7 @@ interface OnboardingWizardProps {
 
 export function OnboardingWizard({ worldId, onExit }: OnboardingWizardProps) {
   const navigate = useNavigate()
+  const setActiveEventId = useAppStore((s) => s.setActiveEventId)
   const [state, setState] = useState<WizardState>({
     step: 1,
     createdEventId: null,
@@ -42,6 +44,13 @@ export function OnboardingWizard({ worldId, onExit }: OnboardingWizardProps) {
   }
 
   function handleStep1Complete(eventId: string) {
+    // Step 1 is headed "Your story begins with a moment" and creates one, so the
+    // guide has already chosen where the writer is. It used to hand back an app
+    // that had forgotten: the pill read "All chapters" the instant the guide
+    // ended, and everything cursor-dependent was switched off for someone who
+    // had done exactly what they were asked. The later steps place a character
+    // at this moment too, so setting it here makes them agree.
+    setActiveEventId(eventId)
     advance({ createdEventId: eventId })
   }
 

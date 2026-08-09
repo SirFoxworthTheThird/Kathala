@@ -174,7 +174,8 @@ test('the top bar does not overlap the chapter cursor on a phone', async ({ page
   await page.getByPlaceholder('Event title').fill('The oath sworn at dawn beneath the broken tower')
   await page.getByRole('button', { name: 'Add Event' }).last().click()
 
-  await page.getByRole('button', { name: 'Next moment' }).click()
+  // Opening the chapter already put the cursor on its first scene, so there is
+  // no next moment to step to — the label this test needs is on screen already.
   await expect(page.getByRole('banner').getByText(/^Ch\.1/)).toBeVisible()
 
   for (const width of [320, 360, 390, 414]) {

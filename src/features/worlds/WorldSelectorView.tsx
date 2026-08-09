@@ -12,6 +12,7 @@ import { LLMPromptDialog } from './LLMPromptDialog'
 import { useNavigate } from 'react-router-dom'
 import { importWorld, importWorldImages } from '@/lib/exportImport'
 import { partitionWorlds } from '@/lib/worldShelves'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 
 declare global {
   interface Window {
@@ -28,6 +29,14 @@ export default function WorldSelectorView() {
   const [manuscriptOpen, setManuscriptOpen] = useState(false)
   const [promptOpen, setPromptOpen] = useState(false)
   const [libraryOpen, setLibraryOpen] = useState(false)
+  /*
+    The file formats used to be explained permanently in the header — an action
+    nobody had started, described with two extensions a new user has never seen.
+    It is the same sentence, asked for at the one moment it is useful: just
+    before the picker opens, when "select both files together" is still
+    something you can act on.
+  */
+  const [importPromptOpen, setImportPromptOpen] = useState(false)
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
   const importRef = useRef<HTMLInputElement>(null)
@@ -150,7 +159,7 @@ export default function WorldSelectorView() {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={handleImportClick}
+                  onClick={() => setImportPromptOpen(true)}
                   disabled={importing}
                 >
                   <Upload className="h-4 w-4" />
@@ -181,12 +190,6 @@ export default function WorldSelectorView() {
           <p className="mt-2 flex items-center gap-1.5 text-xs text-red-400" role="alert">
             <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             {importError}
-          </p>
-        )}
-        {!importError && (
-          <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">
-            Select a <code className="font-mono">.pwk</code> file to import.
-            If you exported with split files, select both the <code className="font-mono">.pwk</code> and the <code className="font-mono">.pwb</code> images file together.
           </p>
         )}
       </header>
@@ -282,6 +285,16 @@ export default function WorldSelectorView() {
         onOpenChange={setPromptOpen}
         onImported={(id) => navigate(`/worlds/${id}`)}
       />
+      <ConfirmDialog
+        open={importPromptOpen}
+        onOpenChange={setImportPromptOpen}
+        title="Import a world"
+        description="Choose the .pwk file you exported. If you exported with split files, select both the .pwk and its .pwb images file together."
+        confirmLabel="Choose file…"
+        destructive={false}
+        onConfirm={() => { setImportPromptOpen(false); handleImportClick() }}
+      />
+
       <LibraryDialog
         open={libraryOpen}
         onClose={() => setLibraryOpen(false)}
