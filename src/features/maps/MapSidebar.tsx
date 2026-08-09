@@ -184,7 +184,7 @@ function LayerTreeNode({
           <MapPin className="h-3 w-3 shrink-0 opacity-40" />
         )}
         {depth === 0 && <MapIcon className="h-3 w-3 shrink-0 opacity-70" />}
-        <span data-map-layer className="flex-1 truncate text-xs">{layer.name}</span>
+        <span data-map-layer className="flex-1 truncate text-xs" title={layer.name}>{layer.name}</span>
         {hovered && !gate.active && (
           <button
             className="shrink-0 rounded p-0.5 hover:text-red-400 transition-colors"
@@ -496,9 +496,15 @@ export function CharactersSection({
                     fallbackClassName="h-6 w-6 rounded-full shrink-0"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium">{c.name}</p>
-                    {locationName && (
-                      <p className="truncate text-[10px] text-[hsl(var(--muted-foreground))]">{locationName}</p>
+                    {/* SB-2: a name wide enough to be cut is worth having in
+                        full somewhere, and two Witch-kings truncate alike. */}
+                    <p className="truncate text-xs font-medium" title={c.name}>{c.name}</p>
+                    {/* SB-3: every row says where it stands, so a blank second
+                        line means "nowhere" rather than "not loaded yet". */}
+                    {activeEventId && (
+                      <p className={`truncate text-[10px] ${locationName ? 'text-[hsl(var(--muted-foreground))]' : 'italic text-[hsl(var(--muted-foreground))/0.7]'}`}>
+                        {locationName ?? 'Not placed'}
+                      </p>
                     )}
                   </div>
                   {activeEventId && (
@@ -599,7 +605,7 @@ export function LocationsSection({
                 className="h-2 w-2 rounded-full shrink-0"
                 style={{ background: ICON_COLORS[m.iconType] ?? '#94a3b8' }}
               />
-              <span className="flex-1 truncate text-xs">{m.name}</span>
+              <span className="flex-1 truncate text-xs" title={m.name}>{m.name}</span>
               {m.linkedMapLayerId && (
                 <MapIcon className="h-3 w-3 shrink-0 opacity-50" />
               )}
@@ -652,13 +658,16 @@ function ItemRow({
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 min-w-0">
-            <p className="truncate text-xs">{item.name}</p>
+            <p className="truncate text-xs" title={item.name}>{item.name}</p>
             {isCrossTimeline && (
               <span className="shrink-0 rounded px-1 py-px text-[9px] font-semibold uppercase tracking-wide bg-amber-500/20 text-amber-400">echo era</span>
             )}
           </div>
-          {locationName && (
-            <p className="truncate text-[10px] opacity-60">{locationName}</p>
+          {/* SB-3, as for characters: every row states where it is. */}
+          {activeEventId && (
+            <p className={`truncate text-[10px] ${locationName ? 'opacity-60' : 'italic opacity-40'}`}>
+              {locationName ?? 'Not placed'}
+            </p>
           )}
         </div>
         {activeEventId && (
@@ -851,7 +860,7 @@ export function RoutesSection({
                 style={{ background: route.color ?? ROUTE_TYPE_COLORS[route.routeType] }}
               />
               <div className="flex flex-col flex-1 min-w-0">
-                <span className="truncate text-xs leading-tight">{route.name}</span>
+                <span className="truncate text-xs leading-tight" title={route.name}>{route.name}</span>
                 <span className="text-[9px] capitalize text-[hsl(var(--muted-foreground))] leading-tight">
                   {ROUTE_TYPE_LABELS[route.routeType]} · {route.waypoints.length} stops
                 </span>
@@ -981,7 +990,7 @@ export function RegionsSection({
                   />
                   <div className="flex flex-col flex-1 min-w-0">
                     <div className="flex items-center gap-1 min-w-0">
-                      <span className="truncate text-xs leading-tight">{region.name}</span>
+                      <span className="truncate text-xs leading-tight" title={region.name}>{region.name}</span>
                       {region.linkedMapLayerId && (
                         <Link className="h-2.5 w-2.5 shrink-0 text-[hsl(var(--muted-foreground))] opacity-60" />
                       )}

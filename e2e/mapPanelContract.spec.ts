@@ -173,4 +173,80 @@ test.describe('The four map panels share one contract', () => {
     await del.click()
     await expect(page.getByRole('dialog')).toContainText('Rivendell')
   })
+
+  /**
+   * LP-2: the panel was clipped by its own delete bar — *Upload Sub-map* cut in
+   * half by it, so the last section could not be read or reached at the default
+   * height. The footer is `shrink-0` now, so it takes its own space instead of
+   * eating the body's.
+   *
+   * LP-3: three sections in a row sent you somewhere else and none of them took
+   * you there. Measured before: zero links in the whole panel.
+   */
+  test('LP-2/LP-3: the last section is reachable, and the copy that names a screen goes there', async ({ page }) => {
+    await setUpMap(page, 'Panel Errands')
+
+    const seeded = await page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as {
+        mapLayers: { toArray: () => Promise<Record<string, string | number>[]> }
+        locationMarkers: { add: (v: unknown) => Promise<unknown> }
+      }
+      const layer = (await db.mapLayers.toArray())[0]
+      const now = Date.now()
+      await db.locationMarkers.add({
+        id: 'loc-riv', worldId: layer.worldId, mapLayerId: layer.id,
+        name: 'Rivendell', description: '', type: 'landmark',
+        x: Number(layer.imageWidth) * 0.3, y: Number(layer.imageHeight) * 0.3,
+        factionId: null, linkedMapLayerId: null, iconType: 'city', color: null,
+        createdAt: now, updatedAt: now,
+      })
+      return true
+    })
+    expect(seeded).toBe(true)
+
+    await page.reload({ waitUntil: 'load' })
+    await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
+    await page.waitForTimeout(2500)
+    await page.getByText('Rivendell').first().click()
+    await expect(page.getByRole('button', { name: 'Close location panel' })).toBeVisible({ timeout: 10_000 })
+
+    // ── LP-2 ──
+    // Presence: the delete footer is really there, so the absence below is not
+    // passing on a panel that simply has no footer to be clipped by.
+    const footer = page.getByRole('button', { name: /Delete location/i })
+    await expect(footer).toBeVisible()
+    const sub = page.getByRole('button', { name: 'Upload Sub-map' })
+    await sub.scrollIntoViewIfNeeded()
+    const overlap = await page.evaluate(() => {
+      const s = [...document.querySelectorAll('button')].find((b) => /Upload Sub-map/i.test(b.textContent || ''))!
+      const f = [...document.querySelectorAll('button')].find((b) => /Delete location/i.test(b.textContent || ''))!
+      const sr = s.getBoundingClientRect(), fr = f.getBoundingClientRect()
+      return { subBottom: Math.round(sr.bottom), footerTop: Math.round(fr.top), covered: sr.bottom > fr.top }
+    })
+    expect(overlap.covered,
+      `the last section runs under the delete bar: ${JSON.stringify(overlap)}`).toBe(false)
+    await expect(sub).toBeVisible()
+
+    // ── LP-3 ──
+    // Presence: both errands are one click, not a sentence naming a screen.
+    const toFactions = page.getByRole('link', { name: 'Open Factions' })
+    const toLore = page.getByRole('link', { name: 'Open Lore' })
+    await expect(toFactions).toBeVisible()
+    await expect(toLore).toBeVisible()
+    await toFactions.click()
+    await expect(page).toHaveURL(/\/factions$/)
+
+    // Absence, the opposite condition: once a faction exists the panel offers
+    // the picker instead, so the link is an empty state rather than furniture.
+    await page.getByRole('button', { name: 'New Faction' }).click()
+    await page.getByPlaceholder('Faction name…').fill('Rivendell Guard')
+    await page.getByRole('button', { name: 'Create', exact: true }).click()
+    await expect(page.getByText('Rivendell Guard').first()).toBeVisible({ timeout: 15_000 })
+    await page.getByRole('link', { name: /maps/i }).first().click()
+    await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
+    await page.waitForTimeout(2000)
+    await page.getByText('Rivendell').first().click()
+    await expect(page.getByRole('button', { name: 'Close location panel' })).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByRole('link', { name: 'Open Factions' })).toHaveCount(0)
+  })
 })

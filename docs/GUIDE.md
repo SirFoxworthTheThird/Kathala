@@ -890,7 +890,10 @@ touch devices, tap the crosshair on their card and then tap a location.
 The six sections — Map Layers, Characters, Locations, Items, Routes, Regions —
 behave as a **panel stack**: their headers stay put and each list scrolls inside
 its own section, so opening a long one never pushes the others off the top. Open
-as many as you like; every section stays one click away.
+as many as you like; every section stays one click away. Any name too long for
+its row is available in full by hovering it, and with a moment selected every
+character and item row states where it stands — a place name, or *Not placed*,
+so a blank line never has to be guessed at.
 
 ### Setting a map's scale
 

@@ -544,7 +544,11 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           // No outer scroll: each section scrolls inside itself, so every
           // section header stays reachable however much is open (SB-1).
           'flex w-64 shrink-0 flex-col overflow-hidden border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] transition-transform',
-          'absolute inset-y-0 left-0 z-[1200] lg:static lg:z-auto lg:w-52 lg:translate-x-0',
+          // SB-2: at lg:w-52 a row's name got 101px once the place-on-map
+          // control appeared, which cut *Samwise Gamgee* and left *The
+          // Witch-king of Angmar* and *…of the North* identical. One width for
+          // both breakpoints; the map gives up 48px of a screen it has most of.
+          'absolute inset-y-0 left-0 z-[1200] lg:static lg:z-auto lg:translate-x-0',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >

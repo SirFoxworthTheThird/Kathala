@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link as RouterLink } from 'react-router-dom'
 import { X, Map, MapPin, Link, Upload, Users, Plus, UserMinus, Package, BookOpen, ChevronDown, Image as ImageIcon } from 'lucide-react'
 import { PanelHeader, PanelDangerFooter } from './PanelChrome'
 import { useGate } from '@/db/hooks/ReadingGateContext'
@@ -601,9 +602,19 @@ export function LocationDetailPanel({ markerId, worldId, activeChapterTitle, onC
               <Users className="h-3.5 w-3.5" /> Controlling Faction
             </Label>
             {factions.length === 0 ? (
-              <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                No factions yet — create one in the Factions view.
-              </p>
+              /* LP-3: the copy named the screen and then left you to find it. */
+              <div className="flex flex-col items-start gap-1.5">
+                <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                  No factions yet — create one to say who holds this place.
+                </p>
+                <RouterLink
+                  to={`/worlds/${worldId}/factions`}
+                  className="pw-tap inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
+                >
+                  <Users className="h-3.5 w-3.5" aria-hidden="true" />
+                  Open Factions
+                </RouterLink>
+              </div>
             ) : (
               <Select
                 value={marker.factionId ?? 'none'}

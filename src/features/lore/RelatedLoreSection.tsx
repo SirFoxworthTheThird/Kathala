@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { BookMarked } from 'lucide-react'
 import { useLorePagesForEntity } from '@/db/hooks/useLore'
 
@@ -28,6 +28,14 @@ export function RelatedLoreSection({ worldId, entityId, entityName }: Props) {
         <p className="text-xs text-[hsl(var(--muted-foreground))]">
           Open a lore page and use the link button to associate it with this entity.
         </p>
+        {/* LP-3: the copy said where to go and then made you find it yourself. */}
+        <Link
+          to={`/worlds/${worldId}/lore`}
+          className="pw-tap mt-1 inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
+        >
+          <BookMarked className="h-3.5 w-3.5" aria-hidden="true" />
+          Open Lore
+        </Link>
       </div>
     )
   }
