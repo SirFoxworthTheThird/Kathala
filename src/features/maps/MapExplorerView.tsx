@@ -541,7 +541,9 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       {/* ── Left sidebar (static column on lg+, slide-in drawer on mobile) ── */}
       <div
         className={cn(
-          'flex w-64 shrink-0 flex-col overflow-y-auto border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] transition-transform',
+          // No outer scroll: each section scrolls inside itself, so every
+          // section header stays reachable however much is open (SB-1).
+          'flex w-64 shrink-0 flex-col overflow-hidden border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] transition-transform',
           'absolute inset-y-0 left-0 z-[1200] lg:static lg:z-auto lg:w-52 lg:translate-x-0',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
@@ -1003,6 +1005,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               <LocationDetailPanel
                 markerId={selectedLocationMarkerId}
                 worldId={worldId}
+                activeChapterTitle={activeChapterTitle}
                 onClose={() => setSelectedLocationMarkerId(null)}
                 onDrillDown={pushMapLayer}
               />

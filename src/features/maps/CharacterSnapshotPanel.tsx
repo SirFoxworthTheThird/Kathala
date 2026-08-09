@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, MapPin, Package, Heart, HeartOff, Plus, Footprints, ExternalLink, Route, GripVertical, ArrowUp, ArrowDown } from 'lucide-react'
+import { X, MapPin, Package, Heart, HeartOff, Plus, Footprints, ExternalLink, Route, GripVertical, ArrowUp, ArrowDown, User } from 'lucide-react'
+import { PanelHeader } from './PanelChrome'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -163,18 +164,14 @@ export function CharacterSnapshotPanel({
   return (
     <div className="flex h-full w-[85vw] max-w-sm shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl sm:w-72 sm:max-w-none">
 
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-3">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-[hsl(var(--foreground))]">{character.name}</p>
-          {activeChapterTitle && (
-            <p className="text-[10px] text-[hsl(var(--muted-foreground))]">{activeChapterTitle}</p>
-          )}
-        </div>
-        <Button variant="ghost" size="icon" className="pw-tap h-7 w-7 shrink-0" aria-label="Close character panel" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
+      <PanelHeader
+        icon={User}
+        name={character.name}
+        kind="Character"
+        moment={activeChapterTitle}
+        closeLabel="Close character panel"
+        onClose={onClose}
+      />
 
       <div className="flex-1 overflow-y-auto">
 
@@ -446,8 +443,13 @@ export function CharacterSnapshotPanel({
         </div>
       </div>
 
-      {/* Footer: link to full character view */}
-      <div className="border-t border-[hsl(var(--border))] p-3">
+      {/*
+        Footer. Where the other panels put a delete, this puts the way to the
+        screen that owns the character — deliberately, and it is the contract
+        rather than a gap in it (PAN-1). A marker, a route and a region belong
+        to the map and die with it; a character does not.
+      */}
+      <div className="shrink-0 border-t border-[hsl(var(--border))] px-4 py-3">
         <Button
           variant="outline"
           size="sm"

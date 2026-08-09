@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { X, Trash2, Route, Hexagon, Link, Map } from 'lucide-react'
+import { Route, Hexagon, Link, Map } from 'lucide-react'
+import { PanelHeader, PanelDangerFooter } from './PanelChrome'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -77,16 +78,13 @@ export function RouteDetailPanel({
 
   return (
     <div className="flex h-full w-[85vw] max-w-sm shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl sm:w-72 sm:max-w-none">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Route className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-          <span className="text-sm font-semibold text-[hsl(var(--foreground))]">Route</span>
-        </div>
-        <Button variant="ghost" size="icon" className="pw-tap h-7 w-7" aria-label="Close route panel" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
+      <PanelHeader
+        icon={Route}
+        name={route.name || 'Untitled route'}
+        kind={ROUTE_TYPE_LABELS[route.routeType] ?? 'Route'}
+        closeLabel="Close route panel"
+        onClose={onClose}
+      />
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
@@ -152,18 +150,7 @@ export function RouteDetailPanel({
         )}
       </div>
 
-      {/* Footer */}
-      <div className="shrink-0 border-t border-[hsl(var(--border))] px-4 py-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full gap-1.5 text-red-400 hover:text-red-400 hover:bg-red-400/10"
-          onClick={() => setConfirmDelete(true)}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          Delete route
-        </Button>
-      </div>
+      <PanelDangerFooter label="Delete route" onClick={() => setConfirmDelete(true)} />
 
       <ConfirmDialog
         open={confirmDelete}
@@ -234,16 +221,13 @@ export function RegionDetailPanel({
 
   return (
     <div className="flex h-full w-[85vw] max-w-sm shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl sm:w-72 sm:max-w-none">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Hexagon className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-          <span className="text-sm font-semibold text-[hsl(var(--foreground))]">Region</span>
-        </div>
-        <Button variant="ghost" size="icon" className="pw-tap h-7 w-7" aria-label="Close region panel" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
+      <PanelHeader
+        icon={Hexagon}
+        name={region.name || 'Untitled region'}
+        kind="Region"
+        closeLabel="Close region panel"
+        onClose={onClose}
+      />
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
@@ -393,18 +377,7 @@ export function RegionDetailPanel({
         )}
       </div>
 
-      {/* Footer */}
-      <div className="shrink-0 border-t border-[hsl(var(--border))] px-4 py-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full gap-1.5 text-red-400 hover:text-red-400 hover:bg-red-400/10"
-          onClick={() => setConfirmDelete(true)}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          Delete region
-        </Button>
-      </div>
+      <PanelDangerFooter label="Delete region" onClick={() => setConfirmDelete(true)} />
 
       <ConfirmDialog
         open={confirmDelete}

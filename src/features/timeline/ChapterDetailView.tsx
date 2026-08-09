@@ -14,22 +14,37 @@ import { EventCard } from './EventCard'
 import { SnapshotCard } from './SnapshotCard'
 import { AddEventDialog } from './AddEventDialog'
 import { EmptyState } from '@/components/EmptyState'
-import type { WorldEvent } from '@/types'
+import type { Character, WorldEvent } from '@/types'
 import { useAppStore } from '@/store'
 import { cursorForChapter } from '@/lib/chapterCursor'
+import { castWithoutState, charactersNotInChapter, hasAnyCharacterState } from '@/lib/chapterCast'
 
-// Collapsible section for one event's character snapshots
+/**
+ * One scene's cast and the state each of them is in (CD-1).
+ *
+ * This used to list only the snapshots that happened to exist, which meant a
+ * scene with five named characters and no snapshots yet showed nothing at all —
+ * and the panel's dominant content became the world's other thirty-six
+ * characters, each marked *no snapshot*. The writer's question is "who is here
+ * and what state are they in"; the answer starts from the scene's own cast, and
+ * a cast member with nothing recorded is a gap worth showing rather than a
+ * reason to leave them out.
+ */
 function EventSnapshotSection({
   event,
   snapshots,
+  characters,
 }: {
   event: WorldEvent
   snapshots: ReturnType<typeof useChapterEventSnapshots>
+  characters: Character[]
 }) {
   const [open, setOpen] = useState(true)
   const eventSnapshots = snapshots.filter((s) => s.eventId === event.id)
+  const uncast = castWithoutState(event, snapshots, characters)
 
-  if (eventSnapshots.length === 0) return null
+  const total = eventSnapshots.length + uncast.length
+  if (total === 0) return null
 
   return (
     <div className="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
@@ -43,12 +58,22 @@ function EventSnapshotSection({
           : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))]" />
         }
         <span className="truncate flex-1">{event.title}</span>
-        <span className="shrink-0 text-[hsl(var(--muted-foreground))]">{eventSnapshots.length}</span>
+        <span className="shrink-0 text-[hsl(var(--muted-foreground))]">{total}</span>
       </button>
       {open && (
         <div className="flex flex-col gap-2 border-t border-[hsl(var(--border))] p-2">
           {eventSnapshots.map((s) => (
             <SnapshotCard key={s.id} snapshot={s} />
+          ))}
+          {uncast.map((c) => (
+            <div
+              key={c.id}
+              data-cast-without-state={c.id}
+              className="flex items-center gap-2 rounded-lg border border-dashed border-[hsl(var(--border))] px-3 py-2 text-xs"
+            >
+              <span className="truncate font-medium">{c.name}</span>
+              <span className="ml-auto shrink-0 italic text-[hsl(var(--muted-foreground))]">in the scene, no state recorded</span>
+            </div>
           ))}
         </div>
       )}
@@ -100,6 +125,7 @@ export default function ChapterDetailView() {
 
   const [addEventOpen, setAddEventOpen] = useState(false)
   const [notes, setNotes] = useState('')
+  const [showAbsent, setShowAbsent] = useState(false)
 
   const sortedEvents = [...events].sort((a, b) => a.sortOrder - b.sortOrder)
   const eventIds = sortedEvents.map((e) => e.id)
@@ -145,9 +171,11 @@ export default function ChapterDetailView() {
     )
   }
 
-  // Characters with no snapshot in the entire chapter
-  const snapshotCharIds = new Set(allSnapshots.map((s) => s.characterId))
-  const missingSnapshots = characters.filter((c) => !snapshotCharIds.has(c.id))
+  // The rest of the world's characters are not in this chapter, which is
+  // ordinary rather than a finding — so the roll-call of them is folded away by
+  // default (CD-1) instead of being the panel's dominant content.
+  const missingSnapshots = charactersNotInChapter(characters, sortedEvents, allSnapshots)
+  const anyState = hasAnyCharacterState(sortedEvents, allSnapshots)
 
   return (
     <div className="flex h-full flex-col">
@@ -211,21 +239,41 @@ export default function ChapterDetailView() {
               <EmptyState icon={Scroll} title="No events yet" className="py-4" />
             )}
 
+            {/* EV-2: with events but nobody in them the column used to be a
+                blank column with no explanation at all. */}
+            {events.length > 0 && !anyState && (
+              <EmptyState
+                icon={Users}
+                title="No one in this chapter yet"
+                description="Add characters to a scene's cast, or record their state on the map, and they will appear here."
+                className="py-4"
+              />
+            )}
+
             {sortedEvents.map((ev) => (
               <EventSnapshotSection
                 key={ev.id}
                 event={ev}
                 snapshots={allSnapshots}
+                characters={characters}
               />
             ))}
 
-            {/* Characters with no snapshot anywhere in this chapter */}
+            {/* Everyone else in the world, folded away (CD-1) */}
             {missingSnapshots.length > 0 && (
               <div className="mt-1">
-                <p className="mb-1.5 text-xs text-[hsl(var(--muted-foreground))]">
-                  {missingSnapshots.length} character{missingSnapshots.length !== 1 ? 's' : ''} not in any event:
-                </p>
-                {missingSnapshots.map((c) => (
+                <button
+                  onClick={() => setShowAbsent((v) => !v)}
+                  aria-expanded={showAbsent}
+                  className="flex w-full items-center gap-1.5 rounded px-1 py-1 text-left text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+                >
+                  {showAbsent
+                    ? <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+                    : <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+                  }
+                  {missingSnapshots.length} other character{missingSnapshots.length !== 1 ? 's' : ''} not in this chapter
+                </button>
+                {showAbsent && missingSnapshots.map((c) => (
                   <div key={c.id} className="mb-1 flex items-center gap-2 rounded border border-dashed border-[hsl(var(--border))] px-3 py-2 text-xs text-[hsl(var(--muted-foreground))]">
                     {c.name}
                     <span className="ml-auto italic">no snapshot</span>

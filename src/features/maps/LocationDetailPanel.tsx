@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { X, Trash2, Map, Link, Upload, Users, Plus, UserMinus, Package, BookOpen, ChevronDown, Image as ImageIcon } from 'lucide-react'
+import { X, Map, MapPin, Link, Upload, Users, Plus, UserMinus, Package, BookOpen, ChevronDown, Image as ImageIcon } from 'lucide-react'
+import { PanelHeader, PanelDangerFooter } from './PanelChrome'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -124,11 +125,13 @@ function LocationItemRow({ item, eventId, worldId, onRemove }: {
 interface LocationDetailPanelProps {
   markerId: string
   worldId: string
+  /** The moment the panel is showing, for the header (PAN-1). */
+  activeChapterTitle: string | null
   onClose: () => void
   onDrillDown: (mapLayerId: string) => void
 }
 
-export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }: LocationDetailPanelProps) {
+export function LocationDetailPanel({ markerId, worldId, activeChapterTitle, onClose, onDrillDown }: LocationDetailPanelProps) {
   const marker = useLocationMarker(markerId)
   const allLayers = useMapLayers(worldId)
   const characters = useCharacters(worldId)
@@ -247,12 +250,14 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
 
   return (
     <div className="flex h-full w-[85vw] max-w-sm shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl sm:w-72 sm:max-w-none">
-      <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-3">
-        <span className="text-sm font-semibold text-[hsl(var(--foreground))]">Location</span>
-        <Button variant="ghost" size="icon" className="pw-tap h-7 w-7" aria-label="Close location panel" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
+      <PanelHeader
+        icon={MapPin}
+        name={marker.name}
+        kind={marker.iconType || 'Location'}
+        moment={activeChapterTitle}
+        closeLabel="Close location panel"
+        onClose={onClose}
+      />
 
       <div className="flex-1 overflow-auto p-4 flex flex-col gap-4">
 
@@ -344,14 +349,14 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
           </>
         ) : (
           <>
-            <div>
-              <h3 className="font-semibold text-[hsl(var(--foreground))]">{marker.name}</h3>
-              <p className="mt-0.5 text-xs capitalize text-[hsl(var(--muted-foreground))]">{marker.iconType}</p>
-              {marker.description && (
-                <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">{marker.description}</p>
-              )}
-            </div>
-            {!gate.active && <Button size="sm" variant="outline" onClick={startEdit}>Edit</Button>}
+            {/* Name and kind live in the header (LP-4) — the body carries what
+                the header cannot hold. */}
+            {marker.description && (
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">{marker.description}</p>
+            )}
+            {!gate.active && (
+              <Button size="sm" variant="outline" className="self-start" onClick={startEdit}>Edit</Button>
+            )}
           </>
         )}
 
@@ -670,11 +675,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
       />
 
       {!gate.active && (
-        <div className="border-t border-[hsl(var(--border))] p-3">
-          <Button variant="destructive" size="sm" className="w-full gap-1.5" onClick={() => setConfirmOpen(true)}>
-            <Trash2 className="h-3.5 w-3.5" /> Delete Location
-          </Button>
-        </div>
+        <PanelDangerFooter label="Delete location" onClick={() => setConfirmOpen(true)} />
       )}
       <ConfirmDialog
         open={confirmOpen}

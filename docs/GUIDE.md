@@ -507,9 +507,15 @@ is your own place in the book.
 
 Opening a chapter shows its events in order, each with the characters involved,
 location, tags, and draft/written status. The right side holds a live
-**Character States** panel (where everyone is at the selected event), a
-**Relationship States** summary, and a freeform **Writer's Notes** field that
-auto-saves.
+**Character States** panel, a **Relationship States** summary, and a freeform
+**Writer's Notes** field that auto-saves.
+
+**Character States is about the scene.** Each scene lists its own cast and the
+state recorded for each of them — and a cast member with nothing recorded yet is
+shown as *in the scene, no state recorded*, rather than left out. Everyone else
+in the world is folded into a single line at the bottom (*"36 other characters
+not in this chapter"*) which you can open when you want it. A chapter with nobody
+in it says so instead of showing a blank column.
 
 ![Chapter detail](images/05-chapter-detail.png)
 
@@ -879,6 +885,11 @@ list. To place a character
 (selected from an event in the timeline bar), drag them onto the map — or, on
 touch devices, tap the crosshair on their card and then tap a location.
 
+The six sections — Map Layers, Characters, Locations, Items, Routes, Regions —
+behave as a **panel stack**: their headers stay put and each list scrolls inside
+its own section, so opening a long one never pushes the others off the top. Open
+as many as you like; every section stays one click away.
+
 ### Setting a map's scale
 
 **Set map scale** (in the map tools menu) asks you to click two points and say
@@ -904,6 +915,14 @@ the spot you were aiming at.
   a route to edit its name, type, notes, and geometry.
 - Regions have a fill colour, opacity, notes, and an event-based condition. They
   can belong to a faction and can link directly to a sub-map.
+- **The four detail panels work the same way.** Location, character, route and
+  region all open on the right edge, and each names *the thing* in its header —
+  the place, the person, the road — with what kind of thing it is beneath, and
+  the chapter you are on where that matters. Where a panel can delete what it is
+  showing, that control sits alone at the foot of the panel in the quietest
+  weight there is: it is the last thing on the panel, never the loudest. The
+  character panel has no delete on purpose — a character outlives every marker
+  they stand on, so their panel links to the character screen instead.
 - A location's detail panel stores its description, event-based condition and
   notes, owning faction, characters and items present, an optional linked
   sub-map, and a **picture** of the place. It opens when you pick a place —

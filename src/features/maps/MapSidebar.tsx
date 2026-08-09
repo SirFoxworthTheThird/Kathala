@@ -38,11 +38,29 @@ export function SidebarSection({
   count?: number
 }) {
   const [open, setOpen] = useState(defaultOpen)
+  /*
+    SB-1: the six sections used to sit in one unbounded scroll, so expanding
+    Items (18 rows) pushed Map Layers, Characters and Locations off the top, and
+    opening two sections made the third unreachable without hunting.
+
+    The column is a panel stack instead — headers and bodies are siblings in the
+    sidebar's own flex column rather than each pair being wrapped in a box. The
+    wrapper was the problem: a flex item's automatic minimum height is its
+    min-content height, and a wrapper's min-content includes the whole body, so
+    nothing could shrink. Flat, the headers are `shrink-0` and always on screen,
+    and only the bodies give way.
+
+    `flex-1` shares the leftover height between the open bodies, and `max-h-fit`
+    stops a body growing past its own content — a one-row section keeps its one
+    row and hands the surplus back to whichever section actually needs it, which
+    is how flexbox resolves an item clamped by its max size.
+  */
   return (
-    <div className="flex flex-col border-b border-[hsl(var(--border))]">
+    <>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 px-3 py-2 hover:bg-[hsl(var(--muted))] transition-colors select-none"
+        aria-expanded={open}
+        className="flex shrink-0 items-center gap-2 border-b border-[hsl(var(--border))] px-3 py-2 hover:bg-[hsl(var(--muted))] transition-colors select-none"
       >
         <Icon className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))]" />
         <span className="flex-1 text-left text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
@@ -57,8 +75,17 @@ export function SidebarSection({
           ? <ChevronDown className="h-3 w-3 shrink-0 text-[hsl(var(--muted-foreground))]" />
           : <ChevronRight className="h-3 w-3 shrink-0 text-[hsl(var(--muted-foreground))]" />}
       </button>
-      {open && children}
-    </div>
+      {/* A block, not a flex column: the children keep their natural heights and
+          this box scrolls, rather than the children being squashed. */}
+      {open && (
+        <div
+          data-sidebar-section-body={title}
+          className="min-h-0 max-h-fit flex-1 overflow-y-auto border-b border-[hsl(var(--border))]"
+        >
+          {children}
+        </div>
+      )}
+    </>
   )
 }
 
