@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo } from 'react'
+import { BlockingReason } from '@/components/BlockingReason'
 import { useParams } from 'react-router-dom'
 import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter } from 'lucide-react'
 import { useTimelines, useChapters, useTimelineEvents, useWorldChapters, useWorldEvents, createTimeline, updateTimeline, deleteTimeline } from '@/db/hooks/useTimeline'
@@ -400,6 +401,19 @@ export default function TimelineView() {
               <Button size="sm" variant="outline" onClick={handleCreateTimeline}>
                 <Layers className="h-4 w-4" /> New Timeline
               </Button>
+              {/* X-9, and the least guessable instance of it: a chapter belongs
+                  to one timeline, so both of these go dead on the merged view.
+                  The message names the tab that put you there — `isAll` is this
+                  view's own tab state, not the bottom bar's scope. */}
+              {/* No "make a timeline first" branch: `timelines.length === 0`
+                  returns the empty state above, so this header only ever renders
+                  where there are tabs to pick from. */}
+              <BlockingReason
+                checks={[{
+                  met: !!currentTimelineId && !isAll,
+                  need: 'one timeline — pick a tab above, since a chapter belongs to a single timeline',
+                }]}
+              />
               <Button size="sm" variant="outline" onClick={() => setAiChapterOpen(true)} disabled={!currentTimelineId || isAll}>
                 <Sparkles className="h-4 w-4" /> Generate with AI
               </Button>

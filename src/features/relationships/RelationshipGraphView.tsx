@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { BlockingReason } from '@/components/BlockingReason'
 import { useParams } from 'react-router-dom'
 import ReactFlow, {
   Background,
@@ -371,7 +372,17 @@ function CreateRelationshipDialog({ open, onOpenChange, worldId, characters, sta
               Starts at <span className="font-medium text-[hsl(var(--foreground))]">{startChapterLabel}</span> and won't appear in earlier chapters.
             </p>
           )}
-          <DialogFooter>
+          {/* X-9: four conditions behind one dead button. */}
+          <DialogFooter className="items-center">
+            <BlockingReason
+              className="mr-auto"
+              checks={[
+                { met: !!aId, need: 'a first character' },
+                { met: !!bId, need: 'a second character' },
+                { met: !aId || !bId || aId !== bId, need: 'two different characters' },
+                { met: !!label.trim(), need: 'a label' },
+              ]}
+            />
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={!aId || !bId || aId === bId || !label.trim() || saving}>
               {saving ? 'Saving…' : 'Create'}

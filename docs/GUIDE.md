@@ -372,6 +372,13 @@ On a phone the rail is replaced by a **☰ menu** in the top bar. The top bar
 itself keeps the world name, the [time cursor](#core-concept-the-time-cursor),
 search (**Ctrl/⌘ K**), and the Writer's Brief, Continuity, and Help tools.
 
+**A greyed-out button tells you why.** Where an action needs more than one thing
+before it can run — *Save route* wants a name *and* two points, the relationship
+dialog wants two different characters *and* a label — a short line beside it says
+what is still missing, all of it: *"Needs a name and two points."* It narrows as
+you fill things in and disappears the moment the action is free, so it is never
+standing text you have to read twice.
+
 ### Writing progress
 
 As you write scene prose (in the Manuscript view), PlotWeave keeps a lightweight

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { BlockingReason } from '@/components/BlockingReason'
 import { useParams } from 'react-router-dom'
 import { Footprints, Plus, Pencil, Check, X, Trash2, FileCode2, Upload, Image as ImageIcon, BookOpen } from 'lucide-react'
 import { useWorld, updateWorld } from '@/db/hooks/useWorlds'
@@ -410,6 +411,13 @@ export default function WorldSettingsView() {
                 <Plus className="h-3.5 w-3.5" />
               </Button>
             </div>
+            {/* X-9: two fields, and the greyed-out + said which of them. */}
+            <BlockingReason
+              checks={[
+                { met: !!newName.trim(), need: 'a name' },
+                { met: !!newSpeed, need: 'a speed' },
+              ]}
+            />
 
             {travelModes.length === 0 ? (
               <p className="text-xs italic text-[hsl(var(--muted-foreground))]">

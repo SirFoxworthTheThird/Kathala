@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { BlockingReason } from '@/components/BlockingReason'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -68,7 +69,8 @@ export function AddLocationDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <Label>Name</Label>
+            {/* OP-6: three fields, one of them required, and nothing said which. */}
+            <Label>Name <span className="text-[hsl(var(--muted-foreground))]">(required)</span></Label>
             <Input
               placeholder="e.g. Thornwall City"
               value={name}
@@ -98,7 +100,8 @@ export function AddLocationDialog({
               rows={2}
             />
           </div>
-          <DialogFooter>
+          <DialogFooter className="items-center">
+            <BlockingReason className="mr-auto" checks={[{ met: !!name.trim(), need: 'a name' }]} />
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={!name.trim() || saving}>
               {saving ? 'Saving...' : 'Add Location'}

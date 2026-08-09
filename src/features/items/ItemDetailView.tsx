@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { BlockingReason } from '@/components/BlockingReason'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Upload, Trash2, Check, X, Plus, Layers } from 'lucide-react'
@@ -282,6 +283,15 @@ export default function ItemDetailView() {
                     onChange={(e) => setArtifactNotes(e.target.value)}
                   />
                 </div>
+                {/* X-9 */}
+                <BlockingReason
+                  className="text-[10px]"
+                  checks={[
+                    { met: !!artifactOriginId, need: 'an origin era' },
+                    { met: !!artifactEncounterId, need: 'an encounter era' },
+                    { met: !artifactOriginId || !artifactEncounterId || artifactOriginId !== artifactEncounterId, need: 'two different eras' },
+                  ]}
+                />
                 <div className="flex gap-2">
                   <Button
                     size="sm"

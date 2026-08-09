@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { BlockingReason } from '@/components/BlockingReason'
 import { X, Link2, Plus, Trash2, ChevronDown, ChevronRight, ArrowRight } from 'lucide-react'
 import {
   useTimelineRelationships,
@@ -104,7 +105,8 @@ function AddSyncPointForm({
   }
 
   return (
-    <div className="flex items-center gap-1.5 mt-1.5">
+    <div className="mt-1.5 flex flex-col gap-1">
+    <div className="flex items-center gap-1.5">
       <Select value={innerId} onValueChange={setInnerId}>
         <SelectTrigger className="h-7 flex-1 text-xs">
           <SelectValue placeholder="Inner event…" />
@@ -133,6 +135,16 @@ function AddSyncPointForm({
       >
         <Plus className="h-3.5 w-3.5" />
       </Button>
+    </div>
+    {/* Not a `title` on the button: `disabled:pointer-events-none` means a
+        disabled control never receives the hover that would show one. */}
+    <BlockingReason
+      className="text-[10px]"
+      checks={[
+        { met: !!innerId, need: 'an inner event' },
+        { met: !!outerId, need: 'an outer event' },
+      ]}
+    />
     </div>
   )
 }
@@ -503,6 +515,15 @@ function NewRelationshipForm({
         />
       </div>
 
+      {/* X-9: three conditions, one of them "not the same twice", which is the
+          hardest of all to guess from a greyed-out button. */}
+      <BlockingReason
+        checks={[
+          { met: !!sourceId, need: 'an outer timeline' },
+          { met: !!targetId, need: 'an inner timeline' },
+          { met: !sourceId || !targetId || sourceId !== targetId, need: 'two different timelines' },
+        ]}
+      />
       <div className="flex gap-2">
         <Button size="sm" variant="outline" className="flex-1" onClick={onDone} disabled={saving}>
           Cancel
