@@ -193,26 +193,25 @@ export default function WorldSelectorView() {
 
       <main className="flex-1 p-6">
         {worlds.length === 0 ? (
+          /*
+            No buttons here on purpose.
+
+            Three of the five entry points used to sit in this space, ungrouped,
+            directly under the header's two labelled groups — a second, competing
+            hierarchy, with a different label for the same thing ("Create World"
+            for what the header calls "New World") and no mention of the Library
+            at all, which is the best first run this app has.
+
+            Repeating a button that is already on screen and already grouped is
+            what caused that, so the empty state names the routes in prose and
+            points up at them instead. It also keeps every entry point to exactly
+            one control: two buttons reading "New World" on one screen is an
+            ambiguity for anyone navigating by name, not only for a test.
+          */
           <EmptyState
             icon={Scroll}
             title="No worlds yet"
-            description="Create your first world or story to start tracking characters, locations, and events."
-            action={
-              <div className="flex flex-wrap justify-center gap-2">
-                <Button variant="outline" onClick={handleImportClick}>
-                  <Upload className="h-4 w-4" />
-                  Import World
-                </Button>
-                <Button variant="outline" onClick={() => setManuscriptOpen(true)}>
-                  <FileText className="h-4 w-4" />
-                  Import Manuscript
-                </Button>
-                <Button onClick={() => setDialogOpen(true)}>
-                  <Plus className="h-4 w-4" />
-                  Create World
-                </Button>
-              </div>
-            }
+            description="Use New World at the top of the screen to start from scratch, or the Library to open a world built from a published book. You can also bring in a .pwk export or a manuscript draft from there."
           />
         ) : (
           /*

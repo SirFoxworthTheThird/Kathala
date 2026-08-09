@@ -84,6 +84,11 @@ have:
 If your export was split into data + images, select both the `.pwk` and its
 `.pwb` images file together.
 
+With nothing on the shelf yet, the page names the two routes most people want
+first — **New World** to start from scratch, and the **Library** to open a world
+built from a published book — and points at the groups along the top, rather
+than repeating buttons that are already on screen.
+
 ![Empty world selector](images/01-home-empty.png)
 
 Once you have worlds, each appears as a card with its name, last-edited date, and

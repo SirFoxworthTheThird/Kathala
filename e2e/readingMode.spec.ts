@@ -30,8 +30,16 @@ async function cursorTitle(page: Page): Promise<string> {
 
 /** The reader's deliberate "show me everything", confirm and all. */
 async function revealAll(page: Page) {
-  await page.getByRole('button', { name: 'View all chapters' }).click()
-  await page.getByRole('button', { name: 'Show everything' }).click()
+  // "Show everything" lives in a confirm the first click raises. On a loaded
+  // machine that click can land before the control is wired, leaving the second
+  // one waiting on a dialog that never opened — the flake this helper showed on
+  // several runs. Re-open until the confirm is actually there.
+  const confirm = page.getByRole('button', { name: 'Show everything' })
+  await expect(async () => {
+    await page.getByRole('button', { name: 'View all chapters' }).click()
+    await expect(confirm).toBeVisible({ timeout: 2000 })
+  }).toPass({ timeout: 30_000 })
+  await confirm.click()
 }
 
 async function downloadFirstLibraryWorld(page: Page) {
