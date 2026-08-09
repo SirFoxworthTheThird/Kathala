@@ -1060,6 +1060,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             open
             onOpenChange={(v) => { if (!v) setScaleDialog(null) }}
             pixelDistance={scaleDialog.pixelDist}
+            imageWidth={layer.imageWidth}
             layerId={layer.id}
           />
         )}

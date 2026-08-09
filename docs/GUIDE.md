@@ -879,6 +879,18 @@ list. To place a character
 (selected from an event in the timeline bar), drag them onto the map — or, on
 touch devices, tap the crosshair on their card and then tap a location.
 
+### Setting a map's scale
+
+**Set map scale** (in the map tools menu) asks you to click two points and say
+how far apart they are. As you type, it tells you what that would make the whole
+map across — if your artwork carries its own printed scale bar, that total is the
+number to check it against, and it is what catches an order-of-magnitude slip
+that "100 km between two points" would not.
+
+**Measure** takes over the canvas while it is armed: clicks place the two points
+and nothing else, so a region or marker underneath will not open its panel over
+the spot you were aiming at.
+
 ### Working with the map canvas
 
 - **Right-click** the canvas for quick actions: add a location or annotation, or

@@ -725,3 +725,23 @@
     transform: translate(-50%, -50%);
   }
 }
+
+/*
+  Measure (and Set scale) own the canvas while they are armed.
+
+  Regions, routes, markers and annotations each take their own clicks, so the
+  first click of a measurement used to place the point *and* select whatever was
+  underneath — opening a detail panel that then covered the spot meant for the
+  second point. Leaflet reads `interactive` when it creates a layer, so the prop
+  cannot be flipped on overlays already on the map; switching the panes off does
+  work, and lets the click through to the map, which is what makes the
+  measurement land.
+*/
+.pw-measuring .leaflet-overlay-pane,
+.pw-measuring .leaflet-marker-pane,
+.pw-measuring .leaflet-tooltip-pane,
+/* Leaflet marks every clickable path and marker with this and sets pointer
+   events on the element itself, so the pane alone is not enough. */
+.pw-measuring .leaflet-interactive {
+  pointer-events: none !important;
+}

@@ -584,6 +584,23 @@ export function LeafletMapCanvas({
     if (!scaleMode) setScalePoint1(null)
   }, [scaleMode])
 
+  /**
+   * While Measure (or Set scale) is armed, the canvas belongs to it.
+   *
+   * Every overlay used to take its own clicks, so the first click of a
+   * measurement both placed the point *and* selected whatever region polygon
+   * was underneath — opening its detail panel over the right of the map. On a
+   * wide map that panel covered the spot meant for the second point and
+   * swallowed the click, so the measurement could not be finished at all. A
+   * mode that says "click two points on the map" has to own those two clicks.
+   *
+   * Done at the pane rather than per layer: Leaflet reads `interactive` when it
+   * creates a layer, so flipping that prop on overlays that are already on the
+   * map does nothing. Turning off pointer events for the panes that hold them
+   * works however and whenever they were mounted, and lets the click through to
+   * the map underneath — which is the half that makes the measurement land.
+   */
+
   // ── Imperative character marker helpers ──────────────────────────────────────
 
   // (Re)build group markers from scratch. Called when not animating or when an
@@ -910,7 +927,10 @@ export function LeafletMapCanvas({
 
   return (
     <div
-      className="relative h-full w-full"
+      // On the wrapper, not on MapContainer: react-leaflet hands `className` to
+      // the container div when it creates the map and never again, so a class
+      // that has to come and go cannot live there.
+      className={`relative h-full w-full${scaleMode ? ' pw-measuring' : ''}`}
       onDragOver={(e) => { if (isDraggingCharacter) e.preventDefault() }}
       onDrop={(e) => {
         e.preventDefault()
@@ -1131,7 +1151,9 @@ export function LeafletMapCanvas({
             position={[marker.y, marker.x]}
             icon={makeLocationIcon(marker.iconType, !!marker.linkedMapLayerId && showSubMapLinks, marker.name, isDraggingCharacter, locationStatuses[marker.id] ?? 'active', showLocationLabels && labelledIds.has(marker.id))}
             zIndexOffset={isDraggingCharacter ? 2000 : -100}
-            draggable={!readOnly}
+            // A marker under the measuring point must not take the click or be
+            // shoved aside by the drag that places it.
+            draggable={!readOnly && !scaleMode}
             eventHandlers={{
               click: () => onMarkerClickRef.current(marker.id),
               dragend: (e) => {
