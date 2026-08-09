@@ -77,9 +77,11 @@ need a decision (what should a chapter diff compare; how should the inline
 editor grow) rather than just a fix.
 
 **B — design work, direction now set (7).** `X-1` `X-2` `X-3` are decided above
-and can proceed. `EV-1` (event-card disclosure), `SEL-1` (selector entry
-points), `TL-1` (pacing curve), `ST-1` (structure proportion) still need their
-own shape before they can be built.
+and have been done, as have `TL-1` (pacing curve), `ST-1` (structure
+proportion) and `REL-1` (graph layout) — the three visualisation findings, and
+the only ones of this batch that held up in full when measured. `EV-1`
+(event-card disclosure) and `SEL-1` (selector entry points) still need their own
+shape before they can be built.
 
 **C — verify before deciding (3).** `CB-1` and the two operations left unproven
 in section 10. Cheap; folded into the next pass over those screens.
@@ -251,7 +253,7 @@ Driven on *The Fellowship of the Ring* (22 chapters, 91 scenes).
 
 | ID | Severity | Status | Finding |
 |---|---|---|---|
-| TL-1 | high | open | **The pacing curve cannot be read, only glanced at.** No y-axis, no scale, no legend. Dots sit at varying heights in green, yellow and blue with nothing saying what high means, what the colours encode, or which chapter a peak belongs to. The shape is suggestive; the chart is unreadable as data. |
+| TL-1 | med | **fixed** | **The pacing curve cannot be read, only glanced at.** No y-axis, no scale, no legend. Dots sit at varying heights in green, yellow and blue with nothing saying what high means, what the colours encode, or which chapter a peak belongs to. The shape is suggestive; the chart is unreadable as data. **Narrower than filed, again.** The chart already drew gridlines at levels 1–5 and already said *"point size = scene length"*, and colour is a redundant encoding of the same value as height, which is fine. Two things were genuinely missing: nothing named the **scale**, so a height meant nothing, and 58 events ran in a row with no way to tell which **chapter** a spike belonged to — the question you bring to a pacing chart. **Fixed:** the five levels are labelled (Calm → Climactic) in a gutter drawn outside the scrolling plot so it stays put while you pan, and each chapter start gets a faint numbered rule. Downgraded high → med, since "unreadable as data" overstated what was absent. |
 | TL-2 | med | open | **`Set Active` on all 22 chapter rows.** A text button repeated down the page whose meaning — *move the time cursor here* — is not in its label, competing for attention with the open-detail and delete icons beside it. |
 | TL-3 | med | open | **A bare trash icon on every chapter row**, immediately beside open-detail. Twenty-two chances to misclick the most destructive action on the screen, with nothing in the affordance suggesting weight. |
 | TL-4 | med | open | **Chapter rows carry a truncated summary and nothing else.** No scene count, no word count, no status roll-up. The row repeats prose you already wrote instead of telling you the state of the chapter. |
@@ -284,7 +286,7 @@ The strongest screen reviewed so far: dense, scannable, and the drag affordance 
 
 | ID | Severity | Status | Finding |
 |---|---|---|---|
-| ST-1 | high | open | **The board shows sequence but not proportion.** A beat sheet exists to reveal whether Act 2 sags, and this is a flat list of equal-height rows. Nothing conveys that Climax and Resolution both landed in Ch. 22 out of 22, or that Act 1 covers two chapters while Act 2 covers twelve. The one question the screen is for is the one it does not answer. |
+| ST-1 | high | **fixed** | **The board shows sequence but not proportion.** A beat sheet exists to reveal whether Act 2 sags, and this is a flat list of equal-height rows. Nothing conveys that Climax and Resolution both landed in Ch. 22 out of 22, or that Act 1 covers two chapters while Act 2 covers twelve. The one question the screen is for is the one it does not answer. **Held up under measurement.** **Fixed** with two additions, both computed in `buildBeatSheet`. A band above the list divides the book's chapters between the acts at widths proportional to their share, with the conventional 25 / 50 / 25 drawn as dashes to compare against; an act starts at the chapter of the first beat placed in it, so the division is read off the writer's own tagging rather than assumed, and the band holds off entirely until Act 2 and Act 3 each have a beat. Each row then carries a dot on a track at the beat's position along the book, measured by chapter rank so beats sharing a chapter coincide — which is what makes a climax and a resolution both crammed into Ch. 22 visible as two dots at the same place. |
 | ST-2 | med | open | **Rows are ~1400px wide with content at both ends** and nothing between (see **X-2**). |
 | ST-3 | low | open | **The template switcher is a native select** styled unlike the app's own Select components used elsewhere. |
 
@@ -431,7 +433,7 @@ full-bleed columns, a legend at the foot, and the interaction spelled out
 
 | ID | Severity | Status | Finding |
 |---|---|---|---|
-| REL-1 | high | open | **The graph does not survive its own example.** 45 characters produce a knot in the upper third with unreadable overlapping edge labels, while unconnected characters are flung hundreds of pixels away — so distance reads as meaning when it carries none. Both side thirds are empty. There is no re-layout, no clustering, no filter to one character's neighbourhood, and no way to reduce what is drawn. |
+| REL-1 | high | **fixed** | **The graph does not survive its own example.** 45 characters produce a knot in the upper third with unreadable overlapping edge labels, while unconnected characters are flung hundreds of pixels away — so distance reads as meaning when it carries none. Both side thirds are empty. There is no re-layout, no clustering, no filter to one character's neighbourhood, and no way to reduce what is drawn. **Held up, and the cause was one line.** Every character went onto a fixed four-column grid — 880 × 1920 for a cast of 45, so `fitView` zoomed out to swallow the height and left both side thirds empty, and a grid slot said nothing about who knew whom. **Fixed** with a deterministic force layout (`graphLayout.ts`): relationships pull, every pair inside a cutoff pushes, connected groups are shelf-packed towards 16:9, and characters with no relationships are gathered into a block of their own instead of being scattered through the grid. The repulsion cutoff matters on its own — without it a chain of fifteen drew its links half again as long as a chain of five's, so the same relationship had two lengths depending on cast size. Three controls followed: **Tidy up** re-runs the layout and drops hand-placed positions, **Focus** draws one character's neighbourhood at one or two hops with a count of what is shown, and edge labels are dropped below the zoom at which they are legible — with a note saying so, since `fitView` on a twenty-character world lands at 0.33 and silence there would read as "this graph has no labels". |
 | REL-2 | med | open | **The minimap is unreadable** — a smear of dim blue on near-black with no visible viewport rectangle, in the one situation where a minimap should be earning its place. |
 
 ### Continuity Checker

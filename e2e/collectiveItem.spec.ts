@@ -33,6 +33,11 @@ test('an item can be marked as something there is more than one of', async ({ pa
   await box.check()
   await page.getByRole('button', { name: 'Save' }).first().click()
 
+  // Saving writes to Dexie and only then closes the editor, so the form going
+  // away is the signal that the write landed. Reloading straight after the
+  // click raced it — the flake this test showed on a loaded machine.
+  await expect(page.getByRole('button', { name: 'Save' })).toHaveCount(0)
+
   // It survives a reload, which is the part that proves it was written rather
   // than only held in component state.
   await page.reload()

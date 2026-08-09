@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Activity } from 'lucide-react'
 import type { WorldEvent, Chapter } from '@/types'
-import { computePacingCurve, tensionColor, tensionLabel } from '@/lib/tension'
+import { computePacingCurve, tensionColor, tensionLabel, TENSION_LEVELS } from '@/lib/tension'
 import { beatById, beatActColor } from '@/lib/storyBeats'
 import { computeInWorldDays } from '@/lib/inWorldTime'
 import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
@@ -15,10 +15,11 @@ interface PacingCurveProps {
   onSelect: (id: string) => void
 }
 
-const HEIGHT = 104
-const PAD_TOP = 14
+const HEIGHT = 112
+const PAD_TOP = 22
 const PAD_BOTTOM = 26
 const STEP = 46 // horizontal px per event
+const AXIS_W = 58 // gutter for the tension scale
 
 /**
  * A dramatic-tension sparkline over the events, in the current reading order.
@@ -82,7 +83,35 @@ export function PacingCurve({ worldId, events, chapters, order, activeEventId, o
           </span>
         )}
       </div>
-      <div className="overflow-x-auto px-2 pb-2">
+      <div className="flex items-start pb-2">
+        {/*
+          The scale, outside the scrolling area so it stays visible while you
+          pan. The chart already drew gridlines for levels 1..5 and said what
+          point size meant, but nothing said what *height* meant — the one thing
+          the curve is actually plotting.
+        */}
+        <svg
+          width={AXIS_W}
+          height={HEIGHT}
+          viewBox={`0 0 ${AXIS_W} ${HEIGHT}`}
+          className="block shrink-0"
+          aria-hidden="true"
+        >
+          {TENSION_LEVELS.map((lvl) => (
+            <text
+              key={lvl}
+              x={AXIS_W - 6}
+              y={yFor(lvl) + 3}
+              textAnchor="end"
+              fontSize={8}
+              fill="hsl(var(--muted-foreground))"
+              opacity={lvl === 1 || lvl === 5 ? 0.9 : 0.55}
+            >
+              {tensionLabel(lvl)}
+            </text>
+          ))}
+        </svg>
+        <div className="min-w-0 flex-1 overflow-x-auto px-2">
         <svg
           width={width}
           height={HEIGHT}
@@ -91,6 +120,32 @@ export function PacingCurve({ worldId, events, chapters, order, activeEventId, o
           role="img"
           aria-label="Dramatic tension across the story"
         >
+          {/*
+            Chapter boundaries. The curve plotted 58 events in a row with no way
+            to tell which chapter a peak belonged to — the question you ask a
+            pacing chart. A faint rule where each chapter starts, numbered, is
+            enough to place a spike without crowding the plot.
+          */}
+          {points.map((p, i) => {
+            const prev = i > 0 ? points[i - 1].chapterNumber : null
+            if (p.chapterNumber === null || p.chapterNumber === prev) return null
+            const x = xFor(i) - STEP / 2
+            return (
+              <g key={`ch-${p.chapterNumber}-${i}`}>
+                <line
+                  x1={x} x2={x} y1={PAD_TOP - 6} y2={baselineY}
+                  stroke="hsl(var(--border))" strokeWidth={1} opacity={0.7}
+                />
+                <text
+                  x={x + 3} y={PAD_TOP - 1}
+                  fontSize={8} fill="hsl(var(--muted-foreground))" opacity={0.75}
+                >
+                  Ch.{p.chapterNumber}
+                </text>
+              </g>
+            )
+          })}
+
           {/* Horizontal guide lines for levels 1..5 */}
           {[1, 2, 3, 4, 5].map((lvl) => (
             <line
@@ -169,6 +224,7 @@ export function PacingCurve({ worldId, events, chapters, order, activeEventId, o
             )
           })}
         </svg>
+        </div>
       </div>
     </div>
   )

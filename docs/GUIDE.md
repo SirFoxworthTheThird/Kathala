@@ -782,6 +782,26 @@ its beats appears as a slot, in order and tinted by act.
 - A beat is flagged **out of order** when its scene falls earlier in the story
   than a later beat's scene, catching a structure that's been shuffled.
 
+### How the book divides
+
+Knowing a beat is placed isn't the same as knowing how much of the book it
+covers. Above the slots, a band shows **how your chapters actually divide
+between the three acts**, with each act's width its share of the book:
+
+![Act proportion on the structure board](images/55-structure-proportion.png)
+
+- An act begins at the chapter of the first beat you placed in it, so the
+  division is read off your own tagging — nothing is assumed.
+- The dashed lines mark the conventional **25 / 50 / 25** shape. It's a
+  comparison, not a rule; nothing warns you for departing from it. A twelve-
+  chapter Act 2 inside a twenty-two chapter book shows up immediately as a band
+  far wider than the space between the dashes.
+- Each row also carries a **dot on a track**, marking where that beat falls
+  along the book. Read down the list they form a profile: two dots pinned to the
+  right edge mean a climax and a resolution crammed into the same last chapter.
+- Until you've placed a beat in Act 2 *and* one in Act 3, there's no division to
+  draw and the board says so rather than guessing.
+
 Switching templates keeps your tags — a scene tagged with a Three-Act beat simply
 won't fill a Save-the-Cat slot until you assign it there, so you can commit to one
 framework at a time. (You can also set a scene's beat from its card on the
@@ -980,6 +1000,34 @@ editor and an **Evolution** history of every event-based change. The faction
 overlay colours character nodes by their active memberships.
 
 ![Relationships graph](images/10-relationships.png)
+
+### Keeping a large cast readable
+
+Characters are placed by **who knows whom**: linked characters are pulled
+together, everyone is pushed apart, and the result settles into groups. People
+with no relationships at all are gathered into a block below the graph, where
+their distance from it says only "unconnected" rather than pretending to mean
+something. The arrangement is worked out fresh each time from the same
+relationships, so it doesn't shift between visits.
+
+![Focusing the relationship graph on one character](images/56-relationship-focus.png)
+
+Three controls keep a big cast under control:
+
+- **Tidy up** re-runs the arrangement and discards any cards you dragged by hand.
+  Use it after adding a batch of relationships, or when the graph has got away
+  from you.
+- **Focus on one character** draws only that character's corner of the graph —
+  *who they know*, or *and who those know* for a second hop. A counter shows how
+  many of the cast are on screen. Pick **Everyone** to go back.
+- **Edge labels fade out** when you zoom far enough out that they'd be unreadable
+  anyway — a large cast fits on screen only at that kind of zoom, and the labels
+  pile into a mat that hides the graph beneath. The lines and their sentiment
+  colours stay, clicking one still opens the relationship, and a note in the
+  corner tells you to zoom in rather than leaving you to think there are none.
+
+Dragging a card still pins it where you put it, and that position is remembered
+until you tidy up.
 
 **Generate with AI** (top-left of the graph) adds relationships in bulk: copy
 the prompt, describe your story, and paste the JSON back. Each relationship's two
