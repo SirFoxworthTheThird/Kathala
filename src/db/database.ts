@@ -683,9 +683,13 @@ db.on('blocked', () => {
   window.location.reload()
 })
 
-// Dev-only seam so e2e tests can seed records through Dexie (which updates live
-// queries in place, unlike a raw IndexedDB write). Stripped from production.
-if (import.meta.env.DEV) {
+// Seam so e2e tests can seed records through Dexie (which updates live queries
+// in place, unlike a raw IndexedDB write).
+//
+// Present in dev, and in a build made with VITE_E2E=1 — the suite runs against a
+// production bundle for speed, and without this those specs have no way to seed.
+// A normal `npm run build` sets neither flag, so released bundles are unchanged.
+if (import.meta.env.DEV || import.meta.env.VITE_E2E) {
   ;(window as unknown as { __pwdb?: typeof db }).__pwdb = db
 }
 

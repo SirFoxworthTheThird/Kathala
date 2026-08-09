@@ -3,10 +3,80 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ListChecks, AlertTriangle, X, ArrowRight } from 'lucide-react'
 import { useWorldEvents, useWorldChapters, updateEvent } from '@/db/hooks/useTimeline'
 import { BEAT_TEMPLATES, beatTemplateById, beatActColor } from '@/lib/storyBeats'
-import { buildBeatSheet } from '@/lib/structureBoard'
+import { buildBeatSheet, CONVENTIONAL_ACT_SHARE } from '@/lib/structureBoard'
+import type { StructureProportion } from '@/lib/structureBoard'
 import { useAppStore } from '@/store'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
+
+/**
+ * Shows how the book's chapters actually divide between the acts, against the
+ * conventional quarter–half–quarter. A beat sheet exists to answer "does Act 2
+ * sag?", and a list of equal-height rows cannot.
+ */
+function ActRuler({ proportion }: { proportion: StructureProportion }) {
+  const { spans, chapterCount, reason } = proportion
+
+  if (!spans) {
+    return (
+      <div className="mb-4 rounded-md border border-dashed border-[hsl(var(--border))] px-3 py-2.5 text-xs text-[hsl(var(--muted-foreground))]">
+        {reason === 'out-of-order'
+          ? 'Act 3 opens before Act 2, so the acts can’t be measured yet — check the beats flagged below.'
+          : 'Place a beat in Act 2 and one in Act 3 to see how your chapters divide between the acts.'}
+      </div>
+    )
+  }
+
+  return (
+    <div className="mb-4">
+      <div className="mb-1.5 flex items-baseline gap-2">
+        <h2 className="text-xs font-medium text-[hsl(var(--foreground))]">How the book divides</h2>
+        <span className="text-[11px] tabular-nums text-[hsl(var(--muted-foreground))]">
+          {chapterCount} {chapterCount === 1 ? 'chapter' : 'chapters'}
+        </span>
+      </div>
+
+      <div className="relative flex h-7 overflow-hidden rounded-md border border-[hsl(var(--border))]">
+        {spans.map((span) => {
+          const tint = beatActColor(span.act)
+          return (
+            <div
+              key={span.act}
+              data-act={span.act}
+              data-share={span.share.toFixed(4)}
+              style={{ width: `${span.share * 100}%`, background: `${tint}59`, color: tint }}
+              className="flex items-center justify-center overflow-hidden border-r border-[hsl(var(--background))] text-[10px] font-medium whitespace-nowrap last:border-r-0"
+            >
+              {span.share >= 0.07 && `Act ${span.act}`}
+            </div>
+          )
+        })}
+        {/* The conventional shape, for comparison only — nothing warns when a book departs from it. */}
+        {[CONVENTIONAL_ACT_SHARE[0], CONVENTIONAL_ACT_SHARE[0] + CONVENTIONAL_ACT_SHARE[1]].map((at) => (
+          <span
+            key={at}
+            aria-hidden="true"
+            style={{ left: `${at * 100}%` }}
+            className="pointer-events-none absolute top-0 h-full border-l border-dashed border-[hsl(var(--foreground)/0.35)]"
+          />
+        ))}
+      </div>
+
+      <p className="mt-1.5 text-[11px] text-[hsl(var(--muted-foreground))]">
+        {spans.map((span, i) => (
+          <span key={span.act}>
+            {i > 0 && ' · '}
+            <span style={{ color: beatActColor(span.act) }}>Act {span.act}</span>{' '}
+            {span.chapterCount === 0
+              ? 'no chapters of its own'
+              : `Ch. ${span.startChapter}${span.chapterCount > 1 ? `–${span.endChapter}` : ''} (${Math.round(span.share * 100)}%)`}
+          </span>
+        ))}
+        <span className="ml-1 opacity-70">— dashes mark the conventional 25 / 50 / 25.</span>
+      </p>
+    </div>
+  )
+}
 
 export default function StructureView() {
   const { worldId } = useParams<{ worldId: string }>()
@@ -78,7 +148,10 @@ export default function StructureView() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
-        <ol className="mx-auto flex max-w-3xl flex-col gap-1.5">
+        <div className="mx-auto max-w-5xl">
+          <ActRuler proportion={sheet.proportion} />
+        </div>
+        <ol className="mx-auto flex max-w-5xl flex-col gap-1.5">
           {sheet.slots.map((slot) => {
             const tint = beatActColor(slot.beat.act)
             return (
@@ -102,6 +175,29 @@ export default function StructureView() {
                     )}
                   </div>
                   <p className="mt-0.5 text-[11px] text-[hsl(var(--muted-foreground))]">{slot.beat.hint}</p>
+                </div>
+
+                {/* Where the beat falls along the book. Stacked down the list these
+                    read as a profile: beats bunched at the right edge are beats
+                    crammed into the last chapter. */}
+                <div
+                  className="hidden w-28 shrink-0 sm:block"
+                  title={
+                    slot.narrativeFraction === null
+                      ? 'Not placed'
+                      : `Ch. ${slot.chapterNumber} of ${sheet.proportion.chapterCount} — ${Math.round(slot.narrativeFraction * 100)}% through`
+                  }
+                >
+                  <div className="relative h-1 rounded-full bg-[hsl(var(--muted))]">
+                    {slot.narrativeFraction !== null && (
+                      <span
+                        data-beat-position={slot.beat.id}
+                        data-fraction={slot.narrativeFraction.toFixed(4)}
+                        style={{ left: `${slot.narrativeFraction * 100}%`, background: tint }}
+                        className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                      />
+                    )}
+                  </div>
                 </div>
 
                 {slot.event ? (

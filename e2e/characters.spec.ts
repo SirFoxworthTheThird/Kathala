@@ -55,10 +55,14 @@ test.describe('Character management', () => {
     await page.getByRole('button', { name: 'Add Character' }).first().click()
     await page.getByPlaceholder('Character name').fill('Legolas')
     await page.getByRole('button', { name: 'Add Character' }).last().click()
-    await expect(page.getByText('Legolas')).toBeVisible()
+    await expect(page.getByText('Legolas').first()).toBeVisible()
 
-    await page.getByText('Legolas').click()
+    await page.getByText('Legolas').first().click()
     await expect(page).toHaveURL(/#\/worlds\/.+\/characters\//)
-    await expect(page.getByText('Legolas')).toBeVisible()
+    // The name appears in three places on this screen — the page heading, the
+    // Overview tab heading, and the roster behind it — so an unqualified
+    // getByText raced them and failed on strict mode. The page heading is the
+    // one that means "the detail view for Legolas is open".
+    await expect(page.getByRole('heading', { name: 'Legolas', level: 2 })).toBeVisible()
   })
 })

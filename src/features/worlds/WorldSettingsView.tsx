@@ -267,14 +267,27 @@ export default function WorldSettingsView() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {/*
+            A toggle, so it says so: `aria-pressed` carries the state and the
+            label stays an action in both directions. It previously read
+            "Reading mode is on" when on and "Turn on reading mode" when off —
+            a status in one direction and an instruction in the other, which
+            left the on state looking like a label rather than a control.
+          */}
           <Button
             variant={world.readingMode ? 'default' : 'outline'}
             size="sm"
+            aria-pressed={!!world.readingMode}
             onClick={() => void updateWorld(world.id, { readingMode: !world.readingMode })}
           >
             <BookOpen className="h-4 w-4" />
-            {world.readingMode ? 'Reading mode is on' : 'Turn on reading mode'}
+            {world.readingMode ? 'Turn off reading mode' : 'Turn on reading mode'}
           </Button>
+          {world.readingMode && (
+            <span className="text-xs font-medium text-[hsl(var(--muted-foreground))]">
+              Reading mode is on.
+            </span>
+          )}
         </div>
         {world.readingMode && (
           <p className="text-xs text-[hsl(var(--muted-foreground))]">

@@ -1,5 +1,6 @@
 import { db } from '@/db/database'
 import { markJournalDiscontinuity } from '@/db/hooks/useOperations'
+import { INVALID_JSON_MESSAGE, stripCodeFence } from '@/lib/codeFence'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
 import type {
@@ -76,9 +77,9 @@ function changedFields<T extends object>(existing: T, patch: Partial<T>): Partia
 function extractArray(text: string, field: string): { list?: unknown[]; error?: string } {
   let data: unknown
   try {
-    data = JSON.parse(text)
+    data = JSON.parse(stripCodeFence(text))
   } catch {
-    return { error: 'That isn’t valid JSON. Paste the JSON the AI returned.' }
+    return { error: INVALID_JSON_MESSAGE }
   }
   if (Array.isArray(data)) return { list: data }
   if (data && typeof data === 'object') {
@@ -911,32 +912,51 @@ const PLACEHOLDER_H = 1000
 /** Reused name for the auto-created root map, so re-runs extend it. */
 export const LOCATIONS_MAP_NAME = 'Locations'
 
-function parseLocationNodes(list: unknown[]): SpecLocation[] {
+/**
+ * Note any keys we do not understand, so the dialog can say so.
+ *
+ * A tree that put a floor's rooms under `levels[].locations` instead of the
+ * documented `levels[].children` imported "successfully": the floors were
+ * created empty, the rooms vanished, and the count line was honest about what
+ * it was importing, so the only signal was noticing later that rooms were
+ * missing. Assistants drift a key from a long spec often enough that silently
+ * dropping one is the wrong default.
+ */
+function noteUnknownKeys(o: Record<string, unknown>, known: readonly string[], into: Set<string>) {
+  for (const k of Object.keys(o)) if (!known.includes(k)) into.add(k)
+}
+
+const LOCATION_KEYS = ['name', 'description', 'type', 'children', 'levels'] as const
+const LEVEL_KEYS = ['name', 'children'] as const
+
+function parseLocationNodes(list: unknown[], unknown?: Set<string>): SpecLocation[] {
   const out: SpecLocation[] = []
   for (const raw of list) {
     if (!raw || typeof raw !== 'object') continue
     const l = raw as Record<string, unknown>
     if (typeof l.name !== 'string' || !l.name.trim()) continue
+    if (unknown) noteUnknownKeys(l, LOCATION_KEYS, unknown)
     out.push({
       name: l.name,
       description: typeof l.description === 'string' ? l.description : undefined,
       type: typeof l.type === 'string' ? l.type : undefined,
-      children: Array.isArray(l.children) ? parseLocationNodes(l.children) : undefined,
-      levels: Array.isArray(l.levels) ? parseLevelNodes(l.levels) : undefined,
+      children: Array.isArray(l.children) ? parseLocationNodes(l.children, unknown) : undefined,
+      levels: Array.isArray(l.levels) ? parseLevelNodes(l.levels, unknown) : undefined,
     })
   }
   return out
 }
 
-function parseLevelNodes(list: unknown[]): SpecLevel[] {
+function parseLevelNodes(list: unknown[], unknown?: Set<string>): SpecLevel[] {
   const out: SpecLevel[] = []
   for (const raw of list) {
     if (!raw || typeof raw !== 'object') continue
     const l = raw as Record<string, unknown>
     if (typeof l.name !== 'string' || !l.name.trim()) continue
+    if (unknown) noteUnknownKeys(l, LEVEL_KEYS, unknown)
     out.push({
       name: l.name,
-      children: Array.isArray(l.children) ? parseLocationNodes(l.children) : undefined,
+      children: Array.isArray(l.children) ? parseLocationNodes(l.children, unknown) : undefined,
     })
   }
   return out
@@ -962,12 +982,24 @@ function unwrapReservedRoots(nodes: SpecLocation[]): SpecLocation[] {
 }
 
 /** Parse and lightly validate a locations tree. */
-export function parseLocationsSpec(text: string): { locations?: SpecLocation[]; error?: string } {
+export function parseLocationsSpec(
+  text: string,
+): { locations?: SpecLocation[]; error?: string; warning?: string } {
   const { list, error } = extractArray(text, 'locations')
   if (error) return { error }
-  const locations = unwrapReservedRoots(parseLocationNodes(list!))
+  const unknown = new Set<string>()
+  const locations = unwrapReservedRoots(parseLocationNodes(list!, unknown))
   if (locations.length === 0) return { error: 'No locations with a "name" were found in that JSON.' }
-  return { locations }
+  return { locations, warning: unknownKeysWarning(unknown) }
+}
+
+/** Human-readable note about keys that were dropped, or undefined if none were. */
+export function unknownKeysWarning(unknown: ReadonlySet<string>): string | undefined {
+  if (unknown.size === 0) return undefined
+  const names = [...unknown].sort().map((k) => `“${k}”`).join(', ')
+  return unknown.size === 1
+    ? `Ignored one field this app doesn’t recognise: ${names}. Anything under it was not imported.`
+    : `Ignored ${unknown.size} fields this app doesn’t recognise: ${names}. Anything under them was not imported.`
 }
 
 /** Total number of place nodes in a location tree (children and floor locations). */

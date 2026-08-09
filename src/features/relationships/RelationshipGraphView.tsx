@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import ReactFlow, {
   Background,
@@ -15,9 +15,10 @@ import ReactFlow, {
   getStraightPath,
   useNodesState,
   useEdgesState,
+  useStore,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
-import { X, Trash2, Network, Plus, Check, Shield, Sparkles } from 'lucide-react'
+import { X, Trash2, Network, Plus, Check, Shield, Sparkles, LayoutGrid, Focus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships, createRelationship, deleteRelationship, updateRelationship } from '@/db/hooks/useRelationships'
@@ -38,6 +39,7 @@ import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
 import { cn } from '@/lib/utils'
 import type { Character, Relationship, RelationshipSentiment, RelationshipStrength, RelationshipSnapshot } from '@/types'
 import { useGate } from '@/db/hooks/ReadingGateContext'
+import { layoutRelationshipGraph, neighbourhood } from './graphLayout'
 
 // ─── Custom Node ────────────────────────────────────────────────────────────
 
@@ -95,6 +97,13 @@ const SENTIMENT_COLORS: Record<RelationshipSentiment, string> = {
   complex: '#fbbf24',
 }
 
+/**
+ * Below this zoom the labels are too small to read anyway, and on a large cast
+ * they pile into an unreadable mat that hides the graph underneath. The lines
+ * and their colours stay; clicking one still opens the relationship.
+ */
+const LABEL_MIN_ZOOM = 0.55
+
 function RelationshipEdge({
   id, sourceX, sourceY, targetX, targetY, data, markerEnd,
 }: {
@@ -103,6 +112,7 @@ function RelationshipEdge({
   data?: { label: string; sentiment: RelationshipSentiment; isInherited: boolean; onSelect: (id: string) => void }
   markerEnd?: string
 }) {
+  const zoom = useStore((s) => s.transform[2])
   const [edgePath, labelX, labelY] = getStraightPath({ sourceX, sourceY, targetX, targetY })
   const color = SENTIMENT_COLORS[data!.sentiment] ?? '#94a3b8'
   // Inherited edges are dashed to signal "carrying forward from a previous chapter"
@@ -111,16 +121,30 @@ function RelationshipEdge({
   return (
     <>
       <BaseEdge id={id} path={edgePath} markerEnd={markerEnd} style={{ stroke: color, strokeWidth: 2, strokeDasharray }} />
-      <EdgeLabelRenderer>
-        <button
-          style={{ transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`, pointerEvents: 'all' }}
-          className="absolute cursor-pointer rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-1.5 py-0.5 text-xs hover:bg-[hsl(var(--accent))] nodrag nopan"
-          onClick={() => data!.onSelect(id)}
-        >
-          {data!.label}
-        </button>
-      </EdgeLabelRenderer>
+      {zoom >= LABEL_MIN_ZOOM && (
+        <EdgeLabelRenderer>
+          <button
+            data-edge-label={id}
+            style={{ transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`, pointerEvents: 'all' }}
+            className="absolute cursor-pointer rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-1.5 py-0.5 text-xs hover:bg-[hsl(var(--accent))] nodrag nopan"
+            onClick={() => data!.onSelect(id)}
+          >
+            {data!.label}
+          </button>
+        </EdgeLabelRenderer>
+      )}
     </>
+  )
+}
+
+/** Says why the labels are gone. Must live inside ReactFlow to read its zoom. */
+function ZoomHint() {
+  const zoom = useStore((s) => s.transform[2])
+  if (zoom >= LABEL_MIN_ZOOM) return null
+  return (
+    <span className="rounded-md bg-[hsl(222,47%,14%)] px-2 py-1 text-[11px] text-[hsl(210,40%,70%)] shadow-md">
+      Zoom in to read the relationship labels
+    </span>
   )
 }
 
@@ -401,27 +425,69 @@ export default function RelationshipGraphView() {
     try { return JSON.parse(localStorage.getItem(posKey) ?? '{}') } catch { return {} }
   })
   const posRef = useRef(persistedPositions)
+  // Bumped by "Tidy up" to throw away hand-placed positions and start again.
+  const [layoutGeneration, setLayoutGeneration] = useState(0)
+
+  // Where each character goes before anyone drags them. Computed from every
+  // relationship rather than the ones visible at the cursor, so stepping through
+  // the story does not rearrange the graph under the writer.
+  const computedLayout = useMemo(
+    () => layoutRelationshipGraph(
+      characters.map((c) => c.id),
+      relationships.map((r) => ({ a: r.characterAId, b: r.characterBId })),
+    ),
+    [characters, relationships],
+  )
+
+  // Show only one character's corner of the graph.
+  const [focusId, setFocusId] = useState<string | null>(null)
+  const [focusDepth, setFocusDepth] = useState(1)
+  const visibleIds = useMemo(() => {
+    if (!focusId) return null
+    return neighbourhood(
+      characters.map((c) => c.id),
+      relationships.map((r) => ({ a: r.characterAId, b: r.characterBId })),
+      focusId,
+      focusDepth,
+    )
+  }, [focusId, focusDepth, characters, relationships])
+
+  // A character deleted while focused would otherwise empty the canvas with no
+  // way back, since the picker no longer offers them.
+  useEffect(() => {
+    if (focusId && !characters.some((c) => c.id === focusId)) setFocusId(null)
+  }, [characters, focusId])
 
   // Sync nodes — preserve positions across renders and navigation
   useEffect(() => {
     setNodes((prev) => {
       const livePos = new Map(prev.map((n) => [n.id, n.position]))
-      return characters.map((c, i) => {
-        const faction = showFactionOverlay ? charFactionMap.get(c.id) : undefined
-        return {
-          id: c.id,
-          type: 'character',
-          position: livePos.get(c.id) ?? posRef.current[c.id] ?? { x: (i % 4) * 220, y: Math.floor(i / 4) * 160 },
-          data: {
-            name: c.name,
-            portraitImageId: c.portraitImageId,
-            factionColor: faction?.color ?? null,
-            factionName: faction?.name ?? null,
-          },
-        }
-      })
+      return characters
+        .filter((c) => !visibleIds || visibleIds.has(c.id))
+        .map((c) => {
+          const faction = showFactionOverlay ? charFactionMap.get(c.id) : undefined
+          return {
+            id: c.id,
+            type: 'character',
+            position: livePos.get(c.id) ?? posRef.current[c.id] ?? computedLayout[c.id] ?? { x: 0, y: 0 },
+            data: {
+              name: c.name,
+              portraitImageId: c.portraitImageId,
+              factionColor: faction?.color ?? null,
+              factionName: faction?.name ?? null,
+            },
+          }
+        })
     })
-  }, [characters, setNodes, showFactionOverlay, allMemberships, allFactions]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [characters, setNodes, showFactionOverlay, allMemberships, allFactions, computedLayout, visibleIds, layoutGeneration]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Throws away hand-placed positions and re-runs the layout. */
+  function tidyUp() {
+    posRef.current = {}
+    localStorage.removeItem(posKey)
+    setNodes((prev) => prev.map((n) => ({ ...n, position: computedLayout[n.id] ?? n.position })))
+    setLayoutGeneration((g) => g + 1)
+  }
 
   // Sync edges — filter by startEventId, hide inactive, use snapshot data when available
   useEffect(() => {
@@ -438,6 +504,9 @@ export default function RelationshipGraphView() {
     const activeOrder = activeEventId ? globalOrder(activeEventId) : null
 
     const edges = relationships.flatMap((r) => {
+      // Focused on one character: only links with both ends still on screen.
+      if (visibleIds && (!visibleIds.has(r.characterAId) || !visibleIds.has(r.characterBId))) return []
+
       // Hide relationships that haven't started yet in the active event
       if (activeOrder !== null && r.startEventId) {
         const startOrder = globalOrder(r.startEventId)
@@ -467,7 +536,7 @@ export default function RelationshipGraphView() {
       }]
     })
     setEdges(edges)
-  }, [relationships, snapshots, setEdges, activeEventId, allChapters, allEvents])
+  }, [relationships, snapshots, setEdges, activeEventId, allChapters, allEvents, visibleIds])
 
   const selectedRel      = relationships.find((r) => r.id === selectedRelId)
   const selectedSnap     = snapshots.find((s) => s.relationshipId === selectedRelId)
@@ -534,16 +603,63 @@ export default function RelationshipGraphView() {
         >
           <Background color="#334155" gap={20} />
           <Panel position="top-left">
-            {!gate.active && (
-              <div className="flex items-center gap-2">
-                <Button size="sm" className="gap-1.5 shadow-md" onClick={() => { setPendingConn(null); setCreating(true) }} disabled={characters.length < 2}>
-                  <Plus className="h-4 w-4" /> New Relationship
+            <div className="flex flex-col items-start gap-2">
+              {!gate.active && (
+                <div className="flex items-center gap-2">
+                  <Button size="sm" className="gap-1.5 shadow-md" onClick={() => { setPendingConn(null); setCreating(true) }} disabled={characters.length < 2}>
+                    <Plus className="h-4 w-4" /> New Relationship
+                  </Button>
+                  <Button size="sm" variant="outline" className="gap-1.5 shadow-md" onClick={() => setAiOpen(true)}>
+                    <Sparkles className="h-4 w-4" /> Generate with AI
+                  </Button>
+                </div>
+              )}
+
+              {/* Two ways to make a large cast readable: rearrange it, or draw
+                  less of it. Without either, forty-five characters is a knot. */}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="outline" className="gap-1.5 shadow-md" onClick={tidyUp} title="Rearrange the graph, discarding any cards you have moved by hand">
+                  <LayoutGrid className="h-4 w-4" /> Tidy up
                 </Button>
-                <Button size="sm" variant="outline" className="gap-1.5 shadow-md" onClick={() => setAiOpen(true)}>
-                  <Sparkles className="h-4 w-4" /> Generate with AI
-                </Button>
+
+                <div className="flex items-center gap-1.5 rounded-md border border-[hsl(217,33%,30%)] bg-[hsl(222,47%,14%)] px-2 py-1 shadow-md">
+                  <Focus className="h-3.5 w-3.5 text-[hsl(210,40%,70%)]" aria-hidden="true" />
+                  <select
+                    aria-label="Focus on one character"
+                    value={focusId ?? ''}
+                    onChange={(e) => setFocusId(e.target.value || null)}
+                    className="h-6 max-w-[10rem] rounded bg-transparent text-xs text-[hsl(210,40%,80%)] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
+                  >
+                    <option value="">Everyone</option>
+                    {characters.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  {focusId && (
+                    <select
+                      aria-label="How far from them to show"
+                      value={focusDepth}
+                      onChange={(e) => setFocusDepth(Number(e.target.value))}
+                      className="h-6 rounded bg-transparent text-xs text-[hsl(210,40%,80%)] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
+                    >
+                      <option value={1}>who they know</option>
+                      <option value={2}>and who those know</option>
+                    </select>
+                  )}
+                </div>
+
+                {focusId && (
+                  <span className="rounded-md bg-[hsl(222,47%,14%)] px-2 py-1 text-[11px] text-[hsl(210,40%,70%)] shadow-md">
+                    {nodes.length} of {characters.length} shown
+                  </span>
+                )}
+
+                {/* A big cast fits on screen only at a zoom where the labels are
+                    illegible, so they are dropped — but silently dropping them
+                    would leave a reader thinking the graph has none. */}
+                <ZoomHint />
               </div>
-            )}
+            </div>
           </Panel>
           <Controls style={{ background: 'hsl(222,47%,14%)', borderColor: 'hsl(217,33%,22%)' }} />
           <MiniMap

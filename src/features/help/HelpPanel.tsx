@@ -1,11 +1,25 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, ChevronDown, ChevronRight } from 'lucide-react'
 import { useAppStore } from '@/store'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 
 // ── Section accordion ─────────────────────────────────────────────────────────
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+/**
+ * `writerOnly` sections describe screens and tools that reading mode removes —
+ * the manuscript, the corkboard, the AI generators, the continuity checker.
+ * Offering a reader instructions for a Corkboard their nav does not have is
+ * worse than offering nothing: it reads as a missing feature rather than an
+ * absent one.
+ */
+function Section({ title, writerOnly, children }: {
+  title: string
+  writerOnly?: boolean
+  children: React.ReactNode
+}) {
   const [open, setOpen] = useState(false)
+  const gate = useGate()
+  if (writerOnly && gate.active) return null
   return (
     <div className="border-b border-[hsl(var(--border))] last:border-0">
       <button
@@ -65,6 +79,17 @@ function KbdRow({ keys, label }: { keys: string[]; label: string }) {
 export function HelpPanel() {
   const { helpOpen, setHelpOpen } = useAppStore()
 
+  // Escape closes this like every other overlay. It is a hand-rolled panel
+  // rather than the shared Dialog, which is why it never had a handler — and
+  // because it covers the screen, the missing one left the page unclickable
+  // for anyone who expected the key to work.
+  useEffect(() => {
+    if (!helpOpen) return
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setHelpOpen(false) }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [helpOpen, setHelpOpen])
+
   if (!helpOpen) return null
 
   return (
@@ -122,7 +147,7 @@ export function HelpPanel() {
             <P>The <B>Compare chapters</B> tool in the timeline bar shows what changed between two story points — useful for spotting continuity drift.</P>
           </Section>
 
-          <Section title="Corkboard & manuscript">
+          <Section title="Corkboard & manuscript" writerOnly>
             <P>The <B>Corkboard</B> displays events as index cards grouped by chapter. Drag cards to reorder or move scenes, change their Idea-to-Final status, and click a title to open that event.</P>
             <P>The <B>Manuscript</B> stitches scene prose together in reading order. Draft mode shows scene controls and word goals; Reading mode hides the scaffolding for a clean read-through.</P>
             <P>Use <B>Find & Replace</B> across every scene, inspect and restore a scene's revision <B>History</B>, or export the manuscript as Markdown, HTML, plain text, Word, or EPUB.</P>
@@ -175,7 +200,7 @@ export function HelpPanel() {
             <P>Characters move between floors by changing to a location on another level at a later event. Parent maps still show them at the building's marker.</P>
           </Section>
 
-          <Section title="Map AI tools">
+          <Section title="Map AI tools" writerOnly>
             <P><B>AI Locations</B> creates or extends a nested tree of places, sub-maps, and optional floor levels. Existing places are matched by name, so re-running it adds detail without duplicates.</P>
             <P><B>AI Moves</B> takes a passage of travel narrative, extracts character-to-location assignments per event, and previews them before applying. It only references existing characters and locations.</P>
           </Section>
@@ -193,7 +218,7 @@ export function HelpPanel() {
             <P>Speed can be set to Slow, Normal, or Fast. Playback always navigates to the Maps view.</P>
           </Section>
 
-          <Section title="Timeline & chapter AI">
+          <Section title="Timeline & chapter AI" writerOnly>
             <P>Use <B>Generate with AI</B> from the Timeline or open a chapter to generate or update it. Paste a passage of prose and the AI proposes events, character snapshots, relationship updates, and dramatic-tension ratings — with a review step before anything is saved.</P>
             <P>The AI uses your world's existing characters, locations, and items as context, so it only references things that actually exist.</P>
             <Tip>The review step lets you accept, adjust, or discard each suggested snapshot individually before committing.</Tip>
@@ -221,13 +246,13 @@ export function HelpPanel() {
             <P><B>Cross-timeline artifacts</B> track items that move between timelines — find them in the Timeline Relationships panel.</P>
           </Section>
 
-          <Section title="Continuity checker">
+          <Section title="Continuity checker" writerOnly>
             <P>The <B>Continuity</B> button (shield icon) runs a set of checks across your world and flags potential problems.</P>
             <P>Checks include characters alive after dying or present while dead, appearances before a first snapshot, impossible travel, destroyed locations and regions, item use or handoff problems, invalid relationship or faction timing, and unavailable POV characters.</P>
             <P>Click any issue to navigate to it. Intentional findings can be <B>suppressed</B> with a reason, reviewed later, and restored.</P>
           </Section>
 
-          <Section title="Writer's Brief">
+          <Section title="Writer's Brief" writerOnly>
             <P>The <B>Brief</B> panel (scroll icon) is a live summary of the active event: its chapter and in-world date, nearby events, present characters and their states, active relationships, item placements, and relevant lore.</P>
             <P>Carried-forward character states are labelled. If the world has a calendar and a character has a birth date, the brief also shows their age at the selected event.</P>
             <P>The <B>Lore</B> section in the brief shows pages that are linked to any character present at the current event, plus any page whose <B>revealed at</B> event matches the current one (marked <B>NEW</B>). Click a lore card to open it.</P>

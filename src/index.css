@@ -27,7 +27,13 @@
     --font-body: ui-sans-serif, system-ui, sans-serif;
     --font-heading: ui-sans-serif, system-ui, sans-serif;
     --canvas: 218 34% 9%;
-    --app-image: url('/background.png');
+    /* No backdrop illustration.
+       It was a large PW logo over a map, showing through at 8% behind every
+       screen: loudest on the empty ones, where it had more visual mass than the
+       message telling you what to do, and competing with content on the full
+       ones. Every named theme below already set this to none, so the default was
+       the only one still carrying it. */
+    --app-image: none;
     --theme-backdrop: radial-gradient(circle at 18% 12%, hsl(211 48% 22% / 0.5), transparent 34%), linear-gradient(145deg, hsl(222 47% 8%), hsl(215 38% 13%));
     --theme-atmosphere: linear-gradient(115deg, transparent 0 48%, hsl(210 70% 65% / 0.025) 48% 49%, transparent 49% 100%);
     --leaflet-bg: 222, 47%, 8%;

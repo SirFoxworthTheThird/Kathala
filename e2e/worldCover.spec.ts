@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 
+import { IMAGE_URL } from './helpers/imageUrl'
+
 test.describe('World cover image', () => {
   test('links a cover in settings and shows it on the world card', async ({ page }) => {
     await page.goto('/')
@@ -13,7 +15,7 @@ test.describe('World cover image', () => {
     const worldId = page.url().match(/#\/worlds\/([^/]+)/)![1]
 
     // A same-origin image the dev server actually serves, so it loads + measures.
-    const imageUrl = 'http://localhost:5173/favicon.png'
+    const imageUrl = IMAGE_URL
 
     // Set the cover from settings by linking a URL.
     await page.goto(`/#/worlds/${worldId}/settings`, { waitUntil: 'load' })

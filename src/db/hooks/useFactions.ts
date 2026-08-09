@@ -1,7 +1,9 @@
+import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import { generateId } from '@/lib/id'
+import type { ReadingGate } from '@/db/hooks/useReading'
 import type { Faction, FactionMembership, FactionRelationship } from '@/types'
 
 // ── Factions ──────────────────────────────────────────────────────────────────
@@ -128,4 +130,27 @@ export function getActiveMemberships(
     const end = m.endEventId ? (eventSortKeyById.get(m.endEventId) ?? Infinity) : Infinity
     return start <= activeEventSortKey && activeEventSortKey < end
   })
+}
+
+/**
+ * Which factions the reader has met, by the rule search already used: a faction
+ * is known once they have met somebody in it, and one with no members recorded
+ * has no basis to be withheld on.
+ *
+ * Shared so the roster and the search palette cannot disagree — they did, and
+ * the same faction could be hidden in search while listed on the Factions page
+ * at the same cursor.
+ */
+export function useFactionReveal(worldId: string | null, gate: ReadingGate) {
+  const memberships = useFactionMemberships(worldId)
+  return useMemo(() => {
+    if (!gate.active) return { has: () => true }
+    const withMembers = new Set<string>()
+    const revealed = new Set<string>()
+    for (const m of memberships ?? []) {
+      withMembers.add(m.factionId)
+      if (gate.isRevealed(m.characterId) && gate.hasReached(m.startEventId)) revealed.add(m.factionId)
+    }
+    return { has: (id: string) => !withMembers.has(id) || revealed.has(id) }
+  }, [memberships, gate])
 }

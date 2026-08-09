@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 
+import { IMAGE_URL } from './helpers/imageUrl'
+
 test.describe('Linking images by URL', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
@@ -23,7 +25,7 @@ test.describe('Linking images by URL', () => {
     await expect(page).toHaveURL(/#\/worlds\/[^/]+\/characters\/[^/]+/)
 
     // A same-origin image the dev server actually serves, so it loads + measures.
-    const imageUrl = 'http://localhost:5173/favicon.png'
+    const imageUrl = IMAGE_URL
 
     await page.getByRole('button', { name: 'Link portrait by URL' }).click()
 

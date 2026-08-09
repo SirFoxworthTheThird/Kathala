@@ -261,4 +261,38 @@ test.describe('Generate a section with AI', () => {
     }))
     await expect(page.getByText(/Ready to import 2 locations/)).toBeVisible()
   })
+
+  test('keeps a pasted response when the dialog is closed by accident', async ({ page }) => {
+    // Closing used to discard the box, including on an Escape or a click on the
+    // backdrop — which is the whole screen. A writer who pasted a long response
+    // that failed to validate lost it with no confirm and no undo.
+    await page.goto('/')
+    await resetDB(page)
+    await page.getByRole('button', { name: 'New World' }).click()
+    await page.getByLabel('Name').fill('Paste Keeper')
+    await page.getByRole('button', { name: 'Create World' }).last().click()
+    await expect(page).toHaveURL(/#\/worlds\//)
+    await page.getByRole('link', { name: /characters/i }).first().click()
+
+    const LONG = '{ "characters": [ { "name": "Aldric" }, { "name": "Mira" }'  // deliberately unclosed
+    await page.getByRole('button', { name: 'Generate with AI' }).click()
+    const box = page.getByRole('textbox', { name: 'characters JSON' })
+    await box.fill(LONG)
+    await expect(page.getByRole('alert')).toContainText(/valid JSON/i)
+
+    // Escape out, as a mis-key would.
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('textbox', { name: 'characters JSON' })).toHaveCount(0)
+
+    // Reopen: the paste is still there to be fixed.
+    await page.getByRole('button', { name: 'Generate with AI' }).click()
+    await expect(page.getByRole('textbox', { name: 'characters JSON' })).toHaveValue(LONG)
+
+    // And a successful import still clears it, so the box does not accumulate.
+    await page.getByRole('textbox', { name: 'characters JSON' })
+      .fill('{ "characters": [ { "name": "Aldric" } ] }')
+    await page.getByRole('button', { name: 'Add characters' }).click()
+    await expect(page.getByRole('status')).toContainText(/Added 1 character/i)
+    await expect(page.getByRole('textbox', { name: 'characters JSON' })).toHaveValue('')
+  })
 })

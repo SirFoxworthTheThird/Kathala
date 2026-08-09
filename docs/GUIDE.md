@@ -280,7 +280,8 @@ any AI assistant (ChatGPT, Claude, Gemini…).
    followed by your story text.
 2. The assistant replies with a compact JSON **story spec**.
 3. **Paste that JSON** back into the box in the dialog. A live preview shows what
-   it found — character, chapter, event, and faction counts.
+   it found — character, chapter, event, and faction counts. A ```` ``` ```` code
+   fence around the answer is stripped for you, so paste it exactly as given.
 4. Click **Import world** and you land in the finished world.
 
 The prompt deliberately asks for a *compact* spec — entities are referenced by
@@ -429,8 +430,13 @@ keeps the framing moment aligned.
 
 **Frame narratives** get a special bottom cursor: two stacked tracks (outer and
 inner). Click either track to make it active; playback follows that track while
-keeping the linked one available for context, and a ghost cursor line marks the
-corresponding moment on the other track.
+keeping the linked one available for context.
+
+**Sync points** take effect during playback. When you play the inner story and
+reach an event that is paired with one in the outer story, PlotWeave moves the
+outer moment to match — so the [map](#maps) can show the outer timeline's cast
+as **ghost pins** beside the inner one. Moving the cursor by hand does not move
+the other track; the pairing is used while playing, not while scrubbing.
 
 Every **other multi-timeline world** uses a single-height bottom bar with a
 **scope selector** on its left. Choose one timeline to scrub it on its own, or
@@ -616,7 +622,8 @@ section and added to the **world you're already in** — no new world is created
 2. Paste it into ChatGPT, Claude, Gemini, or similar, then describe your story
    (or just list the characters you want) after the last line.
 3. Paste the JSON it returns into the box. A preview tells you how many
-   characters it will import.
+   characters it will import. If the assistant wrapped its answer in a
+   ```` ``` ```` code fence, paste it anyway — the fence is stripped for you.
 4. Click **Add characters**. New names are created; a name that **already
    exists is updated in place** — the fields the AI supplies overwrite the
    current values, while anything it leaves out is untouched. So you can run it
@@ -774,6 +781,26 @@ its beats appears as a slot, in order and tinted by act.
   so **gaps** — a missing midpoint, no clear climax — stand out.
 - A beat is flagged **out of order** when its scene falls earlier in the story
   than a later beat's scene, catching a structure that's been shuffled.
+
+### How the book divides
+
+Knowing a beat is placed isn't the same as knowing how much of the book it
+covers. Above the slots, a band shows **how your chapters actually divide
+between the three acts**, with each act's width its share of the book:
+
+![Act proportion on the structure board](images/55-structure-proportion.png)
+
+- An act begins at the chapter of the first beat you placed in it, so the
+  division is read off your own tagging — nothing is assumed.
+- The dashed lines mark the conventional **25 / 50 / 25** shape. It's a
+  comparison, not a rule; nothing warns you for departing from it. A twelve-
+  chapter Act 2 inside a twenty-two chapter book shows up immediately as a band
+  far wider than the space between the dashes.
+- Each row also carries a **dot on a track**, marking where that beat falls
+  along the book. Read down the list they form a profile: two dots pinned to the
+  right edge mean a climax and a resolution crammed into the same last chapter.
+- Until you've placed a beat in Act 2 *and* one in Act 3, there's no division to
+  draw and the board says so rather than guessing.
 
 Switching templates keeps your tags — a scene tagged with a Three-Act beat simply
 won't fill a Save-the-Cat slot until you assign it there, so you can commit to one
@@ -936,6 +963,15 @@ An item's picture opens full size the same way a portrait does — see
 
 ![Items](images/09-items.png)
 
+**Things there is more than one of.** An item is normally one particular object,
+and the [Continuity Checker](#continuity-checker) treats it that way — if two
+characters hold it at the same moment, that is a contradiction worth flagging.
+Some items are a *kind* of thing instead: lembas, a uniform, arrows, a cloak
+every member of the party carries. Open the item, choose **Edit**, and tick
+**There is more than one of these**; the checker then stops asking how it can be
+in two places at once. Leave it unticked for anything unique — the One Ring
+should still raise its hand if it turns up in two pockets.
+
 Like the cast, you can **Generate with AI** from the Items screen: copy the
 prompt, describe your story, and paste back the JSON to add a batch of items to
 the current world. It follows the same flow as
@@ -964,6 +1000,34 @@ editor and an **Evolution** history of every event-based change. The faction
 overlay colours character nodes by their active memberships.
 
 ![Relationships graph](images/10-relationships.png)
+
+### Keeping a large cast readable
+
+Characters are placed by **who knows whom**: linked characters are pulled
+together, everyone is pushed apart, and the result settles into groups. People
+with no relationships at all are gathered into a block below the graph, where
+their distance from it says only "unconnected" rather than pretending to mean
+something. The arrangement is worked out fresh each time from the same
+relationships, so it doesn't shift between visits.
+
+![Focusing the relationship graph on one character](images/56-relationship-focus.png)
+
+Three controls keep a big cast under control:
+
+- **Tidy up** re-runs the arrangement and discards any cards you dragged by hand.
+  Use it after adding a batch of relationships, or when the graph has got away
+  from you.
+- **Focus on one character** draws only that character's corner of the graph —
+  *who they know*, or *and who those know* for a second hop. A counter shows how
+  many of the cast are on screen. Pick **Everyone** to go back.
+- **Edge labels fade out** when you zoom far enough out that they'd be unreadable
+  anyway — a large cast fits on screen only at that kind of zoom, and the labels
+  pile into a mat that hides the graph beneath. The lines and their sentiment
+  colours stay, clicking one still opens the relationship, and a note in the
+  corner tells you to zoom in rather than leaving you to think there are none.
+
+Dragging a card still pins it where you put it, and that position is remembered
+until you tidy up.
 
 **Generate with AI** (top-left of the graph) adds relationships in bulk: copy
 the prompt, describe your story, and paste the JSON back. Each relationship's two

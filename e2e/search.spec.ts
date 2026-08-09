@@ -36,6 +36,10 @@ test.describe('Search palette', () => {
   })
 
   test('opens search palette via Ctrl+K keyboard shortcut', async ({ page }) => {
+    // Wait for something interactive before typing: the shortcut is bound on
+    // mount, and pressing it against a page that has not finished hydrating
+    // simply does nothing.
+    await expect(page.getByTitle('Search (Ctrl+K)')).toBeVisible()
     await page.keyboard.press('Control+k')
     await expect(page.getByPlaceholder('Search characters, factions, locations, lore…')).toBeVisible()
   })
@@ -75,6 +79,69 @@ test.describe('Search palette', () => {
     // Palette closes and we navigate to character detail
     await expect(page.getByPlaceholder('Search characters, factions, locations, lore…')).not.toBeVisible()
     await expect(page).toHaveURL(/#\/worlds\/.+\/characters\//)
+  })
+
+  /**
+   * Escape belongs to the topmost layer.
+   *
+   * Dialogs listen for Escape on `document`, so before the palette consumed the
+   * key one press reached both: you looked a name up from a half-filled form,
+   * pressed Escape to get back to it, and the form was gone with your typing.
+   */
+  test('Escape closes the palette without closing the dialog underneath', async ({ page }) => {
+    // beforeEach leaves us on the Items list, so open a dialog from here.
+    await page.getByRole('button', { name: 'Add Item' }).first().click()
+
+    const nameField = page.getByPlaceholder('Item name')
+    await nameField.fill('Palantir')
+    await expect(nameField).toBeVisible()
+
+    const palette = page.getByPlaceholder('Search characters, factions, locations, lore…')
+    await page.keyboard.press('Control+k')
+    await expect(palette).toBeVisible()
+    // Wait for focus to actually land before pressing: if the keypress goes to
+    // the dialog instead, this test measures nothing about the palette.
+    await expect(palette).toBeFocused()
+
+    // One press takes the palette and nothing else — the half-typed name survives.
+    await page.keyboard.press('Escape')
+    await expect(palette).not.toBeVisible()
+    await expect(nameField).toBeVisible()
+    await expect(nameField).toHaveValue('Palantir')
+
+    // Paired with the opposite: with no palette open, Escape does reach the
+    // dialog, so this cannot pass by Escape having been swallowed everywhere.
+    await page.keyboard.press('Escape')
+    await expect(nameField).not.toBeVisible()
+  })
+
+  /**
+   * A modal belongs to the screen it was opened on.
+   *
+   * Choosing a result always closed the palette, but arriving somewhere by any
+   * other route did not — the palette sat over a screen it had nothing to do
+   * with, swallowing every click until Escape. It derailed three runs of the
+   * UX review before it was recognised as a fault rather than a fluke.
+   */
+  test('the palette closes when you navigate away', async ({ page }) => {
+    const palette = page.getByPlaceholder('Search characters, factions, locations, lore…')
+    const worldId = page.url().match(/#\/worlds\/([^/]+)/)![1]
+
+    // Presence: it opens, and stays open while you are on this screen. Wait for
+    // the toolbar button first — the shortcut binds on mount, so pressing it
+    // against a page that has not hydrated lands on nothing.
+    await expect(page.getByTitle('Search (Ctrl+K)')).toBeVisible()
+    await page.keyboard.press('Control+k')
+    await expect(palette).toBeVisible()
+    await expect(palette).toBeFocused()
+    await expect(palette).toBeVisible()
+
+    // Absence: changing route takes it with you.
+    await page.goto(`/#/worlds/${worldId}/characters`, { waitUntil: 'load' })
+    await expect(palette).not.toBeVisible()
+
+    // And the screen underneath is usable rather than click-blocked.
+    await expect(page.getByRole('button', { name: 'Add Character' }).first()).toBeVisible()
   })
 
   test('no results message when search has no matches', async ({ page }) => {

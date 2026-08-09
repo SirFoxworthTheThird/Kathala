@@ -462,6 +462,9 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       }
 
       for (const [itemId, owners] of itemOwnerCount) {
+        // A kind of thing rather than one object — several people carrying a
+        // cloak each is not a contradiction, it is what a cloak is.
+        if (itemById.get(itemId)?.isCollective) continue
         if (owners.length > 1) {
           const item = itemById.get(itemId)
           const ownerNames = owners.map((o) => {
@@ -582,6 +585,8 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
     // same place around the hand-off has no way to physically change hands.
     for (const h of computeItemHandoffIssues({ events: allEvents, chapters, snapshots, placements: allItemPlacements ?? [] })) {
       const item = itemById.get(h.itemId)
+      // Two people holding their own cloak is not one cloak crossing the map.
+      if (item?.isCollective) continue
       const from = charById.get(h.fromCharacterId)
       const to   = charById.get(h.toCharacterId)
       const fromMarker = markerById.get(h.fromMarkerId)

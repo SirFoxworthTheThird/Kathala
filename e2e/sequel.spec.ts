@@ -28,7 +28,7 @@ test.describe('Start a sequel', () => {
     await card.hover()
 
     // Open the card's actions menu and start a sequel.
-    await page.getByTitle('More export options').click()
+    await page.getByTitle('More actions').click()
     await page.getByRole('button', { name: /Start a sequel/ }).click()
 
     await expect(page.getByRole('heading', { name: 'Start a sequel' })).toBeVisible()

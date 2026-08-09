@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Plus, BookMarked, Pencil, Trash2, Check, X, Eye, Sparkles, PanelLeft } from 'lucide-react'
 import {
   useLoreCategories, useLorePages,
@@ -103,27 +103,34 @@ function AddCategoryForm({ worldId, onDone }: { worldId: string; onDone: () => v
 
 // ── Page card ─────────────────────────────────────────────────────────────────
 function PageCard({
-  page, categoryColor, onOpen, onDelete,
+  page, categoryColor, to, onDelete,
 }: {
   page: { id: string; title: string; body: string; tags: string[]; updatedAt: number }
   categoryColor: string | null
-  onOpen: () => void
+  to: string
   onDelete: () => void
 }) {
   const preview = page.body.slice(0, 120).replace(/[#*`_>-]/g, '').trim()
 
   return (
+    // The card carries a delete button, and a button inside an anchor is not
+    // valid, so the title is the link and its ::after covers the card. The
+    // whole card still opens the page on click, but there is one real link to
+    // Tab to and announce, and the delete button sits above the overlay.
     <div
-      className="group relative flex cursor-pointer flex-col gap-1.5 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3.5 hover:border-[hsl(var(--ring)/0.4)] transition-colors"
-      onClick={onOpen}
+      className="group relative flex flex-col gap-1.5 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3.5 hover:border-[hsl(var(--ring)/0.4)] transition-colors focus-within:border-[hsl(var(--ring))]"
     >
       {categoryColor && (
         <div className="absolute left-0 top-0 h-full w-1 rounded-l-lg" style={{ background: categoryColor }} />
       )}
       <div className="flex items-start justify-between gap-2 pl-2">
-        <h3 className="text-sm font-semibold text-[hsl(var(--foreground))] leading-snug">{page.title}</h3>
+        <h3 className="text-sm font-semibold text-[hsl(var(--foreground))] leading-snug">
+          <Link to={to} className="after:absolute after:inset-0 after:rounded-lg focus:outline-none">
+            {page.title}
+          </Link>
+        </h3>
         <button
-          className="shrink-0 opacity-0 group-hover:opacity-100 text-[hsl(var(--muted-foreground))] hover:text-destructive transition-all"
+          className="relative z-10 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 text-[hsl(var(--muted-foreground))] hover:text-destructive transition-all"
           onClick={(e) => { e.stopPropagation(); onDelete() }}
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -382,7 +389,7 @@ export default function LoreView() {
                   key={page.id}
                   page={page}
                   categoryColor={page.categoryId ? categoryColorMap.get(page.categoryId) ?? null : null}
-                  onOpen={() => navigate(`/worlds/${worldId}/lore/${page.id}`)}
+                  to={`/worlds/${worldId}/lore/${page.id}`}
                   onDelete={() => setDeletePageId(page.id)}
                 />
               ))}

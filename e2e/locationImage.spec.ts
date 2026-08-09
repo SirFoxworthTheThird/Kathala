@@ -5,6 +5,8 @@ import { resetDB } from './helpers/reset'
 import { settleNav } from './helpers/nav'
 import { waitForMapReady } from './helpers/map'
 
+import { IMAGE_URL } from './helpers/imageUrl'
+
 /**
  * A picture of a place.
  *
@@ -17,7 +19,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const MAIN_MAP = path.resolve(__dirname, 'map_example/main_map.jpg')
 
 // Served by the dev server itself, so it genuinely loads and measures.
-const IMAGE = 'http://localhost:5173/favicon.png'
+const IMAGE = IMAGE_URL
 
 test.describe('A location picture', () => {
   test.beforeEach(async ({ page }) => {
