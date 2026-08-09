@@ -33,7 +33,16 @@ export function ChapterSegment({
   const labelColor = isActive ? color : 'var(--tl-text-muted)'
 
   const slotRem  = compact ? 1.5 : 2
-  const minRem   = compact ? 2.5 : 3
+  /*
+    MT-1: the frame track used to fall back to a 2.5rem segment, which fits a
+    chapter number and nothing else — so the outer track of a frame narrative
+    read `0 1 2 3 4 5 6 13 17 …` directly above an inner track reading
+    *8 · Thie…*, *12 · Puz…*. The same component at two densities, and the
+    *frame* of a frame narrative was the half you could not read. The floor is
+    now wide enough for a title to survive truncation, which is all the inner
+    track ever promised either.
+  */
+  const minRem   = compact ? 5.5 : 3
   const widthRem = Math.max(minRem, events.length * slotRem)
   const railH    = compact ? 2 : 3
 
@@ -52,7 +61,11 @@ export function ChapterSegment({
         transition: 'opacity 0.2s, background 0.25s',
       }}
       onClick={isEmpty ? undefined : onChapterSelect}
-      title={isEmpty ? 'Add an event to this chapter to activate it.' : undefined}
+      // A truncated title is still worth having in full on hover, and the
+      // frame track truncates sooner than the story track does.
+      title={isEmpty
+        ? 'Add an event to this chapter to activate it.'
+        : `Ch. ${chapter.number}${chapter.title ? ` — ${chapter.title}` : ''}`}
     >
       {!compact && (
         <div style={{
@@ -67,11 +80,17 @@ export function ChapterSegment({
         </div>
       )}
 
+      {/*
+        The rail and its ticks are absolutely positioned, so without a height of
+        its own this box collapses and the rail draws straight through the label
+        beneath it. Invisible while the compact label was a bare digit; obvious
+        the moment it carries a title (MT-1). 14px clears the tallest tick.
+      */}
       <div style={{
         position: 'relative', flex: compact ? undefined : 1,
         display: 'flex', alignItems: 'center',
         margin: compact ? 0 : '0.2rem 0',
-        minHeight: compact ? undefined : `${railH * 6}px`,
+        minHeight: compact ? '14px' : `${railH * 6}px`,
       }}>
         <div style={{
           position: 'absolute', left: 0, right: 0, top: '50%',
@@ -122,10 +141,12 @@ export function ChapterSegment({
         <div style={{
           fontSize: '0.48rem', color: labelColor, fontFamily: 'var(--font-body)',
           fontWeight: isActive ? 700 : 400, letterSpacing: '0.04em',
-          textAlign: 'center', lineHeight: 1, whiteSpace: 'nowrap', flexShrink: 0,
+          textAlign: 'center', lineHeight: 1, flexShrink: 0,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           transition: 'color 0.2s',
         }}>
-          {chapter.number}
+          <span style={{ opacity: 0.6 }}>{chapter.number}</span>
+          {chapter.title && <span> · {chapter.title}</span>}
         </div>
       )}
     </div>

@@ -16,6 +16,7 @@ import { CloudSyncPanel } from './CloudSyncPanel'
 import { DbHealthPanel } from './DbHealthPanel'
 import { CalendarEditor } from './CalendarEditor'
 import { APP_THEMES, themeClass } from '@/lib/themes'
+import { useAppStore, type AppTheme } from '@/store'
 
 // ── Travel mode row ───────────────────────────────────────────────────────────
 
@@ -89,6 +90,8 @@ export default function WorldSettingsView() {
   const timelines = useTimelines(worldId ?? null)
   const maps = useRootMapLayers(worldId ?? null)
   const travelModes = useTravelModes(worldId ?? null)
+  const appTheme = useAppStore((s) => s.theme)
+  const setAppTheme = useAppStore((s) => s.setTheme)
 
   // World name / description
   const [name, setName] = useState('')
@@ -304,8 +307,36 @@ export default function WorldSettingsView() {
         <div>
           <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Theme</h2>
           <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-            Override the global app theme for this world. "Default" inherits your global setting.
+            Override the app theme for this world. <em>Inherit app theme</em> uses the setting below.
           </p>
+        </div>
+
+        {/*
+          SET-1: this section offered to override a setting the app gave no way
+          to set. The app theme is real and load-bearing — it is what the world
+          list uses, and what every world set to inherit resolves to — but its
+          only control, `ThemePicker`, was exported and never rendered. So the
+          default option inherited from a value nobody could change, and the
+          sentence above described a screen that did not exist. It exists here
+          now, beside the sentence that describes it.
+        */}
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card)/0.55)] p-3">
+          <div className="min-w-0 flex-1">
+            <Label htmlFor="app-theme" className="text-xs font-semibold">App theme</Label>
+            <p className="mt-0.5 text-[10px] leading-snug text-[hsl(var(--muted-foreground))]">
+              Used on the world list, and by every world set to inherit.
+            </p>
+          </div>
+          <select
+            id="app-theme"
+            value={appTheme}
+            onChange={(e) => setAppTheme(e.target.value as AppTheme)}
+            className="h-8 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 text-xs text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
+          >
+            {APP_THEMES.map((t) => (
+              <option key={t.id} value={t.id}>{t.icon} {t.label}</option>
+            ))}
+          </select>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
           {APP_THEMES.map((t) => {
@@ -327,7 +358,7 @@ export default function WorldSettingsView() {
                   style={{ background: t.swatch }}
                 />
                 <span className="min-w-0">
-                  <span className="block text-xs font-semibold text-[hsl(var(--foreground))]">{t.icon} {t.id === 'default' ? 'Inherit global theme' : t.label}</span>
+                  <span className="block text-xs font-semibold text-[hsl(var(--foreground))]">{t.icon} {t.id === 'default' ? 'Inherit app theme' : t.label}</span>
                   <span className="mt-0.5 block text-[10px] leading-snug text-[hsl(var(--muted-foreground))]">{t.description}</span>
                 </span>
                 {isActive && <Check className="h-4 w-4 text-[hsl(var(--ring))]" aria-hidden="true" />}

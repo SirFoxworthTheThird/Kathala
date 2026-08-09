@@ -447,7 +447,9 @@ keeps the framing moment aligned.
 
 **Frame narratives** get a special bottom cursor: two stacked tracks (outer and
 inner). Click either track to make it active; playback follows that track while
-keeping the linked one available for context.
+keeping the linked one available for context. The outer track is the thinner of
+the two, but it is not the poorer one: both read *number · chapter title*, and
+both give the full title on hover where it has to be shortened.
 
 **Sync points** take effect during playback. When you play the inner story and
 reach an event that is paired with one in the outer story, PlotWeave moves the
@@ -1388,8 +1390,7 @@ or restore them.
 ## World settings & export
 
 Per-world settings let you rename the world, set a **cover image**, pick a
-**theme** (Default, Fantasy, Sci-Fi, Cyberpunk, Horror, Western, Action, Noir,
-Romance), define **travel modes** with speeds for map distance calculations, set
+**theme**, define **travel modes** with speeds for map distance calculations, set
 the **continuity stale-snapshot threshold**, set a book-level **word target** and
 **deadline** (for the dashboard's [Writing Progress](#the-world-dashboard)
 burndown and finish projection), and configure an in-world
@@ -1403,6 +1404,16 @@ day 10,000 on the "present" timeline makes chronological merges (the
 All-timelines view and the bottom bar) and the calendar place both eras where
 they actually fall. An event's pinned in-world day stays relative to its own
 timeline's clock.
+
+**Theme** is two settings in one section, because there are two things to
+decide. **App theme** is the one PlotWeave itself wears — on the world list, and
+in every world that has not asked for something else. Below it, the nine cards
+set *this* world's theme, and the first of them, **Inherit app theme**, hands the
+decision back to the setting above. So a Gothic novel can be Horror and a space
+opera Sci-Fi while everything else stays with whatever you chose for the app.
+The nine are Dark Slate, Fantasy, Sci-Fi, Cyberpunk, Horror, Western, Action,
+Noir and Romance; each changes colours, fonts, textures and the timeline bar's
+pulse together.
 
 The **cover image** appears on the world's card in the selector and in the
 dashboard header. **Upload** an image file or **link** one by URL (the link
