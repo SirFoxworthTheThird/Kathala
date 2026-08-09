@@ -41,6 +41,16 @@ export function RecentChangesPanel({ worldId }: { worldId: string | null }) {
     if (open) setNow(Date.now())
   }, [open, stack.length])
 
+  // Escape closes this the way it closes the Writer's Brief and the Continuity
+  // Checker, which open from the same toolbar cluster. Without it the key that
+  // works on every neighbouring panel silently did nothing here.
+  useEffect(() => {
+    if (!open) return
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [open, setOpen])
+
   if (!open) return null
 
   return (

@@ -99,7 +99,7 @@ test('reading mode offers no way to add to the cast, and can be turned off', asy
   // rail's own behaviour is not what this test is about.
   await page.goto(`/#${await worldPath(page)}/settings`)
   await settleNav(page)
-  await page.getByRole('button', { name: 'Reading mode is on' }).click()
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
   await expect(page.getByRole('button', { name: 'Turn on reading mode' })).toBeVisible()
 
   await page.goto(`/#${await worldPath(page)}/characters`)
@@ -146,7 +146,7 @@ test('settings keeps only what a reader can decide', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Export as HTML' })).toHaveCount(0)
 
   // Turning reading mode off is the escape hatch, and it brings the rest back.
-  await page.getByRole('button', { name: 'Reading mode is on' }).click()
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
   await expect.poll(async () => (await sections()).length, { timeout: 15_000 }).toBeGreaterThan(2)
   await expect(page.getByRole('button', { name: 'Export as HTML' })).toBeVisible()
 })
@@ -176,7 +176,7 @@ test('showing the whole book asks first, but only while reading', async ({ page 
   // A writer reaches for this constantly; it must stay a single click for them.
   await page.goto(`/#${await worldPath(page)}/settings`)
   await settleNav(page)
-  await page.getByRole('button', { name: 'Reading mode is on' }).click()
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
   await page.waitForTimeout(800)
   await page.goto(`/#${await worldPath(page)}/characters`)
   await settleNav(page)
@@ -406,12 +406,19 @@ test('map territories wait for the story to reach them', async ({ page }) => {
   await page.getByRole('button', { name: 'Next moment' }).click()
   await page.waitForTimeout(1200)
   await page.goto(`/#${await worldPath(page)}/maps`)
-  await page.waitForTimeout(3000)
-  const shown = await page.evaluate(`(() => document.body.innerText)()`) as string
 
   // Both directions: the rule has to hide the later one *and* keep the earlier
   // one, or it is not gating, it is just hiding regions.
-  expect(shown, 'a territory recorded at the cursor should still be on the map').toContain('Marchlands of Testing')
+  //
+  // The presence half is an auto-waiting assertion rather than a snapshot of
+  // body text taken after a fixed pause. That pause used to decide the result
+  // under load — the snapshot caught the page shell before the map had drawn
+  // anything — and waiting for the region that *must* appear also guarantees
+  // the page has rendered before the absence half reads it.
+  await expect(page.getByText('Marchlands of Testing').first(),
+    'a territory recorded at the cursor should still be on the map').toBeVisible({ timeout: 30_000 })
+
+  const shown = await page.evaluate(`(() => document.body.innerText)()`) as string
   expect(shown, 'a territory not recorded until the end of the book should not').not.toContain('Sundered Vale of Testing')
 })
 
@@ -553,7 +560,7 @@ test('the map cannot be redrawn by dragging what is on it', async ({ page }) => 
   // failed to load: turn reading mode off and the same marker becomes draggable.
   await page.goto(`/#${world}/settings`)
   await settleNav(page)
-  await page.getByRole('button', { name: 'Reading mode is on' }).click()
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
   await page.waitForTimeout(800)
   await page.goto(`/#${world}/maps`)
   await page.waitForTimeout(3000)
@@ -582,7 +589,7 @@ test('the writing screens are closed by URL, not just hidden from the nav', asyn
   // broken for everyone: turn reading mode off and all three open.
   await page.goto(`/#${world}/settings`)
   await settleNav(page)
-  await page.getByRole('button', { name: 'Reading mode is on' }).click()
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
   await page.waitForTimeout(800)
 
   for (const screen of ['corkboard', 'structure', 'manuscript']) {

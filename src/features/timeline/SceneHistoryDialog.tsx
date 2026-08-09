@@ -4,7 +4,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useSceneRevisions, restoreSceneRevision, deleteSceneRevision } from '@/db/hooks/useSceneRevisions'
-import { diffWords, diffStats } from '@/lib/textDiff'
+import { diffWords, diffStats, splitEdges } from '@/lib/textDiff'
 
 interface SceneHistoryDialogProps {
   open: boolean
@@ -123,8 +123,24 @@ export function SceneHistoryDialog({ open, onOpenChange, eventId, currentText }:
                     ? selected?.text
                     : diff.map((tok, i) => {
                         if (tok.op === 'equal') return <span key={i}>{tok.text}</span>
-                        if (tok.op === 'add') return <span key={i} className="rounded bg-emerald-500/20 text-emerald-300">{tok.text}</span>
-                        return <span key={i} className="rounded bg-red-500/20 text-red-300 line-through">{tok.text}</span>
+                        // A deletion is very often followed immediately by the
+                        // insertion replacing it, with no whitespace between —
+                        // "years, and it showed." then "years." ran together as
+                        // one unreadable string. The padding and margin give the
+                        // two blocks their own edges; splitEdges keeps the
+                        // highlight off the surrounding spaces so they stay
+                        // tight around the words that changed.
+                        const { lead, core, trail } = splitEdges(tok.text)
+                        const tone = tok.op === 'add'
+                          ? 'bg-emerald-500/20 text-emerald-300'
+                          : 'bg-red-500/20 text-red-300 line-through'
+                        return (
+                          <span key={i}>
+                            {lead}
+                            {core && <span className={`mx-0.5 rounded px-1 ${tone}`}>{core}</span>}
+                            {trail}
+                          </span>
+                        )
                       })}
                 </div>
               </div>

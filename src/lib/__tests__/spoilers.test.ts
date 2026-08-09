@@ -71,10 +71,17 @@ describe('isRevealed', () => {
     expect(isRevealed('late', first, null)).toBe(true)
   })
 
-  it('shows an entity that never appears in the narration', () => {
-    // Standalone reference material has no moment to be revealed at; hiding it
-    // would make it permanently invisible rather than merely late.
-    expect(isRevealed('unreferenced', first, keys.get('e1')!)).toBe(true)
+  it('hides an entity that never appears in the narration', () => {
+    // A guard that fails open is not a guard: an entity nobody linked to a
+    // moment is indistinguishable from one the story has not reached, and
+    // showing it leaked Charlie Weasley and Godric's Hollow at chapter one.
+    expect(isRevealed('unreferenced', first, keys.get('e1')!)).toBe(false)
+  })
+
+  it('still shows it at all chapters, so nothing is permanently lost', () => {
+    // This is what makes hiding it affordable — the reveal-all control is one
+    // click away and brings back everything the story never placed.
+    expect(isRevealed('unreferenced', first, null)).toBe(true)
   })
 })
 
@@ -86,13 +93,14 @@ describe('revealed and hiddenCount', () => {
   ], keys)
 
   it('filters a list down to what has been met', () => {
-    expect(revealed(records, first, keys.get('e1')!).map((r) => r.id))
-      .toEqual(['early', 'unreferenced'])
+    expect(revealed(records, first, keys.get('e1')!).map((r) => r.id)).toEqual(['early'])
   })
 
   it('counts what is being held back, for the note that explains it', () => {
-    expect(hiddenCount(records, first, keys.get('e1')!)).toBe(1)
-    expect(hiddenCount(records, first, keys.get('e4')!)).toBe(0)
+    // 'late' has not been reached; 'unreferenced' is never placed at all.
+    expect(hiddenCount(records, first, keys.get('e1')!)).toBe(2)
+    // At the last moment only the unplaced one is still held back.
+    expect(hiddenCount(records, first, keys.get('e4')!)).toBe(1)
   })
 
   it('hides nothing at all chapters', () => {

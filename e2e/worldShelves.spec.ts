@@ -80,7 +80,7 @@ test('turning reading mode off moves the book to your own shelf', async ({ page 
   await page.getByText('Dracula').first().click()
   await expect(page).toHaveURL(/#\/worlds\//)
   await page.goto(`/#${new URL(page.url()).hash.replace('#', '').split('/').slice(0, 3).join('/')}/settings`)
-  await page.getByRole('button', { name: 'Reading mode is on' }).click()
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
   await page.waitForTimeout(800)
 
   await page.goto('/#/')

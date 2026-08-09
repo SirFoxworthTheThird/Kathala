@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useFocusTrap } from '@/lib/useFocusTrap'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Search, Users, Map, Package, BookOpen, Network, Scroll, X, Route, Hexagon, BookMarked, Shield } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useAppStore } from '@/store'
+import { useFactionReveal } from '@/db/hooks/useFactions'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { cn } from '@/lib/utils'
 
@@ -50,6 +51,7 @@ function highlight(text: string, query: string) {
 export function SearchPalette() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const { searchOpen, setSearchOpen, setActiveEventId, setPendingFocusRouteId, setPendingFocusRegionId, setPendingFocusMarkerId } = useAppStore()
   const [query, setQuery] = useState('')
   const [activeIdx, setActiveIdx] = useState(0)
@@ -59,6 +61,19 @@ export function SearchPalette() {
   const [expandedGroups, setExpandedGroups] = useState<Set<ResultType>>(new Set())
 
   useFocusTrap(paletteRef, searchOpen)
+
+  /**
+   * Close on navigation.
+   *
+   * Choosing a result closes the palette itself, but nothing else did — so
+   * arriving somewhere by any other route (the browser's Back button, a link
+   * inside a panel) left a modal sitting over a screen it had nothing to do
+   * with, swallowing every click until Escape. Leaving a page should leave its
+   * overlays behind.
+   */
+  useEffect(() => {
+    setSearchOpen(false)
+  }, [pathname, setSearchOpen])
 
   /**
    * Search reads Dexie directly rather than through the entity hooks, because
@@ -81,7 +96,6 @@ export function SearchPalette() {
   const regions       = useLiveQuery(() => worldId ? db.mapRegions.where('worldId').equals(worldId).toArray() : [], [worldId], [])
   const lorePages     = useLiveQuery(() => worldId ? db.lorePages.where('worldId').equals(worldId).toArray() : [], [worldId], [])
   const factions      = useLiveQuery(() => worldId ? db.factions.where('worldId').equals(worldId).toArray() : [], [worldId], [])
-  const memberships   = useLiveQuery(() => worldId ? db.factionMemberships.where('worldId').equals(worldId).toArray() : [], [worldId], [])
 
   // Which chapters the reader has reached, by their first event: a chapter's
   // synopsis waits for it even though its title does not.
@@ -91,17 +105,9 @@ export function SearchPalette() {
     return reached
   }, [events, gate])
 
-  // A faction is known to the reader once they have met somebody in it. One
-  // with no members recorded has no basis to be withheld on, so it stays.
-  const factionRevealed = useMemo(() => {
-    const withMembers = new Set<string>()
-    const revealed = new Set<string>()
-    for (const m of (memberships ?? [])) {
-      withMembers.add(m.factionId)
-      if (gate.isRevealed(m.characterId) && gate.hasReached(m.startEventId)) revealed.add(m.factionId)
-    }
-    return { has: (id: string) => !withMembers.has(id) || revealed.has(id) }
-  }, [memberships, gate])
+  // Shared with the Factions roster, so the two cannot disagree about whether
+  // the reader has met a faction.
+  const factionRevealed = useFactionReveal(worldId ?? null, gate)
 
   const results: SearchResult[] = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -184,12 +190,20 @@ export function SearchPalette() {
   // Reset active index when results change
   useEffect(() => setActiveIdx(0), [results])
 
-  // Focus input when opened; reset expanded groups on close
+  // Focus the input when opened; reset expanded groups on close.
+  //
+  // Synchronously, not on a timer. The palette renders nothing until it is
+  // open, so by the time this effect runs the input is mounted and the ref is
+  // attached — there is nothing to wait for. A delay here is not free: whatever
+  // had focus keeps it until the timer fires, so a keystroke in that window is
+  // delivered to the screen behind the palette instead. Opening search from a
+  // half-filled form and typing straight away put the first characters into the
+  // form.
   useEffect(() => {
     if (searchOpen) {
       setQuery('')
       setExpandedGroups(new Set())
-      setTimeout(() => inputRef.current?.focus(), 50)
+      inputRef.current?.focus()
     }
   }, [searchOpen])
 
@@ -217,7 +231,11 @@ export function SearchPalette() {
     if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIdx((i) => Math.min(i + 1, results.length - 1)) }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIdx((i) => Math.max(i - 1, 0)) }
     else if (e.key === 'Enter') { if (results[activeIdx]) go(results[activeIdx]) }
-    else if (e.key === 'Escape') close()
+    // Consume the key rather than letting it bubble. Dialogs listen for Escape
+    // on `document`, so an un-stopped keypress closes the palette *and*
+    // whatever it was opened on top of — searching for a name from a
+    // half-filled form and pressing Escape used to discard the form.
+    else if (e.key === 'Escape') { e.stopPropagation(); close() }
   }
 
   if (!searchOpen) return null

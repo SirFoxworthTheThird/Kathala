@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import {
   Map as MapIcon, Users, Network, BookOpen,
   Package, BarChart2, ShieldAlert, Clock, Layers, Pencil, FileEdit, Spline, PenLine, Sparkle,
+  ChevronRight,
 } from 'lucide-react'
 import type { EventStatus } from '@/types'
 import { EVENT_STATUSES, eventStatusConfig } from '@/lib/eventStatus'
@@ -95,11 +96,21 @@ export default function WorldDashboardView() {
   // Latch: keep the wizard mounted until it explicitly exits, even after step 1
   // creates an event (which would clear the trigger condition mid-session).
   const [wizardLatch, setWizardLatch] = useState(false)
+  // ...and once it has exited, leave it exited. Without this the latch re-armed
+  // itself the moment it was released: "Skip and explore on my own" set it
+  // false, the effect below saw the trigger condition still true and set it
+  // straight back, so skipping was a no-op for any world without an event —
+  // which is every world the wizard appears for.
+  const [wizardDismissed, setWizardDismissed] = useState(false)
   useEffect(() => {
-    if (wizardReady && !wizardLatch && (timelineCount === 0 || eventCount === 0)) {
+    // Only for a world that has not been started. It used to trigger on
+    // `eventCount === 0` too, so a writer who built a timeline and chapters on
+    // the Timeline screen came back to the dashboard and was asked, at step 1
+    // of 4, to name a timeline they had already named.
+    if (wizardReady && !wizardLatch && !wizardDismissed && timelineCount === 0) {
       setWizardLatch(true)
     }
-  }, [wizardReady, wizardLatch, timelineCount, eventCount])
+  }, [wizardReady, wizardLatch, wizardDismissed, timelineCount])
 
   // ── Dashboard suggestions ─────────────────────────────────────────────────
   const dismissedKey = worldId ? `plotweave-dismissed-suggestions-${worldId}` : null
@@ -284,7 +295,7 @@ export default function WorldDashboardView() {
 
   // Wizard replaces the dashboard while active
   if (wizardLatch && worldId) {
-    return <OnboardingWizard worldId={worldId} onExit={() => setWizardLatch(false)} />
+    return <OnboardingWizard worldId={worldId} onExit={() => { setWizardDismissed(true); setWizardLatch(false) }} />
   }
 
   return (
@@ -376,9 +387,20 @@ export default function WorldDashboardView() {
           >
             <div className="flex items-center justify-between">
               <Icon className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-              <span className="text-xl font-bold text-[hsl(var(--foreground))]">
-                {count !== null ? `${count}${countSuffix ?? ''}` : '—'}
-              </span>
+              {/*
+                A tile with no count is an action, not a statistic — Continuity
+                opens the checker, Character Arc opens the grid. A bold em-dash
+                in the number slot read as a missing or unknown value, which on
+                the Continuity tile especially is a different claim from "no
+                issues". A chevron says "this goes somewhere" instead.
+              */}
+              {count !== null ? (
+                <span className="text-xl font-bold text-[hsl(var(--foreground))]">
+                  {`${count}${countSuffix ?? ''}`}
+                </span>
+              ) : (
+                <ChevronRight className="h-5 w-5 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+              )}
             </div>
             <div>
               <p className="text-sm font-medium text-[hsl(var(--foreground))]">{label}</p>

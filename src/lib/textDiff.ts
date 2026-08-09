@@ -59,6 +59,21 @@ export function diffWords(a: string, b: string): DiffToken[] {
   return merged
 }
 
+/**
+ * Split a run into its outer whitespace and its visible core.
+ *
+ * A changed run often carries the spaces around it — " and it showed." — and
+ * highlighting those too makes the coloured block start a word early and end a
+ * word late. Rendering the edges outside the highlight keeps each block tight
+ * around the words that actually changed, which is what lets a deletion and the
+ * insertion replacing it read as two things rather than one run-on string.
+ */
+export function splitEdges(text: string): { lead: string; core: string; trail: string } {
+  const lead = text.match(/^\s*/)?.[0] ?? ''
+  const trail = text.length > lead.length ? (text.match(/\s*$/)?.[0] ?? '') : ''
+  return { lead, core: text.slice(lead.length, text.length - trail.length), trail }
+}
+
 /** Count of added and removed words (whitespace-only tokens don't count). */
 export function diffStats(tokens: DiffToken[]): { added: number; removed: number } {
   let added = 0, removed = 0

@@ -131,9 +131,19 @@ export function firstAppearances(
  * position is picked — makes the app look broken to someone who has not
  * realised the cursor exists.
  *
- * An entity with no appearance at all is shown. It is not part of the narrated
- * sequence, so there is no moment to reveal it at, and hiding it would make
- * standalone reference material permanently invisible rather than merely late.
+ * An entity with no appearance at all is *hidden*. A guard that fails open is
+ * not a guard: the reader cannot tell "the story has not placed this yet" from
+ * "nobody recorded where this goes", and the second silently reveals the first.
+ * In the shipped Philosopher's Stone that gap put Charlie Weasley, a flying
+ * motorcycle and Godric's Hollow on screen at chapter one.
+ *
+ * This costs nothing permanently, which is what makes it affordable: "all
+ * chapters" is one control away and reveals everything, so an entity the story
+ * never places is late rather than lost. It applies only to entities discovered
+ * through appearances — characters, items, places, threads, motifs, regions.
+ * Records carrying their own reveal point go through `hasReached`, and records
+ * that are merely *linked* to others go through `linksRevealed`; genuine
+ * standalone reference material is gated there, not here.
  */
 export function isRevealed(
   entityId: string,
@@ -142,7 +152,7 @@ export function isRevealed(
 ): boolean {
   if (cursor === null) return true
   const first = firstSeen.get(entityId)
-  if (first === undefined) return true
+  if (first === undefined) return false
   return first <= cursor
 }
 

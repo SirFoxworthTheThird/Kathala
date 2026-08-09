@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import {
-  useFactions, useFactionMemberships, useMembershipsForFaction,
+  useFactions, useFactionMemberships, useMembershipsForFaction, useFactionReveal,
   useFactionRelationships,
   createFaction, updateFaction, deleteFaction,
   createFactionMembership, updateFactionMembership, deleteFactionMembership,
@@ -278,16 +278,22 @@ function FactionDetailPanel({
   const unrelatedFactions = allFactions.filter(
     (f) => f.id !== faction.id && !relatedFactionIds.has(f.id)
   )
-  const territories = useLiveQuery(
+  // Territories name places, so they go through the reveal gate like any other
+  // place: a faction's holdings would otherwise list somewhere the reader has
+  // not reached, which is how "Hogwarts School of Witchcraft and Wizardry"
+  // reached this panel at chapter one.
+  const allTerritories = useLiveQuery(
     () => db.mapRegions.where('factionId').equals(faction.id).toArray(),
     [faction.id],
     []
   )
-  const territoryLocations = useLiveQuery(
+  const allTerritoryLocations = useLiveQuery(
     () => db.locationMarkers.where('factionId').equals(faction.id).toArray(),
     [faction.id],
     []
   )
+  const territories = gate.filter(allTerritories)
+  const territoryLocations = gate.filter(allTerritoryLocations)
   const allLayers = useMapLayers(worldId)
   const layerById = new Map(allLayers.map((l) => [l.id, l]))
   const characters = useCharacters(worldId)
@@ -632,7 +638,13 @@ function FactionDetailPanel({
 
 export default function FactionsView() {
   const { worldId } = useParams<{ worldId: string }>()
-  const factions = useFactions(worldId ?? null)
+  const gate = useGate()
+  const allWorldFactions = useFactions(worldId ?? null)
+  // A faction the reader has not met anybody in gives its existence away — the
+  // roster used to list every one of them while search hid the same faction at
+  // the same cursor.
+  const factionReveal = useFactionReveal(worldId ?? null, gate)
+  const factions = allWorldFactions.filter((f) => factionReveal.has(f.id))
   const allMemberships = useFactionMemberships(worldId ?? null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)

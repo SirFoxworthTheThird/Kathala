@@ -104,7 +104,10 @@ export function WorldCard({ world }: WorldCardProps) {
                 className="h-7 w-4 rounded-l-none border-l border-[hsl(var(--border))] px-0 hover:text-blue-400"
                 onClick={() => setMenuOpen((v) => !v)}
                 disabled={exporting}
-                title="More export options"
+                // Not "More export options": this menu also starts a sequel,
+                // and a name that advertises only exports is a menu a writer
+                // has no reason to open unless they want to export.
+                title="More actions"
               >
                 <ChevronDown className="h-3 w-3" />
               </Button>

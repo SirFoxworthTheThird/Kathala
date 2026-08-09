@@ -85,7 +85,14 @@ export function ChapterRow({ chapter, threadFilter = null }: ChapterRowProps) {
       isActive ? 'border-[hsl(var(--ring))] bg-[hsl(var(--card))]' : 'border-[hsl(var(--border))] bg-[hsl(var(--card))]'
     )}>
       {/* Chapter header */}
-      <div className="flex items-center gap-2 px-4 py-3">
+      {/*
+        Wraps below `sm`: at 390px the title, which is the only thing telling
+        one row from another, was truncated to "Ch. 2 — The Vanish…" while
+        "Set Active" and two icon buttons took roughly 40% of the row. Giving
+        the title the full first line and letting the controls fall to a second
+        spends vertical space, which a phone has more of. Unchanged from `sm` up.
+      */}
+      <div className="flex flex-wrap items-center gap-2 px-4 py-3 sm:flex-nowrap">
         {/* Select-all checkbox — visible on hover or when any events in chapter are
             selected. It exists to feed the bulk toolbar (delete, tag, move), so
             reading mode has nothing to select for. */}
@@ -106,7 +113,7 @@ export function ChapterRow({ chapter, threadFilter = null }: ChapterRowProps) {
             />
           </div>
         )}
-        <button onClick={() => setExpanded((v) => !v)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
+        <button onClick={() => setExpanded((v) => !v)} className="flex items-center gap-2 basis-full min-w-0 text-left sm:basis-auto sm:flex-1">
           {effectiveExpanded
             ? <ChevronDown className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />
             : <ChevronRight className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />}
@@ -128,7 +135,7 @@ export function ChapterRow({ chapter, threadFilter = null }: ChapterRowProps) {
         <Button
           size="sm"
           variant={isActive ? 'secondary' : 'ghost'}
-          className="h-7 px-2 text-xs shrink-0"
+          className="h-7 px-2 text-xs shrink-0 ml-auto"
           onClick={() => setActiveEventId(isActive ? null : (sortedEvents[0]?.id ?? null))}
         >
           {isActive ? 'Active' : 'Set Active'}
@@ -149,8 +156,10 @@ export function ChapterRow({ chapter, threadFilter = null }: ChapterRowProps) {
           size="icon"
           className="h-7 w-7 shrink-0 hover:text-red-400"
           onClick={() => setConfirmOpen(true)}
+          aria-label={`Delete chapter ${chapter.number}`}
+          title="Delete chapter"
         >
-          <Trash2 className="h-3.5 w-3.5" />
+          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
         </Button>
         <ConfirmDialog
           open={confirmOpen}

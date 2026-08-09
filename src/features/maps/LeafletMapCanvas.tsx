@@ -244,6 +244,14 @@ function ZoomTracker({ onZoomChange }: { onZoomChange: (zoom: number) => void })
   return null
 }
 
+/**
+ * A floor low enough that fitting is never clamped by it. Each zoom step halves
+ * the scale, so -10 accommodates an image about a thousand times wider than its
+ * container — far past anything a map layer will hold — while staying a finite
+ * number Leaflet is happy to compute against.
+ */
+const MIN_FIT_ZOOM = -10
+
 function FitBounds({ bounds, initialCenter, initialZoom, playbackFocus, onReady }: {
   bounds: L.LatLngBoundsExpression
   initialCenter?: [number, number] | null
@@ -266,6 +274,16 @@ function FitBounds({ bounds, initialCenter, initialZoom, playbackFocus, onReady 
       map.invalidateSize()
       const prevSnap = map.options.zoomSnap
       map.options.zoomSnap = 0
+      // Both `fitBounds` and `getBoundsZoom` clamp their result to the map's
+      // current minZoom, and Leaflet's default is 0 — the zoom at which a
+      // CRS.Simple image draws 1:1. So an image bigger than its container could
+      // never be fitted: the fit silently clamped to 0 and the map opened
+      // showing the middle of the image with everything else off-screen. It
+      // looked survivable on a desktop, where only the vertical overflow was
+      // cut; on a 390px phone it left three of five markers outside the
+      // viewport. Open the floor first, fit, and only then adopt the fitted
+      // zoom as the new floor so the reader still cannot zoom out past the map.
+      map.setMinZoom(MIN_FIT_ZOOM)
       map.fitBounds(bounds, { padding: [0, 0], animate: false })
       const minZoom = map.getBoundsZoom(bounds, false)
       map.setMinZoom(minZoom)

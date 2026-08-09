@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { X, Users, Network, Package, ArrowRight, MapPin, Heart, Skull } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -189,6 +189,15 @@ export function ChapterDiffModal() {
     return diffs
   }, [itemPlacementsA, itemPlacementsB, itemById, markerById])
 
+  // Escape closes this like every other overlay in the app. It is a hand-rolled
+  // overlay rather than the shared Dialog, which is why it never had one.
+  useEffect(() => {
+    if (!diffOpen) return
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setDiffOpen(false) }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [diffOpen, setDiffOpen])
+
   if (!diffOpen) return null
 
   const otherChapters = chapters.filter((c) => c.id !== activeChapter?.id).sort((a, b) => a.number - b.number)
@@ -206,6 +215,9 @@ export function ChapterDiffModal() {
 
       <div
         className="relative z-10 flex w-full max-w-2xl flex-col rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Chapter Diff"
         style={{ maxHeight: '80vh' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -215,8 +227,9 @@ export function ChapterDiffModal() {
           <button
             className="ml-auto text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
             onClick={() => setDiffOpen(false)}
+            aria-label="Close chapter diff"
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
 

@@ -1,0 +1,98 @@
+import { test, expect, type Page } from '@playwright/test'
+import { resetDB } from './helpers/reset'
+
+/**
+ * Escape closes every overlay, not merely most of them.
+ *
+ * Writer's Brief and Continuity Checker registered their own key handlers;
+ * Recent changes and Chapter Diff — hand-rolled overlays rather than the shared
+ * Dialog — registered none, so the key that works everywhere else silently did
+ * nothing on two panels opened from the same toolbar.
+ *
+ * All four are driven in one test on purpose: a broken key or a dead page would
+ * take every line down together, so two passing and two failing is a result
+ * about the app rather than about the harness.
+ */
+test.describe('Overlay dismissal', () => {
+  test.describe.configure({ timeout: 120_000 })
+
+  async function worldWithChapters(page: Page) {
+    await page.goto('/')
+    await resetDB(page)
+    await page.getByRole('button', { name: 'New World' }).click()
+    await page.getByLabel('Name').fill('Dismiss')
+    await page.getByRole('button', { name: 'Create World' }).last().click()
+    await expect(page).toHaveURL(/#\/worlds\//)
+    const id = page.url().match(/#\/worlds\/([^/]+)/)![1]
+
+    await page.goto(`/#/worlds/${id}/timeline`)
+    await page.getByRole('button', { name: 'Create Timeline' }).click()
+    for (const t of ['The Gate', 'The Road']) {
+      await page.getByRole('button', { name: 'Add Chapter' }).first().click()
+      await page.getByPlaceholder('Chapter title').fill(t)
+      await page.getByRole('button', { name: 'Add Chapter' }).last().click()
+      await expect(page.getByText(t).first()).toBeVisible()
+    }
+    // Chapter Diff only appears once an event is active on the timeline bar.
+    await page.getByTitle('Open chapter detail').first().click()
+    await page.getByRole('main').getByRole('button', { name: 'Add Event' }).first().click()
+    await page.getByPlaceholder('Event title').fill('Scene One')
+    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await page.goto(`/#/worlds/${id}/timeline`)
+    await page.getByTitle('Scene One', { exact: true }).click()
+    return id
+  }
+
+  test('Escape closes every top-bar overlay', async ({ page }) => {
+    await worldWithChapters(page)
+
+    const cases: { name: string; open: () => Promise<void>; marker: () => ReturnType<Page['getByText']> }[] = [
+      {
+        name: "Writer's Brief",
+        open: async () => { await page.getByRole('button', { name: "Writer's Brief" }).click() },
+        marker: () => page.getByText(/Writer.s Brief/),
+      },
+      {
+        name: 'Continuity Checker',
+        open: async () => { await page.getByRole('button', { name: 'Continuity Checker' }).click() },
+        marker: () => page.getByText(/Continuity/),
+      },
+      {
+        name: 'Recent changes',
+        open: async () => { await page.getByRole('button', { name: 'Recent changes' }).click() },
+        marker: () => page.getByText('Recent changes'),
+      },
+      {
+        name: 'Chapter Diff',
+        open: async () => { await page.getByTitle('Compare chapters').click() },
+        marker: () => page.getByText('Chapter Diff'),
+      },
+      {
+        name: 'Help',
+        open: async () => { await page.getByRole('button', { name: 'Help' }).click() },
+        marker: () => page.getByRole('heading', { name: 'Help' }),
+      },
+    ]
+
+    for (const c of cases) {
+      await c.open()
+      await expect(c.marker().first(), `${c.name} should open`).toBeVisible()
+      await page.keyboard.press('Escape')
+      await expect(c.marker(), `${c.name} should close on Escape`).toHaveCount(0)
+    }
+  })
+
+  test('every overlay close button has an accessible name', async ({ page }) => {
+    await worldWithChapters(page)
+    await page.getByTitle('Compare chapters').click()
+    await expect(page.getByText('Chapter Diff')).toBeVisible()
+
+    // A bare icon button announces only "button"; the diff header had no text,
+    // aria-label or title at all.
+    await expect(page.getByRole('button', { name: /close chapter diff/i })).toBeVisible()
+    await page.keyboard.press('Escape')
+
+    await page.getByRole('button', { name: 'Recent changes' }).click()
+    await expect(page.getByRole('button', { name: /close recent changes/i })).toBeVisible()
+  })
+})

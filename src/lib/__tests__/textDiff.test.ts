@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { tokenize, diffWords, diffStats } from '@/lib/textDiff'
+import { tokenize, diffWords, diffStats, splitEdges } from '@/lib/textDiff'
 
 describe('tokenize', () => {
   it('keeps words and whitespace as separate tokens', () => {
@@ -59,5 +59,34 @@ describe('diffStats', () => {
     const { added, removed } = diffStats(d)
     expect(added).toBe(3)   // big, brave, dog
     expect(removed).toBe(1) // cat
+  })
+})
+
+describe('splitEdges', () => {
+  it('keeps surrounding whitespace out of the core', () => {
+    expect(splitEdges(' and it showed. ')).toEqual({ lead: ' ', core: 'and it showed.', trail: ' ' })
+    expect(splitEdges('\n\nParagraph')).toEqual({ lead: '\n\n', core: 'Paragraph', trail: '' })
+  })
+
+  it('leaves a run with no outer whitespace alone', () => {
+    expect(splitEdges('years.')).toEqual({ lead: '', core: 'years.', trail: '' })
+  })
+
+  it('treats an all-whitespace run as lead only, never double-counting it', () => {
+    // Both a naive lead and a naive trail match the whole string here, which
+    // would slice the core to a negative length and duplicate the text.
+    expect(splitEdges('   ')).toEqual({ lead: '   ', core: '', trail: '' })
+    expect(splitEdges('')).toEqual({ lead: '', core: '', trail: '' })
+  })
+
+  it('reassembles to the original for every run a diff can produce', () => {
+    const tokens = diffWords(
+      'The gate had not been opened in nine years, and it showed.',
+      'The gate had not been opened in nine years.',
+    )
+    for (const t of tokens) {
+      const { lead, core, trail } = splitEdges(t.text)
+      expect(lead + core + trail).toBe(t.text)
+    }
   })
 })

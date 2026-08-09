@@ -63,8 +63,18 @@ export function TimeCursor({ worldId }: { worldId: string }) {
   // Nothing to point at yet — stay out of the way until the story has a moment.
   if (orderedEvents.length === 0) return null
 
+  // 32x32, matching every other icon button in the top bar. These were h-6 w-5
+  // — 24x20, less than half the 44px touch guideline — while being the primary
+  // way to move the time cursor on a phone.
+  //
+  // Deliberately not `.pw-tap`: that utility centres a 44px hit area on the
+  // control, and its own guidance is to use it only where controls are well
+  // spaced. Here the previous-moment button sits ~6px from the brand button
+  // (which navigates out of the world) and the next-moment button sits beside
+  // the clear-cursor X, so overlapping 44px zones would make the neighbours
+  // easier to hit by accident rather than harder.
   const stepBtn =
-    'flex h-6 w-5 shrink-0 items-center justify-center rounded text-[hsl(var(--muted-foreground))] transition-colors enabled:hover:text-[hsl(var(--foreground))] disabled:opacity-30'
+    'flex h-8 w-8 shrink-0 items-center justify-center rounded text-[hsl(var(--muted-foreground))] transition-colors enabled:hover:text-[hsl(var(--foreground))] disabled:opacity-30'
 
   return (
     // `min-w-0` matters: without it this flex item refuses to shrink below its
@@ -78,7 +88,7 @@ export function TimeCursor({ worldId }: { worldId: string }) {
         title="Previous moment"
         className={stepBtn}
       >
-        <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
+        <ChevronLeft className="h-4 w-4" aria-hidden="true" />
       </button>
 
       <button
@@ -127,7 +137,7 @@ export function TimeCursor({ worldId }: { worldId: string }) {
         title="Next moment"
         className={stepBtn}
       >
-        <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+        <ChevronRight className="h-4 w-4" aria-hidden="true" />
       </button>
 
       {activeEvent && (
@@ -139,7 +149,10 @@ export function TimeCursor({ worldId }: { worldId: string }) {
           // Hidden on the narrowest phones so the chapter number itself still
           // fits. It is the most redundant control here — the timeline reaches
           // "all chapters" too, and stepping back does the same job.
-          className={cn(stepBtn, 'hidden min-[360px]:flex')}
+          // Set apart from "next moment": this one discards the reading
+          // position, and it used to sit 2px from the control a reader taps
+          // repeatedly.
+          className={cn(stepBtn, 'ml-1.5 hidden min-[360px]:flex')}
         >
           <X className="h-3 w-3" aria-hidden="true" />
         </button>
