@@ -30,6 +30,20 @@ export interface Item {
   iconType: string
   imageId: string | null
   tags: string[]
+  /**
+   * Whether this is a *kind* of thing rather than one particular object.
+   *
+   * Lembas, elven cloaks and barrow-blades are each one record but many
+   * objects: six members of the Fellowship carry a cloak at once. Continuity
+   * checks that treat an item's whereabouts as unique — "appears in multiple
+   * places", "changes hands between characters in different places" — do not
+   * apply to those, and firing anyway accounted for 71 of the 97 issues the
+   * shipped Fellowship reported.
+   *
+   * Absent means a unique object, which is the safe default: it keeps the
+   * checks on for every item that predates this field.
+   */
+  isCollective?: boolean
   /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */
   version?: number
 }

@@ -943,6 +943,15 @@ An item's picture opens full size the same way a portrait does — see
 
 ![Items](images/09-items.png)
 
+**Things there is more than one of.** An item is normally one particular object,
+and the [Continuity Checker](#continuity-checker) treats it that way — if two
+characters hold it at the same moment, that is a contradiction worth flagging.
+Some items are a *kind* of thing instead: lembas, a uniform, arrows, a cloak
+every member of the party carries. Open the item, choose **Edit**, and tick
+**There is more than one of these**; the checker then stops asking how it can be
+in two places at once. Leave it unticked for anything unique — the One Ring
+should still raise its hand if it turns up in two pockets.
+
 Like the cast, you can **Generate with AI** from the Items screen: copy the
 prompt, describe your story, and paste back the JSON to add a batch of items to
 the current world. It follows the same flow as

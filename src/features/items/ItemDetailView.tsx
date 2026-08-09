@@ -29,6 +29,7 @@ export default function ItemDetailView() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [iconType, setIconType] = useState('')
+  const [isCollective, setIsCollective] = useState(false)
 
   // Cross-timeline artifact form state
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -62,6 +63,7 @@ export default function ItemDetailView() {
       name: name.trim(),
       description: description.trim(),
       iconType: iconType.trim(),
+      isCollective,
     })
     setEditing(false)
   }
@@ -85,6 +87,7 @@ export default function ItemDetailView() {
     setName(item!.name)
     setDescription(item!.description)
     setIconType(item!.iconType)
+    setIsCollective(!!item!.isCollective)
     setEditing(true)
   }
 
@@ -191,6 +194,23 @@ export default function ItemDetailView() {
             <div className="flex flex-col gap-1.5">
               <Label>Description</Label>
               <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={6} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer accent-[hsl(var(--ring))]"
+                  checked={isCollective}
+                  onChange={(e) => setIsCollective(e.target.checked)}
+                />
+                <span>
+                  There is more than one of these
+                  <span className="block text-xs text-[hsl(var(--muted-foreground))]">
+                    For a kind of thing rather than one object — lembas, a uniform, arrows.
+                    Continuity stops asking how it can be in two places at once.
+                  </span>
+                </span>
+              </label>
             </div>
             <div className="flex gap-2">
               <Button size="sm" onClick={save} disabled={!name.trim()}>

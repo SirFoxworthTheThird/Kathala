@@ -6,6 +6,7 @@ import { updateLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { useAppStore } from '@/store'
 import { type GhostPin, makeGhostIcon } from '@/lib/ghostMarkerIcon'
 import { playbackFocusTarget, playbackFocusZoom } from './mapUtils'
+import { labelledMarkers } from './labelDeclutter'
 
 export type { GhostPin }
 
@@ -500,6 +501,8 @@ export function LeafletMapCanvas({
   mapAnnotations = [], onAnnotationClick, selectedAnnotationId,
 }: LeafletMapCanvasProps) {
   const { setIsAnimating } = useAppStore()
+  // The marker the reader has open keeps its name even in a crowd.
+  const selectedMarkerId = useAppStore((st) => st.selectedLocationMarkerId)
   const internalMapRef = useRef<L.Map | null>(null)
   const mapRef         = externalMapRef ?? internalMapRef
   // Imperative character marker management — bypasses react-leaflet's position-prop mechanism
@@ -532,6 +535,14 @@ export function LeafletMapCanvas({
   charPinsRef.current               = charPins
   mapZoomRef.current                = mapZoom
   markersRef.current                = markers
+
+  // Which markers can show their name without burying a neighbour's. Recomputed
+  // on zoom, so names come back as the map spreads out; the highlighted marker
+  // keeps its label regardless, because that is the one being asked about.
+  const labelledIds = useMemo(
+    () => labelledMarkers(markers, mapZoom, selectedMarkerId ? [selectedMarkerId] : []),
+    [markers, mapZoom, selectedMarkerId],
+  )
 
   const w      = layer.imageWidth
   const h      = layer.imageHeight
@@ -1118,7 +1129,7 @@ export function LeafletMapCanvas({
           <Marker
             key={marker.id}
             position={[marker.y, marker.x]}
-            icon={makeLocationIcon(marker.iconType, !!marker.linkedMapLayerId && showSubMapLinks, marker.name, isDraggingCharacter, locationStatuses[marker.id] ?? 'active', showLocationLabels)}
+            icon={makeLocationIcon(marker.iconType, !!marker.linkedMapLayerId && showSubMapLinks, marker.name, isDraggingCharacter, locationStatuses[marker.id] ?? 'active', showLocationLabels && labelledIds.has(marker.id))}
             zIndexOffset={isDraggingCharacter ? 2000 : -100}
             draggable={!readOnly}
             eventHandlers={{
