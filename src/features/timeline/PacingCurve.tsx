@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Activity } from 'lucide-react'
 import type { WorldEvent, Chapter } from '@/types'
 import { computePacingCurve, tensionColor, tensionLabel, TENSION_LEVELS } from '@/lib/tension'
+import type { PacingPoint } from '@/lib/tension'
 import { beatById, beatActColor } from '@/lib/storyBeats'
 import { computeInWorldDays } from '@/lib/inWorldTime'
 import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
@@ -226,6 +227,48 @@ export function PacingCurve({ worldId, events, chapters, order, activeEventId, o
         </svg>
         </div>
       </div>
+
+      <PacingTable points={points} />
+    </div>
+  )
+}
+
+/**
+ * The curve's data, for anyone not reading it as a picture. 117 focusable SVG
+ * points would be a worse answer than this: a chart's accessible equivalent is
+ * the numbers behind it, and a table can be read, sorted by eye and searched,
+ * which a row of circles cannot.
+ *
+ * Kept in the accessibility tree and out of the visual one, so it costs sighted
+ * readers nothing.
+ */
+function PacingTable({ points }: { points: PacingPoint[] }) {
+  // Wrapped rather than carrying `sr-only` itself: a table's used width is at
+  // least its min-content width, so `width: 1px` does nothing to it. The
+  // wrapper shrinks and clips; the table inside keeps its table semantics.
+  return (
+    <div className="sr-only">
+    <table>
+      <caption>Dramatic tension by scene, in the order shown</caption>
+      <thead>
+        <tr>
+          <th scope="col">Chapter</th>
+          <th scope="col">Scene</th>
+          <th scope="col">Tension</th>
+          <th scope="col">Words</th>
+        </tr>
+      </thead>
+      <tbody>
+        {points.map((p) => (
+          <tr key={p.eventId}>
+            <td>{p.chapterNumber ?? '—'}</td>
+            <td>{p.title || 'Untitled'}</td>
+            <td>{p.tension === null ? 'Unrated' : `${tensionLabel(p.tension)} (${p.tension} of 5)`}</td>
+            <td>{p.wordCount}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
     </div>
   )
 }

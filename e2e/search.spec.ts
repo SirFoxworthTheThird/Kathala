@@ -1,6 +1,24 @@
 import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 
+/**
+ * Presses the shortcut until the palette actually opens.
+ *
+ * The handler binds in an effect on mount, and waiting for the toolbar button
+ * to appear does not prove the listener is attached — on a loaded machine there
+ * is still a window where the press lands on nothing. The handler calls
+ * `setSearchOpen(true)` rather than toggling, so pressing again is harmless.
+ */
+async function openPaletteWithShortcut(page: import('@playwright/test').Page) {
+  const palette = page.getByPlaceholder('Search characters, factions, locations, lore…')
+  await expect(page.getByTitle('Search (Ctrl+K)')).toBeVisible()
+  await expect(async () => {
+    await page.keyboard.press('Control+k')
+    await expect(palette).toBeVisible({ timeout: 1500 })
+  }).toPass({ timeout: 25_000 })
+  return palette
+}
+
 test.describe('Search palette', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
@@ -36,12 +54,7 @@ test.describe('Search palette', () => {
   })
 
   test('opens search palette via Ctrl+K keyboard shortcut', async ({ page }) => {
-    // Wait for something interactive before typing: the shortcut is bound on
-    // mount, and pressing it against a page that has not finished hydrating
-    // simply does nothing.
-    await expect(page.getByTitle('Search (Ctrl+K)')).toBeVisible()
-    await page.keyboard.press('Control+k')
-    await expect(page.getByPlaceholder('Search characters, factions, locations, lore…')).toBeVisible()
+    await expect(await openPaletteWithShortcut(page)).toBeVisible()
   })
 
   test('closes palette with Escape key', async ({ page }) => {
@@ -124,15 +137,10 @@ test.describe('Search palette', () => {
    * UX review before it was recognised as a fault rather than a fluke.
    */
   test('the palette closes when you navigate away', async ({ page }) => {
-    const palette = page.getByPlaceholder('Search characters, factions, locations, lore…')
     const worldId = page.url().match(/#\/worlds\/([^/]+)/)![1]
 
-    // Presence: it opens, and stays open while you are on this screen. Wait for
-    // the toolbar button first — the shortcut binds on mount, so pressing it
-    // against a page that has not hydrated lands on nothing.
-    await expect(page.getByTitle('Search (Ctrl+K)')).toBeVisible()
-    await page.keyboard.press('Control+k')
-    await expect(palette).toBeVisible()
+    // Presence: it opens, and stays open while you are on this screen.
+    const palette = await openPaletteWithShortcut(page)
     await expect(palette).toBeFocused()
     await expect(palette).toBeVisible()
 

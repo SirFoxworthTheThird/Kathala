@@ -33,6 +33,7 @@ function EventSnapshotSection({
     <div className="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
       <button
         onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
         className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium hover:bg-[hsl(var(--muted)/0.5)] transition-colors"
       >
         {open
@@ -120,7 +121,7 @@ export default function ChapterDetailView() {
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
-        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigate(-1)}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="Back" title="Back" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="min-w-0 flex-1">

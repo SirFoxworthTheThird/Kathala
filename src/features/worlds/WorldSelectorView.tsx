@@ -105,36 +105,67 @@ export default function WorldSelectorView() {
               <p className="text-sm text-[hsl(var(--muted-foreground))]">Story Tracker</p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setLibraryOpen(true)}
-            >
-              <BookOpen className="h-4 w-4" />
-              Library
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setPromptOpen(true)}
-            >
-              <Sparkles className="h-4 w-4" />
-              Generate World from AI
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleImportClick}
-              disabled={importing}
-            >
-              <Upload className="h-4 w-4" />
-              {importing ? 'Importing...' : 'Import World'}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setManuscriptOpen(true)}
-            >
-              <FileText className="h-4 w-4" />
-              Import Manuscript
-            </Button>
+          {/*
+            Five equal-weight buttons in a row meant a newcomer had to read all
+            five to find themselves. Two of them mean "I am starting fresh" and
+            three mean "I already have something"; the headings say so, and the
+            groups are real `role="group"`s so the split reaches a screen reader
+            rather than only the eye. Nothing is buried in a menu — Library is
+            the best first run this app has, and hiding it would cost more than
+            the row of five did.
+          */}
+          <div className="flex flex-wrap items-start gap-x-6 gap-y-4">
+            <div role="group" aria-labelledby="start-fresh-heading" className="flex flex-col gap-1.5">
+              <span id="start-fresh-heading" className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                Start something new
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button onClick={() => setDialogOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                  New World
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setPromptOpen(true)}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Generate World from AI
+                </Button>
+              </div>
+            </div>
+
+            <div aria-hidden="true" className="hidden w-px self-stretch bg-[hsl(var(--border))] sm:block" />
+
+            <div role="group" aria-labelledby="bring-in-heading" className="flex flex-col gap-1.5">
+              <span id="bring-in-heading" className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                Bring something in
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setLibraryOpen(true)}
+                >
+                  <BookOpen className="h-4 w-4" />
+                  Library
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleImportClick}
+                  disabled={importing}
+                >
+                  <Upload className="h-4 w-4" />
+                  {importing ? 'Importing...' : 'Import World'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setManuscriptOpen(true)}
+                >
+                  <FileText className="h-4 w-4" />
+                  Import Manuscript
+                </Button>
+              </div>
+            </div>
+
             <input
               ref={importRef}
               type="file"
@@ -144,10 +175,6 @@ export default function WorldSelectorView() {
               className="hidden"
               onChange={handleImport}
             />
-            <Button onClick={() => setDialogOpen(true)}>
-              <Plus className="h-4 w-4" />
-              New World
-            </Button>
           </div>
         </div>
         {importError && (

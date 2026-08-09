@@ -27,7 +27,7 @@ async function setupEvent(page: Page) {
   await main.getByRole('button', { name: 'Add Event' }).first().click()
   await page.getByPlaceholder('Event title').fill('The Departure')
   await page.getByRole('button', { name: 'Add Event' }).last().click()
-  await expect(main.getByRole('button', { name: 'The Departure' })).toBeVisible()
+  await expect(main.getByRole('button', { name: 'The Departure', exact: true })).toBeVisible()
 }
 
 test.describe('Pacing curve', () => {
@@ -43,7 +43,10 @@ test.describe('Pacing curve', () => {
     // picker buttons are labelled by level; target by exact name so the header
     // badge (whose title also contains "(5/5)") doesn't collide.
     await page.getByTitle('Open chapter detail').click()
-    await page.getByRole('main').getByRole('button', { name: 'The Departure' }).click()
+    await page.getByRole('main').getByRole('button', { name: 'The Departure', exact: true }).click()
+    // An unrated scene does not draw the Dramatic Tension section any more — it
+    // is offered as a chip instead, so open it first.
+    await page.getByRole('main').getByRole('button', { name: '+ Dramatic Tension' }).click()
     await page.getByRole('button', { name: '5', exact: true }).click()
     // Header badge reflects the rating.
     await expect(page.getByText('5/5')).toBeVisible()
@@ -64,7 +67,8 @@ test.describe('Pacing curve', () => {
   test('clicking the active tension level clears the rating', async ({ page }) => {
     await setupEvent(page)
 
-    await page.getByRole('main').getByRole('button', { name: 'The Departure' }).click()
+    await page.getByRole('main').getByRole('button', { name: 'The Departure', exact: true }).click()
+    await page.getByRole('main').getByRole('button', { name: '+ Dramatic Tension' }).click()
     await page.getByRole('button', { name: '3', exact: true }).click()
     await expect(page.getByText('3/5')).toBeVisible()
 

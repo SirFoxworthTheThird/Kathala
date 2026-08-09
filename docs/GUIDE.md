@@ -72,10 +72,17 @@ viewing. You'll see the cursor on nearly every screen in this guide.
 
 ## Getting started — the world selector
 
-The first screen lists your worlds. From here you can **create a new world**,
-**generate one from AI**, or **import** an existing `.pwk` file (PlotWeave's
-export format). If your export was split into data + images, select both the
-`.pwk` and its `.pwb` images file together.
+The first screen lists your worlds. The ways in are grouped by what you already
+have:
+
+- **Start something new** — **New World** for a blank story bible, or **Generate
+  World from AI** to build one from a description.
+- **Bring something in** — the **Library** of worlds built from published books,
+  **Import World** for an existing `.pwk` file, or **Import Manuscript** to build
+  a world from a draft.
+
+If your export was split into data + images, select both the `.pwk` and its
+`.pwb` images file together.
 
 ![Empty world selector](images/01-home-empty.png)
 
@@ -488,6 +495,17 @@ location, tags, and draft/written status. The right side holds a live
 auto-saves.
 
 ![Chapter detail](images/05-chapter-detail.png)
+
+**A scene card shows what it holds.** A scene can carry a dozen things —
+location, tags, characters, mentions, plot threads, motifs, items, POV, elapsed
+time, flashback, story beat, dramatic tension — and most scenes carry two or
+three. Expanding a card shows the sections it is actually using; the rest
+collapse into a single **Add** row of chips at the bottom, each named for the
+section it opens. Nothing is buried in a menu and there is no mode to switch:
+click **+ Tags** and the Tags section appears, and stays. A scene you created a
+minute ago shows a description, its prose and the chip row, rather than the whole
+ontology at once. Choosing **Edit** opens every section, since that is what you
+asked for.
 
 **Generate / Update Chapter with AI.** From a chapter you can hand your scene
 text to an AI assistant (via a copy-paste prompt, like the world generator) and
@@ -1065,6 +1083,22 @@ Click a column to move the time cursor, expand a notes cell for its full text, o
 export the complete grid as **PNG**.
 
 ![Character Arc grid](images/11-arc.png)
+
+**From the keyboard.** The grid is a single stop in the tab order — a cast of
+forty-five across twenty chapters is over six hundred cells, and giving each its
+own stop would mean six hundred presses to cross the screen. Tab into it once,
+then move with the keys a spreadsheet already taught you:
+
+| Key | Moves |
+| --- | --- |
+| Arrows | one cell |
+| Home / End | start or end of the row |
+| Ctrl+Home / Ctrl+End | first or last cell of the grid |
+| PageUp / PageDown | ten rows |
+| Enter or Space | does what clicking the cell does — set the time cursor from a column header, open a notes cell |
+
+Movement stops at the edges rather than wrapping, so scanning one character's
+row never drops you into another's without saying so.
 
 It's the fastest way to audit continuity across the entire book at once.
 

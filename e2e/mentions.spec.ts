@@ -41,7 +41,9 @@ test.describe('@-mentions in the scene draft', () => {
     await page.getByRole('button', { name: 'Add Event' }).last().click()
 
     // Expand the event card via its title button (inside <main>).
-    await main.getByRole('button', { name: 'The Departure' }).click()
+    // Exact: the card's icon controls are named after the scene they act on,
+    // so a substring match on the title finds five buttons.
+    await main.getByRole('button', { name: 'The Departure', exact: true }).click()
     const draft = page.getByPlaceholder(/Write or paste this scene/)
     await expect(draft).toBeVisible()
     return draft

@@ -54,6 +54,9 @@ async function setupWorld(page: Page): Promise<string> {
     await page.getByRole('button', { name: 'Add Event' }).last().click()
     // The location picker lives in the expanded card, and saves on change.
     await main.getByRole('button', { name: title, exact: true }).click()
+    // A scene with no location does not draw the Location section any more — it
+    // is offered as a chip instead, so open it first.
+    await main.getByRole('button', { name: '+ Location' }).click()
     await main.getByRole('button', { name: 'No location' }).click()
     await page.getByRole('option', { name: place, exact: true }).click()
     await expect(main.getByRole('button', { name: place, exact: true }).first()).toBeVisible()

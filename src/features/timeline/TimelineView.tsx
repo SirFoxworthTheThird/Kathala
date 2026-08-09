@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter } from 'lucide-react'
 import { useTimelines, useChapters, useTimelineEvents, useWorldChapters, useWorldEvents, createTimeline, updateTimeline, deleteTimeline } from '@/db/hooks/useTimeline'
@@ -171,6 +171,20 @@ export default function TimelineView() {
   const chapters = useChapters(isAll ? null : currentTimelineId)
   const timelineEvents = useTimelineEvents(isAll ? null : currentTimelineId)
   const worldChapters = useWorldChapters(isAll ? worldId ?? null : null)
+  /**
+   * The curve stops where the reader has got to.
+   *
+   * `useTimelineEvents` is deliberately ungated, and the curve used to draw all
+   * of it: anonymous circles, but beat markers carrying scene titles in their
+   * tooltips, and — once the curve gained an accessible data table — every
+   * scene title in the book named outright. At chapter one of the bundled
+   * Philosopher's Stone that meant "Quirrell and Voldemort" and "Gryffindor
+   * Wins the House Cup" were readable by a screen reader.
+   */
+  const pacingEvents = useMemo(
+    () => (gate.active ? timelineEvents.filter((e) => gate.hasReached(e.id)) : timelineEvents),
+    [timelineEvents, gate],
+  )
   const worldEvents = useWorldEvents(isAll ? worldId ?? null : null)
   const [viewMode, setViewMode] = useState<'narrative' | 'chronological'>('narrative')
   const threads = usePlotThreads(worldId ?? null)
@@ -424,7 +438,7 @@ export default function TimelineView() {
           <div className="flex flex-col gap-3">
             <PacingCurve
               worldId={worldId!}
-              events={timelineEvents}
+              events={pacingEvents}
               chapters={chapters}
               order={viewMode}
               activeEventId={activeEventId}

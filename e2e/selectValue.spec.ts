@@ -31,6 +31,10 @@ test('a multi-child dropdown shows its selected value in the trigger', async ({ 
   const main = page.getByRole('main')
   await main.getByText('The gate', { exact: true }).click()
 
+  // A scene with no beat does not draw the Story Beat section any more — it is
+  // offered as a chip instead, so open it first.
+  await main.getByRole('button', { name: '+ Story Beat' }).click()
+
   // The Story Beat picker starts on its placeholder…
   const beatTrigger = main.getByRole('button', { name: /No beat/ })
   await beatTrigger.scrollIntoViewIfNeeded()
