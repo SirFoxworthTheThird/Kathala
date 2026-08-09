@@ -233,8 +233,8 @@ test('a character page has nothing to edit and no future', async ({ page }) => {
   await settleNav(page)
 
   await expect.poll(() => shownCount(page), { timeout: 15_000 }).toBeGreaterThan(0)
-  // Roster cards are clickable divs, not buttons.
-  await page.locator('main div.cursor-pointer').first().click()
+  // Roster cards are links now (X-7): reachable by Tab, openable with Enter.
+  await page.getByRole('main').getByRole('link').first().click()
   await expect(page).toHaveURL(/#\/worlds\/[^/]+\/characters\/./, { timeout: 15_000 })
 
   await expect(page.getByRole('button', { name: 'Delete character' })).toHaveCount(0)

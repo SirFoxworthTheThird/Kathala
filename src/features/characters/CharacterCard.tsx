@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { MapPin, Package, Skull } from 'lucide-react'
 import type { Character } from '@/types'
 import { PortraitImage } from '@/components/PortraitImage'
@@ -24,17 +24,17 @@ function LocationBadge({ locationId }: { locationId: string | null }) {
 }
 
 export function CharacterCard({ character }: CharacterCardProps) {
-  const navigate = useNavigate()
   const { worldId } = useParams<{ worldId: string }>()
   const activeEventId = useActiveEventId()
   const snapshot = useResolvedCharacterSnapshot(character.id, character.worldId, activeEventId)
   const isInherited = !!snapshot && snapshot.eventId !== activeEventId
 
   return (
-    <div
-      onClick={() => navigate(`/worlds/${worldId}/characters/${character.id}`)}
+    // A Link rather than a clickable div — see ItemCard.
+    <Link
+      to={`/worlds/${worldId}/characters/${character.id}`}
       className={cn(
-        'group flex cursor-pointer items-start gap-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3 transition-colors hover:border-[hsl(var(--ring))] hover:bg-[hsl(var(--accent))]',
+        'group flex items-start gap-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3 transition-colors hover:border-[hsl(var(--ring))] hover:bg-[hsl(var(--accent))]',
         snapshot && !snapshot.isAlive && 'opacity-60'
       )}
     >
@@ -71,6 +71,6 @@ export function CharacterCard({ character }: CharacterCardProps) {
           <p className="mt-0.5 text-xs italic text-[hsl(var(--muted-foreground)/0.7)]">Pick a chapter to see where they are</p>
         )}
       </div>
-    </div>
+    </Link>
   )
 }

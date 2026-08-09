@@ -280,12 +280,12 @@ export default function WorldDashboardView() {
   ]
 
   if (!wizardReady) return (
-    <div className="p-6 space-y-8 max-w-5xl">
+    <div className="p-6 space-y-8 max-w-[100rem]">
       <div className="animate-pulse space-y-3">
         <div className="h-7 w-48 rounded bg-[hsl(var(--muted))]" />
         <div className="h-4 w-72 rounded bg-[hsl(var(--muted))]" />
       </div>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="animate-pulse h-24 rounded-lg bg-[hsl(var(--muted))]" />
         ))}
@@ -299,7 +299,7 @@ export default function WorldDashboardView() {
   }
 
   return (
-    <div className="p-6 space-y-8 max-w-5xl">
+    <div className="p-6 space-y-8 max-w-[100rem]">
 
       {/* World header */}
       <div className="flex items-start justify-between gap-4">
@@ -378,7 +378,7 @@ export default function WorldDashboardView() {
       )}
 
       {/* Nav tiles */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
         {tiles.map(({ label, icon: Icon, count, countSuffix, onClick, pills, description }) => (
           <button
             key={label}
