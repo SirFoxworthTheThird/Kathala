@@ -151,6 +151,8 @@ export interface CharacterPin {
   x: number
   y: number
   inSubMap: boolean
+  /** Name of the map the character is really on, when `inSubMap` (MW-7). */
+  subMapName?: string | null
   portraitUrl?: string | null
   locationName?: string | null
 }
@@ -661,13 +663,30 @@ export function LeafletMapCanvas({
         for (const pin of group) {
           const btn = document.createElement('button')
           btn.style.cssText = `display:block;width:100%;text-align:left;padding:2px 4px;font-size:12px;cursor:pointer;border-radius:3px;background:none;border:none;font-family:var(--font-body);`
-          btn.textContent = pin.character.name + (pin.inSubMap ? ' (sub-map)' : '')
+          // MW-7: this read "(sub-map)" — the same word on fourteen of sixteen
+          // rows, saying only that the character is elsewhere and never where.
+          btn.textContent = pin.inSubMap
+            ? `${pin.character.name} · in ${pin.subMapName ?? 'a sub-map'}`
+            : pin.character.name
           btn.addEventListener('click', () => onCharacterClickRef.current?.(pin.character.id))
           btn.addEventListener('mouseenter', () => { btn.style.background = 'hsl(var(--accent))' })
           btn.addEventListener('mouseleave', () => { btn.style.background = 'none' })
           content.appendChild(btn)
         }
-        marker.bindPopup(content)
+        /*
+          MW-6: a pin holding sixteen characters opened a list taller than the
+          space above it, and its first rows rendered off the top of the canvas
+          behind the floating toolbar — not scrolled into view and unreachable.
+
+          `maxHeight` makes the list scroll inside the popup instead of growing
+          past the viewport, and the auto-pan padding keeps the whole popup clear
+          of the toolbar rather than merely inside the map.
+        */
+        marker.bindPopup(content, {
+          maxHeight: 220,
+          autoPanPaddingTopLeft: L.point(16, 72),
+          autoPanPaddingBottomRight: L.point(16, 16),
+        })
       }
 
       groupMarkersRef.current.set(key, marker)

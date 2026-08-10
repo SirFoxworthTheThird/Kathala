@@ -33,16 +33,18 @@ function snap(charId: string, markerId: string | null, mapLayerId: string | null
 describe('resolveCharacterPin — floors', () => {
   it('shows a character at their marker when viewing that floor', () => {
     expect(resolveCharacterPin(snap('c', 'library', 'first'), 'first', layers, markers))
-      .toEqual({ x: 20, y: 30, inSubMap: false })
+      .toEqual({ x: 20, y: 30, inSubMap: false, subMapId: null })
   })
 
   it('shows a character on ANY floor at the building pin when viewing the parent map', () => {
     // On the first floor (not the representative) — still reached via the castle pin.
     expect(resolveCharacterPin(snap('c', 'library', 'first'), 'root', layers, markers))
-      .toEqual({ x: 50, y: 50, inSubMap: true })
-    // On the ground floor too.
+      .toEqual({ x: 50, y: 50, inSubMap: true, subMapId: 'first' })
+    // On the ground floor too — and `subMapId` names the floor they are really
+    // on, not the building's representative one, which is what lets the pin's
+    // popup say *where* rather than just "(sub-map)" (MW-7).
     expect(resolveCharacterPin(snap('c', 'hall', 'ground'), 'root', layers, markers))
-      .toEqual({ x: 50, y: 50, inSubMap: true })
+      .toEqual({ x: 50, y: 50, inSubMap: true, subMapId: 'ground' })
   })
 
   it('does not show a character on a sibling floor when viewing another floor', () => {
@@ -52,9 +54,9 @@ describe('resolveCharacterPin — floors', () => {
   it('uses the marker layer when an older snapshot still names the previous floor', () => {
     const stale = snap('c', 'library', 'ground')
     expect(resolveCharacterPin(stale, 'first', layers, markers))
-      .toEqual({ x: 20, y: 30, inSubMap: false })
+      .toEqual({ x: 20, y: 30, inSubMap: false, subMapId: null })
     expect(resolveCharacterPin(stale, 'root', layers, markers))
-      .toEqual({ x: 50, y: 50, inSubMap: true })
+      .toEqual({ x: 50, y: 50, inSubMap: true, subMapId: 'first' })
   })
 })
 

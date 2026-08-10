@@ -176,6 +176,9 @@ export function useMapViewState(worldId: string, layerId: string) {
       if (pin) pins.push({
         ...pin,
         character: char,
+        subMapName: pin.subMapId
+          ? allLayers.find((l) => l.id === pin.subMapId)?.name ?? null
+          : null,
         portraitUrl: char.portraitImageId ? blobUrls.get(char.portraitImageId) ?? null : null,
         locationName: snap.currentLocationMarkerId
           ? allMarkers.find((m) => m.id === snap.currentLocationMarkerId)?.name ?? null

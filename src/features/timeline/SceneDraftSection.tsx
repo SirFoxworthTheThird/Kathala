@@ -7,6 +7,7 @@ import { SceneDraftEditor } from './SceneDraftEditor'
 import { SceneHistoryDialog } from './SceneHistoryDialog'
 import { FocusMode } from './FocusMode'
 import type { Character, WorldEvent } from '@/types'
+import { draftAfterSave } from '@/lib/draftHandoff'
 
 interface SceneDraftSectionProps {
   event: WorldEvent
@@ -48,9 +49,13 @@ export function SceneDraftSection({
   useEffect(() => { onWordsChange?.(sceneWords) }, [sceneWords, onWordsChange])
 
   async function saveScene() {
-    if (draft === null) return
-    await setSceneText(event.worldId, event.id, draft)
-    setDraft(null) // fall back to the freshly-stored live value
+    const pending = draft
+    if (pending === null) return
+    await setSceneText(event.worldId, event.id, pending)
+    // Not an unconditional clear: anything typed while the write was in flight
+    // is newer than what was stored, and clearing would discard it. See
+    // `draftAfterSave`.
+    setDraft((current) => draftAfterSave(current, pending))
   }
 
   return (

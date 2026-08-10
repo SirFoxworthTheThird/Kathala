@@ -34,11 +34,14 @@ test.describe('Scene revision history', () => {
     await editor.fill('The quick brown fox.')
     await editor.blur()
 
-    // Wait for the first draft to be *stored*, not just typed. A revision is
-    // only captured when there is existing prose to snapshot, so revising
-    // before the first save lands leaves nothing to capture and no History
-    // button — which is how this test failed under a loaded suite while
-    // passing on its own.
+    // Wait for the first draft to be *stored*, not just typed, so the two saves
+    // are serialised. A revision snapshots whatever prose is already there, so
+    // two writes racing each other can both read "nothing stored yet" and
+    // neither captures one.
+    //
+    // This is not what made the test flaky the second time. That was the editor
+    // discarding keystrokes typed while a save was in flight — a real defect,
+    // fixed in `src/lib/draftHandoff.ts`.
     await expect.poll(() => page.evaluate(async () => {
       const db = (window as { __pwdb?: never }).__pwdb as unknown as {
         sceneTexts: { toArray: () => Promise<{ text: string }[]> }

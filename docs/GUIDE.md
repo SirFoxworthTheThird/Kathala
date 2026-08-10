@@ -953,6 +953,11 @@ list. To place a character
 (selected from an event in the timeline bar), drag them onto the map — or, on
 touch devices, tap the crosshair on their card and then tap a location.
 
+When several characters stand in the same place, their pin shows a count;
+clicking it lists them. Anyone who is really on a **sub-map** reached through
+that pin is named with the map they are on — *Frodo Baggins · in Bag End* — and
+a long list scrolls inside the popup rather than running off the top of the map.
+
 The six sections — Map Layers, Characters, Locations, Items, Routes, Regions —
 behave as a **panel stack**: their headers stay put and each list scrolls inside
 its own section, so opening a long one never pushes the others off the top. Open
