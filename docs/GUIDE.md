@@ -557,6 +557,11 @@ already on a scene inside that chapter, it stays where you put it; and while
 [reading](#reading-alongside-a-book) nothing moves at all, since there the cursor
 is your own place in the book.
 
+An expanded scene card leads with the **scene draft** — the prose itself — and
+puts the one-line **Description** below it. An empty description is a control
+rather than a note: click it and the card opens for editing with the field ready.
+
+
 Opening a chapter shows its events in order, each with the characters involved,
 location, tags, and draft/written status. The right side holds a live
 **Character States** panel, a **Relationship States** summary, and a freeform

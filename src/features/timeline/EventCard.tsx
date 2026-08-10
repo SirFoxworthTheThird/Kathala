@@ -433,6 +433,24 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
       {expanded && (
         <div className="border-t border-[hsl(var(--border))] px-3 py-3 flex flex-col gap-4">
 
+          {/*
+            EV-3: the prose came third, under a Description that renders as a
+            grey italic line. The scene is what the app is for and what is
+            always editable in place, so it leads; the description is a summary
+            that lives behind Edit, and follows.
+          */}
+
+          {/* Scene draft (manuscript prose) */}
+          <SceneDraftSection
+            event={event}
+            characters={characters}
+            involvedIds={involvedIds}
+            mentionedIds={mentionedIds}
+            onAddCharacter={addCharacter}
+            onAddMention={addMention}
+            onWordsChange={setSceneWords}
+          />
+
           {/* Description */}
           <div className="flex flex-col gap-1">
             <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide">Description</span>
@@ -445,22 +463,25 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                 className="text-sm"
               />
             ) : (
-              event.description
-                ? <p className="text-sm text-[hsl(var(--muted-foreground))] whitespace-pre-wrap">{event.description}</p>
-                : <p className="text-xs italic text-[hsl(var(--muted-foreground))]">No description.</p>
+              /*
+                EV-3, second half: this read as a note rather than a field,
+                because it *was* one — the text only becomes editable through
+                the card's Edit button somewhere else entirely. It is the
+                control that opens that mode now, so the thing you want to
+                change is the thing you click.
+              */
+              <button
+                type="button"
+                onClick={startEdit}
+                aria-label={event.description ? 'Edit the description' : 'Add a description'}
+                className="rounded text-left transition-colors hover:bg-[hsl(var(--accent)/0.4)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]"
+              >
+                {event.description
+                  ? <span className="block whitespace-pre-wrap text-sm text-[hsl(var(--muted-foreground))]">{event.description}</span>
+                  : <span className="block text-xs italic text-[hsl(var(--muted-foreground))]">No description — click to add one.</span>}
+              </button>
             )}
           </div>
-
-          {/* Scene draft (manuscript prose) */}
-          <SceneDraftSection
-            event={event}
-            characters={characters}
-            involvedIds={involvedIds}
-            mentionedIds={mentionedIds}
-            onAddCharacter={addCharacter}
-            onAddMention={addMention}
-            onWordsChange={setSceneWords}
-          />
 
           {/* Location */}
           {shows('location') && (
