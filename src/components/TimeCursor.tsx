@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Clock, X } from 'lucide-react'
 import { useActiveEventId, useAppStore } from '@/store'
 import { useWorldChapters, useAllWorldEvents } from '@/db/hooks/useTimeline'
+import { useWorld } from '@/db/hooks/useWorlds'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { cn } from '@/lib/utils'
+import { revealAllAction } from '@/lib/revealAll'
 
 /**
  * Always-visible readout + stepper for the global time cursor (`activeEventId`).
@@ -27,6 +29,10 @@ export function TimeCursor({ worldId }: { worldId: string }) {
   // readout live (it animates through chapters as the story plays) but make the
   // controls inert so a stray click can't fight or restart the playback timer.
   const isPlayingStory = useAppStore((s) => s.isPlayingStory)
+  // `undefined` while Dexie is opening. The gate reports itself inactive during
+  // that window too, which is indistinguishable from "writing" — see
+  // `revealAllAction`.
+  const world = useWorld(worldId)
   const chapters = useWorldChapters(worldId)
   // "All chapters" is a full reveal by design. For a writer that is just the
   // default view; for a reader it undoes the thing they turned reading mode on
@@ -142,8 +148,12 @@ export function TimeCursor({ worldId }: { worldId: string }) {
 
       {activeEvent && (
         <button
-          onClick={() => (gate.active ? setConfirmRevealAll(true) : setActiveEventId(null))}
-          disabled={isPlayingStory}
+          onClick={() => {
+            const action = revealAllAction({ worldLoaded: world !== undefined, gateActive: gate.active })
+            if (action === 'confirm') setConfirmRevealAll(true)
+            else if (action === 'clear') setActiveEventId(null)
+          }}
+          disabled={isPlayingStory || world === undefined}
           aria-label="View all chapters"
           title="View all chapters"
           // Hidden on the narrowest phones so the chapter number itself still

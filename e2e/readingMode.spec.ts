@@ -30,15 +30,16 @@ async function cursorTitle(page: Page): Promise<string> {
 
 /** The reader's deliberate "show me everything", confirm and all. */
 async function revealAll(page: Page) {
-  // "Show everything" lives in a confirm the first click raises. On a loaded
-  // machine that click can land before the control is wired, leaving the second
-  // one waiting on a dialog that never opened — the flake this helper showed on
-  // several runs. Re-open until the confirm is actually there.
+  // "Show everything" lives in a confirm the first click raises. This used to
+  // retry the click until the dialog appeared, because on a loaded machine it
+  // could land while the world was still opening — and the control then took
+  // the *writing* path and cleared the cursor outright, confirm and all. That
+  // was a real defect rather than a slow dialog (see `src/lib/revealAll.ts`);
+  // the control now waits for the world, so one click is enough, and a
+  // regression fails here instead of being retried away.
   const confirm = page.getByRole('button', { name: 'Show everything' })
-  await expect(async () => {
-    await page.getByRole('button', { name: 'View all chapters' }).click()
-    await expect(confirm).toBeVisible({ timeout: 2000 })
-  }).toPass({ timeout: 30_000 })
+  await page.getByRole('button', { name: 'View all chapters' }).click()
+  await expect(confirm).toBeVisible({ timeout: 15_000 })
   await confirm.click()
 }
 

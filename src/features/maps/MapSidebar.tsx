@@ -21,6 +21,7 @@ import { useGate } from '@/db/hooks/ReadingGateContext'
 import type { Character, CharacterSnapshot, Item, LocationMarker, MapLayer, RouteType, MapRegionStatus } from '@/types'
 import { pathPixelLength, formatDistance } from '@/lib/mapScale'
 import { characterColor, ICON_COLORS } from './mapUtils'
+import { splitMapCast } from '@/lib/mapCast'
 
 // ─── SidebarSection ──────────────────────────────────────────────────────────
 
@@ -452,6 +453,26 @@ export function CharactersSection({
     ? characters.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
     : characters
 
+  /*
+    MW-3: the list put all 45 characters at equal weight while only a handful
+    carried a location, so "who is here now" — the question this screen exists
+    to answer — was a minority of the rows and looked like the rest of them.
+
+    With a cursor the two are separated; without one there is no moment for a
+    placement to belong to, so it stays one list. The groups only appear when
+    both are non-empty, because a heading over the whole list says nothing.
+  */
+  const { placed, unplaced } = useMemo(
+    () => splitMapCast(filtered, activeEventId ? snapshots : [], allMarkers),
+    [filtered, snapshots, allMarkers, activeEventId],
+  )
+  const groups = activeEventId && placed.length > 0 && unplaced.length > 0
+    ? [
+        { label: `On the map (${placed.length})`, rows: placed },
+        { label: `Not placed (${unplaced.length})`, rows: unplaced },
+      ]
+    : [{ label: null, rows: [...placed, ...unplaced] }]
+
   return (
     <SidebarSection title="Characters" icon={Users} count={characters.length}>
       {!activeEventId && (
@@ -466,11 +487,16 @@ export function CharactersSection({
         ) : filtered.length === 0 ? (
           <p className="px-1 py-1 text-xs italic text-[hsl(var(--muted-foreground))]">No matches.</p>
         ) : (
-          filtered.map((c) => {
-            const snap = snapshots.find((s) => s.characterId === c.id)
-            const locationName = snap?.currentLocationMarkerId
-              ? allMarkers.find((m) => m.id === snap.currentLocationMarkerId)?.name
-              : null
+          groups.flatMap((group) => [
+            group.label !== null ? (
+              <p
+                key={`h-${group.label}`}
+                className="px-1 pb-0.5 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]"
+              >
+                {group.label}
+              </p>
+            ) : null,
+            ...group.rows.map(({ character: c, locationName }) => {
             const movement = movements.find((m) => m.characterId === c.id)
             const color = characterColor(c.id)
             const isPlacing = placingCharacterId === c.id
@@ -557,7 +583,8 @@ export function CharactersSection({
                 )}
               </div>
             )
-          })
+            }),
+          ])
         )}
       </div>
     </SidebarSection>

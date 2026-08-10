@@ -172,14 +172,16 @@ test.describe('The map sidebar says which name is which', () => {
 
     // Presence: the one placed character names its location.
     await expect(characters.getByText('Rivendell')).toBeVisible({ timeout: 15_000 })
-    // Absence, stated rather than left blank: the other three say so.
-    await expect(characters.getByText('Not placed')).toHaveCount(3)
+    // Absence, stated rather than left blank: the other three say so. Exact,
+    // because the group heading above them reads "Not placed (3)" (MW-3) and a
+    // substring match counts it as a fourth row.
+    await expect(characters.getByText('Not placed', { exact: true })).toHaveCount(3)
 
     // The opposite condition, in the same test: with no moment selected there
     // is no per-event state to report, so neither line is drawn.
     await page.getByRole('button', { name: 'View all chapters' }).click()
     await page.waitForTimeout(800)
-    await expect(characters.getByText('Not placed')).toHaveCount(0)
+    await expect(characters.getByText('Not placed', { exact: true })).toHaveCount(0)
     await expect(characters.getByText('Rivendell')).toHaveCount(0)
   })
 })

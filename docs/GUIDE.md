@@ -961,6 +961,11 @@ its row is available in full by hovering it, and with a moment selected every
 character and item row states where it stands — a place name, or *Not placed*,
 so a blank line never has to be guessed at.
 
+With a moment selected, the Characters list splits into **On the map** and
+**Not placed**, so the people in the scene you're looking at read as a short
+list rather than a handful of rows scattered through the whole cast. Nobody is
+hidden — the rest are just below, ready to be placed.
+
 ### Setting a map's scale
 
 **Set map scale** (in the map tools menu) asks you to click two points and say
