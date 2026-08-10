@@ -60,12 +60,17 @@ test.describe('The first-run wizard says what it is asking for', () => {
     const create = page.getByRole('button', { name: 'Create and continue' })
     await expect(create).toBeVisible()
     await page.getByLabel('Timeline name').fill('The Age of Embers')
+    await page.getByLabel('The first scene').fill('The wreck')
     await create.click()
 
     // It did what it says, and the wizard moved on — so this is not passing on
     // a button that was merely relabelled and wired to nothing.
-    await expect(page.getByRole('navigation', { name: 'Wizard progress' })
-      .getByText('Add a character', { exact: true })).toBeVisible({ timeout: 15_000 })
+    //
+    // Read off step 2's *heading*, not the step name in the progress nav: NEW-2
+    // draws all four names at all times, so "Add a character" is on screen
+    // during step 1 as well and asserting it proves nothing.
+    await expect(page.getByRole('heading', { name: 'Every story needs someone to follow' }))
+      .toBeVisible({ timeout: 15_000 })
   })
 
   test('NEW-4: the first screen is centred, not a third of a page of wallpaper', async ({ page }) => {
@@ -88,4 +93,68 @@ test.describe('The first-run wizard says what it is asking for', () => {
       getComputedStyle(document.body).backgroundImage)
     expect(wallpaper === 'none' || !wallpaper.includes('url(')).toBe(true)
   })
+})
+
+test('OP-3: step 1 names the moment it makes, and says what else it makes', async ({ page }) => {
+  // The step asked only for a timeline name and quietly created three records:
+  // the timeline, a "Chapter 1" nobody mentioned, and a scene that took the
+  // timeline's own name. The writer then met a moment they had not named.
+  await firstRun(page)
+
+  // It says what it is about to build, rather than leaving you to find out.
+  await expect(page.getByText(/This makes your timeline, a\s+Chapter 1\s+inside it/))
+    .toBeVisible()
+
+  // The moment is asked for, not assumed: naming only the timeline does not
+  // proceed...
+  await page.getByLabel('Timeline name').fill('The Age of Embers')
+  await page.getByRole('button', { name: 'Create and continue' }).click()
+  await expect(page.getByRole('alert')).toContainText('Name the first scene')
+  // Still on step 1. Measured by the step's own heading — the progress nav
+  // names every step at all times, so it says nothing about where you are.
+  const step2 = page.getByRole('heading', { name: 'Every story needs someone to follow' })
+  await expect(step2).toHaveCount(0)
+
+  // ...and naming it does, which is the presence half of that absence.
+  await page.getByLabel('The first scene').fill('The wreck of the Kestrel')
+  await page.getByRole('button', { name: 'Create and continue' }).click()
+  await expect(step2).toBeVisible({ timeout: 15_000 })
+
+  // The scene carries the name the writer gave it, not the timeline's — which
+  // is what made the created moment feel like someone else's.
+  const stored = await page.evaluate(async () => {
+    const db = (window as { __pwdb?: never }).__pwdb as unknown as {
+      events: { toArray: () => Promise<{ title: string }[]> }
+      chapters: { toArray: () => Promise<{ title: string }[]> }
+    }
+    return {
+      events: (await db.events.toArray()).map((e) => e.title),
+      chapters: (await db.chapters.toArray()).map((c) => c.title),
+    }
+  })
+  expect(stored.events).toEqual(['The wreck of the Kestrel'])
+  expect(stored.chapters).toEqual(['Chapter 1'])
+})
+
+test('OP-4: only one button on the character step is an "Add"', async ({ page }) => {
+  // "Add a description (optional)" sat directly above "Add them to the story".
+  // One submits the step, one expands a field, and pressing the wrong one read
+  // as nothing happening at all.
+  await firstRun(page)
+  await page.getByLabel('Timeline name').fill('The Age of Embers')
+  await page.getByLabel('The first scene').fill('The wreck')
+  await page.getByRole('button', { name: 'Create and continue' }).click()
+
+  const form = page.getByRole('main')
+  await expect(form.getByRole('button', { name: 'Add them to the story' }))
+    .toBeVisible({ timeout: 15_000 })
+  await expect(form.getByRole('button', { name: /^Add/ })).toHaveCount(1)
+
+  // The disclosure is still there and still discloses — so the count above is
+  // one because the control was renamed, not because it was removed.
+  const disclosure = form.getByRole('button', { name: 'Description (optional)' })
+  await expect(disclosure).toBeVisible()
+  await expect(form.getByLabel('Character description (optional)')).toHaveCount(0)
+  await disclosure.click()
+  await expect(form.getByLabel('Character description (optional)')).toBeVisible()
 })

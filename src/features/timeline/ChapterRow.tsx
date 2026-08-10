@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Menu, MenuItem } from '@/components/ui/menu'
+import { chapterProgress, describeProgress, describeStatus } from '@/lib/chapterProgress'
+import { eventStatusConfig } from '@/lib/eventStatus'
 import { EventRow } from './EventRow'
 import { AddEventDialog } from './AddEventDialog'
 import { EmptyState } from '@/components/EmptyState'
@@ -18,9 +20,17 @@ interface ChapterRowProps {
   /** When set, only events advancing this plot thread are shown, and the row
    *  starts expanded so the matching beats are visible without a manual click. */
   threadFilter?: string | null
+  /**
+   * Words per event, for the row's roll-up (TL-4). Resolved once by the parent
+   * for the whole world: a chapter list is twenty-odd rows, and a live query per
+   * row would be twenty-odd reads of the same table.
+   */
+  wordsByEvent?: Map<string, number>
 }
 
-export function ChapterRow({ chapter, threadFilter = null }: ChapterRowProps) {
+const NO_WORDS: Map<string, number> = new Map()
+
+export function ChapterRow({ chapter, threadFilter = null, wordsByEvent = NO_WORDS }: ChapterRowProps) {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
   const { activeEventId, setActiveEventId, selectedEventIds, selectEventRange, clearSelection } = useAppStore()
@@ -42,6 +52,9 @@ export function ChapterRow({ chapter, threadFilter = null }: ChapterRowProps) {
     : allSorted
   const isActive = sortedEvents.some((e) => e.id === activeEventId)
   const effectiveExpanded = expanded || !!threadFilter
+  // TL-4: the roll-up describes the chapter, so it counts every scene in it —
+  // not the subset a thread filter happens to be showing.
+  const progress = chapterProgress(allSorted, wordsByEvent)
   const chapterEventIds = sortedEvents.map((e) => e.id)
   const selectedInChapter = chapterEventIds.filter((id) => selectedEventIds.has(id))
   const allSelected = chapterEventIds.length > 0 && selectedInChapter.length === chapterEventIds.length
@@ -132,6 +145,31 @@ export function ChapterRow({ chapter, threadFilter = null }: ChapterRowProps) {
             </span>
           )}
         </button>
+
+        {/*
+          TL-4: the row used to carry the chapter's title and a truncated
+          synopsis — prose the author already wrote — and nothing about the
+          state of the work. The counts sit before the actions, ahead of
+          `ml-auto`, so they read as part of the row rather than as a control.
+        */}
+        <span className="shrink-0 text-xs tabular-nums text-[hsl(var(--muted-foreground))]">
+          {describeProgress(progress)}
+        </span>
+        {/* The status is a writing-process fact, so reading mode has no use for
+            it. Hidden below `sm`, where the row already wraps to two lines and
+            the counts are the more useful of the two signals. */}
+        {progress.status !== null && !gate.active && (
+          <span
+            className="hidden shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium sm:inline-block"
+            style={{
+              background: eventStatusConfig(progress.status).color,
+              color: eventStatusConfig(progress.status).textColor,
+            }}
+            title={describeStatus(progress) ?? undefined}
+          >
+            {eventStatusConfig(progress.status).label}
+          </span>
+        )}
 
         {/*
           TL-2: the label used to read "Set Active", which names a state rather

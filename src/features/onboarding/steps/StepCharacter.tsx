@@ -83,8 +83,16 @@ export function StepCharacter({ worldId, onComplete, onSkip }: StepCharacterProp
             )}
             aria-expanded={descExpanded}
           >
+            {/*
+              OP-4: this read "Add a description (optional)" and sat directly
+              above the primary "Add them to the story". Two adjacent buttons
+              both starting with "Add", one of which submits the step and one of
+              which expands a field — pressing the wrong one looked like nothing
+              happening. A disclosure is named for what it reveals, not for an
+              action, so it is a noun now and the collision is gone.
+            */}
             <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', descExpanded && 'rotate-180')} />
-            Add a description (optional)
+            Description (optional)
           </button>
           {descExpanded && (
             <Textarea

@@ -18,6 +18,7 @@ import { BookOpen } from 'lucide-react'
 import type { EventStatus, WorldEvent } from '@/types'
 import { EVENT_STATUSES, eventStatusConfig } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
+import { arcRoster, countAppearances, countRecorded, type ArcOrder } from '@/lib/arcRoster'
 
 /** Cells are the tab stop, so focus has to be visible on them. */
 const FOCUS_RING = 'focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[hsl(var(--ring))]'
@@ -57,6 +58,8 @@ export default function CharacterArcView() {
   const [viewMode, setViewMode]             = useState<'chapter' | 'event'>('chapter')
   const [viewType, setViewType]             = useState<'characters' | 'factions' | 'threads'>('characters')
   const [filterText, setFilterText]         = useState('')
+  const [rowOrder, setRowOrder]             = useState<ArcOrder>('appearances')
+  const [hideUnrecorded, setHideUnrecorded] = useState(false)
   const [expandedKey, setExpandedKey]       = useState<string | null>(null) // `${charId}:${colId}`
   const [selectedTimelineId, setSelectedTimelineId] = useState<string | null>(null) // null = all
   const [showFactionOverlay, setShowFactionOverlay] = useState(false)
@@ -301,11 +304,26 @@ export default function CharacterArcView() {
     }))
   }
 
-  // Filtered character list
+  // Which characters get a row, and in what order (ARC-1, ARC-3). Appearances
+  // are counted across every event in the world rather than the current
+  // timeline's, so switching timelines does not reorder the cast under you.
   const q = filterText.trim().toLowerCase()
-  const displayedChars = q
-    ? characters.filter((c) => c.name.toLowerCase().includes(q))
-    : characters
+  const appearanceCounts = countAppearances(allEvents)
+  const recordedCounts = countRecorded(snapshots)
+  const roster = arcRoster({
+    characters,
+    appearances: appearanceCounts,
+    recorded: recordedCounts,
+    query: filterText,
+    order: rowOrder,
+    hideUnrecorded,
+  })
+  const displayedChars = roster.rows
+  // What the control would put away, in either state: once it is on, the roster
+  // has already removed them and reports the count itself.
+  const unrecordedCount = hideUnrecorded
+    ? roster.hidden
+    : roster.rows.filter((c) => (recordedCounts.get(c.id) ?? 0) === 0).length
 
   const multiTimeline = timelines.length > 1
 
@@ -488,6 +506,15 @@ export default function CharacterArcView() {
         onClick={() => hasNotes && toggleExpand(charId, colId)}
         title={hasNotes && !isExpanded ? snap.statusNotes : undefined}
       >
+        {/*
+          ARC-2: a carried-forward cell was marked only by a small glyph in the
+          corner while its text read at full strength, so eleven inherited
+          chapters looked like eleven decisions. The content recedes now, which
+          is what makes the authored cells the ones you see first. Applied to
+          the content rather than the cell so the faction stripe, the active
+          highlight and the focus ring all keep their full contrast.
+        */}
+        <div className={cn(isInherited && 'opacity-50')}>
         <div className="flex items-center gap-1">
           {snap.isAlive
             ? <Heart className="h-2.5 w-2.5 shrink-0 text-green-400" />
@@ -502,6 +529,9 @@ export default function CharacterArcView() {
           {isInherited && (
             <span className="ml-auto shrink-0" title="Carried forward — no change recorded in this column">
               <History className="h-2.5 w-2.5 text-[hsl(var(--muted-foreground)/0.6)]" aria-hidden="true" />
+              {/* The glyph and the dimming are both visual; a screen reader gets
+                  the same distinction from here. */}
+              <span className="sr-only">Carried forward</span>
             </span>
           )}
         </div>
@@ -519,6 +549,7 @@ export default function CharacterArcView() {
             {snap.statusNotes}
           </p>
         )}
+        </div>
       </td>
     )
   }
@@ -731,6 +762,60 @@ export default function CharacterArcView() {
             </button>
           )}
         </div>
+
+        {/*
+          ARC-3: the rows were alphabetical and nothing else, so Barrow-wight
+          and Bill the Pony sorted above Frodo and the top of a screen-tall grid
+          was reliably its least interesting part. Most-seen first is the
+          default; A–Z stays, because it is the right order for finding someone
+          you already have in mind.
+        */}
+        {viewType === 'characters' && (
+          <div className="ml-1 flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-xs">
+            {(['appearances', 'name'] as const).map((o) => (
+              <button
+                key={o}
+                onClick={() => setRowOrder(o)}
+                aria-pressed={rowOrder === o}
+                title={o === 'appearances'
+                  ? 'Order rows by how many scenes each character appears in'
+                  : 'Order rows alphabetically'}
+                className={cn(
+                  'px-2.5 py-1 transition-colors',
+                  o === 'name' && 'border-l border-[hsl(var(--border))]',
+                  rowOrder === o
+                    ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                    : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]',
+                )}
+              >
+                {o === 'appearances' ? 'Most seen' : 'A–Z'}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/*
+          ARC-1: a dozen of forty-five rows were entirely blank, so the grid was
+          mostly emptiness at exactly the scale it is meant for. The control
+          names how many rows it would put away, which is also what says
+          whether it is worth pressing.
+        */}
+        {viewType === 'characters' && (hideUnrecorded || unrecordedCount > 0) && (
+          <button
+            onClick={() => setHideUnrecorded((v) => !v)}
+            aria-pressed={hideUnrecorded}
+            className={cn(
+              'ml-1 rounded-md border px-2.5 py-1 text-xs transition-colors',
+              hideUnrecorded
+                ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)] hover:text-[hsl(var(--foreground))]',
+            )}
+          >
+            {hideUnrecorded
+              ? `Showing recorded only (${roster.hidden} hidden)`
+              : `Hide ${unrecordedCount} with no recorded state`}
+          </button>
+        )}
 
         <div className="ml-auto flex items-center gap-2">
           {activeEventId && (

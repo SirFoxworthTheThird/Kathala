@@ -141,6 +141,16 @@ tip before saying it passes, and read what the tools already wrote — Playwrigh
 saves a page snapshot to `test-results/…/error-context.md` that usually
 identifies the failure faster than reasoning about the error message does.
 
+**Nothing the suite reads may change while it runs.** The e2e run serves `dist/`
+from disk and reads the spec files from disk, so an `npm run build` or a spec
+edit part-way through does not queue up for the next run — it lands in the one
+already going, and every test after that point is reporting on a mixture of two
+states. It happened twice in one sitting: a rebuild produced two "failures" whose
+only symptom was `__pwdb` being undefined, and a spec edit produced one whose
+only symptom was a field the built app did not have yet. Both looked exactly like
+real regressions and neither was. If you have to change something under a run,
+stop the run — its result is no longer about any commit.
+
 **Scope a locator to what it is about.** A page-wide `getByText('First Scene')`
 or `getByRole('button', { name: /The gate opens/ })` is a bug waiting for a
 second match, and the app's own chrome supplies them: the time-cursor pill

@@ -127,11 +127,15 @@ The four steps are named across the top — *Begin your story*, *Add a character
 *Place them in the story*, *Done* — so you can see what the guide will ask before
 you agree to any of it. On a phone only the step you are on is named; the numbers
 and ticks still show where you are. Step 1's button reads **Create and continue**:
-it makes the timeline you have just named and moves the guide on.
+it makes what you have just named and moves the guide on.
 
-Step 1 creates your first moment, and PlotWeave moves the [time
-cursor](#core-concept-the-time-cursor) to it — so when the guide hands the app
-back, everything that answers "what is true right now?" already has an answer.
+Step 1 asks for two names — the **timeline**, meaning the stretch of time your
+story runs over, and the **first scene**, the moment it opens on — and says what
+it will build from them: the timeline, a *Chapter 1* inside it, and that scene
+inside the chapter. All three can be renamed later. PlotWeave then moves the
+[time cursor](#core-concept-the-time-cursor) to that scene, so when the guide
+hands the app back, everything that answers "what is true right now?" already has
+an answer.
 
 While the guide is on screen it takes the middle of it, and the navigation rail
 steps back so the next thing to do is the clearest thing to see. The rail is
@@ -468,6 +472,13 @@ shape of your story at a glance.
 - **View from here** on a chapter row moves the time cursor to that chapter's
   first moment; it reads **Viewing** while the cursor is inside the chapter, and
   pressing it again goes back to *All chapters*.
+- **Every chapter row says how much chapter there is** — *3 scenes · 1,240
+  words* — without opening it. A chapter you have outlined but not yet written
+  shows only its scene count, and an empty one says *No scenes*. Beside the
+  counts, a status pill rolls the chapter's scenes up to the **least advanced**
+  of them: four Final scenes and one Idea reads *Idea*, because the chapter is
+  not finished until all of it is. Hover the pill and it tells you which of the
+  two it means — *Every scene is Final*, or *Least advanced of 5 scenes: Idea*.
 - **Deleting is always one step in.** A chapter row, a scene card, a character's
   header and a lore card each carry a **⋯** menu, and delete lives inside it,
   set apart and in red. Nothing destructive sits in the row beside the everyday
@@ -618,6 +629,15 @@ see structure at a glance and shuffle it. Each chapter is a column; each scene
 - **Drag a card** to reorder scenes within a chapter, or drop it into another
   chapter's column to move it there — the timeline order updates to match.
 - **Change a scene's status** right on the card with the status pill.
+- **Each card carries its length** once there is prose in it, so long and short
+  scenes are comparable down a column at a glance. A scene that is still only an
+  outline shows nothing rather than *0 words*.
+- **Each column header totals its chapter** — *4 scenes · 3,100 words* — which
+  is the one thing a column cannot show you once its cards scroll.
+- **The header says how big the board is** — *17 chapters · 74 scenes* — and a
+  chevron at each edge moves you about a screenful through it. Each appears only
+  when there is board in that direction, so the right-hand one going away means
+  you have reached the last chapter.
 - **Click a card's title** to jump to that scene in the chapter detail with the
   time cursor set to it.
 - The card for the scene the **time cursor** is on is outlined, so moving along
@@ -849,6 +869,11 @@ row of thread pills above the chapters. Click a thread to focus the timeline on
 that subplot: only chapters that advance it are listed, each expanded to show
 just the scenes tagged with it, so you can read a subplot end-to-end without the
 surrounding story. Click **All threads** to clear the filter.
+
+The row stops at six pills so it cannot grow into the chapters below it; any
+beyond that fold behind **+N more**, which unfolds the lot. Whichever thread you
+are filtering by stays on the row either way, so the strip always shows what it
+is filtering by.
 
 ![Filtering the timeline by plot thread](images/48-thread-filter.png)
 
@@ -1238,6 +1263,19 @@ The search box filters character rows, while the **Factions**, **Status**, and
 **POV** overlays add membership, scene-status, and point-of-view colour cues.
 Click a column to move the time cursor, expand a notes cell for its full text, or
 export the complete grid as **PNG**.
+
+**Rows lead with who is actually in the book.** The default order is **Most
+seen** — how many scenes a character is the POV of, is involved in, or is named
+in, counted once per scene however many of those apply — with **A–Z** beside it
+for when you already know whose row you want. If some of your cast have no
+recorded state at all, a button offers to **hide** them and says how many: on a
+long grid that is usually the difference between a screen of story and a screen
+of blanks. Pressing it again brings them back.
+
+**A carried-forward cell looks carried forward.** Where a chapter records no
+change, the grid shows the state inherited from earlier — dimmed, and marked with
+a small clock — so a run of eleven unchanged chapters reads as one decision
+holding rather than eleven decisions taken.
 
 ![Character Arc grid](images/11-arc.png)
 

@@ -610,3 +610,29 @@ test('the writing screens are closed by URL, not just hidden from the nav', asyn
     expect(new URL(page.url()).hash, screen).toBe(`#${world}/${screen}`)
   }
 })
+
+test('the chapter roll-up gives a reader the size but not the state', async ({ page }) => {
+  // TL-4 put three numbers on every chapter row. Two of them — how many scenes,
+  // how many words — are the shape of the book, which a contents page carries.
+  // The third, how finished the chapter is, belongs to whoever is writing it.
+  test.setTimeout(180_000)
+  await downloadFirstLibraryWorld(page)
+  const world = await worldPath(page)
+  const main = page.getByRole('main')
+  const rollupStatus = main.getByTitle(/^Every scene is |^Least advanced of /)
+
+  await page.goto(`/#${world}/timeline`)
+  await settleNav(page)
+  await expect(main.getByText(/^\d+ scenes?( · [\d,]+ words?)?$/).first())
+    .toBeVisible({ timeout: 15_000 })
+  await expect(rollupStatus).toHaveCount(0)
+
+  // The presence half, on the same locator: turn reading mode off and the
+  // status appears, so the absence above cannot be passing vacuously.
+  await page.goto(`/#${world}/settings`)
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
+  await page.waitForTimeout(800)
+  await page.goto(`/#${world}/timeline`)
+  await expect(rollupStatus.first()).toBeVisible({ timeout: 15_000 })
+})

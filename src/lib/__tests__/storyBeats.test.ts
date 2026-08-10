@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { STORY_BEATS, beatById, beatLabel, beatActColor } from '@/lib/storyBeats'
+import { STORY_BEATS, BEAT_TEMPLATES, beatById, beatLabel, beatActColor } from '@/lib/storyBeats'
 
 describe('storyBeats', () => {
   it('exposes a three-act beat sheet in order', () => {
@@ -12,10 +12,26 @@ describe('storyBeats', () => {
   })
 
   it('every beat carries a short label for tight annotations', () => {
-    for (const b of STORY_BEATS) {
-      expect(b.short.length).toBeGreaterThan(0)
-      expect(b.short.length).toBeLessThanOrEqual(8)
+    // The ceiling covers every template, not just the three-act sheet: they all
+    // render through the same `<text>` on the pacing curve, and the longest one
+    // shipping today is "Dark Night" at ten. The old bound of eight described
+    // one sheet while its neighbours already exceeded it.
+    for (const t of BEAT_TEMPLATES) {
+      for (const b of t.beats) {
+        expect(b.short.length, `${t.name}/${b.label}`).toBeGreaterThan(0)
+        expect(b.short.length, `${t.name}/${b.label}`).toBeLessThanOrEqual(10)
+      }
     }
+  })
+
+  it('a short label is still the beat, not another word (TL-6)', () => {
+    // Each of these was a truncation that changed the sense: the verb where the
+    // beat is a noun, or — for the Catalyst — three letters that read as the
+    // name of the template it sits in.
+    const shortOf = (id: string) => beatById(id)?.short
+    expect(shortOf('inciting-incident')).toBe('Inciting')
+    expect(shortOf('resolution')).toBe('Resolution')
+    expect(shortOf('stc-catalyst')).toBe('Catalyst')
   })
 
   it('beatById resolves known ids and rejects unknown / null', () => {

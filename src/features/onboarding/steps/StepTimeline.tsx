@@ -14,7 +14,10 @@ interface StepTimelineProps {
 
 export function StepTimeline({ worldId, onComplete, onSkip }: StepTimelineProps) {
   const [name, setName]       = useState('')
-  const [error, setError]     = useState('')
+  const [scene, setScene]     = useState('')
+  // Which field is complaining, so the message and `aria-invalid` land on the
+  // one that is actually empty rather than on whichever renders the error node.
+  const [error, setError]     = useState<{ field: 'name' | 'scene'; message: string } | null>(null)
   const [loading, setLoading] = useState(false)
   const inputRef              = useRef<HTMLInputElement>(null)
 
@@ -22,7 +25,14 @@ export function StepTimeline({ worldId, onComplete, onSkip }: StepTimelineProps)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim()) { setError('Give this moment a name before we begin.'); return }
+    if (!name.trim()) {
+      setError({ field: 'name', message: 'Give your timeline a name before we begin.' })
+      return
+    }
+    if (!scene.trim()) {
+      setError({ field: 'scene', message: 'Name the first scene — this is the moment your story opens on.' })
+      return
+    }
     setLoading(true)
     try {
       const timeline = await createTimeline({ worldId, name: name.trim(), description: '', color: '#6366f1' })
@@ -31,7 +41,7 @@ export function StepTimeline({ worldId, onComplete, onSkip }: StepTimelineProps)
         worldId,
         timelineId: timeline.id,
         chapterId: chapter.id,
-        title: name.trim(),
+        title: scene.trim(),
         description: '',
         locationMarkerId: null,
         involvedCharacterIds: [],
@@ -52,7 +62,8 @@ export function StepTimeline({ worldId, onComplete, onSkip }: StepTimelineProps)
           Your story begins with a moment
         </h2>
         <p className="mt-1.5 text-sm text-[hsl(var(--muted-foreground))]">
-          Give your timeline a name — it can be as grand as an age or as intimate as a single journey.
+          Name the stretch of time your story runs over, and the scene it opens on.
+          The timeline can be as grand as an age or as intimate as a single journey.
         </p>
       </div>
 
@@ -64,16 +75,48 @@ export function StepTimeline({ worldId, onComplete, onSkip }: StepTimelineProps)
           id="wizard-timeline-name"
           ref={inputRef}
           value={name}
-          onChange={(e) => { setName(e.target.value); setError('') }}
+          onChange={(e) => { setName(e.target.value); setError(null) }}
           placeholder="The Age of Embers, The Long Road, Act One…"
-          aria-describedby={error ? 'wizard-timeline-error' : undefined}
-          aria-invalid={!!error}
+          aria-describedby={error?.field === 'name' ? 'wizard-timeline-error' : undefined}
+          aria-invalid={error?.field === 'name'}
           className="max-w-md"
           disabled={loading}
         />
-        {error && (
+        {error?.field === 'name' && (
           <p id="wizard-timeline-error" role="alert" className="text-xs text-red-500">
-            {error}
+            {error.message}
+          </p>
+        )}
+      </div>
+
+      {/*
+        OP-3: this step asked for a timeline name and silently made three
+        records — a timeline, "Chapter 1", and a scene that took the timeline's
+        own name, so the writer met a moment they had not named and a chapter
+        nobody had mentioned. The heading promises a moment, so the step now
+        asks for one, and says what it is about to build.
+      */}
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="wizard-first-scene" className="text-sm">
+          The first scene
+        </Label>
+        <Input
+          id="wizard-first-scene"
+          value={scene}
+          onChange={(e) => { setScene(e.target.value); setError(null) }}
+          placeholder="The wreck, A letter arrives, The gate opens…"
+          aria-describedby={error?.field === 'scene' ? 'wizard-scene-error' : 'wizard-creates'}
+          aria-invalid={error?.field === 'scene'}
+          className="max-w-md"
+          disabled={loading}
+        />
+        <p id="wizard-creates" className="text-xs text-[hsl(var(--muted-foreground))]">
+          This makes your timeline, a <strong>Chapter 1</strong> inside it, and that
+          scene inside the chapter. All three can be renamed later.
+        </p>
+        {error?.field === 'scene' && (
+          <p id="wizard-scene-error" role="alert" className="text-xs text-red-500">
+            {error.message}
           </p>
         )}
       </div>
