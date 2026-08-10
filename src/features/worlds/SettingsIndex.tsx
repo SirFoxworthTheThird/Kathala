@@ -1,0 +1,84 @@
+import { useEffect, useState, type RefObject } from 'react'
+
+export interface SettingsSectionRef {
+  id: string
+  label: string
+}
+
+/**
+ * The index across the top of World settings (**SET-2**).
+ *
+ * Settings is eleven sections in one unbroken scroll — world, reading mode,
+ * theme, travel modes, continuity, manuscript, timelines, calendar, share,
+ * database health, folder sync — with nothing to navigate by. Changing one
+ * thing meant scrolling past everything else, and past the paragraph each
+ * section carries explaining what it is for (**X-5**), which is the one screen
+ * where that prose earns its place and the one screen where you meet all of it
+ * at once.
+ *
+ * The index is read from the sections themselves rather than from a list kept
+ * beside them. Half of them are conditional — the world block is hidden in
+ * reading mode, calendar and sync only render once their data exists — so a
+ * hand-maintained list would eventually offer a chip that scrolls nowhere. A
+ * `MutationObserver` keeps it honest as sections come and go.
+ */
+export function useSettingsSections(containerRef: RefObject<HTMLElement | null>): SettingsSectionRef[] {
+  const [sections, setSections] = useState<SettingsSectionRef[]>([])
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
+    function read() {
+      const found = Array.from(el!.querySelectorAll<HTMLElement>('[data-settings-section]'))
+        .map((s) => ({ id: s.id, label: s.dataset.settingsSection ?? '' }))
+        .filter((s) => s.id && s.label)
+      // Only replace on a real change: the observer watches the container this
+      // runs inside, so setting state unconditionally would loop.
+      setSections((prev) =>
+        prev.length === found.length && prev.every((p, i) => p.id === found[i].id && p.label === found[i].label)
+          ? prev
+          : found,
+      )
+    }
+
+    read()
+    const observer = new MutationObserver(read)
+    observer.observe(el, { childList: true, subtree: true })
+    return () => observer.disconnect()
+  }, [containerRef])
+
+  return sections
+}
+
+export function SettingsIndex({ sections }: { sections: SettingsSectionRef[] }) {
+  // One section is not a list, and two barely are — below that the index costs
+  // more than the scrolling it saves.
+  if (sections.length < 3) return null
+
+  return (
+    <nav
+      aria-label="Settings sections"
+      className="sticky top-0 z-10 -mx-6 mb-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--background))]/95 px-6 py-2 backdrop-blur"
+    >
+      <ul className="flex flex-wrap gap-1.5">
+        {sections.map((s) => (
+          <li key={s.id}>
+            <a
+              href={`#${s.id}`}
+              onClick={(e) => {
+                // The app is on a hash router, so a bare fragment link would be
+                // read as a route. Scroll it ourselves and leave the URL alone.
+                e.preventDefault()
+                document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }}
+              className="inline-flex rounded-full border border-[hsl(var(--border))] px-2.5 py-1 text-xs text-[hsl(var(--muted-foreground))] transition-colors hover:border-[hsl(var(--ring)/0.5)] hover:text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]"
+            >
+              {s.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}

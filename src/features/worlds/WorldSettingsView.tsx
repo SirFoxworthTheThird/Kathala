@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { BlockingReason } from '@/components/BlockingReason'
 import { useParams } from 'react-router-dom'
 import { Footprints, Plus, Pencil, Check, X, Trash2, FileCode2, Upload, Image as ImageIcon, BookOpen } from 'lucide-react'
@@ -16,6 +16,7 @@ import type { TravelMode } from '@/types'
 import { CloudSyncPanel } from './CloudSyncPanel'
 import { DbHealthPanel } from './DbHealthPanel'
 import { CalendarEditor } from './CalendarEditor'
+import { SettingsIndex, useSettingsSections } from './SettingsIndex'
 import { APP_THEMES, themeClass } from '@/lib/themes'
 import { useAppStore, type AppTheme } from '@/store'
 
@@ -93,6 +94,10 @@ export default function WorldSettingsView() {
   const travelModes = useTravelModes(worldId ?? null)
   const appTheme = useAppStore((s) => s.theme)
   const setAppTheme = useAppStore((s) => s.setTheme)
+  // The index reads the sections that actually rendered, since half of them are
+  // conditional — see SettingsIndex.
+  const rootRef = useRef<HTMLDivElement>(null)
+  const sections = useSettingsSections(rootRef)
 
   // World name / description
   const [name, setName] = useState('')
@@ -147,11 +152,13 @@ export default function WorldSettingsView() {
   }
 
   return (
-    <div className="p-6 space-y-10 max-w-2xl">
+    <div ref={rootRef} className="p-6 space-y-10 max-w-2xl">
+      {/* SET-2: eleven sections in one scroll, with nothing to navigate by. */}
+      <SettingsIndex sections={sections} />
 
       {/* World identity — a downloaded book is not the reader's to rename. */}
       {!readingMode && (
-        <section className="space-y-4">
+        <section id="settings-world" data-settings-section="World" className="scroll-mt-16 space-y-4">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">World</h2>
 
           {/* Name */}
@@ -261,7 +268,7 @@ export default function WorldSettingsView() {
       {/* Reading mode. `world` loads asynchronously, so guard it — the rest of
           this view uses `world?.` for the same reason. */}
       {world && (
-      <section className="space-y-4">
+      <section id="settings-reading-mode" data-settings-section="Reading mode" className="scroll-mt-16 space-y-4">
         <div>
           <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Reading mode</h2>
           <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
@@ -304,7 +311,7 @@ export default function WorldSettingsView() {
       )}
 
       {/* World theme */}
-      <section className="space-y-4">
+      <section id="settings-theme" data-settings-section="Theme" className="scroll-mt-16 space-y-4">
         <div>
           <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Theme</h2>
           <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
@@ -378,7 +385,7 @@ export default function WorldSettingsView() {
       {!readingMode && (
         <>
           {/* Travel modes */}
-          <section className="space-y-4">
+          <section id="settings-travel-modes" data-settings-section="Travel Modes" className="scroll-mt-16 space-y-4">
             <div>
               <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Travel Modes</h2>
               <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
@@ -433,7 +440,7 @@ export default function WorldSettingsView() {
           </section>
 
           {/* Continuity */}
-          <section className="space-y-4">
+          <section id="settings-continuity" data-settings-section="Continuity" className="scroll-mt-16 space-y-4">
             <div>
               <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Continuity</h2>
               <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
@@ -459,7 +466,7 @@ export default function WorldSettingsView() {
           </section>
 
           {/* Manuscript */}
-          <section className="space-y-4">
+          <section id="settings-manuscript" data-settings-section="Manuscript" className="scroll-mt-16 space-y-4">
             <div>
               <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Manuscript</h2>
               <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
@@ -512,7 +519,7 @@ export default function WorldSettingsView() {
 
           {/* Timelines — per-timeline day offsets for multi-era worlds */}
           {timelines.length > 1 && (
-            <section className="space-y-4">
+            <section id="settings-timelines" data-settings-section="Timelines" className="scroll-mt-16 space-y-4">
               <div>
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Timelines</h2>
                 <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
@@ -548,7 +555,7 @@ export default function WorldSettingsView() {
           {world && <CalendarEditor world={world} />}
 
           {/* Share */}
-          <section className="space-y-4">
+          <section id="settings-share" data-settings-section="Share" className="scroll-mt-16 space-y-4">
             <div>
               <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Share</h2>
               <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">

@@ -1465,6 +1465,13 @@ the **continuity stale-snapshot threshold**, set a book-level **word target** an
 burndown and finish projection), and configure an in-world
 **[calendar](#calendar--character-ages)** for story dates and character ages.
 
+There are eleven sections in all, so the screen opens with a row of chips —
+one per section — that stays put as you scroll and jumps you straight to the
+one you came for. It lists only the sections actually on screen: reading mode
+puts most of them away, and the chips go with them.
+
+![World settings, with its section index](images/60-settings-index.png)
+
 Worlds with more than one timeline also get a **Timelines** section: give each
 timeline a **start day** for its clock. By default every timeline starts at
 day 0 — right for parallel storylines, but a frame narrative's past or an

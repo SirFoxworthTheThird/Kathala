@@ -130,7 +130,7 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
     : null
 
   return (
-    <section className="space-y-4">
+    <section id="settings-cloud-sync" data-settings-section="Cloud Sync" className="scroll-mt-16 space-y-4">
       <div>
         <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Cloud Sync</h2>
         <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">

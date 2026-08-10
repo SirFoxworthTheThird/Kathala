@@ -54,7 +54,7 @@ export function DbHealthPanel({ worldId }: Props) {
     : []
 
   return (
-    <section className="space-y-4">
+    <section id="settings-db-health" data-settings-section="DB Health" className="scroll-mt-16 space-y-4">
       <div>
         <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
           DB Health

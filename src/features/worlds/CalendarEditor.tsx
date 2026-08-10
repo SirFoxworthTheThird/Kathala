@@ -43,7 +43,7 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
   }
 
   return (
-    <section className="space-y-4">
+    <section id="settings-calendar" data-settings-section="Calendar" className="scroll-mt-16 space-y-4">
       <div>
         <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Calendar</h2>
         <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
