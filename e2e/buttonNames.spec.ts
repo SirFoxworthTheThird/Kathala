@@ -42,7 +42,13 @@ test.describe('Button names', () => {
     await expect(page.getByText('The Vanishing Glass').first()).toBeVisible()
 
     // The control that prompted this: destructive, and previously anonymous.
-    await expect(page.getByRole('button', { name: /delete chapter/i })).toBeVisible()
+    // It sits behind a per-row menu now (TL-3), which has to carry a name of
+    // its own — one saying which row it acts on.
+    const menu = page.getByRole('button', { name: 'More actions for chapter 1' })
+    await expect(menu).toBeVisible()
+    await menu.click()
+    await expect(page.getByRole('menuitem', { name: /delete chapter/i })).toBeVisible()
+    await page.keyboard.press('Escape')
 
     const bad = await nameless(page)
     expect(bad, `controls announcing only "button":\n${bad.join('\n')}`).toEqual([])

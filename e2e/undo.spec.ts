@@ -36,7 +36,9 @@ test('deleting offers an undo that brings the character back', async ({ page }) 
   await addCharacter(page, 'Aldric')
 
   await page.getByText('Aldric').first().click()
-  await page.getByRole('button', { name: /delete character/i }).first().click()
+  // Delete sits behind the header's menu now (CH-4).
+  await page.getByRole('button', { name: 'More actions for Aldric' }).click()
+  await page.getByRole('menuitem', { name: 'Delete character' }).click()
   await page.getByRole('button', { name: /^delete$/i }).last().click()
 
   // The toast names what went, and carries the way back.

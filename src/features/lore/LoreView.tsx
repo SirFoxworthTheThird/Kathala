@@ -15,6 +15,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { PageHeader } from '@/components/PageHeader'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { GenerateLoreDialog } from './GenerateLoreDialog'
+import { Menu, MenuItem } from '@/components/ui/menu'
 
 // ── Colour palette for categories ─────────────────────────────────────────────
 const CATEGORY_COLORS = [
@@ -129,12 +130,18 @@ function PageCard({
             {page.title}
           </Link>
         </h3>
-        <button
-          className="relative z-10 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 text-[hsl(var(--muted-foreground))] hover:text-destructive transition-all"
-          onClick={(e) => { e.stopPropagation(); onDelete() }}
+        {/* LORE-1 was filed as the pattern the other rosters should copy. It is
+            not: at rest this was `opacity-0` with pointer events still live and
+            hit-testing to itself, at 14x14px, with no accessible name at all —
+            so on a phone, where there is no hover, a tap on apparently blank
+            card deleted the page. See `src/components/ui/menu.tsx`. */}
+        <Menu
+          label={`More actions for ${page.title}`}
+          className="relative z-10 shrink-0"
+          triggerClassName="h-7 w-7"
         >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
+          <MenuItem icon={Trash2} label="Delete page" danger onClick={onDelete} />
+        </Menu>
       </div>
       {preview && (
         <p className="pl-2 text-xs text-[hsl(var(--muted-foreground))] line-clamp-2 leading-relaxed">{preview}</p>

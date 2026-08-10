@@ -442,11 +442,22 @@ shape of your story at a glance.
 - Click an event to move the time cursor to that exact moment. Each chapter row
   also has an **open** button for its detail page, and chapters can be dragged to
   reorder the narrative.
+- **View from here** on a chapter row moves the time cursor to that chapter's
+  first moment; it reads **Viewing** while the cursor is inside the chapter, and
+  pressing it again goes back to *All chapters*.
+- **Deleting is always one step in.** A chapter row, a scene card, a character's
+  header and a lore card each carry a **⋯** menu, and delete lives inside it,
+  set apart and in red. Nothing destructive sits in the row beside the everyday
+  controls, so there is no trash icon to catch a stray click on the way to
+  *open* or *move earlier*. The menu opens by click or by pressing **↓** on it,
+  and **Escape** closes it and puts focus back.
 - Select events with their checkboxes; **Shift+click** selects a range. The bulk
   toolbar can move the selection to another chapter, add a tag, or delete it.
 - The chapter bar at the bottom of the screen also lets you **play the story**
   and **Compare chapters** — a diff of exactly what changed between any two points
   (who moved, gained or lost items, died, or shifted relationships).
+
+![A chapter row's menu](images/58-row-menu.png)
 
 ### Multiple timelines and timeline relationships
 

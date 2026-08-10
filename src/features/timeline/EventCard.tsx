@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PortraitImage } from '@/components/PortraitImage'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { Menu, MenuItem } from '@/components/ui/menu'
 
 interface EventCardProps {
   event: WorldEvent
@@ -378,10 +379,13 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
               onClick={() => setExpanded((v) => !v)}>
               {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
             </Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 hover:text-red-400"
-              aria-label={`Delete ${eventName}`} title="Delete" onClick={() => setConfirmOpen(true)}>
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+            {/* EV-5: delete used to sit right here, drawn exactly like the two
+                reorder arrows and the expand chevron beside it — a destructive
+                action with the weight of a routine one, on every scene in the
+                chapter. See `src/components/ui/menu.tsx`. */}
+            <Menu label={`More actions for ${eventName}`} triggerClassName="h-6 w-6">
+              <MenuItem icon={Trash2} label="Delete scene" danger onClick={() => setConfirmOpen(true)} />
+            </Menu>
             <ConfirmDialog
               open={confirmOpen}
               onOpenChange={setConfirmOpen}

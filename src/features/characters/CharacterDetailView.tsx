@@ -18,6 +18,7 @@ import { RelationshipsTab } from './tabs/RelationshipsTab'
 import { RelatedLoreSection } from '@/features/lore'
 import { FactionsTab } from './tabs/FactionsTab'
 import { GoalsTab } from './tabs/GoalsTab'
+import { Menu, MenuItem } from '@/components/ui/menu'
 
 export default function CharacterDetailView() {
   const { worldId, characterId } = useParams<{ worldId: string; characterId: string }>()
@@ -88,16 +89,13 @@ export default function CharacterDetailView() {
           )}
         </div>
 
+        {/* CH-4: delete was the only icon in this header, top right, drawn like
+            any other — the most destructive act on the screen with nothing
+            implying weight. See `src/components/ui/menu.tsx`. */}
         {!gate.active && (
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Delete character"
-            className="ml-auto h-8 w-8 hover:text-red-400"
-            onClick={() => setConfirmOpen(true)}
-          >
-            <Trash2 className="h-4 w-4" aria-hidden="true" />
-          </Button>
+          <Menu label={`More actions for ${character.name}`} className="ml-auto" triggerClassName="h-8 w-8">
+            <MenuItem icon={Trash2} label="Delete character" danger onClick={() => setConfirmOpen(true)} />
+          </Menu>
         )}
       </div>
       <ConfirmDialog

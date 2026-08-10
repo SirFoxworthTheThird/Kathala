@@ -8,6 +8,7 @@ import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { Menu, MenuItem } from '@/components/ui/menu'
 import { EventRow } from './EventRow'
 import { AddEventDialog } from './AddEventDialog'
 import { EmptyState } from '@/components/EmptyState'
@@ -132,13 +133,22 @@ export function ChapterRow({ chapter, threadFilter = null }: ChapterRowProps) {
           )}
         </button>
 
+        {/*
+          TL-2: the label used to read "Set Active", which names a state rather
+          than what pressing it does. "Moment" is the app's own word for where
+          the cursor sits — Previous moment, Next moment, pick a moment — so the
+          row says where pressing it takes you.
+        */}
         <Button
           size="sm"
           variant={isActive ? 'secondary' : 'ghost'}
           className="h-7 px-2 text-xs shrink-0 ml-auto"
           onClick={() => setActiveEventId(isActive ? null : (sortedEvents[0]?.id ?? null))}
+          title={isActive
+            ? 'The time cursor is in this chapter — press to view all chapters again'
+            : "Move the time cursor to this chapter's first moment"}
         >
-          {isActive ? 'Active' : 'Set Active'}
+          {isActive ? 'Viewing' : 'View from here'}
         </Button>
 
         <Button
@@ -151,16 +161,16 @@ export function ChapterRow({ chapter, threadFilter = null }: ChapterRowProps) {
           <ExternalLink className="h-3.5 w-3.5" />
         </Button>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 shrink-0 hover:text-red-400"
-          onClick={() => setConfirmOpen(true)}
-          aria-label={`Delete chapter ${chapter.number}`}
-          title="Delete chapter"
-        >
-          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-        </Button>
+        {/* TL-3: delete used to be a bare trash icon here, on all 22 rows,
+            immediately beside open-detail. See `src/components/ui/menu.tsx`. */}
+        <Menu label={`More actions for chapter ${chapter.number}`}>
+          <MenuItem
+            icon={Trash2}
+            label="Delete chapter"
+            danger
+            onClick={() => setConfirmOpen(true)}
+          />
+        </Menu>
         <ConfirmDialog
           open={confirmOpen}
           onOpenChange={setConfirmOpen}

@@ -245,7 +245,10 @@ test('a character page has nothing to edit and no future', async ({ page }) => {
   await page.getByRole('main').getByRole('link').first().click()
   await expect(page).toHaveURL(/#\/worlds\/[^/]+\/characters\/./, { timeout: 15_000 })
 
-  await expect(page.getByRole('button', { name: 'Delete character' })).toHaveCount(0)
+  // Delete lives behind a menu now, so the menu itself has to be gone — the
+  // old assertion would pass on a page that still offered the trigger.
+  await expect(page.getByRole('button', { name: /^More actions for/ })).toHaveCount(0)
+  await expect(page.getByRole('menuitem', { name: 'Delete character' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Upload portrait image' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0)
 

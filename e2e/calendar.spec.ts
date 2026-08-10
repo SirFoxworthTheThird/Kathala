@@ -36,7 +36,10 @@ test.describe('Calendar view', () => {
     // Calendar: the event sits on day 1 (in-world day 0 = 1 January, year 1).
     await page.goto(`/#/worlds/${worldId}/calendar`, { waitUntil: 'load' })
     await expect(page.getByRole('heading', { name: 'Calendar' })).toBeVisible({ timeout: 30000 })
-    const chip = page.getByRole('button', { name: 'The gate opens' })
+    // Scoped to its day cell: the time-cursor pill in the top bar carries the
+    // active scene's title too, so a page-wide match here is ambiguous whenever
+    // the cursor happens to be sitting on this scene.
+    const chip = page.locator('[aria-label="January 1, 1"]').getByRole('button', { name: 'The gate opens' })
     const day1 = page.locator('[aria-label="January 1, 1"]')
     const day10 = page.locator('[aria-label="January 10, 1"]')
     await expect(day1.getByRole('button', { name: 'The gate opens' })).toBeVisible()

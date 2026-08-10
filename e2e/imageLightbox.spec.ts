@@ -59,7 +59,9 @@ test.describe('Opening images full size', () => {
     // below, so neither can pass vacuously.
     await expect(lightbox(page)).toHaveCount(0)
 
-    await page.getByRole('button', { name: 'Aria' }).click()
+    // Exact: the header also carries "More actions for Aria" now (CH-4), and a
+    // substring match would find both.
+    await page.getByRole('button', { name: 'Aria', exact: true }).click()
     await expect(lightbox(page)).toBeVisible()
     // The picture in the overlay is the stored one, not a placeholder.
     await expect(lightbox(page).locator(`img[src="${IMAGE}"]`)).toBeVisible()

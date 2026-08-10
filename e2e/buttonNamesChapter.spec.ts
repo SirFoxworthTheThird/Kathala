@@ -63,9 +63,16 @@ test.describe('Chapter detail button names', () => {
     // called "Move earlier" are no more use than four with no name at all.
     await expect(page.getByRole('button', { name: 'Move “The letter arrives” later' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Move “Hallow End burns” earlier' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Delete “Hallow End burns”' })).toBeVisible()
+    // Delete moved behind a per-scene menu (EV-5), which has to distinguish
+    // itself the same way the arrows do — and the item inside it names the
+    // scene too, since that is what a screen reader reads on the way to it.
+    const sceneMenu = page.getByRole('button', { name: 'More actions for “Hallow End burns”' })
+    await expect(sceneMenu).toBeVisible()
     // An untitled scene still gets a name that distinguishes it from a titled one.
-    await expect(page.getByRole('button', { name: 'Delete this untitled scene' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'More actions for this untitled scene' })).toBeVisible()
+    await sceneMenu.click()
+    await expect(page.getByRole('menuitem', { name: 'Delete scene' })).toBeVisible()
+    await page.keyboard.press('Escape')
     // Including its own title button, which otherwise renders an empty span and
     // is the one card on the page a screen reader could say nothing about.
     await expect(page.getByRole('button', { name: 'Untitled scene', exact: true })).toBeVisible()
