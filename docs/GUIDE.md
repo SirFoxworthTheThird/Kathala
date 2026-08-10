@@ -1130,6 +1130,12 @@ thumbnails, categories, and descriptions. Like characters, items have per-event
 An item's picture opens full size the same way a portrait does — see
 [Viewing pictures full size](#viewing-pictures-full-size).
 
+With a moment selected, each card also says where that item is — *carried by
+Kestrel · Weathertop*, or just the place if nobody is holding it — and shows its
+**condition** as a coloured dot. On *All chapters* there is no moment to answer
+about, so the line is left off rather than guessed at.
+
+
 ![Items](images/09-items.png)
 
 **Things there is more than one of.** An item is normally one particular object,
@@ -1260,6 +1266,11 @@ It's the fastest way to audit continuity across the entire book at once.
 Lore is your world's reference wiki — history, rules, and mythology that don't
 change with time. Organise pages into **categories** (Artefacts, Peoples,
 Places…), tag them, and optionally reveal a page only from a given event onward.
+
+A page held back with **Revealed at** carries a badge naming the chapter it
+opens in — *From ch. 2* — so a page the reader meets late is not mistaken for
+one that was there from the start.
+
 
 ![Lore](images/12-lore.png)
 

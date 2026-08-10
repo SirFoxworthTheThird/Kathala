@@ -98,12 +98,14 @@ function AddCategoryForm({ worldId, onDone }: { worldId: string; onDone: () => v
 
 // ── Page card ─────────────────────────────────────────────────────────────────
 function PageCard({
-  page, categoryColor, to, onDelete,
+  page, categoryColor, to, onDelete, revealedAt,
 }: {
   page: { id: string; title: string; body: string; tags: string[]; updatedAt: number }
   categoryColor: string | null
   to: string
   onDelete: () => void
+  /** Where this page becomes visible, when it is gated (LORE-2). */
+  revealedAt?: string | null
 }) {
   const preview = page.body.slice(0, 120).replace(/[#*`_>-]/g, '').trim()
 
@@ -147,6 +149,18 @@ function PageCard({
         {page.tags.length > 3 && (
           <span className="text-[10px] text-[hsl(var(--muted-foreground))]">+{page.tags.length - 3}</span>
         )}
+        {/*
+          LORE-2: "Revealed at" is a headline feature and the card said nothing
+          about it, so a page held back to chapter 17 looked exactly like one
+          visible from the first page. Knowledge answers the same question with
+          "known by 4 / 45"; this is the lore version of that.
+        */}
+        {revealedAt && (
+          <span className="flex items-center gap-1 rounded bg-indigo-500/15 px-1.5 py-0.5 text-[10px] text-indigo-300">
+            <Eye className="h-2.5 w-2.5 shrink-0" aria-hidden="true" />
+            {revealedAt}
+          </span>
+        )}
         <span className="ml-auto text-[10px] text-[hsl(var(--muted-foreground))]">{relativeTime(page.updatedAt)}</span>
       </div>
     </div>
@@ -185,6 +199,22 @@ export default function LoreView() {
     worldEvents.map((ev) => [ev.id, (chapterNumberById.get(ev.chapterId) ?? 0) * 10_000 + ev.sortOrder])
   )
   const activeEventSortKey = activeEventId ? (eventSortKeyById.get(activeEventId) ?? Infinity) : Infinity
+
+  /*
+    LORE-2: which pages are held back, and until when. A gated page names the
+    chapter it opens at rather than the scene, because a chapter is the unit a
+    writer thinks in and a scene title on a card is one truncation too many.
+  */
+  const chapterById = new Map(worldChapters.map((c) => [c.id, c]))
+  const revealLabelById = new Map<string, string>()
+  for (const page of allPages) {
+    if (!page.visibleFromEventId) continue
+    const ev = worldEvents.find((e) => e.id === page.visibleFromEventId)
+    const ch = ev ? chapterById.get(ev.chapterId) : null
+    // A reveal point whose scene has been deleted is still a reveal point: the
+    // page is gated, and saying so vaguely beats saying nothing.
+    revealLabelById.set(page.id, ch ? `From ch. ${ch.number}` : 'Revealed later')
+  }
 
   const filteredPages = allPages.filter((p) => {
     if (activeCategoryId !== 'all' && p.categoryId !== activeCategoryId) return false
@@ -392,6 +422,7 @@ export default function LoreView() {
                   categoryColor={page.categoryId ? categoryColorMap.get(page.categoryId) ?? null : null}
                   to={`/worlds/${worldId}/lore/${page.id}`}
                   onDelete={() => setDeletePageId(page.id)}
+                  revealedAt={revealLabelById.get(page.id) ?? null}
                 />
               ))}
             </div>

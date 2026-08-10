@@ -9,12 +9,32 @@ import { PageHeader } from '@/components/PageHeader'
 import { ItemCard } from './ItemCard'
 import { CreateItemDialog } from './CreateItemDialog'
 import { GenerateItemsDialog } from './GenerateItemsDialog'
+import { resolveItemWhereabouts, describeWhereabouts } from '@/lib/itemWhereabouts'
+import { useCharacters } from '@/db/hooks/useCharacters'
+import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
+import { useBestSnapshots } from '@/db/hooks/useSnapshots'
+import { useEventItemPlacements } from '@/db/hooks/useItemPlacements'
+import { useAppStore } from '@/store'
+import { useBestItemSnapshots } from '@/db/hooks/useItemSnapshots'
 
 export default function ItemRosterView() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
   const items = useItems(worldId ?? null)
   const [search, setSearch] = useState('')
+
+  /*
+    IT-2: everything below is per-moment, so it is asked for once here rather
+    than by each card — twenty cards each opening their own live query for the
+    same three tables is the shape this screen would grow into otherwise.
+  */
+  const activeEventId = useAppStore((st) => st.activeEventId)
+  const placements = useEventItemPlacements(activeEventId)
+  const snapshots = useBestSnapshots(worldId ?? null, activeEventId)
+  const markers = useAllLocationMarkers(worldId ?? null)
+  const characters = useCharacters(worldId ?? null)
+  const itemSnapshots = useBestItemSnapshots(worldId ?? null, activeEventId)
+  const conditionById = new Map(itemSnapshots.map((snap) => [snap.itemId, snap.condition]))
   const [dialogOpen, setDialogOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
 
@@ -68,7 +88,14 @@ export default function ItemRosterView() {
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((item) => (
-              <ItemCard key={item.id} item={item} />
+              <ItemCard
+                key={item.id}
+                item={item}
+                whereabouts={activeEventId ? describeWhereabouts(resolveItemWhereabouts({
+                  itemId: item.id, placements, snapshots, markers, characters,
+                })) : null}
+                condition={activeEventId ? conditionById.get(item.id) ?? null : null}
+              />
             ))}
           </div>
         )}

@@ -22,6 +22,8 @@ import type { Character, CharacterSnapshot, Item, LocationMarker, MapLayer, Rout
 import { pathPixelLength, formatDistance } from '@/lib/mapScale'
 import { characterColor, ICON_COLORS } from './mapUtils'
 import { splitMapCast } from '@/lib/mapCast'
+import { resolveItemWhereabouts } from '@/lib/itemWhereabouts'
+import { ITEM_CONDITIONS, CONDITION_COLORS } from '@/lib/itemCondition'
 
 // ─── SidebarSection ──────────────────────────────────────────────────────────
 
@@ -646,11 +648,6 @@ export function LocationsSection({
 
 // ─── Items section ────────────────────────────────────────────────────────────
 
-const ITEM_CONDITIONS = ['intact', 'damaged', 'destroyed', 'lost', 'found', 'unknown']
-const CONDITION_COLORS: Record<string, string> = {
-  intact: '#34d399', damaged: '#fbbf24', destroyed: '#f87171',
-  lost: '#94a3b8', found: '#60a5fa', unknown: '#a78bfa',
-}
 
 function ItemRow({
   item,
@@ -757,12 +754,15 @@ export function ItemsSection({
   activeEventId,
   allMarkers,
   snapshots,
+  characters,
   onFocus,
 }: {
   worldId: string
   activeEventId: string | null
   allMarkers: LocationMarker[]
   snapshots: CharacterSnapshot[]
+  /** Needed to name whoever is carrying an item — see `resolveItemWhereabouts`. */
+  characters: Character[]
   onFocus: (itemId: string) => void
 }) {
   const items = useItems(worldId)
@@ -774,19 +774,12 @@ export function ItemsSection({
     ? items.filter((i) => i.name.toLowerCase().includes(search.toLowerCase()))
     : items
 
+  // Shared with the Items roster, which had no answer to "where is it" at all
+  // until IT-2 — see `src/lib/itemWhereabouts.ts`.
   function getItemLocation(itemId: string): string | null {
-    const placement = placements.find((p) => p.itemId === itemId)
-    if (placement) {
-      return allMarkers.find((m) => m.id === placement.locationMarkerId)?.name ?? null
-    }
-    const snap = snapshots.find((s) => s.inventoryItemIds.includes(itemId))
-    if (snap) {
-      const loc = snap.currentLocationMarkerId
-        ? allMarkers.find((m) => m.id === snap.currentLocationMarkerId)?.name
-        : null
-      return loc ?? null
-    }
-    return null
+    return resolveItemWhereabouts({
+      itemId, placements, snapshots, markers: allMarkers, characters,
+    }).location
   }
 
   return (

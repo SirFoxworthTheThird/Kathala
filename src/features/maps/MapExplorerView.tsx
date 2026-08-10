@@ -593,6 +593,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           allMarkers={allMarkers}
           snapshots={snapshots}
           onFocus={focusOnItem}
+          characters={characters}
         />
         <RoutesSection
           mapLayerId={layerId}
