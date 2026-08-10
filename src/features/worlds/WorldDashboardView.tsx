@@ -32,6 +32,7 @@ import { ThreadCadence } from './ThreadCadence'
 import { MotifCadence } from './MotifCadence'
 import { WritingProgress } from './WritingProgress'
 import { evaluateSuggestions, type WorldSummaryData } from './suggestionRules'
+import { relativeTime } from '@/lib/relativeTime'
 
 // ── Stat pill ────────────────────────────────────────────────────────────────
 
@@ -253,17 +254,23 @@ export default function WorldDashboardView() {
       description: gate.active ? 'you have seen so far' : 'in your catalogue',
     },
     {
-      label: 'Character Arc',
+      /*
+        DASH-2: this was titled "Character Arc" and counted snapshot coverage —
+        the name of a screen over a number measuring something else, two
+        concepts in one tile. The title names the number now, and the line
+        beneath says where pressing it goes. A reader gets the screen without
+        the scorecard, so for them the tile is named for the screen and carries
+        no number at all.
+      */
+      label: gate.active ? 'Character Arc' : 'Snapshot coverage',
       icon: BarChart2,
-      // Snapshot coverage measures how completely the world has been filled in
-      // — a writer's progress bar. A reader gets the arc without the scorecard.
       count: gate.active ? null : coveragePct,
       countSuffix: '%',
       onClick: () => navigate('arc'),
       pills: !gate.active && eventsWithSnap > 0
         ? [{ label: `/ ${totalEvents} events`, value: eventsWithSnap }]
         : [],
-      description: gate.active ? 'how the cast changes' : 'snapshot coverage',
+      description: gate.active ? 'how the cast changes' : 'opens the Character Arc grid',
     },
     // The continuity checker reports on a draft, and reading mode takes it off
     // the top bar — a tile that opened it would be the one way back in.
@@ -422,7 +429,13 @@ export default function WorldDashboardView() {
           where the reader is in the book. */}
       {!gate.active && recentEvents.length > 0 && (
         <div>
-          <SectionHeading icon={Clock}>Recent Events</SectionHeading>
+          {/*
+            DASH-3: "Recent Events" never said what recent meant, and across two
+            columns the order was anyone's guess. The heading names the ordering
+            and each row carries how long ago it was, so the sequence is legible
+            from the rows themselves rather than from where they happen to land.
+          */}
+          <SectionHeading icon={Clock}>Recently edited</SectionHeading>
           <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
             {recentEvents.map((ev) => {
               const ch = chapterById.get(ev.chapterId)
@@ -444,6 +457,9 @@ export default function WorldDashboardView() {
                       {tl && timelines.length > 1 ? `${tl.name} · ` : ''}{ch ? `Ch. ${ch.number} — ${ch.title}` : ''}
                     </p>
                   </div>
+                  <span className="shrink-0 text-[10px] tabular-nums text-[hsl(var(--muted-foreground))]">
+                    {relativeTime(ev.updatedAt)}
+                  </span>
                 </button>
               )
             })}

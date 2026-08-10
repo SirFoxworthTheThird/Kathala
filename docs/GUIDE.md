@@ -371,6 +371,13 @@ status, writing progress, and analytics panels (Cast Balance, Plot Threads, and
 Motifs & Themes, covered later). Worlds with linked timelines also show a
 **Timeline Links** summary.
 
+**Recently edited** lists the five scenes you changed last, each with how long
+ago — so the order reads from the rows rather than from the columns they fall
+into. The **Snapshot coverage** tile shows how much of the story has state
+recorded against it, and opens the [Character Arc grid](#character-arc-grid),
+which is where you fill the gaps in.
+
+
 ![World dashboard](images/03-dashboard.png)
 
 The tiles are links — click **Timeline**, **Characters**, **Maps**, or any other

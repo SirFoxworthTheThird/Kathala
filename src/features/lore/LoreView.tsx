@@ -16,6 +16,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { GenerateLoreDialog } from './GenerateLoreDialog'
 import { Menu, MenuItem } from '@/components/ui/menu'
+import { relativeTime } from '@/lib/relativeTime'
 
 // ── Colour palette for categories ─────────────────────────────────────────────
 const CATEGORY_COLORS = [
@@ -23,13 +24,6 @@ const CATEGORY_COLORS = [
   '#f87171', '#f472b6', '#a78bfa', '#94a3b8',
 ]
 
-function relativeDate(ts: number): string {
-  const diff = Date.now() - ts
-  if (diff < 60_000) return 'just now'
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
-  return new Date(ts).toLocaleDateString()
-}
 
 // ── Category row ──────────────────────────────────────────────────────────────
 function CategoryRow({
@@ -153,7 +147,7 @@ function PageCard({
         {page.tags.length > 3 && (
           <span className="text-[10px] text-[hsl(var(--muted-foreground))]">+{page.tags.length - 3}</span>
         )}
-        <span className="ml-auto text-[10px] text-[hsl(var(--muted-foreground))]">{relativeDate(page.updatedAt)}</span>
+        <span className="ml-auto text-[10px] text-[hsl(var(--muted-foreground))]">{relativeTime(page.updatedAt)}</span>
       </div>
     </div>
   )

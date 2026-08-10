@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useSceneRevisions, restoreSceneRevision, deleteSceneRevision } from '@/db/hooks/useSceneRevisions'
 import { diffWords, diffStats, splitEdges } from '@/lib/textDiff'
+import { relativeTime } from '@/lib/relativeTime'
 
 interface SceneHistoryDialogProps {
   open: boolean
@@ -19,14 +20,6 @@ function nowMs(): number {
   return Date.now()
 }
 
-function relativeTime(ts: number, now: number): string {
-  const diff = now - ts
-  if (diff < 60_000) return 'just now'
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
-  if (diff < 7 * 86_400_000) return `${Math.floor(diff / 86_400_000)}d ago`
-  return new Date(ts).toLocaleDateString()
-}
 
 export function SceneHistoryDialog({ open, onOpenChange, eventId, currentText }: SceneHistoryDialogProps) {
   const revisions = useSceneRevisions(open ? eventId : null)
