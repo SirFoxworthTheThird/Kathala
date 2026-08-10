@@ -49,4 +49,22 @@ const TabsContent = React.forwardRef<
 ))
 TabsContent.displayName = TabsPrimitive.Content.displayName
 
-export { Tabs, TabsList, TabsTrigger, TabsContent }
+/**
+ * How many things are behind a tab (**CH-3**).
+ *
+ * Eight bare labels made a character with no goals, no lore and no factions
+ * look identical to one with three of each — while every sibling screen in the
+ * group counts things, the rosters and the map sidebar sections included. The
+ * zero is drawn rather than omitted, because "none" is the answer the finding
+ * is actually asking for; an absent number would only move the ambiguity.
+ *
+ * Only a tab holding a *list* takes one. Overview and Current State each show a
+ * single record, and "Overview 1" would be noise.
+ */
+const TabCount = ({ n }: { n: number }) => (
+  <span className={cn('ml-1.5 text-[10px] tabular-nums', n === 0 ? 'opacity-40' : 'opacity-70')}>
+    {n}
+  </span>
+)
+
+export { Tabs, TabsList, TabsTrigger, TabsContent, TabCount }

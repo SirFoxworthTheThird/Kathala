@@ -8,7 +8,14 @@ import { useGate } from '@/db/hooks/ReadingGateContext'
 import { LinkImageButton } from '@/components/LinkImageButton'
 import { PortraitImage } from '@/components/PortraitImage'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger, TabsContent, TabCount } from '@/components/ui/tabs'
+import { useGoalsForCharacter } from '@/db/hooks/useCharacterGoals'
+import { useCharacterRelationships } from '@/db/hooks/useRelationships'
+import { useMembershipsForCharacter } from '@/db/hooks/useFactions'
+import { useLorePagesForEntity } from '@/db/hooks/useLore'
+import { useCharacterSnapshots } from '@/db/hooks/useSnapshots'
+import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
+import { computeCharacterAppearances } from '@/lib/characterAppearances'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { OverviewTab } from './tabs/OverviewTab'
 import { CurrentStateTab } from './tabs/CurrentStateTab'
@@ -26,6 +33,22 @@ export default function CharacterDetailView() {
   const character = useCharacter(characterId ?? null)
   const gate = useGate()
   const [confirmOpen, setConfirmOpen] = useState(false)
+
+  // CH-3: each count comes from the same hook the tab itself reads, so the
+  // number on the tab and the list behind it cannot disagree.
+  const goals = useGoalsForCharacter(characterId ?? null)
+  const relationships = useCharacterRelationships(characterId ?? null)
+  const memberships = useMembershipsForCharacter(characterId ?? null)
+  const lorePages = useLorePagesForEntity(worldId ?? null, characterId ?? null)
+  const snapshots = useCharacterSnapshots(characterId ?? null)
+  const worldEvents = useWorldEvents(character?.worldId ?? null)
+  const worldChapters = useWorldChapters(character?.worldId ?? null)
+  const appearances = computeCharacterAppearances({
+    characterId: characterId ?? '',
+    events: worldEvents,
+    chapters: worldChapters,
+  })
+  const appearanceCount = appearances.present.length + appearances.mentioned.length
 
   if (!character) {
     return (
@@ -83,9 +106,14 @@ export default function CharacterDetailView() {
         </div>
 
         <div>
+          {/* The identity block: portrait, name, aliases, and nothing repeated
+              below (CH-2). The aliases were a bare list under the name, which
+              reads as a second name rather than as other names. */}
           <h2 className="text-base font-semibold text-[hsl(var(--foreground))]">{character.name}</h2>
           {character.aliases.length > 0 && (
-            <p className="text-xs text-[hsl(var(--muted-foreground))]">{character.aliases.join(', ')}</p>
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">
+              Also known as {character.aliases.join(', ')}
+            </p>
           )}
         </div>
 
@@ -112,12 +140,12 @@ export default function CharacterDetailView() {
           <TabsList className="mb-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="state">Current State</TabsTrigger>
-            <TabsTrigger value="history">History</TabsTrigger>
-            <TabsTrigger value="appearances">Appearances</TabsTrigger>
-            <TabsTrigger value="goals">Goals</TabsTrigger>
-            <TabsTrigger value="relationships">Relationships</TabsTrigger>
-            <TabsTrigger value="lore">Lore</TabsTrigger>
-            <TabsTrigger value="factions">Factions</TabsTrigger>
+            <TabsTrigger value="history">History<TabCount n={snapshots.length} /></TabsTrigger>
+            <TabsTrigger value="appearances">Appearances<TabCount n={appearanceCount} /></TabsTrigger>
+            <TabsTrigger value="goals">Goals<TabCount n={goals.length} /></TabsTrigger>
+            <TabsTrigger value="relationships">Relationships<TabCount n={relationships.length} /></TabsTrigger>
+            <TabsTrigger value="lore">Lore<TabCount n={lorePages.length} /></TabsTrigger>
+            <TabsTrigger value="factions">Factions<TabCount n={memberships.length} /></TabsTrigger>
           </TabsList>
           <TabsContent value="overview">
             <OverviewTab character={character} />

@@ -671,6 +671,20 @@ count badge tracks how many characters you're following.
 
 ![Character roster](images/06-characters.png)
 
+Open a character and the header carries who they are — portrait, name, and
+**Also known as** if they have other names. Below it, eight tabs, and each one
+that holds a list says how many things are in it, so you can see at a glance
+that a character has three relationships and no goals without opening either.
+A count of **0** is drawn rather than left off: *none* is an answer.
+
+**Overview** holds the rest of the character's own record — **Born**, their
+**Colour** on the map and the Arc grid, and the biography. A birth date is shown
+whether or not the world has a [calendar](#calendar--character-ages); with one
+it reads as a date, without one it falls back to the raw year, month and day.
+Fields you haven't filled in simply aren't listed.
+
+![A character's tabs and Overview](images/59-character-tabs.png)
+
 ### Viewing pictures full size
 
 Portraits are kept at up to 2048px but shown small — 48px in a character's
