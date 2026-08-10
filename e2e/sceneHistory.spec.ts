@@ -88,14 +88,21 @@ test.describe('Scene revision history', () => {
     const main = page.getByRole('main')
     await main.getByText('Scene A', { exact: true }).click()
     const editor = main.getByPlaceholder(/Write or paste this scene/)
-    // The first draft must be committed before the second replaces it, or no
-    // revision is captured and there is no history to open. That commit is a
-    // debounced autosave with no observable of its own, so a pause is the right
-    // instrument here — the flake was having none at all, not having one that
-    // was too short.
+    // The first draft must be committed before the second replaces it, or the
+    // two writes race, both read "nothing stored yet", and neither captures a
+    // revision. This used to wait a flat 2s on the belief that the commit was a
+    // debounced autosave with no observable of its own. It is neither debounced
+    // nor unobservable — it is a blur-triggered write, and the store is the
+    // observable — so this waits for the text to actually be there, the way the
+    // test above does. The flake was the guess, not its length.
     await editor.fill('The gate had not been opened in nine years, and it showed.')
     await editor.blur()
-    await page.waitForTimeout(2000)
+    await expect.poll(() => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as {
+        sceneTexts: { toArray: () => Promise<{ text: string }[]> }
+      }
+      return (await db.sceneTexts.toArray()).map((s) => s.text)
+    }), { timeout: 15_000 }).toContain('The gate had not been opened in nine years, and it showed.')
 
     await editor.fill('The gate had not been opened in nine years.')
     await editor.blur()
@@ -105,7 +112,11 @@ test.describe('Scene revision history', () => {
     await history.click()
     await expect(page.getByRole('heading', { name: 'Scene history' })).toBeVisible({ timeout: 30000 })
 
-    const geo = await page.evaluate(() => {
+    // Read repeatedly rather than once: the dialog's heading appears before its
+    // diff has rendered, so a single read lands on an empty list. Same shape as
+    // the rail-opacity race — an assertion racing the thing it measures, which
+    // from the outside is indistinguishable from a flaky app.
+    const readPills = () => page.evaluate(() => {
       const pills = Array.from(
         document.querySelectorAll('[role="dialog"] .whitespace-pre-wrap span span')
       ).map((s) => {
@@ -119,6 +130,10 @@ test.describe('Scene revision history', () => {
       }
       return { count: pills.length, texts: pills.map((p) => p.text), minGap }
     })
+
+    await expect.poll(async () => (await readPills()).texts, { timeout: 15_000 })
+      .toContain('years, and it showed.')
+    const geo = await readPills()
 
     // The two runs are highlighted separately...
     expect(geo.texts, 'the changed runs should be highlighted').toContain('years, and it showed.')

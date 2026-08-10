@@ -110,6 +110,10 @@ Turning reading mode off in a world's settings moves it back up to *Your
 worlds*, since at that point you are editing it rather than reading it. With
 nothing in reading mode there is only one list and no headings at all.
 
+Each card carries the world's name, when it was **created**, its description,
+and how much is in it — chapters and cast — so you can tell two drafts apart
+without opening either.
+
 ![World selector with worlds](images/02-home-worlds.png)
 
 ### Set up a blank world

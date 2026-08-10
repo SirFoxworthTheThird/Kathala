@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trash2, Globe, Download, Loader2, ChevronDown, Files, BookCopy, BookMarked } from 'lucide-react'
+import { Trash2, Globe, Download, Loader2, ChevronDown, Files, BookCopy, BookMarked, Users } from 'lucide-react'
 import type { World } from '@/types'
 import { Button } from '@/components/ui/button'
 import { PortraitImage } from '@/components/PortraitImage'
@@ -8,7 +8,15 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { StartSequelDialog } from './StartSequelDialog'
 import { deleteWorld } from '@/db/hooks/useWorlds'
 import { useReadingProgress } from '@/db/hooks/useReading'
+import { useWorldSummary } from '@/db/hooks/useWorldSummary'
 import { exportWorld, exportWorldSplit } from '@/lib/exportImport'
+
+/** A date a reader cannot misread: the month is named, not numbered (X-6). */
+function formatCreated(ts: number): string {
+  return new Date(ts).toLocaleDateString(undefined, {
+    day: 'numeric', month: 'short', year: 'numeric',
+  })
+}
 
 interface WorldCardProps {
   world: World
@@ -23,6 +31,7 @@ export function WorldCard({ world }: WorldCardProps) {
   const [sequelOpen, setSequelOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const progress = useReadingProgress(world.id)
+  const summary = useWorldSummary(world.id)
 
   // Close the export dropdown when clicking outside
   useEffect(() => {
@@ -73,8 +82,16 @@ export function WorldCard({ world }: WorldCardProps) {
           />
           <div>
             <h3 className="font-semibold text-[hsl(var(--foreground))]">{world.name}</h3>
+            {/*
+              SEL-3 and X-6: this was a bare `4/1/2026` — created or edited?
+              April or January? It is the creation date, so it says so, and the
+              month is named rather than numbered, which is the whole of the
+              ambiguity. The counts are the other half: the card a writer sees a
+              hundred times told them less about the world than the Library card
+              they saw once.
+            */}
             <p className="text-xs text-[hsl(var(--muted-foreground))]">
-              {new Date(world.createdAt).toLocaleDateString()}
+              Created {formatCreated(world.createdAt)}
             </p>
           </div>
         </div>
@@ -161,6 +178,19 @@ export function WorldCard({ world }: WorldCardProps) {
       {world.description && (
         <p className="text-sm text-[hsl(var(--muted-foreground))] line-clamp-2">
           {world.description}
+        </p>
+      )}
+
+      {(summary.chapters > 0 || summary.characters > 0) && (
+        <p className="flex items-center gap-3 text-xs text-[hsl(var(--muted-foreground))]">
+          <span className="flex items-center gap-1">
+            <BookCopy className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            {summary.chapters} {summary.chapters === 1 ? 'chapter' : 'chapters'}
+          </span>
+          <span className="flex items-center gap-1">
+            <Users className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            {summary.characters} {summary.characters === 1 ? 'character' : 'characters'}
+          </span>
         </p>
       )}
 

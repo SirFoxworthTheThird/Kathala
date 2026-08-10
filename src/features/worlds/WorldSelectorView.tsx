@@ -111,7 +111,7 @@ export default function WorldSelectorView() {
             <img src={faviconUrl} alt="PlotWeave" className="h-10 w-10 rounded object-cover" />
             <div>
               <h1 className="text-xl font-bold text-[hsl(var(--foreground))]">PlotWeave</h1>
-              <p className="text-sm text-[hsl(var(--muted-foreground))]">Story Tracker</p>
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">A story bible for fiction writers</p>
             </div>
           </div>
           {/*
