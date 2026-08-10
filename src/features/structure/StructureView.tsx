@@ -81,7 +81,7 @@ function ActRuler({ proportion }: { proportion: StructureProportion }) {
 export default function StructureView() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
-  const { setActiveEventId } = useAppStore()
+  const { activeEventId, setActiveEventId } = useAppStore()
 
   const events = useWorldEvents(worldId ?? null)
   const chapters = useWorldChapters(worldId ?? null)
@@ -155,10 +155,16 @@ export default function StructureView() {
           {sheet.slots.map((slot) => {
             const tint = beatActColor(slot.beat.act)
             return (
+              // W-1: the beat holding the scene the cursor is on is marked, so
+              // the chapter bar changes something here rather than sitting under
+              // a board that ignores it.
               <li
                 key={slot.beat.id}
+                aria-current={slot.event && slot.event.id === activeEventId ? 'true' : undefined}
                 className={`flex items-center gap-3 rounded-md border bg-[hsl(var(--card))] px-3 py-2 ${
-                  slot.outOfOrder ? 'border-amber-500/50' : 'border-[hsl(var(--border))]'
+                  slot.event && slot.event.id === activeEventId
+                    ? 'border-[hsl(var(--ring))] ring-1 ring-[hsl(var(--ring))]'
+                    : slot.outOfOrder ? 'border-amber-500/50' : 'border-[hsl(var(--border))]'
                 }`}
                 style={{ borderLeft: `3px solid ${tint}` }}
               >

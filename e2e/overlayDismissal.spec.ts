@@ -46,26 +46,30 @@ test.describe('Overlay dismissal', () => {
   test('Escape closes every top-bar overlay', async ({ page }) => {
     await worldWithChapters(page)
 
+    // Each marker is the overlay itself, not text that happens to name it. The
+    // loose page-wide versions these replace made the Continuity case flake:
+    // /Continuity/ matches whatever else the checker leaves on screen, so the
+    // "it closed" assertion was really "no word like that is anywhere".
     const cases: { name: string; open: () => Promise<void>; marker: () => ReturnType<Page['getByText']> }[] = [
       {
         name: "Writer's Brief",
         open: async () => { await page.getByRole('button', { name: "Writer's Brief" }).click() },
-        marker: () => page.getByText(/Writer.s Brief/),
+        marker: () => page.getByRole('dialog', { name: "Writer's Brief" }),
       },
       {
         name: 'Continuity Checker',
         open: async () => { await page.getByRole('button', { name: 'Continuity Checker' }).click() },
-        marker: () => page.getByText(/Continuity/),
+        marker: () => page.getByRole('dialog', { name: 'Continuity Checker' }),
       },
       {
         name: 'Recent changes',
         open: async () => { await page.getByRole('button', { name: 'Recent changes' }).click() },
-        marker: () => page.getByText('Recent changes'),
+        marker: () => page.getByRole('dialog', { name: 'Recent changes' }),
       },
       {
         name: 'Chapter Diff',
         open: async () => { await page.getByTitle('Compare chapters').click() },
-        marker: () => page.getByText('Chapter Diff'),
+        marker: () => page.getByRole('dialog', { name: 'Chapter Diff' }),
       },
       {
         name: 'Help',

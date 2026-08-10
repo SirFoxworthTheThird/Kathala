@@ -49,9 +49,12 @@ test.describe('Corkboard', () => {
     const cards = page.locator('p.font-semibold', { hasText: /Scene/ })
     await expect(cards).toHaveText(['First Scene', 'Second Scene'])
 
-    // Drag the second card onto the first → it should land first.
-    await page.getByText('Second Scene', { exact: true })
-      .dragTo(page.getByText('First Scene', { exact: true }))
+    // Drag the second card onto the first → it should land first. Scoped to the
+    // board: the chapter bar is on this screen now (W-1) and carries the same
+    // scene titles, so a page-wide match here is ambiguous.
+    const board = page.getByRole('main')
+    await board.getByText('Second Scene', { exact: true })
+      .dragTo(board.getByText('First Scene', { exact: true }))
 
     await expect(cards).toHaveText(['Second Scene', 'First Scene'])
   })

@@ -35,7 +35,9 @@ test.describe('Structure board', () => {
     // Assign the event to the Hook beat.
     await page.getByLabel('Assign a scene to Hook').selectOption({ label: 'Ch. 1 · The gate opens' })
     await expect(page.getByText('1 / 7 beats placed')).toBeVisible()
-    await expect(page.getByRole('button', { name: /The gate opens/ })).toBeVisible()
+    // Scoped to the board: the chapter bar is on this screen now (W-1) and its
+    // ticks carry the same scene titles.
+    await expect(page.getByRole('main').getByRole('button', { name: /The gate opens/ })).toBeVisible()
 
     // Switch template — Save the Cat has 15 beats, none placed (the event is
     // tagged with a three-act beat).

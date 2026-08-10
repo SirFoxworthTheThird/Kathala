@@ -18,10 +18,12 @@ interface DragState {
 // ── One scene card ─────────────────────────────────────────────────────────────
 
 function SceneCard({
-  event, pov, onOpen, onStatusChange, onDragStart, onDragEnd, dragging,
+  event, pov, isCurrent, onOpen, onStatusChange, onDragStart, onDragEnd, dragging,
 }: {
   event: WorldEvent
   pov: Character | null
+  /** The scene the time cursor is on (W-1). */
+  isCurrent: boolean
   onOpen: () => void
   onStatusChange: (s: WorldEvent['status']) => void
   onDragStart: () => void
@@ -35,7 +37,13 @@ function SceneCard({
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
-      className={`group rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-2.5 text-left shadow-sm transition-opacity ${dragging ? 'opacity-40' : ''}`}
+      // W-1: the board now answers to the cursor, which is what earns it the
+      // chapter bar — a control that moved nothing would have been worse than
+      // its absence.
+      aria-current={isCurrent ? 'true' : undefined}
+      className={`group rounded-md border bg-[hsl(var(--background))] p-2.5 text-left shadow-sm transition-opacity ${
+        isCurrent ? 'border-[hsl(var(--ring))] ring-1 ring-[hsl(var(--ring))]' : 'border-[hsl(var(--border))]'
+      } ${dragging ? 'opacity-40' : ''}`}
     >
       <div className="flex items-start gap-1.5">
         <GripVertical className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-grab text-[hsl(var(--muted-foreground))] opacity-40 group-hover:opacity-100" aria-hidden="true" />
@@ -88,7 +96,7 @@ function SceneCard({
 export default function CorkboardView() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
-  const { setActiveEventId } = useAppStore()
+  const { activeEventId, setActiveEventId } = useAppStore()
 
   const chapters   = useWorldChapters(worldId ?? null)
   const events     = useWorldEvents(worldId ?? null)
@@ -197,6 +205,7 @@ export default function CorkboardView() {
                       <SceneCard
                         event={ev}
                         pov={ev.povCharacterId ? charById.get(ev.povCharacterId) ?? null : null}
+                        isCurrent={ev.id === activeEventId}
                         dragging={drag?.eventId === ev.id}
                         onOpen={() => openEvent(ev)}
                         onStatusChange={(s) => updateEvent(ev.id, { status: s })}

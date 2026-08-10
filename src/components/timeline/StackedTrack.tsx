@@ -66,7 +66,7 @@ export function StackedTrack({
   })
 
   return (
-    <div style={{ position: 'fixed', bottom: 0, left: 'var(--pw-nav-w, 0px)', right: 0, zIndex: 1000 }}>
+    <div data-chapter-bar style={{ position: 'fixed', bottom: 0, left: 'var(--pw-nav-w, 0px)', right: 0, zIndex: 1000 }}>
       <div style={{
         height: BAR_H_STACKED,
         background: 'var(--tl-bg)',

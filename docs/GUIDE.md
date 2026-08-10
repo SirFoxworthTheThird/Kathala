@@ -68,6 +68,12 @@ chapter on the same timeline.
 Changing the cursor never edits the story; it only changes the moment you're
 viewing. You'll see the cursor on nearly every screen in this guide.
 
+The bar is there wherever the cursor means something — the Timeline, the
+Corkboard, the Structure board, the Arc grid, the Calendar, the Lore roster, the
+Maps and the Manuscript. It's left off the world dashboard and Settings, which
+have no single moment in them, and off the lore page editor, which is a
+full-height writing surface.
+
 ---
 
 ## Getting started — the world selector
@@ -587,6 +593,8 @@ see structure at a glance and shuffle it. Each chapter is a column; each scene
 - **Change a scene's status** right on the card with the status pill.
 - **Click a card's title** to jump to that scene in the chapter detail with the
   time cursor set to it.
+- The card for the scene the **time cursor** is on is outlined, so moving along
+  the bar at the bottom walks the board with you.
 
 It's the same events as the Timeline, shown as a board — reorder here or there
 and both stay in sync.
@@ -871,6 +879,8 @@ its beats appears as a slot, in order and tinted by act.
   so **gaps** — a missing midpoint, no clear climax — stand out.
 - A beat is flagged **out of order** when its scene falls earlier in the story
   than a later beat's scene, catching a structure that's been shuffled.
+- The beat holding the scene the **time cursor** is on is outlined, so you can
+  tell where you are in the shape of the book while you read along the bar.
 
 ### How the book divides
 

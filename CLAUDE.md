@@ -127,6 +127,18 @@ tip before saying it passes, and read what the tools already wrote — Playwrigh
 saves a page snapshot to `test-results/…/error-context.md` that usually
 identifies the failure faster than reasoning about the error message does.
 
+**Scope a locator to what it is about.** A page-wide `getByText('First Scene')`
+or `getByRole('button', { name: /The gate opens/ })` is a bug waiting for a
+second match, and the app's own chrome supplies them: the time-cursor pill
+carries the active scene's title, the chapter bar carries every scene's title,
+and a per-row menu is named after its row. Four specs broke this way in one
+sitting — `calendar`, `corkboard`, `structure`, `imageLightbox` — and every one
+of them was ambiguous *before* the change that exposed it, passing only because
+nothing else happened to match yet. A failure that appears under one ordering
+and not another is this, not a flake. Reach through `page.getByRole('main')`,
+through the dialog, through the row — or pass `exact: true` where the name
+really is the whole name.
+
 ### Documentation
 The illustrated user guide lives at `docs/GUIDE.md`, with screenshots in `docs/images/` (numbered, e.g. `24-manuscript.png`). `README.md` links to it.
 
