@@ -241,7 +241,13 @@ The dashboard becomes a way in rather than a progress report. Recent Events,
 Scene Status, Writing Progress, Cast Balance, Plot Threads and Motifs all
 measure the manuscript rather than the story, so they go, and the tiles stop
 talking about *your* cast and *your* catalogue — they count what you have met
-so far.
+so far. It also says outright that reading mode is on, where you have read up
+to, and what that is currently keeping back — *12 characters, 4 places and 2
+items you have not met* — with a link to the setting that turns it off. It is
+the screen the Library lands you on, so it is the one that should not leave you
+guessing what changed.
+
+![The dashboard in reading mode](images/61-reading-mode-dashboard.png)
 
 Detail screens show the same information without the editing furniture. A
 character's page is read straight through — their description, where they
@@ -500,8 +506,13 @@ shape of your story at a glance.
 
 ### Multiple timelines and timeline relationships
 
-Creating another timeline adds a tab at the top of the Timeline page. Use
-**Timeline Relationships** to describe how two timelines connect:
+Creating another timeline adds a tab at the top of the Timeline page. Beside
+each timeline's name is what it holds — *2 chapters*, or *2 chapters · Ch.
+12–13* where its chapters do not begin at one, which is common in an imported
+world or a book kept in two halves. Without the span, a timeline labelled *10
+chapters* opening at Ch. 12 reads as eleven chapters gone missing.
+
+Use **Timeline Relationships** to describe how two timelines connect:
 
 - **Frame Narrative** — an outer timeline tells or contains the inner story.
 - **Historical Echo** — the same places or patterns recur in different eras.

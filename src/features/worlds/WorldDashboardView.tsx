@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, type ElementType, type ReactNode } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   Map as MapIcon, Users, Network, BookOpen,
   Package, BarChart2, ShieldAlert, Clock, Layers, Pencil, FileEdit, Spline, PenLine, Sparkle,
@@ -12,6 +12,7 @@ import { db } from '@/db/database'
 import { useWorld, updateWorld } from '@/db/hooks/useWorlds'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useReadingGate } from '@/db/hooks/useReading'
+import { describeReadingPosition } from '@/lib/readingNotice'
 import { useRootMapLayers } from '@/db/hooks/useMapLayers'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useRelationships } from '@/db/hooks/useRelationships'
@@ -364,6 +365,39 @@ export default function WorldDashboardView() {
           )}
         </div>
       </div>
+
+      {/*
+        RD-3: the dashboard is where the Library drops you, and it was the one
+        screen in reading mode that never used the words. The mode was
+        inferable only from a changed theme and sublabels like "you have met so
+        far", and nothing said how to leave. Every roster explains itself; the
+        landing screen now does too.
+      */}
+      {gate.active && (
+        <aside
+          aria-label="Reading mode"
+          className="flex flex-wrap items-start gap-x-3 gap-y-1 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3"
+        >
+          <BookOpen className="mt-0.5 h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-[hsl(var(--foreground))]">
+              Reading mode is on
+            </p>
+            <p className="mt-0.5 text-sm text-[hsl(var(--muted-foreground))]">
+              {describeReadingPosition(gate.chapterNumber, gate.hiddenCounts)}{' '}
+              Editing is put away while you read.
+            </p>
+          </div>
+          {worldId && (
+            <Link
+              to={`/worlds/${worldId}/settings`}
+              className="shrink-0 rounded-md border border-[hsl(var(--border))] px-2.5 py-1 text-xs text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent)/0.4)] hover:text-[hsl(var(--foreground))]"
+            >
+              Turn it off in settings
+            </Link>
+          )}
+        </aside>
+      )}
 
       {/* Suggestions are prompts to go and build something — "add your first
           character", "draw a map". There is nothing for a reader to act on. */}

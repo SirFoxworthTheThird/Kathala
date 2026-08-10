@@ -8,6 +8,7 @@ import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
 import { buildCombinedSequence, type CombinedOrder, type CombinedRow } from '@/lib/combinedTimeline'
 import { chaptersWithThread } from '@/lib/plotThreads'
 import { threadStrip } from '@/lib/threadStrip'
+import { describeChapterSpan } from '@/lib/chapterSpan'
 import { useWorld } from '@/db/hooks/useWorlds'
 import { useAppStore } from '@/store'
 import { computeInWorldDays } from '@/lib/inWorldTime'
@@ -376,7 +377,12 @@ export default function TimelineView() {
               <span className="text-sm font-medium">
                 {timelines.find((t) => t.id === currentTimelineId)?.name ?? 'Timeline'}
               </span>
-              <span className="text-xs text-[hsl(var(--muted-foreground))]">({chapters.length} chapters)</span>
+              {/* MT-4: a timeline can hold any chapter numbering — the shipped
+                  examples carry the book's own — so "10 chapters" could sit
+                  above a first row of Ch. 12 and read as missing data. */}
+              <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                ({describeChapterSpan(chapters.map((c) => c.number))})
+              </span>
               <div className="ml-2 flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-xs" role="group" aria-label="Timeline order">
                 <button
                   onClick={() => setViewMode('narrative')}
