@@ -92,9 +92,18 @@ export function OnboardingWizard({ worldId, onExit }: OnboardingWizardProps) {
     // a card rather than as a form pinned to the top-left corner.
     <div className="flex min-h-full items-center justify-center p-6">
       <div className="w-full max-w-xl space-y-8 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6 shadow-2xl sm:p-8">
-      {/* Step indicator */}
+      {/*
+        NEW-2: the indicator was four bare numbers. The step names existed, but
+        only inside each dot's `aria-label` — so a screen reader was told what
+        step 3 would ask and a sighted reader was not. They are on screen now,
+        which is what answers the finding's three questions at once: what you
+        are committing to, how long it is, and what is coming.
+
+        Below `sm` only the current step keeps its name, since four labels in a
+        row do not fit a phone — the numbers and the tick still carry position.
+      */}
       <nav aria-label="Wizard progress">
-        <ol className="flex items-center gap-2">
+        <ol className="flex flex-wrap items-center gap-x-2 gap-y-1">
           {STEP_LABELS.map((label, i) => {
             const stepNum = (i + 1) as WizardStep
             const isActive    = state.step === stepNum
@@ -114,6 +123,17 @@ export function OnboardingWizard({ worldId, onExit }: OnboardingWizardProps) {
                   )}
                 >
                   {isCompleted ? '✓' : stepNum}
+                </span>
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'text-[11px] leading-tight',
+                    isActive
+                      ? 'font-medium text-[hsl(var(--foreground))]'
+                      : 'hidden text-[hsl(var(--muted-foreground))] sm:inline',
+                  )}
+                >
+                  {label}
                 </span>
                 {i < STEP_LABELS.length - 1 && (
                   <span

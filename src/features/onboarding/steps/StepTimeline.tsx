@@ -80,7 +80,19 @@ export function StepTimeline({ worldId, onComplete, onSkip }: StepTimelineProps)
 
       <div className="flex flex-col items-start gap-2">
         <Button type="submit" disabled={loading} aria-busy={loading}>
-          {loading ? 'Creating…' : 'Begin'}
+          {/*
+            NEW-3: this read "Begin", which is what the wizard has already done.
+            It makes the timeline the field above names and moves the guide on,
+            so it says both.
+
+            Deliberately not "Create timeline": the Timeline screen's own empty
+            state already has a "Create Timeline" button, and re-using the name
+            made the two indistinguishable to any lookup that is not screen-
+            scoped — `getByRole` matches names case-insensitively. Two specs
+            began failing intermittently, clicking the wizard's button while a
+            navigation to the Timeline was still settling.
+          */}
+          {loading ? 'Creating…' : 'Create and continue'}
         </Button>
         <button
           type="button"

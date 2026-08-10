@@ -107,7 +107,7 @@ test.describe('The time cursor follows you', () => {
 
     // Step 1 is headed "Your story begins with a moment" and creates one.
     await page.getByLabel('Timeline name').fill('Main Timeline')
-    await page.getByRole('button', { name: 'Begin' }).click()
+    await page.getByRole('button', { name: 'Create and continue' }).click()
 
     // The guide chose a moment on the writer's behalf, so the app is now in it —
     // rather than handing back an app that had forgotten.

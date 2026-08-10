@@ -153,6 +153,14 @@ and not another is this, not a flake. Reach through `page.getByRole('main')`,
 through the dialog, through the row — or pass `exact: true` where the name
 really is the whole name.
 
+The same trap works in reverse, from the app side: **giving a control a name
+another screen already uses** makes every unscoped lookup ambiguous *across a
+navigation*, which shows up as an intermittent rather than a strict-mode error.
+Renaming the first-run guide's step-1 button to "Create timeline" collided with
+the Timeline screen's own "Create Timeline" — `getByRole` matches names
+case-insensitively — and two specs began clicking the wizard while a navigation
+was still settling. Before naming a button, grep for the name.
+
 ### Documentation
 The illustrated user guide lives at `docs/GUIDE.md`, with screenshots in `docs/images/` (numbered, e.g. `24-manuscript.png`). `README.md` links to it.
 
