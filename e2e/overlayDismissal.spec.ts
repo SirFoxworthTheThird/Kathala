@@ -86,6 +86,32 @@ test.describe('Overlay dismissal', () => {
     }
   })
 
+  test('Escape closes the Continuity Checker wherever focus is', async ({ page }) => {
+    await worldWithChapters(page)
+
+    // The panel used to close off its container's React onKeyDown, which only
+    // fires once focus is inside it — and focus was handed over by a
+    // `setTimeout(…, 0)`. Press Escape before that runs and nothing happened.
+    // It failed about one run in eight under a loaded suite; forcing focus out
+    // of the panel reproduces it every time.
+    await page.getByRole('button', { name: 'Continuity Checker' }).click()
+    const panel = page.getByRole('dialog', { name: 'Continuity Checker' })
+    await expect(panel).toBeVisible()
+
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+    await expect.poll(() => page.evaluate(() => document.activeElement?.tagName)).toBe('BODY')
+
+    await page.keyboard.press('Escape')
+    await expect(panel).toHaveCount(0)
+
+    // The opposite condition, so this cannot pass on a panel that never opens:
+    // it opens again and stays open until the key is pressed.
+    await page.getByRole('button', { name: 'Continuity Checker' }).click()
+    await expect(panel).toBeVisible()
+    await page.waitForTimeout(300)
+    await expect(panel).toBeVisible()
+  })
+
   test('every overlay close button has an accessible name', async ({ page }) => {
     await worldWithChapters(page)
     await page.getByTitle('Compare chapters').click()

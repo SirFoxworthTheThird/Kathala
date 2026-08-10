@@ -34,6 +34,18 @@ test.describe('Scene revision history', () => {
     await editor.fill('The quick brown fox.')
     await editor.blur()
 
+    // Wait for the first draft to be *stored*, not just typed. A revision is
+    // only captured when there is existing prose to snapshot, so revising
+    // before the first save lands leaves nothing to capture and no History
+    // button — which is how this test failed under a loaded suite while
+    // passing on its own.
+    await expect.poll(() => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as {
+        sceneTexts: { toArray: () => Promise<{ text: string }[]> }
+      }
+      return (await db.sceneTexts.toArray()).map((s) => s.text)
+    }), { timeout: 15_000 }).toContain('The quick brown fox.')
+
     // Revise it — this captures the first draft as a version.
     await editor.fill('The quick red fox.')
     await editor.blur()

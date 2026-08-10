@@ -40,7 +40,8 @@ function ChapterGoal({ chapterId, words, goal }: { chapterId: string; words: num
           min={0}
           step={500}
           value={value}
-          placeholder="—"
+          placeholder="none"
+          aria-label="Word goal for this chapter"
           onChange={(e) => setValue(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
@@ -97,10 +98,16 @@ export default function ManuscriptView() {
 
   return (
     <div className="flex h-full flex-col">
+      {/*
+        MS-2: this carried `count={totalWords}` — a bare pill reading `0`, or
+        `48,000`, beside the word "Manuscript". The pill works on the rosters
+        because the title names what is being counted: "Characters 45" needs no
+        label. "Manuscript 0" needs one, and the subtitle a line below was
+        already giving the same number with its unit attached.
+      */}
       <PageHeader
         icon={FileText}
         title="Manuscript"
-        count={manuscript.totalWords}
         description={`${nf.format(manuscript.writtenScenes)} of ${nf.format(manuscript.totalScenes)} scenes written · ${nf.format(manuscript.totalWords)} words`}
         actions={
           <div className="flex items-center gap-2">
@@ -150,7 +157,10 @@ export default function ManuscriptView() {
             min={0}
             step={1000}
             value={goal || ''}
-            placeholder="—"
+            // MS-3: this was an em-dash, which in a field reads as a value that
+            // failed to load rather than as one nobody has set.
+            placeholder="none"
+            aria-label="Word goal for the book"
             onChange={(e) => updateGoal(Number(e.target.value))}
             className="h-8 w-24 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 text-xs tabular-nums text-[hsl(var(--foreground))]"
           />
@@ -167,6 +177,15 @@ export default function ManuscriptView() {
 
       <div className="flex-1 overflow-auto">
         {!hasProse ? (
+          /*
+            MS-4 asked for a second version of this sentence, for a reader on a
+            Library world who cannot write the prose it tells them to write.
+            That reader never gets here: Manuscript is `writingOnly`, so the
+            router redirects a reading-mode world to its dashboard rather than
+            serving the screen. The only person who sees this is one who can act
+            on it. Adding the branch would have been unreachable code, which is
+            what the Items section in EventCard turned out to be under X-4.
+          */
           <EmptyState
             icon={FileText}
             title="No prose yet"

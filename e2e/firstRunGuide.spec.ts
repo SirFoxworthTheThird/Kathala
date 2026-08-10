@@ -36,9 +36,14 @@ test.describe('The first-run guide owns the screen without taking the rail away'
   test('the rail recedes while the guide is up, and comes back after', async ({ page }) => {
     await firstRunWorld(page)
 
-    // Presence: it has receded.
-    const dimmed = await page.locator(rail).evaluate((el) => Number(getComputedStyle(el).opacity))
-    expect(dimmed, 'the rail should be dimmed while the guide is up').toBeLessThan(1)
+    // Presence: it has receded. Polled rather than read once — the rail fades
+    // over 200ms, so an instant read lands mid-transition and sees the 1 it is
+    // animating away from. That is a race in the assertion, not in the app, but
+    // it looks exactly like a flake from the outside.
+    await expect.poll(
+      () => page.locator(rail).evaluate((el) => Number(getComputedStyle(el).opacity)),
+      { timeout: 10_000, message: 'the rail should be dimmed while the guide is up' },
+    ).toBeLessThan(1)
 
     // Absence of the two reverted attempts: nothing has been removed and
     // nothing has been made unclickable. This is the half that fails if anyone

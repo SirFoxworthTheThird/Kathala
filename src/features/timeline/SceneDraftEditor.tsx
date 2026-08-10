@@ -45,6 +45,23 @@ export function SceneDraftEditor({
   const [highlight, setHighlight] = useState(0)
   const pendingCaret = useRef<number | null>(null)
 
+  /*
+    WR-1: the box was a fixed five rows with its own scrollbar, so 882 words of
+    prose were written and read through a letterbox on the app's central
+    activity. It grows to its content now, with `rows` as the floor, so a scene
+    is as tall as it is.
+
+    The resize handle went with it. It existed to escape the letterbox, and
+    dragging it would only be undone by the next keystroke — auto-growing and
+    hand-resizing cannot both own the height.
+  */
+  useLayoutEffect(() => {
+    const ta = taRef.current
+    if (!ta) return
+    ta.style.height = 'auto'
+    ta.style.height = `${ta.scrollHeight}px`
+  }, [value])
+
   // Apply a caret position requested after a controlled value update.
   useLayoutEffect(() => {
     if (pendingCaret.current != null && taRef.current) {
@@ -111,7 +128,7 @@ export function SceneDraftEditor({
         onClick={(e) => refresh(value, (e.target as HTMLTextAreaElement).selectionStart ?? 0)}
         placeholder={placeholder}
         rows={rows}
-        className="text-sm font-serif leading-relaxed"
+        className="resize-none overflow-hidden text-sm font-serif leading-relaxed"
       />
       {mention && matches.length > 0 && (
         <div className="absolute left-2 top-full z-20 mt-1 w-56 overflow-hidden rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--popover))] shadow-lg">

@@ -276,6 +276,31 @@ export function ContinuityChecker() {
     }
   }, [checkerOpen])
 
+  /*
+    Escape, independent of where focus happens to be.
+
+    X-11 recorded this panel as having gained "the same handler" as the others.
+    It had not: closing ran off the container's React `onKeyDown`, which only
+    fires once focus is *inside* the panel — and focus is handed over by the
+    `setTimeout(…, 0)` above. Press Escape before that timeout runs and the key
+    went nowhere. It failed roughly one run in eight under a loaded suite, which
+    is exactly what a race looks like from the outside, and it took tightening
+    the test's locator to see it as a real failure rather than a flake.
+
+    `defaultPrevented` is the guard for the inline "reason for suppressing"
+    field, which handles Escape itself to cancel the note. That decision is the
+    innermost one, so it wins and the panel stays open.
+  */
+  useEffect(() => {
+    if (!checkerOpen) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape' || e.defaultPrevented) return
+      setCheckerOpen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [checkerOpen, setCheckerOpen])
+
   const suppressedSet = suppressedIds
 
   // Flat ordered list of navigable (non-suppressed) issues for keyboard nav

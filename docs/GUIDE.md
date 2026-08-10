@@ -605,7 +605,9 @@ and both stay in sync.
 
 The **Manuscript** view stitches every scene's prose into one continuous
 document, in reading order, so you can read and export your book without leaving
-PlotWeave. Write a scene's prose on its event, and it appears here automatically.
+PlotWeave. Write a scene's prose on its event, and it appears here automatically —
+the box on the event grows to fit what you write, so a long scene isn't read
+through a five-line window.
 
 ![Manuscript view](images/24-manuscript.png)
 
@@ -613,7 +615,9 @@ PlotWeave. Write a scene's prose on its event, and it appears here automatically
   labels, and links back to each event; Reading hides the scaffolding for a clean
   read-through of only the written scenes.
 - **Word goals** — set a target for the whole manuscript (in the header) and a
-  per-chapter goal (in Draft mode); a progress bar tracks words against each.
+  per-chapter goal (in Draft mode); a progress bar tracks words against each. A
+  goal you haven't set reads **none**, and the bar only appears once there is a
+  target to measure against.
   Per-chapter goals are saved with the chapter.
 - **Export** — download or copy the manuscript as Markdown, HTML, or plain text,
   or **compile a finished book file**: **Word (.docx)** or **EPUB**. The book
