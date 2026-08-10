@@ -1,7 +1,12 @@
 import { X, BookOpen, Users, Network, Package, Scroll, MapPin, Heart, Skull, ChevronRight, BookMarked, Shield, Eye, EyeOff, KeyRound, Drama } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useAppStore } from '@/store'
+import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/EmptyState'
+import { MODAL_BACKDROP } from '@/components/ui/dialog'
+import { buildCombinedSequence, groupChapterRuns } from '@/lib/combinedTimeline'
+import type { Chapter, Timeline, WorldEvent } from '@/types'
 import { useFocusTrap } from '@/lib/useFocusTrap'
 import { useChapter, useEvent, useEvents, useWorldEvents, useWorldChapters, useTimelines } from '@/db/hooks/useTimeline'
 import { computeInWorldDays } from '@/lib/inWorldTime'
@@ -45,10 +50,78 @@ function Section({ title, icon: Icon, count, children }: {
   )
 }
 
+/**
+ * What the brief offers when no scene is selected (**WB-1**).
+ *
+ * It used to spend a full-height panel on one sentence — *"Select an event from
+ * the timeline bar to see the brief"* — which named a control without being one.
+ * Picking a scene is something that can be done from here: the cursor is a
+ * single store value, and the same list the timeline bar draws fits in the
+ * space the sentence was wasting. So the panel offers the act (**X-4** rule 1),
+ * and falls back to routing at the Timeline (rule 2) only when there is no
+ * scene to pick.
+ *
+ * Reading order — timeline, then chapter number, then position — is the bottom
+ * bar's own, so a scene sits where the writer last saw it.
+ */
+function ScenePicker({ events, chapters, timelines, onPick, onOpenTimeline }: {
+  events: WorldEvent[]
+  chapters: Chapter[]
+  timelines: Timeline[]
+  onPick: (eventId: string) => void
+  onOpenTimeline: () => void
+}) {
+  const runs = useMemo(
+    () => groupChapterRuns(buildCombinedSequence(events, chapters, timelines, 'chapter')),
+    [events, chapters, timelines],
+  )
+
+  if (runs.length === 0) {
+    return (
+      <EmptyState
+        icon={Scroll}
+        title="No scenes yet"
+        description="The brief gathers everything true at one moment — who is in the room, what they carry, what they know. It needs a scene to stand in."
+        action={<Button size="sm" onClick={onOpenTimeline}>Open Timeline</Button>}
+      />
+    )
+  }
+
+  return (
+    <div className="py-1">
+      <p className="mb-3 text-xs text-[hsl(var(--muted-foreground))]">
+        Pick the scene to brief. The timeline bar moves the same cursor.
+      </p>
+      <div className="space-y-3">
+        {runs.map((run) => (
+          <div key={run.key}>
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+              {run.chapter ? `Chapter ${run.chapter.number}${run.chapter.title ? ` · ${run.chapter.title}` : ''}` : 'Unfiled'}
+            </p>
+            <ul className="space-y-1">
+              {run.events.map((ev) => (
+                <li key={ev.id}>
+                  <button
+                    onClick={() => onPick(ev.id)}
+                    className="flex w-full items-start gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1.5 text-left text-xs text-[hsl(var(--foreground))] transition-colors hover:border-[hsl(var(--ring)/0.4)]"
+                  >
+                    <ChevronRight className="mt-0.5 h-3 w-3 shrink-0 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+                    <span className="min-w-0 flex-1">{ev.title}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function WritersBriefPanel() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
-  const { briefOpen, setBriefOpen, activeEventId } = useAppStore()
+  const { briefOpen, setBriefOpen, activeEventId, setActiveEventId } = useAppStore()
   const panelRef = useRef<HTMLDivElement>(null)
 
   useFocusTrap(panelRef, briefOpen)
@@ -148,7 +221,7 @@ export function WritersBriefPanel() {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[3000] bg-black/30"
+        className={cn('fixed inset-0 z-[3000]', MODAL_BACKDROP)}
         onClick={() => setBriefOpen(false)}
       />
 
@@ -176,9 +249,13 @@ export function WritersBriefPanel() {
         {/* Content */}
         <div className="flex-1 overflow-auto px-4 py-3">
           {!activeEventId ? (
-            <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">
-              Select an event from the timeline bar to see the brief.
-            </p>
+            <ScenePicker
+              events={worldEvents}
+              chapters={worldChapters}
+              timelines={worldTimelines}
+              onPick={setActiveEventId}
+              onOpenTimeline={() => { navigate(`/worlds/${worldId}/timeline`); setBriefOpen(false) }}
+            />
           ) : !chapter ? (
             <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading…</p>
           ) : (

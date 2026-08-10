@@ -8,6 +8,7 @@ import { useAppStore } from '@/store'
 import { useFactionReveal } from '@/db/hooks/useFactions'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { cn } from '@/lib/utils'
+import { MODAL_BACKDROP } from '@/components/ui/dialog'
 
 type ResultType = 'character' | 'item' | 'location' | 'chapter' | 'event' | 'timeline' | 'relationship' | 'route' | 'region' | 'lore' | 'faction'
 
@@ -260,7 +261,7 @@ export function SearchPalette() {
       onClick={close}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className={cn('absolute inset-0', MODAL_BACKDROP)} />
 
       {/* Palette */}
       <div

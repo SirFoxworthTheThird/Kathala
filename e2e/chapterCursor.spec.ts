@@ -59,9 +59,11 @@ test.describe('The time cursor follows you', () => {
     await expect(cursor(page)).not.toContainText('All chapters')
 
     // The Writer's Brief was the symptom measured in the review: it opened empty
-    // while the chapter was on screen.
+    // while the chapter was on screen. Asserted as a presence — its no-cursor
+    // state is now a scene picker (WB-1) rather than a sentence, so checking for
+    // the sentence's absence would prove nothing.
     await page.getByTitle("Writer's Brief").click()
-    await expect(page.getByText('Select an event from the timeline bar to see the brief.')).toHaveCount(0)
+    await expect(page.getByText('Active Event')).toBeVisible({ timeout: 15_000 })
     await page.keyboard.press('Escape')
 
     // Opening a different chapter moves you to that one.

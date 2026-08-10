@@ -27,10 +27,10 @@ test.describe("Writer's Brief panel", () => {
     await expect(page.getByText("Writer's Brief")).not.toBeVisible()
   })
 
-  test('shows prompt to select event when no event is active', async ({ page }) => {
-    await page.getByTitle("Writer's Brief").click()
-    await expect(page.getByText('Select an event from the timeline bar to see the brief.')).toBeVisible()
-  })
+  // The no-cursor state is WB-1's subject and is covered in full by
+  // `writersBriefCursor.spec.ts` — a picker when there are scenes, a route to
+  // the Timeline when there are none. It used to be one sentence naming the
+  // timeline bar, asserted here.
 
   test('shows chapter content when an event is active', async ({ page }) => {
     // Create a timeline with a chapter and event

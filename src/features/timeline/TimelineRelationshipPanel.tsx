@@ -15,6 +15,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { MODAL_BACKDROP } from '@/components/ui/dialog'
+import { cn } from '@/lib/utils'
 import type {
   Timeline, TimelineRelationship, TimelineAnchor, TimelineSyncPoint, TimelineRelationshipType,
 } from '@/types'
@@ -565,7 +567,7 @@ export function TimelineRelationshipPanel({
   return (
     <>
       <div
-        className="fixed inset-0 z-[3000] bg-black/30"
+        className={cn('fixed inset-0 z-[3000]', MODAL_BACKDROP)}
         onClick={() => onOpenChange(false)}
       />
       <div className="fixed right-0 top-0 z-[3001] flex h-[100dvh] w-96 max-w-[92vw] flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-2xl">

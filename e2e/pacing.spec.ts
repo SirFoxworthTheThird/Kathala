@@ -57,11 +57,12 @@ test.describe('Pacing curve', () => {
     await expect(page.getByText('rate scenes on their cards to draw the curve')).not.toBeVisible()
 
     // Clicking the curve point moves the global time cursor to that event —
-    // verified via the Writer's Brief, which stops prompting once an event is
-    // active.
+    // verified via the Writer's Brief, which briefs that moment once one is
+    // active. Asserted as a presence: the panel's no-cursor state is now a
+    // scene picker (WB-1), so an absence here would pass either way.
     await page.locator('g.cursor-pointer').first().click()
     await page.getByTitle("Writer's Brief").click()
-    await expect(page.getByText('Select an event from the timeline bar to see the brief.')).not.toBeVisible()
+    await expect(page.getByText('Active Event')).toBeVisible()
   })
 
   test('clicking the active tension level clears the rating', async ({ page }) => {

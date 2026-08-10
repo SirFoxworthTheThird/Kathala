@@ -10,6 +10,7 @@ import { useRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { cn } from '@/lib/utils'
+import { MODAL_BACKDROP } from '@/components/ui/dialog'
 import type { CharacterSnapshot, RelationshipSnapshot } from '@/types'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -211,7 +212,7 @@ export function ChapterDiffModal() {
       className="fixed inset-0 z-[3000] flex items-start justify-center pt-[8vh]"
       onClick={() => setDiffOpen(false)}
     >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className={cn('absolute inset-0', MODAL_BACKDROP)} />
 
       <div
         className="relative z-10 flex w-full max-w-2xl flex-col rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-2xl"

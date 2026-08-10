@@ -1330,6 +1330,15 @@ active event is marked **NEW** and links directly to its editor.
 
 ![Writer's Brief](images/17-writers-brief.png)
 
+If the cursor is on **All chapters**, the brief has no moment to describe — so
+instead of waiting for one it lists every scene in the world, grouped by chapter
+in reading order. Click one and the brief fills in around it; the bottom bar's
+cursor moves with it, because they are the same cursor. In a world with no
+scenes at all there is nothing to list, and the panel offers **Open Timeline**
+instead.
+
+![The brief's scene picker](images/57-brief-scene-picker.png)
+
 It's designed to sit open beside your manuscript while you draft.
 
 ---

@@ -21,6 +21,22 @@ const DialogContext = React.createContext<DialogContextValue>({
 })
 
 /**
+ * The dim behind a modal overlay (**WB-2**).
+ *
+ * Not every overlay uses this `Dialog` — the slide-over panels and the search
+ * palette are hand-rolled — and each of them picked its own number: the
+ * Writer's Brief and the timeline relationship panel dimmed to 30%, half of
+ * this, with no blur, so the page behind stayed legible enough to read as
+ * *sliced off* at the panel edge rather than as *behind* it. Positioning stays
+ * with the caller, since some place it `fixed` and some `absolute`.
+ *
+ * A drawer that only exists below `lg` is deliberately not this: those dim to
+ * 40% and vanish at the breakpoint, and they are a different thing from a modal
+ * that covers the app at every width.
+ */
+export const MODAL_BACKDROP = 'bg-black/60 backdrop-blur-sm'
+
+/**
  * Which dialogs are open, innermost last.
  *
  * Escape is listened for on `document`, so without this every open dialog hears
@@ -117,7 +133,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTML
 
     return createPortal(
       <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+        <div className={cn('absolute inset-0', MODAL_BACKDROP)} onClick={onClose} />
         <div
           ref={(node) => {
             panelRef.current = node

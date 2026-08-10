@@ -20,6 +20,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useContinuitySuppressions, toggleContinuitySuppression, setContinuitySuppressionNote } from '@/db/hooks/useContinuitySuppressions'
 import { cn } from '@/lib/utils'
+import { MODAL_BACKDROP } from '@/components/ui/dialog'
 import { useKnowledgeFacts, useKnowledgeReveals } from '@/db/hooks/useKnowledge'
 import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
 
@@ -346,7 +347,7 @@ export function ContinuityChecker() {
       className="fixed inset-0 z-[3000] flex items-start justify-center pt-[8vh]"
       onClick={() => setCheckerOpen(false)}
     >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className={cn('absolute inset-0', MODAL_BACKDROP)} />
 
       <div
         ref={containerRef}
