@@ -117,6 +117,12 @@ Step 1 creates your first moment, and PlotWeave moves the [time
 cursor](#core-concept-the-time-cursor) to it — so when the guide hands the app
 back, everything that answers "what is true right now?" already has an answer.
 
+While the guide is on screen it takes the middle of it, and the navigation rail
+steps back so the next thing to do is the clearest thing to see. The rail is
+dimmed, not disabled: hover it and it returns to full strength, and every screen
+on it is one click away throughout. Wandering off to look around is a perfectly
+good way to start — the guide is an offer, not a gate.
+
 ![Blank-world setup](images/38-onboarding.png)
 
 ---

@@ -745,3 +745,33 @@
 .pw-measuring .leaflet-interactive {
   pointer-events: none !important;
 }
+
+/*
+  NEW-1: the full 14-icon rail sat at full strength beside the first-run guide,
+  so a dozen necessarily-empty screens were one click from a flow trying to
+  lead somewhere. The guide and the freedom undercut each other.
+
+  The rail recedes rather than disappearing. Two earlier attempts removed it —
+  the whole thing (which broke 33 specs, and the specs were right: wandering off
+  by the rail is a supported path) and the extended tier (which flickered, since
+  the dashboard paints the rail before the wizard latches). Opacity has neither
+  problem: nothing leaves the DOM, nothing is unclickable, and a 200ms ease a
+  beat after paint reads as intentional rather than broken.
+
+  Hover and focus restore it in full, so it never *looks* disabled to whoever is
+  reaching for it — including a keyboard user, who gets it back on focus-within
+  before they can see where they have landed.
+*/
+[data-rail-chrome] {
+  transition: opacity 200ms ease;
+}
+.pw-guiding [data-rail-chrome] {
+  opacity: 0.55;
+}
+.pw-guiding [data-rail-chrome]:hover,
+.pw-guiding [data-rail-chrome]:focus-within {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-rail-chrome] { transition: none; }
+}

@@ -94,8 +94,8 @@ test.describe('A blocked action says what it is waiting for', () => {
 
   test('the merged timeline says why Add Chapter is dead, and stops when it is not', async ({ page }) => {
     // The least guessable instance: a chapter belongs to one timeline, so both
-    // header actions go dead on the merged view — a state chosen in the bar at
-    // the bottom of the screen, with nothing on the button to connect them.
+    // header actions go dead on the merged view, with nothing on the button to
+    // connect them to the tab that put you there.
     await newWorld(page, 'Two Timelines')
     await page.getByRole('link', { name: /timeline/i }).first().click()
     await page.waitForTimeout(1200)

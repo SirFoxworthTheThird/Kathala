@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store'
@@ -35,6 +35,21 @@ export function OnboardingWizard({ worldId, onExit }: OnboardingWizardProps) {
     createdEventId: null,
     createdCharacterId: null,
   })
+
+  /*
+    NEW-1: while the guide is on screen it should be the loudest thing on it.
+    The class dims the nav rail (see index.css) without removing anything from
+    it — the rail stays clickable, because leaving a blank world that way is a
+    supported path, not a mistake to be prevented.
+
+    Kept on the document root rather than in the store on purpose: it lives
+    exactly as long as this component, cleans itself up on unmount, and adds no
+    global state that every other world would then have to be checked against.
+  */
+  useEffect(() => {
+    document.documentElement.classList.add('pw-guiding')
+    return () => document.documentElement.classList.remove('pw-guiding')
+  }, [])
 
   function advance(patch: Partial<WizardState>) {
     setState((prev) => {
@@ -73,7 +88,10 @@ export function OnboardingWizard({ worldId, onExit }: OnboardingWizardProps) {
   }
 
   return (
-    <div className="p-6 max-w-xl space-y-8">
+    // The guide is the subject of the screen, so it sits in the middle of it on
+    // a card rather than as a form pinned to the top-left corner.
+    <div className="flex min-h-full items-center justify-center p-6">
+      <div className="w-full max-w-xl space-y-8 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6 shadow-2xl sm:p-8">
       {/* Step indicator */}
       <nav aria-label="Wizard progress">
         <ol className="flex items-center gap-2">
@@ -139,6 +157,7 @@ export function OnboardingWizard({ worldId, onExit }: OnboardingWizardProps) {
       {state.step === 4 && (
         <StepDone onNavigate={handleNavigateToTimeline} />
       )}
+      </div>
     </div>
   )
 }

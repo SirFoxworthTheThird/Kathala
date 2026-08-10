@@ -63,6 +63,9 @@ export function NavRail() {
 
   return (
     <nav
+      // Distinct from AppShell's `data-nav-rail`, which carries the width
+      // variable ("pinned"/"collapsed") and would match a bare selector here.
+      data-rail-chrome
       aria-label="Main navigation"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
