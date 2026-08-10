@@ -650,13 +650,31 @@ export default function FactionsView() {
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
   const [aiOpen, setAiOpen] = useState(false)
+  const [search, setSearch] = useState('')
 
   const selectedFaction = factions.find((f) => f.id === selectedId) ?? null
+  const allStances = useFactionRelationships(worldId ?? null)
+
+  const shown = search.trim()
+    ? factions.filter((f) => f.name.toLowerCase().includes(search.trim().toLowerCase()))
+    : factions
 
   // Count members per faction
   const memberCountById = new Map<string, number>()
   for (const m of allMemberships) {
     memberCountById.set(m.factionId, (memberCountById.get(m.factionId) ?? 0) + 1)
+  }
+
+  // Allies and enemies per faction. A stance is stored once for the pair, so
+  // both sides are counted from the one record.
+  const stanceCountById = new Map<string, { allied: number; hostile: number }>()
+  for (const rel of allStances) {
+    if (rel.stance !== 'allied' && rel.stance !== 'hostile') continue
+    for (const id of [rel.factionAId, rel.factionBId]) {
+      const cur = stanceCountById.get(id) ?? { allied: 0, hostile: 0 }
+      cur[rel.stance] += 1
+      stanceCountById.set(id, cur)
+    }
   }
 
   async function handleCreate() {
@@ -713,7 +731,17 @@ export default function FactionsView() {
               </div>
             )
           }
-        />
+        >
+          {/* FAC-2: Items, Knowledge, Lore and Characters all carry one here,
+              in this position. Ten factions do not need searching; the
+              inconsistency across four sibling rosters was the finding. */}
+          <Input
+            placeholder="Search factions…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-8 max-w-xs text-sm"
+          />
+        </PageHeader>
 
         {/* Grid */}
         <div className="flex-1 overflow-auto p-4">
@@ -729,9 +757,13 @@ export default function FactionsView() {
               }
               className="h-full"
             />
+          ) : shown.length === 0 ? (
+            // Matching the sibling rosters: an empty grid with no word for it
+            // reads as a loading failure rather than as a search with no hits.
+            <EmptyState icon={Shield} title="No matches" description="Try a different search." />
           ) : (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
-              {factions.map((faction) => {
+              {shown.map((faction) => {
                 const count = memberCountById.get(faction.id) ?? 0
                 const isSelected = faction.id === selectedId
                 return (
@@ -760,6 +792,32 @@ export default function FactionsView() {
                       <Users className="h-3 w-3" />
                       <span>{count} member{count !== 1 ? 's' : ''}</span>
                     </div>
+                    {/*
+                      FAC-1: the card carried a member count and nothing else,
+                      while who is hostile to whom is the point of having
+                      factions at all. Allies and enemies are counted here;
+                      neutral is the default and says nothing, so it is left off.
+                    */}
+                    {(() => {
+                      const stance = stanceCountById.get(faction.id)
+                      if (!stance || (stance.allied === 0 && stance.hostile === 0)) return null
+                      return (
+                        <div className="mt-1 flex items-center gap-2 text-[10px]">
+                          {stance.allied > 0 && (
+                            <span className="flex items-center gap-1 text-green-400">
+                              <Handshake className="h-3 w-3" aria-hidden="true" />
+                              {stance.allied} allied
+                            </span>
+                          )}
+                          {stance.hostile > 0 && (
+                            <span className="flex items-center gap-1 text-red-400">
+                              <Swords className="h-3 w-3" aria-hidden="true" />
+                              {stance.hostile} hostile
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </button>
                 )
               })}

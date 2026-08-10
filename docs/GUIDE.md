@@ -1287,6 +1287,12 @@ cults, fellowships. Each faction has a colour, description, and **members** (wit
 roles and optional start/end events), plus **faction-to-faction stances**
 (allied, hostile, and so on).
 
+Each card shows the faction's colour, its member count, and how many other
+factions it is **allied** with or **hostile** to — so the political shape of the
+world reads off the roster rather than out of each faction in turn. A search box
+sits in the header, as on every other roster.
+
+
 ![Factions](images/13-factions.png)
 
 **Generate with AI** works here too: copy the prompt, describe your story, and

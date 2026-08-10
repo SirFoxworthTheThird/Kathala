@@ -388,8 +388,8 @@ filtering works, and Lore, Factions and Knowledge all open.
 
 | ID | Severity | Status | Finding |
 |---|---|---|---|
-| FAC-1 | med | open | **Faction-to-faction stances are invisible.** Cards carry a member count only, yet stances are a headline feature — and for a story like this one, who is hostile to whom is the whole point. |
-| FAC-2 | med | open | **No search box**, while Items, Knowledge, Lore and Characters all have one in the same position. Fine at ten factions; the inconsistency is the finding. |
+| FAC-1 | med | **fixed** | **Faction-to-faction stances are invisible.** Cards carry a member count only, yet stances are a headline feature — and for a story like this one, who is hostile to whom is the whole point. | **Allies and enemies are counted on the card.** A stance is stored once for the pair, so both sides are counted from the one record — the mutation that counts only `factionA` turns the test red, which is the part worth guarding. **Neutral is left off**: it is the default, so a count of it says nothing that its absence does not. |
+| FAC-2 | med | **fixed** | **No search box**, while Items, Knowledge, Lore and Characters all have one in the same position. Fine at ten factions; the inconsistency is the finding. | **Added in that position**, with the *No matches* state its siblings have — an empty grid with no word for it reads as a loading failure rather than a search with no hits, which would have been half a fix. |
 | FAC-3 | low | open | **Card titles truncate while their descriptions wrap.** *"The Fellowship of the R…"* is cut at 29 characters directly above two full lines of body text. |
 
 ### Knowledge
