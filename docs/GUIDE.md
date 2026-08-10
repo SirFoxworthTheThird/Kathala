@@ -461,7 +461,12 @@ shape of your story at a glance.
   toolbar can move the selection to another chapter, add a tag, or delete it.
 - The chapter bar at the bottom of the screen also lets you **play the story**
   and **Compare chapters** — a diff of exactly what changed between any two points
-  (who moved, gained or lost items, died, or shifted relationships).
+  (who moved, gained or lost items, died, or shifted relationships). It appears
+  as soon as there are two chapters to compare, and opens with both sides
+  already chosen. What it reads is the **state recorded at each chapter's last
+  scene** — not the prose: two chapters full of writing but with no character
+  states set will tell you there is nothing recorded to compare, rather than
+  that they are the same.
 
 ![A chapter row's menu](images/58-row-menu.png)
 

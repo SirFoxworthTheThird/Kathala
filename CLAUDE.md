@@ -121,6 +121,20 @@ it as one. Journal pruning carried a paragraph about a hard ceiling before the
 ceiling existed; the test caught it, but the comment would have outlived a
 weaker test. Write the claim after the code earns it.
 
+Two specific ways that goes wrong, both caught here more than once:
+
+- **A measurement you have not taken is not a measurement.** A comment reading
+  *"a 882-word scene rendered a 118px box"* was invented to sound concrete —
+  the word count came from a review, the pixels from nowhere. If a number is
+  worth writing down it is worth measuring, and the test is usually the right
+  place to keep it, since a number in a test goes red when it stops being true.
+- **Check the branch is reachable before you write it.** A reading-mode empty
+  state was written for the Manuscript screen, which reading mode redirects away
+  from; a "no picker possible" fallback was written for the Items section, which
+  is only offered when items exist. Both were unreachable, and both read as
+  behaviour to anyone reviewing them. Before adding a case for a state, find the
+  code that produces that state.
+
 **Verify at the commit you are shipping.** Long runs get overtaken: a suite
 started before the last three commits reports on none of them. Re-run at the
 tip before saying it passes, and read what the tools already wrote — Playwright

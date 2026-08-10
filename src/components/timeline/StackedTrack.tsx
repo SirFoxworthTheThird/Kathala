@@ -92,7 +92,7 @@ export function StackedTrack({
             isPlaying={isPlayingStory && isOuterActive}
             speed={playbackSpeed}
             showStop={isPlayingStory && isOuterActive}
-            showDiff={isOuterActive && !!activeEventId}
+            showDiff={isOuterActive && outerChapters.length >= 2}
             showClear={isOuterActive && !!activeEventId}
             color={outerColor}
             onPlayPause={onPlayPause}
@@ -143,7 +143,7 @@ export function StackedTrack({
             isPlaying={isPlayingStory && !isOuterActive}
             speed={playbackSpeed}
             showStop={isPlayingStory && !isOuterActive}
-            showDiff={!isOuterActive && !!activeEventId}
+            showDiff={!isOuterActive && innerChapters.length >= 2}
             showClear={!isOuterActive && !!activeEventId}
             color={innerColor}
             onPlayPause={onPlayPause}

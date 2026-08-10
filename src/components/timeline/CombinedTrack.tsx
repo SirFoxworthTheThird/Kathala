@@ -62,7 +62,8 @@ export function CombinedTrack({
           isPlaying={isPlaying}
           speed={playbackSpeed}
           showStop={isPlaying}
-          showDiff={!!activeEventId}
+          // DF-1: comparing two chapters needs two chapters, not a cursor.
+          showDiff={new Set(runs.map((r) => r.chapter?.id)).size >= 2}
           showClear={!!activeEventId && !isPlaying}
           color={accent}
           onPlayPause={onPlayPause}

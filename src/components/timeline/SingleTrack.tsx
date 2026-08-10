@@ -56,7 +56,8 @@ export function SingleTrack({
           isPlaying={isPlayingStory}
           speed={playbackSpeed}
           showStop={isPlayingStory}
-          showDiff={!!activeEventId}
+          // DF-1: comparing two chapters needs two chapters, not a cursor.
+          showDiff={chapters.length >= 2}
           showClear={!!activeEventId}
           color={accentColor}
           onPlayPause={onPlayPause}

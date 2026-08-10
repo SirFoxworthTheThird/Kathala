@@ -47,6 +47,7 @@ function SectionHeader({ title, icon: Icon }: { title: string; icon: React.Eleme
 export function ChapterDiffModal() {
   const { worldId } = useParams<{ worldId: string }>()
   const { diffOpen, setDiffOpen, activeEventId } = useAppStore()
+  const [baseChapterId, setBaseChapterId] = useState<string>('')
   const [compareChapterId, setCompareChapterId] = useState<string>('')
 
   const chapters   = useWorldChapters(worldId ?? null)
@@ -77,7 +78,7 @@ export function ChapterDiffModal() {
     return map
   }, [allEvents])
 
-  const eventIdA = activeChapter ? (lastEventByChapter.get(activeChapter.id) ?? null) : null
+  const eventIdA = baseChapterId ? (lastEventByChapter.get(baseChapterId) ?? null) : null
   const eventIdB = compareChapterId ? (lastEventByChapter.get(compareChapterId) ?? null) : null
 
   // Snapshots for both chapters (using last-event-of-chapter)
@@ -110,7 +111,36 @@ export function ChapterDiffModal() {
   const markerById = useMemo(() => new Map(markers.map((m) => [m.id, m])), [markers])
   const itemById   = useMemo(() => new Map(items.map((i) => [i.id, i])), [items])
 
-  const chapterA = activeChapter
+  /*
+    DF-1/DF-2: the tool used to take its base from the time cursor and nothing
+    else, which is why the button that opens it was hidden until an event was
+    active (`showDiff={!!activeEventId}`) — a headline feature gated on an
+    unrelated action. Comparing two chapters needs two chapters, not a cursor.
+
+    So both sides are chosen here, seeded when the panel opens: the base from
+    the cursor's chapter if there is one and the first chapter otherwise, and
+    the comparison from the only remaining candidate when there is exactly one
+    — which is the whole of DF-2 — or the next chapter along.
+  */
+  const ordered = useMemo(() => [...chapters].sort((a, b) => a.number - b.number), [chapters])
+  useEffect(() => {
+    if (!diffOpen || ordered.length === 0) return
+    const base = activeChapter?.id ?? ordered[0].id
+    setBaseChapterId((prev) => (prev && chapById.has(prev) ? prev : base))
+    setCompareChapterId((prev) => {
+      if (prev && chapById.has(prev) && prev !== base) return prev
+      const candidates = ordered.filter((c) => c.id !== base)
+      return candidates.length === 1 ? candidates[0].id : (candidates[0]?.id ?? '')
+    })
+  }, [diffOpen, ordered, activeChapter, chapById])
+
+  useEffect(() => {
+    if (!diffOpen || !baseChapterId || baseChapterId !== compareChapterId) return
+    const next = ordered.find((c) => c.id !== baseChapterId)
+    setCompareChapterId(next?.id ?? '')
+  }, [diffOpen, baseChapterId, compareChapterId, ordered])
+
+  const chapterA = chapById.get(baseChapterId) ?? null
   const chapterB = chapById.get(compareChapterId)
 
   // ── character diffs ────────────────────────────────────────────────────────
@@ -201,11 +231,23 @@ export function ChapterDiffModal() {
 
   if (!diffOpen) return null
 
-  const otherChapters = chapters.filter((c) => c.id !== activeChapter?.id).sort((a, b) => a.number - b.number)
+  const otherChapters = ordered.filter((c) => c.id !== chapterA?.id)
 
   const totalChanges = charDiffs.filter((d) => d.changes.length > 0 || !d.a || !d.b).length
     + relDiffs.length
     + itemDiffs.length
+
+  /*
+    DF-3: "No recorded differences" was the answer a writer got for two chapters
+    full of scenes and prose, because the diff reads the *snapshots* at each
+    chapter's last scene and nothing else. Technically true, and completely
+    misleading — it sounds like the chapters are the same when in fact nothing
+    was ever recorded to compare. The two cases now read differently.
+  */
+  const comparedAnything =
+    snapsA.length + snapsB.length +
+    relSnapsA.length + relSnapsB.length +
+    (itemPlacementsA?.length ?? 0) + (itemPlacementsB?.length ?? 0) > 0
 
   return (
     <div
@@ -236,16 +278,21 @@ export function ChapterDiffModal() {
 
         {/* Chapter selectors */}
         <div className="flex items-center gap-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--background))] px-5 py-3">
-          <div className="flex-1 rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-1.5 text-sm">
-            {chapterA
-              ? <><span className="text-[hsl(var(--muted-foreground))] text-xs">Base: </span>Ch. {chapterA.number} — {chapterA.title}</>
-              : <span className="text-[hsl(var(--muted-foreground))] text-sm">No chapter selected</span>
-            }
-          </div>
+          <select
+            className="flex-1 rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-1.5 text-sm text-[hsl(var(--foreground))] outline-none"
+            value={baseChapterId}
+            aria-label="Base chapter"
+            onChange={(e) => setBaseChapterId(e.target.value)}
+          >
+            {ordered.map((c) => (
+              <option key={c.id} value={c.id}>Ch. {c.number} — {c.title}</option>
+            ))}
+          </select>
           <ArrowRight className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />
           <select
             className="flex-1 rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-1.5 text-sm text-[hsl(var(--foreground))] outline-none"
             value={compareChapterId}
+            aria-label="Chapter to compare against"
             onChange={(e) => setCompareChapterId(e.target.value)}
           >
             <option value="">Compare with…</option>
@@ -257,12 +304,26 @@ export function ChapterDiffModal() {
 
         {/* Body */}
         <div className="flex-1 overflow-auto px-5 py-2">
-          {!activeChapter ? (
-            <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">Select a chapter from the timeline bar first.</p>
+          {!chapterA ? (
+            <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">This world has no chapters to compare.</p>
           ) : !compareChapterId ? (
             <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">Choose a chapter to compare against.</p>
+          ) : totalChanges === 0 && !comparedAnything ? (
+            <div className="space-y-2 px-4 py-8 text-center">
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">
+                Neither chapter has any state recorded, so there is nothing to compare.
+              </p>
+              <p className="mx-auto max-w-sm text-xs text-[hsl(var(--muted-foreground))]">
+                This compares where each character is, what they carry, how relationships
+                stand and where items are — as recorded at each chapter&rsquo;s last scene.
+                Scene prose and word counts are not part of it. Record a character&rsquo;s
+                state on a scene, and the change shows up here.
+              </p>
+            </div>
           ) : totalChanges === 0 ? (
-            <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">No recorded differences between these chapters.</p>
+            <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">
+              Nothing changed between these chapters — both have state recorded, and it matches.
+            </p>
           ) : (
             <>
               {/* Characters */}
