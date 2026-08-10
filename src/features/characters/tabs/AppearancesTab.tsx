@@ -6,6 +6,7 @@ import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/EmptyState'
+import { Button } from '@/components/ui/button'
 import { computeCharacterAppearances, type CharacterAppearance } from '@/lib/characterAppearances'
 
 interface AppearancesTabProps {
@@ -68,10 +69,18 @@ export function AppearancesTab({ character }: AppearancesTabProps) {
 
   if (present.length === 0 && mentioned.length === 0) {
     return (
+      /* X-4 rule 2: a heading and an explanation, and now the control that goes
+         where the act happens — a character joins a scene from the scene, not
+         from here. The Arc grid and Calendar (CAL-1) are the model. */
       <EmptyState
         icon={Users}
         title="No appearances yet"
-        description="Add this character to an event's cast, or mention them in a scene draft with @."
+        description="Add this character to a scene's cast, or mention them in a scene draft with @."
+        action={(
+          <Button size="sm" variant="outline" onClick={() => navigate(`/worlds/${character.worldId}/timeline`)}>
+            <BookOpen className="h-4 w-4" aria-hidden="true" /> Open Timeline
+          </Button>
+        )}
         className="py-8"
       />
     )
@@ -92,7 +101,21 @@ export function AppearancesTab({ character }: AppearancesTabProps) {
             ))}
           </div>
         ) : (
-          <p className="text-xs italic text-[hsl(var(--muted-foreground))]">On-stage in no events yet.</p>
+          /* X-4 rule 2: a character joins a scene from the scene, not from
+             here, so this names the screen that does it and goes there. */
+          <div className="flex flex-col items-start gap-1.5">
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">
+              Not on stage in any scene yet. Add {character.name} to a scene's cast
+              and it will show here.
+            </p>
+            <button
+              onClick={() => navigate(`/worlds/${character.worldId}/timeline`)}
+              className="pw-tap inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
+            >
+              <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
+              Open Timeline
+            </button>
+          </div>
         )}
       </section>
 
@@ -109,7 +132,12 @@ export function AppearancesTab({ character }: AppearancesTabProps) {
             ))}
           </div>
         ) : (
-          <p className="text-xs italic text-[hsl(var(--muted-foreground))]">Referenced but not present in no events yet.</p>
+          /* "Referenced but not present in no events yet" — the old copy read
+             as a mistake because it was one sentence doing two jobs. */
+          <p className="text-xs text-[hsl(var(--muted-foreground))]">
+            Not mentioned in any scene yet. Type <span className="font-medium">@</span> in
+            a scene's draft to refer to {character.name} without putting them in the room.
+          </p>
         )}
       </section>
     </div>

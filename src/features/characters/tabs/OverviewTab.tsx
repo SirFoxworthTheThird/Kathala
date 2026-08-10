@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Check, X } from 'lucide-react'
 import type { Character, InWorldDate } from '@/types'
 import { updateCharacter } from '@/db/hooks/useCharacters'
@@ -122,9 +123,21 @@ export function OverviewTab({ character }: OverviewTabProps) {
         {calendar ? (
           <InWorldDatePicker calendar={calendar} value={birthDate} onChange={setBirthDate} setLabel="Set birth date" />
         ) : (
-          <p className="text-xs italic text-[hsl(var(--muted-foreground))]">
-            Enable a calendar in world settings to record a birth date and compute age.
-          </p>
+          /* X-4 rule 2: a birth date needs a calendar, which cannot be made
+             from here — so name the screen and go there, rather than naming it
+             and leaving the reader to find it (LP-3). */
+          <div className="flex flex-col items-start gap-1.5">
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">
+              A birth date needs an in-world calendar, so PlotWeave knows what a
+              date means and can work out an age.
+            </p>
+            <Link
+              to={`/worlds/${character.worldId}/settings`}
+              className="pw-tap inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
+            >
+              Open World settings
+            </Link>
+          </div>
         )}
       </div>
       <div className="flex flex-col gap-1.5">

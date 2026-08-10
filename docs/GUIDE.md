@@ -378,6 +378,15 @@ On a phone the rail is replaced by a **☰ menu** in the top bar. The top bar
 itself keeps the world name, the [time cursor](#core-concept-the-time-cursor),
 search (**Ctrl/⌘ K**), and the Writer's Brief, Continuity, and Help tools.
 
+**An empty section tells you what to do about it.** Wherever a list or panel has
+nothing in it yet, it says what belongs there and offers the way to put it there
+— the control itself if the thing can be made from where you are, or a button to
+the screen that makes it if it cannot. A character with no scenes, for instance,
+offers **Open Timeline**, because a character joins a scene from the scene. The
+exception is when the control is already sitting right beside the empty list: a
+*+ Add character…* picker under an empty cast says both that it is empty and what
+to do, so nothing repeats it.
+
 **A greyed-out button tells you why.** Where an action needs more than one thing
 before it can run — *Save route* wants a name *and* two points, the relationship
 dialog wants two different characters *and* a label — a short line beside it says

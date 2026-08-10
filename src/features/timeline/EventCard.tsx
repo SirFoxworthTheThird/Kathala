@@ -529,9 +529,13 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="text-xs italic text-[hsl(var(--muted-foreground))]">No characters assigned.</p>
-            )}
+            ) : availableChars.length === 0 ? (
+              /* X-4 rule 3: with the picker below, a sentence announcing the
+                 absence says nothing the picker does not. Without one — no
+                 characters exist yet — the section would be blank, so it says
+                 why there is nothing to pick. */
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">No characters in this world yet.</p>
+            ) : null}
             {availableChars.length > 0 && (
               <Select onValueChange={addCharacter}>
                 <SelectTrigger className="h-8 text-xs">
@@ -570,7 +574,11 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                 ))}
               </div>
             ) : (
-              <p className="text-xs italic text-[hsl(var(--muted-foreground))]">No one mentioned. Type @ in the scene draft, or add below.</p>
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                {availableForMention.length > 0
+                  ? 'Type @ in the scene draft to mention someone.'
+                  : 'No characters in this world yet.'}
+              </p>
             )}
             {availableForMention.length > 0 && (
               <Select onValueChange={addMention}>
@@ -680,9 +688,11 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                     </div>
                   ))}
                 </div>
-              ) : (
-                <p className="text-xs italic text-[hsl(var(--muted-foreground))]">No items assigned.</p>
-              )}
+              ) : null}
+              {/* No "no items yet" fallback: this section is only offerable when
+                  `involvedItems.length > 0 || availableItems.length > 0`, so an
+                  empty list here guarantees the picker below. Rule 3 applies
+                  outright. */}
               {availableItems.length > 0 && (
                 <Select onValueChange={addItem}>
                   <SelectTrigger className="h-8 text-xs">

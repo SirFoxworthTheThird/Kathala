@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Route, Hexagon, Link, Map } from 'lucide-react'
+import { Route, Hexagon, Link as LinkIcon, Map } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { PanelHeader, PanelDangerFooter } from './PanelChrome'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -311,9 +312,19 @@ export function RegionDetailPanel({
         <div className="flex flex-col gap-1.5">
           <Label>Owning faction</Label>
           {factions.length === 0 ? (
-            <p className="text-xs text-[hsl(var(--muted-foreground))]">
-              No factions yet — create one in the Factions view.
-            </p>
+            /* X-4 rule 2, and the twin of LP-3: the location panel got its link
+               and this one, with the same copy, did not. */
+            <div className="flex flex-col items-start gap-1.5">
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                No factions yet — create one to say who holds this ground.
+              </p>
+              <Link
+                to={`/worlds/${worldId}/factions`}
+                className="pw-tap inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
+              >
+                Open Factions
+              </Link>
+            </div>
           ) : (
             <Select
               value={region.factionId ?? 'none'}
@@ -339,7 +350,7 @@ export function RegionDetailPanel({
         {/* Sub-map link */}
         <div className="flex flex-col gap-1.5">
           <Label className="flex items-center gap-1.5">
-            <Link className="h-3.5 w-3.5" /> Sub-map
+            <LinkIcon className="h-3.5 w-3.5" /> Sub-map
           </Label>
           {otherLayers.length > 0 && (
             <Select value={region.linkedMapLayerId ?? 'none'} onValueChange={handleLinkSubMap}>
