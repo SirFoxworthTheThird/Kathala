@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Upload, Trash2 } from 'lucide-react'
+import { ArrowLeft, Upload, Link2, Trash2 } from 'lucide-react'
 import { useCharacter, deleteCharacter } from '@/db/hooks/useCharacters'
 import { updateCharacter } from '@/db/hooks/useCharacters'
 import { storeBlob } from '@/db/hooks/useBlobs'
@@ -33,6 +33,8 @@ export default function CharacterDetailView() {
   const character = useCharacter(characterId ?? null)
   const gate = useGate()
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [portraitLinkOpen, setPortraitLinkOpen] = useState(false)
+  const portraitFileRef = useRef<HTMLInputElement>(null)
 
   // CH-3: each count comes from the same hook the tab itself reads, so the
   // number on the tab and the list behind it cannot disagree.
@@ -87,18 +89,38 @@ export default function CharacterDetailView() {
             fallbackClassName="h-12 w-12 rounded-full"
             zoomable
           />
+          {/*
+            CH-5: two 12px icons sat 2px apart in a pill on the bottom edge of a
+            48px avatar. Enlarging them in place was not available — `.pw-tap`
+            only works on well-spaced standalone controls, since two adjacent
+            ones would give overlapping 44px hit areas — so the pair is the
+            problem, not their size. One menu trigger instead, the same one the
+            review settled on for TL-3, EV-5, CH-4 and LORE-1, which carries
+            `.pw-tap` and a name of its own.
+          */}
           {!gate.active && (
-            <div className="absolute -bottom-1 -right-1 flex items-center gap-0.5 rounded-full bg-[hsl(var(--accent))] px-1 py-0.5">
-              <label aria-label="Upload portrait image" className="cursor-pointer text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]">
-                <Upload className="h-3 w-3" aria-hidden="true" />
-                <input type="file" accept="image/*" className="hidden" onChange={handlePortraitUpload} />
-              </label>
+            <div className="absolute -bottom-1.5 -right-1.5 rounded-full bg-[hsl(var(--accent))]">
+              <Menu
+                label={`Portrait for ${character.name}`}
+                triggerClassName="h-6 w-6 rounded-full"
+              >
+                <MenuItem icon={Upload} label="Upload an image" onClick={() => portraitFileRef.current?.click()} />
+                <MenuItem icon={Link2} label="Link by URL" onClick={() => setPortraitLinkOpen(true)} />
+              </Menu>
+              <input
+                ref={portraitFileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                aria-label="Upload portrait image"
+                onChange={handlePortraitUpload}
+              />
               {worldId && (
                 <LinkImageButton
                   worldId={worldId}
                   onLinked={(blobId) => updateCharacter(character!.id, { portraitImageId: blobId })}
-                  triggerClassName="text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]"
-                  triggerAriaLabel="Link portrait by URL"
+                  controlledOpen={portraitLinkOpen}
+                  onOpenChange={setPortraitLinkOpen}
                 />
               )}
             </div>

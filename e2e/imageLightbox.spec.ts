@@ -37,8 +37,19 @@ test.describe('Opening images full size', () => {
   })
 
   /** Attach an image through the link-by-URL popover the detail screens expose. */
+  /**
+   * `triggerLabel` is the control that opens the URL popover. The character
+   * portrait's is inside its menu now (CH-5) — two 10px icons on the avatar's
+   * bottom edge became one named trigger — so a menu label is opened first and
+   * "Link by URL" chosen inside it.
+   */
   async function linkImage(page: import('@playwright/test').Page, triggerLabel: string) {
-    await page.getByRole('button', { name: triggerLabel }).click()
+    if (triggerLabel.startsWith('Portrait for ')) {
+      await page.getByRole('button', { name: triggerLabel }).click()
+      await page.getByRole('menuitem', { name: 'Link by URL' }).click()
+    } else {
+      await page.getByRole('button', { name: triggerLabel }).click()
+    }
     await page.getByPlaceholder('https://…/image.png').fill(IMAGE)
     await page.getByRole('button', { name: 'Add linked image' }).click()
     await expect(page.locator(`img[src="${IMAGE}"]`).first()).toBeVisible()
@@ -53,7 +64,7 @@ test.describe('Opening images full size', () => {
     await page.getByText('Aria').first().click()
     await expect(page).toHaveURL(/#\/worlds\/[^/]+\/characters\/[^/]+/)
 
-    await linkImage(page, 'Link portrait by URL')
+    await linkImage(page, 'Portrait for Aria')
 
     // Nothing is showing until it is asked for — the other half of the assertion
     // below, so neither can pass vacuously.
@@ -77,7 +88,7 @@ test.describe('Opening images full size', () => {
     await page.getByPlaceholder('Character name').fill('Aria')
     await page.getByRole('button', { name: 'Add Character' }).last().click()
     await page.getByText('Aria').first().click()
-    await linkImage(page, 'Link portrait by URL')
+    await linkImage(page, 'Portrait for Aria')
 
     // On the detail screen the portrait is the subject, so it is itself the
     // control that opens it.
@@ -127,7 +138,7 @@ test.describe('Opening images full size', () => {
     await page.getByPlaceholder('Character name').fill('Frodo')
     await page.getByRole('button', { name: 'Add Character' }).last().click()
     await page.getByText('Frodo').first().click()
-    await linkImage(page, 'Link portrait by URL')
+    await linkImage(page, 'Portrait for Frodo')
 
     await page.getByRole('link', { name: /maps/i }).first().click()
     await settleNav(page)

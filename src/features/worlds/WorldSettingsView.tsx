@@ -177,15 +177,25 @@ export default function WorldSettingsView() {
                 <Button size="sm" variant="ghost" onClick={() => setNameEditing(false)}>Cancel</Button>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
+              /*
+                SET-3: this was a 12px pencil glyph with no accessible name at
+                all — no aria-label, no title, no text — beside a read-only
+                span. Two defects in one control, and the second is the same as
+                X-12 and LORE-1.
+
+                EV-3 settled the pattern for exactly this shape: the read view
+                is the control that opens the editor, so the thing you want to
+                change is the thing you click. The pencil stays as an affordance
+                cue inside the button rather than being the whole of it.
+              */
+              <button
+                onClick={startNameEdit}
+                aria-label={`Edit world name (currently ${world?.name || 'unset'})`}
+                className="group flex w-full items-center gap-2 rounded border border-transparent px-2 py-1.5 text-left transition-colors hover:border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.4)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]"
+              >
                 <span className="text-sm text-[hsl(var(--foreground))]">{world?.name ?? '—'}</span>
-                <button
-                  onClick={startNameEdit}
-                  className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
-                >
-                  <Pencil className="h-3 w-3" />
-                </button>
-              </div>
+                <Pencil className="ml-auto h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))] transition-colors group-hover:text-[hsl(var(--foreground))]" aria-hidden="true" />
+              </button>
             )}
           </div>
 
@@ -208,18 +218,20 @@ export default function WorldSettingsView() {
                 </div>
               </div>
             ) : (
-              <div className="flex items-start gap-2">
+              /* SET-3, and the worse half of it: the pencil floated at the
+                 right of a three-line paragraph with nothing anchoring it to
+                 what it edited. The paragraph is the control. */
+              <button
+                onClick={startDescEdit}
+                aria-label={world?.description ? 'Edit world description' : 'Add a world description'}
+                className="group flex w-full items-start gap-2 rounded border border-transparent px-2 py-1.5 text-left transition-colors hover:border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.4)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]"
+              >
                 {world?.description
-                  ? <p className="text-sm text-[hsl(var(--muted-foreground))]">{world.description}</p>
-                  : <p className="text-sm italic text-[hsl(var(--muted-foreground)/0.5)]">No description yet.</p>
+                  ? <span className="text-sm text-[hsl(var(--muted-foreground))]">{world.description}</span>
+                  : <span className="text-sm italic text-[hsl(var(--muted-foreground)/0.5)]">Describe your world…</span>
                 }
-                <button
-                  onClick={startDescEdit}
-                  className="mt-0.5 shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
-                >
-                  <Pencil className="h-3 w-3" />
-                </button>
-              </div>
+                <Pencil className="ml-auto mt-0.5 h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))] transition-colors group-hover:text-[hsl(var(--foreground))]" aria-hidden="true" />
+              </button>
             )}
           </div>
 

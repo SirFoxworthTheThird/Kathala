@@ -8,6 +8,8 @@ import { SceneHistoryDialog } from './SceneHistoryDialog'
 import { FocusMode } from './FocusMode'
 import type { Character, WorldEvent } from '@/types'
 import { draftAfterSave } from '@/lib/draftHandoff'
+import { Button } from '@/components/ui/button'
+import { plural } from '@/lib/plural'
 
 interface SceneDraftSectionProps {
   event: WorldEvent
@@ -65,13 +67,6 @@ export function SceneDraftSection({
           <PenLine className="h-3 w-3" /> Scene Draft
         </span>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => { if (draft !== null) saveScene(); setFocusOpen(true) }}
-            className="flex items-center gap-1 text-[10px] text-[hsl(var(--muted-foreground))] transition-colors hover:text-[hsl(var(--foreground))]"
-            title="Write this scene distraction-free"
-          >
-            <Maximize2 className="h-3 w-3" /> Focus
-          </button>
           {sceneRevisions.length > 0 && (
             <button
               onClick={() => setHistoryOpen(true)}
@@ -82,8 +77,25 @@ export function SceneDraftSection({
             </button>
           )}
           <span className="text-[10px] tabular-nums text-[hsl(var(--muted-foreground))]">
-            {sceneWords} {sceneWords === 1 ? 'word' : 'words'}
+            {plural(sceneWords, 'word')}
           </span>
+          {/*
+            EV-6: Focus mode is the best writing surface in the app and it was
+            announced by 10px of muted text, in a row of 10px muted text — the
+            revision count and the word count read exactly the same, and two of
+            those three are readouts rather than actions. It is a button now,
+            and it is last so that the two readouts stay together and the one
+            thing you can press is not among them.
+          */}
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-6 gap-1 px-2 text-[11px]"
+            onClick={() => { if (draft !== null) saveScene(); setFocusOpen(true) }}
+            title="Write this scene distraction-free"
+          >
+            <Maximize2 className="h-3 w-3" aria-hidden="true" /> Focus
+          </Button>
         </div>
       </div>
       <SceneDraftEditor

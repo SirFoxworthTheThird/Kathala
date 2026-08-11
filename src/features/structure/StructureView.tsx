@@ -8,6 +8,7 @@ import type { StructureProportion } from '@/lib/structureBoard'
 import { useAppStore } from '@/store'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 /**
  * Shows how the book's chapters actually divide between the acts, against the
@@ -135,16 +136,23 @@ export default function StructureView() {
         <span className="text-xs tabular-nums text-[hsl(var(--muted-foreground))]">
           {sheet.filled} / {sheet.total} beats placed
         </span>
-        <select
-          value={templateId}
-          onChange={(e) => chooseTemplate(e.target.value)}
-          aria-label="Structure template"
-          className="h-8 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 text-xs text-[hsl(var(--foreground))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
-        >
-          {BEAT_TEMPLATES.map((t) => (
-            <option key={t.id} value={t.id}>{t.name}</option>
-          ))}
-        </select>
+        {/*
+          ST-3: both controls on this screen were native selects, where the app
+          uses its own Select in 66 places across 19 files against 14 native
+          ones. Both are converted rather than only the switcher the finding
+          names — leaving one of two on the same screen would trade a
+          product-wide inconsistency for one you can see in a single glance.
+        */}
+        <Select value={templateId} onValueChange={chooseTemplate}>
+          <SelectTrigger className="h-8 w-auto gap-2 text-xs" aria-label="Structure template">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {BEAT_TEMPLATES.map((t) => (
+              <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
@@ -234,17 +242,22 @@ export default function StructureView() {
                     </button>
                   </div>
                 ) : (
-                  <select
+                  <Select
                     value=""
-                    aria-label={`Assign a scene to ${slot.beat.label}`}
-                    onChange={(e) => { if (e.target.value) updateEvent(e.target.value, { structureBeat: slot.beat.id }) }}
-                    className="h-7 w-40 shrink-0 rounded border border-dashed border-[hsl(var(--border))] bg-[hsl(var(--background))] px-1.5 text-xs text-[hsl(var(--muted-foreground))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
+                    onValueChange={(v) => { if (v) updateEvent(v, { structureBeat: slot.beat.id }) }}
                   >
-                    <option value="">+ Assign a scene…</option>
-                    {orderedEvents.map(({ e, label }) => (
-                      <option key={e.id} value={e.id}>{label}</option>
-                    ))}
-                  </select>
+                    <SelectTrigger
+                      aria-label={`Assign a scene to ${slot.beat.label}`}
+                      className="h-7 w-40 shrink-0 border-dashed text-xs text-[hsl(var(--muted-foreground))]"
+                    >
+                      <SelectValue placeholder="+ Assign a scene…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {orderedEvents.map(({ e, label }) => (
+                        <SelectItem key={e.id} value={e.id}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
               </li>
             )

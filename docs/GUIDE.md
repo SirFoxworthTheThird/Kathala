@@ -750,8 +750,8 @@ world through export/import.
 
 ### Focus mode
 
-Above the scene draft, **Focus** opens a full-screen, distraction-free writing
-surface for that scene — no chrome, just your prose in a centered column. The
+Beside the scene draft's heading, the **Focus** button opens a full-screen,
+distraction-free writing surface for that scene — no chrome, just your prose in a centered column. The
 caret stays vertically centered as you type (typewriter scrolling), a live
 **word count** and **words this session** sit in the slim header, and if you've
 set a [daily goal](#writing-progress) a thin bar at the bottom fills toward it.
@@ -823,10 +823,11 @@ section and added to the **world you're already in** — no new world is created
 ![Generate characters with AI](images/26-generate-characters.png)
 
 > **Images: upload or link.** For a character's portrait — and likewise for item
-> images and maps — you can either **upload** a file or **link an image URL**
-> (the ⬆ upload and 🔗 link controls sit on the image). Linked images aren't
-> stored in your browser, so they need an internet connection to display and can
-> break if the source goes away; uploads are self-contained.
+> images and maps — you can either **upload** a file or **link an image URL**.
+> On a character, both live in the **⋯** menu on the corner of the portrait;
+> elsewhere the ⬆ upload and 🔗 link controls sit on the image itself. Linked
+> images aren't stored in your browser, so they need an internet connection to
+> display and can break if the source goes away; uploads are self-contained.
 
 Opening a character gives you a tabbed profile:
 
@@ -1632,6 +1633,10 @@ the **continuity stale-snapshot threshold**, set a book-level **word target** an
 **deadline** (for the dashboard's [Writing Progress](#the-world-dashboard)
 burndown and finish projection), and configure an in-world
 **[calendar](#calendar--character-ages)** for story dates and character ages.
+
+The world's **name** and **description** are edited by clicking what they say:
+the row is the control, and an empty description reads *Describe your world…*
+rather than announcing that there isn't one.
 
 There are eleven sections in all, so the screen opens with a row of chips —
 one per section — that stays put as you scroll and jumps you straight to the

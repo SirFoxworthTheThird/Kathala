@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link2, Check, X, Loader2 } from 'lucide-react'
 import { storeImageLink } from '@/db/hooks/useBlobs'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,14 @@ interface LinkImageButtonProps {
    * to explain it, and an unlabelled icon there is not found.
    */
   triggerLabel?: string
+  /**
+   * Drive the popover from outside and draw no trigger of your own (CH-5).
+   * The character portrait's two 10px controls became one menu, and a menu
+   * item is a `role="menuitem"` button — it cannot also be this component's
+   * trigger, so the menu opens the popover instead.
+   */
+  controlledOpen?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 /**
@@ -22,8 +30,22 @@ interface LinkImageButtonProps {
  * popover with a URL field. Stores the link as a blob entry (no binary data)
  * and hands back its id. Complements file upload wherever images are set.
  */
-export function LinkImageButton({ worldId, onLinked, triggerClassName, triggerAriaLabel = 'Link image by URL', triggerLabel }: LinkImageButtonProps) {
-  const [open, setOpen] = useState(false)
+export function LinkImageButton({
+  worldId, onLinked, triggerClassName, triggerAriaLabel = 'Link image by URL', triggerLabel,
+  controlledOpen, onOpenChange,
+}: LinkImageButtonProps) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const onOpenChangeRef = useRef(onOpenChange)
+  onOpenChangeRef.current = onOpenChange
+  const controlled = controlledOpen !== undefined
+  const open = controlled ? controlledOpen : uncontrolledOpen
+  const openRef = useRef(open)
+  openRef.current = open
+  const setOpen = useCallback((next: boolean | ((o: boolean) => boolean)) => {
+    const value = typeof next === 'function' ? next(openRef.current) : next
+    setUncontrolledOpen(value)
+    onOpenChangeRef.current?.(value)
+  }, [])
   const [url, setUrl] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -36,7 +58,7 @@ export function LinkImageButton({ worldId, onLinked, triggerClassName, triggerAr
     }
     document.addEventListener('pointerdown', onDown)
     return () => document.removeEventListener('pointerdown', onDown)
-  }, [open])
+  }, [open, setOpen])
 
   async function submit() {
     if (!url.trim() || busy) return
@@ -56,16 +78,18 @@ export function LinkImageButton({ worldId, onLinked, triggerClassName, triggerAr
 
   return (
     <div ref={ref} className="relative">
-      <button
-        type="button"
-        aria-label={triggerAriaLabel}
-        title={triggerAriaLabel}
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((o) => !o) }}
-        className={cn('flex items-center justify-center', triggerLabel && 'gap-1.5', triggerClassName)}
-      >
-        <Link2 className={triggerLabel ? 'h-3.5 w-3.5' : 'h-3 w-3'} aria-hidden="true" />
-        {triggerLabel}
-      </button>
+      {!controlled && (
+        <button
+          type="button"
+          aria-label={triggerAriaLabel}
+          title={triggerAriaLabel}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((o) => !o) }}
+          className={cn('flex items-center justify-center', triggerLabel && 'gap-1.5', triggerClassName)}
+        >
+          <Link2 className={triggerLabel ? 'h-3.5 w-3.5' : 'h-3 w-3'} aria-hidden="true" />
+          {triggerLabel}
+        </button>
+      )}
 
       {open && (
         <div

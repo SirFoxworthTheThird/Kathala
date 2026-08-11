@@ -27,7 +27,9 @@ test.describe('Linking images by URL', () => {
     // A same-origin image the dev server actually serves, so it loads + measures.
     const imageUrl = IMAGE_URL
 
-    await page.getByRole('button', { name: 'Link portrait by URL' }).click()
+    // CH-5: the portrait's two 10px controls became one menu.
+    await page.getByRole('button', { name: 'Portrait for Aria' }).click()
+    await page.getByRole('menuitem', { name: 'Link by URL' }).click()
 
     // The popover must stay within the viewport (it opens rightward from the
     // portrait, which sits near the left edge).

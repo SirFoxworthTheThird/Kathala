@@ -250,7 +250,11 @@ test('a character page has nothing to edit and no future', async ({ page }) => {
   // old assertion would pass on a page that still offered the trigger.
   await expect(page.getByRole('button', { name: /^More actions for/ })).toHaveCount(0)
   await expect(page.getByRole('menuitem', { name: 'Delete character' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Upload portrait image' })).toHaveCount(0)
+  // The portrait's controls are behind a menu of their own now (CH-5), so the
+  // trigger is what has to be gone. The old assertion named a control that no
+  // longer exists under that role anywhere, which would have passed on a page
+  // still offering the whole menu.
+  await expect(page.getByRole('button', { name: /^Portrait for/ })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0)
 
   // Current State is a form for a writer; a reader gets the same facts as text.
