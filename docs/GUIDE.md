@@ -538,11 +538,17 @@ Each track has its own **play** button, named for the track it moves — *Play T
 Attic*, *Play The Tale* — so the two are not the same control twice. The inner
 track is the story; the outer one frames it.
 
-**Sync points** take effect during playback. When you play the inner story and
-reach an event that is paired with one in the outer story, PlotWeave moves the
-outer moment to match — so the [map](#maps) can show the outer timeline's cast
-as **ghost pins** beside the inner one. Moving the cursor by hand does not move
-the other track; the pairing is used while playing, not while scrubbing.
+**Sync points** keep the frame in step with the tale. Whenever the cursor lands
+on an inner moment that is paired with one in the outer story — by playing, by
+clicking the scrubber, or with the previous/next arrows — PlotWeave moves the
+outer moment to match, so the [map](#maps) can show the outer timeline's cast as
+**ghost pins** beside the inner one. Between pairings the frame moment *holds*:
+the teller stays where they were until the story reaches the next moment that
+moves them, rather than the frame's cast blinking out on every unpaired scene.
+Before the first pairing there is no frame moment in force.
+
+The pairing works in that direction only, which is what it is for: the frame's
+cast is drawn beside the tale while you are reading the tale.
 
 **Paired moments are marked on the bar.** Both ends of a sync point carry a
 small dot above their tick, and hovering one says *paired with a moment on the
