@@ -1,3 +1,4 @@
+import type { IssueKind } from './issueKinds'
 import { pixelDist } from '@/lib/mapScale'
 import { assessTravel, ROUTE_SPEED_MULTIPLIERS } from '@/lib/travelTime'
 import { computeInWorldDays } from '@/lib/inWorldTime'
@@ -64,6 +65,8 @@ export interface Issue {
   id: string
   severity: IssueSeverity
   category: 'character' | 'item' | 'relationship' | 'faction' | 'pov' | 'prose' | 'thread'
+  /** What sort of fault this is, within its category — see `issueKinds.ts`. */
+  kind: IssueKind
   message: string
   detail?: string
   navigatePath?: string
@@ -230,6 +233,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         const ch = ev ? chapById.get(ev.chapterId) : undefined
         out.push({
           id: `dead-then-alive-${charId}-${snap.eventId}`,
+          kind: 'dead-then-alive',
           severity: 'error',
           category: 'character',
           message: `${char.name} is alive in Ch. ${ch?.number ?? '?'} after dying in Ch. ${deathChapNum}`,
@@ -244,6 +248,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         if (!eventById.has(snap.eventId)) {
           out.push({
             id: `orphan-snap-${snap.id}`,
+            kind: 'orphan-snap',
             severity: 'warning',
             category: 'character',
             message: `${char.name} has a snapshot for a deleted event`,
@@ -271,6 +276,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         const isPov = ev.povCharacterId === charId
         out.push({
           id: `dead-in-event-${charId}-${ev.id}`,
+          kind: 'dead-in-event',
           severity: 'warning',
           category: 'character',
           message: `Dead character ${char?.name ?? '?'} in "${ev.title || 'untitled'}"`,
@@ -307,6 +313,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       const ch = chapById.get(ev.chapterId)
       out.push({
         id: `char-before-intro-${charId}`,
+        kind: 'char-before-intro',
         severity: 'warning',
         category: 'character',
         message: `${char?.name ?? '?'} appears before any snapshot record`,
@@ -345,6 +352,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
             const endCh = chapById.get(ev.chapterId)
             out.push({
               id: `stale-snapshot-${charId}-${streakStart.id}`,
+              kind: 'stale-snapshot',
               severity: 'warning',
               category: 'character',
               message: `${char.name}'s state may be stale (${streakCount}+ events without update)`,
@@ -384,6 +392,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       const marker = allMarkers.find((m) => m.id === snap.currentLocationMarkerId)
       out.push({
         id: `loc-destroyed-${snap.characterId}-${snap.eventId}`,
+        kind: 'loc-destroyed',
         severity: 'warning',
         category: 'character',
         message: `${char?.name ?? '?'} is at a destroyed location in Ch. ${ch?.number ?? '?'}`,
@@ -414,6 +423,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
 
         out.push({
           id: `char-in-region-${snap.characterId}-${snap.eventId}-${region.id}`,
+          kind: 'char-in-region',
           severity: 'warning',
           category: 'character',
           message: `${char?.name ?? '?'} is inside a ${status} region in Ch. ${ch?.number ?? '?'}`,
@@ -473,6 +483,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           })
           out.push({
             id: `dup-item-${itemId}-${evId}`,
+            kind: 'dup-item',
             severity: 'error',
             category: 'item',
             message: `"${item?.name ?? itemId}" appears in multiple places in Ch. ${ch.number}`,
@@ -508,6 +519,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           const item = itemById.get(itemId)
           out.push({
             id: `item-before-acquired-${itemId}-${ev.id}`,
+            kind: 'item-before-acquired',
             severity: 'warning',
             category: 'item',
             message: `"${item?.name ?? itemId}" used before acquired in Ch. ${ch.number}`,
@@ -549,6 +561,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         const item = itemById.get(itemId)
         out.push({
           id: `item-after-destroyed-ev-${itemId}-${ev.id}`,
+          kind: 'item-after-destroyed-ev',
           severity: 'warning',
           category: 'item',
           message: `"${item?.name ?? itemId}" used after being destroyed`,
@@ -570,6 +583,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         const char = charById.get(snap.characterId)
         out.push({
           id: `item-after-destroyed-inv-${itemId}-${snap.eventId}-${snap.characterId}`,
+          kind: 'item-after-destroyed-inv',
           severity: 'warning',
           category: 'item',
           message: `Destroyed item "${item?.name ?? itemId}" in ${char?.name ?? '?'}'s inventory`,
@@ -595,6 +609,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       const ch = ev ? chapById.get(ev.chapterId) : undefined
       out.push({
         id: `item-handoff-${h.itemId}-${h.fromCharacterId}-${h.toCharacterId}-${h.handoffEventId}`,
+        kind: 'item-handoff',
         severity: 'warning',
         category: 'item',
         message: `"${item?.name ?? h.itemId}" changes hands between characters in different places`,
@@ -624,6 +639,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         const charB = charById.get(rel.characterBId)
         out.push({
           id: `rel-before-start-${rs.id}`,
+          kind: 'rel-before-start',
           severity: 'warning',
           category: 'relationship',
           message: `Relationship snapshot exists before it started`,
@@ -659,6 +675,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         const rsCh = rsEv ? chapById.get(rsEv.chapterId) : undefined
         out.push({
           id: `dead-char-in-rel-snap-${rs.id}`,
+          kind: 'dead-char-in-rel-snap',
           severity: 'warning',
           category: 'relationship',
           message: `Relationship snapshot references deceased ${deadChar?.name ?? '?'}`,
@@ -713,6 +730,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
 
           out.push({
             id: `region-traversal-${charId}-${curr.eventId}-${region.id}`,
+            kind: 'region-traversal',
             severity: 'warning',
             category: 'character',
             message: `${char.name} travels through a ${status} region`,
@@ -766,6 +784,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           const newTravelDays = (currEvent.travelDays ?? 0) + assessment.shortfallDays
           out.push({
             id: `travel-dist-${charId}-${curr.eventId}`,
+            kind: 'travel-dist',
             severity: 'warning',
             category: 'character',
             message: `${char.name} can't reach ${toMarker.name} in time`,
@@ -806,6 +825,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           const char = charById.get(snap.characterId)
           out.push({
             id: `artifact-wrong-timeline-${artifact.id}-${snap.id}`,
+            kind: 'artifact-wrong-timeline',
             severity: 'warning',
             category: 'item',
             message: `"${item.name}" appears outside its declared timelines`,
@@ -843,6 +863,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           const endCh = endEvent ? chapById.get(endEvent.chapterId) : undefined
           out.push({
             id: `faction-gap-${charId}-${m.id}`,
+            kind: 'faction-gap',
             severity: 'warning',
             category: 'faction',
             message: `${char.name} leaves "${faction?.name ?? '?'}" with no replacement faction`,
@@ -892,6 +913,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         const locFaction  = factionById.get(marker.factionId)
         out.push({
           id: `hostile-loc-${snap.characterId}-${snap.eventId}-${charFactionId}`,
+          kind: 'hostile-loc',
           severity: 'warning',
           category: 'faction',
           message: `${char?.name ?? '?'} is at hostile territory in Ch. ${ch?.number ?? '?'}`,
@@ -912,6 +934,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         const ch = chapById.get(ev.chapterId)
         out.push({
           id: `pov-not-involved-${ev.id}`,
+          kind: 'pov-not-involved',
           severity: 'warning',
           category: 'pov',
           message: `POV "${char?.name ?? '?'}" is not in the cast of "${ev.title || 'untitled'}"`,
@@ -931,6 +954,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       const ch = chapById.get(ev.chapterId)
       out.push({
         id: `dead-pov-${ev.povCharacterId}-${ev.id}`,
+        kind: 'dead-pov',
         severity: 'warning',
         category: 'pov',
         message: `POV "${char?.name ?? '?'}" is dead at "${ev.title || 'untitled'}"`,
@@ -959,6 +983,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         const lastCh  = chapById.get(lastEv.chapterId)
         out.push({
           id: `pov-consecutive-${charId}-${firstEv.id}`,
+          kind: 'pov-consecutive',
           severity: 'warning',
           category: 'pov',
           message: `${char?.name ?? '?'} is POV for ${runLen} consecutive events`,
@@ -977,6 +1002,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       const who = a.characterId ? (charById.get(a.characterId)?.name ?? 'A character') : 'The reader'
       out.push({
         id: `knowledge-anachronism-${a.fact.id}-${a.characterId ?? 'reader'}-${a.knownAtEventId}`,
+        kind: 'knowledge-anachronism',
         severity: 'warning',
         category: 'character',
         message: `${who} knows "${a.fact.title}" before it happens`,
@@ -993,6 +1019,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       const ch = ev ? chapById.get(ev.chapterId) : undefined
       out.push({
         id: `dead-knower-${d.fact.id}-${d.characterId}-${d.revealEventId}`,
+        kind: 'dead-knower',
         severity: 'warning',
         category: 'character',
         message: `${char?.name ?? '?'} learns "${d.fact.title}" after dying`,
@@ -1011,6 +1038,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       if (p.kind === 'dead') {
         out.push({
           id: `prose-dead-${p.characterId}-${p.eventId}`,
+          kind: 'prose-dead',
           severity: 'warning',
           category: 'prose',
           message: `Dead character ${p.characterName} is named in the prose of "${ev?.title || 'untitled'}"`,
@@ -1021,6 +1049,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       } else {
         out.push({
           id: `prose-untagged-${p.characterId}-${p.eventId}`,
+          kind: 'prose-untagged',
           severity: 'warning',
           category: 'prose',
           message: `${p.characterName} is named in the prose but not in the cast of "${ev?.title || 'untitled'}"`,
@@ -1038,6 +1067,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       const revealCh = chapById.get(eventById.get(leak.revealEventId)?.chapterId ?? '')
       out.push({
         id: `prose-leak-${leak.fact.id}-${leak.leakEventId}`,
+        kind: 'prose-leak',
         severity: 'warning',
         category: 'prose',
         message: `Possible early reveal: "${leak.fact.title}"`,
@@ -1059,6 +1089,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         : undefined
       out.push({
         id: `thread-${ti.kind}-${ti.threadId}`,
+        kind: `thread-${ti.kind}` as IssueKind,
         severity: 'warning',
         category: 'thread',
         message: ti.message,

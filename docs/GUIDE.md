@@ -1554,6 +1554,14 @@ count. Typical catches:
 
 ![Continuity Checker](images/18-continuity.png)
 
+**Within a category, findings are grouped by what went wrong.** A category that
+holds more than one kind of fault names each run and counts it — *Alive after
+dying 1* above *Dead character in a scene 3* — so one repeated mistake cannot
+bury the one that matters. Errors come first whatever their count, which is the
+case worth reaching: a single error sitting among fifty warnings used to be
+wherever its check happened to run. A category with a single kind in it is listed
+plainly, since a heading there would only repeat the category name.
+
 Each finding links straight to the offending event so you can fix it in context.
 The travel checks rely on a **map scale** (set one on the map) and **travel
 modes** with speeds (in World settings). The stale-snapshot sensitivity is

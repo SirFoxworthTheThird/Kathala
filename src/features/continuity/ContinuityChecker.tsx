@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
+import { groupIssuesByKind } from '@/lib/continuity/issueKinds'
 import { useFocusTrap } from '@/lib/useFocusTrap'
 import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, Shield, ChevronRight, EyeOff, Eye, Check, PenLine, Spline } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
@@ -159,12 +160,12 @@ function IssueRow({
   )
 }
 
-function CategorySection({ title, icon: Icon, issues, focusedIdx, baseIdx, suppressedIds, suppressedNotes, showSuppressed, onNavigate, onSuppress, onFix }: {
+function CategorySection({ title, icon: Icon, issues, focusedId, suppressedIds, suppressedNotes, showSuppressed, onNavigate, onSuppress, onFix }: {
   title: string
   icon: React.ElementType
   issues: Issue[]
-  focusedIdx: number
-  baseIdx: number
+  /** Which row the keyboard is on, by id — see the note on `focusedId` below. */
+  focusedId: string | null
   suppressedIds: Set<string>
   suppressedNotes: Record<string, string>
   showSuppressed: boolean
@@ -174,6 +175,16 @@ function CategorySection({ title, icon: Icon, issues, focusedIdx, baseIdx, suppr
 }) {
   const visible = issues.filter((i) => showSuppressed || !suppressedIds.has(i.id))
   if (visible.length === 0) return null
+
+  // CC-3: a category was the only grouping there was, so "Items 79" was one
+  // heading over a single repeated fault with the real findings buried inside
+  // it. Grouping by kind puts a name and a count on each run, and orders errors
+  // first, so a category opens on its most serious fault.
+  const groups = groupIssuesByKind(visible)
+  // With one kind there is nothing to triage between, and a heading repeating
+  // the category would be noise.
+  const showHeadings = groups.length > 1
+
   return (
     <div className="mb-4">
       <div className="flex items-center gap-2 mb-2">
@@ -181,20 +192,41 @@ function CategorySection({ title, icon: Icon, issues, focusedIdx, baseIdx, suppr
         <span className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">{title}</span>
         <span className="ml-auto text-xs text-[hsl(var(--muted-foreground))]">{visible.length}</span>
       </div>
-      <div className="space-y-1.5">
-        {visible.map((issue, i) => (
-          <IssueRow
-            key={issue.id}
-            issue={issue}
-            focused={focusedIdx === baseIdx + i}
-            suppressed={suppressedIds.has(issue.id)}
-            suppressNote={suppressedNotes[issue.id] ?? ''}
-            onNavigate={onNavigate}
-            onSuppress={onSuppress}
-            onFix={onFix}
-          />
-        ))}
-      </div>
+      {groups.map((group) => (
+        <div key={group.kind} className={showHeadings ? 'mb-2.5' : undefined}>
+          {showHeadings && (
+            <div className="mb-1 flex items-center gap-1.5 pl-0.5">
+              <span
+                className={cn(
+                  'h-1.5 w-1.5 shrink-0 rounded-full',
+                  group.severity === 'error' ? 'bg-red-400' : 'bg-amber-400',
+                )}
+                aria-hidden="true"
+              />
+              <span className="text-[11px] font-medium text-[hsl(var(--muted-foreground))]">
+                {group.label}
+              </span>
+              <span className="text-[11px] tabular-nums text-[hsl(var(--muted-foreground)/0.7)]">
+                {group.issues.length}
+              </span>
+            </div>
+          )}
+          <div className="space-y-1.5">
+            {group.issues.map((issue) => (
+              <IssueRow
+                key={issue.id}
+                issue={issue}
+                focused={focusedId === issue.id}
+                suppressed={suppressedIds.has(issue.id)}
+                suppressNote={suppressedNotes[issue.id] ?? ''}
+                onNavigate={onNavigate}
+                onSuppress={onSuppress}
+                onFix={onFix}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -207,7 +239,11 @@ export function ContinuityChecker() {
   const { checkerOpen, setCheckerOpen, setActiveEventId } = useAppStore()
   const { suppressedIds, suppressedNotes } = useContinuitySuppressions(worldId ?? null)
   const [showSuppressed, setShowSuppressed] = useState(false)
-  const [focusedIdx, setFocusedIdx] = useState(-1)
+  // Focus is tracked by issue id rather than by position. It used to be an
+  // index into one flat list while the rows were rendered from another, with
+  // `baseIdx` arithmetic bridging the two — which only held while the two
+  // orders agreed, and grouping by kind (CC-3) makes them disagree.
+  const [focusedId, setFocusedId] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   useFocusTrap(containerRef, checkerOpen)
@@ -271,7 +307,7 @@ export function ContinuityChecker() {
   // Focus modal on open so keyboard navigation works immediately
   useEffect(() => {
     if (checkerOpen) {
-      setFocusedIdx(-1)
+      setFocusedId(null)
       setTimeout(() => containerRef.current?.focus(), 0)
     }
   }, [checkerOpen])
@@ -303,11 +339,18 @@ export function ContinuityChecker() {
 
   const suppressedSet = suppressedIds
 
-  // Flat ordered list of navigable (non-suppressed) issues for keyboard nav
-  const navigableIssues = useMemo(
-    () => issues.filter((i) => !suppressedSet.has(i.id) && i.navigatePath),
-    [issues, suppressedSet]
-  )
+  // The rows the arrow keys walk, in the order they are drawn: category by
+  // category, and within each, grouped by kind exactly as `CategorySection`
+  // does. Derived from the same `groupIssuesByKind` call the rendering uses, so
+  // focus cannot walk off in an order nothing on screen is in.
+  const navigableIssues = useMemo(() => {
+    const byCategory: Issue['category'][] =
+      ['character', 'item', 'relationship', 'faction', 'pov', 'prose', 'thread']
+    return byCategory.flatMap((category) =>
+      groupIssuesByKind(issues.filter((i) => i.category === category && !suppressedSet.has(i.id)))
+        .flatMap((g) => g.issues)
+        .filter((i) => i.navigatePath))
+  }, [issues, suppressedSet])
 
   function handleNavigate(issue: Issue) {
     if (!issue.navigatePath || !issue.eventId) return
@@ -323,15 +366,18 @@ export function ContinuityChecker() {
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Escape') { setCheckerOpen(false); return }
     if (navigableIssues.length === 0) return
+    const at = navigableIssues.findIndex((i) => i.id === focusedId)
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setFocusedIdx((i) => Math.min(i + 1, navigableIssues.length - 1))
+      setFocusedId(navigableIssues[Math.min(at + 1, navigableIssues.length - 1)].id)
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setFocusedIdx((i) => Math.max(i - 1, 0))
-    } else if (e.key === 'Enter' && focusedIdx >= 0) {
+      // `at` is -1 before anything is focused, so this lands on the first row
+      // rather than staying nowhere.
+      setFocusedId(navigableIssues[Math.max(at - 1, 0)].id)
+    } else if (e.key === 'Enter' && at >= 0) {
       e.preventDefault()
-      handleNavigate(navigableIssues[focusedIdx])
+      handleNavigate(navigableIssues[at])
     }
   }
 
@@ -351,21 +397,7 @@ export function ContinuityChecker() {
   const proseIssues   = issues.filter((i) => i.category === 'prose')
   const threadIssues  = issues.filter((i) => i.category === 'thread')
 
-  // Compute base indices for keyboard focus mapping per category
-  const visibleChar    = charIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
-  const visibleItem    = itemIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
-  const visibleRel     = relIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
-  const visibleFaction = factionIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
-  const visiblePov     = povIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
-  const visibleProse   = proseIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
 
-  // focusedIdx is into navigableIssues; map back to category position
-  function categoryFocusedIdx(categoryIssues: Issue[]): number {
-    if (focusedIdx < 0) return -1
-    const focused = navigableIssues[focusedIdx]
-    const visible = categoryIssues.filter((i) => showSuppressed || !suppressedSet.has(i.id))
-    return visible.findIndex((i) => i.id === focused?.id)
-  }
 
   return (
     <div
@@ -424,31 +456,31 @@ export function ContinuityChecker() {
           ) : (
             <>
               <CategorySection title="Characters" icon={Users} issues={charIssues}
-                focusedIdx={categoryFocusedIdx(charIssues)} baseIdx={0}
+                focusedId={focusedId}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
                 onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Items" icon={Package} issues={itemIssues}
-                focusedIdx={categoryFocusedIdx(itemIssues)} baseIdx={visibleChar.length}
+                focusedId={focusedId}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
                 onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Relationships" icon={Network} issues={relIssues}
-                focusedIdx={categoryFocusedIdx(relIssues)} baseIdx={visibleChar.length + visibleItem.length}
+                focusedId={focusedId}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
                 onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Factions" icon={Shield} issues={factionIssues}
-                focusedIdx={categoryFocusedIdx(factionIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length}
+                focusedId={focusedId}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
                 onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="POV" icon={Eye} issues={povIssues}
-                focusedIdx={categoryFocusedIdx(povIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length + visibleFaction.length}
+                focusedId={focusedId}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
                 onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Prose vs. record" icon={PenLine} issues={proseIssues}
-                focusedIdx={categoryFocusedIdx(proseIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length + visibleFaction.length + visiblePov.length}
+                focusedId={focusedId}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
                 onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Plot threads" icon={Spline} issues={threadIssues}
-                focusedIdx={categoryFocusedIdx(threadIssues)} baseIdx={visibleChar.length + visibleItem.length + visibleRel.length + visibleFaction.length + visiblePov.length + visibleProse.length}
+                focusedId={focusedId}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
                 onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
             </>
