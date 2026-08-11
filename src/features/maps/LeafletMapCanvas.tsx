@@ -541,9 +541,15 @@ export function LeafletMapCanvas({
   // Which markers can show their name without burying a neighbour's. Recomputed
   // on zoom, so names come back as the map spreads out; the highlighted marker
   // keeps its label regardless, because that is the one being asked about.
+  // MW-4: region polygons on this layer write their own name across what they
+  // cover, so a pin of the same name standing inside one is the second copy.
+  const namedAreas = useMemo(
+    () => mapRegions.filter((r) => r.vertices.length >= 3).map((r) => ({ name: r.name, vertices: r.vertices })),
+    [mapRegions],
+  )
   const labelledIds = useMemo(
-    () => labelledMarkers(markers, mapZoom, selectedMarkerId ? [selectedMarkerId] : []),
-    [markers, mapZoom, selectedMarkerId],
+    () => labelledMarkers(markers, mapZoom, selectedMarkerId ? [selectedMarkerId] : [], namedAreas),
+    [markers, mapZoom, selectedMarkerId, namedAreas],
   )
 
   const w      = layer.imageWidth

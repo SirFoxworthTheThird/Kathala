@@ -56,3 +56,63 @@ describe('labelledMarkers', () => {
     expect(labelledMarkers(long, 0).size).toBe(1)
   })
 })
+
+/**
+ * MW-4: a region polygon writes its own name across the middle of what it
+ * covers, so a pin of the same name standing inside it has its name said twice
+ * — *Rohan* on the polygon and *Rohan / Region* on the pill, overlapping in the
+ * shipped Fellowship.
+ */
+describe('labelledMarkers and region polygons', () => {
+  const at = (id: string, x: number, y: number, name: string) => ({ id, x, y, name })
+  /** A square from (0,0) to (size,size). */
+  const square = (name: string, size = 500, ox = 0, oy = 0) => ({
+    name,
+    vertices: [
+      { x: ox, y: oy }, { x: ox + size, y: oy },
+      { x: ox + size, y: oy + size }, { x: ox, y: oy + size },
+    ],
+  })
+
+  it('drops the pin label when the region of that name contains it', () => {
+    const kept = labelledMarkers([at('rohan', 250, 250, 'Rohan')], 0, [], [square('Rohan')])
+    expect(kept.has('rohan')).toBe(false)
+  })
+
+  it('keeps it when no region names it, which is the same pin either way', () => {
+    // The pairing: identical marker, identical position, no matching region.
+    const kept = labelledMarkers([at('rohan', 250, 250, 'Rohan')], 0, [], [square('Gondor')])
+    expect(kept.has('rohan')).toBe(true)
+  })
+
+  it('keeps a same-named pin that stands outside the region', () => {
+    // Two places can share a name on one map. Hiding the label of a pin that
+    // stands somewhere else entirely would be a worse fault than the one being
+    // fixed, so containment is tested rather than the name alone.
+    const kept = labelledMarkers([at('far', 900, 900, 'Rohan')], 0, [], [square('Rohan')])
+    expect(kept.has('far')).toBe(true)
+  })
+
+  it('ignores case and surrounding space in the name', () => {
+    const kept = labelledMarkers([at('r', 250, 250, '  rohan ')], 0, [], [square('Rohan')])
+    expect(kept.has('r')).toBe(false)
+  })
+
+  it('still labels a selected pin, because that is the one being asked about', () => {
+    const kept = labelledMarkers([at('rohan', 250, 250, 'Rohan')], 0, ['rohan'], [square('Rohan')])
+    expect(kept.has('rohan')).toBe(true)
+  })
+
+  it('ignores a degenerate region that cannot contain anything', () => {
+    const line = { name: 'Rohan', vertices: [{ x: 0, y: 0 }, { x: 500, y: 500 }] }
+    expect(labelledMarkers([at('rohan', 250, 250, 'Rohan')], 0, [], [line]).has('rohan')).toBe(true)
+  })
+
+  it('leaves other pins in the region alone', () => {
+    // Only the duplicated name goes; Edoras inside Rohan is not a duplicate.
+    const kept = labelledMarkers(
+      [at('edoras', 250, 250, 'Edoras')], 0, [], [square('Rohan')],
+    )
+    expect(kept.has('edoras')).toBe(true)
+  })
+})

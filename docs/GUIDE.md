@@ -1053,7 +1053,12 @@ the spot you were aiming at.
 - Routes can be roads, rivers, trails, sea routes, borders, or custom paths. Open
   a route to edit its name, type, notes, and geometry.
 - Regions have a fill colour, opacity, notes, and an event-based condition. They
-  can belong to a faction and can link directly to a sub-map.
+  can belong to a faction and can link directly to a sub-map. A region writes its
+  name across the middle of the area it covers, so a **location pin of the same
+  name standing inside it** shows as a dot rather than a labelled pill — the name
+  is already there, and saying it twice only put two labels on top of each other.
+  The pin keeps everything else: its position, its click, and its ring if it
+  leads to a sub-map.
 - **The four detail panels work the same way.** Location, character, route and
   region all open on the right edge, and each names *the thing* in its header —
   the place, the person, the road — with what kind of thing it is beneath, and

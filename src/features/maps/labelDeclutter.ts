@@ -24,6 +24,33 @@ export interface DeclutterMarker {
   y: number
 }
 
+/**
+ * A region polygon, which draws its own name across the middle of the area it
+ * covers (MW-4).
+ */
+export interface NamedArea {
+  name: string
+  vertices: ReadonlyArray<{ x: number; y: number }>
+}
+
+/** Ray casting, in the map's own pixel space. Vertices are a closed ring. */
+function containsPoint(vertices: NamedArea['vertices'], x: number, y: number): boolean {
+  let inside = false
+  for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
+    const a = vertices[i]
+    const b = vertices[j]
+    // Half-open on y so a vertex exactly on the ray is counted once, not twice.
+    if ((a.y > y) !== (b.y > y) &&
+        x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) {
+      inside = !inside
+    }
+  }
+  return inside
+}
+
+const sameName = (a: string | null | undefined, b: string) =>
+  (a ?? '').trim().toLowerCase() === b.trim().toLowerCase()
+
 /** Matches the pill built in `makeLocationIcon`. */
 const PILL_HEIGHT = 34
 const ICON_WIDTH = 28
@@ -62,11 +89,24 @@ const overlaps = (a: Box, b: Box) =>
  * `keepIds` are exempt from decluttering — a marker the reader has selected or
  * searched for keeps its name even in a crowd, because that is the one they
  * asked about.
+ *
+ * `areas` are the region polygons on the layer, which draw their own names
+ * across the middle of what they cover. A pin standing inside a region of the
+ * same name has its name said twice, once by each — *Rohan* on the polygon and
+ * *Rohan / Region* on the pill, overlapping in the Fellowship example (MW-4).
+ * The pin keeps its dot, its click target and its sub-map ring, and gives up
+ * only the duplicated word; the polygon keeps the label, because a centred name
+ * describes an area and a pill describes a point.
+ *
+ * Containment is tested rather than name alone: two places can share a name on
+ * one map, and hiding the label of a pin that stands somewhere else entirely
+ * would be a worse fault than the one being fixed.
  */
 export function labelledMarkers(
   markers: readonly DeclutterMarker[],
   zoom: number,
   keepIds: readonly string[] = [],
+  areas: readonly NamedArea[] = [],
 ): Set<string> {
   const scale = Math.pow(2, zoom)
   const forced = new Set(keepIds)
@@ -82,10 +122,19 @@ export function labelledMarkers(
   const kept: Box[] = []
   const out = new Set<string>()
   for (const m of ordered) {
+    if (!forced.has(m.id) && namedByArea(m, areas)) continue
     const box = pillBox(m, scale)
     if (!forced.has(m.id) && kept.some((k) => overlaps(k, box))) continue
     kept.push(box)
     out.add(m.id)
   }
   return out
+}
+
+/** Whether a region of the same name already writes this pin's name across it. */
+function namedByArea(m: DeclutterMarker, areas: readonly NamedArea[]): boolean {
+  return areas.some((a) =>
+    sameName(m.name, a.name) &&
+    a.vertices.length >= 3 &&
+    containsPoint(a.vertices, m.x, m.y))
 }
