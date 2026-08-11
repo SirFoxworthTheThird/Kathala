@@ -1568,6 +1568,12 @@ you off to find the setting:
 - **Months** — rename them, set each month's length in days, and add or remove
   months. A fantasy calendar can have any number of months of any length.
 
+A year is its months and nothing else, so calendars with days that belong to no
+month — the Shire Reckoning's Yule and Lithe, for instance — cannot be set up
+faithfully. That is why the [Library](#getting-started--the-world-selector)
+worlds drawn from books with real-world dates ship with a calendar and the
+secondary-world ones do not.
+
 ![Calendar editor](images/30-calendar.png)
 
 With a calendar set, in-world dates appear wherever the day clock is shown: the
