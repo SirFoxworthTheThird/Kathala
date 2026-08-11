@@ -71,8 +71,18 @@ export interface Issue {
   detail?: string
   navigatePath?: string
   eventId?: string
-  /** Optional one-click fix: set this event's travelDays to the given value. */
-  fix?: { label: string; eventId: string; setTravelDays: number }
+  /**
+   * An optional one-click fix, applied by the checker without leaving it.
+   *
+   * This was shaped for a single check — `{ label, eventId, setTravelDays }` —
+   * so the panel could offer a fix for exactly one of twenty-eight kinds. The
+   * Highbarrow review's strongest finding was that the snapshot warnings send
+   * you to the chapter and no further, so the shape is a union now and the
+   * checker dispatches on `kind`.
+   */
+  fix?:
+    | { kind: 'travelDays'; label: string; eventId: string; setTravelDays: number }
+    | { kind: 'initialSnapshot'; label: string; eventId: string; characterId: string }
 }
 
 /** Everything the checks read — the ContinuityChecker gathers these via hooks
@@ -322,6 +332,16 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           : `First appears in "${ev.title || 'untitled'}" (Ch. ${ch?.number ?? '?'}) but first snapshot is later in the timeline`,
         navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
         eventId: ev.id,
+        /*
+          The warning knew the character and the scene all along and still made
+          the writer leave the panel, move the time cursor, open the character,
+          find Current State and save — once per character, for an ensemble
+          scene. There is nothing to ask them: an initial record is alive,
+          nowhere in particular, carrying nothing, which is what "they exist
+          from here" means. Anything more specific is an edit made afterwards,
+          on a record that now exists.
+        */
+        fix: { kind: 'initialSnapshot', label: 'Record initial state here', eventId: ev.id, characterId: charId },
       })
     }
 
@@ -791,7 +811,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
             detail: `${fromMarker.name} → ${toMarker.name} is ~${dist} ${layer.scaleUnit} · ${travelMode.name} at ${assessment.effectiveSpeed.toFixed(1)} ${layer.scaleUnit}/day${routeNote} — needs ${assessment.daysNeeded.toFixed(1)} days but only ${daysAvailable} in-world day${daysAvailable === 1 ? '' : 's'} available (Ch. ${currCh?.number ?? '?'})`,
             navigatePath: `/worlds/${worldId}/timeline/${currEvent.chapterId}`,
             eventId: curr.eventId,
-            fix: { label: `Allow ${assessment.shortfallDays} more day${assessment.shortfallDays === 1 ? '' : 's'}`, eventId: curr.eventId, setTravelDays: newTravelDays },
+            fix: { kind: 'travelDays', label: `Allow ${assessment.shortfallDays} more day${assessment.shortfallDays === 1 ? '' : 's'}`, eventId: curr.eventId, setTravelDays: newTravelDays },
           })
         }
       }

@@ -105,4 +105,73 @@ describe('computeContinuityIssues', () => {
     expect(threadIssues[0].navigatePath).toContain('/timeline/c1')
     expect(threadIssues[0].eventId).toBe('e1')
   })
+
+  /**
+   * HB-1. The Highbarrow review's strongest finding was that this warning
+   * names the character and the scene and then sends the writer to the
+   * chapter and no further — so they must leave, move the cursor, open the
+   * character, find Current State and save, per character. The issue carries
+   * everything the fix needs; it just never offered one.
+   */
+  describe('the initial-state fix on "appears before any state was recorded"', () => {
+    it('carries the character and the scene it first appears in', () => {
+      const input = emptyInput()
+      input.chapters = [chapter('c1', 1)]
+      input.characters = [character('barnaby', 'Barnaby')]
+      input.allEvents = [event('e1', 'c1', 0, { involvedCharacterIds: ['barnaby'] })]
+
+      const issue = computeContinuityIssues(input).find((i) => i.kind === 'char-before-intro')
+      expect(issue, 'a character with no snapshots at all should be flagged').toBeDefined()
+      expect(issue!.fix).toEqual({
+        kind: 'initialSnapshot',
+        label: 'Record initial state here',
+        eventId: 'e1',
+        characterId: 'barnaby',
+      })
+    })
+
+    it('offers it for a first snapshot that is merely late, not only for none at all', () => {
+      const input = emptyInput()
+      input.chapters = [chapter('c1', 1), chapter('c2', 2)]
+      input.characters = [character('barnaby', 'Barnaby')]
+      input.allEvents = [
+        event('e1', 'c1', 0, { involvedCharacterIds: ['barnaby'] }),
+        event('e2', 'c2', 0, { involvedCharacterIds: ['barnaby'] }),
+      ]
+      input.snapshots = [snapshot('s1', 'barnaby', 'e2', true)]
+
+      const issue = computeContinuityIssues(input).find((i) => i.kind === 'char-before-intro')
+      expect(issue!.detail).toContain('first snapshot is later')
+      // The fix targets the *first* appearance, which is the gap — not the
+      // event whose snapshot already exists.
+      expect(issue!.fix).toMatchObject({ kind: 'initialSnapshot', eventId: 'e1', characterId: 'barnaby' })
+    })
+
+    it('offers nothing once a state is recorded at that scene', () => {
+      const input = emptyInput()
+      input.chapters = [chapter('c1', 1)]
+      input.characters = [character('barnaby', 'Barnaby')]
+      input.allEvents = [event('e1', 'c1', 0, { involvedCharacterIds: ['barnaby'] })]
+      input.snapshots = [snapshot('s1', 'barnaby', 'e1', true)]
+
+      expect(computeContinuityIssues(input).filter((i) => i.kind === 'char-before-intro')).toEqual([])
+    })
+
+    it('gives one fix per character across an ensemble scene', () => {
+      const input = emptyInput()
+      input.chapters = [chapter('c1', 1)]
+      const cast = ['foxworth', 'barnaby', 'vargan']
+      input.characters = cast.map((id) => character(id, id))
+      input.allEvents = [event('e1', 'c1', 0, { involvedCharacterIds: cast })]
+
+      const fixes = computeContinuityIssues(input)
+        .filter((i) => i.kind === 'char-before-intro')
+        .map((i) => i.fix)
+      expect(fixes).toHaveLength(3)
+      expect(fixes.every((f) => f?.kind === 'initialSnapshot')).toBe(true)
+      expect(fixes.map((f) => f?.kind === 'initialSnapshot' && f.characterId).sort())
+        .toEqual([...cast].sort())
+    })
+  })
+
 })

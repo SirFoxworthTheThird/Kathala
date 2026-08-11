@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
-import { groupIssuesByKind } from '@/lib/continuity/issueKinds'
+import { groupIssuesByKind, FIX_ALL_LABELS } from '@/lib/continuity/issueKinds'
 import { useFocusTrap } from '@/lib/useFocusTrap'
 import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, Shield, ChevronRight, EyeOff, Eye, Check, PenLine, Spline } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
@@ -9,7 +9,7 @@ import { useWorld } from '@/db/hooks/useWorlds'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
-import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
+import { useWorldSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { useCrossTimelineArtifacts } from '@/db/hooks/useTimelineRelationships'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
@@ -160,7 +160,7 @@ function IssueRow({
   )
 }
 
-function CategorySection({ title, icon: Icon, issues, focusedId, suppressedIds, suppressedNotes, showSuppressed, onNavigate, onSuppress, onFix }: {
+function CategorySection({ title, icon: Icon, issues, focusedId, suppressedIds, suppressedNotes, showSuppressed, onNavigate, onSuppress, onFix, onFixAll }: {
   title: string
   icon: React.ElementType
   issues: Issue[]
@@ -172,6 +172,7 @@ function CategorySection({ title, icon: Icon, issues, focusedId, suppressedIds, 
   onNavigate: (issue: Issue) => void
   onSuppress: (issue: Issue, note: string) => void
   onFix: (issue: Issue) => void
+  onFixAll: (issues: Issue[]) => void
 }) {
   const visible = issues.filter((i) => showSuppressed || !suppressedIds.has(i.id))
   if (visible.length === 0) return null
@@ -211,6 +212,30 @@ function CategorySection({ title, icon: Icon, issues, focusedId, suppressedIds, 
               </span>
             </div>
           )}
+          {/*
+            A run of the same fixable fault gets one control for the run, at two
+            or more — at one there is already a button on the row itself.
+
+            The `suppressedIds` check matters only while **Show suppressed** is
+            on: with it off, `visible` above has already dropped those rows. But
+            that is exactly when a batch could do the wrong thing, because the
+            suppressed row is on screen and inside the group, and suppressing is
+            the writer saying they know. A mutation removing this filter
+            survived until the test drove the toggle.
+          */}
+          {(() => {
+            const batch = group.issues.filter((i) => i.fix && !suppressedIds.has(i.id))
+            const label = FIX_ALL_LABELS[group.kind]
+            if (!label || batch.length < 2) return null
+            return (
+              <button
+                onClick={() => onFixAll(batch)}
+                className="mb-1.5 rounded border border-[hsl(var(--border))] px-2 py-0.5 text-[11px] font-medium text-[hsl(var(--foreground))] transition-colors hover:border-[hsl(var(--ring))] hover:bg-[hsl(var(--accent))]"
+              >
+                {label} {batch.length}
+              </button>
+            )
+          })()}
           <div className="space-y-1.5">
             {group.issues.map((issue) => (
               <IssueRow
@@ -359,8 +384,44 @@ export function ContinuityChecker() {
     setCheckerOpen(false)
   }
 
-  function handleFix(issue: Issue) {
-    if (issue.fix) updateEvent(issue.fix.eventId, { travelDays: issue.fix.setTravelDays })
+  async function applyFix(issue: Issue) {
+    const fix = issue.fix
+    if (!fix || !worldId) return
+    switch (fix.kind) {
+      case 'travelDays':
+        await updateEvent(fix.eventId, { travelDays: fix.setTravelDays })
+        return
+      case 'initialSnapshot':
+        // Alive, nowhere in particular, carrying nothing — the record that says
+        // "they exist from here". `upsertSnapshot` refuses to duplicate an
+        // identical earlier state, so this cannot add a no-op row.
+        await upsertSnapshot({
+          worldId,
+          characterId: fix.characterId,
+          eventId: fix.eventId,
+          isAlive: true,
+          currentLocationMarkerId: null,
+          currentMapLayerId: null,
+          inventoryItemIds: [],
+          inventoryNotes: '',
+          statusNotes: '',
+          travelModeId: null,
+        })
+        return
+    }
+  }
+
+  function handleFix(issue: Issue) { void applyFix(issue) }
+
+  /**
+   * The ensemble case the review was actually about: eight characters in one
+   * scene is eight warnings, and clearing them one at a time is the repetition
+   * it names. Applied in sequence rather than in parallel because each
+   * `upsertSnapshot` reads the character's existing rows to decide whether a
+   * new one is needed.
+   */
+  function handleFixAll(batch: Issue[]) {
+    void (async () => { for (const issue of batch) await applyFix(issue) })()
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -458,31 +519,31 @@ export function ContinuityChecker() {
               <CategorySection title="Characters" icon={Users} issues={charIssues}
                 focusedId={focusedId}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onFix={handleFix} onFixAll={handleFixAll} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Items" icon={Package} issues={itemIssues}
                 focusedId={focusedId}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onFix={handleFix} onFixAll={handleFixAll} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Relationships" icon={Network} issues={relIssues}
                 focusedId={focusedId}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onFix={handleFix} onFixAll={handleFixAll} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Factions" icon={Shield} issues={factionIssues}
                 focusedId={focusedId}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onFix={handleFix} onFixAll={handleFixAll} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="POV" icon={Eye} issues={povIssues}
                 focusedId={focusedId}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onFix={handleFix} onFixAll={handleFixAll} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Prose vs. record" icon={PenLine} issues={proseIssues}
                 focusedId={focusedId}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onFix={handleFix} onFixAll={handleFixAll} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Plot threads" icon={Spline} issues={threadIssues}
                 focusedId={focusedId}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
-                onNavigate={handleNavigate} onFix={handleFix} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+                onNavigate={handleNavigate} onFix={handleFix} onFixAll={handleFixAll} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
             </>
           )}
         </div>

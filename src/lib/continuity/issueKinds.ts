@@ -33,6 +33,20 @@ export type IssueKind =
   | 'thread-dangling' | 'thread-dormant' | 'thread-unstarted'
 
 /**
+ * The batch form of a kind's one-click fix, for a run of them.
+ *
+ * Only kinds whose fix is safe to apply unattended appear here — the
+ * Highbarrow review asked for "a batch initial-state workflow for ensemble
+ * scenes", and an initial record is the same answer for every character it
+ * applies to. `travelDays` is deliberately absent: each of those picks a
+ * different number for a different scene, and applying them together would be
+ * a bulk edit of the clock rather than a fix.
+ */
+export const FIX_ALL_LABELS: Partial<Record<IssueKind, string>> = {
+  'char-before-intro': 'Record initial state for all',
+}
+
+/**
  * What each kind is called when it heads a group.
  *
  * Written as the fault rather than as the check — "Alive after dying" rather

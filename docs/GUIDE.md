@@ -1637,7 +1637,10 @@ count. Typical catches:
 - A **dead character** appearing in a later scene (with a one-click "mark as
   flashback" if intentional).
 - A character who **appears before their first snapshot**, or is at a
-  **destroyed location**.
+  **destroyed location**. The first of those offers **Record initial state
+  here** — one click writes the missing starting state (alive, nowhere in
+  particular, carrying nothing) at the scene they first appear in, and the
+  finding clears. You can then edit that record like any other.
 - A character who **can't reach a location in time** — when a move covers more
   map distance than their travel mode can cross in the in-world days available
   (using the map scale, the mode's speed, and any road/river/trail along the
@@ -1657,6 +1660,13 @@ bury the one that matters. Errors come first whatever their count, which is the
 case worth reaching: a single error sitting among fifty warnings used to be
 wherever its check happened to run. A category with a single kind in it is listed
 plainly, since a heading there would only repeat the category name.
+
+**A run of the same fixable fault can be cleared in one go.** Where two or more
+findings share a kind and each offers the same one-click fix, the group carries
+a **Record initial state for all N** button above it — the case worth having
+when eight characters walk into one scene and none of them has a starting state
+yet. Anything you have suppressed is left out, and the count on the button tells
+you how many it will touch.
 
 Each finding links straight to the offending event so you can fix it in context.
 The travel checks rely on a **map scale** (set one on the map) and **travel
