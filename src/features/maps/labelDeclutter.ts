@@ -52,7 +52,7 @@ const sameName = (a: string | null | undefined, b: string) =>
   (a ?? '').trim().toLowerCase() === b.trim().toLowerCase()
 
 /** Matches the pill built in `makeLocationIcon`. */
-const PILL_HEIGHT = 34
+export const PILL_HEIGHT = 34
 const ICON_WIDTH = 28
 /** Label width grows with the name, same formula the icon uses. */
 const labelWidth = (name: string | null | undefined) => Math.max(88, (name?.length ?? 0) * 8 + 16)

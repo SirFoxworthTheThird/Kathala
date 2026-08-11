@@ -6,7 +6,7 @@ import { updateLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { useAppStore } from '@/store'
 import { type GhostPin, makeGhostIcon } from '@/lib/ghostMarkerIcon'
 import { playbackFocusTarget, playbackFocusZoom } from './mapUtils'
-import { labelledMarkers } from './labelDeclutter'
+import { labelledMarkers, PILL_HEIGHT } from './labelDeclutter'
 
 export type { GhostPin }
 
@@ -287,10 +287,42 @@ function FitBounds({ bounds, initialCenter, initialZoom, playbackFocus, onReady 
       // viewport. Open the floor first, fit, and only then adopt the fitted
       // zoom as the new floor so the reader still cannot zoom out past the map.
       map.setMinZoom(MIN_FIT_ZOOM)
-      map.fitBounds(bounds, { padding: [0, 0], animate: false })
-      const minZoom = map.getBoundsZoom(bounds, false)
+      /*
+        MAP-2: the floating toolbar band sits over the top of the canvas, so a
+        fit that used the whole height put markers underneath it — the finding
+        names a marker and its label in the top-right corner. Insetting the fit
+        by the band's height opens the map with everything below it.
+
+        Measured rather than assumed: the band wraps, and its height depends on
+        the filter bar and the info chip it holds. Zero when it is not there,
+        which is the phone case where a detail panel takes the whole width and
+        the band steps aside.
+      */
+      const overlay = document.querySelector('[data-map-overlay="top"]')
+      const band = overlay ? Math.round(overlay.getBoundingClientRect().height) : 0
+      // Plus half a pill. A marker is anchored at its point with the label
+      // centred on it, so clearing the band with the image's edge still leaves
+      // a marker at that edge poking up into it by half its own height.
+      const inset = band > 0 ? band + PILL_HEIGHT / 2 : 0
+      const pad = L.point(0, inset)
+      map.fitBounds(bounds, { paddingTopLeft: pad, paddingBottomRight: [0, 0], animate: false })
+      // The floor has to agree with the fit, or the reader can zoom out past
+      // the view they were just given.
+      const minZoom = map.getBoundsZoom(bounds, false, pad)
       map.setMinZoom(minZoom)
-      map.setMaxBounds(bounds)
+      /*
+        The bounds have to allow the room the padding asked for, or the padded
+        fit is pulled straight back: `setMaxBounds(bounds)` forbids showing
+        anything above the image, which is exactly the space the inset needs.
+        Extended upward by the inset converted into image pixels at the fitted
+        scale, so the allowance is the band and not a fraction of it.
+      */
+      const scale = map.getZoomScale(minZoom, 0)
+      const headroom = scale > 0 ? inset / scale : 0
+      const box = L.latLngBounds(bounds as L.LatLngTuple[])
+      map.setMaxBounds(headroom > 0
+        ? L.latLngBounds(box.getSouthWest(), L.latLng(box.getNorth() + headroom, box.getEast()))
+        : box)
       map.options.zoomSnap = prevSnap ?? 0.25
       const focus = playbackFocusRef.current
       if (focus) {

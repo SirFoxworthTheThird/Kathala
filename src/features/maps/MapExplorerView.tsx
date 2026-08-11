@@ -782,6 +782,11 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               toolbar reachable beside it. On phones the panel takes 85vw and
               there is no room left, so the band steps aside entirely. */}
           <div
+            /* MAP-2: the fit insets by this band's measured height so the map
+               opens with nothing underneath it. Marked rather than measured by
+               a constant — the band wraps, and its height depends on the filter
+               bar and the info chip inside it. */
+            data-map-overlay="top"
             className={cn(
               'pointer-events-none absolute inset-x-0 top-0 z-[1100] flex flex-wrap items-start justify-between gap-2 p-2',
               rightPanelOpen && 'max-sm:hidden sm:pr-[19rem]',
