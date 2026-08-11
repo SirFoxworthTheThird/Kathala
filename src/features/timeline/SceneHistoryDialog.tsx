@@ -75,7 +75,7 @@ export function SceneHistoryDialog({ open, onOpenChange, eventId, currentText }:
                         onClick={() => deleteSceneRevision(r.id)}
                         aria-label="Delete this version"
                         title="Delete this version"
-                        className="shrink-0 text-[hsl(var(--muted-foreground))] opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
+                        className="shrink-0 text-[hsl(var(--muted-foreground))] opacity-0 pointer-events-none transition-opacity hover:text-red-400 group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto"
                       >
                         <Trash2 className="h-3 w-3" />
                       </button>

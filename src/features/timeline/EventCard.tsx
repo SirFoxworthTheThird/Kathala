@@ -311,29 +311,36 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
     <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
       {/* Header row */}
       <div className="flex items-center gap-1 px-3 py-2">
-        <button
-          className="flex-1 min-w-0 text-left"
-          // An untitled scene renders an empty span, which leaves this button
-          // with no accessible name at all — the one card on the page a screen
-          // reader could say nothing about.
-          aria-label={event.title ? undefined : 'Untitled scene'}
-          aria-expanded={editing ? undefined : expanded}
-          onClick={() => !editing && setExpanded((v) => !v)}
-        >
-          {editing ? (
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="h-7 text-sm"
-              onClick={(e) => e.stopPropagation()}
-              autoFocus
-            />
-          ) : (
+        {/*
+          The disclosure and the title field are alternatives, not one nested in
+          the other. While editing, the button wrapped the `Input` — inert,
+          because its own handler checked `!editing`, and nameless, because a
+          button takes its name from its content and the content was now a
+          field. Interactive content inside a button is not valid either.
+        */}
+        {editing ? (
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            aria-label="Scene title"
+            className="h-7 flex-1 min-w-0 text-sm"
+            autoFocus
+          />
+        ) : (
+          <button
+            className="flex-1 min-w-0 text-left"
+            // An untitled scene renders an empty span, which leaves this button
+            // with no accessible name at all — the one card on the page a screen
+            // reader could say nothing about.
+            aria-label={event.title ? undefined : 'Untitled scene'}
+            aria-expanded={expanded}
+            onClick={() => setExpanded((v) => !v)}
+          >
             <span className="text-sm font-medium text-[hsl(var(--foreground))] truncate block">
               {event.title || <span className="italic text-[hsl(var(--muted-foreground))]">Untitled scene</span>}
             </span>
-          )}
-        </button>
+          </button>
+        )}
 
         <EventCardBadges
           sceneWords={sceneWords}
@@ -461,6 +468,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
               <Textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                aria-label="Scene description"
                 placeholder="What happened..."
                 rows={3}
                 className="text-sm"
@@ -528,6 +536,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={handleTagKeyDown}
                 onBlur={commitTag}
+                aria-label="Add a tag to this scene"
                 placeholder={tags.length === 0 ? 'Type a tag and press Enter…' : ''}
                 className="flex-1 min-w-[8rem] bg-transparent text-xs text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] outline-none"
               />
@@ -793,6 +802,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                 type="number"
                 min={0}
                 step="any"
+                aria-label="Days since the previous event"
                 className="h-8 w-24 text-xs"
                 placeholder="0"
                 value={travelDays ?? ''}
@@ -807,6 +817,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
               <Input
                 type="number"
                 step="any"
+                aria-label="Exact in-world day for this scene"
                 className="h-8 w-24 text-xs"
                 placeholder="auto"
                 value={inWorldTime ?? ''}

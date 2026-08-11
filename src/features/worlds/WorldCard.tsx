@@ -96,7 +96,7 @@ export function WorldCard({ world }: WorldCardProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
           {/* Export split-button */}
           <div ref={menuRef} className="relative" onClick={(e) => e.stopPropagation()}>
             <div className="flex">
@@ -164,10 +164,22 @@ export function WorldCard({ world }: WorldCardProps) {
             )}
           </div>
 
+          {/*
+            HB-2a / LORE-1: `opacity-0` with pointer events still live hit-tests
+            to itself, and this one deletes the world. On a touch device there
+            is no hover, so the resting state is the only state and a tap on
+            apparently blank card chrome reached it.
+
+            The gate is on **this button alone**, not the cluster it sits in.
+            Gating the whole row took Export with it, and a control that is
+            merely hidden until wanted should not be hard to reach — only the
+            destructive one is worth costing a deliberate hover. `importExport`
+            caught that within one run.
+          */}
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 hover:text-red-400"
+            className="h-7 w-7 pointer-events-none hover:text-red-400 group-hover:pointer-events-auto focus-visible:pointer-events-auto"
             onClick={handleDelete}
             title="Delete world"
           >

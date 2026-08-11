@@ -12,6 +12,9 @@ interface SceneDraftEditorProps {
   /** Called when a character is chosen via the "@" picker. */
   onMention: (characterId: string) => void
   placeholder?: string
+  /** Accessible name. A placeholder is not one — it is the last-resort source
+   *  in HTML-AAM and it disappears the moment the field has prose in it. */
+  ariaLabel?: string
   rows?: number
 }
 
@@ -38,7 +41,7 @@ function findMention(text: string, caret: number): MentionState | null {
  * than leaving an "@token" in the prose.
  */
 export function SceneDraftEditor({
-  value, onChange, onBlur, characters, onMention, placeholder, rows = 5,
+  value, onChange, onBlur, characters, onMention, placeholder, ariaLabel, rows = 5,
 }: SceneDraftEditorProps) {
   const taRef = useRef<HTMLTextAreaElement>(null)
   const [mention, setMention] = useState<MentionState | null>(null)
@@ -127,6 +130,7 @@ export function SceneDraftEditor({
         onBlur={() => { setMention(null); onBlur() }}
         onClick={(e) => refresh(value, (e.target as HTMLTextAreaElement).selectionStart ?? 0)}
         placeholder={placeholder}
+        aria-label={ariaLabel}
         rows={rows}
         className="resize-none overflow-hidden text-sm font-serif leading-relaxed"
       />

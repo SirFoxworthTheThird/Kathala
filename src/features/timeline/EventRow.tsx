@@ -73,8 +73,10 @@ export function EventRow({ event, isFirst, isLast, onMoveUp, onMoveDown, chapter
             )}
             onClick={handleCheckboxClick}
           >
+            {/* Named but not pointer-gated — see the note in `ChapterRow`. */}
             <input
               type="checkbox"
+              aria-label={`Select scene ${event.title || 'Untitled'}`}
               checked={isSelected}
               onChange={() => {}} // controlled via onClick
               className="h-3 w-3 cursor-pointer accent-[hsl(var(--ring))]"

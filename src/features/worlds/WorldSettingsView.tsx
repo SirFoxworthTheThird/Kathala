@@ -45,6 +45,7 @@ function TravelModeRow({ mode, scaleUnit }: { mode: TravelMode; scaleUnit: strin
       <div className="flex items-center gap-2">
         <Input
           className="h-7 flex-1 text-xs"
+          aria-label={`Name of travel mode ${mode.name}`}
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel() }}
@@ -55,6 +56,7 @@ function TravelModeRow({ mode, scaleUnit }: { mode: TravelMode; scaleUnit: strin
           type="number"
           min="0.1"
           step="any"
+          aria-label={`Speed of travel mode ${mode.name}, in ${scaleUnit} per day`}
           value={speed}
           onChange={(e) => setSpeed(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel() }}
@@ -410,6 +412,7 @@ export default function WorldSettingsView() {
               <Footprints className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />
               <Input
                 className="h-8 flex-1 text-xs"
+                aria-label="New travel mode name"
                 placeholder="Mode name (e.g. On foot)"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
@@ -420,14 +423,15 @@ export default function WorldSettingsView() {
                 type="number"
                 min="0.1"
                 step="any"
+                aria-label={`New travel mode speed, in ${scaleUnit} per day`}
                 placeholder="Speed"
                 value={newSpeed}
                 onChange={(e) => setNewSpeed(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
               />
               <span className="text-xs text-[hsl(var(--muted-foreground))] shrink-0">{scaleUnit}/day</span>
-              <Button size="sm" variant="outline" onClick={handleAdd} disabled={!newName.trim() || !newSpeed}>
-                <Plus className="h-3.5 w-3.5" />
+              <Button size="sm" variant="outline" aria-label="Add travel mode" onClick={handleAdd} disabled={!newName.trim() || !newSpeed}>
+                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
               </Button>
             </div>
             {/* X-9: two fields, and the greyed-out + said which of them. */}

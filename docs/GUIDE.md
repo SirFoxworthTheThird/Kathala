@@ -45,6 +45,7 @@ explore).
 28. [Continuity Checker](#continuity-checker)
 29. [World settings & export](#world-settings--export)
 30. [Help](#help)
+31. [Keyboard, screen readers and touch](#keyboard-screen-readers-and-touch)
 
 ---
 
@@ -1800,6 +1801,27 @@ The Help panel also lists keyboard shortcuts: **Ctrl/⌘+K** opens search,
 or continuity results, and **Esc** closes panels or cancels inline edits.
 
 ![Help panel](images/19-help.png)
+
+---
+
+## Keyboard, screen readers and touch
+
+Every field and control is named, so a screen reader announces *Days since the
+previous event* rather than an unlabelled number box, and voice control has
+something to say. That includes the ones drawn as icons alone — the scene
+steppers on the chapter bar, the add button beside a travel mode, the rename and
+delete beside a lore category.
+
+**Controls that appear on hover cannot be tapped while they are hidden.** The
+small delete on a world card, a plot thread, a lore category, a saved scene
+version, a map route or region shows itself when you hover the row or move focus
+onto it, and until then it takes no clicks at all. On a phone or tablet, where
+there is no hover to reveal them, this is what stops a tap on an apparently
+blank stretch of a row from deleting something.
+
+Selecting scenes for a bulk action is the one exception: those checkboxes still
+appear on hover, so on a touch device they are hard to find. That is a known
+gap rather than a design.
 
 ---
 

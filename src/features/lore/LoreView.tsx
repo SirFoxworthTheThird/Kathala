@@ -315,18 +315,20 @@ export default function LoreView() {
                     />
                   )}
                   {editingCategoryId !== cat.id && !gate.active && (
-                    <div className="flex shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex shrink-0 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto">
                       <button
+                        aria-label={`Rename category ${cat.name}`}
                         className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] p-0.5"
                         onClick={() => { setEditingCategoryId(cat.id); setEditingCategoryName(cat.name) }}
                       >
-                        <Pencil className="h-2.5 w-2.5" />
+                        <Pencil className="h-2.5 w-2.5" aria-hidden="true" />
                       </button>
                       <button
+                        aria-label={`Delete category ${cat.name}`}
                         className="text-[hsl(var(--muted-foreground))] hover:text-destructive p-0.5"
                         onClick={() => setDeleteCatId(cat.id)}
                       >
-                        <Trash2 className="h-2.5 w-2.5" />
+                        <Trash2 className="h-2.5 w-2.5" aria-hidden="true" />
                       </button>
                     </div>
                   )}
@@ -379,7 +381,8 @@ export default function LoreView() {
             <PanelLeft className="h-3.5 w-3.5" /> Categories
           </Button>
           <Input
-            placeholder="Search lore…"
+            aria-label="Search lore pages"
+          placeholder="Search lore…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="h-8 max-w-xs text-sm"

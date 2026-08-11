@@ -141,8 +141,8 @@ export function EventPanel({ chapterNum, chapterTitle, eventTitle, hasPrev, hasN
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingRight: '0.3rem', gap: '1px' }}>
-        <button onClick={onPrev} disabled={!hasPrev} style={navBtn(hasPrev)}><ChevronLeft size={11} /></button>
-        <button onClick={onNext} disabled={!hasNext} style={navBtn(hasNext)}><ChevronRight size={11} /></button>
+        <button onClick={onPrev} disabled={!hasPrev} aria-label="Previous scene in this chapter" style={navBtn(hasPrev)}><ChevronLeft size={11} aria-hidden="true" /></button>
+        <button onClick={onNext} disabled={!hasNext} aria-label="Next scene in this chapter" style={navBtn(hasNext)}><ChevronRight size={11} aria-hidden="true" /></button>
       </div>
     </div>
   )

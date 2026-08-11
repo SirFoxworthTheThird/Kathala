@@ -63,6 +63,7 @@ export default function ItemRosterView() {
         }
       >
         <Input
+          aria-label="Search items"
           placeholder="Search items…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}

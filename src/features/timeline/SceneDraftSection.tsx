@@ -105,6 +105,7 @@ export function SceneDraftSection({
         characters={characters}
         onMention={onAddMention}
         placeholder="Write or paste this scene's prose… (type @ to mention a character; word count feeds the pacing curve)"
+        ariaLabel="Scene prose"
         rows={5}
       />
       {untaggedMentions.length > 0 && (

@@ -330,6 +330,7 @@ export default function ChapterDetailView() {
           <div className="flex flex-col p-3 lg:flex-1">
             <textarea
               className="min-h-[10rem] resize-y rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] outline-none transition-colors focus:border-[hsl(var(--ring))] leading-relaxed lg:min-h-0 lg:flex-1 lg:resize-none lg:text-xs"
+              aria-label="Writer's notes for this chapter"
               placeholder="Freeform notes for this chapter — reminders, things to fix, ideas, open questions…"
               value={notes}
               onChange={(e) => handleNotesChange(e.target.value)}

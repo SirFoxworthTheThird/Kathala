@@ -118,8 +118,18 @@ export function ChapterRow({ chapter, threadFilter = null, wordsByEvent = NO_WOR
             )}
             onClick={handleSelectAll}
           >
+            {/*
+              Named, but deliberately not `pointer-events-none` at rest the way
+              the hover-revealed *deletes* are (HB-2a). Those had a destructive
+              action behind an invisible target; this toggles a selection, which
+              is visible and reversible — and `group-hover` never fires on a
+              touch device, so gating pointer events would remove the only way
+              to select rows on a phone rather than protect anything. Filed as
+              HB-2b: bulk selection needs a real touch affordance first.
+            */}
             <input
               type="checkbox"
+              aria-label={`Select every scene in chapter ${chapter.number}`}
               ref={(el) => { if (el) el.indeterminate = someSelected }}
               checked={allSelected}
               onChange={() => {}}

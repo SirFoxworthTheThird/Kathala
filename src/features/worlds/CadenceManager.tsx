@@ -70,10 +70,17 @@ export function CadenceManager<T extends Entity>({
                   title={`${r.eventCount} scene${r.eventCount === 1 ? '' : 's'} across ${plural(chapterCount, 'chapter')}`}>
                   {r.eventCount} sc
                 </span>
+                {/*
+                  HB-2a / LORE-1: `opacity-0` with pointer events still live
+                  hit-tests to itself, so on a touch device — where there is no
+                  hover and the resting state is the only state — a tap on an
+                  apparently blank row fires this. It keeps the hover reveal and
+                  gains a focus reveal, but cannot be activated while invisible.
+                */}
                 <button
                   onClick={() => onDelete(r.entity.id)}
                   aria-label={`Delete ${noun} ${r.entity.name}`}
-                  className="shrink-0 text-[hsl(var(--muted-foreground))] opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
+                  className="shrink-0 text-[hsl(var(--muted-foreground))] opacity-0 pointer-events-none transition-opacity hover:text-red-400 group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto"
                   title={`Delete ${noun}`}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
