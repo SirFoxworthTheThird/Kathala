@@ -12,6 +12,7 @@ import { useTimelinePlayback } from '@/features/timeline/useTimelinePlayback'
 import { SingleTrack } from './timeline/SingleTrack'
 import { StackedTrack } from './timeline/StackedTrack'
 import { CombinedTrack } from './timeline/CombinedTrack'
+import { CollapsedBar } from './timeline/CollapsedBar'
 import { TimelineScopeSelect } from './timeline/TimelineScopeSelect'
 import { selectFirstEvent, activateEvent } from './timeline/TimelineControls'
 
@@ -34,6 +35,7 @@ export function ChapterTimelineBar() {
     playbackTimelineId, setPlaybackTimelineId,
     activeDepthTimelineId, setActiveDepthTimelineId,
     barScope, setBarScope,
+    barCollapsed, setBarCollapsed,
   } = useAppStore()
   const worldId = useActiveWorldId()
 
@@ -156,6 +158,25 @@ export function ChapterTimelineBar() {
   const innerColor  = timelines.find((t) => t.id === innerTimelineId)?.color ?? 'var(--tl-accent)'
 
   if (!timelines.length) return null
+
+  // ── Rolled up (MT-3) ───────────────────────────────────────────────────────
+  // One strip in place of whichever track would have rendered, under the same
+  // conditions that decide whether there is a bar at all: a world with no
+  // chapters to point at gets no strip either.
+  if (barCollapsed) {
+    if (!isFrame && !multi && !singleChapters.length) return null
+    if (isCombined && !combinedRows.length) return null
+    const evs = isFrame ? frameEvents : isCombined ? worldEvents : singleRawEvents
+    const chs = isFrame ? frameChapters : isCombined ? worldChapters : singleChapters
+    const ev  = activeEventId ? evs.find((e) => e.id === activeEventId) ?? null : null
+    const ch  = ev ? chs.find((c) => c.id === ev.chapterId) ?? null : null
+    return (
+      <CollapsedBar
+        label={ev && ch ? `Ch.${ch.number} · ${ev.title}` : null}
+        onExpand={() => setBarCollapsed(false)}
+      />
+    )
+  }
 
   // ── Shared handlers ────────────────────────────────────────────────────────
   const handleEventSelect = (id: string, locId?: string | null) => activateEvent(id, locId, setActiveEventId)

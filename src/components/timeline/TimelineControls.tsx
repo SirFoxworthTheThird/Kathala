@@ -1,7 +1,7 @@
 import { type CSSProperties } from 'react'
 import { useGate } from '@/db/hooks/ReadingGateContext'
-import { ChevronLeft, ChevronRight, Play, Pause, Square, GitCompareArrows, X } from 'lucide-react'
-import type { PlaybackSpeed } from '@/store'
+import { ChevronLeft, ChevronRight, ChevronDown, Play, Pause, Square, GitCompareArrows, X } from 'lucide-react'
+import { useAppStore, type PlaybackSpeed } from '@/store'
 import { SPEED_LABEL } from '@/features/timeline/useTimelinePlayback'
 import type { Chapter, WorldEvent } from '@/types'
 
@@ -23,14 +23,24 @@ export interface ControlsProps {
   showPlay?: boolean
   /** Tooltip for the play button — differs for the merged read-through. */
   playLabel?: string
+  /**
+   * Show the roll-up control. Off for the frame narrative's outer track, which
+   * renders a second copy of this cluster: one bar rolls up as one thing, so a
+   * second button for it would be a duplicate rather than a choice.
+   */
+  showCollapse?: boolean
 }
 
-export function Controls({ isPlaying, speed, showStop, showDiff, showClear, color, onPlayPause, onStop, onSpeedChange, onDiffOpen, onClear, showPlay = true, playLabel = 'Play story on the map' }: ControlsProps) {
+export function Controls({ isPlaying, speed, showStop, showDiff, showClear, color, onPlayPause, onStop, onSpeedChange, onDiffOpen, onClear, showPlay = true, playLabel = 'Play story on the map', showCollapse = true }: ControlsProps) {
   // Comparing two chapters exists to catch continuity drift in a draft, and it
   // shows the later chapter's contents wholesale — the sharpest way left to
   // read ahead by accident. Gating it here rather than at each of the four
   // tracks that render these controls keeps a fifth one right by default.
   const gate = useGate()
+  // MT-3: rolling the bar up is read from the store here rather than passed
+  // down, for the same reason the gate is — all four tracks render this cluster,
+  // and the control should not have to be wired through each of them.
+  const setBarCollapsed = useAppStore((s) => s.setBarCollapsed)
   const btn = (clr: string): CSSProperties => ({
     background: 'none', border: 'none', cursor: 'pointer', color: clr,
     padding: '0.2rem', display: 'flex', alignItems: 'center',
@@ -71,6 +81,16 @@ export function Controls({ isPlaying, speed, showStop, showDiff, showClear, colo
         <button onClick={onClear} title="Clear selection" style={btn('var(--tl-text-muted)')}>
           <X size={10} />
         </button>
+      )}
+      {showCollapse && (
+      <button
+        onClick={() => setBarCollapsed(true)}
+        aria-label="Hide the chapter bar"
+        title="Hide the chapter bar"
+        style={btn('var(--tl-text-muted)')}
+      >
+        <ChevronDown size={11} />
+      </button>
       )}
     </div>
   )

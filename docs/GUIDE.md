@@ -74,6 +74,14 @@ Maps and the Manuscript. It's left off the world dashboard and Settings, which
 have no single moment in them, and off the lore page editor, which is a
 full-height writing surface.
 
+When you want the height back — on a map, or while writing — the **chevron at
+the end of the bar's controls** rolls it up into a thin strip. The strip still
+says which chapter and scene the cursor is on; click anywhere along it to bring
+the bar back. It stays rolled up until you open it again, across screens and
+between sessions.
+
+![The chapter bar rolled up to a strip](images/62-bar-rolled-up.png)
+
 ---
 
 ## Getting started — the world selector

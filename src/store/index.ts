@@ -60,6 +60,13 @@ interface PlaybackSlice {
    *  Drives ghost pin positions. Separate from activeEventId which tracks the inner timeline. */
   activeOuterEventId: string | null
   setActiveOuterEventId: (id: string | null) => void
+  /**
+   * Whether the chapter bar is rolled up to a strip (MT-3). Persisted, because
+   * someone who put 100px of chrome away on the map did not mean "until the
+   * next navigation".
+   */
+  barCollapsed: boolean
+  setBarCollapsed: (v: boolean) => void
   /** The timeline currently shown as the "active depth" in the stacked timeline bar.
    *  null = no frame relationship active. */
   activeDepthTimelineId: string | null
@@ -219,6 +226,8 @@ export const useAppStore = create<AppStore>()(
       setBarScope: (scope) => set({ barScope: scope }),
       activeOuterEventId: null,
       setActiveOuterEventId: (id) => set({ activeOuterEventId: id }),
+      barCollapsed: false,
+      setBarCollapsed: (v) => set({ barCollapsed: v }),
       activeDepthTimelineId: null,
       setActiveDepthTimelineId: (id) => set({ activeDepthTimelineId: id }),
 
@@ -275,6 +284,7 @@ export const useAppStore = create<AppStore>()(
         sidebarOpen: state.sidebarOpen,
         navPinned: state.navPinned,
         barScope: state.barScope,
+        barCollapsed: state.barCollapsed,
         theme: state.theme,
       }),
     }

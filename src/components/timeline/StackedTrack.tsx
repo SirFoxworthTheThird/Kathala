@@ -107,6 +107,7 @@ export function StackedTrack({
               story" — the inner track is the story, the outer one frames it.
             */
             playLabel={`Play ${outerTimelineLabel} — moves the cursor along this track`}
+            showCollapse={false}
             onPlayPause={onPlayPause}
             onStop={onStop}
             onSpeedChange={onSpeedChange}
