@@ -1267,6 +1267,12 @@ Three controls keep a big cast under control:
 Dragging a card still pins it where you put it, and that position is remembered
 until you tidy up.
 
+The **minimap** in the corner draws each character in the colour the graph gives
+them — their faction's while that overlay is on — with the part of the graph
+you are looking at outlined on it. Drag inside it to pan, or scroll on it to
+zoom, so on a cast large enough to need a minimap you can steer from it rather
+than only read it.
+
 **Generate with AI** (top-left of the graph) adds relationships in bulk: copy
 the prompt, describe your story, and paste the JSON back. Each relationship's two
 endpoints reference characters by name — only pairs where **both** already exist

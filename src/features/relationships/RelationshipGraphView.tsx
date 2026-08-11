@@ -28,6 +28,7 @@ import { computeRelationshipTimeline } from '@/lib/relationshipTimeline'
 import { useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useActiveEventId } from '@/store'
 import { PortraitImage } from '@/components/PortraitImage'
+import { charColor } from '@/lib/characterColor'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -486,6 +487,11 @@ export default function RelationshipGraphView() {
               portraitImageId: c.portraitImageId,
               factionColor: faction?.color ?? null,
               factionName: faction?.name ?? null,
+              // REL-2: what this character is drawn as, so the minimap can use
+              // the same answer instead of one flat near-background grey.
+              // Faction first when the overlay is on, which is what the node's
+              // own border does.
+              miniColor: faction?.color ?? charColor(c),
             },
           }
         })
@@ -673,11 +679,32 @@ export default function RelationshipGraphView() {
             </div>
           </Panel>
           <Controls style={{ background: 'hsl(222,47%,14%)', borderColor: 'hsl(217,33%,22%)' }} />
+          {/*
+            REL-2: the minimap was a smear. Its nodes were `hsl(222,47%,20%)` on
+            an `hsl(222,47%,11%)` background — the same hue nine points apart —
+            and the only thing marking the viewport was a 40% mask with no edge,
+            so there was no rectangle to find. It also hardcoded a slate palette
+            that every other theme had to live with.
+
+            Nodes now carry the colour the graph gives them, the viewport has an
+            actual outline, and the mask is dark enough for inside and outside to
+            read as different places. It is pannable and zoomable too: on a graph
+            big enough to need a minimap, being able to steer from it is the
+            point of having one.
+          */}
           <MiniMap
-            nodeColor="hsl(222,47%,20%)"
-            maskColor="rgba(0,0,0,0.4)"
+            nodeColor={(n) => (n.data?.miniColor as string) ?? 'hsl(var(--muted-foreground))'}
+            nodeStrokeColor="hsl(var(--background))"
+            nodeStrokeWidth={2}
+            nodeBorderRadius={3}
+            maskColor="hsl(var(--background) / 0.72)"
+            maskStrokeColor="hsl(var(--ring))"
+            maskStrokeWidth={2}
+            pannable
+            zoomable
+            ariaLabel="Relationship graph minimap"
             className="!hidden md:!block"
-            style={{ background: 'hsl(222,47%,11%)', border: '1px solid hsl(217,33%,22%)' }}
+            style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
           />
           {allFactions.length > 0 && (
             <Panel position="top-right">
