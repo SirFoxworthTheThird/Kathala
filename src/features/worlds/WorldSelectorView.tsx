@@ -242,13 +242,29 @@ export default function WorldSelectorView() {
                 {drafts.map((world) => (
                   <WorldCard key={world.id} world={world} />
                 ))}
-                {/* Stays with the drafts: it makes a world to write, not to read. */}
+                {/*
+                  Stays with the drafts: it makes a world to write, not to read.
+
+                  SEL-5: it read "New World", the same as the header button, so
+                  the screen offered the same thing under one name in two places
+                  with nothing saying they were the same thing. The empty state
+                  above already refuses to do that, and its comment says why —
+                  but the populated case did it anyway.
+
+                  Named for what it is instead, in the app's own words: the
+                  empty state calls this route "start from scratch". Deliberately
+                  not "Start a new world", which still *contains* "new world" —
+                  `getByRole` matches names by substring, so that would leave the
+                  ambiguity exactly where it was. The title states the relation
+                  the finding asked for.
+                */}
                 <button
                   onClick={() => setDialogOpen(true)}
+                  title="Start from scratch — the same as New World, at the top of the screen"
                   className="flex min-h-32 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] transition-colors hover:border-[hsl(var(--ring))] hover:text-[hsl(var(--foreground))]"
                 >
                   <Plus className="h-6 w-6" />
-                  <span className="text-sm">New World</span>
+                  <span className="text-sm">Start from scratch</span>
                 </button>
               </div>
             </section>

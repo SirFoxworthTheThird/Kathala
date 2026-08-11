@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, type ElementType, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
-  Map as MapIcon, Users, Network, BookOpen,
+  Map as MapIcon, Users, Network, BookOpen, Globe,
   Package, BarChart2, ShieldAlert, Clock, Layers, Pencil, FileEdit, Spline, PenLine, Sparkle,
   ChevronRight,
 } from 'lucide-react'
@@ -319,6 +319,16 @@ export default function WorldDashboardView() {
             alt={world.name ? `${world.name} cover` : 'World cover'}
             className="h-16 w-24 shrink-0 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))] object-contain"
             fallbackClassName="h-16 w-24 shrink-0 rounded-md border border-[hsl(var(--border))]"
+            /*
+              DASH-5: `PortraitImage` defaults its placeholder to a person, which
+              is right for the portraits it was built for and wrong for a world.
+              This slot only renders when a cover is set, so the placeholder is
+              reached exactly when the cover is a *linked* image that has stopped
+              answering — the world has pictures and is drawn as a stranger. The
+              world card next door already falls back to a globe; the same world
+              in two places should fall back to the same thing.
+            */
+            fallbackIcon={Globe}
             zoomable
           />
         )}
@@ -346,23 +356,29 @@ export default function WorldDashboardView() {
               </div>
             </div>
           ) : (
-            <div className="mt-1 flex items-start gap-2">
-              {world?.description
-                ? <p className="text-sm text-[hsl(var(--muted-foreground))] max-w-xl">{world.description}</p>
-                : gate.active
-                  ? null
-                  : <p className="text-sm italic text-[hsl(var(--muted-foreground)/0.5)]">No description — click to add one.</p>
-              }
-              {!gate.active && (
-                <button
-                  onClick={startEditDesc}
-                  className="mt-0.5 shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
-                  title="Edit description"
-                >
-                  <Pencil className="h-3 w-3" />
-                </button>
-              )}
-            </div>
+            /*
+              The same shape as SET-3 in World settings, fixed the same way: the
+              text is the control that opens the editor, rather than a paragraph
+              beside a 12px pencil. A reader gets the description as prose, since
+              nothing here is theirs to edit.
+            */
+            gate.active ? (
+              world?.description
+                ? <p className="mt-1 max-w-xl text-sm text-[hsl(var(--muted-foreground))]">{world.description}</p>
+                : null
+            ) : (
+              <button
+                onClick={startEditDesc}
+                aria-label={world?.description ? 'Edit world description' : 'Add a world description'}
+                className="group mt-1 flex max-w-xl items-start gap-2 rounded border border-transparent px-2 py-1 text-left transition-colors hover:border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.4)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]"
+              >
+                {world?.description
+                  ? <span className="text-sm text-[hsl(var(--muted-foreground))]">{world.description}</span>
+                  : <span className="text-sm italic text-[hsl(var(--muted-foreground)/0.5)]">Describe your world…</span>
+                }
+                <Pencil className="ml-auto mt-0.5 h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))] transition-colors group-hover:text-[hsl(var(--foreground))]" aria-hidden="true" />
+              </button>
+            )
           )}
         </div>
       </div>
@@ -419,13 +435,22 @@ export default function WorldDashboardView() {
         </section>
       )}
 
-      {/* Nav tiles */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
+      {/*
+        Nav tiles (DASH-4).
+
+        A grid put seven tiles into rows of four and left a hole where the eye
+        expects a fourth — and the count is not fixable by adding a tile, since
+        reading mode drops Continuity and makes it six. So the row fills itself:
+        the basis reproduces the old breakpoints exactly (two, three, four, six
+        across) and `flex-1` hands the remainder to whatever is on the last row,
+        so a short row is wide rather than gapped.
+      */}
+      <div data-dash-tiles className="flex flex-wrap gap-3">
         {tiles.map(({ label, icon: Icon, count, countSuffix, onClick, pills, description }) => (
           <button
             key={label}
             onClick={onClick}
-            className="flex flex-col gap-2 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 text-left transition-colors hover:border-[hsl(var(--ring))] hover:bg-[hsl(var(--accent))]"
+            className="flex flex-1 basis-[calc(50%-0.375rem)] flex-col gap-2 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 text-left transition-colors hover:border-[hsl(var(--ring))] hover:bg-[hsl(var(--accent))] sm:basis-[calc(33.333%-0.5rem)] lg:basis-[calc(25%-0.5625rem)] 2xl:basis-[calc(16.666%-0.625rem)]"
           >
             <div className="flex items-center justify-between">
               <Icon className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />

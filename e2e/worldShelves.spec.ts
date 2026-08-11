@@ -54,7 +54,7 @@ test('a draft and a downloaded book land on different shelves', async ({ page })
   await expect(shelf(page, /Reading/i)).not.toContainText('My Novel')
 })
 
-test('the New World tile stays with the drafts', async ({ page }) => {
+test('the start-from-scratch tile stays with the drafts', async ({ page }) => {
   test.setTimeout(180_000)
   await page.goto('/')
   await resetDB(page)
@@ -62,8 +62,20 @@ test('the New World tile stays with the drafts', async ({ page }) => {
   await downloadBook(page, 'Dracula')
 
   // It makes a world to write, so it belongs on that shelf and not the other.
-  await expect(shelf(page, /Your worlds/i).getByRole('button', { name: 'New World' })).toBeVisible()
-  await expect(shelf(page, /Reading/i).getByRole('button', { name: 'New World' })).toHaveCount(0)
+  // SEL-5: it used to be called "New World" — the header button's name — so a
+  // populated screen offered one thing under one name twice.
+  const tile = 'Start from scratch'
+  await expect(shelf(page, /Your worlds/i).getByRole('button', { name: tile })).toBeVisible()
+  await expect(shelf(page, /Reading/i).getByRole('button', { name: tile })).toHaveCount(0)
+
+  // And the name really is distinct: the header's button stays the only thing
+  // on the page called "New World", populated screen and all. The empty state
+  // already held this line (see selectorGroups.spec.ts); the populated one did
+  // not, which is the finding.
+  await expect(page.getByRole('button', { name: 'New World' })).toHaveCount(1)
+  // It still opens the same dialog the header's button does.
+  await shelf(page, /Your worlds/i).getByRole('button', { name: tile }).click()
+  await expect(page.getByRole('heading', { name: 'Create New World' })).toBeVisible()
 })
 
 test('turning reading mode off moves the book to your own shelf', async ({ page }) => {

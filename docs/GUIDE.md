@@ -112,7 +112,8 @@ that world.
 
 Books you are reading are kept on their own shelf. As soon as one world is in
 [reading mode](#reading-alongside-a-book), the selector splits into **Your
-worlds** — the ones you are writing, where the *New World* tile lives — and
+worlds** — the ones you are writing, where the *Start from scratch* tile lives
+(it opens the same dialog as **New World** at the top of the screen) — and
 **Reading** below it, so a shelf of downloaded books never buries your own work.
 Turning reading mode off in a world's settings moves it back up to *Your
 worlds*, since at that point you are editing it rather than reading it. With
