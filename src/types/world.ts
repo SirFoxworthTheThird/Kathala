@@ -1,7 +1,25 @@
-/** One month of a world's calendar. */
+/**
+ * One stretch of a world's calendar year: an ordinary month, or a run of days
+ * that belongs to no month.
+ *
+ * The arithmetic never cared which — `daysPerYear` and `dayNumberToDate` walk
+ * this list and only ever ask how long each entry is — so a calendar with
+ * intercalary days (the Shire Reckoning's Yule and Lithe, the Four Corners'
+ * span days) could always be *entered* correctly, as one-day entries. What it
+ * could not do was read correctly: "1 Midyear's Day" rather than "Midyear's
+ * Day". `intercalary` is that display flag and nothing more.
+ */
 export interface CalendarMonth {
   name: string
   days: number
+  /**
+   * Days outside the month cycle. A one-day entry prints as its bare name; a
+   * longer one still numbers within itself, which is what "2 Lithe" wants.
+   *
+   * Absent means an ordinary month, so every calendar written before this
+   * existed keeps its meaning.
+   */
+  intercalary?: boolean
 }
 
 /** A custom in-world calendar. Day 0 of the in-world clock is 1 <first month> <startYear>. */

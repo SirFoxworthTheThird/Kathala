@@ -38,9 +38,16 @@ export function dateToDayNumber(cal: WorldCalendar, date: InWorldDate): number {
 /** Human-readable date, e.g. "12 Firstmonth, 998 AC". Falls back gracefully. */
 export function formatInWorldDate(cal: WorldCalendar, dayNumber: number): string {
   const d = dayNumberToDate(cal, dayNumber)
-  const monthName = cal.months[d.month]?.name || `Month ${d.month + 1}`
+  const month = cal.months[d.month]
+  const monthName = month?.name || `Month ${d.month + 1}`
   const suffix = cal.yearSuffix ? ` ${cal.yearSuffix}` : ''
-  return `${d.day} ${monthName}, ${d.year}${suffix}`
+  // A single day outside the months is a name, not a position in something:
+  // "Midyear's Day, 1419", never "1 Midyear's Day, 1419". Longer intercalary
+  // runs keep their number, because that is exactly what "2 Lithe" means.
+  const bare = month?.intercalary && Math.max(1, Math.floor(month.days)) === 1
+  return bare
+    ? `${monthName}, ${d.year}${suffix}`
+    : `${d.day} ${monthName}, ${d.year}${suffix}`
 }
 
 /**

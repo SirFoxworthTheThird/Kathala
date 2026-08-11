@@ -1568,11 +1568,17 @@ you off to find the setting:
 - **Months** — rename them, set each month's length in days, and add or remove
   months. A fantasy calendar can have any number of months of any length.
 
-A year is its months and nothing else, so calendars with days that belong to no
-month — the Shire Reckoning's Yule and Lithe, for instance — cannot be set up
-faithfully. That is why the [Library](#getting-started--the-world-selector)
-worlds drawn from books with real-world dates ship with a calendar and the
-secondary-world ones do not.
+- **Days outside the months** — tick *outside the months* on an entry and it
+  stops being a month: a one-day entry reads as its bare name, so the Shire
+  Reckoning's *Midyear's Day* is a date on its own rather than "1 Midyear's
+  Day". Use the **+** on any row to put one in the middle of the year, where
+  intercalary days usually fall, rather than only at the end. A longer run keeps
+  its numbering, which is what *2 Lithe* means.
+
+What a year cannot yet do is change shape from one year to the next, so leap
+days — the Shire's Overlithe, or a real February — have no rule behind them. A
+calendar that needs one will be right in every ordinary year and a day out in
+the leap ones.
 
 ![Calendar editor](images/30-calendar.png)
 

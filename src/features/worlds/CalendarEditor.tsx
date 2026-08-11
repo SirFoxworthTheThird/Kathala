@@ -5,6 +5,7 @@ import type { World, WorldCalendar } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { plural } from '@/lib/plural'
 
 interface CalendarEditorProps {
   world: World
@@ -17,6 +18,7 @@ interface CalendarEditorProps {
  */
 export function CalendarEditor({ world }: CalendarEditorProps) {
   const cal = world.calendar ?? null
+  const namedDays = cal?.months.filter((m) => m.intercalary).length ?? 0
 
   function patch(next: WorldCalendar | null) {
     updateWorld(world.id, { calendar: next })
@@ -29,6 +31,24 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
         ? { ...m, [field]: field === 'days' ? Math.max(1, Math.floor(Number(value) || 1)) : value }
         : m
     )
+    patch({ ...cal, months })
+  }
+
+  /**
+   * A year is an ordered list, and intercalary days sit *between* months — the
+   * Shire's Lithe falls in the middle of the year, not after Foreyule — so
+   * appending is not enough to build one. Each row can insert after itself.
+   */
+  function insertAfter(index: number) {
+    if (!cal) return
+    const months = [...cal.months]
+    months.splice(index + 1, 0, { name: 'New day', days: 1, intercalary: true })
+    patch({ ...cal, months })
+  }
+
+  function toggleIntercalary(index: number) {
+    if (!cal) return
+    const months = cal.months.map((m, i) => (i === index ? { ...m, intercalary: !m.intercalary } : m))
     patch({ ...cal, months })
   }
 
@@ -84,7 +104,10 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
             </div>
             <div className="ml-auto text-right">
               <p className="text-xs font-medium text-[hsl(var(--foreground))]">{daysPerYear(cal)} days/year</p>
-              <p className="text-[10px] text-[hsl(var(--muted-foreground))]">{cal.months.length} months</p>
+              <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
+                {plural(cal.months.filter((m) => !m.intercalary).length, 'month')}
+                {namedDays > 0 && ` · ${plural(namedDays, 'named day')}`}
+              </p>
             </div>
           </div>
 
@@ -111,6 +134,25 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
                     onChange={(e) => updateMonth(i, 'days', e.target.value)}
                   />
                   <span className="w-8 shrink-0 text-[10px] text-[hsl(var(--muted-foreground))]">days</span>
+                  <label className="flex shrink-0 items-center gap-1 text-[10px] text-[hsl(var(--muted-foreground))]">
+                    <input
+                      type="checkbox"
+                      className="accent-[hsl(var(--ring))]"
+                      checked={!!m.intercalary}
+                      aria-label={`Entry ${i + 1} is days outside the months`}
+                      onChange={() => toggleIntercalary(i)}
+                    />
+                    outside the months
+                  </label>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    aria-label={`Insert a named day after entry ${i + 1}`}
+                    onClick={() => insertAfter(i)}
+                  >
+                    <Plus className="h-3 w-3" />
+                  </Button>
                   <Button
                     size="icon"
                     variant="ghost"

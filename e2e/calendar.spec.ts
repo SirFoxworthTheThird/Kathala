@@ -42,6 +42,81 @@ test.describe('Calendar view', () => {
     expect(months).toBeGreaterThan(1)
   })
 
+  test('a day outside the months can be built, and reads as its name', async ({ page }) => {
+    test.setTimeout(120000)
+    await page.goto('/')
+    await resetDB(page)
+
+    await page.getByRole('button', { name: 'New World' }).click()
+    await page.getByLabel('Name').fill('Reckoning')
+    await page.getByRole('button', { name: 'Create World' }).last().click()
+    await expect(page).toHaveURL(/#\/worlds\//)
+    const worldId = page.url().split('/worlds/')[1].split('/')[0]
+
+    await page.goto(`/#/worlds/${worldId}/settings`, { waitUntil: 'load' })
+    await page.getByRole('button', { name: 'Enable calendar' }).click()
+    await expect(page.getByText('365 days/year')).toBeVisible()
+    await expect(page.getByText('12 months', { exact: true })).toBeVisible()
+
+    // Insert after January, so the new day falls at day 31 — in the middle of
+    // the year, which is the whole reason appending was not enough.
+    //
+    // `exact`, or "entry 1" also matches entries 10, 11 and 12.
+    await page.getByRole('button', { name: 'Insert a named day after entry 1', exact: true }).click()
+    const name = page.getByLabel('Month 2 name')
+    await expect(name).toHaveValue('New day')
+    await name.fill("Midyear's Day")
+    await name.blur()
+
+    // It arrives already marked as outside the months, and the summary counts
+    // the two kinds apart rather than calling thirteen things months.
+    await expect(page.getByLabel('Entry 2 is days outside the months')).toBeChecked()
+    await expect(page.getByText('366 days/year')).toBeVisible()
+    await expect(page.getByText('12 months · 1 named day')).toBeVisible()
+
+    // Stored as one flag on one entry — nothing else about the calendar moved.
+    const cal = await page.evaluate(async (id) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as {
+        worlds: { get: (i: string) => Promise<{ calendar?: { months: { name: string; days: number; intercalary?: boolean }[] } | null }> }
+      }
+      return (await db.worlds.get(id))?.calendar?.months ?? []
+    }, worldId);
+    expect(cal.length).toBe(13)
+    expect(cal[1]).toEqual({ name: "Midyear's Day", days: 1, intercalary: true })
+    expect(cal[0].intercalary, 'an ordinary month is untouched').toBeUndefined()
+
+    // And it reads as a name rather than a position: a scene 31 days along
+    // lands on it. The paired case is the scene before, still numbered.
+    await page.evaluate(async (id) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as {
+        timelines: { add: (v: unknown) => Promise<unknown> }
+        chapters: { add: (v: unknown) => Promise<unknown> }
+        events: { bulkAdd: (v: unknown[]) => Promise<unknown> }
+      }
+      const now = Date.now()
+      await db.timelines.add({ id: 'tl', worldId: id, name: 'Main', description: '', color: '#6366f1', dayOffset: 0, createdAt: now })
+      await db.chapters.add({ id: 'ch', worldId: id, timelineId: 'tl', number: 1, title: 'One', synopsis: '', notes: '', wordGoal: null, createdAt: now, updatedAt: now })
+      await db.events.bulkAdd([30, 1].map((travelDays, i) => ({
+        id: `ev${i}`, worldId: id, timelineId: 'tl', chapterId: 'ch',
+        title: i === 0 ? 'Thirty days on' : 'The day after',
+        description: '', locationMarkerId: null, involvedCharacterIds: [],
+        mentionedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: i,
+        travelDays, inWorldTime: null, tension: null, structureBeat: null,
+        threadIds: [], status: 'idea', povCharacterId: null, isFlashback: false,
+        createdAt: now, updatedAt: now,
+      })))
+    }, worldId)
+
+    await page.goto(`/#/worlds/${worldId}/timeline/ch`, { waitUntil: 'load' })
+    const main = page.getByRole('main')
+    await expect(main.getByText('Thirty days on')).toBeVisible({ timeout: 30000 })
+    // Day 30 is the 31st day: the last day of January.
+    await expect(main.getByText('31 January, 1')).toBeVisible()
+    // Day 31 is the named day, and it carries no number.
+    await expect(main.getByText("Midyear's Day, 1", { exact: true })).toBeVisible()
+    await expect(main.getByText("1 Midyear's Day, 1")).toHaveCount(0)
+  })
+
   test('drags an event to a new day to pin its in-world date', async ({ page }) => {
     test.setTimeout(90000)
     await page.goto('/')
