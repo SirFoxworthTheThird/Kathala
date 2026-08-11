@@ -512,36 +512,48 @@ export function CharactersSection({
                     onDragStart()
                   }}
                   onDragEnd={onDragEnd}
-                  onClick={() => onFocus(c.id)}
-                  className={`flex items-center gap-2 rounded-md border bg-[hsl(var(--muted))] px-2 py-1.5 select-none cursor-pointer ${
+                  className={`flex items-center gap-2 rounded-md border bg-[hsl(var(--muted))] pr-2 select-none ${
                     isPlacing ? 'border-[hsl(var(--ring))] ring-1 ring-[hsl(var(--ring))]' : activeEventId ? 'hover:border-[hsl(var(--ring))]' : 'opacity-60'
                   }`}
                   style={{ borderColor: isPlacing ? undefined : movement ? color : 'hsl(var(--border))' }}
                 >
-                  <PortraitImage
-                    imageId={c.portraitImageId}
-                    className="h-6 w-6 rounded-full object-cover shrink-0"
-                    fallbackClassName="h-6 w-6 rounded-full shrink-0"
-                  />
-                  <div className="min-w-0 flex-1">
-                    {/* SB-2: a name wide enough to be cut is worth having in
-                        full somewhere, and two Witch-kings truncate alike. */}
-                    <p className="truncate text-xs font-medium" title={c.name}>{c.name}</p>
-                    {/* SB-3: every row says where it stands, so a blank second
-                        line means "nowhere" rather than "not loaded yet". */}
-                    {activeEventId && (
-                      <p className={`truncate text-[10px] ${locationName ? 'text-[hsl(var(--muted-foreground))]' : 'italic text-[hsl(var(--muted-foreground))/0.7]'}`}>
-                        {locationName ?? 'Not placed'}
-                      </p>
-                    )}
-                  </div>
+                  {/*
+                    SB-4: the row itself carries the drag, because the drag
+                    source is the nearest draggable ancestor and it should be
+                    the whole row — but the *click* belongs to a real control.
+                    The place-on-map button below cannot be nested inside it,
+                    so the name is the button and the crosshair is its sibling.
+                  */}
+                  <button
+                    type="button"
+                    onClick={() => onFocus(c.id)}
+                    className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]"
+                  >
+                    <PortraitImage
+                      imageId={c.portraitImageId}
+                      className="h-6 w-6 rounded-full object-cover shrink-0"
+                      fallbackClassName="h-6 w-6 rounded-full shrink-0"
+                    />
+                    <span className="min-w-0 flex-1">
+                      {/* SB-2: a name wide enough to be cut is worth having in
+                          full somewhere, and two Witch-kings truncate alike. */}
+                      <span className="block truncate text-xs font-medium" title={c.name}>{c.name}</span>
+                      {/* SB-3: every row says where it stands, so a blank second
+                          line means "nowhere" rather than "not loaded yet". */}
+                      {activeEventId && (
+                        <span className={`block truncate text-[10px] ${locationName ? 'text-[hsl(var(--muted-foreground))]' : 'italic text-[hsl(var(--muted-foreground))/0.7]'}`}>
+                          {locationName ?? 'Not placed'}
+                        </span>
+                      )}
+                    </span>
+                  </button>
                   {activeEventId && (
                     <button
                       type="button"
                       aria-label={isPlacing ? `Cancel placing ${c.name}` : `Place ${c.name} on the map`}
                       aria-pressed={isPlacing}
                       title={isPlacing ? 'Tap a location on the map, or tap here to cancel' : 'Place on map: tap here, then tap a location'}
-                      onClick={(e) => { e.stopPropagation(); onPlace(c.id) }}
+                      onClick={() => onPlace(c.id)}
                       className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors ${
                         isPlacing
                           ? 'bg-[hsl(var(--ring))] text-[hsl(var(--background))]'
@@ -670,8 +682,19 @@ function ItemRow({
 
   return (
     <div className="mx-1 rounded-sm border border-transparent hover:border-[hsl(var(--border))] transition-colors">
-      <div
-        className="flex items-center gap-2 px-2 py-1.5 cursor-pointer text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+      {/*
+        X-7 again, in the one place it never reached. This row, the route row
+        and the region row were `div`s with click handlers: no role, no tab
+        stop, no key handler — so the region panel could not be opened from the
+        keyboard at all, which section 16 of the review records in prose rather
+        than as a finding. The location markers immediately above them were
+        already buttons, so the same sidebar was navigable in some rows and not
+        others.
+      */}
+      <button
+        type="button"
+        aria-expanded={activeEventId ? expanded : undefined}
+        className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]"
         onClick={() => { onFocus(); setExpanded((v) => !v) }}
       >
         <PortraitImage
@@ -704,7 +727,7 @@ function ItemRow({
         {activeEventId && (
           <ChevronDown className={`h-3 w-3 shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`} />
         )}
-      </div>
+      </button>
 
       {expanded && activeEventId && (
         <div className="flex flex-col gap-1.5 border-t border-[hsl(var(--border))] px-2 pb-2 pt-1.5">
@@ -868,26 +891,42 @@ export function RoutesSection({
           routes.map((route) => (
             <div
               key={route.id}
-              className={`group flex items-center gap-2 rounded-sm mx-1 px-2 py-1.5 cursor-pointer transition-colors ${
+              className={`group flex items-center rounded-sm mx-1 pr-2 transition-colors ${
                 selectedRouteId === route.id
                   ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
                   : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]'
               }`}
-              onClick={() => onSelectRoute(selectedRouteId === route.id ? null : route.id)}
             >
-              <span
-                className="h-2 w-2 rounded-full shrink-0"
-                style={{ background: route.color ?? ROUTE_TYPE_COLORS[route.routeType] }}
-              />
-              <div className="flex flex-col flex-1 min-w-0">
-                <span className="truncate text-xs leading-tight" title={route.name}>{route.name}</span>
-                <span className="text-[9px] capitalize text-[hsl(var(--muted-foreground))] leading-tight">
-                  {ROUTE_TYPE_LABELS[route.routeType]} · {route.waypoints.length} stops
-                </span>
-              </div>
               <button
-                onClick={(e) => { e.stopPropagation(); setConfirmId(route.id) }}
-                className="shrink-0 opacity-0 group-hover:opacity-100 text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
+                type="button"
+                aria-pressed={selectedRouteId === route.id}
+                className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]"
+                onClick={() => onSelectRoute(selectedRouteId === route.id ? null : route.id)}
+              >
+                <span
+                  className="h-2 w-2 rounded-full shrink-0"
+                  style={{ background: route.color ?? ROUTE_TYPE_COLORS[route.routeType] }}
+                />
+                <span className="flex flex-col flex-1 min-w-0">
+                  <span className="truncate text-xs leading-tight" title={route.name}>{route.name}</span>
+                  <span className="text-[9px] capitalize text-[hsl(var(--muted-foreground))] leading-tight">
+                    {ROUTE_TYPE_LABELS[route.routeType]} · {route.waypoints.length} stops
+                  </span>
+                </span>
+              </button>
+              {/*
+                LORE-1 measured this exact shape and found it worse than a
+                permanent icon: `opacity-0` with pointer events still live hit-
+                tests to itself, so on a touch device — where the resting state
+                is the only state — a tap on apparently blank row deletes the
+                thing. It keeps its hover reveal, but it cannot be tapped while
+                invisible, it shows itself on keyboard focus, and it has a name.
+              */}
+              <button
+                type="button"
+                aria-label={`Delete route ${route.name}`}
+                onClick={() => setConfirmId(route.id)}
+                className="shrink-0 opacity-0 pointer-events-none transition-colors group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto text-[hsl(var(--muted-foreground))] hover:text-red-400"
               >
                 <Trash2 className="h-3 w-3" />
               </button>
@@ -997,39 +1036,47 @@ export function RegionsSection({
               <div key={region.id} className="flex flex-col">
                 {/* Region row */}
                 <div
-                  className={`group flex items-center gap-2 rounded-sm mx-1 px-2 py-1.5 cursor-pointer transition-colors ${
+                  className={`group flex items-center rounded-sm mx-1 pr-2 transition-colors ${
                     isSelected
                       ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
                       : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]'
                   }`}
-                  onClick={() => onSelectRegion(isSelected ? null : region.id)}
                 >
-                  <span
-                    className="h-2 w-2 rounded-full shrink-0 ring-1 ring-black/20"
-                    style={{ background: region.fillColor }}
-                  />
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <div className="flex items-center gap-1 min-w-0">
-                      <span className="truncate text-xs leading-tight" title={region.name}>{region.name}</span>
-                      {region.linkedMapLayerId && (
-                        <Link className="h-2.5 w-2.5 shrink-0 text-[hsl(var(--muted-foreground))] opacity-60" />
-                      )}
-                    </div>
-                    {activeEventId && (
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <span
-                          className="h-1.5 w-1.5 rounded-full shrink-0"
-                          style={{ background: REGION_STATUS_COLORS[status] }}
-                        />
-                        <span className="text-[9px] capitalize text-[hsl(var(--muted-foreground))] leading-tight">
-                          {status}
-                        </span>
-                      </div>
-                    )}
-                  </div>
                   <button
-                    onClick={(e) => { e.stopPropagation(); setConfirmId(region.id) }}
-                    className="shrink-0 opacity-0 group-hover:opacity-100 text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
+                    type="button"
+                    aria-pressed={isSelected}
+                    className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]"
+                    onClick={() => onSelectRegion(isSelected ? null : region.id)}
+                  >
+                    <span
+                      className="h-2 w-2 rounded-full shrink-0 ring-1 ring-black/20"
+                      style={{ background: region.fillColor }}
+                    />
+                    <span className="flex flex-col flex-1 min-w-0">
+                      <span className="flex items-center gap-1 min-w-0">
+                        <span className="truncate text-xs leading-tight" title={region.name}>{region.name}</span>
+                        {region.linkedMapLayerId && (
+                          <Link className="h-2.5 w-2.5 shrink-0 text-[hsl(var(--muted-foreground))] opacity-60" />
+                        )}
+                      </span>
+                      {activeEventId && (
+                        <span className="flex items-center gap-1 mt-0.5">
+                          <span
+                            className="h-1.5 w-1.5 rounded-full shrink-0"
+                            style={{ background: REGION_STATUS_COLORS[status] }}
+                          />
+                          <span className="text-[9px] capitalize text-[hsl(var(--muted-foreground))] leading-tight">
+                            {status}
+                          </span>
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Delete region ${region.name}`}
+                    onClick={() => setConfirmId(region.id)}
+                    className="shrink-0 opacity-0 pointer-events-none transition-colors group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto text-[hsl(var(--muted-foreground))] hover:text-red-400"
                   >
                     <Trash2 className="h-3 w-3" />
                   </button>

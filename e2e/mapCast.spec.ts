@@ -123,9 +123,15 @@ test.describe('The map sidebar says who is on stage', () => {
     // The order on screen: the heading, the one placed character, then the
     // other heading. Boromir sorts second alphabetically, so this cannot pass
     // on a list that was simply left alone.
+    //
+    // Read as leaf text in document order rather than as `p` elements. The
+    // name was a `<p>` until the row became a `<button>` under SB-4 — a `p`
+    // cannot live inside a button — and this assertion silently found nothing
+    // and reported `-1`, which is the failure mode a tag-specific selector has.
     const order = await body.evaluate((el) =>
-      Array.from(el.querySelectorAll('p'))
-        .map((p) => (p.textContent ?? '').trim())
+      Array.from(el.querySelectorAll('p, span'))
+        .filter((n) => n.children.length === 0)
+        .map((n) => (n.textContent ?? '').trim())
         .filter((t) => t.length > 0),
     )
     const placedHeading = order.indexOf('On the map (1)')

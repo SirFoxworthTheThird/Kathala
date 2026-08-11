@@ -1057,6 +1057,15 @@ its row is available in full by hovering it, and with a moment selected every
 character and item row states where it stands — a place name, or *Not placed*,
 so a blank line never has to be guessed at.
 
+**The rows are real controls.** Characters, locations, items, routes and regions
+can each be reached with **Tab** and opened with **Enter**, so the route and
+region panels — and everything else the sidebar opens — can be worked without a
+mouse. (Map Layers is the exception for now: its rows are dragged onto one
+another to nest them, and that gesture has no keyboard equivalent yet.) The
+small delete beside a route or region still appears only when you hover the row
+or tab onto it, and while it is invisible it cannot be tapped, so a tap on what
+looks like a blank stretch of row will never delete anything.
+
 With a moment selected, the Characters list splits into **On the map** and
 **Not placed**, so the people in the scene you're looking at read as a short
 list rather than a handful of rows scattered through the whole cast. Nobody is
