@@ -25,6 +25,13 @@ export interface CalendarMonthGrid {
   monthName: string
   /** Number of days in this month. */
   days: number
+  /**
+   * Days that belong to no month (`CalendarMonth.intercalary`). The grid is
+   * built the same way — they are a stretch of the year like any other — but a
+   * one-day stretch drawn as a seven-column month reads as a broken month
+   * rather than as the named day it is, so the view is told which it has.
+   */
+  intercalary: boolean
   /** Events on each 1-based day of the month. */
   eventsByDay: Map<number, CalendarEvent[]>
 }
@@ -112,6 +119,7 @@ export function buildCalendarMonths({
       month,
       monthName: calendar.months[month]?.name ?? `Month ${month + 1}`,
       days: Math.max(1, Math.floor(calendar.months[month]?.days ?? 30)),
+      intercalary: !!calendar.months[month]?.intercalary,
       eventsByDay,
     }
   })

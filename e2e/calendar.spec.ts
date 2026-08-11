@@ -115,6 +115,24 @@ test.describe('Calendar view', () => {
     // Day 31 is the named day, and it carries no number.
     await expect(main.getByText("Midyear's Day, 1", { exact: true })).toBeVisible()
     await expect(main.getByText("1 Midyear's Day, 1")).toHaveCount(0)
+
+    // And the Calendar view draws it as the one day it is rather than as a
+    // month with six empty columns after it.
+    await page.goto(`/#/worlds/${worldId}/calendar`, { waitUntil: 'load' })
+    await expect(page.getByRole('heading', { name: 'Calendar', level: 1 })).toBeVisible({ timeout: 30000 })
+    const named = page.locator('[aria-label="Midyear\'s Day, 1"]')
+    await expect(named).toHaveCount(1)
+    // Its cell carries no day number — the name is the whole of the date.
+    await expect(named).toHaveText("The day after")
+    // Paired against an ordinary month on the same screen, whose cells are
+    // still numbered and still seven across.
+    await expect(page.locator('[aria-label="January 31, 1"]')).toHaveCount(1)
+    const cols = await page.locator('[aria-label="January 31, 1"]').evaluate((el) =>
+      getComputedStyle(el.parentElement!).gridTemplateColumns.split(' ').length)
+    const namedCols = await named.evaluate((el) =>
+      getComputedStyle(el.parentElement!).gridTemplateColumns.split(' ').length)
+    expect(cols, 'a month is seven across').toBe(7)
+    expect(namedCols, 'a single named day is one across').toBe(1)
   })
 
   test('drags an event to a new day to pin its in-world date', async ({ page }) => {

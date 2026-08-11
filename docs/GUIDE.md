@@ -1607,6 +1607,9 @@ their day, and flashbacks are marked with a small clock icon.
 
 ![Calendar view](images/35-calendar-view.png)
 
+A day outside the months gets a row of its own, one cell wide, headed by its
+name and carrying no day number — because the name *is* the date.
+
 - **Click** an event chip to jump to it in the timeline.
 - **Drag** a chip to another day to **pin** its in-world date — this sets the
   event's explicit in-world time, overriding the travel-day clock for that event

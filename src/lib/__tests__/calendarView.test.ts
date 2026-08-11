@@ -79,3 +79,41 @@ describe('buildCalendarMonths', () => {
     expect(buildCalendarMonths({ events: [], chapters: [], calendar })).toEqual([])
   })
 })
+
+describe('a grid for days outside the months', () => {
+  // Frost 10, then a single named day, then Bloom 20.
+  const withNamedDay: WorldCalendar = {
+    startYear: 100,
+    yearSuffix: 'AC',
+    months: [
+      { name: 'Frost', days: 10 },
+      { name: 'Turnday', days: 1, intercalary: true },
+      { name: 'Bloom', days: 20 },
+    ],
+  }
+
+  it('marks the intercalary stretch so the view can draw it as one', () => {
+    // Day 10 is Turnday: ten days of Frost come first.
+    const grids = buildCalendarMonths({
+      events: [event('e1', 'c1', 0, { inWorldTime: 10 }), event('e2', 'c1', 1, { inWorldTime: 0 })],
+      chapters: [chapter('c1', 1)],
+      calendar: withNamedDay,
+    })
+    const byName = new Map(grids.map((g) => [g.monthName, g]))
+    expect(byName.get('Turnday')?.intercalary).toBe(true)
+    expect(byName.get('Turnday')?.days).toBe(1)
+    // Paired: an ordinary month on the same calendar is not marked, so the flag
+    // is about the entry rather than about every grid this builder returns.
+    expect(byName.get('Frost')?.intercalary).toBe(false)
+  })
+
+  it('places events on it like any other stretch of the year', () => {
+    const grids = buildCalendarMonths({
+      events: [event('turn', 'c1', 0, { inWorldTime: 10 })],
+      chapters: [chapter('c1', 1)],
+      calendar: withNamedDay,
+    })
+    const turnday = grids.find((g) => g.monthName === 'Turnday')!
+    expect(turnday.eventsByDay.get(1)?.map((e) => e.id)).toEqual(['turn'])
+  })
+})

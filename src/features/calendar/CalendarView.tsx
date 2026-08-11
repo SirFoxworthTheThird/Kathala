@@ -105,15 +105,28 @@ export default function CalendarView() {
                 <h2 className="mb-2 text-sm font-semibold text-[hsl(var(--foreground))]">
                   {m.monthName} <span className="text-[hsl(var(--muted-foreground))]">{m.year}{suffix}</span>
                 </h2>
-                <div className="grid grid-cols-7 gap-1">
+                {/*
+                  A stretch of days outside the months is not a month, and a
+                  seven-column grid holding one cell reads as a broken one. It
+                  gets a column per day instead, and a lone day drops its number
+                  entirely — "Midyear's Day" is the whole of that date, which is
+                  what `formatInWorldDate` prints for it too.
+                */}
+                <div
+                  className="grid gap-1"
+                  style={{ gridTemplateColumns: `repeat(${m.intercalary ? Math.min(m.days, 7) : 7}, minmax(0, 1fr))` }}
+                >
                   {Array.from({ length: m.days }, (_, i) => i + 1).map((day) => {
                     const cellKey = `${m.key}-${day}`
                     const dayEvents = m.eventsByDay.get(day) ?? []
                     const isOver = overCell === cellKey
+                    const bare = m.intercalary && m.days === 1
                     return (
                       <div
                         key={day}
-                        aria-label={`${m.monthName} ${day}, ${m.year}${suffix}`}
+                        aria-label={bare
+                          ? `${m.monthName}, ${m.year}${suffix}`
+                          : `${m.monthName} ${day}, ${m.year}${suffix}`}
                         onDragOver={(e) => { if (dragId) { e.preventDefault(); setOverCell(cellKey) } }}
                         onDragLeave={() => setOverCell((c) => (c === cellKey ? null : c))}
                         onDrop={(e) => { e.preventDefault(); dropOnDay(m.year, m.month, day) }}
@@ -125,9 +138,11 @@ export default function CalendarView() {
                               : 'border-transparent bg-[hsl(var(--muted)/0.25)]'
                         }`}
                       >
-                        <span className={`text-[10px] tabular-nums ${dayEvents.length ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))]'}`}>
-                          {day}
-                        </span>
+                        {!bare && (
+                          <span className={`text-[10px] tabular-nums ${dayEvents.length ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))]'}`}>
+                            {day}
+                          </span>
+                        )}
                         <div className="mt-0.5 flex flex-col gap-0.5">
                           {dayEvents.map((ev) => {
                             const isActive = ev.id === activeEventId
