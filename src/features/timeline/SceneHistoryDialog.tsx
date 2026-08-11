@@ -6,6 +6,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useSceneRevisions, restoreSceneRevision, deleteSceneRevision } from '@/db/hooks/useSceneRevisions'
 import { diffWords, diffStats, splitEdges } from '@/lib/textDiff'
 import { relativeTime } from '@/lib/relativeTime'
+import { plural } from '@/lib/plural'
 
 interface SceneHistoryDialogProps {
   open: boolean
@@ -68,7 +69,7 @@ export function SceneHistoryDialog({ open, onOpenChange, eventId, currentText }:
                     >
                       <button className="min-w-0 flex-1 text-left" onClick={() => setSelectedId(r.id)}>
                         <p className="text-xs font-medium text-[hsl(var(--foreground))]">{relativeTime(r.createdAt, now)}</p>
-                        <p className="text-[10px] tabular-nums text-[hsl(var(--muted-foreground))]">{r.wordCount} words</p>
+                        <p className="text-[10px] tabular-nums text-[hsl(var(--muted-foreground))]">{plural(r.wordCount, 'word')}</p>
                       </button>
                       <button
                         onClick={() => deleteSceneRevision(r.id)}

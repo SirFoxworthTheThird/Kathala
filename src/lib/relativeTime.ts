@@ -21,5 +21,8 @@ export function relativeTime(at: number, now: number = Date.now()): string {
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
   // Past a week "6d ago" stops being easier to place than the date itself.
   if (diff < 7 * 86_400_000) return `${Math.floor(diff / 86_400_000)}d ago`
-  return new Date(at).toLocaleDateString()
+  // LORE-3: `toLocaleDateString()` gave `4/7/2026` — the seventh of April or
+  // the fourth of July, depending on where the reader is. Naming the month is
+  // the whole of that ambiguity, and is the answer X-6 took on the world card.
+  return new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 }

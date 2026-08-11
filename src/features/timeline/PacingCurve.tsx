@@ -6,6 +6,7 @@ import type { PacingPoint } from '@/lib/tension'
 import { beatById, beatActColor } from '@/lib/storyBeats'
 import { computeInWorldDays } from '@/lib/inWorldTime'
 import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
+import { plural } from '@/lib/plural'
 
 interface PacingCurveProps {
   worldId: string
@@ -205,7 +206,7 @@ export function PacingCurve({ worldId, events, chapters, order, activeEventId, o
               )
             }
             const r = radiusFor(p.wordCount)
-            const wordsLabel = p.wordCount > 0 ? ` — ${p.wordCount} words` : ''
+            const wordsLabel = p.wordCount > 0 ? ` — ${plural(p.wordCount, 'word')}` : ''
             return (
               <g key={p.eventId} className="cursor-pointer" onClick={() => onSelect(p.eventId)}>
                 <title>{`${p.title || 'Untitled'} — ${tensionLabel(p.tension)} (${p.tension}/5)${wordsLabel}`}</title>

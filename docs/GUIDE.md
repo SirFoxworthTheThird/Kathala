@@ -1359,7 +1359,8 @@ Places…), tag them, and optionally reveal a page only from a given event onwar
 
 A page held back with **Revealed at** carries a badge naming the chapter it
 opens in — *From ch. 2* — so a page the reader meets late is not mistaken for
-one that was there from the start.
+one that was there from the start. Each card also says when it was last touched
+— *Edited 2d ago*, and a named month once that stops being useful.
 
 
 ![Lore](images/12-lore.png)
@@ -1543,8 +1544,11 @@ tailor it:
 
 ![Calendar editor](images/30-calendar.png)
 
-With a calendar set, in-world dates appear wherever the day clock is shown —
-most visibly the active event's date in the Writer's Brief.
+With a calendar set, in-world dates appear wherever the day clock is shown: the
+active event's date in the Writer's Brief, and the chip on each scene card in a
+chapter, which reads *5 Thawmonth, 998 AC* instead of *Day 4*. Without a
+calendar that chip stays a day count, and hovering it says what it counts
+from — days since the story's first scene.
 
 **Character ages.** Give a character an optional **birth date** on the Overview
 tab of their profile (the month/day/year pickers use your calendar's months).

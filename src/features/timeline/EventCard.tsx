@@ -7,7 +7,7 @@ import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { useMotifs } from '@/db/hooks/useMotifs'
 import { SceneDraftSection } from './SceneDraftSection'
 import { EventCardBadges } from './EventCardBadges'
-import type { WorldEvent, EventStatus } from '@/types'
+import type { WorldEvent, EventStatus, WorldCalendar } from '@/types'
 import { EVENT_STATUSES, eventStatusConfig } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
 import { deleteEvent, updateEvent } from '@/db/hooks/useTimeline'
@@ -30,9 +30,11 @@ interface EventCardProps {
   onMoveDown: () => void
   /** Derived in-world day (cumulative travel days along narrative order). */
   inWorldDay?: number
+  /** The world's calendar, when it has one (CD-3) — the day chip becomes a date. */
+  calendar?: WorldCalendar | null
 }
 
-export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorldDay }: EventCardProps) {
+export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorldDay, calendar }: EventCardProps) {
   /** Names the card's icon buttons, which are otherwise identical across scenes. */
   const eventName = event.title ? `“${event.title}”` : 'this untitled scene'
   const [expanded, setExpanded] = useState(false)
@@ -336,6 +338,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
         <EventCardBadges
           sceneWords={sceneWords}
           inWorldDay={inWorldDay}
+          calendar={calendar}
           isFlashback={isFlashback}
           status={status}
           structureBeat={structureBeat}

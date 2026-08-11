@@ -10,6 +10,7 @@ import { buildManuscript } from '@/lib/manuscriptCompile'
 import { cn } from '@/lib/utils'
 import { ExportManuscriptDialog } from './ExportManuscriptDialog'
 import { FindReplaceDialog } from './FindReplaceDialog'
+import { plural } from '@/lib/plural'
 
 const nf = new Intl.NumberFormat()
 
@@ -108,7 +109,7 @@ export default function ManuscriptView() {
       <PageHeader
         icon={FileText}
         title="Manuscript"
-        description={`${nf.format(manuscript.writtenScenes)} of ${nf.format(manuscript.totalScenes)} scenes written · ${nf.format(manuscript.totalWords)} words`}
+        description={`${nf.format(manuscript.writtenScenes)} of ${nf.format(manuscript.totalScenes)} scenes written · ${plural(manuscript.totalWords, 'word')}`}
         actions={
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" onClick={() => setFindOpen(true)} disabled={!hasProse}>
@@ -204,7 +205,7 @@ export default function ManuscriptView() {
                       Ch. {ch.number} — {ch.title || 'Untitled'}
                     </h2>
                     <p className="mt-0.5 text-xs text-[hsl(var(--muted-foreground))]">
-                      {nf.format(ch.wordCount)} words · {ch.writtenScenes}/{ch.scenes.length} scenes
+                      {plural(ch.wordCount, 'word')} · {ch.writtenScenes}/{ch.scenes.length} scenes
                     </p>
                     {mode === 'draft' && ch.synopsis && (
                       <p className="mt-1 text-xs italic text-[hsl(var(--muted-foreground))]">{ch.synopsis}</p>

@@ -4,6 +4,7 @@ import type { TagCadenceRow } from '@/lib/tagCadence'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { plural } from '@/lib/plural'
 
 interface Entity { id: string; name: string; color: string }
 
@@ -66,7 +67,7 @@ export function CadenceManager<T extends Entity>({
                 </div>
 
                 <span className="w-16 shrink-0 text-right text-[11px] tabular-nums text-[hsl(var(--muted-foreground))]"
-                  title={`${r.eventCount} scene${r.eventCount === 1 ? '' : 's'} across ${chapterCount} chapters`}>
+                  title={`${r.eventCount} scene${r.eventCount === 1 ? '' : 's'} across ${plural(chapterCount, 'chapter')}`}>
                   {r.eventCount} sc
                 </span>
                 <button

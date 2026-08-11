@@ -24,6 +24,7 @@ import { PacingCurve } from './PacingCurve'
 import { TimelineRelationshipPanel } from './TimelineRelationshipPanel'
 import type { WorldEvent, Chapter, Timeline } from '@/types'
 import { useGate } from '@/db/hooks/ReadingGateContext'
+import { plural } from '@/lib/plural'
 
 // ── Chronological (in-world) order ──────────────────────────────────────────
 // Events flattened across chapters and ordered by their effective in-world day,
@@ -348,7 +349,7 @@ export default function TimelineView() {
             <>
               <span className="text-sm font-medium">All timelines</span>
               <span className="text-xs text-[hsl(var(--muted-foreground))]">
-                ({timelines.length} timelines · {worldChapters.length} chapters)
+                ({plural(timelines.length, 'timeline')} · {plural(worldChapters.length, 'chapter')})
               </span>
               {/* Shared with the bottom bar's scope selector (persisted). */}
               <div className="ml-2 flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-xs" role="group" aria-label="Combined order">

@@ -51,6 +51,63 @@ test.describe('The Factions roster', () => {
     await expect(page.getByText('The Harbour Watch')).toBeVisible()
   })
 
+  test('FAC-3: a long name wraps like the description under it, rather than being cut', async ({ page }) => {
+    const worldId = await factions(page)
+
+    // "The Fellowship of the R…" was cut at one line directly above two full
+    // lines of body text. Rename one faction to something that long, and give
+    // it a description, so both are on the card at once — which is the whole
+    // of the finding.
+    await page.evaluate(async (worldId) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as {
+        factions: {
+          toArray: () => Promise<{ id: string; name: string }[]>
+          update: (id: string, changes: Record<string, unknown>) => Promise<unknown>
+        }
+      }
+      void worldId
+      const all = await db.factions.toArray()
+      const salt = all.find((f) => f.name === 'The Salt Guild')!
+      const watch = all.find((f) => f.name === 'The Harbour Watch')!
+      await db.factions.update(salt.id, {
+        name: 'The Grand and Ancient Fellowship of the Salt Guild',
+        description: 'A chartered company of tide-readers, bell-keepers and people who know exactly which harbour master to bribe.',
+      })
+      // A short name on the same screen, for the paired read below.
+      await db.factions.update(watch.id, { name: 'Watch' })
+    }, worldId)
+
+    await expect(page.getByText('The Grand and Ancient Fellowship of the Salt Guild')).toBeVisible({ timeout: 15_000 })
+    await page.waitForTimeout(500)
+
+    const measured = await page.evaluate(() => {
+      const names = Array.from(document.querySelectorAll('[data-faction-name]')) as HTMLElement[]
+      const of = (text: string) => {
+        const el = names.find((n) => (n.textContent ?? '').trim() === text)!
+        return {
+          height: Math.round(el.getBoundingClientRect().height),
+          // A single-line `truncate` reports content wider than its box; a
+          // wrapped element does not.
+          overflowing: el.scrollWidth > el.clientWidth + 1,
+          shown: (el.textContent ?? '').trim(),
+        }
+      }
+      return { long: of('The Grand and Ancient Fellowship of the Salt Guild'), short: of('Watch') }
+    })
+
+    // The long name is on two lines and nothing is clipped off the side.
+    expect(measured.long.overflowing, 'the name should wrap, not run past its box').toBe(false)
+    expect(
+      measured.long.height,
+      `long ${measured.long.height}px vs short ${measured.short.height}px`,
+    ).toBeGreaterThan(measured.short.height)
+
+    // Paired: a name that fits still takes one line, so the fix is "wrap when
+    // you must", not "every card is now taller".
+    expect(measured.short.height).toBeLessThan(measured.long.height)
+    expect(measured.short.overflowing).toBe(false)
+  })
+
   test('FAC-1: a card says who it is allied with and who it is against', async ({ page }) => {
     const worldId = await factions(page)
 

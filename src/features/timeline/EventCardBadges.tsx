@@ -3,11 +3,17 @@ import { EVENT_STATUSES, eventStatusConfig } from '@/lib/eventStatus'
 import { beatById, beatActColor } from '@/lib/storyBeats'
 import { tensionColor, tensionLabel } from '@/lib/tension'
 import { charColor } from '@/lib/characterColor'
-import type { Character, EventStatus } from '@/types'
+import { formatInWorldDate } from '@/lib/calendar'
+import { plural } from '@/lib/plural'
+import type { Character, EventStatus, WorldCalendar } from '@/types'
+
+const nf = new Intl.NumberFormat()
 
 interface EventCardBadgesProps {
   sceneWords: number
   inWorldDay?: number
+  /** The world's calendar, when it has one — turns the day count into a date. */
+  calendar?: WorldCalendar | null
   isFlashback: boolean
   status: EventStatus
   structureBeat: string | null
@@ -25,7 +31,7 @@ interface EventCardBadgesProps {
  * — every value and action comes from EventCard.
  */
 export function EventCardBadges({
-  sceneWords, inWorldDay, isFlashback, status, structureBeat, tension, povChar,
+  sceneWords, inWorldDay, calendar, isFlashback, status, structureBeat, tension, povChar,
   onChangeStatus, onToggleFlashback, onExpand,
 }: EventCardBadgesProps) {
   const beat = beatById(structureBeat)
@@ -35,20 +41,31 @@ export function EventCardBadges({
       {sceneWords > 0 && (
         <span
           className="shrink-0 flex items-center gap-1 rounded-full bg-[hsl(var(--muted))] px-2 py-0.5 text-[10px] font-medium tabular-nums text-[hsl(var(--muted-foreground))]"
-          title={`${sceneWords} words of scene draft`}
+          title={`${plural(sceneWords, 'word')} of scene draft`}
         >
           <PenLine className="h-2.5 w-2.5" />
           {sceneWords >= 1000 ? `${(sceneWords / 1000).toFixed(1)}k` : sceneWords}
         </span>
       )}
 
-      {/* In-world day chip — only when the story tracks elapsed time */}
+      {/*
+        In-world day chip — only when the story tracks elapsed time.
+
+        CD-3: `Day 6223` is a count from the story's first scene, which says
+        nothing to a reader of the card. When the world has a calendar the app
+        can say what day that is, and already does in the Writer's Brief — this
+        was the one place holding the raw number where a date was available.
+        Without a calendar there is no date to give, so it stays a day count and
+        the hover says what it counts from.
+      */}
       {inWorldDay !== undefined && inWorldDay > 0 && !isFlashback && (
         <span
           className="shrink-0 rounded-full bg-[hsl(var(--muted))] px-2 py-0.5 text-[10px] font-medium tabular-nums text-[hsl(var(--muted-foreground))]"
-          title={`In-world day ${inWorldDay} — ${inWorldDay} day${inWorldDay === 1 ? '' : 's'} after the story's start`}
+          title={calendar
+            ? `${formatInWorldDate(calendar, inWorldDay)} — ${plural(inWorldDay, 'day')} after the story's start`
+            : `In-world day ${inWorldDay} — ${plural(inWorldDay, 'day')} after the story's start`}
         >
-          Day {inWorldDay}
+          {calendar ? formatInWorldDate(calendar, inWorldDay) : `Day ${nf.format(inWorldDay)}`}
         </span>
       )}
 

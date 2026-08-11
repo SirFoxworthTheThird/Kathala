@@ -1,14 +1,7 @@
 import { useNavigate, Link } from 'react-router-dom'
 import { BookMarked } from 'lucide-react'
 import { useLorePagesForEntity } from '@/db/hooks/useLore'
-
-function relativeDate(ts: number): string {
-  const diff = Date.now() - ts
-  if (diff < 60_000) return 'just now'
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
-  return new Date(ts).toLocaleDateString()
-}
+import { relativeTime } from '@/lib/relativeTime'
 
 interface Props {
   worldId: string
@@ -52,7 +45,7 @@ export function RelatedLoreSection({ worldId, entityId, entityName }: Props) {
           >
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-semibold text-[hsl(var(--foreground))]">{page.title}</span>
-              <span className="text-[10px] text-[hsl(var(--muted-foreground))]">{relativeDate(page.updatedAt)}</span>
+              <span className="text-[10px] text-[hsl(var(--muted-foreground))]">{`Edited ${relativeTime(page.updatedAt)}`}</span>
             </div>
             {preview && (
               <p className="text-xs text-[hsl(var(--muted-foreground))] line-clamp-2 leading-relaxed">{preview}</p>

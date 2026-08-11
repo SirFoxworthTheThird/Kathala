@@ -34,6 +34,7 @@ import { MotifCadence } from './MotifCadence'
 import { WritingProgress } from './WritingProgress'
 import { evaluateSuggestions, type WorldSummaryData } from './suggestionRules'
 import { relativeTime } from '@/lib/relativeTime'
+import { plural } from '@/lib/plural'
 
 // ── Stat pill ────────────────────────────────────────────────────────────────
 
@@ -507,7 +508,7 @@ export default function WorldDashboardView() {
         <div>
           <SectionHeading
             icon={FileEdit}
-            aside={<span className="text-xs text-[hsl(var(--muted-foreground))]">{totalEvents} events</span>}
+            aside={<span className="text-xs text-[hsl(var(--muted-foreground))]">{plural(totalEvents, 'event')}</span>}
           >
             Scene Status
           </SectionHeading>

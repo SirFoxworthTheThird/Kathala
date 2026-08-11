@@ -25,8 +25,16 @@ describe('relativeTime', () => {
     expect(ago(6 * 86_400_000)).toBe('6d ago')
   })
 
-  it('falls back to a date once "Nd ago" stops helping', () => {
-    expect(ago(8 * 86_400_000)).toBe(new Date(NOW - 8 * 86_400_000).toLocaleDateString())
+  it('falls back to a date once "Nd ago" stops helping, and names the month', () => {
+    // LORE-3. The old assertion compared the fallback against
+    // `toLocaleDateString()` — the implementation against itself — so it would
+    // have passed on `4/7/2026`, which is the seventh of April or the fourth of
+    // July depending on the reader. What matters is that it cannot be read two
+    // ways.
+    const out = ago(8 * 86_400_000)
+    expect(out, 'an all-numeric date is the ambiguity itself').not.toMatch(/^\d+[/.-]\d+[/.-]\d+$/)
+    expect(out, 'the month should be a word').toMatch(/[A-Za-z]/)
+    expect(out).toContain('2026')
   })
 
   it('does not run backwards for a timestamp in the future', () => {

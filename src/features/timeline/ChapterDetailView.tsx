@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus, Users, Network, StickyNote, ChevronDown, ChevronRight, Scroll } from 'lucide-react'
 import { useChapter, useEvents, useWorldEvents, useWorldChapters, useTimelines, updateChapter, updateEvent } from '@/db/hooks/useTimeline'
+import { useWorld } from '@/db/hooks/useWorlds'
 import { journalGroup } from '@/db/hooks/useOperations'
 import { useChapterEventSnapshots } from '@/db/hooks/useSnapshots'
 import { computeInWorldDays } from '@/lib/inWorldTime'
@@ -89,6 +90,7 @@ export default function ChapterDetailView() {
   const worldEvents = useWorldEvents(worldId ?? null)
   const worldChapters = useWorldChapters(worldId ?? null)
   const worldTimelines = useTimelines(worldId ?? null)
+  const world = useWorld(worldId ?? null)
   const inWorldDays = computeInWorldDays(worldEvents, worldChapters, worldTimelines)
   const characters = useCharacters(worldId ?? null)
   const relationships = useRelationships(worldId ?? null)
@@ -222,6 +224,7 @@ export default function ChapterDetailView() {
                   onMoveUp={() => moveEvent(e.id, 'up')}
                   onMoveDown={() => moveEvent(e.id, 'down')}
                   inWorldDay={inWorldDays.get(e.id)}
+                  calendar={world?.calendar ?? null}
                 />
               ))
             )}

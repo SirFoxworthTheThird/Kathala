@@ -161,7 +161,12 @@ function PageCard({
             {revealedAt}
           </span>
         )}
-        <span className="ml-auto text-[10px] text-[hsl(var(--muted-foreground))]">{relativeTime(page.updatedAt)}</span>
+        {/*
+          LORE-3: an unlabelled date answers neither "which date" nor, in
+          `4/7/2026`, "which is the month". The word says which date it is; the
+          format question is answered in `relativeTime` for every caller.
+        */}
+        <span className="ml-auto text-[10px] text-[hsl(var(--muted-foreground))]">Edited {relativeTime(page.updatedAt)}</span>
       </div>
     </div>
   )

@@ -4,6 +4,7 @@ import { X, Minimize2 } from 'lucide-react'
 import { setSceneText } from '@/db/hooks/useManuscript'
 import { wordCount } from '@/lib/manuscript'
 import { focusStats, sessionGoalPercent } from '@/lib/focusSession'
+import { plural } from '@/lib/plural'
 
 interface FocusModeProps {
   worldId: string
@@ -98,7 +99,7 @@ export function FocusMode({ worldId, eventId, title, initialText, onExit }: Focu
       <div className="flex shrink-0 items-center gap-3 px-4 py-2 text-xs text-[hsl(var(--muted-foreground))]">
         <span className="truncate">{title || 'Untitled scene'}</span>
         <span className="ml-auto tabular-nums">
-          {stats.current.toLocaleString()} words
+          {plural(stats.current, 'word')}
           {stats.sessionDelta !== 0 && (
             <span className={stats.sessionDelta > 0 ? 'text-emerald-400' : 'text-[hsl(var(--muted-foreground))]'}>
               {' '}({stats.sessionDelta > 0 ? '+' : ''}{stats.sessionDelta.toLocaleString()} this session)

@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { compileManuscript, type BuiltManuscript, type CompileFormat } from '@/lib/manuscriptCompile'
 import { compileDocx, compileEpub } from '@/lib/manuscriptExport'
 import { Input } from '@/components/ui/input'
+import { plural } from '@/lib/plural'
 
 type ExportFormat = CompileFormat | 'docx' | 'epub'
 
@@ -116,8 +117,8 @@ export function ExportManuscriptDialog({
           )}
 
           <div className="flex items-center justify-between rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.4)] px-3 py-2 text-xs text-[hsl(var(--muted-foreground))]">
-            <span>{new Intl.NumberFormat().format(manuscript.totalWords)} words</span>
-            <span>{manuscript.writtenScenes} scenes</span>
+            <span>{plural(manuscript.totalWords, 'word')}</span>
+            <span>{plural(manuscript.writtenScenes, 'scene')}</span>
           </div>
 
           <div className="flex gap-2">

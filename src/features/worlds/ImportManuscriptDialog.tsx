@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { parseManuscript, manuscriptStats } from '@/lib/manuscriptImport'
 import { createWorldFromManuscript } from '@/db/hooks/useManuscript'
+import { plural } from '@/lib/plural'
 
 interface ImportManuscriptDialogProps {
   open: boolean
@@ -18,7 +19,6 @@ function baseName(fileName: string): string {
   return fileName.replace(/\.[^.]+$/, '').trim()
 }
 
-const nf = new Intl.NumberFormat()
 
 export function ImportManuscriptDialog({ open, onOpenChange, onImported }: ImportManuscriptDialogProps) {
   const [raw, setRaw] = useState('')
@@ -132,9 +132,9 @@ export function ImportManuscriptDialog({ open, onOpenChange, onImported }: Impor
                 <>
                   <div className="mb-2 flex items-center gap-2 text-xs font-medium text-[hsl(var(--foreground))]">
                     <FileText className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" />
-                    {nf.format(stats.chapters)} chapter{stats.chapters !== 1 ? 's' : ''} ·{' '}
-                    {nf.format(stats.scenes)} scene{stats.scenes !== 1 ? 's' : ''} ·{' '}
-                    {nf.format(stats.words)} words
+                    {plural(stats.chapters, 'chapter')} ·{' '}
+                    {plural(stats.scenes, 'scene')} ·{' '}
+                    {plural(stats.words, 'word')}
                   </div>
                   <ul className="max-h-32 space-y-0.5 overflow-y-auto text-xs text-[hsl(var(--muted-foreground))]">
                     {previewChapters.map((c, i) => (
@@ -173,7 +173,7 @@ export function ImportManuscriptDialog({ open, onOpenChange, onImported }: Impor
           <Button type="button" onClick={handleImport} disabled={parsed.chapters.length === 0 || importing}>
             {importing
               ? 'Importing…'
-              : `Import ${stats.chapters > 0 ? `${nf.format(stats.chapters)} chapter${stats.chapters !== 1 ? 's' : ''}` : ''}`.trim()}
+              : `Import ${stats.chapters > 0 ? plural(stats.chapters, 'chapter') : ''}`.trim()}
           </Button>
         </DialogFooter>
       </DialogContent>

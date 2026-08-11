@@ -24,6 +24,7 @@ import { useEvents, useChapters, useTimelines } from '@/db/hooks/useTimeline'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { GenerateFactionsDialog } from './GenerateFactionsDialog'
 import type { Faction, FactionMembership, FactionRelationship, FactionStance } from '@/types'
+import { plural } from '@/lib/plural'
 
 const PRESET_COLORS = [
   '#ef4444', '#f97316', '#eab308', '#22c55e',
@@ -776,12 +777,20 @@ export default function FactionsView() {
                         : 'border-[hsl(var(--border))] bg-[hsl(var(--card))]'
                     }`}
                   >
-                    <div className="flex items-center gap-2 mb-2">
+                    {/*
+                      FAC-3: the name was `truncate` — one line, ellipsis — set
+                      directly above a description allowed two full lines, so
+                      "The Fellowship of the R…" was cut while the body text it
+                      titles wrapped freely. The name gets the same two lines.
+                      Aligned to the top rather than the centre, so the colour
+                      dot sits with the first line when the name does wrap.
+                    */}
+                    <div className="flex items-start gap-2 mb-2">
                       <div
-                        className="h-4 w-4 rounded-full shrink-0 shadow-sm"
+                        className="mt-0.5 h-4 w-4 rounded-full shrink-0 shadow-sm"
                         style={{ background: faction.color }}
                       />
-                      <span className="font-semibold text-sm truncate">{faction.name}</span>
+                      <span data-faction-name className="font-semibold text-sm line-clamp-2">{faction.name}</span>
                     </div>
                     {faction.description && (
                       <p className="text-xs text-[hsl(var(--muted-foreground))] line-clamp-2 mb-2">
@@ -790,7 +799,7 @@ export default function FactionsView() {
                     )}
                     <div className="flex items-center gap-1 text-[10px] text-[hsl(var(--muted-foreground))]">
                       <Users className="h-3 w-3" />
-                      <span>{count} member{count !== 1 ? 's' : ''}</span>
+                      <span>{plural(count, 'member')}</span>
                     </div>
                     {/*
                       FAC-1: the card carried a member count and nothing else,
