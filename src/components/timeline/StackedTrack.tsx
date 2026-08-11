@@ -40,6 +40,10 @@ export interface StackedTrackProps {
   onChapterSelect: (chapterId: string, events: WorldEvent[]) => void
   onActivateDepth: (timelineId: string) => void
   setActiveEventId: (id: string) => void
+  /** Outer-track events paired with an inner moment by a sync point (MT-7). */
+  linkedOuterEventIds?: ReadonlySet<string>
+  /** Inner-track events paired with an outer moment (MT-7). */
+  linkedInnerEventIds?: ReadonlySet<string>
 }
 
 export function StackedTrack({
@@ -51,6 +55,7 @@ export function StackedTrack({
   outerScrollerRef, innerScrollerRef, outerMarkerRef, innerMarkerRef,
   onPlayPause, onStop, onSpeedChange, onDiffOpen,
   onPrev, onNext, onEventSelect, onChapterSelect, onActivateDepth,
+  linkedOuterEventIds, linkedInnerEventIds,
 }: StackedTrackProps) {
   const badgeStyle = (active: boolean, color: string): CSSProperties => ({
     fontSize: '0.48rem', fontWeight: 800, letterSpacing: '0.12em',
@@ -95,6 +100,13 @@ export function StackedTrack({
             showDiff={isOuterActive && outerChapters.length >= 2}
             showClear={isOuterActive && !!activeEventId}
             color={outerColor}
+            /*
+              MT-2: both tracks carried the same "Play story on the map", so
+              neither said which of the two it would move. Each names its own
+              track now, which is also the answer to "which one is play the
+              story" — the inner track is the story, the outer one frames it.
+            */
+            playLabel={`Play ${outerTimelineLabel} — moves the cursor along this track`}
             onPlayPause={onPlayPause}
             onStop={onStop}
             onSpeedChange={onSpeedChange}
@@ -122,6 +134,7 @@ export function StackedTrack({
             activeMarkerRef={outerMarkerRef}
             onEventSelect={onEventSelect}
             onChapterSelect={(chId) => onChapterSelect(chId, outerRawEvents)}
+            linkedEventIds={linkedOuterEventIds}
           />
         </div>
 
@@ -146,6 +159,7 @@ export function StackedTrack({
             showDiff={!isOuterActive && innerChapters.length >= 2}
             showClear={!isOuterActive && !!activeEventId}
             color={innerColor}
+            playLabel={`Play ${innerTimelineLabel} — moves the cursor along this track`}
             onPlayPause={onPlayPause}
             onStop={onStop}
             onSpeedChange={onSpeedChange}
@@ -173,6 +187,7 @@ export function StackedTrack({
             activeMarkerRef={innerMarkerRef}
             onEventSelect={onEventSelect}
             onChapterSelect={(chId) => onChapterSelect(chId, innerRawEvents)}
+            linkedEventIds={linkedInnerEventIds}
           />
         </div>
 

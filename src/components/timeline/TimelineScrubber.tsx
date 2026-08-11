@@ -17,11 +17,15 @@ interface ChapterSegmentProps {
   activeMarkerRef: RefObject<HTMLButtonElement | null>
   onEventSelect: (eventId: string, locationMarkerId?: string | null) => void
   onChapterSelect: () => void
+  /** See `ScrubberProps.linkedEventIds`. */
+  linked?: ReadonlySet<string>
 }
+
+const NO_LINKS: ReadonlySet<string> = new Set()
 
 export function ChapterSegment({
   chapter, events, segmentState, activeEventId, color, compact,
-  activeMarkerRef, onEventSelect, onChapterSelect,
+  activeMarkerRef, onEventSelect, onChapterSelect, linked = NO_LINKS,
 }: ChapterSegmentProps) {
   const isActive = segmentState === 'active'
   const isPast   = segmentState === 'past'
@@ -110,11 +114,12 @@ export function ChapterSegment({
           const pct        = events.length <= 1 ? 50 : (i / (events.length - 1)) * 100
           const tickH      = isEvActive ? (compact ? 13 : 20) : (compact ? 8 : 12)
           const tickW      = isEvActive ? 3 : 2
+          const isLinked   = linked.has(ev.id)
           return (
             <button
               key={ev.id}
               ref={isEvActive ? activeMarkerRef : undefined}
-              title={ev.title}
+              title={isLinked ? `${ev.title} — paired with a moment on the other track` : ev.title}
               onClick={(e) => { e.stopPropagation(); onEventSelect(ev.id, ev.locationMarkerId) }}
               style={{
                 position: 'absolute', left: `${pct}%`, top: '50%',
@@ -132,6 +137,21 @@ export function ChapterSegment({
                 boxShadow: isEvActive ? `0 0 5px ${color}99` : 'none',
                 transition: 'height 0.15s, box-shadow 0.15s',
               }} />
+              {/* MT-7: a paired moment carries a dot above its tick, so a
+                  pairing is visible on the bar rather than only in the
+                  relationship editor. Above rather than on the tick, which
+                  already encodes position and whether playback has passed it. */}
+              {isLinked && (
+                <span
+                  aria-hidden="true"
+                  style={{
+                    position: 'absolute', top: 0, left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: 4, height: 4, borderRadius: '50%',
+                    background: color, opacity: hasFired ? 1 : 0.6,
+                  }}
+                />
+              )}
             </button>
           )
         })}
@@ -165,6 +185,12 @@ export interface ScrubberProps {
   activeMarkerRef: RefObject<HTMLButtonElement | null>
   onEventSelect: (eventId: string, locationMarkerId?: string | null) => void
   onChapterSelect: (chapterId: string) => void
+  /**
+   * Events paired with a moment on the other track by a sync point (MT-7).
+   * Nothing on the bar said a pairing existed, so the only way to know was to
+   * open the relationship editor and read the list.
+   */
+  linkedEventIds?: ReadonlySet<string>
 }
 
 /** Horizontal scroller shell shared by both scrubbers: edge fade-arrows,
@@ -253,6 +279,7 @@ function ScrubberShell({
 export function Scrubber({
   chapters, events, activeEventId, color, compact,
   scrollerRef, activeMarkerRef, onEventSelect, onChapterSelect,
+  linkedEventIds = NO_LINKS,
 }: ScrubberProps) {
   const eventsByChapter = useMemo(() => {
     const map = new Map<string, WorldEvent[]>()
@@ -286,6 +313,7 @@ export function Scrubber({
           activeMarkerRef={activeMarkerRef}
           onEventSelect={onEventSelect}
           onChapterSelect={() => onChapterSelect(ch.id)}
+          linked={linkedEventIds}
         />
       ))}
     </ScrubberShell>

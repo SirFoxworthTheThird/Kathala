@@ -48,6 +48,18 @@ export function ChapterTimelineBar() {
     ) ?? null
   }, [relationships, timelines])
 
+  // MT-7: which moments a sync point pairs, so the bar can mark them. The
+  // relationship is already loaded here for the frame check, so this is a read
+  // of data in hand rather than new plumbing.
+  const linkedOuterEventIds = useMemo(
+    () => new Set((frameRel?.syncPoints ?? []).map((sp) => sp.outerEventId)),
+    [frameRel],
+  )
+  const linkedInnerEventIds = useMemo(
+    () => new Set((frameRel?.syncPoints ?? []).map((sp) => sp.innerEventId)),
+    [frameRel],
+  )
+
   const isFrame = !!frameRel
   const multi   = !isFrame && timelines.length >= 2
 
@@ -195,6 +207,8 @@ export function ChapterTimelineBar() {
         onEventSelect={handleEventSelect}
         onChapterSelect={handleChapterSelect}
         onActivateDepth={handleActivateDepth}
+        linkedOuterEventIds={linkedOuterEventIds}
+        linkedInnerEventIds={linkedInnerEventIds}
         setActiveEventId={setActiveEventId}
       />
     )

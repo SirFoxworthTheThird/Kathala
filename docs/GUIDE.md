@@ -534,11 +534,20 @@ keeping the linked one available for context. The outer track is the thinner of
 the two, but it is not the poorer one: both read *number · chapter title*, and
 both give the full title on hover where it has to be shortened.
 
+Each track has its own **play** button, named for the track it moves — *Play The
+Attic*, *Play The Tale* — so the two are not the same control twice. The inner
+track is the story; the outer one frames it.
+
 **Sync points** take effect during playback. When you play the inner story and
 reach an event that is paired with one in the outer story, PlotWeave moves the
 outer moment to match — so the [map](#maps) can show the outer timeline's cast
 as **ghost pins** beside the inner one. Moving the cursor by hand does not move
 the other track; the pairing is used while playing, not while scrubbing.
+
+**Paired moments are marked on the bar.** Both ends of a sync point carry a
+small dot above their tick, and hovering one says *paired with a moment on the
+other track* — so you can see which moments are linked without opening the
+relationship editor to read the list.
 
 Every **other multi-timeline world** uses a single-height bottom bar with a
 **scope selector** on its left. Choose one timeline to scrub it on its own, or
