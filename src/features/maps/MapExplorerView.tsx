@@ -81,6 +81,17 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const [genLocOpen, setGenLocOpen] = useState(false)
   const [replaceImageOpen, setReplaceImageOpen] = useState(false)
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null)
+  /*
+    PAN-2: selecting a character opened the right panel and the film strip
+    together, costing the panel's width and a band of map height in one click,
+    with no way to keep one without the other — the strip's own X cleared the
+    selection, which closed the panel too.
+
+    The strip can be put away on its own now, and stays away until it is asked
+    for again: someone who dismissed it once was not asking to be shown it again
+    by the next character they click.
+  */
+  const [journeyHidden, setJourneyHidden] = useState(false)
   const [scaleMode, setScaleMode] = useState(false)
   const [scaleDialog, setScaleDialog] = useState<{ pixelDist: number } | null>(null)
   const [measureMode, setMeasureMode] = useState(false)
@@ -641,7 +652,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             the character film strip, which shares the canvas's bottom edge. */}
         <div
           className="relative flex-1 overflow-hidden"
-          data-film-strip={selectedCharacterId ? '' : undefined}
+          data-film-strip={selectedCharacterId && !journeyHidden ? '' : undefined}
           style={canvasTransitionStyle}
           onTransitionEnd={handleCanvasTransitionEnd}
         >
@@ -1041,13 +1052,15 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
                   activeChapterTitle={activeChapterTitle}
                   worldId={worldId}
                   onClose={() => setSelectedCharacterId(null)}
+                  journeyShown={!journeyHidden}
+                  onToggleJourney={() => setJourneyHidden((v) => !v)}
                 />
               </div>
             )
           })()}
 
           {/* Character film strip */}
-          {selectedCharacterId && (() => {
+          {selectedCharacterId && !journeyHidden && (() => {
             const char = characters.find((c) => c.id === selectedCharacterId)
             if (!char) return null
             return (
@@ -1057,7 +1070,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
                 orderedEvents={orderedEvents}
                 chapters={chapters}
                 activeEventId={activeEventId}
-                onClose={() => setSelectedCharacterId(null)}
+                onClose={() => setJourneyHidden(true)}
               />
             )
           })()}

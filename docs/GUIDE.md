@@ -1088,10 +1088,17 @@ the spot you were aiming at.
   it sits greyed out in the **⋯** menu, next to the *Set map scale* entry that
   unlocks it.
 
-Click a character pin to open their **film strip**, a chronological list of every
-place they visited. Selecting a stop moves the global cursor to that event. It
-also opens their panel on the right, where the portrait at the top opens
+Click a character pin to open their **journey strip**, a chronological list of
+every place they visited. Selecting a stop moves the global cursor to that event.
+It also opens their panel on the right, where the portrait at the top opens
 [full size](#viewing-pictures-full-size) like any other.
+
+The two are separate: the strip lies across the bottom of the map and the panel
+stands at the right, and on a laptop you may not want both at once. Closing the
+strip with its **✕** leaves the panel open, and the panel's **Hide journey /
+Show journey** brings it back. Once you have put the strip away it stays away —
+clicking the next character opens their panel alone — until you ask for it
+again. Closing the panel is what deselects the character and clears both.
 
 ![Map editing tools](images/40-map-tools.png)
 

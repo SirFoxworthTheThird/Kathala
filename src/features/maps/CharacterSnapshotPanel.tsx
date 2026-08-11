@@ -60,6 +60,9 @@ interface CharacterSnapshotPanelProps {
   activeChapterTitle: string | null
   worldId: string
   onClose: () => void
+  /** Whether the journey strip along the bottom of the map is showing (PAN-2). */
+  journeyShown: boolean
+  onToggleJourney: () => void
 }
 
 export function CharacterSnapshotPanel({
@@ -71,6 +74,8 @@ export function CharacterSnapshotPanel({
   activeChapterTitle,
   worldId,
   onClose,
+  journeyShown,
+  onToggleJourney,
 }: CharacterSnapshotPanelProps) {
   const activeEventId = useActiveEventId()
   const isInherited = !!snapshot && !!activeEventId && snapshot.eventId !== activeEventId
@@ -174,6 +179,23 @@ export function CharacterSnapshotPanel({
       />
 
       <div className="flex-1 overflow-y-auto">
+
+        {/*
+          PAN-2: the journey strip used to arrive with this panel and could only
+          be dismissed by deselecting the character, which closed the panel too.
+          It is a separate thing to keep or put away, so it is a separate
+          control — and it says which it will do.
+        */}
+        <div className="flex justify-end border-b border-[hsl(var(--border))] px-4 py-2">
+          <button
+            onClick={onToggleJourney}
+            aria-pressed={journeyShown}
+            className="flex items-center gap-1.5 rounded border border-[hsl(var(--border))] px-2 py-1 text-[11px] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent)/0.4)] hover:text-[hsl(var(--foreground))]"
+          >
+            <Route className="h-3 w-3" aria-hidden="true" />
+            {journeyShown ? 'Hide journey' : 'Show journey'}
+          </button>
+        </div>
 
         {/* Portrait */}
         <div className="flex justify-center border-b border-[hsl(var(--border))] p-4">
