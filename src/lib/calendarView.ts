@@ -1,5 +1,5 @@
 import type { WorldEvent, Chapter, WorldCalendar, Timeline } from '@/types'
-import { computeInWorldDays } from '@/lib/inWorldTime'
+import { computeInWorldDays, provisionallyDatedEvents } from '@/lib/inWorldTime'
 import { dayNumberToDate } from '@/lib/calendar'
 
 /**
@@ -14,6 +14,12 @@ export interface CalendarEvent {
   dayNumber: number
   isFlashback: boolean
   chapterNumber: number
+  /**
+   * The clock derived this date rather than the writer stating it (HB-5). The
+   * grid draws these differently and counts them, so the calendar cannot read
+   * authoritative about a date nobody chose.
+   */
+  provisional: boolean
 }
 
 export interface CalendarMonthGrid {
@@ -52,6 +58,7 @@ export function buildCalendarMonths({
   if (monthsPerYear === 0) return []
 
   const dayByEvent = computeInWorldDays(events, chapters, timelines)
+  const provisional = provisionallyDatedEvents(events, chapters)
   const chapterNumberById = new Map(chapters.map((c) => [c.id, c.number]))
 
   // Absolute month ordinal so months order across years (and pre-epoch years).
@@ -72,6 +79,7 @@ export function buildCalendarMonths({
         dayNumber,
         isFlashback: ev.isFlashback ?? false,
         chapterNumber: chapterNumberById.get(ev.chapterId) ?? 0,
+        provisional: provisional.has(ev.id),
       },
       ordinal: ordinalOf(date.year, date.month),
       day: date.day,

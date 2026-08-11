@@ -1625,6 +1625,20 @@ name and carrying no day number — because the name *is* the date.
   event's explicit in-world time, overriding the travel-day clock for that event
   (handy for flashbacks/flash-forwards, or to nail a scene to a specific date).
 
+**Scenes with no timing set are marked.** A scene that says nothing about how
+much time has passed doesn't move the clock, so it sits on the same day as the
+scene before it — which is right, but early on it means most of your story
+stacks onto the first day of the year. Those chips are drawn with a dashed
+amber outline, and a line at the top of the screen counts them: *"3 scenes have
+no timing yet."* Set **Elapsed Time** on the scene, or drag its chip onto a day
+here, and the mark goes.
+
+A scene is not counted as untimed when it is the **first on its timeline**
+(there is no earlier scene for it to follow), when its elapsed time is
+deliberately **0** (the same day is an answer), or when it carries a pinned
+date. An unpinned **flashback** is always counted, because the day it shows is
+the surrounding scene's, not its own.
+
 ---
 
 ## Continuity Checker

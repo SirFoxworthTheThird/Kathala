@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { CalendarDays, History } from 'lucide-react'
+import { CalendarDays, History, CircleDashed } from 'lucide-react'
 import { useWorld, updateWorld } from '@/db/hooks/useWorlds'
 import { useWorldEvents, useWorldChapters, useTimelines, updateEvent } from '@/db/hooks/useTimeline'
 import { buildCalendarMonths, type CalendarEvent } from '@/lib/calendarView'
@@ -8,6 +8,7 @@ import { dateToDayNumber, defaultCalendar } from '@/lib/calendar'
 import { useAppStore } from '@/store'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
+import { plural } from '@/lib/plural'
 
 export default function CalendarView() {
   const { worldId } = useParams<{ worldId: string }>()
@@ -26,6 +27,18 @@ export default function CalendarView() {
   const months = useMemo(
     () => (calendar ? buildCalendarMonths({ events, chapters, calendar, timelines }) : []),
     [calendar, events, chapters, timelines]
+  )
+
+  // HB-5: the page read authoritative while mostly reflecting missing data —
+  // every scene with nothing said about its timing stacks on the day the last
+  // one landed on, which for a fresh world is the first day of the year. The
+  // count is of scenes actually drawn here, so it matches what is on screen.
+  const provisionalCount = useMemo(
+    () => months.reduce(
+      (n, m) => n + [...m.eventsByDay.values()].flat().filter((e) => e.provisional).length,
+      0,
+    ),
+    [months]
   )
 
   function openEvent(ev: CalendarEvent) {
@@ -91,6 +104,16 @@ export default function CalendarView() {
         <p className="text-xs text-[hsl(var(--muted-foreground))]">
           Events by in-world date. Drag an event to a day to pin it there.
         </p>
+        {provisionalCount > 0 && (
+          <p className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-500">
+            <CircleDashed className="h-3 w-3 shrink-0" aria-hidden="true" />
+            <span>
+              {plural(provisionalCount, 'scene has', 'scenes have')} no timing yet — shown dashed,
+              on the day the scene before them landed on. Set <em>Elapsed Time</em> on a scene,
+              or drag it onto a day here.
+            </span>
+          </p>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
@@ -153,15 +176,25 @@ export default function CalendarView() {
                                 onDragStart={() => setDragId(ev.id)}
                                 onDragEnd={() => { setDragId(null); setOverCell(null) }}
                                 onClick={() => openEvent(ev)}
-                                title={ev.isFlashback ? `${ev.title} (flashback)` : ev.title}
+                                title={[
+                                  ev.title,
+                                  ev.isFlashback ? '(flashback)' : null,
+                                  ev.provisional ? '— no timing set; this date is derived, not chosen' : null,
+                                ].filter(Boolean).join(' ')}
                                 className={`flex items-center gap-0.5 truncate rounded px-1 py-0.5 text-left text-[10px] transition-colors ${
                                   isActive
                                     ? 'bg-[hsl(var(--ring))] text-white'
                                     : 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent)/0.7)]'
-                                } ${dragId === ev.id ? 'opacity-40' : ''}`}
+                                } ${ev.provisional && !isActive ? 'border border-dashed border-amber-500/60' : ''} ${dragId === ev.id ? 'opacity-40' : ''}`}
                               >
                                 {ev.isFlashback && <History className="h-2.5 w-2.5 shrink-0 opacity-70" aria-hidden="true" />}
+                                {ev.provisional && (
+                                  <CircleDashed className="h-2.5 w-2.5 shrink-0 opacity-70" aria-hidden="true" />
+                                )}
                                 <span className="truncate">{ev.title || 'Untitled'}</span>
+                                {/* The dash and the glyph are both visual; a
+                                    screen reader gets the distinction here. */}
+                                {ev.provisional && <span className="sr-only">, no timing set</span>}
                               </button>
                             )
                           })}

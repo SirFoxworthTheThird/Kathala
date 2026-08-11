@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeInWorldDays } from '@/lib/inWorldTime'
+import { computeInWorldDays, provisionallyDatedEvents } from '@/lib/inWorldTime'
 import type { WorldEvent, Chapter } from '@/types'
 
 function chapter(id: string, number: number, timelineId = 't1'): Chapter {
@@ -116,5 +116,78 @@ describe('computeInWorldDays — per-timeline day offsets', () => {
     const events = [event('b1', 'c2', 0, { travelDays: 2, timelineId: 't2' })]
     expect(computeInWorldDays(events, chapters).get('b1')).toBe(2)
     expect(computeInWorldDays(events, chapters, [{ id: 't2' }]).get('b1')).toBe(2)
+  })
+})
+
+/**
+ * HB-5. Five events with nothing said about their timing all landed on
+ * January 1 and the page said nothing about it, so the calendar read
+ * authoritative while mostly reflecting missing data. The stacking is correct;
+ * what was missing was the writer being told which dates nobody chose.
+ */
+describe('provisionallyDatedEvents', () => {
+  const chapters = [chapter('c1', 1), chapter('c2', 2)]
+
+  it('flags the run that says nothing, and only that run', () => {
+    const events = [
+      event('e1', 'c1', 0),                     // first: starts the clock
+      event('e2', 'c1', 1, { travelDays: 2 }),  // stated
+      event('e3', 'c1', 2),                     // says nothing
+      event('e4', 'c2', 0),                     // says nothing
+    ]
+    expect([...provisionallyDatedEvents(events, chapters)].sort()).toEqual(['e3', 'e4'])
+  })
+
+  it('counts the first event on a timeline as stated, because it cannot say anything', () => {
+    // `travelDays` is days since the *previous* event, and there is none — the
+    // event starts the clock, so leaving it empty is not a gap.
+    const events = [event('e1', 'c1', 0)]
+    expect(provisionallyDatedEvents(events, chapters).size).toBe(0)
+  })
+
+  it('treats zero as a statement, not an absence', () => {
+    const stated = [event('e1', 'c1', 0), event('e2', 'c1', 1, { travelDays: 0 })]
+    const absent = [event('e1', 'c1', 0), event('e2', 'c1', 1)]
+    expect(provisionallyDatedEvents(stated, chapters).has('e2')).toBe(false)
+    expect(provisionallyDatedEvents(absent, chapters).has('e2')).toBe(true)
+  })
+
+  it('takes a pin as stated even with no travel days', () => {
+    const events = [event('e1', 'c1', 0), event('e2', 'c1', 1, { inWorldTime: 40 })]
+    expect(provisionallyDatedEvents(events, chapters).has('e2')).toBe(false)
+  })
+
+  it('flags an unpinned flashback wherever it sits, including first', () => {
+    // A flashback never advances the clock and reports the surrounding day,
+    // which is precisely not its own date — so travelDays cannot rescue it and
+    // being first does not either.
+    const events = [
+      event('e1', 'c1', 0, { isFlashback: true }),
+      event('e2', 'c1', 1, { travelDays: 3, isFlashback: true }),
+      event('e3', 'c1', 2, { isFlashback: true, inWorldTime: -100 }),
+    ]
+    expect([...provisionallyDatedEvents(events, chapters)].sort()).toEqual(['e1', 'e2'])
+  })
+
+  it('starts each timeline over, so a second timeline gets its own free first event', () => {
+    const chs = [chapter('c1', 1), chapter('c2', 1, 't2')]
+    const events = [
+      event('a1', 'c1', 0),
+      event('a2', 'c1', 1),
+      event('b1', 'c2', 0, { timelineId: 't2' }),
+    ]
+    // a2 says nothing; a1 and b1 are each first on their own timeline.
+    expect([...provisionallyDatedEvents(events, chs)]).toEqual(['a2'])
+  })
+
+  it('agrees with the clock about which event is first when sortOrder is shuffled', () => {
+    // The two order events the same way on purpose; if they drifted, the clock
+    // would start on one event and this would exempt another.
+    const events = [
+      event('later', 'c1', 5),
+      event('first', 'c1', 1),
+    ]
+    expect(computeInWorldDays(events, chapters).get('first')).toBe(0)
+    expect([...provisionallyDatedEvents(events, chapters)]).toEqual(['later'])
   })
 })
