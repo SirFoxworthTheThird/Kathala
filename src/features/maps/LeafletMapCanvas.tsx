@@ -694,9 +694,15 @@ export function LeafletMapCanvas({
       } else {
         const content = document.createElement('div')
         content.style.minWidth = '110px'
+        /*
+          MW-8: a single pin opens a character's panel and their journey strip;
+          a cluster opened this list, and nothing said the two were related. The
+          rows *are* the route — each one calls the same handler a single pin
+          does — so the heading says so rather than leaving it to be discovered.
+        */
         const title = document.createElement('p')
         title.style.cssText = `font-size:11px;font-weight:bold;margin-bottom:4px;color:hsl(var(--ring));font-family:var(--font-body);`
-        title.textContent = 'At this location:'
+        title.textContent = 'At this location — pick one to open their journey:'
         content.appendChild(title)
         for (const pin of group) {
           const btn = document.createElement('button')

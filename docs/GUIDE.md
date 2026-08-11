@@ -1043,7 +1043,9 @@ list. To place a character
 touch devices, tap the crosshair on their card and then tap a location.
 
 When several characters stand in the same place, their pin shows a count;
-clicking it lists them. Anyone who is really on a **sub-map** reached through
+clicking it lists them, and picking a name opens that character's panel and
+journey strip — the same thing clicking a single pin does. Anyone who is really
+on a **sub-map** reached through
 that pin is named with the map they are on — *Frodo Baggins · in Bag End* — and
 a long list scrolls inside the popup rather than running off the top of the map.
 
@@ -1431,6 +1433,12 @@ After one character learns a fact, **Might also know** looks for other character
 who shared a later scene with a knower. Accept a suggestion to add the likely
 reveal, or leave it untracked when the information was not actually shared.
 
+The roster can be **ordered** as well as searched: *When it gets out* puts the
+facts in the order the story lets them slip, *How widely known* leads with the
+ones that have spread furthest at the current cursor, and *Name* and *Order
+added* are there too. A fact nobody knows yet sorts to the end rather than the
+front — not knowing it is not the same as it coming first.
+
 ![Knowledge](images/14-knowledge.png)
 
 **Generate with AI** adds facts in bulk: copy the prompt, describe your story,
@@ -1447,7 +1455,10 @@ information they shouldn't have yet.
 
 ## Search
 
-Press **Ctrl/⌘+K** anywhere to open the command-style search palette. It searches
+Press **Ctrl/⌘+K** anywhere to open the command-style search palette. Close it
+with **Esc**, by clicking outside it, or by going anywhere — it does not follow
+you off the page. When it is opened over another panel, Esc closes the palette
+and leaves what was underneath alone. It searches
 characters, factions, items, locations, chapters, events, timelines,
 relationships, routes, regions, and lore pages, grouped by type. Use the arrow
 keys and **Enter** to navigate; opening an event also sets the time cursor, and

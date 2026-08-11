@@ -21,6 +21,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { GenerateKnowledgeDialog } from './GenerateKnowledgeDialog'
 import type { KnowledgeFact } from '@/types'
+import { orderFacts, FACT_ORDERS, FACT_ORDER_LABELS, type FactOrder } from '@/lib/factOrder'
 
 export default function KnowledgeView() {
   const { worldId } = useParams<{ worldId: string }>()
@@ -54,6 +55,7 @@ export default function KnowledgeView() {
   const [creating, setCreating] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [aiOpen, setAiOpen] = useState(false)
+  const [factOrder, setFactOrder] = useState<FactOrder>('added')
 
   // Narrative position of each event, so "known as of the cursor" is decidable.
   const eventPos = useMemo(() => {
@@ -78,7 +80,27 @@ export default function KnowledgeView() {
 
   const charById = useMemo(() => new Map(characters.map((c) => [c.id, c])), [characters])
 
-  const filtered = facts.filter((f) => f.title.toLowerCase().includes(search.toLowerCase()))
+  /**
+   * KN-4: the roster had one order — the order facts were added — and no way to
+   * ask the two questions the screen exists for. Both numbers are already on
+   * the cards; they simply had no say in the sequence. See `src/lib/factOrder.ts`.
+   */
+  const firstRevealPos = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const r of reveals) {
+      const p = eventPos.get(r.eventId)
+      if (p === undefined) continue
+      const current = m.get(r.factId)
+      if (current === undefined || p < current) m.set(r.factId, p)
+    }
+    return m
+  }, [reveals, eventPos])
+
+  const searched = facts.filter((f) => f.title.toLowerCase().includes(search.toLowerCase()))
+  const filtered = orderFacts(searched, factOrder, {
+    firstRevealPos: (id) => firstRevealPos.get(id) ?? null,
+    knownCount: (id) => knownCount(id),
+  })
   const selected = facts.find((f) => f.id === selectedId) ?? null
   const revealsForSelected = reveals.filter((r) => r.factId === selectedId)
 
@@ -150,6 +172,16 @@ export default function KnowledgeView() {
             onChange={(e) => setSearch(e.target.value)}
             className="h-8 max-w-xs text-sm"
           />
+          <Select value={factOrder} onValueChange={(v) => setFactOrder(v as FactOrder)}>
+            <SelectTrigger className="h-8 w-auto gap-2 text-xs" aria-label="Order facts by">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {FACT_ORDERS.map((o) => (
+                <SelectItem key={o} value={o}>{FACT_ORDER_LABELS[o]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {activeEventId && (
             <span className="text-xs text-[hsl(var(--muted-foreground))]">
               Counts reflect the active chapter cursor.
@@ -401,6 +433,7 @@ function FactCard({ fact, known, total, selected, onClick }: {
 }) {
   return (
     <button
+      data-fact-card
       onClick={onClick}
       className={`rounded-lg border p-4 text-left transition-colors hover:border-[hsl(var(--ring)/0.4)] ${
         selected ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent)/0.15)]' : 'border-[hsl(var(--border))] bg-[hsl(var(--card))]'

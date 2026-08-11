@@ -127,7 +127,10 @@ test.describe('A crowded character pin', () => {
     await page.locator('.leaflet-marker-icon').filter({ hasText: '16 characters' }).click()
     const popup = page.locator('.leaflet-popup')
     await expect(popup).toBeVisible({ timeout: 15_000 })
-    await expect(popup.getByText('At this location:')).toBeVisible()
+    // MW-8: the heading says what the rows do. A single pin opens a character's
+    // panel and journey strip; this list looked like a different kind of thing
+    // with no way through to one, though every row is that route.
+    await expect(popup.getByText('At this location — pick one to open their journey:')).toBeVisible()
 
     // MW-7: the row names the map the character is really on. "(sub-map)" said
     // only that they were elsewhere, on fourteen rows out of sixteen.
