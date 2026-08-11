@@ -168,6 +168,12 @@ export default function StructureView() {
                 }`}
                 style={{ borderLeft: `3px solid ${tint}` }}
               >
+                {/* ST-2: the slack used to pool here, beside the hint, because
+                    this was `flex-1` against a position track pinned at 112px.
+                    Both flex now, so the middle goes to the track instead of to
+                    empty space. A `max-w` on this column was tried as well and
+                    dropped: at 1600px each side settles at 406px, under any cap
+                    worth setting, so it changed nothing. */}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-[hsl(var(--foreground))]">{slot.beat.label}</span>
@@ -187,7 +193,8 @@ export default function StructureView() {
                     read as a profile: beats bunched at the right edge are beats
                     crammed into the last chapter. */}
                 <div
-                  className="hidden w-28 shrink-0 sm:block"
+                  data-beat-track
+                  className="hidden min-w-[7rem] flex-1 sm:block"
                   title={
                     slot.narrativeFraction === null
                       ? 'Not placed'
