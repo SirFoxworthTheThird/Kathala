@@ -53,7 +53,16 @@ export function ChapterSegment({
   return (
     <div
       style={{
-        width: `${widthRem}rem`, flexShrink: 0, height: '100%',
+        /*
+          EV-7: a fixed width meant a one-chapter world drew a 48px stub in a
+          1300px bar — the title cut to "1 · L…" and the rail so short that it
+          and its single tick read as a clipped "+". Growing shares whatever the
+          chapters do not fill, in proportion to how many scenes each holds, so
+          the track is the width of the bar whenever it can be. Past that, the
+          minimum holds and the scroller takes over exactly as before.
+        */
+        flexGrow: Math.max(1, events.length), flexShrink: 0, flexBasis: `${widthRem}rem`,
+        minWidth: `${widthRem}rem`, height: '100%',
         display: 'flex', flexDirection: 'column',
         justifyContent: compact ? 'center' : 'space-between',
         padding: compact ? '0.3rem 0.5rem 0.25rem' : '0.45rem 0.5rem 0.4rem',

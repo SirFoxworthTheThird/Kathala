@@ -17,10 +17,15 @@ export interface SettingsSectionRef {
  * at once.
  *
  * The index is read from the sections themselves rather than from a list kept
- * beside them. Half of them are conditional — the world block is hidden in
- * reading mode, calendar and sync only render once their data exists — so a
- * hand-maintained list would eventually offer a chip that scrolls nowhere. A
- * `MutationObserver` keeps it honest as sections come and go.
+ * beside them. Several of them are conditional — the world block is hidden in
+ * reading mode, everything from Travel Modes down is writing-only, and sync
+ * only renders once its data exists — so a hand-maintained list would
+ * eventually offer a chip that scrolls nowhere. A `MutationObserver` keeps it
+ * honest as sections come and go.
+ *
+ * (Calendar was named here as conditional too, and is not: `CalendarEditor`
+ * always renders, carrying an *Enable calendar* button when the world has
+ * none. Corrected while fixing **CAL-2**, which needed to know.)
  */
 export function useSettingsSections(containerRef: RefObject<HTMLElement | null>): SettingsSectionRef[] {
   const [sections, setSections] = useState<SettingsSectionRef[]>([])

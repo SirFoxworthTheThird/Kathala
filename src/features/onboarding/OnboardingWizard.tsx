@@ -13,6 +13,9 @@ interface WizardState {
   step: WizardStep
   createdEventId: string | null
   createdCharacterId: string | null
+  /** What steps 1 and 2 made, so that stepping back can show it (**NEW-5**). */
+  createdEventTitle: string | null
+  createdCharacterName: string | null
 }
 
 const STEP_LABELS = [
@@ -34,6 +37,8 @@ export function OnboardingWizard({ worldId, onExit }: OnboardingWizardProps) {
     step: 1,
     createdEventId: null,
     createdCharacterId: null,
+    createdEventTitle: null,
+    createdCharacterName: null,
   })
 
   /*
@@ -58,7 +63,31 @@ export function OnboardingWizard({ worldId, onExit }: OnboardingWizardProps) {
     })
   }
 
-  function handleStep1Complete(eventId: string) {
+  /*
+    NEW-5: the guide had a forward action and a way out, and nothing between —
+    once you were past step 1 you could not look at it again.
+
+    Back is navigation, not undo. Every step writes a record when it completes,
+    and none of that is taken back; steps 1 and 2 show what they already made
+    rather than offering the form a second time, so a walk back and forward
+    cannot leave a world with two opening scenes in it.
+
+    From the last step it skips step 3 when there is nobody to place — that is
+    the state `handleStep2Skip` jumps over, and landing on "place a character"
+    with no character would be a worse dead end than the one being fixed.
+  */
+  function back() {
+    setState((prev) => {
+      if (prev.step === 4 && !prev.createdCharacterId) return { ...prev, step: 2 }
+      return { ...prev, step: Math.max(1, prev.step - 1) as WizardStep }
+    })
+  }
+
+  function goTo(step: WizardStep) {
+    setState((prev) => ({ ...prev, step }))
+  }
+
+  function handleStep1Complete(eventId: string, sceneTitle: string) {
     // Step 1 is headed "Your story begins with a moment" and creates one, so the
     // guide has already chosen where the writer is. It used to hand back an app
     // that had forgotten: the pill read "All chapters" the instant the guide
@@ -66,16 +95,16 @@ export function OnboardingWizard({ worldId, onExit }: OnboardingWizardProps) {
     // had done exactly what they were asked. The later steps place a character
     // at this moment too, so setting it here makes them agree.
     setActiveEventId(eventId)
-    advance({ createdEventId: eventId })
+    advance({ createdEventId: eventId, createdEventTitle: sceneTitle })
   }
 
-  function handleStep2Complete(characterId: string) {
-    advance({ createdCharacterId: characterId })
+  function handleStep2Complete(characterId: string, name: string) {
+    advance({ createdCharacterId: characterId, createdCharacterName: name })
   }
 
   function handleStep2Skip() {
     // Skip step 2 and step 3 (no character to place)
-    setState((prev) => ({ ...prev, step: 4, createdCharacterId: null }))
+    setState((prev) => ({ ...prev, step: 4, createdCharacterId: null, createdCharacterName: null }))
   }
 
   function handleStep3Complete() {
@@ -156,6 +185,8 @@ export function OnboardingWizard({ worldId, onExit }: OnboardingWizardProps) {
           worldId={worldId}
           onComplete={handleStep1Complete}
           onSkip={onExit}
+          doneTitle={state.createdEventTitle}
+          onContinue={() => goTo(2)}
         />
       )}
       {state.step === 2 && (
@@ -163,6 +194,9 @@ export function OnboardingWizard({ worldId, onExit }: OnboardingWizardProps) {
           worldId={worldId}
           onComplete={handleStep2Complete}
           onSkip={handleStep2Skip}
+          onBack={back}
+          doneName={state.createdCharacterName}
+          onContinue={() => goTo(3)}
         />
       )}
       {state.step === 3 && (
@@ -172,10 +206,11 @@ export function OnboardingWizard({ worldId, onExit }: OnboardingWizardProps) {
           createdEventId={state.createdEventId}
           onComplete={handleStep3Complete}
           onSkip={() => advance({})}
+          onBack={back}
         />
       )}
       {state.step === 4 && (
-        <StepDone onNavigate={handleNavigateToTimeline} />
+        <StepDone onNavigate={handleNavigateToTimeline} onBack={back} />
       )}
       </div>
     </div>

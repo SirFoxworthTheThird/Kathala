@@ -8,11 +8,18 @@ import { createEvent } from '@/db/hooks/useTimeline'
 
 interface StepTimelineProps {
   worldId: string
-  onComplete: (eventId: string) => void
+  onComplete: (eventId: string, sceneTitle: string) => void
   onSkip: () => void
+  /**
+   * The opening scene this step already made, when the guide has been stepped
+   * back into it (**NEW-5**). Set means the form is done with: offering it
+   * again would build a second timeline, chapter and scene.
+   */
+  doneTitle?: string | null
+  onContinue?: () => void
 }
 
-export function StepTimeline({ worldId, onComplete, onSkip }: StepTimelineProps) {
+export function StepTimeline({ worldId, onComplete, onSkip, doneTitle, onContinue }: StepTimelineProps) {
   const [name, setName]       = useState('')
   const [scene, setScene]     = useState('')
   // Which field is complaining, so the message and `aria-invalid` land on the
@@ -49,10 +56,37 @@ export function StepTimeline({ worldId, onComplete, onSkip }: StepTimelineProps)
         tags: [],
         sortOrder: 0,
       })
-      onComplete(event.id)
+      onComplete(event.id, scene.trim())
     } finally {
       setLoading(false)
     }
+  }
+
+  if (doneTitle && onContinue) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div>
+          <h2 className="text-xl font-semibold text-[hsl(var(--foreground))]">
+            Your story begins with a moment
+          </h2>
+          <p className="mt-1.5 text-sm text-[hsl(var(--muted-foreground))]">
+            Done — your story opens on <strong className="text-[hsl(var(--foreground))]">{doneTitle}</strong>,
+            in Chapter 1 of your new timeline. Rename any of the three whenever you like, from the
+            Timeline screen.
+          </p>
+        </div>
+        <div className="flex flex-col items-start gap-2">
+          <Button onClick={onContinue}>Continue</Button>
+          <button
+            type="button"
+            onClick={onSkip}
+            className="rounded text-xs text-[hsl(var(--muted-foreground))] transition-colors hover:text-[hsl(var(--foreground))] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
+          >
+            Skip and explore on my own →
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (

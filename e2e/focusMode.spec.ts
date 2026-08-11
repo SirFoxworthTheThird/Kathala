@@ -40,6 +40,33 @@ test.describe('Focus mode', () => {
     await expect(focusArea).toBeVisible()
     await expect(focusArea).toHaveValue('Two words')
 
+    /*
+      WR-3 said the watermark bleeds through onto the one screen whose whole
+      purpose is to remove everything but the prose. The watermark itself went
+      with X-1, so there is nothing left to bleed — but the *mechanism* is worth
+      a guard, because the app's own body is deliberately translucent over the
+      theme backdrop (measured: rgba(15,23,41,0.43)) and the difference between
+      focus mode and everything else is that its surface is not.
+    */
+    const layers = await page.evaluate(() => {
+      const surface = document.querySelector('[placeholder="Write…"]')!
+        .closest('div[class*="fixed"]') as HTMLElement
+      const alpha = (c: string) => {
+        const m = c.match(/rgba?\(([^)]+)\)/)
+        return m ? Number(m[1].split(',')[3] ?? 1) : 1
+      }
+      return {
+        focusAlpha: alpha(getComputedStyle(surface).backgroundColor),
+        focusImage: getComputedStyle(surface).backgroundImage,
+        bodyAlpha: alpha(getComputedStyle(document.body).backgroundColor),
+      }
+    })
+    expect(layers.focusAlpha, 'the writing surface has to be opaque').toBe(1)
+    expect(layers.focusImage, 'and carry no image of its own').toBe('none')
+    // Paired: the rest of the app really is see-through, so the assertion above
+    // is about focus mode rather than about every surface in the product.
+    expect(layers.bodyAlpha, 'the app body is translucent by design').toBeLessThan(1)
+
     // Add three words → the session count reflects +3.
     await focusArea.click()
     await page.keyboard.press('End')

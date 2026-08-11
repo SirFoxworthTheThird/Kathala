@@ -145,6 +145,12 @@ inside the chapter. All three can be renamed later. PlotWeave then moves the
 hands the app back, everything that answers "what is true right now?" already has
 an answer.
 
+Once you are past step 1, each step carries **← Back a step** beside its Skip
+link, so you can look at what you have done without leaving the guide. Going
+back does not undo anything: a step you have already completed shows what it
+made — *your story opens on The wreck* — with a **Continue**, rather than
+offering the form a second time and building it twice.
+
 While the guide is on screen it takes the middle of it, and the navigation rail
 steps back so the next thing to do is the clearest thing to see. The rail is
 dimmed, not disabled: hover it and it returns to full strength, and every screen
@@ -1535,7 +1541,9 @@ those day numbers into real dates by giving your world a **calendar** in World
 settings.
 
 Click **Enable calendar** to start from a standard 12-month, 365-day year, then
-tailor it:
+tailor it. The same button is on the **Calendar** screen itself when the world
+has no calendar yet, so the first visit there can start one rather than sending
+you off to find the setting:
 
 - **Start year** — the year that in-world day 0 falls in.
 - **Year suffix** — an era label shown after the year, e.g. *AC* or *TA*.

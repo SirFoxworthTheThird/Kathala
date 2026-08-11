@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import { upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { StepBack } from './StepBack'
 
 interface StepPlaceProps {
   worldId: string
@@ -11,9 +12,10 @@ interface StepPlaceProps {
   createdEventId: string | null
   onComplete: () => void
   onSkip: () => void
+  onBack: () => void
 }
 
-export function StepPlace({ worldId, characterId, createdEventId, onComplete, onSkip }: StepPlaceProps) {
+export function StepPlace({ worldId, characterId, createdEventId, onComplete, onSkip, onBack }: StepPlaceProps) {
   const events   = useWorldEvents(worldId)
   const chapters = useWorldChapters(worldId)
   const [selectedEventId, setSelectedEventId] = useState<string>(createdEventId ?? '')
@@ -116,13 +118,16 @@ export function StepPlace({ worldId, characterId, createdEventId, onComplete, on
         <Button type="submit" disabled={loading || (!noEvents && !selectedEventId)} aria-busy={loading}>
           {loading ? 'Placing…' : noEvents ? 'Continue' : 'Place them here'}
         </Button>
-        <button
-          type="button"
-          onClick={onSkip}
-          className="text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] rounded"
-        >
-          Skip for now →
-        </button>
+        <div className="flex items-center gap-3">
+          <StepBack onBack={onBack} />
+          <button
+            type="button"
+            onClick={onSkip}
+            className="text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] rounded"
+          >
+            Skip for now →
+          </button>
+        </div>
       </div>
     </form>
   )

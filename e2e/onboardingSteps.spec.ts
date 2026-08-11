@@ -73,6 +73,55 @@ test.describe('The first-run wizard says what it is asking for', () => {
       .toBeVisible({ timeout: 15_000 })
   })
 
+  test('NEW-5: you can walk back through the guide without it building twice', async ({ page }) => {
+    await firstRun(page)
+
+    // Absence first: step 1 is the beginning, so there is nothing behind it.
+    await expect(page.getByRole('button', { name: 'Back a step' })).toHaveCount(0)
+
+    await page.getByLabel('Timeline name').fill('The Long Road')
+    await page.getByLabel('The first scene').fill('The wreck')
+    await page.getByRole('button', { name: 'Create and continue' }).click()
+    await expect(page.getByRole('heading', { name: 'Every story needs someone to follow' }))
+      .toBeVisible({ timeout: 15_000 })
+
+    // Presence: from step 2 there is a way back, and it goes back.
+    await page.getByRole('button', { name: 'Back a step' }).click()
+    await expect(page.getByRole('heading', { name: 'Your story begins with a moment' })).toBeVisible()
+
+    // And step 1 shows what it made rather than the form, which is the whole
+    // reason Back is safe: offering it again would build a second timeline,
+    // chapter and scene.
+    //
+    // Scoped to `main`: the time-cursor pill in the top bar carries the active
+    // scene's title too, and step 1 sets the cursor to the scene it makes, so a
+    // page-wide match here is ambiguous by construction.
+    await expect(page.getByRole('main').getByText('The wreck', { exact: true })).toBeVisible()
+    await expect(page.getByLabel('Timeline name'), 'the form is done with').toHaveCount(0)
+
+    await page.getByRole('button', { name: 'Continue' }).click()
+    await expect(page.getByRole('heading', { name: 'Every story needs someone to follow' })).toBeVisible()
+    await page.getByLabel('Character name').fill('Kestrel')
+    await page.getByRole('button', { name: 'Add them to the story' }).click()
+    await expect(page.getByRole('heading', { name: 'Where does their story begin?' }))
+      .toBeVisible({ timeout: 15_000 })
+
+    // The world holds exactly what the walk asked for: one of each, not two.
+    const counts = await page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<
+        string, { count: () => Promise<number> }
+      >
+      return {
+        timelines: await db.timelines.count(),
+        chapters: await db.chapters.count(),
+        events: await db.events.count(),
+        characters: await db.characters.count(),
+      }
+    })
+    expect(counts, 'walking back and forward should not duplicate anything')
+      .toEqual({ timelines: 1, chapters: 1, events: 1, characters: 1 })
+  })
+
   test('NEW-4: the first screen is centred, not a third of a page of wallpaper', async ({ page }) => {
     await firstRun(page)
 

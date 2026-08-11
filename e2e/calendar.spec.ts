@@ -6,6 +6,42 @@ import { resetDB } from './helpers/reset'
 // src/lib/__tests__/calendarView.test.ts.
 
 test.describe('Calendar view', () => {
+  test('CAL-2: the first visit to Calendar can start one instead of being a dead end', async ({ page }) => {
+    test.setTimeout(90000)
+    await page.goto('/')
+    await resetDB(page)
+
+    await page.getByRole('button', { name: 'New World' }).click()
+    await page.getByLabel('Name').fill('Undated World')
+    await page.getByRole('button', { name: 'Create World' }).last().click()
+    await expect(page).toHaveURL(/#\/worlds\//)
+    const worldId = page.url().split('/worlds/')[1].split('/')[0]
+
+    // The finding asked for the nav item to be hidden when no calendar exists.
+    // Hiding it hides the feature — nothing else in the app mentions that a
+    // calendar can be had — so the item stays and the screen does the thing.
+    await page.goto(`/#/worlds/${worldId}/calendar`, { waitUntil: 'load' })
+    await expect(page.getByText('No calendar yet')).toBeVisible({ timeout: 30000 })
+    await expect(page.getByRole('heading', { name: 'Calendar', level: 1 })).toHaveCount(0)
+
+    await page.getByRole('button', { name: 'Enable calendar' }).click()
+
+    // One click, on the screen you are already on: the empty state is gone and
+    // the calendar itself is here. Paired with the absence above, so neither
+    // half can pass on its own.
+    await expect(page.getByRole('heading', { name: 'Calendar', level: 1 })).toBeVisible({ timeout: 15000 })
+    await expect(page.getByText('No calendar yet')).toHaveCount(0)
+
+    // And it is a real calendar, not a flag: the world now carries months.
+    const months = await page.evaluate(async (id) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as {
+        worlds: { get: (id: string) => Promise<{ calendar?: { months: unknown[] } | null }> }
+      }
+      return (await db.worlds.get(id))?.calendar?.months.length ?? 0
+    }, worldId)
+    expect(months).toBeGreaterThan(1)
+  })
+
   test('drags an event to a new day to pin its in-world date', async ({ page }) => {
     test.setTimeout(90000)
     await page.goto('/')

@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { CalendarDays, History } from 'lucide-react'
-import { useWorld } from '@/db/hooks/useWorlds'
+import { useWorld, updateWorld } from '@/db/hooks/useWorlds'
 import { useWorldEvents, useWorldChapters, useTimelines, updateEvent } from '@/db/hooks/useTimeline'
 import { buildCalendarMonths, type CalendarEvent } from '@/lib/calendarView'
-import { dateToDayNumber } from '@/lib/calendar'
+import { dateToDayNumber, defaultCalendar } from '@/lib/calendar'
 import { useAppStore } from '@/store'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
@@ -49,14 +49,33 @@ export default function CalendarView() {
   if (!calendar) {
     return (
       <div className="p-6">
+        {/*
+          CAL-2 filed this as "the nav item is present when the feature cannot
+          work" and asked for the item to be hidden. Hiding it hides the
+          feature — nothing else in the app mentions that a calendar exists.
+          What made the visit a dead end was the way out: *enable a calendar in
+          world settings*, and a button landing at the top of an eleven-section
+          page with the calendar somewhere down it. The screen does the thing
+          instead, and settings remains one click away for tuning it.
+        */}
         <EmptyState
           icon={CalendarDays}
           title="No calendar yet"
-          description="The calendar view lays your events out by in-world date. Enable a calendar in world settings to use it."
+          description="The calendar view lays your events out by in-world date, and turns day counts into dates across the app. Start from a standard twelve-month year — you can rename the months, change their lengths and set the starting year afterwards."
           action={(
-            <Button size="sm" variant="outline" onClick={() => navigate(`/worlds/${worldId}/settings`)}>
-              Open World settings
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button
+                size="sm"
+                className="gap-2"
+                onClick={() => worldId && updateWorld(worldId, { calendar: defaultCalendar() })}
+              >
+                <CalendarDays className="h-3.5 w-3.5" />
+                Enable calendar
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => navigate(`/worlds/${worldId}/settings`)}>
+                Set it up in World settings
+              </Button>
+            </div>
           )}
         />
       </div>

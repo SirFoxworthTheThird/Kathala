@@ -1,12 +1,14 @@
 import { useEffect, useRef } from 'react'
 import { Sparkles, Map } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { StepBack } from './StepBack'
 
 interface StepDoneProps {
   onNavigate: () => void
+  onBack: () => void
 }
 
-export function StepDone({ onNavigate }: StepDoneProps) {
+export function StepDone({ onNavigate, onBack }: StepDoneProps) {
   const headingRef = useRef<HTMLHeadingElement>(null)
 
   useEffect(() => { headingRef.current?.focus() }, [])
@@ -40,9 +42,12 @@ export function StepDone({ onNavigate }: StepDoneProps) {
         </p>
       </div>
 
-      <Button onClick={onNavigate}>
-        Go to my Timeline
-      </Button>
+      <div className="flex flex-col items-start gap-2">
+        <Button onClick={onNavigate}>
+          Go to my Timeline
+        </Button>
+        <StepBack onBack={onBack} />
+      </div>
     </div>
   )
 }
