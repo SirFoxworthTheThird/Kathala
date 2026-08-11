@@ -93,7 +93,9 @@ test.describe('Map labels and scale', () => {
     // The bundled Fellowship map was calibrated at 1.94 px per km, making Middle
     // Earth 822 km across — a fifth of what its own printed bar says, in the
     // wrong unit. "100 km between two points" looks reasonable on its own; only
-    // the total gives it away, so the dialog now shows the total.
+    // the total gives it away, so the dialog now shows the total. (That layer
+    // has since been re-measured off its bar and corrected under MW-9; the
+    // dialog is what would have caught it at the time, which is why it is here.)
     await uploadMap(page, 'Scaled')
 
     await page.getByRole('button', { name: 'Map tools' }).click()

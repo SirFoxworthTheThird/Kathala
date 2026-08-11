@@ -1070,6 +1070,11 @@ map across — if your artwork carries its own printed scale bar, that total is 
 number to check it against, and it is what catches an order-of-magnitude slip
 that "100 km between two points" would not.
 
+A layer with no scale simply has no distances — that is a supported state, and a
+better one than a number nobody can back. Two of the bundled Fellowship maps sit
+that way on purpose: Rivendell carries no printed bar at all, and the Edoras
+plate's bar is labelled in a script we could not read.
+
 **Measure** takes over the canvas while it is armed: clicks place the two points
 and nothing else, so a region or marker underneath will not open its panel over
 the spot you were aiming at.
