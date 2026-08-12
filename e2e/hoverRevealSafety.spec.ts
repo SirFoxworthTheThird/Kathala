@@ -1,5 +1,6 @@
 import { test, expect, type Page, type Locator } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
  * A control you cannot see cannot be activated.
@@ -76,17 +77,7 @@ async function seedWorld(page: Page, name: string) {
   }, worldId)
   await page.waitForTimeout(600)
 
-  /*
-    Creating the world lands on the dashboard while it still has no timeline,
-    which arms the first-run guide's latch — and the latch is deliberate: it
-    keeps the guide mounted once shown, so seeding a timeline behind its back
-    does not dismiss it. Whether it armed before this seed landed is a race, so
-    the guide showed intermittently and the threads panel was simply absent.
-    Take its own documented way out rather than waiting longer.
-  */
-  const skip = page.getByRole('button', { name: /Skip and explore on my own/ })
-  if (await skip.count()) await skip.first().click()
-
+  await dismissFirstRunGuide(page)
   return worldId
 }
 

@@ -40,6 +40,9 @@ export function MotifCadence({ worldId, chapters, events }: {
       onCreate={async (name) => { await createMotif({ worldId, name, color: MOTIF_COLORS[motifs.length % MOTIF_COLORS.length] }) }}
       onDelete={deleteMotif}
       warningFor={warningFor}
+      field="motifIds"
+      chapters={chapters}
+      events={events}
     />
   )
 }

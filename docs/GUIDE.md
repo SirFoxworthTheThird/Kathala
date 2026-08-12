@@ -770,7 +770,12 @@ press **Esc** or click the ✕ to drop back to the event.
 The Characters roster is your cast list, with portraits and a search box. The
 count badge tracks how many characters you're following.
 
-![Character roster](images/06-characters.png)
+**Adding several at once.** *Add Character* takes a name and a description and
+leaves you on the roster, so the list builds up in front of you. Use **Add
+another character** to save and keep the dialog open with the cursor back in the
+name field — typing a whole cast never needs the mouse. Items work identically
+(*Add another item*); the two used to disagree, and the detail page is one click
+from any card either way.
 
 Open a character and the header carries who they are — portrait, name, and
 **Also known as** if they have other names. Below it, eight tabs, and each one
@@ -902,8 +907,15 @@ across your chapters and flags trouble:
 
 ![Plot Threads](images/21-plot-threads.png)
 
-Tag a thread onto an event from the event's card; create threads inline with the
+Tag a thread onto a scene from the scene's card; create threads inline with the
 **+ New thread** button.
+
+**Or attach scenes from the thread itself.** Each thread row carries a small
+link icon — **Attach scenes to this thread** — which opens the world's scenes
+grouped by chapter, in the order the timeline reads them. Tick the ones the
+thread runs through and save. Re-opening shows what is already attached, so you
+can add or remove scenes later without starting again. The same control sits on
+every motif row.
 
 ### Filtering the timeline to one thread
 
@@ -949,7 +961,8 @@ can be suppressed with a note like any other continuity issue.
 **Motifs & Themes** works exactly like Plot Threads, but for symbolism rather
 than plot — recurring images, symbols, and themes such as *mirrors*, *the colour
 red*, or *exile*. Define named motifs on the dashboard, give each a colour, and
-tag the scenes that carry them from the event card.
+tag the scenes that carry them — either from the scene card, or from the motif's
+own row with **Attach scenes to this motif**, exactly as for plot threads.
 
 ![Motifs & Themes](images/33-motifs.png)
 

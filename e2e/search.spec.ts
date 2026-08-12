@@ -42,9 +42,8 @@ test.describe('Search palette', () => {
     await page.getByRole('button', { name: 'Add Item' }).first().click()
     await page.getByPlaceholder('Item name').fill('Staff of Power')
     await page.getByRole('button', { name: 'Add Item' }).last().click()
-    // Item creation navigates to detail — wait for it then navigate back
-    await expect(page).toHaveURL(/#\/worlds\/.+\/items\//)
-    await page.getByTitle('Items').click()
+    // Creating an item stays on the roster (HB-7a) — it used to navigate to the
+    // detail page, and this setup had to walk back from there.
     await expect(page.getByText('Staff of Power').first()).toBeVisible()
   })
 

@@ -40,6 +40,9 @@ export function ThreadCadence({ worldId, chapters, events }: {
       onCreate={async (name) => { await createPlotThread({ worldId, name, color: THREAD_COLORS[threads.length % THREAD_COLORS.length] }) }}
       onDelete={deletePlotThread}
       warningFor={warningFor}
+      field="threadIds"
+      chapters={chapters}
+      events={events}
     />
   )
 }

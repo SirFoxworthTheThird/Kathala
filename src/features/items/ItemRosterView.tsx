@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { Plus, Package, Sparkles } from 'lucide-react'
 import { useItems } from '@/db/hooks/useItems'
 import { Button } from '@/components/ui/button'
@@ -19,7 +19,6 @@ import { useBestItemSnapshots } from '@/db/hooks/useItemSnapshots'
 
 export default function ItemRosterView() {
   const { worldId } = useParams<{ worldId: string }>()
-  const navigate = useNavigate()
   const items = useItems(worldId ?? null)
   const [search, setSearch] = useState('')
 
@@ -104,11 +103,19 @@ export default function ItemRosterView() {
 
       {worldId && (
         <>
+          {/*
+            HB-7: this was the only one of the five creation flows that took
+            the writer somewhere else — the same dialog as Characters, with a
+            different destination bolted on at the call site. Serial entry is
+            what suffered: adding a cast worked, adding several props meant
+            navigating back to Items each time. It stays on the roster now,
+            like every other create in the app, and the dialog itself offers
+            "Add another item" for the case that was slow.
+          */}
           <CreateItemDialog
             open={dialogOpen}
             onOpenChange={setDialogOpen}
             worldId={worldId}
-            onCreated={(id) => navigate(`/worlds/${worldId}/items/${id}`)}
           />
           <GenerateItemsDialog
             open={aiOpen}

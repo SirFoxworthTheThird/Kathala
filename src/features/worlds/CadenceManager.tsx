@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { Plus, Trash2, AlertTriangle } from 'lucide-react'
+import { Plus, Trash2, AlertTriangle, Link2 } from 'lucide-react'
+import type { Chapter, WorldEvent } from '@/types'
 import type { TagCadenceRow } from '@/lib/tagCadence'
+import { AttachScenesDialog, type TagField } from './AttachScenesDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -18,6 +20,10 @@ interface CadenceManagerProps<T extends Entity> {
   onDelete: (id: string) => void | Promise<void>
   /** Warning copy for a dangling / dormant row, or null when it's healthy. */
   warningFor: (row: TagCadenceRow<T>) => string | null
+  /** Which list on a scene carries this entity, for the attach dialog (HB-8). */
+  field: TagField
+  chapters: Chapter[]
+  events: WorldEvent[]
 }
 
 /**
@@ -26,10 +32,11 @@ interface CadenceManagerProps<T extends Entity> {
  * and delete. Both the Plot Threads and Motifs dashboard panels render this.
  */
 export function CadenceManager<T extends Entity>({
-  rows, chapterCount, noun, placeholder, onCreate, onDelete, warningFor,
+  rows, chapterCount, noun, placeholder, onCreate, onDelete, warningFor, field, chapters, events,
 }: CadenceManagerProps<T>) {
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
+  const [attaching, setAttaching] = useState<T | null>(null)
 
   async function create() {
     if (!name.trim()) return
@@ -77,6 +84,26 @@ export function CadenceManager<T extends Entity>({
                   apparently blank row fires this. It keeps the hover reveal and
                   gains a focus reveal, but cannot be activated while invisible.
                 */}
+                {/*
+                  HB-8: the row said "no scenes tagged yet" and offered nothing
+                  to do about it, so the feature read as unfinished the moment
+                  it was created. Always present, for two reasons: a control
+                  that answers "this looks unfinished" cannot itself be hidden
+                  until hover, and on a touch device there is no hover to find
+                  it with. It is also deliberately **not** `pointer-events-none`
+                  the way the delete beside it is (HB-2a) — that gate costs a
+                  deliberate hover, which is right for deleting and wrong for
+                  everything else. Attaching a second scene is the same act as
+                  the first, so it does not appear only on an empty row.
+                */}
+                <button
+                  onClick={() => setAttaching(r.entity)}
+                  aria-label={`Attach scenes to ${noun} ${r.entity.name}`}
+                  className="shrink-0 text-[hsl(var(--muted-foreground))] transition-colors hover:text-[hsl(var(--foreground))]"
+                  title={`Attach scenes to this ${noun}`}
+                >
+                  <Link2 className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
                 <button
                   onClick={() => onDelete(r.entity.id)}
                   aria-label={`Delete ${noun} ${r.entity.name}`}
@@ -116,6 +143,19 @@ export function CadenceManager<T extends Entity>({
         <Button size="sm" variant="outline" className="gap-1.5 self-start" onClick={() => setCreating(true)}>
           <Plus className="h-3.5 w-3.5" /> New {noun}
         </Button>
+      )}
+
+      {attaching && (
+        <AttachScenesDialog
+          open
+          onOpenChange={(o) => { if (!o) setAttaching(null) }}
+          entityId={attaching.id}
+          entityName={attaching.name}
+          noun={noun}
+          field={field}
+          chapters={chapters}
+          events={events}
+        />
       )}
     </div>
   )
