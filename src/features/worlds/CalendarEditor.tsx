@@ -1,5 +1,5 @@
 import { Plus, Trash2, CalendarDays } from 'lucide-react'
-import { updateWorld } from '@/db/hooks/useWorlds'
+import { updateWorld, updateWorldCalendar } from '@/db/hooks/useWorlds'
 import { defaultCalendar, daysPerYear } from '@/lib/calendar'
 import type { World, WorldCalendar } from '@/types'
 import { Button } from '@/components/ui/button'
@@ -20,18 +20,27 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
   const cal = world.calendar ?? null
   const namedDays = cal?.months.filter((m) => m.intercalary).length ?? 0
 
-  function patch(next: WorldCalendar | null) {
-    updateWorld(world.id, { calendar: next })
+  /**
+   * HB-3a: every one of these writes the whole calendar, because it is a nested
+   * object on `worlds`. Building the new value from the calendar this component
+   * last *rendered* means a write to one field carries a stale copy of every
+   * other, so two edits landing inside each other's live-query round-trip lose
+   * one of the two. `updateWorldCalendar` hands the mutator the calendar as
+   * stored, read inside the same transaction as the write.
+   */
+  function patch(mutate: (current: WorldCalendar) => WorldCalendar) {
+    updateWorldCalendar(world.id, mutate)
   }
 
   function updateMonth(index: number, field: 'name' | 'days', value: string) {
-    if (!cal) return
-    const months = cal.months.map((m, i) =>
-      i === index
-        ? { ...m, [field]: field === 'days' ? Math.max(1, Math.floor(Number(value) || 1)) : value }
-        : m
-    )
-    patch({ ...cal, months })
+    patch((c) => ({
+      ...c,
+      months: c.months.map((m, i) =>
+        i === index
+          ? { ...m, [field]: field === 'days' ? Math.max(1, Math.floor(Number(value) || 1)) : value }
+          : m
+      ),
+    }))
   }
 
   /**
@@ -40,26 +49,26 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
    * appending is not enough to build one. Each row can insert after itself.
    */
   function insertAfter(index: number) {
-    if (!cal) return
-    const months = [...cal.months]
-    months.splice(index + 1, 0, { name: 'New day', days: 1, intercalary: true })
-    patch({ ...cal, months })
+    patch((c) => {
+      const months = [...c.months]
+      months.splice(index + 1, 0, { name: 'New day', days: 1, intercalary: true })
+      return { ...c, months }
+    })
   }
 
   function toggleIntercalary(index: number) {
-    if (!cal) return
-    const months = cal.months.map((m, i) => (i === index ? { ...m, intercalary: !m.intercalary } : m))
-    patch({ ...cal, months })
+    patch((c) => ({
+      ...c,
+      months: c.months.map((m, i) => (i === index ? { ...m, intercalary: !m.intercalary } : m)),
+    }))
   }
 
   function addMonth() {
-    if (!cal) return
-    patch({ ...cal, months: [...cal.months, { name: `Month ${cal.months.length + 1}`, days: 30 }] })
+    patch((c) => ({ ...c, months: [...c.months, { name: `Month ${c.months.length + 1}`, days: 30 }] }))
   }
 
   function removeMonth(index: number) {
-    if (!cal || cal.months.length <= 1) return
-    patch({ ...cal, months: cal.months.filter((_, i) => i !== index) })
+    patch((c) => (c.months.length <= 1 ? c : { ...c, months: c.months.filter((_, i) => i !== index) }))
   }
 
   return (
@@ -72,7 +81,7 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
       </div>
 
       {!cal ? (
-        <Button size="sm" variant="outline" className="gap-2" onClick={() => patch(defaultCalendar())}>
+        <Button size="sm" variant="outline" className="gap-2" onClick={() => updateWorld(world.id, { calendar: defaultCalendar() })}>
           <CalendarDays className="h-3.5 w-3.5" />
           Enable calendar
         </Button>
@@ -87,7 +96,7 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
                 type="number"
                 className="h-8 w-28 text-xs"
                 value={cal.startYear}
-                onChange={(e) => patch({ ...cal, startYear: Math.floor(Number(e.target.value) || 0) })}
+                onChange={(e) => { const y = Math.floor(Number(e.target.value) || 0); patch((c) => ({ ...c, startYear: y })) }}
               />
               <p className="text-[10px] text-[hsl(var(--muted-foreground))]">Year that in-world day 0 falls in.</p>
             </div>
@@ -98,7 +107,7 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
                 className="h-8 w-28 text-xs"
                 placeholder="e.g. AC, TA"
                 value={cal.yearSuffix ?? ''}
-                onChange={(e) => patch({ ...cal, yearSuffix: e.target.value })}
+                onChange={(e) => { const s = e.target.value; patch((c) => ({ ...c, yearSuffix: s })) }}
               />
               <p className="text-[10px] text-[hsl(var(--muted-foreground))]">Shown after the year.</p>
             </div>
@@ -173,7 +182,8 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
 
           <div className="border-t border-[hsl(var(--border))] pt-3">
             <button
-              onClick={() => patch(null)}
+              /* Removing the calendar entirely is not a partial edit of it. */
+              onClick={() => updateWorld(world.id, { calendar: null })}
               className="inline-flex items-center gap-1 text-xs text-[hsl(var(--muted-foreground))] transition-colors hover:text-destructive"
             >
               <Trash2 className="h-3 w-3" /> Disable calendar

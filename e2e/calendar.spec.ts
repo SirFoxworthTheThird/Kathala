@@ -42,6 +42,52 @@ test.describe('Calendar view', () => {
     expect(months).toBeGreaterThan(1)
   })
 
+  /**
+   * HB-3a. Every field in the editor writes the *whole* calendar, because it is
+   * a nested object on `worlds` — so a write to one used to carry a stale copy
+   * of the others, taken from the last render. The interleaving is unit-tested
+   * in `src/db/hooks/__tests__/worldCalendar.test.ts`, where it can be forced;
+   * what this drives is the wiring, on the two fields the finding named.
+   */
+  test('editing the year and its suffix keeps both, and the months with them', async ({ page }) => {
+    test.setTimeout(90000)
+    await page.goto('/')
+    await resetDB(page)
+
+    await page.getByRole('button', { name: 'New World' }).click()
+    await page.getByLabel('Name').fill('Highbarrow')
+    await page.getByRole('button', { name: 'Create World' }).last().click()
+    await expect(page).toHaveURL(/#\/worlds\//)
+    const worldId = page.url().split('/worlds/')[1].split('/')[0]
+
+    await page.goto(`/#/worlds/${worldId}/settings`, { waitUntil: 'load' })
+    await page.getByRole('button', { name: 'Enable calendar' }).click()
+    await expect(page.getByText('365 days/year')).toBeVisible()
+
+    // Straight from one field into the next, with nothing in between — the
+    // sequence the finding describes.
+    await page.getByLabel('Start year').fill('742')
+    await page.getByLabel('Year suffix').fill('HB')
+    await page.getByLabel('Month 1 name').fill('Afteryule')
+    await page.getByLabel('Month 1 name').blur()
+
+    // Read from the store, and after a reload, because the field showing what
+    // you typed is not evidence that it was kept.
+    await page.goto(`/#/worlds/${worldId}/settings`, { waitUntil: 'load' })
+    await expect(page.getByLabel('Start year')).toHaveValue('742')
+    await expect(page.getByLabel('Year suffix')).toHaveValue('HB')
+    await expect(page.getByLabel('Month 1 name')).toHaveValue('Afteryule')
+
+    const cal = await page.evaluate(async (id) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as {
+        worlds: { get: (i: string) => Promise<{ calendar?: { startYear: number; yearSuffix?: string; months: { name: string }[] } | null }> }
+      }
+      const c = (await db.worlds.get(id))?.calendar
+      return { startYear: c?.startYear, suffix: c?.yearSuffix, first: c?.months[0].name, count: c?.months.length }
+    }, worldId)
+    expect(cal).toEqual({ startYear: 742, suffix: 'HB', first: 'Afteryule', count: 12 })
+  })
+
   test('a day outside the months can be built, and reads as its name', async ({ page }) => {
     test.setTimeout(120000)
     await page.goto('/')

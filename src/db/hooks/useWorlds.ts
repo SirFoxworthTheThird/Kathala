@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
-import type { World } from '@/types'
+import type { World, WorldCalendar } from '@/types'
 import { generateId } from '@/lib/id'
 
 export function useWorlds() {
@@ -30,6 +30,39 @@ export async function createWorld(data: Pick<World, 'name' | 'description'>): Pr
 
 export async function updateWorld(id: string, data: Partial<Omit<World, 'id' | 'createdAt'>>) {
   await db.worlds.update(id, { ...data, updatedAt: Date.now() })
+}
+
+/**
+ * Change part of the world's calendar without carrying a stale copy of the rest.
+ *
+ * The calendar is a *nested object* on `worlds`, so every field that edits it
+ * writes the whole thing. `CalendarEditor` did that by spreading the calendar it
+ * had rendered — `patch({ ...cal, startYear })` — which means a write to one
+ * field carries whatever the other fields looked like at that render. Two
+ * writes landing inside each other's live-query round-trip therefore lose one
+ * of the two, last write winning with a value nobody typed.
+ *
+ * HB-3 reported exactly that shape as *"the start year silently reverts"*. Its
+ * stated mechanism was wrong — the field commits on every keystroke and has no
+ * Enter handler — and driving the sequence did not reproduce it, so this is
+ * filed on the code rather than on a symptom (HB-3a). It is a real hazard
+ * either way, and it is not confined to the two fields they noticed: month
+ * names, month lengths, inserts and removals all spread the same snapshot.
+ *
+ * `mutate` receives the calendar **as stored**, read inside the same
+ * transaction as the write, so nothing it did not change can be rolled back by
+ * it. Returning `null` clears the calendar.
+ */
+export async function updateWorldCalendar(
+  id: string,
+  mutate: (calendar: WorldCalendar) => WorldCalendar | null,
+): Promise<void> {
+  await db.transaction('rw', db.worlds, async () => {
+    const world = await db.worlds.get(id)
+    // Nothing to edit part of — enabling a calendar goes through `updateWorld`.
+    if (!world?.calendar) return
+    await db.worlds.update(id, { calendar: mutate(world.calendar), updatedAt: Date.now() })
+  })
 }
 
 export async function deleteWorld(id: string) {

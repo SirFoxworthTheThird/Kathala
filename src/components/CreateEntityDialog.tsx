@@ -45,17 +45,36 @@ export function CreateEntityDialog({
   const nameRef = useRef<HTMLInputElement>(null)
 
   async function create(keepOpen: boolean) {
-    if (!name.trim() || saving) return
-    setSaving(true)
-    try {
-      await onCreate(name.trim(), description.trim())
-    } finally {
-      setSaving(false)
-    }
+    const newName = name.trim()
+    if (!newName || saving) return
+    const newDescription = description.trim()
+
+    /*
+      Cleared and refocused *before* the write, not after it.
+      The write does not need either value once they are captured, and clearing
+      afterwards discards whatever was typed while it was in flight — which is
+      precisely what "Add another" invites, since the point of it is that the
+      next name is typed immediately. The suite caught this as an intermittent
+      where the submit button was disabled: the second name had been typed into
+      a field that then cleared itself underneath it. Same shape as OP-8, where
+      the search palette took focus on a 50ms timer.
+    */
     setName('')
     setDescription('')
     if (keepOpen) nameRef.current?.focus()
-    else onOpenChange(false)
+
+    setSaving(true)
+    try {
+      await onCreate(newName, newDescription)
+    } catch (err) {
+      // Hand back what they typed rather than losing it to a failed write.
+      setName(newName)
+      setDescription(newDescription)
+      throw err
+    } finally {
+      setSaving(false)
+    }
+    if (!keepOpen) onOpenChange(false)
   }
 
   return (
