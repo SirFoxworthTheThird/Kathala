@@ -79,10 +79,15 @@ function useLayerRevealed(worldId: string | null): (layerId: string) => boolean 
     [worldId],
     []
   )
+  const layers = useLiveQuery(
+    () => (worldId ? db.mapLayers.where('worldId').equals(worldId).toArray() : []),
+    [worldId],
+    []
+  )
   return useMemo(() => {
     if (!gate.active) return () => true
-    return mapLayerRevealer(markers, gate.isRevealed)
-  }, [gate, markers])
+    return mapLayerRevealer(markers, gate.isRevealed, layers)
+  }, [gate, markers, layers])
 }
 
 export function useMapLayers(worldId: string | null) {
