@@ -7,6 +7,7 @@ import { db } from '@/db/database'
 import { useAppStore } from '@/store'
 import { useFactionReveal } from '@/db/hooks/useFactions'
 import { useGate } from '@/db/hooks/ReadingGateContext'
+import { snippet } from '@/lib/snippet'
 import { cn } from '@/lib/utils'
 import { MODAL_BACKDROP } from '@/components/ui/dialog'
 
@@ -119,17 +120,17 @@ export function SearchPalette() {
 
     for (const c of gate.filter(characters ?? [])) {
       if (c.name?.toLowerCase().includes(q) || c.aliases?.some((a) => a.toLowerCase().includes(q))) {
-        out.push({ id: c.id, type: 'character', label: c.name, sublabel: c.description ? c.description.slice(0, 60) : undefined, path: `/worlds/${worldId}/characters/${c.id}` })
+        out.push({ id: c.id, type: 'character', label: c.name, sublabel: snippet(c.description), path: `/worlds/${worldId}/characters/${c.id}` })
       }
     }
     for (const i of gate.filter(items ?? [])) {
       if (i.name?.toLowerCase().includes(q)) {
-        out.push({ id: i.id, type: 'item', label: i.name, sublabel: i.description ? i.description.slice(0, 60) : undefined, path: `/worlds/${worldId}/items/${i.id}` })
+        out.push({ id: i.id, type: 'item', label: i.name, sublabel: snippet(i.description), path: `/worlds/${worldId}/items/${i.id}` })
       }
     }
     for (const m of gate.filter(markers ?? [])) {
       if (m.name?.toLowerCase().includes(q) || m.description?.toLowerCase().includes(q)) {
-        out.push({ id: m.id, type: 'location', label: m.name, sublabel: m.description ? m.description.slice(0, 60) : undefined, path: `/worlds/${worldId}/maps` })
+        out.push({ id: m.id, type: 'location', label: m.name, sublabel: snippet(m.description), path: `/worlds/${worldId}/maps` })
       }
     }
     for (const ch of (chapters ?? [])) {
@@ -138,17 +139,17 @@ export function SearchPalette() {
       // in it, so it neither matches nor shows until the reader gets there.
       const synopsis = chapterReached.has(ch.id) ? ch.synopsis : ''
       if (ch.title?.toLowerCase().includes(q) || synopsis?.toLowerCase().includes(q)) {
-        out.push({ id: ch.id, type: 'chapter', label: `Ch. ${ch.number} — ${ch.title}`, sublabel: synopsis ? synopsis.slice(0, 60) : undefined, path: `/worlds/${worldId}/timeline/${ch.id}` })
+        out.push({ id: ch.id, type: 'chapter', label: `Ch. ${ch.number} — ${ch.title}`, sublabel: snippet(synopsis), path: `/worlds/${worldId}/timeline/${ch.id}` })
       }
     }
     for (const ev of (events ?? []).filter((e) => gate.hasReached(e.id))) {
       if (ev.title?.toLowerCase().includes(q) || ev.description?.toLowerCase().includes(q)) {
-        out.push({ id: ev.id, type: 'event', label: ev.title, sublabel: ev.description ? ev.description.slice(0, 60) : undefined, path: `/worlds/${worldId}/timeline/${ev.chapterId}` })
+        out.push({ id: ev.id, type: 'event', label: ev.title, sublabel: snippet(ev.description), path: `/worlds/${worldId}/timeline/${ev.chapterId}` })
       }
     }
     for (const tl of (timelines ?? [])) {
       if (tl.name?.toLowerCase().includes(q)) {
-        out.push({ id: tl.id, type: 'timeline', label: tl.name, sublabel: tl.description ? tl.description.slice(0, 60) : undefined, path: `/worlds/${worldId}/timeline` })
+        out.push({ id: tl.id, type: 'timeline', label: tl.name, sublabel: snippet(tl.description), path: `/worlds/${worldId}/timeline` })
       }
     }
     for (const r of (relationships ?? [])) {
@@ -169,19 +170,19 @@ export function SearchPalette() {
     }
     for (const r of (regions ?? []).filter((r) => layerRevealed.has(r.mapLayerId))) {
       if (r.name?.toLowerCase().includes(q) || r.notes?.toLowerCase().includes(q)) {
-        out.push({ id: r.id, type: 'region', label: r.name, sublabel: r.notes ? r.notes.slice(0, 60) : undefined, path: `/worlds/${worldId}/maps` })
+        out.push({ id: r.id, type: 'region', label: r.name, sublabel: snippet(r.notes), path: `/worlds/${worldId}/maps` })
       }
     }
     for (const p of (lorePages ?? []).filter(
       (p) => gate.hasReached(p.visibleFromEventId) && gate.linksRevealed(p.linkedEntityIds),
     )) {
       if (p.title?.toLowerCase().includes(q) || p.body?.toLowerCase().includes(q) || p.tags?.some((t) => t.toLowerCase().includes(q))) {
-        out.push({ id: p.id, type: 'lore', label: p.title, sublabel: p.body ? p.body.slice(0, 60).replace(/[#*`_>-]/g, '').trim() : undefined, path: `/worlds/${worldId}/lore/${p.id}` })
+        out.push({ id: p.id, type: 'lore', label: p.title, sublabel: snippet(p.body?.replace(/[#*`_>-]/g, '')), path: `/worlds/${worldId}/lore/${p.id}` })
       }
     }
     for (const f of (factions ?? []).filter((f) => factionRevealed.has(f.id))) {
       if (f.name?.toLowerCase().includes(q) || f.description?.toLowerCase().includes(q)) {
-        out.push({ id: f.id, type: 'faction', label: f.name, sublabel: f.description ? f.description.slice(0, 60) : undefined, path: `/worlds/${worldId}/factions` })
+        out.push({ id: f.id, type: 'faction', label: f.name, sublabel: snippet(f.description), path: `/worlds/${worldId}/factions` })
       }
     }
 

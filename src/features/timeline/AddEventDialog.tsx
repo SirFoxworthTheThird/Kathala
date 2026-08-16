@@ -101,18 +101,18 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
         <DialogHeader><DialogTitle>Add Event</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <Label>Title</Label>
-            <Input placeholder="Event title" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+            <Label htmlFor="event-title">Title</Label>
+            <Input id="event-title" placeholder="Event title" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label>Description</Label>
-            <Textarea placeholder="What happened..." value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
+            <Label htmlFor="event-description">Description</Label>
+            <Textarea id="event-description" placeholder="What happened..." value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
           </div>
 
           {characters.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              <Label>Characters involved</Label>
+            <div className="flex flex-col gap-1.5" role="group" aria-labelledby="event-cast-label">
+              <Label id="event-cast-label">Characters involved</Label>
               {selectedChars.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-1">
                   {selectedChars.map((c) => (
@@ -184,7 +184,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
           )}
 
           <div className="flex flex-col gap-1.5">
-            <Label>Tags</Label>
+            <Label htmlFor="event-tags">Tags</Label>
             <div
               className="flex flex-wrap items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 py-1.5 min-h-[2.25rem] cursor-text"
               onClick={() => tagInputRef.current?.focus()}
@@ -199,6 +199,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
               ))}
               <input
                 ref={tagInputRef}
+                id="event-tags"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={handleTagKeyDown}
@@ -209,8 +210,8 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
             </div>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label>Status</Label>
+          <div className="flex flex-col gap-1.5" role="group" aria-labelledby="event-status-label">
+            <Label id="event-status-label">Status</Label>
             <div className="flex gap-1">
               {EVENT_STATUSES.map((s) => (
                 <button

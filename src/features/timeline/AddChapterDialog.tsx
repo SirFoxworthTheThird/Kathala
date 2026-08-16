@@ -41,13 +41,18 @@ export function AddChapterDialog({
           <DialogTitle>Add Chapter {nextNumber}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {/*
+            WRUN-9: `htmlFor`/`id`, so the field carries its label rather than
+            sitting next to it. A placeholder is not a name — it disappears the
+            moment you type — and this is the first dialog a new writer meets.
+          */}
           <div className="flex flex-col gap-1.5">
-            <Label>Title</Label>
-            <Input placeholder="Chapter title" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+            <Label htmlFor="chapter-title">Title</Label>
+            <Input id="chapter-title" placeholder="Chapter title" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label>Synopsis</Label>
-            <Textarea placeholder="Brief synopsis..." value={synopsis} onChange={(e) => setSynopsis(e.target.value)} rows={3} />
+            <Label htmlFor="chapter-synopsis">Synopsis</Label>
+            <Textarea id="chapter-synopsis" placeholder="Brief synopsis..." value={synopsis} onChange={(e) => setSynopsis(e.target.value)} rows={3} />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>

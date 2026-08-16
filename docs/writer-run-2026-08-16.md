@@ -399,7 +399,7 @@ Not in `docs/ux-review.md`; a search for "capitali" returns nothing.
 
 ---
 
-### W-9 · low · Add Chapter and Add Event label their fields by adjacency
+### W-9 · low · ~~Add Chapter and Add Event label their fields by adjacency~~ — **fixed**
 
 Probed the open Add Chapter dialog:
 
@@ -421,7 +421,7 @@ side of the boundary: the two a new writer meets first.
 
 ---
 
-### W-10 · low · Abandoned text in the map URL field blocks the file upload
+### W-10 · low · ~~Abandoned text in the map URL field blocks the file upload~~ — **fixed**
 
 **Reproduced deliberately.** Maps → Add Map. Typed `ashcorn map` into the *or
 link a URL* field (a plausible half-thought), then chose a PNG through the
@@ -443,7 +443,7 @@ name, which is a nice touch.
 
 ---
 
-### W-11 · low · Search snippets stop mid-word
+### W-11 · low · ~~Search snippets stop mid-word~~ — **fixed**
 
 *Dracula*, `Ctrl+K`, "lucy" → 43 results in 2.0 s, well grouped. The subtitles
 read *"Mina's closest friend, desired by three suitors and preyed u"* and
