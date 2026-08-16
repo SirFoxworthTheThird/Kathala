@@ -42,6 +42,15 @@ type CharacterSnapshot = {
   currentLocationMarkerId: string | null
   statusNotes: string
 }
+type CharacterMovement = Ref & {
+  eventId: string
+  characterId: string
+  waypoints: string[]
+}
+type MapRoute = Ref & {
+  mapLayerId: string
+  waypoints: Array<string | { x: number; y: number }>
+}
 type ExampleWorld = {
   world: { id: string; description: string }
   timelines: Timeline[]
@@ -51,8 +60,10 @@ type ExampleWorld = {
   relationships: Relationship[]
   items: Item[]
   characterSnapshots: CharacterSnapshot[]
+  characterMovements: CharacterMovement[]
   locationMarkers: Location[]
   mapLayers: MapLayer[]
+  mapRoutes: MapRoute[]
 }
 
 const index = parseLibraryIndex(rawIndex)
@@ -219,6 +230,37 @@ describe('published examples meet the authoring quality rules', () => {
           expect(description.length, `${location.id} description`).toBeGreaterThan(0)
           for (const pattern of genericLocationText) {
             expect(description, `${location.name} has placeholder navigation text`).not.toMatch(pattern)
+          }
+        }
+      })
+
+      it('uses the current waypoint schema for routes and character movements', () => {
+        const eventIds = new Set(world.events.map(({ id }) => id))
+        const characterIds = new Set(world.characters.map(({ id }) => id))
+        const locationIds = new Set(world.locationMarkers.map(({ id }) => id))
+        const mapIds = new Set(world.mapLayers.map(({ id }) => id))
+
+        for (const movement of world.characterMovements) {
+          expect(eventIds.has(movement.eventId), `${movement.id} event`).toBe(true)
+          expect(characterIds.has(movement.characterId), `${movement.id} character`).toBe(true)
+          expect(Array.isArray(movement.waypoints), `${movement.id} waypoints`).toBe(true)
+          expect(movement.waypoints.length, `${movement.id} waypoints`).toBeGreaterThanOrEqual(2)
+          for (const waypoint of movement.waypoints) {
+            expect(locationIds.has(waypoint), `${movement.id} waypoint ${waypoint}`).toBe(true)
+          }
+        }
+
+        for (const route of world.mapRoutes) {
+          expect(mapIds.has(route.mapLayerId), `${route.id} map`).toBe(true)
+          expect(Array.isArray(route.waypoints), `${route.id} waypoints`).toBe(true)
+          expect(route.waypoints.length, `${route.id} waypoints`).toBeGreaterThanOrEqual(2)
+          for (const waypoint of route.waypoints) {
+            if (typeof waypoint === 'string') {
+              expect(locationIds.has(waypoint), `${route.id} waypoint ${waypoint}`).toBe(true)
+            } else {
+              expect(Number.isFinite(waypoint.x), `${route.id} waypoint x`).toBe(true)
+              expect(Number.isFinite(waypoint.y), `${route.id} waypoint y`).toBe(true)
+            }
           }
         }
       })
