@@ -41,7 +41,7 @@ import type { LocationMarker } from '@/types'
 
 function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const {
-    layer, imageUrl, markers, allLayers, allMarkers, characters,
+    layer, imageUrl, imageMissing, markers, allLayers, allMarkers, characters,
     activeEventId, orderedEvents,
     activeChapter, activeChapterTitle,
     snapshots, prevSnapshots,
@@ -513,6 +513,49 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           icon={ImageUp}
           title="This map needs an image"
           description="Upload an image or link to one. Existing locations will remain attached to this map and will be rescaled to the new image if needed."
+          className="flex-1"
+          action={
+            <Button className="gap-1.5" onClick={() => setReplaceImageOpen(true)}>
+              <Upload className="h-4 w-4" />
+              Add map image
+            </Button>
+          }
+        />
+        <UploadMapDialog
+          open={replaceImageOpen}
+          onOpenChange={setReplaceImageOpen}
+          worldId={worldId}
+          replaceLayerId={layer.id}
+        />
+      </div>
+    )
+  }
+
+  /*
+    The layer names an image that is not in the store. A library world
+    downloaded *without* its image bundle is exactly this: sixteen map layers
+    whose `imageId` points into a `.pwb` nobody fetched — the bundle is
+    deliberately a separate decision, because it dwarfs the data.
+
+    This used to fall through to the spinner below and stay there, because
+    `useBlobUrl` returns `undefined` both while loading and when the record is
+    absent. A screen that says nothing is the worst of the three answers: the
+    writer cannot tell a slow map from a missing one, and the way out — the
+    Library's "with images" download — is never mentioned.
+  */
+  if (imageMissing) {
+    return (
+      <div className="flex h-full flex-col overflow-hidden">
+        <div className="flex shrink-0 items-center justify-between border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-[hsl(var(--foreground))]">{layer.name}</p>
+            <p className="truncate text-[11px] text-[hsl(var(--muted-foreground))]">Image not downloaded</p>
+          </div>
+        </div>
+        <EmptyState
+          icon={ImageUp}
+          title="This map's image isn't here"
+          description="The map itself — its locations, routes and regions — is all present; only the picture is missing. Worlds from the Library keep their images in a separate bundle, so a download without images leaves the maps blank. Download the world again from the Library with images included, or add a picture of your own."
           className="flex-1"
           action={
             <Button className="gap-1.5" onClick={() => setReplaceImageOpen(true)}>

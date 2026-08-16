@@ -1097,13 +1097,16 @@ which is not the same thing as unreachable.
 |---|---|---|---|
 | EX-2 | low | **open** | **Regions are a feature nineteen of the twenty examples never show.** Counted across `public/library/*.pwk`: only *The Fellowship of the Ring* and *The Two Towers* carry any regions (4 each), and four worlds — *Philosopher's Stone*, *The Name of the Wind*, *The War of the Worlds*, *The Wise Man's Fear* — have neither regions nor routes. Someone opening the most obvious example to see what regions are for finds none. Not a defect in the app, and territory suits some books better than others, but the feature's only demonstration is in the two Tolkien worlds. |
 
-**One thing this pass could not settle.** Driving the review through a
-downloaded *Fellowship* — the natural way to see regions on a real map — the
-Maps screen rendered an empty `main` even after its 69 image blobs had arrived
-and with 4 regions and 7 routes in the store. The panels were reviewed against a
-map built in the test instead. Whether that is a defect in how a library world's
-map layers resolve their images, or something about this environment, is not
-established, and it is recorded here rather than filed as a finding.
+### The thing this pass could not settle, settled
+
+That observation — the Maps screen rendering an empty `main` on a downloaded
+*Fellowship*, with 4 regions and 7 routes in the store — was chased down. It is
+a defect, and the panels were reviewed against a map built in the test only
+because of it.
+
+| ID | Severity | Status | Finding |
+|---|---|---|---|
+| MAP-6 | high | **fixed** | **A map whose image never arrived showed a spinner, forever.** The Library keeps a world's images in a separate `.pwb` bundle — deliberately, since it dwarfs the data and pulling it is its own decision — so a world downloaded *without* images has map layers whose `imageId` points at blobs nobody fetched. Measured on the shipped *Fellowship*: **16 layers, 0 of their images in the store**, while the 69 blobs that did arrive were the `.pwk`'s own location and character art under quite different ids. The screen had three states — no image set, image loading, image here — and this is a fourth, so it fell through to the loading spinner and stayed there. | **The cause is one no screenshot can show:** `useBlobUrl` returns `undefined` both while the live query is unanswered *and* for an id that is not in the store, so the screen could not tell a slow map from a missing one. `useBlobUrlState` resolves a miss to `null` instead, and `blobLookupState` holds the decision on its own so its three cases can be unit-tested. The screen now names the layer, says *"This map's image isn't here"*, explains that Library worlds keep images in a separate bundle, and offers **Add map image**. The locations, routes and regions were all present the whole time; only the picture was missing, which is worth saying because a blank screen suggests the opposite. **A mutation caught the part that mattered:** making *loading* count as *missing* passed every browser test, since the flash resolves before an assertion can see it. It fails the unit test, which is why the decision was extracted at all.
 
 ---
 

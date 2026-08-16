@@ -1085,6 +1085,13 @@ With a moment selected, the Characters list splits into **On the map** and
 list rather than a handful of rows scattered through the whole cast. Nobody is
 hidden — the rest are just below, ready to be placed.
 
+**If a map opens without its picture**, the screen says so — *"This map's image
+isn't here"* — and everything else about the map is intact: its locations,
+routes and regions are all still there. This happens to worlds taken from the
+**Library** without their images, because those live in a separate bundle that
+is a separate download. Fetch the world again with images included, or add a
+picture of your own from that screen.
+
 ### Setting a map's scale
 
 **Set map scale** (in the map tools menu) asks you to click two points and say

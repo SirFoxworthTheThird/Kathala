@@ -36,6 +36,41 @@ export function useBlobUrl(id: string | null): string | undefined {
   return blobEntryUrl(entry)
 }
 
+/**
+ * A blob url, and whether the record it was asked for is genuinely **absent**.
+ *
+ * `useBlobUrl` cannot tell those apart: `useLiveQuery` returns `undefined`
+ * before its first result, and `db.blobs.get` returns `undefined` for an id
+ * that is not there, so a caller sees the same value for *still loading* and
+ * *never coming*. The Maps screen showed the consequence — a library world
+ * downloaded without its image bundle has map layers whose `imageId` points at
+ * blobs in the undownloaded `.pwb`, so the screen sat on a spinner forever
+ * rather than saying anything at all.
+ *
+ * Resolving to `null` rather than `undefined` for a miss is what separates the
+ * two: `undefined` is the query not having answered yet.
+ */
+export function useBlobUrlState(id: string | null): { url: string | undefined; missing: boolean } {
+  const entry = useLiveQuery(async () => (id ? (await db.blobs.get(id)) ?? null : null), [id])
+  return blobLookupState(id, entry)
+}
+
+/**
+ * The decision `useBlobUrlState` makes, on its own so it can be tested.
+ *
+ * Three states off two values, and getting them backwards is invisible in a
+ * screenshot: `undefined` is *the query has not answered*, `null` is *asked and
+ * absent*, an entry is *here*. Treating loading as missing would flash "this
+ * image isn't here" on every map before it drew — which is what a mutation of
+ * the inline version did without failing a single browser test.
+ */
+export function blobLookupState(
+  id: string | null,
+  entry: BlobEntry | null | undefined,
+): { url: string | undefined; missing: boolean } {
+  return { url: blobEntryUrl(entry ?? undefined), missing: !!id && entry === null }
+}
+
 async function compressImage(
   file: File,
   maxDimension = 2048,

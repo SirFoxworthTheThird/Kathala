@@ -10,7 +10,7 @@ import { useEventMovements } from '@/db/hooks/useMovements'
 import { useEventItemPlacements } from '@/db/hooks/useItemPlacements'
 import { useChapterLocationSnapshots } from '@/db/hooks/useLocationSnapshots'
 import { useEchoLocations } from '@/lib/useEchoLocations'
-import { useBlobUrl, useWorldBlobUrls } from '@/db/hooks/useBlobs'
+import { useBlobUrlState, useWorldBlobUrls } from '@/db/hooks/useBlobs'
 import { useMapRoutes } from '@/db/hooks/useMapRoutes'
 import { useMapRegions, useBestRegionSnapshots } from '@/db/hooks/useMapRegions'
 import type { CharacterPin, GhostPin, EchoMarker, MovementLine } from './LeafletMapCanvas'
@@ -24,7 +24,8 @@ import type { MapRegionStatus } from '@/types'
 
 export function useMapViewState(worldId: string, layerId: string) {
   const layer          = useMapLayer(layerId)
-  const imageUrl       = useBlobUrl(layer?.imageId ?? null)
+  const image          = useBlobUrlState(layer?.imageId ?? null)
+  const imageUrl       = image.url
   const markers        = useLocationMarkers(layerId)
   const allLayers      = useMapLayers(worldId)
   const allMarkers     = useAllLocationMarkers(worldId)
@@ -262,7 +263,7 @@ export function useMapViewState(worldId: string, layerId: string) {
 
   return {
     // Map layer
-    layer, imageUrl,
+    layer, imageUrl, imageMissing: image.missing,
     // Markers
     markers, allLayers, allMarkers,
     // Characters
