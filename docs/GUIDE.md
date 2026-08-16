@@ -1572,6 +1572,14 @@ badges where a character's state was inherited rather than freshly set. When a
 world calendar and a character's birth date are both set, each present character
 also shows their **age** at that point in the story.
 
+Each character present also carries a badge for the factions they belong to. A
+separate **Factions in scene** section groups the cast into sides and names each
+side's members — and it appears only when that grouping says something the
+badges do not: when two or more factions are present, or when one faction covers
+only some of the people in the scene. With a single faction that everyone
+present belongs to there is nothing left to group, so the section stays away
+rather than naming the same alliance a second time.
+
 The brief also collects active relationships, item placements, and relevant lore.
 Lore linked to a present character appears automatically; a page revealed at the
 active event is marked **NEW** and links directly to its editor.

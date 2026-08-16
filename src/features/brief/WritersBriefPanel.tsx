@@ -416,14 +416,34 @@ export function WritersBriefPanel() {
                   allMemberships.some((m) => m.factionId === f.id && presentCharIds.has(m.characterId))
                 )
                 if (sceneFactions.length === 0) return null
+
+                const membersOf = (factionId: string) => allMemberships
+                  .filter((m) => m.factionId === factionId && presentCharIds.has(m.characterId))
+                  .map((m) => charById.get(m.characterId)?.name)
+                  .filter(Boolean)
+
+                /*
+                  WB-3: this section groups the cast into sides, and when there
+                  is only one side and everybody in the scene is on it, there is
+                  no grouping left to do. Measured on the shipped Philosopher's
+                  Stone at Ch.1 — three characters, each already badged *The
+                  Dursley Household* in the list above, and then the section
+                  named the household a fourth time and listed the same three.
+
+                  It earns its place the moment a second faction appears, or the
+                  moment one faction covers only some of the people present —
+                  which is exactly when knowing who is in it tells you something
+                  the badges alone do not.
+                */
+                const coversEveryone =
+                  sceneFactions.length === 1 && membersOf(sceneFactions[0].id).length === presentCharIds.size
+                if (coversEveryone) return null
+
                 return (
                   <Section title="Factions in scene" icon={Shield} count={sceneFactions.length}>
                     <div className="space-y-1.5">
                       {sceneFactions.map((f) => {
-                        const members = allMemberships
-                          .filter((m) => m.factionId === f.id && presentCharIds.has(m.characterId))
-                          .map((m) => charById.get(m.characterId)?.name)
-                          .filter(Boolean)
+                        const members = membersOf(f.id)
                         return (
                           <div key={f.id} className="flex items-center gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-2">
                             <span className="h-3 w-3 rounded-full shrink-0" style={{ background: f.color }} />
