@@ -67,13 +67,15 @@ export function EventRow({ event, isFirst, isLast, onMoveUp, onMoveDown, chapter
         {!gate.active && (
           <div
             className={cn(
-              'mt-2.5 shrink-0 flex items-center justify-center cursor-pointer',
+              'pw-tap-row mt-2.5 shrink-0 flex items-center justify-center cursor-pointer',
               anySelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
               'transition-opacity'
             )}
             onClick={handleCheckboxClick}
           >
-            {/* Named but not pointer-gated — see the note in `ChapterRow`. */}
+            {/* Named but not pointer-gated — see the note in `ChapterRow`.
+                `pw-tap-row` (HB-2c) gives it a 24x36 hit area on touch: the box
+                itself is 12px, in a list whose rows are 40px apart. */}
             <input
               type="checkbox"
               aria-label={`Select scene ${event.title || 'Untitled'}`}

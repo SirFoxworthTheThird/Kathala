@@ -122,10 +122,22 @@ export function ChapterRow({ chapter, threadFilter = null, wordsByEvent = NO_WOR
               Named, but deliberately not `pointer-events-none` at rest the way
               the hover-revealed *deletes* are (HB-2a). Those had a destructive
               action behind an invisible target; this toggles a selection, which
-              is visible and reversible — and `group-hover` never fires on a
-              touch device, so gating pointer events would remove the only way
-              to select rows on a phone rather than protect anything. Filed as
-              HB-2b: bulk selection needs a real touch affordance first.
+              is visible and reversible, so there is nothing to protect against.
+
+              It is *not* invisible on a phone, which HB-2b assumed and got
+              wrong: `group-hover` indeed never fires there, but `index.css`
+              forces every `opacity-0 + group-hover:opacity-*` control to
+              `opacity: 1` on a hover-less pointer, so this one is permanently
+              shown and permanently tappable. Gating it would break that.
+
+              The touch problem is the size, not the visibility (HB-2c). The
+              scene rows below take `pw-tap-row` for it; this one deliberately
+              does not. Measured at 390px, the header wraps — the box sits at
+              y 378–392 and the chapter title button starts at y 400 — so a
+              symmetric 36px overlay would cover the button's top edge, and a
+              tap meant to open the chapter would select every scene in it. A
+              bigger target is not worth hitting the wrong control; the answer
+              here is the wrapped header's layout.
             */}
             <input
               type="checkbox"

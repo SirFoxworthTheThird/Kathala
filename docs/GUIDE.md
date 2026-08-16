@@ -1876,16 +1876,21 @@ something to say. That includes the ones drawn as icons alone — the scene
 steppers on the chapter bar, the add button beside a travel mode, the rename and
 delete beside a lore category.
 
-**Controls that appear on hover cannot be tapped while they are hidden.** The
+**Controls that appear on hover cannot be clicked while they are hidden.** The
 small delete on a world card, a plot thread, a lore category, a saved scene
 version, a map route or region shows itself when you hover the row or move focus
-onto it, and until then it takes no clicks at all. On a phone or tablet, where
-there is no hover to reveal them, this is what stops a tap on an apparently
-blank stretch of a row from deleting something.
+onto it, and until then it takes no clicks at all — so a click on an apparently
+blank stretch of a row can never delete anything.
 
-Selecting scenes for a bulk action is the one exception: those checkboxes still
-appear on hover, so on a touch device they are hard to find. That is a known
-gap rather than a design.
+**On a phone or tablet it works differently.** With no hover to wait for, these
+controls are simply drawn all the time, so nothing is hidden and nothing is
+lurking. The deletes among them are currently shown but not yet tappable there;
+delete from the same record's own screen instead, where the control is a normal
+button.
+
+Selecting scenes for a bulk action needs no hover on any device: the checkboxes
+are always there on touch, and on a phone each one answers to a tap anywhere in
+the margin beside its scene, not only to the small box itself.
 
 ---
 

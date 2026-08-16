@@ -17,10 +17,16 @@ import { dismissFirstRunGuide } from './helpers/nav'
  * that has been broken outright.
  *
  * **The two selection checkboxes are deliberately not here.** They have the
- * same shape and are left alone: a tap that toggles a selection is visible and
- * reversible where a tap that deletes is neither, and `group-hover` never
- * fires on touch — so gating them would remove the only way to select rows on
- * a phone rather than protect anything. Tracked as HB-2b.
+ * same shape and are left ungated: a tap that toggles a selection is visible
+ * and reversible where a tap that deletes is neither, so there is nothing to
+ * protect against.
+ *
+ * The reason first written here was different and was wrong — that `group-hover`
+ * never fires on touch, so gating would leave a phone no way to select at all.
+ * The first half is true; the second does not follow, because `index.css` shows
+ * hover-revealed controls unconditionally on a hover-less pointer. HB-2b was
+ * closed on that measurement, and the last test below pins down what the gate
+ * really does on a phone.
  */
 
 /**
@@ -152,5 +158,52 @@ test.describe('Hover-revealed controls cannot be activated while invisible', () 
       await assertHiddenThenRevealed(page, control, row, label)
       await page.mouse.move(0, 0)
     }
+  })
+
+  /**
+   * What the gate actually does on a phone, which the three tests above cannot
+   * see because they run at desktop width with a mouse.
+   *
+   * `index.css` has forced every `opacity-0` + `group-hover:opacity-*` control
+   * to `opacity: 1 !important` on a hover-less pointer since #85, so on touch
+   * these are **not** hidden — they are drawn, at full strength, and the
+   * `pointer-events: none` half of the gate is not lifted with them. The
+   * control is visible and does nothing.
+   *
+   * That is recorded here rather than argued about, because two separate claims
+   * were written on top of the opposite assumption — HB-2b, and the guide's own
+   * paragraph on hover-revealed controls. Whether visible-and-inert is the
+   * behaviour anyone wants is **HB-2d**; this test pins down what it is.
+   */
+  test.describe('on a phone, where there is no hover to give', () => {
+    test.use({ viewport: { width: 390, height: 667 }, hasTouch: true })
+
+    test('the delete is drawn at full strength, and still takes no taps', async ({ page }) => {
+      await seedWorld(page, 'Highbarrow')
+      await page.goto('/')
+      await page.waitForTimeout(1200)
+
+      const card = page.locator('.group').filter({ hasText: 'Highbarrow' }).first()
+      const del = card.getByRole('button', { name: /delete/i }).first()
+
+      // Presence: fully drawn, with nothing hovering it.
+      await expect.poll(() => restingState(del).then((s) => s.opacity)).toBe('1')
+      // Absence, the half that makes it a finding rather than a fix: inert.
+      await expect.poll(() => restingState(del).then((s) => s.pointerEvents)).toBe('none')
+
+      // And the world survives a tap on it, which is the behaviour that matters.
+      // `force` because the tap is the point: Playwright would otherwise refuse
+      // to touch an element with no pointer events, which is the very thing
+      // being demonstrated. The tap falls through to the card underneath and
+      // opens the world — harmless, and its own evidence that the delete took
+      // nothing. So the check is made back on the dashboard rather than in
+      // place, and scoped to the card, because on a phone the top bar carries
+      // the world's name too in a `lg:inline` span that is present but hidden.
+      await del.tap({ force: true })
+      await page.waitForTimeout(600)
+      await page.goto('/')
+      await page.waitForTimeout(1200)
+      await expect(page.locator('.group').filter({ hasText: 'Highbarrow' }).first()).toBeVisible()
+    })
   })
 })

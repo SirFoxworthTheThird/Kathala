@@ -724,6 +724,39 @@
     width: 44px;
     transform: translate(-50%, -50%);
   }
+
+  /* ── HB-2c: the same idea, bounded to a dense row ───────────────────────────
+     The timeline's scene checkbox is the smallest target in the app — 12px —
+     but it sits in a list whose rows are 40px apart, so `.pw-tap` above would
+     overlap its neighbour by 4px and a tap in that band would select the wrong
+     scene. That is worse than a small target, which is what the warning on
+     `.pw-tap` is about.
+
+     24x36 is what the row actually has to give: as wide as the `w-6` gutter the
+     checkbox sits in, and 4px shorter than the pitch, so neighbouring overlays
+     never touch. Six times the area, no overlap, and no change to the layout or
+     to how the row looks.
+
+     Scene rows only. `ChapterRow`'s select-all is 14px and looks like the same
+     problem, but its header wraps on a phone and the chapter title button sits
+     8px below the box — an overlay this tall would cover the button's top edge
+     and turn "open the chapter" into "select every scene in it".
+
+     `position: relative` is what the absolute `::after` is placed against, and
+     it is also what puts the overlay above the gutter's 1px timeline rule: that
+     rule is a later sibling, but a static one, and positioned content paints
+     after static content. No `z-index` is needed, and adding one changed
+     nothing when it was tried. */
+  .pw-tap-row { position: relative; }
+  .pw-tap-row::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    height: 36px;
+    width: 24px;
+    transform: translate(-50%, -50%);
+  }
 }
 
 /*
