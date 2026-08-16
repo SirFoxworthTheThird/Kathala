@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
-import { waitForMapReady } from './helpers/map'
+import { waitForMapReady, sidebarSection } from './helpers/map'
 
 // A phone-sized viewport where a Select trigger low in the location panel would,
 // without viewport-aware positioning, push its option list off the bottom edge.
@@ -34,7 +34,7 @@ test('sub-map link dropdown stays within the viewport on mobile', async ({ page 
 
   // Open the mobile drawer, expand Locations, and open the leaf location's panel.
   await page.getByRole('button', { name: 'Open map panels' }).click()
-  await page.getByRole('button', { name: /^Locations/ }).first().click()
+  await sidebarSection(page, 'Locations').click()
   await page.getByRole('button', { name: 'Plainville' }).first().click()
   // The drawer sits above the detail panel on mobile; close it to reveal the panel.
   await page.getByRole('button', { name: 'Close map panels' }).click()

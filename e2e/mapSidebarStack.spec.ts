@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { sidebarSection } from './helpers/map'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
@@ -75,7 +76,7 @@ test.describe('The map sidebar is a panel stack', () => {
 
     // Open the four that ship closed, so all six sections are expanded at once.
     for (const name of [/^Locations/i, /^Items/i, /^Routes/i, /^Regions/i]) {
-      await page.getByRole('button', { name }).first().click()
+      await sidebarSection(page, name).click()
     }
     await page.waitForTimeout(600)
 

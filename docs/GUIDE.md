@@ -1071,11 +1071,13 @@ its row is available in full by hovering it, and with a moment selected every
 character and item row states where it stands — a place name, or *Not placed*,
 so a blank line never has to be guessed at.
 
-**The rows are real controls.** Characters, locations, items, routes and regions
-can each be reached with **Tab** and opened with **Enter**, so the route and
-region panels — and everything else the sidebar opens — can be worked without a
-mouse. (Map Layers is the exception for now: its rows are dragged onto one
-another to nest them, and that gesture has no keyboard equivalent yet.) The
+**The rows are real controls.** Map layers, characters, locations, items, routes
+and regions can each be reached with **Tab** and opened with **Enter**, so the
+route and region panels — and everything else the sidebar opens — can be worked
+without a mouse. On a Map Layers row the **name** is the control that opens that
+map; the rest of the row is still the surface you drag to nest one map inside
+another, so both work and neither costs the other. (Re-parenting itself is still
+a drag: there is no keyboard equivalent for it yet.) The
 small delete beside a route or region still appears only when you hover the row
 or tab onto it, and while it is invisible it cannot be tapped, so a tap on what
 looks like a blank stretch of row will never delete anything.

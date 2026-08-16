@@ -142,6 +142,9 @@ function LayerTreeNode({
   const [open, setOpen] = useState(true)
   const [hovered, setHovered] = useState(false)
   const gate = useGate()
+  // The activator button owns the click, so the row needs the same action the
+  // pointer-gesture handler in the section above uses.
+  const resetMapHistory = useAppStore((st) => st.resetMapHistory)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const isActive = layer.id === activeLayerId
   const childCount = children.length
@@ -160,8 +163,13 @@ function LayerTreeNode({
         data-layer-drop={layer.id}
         onPointerDown={(e) => {
           // Ignore right/middle mouse and presses that start on a control button.
+          //
+          // SB-6: the row's *own* activator is a button now, and it is the
+          // widest thing in the row — so skipping every button would mean a
+          // drag could only be started from the padding. It is excluded by
+          // name; the chevron and the delete still stop a drag from starting.
           if (e.pointerType === 'mouse' && e.button !== 0) return
-          if ((e.target as HTMLElement).closest('button')) return
+          if ((e.target as HTMLElement).closest('button:not([data-layer-activate])')) return
           onBeginDrag(layer.id, e)
         }}
         className={`group flex items-center gap-1 cursor-pointer select-none transition-colors rounded-sm mx-1 ${
@@ -187,7 +195,29 @@ function LayerTreeNode({
           <MapPin className="h-3 w-3 shrink-0 opacity-40" />
         )}
         {depth === 0 && <MapIcon className="h-3 w-3 shrink-0 opacity-70" />}
-        <span data-map-layer className="flex-1 truncate text-xs" title={layer.name}>{layer.name}</span>
+        {/*
+          SB-6: this row was a `div` whose entire activation was a pointer
+          gesture — `pointerup` without movement selects the layer, with
+          movement re-parents it — so there was no way to open a map from the
+          keyboard at all. The chevron and the delete beside it were already
+          buttons, which is what made the row look fine.
+
+          The name is the activator, as a real button: `Enter` and `Space` come
+          free, and a screen reader gets a control rather than a span. Drag
+          stays on the row around it, because the drag source has to be the
+          whole row for the crosshair and chevron to be draggable too.
+        */}
+        <button
+          type="button"
+          data-layer-activate
+          data-map-layer
+          aria-current={isActive ? 'true' : undefined}
+          onClick={() => resetMapHistory(layer.id)}
+          className="flex-1 truncate text-left text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]"
+          title={layer.name}
+        >
+          {layer.name}
+        </button>
         {hovered && !gate.active && (
           <button
             className="shrink-0 rounded p-0.5 hover:text-red-400 transition-colors"
@@ -331,8 +361,17 @@ export function LayersSection({ worldId }: { worldId: string }) {
       const p = pressRef.current
       if (!p) { reset(); return }
       if (!p.armed) {
-        // A quick tap / click without dragging selects the layer.
-        resetMapHistory(p.id)
+        /*
+          A quick tap / click without dragging selects the layer — unless it
+          landed on the row's own activator button, whose `onClick` does it.
+          The button has to own the click, because that is what makes Enter and
+          Space work; without this check the two paths would both fire on a
+          mouse click. Selecting twice is harmless — the action is idempotent —
+          so this is tidiness rather than a fix, and there is deliberately no
+          test claiming otherwise.
+        */
+        const onActivator = (e.target as HTMLElement | null)?.closest?.('[data-layer-activate]')
+        if (!onActivator) resetMapHistory(p.id)
       } else {
         const raw = targetAt(e.clientX, e.clientY)
         const target = raw === '__root__' ? null : raw

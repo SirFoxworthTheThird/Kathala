@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
-import { waitForMapReady } from './helpers/map'
+import { waitForMapReady, sidebarSection } from './helpers/map'
 
 /**
  * Moving the time cursor on the map pans; it does not pick a place.
@@ -96,7 +96,7 @@ test('moving the time cursor pans the map without opening a location', async ({ 
   // Asking for a place by name still opens it, on this same viewport — so the
   // absence above is the cursor being quiet, not the panel being unreachable.
   await page.getByRole('button', { name: 'Open map panels' }).click()
-  await page.getByRole('button', { name: /^Locations/ }).first().click()
+  await sidebarSection(page, 'Locations').click()
   await page.getByRole('button', { name: 'Southvale' }).first().click()
   await page.getByRole('button', { name: 'Close map panels' }).click()
   await expect(panel).toBeVisible()
