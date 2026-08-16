@@ -22,11 +22,19 @@ type Location = Ref & {
   linkedMapLayerId?: string | null
   name: string
   description: string
+  imageId?: string | null
+  iconType?: string | null
   x?: number
   y?: number
 }
 type MapLayer = Ref & { parentMapId: string | null; imageId: string | null }
 type Character = Ref & { portraitImageId?: string | null; imageId?: unknown; description?: string }
+type Item = Ref & { imageId?: string | null; name?: string }
+type Relationship = Ref & {
+  characterAId: string
+  characterBId: string
+  label: string
+}
 type CharacterSnapshot = {
   id: string
   eventId: string
@@ -40,6 +48,8 @@ type ExampleWorld = {
   chapters: Chapter[]
   events: Event[]
   characters: Character[]
+  relationships: Relationship[]
+  items: Item[]
   characterSnapshots: CharacterSnapshot[]
   locationMarkers: Location[]
   mapLayers: MapLayer[]
@@ -210,6 +220,39 @@ describe('published examples meet the authoring quality rules', () => {
           for (const pattern of genericLocationText) {
             expect(description, `${location.name} has placeholder navigation text`).not.toMatch(pattern)
           }
+        }
+      })
+
+      it('defines a valid relationship network', () => {
+        const characterIds = new Set(world.characters.map(({ id }) => id))
+        expect(world.relationships.length, 'relationship network is empty').toBeGreaterThan(0)
+
+        for (const relationship of world.relationships) {
+          expect(characterIds.has(relationship.characterAId), `${relationship.id} first character`).toBe(true)
+          expect(characterIds.has(relationship.characterBId), `${relationship.id} second character`).toBe(true)
+          expect(relationship.characterAId, `${relationship.id} relates a character to itself`).not.toBe(
+            relationship.characterBId,
+          )
+          expect(relationship.label.trim().length, `${relationship.id} label`).toBeGreaterThan(0)
+        }
+      })
+
+      it('never uses a map image as character, item, or location illustration', () => {
+        const mapImageIds = new Set(
+          world.mapLayers.map((layer) => layer.imageId).filter((id): id is string => typeof id === 'string'),
+        )
+        const illustrations = [
+          ...world.characters.map((character) => character.portraitImageId),
+          // A literal treasure map is an item whose illustration is its map.
+          ...world.items.filter((item) => !/\bmap\b/i.test(item.name ?? '')).map((item) => item.imageId),
+          // A map-chart gateway is navigation content, not an illustration of a place.
+          ...world.locationMarkers
+            .filter((location) => !(location.iconType === 'map' && location.linkedMapLayerId))
+            .map((location) => location.imageId),
+        ]
+
+        for (const imageId of illustrations) {
+          expect(mapImageIds.has(imageId ?? ''), `${imageId} is a map reused as illustration`).toBe(false)
         }
       })
     })

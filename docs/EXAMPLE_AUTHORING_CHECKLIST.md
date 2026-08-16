@@ -18,13 +18,15 @@ Use this checklist whenever a book is added to or substantially revised in `exam
 - Give each present character an event-specific state and location. Describe what is true for that character at that moment—not a chapter summary or inherited context.
 - Never copy one status across the whole cast. Avoid placeholders such as “state carried through,” “ongoing context,” or “not yet directly involved.”
 - Check alive/dead state against the chronology; do not carry a later death backward into earlier events.
-- Verify portraits and item illustrations load, are visually consistent with the book’s tone, and are not unwanted photographic or cartoon styles.
+- Before assigning any portrait, item, or location illustration, inspect the image and record its subject and source in the generator/review notes. A URL returning an image is not a review. Do not use a merely similar image from another book or a generic period portrait as though it depicts a named fictional character.
+- Verify portraits and item illustrations load, are visually consistent with the book’s tone, and are not unwanted photographic or cartoon styles. Give named characters distinct, subject-appropriate art where the source material allows it.
 
 ## Locations and maps
 
 - Write each location description about the place itself. Keep it book-specific and spoiler-safe; never use text such as “a location relevant to the journey,” “portal to the submap,” or other app-navigation instructions.
 - Add every submap needed to make important movement understandable. Every submap must have a location on its parent map that opens it; floor groups may share one building entrance.
 - Give every map layer an image before shipping it. For linked images, use a stable direct HTTPS image URL and verify it still resolves.
+- Never assign a map image to a character, world cover, or ordinary location illustration. An item that is literally a map and a map-chart gateway are the only exceptions; record that intent explicitly. A location’s illustration should depict that place or a book-specific scene there; it is not a substitute for its navigable map.
 - Open every map and submap in the app. Confirm it finishes loading, is legible against the background, and is not an unsuitable illustration pretending to be a map.
 - Visually check every marker against the image. Leaflet’s simple coordinate system can invert assumptions about north and south; do not approve coordinates from numeric inspection alone.
 - Exercise playback across maps and floors. Confirm the active layer changes, the first arrival waits for the image, and the moving character is centered at a useful zoom.
@@ -56,6 +58,7 @@ The example-quality suite prevents these regressions:
 - missing map image IDs, invalid map references, or partially specified/non-numeric marker coordinates;
 - tension outside 1–5 and negative or missing elapsed time;
 - invalid timeline references;
+- map images reused as character, item, or location illustrations;
 - catalogue counts, world IDs, filenames, and UTF-8 byte sizes drifting from the shipped files.
 
 Visual accuracy, historical accuracy, spoiler judgment, image availability, and whether an event deserves additional beats still require the manual review above.
