@@ -273,7 +273,7 @@ it hides the moment control.
 
 ---
 
-### W-5 · med · The dashboard's alive/dead count is end-of-book at every moment
+### W-5 · med · ~~The dashboard's alive/dead count is end-of-book at every moment~~ — **fixed**
 
 **What I did.** *Dracula*. Walked the cursor to the very first scene, read the
 Characters tile; walked it to the very last scene, read it again.
@@ -308,7 +308,7 @@ number a writer would check after killing someone never moves.
 
 ---
 
-### W-6 · med · The app says "chapter" for records it keeps per scene
+### W-6 · med · ~~The app says "chapter" for records it keeps per scene~~ — **fixed**
 
 I spent a while believing state was stored per chapter, because that is what the
 app says. It is not — it is per scene, which is better. But four surfaces say
@@ -343,7 +343,7 @@ placing Ysolde at Ashcorn Harbour in Ch.1 scene 1 and Vellin House in Ch.1 scene
 
 ---
 
-### W-7 · med · 27 nameless buttons appear on the Timeline the moment you open a chapter
+### W-7 · med · ~~27 nameless buttons appear on the Timeline the moment you open a chapter~~ — **fixed**
 
 **What I did.** *The Salt Between Us*, Timeline, expanded all three chapters
 (9 scene rows), then swept `main` for controls with no `aria-label`, `title` or
@@ -375,7 +375,7 @@ the moment a chapter is expanded, and was false when it was written — the fix 
 
 ---
 
-### W-8 · low-med · The map panel title-cases the writer's own chapter titles
+### W-8 · low-med · ~~The map panel title-cases the writer's own chapter titles~~ — **fixed**
 
 My chapter is *"What the Water Kept"*. The panel header renders *"What The Water
 Kept"*. My *"Ashes of the Harbour Office"* renders *"Ashes Of The Harbour

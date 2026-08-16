@@ -29,7 +29,7 @@ const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map
  *    text in it and the stale read returns the right answer by luck.
  */
 
-const STATUS = 'What is this character doing this chapter?'
+const STATUS = 'What is this character doing in this scene?'
 
 async function worldWithACharacterOnAMap(page: Page) {
   await page.goto('/')

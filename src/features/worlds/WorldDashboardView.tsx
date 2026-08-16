@@ -18,13 +18,14 @@ import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTi
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { useTimelineRelationships } from '@/db/hooks/useTimelineRelationships'
 import { useItems } from '@/db/hooks/useItems'
-import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
+import { useWorldSnapshots, useBestSnapshots } from '@/db/hooks/useSnapshots'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useLorePages } from '@/db/hooks/useLore'
 import { useFactions } from '@/db/hooks/useFactions'
 import { Button } from '@/components/ui/button'
 import { PortraitImage } from '@/components/PortraitImage'
-import { useAppStore } from '@/store'
+import { useAppStore, useActiveEventId } from '@/store'
+import { castAliveSplit } from '@/lib/castAtCursor'
 import { cn } from '@/lib/utils'
 import { OnboardingWizard } from '@/features/onboarding'
 import { DashboardSuggestion } from './DashboardSuggestion'
@@ -149,9 +150,16 @@ export default function WorldDashboardView() {
   const gate = useReadingGate(worldId ?? null)
   const characters = gate.filter(allCharacters)
 
-  // Derived stats
-  const aliveCount = characters.filter((c) => c.isAlive).length
-  const deadCount  = characters.length - aliveCount
+  /*
+    WRUN-4: alive and dead as of the moment being viewed, not as of the last
+    page of the book. `character.isAlive` is the record's own end-of-book flag,
+    so this tile used to read the same figure at chapter one and chapter
+    twenty-seven — and never moved when a writer marked someone deceased, since
+    Current State writes the snapshot rather than the flag.
+  */
+  const activeEventId = useActiveEventId()
+  const bestSnapshots = useBestSnapshots(worldId ?? null, activeEventId)
+  const { alive: aliveCount, dead: deadCount } = castAliveSplit(characters, bestSnapshots)
   const totalEvents   = allEvents.length
   const totalChapters = chapters.length
   // Events that have at least one snapshot recorded

@@ -193,7 +193,7 @@ export default function KnowledgeView() {
           </Select>
           {activeEventId && (
             <span className="text-xs text-[hsl(var(--muted-foreground))]">
-              Counts reflect the active chapter cursor.
+              Counts reflect the moment the cursor is on.
             </span>
           )}
         </PageHeader>

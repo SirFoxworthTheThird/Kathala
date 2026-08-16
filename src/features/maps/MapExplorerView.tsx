@@ -43,7 +43,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const {
     layer, imageUrl, imageMissing, markers, allLayers, allMarkers, characters,
     activeEventId, orderedEvents,
-    activeChapter, activeChapterTitle,
+    activeChapter, activeMomentLabel,
     snapshots, prevSnapshots,
     chapterPlacements, chapters,
     mapRoutes, mapRegions, regionStatusMap, routeMarkerPositions,
@@ -1085,7 +1085,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               <LocationDetailPanel
                 markerId={selectedLocationMarkerId}
                 worldId={worldId}
-                activeChapterTitle={activeChapterTitle}
+                activeMomentLabel={activeMomentLabel}
                 onClose={() => setSelectedLocationMarkerId(null)}
                 onDrillDown={pushMapLayer}
               />
@@ -1102,7 +1102,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
                 regionId={selectedRegionId}
                 worldId={worldId}
                 activeEventId={activeEventId}
-                activeChapterTitle={activeChapterTitle}
+                activeMomentLabel={activeMomentLabel}
                 onClose={() => setSelectedRegionId(null)}
                 onDrillDown={pushMapLayer}
               />
@@ -1120,7 +1120,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
                   allMarkers={allMarkers}
                   allLayers={allLayers}
                   allCharacters={characters}
-                  activeChapterTitle={activeChapterTitle}
+                  activeMomentLabel={activeMomentLabel}
                   worldId={worldId}
                   onClose={() => setSelectedCharacterId(null)}
                   journeyShown={!journeyHidden}

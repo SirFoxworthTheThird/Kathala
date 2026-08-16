@@ -174,7 +174,7 @@ export function RegionDetailPanel({
   regionId,
   worldId,
   activeEventId,
-  activeChapterTitle,
+  activeMomentLabel,
   onClose,
   onDrillDown,
 }: {
@@ -182,7 +182,7 @@ export function RegionDetailPanel({
   worldId: string
   /** The moment the per-event status and notes below are about. */
   activeEventId: string | null
-  activeChapterTitle: string | null
+  activeMomentLabel: string | null
   onClose: () => void
   onDrillDown?: (layerId: string) => void
 }) {
@@ -250,7 +250,7 @@ export function RegionDetailPanel({
         icon={Hexagon}
         name={region.name || 'Untitled region'}
         kind="Region"
-        moment={activeChapterTitle}
+        moment={activeMomentLabel}
         closeLabel="Close region panel"
         onClose={onClose}
       />

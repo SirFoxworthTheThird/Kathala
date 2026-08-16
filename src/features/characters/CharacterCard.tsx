@@ -66,9 +66,9 @@ export function CharacterCard({ character }: CharacterCardProps) {
             {isInherited && <InheritedBadge className="mt-0.5 self-start" />}
           </div>
         ) : activeEventId ? (
-          <p className="mt-0.5 text-xs text-[hsl(var(--muted-foreground))]">No state recorded for this chapter</p>
+          <p className="mt-0.5 text-xs text-[hsl(var(--muted-foreground))]">No state recorded at this moment</p>
         ) : (
-          <p className="mt-0.5 text-xs italic text-[hsl(var(--muted-foreground)/0.7)]">Pick a chapter to see where they are</p>
+          <p className="mt-0.5 text-xs italic text-[hsl(var(--muted-foreground)/0.7)]">Pick a moment to see where they are</p>
         )}
       </div>
     </Link>

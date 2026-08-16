@@ -58,7 +58,7 @@ interface CharacterSnapshotPanelProps {
   allMarkers: LocationMarker[]
   allLayers: MapLayer[]
   allCharacters: Character[]
-  activeChapterTitle: string | null
+  activeMomentLabel: string | null
   worldId: string
   onClose: () => void
   /** Whether the journey strip along the bottom of the map is showing (PAN-2). */
@@ -72,7 +72,7 @@ export function CharacterSnapshotPanel({
   allMarkers,
   allLayers,
   allCharacters,
-  activeChapterTitle,
+  activeMomentLabel,
   worldId,
   onClose,
   journeyShown,
@@ -168,7 +168,7 @@ export function CharacterSnapshotPanel({
   }
 
   async function handleAddInventory(itemId: string) {
-    // Remove from any other character's snapshot in this chapter first
+    // Remove from any other character's snapshot at this moment first
     const others = chapterSnapshots.filter(
       (s) => s.characterId !== character.id && s.inventoryItemIds.includes(itemId)
     )
@@ -193,7 +193,7 @@ export function CharacterSnapshotPanel({
         icon={User}
         name={character.name}
         kind="Character"
-        moment={activeChapterTitle}
+        moment={activeMomentLabel}
         closeLabel="Close character panel"
         onClose={onClose}
       />
@@ -264,7 +264,7 @@ export function CharacterSnapshotPanel({
                 <Textarea
                   className="resize-none text-xs"
                   rows={3}
-                  placeholder="What is this character doing this chapter?"
+                  placeholder="What is this character doing in this scene?"
                   value={statusNotes}
                   onChange={(e) => setStatusNotes(e.target.value)}
                   onBlur={() => saveField({ statusNotes })}

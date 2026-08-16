@@ -93,7 +93,17 @@ export function useMapViewState(worldId: string, layerId: string) {
   // ── Derived event context ──────────────────────────────────────────────────
   const activeEvent        = activeEventId ? allWorldEvents.find((e) => e.id === activeEventId) ?? null : null
   const activeChapter      = activeEvent ? chapters.find((c) => c.id === activeEvent.chapterId) ?? null : null
-  const activeChapterTitle = activeChapter ? `Ch.${activeChapter.number} — ${activeChapter.title}` : null
+  /*
+    WRUN-5: the moment a panel is showing, named by its *scene*.
+
+    This used to be the chapter — `Ch.3 — Ashes of the Harbour Office` — which
+    made the header of two different records byte-identical, because every
+    snapshot on this screen is per scene and a chapter holds several. It reads
+    the way the time cursor does now, so the panel and the bar agree.
+  */
+  const activeMomentLabel = activeEvent && activeChapter
+    ? `Ch.${activeChapter.number} · ${activeEvent.title || 'Untitled scene'}`
+    : null
   const activeEventIdx     = activeEventId ? orderedEvents.findIndex((e) => e.id === activeEventId) : -1
   const prevEventId        = activeEventIdx > 0 ? orderedEvents[activeEventIdx - 1].id : null
 
@@ -270,7 +280,7 @@ export function useMapViewState(worldId: string, layerId: string) {
     characters, blobUrls,
     // Event/chapter context
     activeEventId, orderedEvents, activeTimelineEventIds,
-    activeEvent, activeChapter, activeChapterTitle,
+    activeEvent, activeChapter, activeMomentLabel,
     prevEventId,
     // Snapshots
     snapshots, prevSnapshots, prevChapterSnapshots,

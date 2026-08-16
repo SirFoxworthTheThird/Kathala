@@ -127,12 +127,12 @@ interface LocationDetailPanelProps {
   markerId: string
   worldId: string
   /** The moment the panel is showing, for the header (PAN-1). */
-  activeChapterTitle: string | null
+  activeMomentLabel: string | null
   onClose: () => void
   onDrillDown: (mapLayerId: string) => void
 }
 
-export function LocationDetailPanel({ markerId, worldId, activeChapterTitle, onClose, onDrillDown }: LocationDetailPanelProps) {
+export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onClose, onDrillDown }: LocationDetailPanelProps) {
   const marker = useLocationMarker(markerId)
   const allLayers = useMapLayers(worldId)
   const characters = useCharacters(worldId)
@@ -255,7 +255,7 @@ export function LocationDetailPanel({ markerId, worldId, activeChapterTitle, onC
         icon={MapPin}
         name={marker.name}
         kind={marker.iconType || 'Location'}
-        moment={activeChapterTitle}
+        moment={activeMomentLabel}
         closeLabel="Close location panel"
         onClose={onClose}
       />

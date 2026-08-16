@@ -396,7 +396,9 @@ copied — book two is a fresh narrative that begins where the last one left off
 
 Opening a world lands you on its dashboard — a bird's-eye view of the whole
 project. Stat tiles summarise the timeline, cast, maps, relationships, items,
-snapshot coverage, and continuity status. Below them are recent events, scene
+snapshot coverage, and continuity status. The cast tile's **alive and dead
+split is as of the moment you are on**, like everything else in PlotWeave — move
+the cursor back before a death and the count moves with you. Below them are recent events, scene
 status, writing progress, and analytics panels (Cast Balance, Plot Threads, and
 Motifs & Themes, covered later). Worlds with linked timelines also show a
 **Timeline Links** summary.

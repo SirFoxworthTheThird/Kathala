@@ -34,7 +34,12 @@ export function PanelHeader({
   name: string
   /** What kind of thing it is, e.g. "Location", "City", "Character". */
   kind: string
-  /** The moment this panel is showing, when its content is per-chapter. */
+  /**
+   * The moment this panel is showing — a scene, since every record these panels
+   * edit is per scene. PAN-1 wrote this contract as "per-chapter", and callers
+   * duly passed the chapter, so two scenes of one chapter gave byte-identical
+   * headers for two different records (WRUN-5).
+   */
   moment?: string | null
   closeLabel: string
   onClose: () => void
@@ -46,8 +51,16 @@ export function PanelHeader({
         <p className="truncate text-sm font-semibold text-[hsl(var(--foreground))]" title={name}>
           {name}
         </p>
-        <p className="truncate text-[10px] capitalize text-[hsl(var(--muted-foreground))]">
-          {moment ? `${kind} · ${moment}` : kind}
+        {/*
+          WRUN-7: `capitalize` belongs to the kind, not to the whole line. It
+          used to sit on the paragraph, so it title-cased the writer's own
+          words on the way past — a chapter called *What the Water Kept*
+          rendered as *What The Water Kept*. The kind is the only part this
+          component authors, and the only part it may restyle.
+        */}
+        <p className="truncate text-[10px] text-[hsl(var(--muted-foreground))]">
+          <span className="capitalize">{kind}</span>
+          {moment ? ` · ${moment}` : ''}
         </p>
       </div>
       <Button
