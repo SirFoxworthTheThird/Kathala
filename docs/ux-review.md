@@ -1046,6 +1046,67 @@ finding in itself. Three were fixed in the interim; one was never true.
 
 ---
 
+## 27. The three areas nobody had opened
+
+The region panel, the route panel and the Writer's Brief with a cursor set were
+the last entries under *Parts of screens*. Two of them were blocked until
+**SB-4** made the rows reachable; the third was never blocked, only never done.
+
+### The Writer's Brief, populated
+
+The empty state was all **WB-1** and **WB-2** ever saw. With a cursor on it, the
+panel is one of the better things in the app: the chapter and its synopsis, the
+active event with its in-world date and description, the POV character, every
+scene in the chapter, and then each character present with where they are, what
+their state note says, and which faction they belong to — followed by the
+factions in the scene with their members. It answers *"who is here, where are
+they, what is going on"* without leaving the screen, which is what it is for.
+
+| ID | Severity | Status | Finding |
+|---|---|---|---|
+| WB-3 | low | **open** | **The faction is stated four times in a three-person scene.** Measured on the shipped *Philosopher's Stone* at Ch.1 · *A Peculiar Day for Vernon*: each of the three characters carries *The Dursley Household* under their own entry, and then **Factions in scene 1** repeats it with all three names listed again. When a scene's cast is one household, the section adds nothing it has not already said three times. It earns its place the moment two factions are present, or when a faction has members off-stage — so the fix is a condition, not a deletion. |
+
+### The region panel
+
+| ID | Severity | Status | Finding |
+|---|---|---|---|
+| RG-1 | high | **open** | **The one part of a region that changes with the story is the one part the panel cannot edit.** A region carries a per-event `MapRegionSnapshot` — *active, occupied, contested, abandoned, destroyed, unknown* — which the Continuity Checker reads (*"a character who travels through a destroyed or abandoned region"*) and which the **sidebar row** both displays and edits through its own dropdown. `RouteRegionDetailPanel` never mentions it: the panel offers name, fill colour, opacity, notes, owning faction, sub-map and a vertex count, and no status. So the panel a writer opens to work on a region is the one place the region's story-state cannot be set, and it carries no moment in its header either — where **PAN-1**'s contract says the moment belongs precisely when the content is per-chapter. |
+
+### The route panel
+
+Clean, and the smallest of the four: header naming the road and its kind, name,
+a row of type pills, notes, a waypoint summary, and the shared danger footer. No
+finding about what it shows.
+
+| ID | Severity | Status | Finding |
+|---|---|---|---|
+| RT-2 | low | **fixed** | **The guide said this panel edits geometry. It does not.** `docs/GUIDE.md` reads *"Open a route to edit its name, type, notes, and geometry."* The first three are true; the waypoints are a read-only summary — *"3 total — 0 named locations, 3 free points"* — with no control beside them. This is the repo's own *"do not describe behaviour that is not there"* rule broken in the guide rather than in a comment. Either the panel gains waypoint editing or the sentence stops promising it; the sentence is the smaller fix and the honest one until the panel earns it, so **the guide now says what the panel does** and points at the canvas for the shape. |
+
+### Checked and cleared
+
+**The region panel is not clipped by its delete bar**, though the screenshot
+looks exactly like **LP-2**: *Shape* sits at the fold with its vertex count
+below it. Measured instead of eyeballed — body bottom **599px**, footer top
+**599px**, overlap **0**, and the body scrolls with 41px beneath the fold. The
+`shrink-0` footer from **PAN-1** is doing its job; the content is below the fold,
+which is not the same thing as unreachable.
+
+### Found on the way
+
+| ID | Severity | Status | Finding |
+|---|---|---|---|
+| EX-2 | low | **open** | **Regions are a feature nineteen of the twenty examples never show.** Counted across `public/library/*.pwk`: only *The Fellowship of the Ring* and *The Two Towers* carry any regions (4 each), and four worlds — *Philosopher's Stone*, *The Name of the Wind*, *The War of the Worlds*, *The Wise Man's Fear* — have neither regions nor routes. Someone opening the most obvious example to see what regions are for finds none. Not a defect in the app, and territory suits some books better than others, but the feature's only demonstration is in the two Tolkien worlds. |
+
+**One thing this pass could not settle.** Driving the review through a
+downloaded *Fellowship* — the natural way to see regions on a real map — the
+Maps screen rendered an empty `main` even after its 69 image blobs had arrived
+and with 4 regions and 7 routes in the store. The panels were reviewed against a
+map built in the test instead. Whether that is a defect in how a library world's
+map layers resolve their images, or something about this environment, is not
+established, and it is recorded here rather than filed as a finding.
+
+---
+
 ## Still not reviewed
 
 Kept honest: this list only shrinks when a screen has actually been driven and
@@ -1071,13 +1132,13 @@ remains is narrower:
 
 ### Parts of screens
 
-- **The route detail panel** — blocked by **RT-1**, now understood.
 - **Scene history with many versions** — only a two-version history has been
   seen, so nothing is known about how the list behaves at twenty.
 - **The Relationship States panel** in chapter detail — the Character States and
   Writer's Notes panels beside it are reviewed; this one has not been seen.
-- **The Writer's Brief with a cursor set** — only its empty state is known, and
-  **WB-1**/**WB-2** describe that state alone.
+
+*(The route panel, the region panel and the populated Writer's Brief left this
+list in section 27.)*
 
 ---
 

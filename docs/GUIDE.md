@@ -1112,7 +1112,9 @@ the spot you were aiming at.
   clicks, so the whole canvas underneath them stays reachable. Press
   **Escape** to back out of any of these modes.
 - Routes can be roads, rivers, trails, sea routes, borders, or custom paths. Open
-  a route to edit its name, type, notes, and geometry.
+  a route to edit its name, type and notes; its panel also counts the waypoints,
+  separating named locations from free points. The shape itself is drawn on the
+  canvas rather than edited in the panel.
 - Regions have a fill colour, opacity, notes, and an event-based condition. They
   can belong to a faction and can link directly to a sub-map. A region writes its
   name across the middle of the area it covers, so a **location pin of the same
