@@ -6,6 +6,7 @@ import type { MapLayer } from '@/types'
 import { generateId } from '@/lib/id'
 import { descendantLayerIds } from '@/lib/mapTree'
 import { groupRepresentativeId } from '@/lib/mapLevels'
+import { mapLayerRevealer } from '@/lib/spoilers'
 
 const MAP_DELETE_TABLES = [
   db.mapLayers, db.locationMarkers, db.locationSnapshots, db.characterSnapshots,
@@ -66,20 +67,10 @@ export async function deleteMapLayersCascade(layerIds: string[]): Promise<void> 
 }
 
 /**
- * Whether a map is one the reader has been to.
- *
- * Location markers are gated, but the maps holding them were not — so a world
- * with a map per setting listed every place in the book by name before the
- * reader arrived, which is the gating defeated by its own sidebar. The rule
- * here makes the map list agree with the locations list:
- *
- * 1. A sub-map is reached through the marker that links to it, so it waits for
- *    that marker. A map called "Diagon Alley" is exactly as much of a spoiler
- *    as the marker of the same name, and must keep step with it.
- * 2. Otherwise a map is shown once any marker on it is revealed.
- * 3. A map with neither — nothing on it and nothing pointing at it — has no
- *    reveal point to wait for, and stays. That is the same choice made for an
- *    entity that never appears anywhere.
+ * Whether a map is one the reader has been to — the gate's own rule, applied to
+ * this world's markers. `mapLayerRevealer` in `lib/spoilers` holds the rule and
+ * the reasoning; this only feeds it the markers and hands back `() => true`
+ * when there is no gate in force.
  */
 function useLayerRevealed(worldId: string | null): (layerId: string) => boolean {
   const gate = useGate()
@@ -90,23 +81,7 @@ function useLayerRevealed(worldId: string | null): (layerId: string) => boolean 
   )
   return useMemo(() => {
     if (!gate.active) return () => true
-    const linked = new Set<string>()
-    const linkedRevealed = new Set<string>()
-    const populated = new Set<string>()
-    const populatedRevealed = new Set<string>()
-    for (const m of markers) {
-      const shown = gate.isRevealed(m.id)
-      populated.add(m.mapLayerId)
-      if (shown) populatedRevealed.add(m.mapLayerId)
-      if (m.linkedMapLayerId) {
-        linked.add(m.linkedMapLayerId)
-        if (shown) linkedRevealed.add(m.linkedMapLayerId)
-      }
-    }
-    return (id: string) => {
-      if (linked.has(id)) return linkedRevealed.has(id)
-      return !populated.has(id) || populatedRevealed.has(id)
-    }
+    return mapLayerRevealer(markers, gate.isRevealed)
   }, [gate, markers])
 }
 

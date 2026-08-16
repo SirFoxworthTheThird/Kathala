@@ -1153,7 +1153,10 @@ the spot you were aiming at.
   from the sidebar, from search, or by clicking its pin. Moving the time cursor
   along the chapter bar only *pans* the map to wherever that scene happens, so
   reading through a chapter never buries the map under a panel you didn't ask
-  for.
+  for. If the scene happens somewhere on a **sub-map** — inside a building or a
+  town you drill into — the map goes there rather than sliding the outer map to
+  a spot that isn't on it, and reading mode reveals that sub-map when you reach
+  the scene set on it, the same way it reveals the place itself.
 - The picture sits at the top of the panel, and is a different thing from the
   other two visuals a location has: the pin's icon says *what kind* of place it
   is, a linked sub-map is a map *of* it you drill into, and the picture is what

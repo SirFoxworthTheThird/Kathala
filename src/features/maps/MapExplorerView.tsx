@@ -269,6 +269,22 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       setSelectedCharacterId(null)
       setSelectedLocationMarkerId(marker.id)
     }
+    /*
+      A place on another map means going there, not panning to its coordinates.
+      This used to `panTo` unconditionally, so a scene set inside a sub-map slid
+      the *current* map to a point that means nothing on it — the pin never came
+      into view, because it is not on this image at all. `focusOnCharacter`
+      below already crosses layers; this is the same move for a location.
+
+      No reading-gate check here, and none is reachable: every caller finds its
+      marker in `allMarkers`, which the gate filters, so a marker the reader has
+      not met never arrives. A revealed marker's own map is revealed with it.
+    */
+    if (marker.mapLayerId !== layerId) {
+      crossLayerPanTargetRef.current = [marker.y, marker.x]
+      pushMapLayer(marker.mapLayerId)
+      return
+    }
     mapRef.current?.panTo([marker.y, marker.x])
   }
 

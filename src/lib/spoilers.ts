@@ -178,3 +178,59 @@ export function hiddenCount<T extends { id: string }>(
   if (cursor === null) return 0
   return records.length - revealed(records, firstSeen, cursor).length
 }
+
+/** Just enough of a location marker to decide which maps it reveals. */
+export interface RevealingMarker {
+  id: string
+  mapLayerId: string
+  linkedMapLayerId?: string | null
+}
+
+/**
+ * Which maps the reader has been to, given which markers they have met.
+ *
+ * Markers are gated but the maps holding them were not, so a world with a map
+ * per setting listed every place in the book by name before the reader arrived
+ * — the gating defeated by its own sidebar. A map is shown when either reveal
+ * point has been reached:
+ *
+ * - a marker **on** it is revealed — the reader is looking at somewhere on this
+ *   map, so the map itself is no longer news;
+ * - or the marker **linking** to it is revealed — a sub-map called "Diagon
+ *   Alley" is exactly as much of a spoiler as the marker of the same name, and
+ *   keeps step with it.
+ *
+ * Either will do. Waiting for the link alone hid the one place the reader was
+ * actually in: a scene names where it happens and that marker is revealed with
+ * the scene, but if it sits on a sub-map, the sub-map waited on a *different*
+ * marker pointing at it — so a chapter set inside the Prancing Pony left the
+ * map of Bree missing, with the scene's own location on it.
+ *
+ * A map with neither — nothing on it, nothing pointing at it — has no reveal
+ * point to wait for and stays, the same choice made for an entity that never
+ * appears anywhere.
+ */
+export function mapLayerRevealer(
+  markers: readonly RevealingMarker[],
+  markerRevealed: (markerId: string) => boolean,
+): (layerId: string) => boolean {
+  const linked = new Set<string>()
+  const populated = new Set<string>()
+  // Kept apart rather than merged, because they are the two reveal points and
+  // the bug was reading only one of them.
+  const standingOn = new Set<string>()
+  const linkedFrom = new Set<string>()
+  for (const m of markers) {
+    populated.add(m.mapLayerId)
+    if (m.linkedMapLayerId) linked.add(m.linkedMapLayerId)
+    if (!markerRevealed(m.id)) continue
+    standingOn.add(m.mapLayerId)
+    if (m.linkedMapLayerId) linkedFrom.add(m.linkedMapLayerId)
+  }
+  return (id) => {
+    if (linkedFrom.has(id) || standingOn.has(id)) return true
+    // Nothing revealed points here yet: it waits only if there was something to
+    // wait for in the first place.
+    return !linked.has(id) && !populated.has(id)
+  }
+}
