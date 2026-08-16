@@ -186,6 +186,11 @@ export interface RevealingMarker {
   linkedMapLayerId?: string | null
 }
 
+export interface RevealingMapLayer {
+  id: string
+  parentMapId?: string | null
+}
+
 /**
  * Which maps the reader has been to, given which markers they have met.
  *
@@ -213,6 +218,7 @@ export interface RevealingMarker {
 export function mapLayerRevealer(
   markers: readonly RevealingMarker[],
   markerRevealed: (markerId: string) => boolean,
+  layers: readonly RevealingMapLayer[] = [],
 ): (layerId: string) => boolean {
   const linked = new Set<string>()
   const populated = new Set<string>()
@@ -227,8 +233,19 @@ export function mapLayerRevealer(
     standingOn.add(m.mapLayerId)
     if (m.linkedMapLayerId) linkedFrom.add(m.linkedMapLayerId)
   }
+  const parentById = new Map(layers.map((layer) => [layer.id, layer.parentMapId ?? null]))
+  const reached = new Set([...standingOn, ...linkedFrom])
+  // Reveal the complete navigation path to each reached layer. Guarding with
+  // `reached` also makes malformed cyclic map data harmless.
+  for (const layerId of [...reached]) {
+    let parentId = parentById.get(layerId) ?? null
+    while (parentId && !reached.has(parentId)) {
+      reached.add(parentId)
+      parentId = parentById.get(parentId) ?? null
+    }
+  }
   return (id) => {
-    if (linkedFrom.has(id) || standingOn.has(id)) return true
+    if (reached.has(id)) return true
     // Nothing revealed points here yet: it waits only if there was something to
     // wait for in the first place.
     return !linked.has(id) && !populated.has(id)

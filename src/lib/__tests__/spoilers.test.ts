@@ -171,8 +171,14 @@ describe('mapLayerRevealer', () => {
     { id: 'mk-bree', mapLayerId: 'root', linkedMapLayerId: 'sub' },
     { id: 'mk-weathertop', mapLayerId: 'root', linkedMapLayerId: null },
     { id: 'mk-pony', mapLayerId: 'sub', linkedMapLayerId: null },
+    { id: 'mk-room', mapLayerId: 'deep', linkedMapLayerId: null },
   ]
-  const withRevealed = (...ids: string[]) => mapLayerRevealer(markers, (id) => ids.includes(id))
+  const layers = [
+    { id: 'root', parentMapId: null },
+    { id: 'sub', parentMapId: 'root' },
+    { id: 'deep', parentMapId: 'sub' },
+  ]
+  const withRevealed = (...ids: string[]) => mapLayerRevealer(markers, (id) => ids.includes(id), layers)
 
   it('hides a sub-map the reader has no way to have met', () => {
     const shown = withRevealed('mk-weathertop')
@@ -190,10 +196,18 @@ describe('mapLayerRevealer', () => {
     // scene's own location was missing from a reader's sidebar.
     const shown = withRevealed('mk-pony')
     expect(shown('sub')).toBe(true)
+    expect(shown('root')).toBe(true)
     // Paired with the absence that makes it meaningful: revealing a marker on
     // the sub-map says nothing about maps nobody has reached.
-    expect(shown('deeper')).toBe(true) // nothing on it, nothing points at it
+    expect(shown('empty-layer')).toBe(true) // nothing on it, nothing points at it
     expect(withRevealed()('sub')).toBe(false)
+  })
+
+  it('shows every ancestor needed to navigate to a revealed nested map', () => {
+    const shown = withRevealed('mk-room')
+    expect(shown('deep')).toBe(true)
+    expect(shown('sub')).toBe(true)
+    expect(shown('root')).toBe(true)
   })
 
   it('keeps a map with nothing on it and nothing pointing at it', () => {
