@@ -191,6 +191,8 @@ test.describe('A scene inside a sub-map opens that sub-map', () => {
     await readAt(page, worldId, CURSOR.insideTheInn)
 
     await expect.poll(() => layerNames(page)).toContain('Bree')
+    // The revealed sub-map must also have a visible way in from its parent.
+    await expect(page.locator('.leaflet-marker-icon').filter({ hasText: 'Bree' })).toHaveCount(1)
 
     await focusMarker(page, 'mk-pony')
     await expect.poll(() => openMap(page)).toBe('Bree')
@@ -202,6 +204,7 @@ test.describe('A scene inside a sub-map opens that sub-map', () => {
 
     // The gate is still a gate. Nothing so far names Bree or anywhere on it.
     await expect.poll(() => layerNames(page)).toEqual(['Eriador'])
+    await expect(page.locator('.leaflet-marker-icon').filter({ hasText: 'Bree' })).toHaveCount(0)
 
     // And a focus request for a place on the hidden map is refused rather than
     // quietly drilling past the gate — the map is reached, not the coordinates.

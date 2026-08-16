@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  firstAppearances, firstEventId, hiddenCount, isRevealed, mapLayerRevealer, readingProgress,
+  firstAppearances, firstEventId, hiddenCount, isRevealed, mapGatewayFirstAppearances, mapLayerRevealer, readingProgress,
   revealed, sortKeysByEvent,
 } from '@/lib/spoilers'
 
@@ -162,6 +162,36 @@ describe('readingProgress', () => {
 })
 
 // ── mapLayerRevealer ──────────────────────────────────────────────────────────
+
+describe('mapGatewayFirstAppearances', () => {
+  const markers = [
+    { id: 'mk-city', mapLayerId: 'root', linkedMapLayerId: 'city' },
+    { id: 'mk-castle', mapLayerId: 'city', linkedMapLayerId: 'castle' },
+    { id: 'mk-room', mapLayerId: 'castle', linkedMapLayerId: null },
+    { id: 'mk-unreached', mapLayerId: 'root', linkedMapLayerId: 'elsewhere' },
+  ]
+
+  it('reveals the gateway when a location inside its sub-map first appears', () => {
+    const first = mapGatewayFirstAppearances(new Map([['mk-room', 3]]), markers)
+    expect(first.get('mk-castle')).toBe(3)
+  })
+
+  it('propagates the same reveal point through every ancestor gateway', () => {
+    const first = mapGatewayFirstAppearances(new Map([['mk-room', 3]]), markers)
+    expect(first.get('mk-city')).toBe(3)
+    expect(first.get('mk-castle')).toBe(3)
+  })
+
+  it('does not reveal gateways to maps the reader has not reached', () => {
+    const first = mapGatewayFirstAppearances(new Map([['mk-room', 3]]), markers)
+    expect(first.has('mk-unreached')).toBe(false)
+  })
+
+  it('keeps an earlier direct appearance of a gateway', () => {
+    const first = mapGatewayFirstAppearances(new Map([['mk-city', 1], ['mk-room', 3]]), markers)
+    expect(first.get('mk-city')).toBe(1)
+  })
+})
 
 describe('mapLayerRevealer', () => {
   // Eriador holds Bree, which links down to the Bree street map; the Prancing

@@ -192,6 +192,53 @@ export interface RevealingMapLayer {
 }
 
 /**
+ * Give each sub-map gateway the first appearance of the map it opens.
+ *
+ * Events normally name the precise location inside a sub-map, not the generic
+ * marker on its parent map. Without this propagation the child map is revealed
+ * but the marker used to navigate to it remains hidden. Repeating until stable
+ * carries the same reveal point through arbitrarily deep map hierarchies.
+ */
+export function mapGatewayFirstAppearances(
+  firstSeen: ReadonlyMap<string, SortKey>,
+  markers: readonly RevealingMarker[],
+): Map<string, SortKey> {
+  const out = new Map(firstSeen)
+  const firstReachedByLayer = new Map<string, SortKey>()
+
+  const recordLayer = (layerId: string, key: SortKey): boolean => {
+    const current = firstReachedByLayer.get(layerId)
+    if (current !== undefined && current <= key) return false
+    firstReachedByLayer.set(layerId, key)
+    return true
+  }
+
+  for (const marker of markers) {
+    const key = out.get(marker.id)
+    if (key !== undefined) recordLayer(marker.mapLayerId, key)
+  }
+
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const gateway of markers) {
+      if (!gateway.linkedMapLayerId) continue
+      const key = firstReachedByLayer.get(gateway.linkedMapLayerId)
+      if (key === undefined) continue
+
+      const current = out.get(gateway.id)
+      if (current === undefined || key < current) {
+        out.set(gateway.id, key)
+        changed = true
+      }
+      if (recordLayer(gateway.mapLayerId, key)) changed = true
+    }
+  }
+
+  return out
+}
+
+/**
  * Which maps the reader has been to, given which markers they have met.
  *
  * Markers are gated but the maps holding them were not, so a world with a map
