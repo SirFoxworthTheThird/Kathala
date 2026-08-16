@@ -200,12 +200,26 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
     }
     for (const arr of snapsByCharSorted.values()) arr.sort((a, b) => a.order - b.order)
 
+    /**
+     * Was this character already dead when the scene at `order` began?
+     *
+     * Strictly earlier, and that is the whole rule: both callers ask "is a dead
+     * character in this scene's cast", and the snapshot *at* the scene is the
+     * writer recording what happens in it. Including it made the record that
+     * says "she dies here" mean "she was dead walking in", so every death scene
+     * reported itself as a continuity error — with nothing the writer could do
+     * about it, since the offered remedy is to mark the scene a flashback.
+     *
+     * Measured over the 21 shipped library worlds: 69 of the 96 dead-in-scene
+     * warnings were the death scene itself, including *Count Dracula in
+     * "Dracula Destroyed"*.
+     */
     function isDeadAtOrder(charId: string, order: number): boolean {
       const hist = snapsByCharSorted.get(charId)
       if (!hist) return false
       let lastAlive: boolean | null = null
       for (const entry of hist) {
-        if (entry.order > order) break
+        if (entry.order >= order) break
         lastAlive = entry.isAlive
       }
       return lastAlive === false

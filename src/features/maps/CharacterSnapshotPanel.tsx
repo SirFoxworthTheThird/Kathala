@@ -14,6 +14,7 @@ import { useTravelModes } from '@/db/hooks/useTravelModes'
 import { useBestSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { useCharacterMovement, updateMovement } from '@/db/hooks/useMovements'
 import { useActiveEventId } from '@/store'
+import { snapshotFieldSyncKey } from '@/lib/snapshotFields'
 import type { Character, CharacterSnapshot, LocationMarker, MapLayer, Relationship } from '@/types'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -91,11 +92,30 @@ export function CharacterSnapshotPanel({
   const [inventoryNotes, setInventoryNotes] = useState(snapshot?.inventoryNotes ?? '')
   const [movementNotes, setMovementNotes] = useState(movement?.notes ?? '')
 
-  // Re-sync text fields when the character or chapter changes (not on every save)
+  /*
+    W-1: re-sync the text fields when the record being shown changes — and not
+    on every save, which is what the `id` in the key buys.
+
+    Keying on `[character.id, activeEventId]` alone was wrong in a way that put
+    prose in the store nobody typed. `snapshot` arrives from a `useLiveQuery`
+    keyed on the same event id, and that resolves a tick *after* the id changes,
+    so stepping the cursor ran this effect while the outgoing record was still
+    in hand: the field showed the previous scene's note, and because the
+    textarea saves on blur, the next blur wrote that note into the new scene.
+    It sat exactly one edit behind, every time, and arriving at the same scene
+    by a fresh page load showed something different.
+
+    Including the resolved record's own id makes the effect run again when the
+    query catches up, so the field ends on the record it is actually showing.
+    Saving an existing record keeps its id, so typing is still never clobbered
+    mid-edit; the one re-run it does add is the first save at a scene, which
+    re-syncs to the text just written.
+  */
+  const syncKey = snapshotFieldSyncKey(character.id, activeEventId, snapshot)
   useEffect(() => {
     setStatusNotes(snapshot?.statusNotes ?? '')
     setInventoryNotes(snapshot?.inventoryNotes ?? '')
-  }, [character.id, activeEventId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [syncKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setMovementNotes(movement?.notes ?? '')

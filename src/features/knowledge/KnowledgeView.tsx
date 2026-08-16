@@ -22,6 +22,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { GenerateKnowledgeDialog } from './GenerateKnowledgeDialog'
 import type { KnowledgeFact } from '@/types'
 import { orderFacts, FACT_ORDERS, FACT_ORDER_LABELS, type FactOrder } from '@/lib/factOrder'
+import { eventsInReadingOrder } from '@/lib/readingOrder'
 
 export default function KnowledgeView() {
   const { worldId } = useParams<{ worldId: string }>()
@@ -57,15 +58,23 @@ export default function KnowledgeView() {
   const [aiOpen, setAiOpen] = useState(false)
   const [factOrder, setFactOrder] = useState<FactOrder>('added')
 
+  /*
+    Every event in the world, in the order they are read.
+
+    `useWorldEvents` returns them in Dexie's order, which is by primary key —
+    no relation to the story. This was already sorted here for "known as of the
+    cursor" to be decidable, and then the *unsorted* array was handed to the
+    three "when did they learn it" pickers, so the writer chose a moment from a
+    shuffled list: on the shipped *Dracula*, 84 options with chapters 1 to 3
+    sitting at positions 12, 23, 34, 45, 56, 67, 78 and 84.
+  */
+  const orderedEvents = useMemo(() => eventsInReadingOrder(events, chapters), [events, chapters])
+
   // Narrative position of each event, so "known as of the cursor" is decidable.
-  const eventPos = useMemo(() => {
-    const chapterNumber = new Map(chapters.map((c) => [c.id, c.number]))
-    const ordered = [...events].sort((a, b) => {
-      const byChapter = (chapterNumber.get(a.chapterId) ?? 0) - (chapterNumber.get(b.chapterId) ?? 0)
-      return byChapter !== 0 ? byChapter : a.sortOrder - b.sortOrder
-    })
-    return new Map(ordered.map((e, i) => [e.id, i]))
-  }, [events, chapters])
+  const eventPos = useMemo(
+    () => new Map(orderedEvents.map((e, i) => [e.id, i])),
+    [orderedEvents],
+  )
   const cursorPos = activeEventId ? eventPos.get(activeEventId) ?? null : null
 
   const eventLabel = useMemo(() => {
@@ -291,7 +300,7 @@ export default function KnowledgeView() {
                   <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__auto__">Auto — when a POV character knows it</SelectItem>
-                    {events.map((e) => (
+                    {orderedEvents.map((e) => (
                       <SelectItem key={e.id} value={e.id}>{eventLabel.get(e.id) ?? e.title}</SelectItem>
                     ))}
                   </SelectContent>
@@ -314,7 +323,7 @@ export default function KnowledgeView() {
                   <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__origin_none__">True from the start</SelectItem>
-                    {events.map((e) => (
+                    {orderedEvents.map((e) => (
                       <SelectItem key={e.id} value={e.id}>{eventLabel.get(e.id) ?? e.title}</SelectItem>
                     ))}
                   </SelectContent>
@@ -365,7 +374,7 @@ export default function KnowledgeView() {
               {!gate.active && unrevealedChars.length > 0 && events.length > 0 && (
                 <AddRevealRow
                   chars={unrevealedChars}
-                  eventOptions={events}
+                  eventOptions={orderedEvents}
                   eventLabel={eventLabel}
                   onAdd={(characterId, eventId) =>
                     worldId && createKnowledgeReveal({ worldId, factId: selected.id, characterId, eventId, note: '' })

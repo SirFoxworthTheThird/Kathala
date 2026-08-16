@@ -1692,7 +1692,8 @@ count. Typical catches:
 
 - A character who is **alive after dying** in an earlier chapter.
 - A **dead character** appearing in a later scene (with a one-click "mark as
-  flashback" if intentional).
+  flashback" if intentional). The scene where you *record* the death is not one
+  of these — that scene is where they die, so they are alive walking into it.
 - A character who **appears before their first snapshot**, or is at a
   **destroyed location**. The first of those offers **Record initial state
   here** — one click writes the missing starting state (alive, nowhere in

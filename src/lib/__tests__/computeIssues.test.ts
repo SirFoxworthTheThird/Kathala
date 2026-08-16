@@ -63,6 +63,51 @@ describe('computeContinuityIssues', () => {
     expect(dead[0].message).toContain('Boromir')
   })
 
+  it('does not flag the scene where the death is recorded', () => {
+    // W-1 of the writer run's siblings: recording a death is what the snapshot
+    // at that scene *is*, so counting it made every death scene report itself
+    // as a continuity error — and the offered remedy, "mark as flashback",
+    // would be a lie about the manuscript. 69 of the 96 dead-in-scene warnings
+    // across the 21 shipped worlds were this.
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1)]
+    input.characters = [character('boromir', 'Boromir')]
+    input.allEvents = [event('e1', 'c1', 0, { involvedCharacterIds: ['boromir'] })]
+    input.snapshots = [snapshot('s1', 'boromir', 'e1', false)]
+    expect(computeContinuityIssues(input).filter((i) => i.id.startsWith('dead-in-event-'))).toHaveLength(0)
+  })
+
+  it('still flags the scene after the one the death was recorded in', () => {
+    // The presence that keeps the absence above honest: the check has been
+    // narrowed by one scene, not switched off.
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1), chapter('c2', 2)]
+    input.characters = [character('boromir', 'Boromir')]
+    input.allEvents = [
+      event('e1', 'c1', 0, { involvedCharacterIds: ['boromir'] }),
+      event('e2', 'c2', 0, { involvedCharacterIds: ['boromir'] }),
+    ]
+    input.snapshots = [snapshot('s1', 'boromir', 'e1', false)]
+    const dead = computeContinuityIssues(input).filter((i) => i.id.startsWith('dead-in-event-'))
+    expect(dead).toHaveLength(1)
+    expect(dead[0].eventId).toBe('e2')
+  })
+
+  it('does not flag a POV character in the scene of their own death, but does after', () => {
+    // `dead-pov` reads the same history, so it took the same correction.
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1), chapter('c2', 2)]
+    input.characters = [character('boromir', 'Boromir')]
+    input.allEvents = [
+      event('e1', 'c1', 0, { povCharacterId: 'boromir' }),
+      event('e2', 'c2', 0, { povCharacterId: 'boromir' }),
+    ]
+    input.snapshots = [snapshot('s1', 'boromir', 'e1', false)]
+    const pov = computeContinuityIssues(input).filter((i) => i.id.startsWith('dead-pov-'))
+    expect(pov).toHaveLength(1)
+    expect(pov[0].eventId).toBe('e2')
+  })
+
   it('does not flag the dead character when the later event is a flashback', () => {
     const input = emptyInput()
     input.chapters = [chapter('c1', 1), chapter('c2', 2)]
