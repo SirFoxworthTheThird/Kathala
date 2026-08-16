@@ -14,7 +14,7 @@ import { useEventItemPlacements } from '@/db/hooks/useItemPlacements'
 import { useItemSnapshot, upsertItemSnapshot } from '@/db/hooks/useItemSnapshots'
 import { useCrossTimelineArtifacts } from '@/db/hooks/useTimelineRelationships'
 import { useMapRoutes, deleteMapRoute } from '@/db/hooks/useMapRoutes'
-import { useMapRegions, deleteMapRegion, useBestRegionSnapshots, upsertMapRegionSnapshot } from '@/db/hooks/useMapRegions'
+import { useMapRegions, deleteMapRegion, useBestRegionSnapshots } from '@/db/hooks/useMapRegions'
 import { PortraitImage } from '@/components/PortraitImage'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useGate } from '@/db/hooks/ReadingGateContext'
@@ -951,7 +951,7 @@ export const REGION_STATUS_COLORS: Record<MapRegionStatus, string> = {
   active: '#34d399', occupied: '#fb923c', contested: '#ef4444',
   abandoned: '#94a3b8', destroyed: '#dc2626', unknown: '#a78bfa',
 }
-const ALL_REGION_STATUSES: MapRegionStatus[] = ['active', 'occupied', 'contested', 'abandoned', 'destroyed', 'unknown']
+export const ALL_REGION_STATUSES: MapRegionStatus[] = ['active', 'occupied', 'contested', 'abandoned', 'destroyed', 'unknown']
 
 // ─── Regions section ──────────────────────────────────────────────────────────
 
@@ -978,31 +978,16 @@ export function RegionsSection({
   const regionSnaps = useBestRegionSnapshots(worldId, activeEventId)
   const snapByRegionId = useMemo(() => new Map(regionSnaps.map((s) => [s.regionId, s])), [regionSnaps])
   const [confirmId, setConfirmId] = useState<string | null>(null)
-  const [editingNotes, setEditingNotes] = useState<Record<string, string>>({})
   const confirmRegion = confirmId ? regions.find((r) => r.id === confirmId) : null
 
-  function handleStatusChange(regionId: string, status: MapRegionStatus) {
-    if (!activeEventId) return
-    upsertMapRegionSnapshot({
-      worldId,
-      regionId,
-      eventId: activeEventId,
-      status,
-      notes: editingNotes[regionId] ?? snapByRegionId.get(regionId)?.notes ?? '',
-    })
-  }
-
-  function handleNotesSave(regionId: string) {
-    if (!activeEventId) return
-    const currentSnap = snapByRegionId.get(regionId)
-    upsertMapRegionSnapshot({
-      worldId,
-      regionId,
-      eventId: activeEventId,
-      status: currentSnap?.status ?? 'active',
-      notes: editingNotes[regionId] ?? '',
-    })
-  }
+  /*
+    RG-1: the status pills and the per-event notes used to live here, in an
+    editor that unfolded under the selected row — which is exactly when the
+    region panel is open, so the same region had two homes side by side. They
+    are in the panel now, next to the name, colour, notes and faction they
+    belong with. The row keeps *showing* the status, which is what a list is
+    for.
+  */
 
   return (
     <SidebarSection title="Regions" icon={Hexagon} count={regions.length} defaultOpen={false}>
@@ -1031,7 +1016,6 @@ export function RegionsSection({
             const snap = snapByRegionId.get(region.id)
             const status: MapRegionStatus = snap?.status ?? 'active'
             const isSelected = selectedRegionId === region.id
-            const notes = editingNotes[region.id] ?? snap?.notes ?? ''
             return (
               <div key={region.id} className="flex flex-col">
                 {/* Region row */}
@@ -1082,41 +1066,6 @@ export function RegionsSection({
                   </button>
                 </div>
 
-                {/* Inline status editor — only when selected and an event is active */}
-                {isSelected && activeEventId && (
-                  <div className="mx-2 mb-2 flex flex-col gap-1.5 rounded border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.4)] px-2 py-2">
-                    <span className="text-[9px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                      Status at this event
-                    </span>
-                    <div className="flex flex-wrap gap-1">
-                      {ALL_REGION_STATUSES.map((s) => (
-                        <button
-                          key={s}
-                          onClick={() => handleStatusChange(region.id, s)}
-                          className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] capitalize transition-colors ${
-                            status === s
-                              ? 'bg-[hsl(var(--ring))] text-[hsl(var(--background))]'
-                              : 'border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
-                          }`}
-                        >
-                          <span
-                            className="h-1.5 w-1.5 rounded-full"
-                            style={{ background: status === s ? 'currentColor' : REGION_STATUS_COLORS[s] }}
-                          />
-                          {s}
-                        </button>
-                      ))}
-                    </div>
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setEditingNotes((prev) => ({ ...prev, [region.id]: e.target.value }))}
-                      onBlur={() => handleNotesSave(region.id)}
-                      placeholder="Notes for this event…"
-                      rows={2}
-                      className="w-full resize-none rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 py-1 text-[11px] text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:outline-none focus:border-[hsl(var(--ring))] transition-colors"
-                    />
-                  </div>
-                )}
               </div>
             )
           })

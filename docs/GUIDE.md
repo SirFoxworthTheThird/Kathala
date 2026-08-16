@@ -1116,7 +1116,15 @@ the spot you were aiming at.
   separating named locations from free points. The shape itself is drawn on the
   canvas rather than edited in the panel.
 - Regions have a fill colour, opacity, notes, and an event-based condition. They
-  can belong to a faction and can link directly to a sub-map. A region writes its
+  can belong to a faction and can link directly to a sub-map. Open a region and
+  its panel carries **At this moment** — whether the place is *active, occupied,
+  contested, abandoned, destroyed* or *unknown* at the scene on your cursor,
+  with a note for that moment beside it. The region's own **Notes** above are
+  separate and do not change with the story; the moment's do. Pick a scene on
+  the bar below first — with the cursor on *All chapters* there is no moment for
+  a condition to be about, and the panel says so. The Continuity Checker reads
+  this: a character travelling through a destroyed or abandoned region is one of
+  the things it catches. A region writes its
   name across the middle of the area it covers, so a **location pin of the same
   name standing inside it** shows as a dot rather than a labelled pill — the name
   is already there, and saying it twice only put two labels on top of each other.

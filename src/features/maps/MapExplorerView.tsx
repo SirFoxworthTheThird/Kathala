@@ -1039,7 +1039,14 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           )}
           {selectedRegionId && !selectedLocationMarkerId && !selectedCharacterId && (
             <div className="absolute inset-y-0 right-0 z-[500] flex">
-              <RegionDetailPanel regionId={selectedRegionId} worldId={worldId} onClose={() => setSelectedRegionId(null)} onDrillDown={pushMapLayer} />
+              <RegionDetailPanel
+                regionId={selectedRegionId}
+                worldId={worldId}
+                activeEventId={activeEventId}
+                activeChapterTitle={activeChapterTitle}
+                onClose={() => setSelectedRegionId(null)}
+                onDrillDown={pushMapLayer}
+              />
             </div>
           )}
           {selectedCharacterId && (() => {

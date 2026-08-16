@@ -13,10 +13,10 @@ import { db } from '@/db/database'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { isTreeVisible } from '@/lib/mapLevels'
 import { updateMapRoute, deleteMapRoute } from '@/db/hooks/useMapRoutes'
-import { updateMapRegion, deleteMapRegion } from '@/db/hooks/useMapRegions'
+import { updateMapRegion, deleteMapRegion, useMapRegionSnapshot, upsertMapRegionSnapshot } from '@/db/hooks/useMapRegions'
 import { useFactions } from '@/db/hooks/useFactions'
-import { ROUTE_TYPE_COLORS } from './MapSidebar'
-import type { RouteType } from '@/types'
+import { ROUTE_TYPE_COLORS, REGION_STATUS_COLORS, ALL_REGION_STATUSES } from './MapSidebar'
+import type { RouteType, MapRegionStatus } from '@/types'
 
 // ─── Shared constants ─────────────────────────────────────────────────────────
 
@@ -92,8 +92,11 @@ export function RouteDetailPanel({
 
         {/* Name */}
         <div className="flex flex-col gap-1.5">
-          <Label>Name</Label>
+          {/* Associated, not adjacent — HB-2's defect, in a panel no screen in
+              `controlNames.spec.ts` has open, which is that check's boundary. */}
+          <Label htmlFor="route-name">Name</Label>
           <Input
+            id="route-name"
             value={name}
             onChange={(e) => change(setName)(e.target.value)}
             placeholder="Route name"
@@ -126,8 +129,9 @@ export function RouteDetailPanel({
 
         {/* Notes */}
         <div className="flex flex-col gap-1.5">
-          <Label>Notes</Label>
+          <Label htmlFor="route-notes">Notes</Label>
           <Textarea
+            id="route-notes"
             value={notes}
             onChange={(e) => change(setNotes)(e.target.value)}
             placeholder="Add notes about this route…"
@@ -169,16 +173,36 @@ export function RouteDetailPanel({
 export function RegionDetailPanel({
   regionId,
   worldId,
+  activeEventId,
+  activeChapterTitle,
   onClose,
   onDrillDown,
 }: {
   regionId: string
   worldId: string
+  /** The moment the per-event status and notes below are about. */
+  activeEventId: string | null
+  activeChapterTitle: string | null
   onClose: () => void
   onDrillDown?: (layerId: string) => void
 }) {
   const region = useLiveQuery(() => db.mapRegions.get(regionId), [regionId])
   const allLayers = useMapLayers(worldId)
+  const snapshot = useMapRegionSnapshot(regionId, activeEventId)
+  const status: MapRegionStatus = snapshot?.status ?? 'active'
+  const [eventNotes, setEventNotes] = useState('')
+  useEffect(() => { setEventNotes(snapshot?.notes ?? '') }, [snapshot?.notes, activeEventId])
+
+  function saveSnapshot(next: { status?: MapRegionStatus; notes?: string }) {
+    if (!activeEventId) return
+    upsertMapRegionSnapshot({
+      worldId,
+      regionId,
+      eventId: activeEventId,
+      status: next.status ?? status,
+      notes: next.notes ?? eventNotes,
+    })
+  }
   const factions = useFactions(worldId)
   const [name, setName] = useState('')
   const [fillColor, setFillColor] = useState(PRESET_COLORS[0])
@@ -226,6 +250,7 @@ export function RegionDetailPanel({
         icon={Hexagon}
         name={region.name || 'Untitled region'}
         kind="Region"
+        moment={activeChapterTitle}
         closeLabel="Close region panel"
         onClose={onClose}
       />
@@ -235,8 +260,9 @@ export function RegionDetailPanel({
 
         {/* Name */}
         <div className="flex flex-col gap-1.5">
-          <Label>Name</Label>
+          <Label htmlFor="region-name">Name</Label>
           <Input
+            id="region-name"
             value={name}
             onChange={(e) => change(setName)(e.target.value)}
             placeholder="Region name"
@@ -299,8 +325,9 @@ export function RegionDetailPanel({
 
         {/* Notes */}
         <div className="flex flex-col gap-1.5">
-          <Label>Notes</Label>
+          <Label htmlFor="region-notes">Notes</Label>
           <Textarea
+            id="region-notes"
             value={notes}
             onChange={(e) => change(setNotes)(e.target.value)}
             placeholder="Add notes about this region…"
@@ -369,6 +396,65 @@ export function RegionDetailPanel({
             <Button size="sm" variant="secondary" className="gap-1.5" onClick={() => onDrillDown(region.linkedMapLayerId!)}>
               <Map className="h-3.5 w-3.5" /> Open Sub-map
             </Button>
+          )}
+        </div>
+
+        {/*
+          RG-1: a region's *status* is the one part of it that changes with the
+          story — the Continuity Checker reads it, and it is what "abandoned" or
+          "destroyed" means for a character walking through. It lived only in an
+          inline editor inside the sidebar row, which appears exactly when this
+          panel is open, so a region had two homes side by side and this one —
+          the one holding its name, colour, notes and faction — was the half
+          that could not say what was happening to it.
+        */}
+        <div className="flex flex-col gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.4)] px-3 py-2.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+            At this moment
+          </span>
+          {!activeEventId ? (
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">
+              Pick a scene on the bar below to set what has become of this region, and
+              to leave a note about it for that moment.
+            </p>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-1">
+                {ALL_REGION_STATUSES.map((s) => (
+                  <button
+                    key={s}
+                    aria-pressed={status === s}
+                    onClick={() => saveSnapshot({ status: s })}
+                    className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] capitalize transition-colors ${
+                      status === s
+                        ? 'bg-[hsl(var(--ring))] text-[hsl(var(--background))]'
+                        : 'border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
+                    }`}
+                  >
+                    <span
+                      className="h-1.5 w-1.5 rounded-full"
+                      style={{ background: status === s ? 'currentColor' : REGION_STATUS_COLORS[s] }}
+                    />
+                    {s}
+                  </button>
+                ))}
+              </div>
+              {/* Named apart from the region's own Notes above, which are not
+                  per-moment — two fields called "Notes" on one panel would be
+                  the confusion this section exists to remove. */}
+              <Label htmlFor="region-event-notes" className="mt-1 text-[10px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                Notes at this moment
+              </Label>
+              <Textarea
+                id="region-event-notes"
+                value={eventNotes}
+                onChange={(e) => setEventNotes(e.target.value)}
+                onBlur={() => saveSnapshot({ notes: eventNotes })}
+                placeholder="What has happened here by now…"
+                rows={2}
+                className="text-xs"
+              />
+            </>
           )}
         </div>
 
