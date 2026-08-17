@@ -342,8 +342,11 @@ export function ChapterDiffModal() {
                             {!b && <DiffTag label="removed" kind="removed" />}
                           </div>
                           {changes.map(({ field, from, to }) => (
-                            <div key={field} className="flex items-center gap-1.5 text-[hsl(var(--muted-foreground))]">
-                              <span className="w-16 shrink-0 capitalize text-[10px]">{field}</span>
+                            <div key={field} className="flex items-start gap-1.5 text-[hsl(var(--muted-foreground))]">
+                              {/* `leading-4` matches the 16px line box of the
+                                  `text-xs` values beside it, so top-aligning the
+                                  row does not leave the label riding high. */}
+                              <span className="w-16 shrink-0 capitalize text-[10px] leading-4">{field}</span>
                               {field === 'status' ? (
                                 <>
                                   {from === 'alive' ? <Heart className="h-3 w-3 text-green-400" /> : <Skull className="h-3 w-3 text-red-400" />}
@@ -365,11 +368,29 @@ export function ChapterDiffModal() {
                               ) : field === 'lost' ? (
                                 <span className="text-red-400">− {from}</span>
                               ) : (
-                                <>
-                                  <span className="truncate max-w-[120px]">{from}</span>
-                                  <ArrowRight className="h-3 w-3 shrink-0" />
-                                  <span className="truncate max-w-[120px] text-amber-400">{to}</span>
-                                </>
+                                /*
+                                  Notes, and only notes — every other field here
+                                  is a word or two, and `statusNotes` is the one
+                                  piece of free prose in the comparison.
+
+                                  It was two `truncate max-w-[120px]` cells side
+                                  by side inside a 672px dialog, so a note ran
+                                  out of room after about a fifth of itself with
+                                  no tooltip and no way to open it: the panel
+                                  said a note had changed and would not say to
+                                  what. A `title` would have handed that back to
+                                  a mouse alone, and the dialog had the width
+                                  all along — so the two versions stack and wrap
+                                  instead, before and after on their own lines,
+                                  which is also the order they are read in.
+                                */
+                                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                  <span className="whitespace-pre-wrap break-words">{from}</span>
+                                  <span className="flex items-start gap-1.5">
+                                    <ArrowRight className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+                                    <span className="min-w-0 whitespace-pre-wrap break-words text-amber-400">{to}</span>
+                                  </span>
+                                </div>
                               )}
                             </div>
                           ))}

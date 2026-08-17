@@ -27,6 +27,35 @@ interface OrderableChapter {
  *
  * Does not mutate its input.
  */
+/**
+ * Records that hang off an event — a knowledge reveal, say — in the order those
+ * events are read, given the positions `eventsInReadingOrder` produced.
+ *
+ * `useLiveQuery` hands these back in primary-key order too, so a fact's *Known
+ * by* list read "Ch.3, Ch.1, Ch.2" — the same fault **WRUN-3** fixed for the
+ * pickers on that screen, in a list beside them (**F-8**). 83 of the 287 facts
+ * in the shipped library have three or more knowers.
+ *
+ * Two records on the same event keep the order they arrived in, since the read
+ * cannot separate them and inventing a second key would only make the list
+ * shuffle for a reason nobody could see. A record whose event is unknown sorts
+ * last rather than being dropped: it is still a thing somebody knows.
+ *
+ * Does not mutate its input.
+ */
+export function byReadingPosition<T extends { eventId: string }>(
+  records: readonly T[],
+  position: ReadonlyMap<string, number>,
+): T[] {
+  return [...records].sort((a, b) => {
+    const pa = position.get(a.eventId)
+    const pb = position.get(b.eventId)
+    if (pa === undefined) return pb === undefined ? 0 : 1
+    if (pb === undefined) return -1
+    return pa - pb
+  })
+}
+
 export function eventsInReadingOrder<T extends OrderableEvent>(
   events: readonly T[],
   chapters: readonly OrderableChapter[],

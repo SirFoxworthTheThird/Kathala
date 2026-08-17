@@ -22,7 +22,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { GenerateKnowledgeDialog } from './GenerateKnowledgeDialog'
 import type { KnowledgeFact } from '@/types'
 import { orderFacts, FACT_ORDERS, FACT_ORDER_LABELS, type FactOrder } from '@/lib/factOrder'
-import { eventsInReadingOrder } from '@/lib/readingOrder'
+import { eventsInReadingOrder, byReadingPosition } from '@/lib/readingOrder'
 
 export default function KnowledgeView() {
   const { worldId } = useParams<{ worldId: string }>()
@@ -111,7 +111,16 @@ export default function KnowledgeView() {
     knownCount: (id) => knownCount(id),
   })
   const selected = facts.find((f) => f.id === selectedId) ?? null
-  const revealsForSelected = reveals.filter((r) => r.factId === selectedId)
+  /*
+    In reading order, not the order Dexie hands them back. A fact learned in
+    chapters 1, 2 and 3 listed as "Ch.3, Ch.1, Ch.2" — the same fault WRUN-3
+    fixed for the three pickers on this screen, in the list right beside them.
+    The positions are already computed above for the cursor.
+  */
+  const revealsForSelected = useMemo(
+    () => byReadingPosition(reveals.filter((r) => r.factId === selectedId), eventPos),
+    [reveals, selectedId, eventPos],
+  )
 
   /** Is a reveal in effect at the active cursor? (No cursor → treat as visible.) */
   function knownAtCursor(eventId: string): boolean {

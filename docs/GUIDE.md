@@ -551,7 +551,9 @@ the full width and the curve scrolls inside it.
   already chosen. What it reads is the **state recorded at each chapter's last
   scene** — not the prose: two chapters full of writing but with no character
   states set will tell you there is nothing recorded to compare, rather than
-  that they are the same.
+  that they are the same. A changed **status note** is shown in full, the old
+  version above the new one, since a note is the one thing in that list long
+  enough to need the room.
 
 ![A chapter row's menu](images/58-row-menu.png)
 
@@ -1532,6 +1534,11 @@ your story** (for example, "Gandalf the Grey is dead · Ch. 17").
 After one character learns a fact, **Might also know** looks for other characters
 who shared a later scene with a knower. Accept a suggestion to add the likely
 reveal, or leave it untracked when the information was not actually shared.
+
+A fact's **Known by** list reads in story order — chapter 1, then 2, then 3 —
+so it answers *who found out, and in what sequence*, rather than listing the
+same three people in whatever order they were recorded. Anyone who does not
+know it yet at the current cursor is marked, not hidden.
 
 The roster can be **ordered** as well as searched: *When it gets out* puts the
 facts in the order the story lets them slip, *How widely known* leads with the
