@@ -284,10 +284,18 @@ layers.
 
 The map is read-only in the same way, including the parts you change by hand
 rather than by button: location pins and character pins cannot be dragged to
-new positions, characters cannot be dragged onto the map from the sidebar, and
-right-clicking the canvas no longer offers to add a location, label, route or
-region. You can still pan, zoom, drill into sub-maps, follow journeys and
-export the map as a PNG — everything that reads it.
+new positions, characters cannot be dragged onto the map from the sidebar or
+placed with the crosshair, and right-clicking the canvas no longer offers to add
+a location, label, route or region.
+
+Opening a character or a place on the map **shows** what is recorded at the
+current moment — alive or dead, where they are, what they carry, the journey
+they made and the author's notes on it — and offers no way to change any of it.
+The empty boxes go with the rest: a note nobody wrote is simply absent rather
+than an invitation to write one.
+
+You can still pan, zoom, drill into sub-maps, follow journeys and export the map
+as a PNG — everything that reads it.
 
 The dashboard becomes a way in rather than a progress report. Recent Events,
 Scene Status, Writing Progress, Cast Balance, Plot Threads and Motifs all

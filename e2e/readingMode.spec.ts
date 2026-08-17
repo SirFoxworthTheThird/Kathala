@@ -514,6 +514,19 @@ test('coming back honours a deliberate "show everything"', async ({ page }) => {
 })
 
 
+/**
+ * Wait for the shelf itself before reading anything off it.
+ *
+ * `goto('/#/')` returns before the world list's live query has resolved, so an
+ * assertion fired straight after it is racing the render — which is how this
+ * test came back flaky. Worse, the *absence* check at the end passed trivially
+ * in that window: no shelf, no progress bars, nothing to count. Waiting on the
+ * heading makes both halves mean what they say.
+ */
+async function shelfRendered(page: Page) {
+  await expect(page.getByRole('heading', { name: 'Reading' })).toBeVisible({ timeout: 30_000 })
+}
+
 test('the shelf shows how far into each book the reader has got', async ({ page }) => {
   await downloadFirstLibraryWorld(page)
   const book = await worldPath(page)
@@ -521,6 +534,7 @@ test('the shelf shows how far into each book the reader has got', async ({ page 
   // Freshly downloaded: chapter 1, and the card says so.
   await page.goto('/#/')
   await settleNav(page)
+  await shelfRendered(page)
   await expect(page.getByText(/^Chapter 1 of \d+$/)).toBeVisible()
 
   // Read on, and the shelf follows.
@@ -533,6 +547,7 @@ test('the shelf shows how far into each book the reader has got', async ({ page 
 
   await page.goto('/#/')
   await settleNav(page)
+  await shelfRendered(page)
   await expect(page.getByText(new RegExp(`^Chapter ${reached} of \\d+$`))).toBeVisible()
 
   // Asking for the whole book is not a place in it, so the bar goes away —
@@ -543,6 +558,7 @@ test('the shelf shows how far into each book the reader has got', async ({ page 
   await page.waitForTimeout(800)
   await page.goto('/#/')
   await settleNav(page)
+  await shelfRendered(page)
   await expect(page.getByText(/^Chapter \d+ of \d+$/)).toHaveCount(0)
 })
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { X, MapPin, Package, Heart, HeartOff, Plus, Footprints, ExternalLink, Route, GripVertical, ArrowUp, ArrowDown, User } from 'lucide-react'
 import { PanelHeader } from './PanelChrome'
 import { Button } from '@/components/ui/button'
@@ -86,6 +87,18 @@ export function CharacterSnapshotPanel({
   const chapterSnapshots = useBestSnapshots(worldId, activeEventId)
   const movement = useCharacterMovement(character.id, activeEventId)
   const navigate = useNavigate()
+  /*
+    Reading mode. This panel had no gate at all, so a reader who opened a
+    character on the map could retype the author's status note, kill them off,
+    empty their pockets and reorder their journey — measured on a freshly
+    downloaded *Philosopher's Stone*, where typing in the Status box and tabbing
+    away wrote the snapshot to the database. The location panel beside it has
+    been gated all along; this one was simply missed.
+
+    Everything below still *shows* what is recorded — that is what a reader came
+    for — and offers no way to change it.
+  */
+  const readOnly = useGate().active
 
   // Local state for text fields (save on blur to avoid cursor jumping)
   const [statusNotes, setStatusNotes] = useState(snapshot?.statusNotes ?? '')
@@ -233,7 +246,7 @@ export function CharacterSnapshotPanel({
           {/* No chapter selected */}
           {!activeEventId && (
             <p className="text-xs italic text-[hsl(var(--muted-foreground))]">
-              Select an event from the timeline bar to view and edit state.
+              Select an event from the timeline bar to {readOnly ? 'view' : 'view and edit'} state.
             </p>
           )}
 
@@ -241,38 +254,66 @@ export function CharacterSnapshotPanel({
             <>
               {isInherited && <InheritedBadge className="self-start" />}
 
-              {/* Alive toggle */}
-              <button
-                onClick={handleAliveToggle}
-                className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                  (snapshot?.isAlive ?? true)
-                    ? 'bg-green-950/30 text-green-400 hover:bg-green-950/50'
-                    : 'bg-red-950/30 text-red-400 hover:bg-red-950/50'
-                }`}
-              >
-                {(snapshot?.isAlive ?? true)
+              {/* Alive — a toggle while writing, a badge while reading. */}
+              {(() => {
+                const alive = snapshot?.isAlive ?? true
+                const tone = alive
+                  ? 'bg-green-950/30 text-green-400'
+                  : 'bg-red-950/30 text-red-400'
+                const face = alive
                   ? <><Heart className="h-3.5 w-3.5" /> Alive</>
                   : <><HeartOff className="h-3.5 w-3.5" /> Deceased</>
-                }
-              </button>
+                return readOnly ? (
+                  <span className={`flex w-fit items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium ${tone}`}>
+                    {face}
+                  </span>
+                ) : (
+                  <button
+                    onClick={handleAliveToggle}
+                    className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${tone} ${
+                      alive ? 'hover:bg-green-950/50' : 'hover:bg-red-950/50'
+                    }`}
+                  >
+                    {face}
+                  </button>
+                )
+              })()}
 
-              {/* Status notes */}
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                  Status
-                </Label>
-                <Textarea
-                  className="resize-none text-xs"
-                  rows={3}
-                  placeholder="What is this character doing in this scene?"
-                  value={statusNotes}
-                  onChange={(e) => setStatusNotes(e.target.value)}
-                  onBlur={() => saveField({ statusNotes })}
-                />
-              </div>
+              {/* Status notes. Reading shows what was written, or nothing at
+                  all — an empty box invites typing into it. */}
+              {(!readOnly || statusNotes.trim()) && (
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                    Status
+                  </Label>
+                  {readOnly ? (
+                    <p className="whitespace-pre-wrap text-xs text-[hsl(var(--foreground))]">{statusNotes}</p>
+                  ) : (
+                    <Textarea
+                      className="resize-none text-xs"
+                      rows={3}
+                      placeholder="What is this character doing in this scene?"
+                      value={statusNotes}
+                      onChange={(e) => setStatusNotes(e.target.value)}
+                      onBlur={() => saveField({ statusNotes })}
+                    />
+                  )}
+                </div>
+              )}
 
               {/* Travel mode */}
-              {travelModes.length > 0 && (
+              {travelModes.length > 0 && (readOnly
+                ? (snapshot?.travelModeId && (
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                      <Footprints className="h-3 w-3" /> Travel Mode
+                    </Label>
+                    <p className="text-xs text-[hsl(var(--foreground))]">
+                      {travelModes.find((m) => m.id === snapshot.travelModeId)?.name ?? 'None'}
+                    </p>
+                  </div>
+                ))
+                : (
                 <div className="flex flex-col gap-1.5">
                   <Label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
                     <Footprints className="h-3 w-3" /> Travel Mode
@@ -292,7 +333,7 @@ export function CharacterSnapshotPanel({
                     </SelectContent>
                   </Select>
                 </div>
-              )}
+              ))}
 
               {/* Current location (read-only — change by dragging on the map) */}
               <div>
@@ -333,19 +374,21 @@ export function CharacterSnapshotPanel({
                           fallbackClassName="h-5 w-5 rounded shrink-0"
                         />
                         <span className="flex-1 truncate text-xs">{item.name}</span>
-                        <button
-                          onClick={() => handleRemoveInventory(item.id)}
-                          className="text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
-                          title="Remove from inventory"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
+                        {!readOnly && (
+                          <button
+                            onClick={() => handleRemoveInventory(item.id)}
+                            className="text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
+                            title="Remove from inventory"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
                 )}
 
-                {availableItems.length > 0 && (
+                {!readOnly && availableItems.length > 0 && (
                   <Select onValueChange={handleAddInventory} value="">
                     <SelectTrigger className="h-8 text-xs">
                       <span className="flex items-center gap-1.5 text-[hsl(var(--muted-foreground))]">
@@ -360,16 +403,20 @@ export function CharacterSnapshotPanel({
                   </Select>
                 )}
 
-                {inventoryItems.length > 0 && (
-                  <Textarea
-                    className="resize-none text-xs"
-                    rows={2}
-                    placeholder="Inventory notes..."
-                    value={inventoryNotes}
-                    onChange={(e) => setInventoryNotes(e.target.value)}
-                    onBlur={() => saveField({ inventoryNotes })}
-                  />
-                )}
+                {inventoryItems.length > 0 && (readOnly
+                  ? inventoryNotes.trim() && (
+                    <p className="whitespace-pre-wrap text-xs text-[hsl(var(--muted-foreground))]">{inventoryNotes}</p>
+                  )
+                  : (
+                    <Textarea
+                      className="resize-none text-xs"
+                      rows={2}
+                      placeholder="Inventory notes..."
+                      value={inventoryNotes}
+                      onChange={(e) => setInventoryNotes(e.target.value)}
+                      onBlur={() => saveField({ inventoryNotes })}
+                    />
+                  ))}
               </div>
             </>
           )}
@@ -394,9 +441,10 @@ export function CharacterSnapshotPanel({
 
                     return (
                       <div key={`${markerId}-${idx}`} className="flex items-center gap-1 rounded-md bg-[hsl(var(--muted))] px-2 py-1">
-                        <GripVertical className="h-3 w-3 shrink-0 text-[hsl(var(--muted-foreground))]" />
+                        {!readOnly && <GripVertical className="h-3 w-3 shrink-0 text-[hsl(var(--muted-foreground))]" />}
                         <MapPin className="h-3 w-3 shrink-0 text-[hsl(var(--muted-foreground))]" />
                         <span className="flex-1 truncate text-xs">{marker?.name ?? markerId}</span>
+                        {!readOnly && (
                         <div className="flex gap-0.5">
                           <button
                             onClick={() => {
@@ -423,14 +471,21 @@ export function CharacterSnapshotPanel({
                             <ArrowDown className="h-3 w-3" />
                           </button>
                         </div>
+                        )}
                       </div>
                     )
                   })}
                 </div>
 
                 {/* Travel mode for this movement */}
-                {travelModes.length > 0 && (
-                  <Select
+                {travelModes.length > 0 && (readOnly
+                  ? mov.travelModeId && (
+                    <p className="flex items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))]">
+                      <Footprints className="h-3 w-3" aria-hidden="true" />
+                      {travelModes.find((m) => m.id === mov.travelModeId)?.name}
+                    </p>
+                  )
+                  : <Select
                     value={mov.travelModeId ?? 'none'}
                     onValueChange={(v) =>
                       updateMovement(character.id, evId, { travelModeId: v === 'none' ? null : v })
@@ -452,14 +507,20 @@ export function CharacterSnapshotPanel({
                 )}
 
                 {/* Journey notes */}
-                <Textarea
-                  className="resize-none text-xs"
-                  rows={2}
-                  placeholder="Reason for travel, notes on the journey…"
-                  value={movementNotes}
-                  onChange={(e) => setMovementNotes(e.target.value)}
-                  onBlur={() => updateMovement(character.id, evId, { notes: movementNotes })}
-                />
+                {readOnly ? (
+                  movementNotes.trim() && (
+                    <p className="whitespace-pre-wrap text-xs text-[hsl(var(--muted-foreground))]">{movementNotes}</p>
+                  )
+                ) : (
+                  <Textarea
+                    className="resize-none text-xs"
+                    rows={2}
+                    placeholder="Reason for travel, notes on the journey…"
+                    value={movementNotes}
+                    onChange={(e) => setMovementNotes(e.target.value)}
+                    onBlur={() => updateMovement(character.id, evId, { notes: movementNotes })}
+                  />
+                )}
               </div>
             )
           })()}

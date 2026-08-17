@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 
 /**
  * Move the pointer off the nav rail and let its width transition finish.
@@ -25,7 +25,26 @@ export const settleNav = (page: Page) =>
  *
  * Takes the guide's own documented way out rather than waiting longer.
  */
-export async function dismissFirstRunGuide(page: Page) {
-  const skip = page.getByRole('button', { name: /Skip and explore on my own/ })
-  if (await skip.count()) await skip.first().click()
+export async function dismissFirstRunGuide(page: Page, timeout = 5000) {
+  const skip = page.getByRole('button', { name: /Skip and explore on my own/ }).first()
+  /*
+    Wait for it rather than look once.
+    `count()` is a reading taken at an instant, and the instant is exactly the
+    one the paragraph above says is racy — so a spec that arrived a tick early
+    dismissed nothing, and the guide then covered the dashboard for the rest of
+    the test. `deleteConfirms` failed that way on a full run, spending its whole
+    240s waiting for a panel behind the wizard.
+
+    The wait only costs anything when the guide genuinely never appears — a
+    world that already had a timeline — and it is bounded for that case.
+  */
+  try {
+    await skip.waitFor({ state: 'visible', timeout })
+  } catch {
+    return
+  }
+  await skip.click()
+  // And it really went, so a caller that depends on the dashboard is not
+  // racing the exit animation.
+  await expect(skip).toHaveCount(0)
 }

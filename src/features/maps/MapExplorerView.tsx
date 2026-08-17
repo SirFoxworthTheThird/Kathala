@@ -416,6 +416,25 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   // ── Character placement ───────────────────────────────────────────────────
   async function placeCharacterAtMarker(characterId: string, marker: LocationMarker) {
     if (!activeEventId) return
+    /*
+      The gate lives here rather than on the callers, because there are two of
+      them and only one had it: dragging a character onto a marker checked, and
+      tap-to-place — arm the crosshair in the sidebar, tap a location — did not,
+      so a reader could move a character through the story and leave a trail
+      behind them. A choke point means the next caller is safe by default, which
+      is the argument `ReadingGateContext` already makes for the entity hooks.
+
+      **Kept even though no test can kill it.** Both ways in are closed upstream
+      now — the sidebar's crosshair is not rendered while reading, and the canvas
+      is passed `readOnly`, which is what makes a character pin `draggable` or
+      not — so removing this line leaves every test green. That usually argues
+      for deleting a branch, and two were deleted elsewhere today on exactly
+      that evidence. The asymmetry is what it guards: those shaped output, and
+      this is the last thing between a reader and a silent rewrite of somebody
+      else's book. A third caller arriving unguarded is a likelier mistake than
+      this line being wrong.
+    */
+    if (gate.active) return
     const existingInDb = await fetchSnapshot(characterId, activeEventId)
     const fromMarkerId = existingInDb?.currentLocationMarkerId
     const existing = snapshots.find((s) => s.characterId === characterId)
@@ -440,7 +459,6 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   }
 
   async function handleCharacterDrop(characterId: string, markerId: string) {
-    if (gate.active) return
     const targetMarker = markers.find((m) => m.id === markerId)
     if (!targetMarker) return
     await placeCharacterAtMarker(characterId, targetMarker)

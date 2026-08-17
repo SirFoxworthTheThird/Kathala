@@ -1151,6 +1151,32 @@ deferred quietly.
 
 ---
 
+## 29. Reported from use: the map was editable while reading
+
+Not from a review pass — noticed in use. *"In reading mode, on the map, if I
+select a character, I'm able to change some information."* True, and it turned
+out to be three separate holes in the same feature.
+
+| ID | Severity | Status | Finding |
+|---|---|---|---|
+| RM-1 | high | **fixed** | **The map's character panel had no reading gate at all.** Reproduced on a freshly downloaded *Philosopher's Stone* — `readingMode: true` on the world record — by opening a character from the map sidebar, typing in **Status** and tabbing away: the snapshot was written to the database, confirmed by reading `characterSnapshots` back. Seven controls were live: the alive/dead toggle, the status note, the travel mode, the inventory's add and remove, the inventory note, and the journey's waypoint reordering, travel mode and notes. `LocationDetailPanel` sitting beside it has been gated all along, and gates its controls in five places; this panel imported the gate nowhere. | **Fixed by showing the record and removing the means to change it**, which is what reading mode does everywhere else. The alive state becomes a badge rather than a button, notes render as text, the travel mode reads as its name, inventory loses its add and remove, and the journey loses its reordering. **Empty fields disappear rather than render read-only**, because an empty box invites typing into it and says nothing to a reader. The one-line hint under a cursorless panel said *"view and edit state"*; while reading it says *view*. |
+| RM-2 | high | **fixed** | **The sidebar offered to place a character on the map while reading.** The crosshair beside each character in the map sidebar — *Place N on the map* — was gated on there being an active event and nothing else. Arming it and tapping a location rewrites where that character was and appends a waypoint to their trail. | **Fixed**, and the control is simply not rendered while reading. |
+| RM-3 | high | **fixed** | **The write behind it was ungated, and only one of its two callers checked.** `placeCharacterAtMarker` writes a snapshot and a waypoint. Dragging a character onto a marker checked the gate first; **tap-to-place did not**, and both end in the same function. | **Fixed by moving the gate into the function** rather than adding a second caller-side check, so the next caller is safe by default — the argument `ReadingGateContext` already makes for the entity hooks. The now-redundant check on the drag path was removed rather than left reading as load-bearing. **This guard is knowingly unkillable:** both ways in are closed upstream, so a mutation removing it leaves every test green. Two other unreachable branches were deleted the same day on exactly that evidence; the asymmetry is what this one guards — those shaped output, this is the last thing between a reader and a silent rewrite of someone else's book. |
+
+**The guide was describing behaviour that was not there.** *What reading mode
+puts away* already claimed the map was read-only *"including the parts you change
+by hand rather than by button"*. It now says what is true, and says what the
+panels do show, which is the half a reader actually wants.
+
+**The mutation sweep cost a scare worth recording.** A batched sweep was killed
+by a timeout part-way through its last case and never ran its restore, leaving
+the mutant — a deleted gate — in the working tree. It was caught because the
+next mutation's `assert` could not find the line it meant to change. A sweep
+that edits source has to be assumed interrupted; the check that the tree is back
+where it started belongs after it, not inside it.
+
+---
+
 ## Still not reviewed
 
 Kept honest: this list only shrinks when a screen has actually been driven and

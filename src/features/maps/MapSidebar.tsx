@@ -586,7 +586,12 @@ export function CharactersSection({
                       )}
                     </span>
                   </button>
-                  {activeEventId && (
+                  {/*
+                    Not while reading: tapping this and then a location writes
+                    the character's snapshot and a waypoint, which is the
+                    author's record of where they were.
+                  */}
+                  {activeEventId && !gate.active && (
                     <button
                       type="button"
                       aria-label={isPlacing ? `Cancel placing ${c.name}` : `Place ${c.name} on the map`}
