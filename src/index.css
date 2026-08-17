@@ -709,6 +709,26 @@
     opacity: 1 !important;
   }
 
+  /* ── HB-2d: and tappable, since they are showing ────────────────────────────
+     The rule above lifts the *opacity* half of a hover reveal and left the
+     `pointer-events` half in place, so on a phone these controls were drawn at
+     full strength and took no taps — a button indistinguishable from a working
+     one that ignores you. Measured on the world card: `opacity: 1`,
+     `pointer-events: none`, and a tap leaves the world where it was.
+
+     It looked like it might be deliberate — "no deleting from a list on touch",
+     with the gate on the delete alone so Export beside it still worked. It was
+     not: `deleteWorld` is called from exactly one place in the app, and that is
+     this control. So a world could not be deleted on a phone at all, and the
+     same holds for a lore category, a saved scene version and a cadence entry.
+
+     Visible therefore implies tappable. The invisible-and-live shape LORE-1
+     measured is a *hover* device's problem, and there the gate is untouched: no
+     hover, no reveal, no pointer events. */
+  [class~="pointer-events-none"][class*="group-hover:pointer-events-"] {
+    pointer-events: auto !important;
+  }
+
   /* ── Comfortable touch targets ──────────────────────────────────────────────
      Compact icon buttons (~32px) are hard to hit on touch. `.pw-tap` overlays a
      transparent, centred ≥44px hit area via ::after — enlarging the tappable

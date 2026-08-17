@@ -1920,10 +1920,9 @@ onto it, and until then it takes no clicks at all — so a click on an apparentl
 blank stretch of a row can never delete anything.
 
 **On a phone or tablet it works differently.** With no hover to wait for, these
-controls are simply drawn all the time, so nothing is hidden and nothing is
-lurking. The deletes among them are currently shown but not yet tappable there;
-delete from the same record's own screen instead, where the control is a normal
-button.
+controls are simply drawn all the time — so nothing is hidden, nothing is
+lurking, and what you can see you can tap. Every one of them asks before it
+acts, which is what takes the place of the hover on a device that has none.
 
 Selecting scenes for a bulk action needs no hover on any device: the checkboxes
 are always there on touch, and on a phone each one answers to a tap anywhere in

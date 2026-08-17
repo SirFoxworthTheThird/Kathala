@@ -27,6 +27,14 @@ export function SceneHistoryDialog({ open, onOpenChange, eventId, currentText }:
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [mode, setMode] = useState<'text' | 'diff'>('diff')
   const [confirmRestore, setConfirmRestore] = useState(false)
+  /*
+    HB-2d: deleting a saved version used to fire on the click itself. That was
+    survivable only because reaching the control needed a deliberate hover —
+    and on a touch device, where these are drawn permanently and are now
+    tappable, it would be one stray tap away from destroying a draft that
+    nothing else in the app keeps a copy of.
+  */
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const now = nowMs()
   const selected = revisions.find((r) => r.id === selectedId) ?? revisions[0] ?? null
@@ -72,7 +80,7 @@ export function SceneHistoryDialog({ open, onOpenChange, eventId, currentText }:
                         <p className="text-[10px] tabular-nums text-[hsl(var(--muted-foreground))]">{plural(r.wordCount, 'word')}</p>
                       </button>
                       <button
-                        onClick={() => deleteSceneRevision(r.id)}
+                        onClick={() => setConfirmDeleteId(r.id)}
                         aria-label="Delete this version"
                         title="Delete this version"
                         className="shrink-0 text-[hsl(var(--muted-foreground))] opacity-0 pointer-events-none transition-opacity hover:text-red-400 group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto"
@@ -154,6 +162,18 @@ export function SceneHistoryDialog({ open, onOpenChange, eventId, currentText }:
           if (selected) await restoreSceneRevision(selected.id)
           setConfirmRestore(false)
           onOpenChange(false)
+        }}
+      />
+
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        onOpenChange={(v) => { if (!v) setConfirmDeleteId(null) }}
+        title="Delete this version?"
+        description="This saved version will be removed. It cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={async () => {
+          if (confirmDeleteId) await deleteSceneRevision(confirmDeleteId)
+          setConfirmDeleteId(null)
         }}
       />
     </>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Plus, Trash2, AlertTriangle, Link2 } from 'lucide-react'
 import type { Chapter, WorldEvent } from '@/types'
 import type { TagCadenceRow } from '@/lib/tagCadence'
@@ -37,6 +38,14 @@ export function CadenceManager<T extends Entity>({
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
   const [attaching, setAttaching] = useState<T | null>(null)
+  /*
+    HB-2d: this delete used to fire on the click. Reaching it needed a hover,
+    which is not a gesture a phone has — and now that these controls are drawn
+    permanently and are tappable there, an unconfirmed destructive action would
+    be one stray tap from removing a thread or motif and every scene's link to
+    it. Confirmed like every other delete in the app.
+  */
+  const [confirming, setConfirming] = useState<T | null>(null)
 
   async function create() {
     if (!name.trim()) return
@@ -105,7 +114,7 @@ export function CadenceManager<T extends Entity>({
                   <Link2 className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
                 <button
-                  onClick={() => onDelete(r.entity.id)}
+                  onClick={() => setConfirming(r.entity)}
                   aria-label={`Delete ${noun} ${r.entity.name}`}
                   className="shrink-0 text-[hsl(var(--muted-foreground))] opacity-0 pointer-events-none transition-opacity hover:text-red-400 group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto"
                   title={`Delete ${noun}`}
@@ -157,6 +166,18 @@ export function CadenceManager<T extends Entity>({
           events={events}
         />
       )}
+
+      <ConfirmDialog
+        open={confirming !== null}
+        onOpenChange={(o) => { if (!o) setConfirming(null) }}
+        title={`Delete ${noun}?`}
+        description={`Delete "${confirming?.name ?? ''}"? Scenes tagged with it keep their prose; only the ${noun} and its links go.`}
+        confirmLabel="Delete"
+        onConfirm={async () => {
+          if (confirming) await onDelete(confirming.id)
+          setConfirming(null)
+        }}
+      />
     </div>
   )
 }

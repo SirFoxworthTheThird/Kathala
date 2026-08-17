@@ -161,24 +161,26 @@ test.describe('Hover-revealed controls cannot be activated while invisible', () 
   })
 
   /**
-   * What the gate actually does on a phone, which the three tests above cannot
-   * see because they run at desktop width with a mouse.
+   * What the gate does on a phone, which the three tests above cannot see
+   * because they run at desktop width with a mouse.
    *
-   * `index.css` has forced every `opacity-0` + `group-hover:opacity-*` control
-   * to `opacity: 1 !important` on a hover-less pointer since #85, so on touch
-   * these are **not** hidden — they are drawn, at full strength, and the
-   * `pointer-events: none` half of the gate is not lifted with them. The
-   * control is visible and does nothing.
+   * `index.css` has shown these controls unconditionally on a hover-less
+   * pointer since #85, but lifted only the *opacity* half — so they were drawn
+   * at full strength and took no taps: a button indistinguishable from a
+   * working one that ignores you. It looked like it might be deliberate, "no
+   * deleting from a list on touch", since the gate is on the delete alone and
+   * Export beside it still worked. It was not. `deleteWorld` is called from
+   * exactly one place in the app and this is it, so a world could not be
+   * deleted on a phone at all (**HB-2d**).
    *
-   * That is recorded here rather than argued about, because two separate claims
-   * were written on top of the opposite assumption — HB-2b, and the guide's own
-   * paragraph on hover-revealed controls. Whether visible-and-inert is the
-   * behaviour anyone wants is **HB-2d**; this test pins down what it is.
+   * Visible now implies tappable. The hazard LORE-1 measured — invisible and
+   * still hit-testing — is a *hover* device's problem, and the three tests
+   * above are what keep it fixed there.
    */
   test.describe('on a phone, where there is no hover to give', () => {
     test.use({ viewport: { width: 390, height: 667 }, hasTouch: true })
 
-    test('the delete is drawn at full strength, and still takes no taps', async ({ page }) => {
+    test('the delete is drawn, tappable, and asks before it acts', async ({ page }) => {
       await seedWorld(page, 'Highbarrow')
       await page.goto('/')
       await page.waitForTimeout(1200)
@@ -186,24 +188,18 @@ test.describe('Hover-revealed controls cannot be activated while invisible', () 
       const card = page.locator('.group').filter({ hasText: 'Highbarrow' }).first()
       const del = card.getByRole('button', { name: /delete/i }).first()
 
-      // Presence: fully drawn, with nothing hovering it.
+      // Drawn, and live — the pair that used to disagree.
       await expect.poll(() => restingState(del).then((s) => s.opacity)).toBe('1')
-      // Absence, the half that makes it a finding rather than a fix: inert.
-      await expect.poll(() => restingState(del).then((s) => s.pointerEvents)).toBe('none')
+      await expect.poll(() => restingState(del).then((s) => s.pointerEvents)).toBe('auto')
 
-      // And the world survives a tap on it, which is the behaviour that matters.
-      // `force` because the tap is the point: Playwright would otherwise refuse
-      // to touch an element with no pointer events, which is the very thing
-      // being demonstrated. The tap falls through to the card underneath and
-      // opens the world — harmless, and its own evidence that the delete took
-      // nothing. So the check is made back on the dashboard rather than in
-      // place, and scoped to the card, because on a phone the top bar carries
-      // the world's name too in a `lg:inline` span that is present but hidden.
-      await del.tap({ force: true })
-      await page.waitForTimeout(600)
-      await page.goto('/')
-      await page.waitForTimeout(1200)
-      await expect(page.locator('.group').filter({ hasText: 'Highbarrow' }).first()).toBeVisible()
+      // A real tap, with no `force`: Playwright refuses an element with no
+      // pointer events, so this call is itself the assertion that the gate has
+      // lifted.
+      await del.tap()
+
+      // And it asks first. The world is still there behind the question.
+      await expect(page.getByRole('alertdialog').or(page.getByRole('dialog'))).toBeVisible()
+      await expect(page.getByText(/Highbarrow/).first()).toBeVisible()
     })
   })
 })
