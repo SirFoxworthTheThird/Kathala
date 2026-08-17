@@ -1575,7 +1575,13 @@ panel for the event under the time cursor. Select an event and the brief shows
 the chapter synopsis, the active event's details (including the in-world date —
 or day number if you haven't set up a calendar), the other events in that
 chapter, and a per-character state readout — including **"carried forward"**
-badges where a character's state was inherited rather than freshly set. When a
+badges where a character's state was inherited rather than freshly set.
+
+**The brief walks the book on its own.** Its header carries **previous** and
+**next moment** buttons, and every scene it lists is clickable, so you can read
+straight through a run of scenes — across chapter boundaries — without closing
+the panel and reopening it at each step. The buttons go quiet at the two ends of
+the book. When a
 world calendar and a character's birth date are both set, each present character
 also shows their **age** at that point in the story.
 

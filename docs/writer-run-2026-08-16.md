@@ -242,7 +242,7 @@ pattern.
 
 ---
 
-### W-4 · med · The Writer's Brief blanks the app it is describing
+### W-4 · med · ~~The Writer's Brief blanks the app it is describing~~ — **fixed differently: the panel walks the book itself**
 
 **What I did.** Opened the Writer's Brief and tried to step the time cursor.
 

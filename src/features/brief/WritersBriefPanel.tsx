@@ -1,4 +1,4 @@
-import { X, BookOpen, Users, Network, Package, Scroll, MapPin, Heart, Skull, ChevronRight, BookMarked, Shield, Eye, EyeOff, KeyRound, Drama } from 'lucide-react'
+import { X, BookOpen, Users, Network, Package, Scroll, MapPin, Heart, Skull, ChevronRight, ChevronLeft, BookMarked, Shield, Eye, EyeOff, KeyRound, Drama } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useEffect, useMemo, useRef } from 'react'
 import { useAppStore } from '@/store'
@@ -9,6 +9,8 @@ import { buildCombinedSequence, groupChapterRuns } from '@/lib/combinedTimeline'
 import type { Chapter, Timeline, WorldEvent } from '@/types'
 import { useFocusTrap } from '@/lib/useFocusTrap'
 import { useChapter, useEvent, useEvents, useWorldEvents, useWorldChapters, useTimelines } from '@/db/hooks/useTimeline'
+import { eventsInReadingOrder } from '@/lib/readingOrder'
+import { neighbouringMoments } from '@/lib/momentStep'
 import { computeInWorldDays } from '@/lib/inWorldTime'
 import { formatInWorldDate, ageInYears } from '@/lib/calendar'
 import { useWorld } from '@/db/hooks/useWorlds'
@@ -145,6 +147,18 @@ export function WritersBriefPanel() {
   const characterGoals = useCharacterGoals(worldId ?? null)
   const goalPositions = eventPositions(worldEvents, worldChapters)
   const activeDay = activeEventId ? computeInWorldDays(worldEvents, worldChapters, worldTimelines).get(activeEventId) : undefined
+  /*
+    WRUN-12: the brief is a reference panel *about a moment*, and had no way to
+    change that moment — its scene rows were inert and its whole-world picker
+    showed only while there was no cursor. Crossing a chapter boundary meant
+    closing the panel, stepping, and opening it again.
+  */
+  const orderedWorldEvents = useMemo(
+    () => eventsInReadingOrder(worldEvents, worldChapters),
+    [worldEvents, worldChapters],
+  )
+  const { prev: prevMoment, next: nextMoment } = neighbouringMoments(orderedWorldEvents, activeEventId)
+
   const events     = useEvents(activeEvent?.chapterId ?? null)
   const snapshots  = useBestSnapshots(worldId ?? null, activeEventId)
   const characters = useCharacters(worldId ?? null)
@@ -237,13 +251,39 @@ export function WritersBriefPanel() {
         <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] px-4 py-3">
           <BookOpen className="h-4 w-4 text-[hsl(var(--accent-foreground))]" />
           <span className="text-sm font-semibold">Writer's Brief</span>
-          <button
-            aria-label="Close Writer's Brief"
-            className="ml-auto text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
-            onClick={() => setBriefOpen(false)}
-          >
-            <X className="h-4 w-4" aria-hidden="true" />
-          </button>
+          {/*
+            The panel walks the book on its own, so reading a run of scenes is
+            one open and a step each, rather than close/step/reopen at every
+            chapter boundary. Named "moment" to match the top bar's controls,
+            which do the same thing to the same cursor.
+          */}
+          <div className="ml-auto flex items-center gap-0.5">
+            <button
+              aria-label="Previous moment"
+              title="Previous moment"
+              disabled={!prevMoment}
+              onClick={() => prevMoment && setActiveEventId(prevMoment.id)}
+              className="pw-tap flex h-7 w-7 items-center justify-center rounded text-[hsl(var(--muted-foreground))] transition-colors enabled:hover:text-[hsl(var(--foreground))] disabled:opacity-30"
+            >
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            </button>
+            <button
+              aria-label="Next moment"
+              title="Next moment"
+              disabled={!nextMoment}
+              onClick={() => nextMoment && setActiveEventId(nextMoment.id)}
+              className="pw-tap flex h-7 w-7 items-center justify-center rounded text-[hsl(var(--muted-foreground))] transition-colors enabled:hover:text-[hsl(var(--foreground))] disabled:opacity-30"
+            >
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            </button>
+            <button
+              aria-label="Close Writer's Brief"
+              className="pw-tap flex h-7 w-7 items-center justify-center rounded text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+              onClick={() => setBriefOpen(false)}
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -304,17 +344,28 @@ export function WritersBriefPanel() {
                     {[...events].sort((a, b) => a.sortOrder - b.sortOrder).map((ev) => {
                       const isActive = ev.id === activeEventId
                       return (
-                        <li
-                          key={ev.id}
-                          className={cn(
-                            'flex items-start gap-2 rounded px-1.5 py-1 text-xs',
-                            isActive
-                              ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))] font-medium'
-                              : 'text-[hsl(var(--muted-foreground))]'
-                          )}
-                        >
-                          <ChevronRight className={cn('mt-0.5 h-3 w-3 shrink-0', isActive ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))]')} />
-                          <span>{ev.title}</span>
+                        <li key={ev.id}>
+                          {/*
+                            WRUN-12: these were inert `<li>`s that looked like
+                            controls — listed, chevroned, and highlighting the
+                            active one — while doing nothing at all. They move
+                            the cursor now, which is what the chevron was
+                            promising and what the panel exists to follow.
+                          */}
+                          <button
+                            type="button"
+                            aria-current={isActive ? 'true' : undefined}
+                            onClick={() => setActiveEventId(ev.id)}
+                            className={cn(
+                              'flex w-full items-start gap-2 rounded px-1.5 py-1 text-left text-xs transition-colors',
+                              isActive
+                                ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))] font-medium'
+                                : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]'
+                            )}
+                          >
+                            <ChevronRight className={cn('mt-0.5 h-3 w-3 shrink-0', isActive ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))]')} />
+                            <span>{ev.title || 'Untitled scene'}</span>
+                          </button>
                         </li>
                       )
                     })}
