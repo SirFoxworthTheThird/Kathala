@@ -110,15 +110,29 @@ export function TimeCursor({ worldId }: { worldId: string }) {
         className={cn(
           // Narrower cap on a phone, where the top bar also carries undo, redo
           // and search: at 200px the pill claimed more than half the header.
-          'flex h-7 min-w-0 max-w-[110px] items-center gap-1.5 rounded-md border px-2 text-xs transition-colors sm:max-w-[200px]',
+          //
+          // `px-1.5` below `sm` is 4px of the 12 that F-5 needed. The pill is
+          // the last thing in this header that can shrink, so every fixed pixel
+          // beside it comes out of the label.
+          'flex h-7 min-w-0 max-w-[110px] items-center gap-1.5 rounded-md border px-1.5 text-xs transition-colors sm:max-w-[200px] sm:px-2',
           activeEvent
             ? 'border-[hsl(var(--ring)/0.4)] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
             : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
         )}
       >
-        {/* Decoration, so it yields to the label on the narrowest phones —
-            "Ch.4" tells you where you are; the clock does not. */}
-        <Clock className="hidden h-3.5 w-3.5 shrink-0 min-[360px]:block" aria-hidden="true" />
+        {/*
+          Decoration, so it yields to the label on a phone — "Ch.4" tells you
+          where you are; the clock does not.
+
+          It used to say that and appear at `min-[360px]`, which is the width
+          where the label needs the room most, and being `shrink-0` it took its
+          14px out of the label's share. Measured on the built app with the
+          cursor on Ch.4: the label box was **0px of the 30px** it needed at
+          360, 15/30 at 320, 25/30 at 390 — the pill was a bare clock glyph on
+          the commonest phone width there is. Gated at `sm` it is gone wherever
+          the header is tight and back wherever there is room.
+        */}
+        <Clock className="hidden h-3.5 w-3.5 shrink-0 sm:block" aria-hidden="true" />
         {activeEvent ? (
           <span className="truncate">
             <span className="font-semibold">Ch.{activeChapter?.number ?? '—'}</span>
@@ -162,7 +176,13 @@ export function TimeCursor({ worldId }: { worldId: string }) {
           // Set apart from "next moment": this one discards the reading
           // position, and it used to sit 2px from the control a reader taps
           // repeatedly.
-          className={cn(stepBtn, 'ml-1.5 hidden min-[360px]:flex')}
+          //
+          // The cut-off is 390 rather than 360 because 360 is where it stopped
+          // being affordable: with this button and the clock both arriving at
+          // 360, a two-digit chapter had 33px of the 39 it needs. At 390 there
+          // is room for both, and `e2e/touchTargets.spec.ts` asserts it is
+          // present and clear of "next moment" at exactly that width.
+          className={cn(stepBtn, 'ml-1.5 hidden min-[390px]:flex')}
         >
           <X className="h-3 w-3" aria-hidden="true" />
         </button>

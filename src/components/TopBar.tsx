@@ -124,10 +124,17 @@ export function TopBar() {
     ? `1 ${mapLayer.scaleUnit} = ${Math.round(mapLayer.scalePixelsPerUnit)} px`
     : null
 
+  /*
+    `px-2` and `gap-1` below `sm` are the other 8px F-5 needed. This header
+    carries seven 32px controls on a phone — menu, brand, two steppers, undo,
+    redo, search — and the time-cursor pill is the only thing in it that can
+    shrink, so every fixed pixel is taken out of the one label that says where
+    in the book you are. Nothing here is removed; the padding is.
+  */
   return (
-    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 sm:px-4">
+    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-2 sm:px-4">
       {/* Left: menu (mobile) + brand + world name + time cursor */}
-      <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+      <div className="flex min-w-0 items-center gap-1 sm:gap-2">
         {world && (
           <button
             onClick={() => setNavOpen(true)}

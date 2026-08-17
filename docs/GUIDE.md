@@ -88,6 +88,12 @@ chapter on the same timeline.
 Changing the cursor never edits the story; it only changes the moment you're
 viewing. You'll see the cursor on nearly every screen in this guide.
 
+On a phone the pill keeps the **chapter number** and drops what it can afford to
+— the scene title, and the clock icon beside it — because the number is the part
+that still reads at that size. The full label is in the pill's tooltip, and on
+the timeline it opens. The **X** that jumps back to *All chapters* appears from
+390px up; below that, step back with the arrow or use the timeline.
+
 The bar is there wherever the cursor means something — the Timeline, the
 Corkboard, the Structure board, the Arc grid, the Calendar, the Lore roster, the
 Maps and the Manuscript. It's left off the world dashboard and Settings, which
