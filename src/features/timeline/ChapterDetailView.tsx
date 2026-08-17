@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Users, Network, StickyNote, ChevronDown, ChevronRight, Scroll } from 'lucide-react'
+import { ArrowLeft, Plus, Users, Network, StickyNote, ChevronDown, ChevronRight, Scroll, BookLock } from 'lucide-react'
 import { useChapter, useEvents, useWorldEvents, useWorldChapters, useTimelines, updateChapter, updateEvent } from '@/db/hooks/useTimeline'
 import { useWorld } from '@/db/hooks/useWorlds'
 import { journalGroup } from '@/db/hooks/useOperations'
@@ -10,6 +10,7 @@ import { useEventRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapsho
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { useGate } from '@/db/hooks/ReadingGateContext'
+import { chapterWithheld } from '@/lib/chapterReached'
 import { Button } from '@/components/ui/button'
 import { EventCard } from './EventCard'
 import { SnapshotCard } from './SnapshotCard'
@@ -133,7 +134,18 @@ export default function ChapterDetailView() {
   const eventIds = sortedEvents.map((e) => e.id)
   const lastEventId = eventIds.length > 0 ? eventIds[eventIds.length - 1] : null
 
-  const allSnapshots = useChapterEventSnapshots(eventIds)
+  const chapterSnapshots = useChapterEventSnapshots(eventIds)
+  /*
+    `useChapterEventSnapshots` is ungated — its neighbour `useWorldSnapshots` in
+    the same file filters through the gate and this one does not — so even on a
+    chapter the reader has reached, state recorded at a *later scene within it*
+    would be on screen. The page guard above cannot catch that: the chapter is
+    legitimately open.
+  */
+  const allSnapshots = useMemo(
+    () => (gate.active ? chapterSnapshots.filter((s) => gate.hasReached(s.eventId)) : chapterSnapshots),
+    [chapterSnapshots, gate],
+  )
   const relSnapshots = useEventRelationshipSnapshots(lastEventId)
 
   async function moveEvent(eventId: string, direction: 'up' | 'down') {
@@ -169,6 +181,50 @@ export default function ChapterDetailView() {
     return (
       <div className="flex h-full items-center justify-center text-[hsl(var(--muted-foreground))]">
         Chapter not found.
+      </div>
+    )
+  }
+
+  /*
+    A chapter the reader has not reached is not rendered at all.
+
+    This screen took the gate for two things — hiding *Add Event*, and declining
+    to move the cursor — and nothing else, so opening a later chapter showed its
+    scenes, its synopsis and its Character States in full: the names, where they
+    are, and what they are there to do. Measured on a downloaded *Philosopher's
+    Stone* at chapter 4, that put Quirrell and Voldemort in the same scene list,
+    two taps from a reader's ordinary position. The list one screen back
+    withholds the very same synopsis, which is what makes this a hole rather
+    than a policy.
+
+    Withholding the whole page rather than field by field is deliberate: this
+    view renders scenes, snapshots, relationships, notes and a diff, and a rule
+    applied per field leaves the next field added to it unguarded by default.
+    The reader is told where they are and given the way back rather than a blank
+    screen, because "nothing here" reads as a fault.
+  */
+  if (chapterWithheld(gate, chapter.number)) {
+    return (
+      <div className="flex h-full flex-col">
+        <div className="flex items-center gap-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="Back" title="Back" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h2 className="min-w-0 flex-1 truncate text-base font-semibold">Chapter {chapter.number}</h2>
+        </div>
+        <div className="flex flex-1 items-center justify-center p-6">
+          <div className="flex max-w-sm flex-col items-center gap-3 text-center">
+            <BookLock className="h-8 w-8 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+            <p className="text-sm font-medium text-[hsl(var(--foreground))]">
+              You have not reached this chapter yet
+            </p>
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">
+              You are reading at chapter {gate.chapterNumber}. This page will fill in when you get
+              here — nothing from it is shown before then.
+            </p>
+            <Button size="sm" variant="outline" onClick={() => navigate(-1)}>Go back</Button>
+          </div>
+        </div>
       </div>
     )
   }
@@ -328,14 +384,34 @@ export default function ChapterDetailView() {
             <span className="text-sm font-medium">Writer's Notes</span>
           </div>
           <div className="flex flex-col p-3 lg:flex-1">
-            <textarea
-              className="min-h-[10rem] resize-y rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] outline-none transition-colors focus:border-[hsl(var(--ring))] leading-relaxed lg:min-h-0 lg:flex-1 lg:resize-none lg:text-xs"
-              aria-label="Writer's notes for this chapter"
-              placeholder="Freeform notes for this chapter — reminders, things to fix, ideas, open questions…"
-              value={notes}
-              onChange={(e) => handleNotesChange(e.target.value)}
-            />
-            <p className="mt-1.5 text-[10px] text-[hsl(var(--muted-foreground))]">Auto-saved</p>
+            {/*
+              The notes are the author's, on a chapter the reader has reached —
+              so they are shown and not editable. This box took a reader's
+              typing and wrote it to the database while `readingMode` was on,
+              which is the same defect **RM-1** closed on the map.
+            */}
+            {gate.active ? (
+              notes.trim() ? (
+                <p className="whitespace-pre-wrap rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-2.5 text-sm leading-relaxed text-[hsl(var(--foreground))] lg:text-xs">
+                  {notes}
+                </p>
+              ) : (
+                <p className="text-xs italic text-[hsl(var(--muted-foreground))]">
+                  No notes on this chapter.
+                </p>
+              )
+            ) : (
+              <>
+                <textarea
+                  className="min-h-[10rem] resize-y rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] outline-none transition-colors focus:border-[hsl(var(--ring))] leading-relaxed lg:min-h-0 lg:flex-1 lg:resize-none lg:text-xs"
+                  aria-label="Writer's notes for this chapter"
+                  placeholder="Freeform notes for this chapter — reminders, things to fix, ideas, open questions…"
+                  value={notes}
+                  onChange={(e) => handleNotesChange(e.target.value)}
+                />
+                <p className="mt-1.5 text-[10px] text-[hsl(var(--muted-foreground))]">Auto-saved</p>
+              </>
+            )}
           </div>
         </div>
       </div>

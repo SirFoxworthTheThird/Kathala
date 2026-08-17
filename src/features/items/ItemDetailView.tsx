@@ -7,6 +7,7 @@ import { useItem, updateItem, deleteItem } from '@/db/hooks/useItems'
 import { storeBlob } from '@/db/hooks/useBlobs'
 import { LinkImageButton } from '@/components/LinkImageButton'
 import { useGate } from '@/db/hooks/ReadingGateContext'
+import { NotReachedYet } from '@/components/NotReachedYet'
 import { useCrossTimelineArtifactsForItem, createCrossTimelineArtifact, deleteCrossTimelineArtifact } from '@/db/hooks/useTimelineRelationships'
 import { useTimelines } from '@/db/hooks/useTimeline'
 import { PortraitImage } from '@/components/PortraitImage'
@@ -45,6 +46,11 @@ export default function ItemDetailView() {
         Item not found.
       </div>
     )
+  }
+
+  // As for characters: filtered out of the roster, rendered in full by URL.
+  if (gate.active && !gate.isRevealed(item.id)) {
+    return <NotReachedYet what="item" />
   }
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {

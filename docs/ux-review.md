@@ -1199,6 +1199,47 @@ its own array now.
 
 ---
 
+## 31. The first reader run
+
+`.claude/agents/reader-review.md` drove the app as somebody reading a novel with
+the paperback beside them, on *The Woman in White* — §22's own *Still not
+reviewed* asked for a second book, and every reading-mode measurement before
+this came from *Philosopher's Stone*. The report is
+`docs/reader-run-2026-08-17.md`; its ids are **F-1..F-7** and are kept here.
+
+Its verdict on the feature as a whole is worth quoting, because it is not what
+the findings suggest on their own: *"the failures above are not the gate hiding
+too much. Every one of them is the gate not being consulted at all on a screen
+someone forgot about."*
+
+| ID | Severity | Status | Finding |
+|---|---|---|---|
+| RD-6 | high | **fixed** | **The chapter detail page ignored the reader's position entirely, and took their typing.** It used the gate for exactly two things — hiding *Add Event*, declining to move the cursor — so opening a later chapter rendered its scenes, its synopsis and its Character States in full. Measured: on *Philosopher's Stone* at chapter 4, ch.17 named **Quirrell and Voldemort** in the same scene list; on *The Woman in White* at chapter 7, **52 of the 55 chapters ahead** leaked a name the app's own roster said was unmet. The Writer's Notes box then wrote the reader's text to `chapters.notes` with `readingMode: true` — **RM-1** again, one screen over. Reachable three ways: the open icon on a timeline row, a chapter hit in the search palette, and any Calendar entry. **The list one screen back withholds the very same synopsis**, which is what makes it a hole rather than a policy. | **Fixed by withholding the page rather than its fields.** This view renders scenes, snapshots, relationships, notes and a diff; a rule applied field by field leaves the next field unguarded by default, which is how it got here. A reader is told where they are and given the way back, because a blank screen reads as a fault. The rule came out into `chapterWithheld` (`lib/chapterReached`) because `ChapterRow` already had it and two copies of a spoiler rule is one too many. **Two further holes came out of the same look:** the notes box is read-only prose while reading even on a chapter that *has* been reached — it is the author's writing either way — and `useChapterEventSnapshots` is ungated where its neighbour `useWorldSnapshots` is not, so state recorded at a later scene *within* the open chapter was on screen; the page guard cannot catch that, since the chapter is legitimately open. |
+| RD-7 | high | **fixed** | **The same hole existed on every other detail route**, and the widened sweep found it within one run: `/characters/:id`, `/items/:id` and `/lore/:id` all rendered in full for an entity the reader had not met. Not reachable by tapping — the indexes filter — but reachable by URL, by an older link, and by anything that navigates by id. | **Fixed with one shared `NotReachedYet`**, so the four routes say the same thing and the fifth does not have to invent it. Characters and items ask `gate.isRevealed`; the lore article asks `hasReached(visibleFromEventId) && linksRevealed(linkedEntityIds)` — the exact rule `useLorePages` filters the *list* with, taken from that file so the two cannot drift. |
+| RD-8 | high | **fixed** | **The guard that exists to catch this class could not see it.** `spoilerGuarantee.spec.ts` claimed it *"walks every world-scoped route, so a screen added later is covered without anyone remembering to add it here."* Its `ROUTES` was twelve hardcoded index segments with **no detail route among them**. The comment had never been true. | **Fixed by enumerating detail routes from the store** — every chapter, character, item and lore page — so a chapter added to a book is covered without anyone remembering. It found RD-7 immediately. **One exception is carved out and named:** a met character's own `description` is prose the reader is entitled to, and prose can name somebody unmet (*"Harry's aunt and Lily Potter's sister"*). The app cannot gate that without redacting the author's sentence — **X-8** records the same limit for scene text — so a name is forgiven only inside the description of the character whose page it is. The same name anywhere else on that page still fails. **Also corrected here: my own regression from §30.** Filing the catalogue alphabetically moved *Around the World in Eighty Days* to the top, and this spec picked `Download` `.first()`, so its subject silently changed from *Philosopher's Stone*. Six specs were repaired for that at the time and this one was missed; the reader run caught it. All three tests here now name their book. |
+| F-2 | high | **open** | **Chapter titles are exempt from the gate, and for some books the titles *are* the plot.** On *The Woman in White* at chapter 7 the Timeline lists all 62, including *"Conclusion I: Laura's Identity Restored"* and *"Fosco's Death in Paris"* — **9 of the 13 characters the app says are hidden are named in them**, most with their fate attached, and the same titles reach the search palette. The exemption is deliberate and documented: titles are printed on the reader's own contents page. **That is true of *Philosopher's Stone* and false of this book**, whose chapters are numbered I–XXXVIII within named narratives and carry no printed titles at all. Nothing in the data model distinguishes a printed title from an authored one. Worse, `e2e/helpers/unmet.ts` subtracts every chapter title from the text under test on that same reasoning, so for such a book the guarantee checks the leak against itself. |
+| F-3 | high | **open** | **One tap on the Calendar silently overwrote the reader's place in the book**, with no undo — reading mode removes it. Reproduced: cursor at Ch.8, tapped an earlier scene to remind themselves what it was, cursor and stored position both moved to Ch.3, and the shelf will say *"Chapter 3 of 62"* next week. Seven more sites pair *show me this* with *and move your bookmark* — `HistoryTab`, `AppearancesTab`, `CharacterFilmStrip`, `LocationDetailPanel`, `CharacterArcView`, `SearchPalette`, `WorldDashboardView` — read from the code and **not reproduced**. For a writer the moving cursor is the whole idiom; for a reader it is the one piece of state they own. |
+| F-4 | med | **open** | **Setting your position is cheap only if you find it.** Measured: the always-visible stepper moves by *moment*, so ch.1→ch.4 of *Philosopher's Stone* is **9 taps** (~50 to walk the book); **View from here** on a timeline row is **2**. But it lives only on the Timeline, it reads like a view control rather than a bookmark, and the dashboard's reading notice — the screen the Library lands you on — offers exactly one affordance: *"Turn it off in settings."* The one thing it hands the reader is the way to switch the feature off. |
+| F-5 | med | **open** | **On a phone the notice explaining reading mode collapses to one word wide.** Measured text-column widths: 120px at 430, 80px at 390, 50px at 360, **10px at 320** — a 32-line ribbon, with the heading drawn *underneath* the "Turn it off in settings" link. `flex flex-wrap` with a `min-w-0 flex-1` column beside a `shrink-0` link that never yields. **§23's phone sweep cannot see this**: it compares `documentElement.scrollWidth` to `clientWidth`, which is 390:390, 360:360, 320:320 — the page is not too wide, one column inside it is too narrow. That is a different measurement and belongs in the sweep. |
+| F-6 | med | **open** | **The Calendar invites the reader to rearrange the author's chronology.** Its header reads *"Drag an event to a day to pin it there"* in reading mode, seven chips carry `draggable`, and `CalendarView` imports no gate at all. **Honestly reported by the run:** the invitation and the affordance are confirmed; the write was **not** reproduced — synthetic HTML5 drag events could not get past a `dragId` state set asynchronously. The invitation alone is the **RM-2** shape a third time. |
+| F-7 | low-med | **open** | **A map with no picture is indistinguishable from one being withheld or one that failed to load.** *The Woman in White*'s five layers carry no image at all, and the screen says nothing — leaving three explanations available to the reader, two of which are the app's fault. Its markers also hot-link `upload.wikimedia.org`, which is the wrong dependency for a local-first companion used on a train. The run was careful to say it could not test a genuinely offline load from its sandbox. |
+
+**A correction the run made to this document.** §22 describes reading mode as
+having *"its own warm sepia theme, a serif face"*. It does not: that is a
+per-book world theme carried in the `.pwk` — *Philosopher's Stone* is
+`theme-fantasy`, the warm one §22 saw, while *The Woman in White* is
+`theme-noir` and arrives near-black with a mono face. Reading mode has **no
+visual signature of its own**, which means RD-3's notice carries all of the "you
+are in reading mode" weight by itself — and F-5 shatters that notice on a phone.
+
+**And a process note, because it has now cost twice.** A batched mutation sweep
+was killed by a timeout mid-case and did not run its restore, leaving a deleted
+gate in the working tree — the same thing §29 recorded. It was caught by the
+next mutation's `assert` failing to find its line. Mutations that edit source
+are run one at a time now, each with its own restore.
+
+---
+
 ## Still not reviewed
 
 Kept honest: this list only shrinks when a screen has actually been driven and

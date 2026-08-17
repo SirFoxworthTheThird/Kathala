@@ -289,6 +289,13 @@ screen offers to add, generate or delete anything: no **Add Character**, no
 **New Page**, no **Generate with AI**, no delete buttons on cards, rows or map
 layers.
 
+**A chapter you have not reached yet does not open.** Its page says so and
+offers the way back, rather than showing you the scenes, the character states
+and the summary of a chapter you are still ten evenings away from — and the same
+holds for a character, an item or a lore page you have not met, however you
+arrive at it. A chapter you *have* reached opens fully, and the author's notes
+on it are shown as writing rather than as a box to type in.
+
 The map is read-only in the same way, including the parts you change by hand
 rather than by button: location pins and character pins cannot be dragged to
 new positions, characters cannot be dragged onto the map from the sidebar or

@@ -5,6 +5,7 @@ import { useCharacter, deleteCharacter } from '@/db/hooks/useCharacters'
 import { updateCharacter } from '@/db/hooks/useCharacters'
 import { storeBlob } from '@/db/hooks/useBlobs'
 import { useGate } from '@/db/hooks/ReadingGateContext'
+import { NotReachedYet } from '@/components/NotReachedYet'
 import { LinkImageButton } from '@/components/LinkImageButton'
 import { PortraitImage } from '@/components/PortraitImage'
 import { Button } from '@/components/ui/button'
@@ -58,6 +59,12 @@ export default function CharacterDetailView() {
         Character not found.
       </div>
     )
+  }
+
+  // Listed nowhere while unmet, but the page behind the listing rendered in
+  // full for anyone who arrived by URL or by an older link.
+  if (gate.active && !gate.isRevealed(character.id)) {
+    return <NotReachedYet what="character" />
   }
 
   async function handlePortraitUpload(e: React.ChangeEvent<HTMLInputElement>) {
