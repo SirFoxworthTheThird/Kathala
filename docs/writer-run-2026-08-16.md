@@ -473,7 +473,7 @@ this is about what the app *does*, not about how it looks.
 
 ---
 
-### W-13 · low · The pacing panel reserves the full width for a very small chart
+### W-13 · low · ~~The pacing panel reserves the full width for a very small chart~~ — **fixed**
 
 On a three-chapter draft — the state this app's target user is in — the pacing
 band draws **334 px** of chart (58 px gutter + 276 px plot) across a panel the

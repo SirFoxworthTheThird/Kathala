@@ -68,7 +68,17 @@ export function PacingCurve({ worldId, events, chapters, order, activeEventId, o
   if (points.length === 0) return null
 
   return (
-    <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+    /*
+      WRUN-14: as wide as it has to be, and no wider.
+
+      The chart is `AXIS_W + scenes × STEP`, so a three-chapter draft — the
+      state this app's target user is in — draws 334px of it. The panel was a
+      plain block, so it stretched to the content column (~1354px) and framed
+      about a thousand pixels of nothing. `w-fit` sizes the panel to its widest
+      child instead; `max-w-full` caps it on a long book, where the chart is
+      thousands of pixels wide and the inner `overflow-x-auto` scrolls it.
+    */
+    <div className="w-fit max-w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
       <div className="flex items-center gap-1.5 px-3 pt-2 pb-1">
         <Activity className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" />
         <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide">

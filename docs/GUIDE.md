@@ -504,7 +504,10 @@ your streak and history survive a backup or a move to another device.
 The Timeline is the spine of your story: a list of chapters, each holding an
 ordered set of **events** (scenes/beats). A **pacing curve** across the top plots
 dramatic tension chapter by chapter once you rate scenes, so you can see the
-shape of your story at a glance.
+shape of your story at a glance. It is drawn at a fixed width per scene and its
+panel is only as wide as the curve needs, so an early draft gets a small chart
+rather than a small chart in a very large frame; on a long book the panel takes
+the full width and the curve scrolls inside it.
 
 ![Timeline view](images/04-timeline.png)
 
