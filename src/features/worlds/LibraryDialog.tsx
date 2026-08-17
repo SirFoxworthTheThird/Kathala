@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
-import { BookOpen, Download, Check, X, AlertTriangle } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { BookOpen, Download, Check, X, AlertTriangle, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   downloadLibraryWorld, fetchLibraryIndex, formatBytes, libraryBaseUrl,
   type LibraryEntry,
 } from '@/lib/library'
+import { browseLibrary } from '@/lib/libraryBrowse'
+import { Input } from '@/components/ui/input'
 
 /**
  * Cover art on a catalogue card.
@@ -55,8 +57,34 @@ export function LibraryDialog({
   const [imagesWarning, setImagesWarning] = useState<string | null>(null)
   /** Entry awaiting confirmation that replacing the local copy is intended. */
   const [confirming, setConfirming] = useState<{ entry: LibraryEntry; withImages: boolean } | null>(null)
+  const [query, setQuery] = useState('')
 
   const baseUrl = libraryBaseUrl(import.meta.env.BASE_URL)
+
+  /*
+    Escape backs out of whatever is in front of you: the replace confirm if it
+    is up, the catalogue otherwise.
+
+    Both halves were missing. This dialog is hand-rolled rather than the shared
+    `Dialog`, so **X-11**'s Escape sweep passed it by exactly as it did the Help
+    panel — and unlike those, it has no backdrop click either, so its close
+    button was the only way out. The confirm stacked on top is hand-rolled too
+    and had no key of its own, so Escape in front of it did nothing at all.
+
+    Innermost first, in one handler, which is the rule **X-13** was filed for:
+    two listeners that both fire would answer the question *and* throw away the
+    catalogue behind it in a single keypress.
+  */
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return
+      if (confirming) setConfirming(null)
+      else onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, confirming, onClose])
 
   useEffect(() => {
     if (!open || entries) return
@@ -68,6 +96,12 @@ export function LibraryDialog({
       })
     return () => { cancelled = true }
   }, [open, entries, baseUrl])
+
+  /*
+    Alphabetical, filed past a leading article, and narrowed by the search box.
+    See `lib/libraryBrowse` for why the article matters at this size.
+  */
+  const shown = useMemo(() => browseLibrary(entries ?? [], query), [entries, query])
 
   if (!open) return null
 
@@ -140,11 +174,44 @@ export function LibraryDialog({
             </p>
           )}
 
+          {/*
+            The search box appears once the catalogue has, so it never offers to
+            filter nothing. No autofocus: on a phone that throws the keyboard up
+            over the list the reader came to look at.
+          */}
+          {entries !== null && entries.length > 0 && (
+            <div className="relative mt-3">
+              <Search
+                className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[hsl(var(--muted-foreground))]"
+                aria-hidden="true"
+              />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                aria-label="Search the library by title or author"
+                placeholder="Search by title or author…"
+                className="h-9 pl-8 text-sm"
+              />
+            </div>
+          )}
+
           <ul className="mt-3 flex flex-col gap-2">
             {entries === null && !error && (
               <li className="py-6 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading…</li>
             )}
-            {entries?.map((entry) => {
+            {/*
+              Says what was searched for, because "no results" on its own leaves
+              a reader wondering whether the catalogue failed to load.
+            */}
+            {entries !== null && shown.length === 0 && query.trim() && (
+              <li className="flex flex-col items-center gap-2 py-6 text-center text-sm text-[hsl(var(--muted-foreground))]">
+                <span>No book here matches “{query.trim()}”.</span>
+                <Button variant="outline" size="sm" onClick={() => setQuery('')}>
+                  Show all {entries.length}
+                </Button>
+              </li>
+            )}
+            {shown.map((entry) => {
               const installed = installedWorldIds.has(entry.worldId)
               const busy = busyId === entry.id
               return (

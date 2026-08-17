@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { downloadLibraryBook, DEFAULT_BOOK } from './helpers/library'
 import { unmetNames } from './helpers/unmet'
 
 // Reading mode and spoiler gating, driven through the library so the
@@ -46,9 +47,7 @@ async function revealAll(page: Page) {
 async function downloadFirstLibraryWorld(page: Page) {
   await page.goto('/')
   await resetDB(page)
-  await page.getByRole('button', { name: 'Library', exact: true }).click()
-  await page.getByRole('button', { name: /^Download \(/ }).first().click()
-  await expect(page).toHaveURL(/#\/worlds\//, { timeout: 60_000 })
+  await downloadLibraryBook(page, DEFAULT_BOOK)
   await page.waitForTimeout(1000)
 }
 

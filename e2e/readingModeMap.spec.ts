@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { downloadLibraryBook, DEFAULT_BOOK } from './helpers/library'
 
 /**
  * Reported from use: *in reading mode, on the map, if I select a character I'm
@@ -28,9 +29,7 @@ const READER_TYPED = 'A READER TYPED THIS'
 async function libraryWorldOnItsMap(page: Page) {
   await page.goto('/')
   await resetDB(page)
-  await page.getByRole('button', { name: 'Library', exact: true }).click()
-  await page.getByRole('button', { name: /^Download \(/ }).first().click()
-  await expect(page).toHaveURL(/#\/worlds\//, { timeout: 90_000 })
+  await downloadLibraryBook(page, DEFAULT_BOOK)
   await page.waitForTimeout(2500)
 
   // The premise, asserted rather than assumed: if the world did not arrive in

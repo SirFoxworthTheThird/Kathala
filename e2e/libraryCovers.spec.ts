@@ -39,12 +39,21 @@ test('shows cover art for the books that link one', async ({ page }) => {
   await expect(cover).toBeVisible()
   await expect.poll(() => cover.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBeGreaterThan(0)
 
-  // The Name of the Wind has no cover to link, and its card is text — the
-  // pairing is the point, since "an image is present" proves nothing about
-  // whether the right cards get one.
-  const notw = page.locator('li', { hasText: 'The Name of the Wind' }).first()
-  await expect(notw).toContainText('Patrick Rothfuss')
-  await expect(notw.locator('img')).toHaveCount(0)
+  /*
+    The pairing is the point: "an image is present" proves nothing about whether
+    the *right* cards get one.
+
+    This half named *The Name of the Wind*, which **does** link a cover — the
+    claim was false about the catalogue and passed only because that card sat
+    where its lazy-loaded image had not been fetched yet. Reordering the
+    catalogue alphabetically moved it and the test went red, which is the test
+    doing its job late rather than a regression. Only two entries genuinely have
+    no cover, both Tolkien, whose artwork lives inside the image bundle.
+  */
+  const noCover = page.locator('li', { hasText: 'The Fellowship of the Ring' }).first()
+  await expect(noCover).toContainText('J.R.R. Tolkien')
+  await noCover.scrollIntoViewIfNeeded()
+  await expect(noCover.locator('img')).toHaveCount(0)
 })
 
 test('a cover that will not load takes itself off the card', async ({ page }) => {

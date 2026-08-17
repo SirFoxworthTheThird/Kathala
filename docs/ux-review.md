@@ -1177,6 +1177,28 @@ where it started belongs after it, not inside it.
 
 ---
 
+## 30. Asked for from use: browsing the Library
+
+*"Can we order the Library alphabetically and have a search? And Escape should
+allow me to close it."* Three things, all missing.
+
+| ID | Severity | Status | Finding |
+|---|---|---|---|
+| LIB-1 | med | **fixed** | **The catalogue was in the order `index.json` listed it** — curated by theme (modern fantasy, then gothic, then the classics), which is a shape only the person who wrote the file can see. A reader looking for a book they have in mind had to read all 25. | **Fixed, filed past a leading article.** Plain A–Z would have been close to useless at this size: **16 of the 25 titles begin with an article**, fifteen *The* and one *A*, so an unadjusted sort files most of the catalogue under T and leaves someone hunting for *The Woman in White* between *The War of the Worlds* and *Treasure Island*. `sortableTitle` in `lib/libraryBrowse` does what a shelf does. It is deliberately English-only, matching the catalogue — a French title keeps its article and files under it, which is right for anyone who would look for it. The e2e asserts the ordering as a **property** (filing keys are sorted) rather than as a fixed list, so adding a book cannot fail it for the wrong reason, and pairs that with "this is not the raw alphabetical order" so the article rule is not indistinguishable from a plain sort. |
+| LIB-2 | med | **fixed** | **No search.** | **Fixed: title and author, not the blurb.** Matching the blurb would return *Dracula* for "London" alongside four others, which reads as a broken search rather than a thorough one. Accents are folded, so "bronte" finds Brontë on a plain keyboard. Nothing matching says what was searched for and offers a **Show all 25** to get back, because a bare "no results" leaves a reader wondering whether the catalogue failed to load. The box only appears once the catalogue has, and does not autofocus — on a phone that throws the keyboard up over the list they came to look at. |
+| LIB-3 | med | **fixed** | **Escape did nothing, and the close button was the only way out.** The dialog is hand-rolled rather than the shared `Dialog`, so **X-11**'s Escape sweep passed it by exactly as it did the Help panel — and unlike the panels in that finding, this one has no backdrop click either. | **Fixed as one handler that backs out of whatever is in front:** the replace confirm if it is showing, the catalogue otherwise. The confirm is hand-rolled too and had no key of its own, so Escape in front of it did nothing at all. One handler rather than two is the rule **X-13** was filed for — two listeners that both fire would answer the question *and* throw away the catalogue behind it in a single keypress. |
+
+**Two of this change's own tests were weak, and the mutation sweep is why that
+is known.** A blank-query branch could not be killed because both halves
+returned the same list — an empty needle is a substring of everything — so the
+branch was deleted and the contract left to a test that states it. And the
+"does not mutate its input" test shared the fixture with the tests above it, so
+a version that sorted in place had *already* left that fixture sorted by the
+time it ran; sorting it again changed nothing and the mutant survived. It has
+its own array now.
+
+---
+
 ## Still not reviewed
 
 Kept honest: this list only shrinks when a screen has actually been driven and

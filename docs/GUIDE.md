@@ -201,6 +201,13 @@ books and downloads them straight into your browser. Nothing is uploaded and no
 account is needed — a downloaded world is an ordinary world you own outright,
 which you can edit, export, or delete like any other.
 
+The catalogue is **listed alphabetically**, filed past a leading *The* or *A* as
+a shelf would — most of these titles begin with one, so *The Woman in White*
+sits under W rather than in a run of fifteen books under T. **Search** narrows it
+by title or by author, so "dumas" finds both his, and accents are ignored:
+"bronte" finds Brontë. **Escape** closes the Library, and closes the replace
+confirm first if that is showing.
+
 Each entry shows its cast, chapter and event counts, and the download size. Map
 images and portraits are a separate, much larger download, so they sit behind
 their own button rather than coming along by default — useful if you're on a

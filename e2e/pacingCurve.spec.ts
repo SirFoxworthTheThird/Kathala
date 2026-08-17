@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { downloadLibraryBook, DEFAULT_BOOK } from './helpers/library'
 
 /**
  * The pacing curve has to be readable as data, not just suggestive as a shape.
@@ -14,9 +15,7 @@ test('the pacing curve names its scale and its chapters', async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 900 })
   await page.goto('/')
   await resetDB(page)
-  await page.getByRole('button', { name: 'Library', exact: true }).click()
-  await page.getByRole('button', { name: /^Download \(/ }).first().click()
-  await expect(page).toHaveURL(/#\/worlds\//, { timeout: 60_000 })
+  await downloadLibraryBook(page, DEFAULT_BOOK)
   await page.waitForTimeout(2000)
   const id = new URL(page.url()).hash.split('/')[2]
   await page.goto(`/#/worlds/${id}/settings`)
@@ -56,9 +55,7 @@ test('the pacing curve carries its data as a table for anyone not reading the pi
   await page.setViewportSize({ width: 1600, height: 900 })
   await page.goto('/')
   await resetDB(page)
-  await page.getByRole('button', { name: 'Library', exact: true }).click()
-  await page.getByRole('button', { name: /^Download \(/ }).first().click()
-  await expect(page).toHaveURL(/#\/worlds\//, { timeout: 60_000 })
+  await downloadLibraryBook(page, DEFAULT_BOOK)
   await page.waitForTimeout(2000)
   const id = new URL(page.url()).hash.split('/')[2]
   await page.goto(`/#/worlds/${id}/settings`)
@@ -110,9 +107,7 @@ test('the pacing curve does not name scenes the reader has not reached', async (
   await page.setViewportSize({ width: 1600, height: 900 })
   await page.goto('/')
   await resetDB(page)
-  await page.getByRole('button', { name: 'Library', exact: true }).click()
-  await page.getByRole('button', { name: /^Download \(/ }).first().click()
-  await expect(page).toHaveURL(/#\/worlds\//, { timeout: 60_000 })
+  await downloadLibraryBook(page, DEFAULT_BOOK)
   await page.waitForTimeout(2000)
   const id = new URL(page.url()).hash.split('/')[2]
 

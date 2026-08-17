@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { downloadLibraryBook, DEFAULT_BOOK } from './helpers/library'
 
 /**
  * The Factions roster and the search palette must agree about which factions a
@@ -20,9 +21,7 @@ test.describe('Faction reveal', () => {
   test('the roster hides factions the reader has met nobody in', async ({ page }) => {
     await page.goto('/')
     await resetDB(page)
-    await page.getByRole('button', { name: 'Library', exact: true }).click()
-    await page.getByRole('button', { name: /^Download \(/ }).first().click()
-    await expect(page).toHaveURL(/#\/worlds\//, { timeout: 60_000 })
+    await downloadLibraryBook(page, DEFAULT_BOOK)
     await page.waitForTimeout(1500)
     const worldId = new URL(page.url()).hash.split('/')[2]
 
@@ -60,9 +59,7 @@ test.describe('Faction reveal', () => {
     // faction description instead.
     await page.goto('/')
     await resetDB(page)
-    await page.getByRole('button', { name: 'Library', exact: true }).click()
-    await page.getByRole('button', { name: /^Download \(/ }).first().click()
-    await expect(page).toHaveURL(/#\/worlds\//, { timeout: 60_000 })
+    await downloadLibraryBook(page, DEFAULT_BOOK)
     await page.waitForTimeout(1500)
     const worldId = new URL(page.url()).hash.split('/')[2]
 
