@@ -98,8 +98,17 @@ test.describe('Overlay dismissal', () => {
     const panel = page.getByRole('dialog', { name: 'Continuity Checker' })
     await expect(panel).toBeVisible()
 
-    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
-    await expect.poll(() => page.evaluate(() => document.activeElement?.tagName)).toBe('BODY')
+    /*
+      Blur inside the poll, not once before it. The panel hands focus over with
+      a `setTimeout(…, 0)` — the very race this test exists for — so a single
+      blur that lands first is simply undone, focus returns to a DIV, and the
+      poll waits out its timeout on a condition nothing will make true again.
+      Blurring on each attempt converges the moment the handoff has run.
+    */
+    await expect.poll(() => page.evaluate(() => {
+      (document.activeElement as HTMLElement | null)?.blur()
+      return document.activeElement?.tagName
+    })).toBe('BODY')
 
     await page.keyboard.press('Escape')
     await expect(panel).toHaveCount(0)

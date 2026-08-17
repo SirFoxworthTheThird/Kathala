@@ -676,6 +676,21 @@ tab on a paused sentence without losing it. Saving repeatedly does not fill
 **History** with near-identical versions; those are grouped into one entry per
 writing session.
 
+PlotWeave also reads the draft for **names you have written but not recorded**.
+Anyone in the cast whose name appears in the prose, and who is not already on
+the scene, is offered as a chip under the box — click it to add them. The match
+is on the name as written: the full name, and the first word of it, as whole
+words and case-sensitively, so the verb *will* never stands in for a character
+called *Will*.
+
+A **form of address is never treated as the name**. *Mrs Bennet* is looked for
+as **Bennet**, *Dr Henry Jekyll* as **Henry Jekyll** or **Henry** — otherwise
+one "Mrs." in a paragraph would offer every Mrs in the book at once. A name that
+begins with *The* — *The Sorting Hat* — is looked for whole, minus the article.
+Two consequences worth knowing: a surname shared by a family will offer the
+relative, and a scene that refers to someone **only** by surname when their
+record has no title (*Sarn*, for *Teodor Sarn*) is not matched at all.
+
 **Edit title & description** opens the card for editing — the title, the
 description, and the cast, items, location and tags below them, all committed
 together by **Save** (or the ✓ in the header). In the title field, **Enter**

@@ -27,7 +27,19 @@ test.describe('World management', () => {
     await page.getByRole('button', { name: 'Create World' }).last().click()
 
     await expect(page).toHaveURL(/#\/worlds\//)
-    await expect(page.getByText('Middle Earth')).toBeVisible()
+    /*
+      The banner's copy of the name, the way `mapControls.spec.ts` already reads
+      it — not a page-wide `getByText`, which resolves to both the top bar and
+      the dashboard heading and fails strict mode the moment the second one
+      renders. That is what this test reported as a flake: ambiguous the whole
+      time, and only fatal when the two settled in the same tick.
+
+      Not the dashboard heading either, which is the obvious repair and is
+      wrong: a world created with no timeline yet meets the first-run guide
+      rather than the dashboard, so the `h1` is often not there at all. Scoping
+      to it turned an intermittent failure into a reliable one.
+    */
+    await expect(page.getByRole('banner').getByText('Middle Earth')).toBeVisible()
   })
 
   test('shows the created world on the selector page', async ({ page }) => {
