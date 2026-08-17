@@ -1125,6 +1125,32 @@ because of it.
 
 ---
 
+## 28. The second writer run
+
+A second pass with the `writer-review` agent, deliberately aimed away from the
+first run's ground: a manuscript imported through the app's own importer, a
+full-size library world worked in as if it were the writer's, four cold returns,
+the long-tail screens, and phone widths down to 320px. The report is
+`docs/writer-run-2026-08-17.md`; ids there are **F-1..F-8** and are kept here.
+
+Three are fixed below. The remaining five are open and listed with what is known
+about each — this section is the first time in a while that this document has had
+open rows, and they are open because they were found, not because they were
+deferred quietly.
+
+| ID | Severity | Status | Finding |
+|---|---|---|---|
+| F-1 | high | **fixed** | **The app blocked its first paint on a Google font it never used.** `index.html` carried a render-blocking `<link rel="stylesheet">` to `fonts.googleapis.com` for Playfair Display. Four runs of the same build on the same route, differing only in how that one request resolved: **12 992ms and 12 936ms** to first paint on the network it was measured on (which holds the connection, then resets it), **124ms** when the request was refused instantly, **25 228ms** when the host was made to hold for 25s. Five seconds into the held case `performance.getEntriesByType('paint')` was still `[]` while `#root` already had children — nothing was on screen. `electron/main.cjs` loads this same `dist/index.html`, so the desktop build waited too. | **Fixed by deleting the link and both `preconnect`s.** Nothing had to replace it: "Playfair" appears nowhere else in the repo, and every theme in `src/index.css` already sets `--font-body` / `--font-heading` to a system stack — the app has been rendering in system faces this whole time while paying a third-party round trip for the privilege. `src/lib/__tests__/indexHtml.test.ts` asserts the shell references **no external host at all**, and pairs that with the presence half (root div, entry script, favicon) so an emptied file cannot pass. **This also corrects `docs/GUIDE.md`**, whose *What leaves your device* section told readers *"the app's headings use Playfair Display"* — describing behaviour that was not there, which is this document's own rule broken in the guide. Only one thing leaves the device now, and the guide says so. **Worth recording how the agent nearly killed its own finding:** it had a screenshot showing the app rendered while the font hung, and a screenshot forces a frame. Trusting the picture would have buried this; probing the paint entries first is what settled it. |
+| F-2 | high | **fixed** | **The scene draft saved on blur and on nothing else.** Four trials: clicking a nav link stored the prose (23 words); reloading, navigating away, or pressing Escape and reloading stored **nothing**. No debounce, no unmount flush, no `beforeunload` anywhere in `src/`. On the same screen *Writer's Notes* debounces at 600ms and prints "Auto-saved", and *Focus mode* autosaves at 1s **and** flushes on unmount — the one box holding prose that exists nowhere else was the only one that could lose it. It cost the run 102 pasted words mid-session. | **Fixed with the shape Focus mode already uses**, since both write the same table: a 1s debounce, plus a flush when the scene goes away — a collapsed card, a different scene, leaving the chapter. `setSceneText` coalesces revisions over two minutes, so a burst of autosaves is still one entry in History; `e2e/sceneDraftAutosave.spec.ts` pins that arithmetic at exactly one revision for four separate writes, because autosave that filled History with near-duplicates would have paid for the fix with the feature beside it. The line under the box now says which state the prose is in — *Saving draft…* or *Draft auto-saved* — rather than Writer's Notes' permanent claim, which is a lie for a second at a time. **It is worded "Draft" on purpose:** Writer's Notes is a column away saying "Auto-saved", and two identical labels about different boxes are ambiguous to a reader before they are ambiguous to a locator. The test types with `pressSequentially` and then neither clicks, blurs, nor navigates — the old code needed one of those three and is given none. |
+| F-3 | high | **fixed** | **Import World silently destroyed the world it landed on.** A scene renamed to *TODAY'S WORK — do not lose me*, then yesterday's `.pwk` imported: no confirm, no toast, edit gone. `WorldSelectorView.processFiles` → `importWorld` → `importWorldData(replaceExisting = true)`, which `.delete()`s every table for that world id before writing the file's own. `LibraryDialog` guards exactly this case with a confirm **and a comment explaining why** — so the door for downloading someone else's book asked, and the door writers use for their own backups did not. | **Fixed by asking first, naming the world it would overwrite.** The decision — *does this file land on something that is already here?* — is `importCollision` in `lib/importCollision`, out of the component so it can be tested without a browser: identity is the **id**, never the name, and a file with no readable world id is not a collision, because it will fail validation a moment later and a confirm in front of an import that was never going to happen is its own defect. The names are still carried in the result and the dialog uses both, since exporting and then renaming leaves the file calling the world something that is no longer on screen. `e2e/importReplaceConfirm.spec.ts` cancels and checks the scene is still there, then confirms and checks the file wins; its second test imports a world that is **not** here and requires that nothing is asked, which is what stops "a dialog appeared" passing for a dialog that appears always. Replacing is still what an import does — that is right for restoring a backup — it just no longer happens to someone who picked the wrong file. |
+| F-4 | med-high | **open** | **Prose-to-cast matching keys on the first word of a name.** `src/lib/manuscript.ts:41-44` takes `name.split(/\s+/)[0]` as the alias. *Misses:* a scene naming `Sarn` twice offers no nudge, and with him uncast the continuity checker still reports only the `Ilva` issue. *Over-fires:* pasting *Pride and Prejudice*'s opening — which names Mrs Bennet, already cast, and Mrs Long, who is not a character — produced **seven** chips (Mrs Forster, Gardiner, Hill, Jenkinson, Philips, Reynolds, Younge), all off a single `Mrs.` Across the shipped library, **131 of 760** characters share a first token with another, in **24 of 25** worlds — latent there, since those worlds have no `sceneTexts`, and live for anyone who imports a manuscript. |
+| F-5 | med | **open** | **At 360px the time cursor renders no text.** The label span measures `clientWidth` 0 of `scrollWidth` 30 at 360×640 — 25/30 at 390, 15/30 at 320, 30/30 at 414 — leaving a bare clock glyph. **PH-2** fixed the buttons in this bar; the label was not part of it. |
+| F-6 | med | **open** | **A scene title commits only via the ✓.** `EventCard.tsx:321-328` gives the title `Input` neither `onKeyDown` nor `onBlur`, so Enter does nothing, blurring does nothing, and navigating away discards it — while the chapter rename one screen up (`TimelineView.tsx:301-303`) commits on both. A first retitling pass of 34 interactions over 46s saved zero titles and said nothing. Note this is the same class as **F-2** and the same screen; they are separate because the fixes are. |
+| F-7 | low-med | **open** | **Chapter Diff elides 61–67% of each note.** 311–364px of text rendered into 120px cells with no `title` attribute, inside a 672px dialog. |
+| F-8 | low | **open** | **"Known by" is unsorted.** `KnowledgeView.tsx:114` lists knowers in database order — a fact known from chapters 1, 2 and 3 listed as Ch.3, Ch.1, Ch.2. Same class as **WRUN-3**, which fixed it for the pickers on this screen; this list was not part of that. **83 of 287** library facts have three or more knowers. |
+
+---
+
 ## Still not reviewed
 
 Kept honest: this list only shrinks when a screen has actually been driven and
@@ -1136,9 +1162,11 @@ Both outstanding depth passes are done — the reveal gate across all eleven
 reading-mode routes (section 22) and the overlays at 390px (section 25). What
 remains is narrower:
 
-- **The chapter-detail editor at 390px** — the one writing surface not measured
-  at phone width. WR-1 (a five-line textarea) will read differently there, and
-  Focus mode is the obvious mitigation but has not been driven on a phone.
+- ~~**The chapter-detail editor at 390px.**~~ **Done, in the second writer run**
+  (section 28): driven with a scene card expanded at 390, 360 and 320, with no
+  horizontal overflow at any of the three. It comes off this list clean apart
+  from **F-5**, which is the time-cursor label rather than the editor. Focus mode
+  on a phone is still undriven.
 - **A second book.** Every reading-mode measurement in this document comes from
   *Philosopher's Stone*. RD-1's severity depends on how many orphaned entities a
   given fixture has, and that is a per-book number — the other nineteen library

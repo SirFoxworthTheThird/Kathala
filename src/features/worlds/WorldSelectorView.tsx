@@ -12,7 +12,16 @@ import { LLMPromptDialog } from './LLMPromptDialog'
 import { useNavigate } from 'react-router-dom'
 import { importWorld, importWorldImages } from '@/lib/exportImport'
 import { partitionWorlds } from '@/lib/worldShelves'
+import { importCollision, type ImportCollision } from '@/lib/importCollision'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+
+/** A chosen file set, parked while the writer decides whether to overwrite. */
+interface PendingImport {
+  files: File[]
+  dataIdx: number
+  imagesIdx: number
+  collision: ImportCollision
+}
 
 declare global {
   interface Window {
@@ -44,27 +53,60 @@ export default function WorldSelectorView() {
 
   const isElectron = typeof window.electronAPI !== 'undefined'
 
+  /** A selection held back because importing it would overwrite a local world. */
+  const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
+
   async function processFiles(files: File[]) {
-    if (files.length === 1) {
-      const text = await files[0].text()
-      const parsed = JSON.parse(text) as Record<string, unknown>
-      if (parsed.type === 'images') {
-        const worldId = await importWorldImages(files[0])
-        navigate(`/worlds/${worldId}`)
-      } else {
-        const worldId = await importWorld(files[0])
-        navigate(`/worlds/${worldId}`)
-      }
-    } else {
-      // Two files: one data file + one images file (order doesn't matter)
-      const texts = await Promise.all(files.map((f) => f.text()))
-      const parsed = texts.map((t) => JSON.parse(t) as Record<string, unknown>)
-      const imagesIdx = parsed.findIndex((p) => p.type === 'images')
-      const dataIdx   = parsed.findIndex((_, i) => i !== imagesIdx)
-      if (dataIdx === -1) throw new Error('No data file found. Select the .pwk data file.')
-      const worldId = await importWorld(files[dataIdx])
-      if (imagesIdx !== -1) await importWorldImages(files[imagesIdx])
+    const texts = await Promise.all(files.map((f) => f.text()))
+    const parsed = texts.map((t) => JSON.parse(t) as Record<string, unknown>)
+    const imagesIdx = parsed.findIndex((p) => p.type === 'images')
+    const dataIdx = parsed.findIndex((_, i) => i !== imagesIdx)
+
+    if (dataIdx === -1) {
+      // Images only. Nothing to warn about: this path adds blobs to a world
+      // that already exists rather than replacing one.
+      if (imagesIdx === -1) throw new Error('No data file found. Select the .pwk data file.')
+      const worldId = await importWorldImages(files[imagesIdx])
       navigate(`/worlds/${worldId}`)
+      return
+    }
+
+    /*
+      Ask first when the file lands on a world that is already here.
+
+      `importWorld` replaces: it deletes every record for the incoming world's
+      id before writing the file's. Re-importing a backup over a day's writing
+      took the day's writing with it, with no confirm and nothing said
+      afterwards. The Library has asked this question before replacing a
+      downloaded copy for a long time — the same question, on the door writers
+      use for their own exports.
+    */
+    const collision = importCollision(parsed[dataIdx], worlds)
+    if (collision) {
+      setPendingImport({ files, dataIdx, imagesIdx, collision })
+      return
+    }
+    await runImport(files, dataIdx, imagesIdx)
+  }
+
+  async function runImport(files: File[], dataIdx: number, imagesIdx: number) {
+    const worldId = await importWorld(files[dataIdx])
+    if (imagesIdx !== -1) await importWorldImages(files[imagesIdx])
+    navigate(`/worlds/${worldId}`)
+  }
+
+  async function confirmPendingImport() {
+    const pending = pendingImport
+    if (!pending) return
+    setPendingImport(null)
+    setImporting(true)
+    setImportError(null)
+    try {
+      await runImport(pending.files, pending.dataIdx, pending.imagesIdx)
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Import failed')
+    } finally {
+      setImporting(false)
     }
   }
 
@@ -309,6 +351,33 @@ export default function WorldSelectorView() {
         confirmLabel="Choose file…"
         destructive={false}
         onConfirm={() => { setImportPromptOpen(false); handleImportClick() }}
+      />
+
+      {/*
+        Names the world being overwritten and says what is lost, because "this
+        will replace the existing world" does not tell you whether the existing
+        world is the one you spent this morning in.
+      */}
+      <ConfirmDialog
+        open={pendingImport !== null}
+        onOpenChange={(v) => { if (!v) setPendingImport(null) }}
+        title={`Replace your copy of “${pendingImport?.collision.localName ?? ''}”?`}
+        description={
+          [
+            /*
+              Reachable: the file carries the name the world had when it was
+              exported, so renaming a world afterwards makes the two disagree —
+              and then "a world you already have" is the confusing half, since
+              the writer is looking for a name that is no longer on screen.
+            */
+            pendingImport && pendingImport.collision.incomingName !== pendingImport.collision.localName
+              ? `The file calls it “${pendingImport.collision.incomingName}”, but it is the same world.`
+              : 'This file is an export of a world you already have.',
+            'Importing it restores the file’s version and discards anything you have written in that world since it was exported. Your other worlds are untouched.',
+          ].join(' ')
+        }
+        confirmLabel="Replace"
+        onConfirm={() => void confirmPendingImport()}
       />
 
       <LibraryDialog

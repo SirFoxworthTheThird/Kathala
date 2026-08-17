@@ -5,9 +5,22 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PlotWeave</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" />
+    <!--
+      No external stylesheets, fonts or scripts here, deliberately.
+
+      This used to load Playfair Display from Google Fonts. A `<link
+      rel="stylesheet">` is render-blocking, so first paint waited on a
+      third-party host for a face the app never asked for: every theme in
+      `src/index.css` sets `--font-body` / `--font-heading` to a system stack,
+      and "Playfair" appears nowhere else in the source. Measured on the built
+      app, same route, differing only in how that one request resolved: 124ms to
+      first paint when it was refused outright, ~13s on a network that held the
+      connection and then reset it, 25s when the host held for 25s — with
+      `performance.getEntriesByType('paint')` still empty five seconds in.
+      `electron/main.cjs` loads this same file, so the desktop build waited too.
+
+      `src/lib/__tests__/indexHtml.test.ts` keeps it that way.
+    -->
   </head>
   <body>
     <div id="root"></div>

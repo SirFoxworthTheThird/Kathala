@@ -17,14 +17,16 @@ Your story never does. Worlds, scenes, images and every edit live in your
 browser's own storage, and nothing is uploaded, synced or backed up anywhere —
 which is also why exporting is worth doing.
 
-Two things are fetched from elsewhere, and both are ordinary web requests that
-carry no information about your work:
+One thing is fetched from elsewhere, and it is an ordinary web request that
+carries no information about your work:
 
-- **A webfont**, on every page load. The app's headings use Playfair Display,
-  served by Google Fonts. Offline or behind a blocker the app falls back to a
-  system face and is otherwise unaffected.
 - **Library cover images**, when you open the Library and scroll to a card. See
   [The library](#the-library).
+
+Nothing else leaves your device — the app loads no fonts, scripts or stylesheets
+from anywhere but itself, so opening it offline behaves exactly as opening it
+online does, and it paints without waiting on anyone. (It used to fetch a webfont
+from Google Fonts on every page load, for a typeface it never actually used.)
 
 The desktop build and the browser build behave the same way here.
 
@@ -116,6 +118,12 @@ have:
 **Import World** asks which files to choose before opening the picker: a `.pwk`
 export on its own, or — if you exported with split files — the `.pwk` and its
 `.pwb` images file together.
+
+Importing a world you already have **replaces it**, which is what you want when
+you are restoring a backup and emphatically not what you want when you pick the
+wrong file. So it asks first, naming the world it would overwrite: *Replace your
+copy of "Highbarrow"?* Backing out changes nothing. Only the world in the file is
+affected either way — your other worlds are untouched.
 
 With nothing on the shelf yet, the page names the two routes most people want
 first — **New World** to start from scratch, and the **Library** to open a world
@@ -651,6 +659,14 @@ is your own place in the book.
 An expanded scene card leads with the **scene draft** — the prose itself — and
 puts the one-line **Description** below it. An empty description is a control
 rather than a note: click it and the card opens for editing with the field ready.
+
+The draft **auto-saves as you write**: a second's pause writes it, and it is
+written again when you collapse the card or leave the chapter. The line under
+the box says which of the two states you are in — *Saving draft…* while there is
+something not yet written, *Draft auto-saved* once there is not — so you can close the
+tab on a paused sentence without losing it. Saving repeatedly does not fill
+**History** with near-identical versions; those are grouped into one entry per
+writing session.
 
 
 Opening a chapter shows its events in order, each with the characters involved,
