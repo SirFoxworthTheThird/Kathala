@@ -668,6 +668,13 @@ tab on a paused sentence without losing it. Saving repeatedly does not fill
 **History** with near-identical versions; those are grouped into one entry per
 writing session.
 
+**Edit title & description** opens the card for editing — the title, the
+description, and the cast, items, location and tags below them, all committed
+together by **Save** (or the ✓ in the header). In the title field, **Enter**
+saves and **Escape** backs out, the same two keys that rename a chapter. Moving
+to another field does *not* save, because one Save writes the whole card; a
+blank title is refused, so pressing Enter over a selected title cannot wipe it.
+
 
 Opening a chapter shows its events in order, each with the characters involved,
 location, tags, and draft/written status. The right side holds a live

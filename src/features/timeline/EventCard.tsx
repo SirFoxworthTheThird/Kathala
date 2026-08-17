@@ -322,6 +322,32 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            /*
+              Enter commits, Escape backs out — the two keys the chapter rename
+              one screen up has always honoured (`TimelineView`), and which this
+              field ignored. Retitling a run of scenes was 34 interactions that
+              saved nothing and said nothing: Enter did not commit, and moving on
+              discarded what had been typed.
+
+              Blur is deliberately *not* a third way in. This is not an inline
+              rename — the whole card is in an edit session, and the same Save
+              writes the description, cast, items, location and tags — so
+              committing when focus leaves the title would end the session the
+              moment you tabbed to the field below it. `Escape` cancels the
+              session for the same reason: it is the counterpart of Enter, not
+              of blur.
+            */
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                // Mirrors the Save button's own `disabled={!title.trim()}`: a
+                // scene may be untitled, but it may not be blanked by accident.
+                if (title.trim()) void saveEdit()
+              } else if (e.key === 'Escape') {
+                e.preventDefault()
+                cancelEdit()
+              }
+            }}
             aria-label="Scene title"
             className="h-7 flex-1 min-w-0 text-sm"
             autoFocus
