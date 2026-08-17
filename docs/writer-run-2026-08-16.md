@@ -453,7 +453,7 @@ sites (lines 122, 127, 132, 141, 146, 151, 172, 179, 184).
 
 ---
 
-### W-12 · low · Opening the Library hotlinks 19 covers from 5 third-party hosts
+### W-12 · low · Opening the Library hotlinks 19 covers from 5 third-party hosts — **documented, not changed**
 
 `public/library/index.json` gives 19 of 21 entries a remote `cover`:
 

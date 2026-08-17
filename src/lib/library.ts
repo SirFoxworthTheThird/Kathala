@@ -49,6 +49,18 @@ export interface LibraryEntry {
    * one thing the reader has not agreed to download yet — so those cards stay
    * text, rather than the catalogue quietly pulling the very payload its own
    * "with images" button exists to make optional.
+   *
+   * **This is the exception to "no backend, same origin" above.** A cover is an
+   * absolute URL to somebody else's host, so opening the Library asks that host
+   * for an image and discloses the reader's IP to it. No world data goes with
+   * it, and `LibraryCover` renders nothing when the request fails — but this is
+   * the one place the catalogue reaches off-origin, and it is currently 23 of
+   * 25 entries across Wikimedia, Gutenberg and a few commercial sites.
+   *
+   * Recorded rather than removed (**WRUN-13**): the alternatives are to bundle
+   * the freely-licensed covers locally or to drop them, and both are decisions
+   * about the catalogue's contents rather than about this code. `docs/GUIDE.md`
+   * tells the reader what the request discloses.
    */
   cover?: string
 }

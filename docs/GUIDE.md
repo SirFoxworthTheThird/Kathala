@@ -11,6 +11,23 @@ This guide walks through every part of the app. All screenshots use the bundled
 example world, *Middle Earth* (a Lord of the Rings sample you can import to
 explore).
 
+### What leaves your device
+
+Your story never does. Worlds, scenes, images and every edit live in your
+browser's own storage, and nothing is uploaded, synced or backed up anywhere —
+which is also why exporting is worth doing.
+
+Two things are fetched from elsewhere, and both are ordinary web requests that
+carry no information about your work:
+
+- **A webfont**, on every page load. The app's headings use Playfair Display,
+  served by Google Fonts. Offline or behind a blocker the app falls back to a
+  system face and is otherwise unaffected.
+- **Library cover images**, when you open the Library and scroll to a card. See
+  [The library](#the-library).
+
+The desktop build and the browser build behave the same way here.
+
 ---
 
 ## Table of contents
@@ -175,10 +192,15 @@ images and portraits are a separate, much larger download, so they sit behind
 their own button rather than coming along by default — useful if you're on a
 phone.
 
-Books whose cover is a linked image show it on the card. The cover is fetched
-from wherever it is hosted, so opening the Library makes a request to that site
-— and a card whose cover cannot be loaded simply goes without one rather than
-showing a broken frame. Books whose artwork lives inside the image bundle stay
+Books whose cover is a linked image show it on the card. **These are the only
+pictures in PlotWeave that are not on your own machine.** The cover is fetched
+from wherever it is hosted — currently 23 of the 25 entries, from a mix of
+Wikimedia Commons, Project Gutenberg, and a few commercial sites — so opening
+the Library asks those hosts for an image, and they see your IP address and that
+you opened it. Nothing about your worlds is sent, and nothing is uploaded; it is
+an ordinary image request, of the kind any web page makes. Cards load lazily, so
+only the ones you scroll to are fetched, and a card whose cover cannot be loaded
+simply goes without one rather than showing a broken frame. Books whose artwork lives inside the image bundle stay
 text-only here, since drawing them would mean downloading the very bundle the
 *With images* button exists to make optional.
 
