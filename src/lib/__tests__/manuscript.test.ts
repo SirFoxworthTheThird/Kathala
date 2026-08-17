@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { wordCount, detectMentions, nameAliases } from '@/lib/manuscript'
+import { wordCount, detectMentions, nameAliases, castAliases } from '@/lib/manuscript'
 import type { Character } from '@/types'
 
 function char(id: string, name: string): Character {
@@ -68,7 +68,8 @@ describe('nameAliases', () => {
   })
 
   it('handles the abbreviated form with its full stop', () => {
-    expect(nameAliases('Dr. Henry Jekyll')).toEqual(['Dr. Henry Jekyll', 'Henry Jekyll', 'Henry'])
+    expect(nameAliases('Dr. Henry Jekyll'))
+      .toEqual(['Dr. Henry Jekyll', 'Henry Jekyll', 'Jekyll', 'Henry'])
   })
 
   it('never offers the title on its own', () => {
@@ -90,8 +91,10 @@ describe('nameAliases', () => {
     ])
   })
 
-  it('is unchanged for an ordinary name', () => {
-    expect(nameAliases('Teodor Sarn')).toEqual(['Teodor Sarn', 'Teodor'])
+  it('offers both ends of an ordinary name', () => {
+    // The last word is a candidate, not a decision — `castAliases` is what
+    // decides whether "Sarn" identifies anybody.
+    expect(nameAliases('Teodor Sarn')).toEqual(['Teodor Sarn', 'Teodor', 'Sarn'])
     expect(nameAliases('Mira')).toEqual(['Mira'])
   })
 
@@ -99,8 +102,9 @@ describe('nameAliases', () => {
     The pre-existing three-character floor, kept: a very short first word is not
     distinctive enough to hunt for on its own.
   */
-  it('keeps the three-character floor on a first word', () => {
-    expect(nameAliases('Jo March')).toEqual(['Jo March'])
+  it('keeps the three-character floor, word by word', () => {
+    // "Jo" is too short to hunt for; "March" is not.
+    expect(nameAliases('Jo March')).toEqual(['Jo March', 'March'])
   })
 
   /*
@@ -109,7 +113,7 @@ describe('nameAliases', () => {
     every fixture that exercised it had no title to strip.
   */
   it('keeps that floor after a title too', () => {
-    expect(nameAliases('Dr Jo March')).toEqual(['Dr Jo March', 'Jo March'])
+    expect(nameAliases('Dr Jo March')).toEqual(['Dr Jo March', 'Jo March', 'March'])
   })
 
   it('leaves a name that is only a title alone', () => {
@@ -186,7 +190,137 @@ describe('detectMentions with titled names', () => {
     matches the full name and the first word, so a scene that refers to someone
     by surname alone still finds nothing. It is filed rather than fixed.
   */
-  it('does not match a surname alone for an untitled name', () => {
-    expect(detectMentions('Sarn watched the door.', [char('i', 'Teodor Sarn')])).toEqual([])
+  /*
+    The miss the finding reported, now closed — and its safety net in the same
+    test, because a surname that identifies one person and a surname two people
+    share are the two halves of one rule.
+  */
+  it('matches a surname alone when it belongs to one person', () => {
+    const found = detectMentions('Sarn watched the door.', [char('i', 'Teodor Sarn')])
+    expect(found.map((m) => m.name)).toEqual(['Teodor Sarn'])
+  })
+
+  it('and stops matching it the moment two people share it', () => {
+    const cast = [char('i', 'Teodor Sarn'), char('j', 'Elsa Sarn')]
+    expect(detectMentions('Sarn watched the door.', cast)).toEqual([])
+    // The full name still finds the right one, which is why dropping the bare
+    // surname loses nothing that identified anybody.
+    expect(detectMentions('Elsa Sarn watched the door.', cast).map((m) => m.name))
+      .toEqual(['Elsa Sarn'])
+  })
+})
+
+/**
+ * The second half of F-4, after the first shipped: stripping titles removed one
+ * subset of the shared-word problem — *Mrs*, *The*, *Master* — and left the
+ * rest. Measured on the shipped library after that fix, **47 characters across
+ * 14 worlds** still shared a derived single word with a castmate: `John` in
+ * *Jane Eyre*, `Bill` in *Fellowship* and *Two Towers*, `Hawkins` and `Tom` in
+ * *Treasure Island*.
+ */
+describe('castAliases', () => {
+  const withAliases = (id: string, name: string, aliases: string[]) =>
+    ({ id, worldId: 'w', name, aliases }) as unknown as Character
+
+  it('honours what the author wrote in "Also known as"', () => {
+    // The library's own case: Barliman Butterbur, who the prose calls Butterbur.
+    const [butterbur] = [withAliases('a', 'Barliman Butterbur', ['Butterbur'])]
+    expect(castAliases([butterbur]).get('a')).toContain('Butterbur')
+  })
+
+  it('drops a derived word two characters would both answer to', () => {
+    const cast = [char('a', 'Mrs Bennet'), char('b', 'Mr Bennet')]
+    const out = castAliases(cast)
+    expect(out.get('a')).not.toContain('Bennet')
+    expect(out.get('b')).not.toContain('Bennet')
+    // Their full names are not guesses and are never dropped.
+    expect(out.get('a')).toContain('Mrs Bennet')
+    expect(out.get('b')).toContain('Mr Bennet')
+  })
+
+  it('keeps it when only one character claims it', () => {
+    expect(castAliases([char('a', 'Mrs Bennet')]).get('a')).toContain('Bennet')
+  })
+
+  /*
+    *Fellowship* has both. The author said "Bill" means the pony; Bill Ferny does
+    not get to take it by having that first name.
+  */
+  it('lets an author alias beat a derived word that collides with it', () => {
+    const cast = [
+      withAliases('pony', 'Bill the Pony', ['Bill']),
+      char('ferny', 'Bill Ferny'),
+    ]
+    const out = castAliases(cast)
+    expect(out.get('pony')).toContain('Bill')
+    expect(out.get('ferny')).not.toContain('Bill')
+    expect(out.get('ferny')).toContain('Ferny')
+  })
+
+  /*
+    Isolating the rule that an author's alias *occupies* the word — which the
+    Bill test above cannot do, because those two also collide by derivation and
+    would come out the same either way. Here only one side states it.
+  */
+  it('an author alias blocks another character deriving the same word', () => {
+    const cast = [
+      withAliases('a', 'Aragorn', ['Strider']),
+      char('b', 'Strider Vance'),
+    ]
+    const out = castAliases(cast)
+    expect(out.get('a')).toContain('Strider')
+    expect(out.get('b'), 'the derived word yields to the stated one').not.toContain('Strider')
+    expect(out.get('b')).toContain('Vance')
+  })
+
+  it('leaves two author aliases alone even when they collide', () => {
+    // Saying the same thing twice is a statement, not a guess.
+    const cast = [
+      withAliases('a', 'Aragorn', ['Strider']),
+      withAliases('b', 'Someone Else', ['Strider']),
+    ]
+    expect(castAliases(cast).get('a')).toContain('Strider')
+    expect(castAliases(cast).get('b')).toContain('Strider')
+  })
+
+  /*
+    Stated out loud because it is the cost of this rule: the same character and
+    the same prose can match differently after an unrelated edit somewhere else
+    in the cast.
+  */
+  it('is relative to the cast — adding a relative quiets the surname', () => {
+    const alone = castAliases([char('a', 'Teodor Sarn')]).get('a')
+    const withKin = castAliases([char('a', 'Teodor Sarn'), char('b', 'Elsa Sarn')]).get('a')
+    expect(alone).toContain('Sarn')
+    expect(withKin).not.toContain('Sarn')
+  })
+
+  it('survives a character with no aliases field at all', () => {
+    const legacy = { id: 'x', worldId: 'w', name: 'Mira' } as unknown as Character
+    expect(castAliases([legacy]).get('x')).toEqual(['Mira'])
+  })
+})
+
+describe('detectMentions and the aliases the author wrote', () => {
+  const withAliases = (id: string, name: string, aliases: string[]) =>
+    ({ id, worldId: 'w', name, aliases }) as unknown as Character
+
+  it('finds a character by the name the author said the prose uses', () => {
+    const cast = [withAliases('a', 'Barliman Butterbur', ['Butterbur'])]
+    expect(detectMentions('Butterbur brought the beer.', cast).map((m) => m.name))
+      .toEqual(['Barliman Butterbur'])
+  })
+
+  it('counts one mention when an alias sits inside the full name', () => {
+    const cast = [withAliases('a', 'Barliman Butterbur', ['Butterbur'])]
+    expect(detectMentions('Barliman Butterbur brought the beer.', cast)[0].count).toBe(1)
+  })
+
+  it('matches a title with or without its full stop', () => {
+    const cast = [char('a', 'Mr Bennet'), char('b', 'Mrs Bennet')]
+    // Both are cast, so bare "Bennet" identifies neither; the full name must
+    // still match the form Austen actually writes.
+    const found = detectMentions('Mr. Bennet replied that he had not.', cast)
+    expect(found.map((m) => m.name)).toEqual(['Mr Bennet'])
   })
 })

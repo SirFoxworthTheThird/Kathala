@@ -683,13 +683,24 @@ is on the name as written: the full name, and the first word of it, as whole
 words and case-sensitively, so the verb *will* never stands in for a character
 called *Will*.
 
-A **form of address is never treated as the name**. *Mrs Bennet* is looked for
-as **Bennet**, *Dr Henry Jekyll* as **Henry Jekyll** or **Henry** — otherwise
-one "Mrs." in a paragraph would offer every Mrs in the book at once. A name that
-begins with *The* — *The Sorting Hat* — is looked for whole, minus the article.
-Two consequences worth knowing: a surname shared by a family will offer the
-relative, and a scene that refers to someone **only** by surname when their
-record has no title (*Sarn*, for *Teodor Sarn*) is not matched at all.
+Three rules shape what counts as a match.
+
+- **What you wrote in *Also known as* is used first.** If a character's aliases
+  say the prose calls Barliman Butterbur *Butterbur*, that is what is looked
+  for. Nothing overrides it.
+- **A form of address is never treated as the name.** *Mrs Bennet* is looked for
+  as **Bennet**, *Dr Henry Jekyll* as **Henry Jekyll**, **Henry** or **Jekyll** —
+  otherwise one "Mrs." in a paragraph would offer every Mrs in the book at once.
+  A name beginning with *The* — *The Sorting Hat* — is looked for whole, minus
+  the article.
+- **A name two characters share identifies neither.** *Sarn* finds Teodor Sarn
+  while he is the only Sarn; add a second and the surname stops being offered
+  for either of them, though both full names still match. The same goes for a
+  shared first name — two Johns, and *John* on its own means nobody.
+
+That last rule depends on the rest of your cast, so adding a character can
+quieten a nudge elsewhere. If a short name really does mean one particular
+person, say so in their **Also known as** — a stated alias is never dropped.
 
 **Edit title & description** opens the card for editing — the title, the
 description, and the cast, items, location and tags below them, all committed

@@ -53,27 +53,40 @@ const words = (s: string) => s.trim().split(/\s+/).filter(Boolean)
 const bare = (token: string) => token.toLowerCase().replace(/[.,]+$/, '')
 
 /**
+ * The first and last words of a name, which is how prose refers to someone when
+ * it does not use the whole thing — *Teodor* or *Sarn* for Teodor Sarn.
+ *
+ * The last word is new, and it is only safe because `castAliases` throws away
+ * any single word two characters would both answer to. On its own it would put
+ * every Bennet in the room on the screen.
+ *
+ * The three-character floor is the pre-existing rule and is kept: a word that
+ * short is not distinctive enough to hunt for by itself.
+ */
+function bareTokens(tokens: string[]): string[] {
+  if (tokens.length < 2) return []
+  const ends = [tokens[0], tokens[tokens.length - 1]]
+  return ends.filter((t) => t.length >= 3 && !HONORIFICS.has(bare(t)))
+}
+
+/**
  * Every form of a character's name worth looking for in prose, longest first.
  *
  * - The **full name** as stored, always.
  * - The name with a leading title removed, so "Mrs Bennet" is findable as
  *   *Bennet* and "Dr Henry Jekyll" as *Henry Jekyll*.
- * - Its **first word**, which is how prose usually refers to someone — subject
- *   to the pre-existing three-character floor.
+ * - Its **first and last words**, which is how prose refers to someone when it
+ *   does not use the whole thing.
  *
  * **An epithet keeps its shape.** A name beginning with an article — "The
  * Sorting Hat", "The Watcher in the Water", 48 characters in the library — gives
- * up the article and nothing else. Splitting a first word off it would put
- * *Sorting* and *Watcher* into the matcher, which are ordinary words in the
- * prose those characters appear in, and the whole point of this change is to
- * stop matching on a word that does not identify anybody.
+ * up the article and nothing else. Splitting words off it would put *Sorting*
+ * and *Watcher* into the matcher, which are ordinary words in the prose those
+ * characters appear in.
  *
- * **What this deliberately does not do is match on a surname alone** for a name
- * with no title: "Teodor Sarn" is findable as *Teodor Sarn* and *Teodor*, and a
- * scene that says only *Sarn* still finds nothing. Catching that means deciding
- * a token is distinctive relative to the rest of the cast — which is a different
- * rule with a different failure (a family of Bennets would nudge every one of
- * them), and it is filed rather than smuggled in here.
+ * These are **candidates**. Every single word here is subject to `castAliases`,
+ * which drops the ones more than one character would answer to — without that
+ * pass, deriving a last word would nudge every Bennet in the book.
  */
 export function nameAliases(name: string): string[] {
   const tokens = words(name)
@@ -89,14 +102,31 @@ export function nameAliases(name: string): string[] {
     aliases.push(rest.join(' '))
   } else if (rest.length > 0 && HONORIFICS.has(lead)) {
     aliases.push(rest.join(' '))
-    if (rest.length > 1 && rest[0].length >= 3) aliases.push(rest[0])
-  } else if (tokens.length > 1 && tokens[0].length >= 3) {
-    aliases.push(tokens[0])
+    aliases.push(...bareTokens(rest))
+  } else {
+    aliases.push(...bareTokens(tokens))
   }
 
   // Longest first: the alternation below is scanned left to right, so "Mrs
   // Bennet" must be tried before "Bennet" or one mention would count as two.
   return [...new Set(aliases)].sort((a, b) => b.length - a.length)
+}
+
+/**
+ * One alias as a regex fragment.
+ *
+ * Words are joined with `\s+` so a name that breaks across a line still
+ * matches, and a leading title may carry a full stop or not: records hold
+ * "Mr Bennet" while prose writes "Mr. Bennet", and without this the full name
+ * would miss the only form Austen ever uses. The stored token's own full stop is
+ * normalised away first so it works in both directions.
+ */
+function aliasPattern(alias: string): string {
+  const [first, ...rest] = alias.split(/\s+/)
+  const head = HONORIFICS.has(bare(first))
+    ? `${escapeRegExp(first.replace(/\.$/, ''))}\\.?`
+    : escapeRegExp(first)
+  return [head, ...rest.map(escapeRegExp)].join('\\s+')
 }
 
 /** A character detected by name in a scene's prose. */
@@ -105,6 +135,67 @@ export interface DetectedMention {
   name: string
   /** Number of times the name appears. */
   count: number
+}
+
+/**
+ * The forms of a name that actually identify **this** character, per character.
+ *
+ * Two rules, and the order between them is the point.
+ *
+ * **What the author wrote wins.** `Character.aliases` — the *Also known as*
+ * field — is matched as given and is never filtered. 174 of the 760 characters
+ * in the shipped library already carry one, *Barliman Butterbur → "Butterbur"*
+ * among them, which is exactly the case **F-4** reported as a miss; the matcher
+ * simply was not reading the field. An author who writes two aliases the same
+ * has said what they meant.
+ *
+ * **A guess that fits two people is not a name.** Every *derived* single word is
+ * dropped when more than one character in the cast would answer to it. Stripping
+ * titles fixed one subset of this — *Mrs*, *The*, *Master* — and left the rest:
+ * measured on the shipped library after that fix, **47 characters across 14
+ * worlds** still shared a derived single word with a castmate. `John` in *Jane
+ * Eyre*, `Bill` in both *Fellowship* and *Two Towers*, `Hawkins` and `Tom` in
+ * *Treasure Island*. Neither John is identified by "John", and offering both is
+ * worse than offering neither, because the full names still match.
+ *
+ * A derived word also yields to an author's alias: if the author has said "Bill"
+ * means the pony, Bill Ferny does not get to claim it by having that first name.
+ *
+ * **This makes matching depend on the cast, which is a real consequence.** Add a
+ * second Bennet and the bare surname stops nudging the first. That is the rule
+ * working — once two people share a name, the name has stopped picking one out —
+ * but it means the same prose and the same character can match differently
+ * before and after an unrelated edit, so it is tested rather than assumed.
+ */
+export function castAliases(
+  characters: readonly Pick<Character, 'id' | 'name' | 'aliases'>[],
+): Map<string, string[]> {
+  const derived = new Map<string, string[]>()
+  const claims = new Map<string, number>()
+  const count = (word: string) => claims.set(word, (claims.get(word) ?? 0) + 1)
+
+  for (const c of characters) {
+    const own = nameAliases(c.name ?? '')
+    derived.set(c.id, own)
+    for (const a of own) if (!a.includes(' ')) count(a)
+    // An author alias occupies the word too, so a derived word cannot take it.
+    for (const a of (c.aliases ?? [])) if (a.trim() && !a.trim().includes(' ')) count(a.trim())
+  }
+
+  const out = new Map<string, string[]>()
+  for (const c of characters) {
+    const stated = (c.aliases ?? []).map((a) => a.trim()).filter(Boolean)
+    /*
+      Only single words are ever counted as claims, so a full name — which is
+      not a guess — survives by construction rather than by a branch here. A
+      stated alias survives the same way, since it is unioned in below whatever
+      happens to the derived copy of it. Both had explicit branches at first and
+      the mutation sweep showed nothing could reach either.
+    */
+    const kept = (derived.get(c.id) ?? []).filter((a) => (claims.get(a) ?? 0) < 2)
+    out.set(c.id, [...new Set([...stated, ...kept])].sort((a, b) => b.length - a.length))
+  }
+  return out
 }
 
 /**
@@ -118,12 +209,13 @@ export interface DetectedMention {
 export function detectMentions(text: string, characters: Character[]): DetectedMention[] {
   if (!text.trim()) return []
 
+  const byCharacter = castAliases(characters)
   const results: DetectedMention[] = []
   for (const c of characters) {
     const name = c.name.trim()
     if (!name) continue
 
-    const aliases = nameAliases(name)
+    const aliases = byCharacter.get(c.id) ?? []
     if (aliases.length === 0) continue
 
     /*
@@ -136,9 +228,7 @@ export function detectMentions(text: string, characters: Character[]): DetectedM
       separately would score it twice. `\s+` between words lets a name that
       breaks across a line still match.
     */
-    const pattern = aliases
-      .map((a) => escapeRegExp(a).replace(/\\?\s+/g, '\\s+'))
-      .join('|')
+    const pattern = aliases.map(aliasPattern).join('|')
     const re = new RegExp(`\\b(?:${pattern})\\b`, 'g')
     const matches = text.match(re)
     const count = matches ? matches.length : 0
