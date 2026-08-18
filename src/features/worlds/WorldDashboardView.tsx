@@ -404,7 +404,20 @@ export default function WorldDashboardView() {
           className="flex flex-wrap items-start gap-x-3 gap-y-1 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3"
         >
           <BookOpen className="mt-0.5 h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
-          <div className="min-w-0 flex-1">
+          {/*
+            `min-w-0` here — the reflex for a flex child — let this column shrink
+            to nothing rather than pushing the links onto a line of their own, so
+            the sentence explaining the mode became a ribbon a few pixels wide
+            and a few dozen lines tall, with the heading drawn underneath a link.
+            Measured on the built app: an 8px column at 414 and 24px at 430.
+
+            A floor instead. 13rem is the narrowest this reads at, and it is
+            under the 240px a 320px phone leaves after the icon, so the column
+            still fits beside it at the smallest width we support; anywhere the
+            links cannot also fit, they wrap below rather than being paid for out
+            of the text.
+          */}
+          <div className="min-w-[13rem] flex-1">
             <p className="text-sm font-medium text-[hsl(var(--foreground))]">
               Reading mode is on
             </p>
