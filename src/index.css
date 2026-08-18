@@ -35,7 +35,7 @@
        the only one still carrying it. */
     --app-image: none;
     --theme-backdrop: radial-gradient(circle at 18% 12%, hsl(211 48% 22% / 0.5), transparent 34%), linear-gradient(145deg, hsl(222 47% 8%), hsl(215 38% 13%));
-    --theme-atmosphere: linear-gradient(115deg, transparent 0 48%, hsl(210 70% 65% / 0.025) 48% 49%, transparent 49% 100%);
+    --theme-atmosphere: none;
     --leaflet-bg: 222, 47%, 8%;
     --leaflet-card: 222, 47%, 22%;
     --leaflet-border: 217, 33%, 22%;
@@ -181,7 +181,7 @@
     --leaflet-muted: 203, 30%, 63%;
     --canvas: 222 60% 3%;
     --theme-backdrop: radial-gradient(circle at 72% 18%, hsl(187 70% 44% / 0.18), transparent 24%), radial-gradient(circle at 18% 76%, hsl(225 65% 30% / 0.22), transparent 36%), linear-gradient(145deg, hsl(226 58% 3%), hsl(216 47% 9%));
-    --theme-atmosphere: radial-gradient(circle at 18% 22%, white 0 1px, transparent 1.5px), radial-gradient(circle at 76% 68%, hsl(185 80% 80% / 0.7) 0 1px, transparent 1.5px), repeating-linear-gradient(90deg, transparent 0 79px, hsl(185 65% 60% / 0.025) 79px 80px), repeating-linear-gradient(0deg, transparent 0 79px, hsl(185 65% 60% / 0.025) 79px 80px);
+    --theme-atmosphere: repeating-linear-gradient(90deg, transparent 0 79px, hsl(185 65% 60% / 0.025) 79px 80px), repeating-linear-gradient(0deg, transparent 0 79px, hsl(185 65% 60% / 0.025) 79px 80px);
   }
 
   /* ── Cyberpunk (Neon Noir) ── */
@@ -215,7 +215,7 @@
     --leaflet-muted: 275, 22%, 66%;
     --canvas: 266 38% 4%;
     --theme-backdrop: radial-gradient(circle at 84% 16%, hsl(304 88% 52% / 0.22), transparent 28%), radial-gradient(circle at 12% 82%, hsl(72 82% 50% / 0.1), transparent 28%), linear-gradient(145deg, hsl(267 38% 4%), hsl(250 31% 10%));
-    --theme-atmosphere: repeating-linear-gradient(90deg, transparent 0 39px, hsl(304 90% 65% / 0.035) 39px 40px), repeating-linear-gradient(0deg, transparent 0 39px, hsl(72 85% 65% / 0.025) 39px 40px), linear-gradient(115deg, transparent 0 73%, hsl(304 88% 58% / 0.045) 73% 73.5%, transparent 73.5% 100%);
+    --theme-atmosphere: repeating-linear-gradient(90deg, transparent 0 39px, hsl(304 90% 65% / 0.035) 39px 40px), repeating-linear-gradient(0deg, transparent 0 39px, hsl(72 85% 65% / 0.025) 39px 40px);
   }
 
   /* ── Horror (Blood & Shadow) ── */
@@ -326,7 +326,7 @@
     --tl-backdrop:       none;
     --canvas: 214 22% 5%;
     --theme-backdrop: radial-gradient(circle at 88% 14%, hsl(24 95% 50% / 0.2), transparent 25%), linear-gradient(145deg, hsl(215 20% 5%), hsl(210 15% 12%));
-    --theme-atmosphere: repeating-linear-gradient(-45deg, transparent 0 14px, hsl(24 95% 58% / 0.025) 14px 15px), linear-gradient(110deg, transparent 0 70%, hsl(24 95% 55% / 0.04) 70% 71%, transparent 71% 100%);
+    --theme-atmosphere: repeating-linear-gradient(-45deg, transparent 0 14px, hsl(24 95% 58% / 0.025) 14px 15px);
   }
 
   /* ── Noir (Moody Grayscale) ── */
@@ -369,7 +369,11 @@
     --tl-backdrop:       none;
     --canvas: 45 6% 3%;
     --theme-backdrop: radial-gradient(circle at 72% 16%, hsl(45 10% 55% / 0.12), transparent 28%), linear-gradient(145deg, hsl(0 0% 3%), hsl(45 5% 9%));
-    --theme-atmosphere: repeating-linear-gradient(105deg, transparent 0 42px, hsl(45 18% 92% / 0.035) 42px 49px, transparent 49px 73px), radial-gradient(ellipse at center, transparent 55%, hsl(0 0% 0% / 0.24) 100%);
+    /* The light-leak bands are gone. Seven pixels of near-white every 73 read
+       as damage rather than film, and moving them behind the app only meant
+       they streaked the space around it instead of the text. The vignette is
+       the noir signature anyway, and it carries the theme on its own. */
+    --theme-atmosphere: radial-gradient(ellipse at center, transparent 55%, hsl(0 0% 0% / 0.24) 100%);
   }
 
   /* ── Romance (Cream & Rose-Gold) ── */
@@ -412,17 +416,201 @@
     --tl-backdrop:       blur(8px) saturate(140%);
     --canvas: 330 24% 5%;
     --theme-backdrop: radial-gradient(circle at 20% 12%, hsl(345 55% 56% / 0.16), transparent 30%), radial-gradient(circle at 82% 82%, hsl(35 55% 56% / 0.1), transparent 34%), linear-gradient(145deg, hsl(330 24% 6%), hsl(342 20% 12%));
-    --theme-atmosphere: radial-gradient(ellipse at 24% 16%, hsl(345 58% 68% / 0.08), transparent 46%), repeating-radial-gradient(circle at 80% 10%, transparent 0 28px, hsl(35 38% 80% / 0.018) 29px 30px);
+    --theme-atmosphere: radial-gradient(ellipse at 24% 16%, hsl(345 58% 68% / 0.08), transparent 46%);
   }
 
   .theme-fantasy,
   .theme-scifi,
+  /* ── Gothic (Candle & Cold Stone) ── */
+  .theme-gothic {
+    --background: 265 18% 7%;
+    --foreground: 270 14% 90%;
+    --card: 265 16% 12%;
+    --card-foreground: 270 14% 90%;
+    --popover: 265 18% 7%;
+    --popover-foreground: 270 14% 90%;
+    --primary: 270 14% 90%;
+    --primary-foreground: 265 18% 7%;
+    --secondary: 265 15% 17%;
+    --secondary-foreground: 270 14% 90%;
+    --muted: 265 14% 17%;
+    --muted-foreground: 268 14% 66%;
+    --accent: 268 18% 20%;
+    --accent-foreground: 270 14% 90%;
+    --destructive: 348 52% 38%;
+    --destructive-foreground: 340 30% 92%;
+    --border: 267 16% 25%;
+    --input: 267 16% 25%;
+    --ring: 344 44% 52%;
+    --radius: 0.125rem;
+    --font-body: 'Hoefler Text', Garamond, 'Times New Roman', serif;
+    --font-heading: 'Big Caslon', 'Hoefler Text', Garamond, serif;
+    --leaflet-bg: 265, 20%, 5%;
+    --leaflet-card: 265, 16%, 17%;
+    --leaflet-border: 267, 16%, 27%;
+    --leaflet-fg: 270, 14%, 90%;
+    --leaflet-muted: 268, 14%, 66%;
+    --tl-bg:             hsl(265, 20%, 6%);
+    --tl-border:         hsl(267, 16%, 25%);
+    --tl-accent:         hsl(344, 44%, 52%);
+    --tl-glow:           rgba(196, 120, 146, 0.42);
+    --tl-text:           hsl(270, 14%, 90%);
+    --tl-text-muted:     hsl(268, 13%, 65%);
+    --tl-callout-bg:     hsl(265, 16%, 10%);
+    --tl-callout-shadow: 0 -12px 48px rgba(0,0,0,0.85), 0 0 0 1px hsl(267,16%,25%);
+    --tl-backdrop:       none;
+    --canvas: 265 22% 4%;
+    /* Candle at a high window, and the cold of the room away from it. */
+    --theme-backdrop: radial-gradient(ellipse at 76% 6%, hsl(38 60% 55% / 0.13), transparent 30%), radial-gradient(ellipse at 12% 88%, hsl(268 40% 30% / 0.22), transparent 38%), linear-gradient(160deg, hsl(268 24% 4%), hsl(263 18% 10%));
+    /* Rain on glass: near-vertical, uneven, and far too faint to read as lines. */
+    --theme-atmosphere: repeating-linear-gradient(84deg, transparent 0 37px, hsl(270 30% 78% / 0.014) 37px 38px), repeating-linear-gradient(96deg, transparent 0 59px, hsl(270 30% 78% / 0.01) 59px 60px);
+  }
+
+  /* ── Mystery (Gaslight & Foolscap) ── */
+  .theme-mystery {
+    --background: 214 30% 8%;
+    --foreground: 40 24% 91%;
+    --card: 213 26% 13%;
+    --card-foreground: 40 24% 91%;
+    --popover: 214 30% 8%;
+    --popover-foreground: 40 24% 91%;
+    --primary: 40 24% 91%;
+    --primary-foreground: 214 30% 8%;
+    --secondary: 213 24% 18%;
+    --secondary-foreground: 40 24% 91%;
+    --muted: 213 22% 18%;
+    --muted-foreground: 40 18% 66%;
+    --accent: 212 26% 21%;
+    --accent-foreground: 40 24% 91%;
+    --destructive: 2 58% 40%;
+    --destructive-foreground: 30 40% 92%;
+    --border: 212 24% 26%;
+    --input: 212 24% 26%;
+    --ring: 40 68% 55%;
+    --radius: 0.125rem;
+    --font-body: Cambria, 'Sitka Text', Georgia, serif;
+    --font-heading: Perpetua, 'Perpetua Titling MT', 'Times New Roman', serif;
+    --leaflet-bg: 214, 32%, 5%;
+    --leaflet-card: 213, 26%, 18%;
+    --leaflet-border: 212, 24%, 28%;
+    --leaflet-fg: 40, 24%, 91%;
+    --leaflet-muted: 40, 18%, 66%;
+    --tl-bg:             hsl(214, 32%, 7%);
+    --tl-border:         hsl(212, 24%, 26%);
+    --tl-accent:         hsl(40, 68%, 55%);
+    --tl-glow:           rgba(214, 168, 78, 0.45);
+    --tl-text:           hsl(40, 24%, 91%);
+    --tl-text-muted:     hsl(40, 16%, 65%);
+    --tl-callout-bg:     hsl(213, 26%, 11%);
+    --tl-callout-shadow: 0 -12px 48px rgba(0,0,0,0.85), 0 0 0 1px hsl(212,24%,26%);
+    --tl-backdrop:       none;
+    --canvas: 214 34% 5%;
+    /* A lamp at the kerb, and fog taking the rest of the street. */
+    --theme-backdrop: radial-gradient(circle at 22% 14%, hsl(40 70% 55% / 0.16), transparent 26%), radial-gradient(ellipse at 82% 92%, hsl(212 40% 32% / 0.22), transparent 40%), linear-gradient(150deg, hsl(215 34% 5%), hsl(212 26% 11%));
+    /* Laid paper: the fine chain lines you see holding foolscap to the light. */
+    --theme-atmosphere: repeating-linear-gradient(90deg, transparent 0 25px, hsl(40 30% 80% / 0.014) 25px 26px), repeating-linear-gradient(0deg, transparent 0 4px, hsl(40 30% 80% / 0.008) 4px 5px);
+  }
+
+  /* ── Mythic (Bronze & Aegean) ── */
+  .theme-mythic {
+    --background: 196 34% 7%;
+    --foreground: 42 30% 91%;
+    --card: 195 28% 12%;
+    --card-foreground: 42 30% 91%;
+    --popover: 196 34% 7%;
+    --popover-foreground: 42 30% 91%;
+    --primary: 42 30% 91%;
+    --primary-foreground: 196 34% 7%;
+    --secondary: 195 26% 17%;
+    --secondary-foreground: 42 30% 91%;
+    --muted: 195 24% 17%;
+    --muted-foreground: 40 20% 67%;
+    --accent: 194 28% 20%;
+    --accent-foreground: 42 30% 91%;
+    --destructive: 8 56% 40%;
+    --destructive-foreground: 35 40% 92%;
+    --border: 194 26% 25%;
+    --input: 194 26% 25%;
+    --ring: 32 62% 52%;
+    --radius: 0.125rem;
+    --font-body: Optima, Candara, 'Gill Sans MT', sans-serif;
+    --font-heading: 'Trajan Pro', Optima, 'Gill Sans MT', serif;
+    --leaflet-bg: 196, 36%, 5%;
+    --leaflet-card: 195, 28%, 17%;
+    --leaflet-border: 194, 26%, 27%;
+    --leaflet-fg: 42, 30%, 91%;
+    --leaflet-muted: 40, 20%, 67%;
+    --tl-bg:             hsl(196, 36%, 6%);
+    --tl-border:         hsl(194, 26%, 25%);
+    --tl-accent:         hsl(32, 62%, 52%);
+    --tl-glow:           rgba(198, 133, 63, 0.45);
+    --tl-text:           hsl(42, 30%, 91%);
+    --tl-text-muted:     hsl(40, 18%, 66%);
+    --tl-callout-bg:     hsl(195, 28%, 10%);
+    --tl-callout-shadow: 0 -12px 48px rgba(0,0,0,0.85), 0 0 0 1px hsl(194,26%,25%);
+    --tl-backdrop:       none;
+    --canvas: 196 38% 4%;
+    /* Sun off the water, and the deep away from it. */
+    --theme-backdrop: radial-gradient(ellipse at 84% 10%, hsl(38 78% 58% / 0.16), transparent 30%), radial-gradient(ellipse at 10% 84%, hsl(196 60% 26% / 0.26), transparent 40%), linear-gradient(150deg, hsl(198 40% 4%), hsl(194 30% 11%));
+    /* A meander, kept to two faint diagonals so it reads as weave, not tile. */
+    --theme-atmosphere: repeating-linear-gradient(30deg, transparent 0 33px, hsl(40 45% 75% / 0.016) 33px 34px), repeating-linear-gradient(-30deg, transparent 0 33px, hsl(196 45% 70% / 0.014) 33px 34px);
+  }
+
+  /* ── Adventure (Brass & Sea Green) ── */
+  .theme-adventure {
+    --background: 168 26% 7%;
+    --foreground: 40 32% 90%;
+    --card: 168 22% 12%;
+    --card-foreground: 40 32% 90%;
+    --popover: 168 26% 7%;
+    --popover-foreground: 40 32% 90%;
+    --primary: 40 32% 90%;
+    --primary-foreground: 168 26% 7%;
+    --secondary: 168 20% 17%;
+    --secondary-foreground: 40 32% 90%;
+    --muted: 168 18% 17%;
+    --muted-foreground: 38 22% 66%;
+    --accent: 167 22% 20%;
+    --accent-foreground: 40 32% 90%;
+    --destructive: 6 56% 40%;
+    --destructive-foreground: 35 42% 92%;
+    --border: 167 20% 25%;
+    --input: 167 20% 25%;
+    --ring: 36 66% 54%;
+    --radius: 0.125rem;
+    --font-body: 'Iowan Old Style', Cochin, Georgia, serif;
+    --font-heading: 'Goudy Old Style', 'Bookman Old Style', Palatino, serif;
+    --leaflet-bg: 168, 28%, 5%;
+    --leaflet-card: 168, 22%, 17%;
+    --leaflet-border: 167, 20%, 27%;
+    --leaflet-fg: 40, 32%, 90%;
+    --leaflet-muted: 38, 22%, 66%;
+    --tl-bg:             hsl(168, 28%, 6%);
+    --tl-border:         hsl(167, 20%, 25%);
+    --tl-accent:         hsl(36, 66%, 54%);
+    --tl-glow:           rgba(212, 152, 62, 0.45);
+    --tl-text:           hsl(40, 32%, 90%);
+    --tl-text-muted:     hsl(38, 20%, 65%);
+    --tl-callout-bg:     hsl(168, 22%, 10%);
+    --tl-callout-shadow: 0 -12px 48px rgba(0,0,0,0.85), 0 0 0 1px hsl(167,20%,25%);
+    --tl-backdrop:       none;
+    --canvas: 168 30% 4%;
+    /* Lamplight on a chart, and open water past the edge of it. */
+    --theme-backdrop: radial-gradient(ellipse at 20% 12%, hsl(38 74% 56% / 0.15), transparent 28%), radial-gradient(ellipse at 86% 88%, hsl(168 50% 24% / 0.24), transparent 40%), linear-gradient(150deg, hsl(170 32% 4%), hsl(166 24% 11%));
+    /* Engraver's cross-hatch, as a chart's sea is shaded. */
+    --theme-atmosphere: repeating-linear-gradient(45deg, transparent 0 19px, hsl(40 40% 78% / 0.015) 19px 20px), repeating-linear-gradient(-45deg, transparent 0 19px, hsl(168 40% 70% / 0.012) 19px 20px);
+  }
+
   .theme-cyberpunk,
   .theme-horror,
   .theme-western,
   .theme-action,
   .theme-noir,
-  .theme-romance {
+  .theme-romance,
+  .theme-gothic,
+  .theme-mystery,
+  .theme-mythic,
+  .theme-adventure {
     --app-image: none;
   }
 
@@ -450,13 +638,24 @@
     transition: background-color 180ms ease, color 180ms ease;
   }
 
+  /*
+    The theme's texture — grain, hatching, a grid — sits *behind* the app.
+
+    It used to be `z-index: 9999`, which is the value dialogs use, so it won a
+    tie on document order and painted over cards, dialogs and their text.
+    Noir's film scratches ran straight across the words of a modal. What is
+    meant to be a whisper behind the furniture was in front of all of it.
+
+    Zero here, and a stacking context on `#root` above it: the layer stays over
+    the page's own background and under everything the app draws.
+  */
   body::after {
     content: '';
     position: fixed;
     inset: 0;
     background: var(--theme-atmosphere);
     pointer-events: none;
-    z-index: 9999;
+    z-index: 0;
   }
 
   h1,
@@ -475,6 +674,11 @@
     height: 100vh;
     display: flex;
     flex-direction: column;
+    /* Above the atmosphere layer. Everything the app draws lives in here, so
+       one stacking context puts all of it over the texture without touching a
+       single component's own z-index. */
+    position: relative;
+    z-index: 1;
   }
 }
 

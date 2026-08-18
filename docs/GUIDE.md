@@ -1951,13 +1951,19 @@ timeline's clock.
 
 **Theme** is two settings in one section, because there are two things to
 decide. **App theme** is the one PlotWeave itself wears — on the world list, and
-in every world that has not asked for something else. Below it, the nine cards
+in every world that has not asked for something else. Below it, the thirteen cards
 set *this* world's theme, and the first of them, **Inherit app theme**, hands the
 decision back to the setting above. So a Gothic novel can be Horror and a space
 opera Sci-Fi while everything else stays with whatever you chose for the app.
-The nine are Dark Slate, Fantasy, Sci-Fi, Cyberpunk, Horror, Western, Action,
-Noir and Romance; each changes colours, fonts, textures and the timeline bar's
-pulse together.
+The thirteen are Dark Slate, Fantasy, Sci-Fi, Cyberpunk, Horror, Gothic,
+Mystery, Mythic, Adventure, Western, Action, Noir and Romance; each changes
+colours, fonts, textures and the timeline bar's pulse together. **Gothic** is
+candle and cold stone where Horror is blood and bone; **Mystery** is gaslight,
+fog and foolscap where Noir is a monochrome 1940s; **Mythic** is bronze, marble
+and the wine-dark sea; **Adventure** is charts, brass and canvas, for the
+sea-stories and swashbucklers that do not want Western's dust. A theme's texture — Noir's film scratches, Cyberpunk's grid,
+Fantasy's cross-hatch — sits *behind* the app, in the space around your cards
+and panels, so it never lies over anything you are reading.
 
 The **cover image** appears on the world's card in the selector and in the
 dashboard header. **Upload** an image file or **link** one by URL (the link

@@ -15,6 +15,20 @@ import { resetDB } from './helpers/reset'
 
 const theme = (page: Page) => page.getByRole('button', { name: 'Theme', exact: true })
 
+/**
+ * The Theme section's own control, standing for "its body is on screen".
+ *
+ * This was `getByRole('button', { name: 'Dark' })`, which matched nothing it
+ * was named for: `getByRole` matches an accessible name by **substring**, and
+ * the only card containing "dark" was *Noir — silver gelatin and darkroom red*.
+ * It passed for two years' worth of runs by accident, and broke the moment a
+ * theme described as *the wine-dark sea* gave it a second match.
+ *
+ * The labelled select is unique and is actually part of this section, so it
+ * says what the test means.
+ */
+const themeBody = (page: Page) => page.getByLabel('App theme')
+
 async function settings(page: Page) {
   await page.goto('/')
   await resetDB(page)
@@ -37,11 +51,11 @@ test.describe('World settings sections fold', () => {
     // Open to begin with — the default, and the presence half of everything
     // below.
     await expect(theme(page)).toHaveAttribute('aria-expanded', 'true')
-    await expect(page.getByRole('button', { name: 'Dark' })).toBeVisible()
+    await expect(themeBody(page)).toBeVisible()
 
     await theme(page).click()
     await expect(theme(page)).toHaveAttribute('aria-expanded', 'false')
-    await expect(page.getByRole('button', { name: 'Dark' })).toHaveCount(0)
+    await expect(themeBody(page)).toHaveCount(0)
 
     /*
       `page.reload()`, not `page.goto` to the same URL. On a hash router that
@@ -52,11 +66,11 @@ test.describe('World settings sections fold', () => {
     await page.reload({ waitUntil: 'load' })
     await expect(theme(page)).toBeVisible()
     await expect(theme(page)).toHaveAttribute('aria-expanded', 'false')
-    await expect(page.getByRole('button', { name: 'Dark' })).toHaveCount(0)
+    await expect(themeBody(page)).toHaveCount(0)
 
     // And it opens again.
     await theme(page).click()
-    await expect(page.getByRole('button', { name: 'Dark' })).toBeVisible()
+    await expect(themeBody(page)).toBeVisible()
   })
 
   test('Collapse all turns the page into a menu, and Expand all puts it back', async ({ page }) => {
@@ -71,7 +85,7 @@ test.describe('World settings sections fold', () => {
     await expect(theme(page)).toHaveAttribute('aria-expanded', 'false')
     await expect(page.getByRole('button', { name: 'Continuity', exact: true }))
       .toHaveAttribute('aria-expanded', 'false')
-    await expect(page.getByRole('button', { name: 'Dark' })).toHaveCount(0)
+    await expect(themeBody(page)).toHaveCount(0)
     await expect(page.getByLabel('Stale snapshot threshold')).toHaveCount(0)
 
     // The index chips are unchanged: they are read from the sections, so
@@ -81,7 +95,7 @@ test.describe('World settings sections fold', () => {
 
     // And back.
     await page.getByRole('button', { name: 'Expand all' }).click()
-    await expect(page.getByRole('button', { name: 'Dark' })).toBeVisible()
+    await expect(themeBody(page)).toBeVisible()
     await expect(page.getByLabel('Stale snapshot threshold')).toBeVisible()
   })
 
@@ -95,6 +109,6 @@ test.describe('World settings sections fold', () => {
 
     // Scrolling to a shut heading would look broken, so the chip opens it.
     await expect(theme(page)).toHaveAttribute('aria-expanded', 'true')
-    await expect(page.getByRole('button', { name: 'Dark' })).toBeVisible()
+    await expect(themeBody(page)).toBeVisible()
   })
 })

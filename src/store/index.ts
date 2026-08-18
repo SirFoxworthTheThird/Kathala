@@ -38,7 +38,9 @@ interface MapSlice {
   swapActiveMapLayer: (id: string) => void
 }
 
-export type AppTheme = 'default' | 'fantasy' | 'scifi' | 'cyberpunk' | 'horror' | 'western' | 'action' | 'noir' | 'romance'
+export type AppTheme =
+  | 'default' | 'fantasy' | 'scifi' | 'cyberpunk' | 'horror' | 'western' | 'action' | 'noir' | 'romance'
+  | 'gothic' | 'mystery' | 'mythic' | 'adventure'
 export type PlaybackSpeed = 'slow' | 'normal' | 'fast'
 
 interface PlaybackSlice {
