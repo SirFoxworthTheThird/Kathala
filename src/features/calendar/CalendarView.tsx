@@ -6,6 +6,7 @@ import { useWorldEvents, useWorldChapters, useTimelines, updateEvent } from '@/d
 import { buildCalendarMonths, type CalendarEvent } from '@/lib/calendarView'
 import { dateToDayNumber, defaultCalendar } from '@/lib/calendar'
 import { useAppStore } from '@/store'
+import { useShowMoment } from '@/db/hooks/useShowMoment'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
 import { plural } from '@/lib/plural'
@@ -13,7 +14,8 @@ import { plural } from '@/lib/plural'
 export default function CalendarView() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
-  const { activeEventId, setActiveEventId } = useAppStore()
+  const { activeEventId } = useAppStore()
+  const showMoment = useShowMoment()
 
   const world    = useWorld(worldId ?? null)
   const events   = useWorldEvents(worldId ?? null)
@@ -43,7 +45,8 @@ export default function CalendarView() {
 
   function openEvent(ev: CalendarEvent) {
     const full = events.find((e) => e.id === ev.id)
-    setActiveEventId(ev.id)
+    // Looking at a scene is not the same as having read up to it.
+    showMoment(ev.id)
     navigate(`/worlds/${worldId}/timeline${full ? `/${full.chapterId}` : ''}`)
   }
 

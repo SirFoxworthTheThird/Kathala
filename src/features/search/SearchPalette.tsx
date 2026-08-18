@@ -5,6 +5,7 @@ import { Search, Users, Map, Package, BookOpen, Network, Scroll, X, Route, Hexag
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useAppStore } from '@/store'
+import { useShowMoment } from '@/db/hooks/useShowMoment'
 import { useFactionReveal } from '@/db/hooks/useFactions'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { snippet } from '@/lib/snippet'
@@ -54,7 +55,8 @@ export function SearchPalette() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const { searchOpen, setSearchOpen, setActiveEventId, setPendingFocusRouteId, setPendingFocusRegionId, setPendingFocusMarkerId } = useAppStore()
+  const { searchOpen, setSearchOpen, setPendingFocusRouteId, setPendingFocusRegionId, setPendingFocusMarkerId } = useAppStore()
+  const showMoment = useShowMoment()
   const [query, setQuery] = useState('')
   const [activeIdx, setActiveIdx] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -221,7 +223,9 @@ export function SearchPalette() {
   }
 
   function go(result: SearchResult) {
-    if (result.type === 'event') setActiveEventId(result.id)
+    // Jumping to a search hit shows it; while reading it does not move the
+    // reader's place in the book.
+    if (result.type === 'event') showMoment(result.id)
     if (result.type === 'route') setPendingFocusRouteId(result.id)
     if (result.type === 'region') setPendingFocusRegionId(result.id)
     if (result.type === 'location') setPendingFocusMarkerId(result.id)

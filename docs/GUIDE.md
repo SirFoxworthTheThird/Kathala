@@ -289,6 +289,14 @@ screen offers to add, generate or delete anything: no **Add Character**, no
 **New Page**, no **Generate with AI**, no delete buttons on cards, rows or map
 layers.
 
+**Your place in the book is yours to move.** While reading, only the controls
+that say they move it do: the previous/next moment steppers, and **View from
+here** on a chapter row. Looking at something — a scene on the Calendar, a
+search result, a stop on a character's journey, a row in their history — shows
+it to you without quietly relocating your bookmark. Where a control's only job
+was moving the cursor, it becomes a label rather than a button, so nothing on
+screen looks pressable and does nothing.
+
 **A chapter you have not reached yet does not open.** Its page says so and
 offers the way back, rather than showing you the scenes, the character states
 and the summary of a chapter you are still ten evenings away from — and the same

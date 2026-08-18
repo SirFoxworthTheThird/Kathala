@@ -4,6 +4,7 @@ import { BookOpen, Users, AtSign, History as HistoryIcon, Eye } from 'lucide-rea
 import type { Character } from '@/types'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import { useAppStore } from '@/store'
+import { useShowMoment } from '@/db/hooks/useShowMoment'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
@@ -54,7 +55,8 @@ function AppearanceRow({ appearance, isActive, onClick }: {
 export function AppearancesTab({ character }: AppearancesTabProps) {
   const events = useWorldEvents(character.worldId)
   const chapters = useWorldChapters(character.worldId)
-  const { activeEventId, setActiveEventId } = useAppStore()
+  const { activeEventId } = useAppStore()
+  const showMoment = useShowMoment()
   const navigate = useNavigate()
 
   const { present, mentioned } = useMemo(
@@ -63,7 +65,8 @@ export function AppearancesTab({ character }: AppearancesTabProps) {
   )
 
   function go(a: CharacterAppearance) {
-    setActiveEventId(a.eventId)
+    // Navigates either way; only a writer's cursor follows.
+    showMoment(a.eventId)
     navigate(`/worlds/${character.worldId}/timeline/${a.chapterId}`)
   }
 

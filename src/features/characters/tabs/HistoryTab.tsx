@@ -10,6 +10,7 @@ import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useAppStore } from '@/store'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/EmptyState'
 import { formatDistance } from '@/lib/mapScale'
@@ -41,7 +42,8 @@ function SnapshotRow({
   timelines: Timeline[]
   routeLabel: string | null
   distanceLabel: string | null
-  onClick: () => void
+  /** Absent while reading: the row is a readout, not a way to move the cursor. */
+  onClick?: () => void
 }) {
   const event = useEvent(eventId)
   const chapter = useChapter(event?.chapterId ?? null)
@@ -51,11 +53,19 @@ function SnapshotRow({
   const timeline = chapter ? timelines.find((t) => t.id === chapter.timelineId) ?? null : null
   const travelModeName = travelModeId ? (travelModes.find((m) => m.id === travelModeId)?.name ?? null) : null
 
+  /*
+    A button only when pressing it does something. With no handler it would
+    still take focus, still light up on hover, and still do nothing — the
+    visible-but-inert shape HB-2d was filed for. While reading this is a
+    readout, so it is rendered as one.
+  */
+  const Row = onClick ? 'button' : 'div'
   return (
-    <button
+    <Row
       onClick={onClick}
       className={cn(
-        'w-full flex flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors hover:bg-[hsl(var(--accent))]',
+        'w-full flex flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors',
+        onClick && 'hover:bg-[hsl(var(--accent))]',
         isActive
           ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))]'
           : 'border-[hsl(var(--border))] bg-[hsl(var(--card))]'
@@ -121,7 +131,7 @@ function SnapshotRow({
       {statusNotes && (
         <p className="text-xs text-[hsl(var(--muted-foreground))] italic line-clamp-1">{statusNotes}</p>
       )}
-    </button>
+    </Row>
   )
 }
 
@@ -133,6 +143,7 @@ export function HistoryTab({ character }: HistoryTabProps) {
   const snapshots = useCharacterSnapshots(character.id)
   const timelines = useTimelines(character.worldId)
   const { activeEventId, setActiveEventId } = useAppStore()
+  const gate = useGate()
 
   // Data for enrichment
   const allMarkers = useAllLocationMarkers(character.worldId)
@@ -226,7 +237,13 @@ export function HistoryTab({ character }: HistoryTabProps) {
           timelines={timelines}
           routeLabel={routeLabel}
           distanceLabel={distanceLabel}
-          onClick={() => setActiveEventId(snap.eventId)}
+          /*
+            While reading this row is a readout, not a control: its only effect
+            was moving the cursor, and a reader's cursor is their place in the
+            book. Left as a button it would be visible and inert, which is the
+            shape HB-2d was filed for.
+          */
+          onClick={gate.active ? undefined : () => setActiveEventId(snap.eventId)}
         />
       ))}
     </div>

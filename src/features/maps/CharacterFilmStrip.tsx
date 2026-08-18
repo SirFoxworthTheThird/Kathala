@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { X } from 'lucide-react'
 import { useCharacterSnapshots } from '@/db/hooks/useSnapshots'
 import { useAppStore } from '@/store'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import type { Character, LocationMarker } from '@/types'
 import type { WorldEvent, Chapter } from '@/types'
 
@@ -30,6 +31,13 @@ export function CharacterFilmStrip({
   onClose: () => void
 }) {
   const { setActiveEventId } = useAppStore()
+  const gate = useGate()
+  /*
+    A stop is a control for a writer and a label for a reader: its only effect
+    was moving the time cursor, which for a reader is their place in the book.
+    Rendered as a button only when pressing it does something.
+  */
+  const Stop = gate.active ? 'div' : 'button'
   const snapshots = useCharacterSnapshots(character.id)
 
   const stops = useMemo<FilmStripStop[]>(() => {
@@ -99,8 +107,9 @@ export function CharacterFilmStrip({
               {idx > 0 && (
                 <div className="h-px w-6 shrink-0 bg-[hsl(var(--border))]" />
               )}
-              <button
-                onClick={() => setActiveEventId(stop.eventId)}
+              {/* A readout while reading — see HistoryTab for why. */}
+              <Stop
+                onClick={gate.active ? undefined : () => setActiveEventId(stop.eventId)}
                 title={`Ch.${stop.chapterNumber} — ${stop.chapterTitle}`}
                 className={`flex flex-col items-center rounded px-2 py-1 transition-colors ${
                   stop.isCurrentEvent
@@ -118,7 +127,7 @@ export function CharacterFilmStrip({
                 <span className="text-[8px] leading-tight text-[hsl(var(--muted-foreground))] whitespace-nowrap">
                   Ch.{stop.chapterNumber}
                 </span>
-              </button>
+              </Stop>
             </div>
           ))}
         </div>

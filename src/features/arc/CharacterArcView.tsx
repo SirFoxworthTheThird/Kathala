@@ -12,6 +12,7 @@ import { nextCell, clampCell, type Cell } from './gridNavigation'
 import { useCharacterGoals } from '@/db/hooks/useCharacterGoals'
 import { eventPositions, activeGoalsAt, summariseGoals, goalTypeConfig } from '@/lib/characterGoals'
 import { useAppStore } from '@/store'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/EmptyState'
 import { BookOpen } from 'lucide-react'
@@ -55,6 +56,7 @@ export default function CharacterArcView() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
   const { activeEventId, setActiveEventId } = useAppStore()
+  const gate = useGate()
   const [viewMode, setViewMode]             = useState<'chapter' | 'event'>('chapter')
   const [viewType, setViewType]             = useState<'characters' | 'factions' | 'threads'>('characters')
   const [filterText, setFilterText]         = useState('')
@@ -931,7 +933,14 @@ export default function CharacterArcView() {
                 const isActive = ch.id === activeChapterId
                 const statusColor = getChapterStatusColor(ch.id)
                 const povColor = chapterDomPovMap.get(ch.id) ?? null
-                const activate = () => {
+                /*
+                  Undefined while reading. A column header's only effect is
+                  moving the time cursor, and for a reader that is their place
+                  in the book, not a viewfinder — so the header is a label. Left
+                  activatable-but-ignored it would be the inert control HB-2d
+                  was filed for; `cellProps` already accepts no activator.
+                */
+                const activate = gate.active ? undefined : () => {
                   if (isActive) { setActiveEventId(null); return }
                   const firstEv = firstEventByChapter.get(ch.id)
                   if (firstEv) setActiveEventId(firstEv)
@@ -948,7 +957,8 @@ export default function CharacterArcView() {
                       ...(povColor ? { borderTop: `3px solid ${povColor}` } : {}),
                     }}
                     className={cn(
-                      'cursor-pointer border-r border-[hsl(var(--border))] px-2 py-2 text-center font-medium transition-colors',
+                      'border-r border-[hsl(var(--border))] px-2 py-2 text-center font-medium transition-colors',
+                      !gate.active && 'cursor-pointer',
                       'focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[hsl(var(--ring))]',
                       !statusColor && 'border-b',
                       isActive
@@ -972,7 +982,7 @@ export default function CharacterArcView() {
                 return (
                   <th
                     key={ev.id}
-                    {...cellProps(0, colIdx + 1, () => setActiveEventId(isActive ? null : ev.id))}
+                    {...cellProps(0, colIdx + 1, gate.active ? undefined : () => setActiveEventId(isActive ? null : ev.id))}
                     role="columnheader"
                     aria-label={`Chapter ${ch?.number ?? '?'}, ${ev.title || 'untitled scene'}`}
                     style={{
@@ -981,14 +991,15 @@ export default function CharacterArcView() {
                       ...(povColor ? { borderTop: `3px solid ${povColor}` } : {}),
                     }}
                     className={cn(
-                      'cursor-pointer border-r border-[hsl(var(--border))] px-2 py-2 text-center font-medium transition-colors',
+                      'border-r border-[hsl(var(--border))] px-2 py-2 text-center font-medium transition-colors',
+                      !gate.active && 'cursor-pointer',
                       'focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[hsl(var(--ring))]',
                       !statusColor && 'border-b',
                       isActive
                         ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
                         : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
                     )}
-                    onClick={() => setActiveEventId(isActive ? null : ev.id)}
+                    onClick={gate.active ? undefined : () => setActiveEventId(isActive ? null : ev.id)}
                     title={`Ch. ${ch?.number ?? '?'} — ${ev.title} [${eventStatusConfig(ev.status).label}]`}
                   >
                     <div className="truncate text-[10px] opacity-60">Ch. {ch?.number ?? '?'}</div>
