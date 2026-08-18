@@ -416,8 +416,6 @@
     --theme-atmosphere: radial-gradient(ellipse at 24% 16%, hsl(345 58% 68% / 0.08), transparent 46%);
   }
 
-  .theme-fantasy,
-  .theme-scifi,
   /* ── Gothic (Candle & Cold Stone) ── */
   .theme-gothic {
     --background: 265 18% 7%;
@@ -594,6 +592,8 @@
     --theme-atmosphere: none;
   }
 
+  .theme-fantasy,
+  .theme-scifi,
   .theme-cyberpunk,
   .theme-horror,
   .theme-western,

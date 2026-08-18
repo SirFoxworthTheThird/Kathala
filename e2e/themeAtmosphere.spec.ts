@@ -59,20 +59,30 @@ test.describe('Theme atmosphere', () => {
    * never styled, because vitest stubs the stylesheet. Only a browser can see
    * that the class does something.
    */
-  test('every theme in the picker actually restyles the app', async ({ page }) => {
+  test('every theme in the picker is styled, and none is another in disguise', async ({ page }) => {
     await themedWorld(page)
 
-    await applyTheme(page, null)
-    const base = await page.evaluate(() =>
-      getComputedStyle(document.documentElement).getPropertyValue('--background').trim())
-    expect(base, 'the default theme should define a background').not.toBe('')
-
+    const seen = new Map<string, string>()
     for (const t of APP_THEMES) {
-      if (t.id === 'default') continue
       await applyTheme(page, themeClass(t.id))
-      const background = await page.evaluate(() =>
-        getComputedStyle(document.documentElement).getPropertyValue('--background').trim())
-      expect(background, `${t.id} has no stylesheet rule of its own`).not.toBe(base)
+      const look = await page.evaluate(() => {
+        const cs = getComputedStyle(document.documentElement)
+        return ['--background', '--ring', '--font-heading'].map((k) => cs.getPropertyValue(k).trim()).join('|')
+      })
+      expect(look, `${t.id} resolves nothing at all`).not.toBe('||')
+
+      /*
+        Distinct from every *other* theme, not merely from the default.
+
+        Checking against the default alone is what let a real bug through: an
+        insertion landed inside the `--app-image` selector list and produced
+        `.theme-fantasy, .theme-scifi, .theme-gothic { … }`, so Fantasy and
+        Sci-Fi rendered as Gothic — amber and cyan both coming out plum. They
+        differed from the default the whole time, and shipped.
+      */
+      const twin = seen.get(look)
+      expect(twin ?? null, `${t.id} renders identically to ${twin}`).toBeNull()
+      seen.set(look, t.id)
     }
   })
 
