@@ -1690,9 +1690,12 @@ what went, with **Undo** beside it. It's the fastest way back, and on a phone
 it's right under your thumb.
 
 **Recent changes** (the clock icon in the top bar, or in the menu on a phone)
-lists your recent edits, newest first, with the time each happened. Only the
-newest can be undone — history is a stack, so taking one from the middle would
-leave the later edits resting on a state that never existed.
+lists your recent edits, newest first, with the time each happened. Each entry
+says what it touched — *Edited chapter — notes*, *Edited event — tension and
+title* — so you can tell one edit from the next without opening anything. Only
+the newest can be undone, and the panel says so once there's more than one
+entry: history is a stack, so taking one from the middle would leave the later
+edits resting on a state that never existed.
 
 ![Recent changes](images/53-recent-changes.png)
 

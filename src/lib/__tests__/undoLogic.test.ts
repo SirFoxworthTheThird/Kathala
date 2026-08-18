@@ -190,9 +190,11 @@ describe('describeOperation', () => {
       .toBe('Deleted character “Aldric”')
   })
 
-  it('falls back to a title', () => {
+  it('falls back to a title, and now says what changed as well', () => {
+    // HB-6a: an update also names its changed fields. This assertion used to
+    // end at the title, which was the finding — every edit read alike.
     expect(describeOperation(op({ type: 'update', seq: 1, entityType: 'lorePage', payload: { title: 'Gods' } })))
-      .toBe('Edited lore page “Gods”')
+      .toBe('Edited lore page “Gods” — title')
   })
 
   it('copes with a nameless record', () => {

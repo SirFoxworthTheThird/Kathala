@@ -121,6 +121,58 @@ export function describeInverse(op: Operation): string {
 }
 
 /** A short human description of an operation, for the history list and toasts. */
+/**
+ * Field names that do not survive being de-camelised into something a writer
+ * would recognise. Everything else is handled by the rule below, so this list
+ * stays short rather than becoming a second copy of the schema.
+ */
+const FIELD_LABEL: Record<string, string> = {
+  povCharacterId: 'point of view',
+  inWorldTime: 'date',
+  isAlive: 'alive or dead',
+  isFlashback: 'flashback',
+  structureBeat: 'structure beat',
+  travelDays: 'travel time',
+  linkedMapLayerId: 'linked sub-map',
+  scalePixelsPerUnit: 'scale',
+  parentMapId: 'parent map',
+  mentionedCharacterIds: 'mentioned characters',
+}
+
+/** A field name as a writer would say it. */
+export function fieldLabel(field: string): string {
+  const override = FIELD_LABEL[field]
+  if (override) return override
+  return field
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .toLowerCase()
+    // `imageId` is the image; `threadIds` are the threads. The id is how we
+    // store the thing, not what the writer changed — and dropping the plural
+    // with it would turn "threads" into "thread".
+    .replace(/ ids$/, 's')
+    .replace(/ id$/, '')
+}
+
+/**
+ * What changed, in words, or `null` when the operation does not say.
+ *
+ * Journalled updates have recorded `changedFields` all along — `makeOperation`
+ * fills it from the payload — and nothing ever read it. Recent Changes said
+ * *"Edited scene"* for every edit alike, which an outside review filed as the
+ * panel being too generic to act on. It was not missing data; it was unread
+ * data.
+ *
+ * Long lists are cut off rather than wrapped: a row is one line, and the point
+ * of the line is to tell one edit from the next, not to enumerate a form.
+ */
+export function describeChangedFields(fields: readonly string[]): string | null {
+  const labels = fields.map(fieldLabel)
+  if (labels.length === 0) return null
+  if (labels.length === 1) return labels[0]
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`
+  return `${labels[0]}, ${labels[1]} and ${labels.length - 2} more`
+}
+
 export function describeOperation(op: Operation): string {
   const label = ENTITY_LABEL[op.entityType] ?? 'record'
   const name = typeof op.payload.name === 'string' && op.payload.name.trim()
@@ -129,7 +181,13 @@ export function describeOperation(op: Operation): string {
       ? op.payload.title.trim()
       : null
   const verb = op.type === 'create' ? 'Added' : op.type === 'delete' ? 'Deleted' : 'Edited'
-  return name ? `${verb} ${label} “${name}”` : `${verb} ${label}`
+  const subject = name ? `${verb} ${label} “${name}”` : `${verb} ${label}`
+  // No test on `op.type` here: `makeOperation` records `changedFields` only for
+  // an update, so a create and a delete already arrive with none — a guard
+  // would be dead code reading like the rule. The fallback is for operations
+  // written before the field existed, which are still in people's browsers.
+  const detail = describeChangedFields(op.changedFields ?? [])
+  return detail ? `${subject} — ${detail}` : subject
 }
 
 /**

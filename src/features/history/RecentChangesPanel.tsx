@@ -108,6 +108,24 @@ export function RecentChangesPanel({ worldId }: { worldId: string | null }) {
               ))}
             </ul>
           )}
+
+          {/*
+            Why the rows below the first are dimmed and carry no button.
+
+            The rule was written down in this file's own comment and nowhere a
+            writer could see it, which is the half of the outside review's
+            finding that stood: the panel looked like undo was broken for older
+            entries rather than deliberately reserved for the newest. Shown only
+            once there is a second row, because with one entry there is no
+            "older" to explain.
+          */}
+          {stack.length > 1 && (
+            <p className="mt-2 border-t border-[hsl(var(--border))] px-2 pt-2 text-[11px] text-[hsl(var(--muted-foreground))]">
+              Only the newest change can be undone. The history is a stack, so taking one
+              from the middle would leave the changes after it resting on a version of your
+              world that never existed.
+            </p>
+          )}
         </div>
       </div>
     </>
