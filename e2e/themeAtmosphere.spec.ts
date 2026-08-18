@@ -16,9 +16,11 @@ import { APP_THEMES, themeClass } from '../src/lib/themes'
  * and action each drew a single hard-edged band across the whole window, which
  * reads as a scratch on the screen; romance drew concentric rings.
  *
- * The rule that separates the two is shape, not taste: a repeating pattern or a
- * soft radial glow is texture; a single hard-edged line or an isolated dot is a
- * mark. These read the *computed* values, so they check what the browser
+ * The rule is now simply that **nothing in this layer is ruled**. Grids and
+ * hatching were kept for a while under a shape rule — repeating patterns were
+ * held to be texture, single bands to be marks — and they were removed in the
+ * end on the plain ground that they did not look good. What survives is soft
+ * radial wash. These read the *computed* values, so they check what the browser
  * resolves rather than what the stylesheet appears to say.
  */
 
@@ -74,37 +76,38 @@ test.describe('Theme atmosphere', () => {
     }
   })
 
-  test('carries texture, and no hard-edged marks, in every theme', async ({ page }) => {
+  test('rules no lines in any theme, and still washes some of them', async ({ page }) => {
     await themedWorld(page)
 
-    let withTexture = 0
+    let withWash = 0
     for (const t of APP_THEMES) {
       await applyTheme(page, themeClass(t.id))
       const value = await atmosphereOf(page)
 
-      // A bare `linear-gradient` across a fixed percentage is one line drawn
-      // over the whole window. Hatching is `repeating-linear-gradient`.
-      expect(value.replace(/repeating-linear-gradient\(/g, ''), `${t.id}: single band`)
-        .not.toContain('linear-gradient(')
+      /*
+        No straight edges of any kind — not a grid, not a hatch, not a single
+        band. `repeating-linear-gradient` covers the first two and
+        `linear-gradient` the third, and this catches both by substring.
+      */
+      expect(value, `${t.id} rules lines across the app`).not.toContain('linear-gradient(')
       // `white 0 1px, transparent 1.5px` at one position is a speck, not a star.
       expect(value, `${t.id}: isolated dot`).not.toMatch(/\b0 1px\b/)
 
-      if (value.includes('repeating-linear-gradient(')) withTexture++
+      if (value.includes('radial-gradient(')) withWash++
     }
 
-    // The presence half: a rule banning every gradient would satisfy the two
-    // assertions above while emptying the feature.
-    expect(withTexture, 'themes still carrying repeating texture').toBeGreaterThanOrEqual(6)
+    /*
+      The presence half. Banning every gradient would satisfy the assertions
+      above while emptying the layer, so the soft washes that survived — the
+      horror glow, romance's, noir's vignette — are held in place here.
+    */
+    expect(withWash, 'themes still carrying a soft wash').toBeGreaterThanOrEqual(3)
   })
 
   /**
-   * Noir carries no bands, and this is **taste rather than the shape rule**.
-   *
-   * Seven pixels of near-white every 73 is a repeating pattern, so everything
-   * above permits it; it was removed because it reads as damage rather than
-   * film, and moving the layer behind the app only meant it streaked the space
-   * around the cards instead of the words. Recorded here because a decision
-   * nothing checks is one the next edit undoes by accident.
+   * Noir was the first theme to lose its bands and is the one with something
+   * left to lose: a vignette rather than nothing. The rule above would be
+   * satisfied by a noir with no atmosphere at all.
    */
   test('leaves noir its vignette and no scratches', async ({ page }) => {
     await themedWorld(page)
@@ -127,15 +130,15 @@ test.describe('Theme atmosphere', () => {
   test('is painted behind the app, not over it', async ({ page }) => {
     await themedWorld(page)
     /*
-      Cyberpunk, because a grid is the boldest repeating texture left and it
-      crosses the whole window — so if this layer ever climbs back over the app,
-      the dialog's pixels change and this fails loudly.
+      Noir, because a vignette is now the boldest thing this layer draws
+      anywhere. It was cyberpunk's grid until the grids went, at which point
+      this test started comparing a theme with no atmosphere against itself and
+      failed on its own presence half — which is the check doing its job.
 
-      It was noir until noir's light-leak bands were removed; a vignette alone
-      still proves the point but barely reaches the middle of the screen, which
-      is a thinner test than it reads as.
+      A vignette reaches the corners rather than the middle, so the sampled
+      strip below sits near the top-left where it actually bites.
     */
-    await applyTheme(page, themeClass('cyberpunk'))
+    await applyTheme(page, themeClass('noir'))
     await page.waitForTimeout(400)
 
     const dialog = page.locator('#root').getByText('Your story begins with a moment').locator('..')

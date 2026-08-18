@@ -1961,9 +1961,9 @@ colours, fonts, textures and the timeline bar's pulse together. **Gothic** is
 candle and cold stone where Horror is blood and bone; **Mystery** is gaslight,
 fog and foolscap where Noir is a monochrome 1940s; **Mythic** is bronze, marble
 and the wine-dark sea; **Adventure** is charts, brass and canvas, for the
-sea-stories and swashbucklers that do not want Western's dust. A theme's texture — Noir's film scratches, Cyberpunk's grid,
-Fantasy's cross-hatch — sits *behind* the app, in the space around your cards
-and panels, so it never lies over anything you are reading.
+sea-stories and swashbucklers that do not want Western's dust. Themes colour the space around your
+cards and panels but never draw over it: what sits behind the app is soft
+gradient, and nothing is ruled across the screen.
 
 The **cover image** appears on the world's card in the selector and in the
 dashboard header. **Upload** an image file or **link** one by URL (the link

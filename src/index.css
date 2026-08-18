@@ -74,7 +74,7 @@
     --leaflet-muted: 40, 24%, 63%;
     --canvas: 42 31% 6%;
     --theme-backdrop: radial-gradient(circle at 78% 8%, hsl(43 72% 42% / 0.18), transparent 30%), radial-gradient(circle at 14% 80%, hsl(88 30% 24% / 0.2), transparent 35%), linear-gradient(145deg, hsl(42 28% 6%), hsl(35 26% 11%));
-    --theme-atmosphere: repeating-linear-gradient(45deg, transparent 0 23px, hsl(43 55% 65% / 0.018) 23px 24px), repeating-linear-gradient(-45deg, transparent 0 23px, hsl(89 35% 60% / 0.014) 23px 24px);
+    --theme-atmosphere: none;
   }
 
   /* ── Timeline overlay variables (Default) ── */
@@ -181,7 +181,7 @@
     --leaflet-muted: 203, 30%, 63%;
     --canvas: 222 60% 3%;
     --theme-backdrop: radial-gradient(circle at 72% 18%, hsl(187 70% 44% / 0.18), transparent 24%), radial-gradient(circle at 18% 76%, hsl(225 65% 30% / 0.22), transparent 36%), linear-gradient(145deg, hsl(226 58% 3%), hsl(216 47% 9%));
-    --theme-atmosphere: repeating-linear-gradient(90deg, transparent 0 79px, hsl(185 65% 60% / 0.025) 79px 80px), repeating-linear-gradient(0deg, transparent 0 79px, hsl(185 65% 60% / 0.025) 79px 80px);
+    --theme-atmosphere: none;
   }
 
   /* ── Cyberpunk (Neon Noir) ── */
@@ -215,7 +215,7 @@
     --leaflet-muted: 275, 22%, 66%;
     --canvas: 266 38% 4%;
     --theme-backdrop: radial-gradient(circle at 84% 16%, hsl(304 88% 52% / 0.22), transparent 28%), radial-gradient(circle at 12% 82%, hsl(72 82% 50% / 0.1), transparent 28%), linear-gradient(145deg, hsl(267 38% 4%), hsl(250 31% 10%));
-    --theme-atmosphere: repeating-linear-gradient(90deg, transparent 0 39px, hsl(304 90% 65% / 0.035) 39px 40px), repeating-linear-gradient(0deg, transparent 0 39px, hsl(72 85% 65% / 0.025) 39px 40px);
+    --theme-atmosphere: none;
   }
 
   /* ── Horror (Blood & Shadow) ── */
@@ -249,7 +249,7 @@
     --leaflet-muted: 25, 12%, 62%;
     --canvas: 350 18% 3%;
     --theme-backdrop: radial-gradient(circle at 50% 0%, hsl(354 48% 25% / 0.22), transparent 32%), linear-gradient(160deg, hsl(350 18% 3%), hsl(20 8% 7%));
-    --theme-atmosphere: radial-gradient(circle at 50% 0%, hsl(354 55% 35% / 0.035), transparent 38%), repeating-linear-gradient(96deg, transparent 0 91px, hsl(35 15% 75% / 0.024) 91px 92px, transparent 92px 137px);
+    --theme-atmosphere: radial-gradient(circle at 50% 0%, hsl(354 55% 35% / 0.035), transparent 38%);
   }
 
   /* ── Western (Dusty Frontier) ── */
@@ -283,7 +283,7 @@
     --leaflet-muted: 34, 25%, 63%;
     --canvas: 24 40% 5%;
     --theme-backdrop: radial-gradient(ellipse at 78% 10%, hsl(32 70% 46% / 0.24), transparent 32%), radial-gradient(ellipse at 20% 95%, hsl(13 50% 25% / 0.2), transparent 38%), linear-gradient(155deg, hsl(25 37% 6%), hsl(30 32% 12%));
-    --theme-atmosphere: repeating-linear-gradient(8deg, transparent 0 31px, hsl(35 45% 72% / 0.018) 31px 32px), repeating-linear-gradient(98deg, transparent 0 67px, hsl(15 28% 20% / 0.025) 67px 68px);
+    --theme-atmosphere: none;
   }
 
   /* ── Action (Gunmetal & Orange) ── */
@@ -326,7 +326,7 @@
     --tl-backdrop:       none;
     --canvas: 214 22% 5%;
     --theme-backdrop: radial-gradient(circle at 88% 14%, hsl(24 95% 50% / 0.2), transparent 25%), linear-gradient(145deg, hsl(215 20% 5%), hsl(210 15% 12%));
-    --theme-atmosphere: repeating-linear-gradient(-45deg, transparent 0 14px, hsl(24 95% 58% / 0.025) 14px 15px);
+    --theme-atmosphere: none;
   }
 
   /* ── Noir (Moody Grayscale) ── */
@@ -369,10 +369,7 @@
     --tl-backdrop:       none;
     --canvas: 45 6% 3%;
     --theme-backdrop: radial-gradient(circle at 72% 16%, hsl(45 10% 55% / 0.12), transparent 28%), linear-gradient(145deg, hsl(0 0% 3%), hsl(45 5% 9%));
-    /* The light-leak bands are gone. Seven pixels of near-white every 73 read
-       as damage rather than film, and moving them behind the app only meant
-       they streaked the space around it instead of the text. The vignette is
-       the noir signature anyway, and it carries the theme on its own. */
+    /* A vignette, and nothing ruled. See the note on the atmosphere layer. */
     --theme-atmosphere: radial-gradient(ellipse at center, transparent 55%, hsl(0 0% 0% / 0.24) 100%);
   }
 
@@ -462,8 +459,7 @@
     --canvas: 265 22% 4%;
     /* Candle at a high window, and the cold of the room away from it. */
     --theme-backdrop: radial-gradient(ellipse at 76% 6%, hsl(38 60% 55% / 0.13), transparent 30%), radial-gradient(ellipse at 12% 88%, hsl(268 40% 30% / 0.22), transparent 38%), linear-gradient(160deg, hsl(268 24% 4%), hsl(263 18% 10%));
-    /* Rain on glass: near-vertical, uneven, and far too faint to read as lines. */
-    --theme-atmosphere: repeating-linear-gradient(84deg, transparent 0 37px, hsl(270 30% 78% / 0.014) 37px 38px), repeating-linear-gradient(96deg, transparent 0 59px, hsl(270 30% 78% / 0.01) 59px 60px);
+    --theme-atmosphere: none;
   }
 
   /* ── Mystery (Gaslight & Foolscap) ── */
@@ -507,8 +503,7 @@
     --canvas: 214 34% 5%;
     /* A lamp at the kerb, and fog taking the rest of the street. */
     --theme-backdrop: radial-gradient(circle at 22% 14%, hsl(40 70% 55% / 0.16), transparent 26%), radial-gradient(ellipse at 82% 92%, hsl(212 40% 32% / 0.22), transparent 40%), linear-gradient(150deg, hsl(215 34% 5%), hsl(212 26% 11%));
-    /* Laid paper: the fine chain lines you see holding foolscap to the light. */
-    --theme-atmosphere: repeating-linear-gradient(90deg, transparent 0 25px, hsl(40 30% 80% / 0.014) 25px 26px), repeating-linear-gradient(0deg, transparent 0 4px, hsl(40 30% 80% / 0.008) 4px 5px);
+    --theme-atmosphere: none;
   }
 
   /* ── Mythic (Bronze & Aegean) ── */
@@ -552,8 +547,7 @@
     --canvas: 196 38% 4%;
     /* Sun off the water, and the deep away from it. */
     --theme-backdrop: radial-gradient(ellipse at 84% 10%, hsl(38 78% 58% / 0.16), transparent 30%), radial-gradient(ellipse at 10% 84%, hsl(196 60% 26% / 0.26), transparent 40%), linear-gradient(150deg, hsl(198 40% 4%), hsl(194 30% 11%));
-    /* A meander, kept to two faint diagonals so it reads as weave, not tile. */
-    --theme-atmosphere: repeating-linear-gradient(30deg, transparent 0 33px, hsl(40 45% 75% / 0.016) 33px 34px), repeating-linear-gradient(-30deg, transparent 0 33px, hsl(196 45% 70% / 0.014) 33px 34px);
+    --theme-atmosphere: none;
   }
 
   /* ── Adventure (Brass & Sea Green) ── */
@@ -597,8 +591,7 @@
     --canvas: 168 30% 4%;
     /* Lamplight on a chart, and open water past the edge of it. */
     --theme-backdrop: radial-gradient(ellipse at 20% 12%, hsl(38 74% 56% / 0.15), transparent 28%), radial-gradient(ellipse at 86% 88%, hsl(168 50% 24% / 0.24), transparent 40%), linear-gradient(150deg, hsl(170 32% 4%), hsl(166 24% 11%));
-    /* Engraver's cross-hatch, as a chart's sea is shaded. */
-    --theme-atmosphere: repeating-linear-gradient(45deg, transparent 0 19px, hsl(40 40% 78% / 0.015) 19px 20px), repeating-linear-gradient(-45deg, transparent 0 19px, hsl(168 40% 70% / 0.012) 19px 20px);
+    --theme-atmosphere: none;
   }
 
   .theme-cyberpunk,
@@ -648,6 +641,19 @@
 
     Zero here, and a stacking context on `#root` above it: the layer stays over
     the page's own background and under everything the app draws.
+  */
+  /*
+    **Nothing in this layer is ruled.** Every theme carried hatching, a grid or
+    a band at some point — a cyberpunk grid, a fantasy cross-hatch, noir's
+    light-leak bands, laid-paper chain lines for mystery. They were removed on
+    the plain ground that they did not look good: at the opacity that keeps
+    them subtle they read as moiré or as damage to the screen, and at any
+    opacity where they read as *intent* they compete with the app.
+
+    What is left is soft radial wash — horror's glow at the top, romance's, and
+    noir's vignette — plus each theme's `--theme-backdrop`, which is where the
+    colour character actually lives. A straight line has no business in a
+    layer whose whole job is to be unnoticed.
   */
   body::after {
     content: '';
