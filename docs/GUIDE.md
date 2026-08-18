@@ -297,9 +297,14 @@ it to you without quietly relocating your bookmark. Where a control's only job
 was moving the cursor, it becomes a label rather than a button, so nothing on
 screen looks pressable and does nothing.
 
-**A chapter you have not reached yet does not open.** Its page says so and
-offers the way back, rather than showing you the scenes, the character states
-and the summary of a chapter you are still ten evenings away from — and the same
+**A chapter you have not reached yet does not open.** On the timeline its row
+does not expand — the scene list inside would name what happens in it — and its
+summary stays hidden, as it always has. The chapter's own title stays visible,
+because that is printed on your book's contents page.
+
+Opening it directly says so and offers the way back, rather than showing you the
+scenes, the character states and the summary of a chapter you are still ten
+evenings away from — and the same
 holds for a character, an item or a lore page you have not met, however you
 arrive at it. A chapter you *have* reached opens fully, and the author's notes
 on it are shown as writing rather than as a box to type in.

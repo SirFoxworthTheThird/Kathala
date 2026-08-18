@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ChevronDown, ChevronRight, Trash2, BookOpen, Plus, ExternalLink, Scroll } from 'lucide-react'
+import { ChevronDown, ChevronRight, Trash2, BookOpen, BookLock, Plus, ExternalLink, Scroll } from 'lucide-react'
 import type { Chapter } from '@/types'
 import { deleteChapter, useEvents, updateEvent } from '@/db/hooks/useTimeline'
 import { useGate } from '@/db/hooks/ReadingGateContext'
@@ -51,7 +51,19 @@ export function ChapterRow({ chapter, threadFilter = null, wordsByEvent = NO_WOR
     ? allSorted.filter((e) => (e.threadIds ?? []).includes(threadFilter))
     : allSorted
   const isActive = sortedEvents.some((e) => e.id === activeEventId)
-  const effectiveExpanded = expanded || !!threadFilter
+  /*
+    An unreached chapter does not open while reading.
+
+    Its synopsis is withheld four lines above — and then expanding the row
+    listed every scene in it by title: authored titles, not printed ones.
+    Measured on *Philosopher's Stone* at chapter 4, expanding chapter 17 lists
+    "Quirrell and Voldemort". The spoiler sweep could not see it because it
+    visits `/timeline` with every row collapsed, which is the same blind spot
+    `buttonNames` had under **WRUN-6**.
+
+    `threadFilter` cannot force it open either: a filtered view is still a view.
+  */
+  const effectiveExpanded = !synopsisHidden && (expanded || !!threadFilter)
   // TL-4: the roll-up describes the chapter, so it counts every scene in it —
   // not the subset a thread filter happens to be showing.
   const progress = chapterProgress(allSorted, wordsByEvent)
@@ -149,8 +161,18 @@ export function ChapterRow({ chapter, threadFilter = null, wordsByEvent = NO_WOR
             />
           </div>
         )}
-        <button onClick={() => setExpanded((v) => !v)} className="flex items-center gap-2 basis-full min-w-0 text-left sm:basis-auto sm:flex-1">
-          {effectiveExpanded
+        {/*
+          No disclosure on a chapter that cannot open: a chevron that turns
+          nothing is the visible-but-inert shape HB-2d was filed for.
+        */}
+        <button
+          onClick={synopsisHidden ? undefined : () => setExpanded((v) => !v)}
+          aria-expanded={synopsisHidden ? undefined : effectiveExpanded}
+          className="flex items-center gap-2 basis-full min-w-0 text-left sm:basis-auto sm:flex-1"
+        >
+          {synopsisHidden
+            ? <BookLock className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+            : effectiveExpanded
             ? <ChevronDown className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />
             : <ChevronRight className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />}
           <BookOpen className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />

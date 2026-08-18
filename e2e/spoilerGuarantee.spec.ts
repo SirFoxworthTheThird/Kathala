@@ -105,6 +105,24 @@ test('no unmet name appears anywhere in reading mode', async ({ page }) => {
   for (const route of [...INDEX_ROUTES, ...detail]) {
     await page.goto(`/#/worlds/${worldId}/${route}`)
     await page.waitForTimeout(1200)
+
+    /*
+      Open everything that opens before reading the page.
+      The timeline's chapter rows start collapsed, so this sweep was checking
+      the closed state of the one screen that lists every scene in the book —
+      the same blind spot `buttonNames` had under **WRUN-6**, where a sweep
+      visited a state its target never rendered in. Expanding chapter 17 of
+      *Philosopher's Stone* from chapter 4 listed "Quirrell and Voldemort".
+    */
+    if (route === 'timeline') {
+      const disclosures = page.getByRole('button', { name: /^Ch\. \d+/ })
+      const n = await disclosures.count()
+      expect(n, 'the timeline should list this book\'s chapters').toBeGreaterThan(5)
+      for (let i = 0; i < n; i++) {
+        await disclosures.nth(i).click({ timeout: 5_000 }).catch(() => {})
+      }
+      await page.waitForTimeout(800)
+    }
     // The whole document, not just <main>. The time-cursor bar, the top bar and
     // the nav rail all sit outside it, and checking only <main> is how a
     // subplot filter listing "The Philosopher's Stone Mystery" went unnoticed.
