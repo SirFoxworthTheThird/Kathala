@@ -7,6 +7,7 @@ import { buildCalendarMonths, type CalendarEvent } from '@/lib/calendarView'
 import { dateToDayNumber, defaultCalendar } from '@/lib/calendar'
 import { useAppStore } from '@/store'
 import { useShowMoment } from '@/db/hooks/useShowMoment'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
 import { plural } from '@/lib/plural'
@@ -22,6 +23,16 @@ export default function CalendarView() {
   const chapters = useWorldChapters(worldId ?? null)
   const timelines = useTimelines(worldId ?? null)
   const calendar = world?.calendar ?? null
+
+  /*
+    RM-2 a third time: the events on this screen are gated — `useWorldEvents`
+    keeps back anything past the reader's position — but the *chronology* was
+    not. Every chip carried `draggable`, the header told the reader to use it,
+    and dropping one wrote `inWorldTime` to the author's event. Reproduced by
+    driving a real drag on a freshly downloaded book, which the reader run said
+    it had not managed; the write lands.
+  */
+  const readOnly = useGate().active
 
   const [dragId, setDragId] = useState<string | null>(null)
   const [overCell, setOverCell] = useState<string | null>(null)
@@ -54,6 +65,10 @@ export default function CalendarView() {
     setOverCell(null)
     const id = dragId
     setDragId(null)
+    // The chip is not draggable while reading, so `dragId` is already null and
+    // this cannot be reached from the UI. Said here as well because a drop is a
+    // gesture the platform can deliver without the drag having started here.
+    if (readOnly) return
     if (!id || !calendar) return
     // The calendar shows the global clock; an inWorldTime pin is a day on the
     // event's own timeline, so subtract that timeline's offset.
@@ -105,7 +120,7 @@ export default function CalendarView() {
       <div className="border-b border-[hsl(var(--border))] px-6 py-3">
         <h1 className="text-lg font-semibold text-[hsl(var(--foreground))]">Calendar</h1>
         <p className="text-xs text-[hsl(var(--muted-foreground))]">
-          Events by in-world date. Drag an event to a day to pin it there.
+          Events by in-world date.{readOnly ? '' : ' Drag an event to a day to pin it there.'}
         </p>
         {provisionalCount > 0 && (
           <p className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-500">
@@ -155,7 +170,7 @@ export default function CalendarView() {
                           : `${m.monthName} ${day}, ${m.year}${suffix}`}
                         onDragOver={(e) => { if (dragId) { e.preventDefault(); setOverCell(cellKey) } }}
                         onDragLeave={() => setOverCell((c) => (c === cellKey ? null : c))}
-                        onDrop={(e) => { e.preventDefault(); dropOnDay(m.year, m.month, day) }}
+                        onDrop={(e) => { e.preventDefault(); void dropOnDay(m.year, m.month, day) }}
                         className={`flex min-h-[3.5rem] flex-col rounded border p-1 transition-colors ${
                           isOver
                             ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent)/0.4)]'
@@ -175,8 +190,8 @@ export default function CalendarView() {
                             return (
                               <button
                                 key={ev.id}
-                                draggable
-                                onDragStart={() => setDragId(ev.id)}
+                                draggable={!readOnly}
+                                onDragStart={() => { if (!readOnly) setDragId(ev.id) }}
                                 onDragEnd={() => { setDragId(null); setOverCell(null) }}
                                 onClick={() => openEvent(ev)}
                                 title={[
