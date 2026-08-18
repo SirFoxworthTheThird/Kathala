@@ -11,6 +11,8 @@ import { useEventItemPlacements } from '@/db/hooks/useItemPlacements'
 import { useChapterLocationSnapshots } from '@/db/hooks/useLocationSnapshots'
 import { useEchoLocations } from '@/lib/useEchoLocations'
 import { useBlobUrlState, useWorldBlobUrls } from '@/db/hooks/useBlobs'
+import { useImageLoad } from '@/db/hooks/useImageLoad'
+import { mapImageState } from '@/lib/mapImageState'
 import { useMapRoutes } from '@/db/hooks/useMapRoutes'
 import { useMapRegions, useBestRegionSnapshots } from '@/db/hooks/useMapRegions'
 import type { CharacterPin, GhostPin, EchoMarker, MovementLine } from './LeafletMapCanvas'
@@ -26,6 +28,9 @@ export function useMapViewState(worldId: string, layerId: string) {
   const layer          = useMapLayer(layerId)
   const image          = useBlobUrlState(layer?.imageId ?? null)
   const imageUrl       = image.url
+  // A blob record carrying a `url` resolves whether or not the host answers, so
+  // this is the only thing that can tell a map from a dead link.
+  const imageLoad      = useImageLoad(imageUrl)
   const markers        = useLocationMarkers(layerId)
   const allLayers      = useMapLayers(worldId)
   const allMarkers     = useAllLocationMarkers(worldId)
@@ -273,7 +278,13 @@ export function useMapViewState(worldId: string, layerId: string) {
 
   return {
     // Map layer
-    layer, imageUrl, imageMissing: image.missing,
+    layer, imageUrl,
+    imageState: mapImageState({
+      hasImageId: !!layer?.imageId,
+      missing: image.missing,
+      url: imageUrl,
+      load: imageLoad,
+    }),
     // Markers
     markers, allLayers, allMarkers,
     // Characters

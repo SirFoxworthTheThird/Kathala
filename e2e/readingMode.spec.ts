@@ -349,10 +349,18 @@ test('the map list keeps back places the reader has not been', async ({ page }) 
   // Read the layer tree itself rather than the page text: a chapter titled
   // after a place would otherwise look like a leak, and chapter titles stay
   // visible on purpose.
-  const inTree = (await page.evaluate(
+  const layerNames = () => page.evaluate(
     `(() => [...document.querySelectorAll('[data-map-layer]')].map((n) => (n.textContent ?? '').trim()))()`,
-  )) as string[]
-  expect(inTree.length, 'the sidebar should be listing some maps').toBeGreaterThan(0)
+  ) as Promise<string[]>
+
+  // Polled, not read once after a sleep. The tree is filled by a live query, so
+  // a single reading is a race — and the half that loses it is this one, the
+  // presence guard that stops the absence check below passing on an empty
+  // sidebar. It went red once in a full run and green on the retry, which in
+  // this repo means a real race rather than a flake.
+  await expect.poll(async () => (await layerNames()).length,
+    { timeout: 30_000, message: 'the sidebar should be listing some maps' }).toBeGreaterThan(0)
+  const inTree = await layerNames()
 
   const listed = shouldHide.filter((l) => inTree.includes(l.layer)).map((l) => l.layer)
   expect(listed, `maps listed for places not yet reached: ${listed.join(', ')}`).toEqual([])

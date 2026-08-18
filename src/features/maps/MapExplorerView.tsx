@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import L from 'leaflet'
 import { useParams } from 'react-router-dom'
-import { Upload, Map as MapIcon, X, Route, Sparkles, Type, Trash2, Crosshair, ImageUp, Layers } from 'lucide-react'
+import { Upload, Map as MapIcon, X, Route, Sparkles, Type, Trash2, Crosshair, ImageUp, ImageOff, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore, useActiveMapLayerId } from '@/store'
 import { useRootMapLayers, updateMapLayer, deleteMapLevel } from '@/db/hooks/useMapLayers'
@@ -41,7 +41,7 @@ import type { LocationMarker } from '@/types'
 
 function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const {
-    layer, imageUrl, imageMissing, markers, allLayers, allMarkers, characters,
+    layer, imageUrl, imageState, markers, allLayers, allMarkers, characters,
     activeEventId, orderedEvents,
     activeChapter, activeMomentLabel,
     snapshots, prevSnapshots,
@@ -523,7 +523,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     )
   }
 
-  if (!layer.imageId) {
+  if (imageState === 'no-image') {
     return (
       <div className="flex h-full flex-col overflow-hidden">
         <div className="flex shrink-0 items-center justify-between border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
@@ -546,9 +546,16 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
         <EmptyState
           icon={ImageUp}
           title="This map needs an image"
-          description="Upload an image or link to one. Existing locations will remain attached to this map and will be rescaled to the new image if needed."
+          description={
+            gate.active
+              ? 'No picture was ever drawn for this map. Nothing is being held back from you.'
+              : 'Upload an image or link to one. Existing locations will remain attached to this map and will be rescaled to the new image if needed.'
+          }
           className="flex-1"
           action={
+            // Offered unconditionally: `EmptyState` drops the call to action
+            // while reading, so a second gate here would be dead code claiming
+            // to be the rule.
             <Button className="gap-1.5" onClick={() => setReplaceImageOpen(true)}>
               <Upload className="h-4 w-4" />
               Add map image
@@ -577,7 +584,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     writer cannot tell a slow map from a missing one, and the way out — the
     Library's "with images" download — is never mentioned.
   */
-  if (imageMissing) {
+  if (imageState === 'not-downloaded') {
     return (
       <div className="flex h-full flex-col overflow-hidden">
         <div className="flex shrink-0 items-center justify-between border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
@@ -589,9 +596,16 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
         <EmptyState
           icon={ImageUp}
           title="This map's image isn't here"
-          description="The map itself — its locations, routes and regions — is all present; only the picture is missing. Worlds from the Library keep their images in a separate bundle, so a download without images leaves the maps blank. Download the world again from the Library with images included, or add a picture of your own."
+          description={
+            gate.active
+              ? "The map itself — its places, routes and regions — is all here; only the picture is missing, because a book's images are kept in a separate bundle from its text. Nothing is being held back from you."
+              : 'The map itself — its locations, routes and regions — is all present; only the picture is missing. Worlds from the Library keep their images in a separate bundle, so a download without images leaves the maps blank. Download the world again from the Library with images included, or add a picture of your own.'
+          }
           className="flex-1"
           action={
+            // Offered unconditionally: `EmptyState` drops the call to action
+            // while reading, so a second gate here would be dead code claiming
+            // to be the rule.
             <Button className="gap-1.5" onClick={() => setReplaceImageOpen(true)}>
               <Upload className="h-4 w-4" />
               Add map image
@@ -608,7 +622,10 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     )
   }
 
-  if (!imageUrl) {
+  // The second half of this condition adds no case: `mapImageState` returns
+  // 'loading' exactly when there is no url yet. It is here so the compiler can
+  // narrow `imageUrl` to a string for the canvas below.
+  if (imageState === 'loading' || !imageUrl) {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-[hsl(var(--border))] border-t-[hsl(var(--ring))]" />
@@ -723,6 +740,43 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             chapterTitle={activeChapter.title}
             synopsis={activeChapter.synopsis}
           />
+        )}
+
+        {/*
+          The picture's record is here and it points at the web, which did not
+          answer. Every image in the Library is stored that way — 1,573 of them
+          across the 25 books, on twenty-odd hosts — so this is not an edge case
+          for a companion someone reads on a train.
+
+          A banner, not a replacement, and it took two goes to learn why. The
+          canvas was silent about this, which left a reader three explanations
+          for a blank rectangle and made two of them ours. But replacing the
+          canvas with an empty state lost the sidebar; replacing only the canvas
+          lost the markers, routes and regions, which Leaflet still draws in
+          pixel space with no picture behind them — an unlabelled diagram of the
+          place, which is worth more than a paragraph about its absence. Each
+          attempt was caught by a spec written for something else.
+
+          So the map keeps everything it can still do, and the banner says why
+          it looks the way it does. A reader is offered nothing to act on:
+          supplying a picture is an author's action, and unlike `EmptyState`
+          this is our own markup, so the gate here is load-bearing.
+        */}
+        {imageState === 'unreachable' && (
+          <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.4)] px-4 py-2">
+            <ImageOff className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+            <p className="min-w-[13rem] flex-1 text-xs text-[hsl(var(--muted-foreground))]">
+              {gate.active
+                ? "This map's picture could not be loaded — it is kept on the web rather than in the book, so it needs a connection. Everything marked on the map is still here."
+                : "This map's picture could not be loaded. It is linked from the web rather than stored here, and that address did not answer. Everything marked on the map is still here."}
+            </p>
+            {!gate.active && (
+              <Button size="sm" variant="outline" className="shrink-0 gap-1.5 text-xs" onClick={() => setReplaceImageOpen(true)}>
+                <Upload className="h-3.5 w-3.5" />
+                Add map image
+              </Button>
+            )}
+          </div>
         )}
 
         {/* Map canvas. data-film-strip lifts Leaflet's bottom controls clear of
