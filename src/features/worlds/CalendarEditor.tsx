@@ -1,4 +1,5 @@
-import { Plus, Trash2, CalendarDays } from 'lucide-react'
+import { useState } from 'react'
+import { Plus, Trash2, CalendarDays, ChevronRight } from 'lucide-react'
 import { updateWorld, updateWorldCalendar } from '@/db/hooks/useWorlds'
 import { defaultCalendar, daysPerYear } from '@/lib/calendar'
 import type { World, WorldCalendar } from '@/types'
@@ -6,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { plural } from '@/lib/plural'
+import { CALENDAR_PRESETS } from '@/lib/calendarPresets'
 
 interface CalendarEditorProps {
   world: World
@@ -19,6 +21,13 @@ interface CalendarEditorProps {
 export function CalendarEditor({ world }: CalendarEditorProps) {
   const cal = world.calendar ?? null
   const namedDays = cal?.months.filter((m) => m.intercalary).length ?? 0
+  /*
+    HB-9: twelve month rows sat open in the middle of Settings, and on a world
+    with a thirteenth entry for festival days, thirteen. Folded away by default
+    — the summary beside the heading already says how long the year is and how
+    many months make it, which is what anyone is checking most of the time.
+  */
+  const [monthsOpen, setMonthsOpen] = useState(false)
 
   /**
    * HB-3a: every one of these writes the whole calendar, because it is a nested
@@ -81,10 +90,36 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
       </div>
 
       {!cal ? (
-        <Button size="sm" variant="outline" className="gap-2" onClick={() => updateWorld(world.id, { calendar: defaultCalendar() })}>
-          <CalendarDays className="h-3.5 w-3.5" />
-          Enable calendar
-        </Button>
+        <div className="space-y-3">
+          <Button size="sm" variant="outline" className="gap-2" onClick={() => updateWorld(world.id, { calendar: defaultCalendar() })}>
+            <CalendarDays className="h-3.5 w-3.5" />
+            Enable calendar
+          </Button>
+          {/*
+            HB-9's other half: the only route to a calendar unlike Earth's was
+            editing twelve rows by hand. These commit to the *shape* — the day
+            counts, and which entries fall outside the months — and leave the
+            names to be changed, which is the quick part.
+
+            Offered only here. Applying one over a calendar somebody has
+            already edited would throw their work away.
+          */}
+          <div className="space-y-1.5">
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">Or start from a shape and rename it:</p>
+            <div className="flex flex-wrap gap-2">
+              {CALENDAR_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  onClick={() => updateWorld(world.id, { calendar: preset.build() })}
+                  className="max-w-xs rounded-md border border-[hsl(var(--border))] px-3 py-2 text-left transition-colors hover:bg-[hsl(var(--accent)/0.5)]"
+                >
+                  <span className="block text-xs font-medium text-[hsl(var(--foreground))]">{preset.label}</span>
+                  <span className="block text-[10px] text-[hsl(var(--muted-foreground))]">{preset.description}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       ) : (
         <div className="space-y-4 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-4">
           {/* Epoch + suffix */}
@@ -122,7 +157,26 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
 
           {/* Months */}
           <div className="space-y-1.5">
-            <Label>Months</Label>
+            <button
+              onClick={() => setMonthsOpen((o) => !o)}
+              aria-expanded={monthsOpen}
+              className="flex w-full items-center gap-1.5 rounded py-1 text-left transition-colors hover:text-[hsl(var(--foreground))]"
+            >
+              <ChevronRight
+                className={`h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))] transition-transform ${monthsOpen ? 'rotate-90' : ''}`}
+                aria-hidden="true"
+              />
+              <Label className="cursor-pointer">Months</Label>
+              <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
+                {plural(cal.months.length, 'entry', 'entries')}
+              </span>
+            </button>
+            {/*
+              Rendered away rather than hidden with a class: a control that is
+              in the DOM but not on screen is still reachable, and this one
+              writes to the world.
+            */}
+            {monthsOpen && (<>
             <div className="space-y-1.5">
               {cal.months.map((m, i) => (
                 <div key={i} className="flex items-center gap-2">
@@ -178,6 +232,7 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
             <Button size="sm" variant="outline" className="gap-1.5" onClick={addMonth}>
               <Plus className="h-3.5 w-3.5" /> Add month
             </Button>
+            </>)}
           </div>
 
           <div className="border-t border-[hsl(var(--border))] pt-3">

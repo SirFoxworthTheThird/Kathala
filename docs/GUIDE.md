@@ -1765,12 +1765,25 @@ settings.
 Click **Enable calendar** to start from a standard 12-month, 365-day year, then
 tailor it. The same button is on the **Calendar** screen itself when the world
 has no calendar yet, so the first visit there can start one rather than sending
-you off to find the setting:
+you off to find the setting.
+
+**If your world's year isn't Earth's**, the buttons beside it start you from a
+different shape instead — *Four seasons* of 91 days, or *Twelve months of
+thirty* with five festival days outside them. They set the day counts, which is
+the tedious part; the names are yours to change afterwards. They're offered only
+before your world has a calendar, so applying one can't overwrite months you've
+already written.
+
+![Starting a calendar](images/63-calendar-presets.png)
 
 - **Start year** — the year that in-world day 0 falls in.
 - **Year suffix** — an era label shown after the year, e.g. *AC* or *TA*.
-- **Months** — rename them, set each month's length in days, and add or remove
-  months. A fantasy calendar can have any number of months of any length.
+- **Months** — folded away until you press **Months**, since a dozen rows of
+  boxes is a lot of settings page to scroll past when you only came to check
+  the year. Open it to rename them, set each month's length in days, and add or
+  remove months; a fantasy calendar can have any number of months of any
+  length. The line beside the heading tells you how long the year is and how
+  many months make it without opening anything.
 
 - **Days outside the months** — tick *outside the months* on an entry and it
   stops being a month: a one-day entry reads as its bare name, so the Shire

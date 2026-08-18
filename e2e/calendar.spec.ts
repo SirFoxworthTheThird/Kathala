@@ -1,5 +1,16 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+
+/**
+ * Open the month list. HB-9 folded it away by default — twelve rows sat open in
+ * the middle of Settings — so anything reaching for a month row asks for it
+ * first, as a writer now does.
+ */
+async function openMonths(page: Page) {
+  const toggle = page.getByRole('button', { name: /^Months/ })
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click()
+  await expect(page.getByLabel('Month 1 name')).toBeVisible()
+}
 
 // Drives the real HTML5 drag on the calendar to reschedule an event's in-world
 // date. The date maths (buildCalendarMonths / dateToDayNumber) is unit-tested in
@@ -68,6 +79,7 @@ test.describe('Calendar view', () => {
     // sequence the finding describes.
     await page.getByLabel('Start year').fill('742')
     await page.getByLabel('Year suffix').fill('HB')
+    await openMonths(page)
     await page.getByLabel('Month 1 name').fill('Afteryule')
     await page.getByLabel('Month 1 name').blur()
 
@@ -76,6 +88,7 @@ test.describe('Calendar view', () => {
     await page.goto(`/#/worlds/${worldId}/settings`, { waitUntil: 'load' })
     await expect(page.getByLabel('Start year')).toHaveValue('742')
     await expect(page.getByLabel('Year suffix')).toHaveValue('HB')
+    await openMonths(page)
     await expect(page.getByLabel('Month 1 name')).toHaveValue('Afteryule')
 
     const cal = await page.evaluate(async (id) => {
@@ -108,6 +121,7 @@ test.describe('Calendar view', () => {
     // the year, which is the whole reason appending was not enough.
     //
     // `exact`, or "entry 1" also matches entries 10, 11 and 12.
+    await openMonths(page)
     await page.getByRole('button', { name: 'Insert a named day after entry 1', exact: true }).click()
     const name = page.getByLabel('Month 2 name')
     await expect(name).toHaveValue('New day')
