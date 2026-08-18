@@ -1,4 +1,6 @@
 import { useEffect, useState, type RefObject } from 'react'
+import { useSettingsFold } from './SettingsSection'
+import { allCollapsed, collapseAll, expandAll } from '@/lib/settingsSections'
 
 export interface SettingsSectionRef {
   id: string
@@ -57,6 +59,10 @@ export function useSettingsSections(containerRef: RefObject<HTMLElement | null>)
 }
 
 export function SettingsIndex({ sections }: { sections: SettingsSectionRef[] }) {
+  const { collapsed, setCollapsed, reveal } = useSettingsFold()
+  const ids = sections.map((s) => s.id)
+  const folded = allCollapsed(collapsed, ids)
+
   // One section is not a list, and two barely are — below that the index costs
   // more than the scrolling it saves.
   if (sections.length < 3) return null
@@ -66,6 +72,7 @@ export function SettingsIndex({ sections }: { sections: SettingsSectionRef[] }) 
       aria-label="Settings sections"
       className="sticky top-0 z-10 -mx-6 mb-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--background))]/95 px-6 py-2 backdrop-blur"
     >
+      <div className="flex flex-wrap items-center gap-1.5">
       <ul className="flex flex-wrap gap-1.5">
         {sections.map((s) => (
           <li key={s.id}>
@@ -75,6 +82,8 @@ export function SettingsIndex({ sections }: { sections: SettingsSectionRef[] }) 
                 // The app is on a hash router, so a bare fragment link would be
                 // read as a route. Scroll it ourselves and leave the URL alone.
                 e.preventDefault()
+                // A chip that scrolled to a folded heading would look broken.
+                reveal(s.id)
                 document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
               }}
               className="inline-flex rounded-full border border-[hsl(var(--border))] px-2.5 py-1 text-xs text-[hsl(var(--muted-foreground))] transition-colors hover:border-[hsl(var(--ring)/0.5)] hover:text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]"
@@ -84,6 +93,21 @@ export function SettingsIndex({ sections }: { sections: SettingsSectionRef[] }) 
           </li>
         ))}
       </ul>
+      {/*
+        HB-9 asked for collapsible sections. They are — each heading folds its
+        own — but folding eleven one at a time is not the thing anyone wants,
+        and defaulting the page to shut is not available: several reading-mode
+        tests check a section is *gone*, and a shut one would satisfy them.
+        This is the one press that turns the page into a menu.
+      */}
+      <button
+        type="button"
+        onClick={() => setCollapsed(folded ? expandAll(collapsed, ids) : collapseAll(collapsed, ids))}
+        className="ml-auto inline-flex rounded-full px-2.5 py-1 text-xs text-[hsl(var(--muted-foreground))] transition-colors hover:text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]"
+      >
+        {folded ? 'Expand all' : 'Collapse all'}
+      </button>
+      </div>
     </nav>
   )
 }

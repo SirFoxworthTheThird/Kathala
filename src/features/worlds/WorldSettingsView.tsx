@@ -19,6 +19,7 @@ import { CalendarEditor } from './CalendarEditor'
 import { SettingsIndex, useSettingsSections } from './SettingsIndex'
 import { APP_THEMES, themeClass } from '@/lib/themes'
 import { useAppStore, type AppTheme } from '@/store'
+import { SettingsSection, SettingsFoldProvider } from './SettingsSection'
 
 // ── Travel mode row ───────────────────────────────────────────────────────────
 
@@ -84,7 +85,7 @@ function TravelModeRow({ mode, scaleUnit }: { mode: TravelMode; scaleUnit: strin
 
 // ── Main view ─────────────────────────────────────────────────────────────────
 
-export default function WorldSettingsView() {
+function WorldSettingsBody() {
   const { worldId } = useParams<{ worldId: string }>()
   const world = useWorld(worldId ?? null)
   // Settings is the escape hatch, so it stays reachable while reading — but
@@ -160,8 +161,7 @@ export default function WorldSettingsView() {
 
       {/* World identity — a downloaded book is not the reader's to rename. */}
       {!readingMode && (
-        <section id="settings-world" data-settings-section="World" className="scroll-mt-16 space-y-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">World</h2>
+        <SettingsSection id="settings-world" label="World">
 
           {/* Name */}
           <div className="space-y-1.5">
@@ -276,21 +276,17 @@ export default function WorldSettingsView() {
               </div>
             </div>
           </div>
-        </section>
+        </SettingsSection>
       )}
 
       {/* Reading mode. `world` loads asynchronously, so guard it — the rest of
           this view uses `world?.` for the same reason. */}
       {world && (
-      <section id="settings-reading-mode" data-settings-section="Reading mode" className="scroll-mt-16 space-y-4">
-        <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Reading mode</h2>
-          <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-            Present this world to someone reading the book rather than writing it. Characters,
+      <SettingsSection id="settings-reading-mode" label="Reading mode"
+      blurb={<>Present this world to someone reading the book rather than writing it. Characters,
             items and places the story has not introduced yet are hidden until the chapter
-            cursor reaches them, and the writing screens step aside.
-          </p>
-        </div>
+            cursor reaches them, and the writing screens step aside.</>}
+    >
         <div className="flex flex-wrap items-center gap-2">
           {/*
             A toggle, so it says so: `aria-pressed` carries the state and the
@@ -321,18 +317,13 @@ export default function WorldSettingsView() {
             export it first if you want to keep them.
           </p>
         )}
-      </section>
+      </SettingsSection>
       )}
 
       {/* World theme */}
-      <section id="settings-theme" data-settings-section="Theme" className="scroll-mt-16 space-y-4">
-        <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Theme</h2>
-          <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-            Override the app theme for this world. <em>Inherit app theme</em> uses the setting below.
-          </p>
-        </div>
-
+      <SettingsSection id="settings-theme" label="Theme"
+      blurb={<>Override the app theme for this world. <em>Inherit app theme</em> uses the setting below.</>}
+    >
         {/*
           SET-1: this section offered to override a setting the app gave no way
           to set. The app theme is real and load-bearing — it is what the world
@@ -388,7 +379,7 @@ export default function WorldSettingsView() {
             )
           })}
         </div>
-      </section>
+      </SettingsSection>
 
       {/* Everything from here calibrates the draft rather than describing the
           story: travel speeds for map distances, the continuity checker's
@@ -399,15 +390,10 @@ export default function WorldSettingsView() {
       {!readingMode && (
         <>
           {/* Travel modes */}
-          <section id="settings-travel-modes" data-settings-section="Travel Modes" className="scroll-mt-16 space-y-4">
-            <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Travel Modes</h2>
-              <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                Used for distance calculations on the map. Speed is in {scaleUnit} per in-world day.{' '}
-                {scaleUnit === 'units' && 'Set the map scale unit in map settings to use real distances.'}
-              </p>
-            </div>
-
+          <SettingsSection id="settings-travel-modes" label="Travel Modes"
+      blurb={<>Used for distance calculations on the map. Speed is in {scaleUnit} per in-world day.{' '}
+                {scaleUnit === 'units' && 'Set the map scale unit in map settings to use real distances.'}</>}
+    >
             <div className="flex items-center gap-2">
               <Footprints className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />
               <Input
@@ -453,16 +439,12 @@ export default function WorldSettingsView() {
                 ))}
               </div>
             )}
-          </section>
+          </SettingsSection>
 
           {/* Continuity */}
-          <section id="settings-continuity" data-settings-section="Continuity" className="scroll-mt-16 space-y-4">
-            <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Continuity</h2>
-              <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                Number of consecutive scenes a character can be involved in without a snapshot update before a stale-state warning is raised.
-              </p>
-            </div>
+          <SettingsSection id="settings-continuity" label="Continuity"
+      blurb={<>Number of consecutive scenes a character can be involved in without a snapshot update before a stale-state warning is raised.</>}
+    >
             <div className="flex items-center gap-3">
               <Label htmlFor="stale-threshold" className="shrink-0">Stale snapshot threshold</Label>
               <input
@@ -479,17 +461,13 @@ export default function WorldSettingsView() {
               />
               <span className="text-xs text-[hsl(var(--muted-foreground))]">events</span>
             </div>
-          </section>
+          </SettingsSection>
 
           {/* Manuscript */}
-          <section id="settings-manuscript" data-settings-section="Manuscript" className="scroll-mt-16 space-y-4">
-            <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Manuscript</h2>
-              <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                A book-level word target and an optional deadline. The dashboard's Writing Progress panel
-                shows a burndown, the words/day needed, and a projected finish date.
-              </p>
-            </div>
+          <SettingsSection id="settings-manuscript" label="Manuscript"
+      blurb={<>A book-level word target and an optional deadline. The dashboard's Writing Progress panel
+                shows a burndown, the words/day needed, and a projected finish date.</>}
+    >
             <div className="flex items-center gap-3">
               <Label htmlFor="word-target" className="w-24 shrink-0">Word target</Label>
               <input
@@ -531,19 +509,15 @@ export default function WorldSettingsView() {
                 </button>
               )}
             </div>
-          </section>
+          </SettingsSection>
 
           {/* Timelines — per-timeline day offsets for multi-era worlds */}
           {timelines.length > 1 && (
-            <section id="settings-timelines" data-settings-section="Timelines" className="scroll-mt-16 space-y-4">
-              <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Timelines</h2>
-                <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                  Each timeline's clock starts at its own day. Give a historically-shifted timeline
+            <SettingsSection id="settings-timelines" label="Timelines"
+      blurb={<>Each timeline's clock starts at its own day. Give a historically-shifted timeline
                   (a frame narrative's past, an earlier era) a start day so it lines up with the others
-                  in chronological merges and on the calendar.
-                </p>
-              </div>
+                  in chronological merges and on the calendar.</>}
+    >
               <div className="flex flex-col gap-2">
                 {timelines.map((tl) => (
                   <div key={tl.id} className="flex items-center gap-3">
@@ -564,20 +538,16 @@ export default function WorldSettingsView() {
                   </div>
                 ))}
               </div>
-            </section>
+            </SettingsSection>
           )}
 
           {/* Calendar */}
           {world && <CalendarEditor world={world} />}
 
           {/* Share */}
-          <section id="settings-share" data-settings-section="Share" className="scroll-mt-16 space-y-4">
-            <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Share</h2>
-              <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                Export a read-only HTML snapshot of this world — characters, timeline, locations, items and relationships — that anyone can open in a browser.
-              </p>
-            </div>
+          <SettingsSection id="settings-share" label="Share"
+      blurb={<>Export a read-only HTML snapshot of this world — characters, timeline, locations, items and relationships — that anyone can open in a browser.</>}
+    >
             <Button
               variant="outline" size="sm" className="gap-2"
               onClick={async () => {
@@ -589,7 +559,7 @@ export default function WorldSettingsView() {
               <FileCode2 className="h-3.5 w-3.5" />
               Export as HTML
             </Button>
-          </section>
+          </SettingsSection>
 
           {/* DB Health */}
           {worldId && <DbHealthPanel worldId={worldId} />}
@@ -601,5 +571,17 @@ export default function WorldSettingsView() {
         </>
       )}
     </div>
+  )
+}
+
+/**
+ * The fold state is shared by every section *and* by the index above them, so
+ * it is provided around the whole screen rather than held inside it.
+ */
+export default function WorldSettingsView() {
+  return (
+    <SettingsFoldProvider>
+      <WorldSettingsBody />
+    </SettingsFoldProvider>
   )
 }

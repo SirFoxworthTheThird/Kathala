@@ -12,6 +12,7 @@ import { pushWorldToFolder, markPulled, readFolderSyncState } from './folderSync
 import { FOLDER_SYNC_LABELS, needsAttention, type FolderSyncState } from '@/lib/folderSyncState'
 import type { ConflictPreference, MergePreview, WorldExportFile } from './cloudSyncHelpers'
 import { LoadPreviewDialog } from './LoadPreviewDialog'
+import { SettingsSection } from './SettingsSection'
 
 type SyncState = 'idle' | 'saving' | 'loading' | 'error'
 
@@ -130,15 +131,10 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
     : null
 
   return (
-    <section id="settings-cloud-sync" data-settings-section="Cloud Sync" className="scroll-mt-16 space-y-4">
-      <div>
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Cloud Sync</h2>
-        <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-          Save this world to a folder on your computer — your Google Drive, OneDrive, Dropbox, or any synced folder.
-          PlotWeave only reads or writes when you tell it to.
-        </p>
-      </div>
-
+    <SettingsSection id="settings-cloud-sync" label="Cloud Sync"
+      blurb={<>Save this world to a folder on your computer — your Google Drive, OneDrive, Dropbox, or any synced folder.
+          PlotWeave only reads or writes when you tell it to.</>}
+    >
       {!supported && (
         <p className="text-xs text-[hsl(var(--muted-foreground))]">
           Folder sync requires Chrome or Edge. Your current browser does not support it.
@@ -258,6 +254,6 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
         description="This removes the link between this world and the folder. The file in the folder is not deleted. You can reconnect at any time by choosing the folder again."
         onConfirm={handleDisconnect}
       />
-    </section>
+    </SettingsSection>
   )
 }

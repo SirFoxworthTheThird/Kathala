@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { plural } from '@/lib/plural'
 import { CALENDAR_PRESETS } from '@/lib/calendarPresets'
+import { SettingsSection } from './SettingsSection'
 
 interface CalendarEditorProps {
   world: World
@@ -81,14 +82,9 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
   }
 
   return (
-    <section id="settings-calendar" data-settings-section="Calendar" className="scroll-mt-16 space-y-4">
-      <div>
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Calendar</h2>
-        <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-          Define an in-world calendar to show story dates (instead of "Day N") and compute character ages from a birth date.
-        </p>
-      </div>
-
+    <SettingsSection id="settings-calendar" label="Calendar"
+      blurb={<>Define an in-world calendar to show story dates (instead of "Day N") and compute character ages from a birth date.</>}
+    >
       {!cal ? (
         <div className="space-y-3">
           <Button size="sm" variant="outline" className="gap-2" onClick={() => updateWorld(world.id, { calendar: defaultCalendar() })}>
@@ -246,6 +242,6 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
           </div>
         </div>
       )}
-    </section>
+    </SettingsSection>
   )
 }

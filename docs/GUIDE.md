@@ -1917,6 +1917,14 @@ one per section — that stays put as you scroll and jumps you straight to the
 one you came for. It lists only the sections actually on screen: reading mode
 puts most of them away, and the chips go with them.
 
+**Every section folds.** Click its heading to close it and click again to open
+it; **Collapse all**, at the end of the chip row, turns the whole screen into a
+list of headings you can pick from, and becomes **Expand all** once it has.
+Sections start open, and what you fold away is remembered on this device — a
+chip still jumps to a section you've closed, opening it on the way.
+
+![World settings with every section folded](images/64-settings-collapsed.png)
+
 ![World settings, with its section index](images/60-settings-index.png)
 
 Worlds with more than one timeline also get a **Timelines** section: give each
