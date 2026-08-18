@@ -413,13 +413,36 @@ export default function WorldDashboardView() {
               Editing is put away while you read.
             </p>
           </div>
+          {/*
+            Two actions, and the order is the point.
+
+            This notice used to offer exactly one thing to do — *Turn it off in
+            settings* — so the single affordance on the screen a reader lands on
+            was the way to switch the feature off. What a reader actually needs
+            is to say how far they have got, and the cheap way to do that
+            (**Read to here**, on a chapter row) was two taps away with nothing
+            pointing at it: the reader run measured the always-visible stepper
+            at ~50 taps to walk a book, because it moves by moment rather than
+            by chapter.
+
+            They wrap as a group so that adding one does not squeeze the
+            sentence beside them.
+          */}
           {worldId && (
-            <Link
-              to={`/worlds/${worldId}/settings`}
-              className="shrink-0 rounded-md border border-[hsl(var(--border))] px-2.5 py-1 text-xs text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent)/0.4)] hover:text-[hsl(var(--foreground))]"
-            >
-              Turn it off in settings
-            </Link>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <Link
+                to={`/worlds/${worldId}/timeline`}
+                className="rounded-md border border-[hsl(var(--ring)/0.4)] bg-[hsl(var(--accent))] px-2.5 py-1 text-xs text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--accent)/0.7)]"
+              >
+                Set where you have read to
+              </Link>
+              <Link
+                to={`/worlds/${worldId}/settings`}
+                className="rounded-md border border-[hsl(var(--border))] px-2.5 py-1 text-xs text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent)/0.4)] hover:text-[hsl(var(--foreground))]"
+              >
+                Turn it off in settings
+              </Link>
+            </div>
           )}
         </aside>
       )}

@@ -226,11 +226,25 @@ export function ChapterRow({ chapter, threadFilter = null, wordsByEvent = NO_WOR
           variant={isActive ? 'secondary' : 'ghost'}
           className="h-7 px-2 text-xs shrink-0 ml-auto"
           onClick={() => setActiveEventId(isActive ? null : (sortedEvents[0]?.id ?? null))}
-          title={isActive
-            ? 'The time cursor is in this chapter — press to view all chapters again'
-            : "Move the time cursor to this chapter's first moment"}
+          /*
+            Named for the act the person is performing, which is not the same
+            act in both modes. A writer moves a viewfinder; a reader records how
+            far they have got, and *View from here* reads to them like a display
+            option rather than a bookmark — the reader run measured this as the
+            cheap way to set a position (2 taps against ~50 on the stepper) that
+            nothing invites you to use.
+          */
+          title={gate.active
+            ? (isActive
+              ? 'This is where you have read up to'
+              : 'Mark this as where you have read up to')
+            : (isActive
+              ? 'The time cursor is in this chapter — press to view all chapters again'
+              : "Move the time cursor to this chapter's first moment")}
         >
-          {isActive ? 'Viewing' : 'View from here'}
+          {gate.active
+            ? (isActive ? 'Reading here' : 'Read to here')
+            : (isActive ? 'Viewing' : 'View from here')}
         </Button>
 
         <Button

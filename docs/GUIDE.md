@@ -289,9 +289,16 @@ screen offers to add, generate or delete anything: no **Add Character**, no
 **New Page**, no **Generate with AI**, no delete buttons on cards, rows or map
 layers.
 
+**Telling it how far you have got** is two taps: open the Timeline and press
+**Read to here** on the chapter you have reached. The reading notice on the
+dashboard links straight to it. The previous/next steppers in the top bar work
+too, but they move a scene at a time, so they are for nudging along rather than
+for jumping.
+
 **Your place in the book is yours to move.** While reading, only the controls
-that say they move it do: the previous/next moment steppers, and **View from
-here** on a chapter row. Looking at something — a scene on the Calendar, a
+that say they move it do: the previous/next moment steppers, and **Read to
+here** on a chapter row (a writer sees the same control as *View from here*,
+because for them it moves a viewfinder rather than a bookmark). Looking at something — a scene on the Calendar, a
 search result, a stop on a character's journey, a row in their history — shows
 it to you without quietly relocating your bookmark. Where a control's only job
 was moving the cursor, it becomes a label rather than a button, so nothing on
