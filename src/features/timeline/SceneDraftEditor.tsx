@@ -147,7 +147,8 @@ export function SceneDraftEditor({
         placeholder={placeholder}
         aria-label={ariaLabel}
         rows={rows}
-        className="resize-none overflow-hidden text-sm font-serif leading-relaxed"
+        className="resize-none overflow-hidden text-sm leading-relaxed"
+        style={{ fontFamily: 'var(--font-prose)' }}
       />
       {mention && matches.length > 0 && (
         <div className="absolute left-2 top-full z-20 mt-1 w-64 overflow-hidden rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--popover))] shadow-lg">

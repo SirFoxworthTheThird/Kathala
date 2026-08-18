@@ -24,10 +24,14 @@ export function tensionLabel(level: number | null | undefined): string {
  */
 export function tensionColor(level: number | null | undefined): string {
   if (level == null) return 'hsl(var(--muted-foreground))'
-  // Hue sweeps 210° (blue) → 0° (red) across levels 1..5.
-  const t = Math.min(1, Math.max(0, (level - 1) / 4))
-  const hue = 210 - 210 * t
-  return `hsl(${Math.round(hue)}, 75%, 52%)`
+  /*
+    The ramp belongs to the theme. This used to sweep a fixed 210° → 0° at
+    75%/52% whatever the app was wearing, so Noir — monochrome by design — drew
+    a rainbow across its pacing curve. Each theme now supplies the two hues and
+    the stylesheet derives the five steps; see the note on `--tension-h-cool`.
+  */
+  const step = Math.min(5, Math.max(1, Math.round(level)))
+  return `var(--tension-${step})`
 }
 
 /** One plotted point on the pacing curve. */

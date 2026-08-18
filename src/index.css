@@ -24,6 +24,56 @@
     --input: 217 33% 22%;
     --ring: 212 72% 59%;
     --radius: 0.5rem;
+
+    /*
+      **Data colours follow the theme.**
+
+      The tension ramp, the scene-status pills and the cast colours were all
+      hardcoded — a fixed blue→red sweep, five Tailwind-ish hex values, and
+      full-spectrum character hues. So Noir, a deliberately monochrome theme,
+      drew a rainbow pacing curve and a cast in every colour of the wheel.
+      Every screen carrying data stopped being themed at the moment the data
+      appeared, which is most of why the themes read as skin-deep.
+
+      Each ramp is two hues and a fixed saturation and lightness. Holding S and
+      L constant is what keeps the promises: the status ink stays legible on
+      every step of every theme (worst case 5.67:1 at these values, and a theme
+      may only lower the saturation, which raises it), and a tension level reads
+      as the same *weight* whichever theme is on.
+    */
+    --tension-h-cool: 210;
+    --tension-h-hot: 0;
+    --tension-sat: 72%;
+    --tension-light: 52%;
+
+    --status-h-early: 220;
+    --status-h-late: 140;
+    --status-sat: 52%;
+    --status-light: 72%;
+    /* One dark ink for every pill, in every theme. See the note above. */
+    --status-ink: 220 20% 14%;
+
+    /*
+      The cast is the one ramp a theme may not mute into uniformity: a
+      character's colour is an identifier, and two characters the same shade is
+      a bug rather than a mood. Themes lower this floor to about 42% and no
+      further.
+    */
+    --cast-sat: 60%;
+    --cast-light: 55%;
+
+    /*
+      The face the **manuscript** is set in.
+      `ManuscriptView`, `SceneDraftEditor` and Focus mode all hardcoded
+      Tailwind's `font-serif`, so a theme dressed the app's chrome and stopped
+      at the page: sixteen themes, one generic serif for the writer's own
+      words, which is the surface they look at for hours.
+      Its own token rather than `--font-body`, because a theme may want a
+      reading face for prose and something else entirely for labels — and
+      because a writer who wants one steady face for their prose should be able
+      to have it while the chrome changes around them.
+    */
+    --font-prose: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
     --font-body: ui-sans-serif, system-ui, sans-serif;
     --font-heading: ui-sans-serif, system-ui, sans-serif;
     --canvas: 218 34% 9%;
@@ -65,8 +115,13 @@
     --input: 42 24% 25%;
     --ring: 43 70% 58%;
     --radius: 0.25rem;
+    --tension-h-cool: 100;
+    --tension-h-hot: 30;
+    --status-h-early: 90;
+    --status-h-late: 43;
     --font-body: Georgia, 'Palatino Linotype', 'Book Antiqua', serif;
     --font-heading: Copperplate, 'Copperplate Gothic Light', 'Palatino Linotype', serif;
+    --font-prose: var(--font-body);
     --leaflet-bg: 42, 24%, 6%;
     --leaflet-card: 40, 22%, 19%;
     --leaflet-border: 42, 24%, 27%;
@@ -171,7 +226,11 @@
     --border: 196 43% 24%;
     --input: 196 43% 24%;
     --ring: 185 78% 57%;
-    --radius: 0.125rem;
+    --radius: 0.375rem;
+    --tension-h-cool: 195;
+    --tension-h-hot: 320;
+    --status-h-early: 200;
+    --status-h-late: 165;
     --font-body: 'Segoe UI', Arial, sans-serif;
     --font-heading: 'Arial Narrow', 'Segoe UI Semibold', sans-serif;
     --leaflet-bg: 222, 52%, 3%;
@@ -206,6 +265,10 @@
     --input: 300 40% 26%;
     --ring: 304 90% 64%;
     --radius: 0rem;
+    --tension-h-cool: 185;
+    --tension-h-hot: 304;
+    --status-h-early: 190;
+    --status-h-late: 304;
     --font-body: 'Segoe UI', Arial, sans-serif;
     --font-heading: 'Arial Black', 'Segoe UI Black', sans-serif;
     --leaflet-bg: 266, 31%, 4%;
@@ -240,8 +303,13 @@
     --input: 353 24% 22%;
     --ring: 354 63% 48%;
     --radius: 0rem;
+    --tension-h-cool: 20;
+    --tension-h-hot: 354;
+    --status-h-early: 30;
+    --status-h-late: 354;
     --font-body: Georgia, 'Times New Roman', serif;
     --font-heading: Baskerville, 'Palatino Linotype', Georgia, serif;
+    --font-prose: var(--font-body);
     --leaflet-bg: 350, 13%, 3%;
     --leaflet-card: 350, 11%, 15%;
     --leaflet-border: 353, 24%, 24%;
@@ -273,9 +341,14 @@
     --border: 30 32% 26%;
     --input: 30 32% 26%;
     --ring: 34 70% 55%;
-    --radius: 0.125rem;
+    --radius: 0.1875rem;
+    --tension-h-cool: 45;
+    --tension-h-hot: 15;
+    --status-h-early: 48;
+    --status-h-late: 20;
     --font-body: 'Bookman Old Style', Georgia, serif;
     --font-heading: Rockwell, 'Courier New', serif;
+    --font-prose: var(--font-body);
     --leaflet-bg: 24, 34%, 5%;
     --leaflet-card: 27, 31%, 19%;
     --leaflet-border: 30, 32%, 28%;
@@ -307,7 +380,11 @@
     --border: 213 14% 25%;
     --input: 213 14% 25%;
     --ring: 24 95% 57%;
-    --radius: 0.125rem;
+    --radius: 0rem;
+    --tension-h-cool: 210;
+    --tension-h-hot: 24;
+    --status-h-early: 205;
+    --status-h-late: 24;
     --font-body: 'Segoe UI', Arial, sans-serif;
     --font-heading: Impact, 'Arial Black', 'Franklin Gothic Medium', sans-serif;
     --leaflet-bg: 214, 18%, 5%;
@@ -351,8 +428,16 @@
     --input: 40 4% 24%;
     --ring: 3 48% 50%;
     --radius: 0rem;
+    --tension-h-cool: 45;
+    --tension-h-hot: 3;
+    --status-h-early: 45;
+    --status-h-late: 3;
+    --tension-sat: 34%;
+    --status-sat: 26%;
+    --cast-sat: 42%;
     --font-body: 'Courier New', Courier, monospace;
     --font-heading: Didot, Bodoni MT, Georgia, serif;
+    --font-prose: var(--font-body);
     --leaflet-bg: 45, 5%, 4%;
     --leaflet-card: 45, 4%, 18%;
     --leaflet-border: 40, 4%, 25%;
@@ -395,8 +480,13 @@
     --input: 338 25% 27%;
     --ring: 344 55% 67%;
     --radius: 0.75rem;
+    --tension-h-cool: 280;
+    --tension-h-hot: 344;
+    --status-h-early: 285;
+    --status-h-late: 344;
     --font-body: Georgia, 'Palatino Linotype', 'Times New Roman', serif;
     --font-heading: Baskerville, 'Palatino Linotype', Georgia, serif;
+    --font-prose: var(--font-body);
     --leaflet-bg: 330, 20%, 5%;
     --leaflet-card: 332, 18%, 20%;
     --leaflet-border: 338, 25%, 29%;
@@ -437,9 +527,17 @@
     --border: 267 16% 25%;
     --input: 267 16% 25%;
     --ring: 344 44% 52%;
-    --radius: 0.125rem;
+    --radius: 0rem;
+    --tension-h-cool: 265;
+    --tension-h-hot: 344;
+    --status-h-early: 265;
+    --status-h-late: 344;
+    --tension-sat: 60%;
+    --status-sat: 44%;
+    --cast-sat: 50%;
     --font-body: 'Hoefler Text', Garamond, 'Times New Roman', serif;
     --font-heading: 'Big Caslon', 'Hoefler Text', Garamond, serif;
+    --font-prose: var(--font-body);
     --leaflet-bg: 265, 20%, 5%;
     --leaflet-card: 265, 16%, 17%;
     --leaflet-border: 267, 16%, 27%;
@@ -481,9 +579,14 @@
     --border: 212 24% 26%;
     --input: 212 24% 26%;
     --ring: 40 68% 55%;
-    --radius: 0.125rem;
+    --radius: 0.0625rem;
+    --tension-h-cool: 210;
+    --tension-h-hot: 40;
+    --status-h-early: 215;
+    --status-h-late: 40;
     --font-body: Cambria, 'Sitka Text', Georgia, serif;
     --font-heading: Perpetua, 'Perpetua Titling MT', 'Times New Roman', serif;
+    --font-prose: var(--font-body);
     --leaflet-bg: 214, 32%, 5%;
     --leaflet-card: 213, 26%, 18%;
     --leaflet-border: 212, 24%, 28%;
@@ -525,7 +628,11 @@
     --border: 194 26% 25%;
     --input: 194 26% 25%;
     --ring: 32 62% 52%;
-    --radius: 0.125rem;
+    --radius: 0.25rem;
+    --tension-h-cool: 196;
+    --tension-h-hot: 32;
+    --status-h-early: 196;
+    --status-h-late: 32;
     --font-body: Optima, Candara, 'Gill Sans MT', sans-serif;
     --font-heading: 'Trajan Pro', Optima, 'Gill Sans MT', serif;
     --leaflet-bg: 196, 36%, 5%;
@@ -569,9 +676,14 @@
     --border: 167 20% 25%;
     --input: 167 20% 25%;
     --ring: 36 66% 54%;
-    --radius: 0.125rem;
+    --radius: 0.1875rem;
+    --tension-h-cool: 168;
+    --tension-h-hot: 36;
+    --status-h-early: 170;
+    --status-h-late: 36;
     --font-body: 'Iowan Old Style', Cochin, Georgia, serif;
     --font-heading: 'Goudy Old Style', 'Bookman Old Style', Palatino, serif;
+    --font-prose: var(--font-body);
     --leaflet-bg: 168, 28%, 5%;
     --leaflet-card: 168, 22%, 17%;
     --leaflet-border: 167, 20%, 27%;
@@ -614,8 +726,16 @@
     --input: 88 9% 25%;
     --ring: 16 58% 48%;
     --radius: 0rem;
+    --tension-h-cool: 80;
+    --tension-h-hot: 20;
+    --status-h-early: 85;
+    --status-h-late: 30;
+    --tension-sat: 58%;
+    --status-sat: 38%;
+    --cast-sat: 45%;
     --font-body: Consolas, 'Lucida Console', monospace;
     --font-heading: 'Franklin Gothic Medium', Haettenschweiler, Tahoma, sans-serif;
+    --font-prose: var(--font-body);
     --leaflet-bg: 90, 9%, 5%;
     --leaflet-card: 90, 7%, 17%;
     --leaflet-border: 88, 9%, 27%;
@@ -658,8 +778,16 @@
     --input: 32 14% 26%;
     --ring: 350 42% 44%;
     --radius: 0.0625rem;
+    --tension-h-cool: 32;
+    --tension-h-hot: 350;
+    --status-h-early: 35;
+    --status-h-late: 350;
+    --tension-sat: 58%;
+    --status-sat: 42%;
+    --cast-sat: 48%;
     --font-body: 'Book Antiqua', Palatino, Georgia, serif;
     --font-heading: Garamond, 'Adobe Garamond Pro', 'Times New Roman', serif;
+    --font-prose: var(--font-body);
     --leaflet-bg: 32, 16%, 5%;
     --leaflet-card: 30, 12%, 18%;
     --leaflet-border: 32, 14%, 28%;
@@ -702,6 +830,13 @@
     --input: 140 12% 26%;
     --ring: 58 42% 54%;
     --radius: 0.625rem;
+    --tension-h-cool: 140;
+    --tension-h-hot: 58;
+    --status-h-early: 145;
+    --status-h-late: 58;
+    --tension-sat: 56%;
+    --status-sat: 42%;
+    --cast-sat: 50%;
     --font-body: Verdana, 'Segoe UI', Tahoma, sans-serif;
     --font-heading: 'Century Gothic', 'URW Gothic', 'Trebuchet MS', sans-serif;
     --leaflet-bg: 140, 16%, 5%;
@@ -741,6 +876,24 @@
   .theme-historical,
   .theme-cosy {
     --app-image: none;
+  }
+
+
+  /*
+    The five steps of each ramp, derived from the two hues its theme supplies.
+    Written once here rather than five times in sixteen themes.
+  */
+  :root {
+    --tension-1: hsl(calc(var(--tension-h-cool) + (var(--tension-h-hot) - var(--tension-h-cool)) * 0.0) var(--tension-sat) var(--tension-light));
+    --tension-2: hsl(calc(var(--tension-h-cool) + (var(--tension-h-hot) - var(--tension-h-cool)) * 0.25) var(--tension-sat) var(--tension-light));
+    --tension-3: hsl(calc(var(--tension-h-cool) + (var(--tension-h-hot) - var(--tension-h-cool)) * 0.5) var(--tension-sat) var(--tension-light));
+    --tension-4: hsl(calc(var(--tension-h-cool) + (var(--tension-h-hot) - var(--tension-h-cool)) * 0.75) var(--tension-sat) var(--tension-light));
+    --tension-5: hsl(calc(var(--tension-h-cool) + (var(--tension-h-hot) - var(--tension-h-cool)) * 1.0) var(--tension-sat) var(--tension-light));
+    --status-1: hsl(calc(var(--status-h-early) + (var(--status-h-late) - var(--status-h-early)) * 0.0) var(--status-sat) var(--status-light));
+    --status-2: hsl(calc(var(--status-h-early) + (var(--status-h-late) - var(--status-h-early)) * 0.25) var(--status-sat) var(--status-light));
+    --status-3: hsl(calc(var(--status-h-early) + (var(--status-h-late) - var(--status-h-early)) * 0.5) var(--status-sat) var(--status-light));
+    --status-4: hsl(calc(var(--status-h-early) + (var(--status-h-late) - var(--status-h-early)) * 0.75) var(--status-sat) var(--status-light));
+    --status-5: hsl(calc(var(--status-h-early) + (var(--status-h-late) - var(--status-h-early)) * 1.0) var(--status-sat) var(--status-light));
   }
 
   * {

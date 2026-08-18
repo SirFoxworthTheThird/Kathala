@@ -2,15 +2,28 @@ import type { EventStatus } from '@/types'
 
 export const EVENT_STATUSES: EventStatus[] = ['idea', 'outline', 'draft', 'revised', 'final']
 
-// All five background colors have relative luminance > 0.18, giving < 3.4:1 contrast with
-// white text — well below the WCAG AA threshold of 4.5:1. Dark text (#1f2937) passes for
-// all five (minimum ratio ~5.0:1 for the darkest, #a78bfa purple).
+/**
+ * The five statuses are a **progression** — Idea to Final — so they are drawn
+ * as a ramp rather than as five unrelated hues, and the ramp belongs to the
+ * theme.
+ *
+ * They used to be five fixed hex values that looked much the same in all
+ * sixteen themes, and read as no order at all: grey, blue, amber, violet,
+ * green. Each theme now supplies the two ends and the stylesheet derives the
+ * steps.
+ *
+ * **The ink is one colour for every pill in every theme, and that is a
+ * guarantee rather than a hope.** Every step is drawn at the same saturation
+ * and lightness, so the worst contrast against `--status-ink` is 5.67:1 at the
+ * shipped values — and a theme may only *lower* the saturation, which raises
+ * it. `themeDataColour.spec.ts` measures all five steps of all sixteen.
+ */
 export const EVENT_STATUS_CONFIG: Record<EventStatus, { label: string; color: string; textColor: string }> = {
-  idea:    { label: 'Idea',    color: '#9ca3af', textColor: '#1f2937' },
-  outline: { label: 'Outline', color: '#60a5fa', textColor: '#1f2937' },
-  draft:   { label: 'Draft',   color: '#fbbf24', textColor: '#1f2937' },
-  revised: { label: 'Revised', color: '#a78bfa', textColor: '#1f2937' },
-  final:   { label: 'Final',   color: '#4ade80', textColor: '#1f2937' },
+  idea:    { label: 'Idea',    color: 'var(--status-1)', textColor: 'hsl(var(--status-ink))' },
+  outline: { label: 'Outline', color: 'var(--status-2)', textColor: 'hsl(var(--status-ink))' },
+  draft:   { label: 'Draft',   color: 'var(--status-3)', textColor: 'hsl(var(--status-ink))' },
+  revised: { label: 'Revised', color: 'var(--status-4)', textColor: 'hsl(var(--status-ink))' },
+  final:   { label: 'Final',   color: 'var(--status-5)', textColor: 'hsl(var(--status-ink))' },
 }
 
 /**
@@ -35,5 +48,6 @@ export function eventStatusConfig(status: unknown): { label: string; color: stri
     return EVENT_STATUS_CONFIG[status as EventStatus]
   }
   const label = typeof status === 'string' && status.trim() ? status.trim() : 'Unknown'
-  return { label, color: '#94a3b8', textColor: '#1f2937' }
+  // Off the ramp on purpose: an unrecognised status is not a stage of one.
+  return { label, color: 'hsl(var(--muted))', textColor: 'hsl(var(--muted-foreground))' }
 }

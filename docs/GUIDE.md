@@ -1970,6 +1970,17 @@ that is not an adventure; and **Cosy** is moss, cream and a lamp in the window
 cards and panels but never draw over it: what sits behind the app is soft
 gradient, and nothing is ruled across the screen.
 
+A theme reaches further than the frame. The **pacing curve**, the **scene
+status** pills and your **cast colours** are all drawn from it, so Noir's
+tension ramp is muted greys rather than a rainbow and Cosy's runs moss to
+honey; the status pills read as a progression from Idea to Final rather than
+five unrelated colours. Characters keep a colour of their own — the hue still
+comes from the character, so nobody changes identity when you change theme, and
+no theme is allowed to wash the cast into one shade. Most themes also set the
+face your **manuscript** is written in: Noir gives you a typewriter, Historical
+a book face. Themes whose lettering is a screen sans leave your prose in a
+serif, because prose set in a UI font is a worse read whatever the mood.
+
 The **cover image** appears on the world's card in the selector and in the
 dashboard header. **Upload** an image file or **link** one by URL (the link
 icon), and **Remove** it at any time — the same as portraits elsewhere in the

@@ -234,7 +234,7 @@ export default function ManuscriptView() {
                         </div>
                       )}
                       {s.written ? (
-                        <div className="font-serif text-[15px] leading-relaxed text-[hsl(var(--foreground))]">
+                        <div className="text-[15px] leading-relaxed text-[hsl(var(--foreground))]" style={{ fontFamily: 'var(--font-prose)' }}>
                           {paragraphs(s.text).map((p, j) => (
                             <p key={j} className="mb-4 [text-indent:1.5rem] first:[text-indent:0]">{p}</p>
                           ))}

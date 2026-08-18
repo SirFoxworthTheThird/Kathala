@@ -128,15 +128,16 @@ export function FocusMode({ worldId, eventId, title, initialText, onExit }: Focu
             onKeyUp={centreCaret}
             placeholder="Write…"
             spellCheck
-            className="w-full resize-none overflow-hidden bg-transparent font-serif text-lg leading-loose text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground)/0.5)] focus:outline-none"
+            className="w-full resize-none overflow-hidden bg-transparent text-lg leading-loose text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground)/0.5)] focus:outline-none"
+            style={{ fontFamily: 'var(--font-prose)' }}
           />
         </div>
         {/* Hidden mirror for caret measurement (matches the textarea's box). */}
         <div
           ref={mirrorRef}
           aria-hidden="true"
-          className="pointer-events-none invisible absolute left-1/2 top-0 w-full max-w-2xl -translate-x-1/2 whitespace-pre-wrap break-words px-6 font-serif text-lg leading-loose"
-          style={{ paddingTop: '42vh' }}
+          className="pointer-events-none invisible absolute left-1/2 top-0 w-full max-w-2xl -translate-x-1/2 whitespace-pre-wrap break-words px-6 text-lg leading-loose"
+          style={{ fontFamily: 'var(--font-prose)', paddingTop: '42vh' }}
         />
       </div>
 

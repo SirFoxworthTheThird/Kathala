@@ -29,11 +29,27 @@ describe('tensionLabel / tensionColor', () => {
     expect(tensionLabel(5)).toBe('Climactic')
   })
 
-  it('ramps hue from blue (low) to red (high)', () => {
+  it('names a step of the theme ramp rather than a colour of its own', () => {
     expect(tensionColor(null)).toContain('--muted-foreground')
-    // level 1 is bluish (hue ~210), level 5 is red (hue 0)
-    expect(tensionColor(1)).toMatch(/hsl\(210,/)
-    expect(tensionColor(5)).toMatch(/hsl\(0,/)
+    /*
+      The hues used to be written here — 210 for calm, 0 for climactic —
+      whatever theme the app was wearing, which is why Noir drew a rainbow.
+      The ramp is the theme's now; what this function owes is a step, one per
+      level, in order. The colours those steps resolve to are measured in the
+      browser by `themeDataColour.spec.ts`, across all sixteen themes.
+    */
+    expect(tensionColor(1)).toBe('var(--tension-1)')
+    expect(tensionColor(5)).toBe('var(--tension-5)')
+    expect([1, 2, 3, 4, 5].map((l) => tensionColor(l)))
+      .toEqual(['var(--tension-1)', 'var(--tension-2)', 'var(--tension-3)', 'var(--tension-4)', 'var(--tension-5)'])
+  })
+
+  it('clamps a level from outside the scale onto an end of the ramp', () => {
+    // `.pwk` files are hand-written and AI-generated; a 0 or a 9 must not
+    // produce `var(--tension-0)`, which resolves to nothing at all.
+    expect(tensionColor(0)).toBe('var(--tension-1)')
+    expect(tensionColor(9)).toBe('var(--tension-5)')
+    expect(tensionColor(3.4)).toBe('var(--tension-3)')
   })
 
   it('exposes exactly five rateable levels', () => {
