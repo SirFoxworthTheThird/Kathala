@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { PenLine, History, Maximize2, Plus } from 'lucide-react'
 import { wordCount, detectMentions } from '@/lib/manuscript'
 import { useSceneText, setSceneText } from '@/db/hooks/useManuscript'
@@ -7,6 +7,12 @@ import { SceneDraftEditor } from './SceneDraftEditor'
 import { SceneHistoryDialog } from './SceneHistoryDialog'
 import { FocusMode } from './FocusMode'
 import type { Character, WorldEvent } from '@/types'
+import { useItems, createItem } from '@/db/hooks/useItems'
+import { createCharacter } from '@/db/hooks/useCharacters'
+import { useAllLocationMarkers, createLocationMarker } from '@/db/hooks/useLocationMarkers'
+import { useMapLayers } from '@/db/hooks/useMapLayers'
+import { updateEvent } from '@/db/hooks/useTimeline'
+import type { MentionCandidate, MentionSuggestion } from '@/lib/mentionPicker'
 import { draftAfterSave } from '@/lib/draftHandoff'
 import { Button } from '@/components/ui/button'
 import { plural } from '@/lib/plural'
@@ -52,6 +58,68 @@ export function SceneDraftSection({
   const latestDraft = useRef<string | null>(null)
   useEffect(() => { latestDraft.current = draft }, [draft])
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  /*
+    Everything "@" can name. The picker began as a character list; a writer
+    naming a sword or a house had to leave the prose, make the record and come
+    back, which is the errand the picker exists to spare people.
+  */
+  const items = useItems(worldId)
+  const markers = useAllLocationMarkers(worldId)
+  const mapLayers = useMapLayers(worldId)
+
+  const candidates = useMemo<MentionCandidate[]>(() => [
+    ...characters.map((c) => ({ id: c.id, kind: 'character' as const, name: c.name, aliases: c.aliases })),
+    ...items.map((i) => ({ id: i.id, kind: 'item' as const, name: i.name })),
+    ...markers.map((m) => ({ id: m.id, kind: 'location' as const, name: m.name })),
+  ], [characters, items, markers])
+
+  /**
+   * Record what was named against this scene, creating the record first when
+   * the row was an offer to create one.
+   *
+   * A **place** is set only when the scene has none: `locationMarkerId` is a
+   * single field, so writing to it over an existing value would silently move
+   * the scene somewhere else on the strength of a word in the prose. Naming a
+   * second place in a scene is ordinary; relocating the scene is not.
+   */
+  async function handlePick(suggestion: MentionSuggestion) {
+    if (suggestion.type === 'create') {
+      if (suggestion.kind === 'character') {
+        const created = await createCharacter({ worldId, name: suggestion.name, description: '' })
+        onAddMention(created.id)
+        return
+      }
+      if (suggestion.kind === 'item') {
+        const created = await createItem({
+          worldId, name: suggestion.name, description: '', iconType: 'misc', tags: [],
+        })
+        await updateEvent(eventId, { involvedItemIds: [...new Set([...event.involvedItemIds, created.id])] })
+        return
+      }
+      // A place is a pin, so it needs a map and a position. It goes at the
+      // centre of the scene's own map where there is one, and of the world's
+      // first map otherwise — somewhere findable, to be dragged where it
+      // belongs. The row is not offered at all when there is no map.
+      const home = markers.find((m) => m.id === event.locationMarkerId)
+      const layer = mapLayers.find((l) => l.id === home?.mapLayerId) ?? mapLayers[0]
+      if (!layer) return
+      const created = await createLocationMarker({
+        worldId, mapLayerId: layer.id, name: suggestion.name, description: '',
+        x: Math.round(layer.imageWidth / 2), y: Math.round(layer.imageHeight / 2),
+        iconType: 'landmark',
+      })
+      if (!event.locationMarkerId) await updateEvent(eventId, { locationMarkerId: created.id })
+      return
+    }
+
+    if (suggestion.kind === 'character') { onAddMention(suggestion.id); return }
+    if (suggestion.kind === 'item') {
+      await updateEvent(eventId, { involvedItemIds: [...new Set([...event.involvedItemIds, suggestion.id])] })
+      return
+    }
+    if (!event.locationMarkerId) await updateEvent(eventId, { locationMarkerId: suggestion.id })
+  }
 
   const sceneValue = draft ?? sceneText?.text ?? ''
   const sceneWords = draft === null ? (sceneText?.wordCount ?? 0) : wordCount(sceneValue)
@@ -141,9 +209,10 @@ export function SceneDraftSection({
         value={sceneValue}
         onChange={handleChange}
         onBlur={saveScene}
-        characters={characters}
-        onMention={onAddMention}
-        placeholder="Write or paste this scene's prose… (type @ to mention a character; word count feeds the pacing curve)"
+        candidates={candidates}
+        canCreateLocation={mapLayers.length > 0}
+        onPick={(s) => { void handlePick(s) }}
+        placeholder="Write or paste this scene's prose… (type @ to name a character, item or place; word count feeds the pacing curve)"
         ariaLabel="Scene prose"
         rows={5}
       />

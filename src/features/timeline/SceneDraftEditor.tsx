@@ -1,16 +1,24 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
-import type { Character } from '@/types'
+import { Users, Package, MapPin, Plus } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
-import { PortraitImage } from '@/components/PortraitImage'
-import { charColor } from '@/lib/characterColor'
+import {
+  mentionSuggestions, type MentionCandidate, type MentionKind, type MentionSuggestion,
+} from '@/lib/mentionPicker'
 
 interface SceneDraftEditorProps {
   value: string
   onChange: (text: string) => void
   onBlur: () => void
-  characters: Character[]
-  /** Called when a character is chosen via the "@" picker. */
-  onMention: (characterId: string) => void
+  /** Everything "@" can name: the cast, the props and the places. */
+  candidates: MentionCandidate[]
+  /** False in a world with no map, where a location has nowhere to be a pin. */
+  canCreateLocation: boolean
+  /**
+   * A row was chosen. The plain name is already being written into the prose;
+   * this records it against the scene, and creates the record first when the
+   * row was a *create*.
+   */
+  onPick: (suggestion: MentionSuggestion) => void
   placeholder?: string
   /** Accessible name. A placeholder is not one — it is the last-resort source
    *  in HTML-AAM and it disappears the moment the field has prose in it. */
@@ -40,8 +48,20 @@ function findMention(text: string, caret: number): MentionState | null {
  * (keeping the manuscript clean) and reports the mention via onMention, rather
  * than leaving an "@token" in the prose.
  */
+const KIND_ICON: Record<MentionKind, typeof Users> = {
+  character: Users,
+  item: Package,
+  location: MapPin,
+}
+
+const KIND_LABEL: Record<MentionKind, string> = {
+  character: 'character',
+  item: 'item',
+  location: 'place',
+}
+
 export function SceneDraftEditor({
-  value, onChange, onBlur, characters, onMention, placeholder, ariaLabel, rows = 5,
+  value, onChange, onBlur, candidates, canCreateLocation, onPick, placeholder, ariaLabel, rows = 5,
 }: SceneDraftEditorProps) {
   const taRef = useRef<HTMLTextAreaElement>(null)
   const [mention, setMention] = useState<MentionState | null>(null)
@@ -74,15 +94,7 @@ export function SceneDraftEditor({
   })
 
   const matches = mention
-    ? characters
-        .filter((c) => {
-          if (!mention.query) return true
-          const q = mention.query.toLowerCase()
-          const first = c.name.split(/\s+/)[0].toLowerCase()
-          return c.name.toLowerCase().startsWith(q) || first.startsWith(q) ||
-            c.aliases?.some((a) => a.toLowerCase().startsWith(q))
-        })
-        .slice(0, 6)
+    ? mentionSuggestions(mention.query, candidates, { canCreateLocation })
     : []
 
   function refresh(text: string, caret: number) {
@@ -97,13 +109,16 @@ export function SceneDraftEditor({
     refresh(text, e.target.selectionStart ?? text.length)
   }
 
-  function select(character: Character) {
+  function select(suggestion: MentionSuggestion) {
     if (!mention) return
-    const insert = character.name + ' '
+    // The plain name goes into the prose either way — a manuscript should not
+    // carry "@tokens", and a name the writer has just invented reads the same
+    // as one they picked.
+    const insert = suggestion.name + ' '
     const next = value.slice(0, mention.start) + insert + value.slice(mention.end)
     pendingCaret.current = mention.start + insert.length
     onChange(next)
-    onMention(character.id)
+    onPick(suggestion)
     setMention(null)
   }
 
@@ -135,26 +150,32 @@ export function SceneDraftEditor({
         className="resize-none overflow-hidden text-sm font-serif leading-relaxed"
       />
       {mention && matches.length > 0 && (
-        <div className="absolute left-2 top-full z-20 mt-1 w-56 overflow-hidden rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--popover))] shadow-lg">
-          {matches.map((c, i) => (
-            <button
-              key={c.id}
-              // Keep textarea focus (avoid onBlur/save) while clicking.
-              onMouseDown={(e) => { e.preventDefault(); select(c) }}
-              onMouseEnter={() => setHighlight(i)}
-              className={`flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs transition-colors ${
-                i === highlight ? 'bg-[hsl(var(--accent))]' : ''
-              }`}
-            >
-              <PortraitImage
-                imageId={c.portraitImageId}
-                className="h-5 w-5 rounded-full object-cover"
-                fallbackClassName="h-5 w-5 rounded-full"
-              />
-              <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: charColor(c) }} />
-              <span className="truncate text-[hsl(var(--foreground))]">{c.name}</span>
-            </button>
-          ))}
+        <div className="absolute left-2 top-full z-20 mt-1 w-64 overflow-hidden rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--popover))] shadow-lg">
+          {matches.map((s, i) => {
+            const Icon = s.type === 'create' ? Plus : KIND_ICON[s.kind]
+            return (
+              <button
+                key={`${s.type}:${s.kind}:${s.type === 'existing' ? s.id : s.name}`}
+                // Keep textarea focus (avoid onBlur/save) while clicking.
+                onMouseDown={(e) => { e.preventDefault(); select(s) }}
+                onMouseEnter={() => setHighlight(i)}
+                className={`flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs transition-colors ${
+                  i === highlight ? 'bg-[hsl(var(--accent))]' : ''
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+                <span className="truncate text-[hsl(var(--foreground))]">{s.name}</span>
+                {/*
+                  The kind is on every row, not just the ambiguous ones. A world
+                  can hold a character and a place of the same name, and a badge
+                  that appears only sometimes is one the eye stops reading.
+                */}
+                <span className="ml-auto shrink-0 text-[10px] text-[hsl(var(--muted-foreground))]">
+                  {s.type === 'create' ? `new ${KIND_LABEL[s.kind]}` : KIND_LABEL[s.kind]}
+                </span>
+              </button>
+            )
+          })}
         </div>
       )}
     </div>

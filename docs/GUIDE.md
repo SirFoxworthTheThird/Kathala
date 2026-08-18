@@ -712,6 +712,19 @@ An expanded scene card leads with the **scene draft** — the prose itself — a
 puts the one-line **Description** below it. An empty description is a control
 rather than a note: click it and the card opens for editing with the field ready.
 
+**Type `@` while writing** to name a character, an item or a place. Pick one and
+its plain name goes into the prose — no `@tokens` in your manuscript — and it is
+recorded against the scene: a character joins the scene's *mentions*, an item
+joins its items, and a place becomes the scene's location if it hasn't got one
+already. Every row says which kind of thing it is, since a world can hold a
+person and a place of the same name.
+
+If nothing answers what you've typed, the last rows offer to **make it**:
+*new character*, *new item*, *new place*. The record is created and attached in
+one step, so a name you invent mid-sentence doesn't cost you the sentence. A new
+place needs somewhere to be a pin, so that row appears only once your world has
+a map; the pin lands in the middle of it, ready to be dragged where it belongs.
+
 The draft **auto-saves as you write**: a second's pause writes it, and it is
 written again when you collapse the card or leave the chapter. The line under
 the box says which of the two states you are in — *Saving draft…* while there is
@@ -791,7 +804,7 @@ drafts a new chapter; *Update* re-derives an existing one from its prose.
 
 The **Corkboard** is an index-card view of your whole story — the classic way to
 see structure at a glance and shuffle it. Each chapter is a column; each scene
-(scene) is a card showing its title, synopsis, POV character, and **status**
+is a card showing its title, synopsis, POV character, and **status**
 (Idea → Outline → Draft → Revised → Final).
 
 ![Corkboard](images/32-corkboard.png)
