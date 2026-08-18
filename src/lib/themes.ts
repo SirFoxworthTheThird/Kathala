@@ -115,6 +115,13 @@ export const APP_THEMES: ThemeDefinition[] = [
     swatch: 'linear-gradient(135deg, #0f1712 0%, #2c3a30 55%, #bab85c 100%)',
   },
   {
+    id: 'paper',
+    icon: '☀️',
+    label: 'Paper',
+    description: 'A light desk: cream, ink and daylight',
+    swatch: 'linear-gradient(135deg, #f6f1e7 0%, #e0d6c4 55%, #2a4a7a 100%)',
+  },
+  {
     id: 'romance',
     label: 'Romance',
     icon: '🌹',

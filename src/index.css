@@ -860,6 +860,80 @@
     --theme-atmosphere: none;
   }
 
+  /* ── Paper (Light) ── */
+  /*
+    The one light theme, and the only one that inverts the app.
+
+    Sixteen themes were dark, and `AppPreferences` had declared
+    `theme: 'dark' | 'light'` with a `preferences` table that nothing ever read
+    — an intention with no implementation behind it. This is that intention as
+    a theme rather than a second mode, because themes are already how this app
+    changes its appearance and a parallel switch would mean every palette twice.
+
+    **Its data ramps are inverted, not inherited.** The pills and the cast are
+    tuned for a dark ground everywhere else: on paper the pills would be pale
+    marks on a pale card, and a cast at 55% lightness reads at 1.6:1 against
+    white. So Paper darkens both and flips the pill ink, which the per-theme
+    tokens already allowed for.
+  */
+  .theme-paper {
+    --background: 40 30% 96%;
+    --foreground: 30 14% 15%;
+    --card: 40 40% 99%;
+    --card-foreground: 30 14% 15%;
+    --popover: 40 40% 99%;
+    --popover-foreground: 30 14% 15%;
+    --primary: 30 14% 15%;
+    --primary-foreground: 40 40% 99%;
+    --secondary: 40 22% 91%;
+    --secondary-foreground: 30 14% 15%;
+    --muted: 40 20% 92%;
+    --muted-foreground: 30 10% 40%;
+    --accent: 40 26% 90%;
+    --accent-foreground: 30 14% 15%;
+    --destructive: 0 62% 42%;
+    --destructive-foreground: 40 40% 99%;
+    --border: 38 18% 84%;
+    --input: 38 18% 84%;
+    --ring: 214 58% 44%;
+    --radius: 0.25rem;
+    --tension-h-cool: 210;
+    --tension-h-hot: 0;
+    --tension-sat: 72%;
+    /* Dark enough to read as a mark on white; the dark themes sit at 52%. */
+    --tension-light: 34%;
+    --status-h-early: 220;
+    --status-h-late: 140;
+    --status-sat: 52%;
+    --status-light: 28%;
+    /* The ink flips with the pills: near-white on a dark pill. */
+    --status-ink: 40 40% 97%;
+    --cast-sat: 58%;
+    --cast-light: 35%;
+    --font-body: Charter, 'Bitstream Charter', Georgia, serif;
+    --font-heading: 'Palatino Linotype', Palatino, Georgia, serif;
+    --font-prose: var(--font-body);
+    --leaflet-bg: 40, 26%, 92%;
+    --leaflet-card: 40, 40%, 99%;
+    --leaflet-border: 38, 18%, 82%;
+    --leaflet-fg: 30, 14%, 15%;
+    --leaflet-muted: 30, 10%, 40%;
+    --tl-bg:             hsl(40, 26%, 93%);
+    --tl-border:         hsl(38, 18%, 82%);
+    --tl-accent:         hsl(214, 58%, 44%);
+    --tl-glow:           rgba(38, 90, 160, 0.35);
+    --tl-text:           hsl(30, 14%, 15%);
+    --tl-text-muted:     hsl(30, 10%, 40%);
+    --tl-callout-bg:     hsl(40, 40%, 98%);
+    --tl-callout-shadow: 0 -12px 48px rgba(60,50,35,0.16), 0 0 0 1px hsl(38,18%,82%);
+    --tl-backdrop:       none;
+    --canvas: 40 34% 93%;
+    /* Daylight off the page, not a glow in the dark. */
+    --theme-backdrop: radial-gradient(ellipse at 22% 8%, hsl(45 70% 88% / 0.7), transparent 34%), radial-gradient(ellipse at 86% 90%, hsl(35 40% 86% / 0.6), transparent 38%), linear-gradient(150deg, hsl(42 34% 97%), hsl(38 26% 93%));
+    --theme-atmosphere: none;
+  }
+
+
   .theme-fantasy,
   .theme-scifi,
   .theme-cyberpunk,
@@ -874,7 +948,8 @@
   .theme-adventure,
   .theme-dystopian,
   .theme-historical,
-  .theme-cosy {
+  .theme-cosy,
+  .theme-paper {
     --app-image: none;
   }
 

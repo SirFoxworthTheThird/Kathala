@@ -2,11 +2,17 @@ import { describe, it, expect } from 'vitest'
 import { APP_THEMES } from '@/lib/themes'
 
 /**
- * Guards the readability of muted secondary text across every theme. All themes
- * are dark variants; `--muted-foreground` carries most secondary copy (captions,
- * metadata, hints) and `--tl-text-muted` carries the timeline bar's labels. If a
- * palette edit pushes either below the WCAG AA threshold (4.5:1 for normal text)
- * against the surface it sits on, this test fails.
+ * Guards the readability of muted secondary text across every theme.
+ * `--muted-foreground` carries most secondary copy (captions, metadata, hints)
+ * and `--tl-text-muted` carries the timeline bar's labels. If a palette edit
+ * pushes either below the WCAG AA threshold (4.5:1 for normal text) against the
+ * surface it sits on, this test fails.
+ *
+ * All but one are dark variants; **Paper is light**, which is why the maths
+ * below takes the ratio rather than assuming which side is brighter. The line
+ * about the card being the tougher surface holds for the dark themes and is
+ * inverted on Paper, where the card is the *lighter* one — so both surfaces are
+ * checked rather than one standing in for the other.
  *
  * The token values below MIRROR `src/index.css` — keep them in sync when a
  * theme's palette changes. (Vitest stubs CSS imports, so the stylesheet can't be
@@ -47,6 +53,7 @@ const THEMES: Record<string, ThemeTokens> = {
   dystopian: { background: [90, 8, 7],    card: [90, 7, 12],   mutedForeground: [85, 8, 65],   tlBg: [90, 9, 6],    tlTextMuted: [85, 7, 64] },
   historical:{ background: [32, 14, 8],   card: [30, 12, 13],  mutedForeground: [34, 16, 66],  tlBg: [32, 16, 7],   tlTextMuted: [34, 15, 65] },
   cosy:      { background: [140, 14, 8],  card: [138, 12, 13], mutedForeground: [45, 16, 67],  tlBg: [140, 16, 7],  tlTextMuted: [45, 15, 66] },
+  paper:     { background: [40, 30, 96],  card: [40, 40, 99],  mutedForeground: [30, 10, 40],  tlBg: [40, 26, 93],  tlTextMuted: [30, 10, 40] },
 }
 
 const AA_NORMAL = 4.5

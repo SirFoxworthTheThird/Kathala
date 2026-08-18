@@ -1951,13 +1951,13 @@ timeline's clock.
 
 **Theme** is two settings in one section, because there are two things to
 decide. **App theme** is the one PlotWeave itself wears — on the world list, and
-in every world that has not asked for something else. Below it, the sixteen cards
+in every world that has not asked for something else. Below it, the seventeen cards
 set *this* world's theme, and the first of them, **Inherit app theme**, hands the
 decision back to the setting above. So a Gothic novel can be Horror and a space
 opera Sci-Fi while everything else stays with whatever you chose for the app.
-The sixteen are Dark Slate, Fantasy, Sci-Fi, Cyberpunk, Dystopian, Horror,
-Gothic, Mystery, Mythic, Adventure, Historical, Western, Action, Noir, Romance
-and Cosy; each changes
+The seventeen are Dark Slate, Fantasy, Sci-Fi, Cyberpunk, Dystopian, Horror,
+Gothic, Mystery, Mythic, Adventure, Historical, Western, Action, Noir, Romance,
+Cosy and Paper; each changes
 colours, fonts, textures and the timeline bar's pulse together. **Gothic** is
 candle and cold stone where Horror is blood and bone; **Mystery** is gaslight,
 fog and foolscap where Noir is a monochrome 1940s; **Mythic** is bronze, marble
@@ -1966,7 +1966,15 @@ sea-stories and swashbucklers that do not want Western's dust; **Dystopian** is
 ash, concrete and rust, which is neither Cyberpunk's neon nor Sci-Fi's clean
 telemetry; **Historical** is ink, parchment and candle, for the period novel
 that is not an adventure; and **Cosy** is moss, cream and a lamp in the window
-— the one theme here that is not moody, and the only one with rounded corners. Themes colour the space around your
+— the one theme here that is not moody, and the only one with rounded corners.
+
+**If you would rather write on a light desk, pick Paper.** It is the one light
+theme: cream, ink and daylight, with the pacing curve, the status pills and your
+cast darkened to read on a pale page rather than a dark one. Set it as the app
+theme and everything wears it, or set it on a single world and leave the rest as
+they are. The other sixteen are dark by design — Paper is a light *theme*, not a
+switch that turns the other sixteen inside out, and PlotWeave does not follow
+your system's light/dark setting on its own. Themes colour the space around your
 cards and panels but never draw over it: what sits behind the app is soft
 gradient, and nothing is ruled across the screen.
 
