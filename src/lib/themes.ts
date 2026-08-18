@@ -94,6 +94,27 @@ export const APP_THEMES: ThemeDefinition[] = [
     swatch: 'linear-gradient(135deg, #0c1715 0%, #1f4740 55%, #d4983e 100%)',
   },
   {
+    id: 'dystopian',
+    icon: '☢️',
+    label: 'Dystopian',
+    description: 'Ash, concrete, rust and sodium light',
+    swatch: 'linear-gradient(135deg, #111310 0%, #3a3a33 55%, #b8603a 100%)',
+  },
+  {
+    id: 'historical',
+    icon: '📜',
+    label: 'Historical',
+    description: 'Ink, parchment, candle and oxblood',
+    swatch: 'linear-gradient(135deg, #16120e 0%, #4a3d31 55%, #a04e5c 100%)',
+  },
+  {
+    id: 'cosy',
+    icon: '🫖',
+    label: 'Cosy',
+    description: 'Moss, cream and a lamp in the window',
+    swatch: 'linear-gradient(135deg, #0f1712 0%, #2c3a30 55%, #bab85c 100%)',
+  },
+  {
     id: 'romance',
     label: 'Romance',
     icon: '🌹',

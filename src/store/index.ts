@@ -41,6 +41,7 @@ interface MapSlice {
 export type AppTheme =
   | 'default' | 'fantasy' | 'scifi' | 'cyberpunk' | 'horror' | 'western' | 'action' | 'noir' | 'romance'
   | 'gothic' | 'mystery' | 'mythic' | 'adventure'
+  | 'dystopian' | 'historical' | 'cosy'
 export type PlaybackSpeed = 'slow' | 'normal' | 'fast'
 
 interface PlaybackSlice {

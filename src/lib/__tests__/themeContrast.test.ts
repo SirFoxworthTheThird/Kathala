@@ -44,6 +44,9 @@ const THEMES: Record<string, ThemeTokens> = {
   mystery:   { background: [214, 30, 8],  card: [213, 26, 13], mutedForeground: [40, 18, 66],  tlBg: [214, 32, 7],  tlTextMuted: [40, 16, 65] },
   mythic:    { background: [196, 34, 7],  card: [195, 28, 12], mutedForeground: [40, 20, 67],  tlBg: [196, 36, 6],  tlTextMuted: [40, 18, 66] },
   adventure: { background: [168, 26, 7],  card: [168, 22, 12], mutedForeground: [38, 22, 66],  tlBg: [168, 28, 6],  tlTextMuted: [38, 20, 65] },
+  dystopian: { background: [90, 8, 7],    card: [90, 7, 12],   mutedForeground: [85, 8, 65],   tlBg: [90, 9, 6],    tlTextMuted: [85, 7, 64] },
+  historical:{ background: [32, 14, 8],   card: [30, 12, 13],  mutedForeground: [34, 16, 66],  tlBg: [32, 16, 7],   tlTextMuted: [34, 15, 65] },
+  cosy:      { background: [140, 14, 8],  card: [138, 12, 13], mutedForeground: [45, 16, 67],  tlBg: [140, 16, 7],  tlTextMuted: [45, 15, 66] },
 }
 
 const AA_NORMAL = 4.5

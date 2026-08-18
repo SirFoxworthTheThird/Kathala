@@ -592,6 +592,139 @@
     --theme-atmosphere: none;
   }
 
+  /* ── Dystopian (Ash & Rust) ── */
+  .theme-dystopian {
+    --background: 90 8% 7%;
+    --foreground: 80 8% 88%;
+    --card: 90 7% 12%;
+    --card-foreground: 80 8% 88%;
+    --popover: 90 8% 7%;
+    --popover-foreground: 80 8% 88%;
+    --primary: 80 8% 88%;
+    --primary-foreground: 90 8% 7%;
+    --secondary: 90 7% 17%;
+    --secondary-foreground: 80 8% 88%;
+    --muted: 90 6% 17%;
+    --muted-foreground: 85 8% 65%;
+    --accent: 88 8% 19%;
+    --accent-foreground: 80 8% 88%;
+    --destructive: 12 58% 40%;
+    --destructive-foreground: 20 30% 92%;
+    --border: 88 9% 25%;
+    --input: 88 9% 25%;
+    --ring: 16 58% 48%;
+    --radius: 0rem;
+    --font-body: Consolas, 'Lucida Console', monospace;
+    --font-heading: 'Franklin Gothic Medium', Haettenschweiler, Tahoma, sans-serif;
+    --leaflet-bg: 90, 9%, 5%;
+    --leaflet-card: 90, 7%, 17%;
+    --leaflet-border: 88, 9%, 27%;
+    --leaflet-fg: 80, 8%, 88%;
+    --leaflet-muted: 85, 8%, 65%;
+    --tl-bg:             hsl(90, 9%, 6%);
+    --tl-border:         hsl(88, 9%, 25%);
+    --tl-accent:         hsl(16, 58%, 48%);
+    --tl-glow:           rgba(186, 96, 56, 0.42);
+    --tl-text:           hsl(80, 8%, 88%);
+    --tl-text-muted:     hsl(85, 7%, 64%);
+    --tl-callout-bg:     hsl(90, 7%, 10%);
+    --tl-callout-shadow: 0 -12px 48px rgba(0,0,0,0.9), 0 0 0 1px hsl(88,9%,25%);
+    --tl-backdrop:       none;
+    --canvas: 90 10% 4%;
+    /* Sodium light through smoke, and rust where the water has run. */
+    --theme-backdrop: radial-gradient(ellipse at 80% 8%, hsl(38 45% 45% / 0.12), transparent 30%), radial-gradient(ellipse at 14% 88%, hsl(16 40% 26% / 0.2), transparent 38%), linear-gradient(155deg, hsl(90 10% 4%), hsl(88 8% 10%));
+    --theme-atmosphere: none;
+  }
+
+  /* ── Historical (Ink & Parchment) ── */
+  .theme-historical {
+    --background: 32 14% 8%;
+    --foreground: 38 26% 89%;
+    --card: 30 12% 13%;
+    --card-foreground: 38 26% 89%;
+    --popover: 32 14% 8%;
+    --popover-foreground: 38 26% 89%;
+    --primary: 38 26% 89%;
+    --primary-foreground: 32 14% 8%;
+    --secondary: 31 12% 18%;
+    --secondary-foreground: 38 26% 89%;
+    --muted: 31 11% 18%;
+    --muted-foreground: 34 16% 66%;
+    --accent: 30 14% 20%;
+    --accent-foreground: 38 26% 89%;
+    --destructive: 355 50% 38%;
+    --destructive-foreground: 30 35% 92%;
+    --border: 32 14% 26%;
+    --input: 32 14% 26%;
+    --ring: 350 42% 44%;
+    --radius: 0.0625rem;
+    --font-body: 'Book Antiqua', Palatino, Georgia, serif;
+    --font-heading: Garamond, 'Adobe Garamond Pro', 'Times New Roman', serif;
+    --leaflet-bg: 32, 16%, 5%;
+    --leaflet-card: 30, 12%, 18%;
+    --leaflet-border: 32, 14%, 28%;
+    --leaflet-fg: 38, 26%, 89%;
+    --leaflet-muted: 34, 16%, 66%;
+    --tl-bg:             hsl(32, 16%, 7%);
+    --tl-border:         hsl(32, 14%, 26%);
+    --tl-accent:         hsl(350, 42%, 44%);
+    --tl-glow:           rgba(164, 78, 92, 0.4);
+    --tl-text:           hsl(38, 26%, 89%);
+    --tl-text-muted:     hsl(34, 15%, 65%);
+    --tl-callout-bg:     hsl(30, 12%, 11%);
+    --tl-callout-shadow: 0 -12px 48px rgba(0,0,0,0.85), 0 0 0 1px hsl(32,14%,26%);
+    --tl-backdrop:       none;
+    --canvas: 32 18% 5%;
+    /* Candle on paper, and the oxblood of a binding in the dark. */
+    --theme-backdrop: radial-gradient(ellipse at 24% 10%, hsl(40 55% 52% / 0.14), transparent 30%), radial-gradient(ellipse at 84% 86%, hsl(350 40% 26% / 0.2), transparent 38%), linear-gradient(150deg, hsl(30 18% 5%), hsl(32 14% 11%));
+    --theme-atmosphere: none;
+  }
+
+  /* ── Cosy (Moss & Cream) ── */
+  .theme-cosy {
+    --background: 140 14% 8%;
+    --foreground: 45 30% 91%;
+    --card: 138 12% 13%;
+    --card-foreground: 45 30% 91%;
+    --popover: 140 14% 8%;
+    --popover-foreground: 45 30% 91%;
+    --primary: 45 30% 91%;
+    --primary-foreground: 140 14% 8%;
+    --secondary: 139 12% 18%;
+    --secondary-foreground: 45 30% 91%;
+    --muted: 139 11% 18%;
+    --muted-foreground: 45 16% 67%;
+    --accent: 140 12% 20%;
+    --accent-foreground: 45 30% 91%;
+    --destructive: 4 48% 42%;
+    --destructive-foreground: 30 35% 92%;
+    --border: 140 12% 26%;
+    --input: 140 12% 26%;
+    --ring: 58 42% 54%;
+    --radius: 0.625rem;
+    --font-body: Verdana, 'Segoe UI', Tahoma, sans-serif;
+    --font-heading: 'Century Gothic', 'URW Gothic', 'Trebuchet MS', sans-serif;
+    --leaflet-bg: 140, 16%, 5%;
+    --leaflet-card: 138, 12%, 18%;
+    --leaflet-border: 140, 12%, 28%;
+    --leaflet-fg: 45, 30%, 91%;
+    --leaflet-muted: 45, 16%, 67%;
+    --tl-bg:             hsl(140, 16%, 7%);
+    --tl-border:         hsl(140, 12%, 26%);
+    --tl-accent:         hsl(58, 42%, 54%);
+    --tl-glow:           rgba(186, 184, 92, 0.4);
+    --tl-text:           hsl(45, 30%, 91%);
+    --tl-text-muted:     hsl(45, 15%, 66%);
+    --tl-callout-bg:     hsl(138, 12%, 11%);
+    --tl-callout-shadow: 0 -12px 48px rgba(0,0,0,0.8), 0 0 0 1px hsl(140,12%,26%);
+    --tl-backdrop:       none;
+    --canvas: 140 18% 5%;
+    /* Lamp in a window and a garden going dark behind it. The only theme
+       whose corners are round: everything else here is a blade or a book. */
+    --theme-backdrop: radial-gradient(ellipse at 18% 14%, hsl(45 60% 55% / 0.14), transparent 30%), radial-gradient(ellipse at 84% 84%, hsl(140 35% 24% / 0.2), transparent 38%), linear-gradient(150deg, hsl(142 18% 5%), hsl(138 13% 11%));
+    --theme-atmosphere: none;
+  }
+
   .theme-fantasy,
   .theme-scifi,
   .theme-cyberpunk,
@@ -603,7 +736,10 @@
   .theme-gothic,
   .theme-mystery,
   .theme-mythic,
-  .theme-adventure {
+  .theme-adventure,
+  .theme-dystopian,
+  .theme-historical,
+  .theme-cosy {
     --app-image: none;
   }
 

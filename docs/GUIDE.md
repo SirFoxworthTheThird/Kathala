@@ -1951,17 +1951,22 @@ timeline's clock.
 
 **Theme** is two settings in one section, because there are two things to
 decide. **App theme** is the one PlotWeave itself wears — on the world list, and
-in every world that has not asked for something else. Below it, the thirteen cards
+in every world that has not asked for something else. Below it, the sixteen cards
 set *this* world's theme, and the first of them, **Inherit app theme**, hands the
 decision back to the setting above. So a Gothic novel can be Horror and a space
 opera Sci-Fi while everything else stays with whatever you chose for the app.
-The thirteen are Dark Slate, Fantasy, Sci-Fi, Cyberpunk, Horror, Gothic,
-Mystery, Mythic, Adventure, Western, Action, Noir and Romance; each changes
+The sixteen are Dark Slate, Fantasy, Sci-Fi, Cyberpunk, Dystopian, Horror,
+Gothic, Mystery, Mythic, Adventure, Historical, Western, Action, Noir, Romance
+and Cosy; each changes
 colours, fonts, textures and the timeline bar's pulse together. **Gothic** is
 candle and cold stone where Horror is blood and bone; **Mystery** is gaslight,
 fog and foolscap where Noir is a monochrome 1940s; **Mythic** is bronze, marble
 and the wine-dark sea; **Adventure** is charts, brass and canvas, for the
-sea-stories and swashbucklers that do not want Western's dust. Themes colour the space around your
+sea-stories and swashbucklers that do not want Western's dust; **Dystopian** is
+ash, concrete and rust, which is neither Cyberpunk's neon nor Sci-Fi's clean
+telemetry; **Historical** is ink, parchment and candle, for the period novel
+that is not an adventure; and **Cosy** is moss, cream and a lamp in the window
+— the one theme here that is not moody, and the only one with rounded corners. Themes colour the space around your
 cards and panels but never draw over it: what sits behind the app is soft
 gradient, and nothing is ruled across the screen.
 
