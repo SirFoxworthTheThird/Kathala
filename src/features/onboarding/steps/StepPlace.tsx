@@ -31,7 +31,7 @@ export function StepPlace({ worldId, characterId, createdEventId, onComplete, on
 
   const noEvents = events.length === 0
 
-  // Build display labels: "Chapter 1 — Event title"
+  // Build display labels: "Chapter 1 — Scene title"
   const chapterById = new Map(chapters.map((c) => [c.id, c]))
   const eventOptions = [...events].sort((a, b) => {
     const ca = chapterById.get(a.chapterId)
@@ -101,8 +101,8 @@ export function StepPlace({ worldId, characterId, createdEventId, onComplete, on
                 // Single string child — Radix SelectValue requires this to
                 // display the selection in the trigger correctly.
                 const label = ch
-                  ? `Ch. ${ch.number} — ${ev.title || 'Untitled event'}`
-                  : (ev.title || 'Untitled event')
+                  ? `Ch. ${ch.number} — ${ev.title || 'Untitled scene'}`
+                  : (ev.title || 'Untitled scene')
                 return (
                   <SelectItem key={ev.id} value={ev.id}>
                     {label}

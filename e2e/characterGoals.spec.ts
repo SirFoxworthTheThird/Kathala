@@ -34,9 +34,9 @@ async function setupWorld(page: Page) {
   await page.getByRole('button', { name: 'Add Chapter' }).last().click()
   await page.getByTitle('Open chapter detail').first().click()
   for (const title of ['The oath', 'The betrayal']) {
-    await main.getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill(title)
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await main.getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill(title)
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
   }
 }
 

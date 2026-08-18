@@ -47,9 +47,9 @@ test.describe("Writer's Brief panel", () => {
 
     // Open chapter detail and create an event
     await page.getByTitle('Open chapter detail').click()
-    await page.getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill('First Encounter')
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await page.getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill('First Encounter')
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
     // Scoped to the card: opening a chapter now sets the time cursor, so the
     // pill in the top bar carries the scene title too.
     await expect(page.getByRole('main').getByRole('button', { name: 'First Encounter', exact: true })).toBeVisible()
@@ -85,9 +85,9 @@ test.describe("Writer's Brief panel", () => {
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
 
     await page.getByTitle('Open chapter detail').click()
-    await page.getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill('Council Scene')
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await page.getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill('Council Scene')
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
 
     // Activate the event
     await page.getByRole('link', { name: 'Timeline' }).click()

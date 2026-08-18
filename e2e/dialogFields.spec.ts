@@ -9,7 +9,7 @@ const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map
 /**
  * Two findings about the dialogs a writer meets first.
  *
- * **WRUN-9** — Add Chapter and Add Event labelled their fields by adjacency: a
+ * **WRUN-9** — Add Chapter and Add Scene labelled their fields by adjacency: a
  * `<Label>` with no `htmlFor` beside an `<Input>` with no `id`, so the only
  * thing naming the field was the placeholder, which disappears as you type.
  * `controlNames.spec.ts` sweeps eight screens and **HB-7a** named its boundary
@@ -69,7 +69,7 @@ test.describe('The first dialogs name their fields', () => {
     expect(bad, `fields with no accessible name:\n${bad.join('\n')}`).toEqual([])
   })
 
-  test('Add Event', async ({ page }) => {
+  test('Add Scene', async ({ page }) => {
     const worldId = await aWorld(page)
     await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
     await page.waitForTimeout(1200)
@@ -79,7 +79,7 @@ test.describe('The first dialogs name their fields', () => {
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
     await page.getByTitle('Open chapter detail').first().click()
     await page.waitForTimeout(800)
-    await page.getByRole('main').getByRole('button', { name: 'Add Event' }).first().click()
+    await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
 
     await expect(page.getByLabel('Title')).toBeVisible()
     await expect(page.getByLabel('Description')).toBeVisible()

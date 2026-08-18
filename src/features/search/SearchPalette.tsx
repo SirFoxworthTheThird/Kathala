@@ -27,7 +27,7 @@ const TYPE_META: Record<ResultType, { icon: React.ElementType; color: string; gr
   item:         { icon: Package,  color: 'text-amber-400',  group: 'Items' },
   location:     { icon: Map,      color: 'text-green-400',  group: 'Locations' },
   chapter:      { icon: BookOpen, color: 'text-purple-400', group: 'Chapters' },
-  event:        { icon: Scroll,   color: 'text-orange-400', group: 'Events' },
+  event:        { icon: Scroll,   color: 'text-orange-400', group: 'Scenes' },
   timeline:     { icon: BookOpen, color: 'text-cyan-400',   group: 'Timelines' },
   relationship: { icon: Network,  color: 'text-rose-400',   group: 'Relationships' },
   route:        { icon: Route,    color: 'text-teal-400',   group: 'Routes' },

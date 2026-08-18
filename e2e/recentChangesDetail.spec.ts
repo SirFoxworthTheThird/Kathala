@@ -5,7 +5,7 @@ import { settleNav } from './helpers/nav'
 /**
  * HB-6, from an outside review: *Recent Changes is too generic.*
  *
- * Two halves, and both stood. Every edit read "Edited event", whatever it had
+ * Two halves, and both stood. Every edit read "Edited scene", whatever it had
  * changed — though `changedFields` had been recorded on every update all
  * along, and simply never read. And the panel dimmed every row below the first
  * and gave it no button, without saying why; the reason was written in the
@@ -37,9 +37,9 @@ async function worldWithAScene(page: Page) {
   await page.getByRole('button', { name: 'Add Chapter' }).last().click()
 
   await page.getByTitle('Open chapter detail').first().click()
-  await page.getByRole('main').getByRole('button', { name: 'Add Event' }).first().click()
-  await page.getByPlaceholder('Event title').fill('The gate opens')
-  await page.getByRole('button', { name: 'Add Event' }).last().click()
+  await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
+  await page.getByPlaceholder('Scene title').fill('The gate opens')
+  await page.getByRole('button', { name: 'Add Scene' }).last().click()
   await expect(page.getByRole('main').getByText('The gate opens').first()).toBeVisible()
 }
 

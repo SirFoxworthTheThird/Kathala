@@ -34,9 +34,9 @@ test.describe('Corkboard', () => {
     // Two events in that chapter.
     await page.getByTitle('Open chapter detail').first().click()
     for (const title of ['First Scene', 'Second Scene']) {
-      await page.getByRole('main').getByRole('button', { name: 'Add Event' }).first().click()
-      await page.getByPlaceholder('Event title').fill(title)
-      await page.getByRole('button', { name: 'Add Event' }).last().click()
+      await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
+      await page.getByPlaceholder('Scene title').fill(title)
+      await page.getByRole('button', { name: 'Add Scene' }).last().click()
       await expect(page.getByText(title).first()).toBeVisible()
     }
 

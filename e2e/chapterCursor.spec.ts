@@ -63,7 +63,7 @@ test.describe('The time cursor follows you', () => {
     // state is now a scene picker (WB-1) rather than a sentence, so checking for
     // the sentence's absence would prove nothing.
     await page.getByTitle("Writer's Brief").click()
-    await expect(page.getByText('Active Event')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('Active scene')).toBeVisible({ timeout: 15_000 })
     await page.keyboard.press('Escape')
 
     // Opening a different chapter moves you to that one.

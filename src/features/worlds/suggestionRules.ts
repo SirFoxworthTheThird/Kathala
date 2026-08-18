@@ -19,7 +19,7 @@ export interface SuggestionRule {
 
 export const SUGGESTION_RULES: SuggestionRule[] = [
   { id: 'add-character',     title: 'Add your first character',               dismissible: false, condition: (d) => d.characterCount === 0,                                        navigateTo: 'characters',    navLabel: 'Go to Characters' },
-  { id: 'add-first-event',   title: 'Add your first event',                   dismissible: false, condition: (d) => d.characterCount > 0 && d.eventCount === 0,                   navigateTo: 'timeline',      navLabel: 'Go to Timeline'   },
+  { id: 'add-first-event',   title: 'Add your first scene',                   dismissible: false, condition: (d) => d.characterCount > 0 && d.eventCount === 0,                   navigateTo: 'timeline',      navLabel: 'Go to Timeline'   },
   { id: 'place-character',   title: 'Place a character on the timeline',      dismissible: false, condition: (d) => d.eventCount > 0 && !d.hasCharacterAtAnyEvent,                 navigateTo: 'timeline',      navLabel: 'Go to Timeline'   },
   { id: 'add-relationships', title: 'Define how your characters relate',      dismissible: false, condition: (d) => d.characterCount >= 2 && d.relationshipCount === 0,            navigateTo: 'relationships', navLabel: 'Go to Relations'  },
   { id: 'add-map',           title: 'Add a map to track where things happen', dismissible: false, condition: (d) => d.eventCount > 0 && d.mapLayerCount === 0,                    navigateTo: 'maps',          navLabel: 'Go to Maps'       },

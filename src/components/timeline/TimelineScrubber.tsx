@@ -77,7 +77,7 @@ export function ChapterSegment({
       // A truncated title is still worth having in full on hover, and the
       // frame track truncates sooner than the story track does.
       title={isEmpty
-        ? 'Add an event to this chapter to activate it.'
+        ? 'Add a scene to this chapter to activate it.'
         : `Ch. ${chapter.number}${chapter.title ? ` — ${chapter.title}` : ''}`}
     >
       {!compact && (

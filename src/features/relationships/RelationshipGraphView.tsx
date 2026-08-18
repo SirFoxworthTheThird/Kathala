@@ -834,7 +834,7 @@ export default function RelationshipGraphView() {
 
             {activeEventId && !editingSnapshot && (
               <Button size="sm" variant="outline" onClick={() => setEditingSnapshot(true)}>
-                {!selectedSnap ? 'Set for this event' : isSnapInherited ? 'Override for this event' : 'Edit event state'}
+                {!selectedSnap ? 'Set for this scene' : isSnapInherited ? 'Override for this scene' : 'Edit scene state'}
               </Button>
             )}
 
@@ -891,7 +891,7 @@ export default function RelationshipGraphView() {
                   setEditingSnapshot(false)
                 }}
               >
-                <Trash2 className="h-3.5 w-3.5" /> End in this event
+                <Trash2 className="h-3.5 w-3.5" /> End in this scene
               </Button>
             )}
             <Button

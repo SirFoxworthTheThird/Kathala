@@ -36,9 +36,9 @@ test.describe('@-mentions in the scene draft', () => {
     await expect(page).toHaveURL(/#\/worlds\/.+\/timeline\/.+/)
 
     const main = page.getByRole('main')
-    await main.getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill('The Departure')
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await main.getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill('The Departure')
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
 
     // Expand the event card via its title button (inside <main>).
     // Exact: the card's icon controls are named after the scene they act on,

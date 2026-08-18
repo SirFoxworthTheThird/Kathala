@@ -98,11 +98,11 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Add Event</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Add Scene</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="event-title">Title</Label>
-            <Input id="event-title" placeholder="Event title" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+            <Input id="event-title" placeholder="Scene title" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -154,7 +154,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
                   <SelectItem value="__none__" className="text-xs italic text-[hsl(var(--muted-foreground))]">No POV character</SelectItem>
                   {selectedChars.length > 0 && (
                     <SelectGroup>
-                      <SelectLabel className="text-[10px] uppercase tracking-wide">In this event</SelectLabel>
+                      <SelectLabel className="text-[10px] uppercase tracking-wide">In this scene</SelectLabel>
                       {selectedChars.map((c) => (
                         <SelectItem key={c.id} value={c.id} className="text-xs">
                           <span className="flex items-center gap-1.5">
@@ -235,7 +235,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={!title.trim() || saving}>
-              {saving ? 'Saving...' : 'Add Event'}
+              {saving ? 'Saving...' : 'Add Scene'}
             </Button>
           </DialogFooter>
         </form>

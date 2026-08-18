@@ -49,7 +49,7 @@ export function computeThreadIssues({
         threadName: name,
         kind: 'unstarted',
         message: `Plot thread "${name}" has no scenes`,
-        detail: 'This thread exists but no event advances it yet — tag the scenes that carry it, or delete the thread.',
+        detail: 'This thread exists but no scene advances it yet — tag the scenes that carry it, or delete the thread.',
         chapterNumber: null,
       })
       continue

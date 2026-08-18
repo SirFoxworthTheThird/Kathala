@@ -316,19 +316,19 @@ export function validateResponse(
   if (!Array.isArray(d.events)) throw new Error('Missing "events" array.')
   for (const ev of d.events as Record<string, unknown>[]) {
     if (typeof ev.id !== 'string') throw new Error('Each event must have an id string.')
-    if (ev.worldId !== worldId) throw new Error(`Event "${ev.title}" has wrong worldId.`)
-    if (ev.chapterId !== ch.id) throw new Error(`Event "${ev.title}" chapterId must match chapter.id.`)
+    if (ev.worldId !== worldId) throw new Error(`Scene "${ev.title}" has wrong worldId.`)
+    if (ev.chapterId !== ch.id) throw new Error(`Scene "${ev.title}" chapterId must match chapter.id.`)
     if (ev.locationMarkerId != null && !markerIds.has(ev.locationMarkerId as string)) {
-      throw new Error(`Event "${ev.title}" references unknown locationMarkerId "${ev.locationMarkerId}".`)
+      throw new Error(`Scene "${ev.title}" references unknown locationMarkerId "${ev.locationMarkerId}".`)
     }
     if (Array.isArray(ev.involvedCharacterIds)) {
       for (const cid of ev.involvedCharacterIds as string[]) {
-        if (!characterIds.has(cid)) throw new Error(`Event "${ev.title}" references unknown characterId "${cid}".`)
+        if (!characterIds.has(cid)) throw new Error(`Scene "${ev.title}" references unknown characterId "${cid}".`)
       }
     }
     if (Array.isArray(ev.involvedItemIds)) {
       for (const iid of ev.involvedItemIds as string[]) {
-        if (!itemIds.has(iid)) throw new Error(`Event "${ev.title}" references unknown itemId "${iid}".`)
+        if (!itemIds.has(iid)) throw new Error(`Scene "${ev.title}" references unknown itemId "${iid}".`)
       }
     }
   }

@@ -176,7 +176,7 @@ function VisibilityPicker({
             visibleFromEventId
               ? activeEvent
                 ? `Ch. ${activeChapter?.number ?? '?'} · ${activeEvent.title.slice(0, 22)}`
-                : 'Unknown event'
+                : 'Unknown scene'
               : 'Always visible'
           }
         />

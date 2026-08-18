@@ -160,9 +160,9 @@ test('clicking a character keeps its panel, film strip and zoom all usable', asy
   await page.getByPlaceholder('Chapter title').fill('One')
   await page.getByRole('button', { name: 'Add Chapter' }).last().click()
   await page.getByTitle('Open chapter detail').first().click()
-  await page.getByRole('main').getByRole('button', { name: 'Add Event' }).first().click()
-  await page.getByPlaceholder('Event title').fill('The Departure')
-  await page.getByRole('button', { name: 'Add Event' }).last().click()
+  await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
+  await page.getByPlaceholder('Scene title').fill('The Departure')
+  await page.getByRole('button', { name: 'Add Scene' }).last().click()
 
   await page.getByRole('link', { name: /timeline/i }).first().click()
   await settleNav(page)

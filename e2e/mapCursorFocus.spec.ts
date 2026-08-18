@@ -49,9 +49,9 @@ async function setupWorld(page: Page): Promise<string> {
   // each scene, so an unscoped name match hits two elements.
   const main = page.getByRole('main')
   for (const [title, place] of [['First scene', 'Northshire'], ['Second scene', 'Southvale']]) {
-    await page.getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill(title)
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await page.getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill(title)
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
     // The location picker lives in the expanded card, and saves on change.
     await main.getByRole('button', { name: title, exact: true }).click()
     // A scene with no location does not draw the Location section any more — it

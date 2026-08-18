@@ -4,7 +4,7 @@ import type { Operation, OperationEntity, OperationType } from '@/types/operatio
 
 /**
  * HB-6, from an outside review: *Recent Changes is too generic.* Every edit
- * read "Edited event", whatever it was.
+ * read "Edited scene", whatever it was.
  *
  * The data was already there — `makeOperation` has filled `changedFields` from
  * the payload all along, and nothing read it. These tests are about the line a
@@ -60,20 +60,19 @@ describe('describeChangedFields', () => {
 
 describe('describeOperation', () => {
   /*
-    `ENTITY_LABEL` says "event" where most of the app says "scene". That is a
-    real inconsistency and it is *not* fixed here: it is one word in a shared
-    label map that toasts and tests also read, so it is worth doing on purpose
-    rather than as a side effect of this. Asserted as it is, not as it ought
-    to be.
+    "scene", not "event". The app used to say both for the same thing; it now
+    says scene throughout, and `ENTITY_LABEL` is the word the UI speaks rather
+    than the table it is stored in — `ENTITY_TABLE` still says `events`, and a
+    rename that moved both pointed undo at a table that does not exist.
   */
   it('names the field an edit changed', () => {
     // The case the review filed: an edit carrying no name or title at all.
-    expect(describeOperation(op('update', { tension: 7 }))).toBe('Edited event — tension')
+    expect(describeOperation(op('update', { tension: 7 }))).toBe('Edited scene — tension')
   })
 
   it('names the record and the field together when it can', () => {
     expect(describeOperation(op('update', { title: 'The gate opens', tension: 7 })))
-      .toBe('Edited event “The gate opens” — tension and title')
+      .toBe('Edited scene “The gate opens” — tension and title')
   })
 
   /**
@@ -88,24 +87,24 @@ describe('describeOperation', () => {
   it('leaves a create and a delete as they were', () => {
     const created = op('create', { title: 'The gate opens', tension: 7 })
     expect(created.changedFields).toEqual([])
-    expect(describeOperation(created)).toBe('Added event “The gate opens”')
+    expect(describeOperation(created)).toBe('Added scene “The gate opens”')
 
     const deleted = op('delete', { title: 'The gate opens', tension: 7 })
     expect(deleted.changedFields).toEqual([])
-    expect(describeOperation(deleted)).toBe('Deleted event “The gate opens”')
+    expect(describeOperation(deleted)).toBe('Deleted scene “The gate opens”')
   })
 
   it('reads an operation written before the field existed', () => {
     // Journals predating `changedFields` are still in people's browsers.
     const legacy = { ...op('update', { tension: 7 }) }
     delete (legacy as { changedFields?: string[] }).changedFields
-    expect(describeOperation(legacy)).toBe('Edited event')
+    expect(describeOperation(legacy)).toBe('Edited scene')
   })
 
   it('ignores bookkeeping fields, which are not something anyone edited', () => {
     // `updatedAt` rides along on every write; naming it would make every row
     // read the same again, which is the finding.
     expect(describeOperation(op('update', { tension: 7, updatedAt: 5, version: 2 })))
-      .toBe('Edited event — tension')
+      .toBe('Edited scene — tension')
   })
 })

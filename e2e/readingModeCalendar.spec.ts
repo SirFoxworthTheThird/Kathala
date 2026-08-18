@@ -5,7 +5,7 @@ import { downloadLibraryBook, DEFAULT_BOOK } from './helpers/library'
 /**
  * F-6: the Calendar invited the reader to rearrange the author's chronology.
  *
- * The screen's own header said *"Drag an event to a day to pin it there"*, every
+ * The screen's own header said *"Drag a scene to a day to pin it there"*, every
  * chip carried `draggable`, and `CalendarView` imported no gate at all. The
  * reader run confirmed the invitation but reported the **write** as
  * unreproduced — its synthetic drag events could not get past a `dragId` set
@@ -84,7 +84,7 @@ test.describe('Reading mode on the calendar', () => {
     await expect(chipInGrid(page)).toBeVisible()
 
     // The invitation is withdrawn, and so is the affordance.
-    await expect(page.getByText(/Drag an event to a day/)).toHaveCount(0)
+    await expect(page.getByText(/Drag a scene to a day/)).toHaveCount(0)
     await expect(page.locator('[draggable="true"]')).toHaveCount(0)
 
     // And the gesture itself, driven for real, moves nothing.
@@ -103,7 +103,7 @@ test.describe('Reading mode on the calendar', () => {
     await onTheCalendar(page)
     await stopReading(page)
 
-    await expect(page.getByText(/Drag an event to a day/)).toBeVisible()
+    await expect(page.getByText(/Drag a scene to a day/)).toBeVisible()
     const chip = chipInGrid(page)
     await expect(chip).toHaveAttribute('draggable', 'true')
 

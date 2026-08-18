@@ -78,7 +78,7 @@ test.describe("The Writer's Brief with no scene selected", () => {
     // The act itself: picking a scene sets the cursor and the brief fills in.
     await panel.getByRole('button', { name: 'The long road' }).click()
     await expect(panel.getByText('Chapter 2', { exact: true })).toBeVisible({ timeout: 15_000 })
-    await expect(panel.getByText('Active Event')).toBeVisible()
+    await expect(panel.getByText('Active scene')).toBeVisible()
 
     // Absence, in the same test: the picker is gone once it has been used.
     await expect(panel.getByRole('button', { name: 'The wreck' })).toHaveCount(0)

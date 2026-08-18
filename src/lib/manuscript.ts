@@ -203,7 +203,7 @@ export function castAliases(
  * the name that `nameAliases` derives, as whole words and case-SENSITIVELY.
  * Pure string matching — no AI. Sorted by descending mention count, then name.
  *
- * This powers "you wrote Kael into this scene but he isn't on the event" nudges
+ * This powers "you wrote Kael into this scene but he isn't on the scene" nudges
  * and one-click involvement, closing the gap between the metadata and the words.
  */
 export function detectMentions(text: string, characters: Character[]): DetectedMention[] {

@@ -360,7 +360,7 @@ export default function CharacterArcView() {
       <EmptyState
         icon={BookOpen}
         title="Nothing to visualize"
-        description="The Arc view shows character states across every chapter. Add characters and events first."
+        description="The Arc view shows character states across every chapter. Add characters and scenes first."
         action={
           <button
             onClick={() => navigate('timeline')}

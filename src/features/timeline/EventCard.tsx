@@ -425,7 +425,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
             <ConfirmDialog
               open={confirmOpen}
               onOpenChange={setConfirmOpen}
-              title={`Delete "${event.title || 'this event'}"?`}
+              title={`Delete "${event.title || 'this scene'}"?`}
               onConfirm={() => deleteEvent(event.id)}
             />
           </>
@@ -828,7 +828,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                 type="number"
                 min={0}
                 step="any"
-                aria-label="Days since the previous event"
+                aria-label="Days since the previous scene"
                 className="h-8 w-24 text-xs"
                 placeholder="0"
                 value={travelDays ?? ''}
@@ -867,7 +867,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                   ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
                   : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
               }`}
-              title="Mark as flashback or retrospective — suppresses present-state continuity checks for this event"
+              title="Mark as flashback or retrospective — suppresses present-state continuity checks for this scene"
             >
               <History className="h-3 w-3" />
               Flashback / Retrospective

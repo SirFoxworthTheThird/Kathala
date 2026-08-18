@@ -104,7 +104,7 @@ export function TimeCursor({ worldId }: { worldId: string }) {
           isPlayingStory
             ? `Playing… Ch.${activeChapter?.number} · ${activeEvent?.title || activeChapter?.title || ''}`
             : activeEvent
-            ? `Ch.${activeChapter?.number} · ${activeChapter?.title} — ${activeEvent.title || 'Untitled event'} (open timeline)`
+            ? `Ch.${activeChapter?.number} · ${activeChapter?.title} — ${activeEvent.title || 'Untitled scene'} (open timeline)`
             : 'Viewing all chapters — open the timeline to pick a moment'
         }
         className={cn(

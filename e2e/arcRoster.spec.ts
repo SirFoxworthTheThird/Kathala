@@ -47,9 +47,9 @@ test('the grid leads with who is in the book, and can put the blanks away', asyn
   }
   for (const [idx, title] of [['0', 'Departure'], ['1', 'Council']] as const) {
     await page.getByTitle('Open chapter detail').nth(Number(idx)).click()
-    await page.getByRole('main').getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill(title)
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill(title)
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
     await expect(page.getByText(title).first()).toBeVisible()
     await page.getByRole('link', { name: /timeline/i }).first().click()
     await settleNav(page)

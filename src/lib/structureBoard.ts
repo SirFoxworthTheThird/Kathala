@@ -2,7 +2,7 @@ import type { WorldEvent, Chapter } from '@/types'
 import type { BeatTemplate, StoryBeat } from '@/lib/storyBeats'
 
 /**
- * Maps a world's events onto a chosen structure template's beats, so a writer
+ * Maps a world's scenes onto a chosen structure template's beats, so a writer
  * can see which beats are filled, which are missing, and whether the filled ones
  * fall in narrative order. Pure — nothing stored.
  */

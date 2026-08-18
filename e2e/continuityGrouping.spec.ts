@@ -61,9 +61,9 @@ test('a category with more than one kind of fault says which is which', async ({
   await page.getByRole('button', { name: 'Add Chapter' }).last().click()
   await page.getByTitle('Open chapter detail').first().click()
   for (const title of ['The Fall', 'After', 'Later', 'Epilogue']) {
-    await page.getByRole('main').getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill(title)
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill(title)
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
     await expect(page.getByText(title).first()).toBeVisible()
   }
 

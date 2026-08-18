@@ -59,7 +59,7 @@ test.describe('The writing screens', () => {
     // Presence: a writer gets the instruction, and the job is theirs to do.
     await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await expect(page.getByText('No prose yet')).toBeVisible({ timeout: 30_000 })
-    await expect(page.getByText(/Write scene prose on your events/)).toBeVisible()
+    await expect(page.getByText(/Write prose on your scenes/)).toBeVisible()
 
     // Absence: MS-4 asks for a second version of that sentence for a reader on
     // a Library world. That reader never gets here — Manuscript is writingOnly,
@@ -71,7 +71,7 @@ test.describe('The writing screens', () => {
     await page.waitForTimeout(800)
     await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await expect(page).toHaveURL(new RegExp(`/worlds/${worldId}$`), { timeout: 20_000 })
-    await expect(page.getByText(/Write scene prose on your events/)).toHaveCount(0)
+    await expect(page.getByText(/Write prose on your scenes/)).toHaveCount(0)
   })
 
   test('WR-1: the scene box is as tall as the scene', async ({ page }) => {

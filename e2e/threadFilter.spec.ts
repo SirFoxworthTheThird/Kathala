@@ -33,9 +33,9 @@ test('the timeline thread filter shows only scenes on the chosen subplot', async
   await page.getByRole('button', { name: 'Add Chapter' }).last().click()
   await page.getByTitle('Open chapter detail').first().click()
   const addEvent = async (title: string) => {
-    await main.getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill(title)
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await main.getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill(title)
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
   }
   await addEvent('Romance scene')
   await addEvent('Heist scene')

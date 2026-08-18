@@ -92,7 +92,7 @@ export function readingProgress(
   return total > 0 ? { chapter, total } : null
 }
 
-/** One "this entity is used at this event" fact. */
+/** One "this entity is used at this scene" fact. */
 export interface Appearance {
   entityId: string
   eventId: string

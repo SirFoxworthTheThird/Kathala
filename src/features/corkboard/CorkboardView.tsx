@@ -190,7 +190,7 @@ export default function CorkboardView() {
         <EmptyState
           icon={LayoutGrid}
           title="No chapters yet"
-          description="The corkboard shows a card for each scene, grouped by chapter. Add chapters and events on the Timeline to populate it."
+          description="The corkboard shows a card for each scene, grouped by chapter. Add chapters and scenes on the Timeline to populate it."
           action={(
             <Button size="sm" variant="outline" onClick={() => navigate(`/worlds/${worldId}/timeline`)}>
               Go to Timeline

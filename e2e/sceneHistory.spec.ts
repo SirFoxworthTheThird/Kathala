@@ -23,9 +23,9 @@ test.describe('Scene revision history', () => {
     await page.getByPlaceholder('Chapter title').fill('One')
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
     await page.getByTitle('Open chapter detail').first().click()
-    await page.getByRole('main').getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill('Scene A')
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill('Scene A')
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
 
     // Expand the event card and write the first draft.
     const main = page.getByRole('main')
@@ -81,9 +81,9 @@ test.describe('Scene revision history', () => {
     await page.getByPlaceholder('Chapter title').fill('One')
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
     await page.getByTitle('Open chapter detail').first().click()
-    await page.getByRole('main').getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill('Scene A')
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill('Scene A')
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
 
     const main = page.getByRole('main')
     await main.getByText('Scene A', { exact: true }).click()

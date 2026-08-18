@@ -278,7 +278,7 @@ export default function WorldDashboardView() {
       countSuffix: '%',
       onClick: () => navigate('arc'),
       pills: !gate.active && eventsWithSnap > 0
-        ? [{ label: `/ ${totalEvents} events`, value: eventsWithSnap }]
+        ? [{ label: `/ ${totalEvents} scenes`, value: eventsWithSnap }]
         : [],
       description: gate.active ? 'how the cast changes' : 'opens the Character Arc grid',
     },
@@ -555,7 +555,7 @@ export default function WorldDashboardView() {
                 >
                   <div className="flex-1 min-w-0">
                     <p className="truncate text-sm font-medium text-[hsl(var(--foreground))]">
-                      {ev.title || <span className="italic opacity-50">Untitled event</span>}
+                      {ev.title || <span className="italic opacity-50">Untitled scene</span>}
                     </p>
                     <p className="truncate text-[11px] text-[hsl(var(--muted-foreground))]">
                       {tl && timelines.length > 1 ? `${tl.name} · ` : ''}{ch ? `Ch. ${ch.number} — ${ch.title}` : ''}
@@ -577,7 +577,7 @@ export default function WorldDashboardView() {
         <div>
           <SectionHeading
             icon={FileEdit}
-            aside={<span className="text-xs text-[hsl(var(--muted-foreground))]">{plural(totalEvents, 'event')}</span>}
+            aside={<span className="text-xs text-[hsl(var(--muted-foreground))]">{plural(totalEvents, 'scene')}</span>}
           >
             Scene Status
           </SectionHeading>

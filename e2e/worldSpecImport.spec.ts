@@ -43,7 +43,7 @@ test.describe('Generate World from AI (spec import)', () => {
     await page.getByLabel('Story spec JSON').fill(SPEC)
 
     // Live preview reflects the parsed spec.
-    await expect(page.getByText(/2 characters · 2 chapters · 2 events/)).toBeVisible()
+    await expect(page.getByText(/2 characters · 2 chapters · 2 scenes/)).toBeVisible()
     await expect(importBtn).toBeEnabled()
 
     await importBtn.click()

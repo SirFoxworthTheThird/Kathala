@@ -81,7 +81,7 @@ async function geometry(page: Page) {
   })
 }
 
-const toolbar = (page: Page) => page.getByText(/\d+ events? selected/)
+const toolbar = (page: Page) => page.getByText(/\d+ scenes? selected/)
 
 test.describe('The scene checkbox is tappable on a phone', () => {
   test.describe.configure({ timeout: 180_000 })
@@ -131,7 +131,7 @@ test.describe('The scene checkbox is tappable on a phone', () => {
     // Absence, in the same test and the one that matters: the enlarged target
     // must not have reached into the row below it. A count of exactly one says
     // both halves at once.
-    await expect(toolbar(page)).toHaveText('1 event selected')
+    await expect(toolbar(page)).toHaveText('1 scene selected')
     await expect(page.getByRole('checkbox', { name: `Select scene ${SCENES[0]}` })).toBeChecked()
     await expect(page.getByRole('checkbox', { name: `Select scene ${SCENES[1]}` })).not.toBeChecked()
   })
@@ -173,6 +173,6 @@ test.describe('The scene checkbox is tappable on a phone', () => {
 
     // Small, but not broken: a tap on the box itself still selects the chapter.
     await page.getByRole('checkbox', { name: /^Select every scene/ }).tap()
-    await expect(toolbar(page)).toHaveText(`${SCENES.length} events selected`)
+    await expect(toolbar(page)).toHaveText(`${SCENES.length} scenes selected`)
   })
 })

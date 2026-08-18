@@ -253,9 +253,9 @@ test.describe('Map management', () => {
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
     await page.getByTitle('Open chapter detail').click()
 
-    await page.getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill('The Departure')
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await page.getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill('The Departure')
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
     await expect(page.getByText('The Departure').first()).toBeVisible()
 
     // Select the event in the timeline bar to set the active cursor.

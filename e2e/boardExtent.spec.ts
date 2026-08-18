@@ -34,9 +34,9 @@ test('the board says how much board there is, and offers a way through it', asyn
 
   // One scene, so the header has both numbers to report.
   await page.getByTitle('Open chapter detail').first().click()
-  await page.getByRole('main').getByRole('button', { name: 'Add Event' }).first().click()
-  await page.getByPlaceholder('Event title').fill('Opening')
-  await page.getByRole('button', { name: 'Add Event' }).last().click()
+  await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
+  await page.getByPlaceholder('Scene title').fill('Opening')
+  await page.getByRole('button', { name: 'Add Scene' }).last().click()
 
   await page.getByRole('link', { name: /corkboard/i }).first().click()
   await settleNav(page)

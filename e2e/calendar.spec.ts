@@ -218,9 +218,9 @@ test.describe('Calendar view', () => {
     await page.getByPlaceholder('Chapter title').fill('One')
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
     await page.getByTitle('Open chapter detail').first().click()
-    await page.getByRole('main').getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill('The gate opens')
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill('The gate opens')
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
 
     // Calendar: the event sits on day 1 (in-world day 0 = 1 January, year 1).
     await page.goto(`/#/worlds/${worldId}/calendar`, { waitUntil: 'load' })

@@ -30,9 +30,9 @@ test.describe('Chapter diff', () => {
 
     // An event in Ch. 1 so a chapter can be the active (base) chapter.
     await page.getByTitle('Open chapter detail').first().click()
-    await page.getByRole('main').getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill('Scene One')
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill('Scene One')
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
 
     // Activate the event from the bar — this reveals the "Compare chapters" button.
     await page.getByRole('link', { name: /timeline/i }).click()

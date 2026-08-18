@@ -82,7 +82,7 @@ export default function KnowledgeView() {
     const m = new Map<string, string>()
     for (const e of events) {
       const n = chapterNumber.get(e.chapterId)
-      m.set(e.id, `${n !== undefined ? `Ch.${n} — ` : ''}${e.title || 'Untitled event'}`)
+      m.set(e.id, `${n !== undefined ? `Ch.${n} — ` : ''}${e.title || 'Untitled scene'}`)
     }
     return m
   }, [events, chapters])

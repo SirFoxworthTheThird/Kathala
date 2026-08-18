@@ -30,7 +30,7 @@ const AUTOSAVE_MS = 1000
 /**
  * The manuscript-prose half of an event card: the scene draft editor with its
  * own unsaved-draft state, live word count, revision history, focus mode, and
- * the "in the text but not on this event" mention nudges. Split out of
+ * the "in the text but not on this scene" mention nudges. Split out of
  * EventCard so the card's metadata editing and the prose editing stay separate.
  */
 export function SceneDraftSection({
@@ -163,13 +163,13 @@ export function SceneDraftSection({
       </p>
       {untaggedMentions.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[10px] text-[hsl(var(--muted-foreground))]">In the text but not on this event:</span>
+          <span className="text-[10px] text-[hsl(var(--muted-foreground))]">In the text but not on this scene:</span>
           {untaggedMentions.map((m) => (
             <button
               key={m.characterId}
               onClick={() => onAddCharacter(m.characterId)}
               className="flex items-center gap-1 rounded-full border border-dashed border-[hsl(var(--border))] px-2 py-0.5 text-[10px] text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--ring))] hover:text-[hsl(var(--foreground))] transition-colors"
-              title={`${m.name} appears ${m.count}× — click to add to this event`}
+              title={`${m.name} appears ${m.count}× — click to add to this scene`}
             >
               <Plus className="h-2.5 w-2.5" /> {m.name}
             </button>

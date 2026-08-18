@@ -75,7 +75,7 @@ OUTPUT FORMAT
 [
   {
     "characterId": "<id from Characters list>",
-    "eventId": "<id from Events list>",
+    "eventId": "<id from Scenes list>",
     "locationMarkerId": "<markerId from Locations list>",
     "mapLayerId": "<mapLayerId from Locations list>"
   }

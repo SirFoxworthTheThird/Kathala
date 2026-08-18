@@ -460,7 +460,7 @@ export default function WorldSettingsView() {
             <div>
               <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Continuity</h2>
               <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                Number of consecutive events a character can be involved in without a snapshot update before a stale-state warning is raised.
+                Number of consecutive scenes a character can be involved in without a snapshot update before a stale-state warning is raised.
               </p>
             </div>
             <div className="flex items-center gap-3">

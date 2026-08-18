@@ -309,7 +309,7 @@ export function WritersBriefPanel() {
                 )}
                 {activeEvent?.title && (
                   <div className="mt-2 border-t border-[hsl(var(--border))] pt-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Active Event</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Active scene</p>
                     <p className="text-xs font-medium text-[hsl(var(--foreground))]">{activeEvent.title}</p>
                     {activeDay !== undefined && !activeEvent.isFlashback && (calendar || activeDay > 0) && (
                       <p className="mt-0.5 text-[10px] text-[hsl(var(--muted-foreground))]">
@@ -336,7 +336,7 @@ export function WritersBriefPanel() {
               </div>
 
               {/* Events */}
-              <Section title="Events" icon={Scroll} count={events.length}>
+              <Section title="Scenes" icon={Scroll} count={events.length}>
                 {events.length === 0 ? (
                   <p className="text-xs text-[hsl(var(--muted-foreground))]">No events in this chapter yet.</p>
                 ) : (
@@ -379,7 +379,7 @@ export function WritersBriefPanel() {
                   <p className="text-xs text-[hsl(var(--muted-foreground))]">
                     {characters.length === 0
                       ? 'No characters created yet.'
-                      : 'No character states recorded for this event.'}
+                      : 'No character states recorded for this scene.'}
                   </p>
                 ) : (
                   <div className="space-y-2">

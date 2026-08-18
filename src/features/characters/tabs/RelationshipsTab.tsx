@@ -200,7 +200,7 @@ export function RelationshipsTab({ character }: RelationshipsTabProps) {
         <EmptyState
           icon={Network}
           title={activeEventId ? 'No relationships at this point' : 'No relationships yet'}
-          description={activeEventId ? 'No relationship states recorded up to this event.' : 'Add a relationship to start tracking connections between characters.'}
+          description={activeEventId ? 'No relationship states recorded up to this scene.' : 'Add a relationship to start tracking connections between characters.'}
           className="py-4"
         />
       ) : (

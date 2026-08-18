@@ -32,7 +32,7 @@ function AppearanceRow({ appearance, isActive, onClick }: {
       <BookOpen className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))]" />
       <div className="min-w-0 flex-1">
         <span className="text-sm font-medium text-[hsl(var(--foreground))] truncate block">
-          {appearance.eventTitle || 'Untitled event'}
+          {appearance.eventTitle || 'Untitled scene'}
         </span>
         <span className="text-xs text-[hsl(var(--muted-foreground))] truncate block">
           Ch. {appearance.chapterNumber ?? '?'}{appearance.chapterTitle ? ` — ${appearance.chapterTitle}` : ''}
@@ -135,7 +135,7 @@ export function AppearancesTab({ character }: AppearancesTabProps) {
             ))}
           </div>
         ) : (
-          /* "Referenced but not present in no events yet" — the old copy read
+          /* "Referenced but not present in no scenes yet" — the old copy read
              as a mistake because it was one sentence doing two jobs. */
           <p className="text-xs text-[hsl(var(--muted-foreground))]">
             Not mentioned in any scene yet. Type <span className="font-medium">@</span> in

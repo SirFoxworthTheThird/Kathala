@@ -92,7 +92,7 @@ export default function CalendarView() {
         <EmptyState
           icon={CalendarDays}
           title="No calendar yet"
-          description="The calendar view lays your events out by in-world date, and turns day counts into dates across the app. Start from a standard twelve-month year — you can rename the months, change their lengths and set the starting year afterwards."
+          description="The calendar view lays your scenes out by in-world date, and turns day counts into dates across the app. Start from a standard twelve-month year — you can rename the months, change their lengths and set the starting year afterwards."
           action={(
             <div className="flex flex-wrap items-center justify-center gap-2">
               <Button
@@ -120,7 +120,7 @@ export default function CalendarView() {
       <div className="border-b border-[hsl(var(--border))] px-6 py-3">
         <h1 className="text-lg font-semibold text-[hsl(var(--foreground))]">Calendar</h1>
         <p className="text-xs text-[hsl(var(--muted-foreground))]">
-          Events by in-world date.{readOnly ? '' : ' Drag an event to a day to pin it there.'}
+          Scenes by in-world date.{readOnly ? '' : ' Drag a scene to a day to pin it there.'}
         </p>
         {provisionalCount > 0 && (
           <p className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-500">

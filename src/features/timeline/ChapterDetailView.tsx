@@ -188,7 +188,7 @@ export default function ChapterDetailView() {
   /*
     A chapter the reader has not reached is not rendered at all.
 
-    This screen took the gate for two things — hiding *Add Event*, and declining
+    This screen took the gate for two things — hiding *Add Scene*, and declining
     to move the cursor — and nothing else, so opening a later chapter showed its
     scenes, its synopsis and its Character States in full: the names, where they
     are, and what they are there to do. Measured on a downloaded *Philosopher's
@@ -255,10 +255,10 @@ export default function ChapterDetailView() {
         {/* Events */}
         <div className="flex flex-col border-b border-[hsl(var(--border))] lg:flex-1 lg:border-b-0 lg:border-r">
           <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-2">
-            <span className="text-sm font-medium">Events ({events.length})</span>
+            <span className="text-sm font-medium">Scenes ({events.length})</span>
             {!gate.active && (
               <Button size="sm" onClick={() => setAddEventOpen(true)}>
-                <Plus className="h-4 w-4" /> Add Event
+                <Plus className="h-4 w-4" /> Add Scene
               </Button>
             )}
           </div>
@@ -266,9 +266,9 @@ export default function ChapterDetailView() {
             {events.length === 0 ? (
               <EmptyState
                 icon={Scroll}
-                title="No events yet"
-                description="Add the first event to this chapter."
-                action={<Button size="sm" onClick={() => setAddEventOpen(true)}><Plus className="h-4 w-4" /> Add Event</Button>}
+                title="No scenes yet"
+                description="Add the first scene to this chapter."
+                action={<Button size="sm" onClick={() => setAddEventOpen(true)}><Plus className="h-4 w-4" /> Add Scene</Button>}
               />
             ) : (
               sortedEvents.map((e, i) => (
@@ -295,7 +295,7 @@ export default function ChapterDetailView() {
           </div>
           <div className="flex flex-col gap-2 p-3 lg:flex-1 lg:overflow-auto">
             {events.length === 0 && (
-              <EmptyState icon={Scroll} title="No events yet" className="py-4" />
+              <EmptyState icon={Scroll} title="No scenes yet" className="py-4" />
             )}
 
             {/* EV-2: with events but nobody in them the column used to be a

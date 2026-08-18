@@ -180,7 +180,7 @@ export function EventRow({ event, isFirst, isLast, onMoveUp, onMoveDown, chapter
           <ConfirmDialog
             open={confirmOpen}
             onOpenChange={setConfirmOpen}
-            title={`Delete "${event.title || 'this event'}"?`}
+            title={`Delete "${event.title || 'this scene'}"?`}
             onConfirm={() => deleteEvent(event.id)}
           />
         </div>

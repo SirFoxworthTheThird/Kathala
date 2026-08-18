@@ -4,20 +4,20 @@ Use this checklist whenever a book is added to or substantially revised in `exam
 
 ## Story structure
 
-- Include every chapter in reading order, with at least one event per chapter.
-- Split a chapter into enough events to represent meaningful changes of place, cast, knowledge, ownership, or dramatic tension. Do not create filler beats merely to increase the count.
+- Include every chapter in reading order, with at least one scene per chapter.
+- Split a chapter into enough scenes to represent meaningful changes of place, cast, knowledge, ownership, or dramatic tension. Do not create filler beats merely to increase the count.
 - Keep tension within the application’s 1–5 range and shape it to the actual pacing of the chapter.
-- Give every event a non-negative elapsed-time value. If the example uses the calendar, also assign a valid in-world date and time to every event.
+- Give every scene a non-negative elapsed-time value. If the example uses the calendar, also assign a valid in-world date and time to every scene.
 - Model separate timelines only when the book actually contains parallel or framing chronologies. A change of viewpoint or travel route is not by itself a new timeline.
 - Add plot threads, motifs, lore, factions, knowledge reveals, relationships, goals, and items where they help explain the book. All references must resolve.
 
 ## Characters and state
 
 - Add the characters needed to understand the complete book and their meaningful relationships.
-- Create a character snapshot for every character present in an event, and no snapshot for a character who is merely mentioned or has not yet appeared.
-- Give each present character an event-specific state and location. Describe what is true for that character at that moment—not a chapter summary or inherited context.
+- Create a character snapshot for every character present in a scene, and no snapshot for a character who is merely mentioned or has not yet appeared.
+- Give each present character a scene-specific state and location. Describe what is true for that character at that moment—not a chapter summary or inherited context.
 - Never copy one status across the whole cast. Avoid placeholders such as “state carried through,” “ongoing context,” or “not yet directly involved.”
-- Check alive/dead state against the chronology; do not carry a later death backward into earlier events.
+- Check alive/dead state against the chronology; do not carry a later death backward into earlier scenes.
 - Before assigning any portrait, item, or location illustration, inspect the image and record its subject and source in the generator/review notes. A URL returning an image is not a review. Do not use a merely similar image from another book or a generic period portrait as though it depicts a named fictional character.
 - Verify portraits and item illustrations load, are visually consistent with the book’s tone, and are not unwanted photographic or cartoon styles. Give named characters distinct, subject-appropriate art where the source material allows it.
 
@@ -34,9 +34,9 @@ Use this checklist whenever a book is added to or substantially revised in `exam
 ## Editorial quality
 
 - Describe the world as the book’s story, not as an example, dataset, or record of the work used to create it.
-- Keep location, character, event, and item text specific rather than repetitive or generic.
+- Keep location, character, scene, and item text specific rather than repetitive or generic.
 - Avoid copying prose from the source book. Examples contain original structural summaries only.
-- Keep descriptions spoiler-safe where they are visible before the relevant event in reading mode.
+- Keep descriptions spoiler-safe where they are visible before the relevant scene in reading mode.
 - Use illustrations and maps that suit the genre and have reliable attribution or source information in Lore.
 
 ## Packaging and release
@@ -51,9 +51,9 @@ Use this checklist whenever a book is added to or substantially revised in `exam
 
 The example-quality suite prevents these regressions:
 
-- chapters without events or events with invalid chapter references;
+- chapters without scenes or scenes with invalid chapter references;
 - missing, extra, or duplicate character snapshots;
-- snapshots for absent characters, unresolved character/location references, empty or duplicated per-event status text, and known placeholder wording;
+- snapshots for absent characters, unresolved character/location references, empty or duplicated per-scene status text, and known placeholder wording;
 - generic or map-navigation-only location descriptions;
 - missing map image IDs, invalid map references, or partially specified/non-numeric marker coordinates;
 - tension outside 1–5 and negative or missing elapsed time;
@@ -61,4 +61,4 @@ The example-quality suite prevents these regressions:
 - map images reused as character, item, or location illustrations;
 - catalogue counts, world IDs, filenames, and UTF-8 byte sizes drifting from the shipped files.
 
-Visual accuracy, historical accuracy, spoiler judgment, image availability, and whether an event deserves additional beats still require the manual review above.
+Visual accuracy, historical accuracy, spoiler judgment, image availability, and whether a scene deserves additional beats still require the manual review above.

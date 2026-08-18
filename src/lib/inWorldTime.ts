@@ -66,7 +66,7 @@ export function computeInWorldDays(
  * an event with no `travelDays` advances the clock by nothing, so a run of them
  * stacks on the day the previous event happened to land on, and a fresh world
  * shows every scene sitting on the first day of the year. HB-5 filed that as
- * "untimed events silently pile onto the first calendar day", and the word that
+ * "untimed scenes silently pile onto the first calendar day", and the word that
  * matters is *silently* — the stacking itself is correct behaviour for a story
  * whose scenes all happen at once.
  *

@@ -35,9 +35,9 @@ test.describe('Overlay dismissal', () => {
     }
     // Chapter Diff only appears once an event is active on the timeline bar.
     await page.getByTitle('Open chapter detail').first().click()
-    await page.getByRole('main').getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill('Scene One')
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill('Scene One')
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
     await page.goto(`/#/worlds/${id}/timeline`)
     await page.getByTitle('Scene One', { exact: true }).click()
     return id

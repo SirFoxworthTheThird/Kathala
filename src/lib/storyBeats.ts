@@ -24,7 +24,7 @@ export interface StoryBeat {
 
 export const STORY_BEATS: readonly StoryBeat[] = [
   { id: 'hook', label: 'Hook', short: 'Hook', act: 1, hint: 'Opens the story and poses its question.' },
-  { id: 'inciting-incident', label: 'Inciting Incident', short: 'Inciting', act: 1, hint: 'The event that disrupts the ordinary world.' },
+  { id: 'inciting-incident', label: 'Inciting Incident', short: 'Inciting', act: 1, hint: 'The scene that disrupts the ordinary world.' },
   { id: 'plot-point-1', label: 'Plot Point 1', short: 'PP1', act: 1, hint: 'The protagonist commits — end of Act 1.' },
   { id: 'midpoint', label: 'Midpoint', short: 'Mid', act: 2, hint: 'A reversal or revelation that raises the stakes.' },
   { id: 'plot-point-2', label: 'Plot Point 2', short: 'PP2', act: 2, hint: 'The low point that launches Act 3.' },
@@ -37,7 +37,7 @@ const SAVE_THE_CAT: readonly StoryBeat[] = [
   { id: 'stc-opening-image', label: 'Opening Image', short: 'Open', act: 1, hint: 'A snapshot of the world (and hero) before the change.' },
   { id: 'stc-theme-stated', label: 'Theme Stated', short: 'Theme', act: 1, hint: 'The story’s argument, hinted early.' },
   { id: 'stc-setup', label: 'Setup', short: 'Setup', act: 1, hint: 'Establish the hero, world, and what’s missing.' },
-  { id: 'stc-catalyst', label: 'Catalyst', short: 'Catalyst', act: 1, hint: 'The inciting event that upends the status quo.' },
+  { id: 'stc-catalyst', label: 'Catalyst', short: 'Catalyst', act: 1, hint: 'The inciting scene that upends the status quo.' },
   { id: 'stc-debate', label: 'Debate', short: 'Debate', act: 1, hint: 'The hero hesitates — should they go?' },
   { id: 'stc-break-into-two', label: 'Break into Two', short: 'B2', act: 1, hint: 'The hero commits and enters the new world.' },
   { id: 'stc-b-story', label: 'B Story', short: 'B-Story', act: 2, hint: 'A secondary (often relationship) thread begins.' },

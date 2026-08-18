@@ -13,7 +13,7 @@ const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map
  * minority of the rows and looked like all the others. The ordering itself is
  * unit-tested in `src/lib/__tests__/mapCast.test.ts`; this drives the sidebar.
  *
- * MAP-3: the sidebar said *"Select an event from the timeline bar below to
+ * MAP-3: the sidebar said *"Select a scene from the timeline bar below to
  * place characters onto the map"* while listing characters with their places
  * beneath them. That was real — with no cursor, snapshot resolution falls back
  * to each character's most recently updated snapshot, so the location line had
@@ -170,7 +170,7 @@ test.describe('The map sidebar says who is on stage', () => {
     // SB-3 change the row printed one anyway, because snapshot resolution falls
     // back to the latest snapshot when there is no event to resolve against.
     const body = castBody(page)
-    await expect(body.getByText(/Select an event from the timeline bar below/))
+    await expect(body.getByText(/Select a scene from the timeline bar below/))
       .toBeVisible({ timeout: 20_000 })
     await expect(body.getByText('Rivendell')).toHaveCount(0)
 
@@ -178,6 +178,6 @@ test.describe('The map sidebar says who is on stage', () => {
     // half can be satisfied by a sidebar that renders nothing at all.
     await setCursor(page)
     await expect(body.getByText('Rivendell')).toBeVisible({ timeout: 20_000 })
-    await expect(body.getByText(/Select an event from the timeline bar below/)).toHaveCount(0)
+    await expect(body.getByText(/Select a scene from the timeline bar below/)).toHaveCount(0)
   })
 })

@@ -30,11 +30,11 @@ async function seedChapter(page: Page, worldName: string, statuses: string[]) {
   await page.getByTitle('Open chapter detail').first().click()
   const titles = ['Opening', 'Closing']
   for (let i = 0; i < titles.length; i++) {
-    await page.getByRole('main').getByRole('button', { name: 'Add Event' }).first().click()
+    await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
     const dialog = page.getByRole('dialog')
-    await page.getByPlaceholder('Event title').fill(titles[i])
+    await page.getByPlaceholder('Scene title').fill(titles[i])
     await dialog.getByRole('button', { name: statuses[i], exact: true }).click()
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
     await expect(page.getByText(titles[i]).first()).toBeVisible()
   }
 }

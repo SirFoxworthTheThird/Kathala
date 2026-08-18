@@ -188,7 +188,7 @@ export function LLMPromptDialog({ open, onOpenChange, onImported }: LLMPromptDia
                 {' — '}
                 {nf.format(stats.characters)} character{stats.characters !== 1 ? 's' : ''} ·{' '}
                 {nf.format(stats.chapters)} chapter{stats.chapters !== 1 ? 's' : ''} ·{' '}
-                {nf.format(stats.events)} event{stats.events !== 1 ? 's' : ''}
+                {nf.format(stats.events)} scene{stats.events !== 1 ? 's' : ''}
                 {stats.factions > 0 && <> · {nf.format(stats.factions)} faction{stats.factions !== 1 ? 's' : ''}</>}
               </div>
             )}

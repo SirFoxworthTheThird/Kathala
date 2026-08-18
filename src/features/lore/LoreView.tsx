@@ -390,7 +390,7 @@ export default function LoreView() {
           {activeEventId && (
             <button
               onClick={() => setTimelineFilter((v) => !v)}
-              title={timelineFilter ? 'Showing lore revealed up to this event' : 'Show all lore'}
+              title={timelineFilter ? 'Showing lore revealed up to this scene' : 'Show all lore'}
               className={`flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors ${
                 timelineFilter
                   ? 'border-[hsl(var(--ring)/0.4)] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'

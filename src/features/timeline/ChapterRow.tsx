@@ -271,7 +271,7 @@ export function ChapterRow({ chapter, threadFilter = null, wordsByEvent = NO_WOR
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
           title={`Delete chapter "${chapter.title}"?`}
-          description="All events in this chapter will be permanently deleted."
+          description="All scenes in this chapter will be permanently deleted."
           onConfirm={handleDelete}
         />
       </div>
@@ -280,7 +280,7 @@ export function ChapterRow({ chapter, threadFilter = null, wordsByEvent = NO_WOR
       {effectiveExpanded && (
         <div className="border-t border-[hsl(var(--border))] px-4 pt-3 pb-2 flex flex-col">
           {sortedEvents.length === 0 ? (
-            <EmptyState icon={Scroll} title={threadFilter ? 'No scenes on this thread' : 'No events yet'} className="py-3" />
+            <EmptyState icon={Scroll} title={threadFilter ? 'No scenes on this thread' : 'No scenes yet'} className="py-3" />
           ) : (
             <div className="flex flex-col">
               {sortedEvents.map((e, i) => (
@@ -302,7 +302,7 @@ export function ChapterRow({ chapter, threadFilter = null, wordsByEvent = NO_WOR
             className="gap-1.5 text-xs self-start mt-1"
             onClick={() => setAddEventOpen(true)}
           >
-            <Plus className="h-3.5 w-3.5" /> Add Event
+            <Plus className="h-3.5 w-3.5" /> Add Scene
           </Button>
         </div>
       )}

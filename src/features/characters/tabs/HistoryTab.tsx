@@ -214,7 +214,7 @@ export function HistoryTab({ character }: HistoryTabProps) {
       <EmptyState
         icon={Camera}
         title="No snapshots yet"
-        description='Select an event and save state in the "Current State" tab.'
+        description='Select a scene and save state in the "Current State" tab.'
         className="py-8"
       />
     )

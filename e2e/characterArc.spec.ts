@@ -42,9 +42,9 @@ test.describe('Character Arc view', () => {
 
     // Add one event so a snapshot can reference it.
     await page.getByTitle('Open chapter detail').first().click()
-    await page.getByRole('main').getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill('Departure')
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill('Departure')
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
     await expect(page.getByText('Departure').first()).toBeVisible()
 
     // The arc grid renders character rows only once at least one snapshot

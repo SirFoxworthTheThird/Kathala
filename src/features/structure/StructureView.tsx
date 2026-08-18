@@ -119,7 +119,7 @@ export default function StructureView() {
         <EmptyState
           icon={ListChecks}
           title="No chapters yet"
-          description="The structure board maps your events onto a story template (Three-Act, Save the Cat, Hero's Journey). Add chapters and events on the Timeline, then tag their structural beats."
+          description="The structure board maps your scenes onto a story template (Three-Act, Save the Cat, Hero's Journey). Add chapters and scenes on the Timeline, then tag their structural beats."
           action={<Button size="sm" variant="outline" onClick={() => navigate(`/worlds/${worldId}/timeline`)}>Go to Timeline</Button>}
         />
       </div>

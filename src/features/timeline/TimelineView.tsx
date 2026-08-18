@@ -51,7 +51,7 @@ function ChronologicalList({ events, chapters, timelines, activeEventId, onSelec
   if (events.length === 0) {
     return (
       <p className="text-sm text-[hsl(var(--muted-foreground))]">
-        No events yet — add events to chapters to place them on the in-world timeline.
+        No scenes yet — add scenes to chapters to place them on the in-world timeline.
       </p>
     )
   }
@@ -82,7 +82,7 @@ function ChronologicalList({ events, chapters, timelines, activeEventId, onSelec
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-[hsl(var(--foreground))]">{ev.title || 'Untitled event'}</p>
+              <p className="truncate text-sm font-medium text-[hsl(var(--foreground))]">{ev.title || 'Untitled scene'}</p>
               <p className="truncate text-xs text-[hsl(var(--muted-foreground))]">{ch ? `Ch. ${ch.number} — ${ch.title}` : ''}</p>
             </div>
             {ev.isFlashback && (
@@ -111,7 +111,7 @@ function CombinedList({ rows, activeEventId, onSelect }: {
   if (rows.length === 0) {
     return (
       <p className="text-sm text-[hsl(var(--muted-foreground))]">
-        No events yet — add events across your timelines to see them in one sequence.
+        No scenes yet — add scenes across your timelines to see them in one sequence.
       </p>
     )
   }
@@ -138,7 +138,7 @@ function CombinedList({ rows, activeEventId, onSelect }: {
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-[hsl(var(--foreground))]">{ev.title || 'Untitled event'}</p>
+              <p className="truncate text-sm font-medium text-[hsl(var(--foreground))]">{ev.title || 'Untitled scene'}</p>
               <p className="flex items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))]">
                 <span
                   className="h-2 w-2 shrink-0 rounded-full"
@@ -259,7 +259,7 @@ export default function TimelineView() {
       <EmptyState
         icon={BookOpen}
         title="No timeline yet"
-        description="Create a timeline to start tracking chapters and events."
+        description="Create a timeline to start tracking chapters and scenes."
         action={
           <Button onClick={handleCreateTimeline}>
             <Plus className="h-4 w-4" /> Create Timeline
@@ -367,7 +367,7 @@ export default function TimelineView() {
                   aria-pressed={combinedOrder === 'chrono'}
                   className={cn('flex items-center gap-1 border-l border-[hsl(var(--border))] px-2 py-1 transition-colors',
                     combinedOrder === 'chrono' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
-                  title="In-world order — events by when they actually happen"
+                  title="In-world order — scenes by when they actually happen"
                 >
                   <Clock className="h-3.5 w-3.5" /> Chronological
                 </button>
@@ -399,7 +399,7 @@ export default function TimelineView() {
                   aria-pressed={viewMode === 'chronological'}
                   className={cn('flex items-center gap-1 border-l border-[hsl(var(--border))] px-2 py-1 transition-colors',
                     viewMode === 'chronological' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
-                  title="In-world order — events by when they actually happen"
+                  title="In-world order — scenes by when they actually happen"
                 >
                   <Clock className="h-3.5 w-3.5" /> Chronological
                 </button>
@@ -458,7 +458,7 @@ export default function TimelineView() {
           <EmptyState
             icon={BookOpen}
             title="No chapters yet"
-            description="Add your first chapter to start tracking events and character states."
+            description="Add your first chapter to start tracking scenes and character states."
             action={
               <Button onClick={() => setAddChapterOpen(true)}>
                 <Plus className="h-4 w-4" /> Add Chapter
@@ -522,7 +522,7 @@ export default function TimelineView() {
                   if (shown.length === 0) {
                     return (
                       <p className="py-6 text-center text-sm text-[hsl(var(--muted-foreground))]">
-                        No chapters advance this thread yet — tag scenes with it on their event cards.
+                        No chapters advance this thread yet — tag scenes with it on their scene cards.
                       </p>
                     )
                   }
@@ -579,7 +579,7 @@ export default function TimelineView() {
         open={!!deleteTarget}
         onOpenChange={(v) => { if (!v) setDeleteTarget(null) }}
         title={`Delete "${deleteTarget?.name ?? ''}"?`}
-        description="All chapters and events in this timeline will be permanently deleted."
+        description="All chapters and scenes in this timeline will be permanently deleted."
         onConfirm={doDeleteTimeline}
       />
     </div>

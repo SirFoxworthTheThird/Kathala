@@ -47,7 +47,7 @@ export interface ProseMentionIssue {
 }
 
 /**
- * Reconciles each scene's prose against the event's structured cast:
+ * Reconciles each scene's prose against the scene's structured cast:
  *  - a character named in the text who is dead at that point ('dead'), or
  *  - a character named in the text but not listed on the event ('untagged').
  * Characters already in the cast are left to the metadata-based checks, so this

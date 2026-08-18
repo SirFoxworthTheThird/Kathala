@@ -41,7 +41,7 @@ The desktop build and the browser build behave the same way here.
 5. [Generate a world from AI](#generate-a-world-from-ai)
 6. [Start a sequel](#start-a-sequel)
 7. [The world dashboard](#the-world-dashboard)
-8. [Timeline & events](#timeline--events)
+8. [Timeline & scenes](#timeline--scenes)
 9. [Chapter detail](#chapter-detail)
 10. [Corkboard](#corkboard)
 11. [Manuscript](#manuscript)
@@ -70,16 +70,16 @@ The desktop build and the browser build behave the same way here.
 
 ## Core concept: the time cursor
 
-Everything in PlotWeave is read *relative to an event*. Events are the true units
-of story time; chapters group those events for structure and reading order. The
+Everything in PlotWeave is read *relative to a scene*. Scenes are the true units
+of story time; chapters group those scenes for structure and reading order. The
 pill next to the world name — labelled **All chapters** until you choose a moment
-— and the event bar along the bottom are two views of the same **time cursor**.
-Use either one to move event by event. The whole app then answers *"what is true
+— and the scene bar along the bottom are two views of the same **time cursor**.
+Use either one to move scene by scene. The whole app then answers *"what is true
 at this exact moment?"*: where each character is, what they're carrying, who's
 alive, which locations are destroyed, and how relationships stand.
 
-State changes are stored as explicit **snapshots** tied to events. When an entity
-has no snapshot at the selected event, PlotWeave carries forward its most recent
+State changes are stored as explicit **snapshots** tied to scenes. When an entity
+has no snapshot at the selected scene, PlotWeave carries forward its most recent
 state from earlier in that timeline. This is a delta model: record only what
 changes rather than entering every character, item, location, and relationship
 again at every scene. New chapters are seeded from the end of the preceding
@@ -160,7 +160,7 @@ without opening either.
 ### Set up a blank world
 
 When you create a blank world, PlotWeave opens a four-step setup guide. It helps
-you create the first timeline and event, add a main character, place that
+you create the first timeline and scene, add a main character, place that
 character at the opening moment, and then continue to the Timeline. Each optional
 step has **Skip** so you can leave the guide and build the world in any order.
 
@@ -208,7 +208,7 @@ by title or by author, so "dumas" finds both his, and accents are ignored:
 "bronte" finds Brontë. **Escape** closes the Library, and closes the replace
 confirm first if that is showing.
 
-Each entry shows its cast, chapter and event counts, and the download size. Map
+Each entry shows its cast, chapter and scene counts, and the download size. Map
 images and portraits are a separate, much larger download, so they sit behind
 their own button rather than coming along by default — useful if you're on a
 phone.
@@ -333,7 +333,7 @@ than an invitation to write one.
 You can still pan, zoom, drill into sub-maps, follow journeys and export the map
 as a PNG — everything that reads it.
 
-The dashboard becomes a way in rather than a progress report. Recent Events,
+The dashboard becomes a way in rather than a progress report. Recent Scenes,
 Scene Status, Writing Progress, Cast Balance, Plot Threads and Motifs all
 measure the manuscript rather than the story, so they go, and the tiles stop
 talking about *your* cast and *your* catalogue — they count what you have met
@@ -364,7 +364,7 @@ To edit a world anyway, turn reading mode off in **Settings**. Everything comes
 back exactly as it was.
 
 The library worlds carry **no text from the books**. They are structural
-references only: characters, chapters, events, places, relationships and lore.
+references only: characters, chapters, scenes, places, relationships and lore.
 They are unofficial and fan-made, and are not affiliated with or endorsed by the
 authors or publishers.
 
@@ -406,7 +406,7 @@ straight into the new world.
 
 ![Import a manuscript](images/22-import-manuscript.png)
 
-Each parsed scene becomes an event with its prose attached, so the imported draft
+Each parsed scene becomes a scene with its prose attached, so the imported draft
 flows straight into the Manuscript view and reads back as one continuous document.
 (Import handles Markdown and plain text today; `.docx` is planned.)
 
@@ -416,7 +416,7 @@ flows straight into the Manuscript view and reads back as one continuous documen
 
 If your story lives in your head or in a synopsis rather than a finished draft,
 **Generate World from AI** builds the whole structure — characters, factions,
-relationships, chapters, events, and who-knows-what — from a story document, using
+relationships, chapters, scenes, and who-knows-what — from a story document, using
 any AI assistant (ChatGPT, Claude, Gemini…).
 
 ![Generate world from AI](images/23-generate-ai.png)
@@ -425,7 +425,7 @@ any AI assistant (ChatGPT, Claude, Gemini…).
    followed by your story text.
 2. The assistant replies with a compact JSON **story spec**.
 3. **Paste that JSON** back into the box in the dialog. A live preview shows what
-   it found — character, chapter, event, and faction counts. A ```` ``` ```` code
+   it found — character, chapter, scene, and faction counts. A ```` ``` ```` code
    fence around the answer is stripped for you, so paste it exactly as given.
 4. Click **Import world** and you land in the finished world.
 
@@ -467,7 +467,7 @@ default, and you tick off what doesn't return:
   location and inventory, so continuity is wired from page one.
 
 The sequel is a **copy**: it's a fully independent world, so editing it never
-changes the original. Book one's chapters, events, and scene prose are *not*
+changes the original. Book one's chapters, scenes, and scene prose are *not*
 copied — book two is a fresh narrative that begins where the last one left off.
 
 ---
@@ -478,7 +478,7 @@ Opening a world lands you on its dashboard — a bird's-eye view of the whole
 project. Stat tiles summarise the timeline, cast, maps, relationships, items,
 snapshot coverage, and continuity status. The cast tile's **alive and dead
 split is as of the moment you are on**, like everything else in PlotWeave — move
-the cursor back before a death and the count moves with you. Below them are recent events, scene
+the cursor back before a death and the count moves with you. Below them are recent scenes, scene
 status, writing progress, and analytics panels (Cast Balance, Plot Threads, and
 Motifs & Themes, covered later). Worlds with linked timelines also show a
 **Timeline Links** summary.
@@ -557,10 +557,10 @@ your streak and history survive a backup or a move to another device.
 
 ---
 
-## Timeline & events
+## Timeline & scenes
 
 The Timeline is the spine of your story: a list of chapters, each holding an
-ordered set of **events** (scenes/beats). A **pacing curve** across the top plots
+ordered set of **scenes** (scenes/beats). A **pacing curve** across the top plots
 dramatic tension chapter by chapter once you rate scenes, so you can see the
 shape of your story at a glance. It is drawn at a fixed width per scene and its
 panel is only as wide as the curve needs, so an early draft gets a small chart
@@ -573,7 +573,7 @@ the full width and the curve scrolls inside it.
   in-world order (useful when you use flashbacks or in-world dates).
 - **Add Chapter**, **New Timeline** (for alternate/parallel timelines), and
   **Generate with AI** all live in the header.
-- Click an event to move the time cursor to that exact moment. Each chapter row
+- Click a scene to move the time cursor to that exact moment. Each chapter row
   also has an **open** button for its detail page, and chapters can be dragged to
   reorder the narrative.
 - **View from here** on a chapter row moves the time cursor to that chapter's
@@ -592,7 +592,7 @@ the full width and the curve scrolls inside it.
   controls, so there is no trash icon to catch a stray click on the way to
   *open* or *move earlier*. The menu opens by click or by pressing **↓** on it,
   and **Escape** closes it and puts focus back.
-- Select events with their checkboxes; **Shift+click** selects a range. The bulk
+- Select scenes with their checkboxes; **Shift+click** selects a range. The bulk
   toolbar can move the selection to another chapter, add a tag, or delete it.
 - The chapter bar at the bottom of the screen also lets you **play the story**
   and **Compare chapters** — a diff of exactly what changed between any two points
@@ -626,7 +626,7 @@ Use **Timeline Relationships** to describe how two timelines connect:
 
 Choose an **Outer / Source** and **Inner / Target** timeline, then add optional
 character, location, or document anchors. Frame narratives can also use **sync
-points**: pair an event in the inner story with one in the outer story so playback
+points**: pair a scene in the inner story with one in the outer story so playback
 keeps the framing moment aligned.
 
 ![Timeline relationships](images/39-timeline-relationships.png)
@@ -662,7 +662,7 @@ Every **other multi-timeline world** uses a single-height bottom bar with a
 **scope selector** on its left. Choose one timeline to scrub it on its own, or
 pick **All · Chapter order** / **All · Chronological** to merge every timeline
 into one strip — each chapter run tinted with its timeline's colour, and the
-active event's panel showing which storyline it belongs to. The scope is
+active scene's panel showing which storyline it belongs to. The scope is
 remembered between sessions.
 
 **Chapter order** follows chapter numbers across all timelines, so a book
@@ -672,7 +672,7 @@ each scene happens.
 
 **Play** works in every scope, always on the map. On a single timeline it's the
 usual animated run (characters move along their trails). In a merged view it
-plays through the whole sequence and the **map follows each event's own
+plays through the whole sequence and the **map follows each scene's own
 timeline** — as the cursor crosses from one storyline into another, the map
 switches to that timeline's cast and animates their movement. Chronological order
 braids the storylines, so the map alternates between them as their scenes
@@ -694,7 +694,7 @@ multi-era stories). The toggle
 here and the bottom bar's scope selector are one setting — change either and
 both follow, and your choice is remembered between sessions. Each row is tagged
 with a coloured dot, its timeline name, and its chapter, so you can read the
-true order of events across parallel POVs or braided plots at a glance. Click
+true order of scenes across parallel POVs or braided plots at a glance. Click
 any row to move the time cursor to that moment.
 
 ![All timelines combined view](images/47-all-timelines.png)
@@ -754,7 +754,7 @@ to another field does *not* save, because one Save writes the whole card; a
 blank title is refused, so pressing Enter over a selected title cannot wipe it.
 
 
-Opening a chapter shows its events in order, each with the characters involved,
+Opening a chapter shows its scenes in order, each with the characters involved,
 location, tags, and draft/written status. The right side holds a live
 **Character States** panel, a **Relationship States** summary, and a freeform
 **Writer's Notes** field that auto-saves.
@@ -781,8 +781,8 @@ asked for.
 
 **Generate / Update Chapter with AI.** From a chapter you can hand your scene
 text to an AI assistant (via a copy-paste prompt, like the world generator) and
-have it fill in the events, character states, and a dramatic-**tension** rating
-for each event — the ratings feed the pacing curve on the Timeline. *Generate*
+have it fill in the scenes, character states, and a dramatic-**tension** rating
+for each scene — the ratings feed the pacing curve on the Timeline. *Generate*
 drafts a new chapter; *Update* re-derives an existing one from its prose.
 
 ---
@@ -791,7 +791,7 @@ drafts a new chapter; *Update* re-derives an existing one from its prose.
 
 The **Corkboard** is an index-card view of your whole story — the classic way to
 see structure at a glance and shuffle it. Each chapter is a column; each scene
-(event) is a card showing its title, synopsis, POV character, and **status**
+(scene) is a card showing its title, synopsis, POV character, and **status**
 (Idea → Outline → Draft → Revised → Final).
 
 ![Corkboard](images/32-corkboard.png)
@@ -813,7 +813,7 @@ see structure at a glance and shuffle it. Each chapter is a column; each scene
 - The card for the scene the **time cursor** is on is outlined, so moving along
   the bar at the bottom walks the board with you.
 
-It's the same events as the Timeline, shown as a board — reorder here or there
+It's the same scenes as the Timeline, shown as a board — reorder here or there
 and both stay in sync.
 
 ---
@@ -822,14 +822,14 @@ and both stay in sync.
 
 The **Manuscript** view stitches every scene's prose into one continuous
 document, in reading order, so you can read and export your book without leaving
-PlotWeave. Write a scene's prose on its event, and it appears here automatically —
-the box on the event grows to fit what you write, so a long scene isn't read
+PlotWeave. Write a scene's prose on its scene, and it appears here automatically —
+the box on the scene grows to fit what you write, so a long scene isn't read
 through a five-line window.
 
 ![Manuscript view](images/24-manuscript.png)
 
 - **Draft vs. Reading** — Draft shows per-scene and per-chapter word counts, scene
-  labels, and links back to each event; Reading hides the scaffolding for a clean
+  labels, and links back to each scene; Reading hides the scaffolding for a clean
   read-through of only the written scenes.
 - **Word goals** — set a target for the whole manuscript (in the header) and a
   per-chapter goal (in Draft mode); a progress bar tracks words against each. A
@@ -889,7 +889,7 @@ set a [daily goal](#writing-progress) a thin bar at the bottom fills toward it.
 ![Focus mode](images/46-focus-mode.png)
 
 It autosaves as you write (so scene history and the writing log keep working);
-press **Esc** or click the ✕ to drop back to the event.
+press **Esc** or click the ✕ to drop back to the scene.
 
 ---
 
@@ -969,10 +969,10 @@ Opening a character gives you a tabbed profile:
 - **Overview** — biography, aliases, portrait, map/Arc colour, and an optional
   birth date when the world has a calendar.
 - **Current State** — location, inventory notes, alive status, and travel mode
-  *at the current event*.
-- **History** — how their state changed event by event, including carried-forward
+  *at the current scene*.
+- **History** — how their state changed scene by scene, including carried-forward
   states.
-- **Appearances** — every event they're in.
+- **Appearances** — every scene they're in.
 - **Goals** — their inner life (see below).
 - **Relationships**, **Lore**, and **Factions** — their connections and
   affiliations.
@@ -989,7 +989,7 @@ four classic axes:
 - **Fear** — what they're avoiding.
 - **Flaw** — the trait that keeps getting in their way.
 
-Each goal can be **scoped in time** — *From* an event *until* another — so a want
+Each goal can be **scoped in time** — *From* a scene *until* another — so a want
 they pick up in chapter three and abandon in chapter nine is recorded as exactly
 that. Leave either end open for a drive they carry from the start, or to the end.
 Goals that aren't held at the current time cursor stay listed but dimmed and
@@ -1026,7 +1026,7 @@ side character who's quietly taken over.
 ## Plot Threads
 
 **Plot Threads** track subplots. Define named threads (e.g. *The Ring's Journey*,
-*Pursuit of the Nazgûl*), give each a colour, and tag events with the threads
+*Pursuit of the Nazgûl*), give each a colour, and tag scenes with the threads
 they advance. The dashboard widget then draws a **cadence strip** per thread
 across your chapters and flags trouble:
 
@@ -1063,7 +1063,7 @@ is filtering by.
 ### A lane per thread in the Arc grid
 
 The [Character Arc grid](#character-arc-grid) has a **Threads** row type: one
-lane per thread across your chapters (or events), each cell naming the scene
+lane per thread across your chapters (or scenes), each cell naming the scene
 that carries it. Where a lane goes blank, the subplot is off-stage — the fastest
 way to see a thread's rhythm across the whole book.
 
@@ -1077,7 +1077,7 @@ just visible:
 
 - **left dangling** — raised, then quiet for the last three chapters or more.
 - **goes quiet mid-story** — a run of three or more chapters with no beat.
-- **has no scenes** — a thread that exists but was never tagged onto an event.
+- **has no scenes** — a thread that exists but was never tagged onto a scene.
 
 Each finding links to the chapter where the thread was last (or first) seen, and
 can be suppressed with a note like any other continuity issue.
@@ -1114,7 +1114,7 @@ its beats appears as a slot, in order and tinted by act.
 ![Structure board](images/45-structure.png)
 
 - **Assign a scene** to a beat from its "+ Assign a scene…" picker; the slot then
-  shows that scene (click it to jump to the event in the timeline).
+  shows that scene (click it to jump to the scene in the timeline).
 - A **X / N beats placed** counter tells you how much of the structure is filled,
   so **gaps** — a missing midpoint, no clear climax — stand out.
 - A beat is flagged **out of order** when its scene falls earlier in the story
@@ -1181,7 +1181,7 @@ on the *"top level"* zone to un-nest — handy for fixing a sub-map that landed 
 the wrong place. This works for any map at any depth; on a touch device,
 **press and hold** a map to pick it up first, so a normal swipe still scrolls the
 list. To place a character
-(selected from an event in the timeline bar), drag them onto the map — or, on
+(selected from a scene in the timeline bar), drag them onto the map — or, on
 touch devices, tap the crosshair on their card and then tap a location.
 
 When several characters stand in the same place, their pin shows a count;
@@ -1261,7 +1261,7 @@ the spot you were aiming at.
   a route to edit its name, type and notes; its panel also counts the waypoints,
   separating named locations from free points. The shape itself is drawn on the
   canvas rather than edited in the panel.
-- Regions have a fill colour, opacity, notes, and an event-based condition. They
+- Regions have a fill colour, opacity, notes, and a scene-based condition. They
   can belong to a faction and can link directly to a sub-map. Open a region and
   its panel carries **At this moment** — whether the place is *active, occupied,
   contested, abandoned, destroyed* or *unknown* at the scene on your cursor,
@@ -1284,7 +1284,7 @@ the spot you were aiming at.
   weight there is: it is the last thing on the panel, never the loudest. The
   character panel has no delete on purpose — a character outlives every marker
   they stand on, so their panel links to the character screen instead.
-- A location's detail panel stores its description, event-based condition and
+- A location's detail panel stores its description, scene-based condition and
   notes, owning faction, characters and items present, an optional linked
   sub-map, and a **picture** of the place. It opens when you pick a place —
   from the sidebar, from search, or by clicking its pin. Moving the time cursor
@@ -1301,7 +1301,7 @@ the spot you were aiming at.
   corner, ✕ to take it away, and click it to open it
   [full size](#viewing-pictures-full-size). The pin itself stays an icon, so a
   city still reads as a city at a glance.
-- The **Show** chips can display the selected event's movement, complete
+- The **Show** chips can display the selected scene's movement, complete
   character journeys, character labels, locations, and sub-map links. Select one
   character to focus the display.
 - **Measure** only appears in the toolbar once the map has a scale — until then
@@ -1309,7 +1309,7 @@ the spot you were aiming at.
   unlocks it.
 
 Click a character pin to open their **journey strip**, a chronological list of
-every place they visited. Selecting a stop moves the global cursor to that event.
+every place they visited. Selecting a stop moves the global cursor to that scene.
 It also opens their panel on the right, where the portrait at the top opens
 [full size](#viewing-pictures-full-size) like any other.
 
@@ -1355,7 +1355,7 @@ another floor, it switches to that floor and lands their pin at the right spot.
 ![Map levels](images/29-map-levels.png)
 
 Press **play** in the chapter bar and the map becomes a playback stage: as the
-story advances event by event, character pins glide between locations along their
+story advances scene by scene, character pins glide between locations along their
 routes, so you can watch your cast move through the world. The story-notes overlay
 shows the current chapter, synopsis, and relevant character status notes. For a
 frame narrative, the map can display outer-timeline characters as **ghost pins**;
@@ -1393,7 +1393,7 @@ onto it.
 ## Items
 
 Track the objects that matter — weapons, artefacts, documents, consumables — with
-thumbnails, categories, and descriptions. Like characters, items have per-event
+thumbnails, categories, and descriptions. Like characters, items have per-scene
 **placements** (who holds an item, or where it is, at any point in the story).
 An item's picture opens full size the same way a portrait does — see
 [Viewing pictures full size](#viewing-pictures-full-size).
@@ -1437,9 +1437,9 @@ labelled, colour-coded relationship (allies, rivals, family, lovers…), and the
 graph is fully pannable/zoomable with a minimap.
 
 Create a relationship with the form or drag from one character node to another.
-Relationships may be bidirectional or directed, can begin at a chosen event, and
+Relationships may be bidirectional or directed, can begin at a chosen scene, and
 carry a label, strength, sentiment, and description. Selecting an edge opens its
-editor and an **Evolution** history of every event-based change. The faction
+editor and an **Evolution** history of every scene-based change. The faction
 overlay colours character nodes by their active memberships.
 
 ![Relationships graph](images/10-relationships.png)
@@ -1486,13 +1486,13 @@ already has a relationship is updated in place, so you can re-run safely.
 
 Because relationships are **snapshot-aware**, the prompt also captures how a bond
 *evolves*: each relationship can carry a list of **changes**, and each change
-names an **existing event** where the state shifts (*allies → rivals →
-reconciled*). Those become per-event snapshots, so as you move the time cursor
-the graph shows the relationship as it stood then. Add your timeline events
-first, since a change whose event doesn't exist yet is skipped.
+names an **existing scene** where the state shifts (*allies → rivals →
+reconciled*). Those become per-scene snapshots, so as you move the time cursor
+the graph shows the relationship as it stood then. Add your timeline scenes
+first, since a change whose scene doesn't exist yet is skipped.
 
 Relationships are snapshot-aware too — they can change over the course of the
-story (from *rivals* to *reconciled*), and the change is tied to the event where
+story (from *rivals* to *reconciled*), and the change is tied to the scene where
 it happens.
 
 ---
@@ -1501,7 +1501,7 @@ it happens.
 
 The Arc view is a spreadsheet of your whole cast across story time. Choose
 **Characters**, **Factions**, or **Threads** for the rows, and **Chapters** or
-**Events** for the columns. Character cells show status, location, notes,
+**Scenes** for the columns. Character cells show status, location, notes,
 inherited state, and an inventory sparkline; faction cells show who belongs at
 that moment; thread cells name the scene (or count the beats) that carries each
 [plot thread](#plot-threads), so a subplot's rhythm — and its silences — read
@@ -1552,7 +1552,7 @@ It's the fastest way to audit continuity across the entire book at once.
 
 Lore is your world's reference wiki — history, rules, and mythology that don't
 change with time. Organise pages into **categories** (Artefacts, Peoples,
-Places…), tag them, and optionally reveal a page only from a given event onward.
+Places…), tag them, and optionally reveal a page only from a given scene onward.
 
 A page held back with **Revealed at** carries a badge naming the chapter it
 opens in — *From ch. 2* — so a page the reader meets late is not mistaken for
@@ -1571,7 +1571,7 @@ than duplicated — same flow as
 Each page has a Markdown editor with an **Edit / Preview** toggle. **Link
 entities** associates the page with characters, items, or locations; the page
 then appears in those entities' Lore sections and in Writer's Brief when it is
-relevant. Use **Revealed at** to choose the first event at which the page becomes
+relevant. Use **Revealed at** to choose the first scene at which the page becomes
 visible, and turn on the revealed-only filter in the Lore index to hide future
 knowledge at the current cursor.
 
@@ -1583,7 +1583,7 @@ knowledge at the current cursor.
 
 Factions are the organisations your characters belong to — kingdoms, guilds,
 cults, fellowships. Each faction has a colour, description, and **members** (with
-roles and optional start/end events), plus **faction-to-faction stances**
+roles and optional start/end scenes), plus **faction-to-faction stances**
 (allied, hostile, and so on).
 
 Each card shows the faction's colour, its member count, and how many other
@@ -1604,7 +1604,7 @@ generate your cast first.
 Regions and location markers can name an **owning faction**. Those assignments
 appear under **Territories** on the faction detail panel. Turn on the Factions
 overlay in the Relationships graph or Character Arc to colour characters by
-their active membership at the selected event.
+their active membership at the selected scene.
 
 ---
 
@@ -1613,7 +1613,7 @@ their active membership at the selected event.
 The Knowledge tracker manages **who knows what, and when they learn it** — the
 backbone of mysteries and dramatic irony. Record a **fact** (a secret or key
 piece of information), mark when the **reader** learns it, and log **reveals** to
-individual characters at specific events. PlotWeave even **suggests facts from
+individual characters at specific scenes. PlotWeave even **suggests facts from
 your story** (for example, "Gandalf the Grey is dead · Ch. 17").
 
 After one character learns a fact, **Might also know** looks for other characters
@@ -1635,7 +1635,7 @@ front — not knowing it is not the same as it coming first.
 
 **Generate with AI** adds facts in bulk: copy the prompt, describe your story,
 and paste the JSON back. A fact's `origin`, `readerLearnsAt`, and each reveal
-reference **existing events by title** and **existing characters by name** — so
+reference **existing scenes by title** and **existing characters by name** — so
 add your timeline and cast first. Anything that doesn't match is simply left
 unlinked (the fact is still created). A fact with a matching title is updated in
 place (its reveals merged in), so re-running never duplicates.
@@ -1651,9 +1651,9 @@ Press **Ctrl/⌘+K** anywhere to open the command-style search palette. Close it
 with **Esc**, by clicking outside it, or by going anywhere — it does not follow
 you off the page. When it is opened over another panel, Esc closes the palette
 and leaves what was underneath alone. It searches
-characters, factions, items, locations, chapters, events, timelines,
+characters, factions, items, locations, chapters, scenes, timelines,
 relationships, routes, regions, and lore pages, grouped by type. Use the arrow
-keys and **Enter** to navigate; opening an event also sets the time cursor, and
+keys and **Enter** to navigate; opening a scene also sets the time cursor, and
 opening a location focuses its map marker.
 
 ![Search palette](images/16-search.png)
@@ -1679,8 +1679,8 @@ back one *action*, which is not always one record:
 
 - **Deleting a character** brings back their relationships, goals, faction
   memberships, and per-chapter state along with them.
-- **Reordering two events** puts both back, never half the swap.
-- **Deleting a multi-event selection** restores the whole selection at once.
+- **Reordering two scenes** puts both back, never half the swap.
+- **Deleting a multi-scene selection** restores the whole selection at once.
 - **A burst of typing** in chapter notes or a lore page counts as one edit, not
   one per pause — so undo takes back what you just wrote rather than a fragment
   of a sentence.
@@ -1691,7 +1691,7 @@ it's right under your thumb.
 
 **Recent changes** (the clock icon in the top bar, or in the menu on a phone)
 lists your recent edits, newest first, with the time each happened. Each entry
-says what it touched — *Edited chapter — notes*, *Edited event — tension and
+says what it touched — *Edited chapter — notes*, *Edited scene — tension and
 title* — so you can tell one edit from the next without opening anything. Only
 the newest can be undone, and the panel says so once there's more than one
 entry: history is a stack, so taking one from the middle would leave the later
@@ -1701,7 +1701,7 @@ edits resting on a state that never existed.
 
 Redo is as careful as undo about acting in whole steps: redoing a deleted
 character removes their relationships and goals again, and redoing a reorder
-moves both events.
+moves both scenes.
 
 > **Note:** importing a world, generating one from AI, or importing a manuscript
 > starts a fresh history. Those are single large acts rather than hundreds of
@@ -1714,9 +1714,9 @@ moves both events.
 ## Writer's Brief
 
 The **Writer's Brief** (the scroll icon in the top bar) is a focused, at-a-glance
-panel for the event under the time cursor. Select an event and the brief shows
-the chapter synopsis, the active event's details (including the in-world date —
-or day number if you haven't set up a calendar), the other events in that
+panel for the scene under the time cursor. Select a scene and the brief shows
+the chapter synopsis, the active scene's details (including the in-world date —
+or day number if you haven't set up a calendar), the other scenes in that
 chapter, and a per-character state readout — including **"carried forward"**
 badges where a character's state was inherited rather than freshly set.
 
@@ -1738,7 +1738,7 @@ rather than naming the same alliance a second time.
 
 The brief also collects active relationships, item placements, and relevant lore.
 Lore linked to a present character appears automatically; a page revealed at the
-active event is marked **NEW** and links directly to its editor.
+active scene is marked **NEW** and links directly to its editor.
 
 ![Writer's Brief](images/17-writers-brief.png)
 
@@ -1758,7 +1758,7 @@ It's designed to sit open beside your manuscript while you draft.
 ## Calendar & character ages
 
 By default PlotWeave measures story time in **in-world days** — day 0 is the
-start of a timeline, and each event's *travel days* push the clock forward. Turn
+start of a timeline, and each scene's *travel days* push the clock forward. Turn
 those day numbers into real dates by giving your world a **calendar** in World
 settings.
 
@@ -1800,14 +1800,14 @@ the leap ones.
 ![Calendar editor](images/30-calendar.png)
 
 With a calendar set, in-world dates appear wherever the day clock is shown: the
-active event's date in the Writer's Brief, and the chip on each scene card in a
+active scene's date in the Writer's Brief, and the chip on each scene card in a
 chapter, which reads *5 Thawmonth, 998 AC* instead of *Day 4*. Without a
 calendar that chip stays a day count, and hovering it says what it counts
 from — days since the story's first scene.
 
 **Character ages.** Give a character an optional **birth date** on the Overview
 tab of their profile (the month/day/year pickers use your calendar's months).
-PlotWeave then computes and shows the character's **age** at the event under the
+PlotWeave then computes and shows the character's **age** at the scene under the
 time cursor in the Writer's Brief — counting birthdays passed, so it stays
 correct even with irregular month lengths. A character born after the current
 moment simply shows no age.
@@ -1817,9 +1817,9 @@ import**, so shared or backed-up worlds keep their dates intact.
 
 ### Calendar view
 
-Once a calendar is set, the **Calendar** view (in the nav) lays your events onto
+Once a calendar is set, the **Calendar** view (in the nav) lays your scenes onto
 month grids by their in-world date, so you can see the shape of your story in
-time. Each month that your story touches gets a grid; events appear as chips on
+time. Each month that your story touches gets a grid; scenes appear as chips on
 their day, and flashbacks are marked with a small clock icon.
 
 ![Calendar view](images/35-calendar-view.png)
@@ -1827,9 +1827,9 @@ their day, and flashbacks are marked with a small clock icon.
 A day outside the months gets a row of its own, one cell wide, headed by its
 name and carrying no day number — because the name *is* the date.
 
-- **Click** an event chip to jump to it in the timeline.
+- **Click** a scene chip to jump to it in the timeline.
 - **Drag** a chip to another day to **pin** its in-world date — this sets the
-  event's explicit in-world time, overriding the travel-day clock for that event
+  scene's explicit in-world time, overriding the travel-day clock for that scene
   (handy for flashbacks/flash-forwards, or to nail a scene to a specific date).
 
 **Scenes with no timing set are marked.** A scene that says nothing about how
@@ -1867,11 +1867,11 @@ count. Typical catches:
   map distance than their travel mode can cross in the in-world days available
   (using the map scale, the mode's speed, and any road/river/trail along the
   way). The finding offers a one-click **"Allow N more days"** that lengthens the
-  event so the journey becomes possible.
+  scene so the journey becomes possible.
 - A character who **travels through a destroyed or abandoned region**.
 - An item that is used before it was acquired, an impossible item handoff, a
   relationship or faction membership that starts at an invalid moment, or a POV
-  character who should not be available at that event.
+  character who should not be available at that scene.
 
 ![Continuity Checker](images/18-continuity.png)
 
@@ -1890,7 +1890,7 @@ when eight characters walk into one scene and none of them has a starting state
 yet. Anything you have suppressed is left out, and the count on the button tells
 you how many it will touch.
 
-Each finding links straight to the offending event so you can fix it in context.
+Each finding links straight to the offending scene so you can fix it in context.
 The travel checks rely on a **map scale** (set one on the map) and **travel
 modes** with speeds (in World settings). The stale-snapshot sensitivity is
 configurable in Settings. If a finding is intentional, **suppress** it and add an
@@ -1925,7 +1925,7 @@ day 0 — right for parallel storylines, but a frame narrative's past or an
 earlier era belongs at a different point on the world clock. Setting, say,
 day 10,000 on the "present" timeline makes chronological merges (the
 All-timelines view and the bottom bar) and the calendar place both eras where
-they actually fall. An event's pinned in-world day stays relative to its own
+they actually fall. A scene's pinned in-world day stays relative to its own
 timeline's clock.
 
 **Theme** is two settings in one section, because there are two things to
@@ -2029,7 +2029,7 @@ in-app explanations of each concept — the time cursor, snapshots, timelines,
 maps, playback, and the rest.
 
 The Help panel also lists keyboard shortcuts: **Ctrl/⌘+K** opens search,
-**Shift+click** selects an event range, arrow keys and **Enter** navigate search
+**Shift+click** selects a scene range, arrow keys and **Enter** navigate search
 or continuity results, and **Esc** closes panels or cancels inline edits.
 
 ![Help panel](images/19-help.png)
@@ -2039,7 +2039,7 @@ or continuity results, and **Esc** closes panels or cancels inline edits.
 ## Keyboard, screen readers and touch
 
 Every field and control is named, so a screen reader announces *Days since the
-previous event* rather than an unlabelled number box, and voice control has
+previous scene* rather than an unlabelled number box, and voice control has
 something to say. That includes the ones drawn as icons alone — the scene
 steppers on the chapter bar, the add button beside a travel mode, the rename and
 delete beside a lore category.

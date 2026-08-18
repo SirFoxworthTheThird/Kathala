@@ -25,9 +25,9 @@ async function setupDanglingThread(page: Page) {
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
   }
   const addEvent = async (title: string) => {
-    await main.getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill(title)
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await main.getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill(title)
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
   }
 
   // Arc View is character-centric, so the world needs at least one character.

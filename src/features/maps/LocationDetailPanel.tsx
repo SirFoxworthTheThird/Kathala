@@ -371,7 +371,7 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
           {!activeEventId && !gate.active && (
             <div className="rounded-md border border-dashed border-[hsl(var(--border))] p-3 flex flex-col gap-2">
               <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                Select an event to place characters, or create one now:
+                Select a scene to place characters, or create one now:
               </p>
               {chapters.length > 0 && (
                 <Select onValueChange={setActiveEventId}>

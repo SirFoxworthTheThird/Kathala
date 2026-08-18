@@ -190,7 +190,7 @@ export default function ManuscriptView() {
           <EmptyState
             icon={FileText}
             title="No prose yet"
-            description="Write scene prose on your events, and it stitches together here into one continuous manuscript you can read and export."
+            description="Write prose on your scenes, and it stitches together here into one continuous manuscript you can read and export."
             className="h-full"
           />
         ) : (
