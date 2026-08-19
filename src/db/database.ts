@@ -2,7 +2,6 @@ import Dexie, { type EntityTable } from 'dexie'
 import { generateId } from '@/lib/id'
 import type {
   World,
-  AppPreferences,
   MapLayer,
   LocationMarker,
   Character,
@@ -44,7 +43,6 @@ import type { Operation, Tombstone } from '@/types/operation'
 
 class PlotWeaveDB extends Dexie {
   worlds!: EntityTable<World, 'id'>
-  preferences!: EntityTable<AppPreferences, 'id'>
   mapLayers!: EntityTable<MapLayer, 'id'>
   locationMarkers!: EntityTable<LocationMarker, 'id'>
   characters!: EntityTable<Character, 'id'>
@@ -673,6 +671,21 @@ class PlotWeaveDB extends Dexie {
         if (m.imageId === undefined) m.imageId = null
       })
     })
+
+    /*
+      Drops `preferences`, which was declared in v1 and never read or written.
+
+      It carried an `AppPreferences` record with `theme: 'dark' | 'light'` — an
+      intention that was never built, and one that became actively misleading
+      once Paper shipped as a real light theme: a reader of this file would
+      reasonably conclude the app has a light/dark mode somewhere.
+
+      `null` is how Dexie deletes a store, and it belongs in a *new* version
+      rather than by editing v1, whose declaration stays exactly where it is —
+      a database still sitting at any earlier version has to be able to walk
+      the whole chain. Nothing is lost: nothing ever wrote a row.
+    */
+    this.version(54).stores({ preferences: null })
   }
 }
 
