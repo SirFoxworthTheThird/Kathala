@@ -1905,7 +1905,12 @@ The **Continuity Checker** (the shield icon) scans your whole world for
 contradictions and surfaces them grouped by category, with an error/warning
 count. Typical catches:
 
-- A character who is **alive after dying** in an earlier chapter.
+- A character who is **alive again after dying** in an earlier chapter —
+  reported once, where they come back, not on every scene afterwards. If they
+  were revived, say so: with the time cursor on the scene where it happens, set
+  their status to Alive on the **Current State** tab and tick **"They came back
+  in this scene"**. The finding goes, and the revival is recorded in the world
+  rather than dismissed.
 - A **dead character** appearing in a later scene (with a one-click "mark as
   flashback" if intentional). The scene where you *record* the death is not one
   of these — that scene is where they die, so they are alive walking into it.
@@ -1942,6 +1947,10 @@ count. Typical catches:
 - A **relationship with a state recorded after it ended**, the counterpart to
   the one that starts too early. Only the last ending counts — relationships
   break and mend, and a writer who records the mend has said what happened.
+- A **destroyed item whole again**. Set its condition to **repaired** on the
+  scene where it was mended and the finding goes — the same bargain as a
+  revival. Ordinary repair is not reported at all: *damaged → intact* and
+  *lost → found* are not returns from a terminal state.
 - An item that is used before it was acquired, an impossible item handoff, a
   relationship or faction membership that starts at an invalid moment, or a POV
   character who should not be available at that scene.
@@ -1949,14 +1958,32 @@ count. Typical catches:
 A **Places & time** section holds the two findings that are about the world
 rather than about anybody in it:
 
-- A **destroyed place standing again** — the counterpart of *alive after dying*,
-  for locations. Towns do get rebuilt, so it is a warning and it reports the
+- A **destroyed place standing again** — the counterpart of a character coming
+  back, for locations. Towns do get rebuilt, so set the location's status to
+  **rebuilt** on the scene where it happens and the finding goes. It reports the
   first return only; a place that comes back and is razed again has a history,
   not a fault.
 - A **scene set before the one in front of it**. Giving a scene an explicit
   in-world time overrides the clock derived from travel days, so a pin can put a
   scene earlier than the scene preceding it. Mark it a flashback — which is what
   the pin is mostly for — or correct the date.
+
+### Saying a thing came back
+
+**Revived**, **repaired** and **rebuilt** are states you set, not warnings you
+dismiss. All three work the same way: record the return on the scene where it
+happens and the Continuity Checker has nothing left to report, because you have
+said what happened rather than told it to be quiet.
+
+That matters beyond the checker. A suppressed warning is invisible — nothing
+anywhere in PlotWeave says a character was revived. A state is part of the
+world: it travels in your export, it shows on the map and in the Writer's Brief,
+and it survives edits that would orphan a suppression. Suppression is still
+there for the genuinely one-off finding you want to keep and ignore.
+
+A return does not wear off. In the delta model a sword stays **repaired** until
+some later scene says otherwise, exactly as **found** already works — a repaired
+sword is not a never-broken one.
 
 ![Continuity Checker](images/18-continuity.png)
 

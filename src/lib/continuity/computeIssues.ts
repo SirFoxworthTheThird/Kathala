@@ -3,6 +3,8 @@ import { pixelDist } from '@/lib/mapScale'
 import { assessTravel, ROUTE_SPEED_MULTIPLIERS } from '@/lib/travelTime'
 import { computeInWorldDays } from '@/lib/inWorldTime'
 import { ageInYears, formatInWorldDate } from '@/lib/calendar'
+import { GONE_STATUSES, REBUILT_STATUS } from '@/lib/locationStatus'
+import { TERMINAL_CONDITIONS, RESTORED_CONDITION } from '@/lib/itemCondition'
 import { computeKnowledgeAnachronisms } from '@/lib/knowledgeAnachronisms'
 import { computeDeadKnowerIssues } from '@/lib/knowledgeRevealContinuity'
 import { computeProseMentionIssues, computeKnowledgeLeaks } from '@/lib/proseContinuity'
@@ -347,35 +349,52 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       const char = charById.get(charId)
       if (!char) continue
 
-      // Find the earliest "dead" snapshot
-      const deathSnap = charSnaps
-        .filter((s) => !s.isAlive)
-        .sort((a, b) => eventOrder(a.eventId) - eventOrder(b.eventId))[0]
+      /*
+        Alive again after dying — reported once, where it happens.
 
-      if (!deathSnap) continue
+        This was the only check in the file that read the *earliest* state
+        rather than the last one before the moment, and it flagged **every**
+        alive snapshot after that death. Measured on an eight-chapter book:
+        Gandalf dying in Ch.2 and returning in Ch.4 produced **five errors** —
+        Ch.4, 5, 6, 7, 8 — and recording the return is what created them. The
+        check could not be satisfied. Everything else here reads last-before,
+        the way `isDeadAtOrder` and `bestLocationAtOrder` do, and so does this
+        now: the return is the news, and after it the new state is just state.
 
-      const deathOrder = eventOrder(deathSnap.eventId)
-      const deathChapNum = chapNumById.get(eventById.get(deathSnap.eventId)?.chapterId ?? '') ?? 0
+        It is a **warning**, not an error. An error should be something that
+        cannot be true — an item in two places at once. A resurrection is a
+        genre.
 
-      // Any alive snapshot AFTER the death event
-      const aliveAfterDeath = charSnaps.filter((s) => {
-        if (s.isAlive === false) return false
-        return eventOrder(s.eventId) > deathOrder
-      })
+        And it is silent when the snapshot carries `revived`, because then the
+        writer has said what happened. That is the point of the flag: a
+        suppression is keyed on a derived issue id, so moving the scene orphans
+        it and the warning returns, and it says nothing to any other screen.
+      */
+      const lifeHistory = charSnaps
+        .map((sn) => ({ sn, order: eventOrder(sn.eventId) }))
+        .sort((a, b) => a.order - b.order)
 
-      for (const snap of aliveAfterDeath) {
-        const ev = eventById.get(snap.eventId)
+      let wasDead: { order: number; eventId: string } | null = null
+      for (const { sn, order } of lifeHistory) {
+        if (!sn.isAlive) { wasDead = { order, eventId: sn.eventId }; continue }
+        if (!wasDead) continue
+        if (sn.revived) { wasDead = null; continue }
+
+        const ev = eventById.get(sn.eventId)
         const ch = ev ? chapById.get(ev.chapterId) : undefined
+        const deathCh = chapById.get(eventById.get(wasDead.eventId)?.chapterId ?? '')
         out.push({
-          id: `dead-then-alive-${charId}-${snap.eventId}`,
+          id: `dead-then-alive-${charId}-${sn.eventId}`,
           kind: 'dead-then-alive',
-          severity: 'error',
+          severity: 'warning',
           category: 'character',
-          message: `${char.name} is alive in Ch. ${ch?.number ?? '?'} after dying in Ch. ${deathChapNum}`,
-          detail: `Death recorded in Ch. ${deathChapNum} — ${chapById.get(eventById.get(deathSnap.eventId)?.chapterId ?? '')?.title ?? ''}`,
-          navigatePath: `/worlds/${worldId}/timeline/${ev?.chapterId ?? snap.eventId}`,
-          eventId: snap.eventId,
+          message: `${char.name} is alive again in Ch. ${ch?.number ?? '?'} after dying in Ch. ${deathCh?.number ?? '?'}`,
+          detail: `Death recorded in Ch. ${deathCh?.number ?? '?'} — ${deathCh?.title ?? ''}. Tick "They came back in this scene" if they were revived, or correct one of the two records.`,
+          navigatePath: `/worlds/${worldId}/timeline/${ev?.chapterId ?? sn.eventId}`,
+          eventId: sn.eventId,
         })
+        // The return is the news. After it, being alive is simply being alive.
+        wasDead = null
       }
 
       // Snapshot referencing a deleted event
@@ -698,7 +717,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         if (entry.order > order) break
         lastCondition = entry.condition
       }
-      return lastCondition === 'destroyed'
+      return lastCondition != null && TERMINAL_CONDITIONS.includes(lastCondition)
     }
 
     for (const ev of allEvents) {
@@ -740,6 +759,49 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
           eventId: snap.eventId,
         })
+      }
+    }
+
+    /*
+      An item whole again after being destroyed.
+
+      The counterpart of a character coming back and a place standing again, and
+      the reason all three now agree. Until the vocabulary gained `repaired`,
+      this had no way to be *stated*: `isItemDestroyedAtOrder` reads the last
+      condition, so any later non-destroyed snapshot silently cancelled the
+      destruction and nothing was ever said about the flip.
+
+      Silent when the writer names it, one line when they do not — because a
+      bare `intact` after `destroyed` is still an unexplained return.
+
+      **`damaged → intact` and `lost → found` stay silent**, and that is the
+      distinction worth keeping: repair is ordinary, and `lost`/`found` shipped
+      as a designed pair. Only a *terminal* condition returning is news.
+    */
+    for (const [itemId, hist] of itemSnapHistory) {
+      const item = itemById.get(itemId)
+      if (!item) continue
+      let goneAt: number | null = null
+      for (const entry of hist) {
+        if (TERMINAL_CONDITIONS.includes(entry.condition)) { if (goneAt == null) goneAt = entry.order; continue }
+        if (goneAt == null || entry.condition === 'unknown') continue
+        if (entry.condition === RESTORED_CONDITION) { goneAt = null; continue }
+
+        const backEv = allEvents.find((e) => eventOrder(e.id) === entry.order)
+        const goneEv = allEvents.find((e) => eventOrder(e.id) === goneAt)
+        const backCh = backEv ? chapById.get(backEv.chapterId) : undefined
+        const goneCh = goneEv ? chapById.get(goneEv.chapterId) : undefined
+        out.push({
+          id: `item-restored-${itemId}-${backEv?.id ?? entry.order}`,
+          kind: 'item-restored',
+          severity: 'warning',
+          category: 'item',
+          message: `"${item.name}" is "${entry.condition}" again after being destroyed`,
+          detail: `Destroyed in Ch. ${goneCh?.number ?? '?'}, ${entry.condition} again in Ch. ${backCh?.number ?? '?'}. Set the condition to "repaired" if it was mended, or correct one of the two.`,
+          navigatePath: backEv ? `/worlds/${worldId}/timeline/${backEv.chapterId}` : undefined,
+          eventId: backEv?.id,
+        })
+        break // one return is the finding; breaking it again is a history.
       }
     }
 
@@ -1328,14 +1390,16 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       non-destroyed condition as restoration and says nothing. A mended sword is
       ordinary. A city un-burning is worth one line.
     */
-    const GONE = new Set(['destroyed', 'ruined'])
     for (const [markerId, hist] of locSnapsByMarker) {
       const marker = markerById.get(markerId)
       if (!marker) continue
       let goneAt: number | null = null
       for (const entry of hist) {
-        if (GONE.has(entry.status)) { if (goneAt == null) goneAt = entry.order; continue }
+        if (GONE_STATUSES.includes(entry.status)) { if (goneAt == null) goneAt = entry.order; continue }
         if (goneAt == null || entry.status === 'unknown') continue
+        // "Rebuilt" is the writer saying so, which is the whole point of the
+        // status existing — the same deal as `repaired` and `revived`.
+        if (entry.status === REBUILT_STATUS) { goneAt = null; continue }
         const backEv = allEvents.find((e) => eventOrder(e.id) === entry.order)
         const goneEv = allEvents.find((e) => eventOrder(e.id) === goneAt)
         const backCh = backEv ? chapById.get(backEv.chapterId) : undefined

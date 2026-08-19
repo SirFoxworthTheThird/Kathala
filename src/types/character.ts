@@ -67,9 +67,35 @@ export interface CharacterSnapshot {
   worldId: string
   characterId: string
   eventId: string
-  /** Globally comparable ordering key: chapter.number × 10_000 + event.sortOrder */
+  /**
+   * Globally comparable ordering key, written by `computeSortKey`:
+   * `chapter.number + event.sortOrder / 1_000_000`.
+   *
+   * Not the `chapter.number × 10_000 + sortOrder` these comments used to claim
+   * — that is the *separate* ordering the continuity checker derives in memory
+   * (`eventOrder`), and it is never stored. The two are order-equivalent, so
+   * nothing broke; a test seeded from the comment simply produced keys a
+   * thousandfold too large and the screen quietly disagreed with it.
+   */
   sortKey?: number
   isAlive: boolean
+  /**
+   * This scene is where they came back.
+   *
+   * A revived character *is* alive, so this sits beside `isAlive` rather than
+   * replacing it with a three-valued state — which would mean touching every
+   * one of the sixty-odd places that ask whether somebody is alive, from the
+   * map pins to the arc grid to the sequel builder, for a fact none of them
+   * needs. Absent on every record written before it existed, and absent is
+   * simply "no".
+   *
+   * It is the character's form of an item's `repaired` and a place's `rebuilt`:
+   * the writer states what happened, and the continuity check has nothing to
+   * report — rather than reporting it and being told to be quiet. A suppression
+   * is keyed on a derived issue id, so moving the scene orphans it and the
+   * warning comes back; this is on the record.
+   */
+  revived?: boolean
   currentLocationMarkerId: string | null
   currentMapLayerId: string | null
   inventoryItemIds: string[]
@@ -87,7 +113,16 @@ export interface LocationSnapshot {
   worldId: string
   locationMarkerId: string
   eventId: string
-  /** Globally comparable ordering key: chapter.number × 10_000 + event.sortOrder */
+  /**
+   * Globally comparable ordering key, written by `computeSortKey`:
+   * `chapter.number + event.sortOrder / 1_000_000`.
+   *
+   * Not the `chapter.number × 10_000 + sortOrder` these comments used to claim
+   * — that is the *separate* ordering the continuity checker derives in memory
+   * (`eventOrder`), and it is never stored. The two are order-equivalent, so
+   * nothing broke; a test seeded from the comment simply produced keys a
+   * thousandfold too large and the screen quietly disagreed with it.
+   */
   sortKey?: number
   status: string
   notes: string
@@ -102,7 +137,16 @@ export interface ItemSnapshot {
   worldId: string
   itemId: string
   eventId: string
-  /** Globally comparable ordering key: chapter.number × 10_000 + event.sortOrder */
+  /**
+   * Globally comparable ordering key, written by `computeSortKey`:
+   * `chapter.number + event.sortOrder / 1_000_000`.
+   *
+   * Not the `chapter.number × 10_000 + sortOrder` these comments used to claim
+   * — that is the *separate* ordering the continuity checker derives in memory
+   * (`eventOrder`), and it is never stored. The two are order-equivalent, so
+   * nothing broke; a test seeded from the comment simply produced keys a
+   * thousandfold too large and the screen quietly disagreed with it.
+   */
   sortKey?: number
   condition: string
   notes: string

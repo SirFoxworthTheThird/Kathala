@@ -1,6 +1,16 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { settleNav } from './helpers/nav'
+import { ISSUE_KIND_LABELS } from '../src/lib/continuity/issueKinds'
+
+/*
+  The headings come from the registry rather than being retyped here. Renaming
+  `dead-then-alive` from "Alive after dying" to "Alive again after dying" broke
+  this spec in three places at once, and a spec that has to be edited whenever a
+  label is reworded is testing the wording, not the grouping.
+*/
+const DEAD_IN_SCENE = ISSUE_KIND_LABELS['dead-in-event']
+const ALIVE_AGAIN = ISSUE_KIND_LABELS['dead-then-alive']
 
 /**
  * CC-3: a category was the only grouping the checker had, so *Items 79* was one
@@ -83,8 +93,8 @@ test('a category with more than one kind of fault says which is which', async ({
   const panel = page.getByRole('dialog')
   await expect(panel.getByText('Continuity Checker')).toBeVisible({ timeout: 15_000 })
 
-  const deadInScene = panel.getByText('Dead character in a scene', { exact: true })
-  const aliveAfter = panel.getByText('Alive after dying', { exact: true })
+  const deadInScene = panel.getByText(DEAD_IN_SCENE, { exact: true })
+  const aliveAfter = panel.getByText(ALIVE_AGAIN, { exact: true })
 
   await expect(panel.getByText(/Dead character Boromir in/).first())
     .toBeVisible({ timeout: 15_000 })
@@ -93,8 +103,7 @@ test('a category with more than one kind of fault says which is which', async ({
   await expect(aliveAfter).toHaveCount(0)
 
   // ── A second kind ───────────────────────────────────────────────────────
-  // He is recorded alive again two scenes later, which is a different fault —
-  // and an error rather than a warning.
+  // He is recorded alive again two scenes later, which is a different fault.
   await page.keyboard.press('Escape')
   await seedSnapshot(page, 3, true)
 
@@ -106,15 +115,25 @@ test('a category with more than one kind of fault says which is which', async ({
   await expect(aliveAfter).toBeVisible({ timeout: 15_000 })
   await expect(deadInScene).toBeVisible()
 
-  // The error leads, whatever the counts, which is the whole point of grouping.
-  // The label and its count are adjacent spans separated by a flex gap, so the
-  // text runs together — "Alive after dying1" — and the count is pulled out
-  // rather than matched with a space that is not in the DOM.
-  const headings = await panel.evaluate((el) =>
+  /*
+    Both faults are warnings now — a recorded resurrection is a genre, not an
+    impossibility — so the rule on show here is the tiebreak: **equal severities
+    order by size**, the bigger run first. That errors lead whatever their count
+    is the other half of the rule, and it is unit-tested in
+    `src/lib/__tests__/issueKinds.test.ts`, which builds severities directly
+    instead of depending on which kinds happen to be errors today.
+
+    The label and its count are adjacent spans separated by a flex gap, so the
+    text runs together — "Alive again after dying1" — and the count is pulled
+    out rather than matched with a space that is not in the DOM.
+  */
+  // Locator.evaluate hands the element first and the argument second — the
+  // element was being destructured as the pair, which is not iterable.
+  const headings = await panel.evaluate((el, [alive, dead]) =>
     Array.from(el.querySelectorAll('div'))
       .map((d) => (d.textContent ?? '').replace(/\s+/g, ' ').trim())
-      .map((t) => /^(Alive after dying|Dead character in a scene)\s*(\d+)$/.exec(t))
+      .map((t) => new RegExp(`^(${alive}|${dead})\\s*(\\d+)$`).exec(t))
       .filter((m): m is RegExpExecArray => m !== null)
-      .map((m) => `${m[1]} ${m[2]}`))
-  expect(headings).toEqual(['Alive after dying 1', 'Dead character in a scene 2'])
+      .map((m) => `${m[1]} ${m[2]}`), [ALIVE_AGAIN, DEAD_IN_SCENE])
+  expect(headings).toEqual([`${DEAD_IN_SCENE} 2`, `${ALIVE_AGAIN} 1`])
 })

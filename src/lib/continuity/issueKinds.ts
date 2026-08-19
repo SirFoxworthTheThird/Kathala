@@ -22,6 +22,7 @@ export type IssueKind =
   // item
   | 'dup-item' | 'item-before-acquired' | 'item-after-destroyed-ev'
   | 'item-after-destroyed-inv' | 'item-handoff' | 'artifact-wrong-timeline'
+  | 'item-restored'
   // relationship
   | 'rel-before-start' | 'rel-after-end' | 'dead-char-in-rel-snap'
   // faction
@@ -70,7 +71,7 @@ export const FIX_ALL_LABELS: Partial<Record<IssueKind, string>> = {
  * summary of the rows underneath it.
  */
 export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
-  'dead-then-alive':       'Alive after dying',
+  'dead-then-alive':       'Alive again after dying',
   'orphan-snap':           'State recorded for a deleted scene',
   'dead-in-event':         'Dead character in a scene',
   'char-before-intro':     'Appears before any state was recorded',
@@ -87,6 +88,7 @@ export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
   'item-before-acquired':  'Item used before it was acquired',
   'item-after-destroyed-ev':  'Item used after being destroyed',
   'item-after-destroyed-inv': 'Destroyed item still carried',
+  'item-restored':         'Destroyed item whole again',
   'item-handoff':          'Item changes hands across a distance',
   'artifact-wrong-timeline': 'Item outside its declared timelines',
   'rel-before-start':      'Relationship state before it began',

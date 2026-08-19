@@ -68,22 +68,55 @@ async function barInPaper(page: Page) {
     for (const n of Array.from(r.classList)) if (n.startsWith('theme-')) r.classList.remove(n)
     r.classList.add('theme-paper')
   })
-  await page.waitForTimeout(600)
+  // Both the theme swap and the active segment animate on a 0.2s curve, and a
+  // measurement taken mid-transition is of a real but momentary colour. Settle
+  // well past both.
+  await page.waitForTimeout(1500)
   await expect(page.locator('[data-chapter-bar]').first()).toBeVisible()
   return worldId
 }
 
 /** Every text node in the chapter bar, with its colour, size, weight and ground. */
 const textInBar = (page: Page) => page.evaluate(() => {
+  /*
+    Normalise every colour through a canvas rather than parsing the string.
+
+    Three notations turned up here in one sitting and each one broke a hand-
+    written parser differently: plain `rgb(233, 231, 234)`, `color(srgb 0.915
+    0.905 0.915)` from `color-mix()`, and — mid-transition — `oklab(0.930031
+    0.00378686 -0.0026055 / 0.997553)`. The first two are 0-255 and 0-1; reading
+    the third's components as bytes made a near-white ground measure as
+    near-black and failed the run at 1.40:1. `fillStyle` accepts every CSS
+    colour there is and `getImageData` hands back sRGB, so there is nothing left
+    to get wrong.
+  */
+  const canvas = document.createElement('canvas')
+  canvas.width = canvas.height = 1
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!
+  function toRgb(value: string): string {
+    ctx.clearRect(0, 0, 1, 1)
+    ctx.fillStyle = '#000'
+    ctx.fillStyle = value
+    ctx.fillRect(0, 0, 1, 1)
+    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data
+    return `rgb(${r}, ${g}, ${b})`
+  }
+
+  function isOpaque(bg: string): boolean {
+    if (bg === 'transparent' || bg === 'rgba(0, 0, 0, 0)') return false
+    // The alpha is the one component `toRgb` throws away, so it is read here:
+    // the slash form covers `color()`/`oklab()`, the fourth number covers rgba.
+    const slash = /\/\s*([\d.]+)\s*\)/.exec(bg)
+    if (slash) return Number(slash[1]) > 0.99
+    const m = bg.match(/-?[\d.]+/g)
+    return !m || m.length < 4 || Number(m[3]) > 0.99
+  }
+
   function groundOf(el: Element): string {
     let n: Element | null = el
     while (n) {
       const bg = getComputedStyle(n).backgroundColor
-      const m = bg.match(/-?[\d.]+/g)
-      // `color(srgb …)` (from color-mix) has no alpha channel to check; rgba does.
-      const opaque = !m ? false : bg.startsWith('color(') ? m.length < 4 || Number(m[3]) > 0.99
-        : m.length < 4 || Number(m[3]) > 0.99
-      if (m && opaque && bg !== 'transparent') return bg
+      if (isOpaque(bg)) return toRgb(bg)
       n = n.parentElement
     }
     return 'rgb(255, 255, 255)'
@@ -99,7 +132,7 @@ const textInBar = (page: Page) => page.evaluate(() => {
     if (!el) continue
     const cs = getComputedStyle(el)
     out.push({
-      text, color: cs.color, ground: groundOf(el),
+      text, color: toRgb(cs.color), ground: groundOf(el),
       px: parseFloat(cs.fontSize), weight: Number(cs.fontWeight) || 400,
     })
   }
@@ -122,10 +155,10 @@ const colourAsMark = (page: Page, want: string) => page.evaluate((c) => {
   0–255 made a near-white ground measure as near-black, and the scrubber's
   chapter label scored 4.68 when it was really 3.63.
 */
+/** Everything crossing this boundary is already `rgb(r, g, b)` — see `toRgb`. */
 function rgb(s: string): [number, number, number] {
   const m = s.match(/-?[\d.]+/g)!
-  const v: [number, number, number] = [Number(m[0]), Number(m[1]), Number(m[2])]
-  return s.startsWith('color(') ? [v[0] * 255, v[1] * 255, v[2] * 255] : v
+  return [Number(m[0]), Number(m[1]), Number(m[2])]
 }
 function luminance([r, g, b]: [number, number, number]): number {
   const c = [r, g, b].map((v) => {

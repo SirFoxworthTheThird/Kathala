@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { MapPin, Package, Plus, X, Heart, Skull, Footprints, History } from 'lucide-react'
 import type { Character } from '@/types'
-import { useResolvedCharacterSnapshot, useBestSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { useResolvedCharacterSnapshot, useBestSnapshots, useCharacterSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
+import { computeSortKeySync } from '@/lib/sortKey'
 import { removeItemPlacement } from '@/db/hooks/useItemPlacements'
 import { useItems, createItem } from '@/db/hooks/useItems'
 import { useLocationMarkers, useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
@@ -33,7 +35,38 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
   const allMarkers = useAllLocationMarkers(character.worldId)
   const gate = useGate()
 
+  /*
+    Does the record already have them dying, before the moment being edited?
+    That is what makes "they came back" a sentence rather than a stray control,
+    so it decides whether the checkbox is offered at all. `sortKey` is the
+    global order every snapshot carries — chapter × 10_000 + scene — and the
+    hook is already cut at the reading cursor, so this cannot see ahead.
+  */
+  const ownSnapshots = useCharacterSnapshots(character.id)
+  const worldEvents = useWorldEvents(character.worldId)
+  const worldChapters = useWorldChapters(character.worldId)
+  const diedEarlier = useMemo(() => {
+    if (!activeEventId) return false
+    const here = computeSortKeySync(
+      activeEventId,
+      new Map(worldEvents.map((e) => [e.id, e])),
+      new Map(worldChapters.map((c) => [c.id, c.number])),
+    )
+    if (here < 0) return false
+    /*
+      Strictly before, and the *last* one — not "is there a death anywhere".
+      Strictly, so that once the writer has saved the revival here the control
+      stays put and can be un-ticked; last, so that a death followed by a
+      recorded return does not keep offering it forever.
+    */
+    const before = ownSnapshots
+      .filter((sn) => (sn.sortKey ?? -1) < here)
+      .sort((a, b) => (a.sortKey ?? 0) - (b.sortKey ?? 0))
+    return before.length > 0 && !before[before.length - 1].isAlive
+  }, [ownSnapshots, activeEventId, worldEvents, worldChapters])
+
   const [isAlive, setIsAlive] = useState(true)
+  const [revived, setRevived] = useState(false)
   const [locationId, setLocationId] = useState<string>('')
   const [inventoryIds, setInventoryIds] = useState<string[]>([])
   const [statusNotes, setStatusNotes] = useState('')
@@ -45,6 +78,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
   useEffect(() => {
     if (snapshot) {
       setIsAlive(snapshot.isAlive)
+      setRevived(!!snapshot.revived)
       setLocationId(snapshot.currentLocationMarkerId ?? '')
       setInventoryIds(snapshot.inventoryItemIds)
       setStatusNotes(snapshot.statusNotes)
@@ -53,6 +87,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
       setDirty(false)
     } else {
       setIsAlive(true)
+      setRevived(false)
       setLocationId('')
       setInventoryIds([])
       setStatusNotes('')
@@ -181,6 +216,10 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
       characterId: character.id,
       eventId: activeEventId!,
       isAlive,
+      // Only alive people come back, so the flag cannot outlive the state it
+      // qualifies — marking somebody deceased clears it rather than leaving a
+      // record that says they are dead and were revived here.
+      revived: isAlive && revived,
       currentLocationMarkerId: locationId || null,
       currentMapLayerId: firstMapId,
       inventoryItemIds: inventoryIds,
@@ -238,11 +277,33 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
             size="sm"
             variant={!isAlive ? 'destructive' : 'outline'}
             className="gap-1.5"
-            onClick={() => mark(() => setIsAlive(false))}
+            onClick={() => mark(() => { setIsAlive(false); setRevived(false) })}
           >
             <Skull className="h-3.5 w-3.5" /> Deceased
           </Button>
         </div>
+        {/*
+          Offered only where it can mean something. "Came back here" on a living
+          character who has never died is a control with nothing to do, and on a
+          deceased one it contradicts the button next to it — so it appears when
+          they are alive and the record already has them dying earlier.
+
+          It is the character's form of an item's *repaired* and a place's
+          *rebuilt*: the writer states what happened, and the continuity check
+          has nothing to report, instead of reporting it and being told to be
+          quiet.
+        */}
+        {isAlive && diedEarlier && (
+          <label className="mt-1 flex items-center gap-2 text-xs text-[hsl(var(--muted-foreground))]">
+            <input
+              type="checkbox"
+              checked={revived}
+              onChange={(e) => mark(() => setRevived(e.target.checked))}
+              className="h-3.5 w-3.5 accent-[hsl(var(--primary))]"
+            />
+            They came back in this scene
+          </label>
+        )}
       </div>
 
       {/* Location */}

@@ -993,9 +993,9 @@ export function RoutesSection({
 
 export const REGION_STATUS_COLORS: Record<MapRegionStatus, string> = {
   active: '#34d399', occupied: '#fb923c', contested: '#ef4444',
-  abandoned: '#94a3b8', destroyed: '#dc2626', unknown: '#a78bfa',
+  abandoned: '#94a3b8', destroyed: '#dc2626', rebuilt: '#4ade80', unknown: '#a78bfa',
 }
-export const ALL_REGION_STATUSES: MapRegionStatus[] = ['active', 'occupied', 'contested', 'abandoned', 'destroyed', 'unknown']
+export const ALL_REGION_STATUSES: MapRegionStatus[] = ['active', 'occupied', 'contested', 'abandoned', 'destroyed', 'rebuilt', 'unknown']
 
 // ─── Regions section ──────────────────────────────────────────────────────────
 

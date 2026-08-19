@@ -27,12 +27,12 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { RelatedLoreSection } from '@/features/lore'
 import { useFactions } from '@/db/hooks/useFactions'
 import type { Item } from '@/types'
+import { ITEM_CONDITIONS, CONDITION_COLORS } from '@/lib/itemCondition'
+import { LOCATION_STATUSES } from '@/lib/locationStatus'
 
-const ITEM_CONDITIONS = ['intact', 'damaged', 'broken', 'lost', 'used', 'depleted']
-const CONDITION_COLORS: Record<string, string> = {
-  intact: '#34d399', damaged: '#fbbf24', broken: '#f87171',
-  lost: '#94a3b8', used: '#fb923c', depleted: '#94a3b8',
-}
+// The item conditions and their colours are canonical and shared — this file
+// used to keep its own list, writing the same field from a different
+// vocabulary, so an item marked "broken" here was invisible to every check.
 
 function LocationItemRow({ item, eventId, worldId, onRemove }: {
   item: Item
@@ -554,7 +554,7 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {['active', 'occupied', 'sieged', 'abandoned', 'ruined', 'destroyed', 'unknown'].map((s) => (
+                    {LOCATION_STATUSES.map((s) => (
                       <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
                     ))}
                   </SelectContent>

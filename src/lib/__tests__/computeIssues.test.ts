@@ -609,3 +609,147 @@ describe('a scene set before the one in front of it', () => {
     expect(computeContinuityIssues(pinned(null)).filter((i) => i.kind === 'time-backwards')).toHaveLength(0)
   })
 })
+
+// ── Coming back: revived, repaired, rebuilt ──────────────────────────────────
+
+/*
+  The three had three different answers to one shape. A character's return
+  generated an *error per subsequent scene* and recording the revival is what
+  created them; an item's return cleared the finding silently; a place's return
+  produced one warning. They agree now: **the return is one warning where it
+  happens, and silent when the writer names it** — with a state on the record
+  rather than a suppression keyed on a derived issue id.
+*/
+
+const alive = (id: string, eventId: string, isAlive: boolean, revived?: boolean): CharacterSnapshot => ({
+  id, worldId: 'w', characterId: 'gandalf', eventId, isAlive, revived,
+  currentLocationMarkerId: null, currentMapLayerId: null, inventoryItemIds: [],
+  inventoryNotes: '', statusNotes: '', travelModeId: null, createdAt: 0, updatedAt: 0,
+})
+
+describe('a character alive again after dying', () => {
+  /** Dies in Ch.2, back in Ch.4, story runs to Ch.8. */
+  const revivalInput = (revivedFlag?: boolean) => {
+    const input = emptyInput()
+    input.chapters = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => chapter(`c${n}`, n))
+    input.characters = [character('gandalf', 'Gandalf')]
+    input.allEvents = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => event(`e${n}`, `c${n}`, 0))
+    input.snapshots = [
+      alive('s1', 'e1', true), alive('s2', 'e2', false),
+      alive('s4', 'e4', true, revivedFlag),
+      alive('s5', 'e5', true), alive('s6', 'e6', true),
+      alive('s7', 'e7', true), alive('s8', 'e8', true),
+    ]
+    return input
+  }
+
+  it('is reported once, where they come back', () => {
+    // Measured before the change: five rows, Ch.4 through Ch.8, one per scene.
+    const found = computeContinuityIssues(revivalInput()).filter((i) => i.kind === 'dead-then-alive')
+    expect(found).toHaveLength(1)
+    expect(found[0].eventId).toBe('e4')
+    expect(found[0].message).toContain('Ch. 4')
+    expect(found[0].message).toContain('Ch. 2')
+  })
+
+  it('is a warning, because a resurrection is a genre and not an impossibility', () => {
+    const [issue] = computeContinuityIssues(revivalInput()).filter((i) => i.kind === 'dead-then-alive')
+    expect(issue.severity).toBe('warning')
+  })
+
+  it('says nothing when the snapshot records that they came back', () => {
+    expect(computeContinuityIssues(revivalInput(true)).filter((i) => i.kind === 'dead-then-alive')).toHaveLength(0)
+  })
+
+  it('reports a second death and return as its own finding', () => {
+    // The return is the news; after it, being alive is simply being alive — but
+    // dying again starts the story over.
+    const input = revivalInput(true)
+    input.snapshots = [...input.snapshots, alive('s9', 'e6', false), alive('s10', 'e7', true)]
+    const found = computeContinuityIssues(input).filter((i) => i.kind === 'dead-then-alive')
+    expect(found).toHaveLength(1)
+    expect(found[0].eventId).toBe('e7')
+  })
+})
+
+describe('an item whole again after being destroyed', () => {
+  const itemSnap = (id: string, eventId: string, condition: string) => ({
+    id, worldId: 'w', itemId: 'sting', eventId, condition, notes: '', createdAt: 0, updatedAt: 0,
+  })
+  const brokenInput = (back: string) => {
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1), chapter('c2', 2)]
+    input.items = [{ id: 'sting', worldId: 'w', name: 'Sting', description: '', iconType: 'weapon', imageId: null, tags: [], createdAt: 0, updatedAt: 0 } as ContinuityInput['items'][number]]
+    input.allEvents = [event('e1', 'c1', 0), event('e2', 'c2', 0)]
+    input.allItemSnapshots = [itemSnap('is1', 'e1', 'destroyed'), itemSnap('is2', 'e2', back)]
+    return input
+  }
+
+  it('is reported when it simply becomes intact again', () => {
+    const [issue] = computeContinuityIssues(brokenInput('intact')).filter((i) => i.kind === 'item-restored')
+    expect(issue).toBeDefined()
+    expect(issue.message).toContain('Sting')
+    expect(issue.detail).toContain('repaired')
+  })
+
+  it('says nothing when the condition says it was repaired', () => {
+    expect(computeContinuityIssues(brokenInput('repaired')).filter((i) => i.kind === 'item-restored')).toHaveLength(0)
+  })
+
+  it('says nothing about ordinary repair or about finding something lost', () => {
+    // `damaged → intact` and `lost → found` are not returns from a terminal
+    // state — the vocabulary shipped `lost`/`found` as a designed pair.
+    const damaged = brokenInput('intact')
+    damaged.allItemSnapshots = [itemSnap('is1', 'e1', 'damaged'), itemSnap('is2', 'e2', 'intact')]
+    expect(computeContinuityIssues(damaged).filter((i) => i.kind === 'item-restored')).toHaveLength(0)
+
+    const lost = brokenInput('intact')
+    lost.allItemSnapshots = [itemSnap('is1', 'e1', 'lost'), itemSnap('is2', 'e2', 'found')]
+    expect(computeContinuityIssues(lost).filter((i) => i.kind === 'item-restored')).toHaveLength(0)
+  })
+
+  it('treats "broken" as destroyed, since one screen wrote that word for years', () => {
+    // `LocationDetailPanel` shipped its own vocabulary — intact, damaged,
+    // broken, lost, used, depleted — writing the same `condition` field. An
+    // item marked broken there was invisible to every check, all of which
+    // asked for "destroyed".
+    const input = brokenInput('intact')
+    input.allItemSnapshots = [itemSnap('is1', 'e1', 'broken'), itemSnap('is2', 'e2', 'intact')]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'item-restored')).toHaveLength(1)
+  })
+
+  it('and keeps a broken item out of a later scene, which is the older check', () => {
+    /*
+      The half the mutation testing caught missing: `item-restored` reads the
+      condition list directly, so a test on it alone left `isItemDestroyedAtOrder`
+      — which `item-after-destroyed-ev` and `-inv` both use — completely
+      unguarded. Reverting that to a bare `=== 'destroyed'` passed every other
+      test in this file.
+    */
+    const input = brokenInput('intact')
+    input.allItemSnapshots = [itemSnap('is1', 'e1', 'broken')]
+    input.allEvents = [event('e1', 'c1', 0), event('e2', 'c2', 0, { involvedItemIds: ['sting'] })]
+    const found = computeContinuityIssues(input).filter((i) => i.kind === 'item-after-destroyed-ev')
+    expect(found).toHaveLength(1)
+    expect(found[0].eventId).toBe('e2')
+
+    // The presence half: a whole item in a later scene is nobody's business.
+    input.allItemSnapshots = [itemSnap('is1', 'e1', 'intact')]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'item-after-destroyed-ev')).toHaveLength(0)
+  })
+})
+
+describe('a place standing again after being destroyed', () => {
+  it('says nothing when the status says it was rebuilt', () => {
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1), chapter('c2', 2)]
+    input.allMarkers = [marker('town', 'Trebon')]
+    input.allEvents = [event('e1', 'c1', 0), event('e2', 'c2', 0)]
+    input.allLocationSnapshots = [locSnap('ls1', 'town', 'e1', 'destroyed'), locSnap('ls2', 'town', 'e2', 'rebuilt')]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'loc-resurrected')).toHaveLength(0)
+
+    // The presence half, one word apart: unnamed, it is still a finding.
+    input.allLocationSnapshots = [locSnap('ls1', 'town', 'e1', 'destroyed'), locSnap('ls2', 'town', 'e2', 'active')]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'loc-resurrected')).toHaveLength(1)
+  })
+})
