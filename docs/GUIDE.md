@@ -725,6 +725,15 @@ one step, so a name you invent mid-sentence doesn't cost you the sentence. A new
 place needs somewhere to be a pin, so that row appears only once your world has
 a map; the pin lands in the middle of it, ready to be dragged where it belongs.
 
+**Names with spaces work.** Keep typing past the space and the picker follows
+you — *Ysolde Vane*, *Barrow-wight*, *O'Brien* — so the record you make carries
+the whole name rather than the first word of it. It knows where a name ends the
+way you do: a capitalised word carries on the name, and the first ordinary word
+puts the picker away and gives you back the sentence. So `@Ysolde Vane` is
+offered as a person to create, while `@Ysolde waited` is just something you
+wrote. A lowercase particle is fine when it belongs to someone who already
+exists — typing `@Renée de` still finds *Renée de Saint-Méran*.
+
 The draft **auto-saves as you write**: a second's pause writes it, and it is
 written again when you collapse the card or leave the chapter. The line under
 the box says which of the two states you are in — *Saving draft…* while there is
@@ -1195,7 +1204,10 @@ the wrong place. This works for any map at any depth; on a touch device,
 **press and hold** a map to pick it up first, so a normal swipe still scrolls the
 list. To place a character
 (selected from a scene in the timeline bar), drag them onto the map — or, on
-touch devices, tap the crosshair on their card and then tap a location.
+touch devices, tap the crosshair on their card and then tap a location. Either
+way you can aim at a place somebody is **already standing in**: while you are
+placing, the location pins come to the front so the people on them don't get in
+your way.
 
 When several characters stand in the same place, their pin shows a count;
 clicking it lists them, and picking a name opens that character's panel and

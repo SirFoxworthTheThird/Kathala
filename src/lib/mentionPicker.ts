@@ -24,6 +24,81 @@ export type MentionSuggestion =
   | { type: 'existing'; kind: MentionKind; id: string; name: string }
   | { type: 'create'; kind: MentionKind; name: string }
 
+/** Where an in-progress "@name" sits in the prose. It always ends at the caret. */
+export interface MentionToken {
+  /** Index of the "@" itself. */
+  start: number
+  /** Caret position — the end of the token. */
+  end: number
+  /** What has been typed after the "@", without a trailing space. */
+  query: string
+}
+
+/** Letters, digits, and the two marks that live *inside* names. */
+const NAME_WORD = /^[\p{L}\p{N}_'’-]+$/u
+/** Names are short. Prose is not. */
+const MAX_WORDS = 4
+const MAX_CHARS = 48
+
+/**
+ * Read the "@" token immediately before the caret, if there is one.
+ *
+ * This used to be `/@(\w*)$/` in the editor, which is one `\w` run and so could
+ * name nothing with a space, a hyphen or an apostrophe in it. **516 of the 760
+ * character names in the shipped library (68%) are not a single `\w` run** —
+ * Ysolde Vane, Barrow-wight, Durin's Bane, Renée de Saint-Méran. Typing the
+ * surname closed the picker and left a literal "@Ysolde Vane" in the
+ * manuscript, with nothing created and nothing said. The one thing the picker
+ * exists for — naming a record without leaving the sentence — was unavailable
+ * for most names a writer actually has.
+ *
+ * The hard part is not the spaces, it is stopping. A token that grows across
+ * every space swallows the rest of the sentence, and while it is open the
+ * picker owns the Enter key — so a paragraph break would silently commit a
+ * suggestion instead. The rule that bounds it is how names are written rather
+ * than a character count: **a word after the first extends the name only if it
+ * is capitalised, or if the whole run so far still spells the beginning of a
+ * record that already exists.** The second clause is what carries lowercase
+ * particles — "Renée de Saint-Méran" is selectable — and the first is what
+ * lets a new one be invented. Prose resumes at the first lowercase word, and
+ * because the token has to end at the caret, resuming closes the picker.
+ */
+export function findMentionToken(
+  text: string,
+  caret: number,
+  candidates: readonly MentionCandidate[] = [],
+): MentionToken | null {
+  const before = text.slice(0, caret)
+  const at = before.lastIndexOf('@')
+  if (at < 0) return null
+  // An "@" inside a word is an address, not a mention.
+  if (at > 0 && /[\p{L}\p{N}]/u.test(before[at - 1])) return null
+
+  const raw = before.slice(at + 1)
+  if (raw.length > MAX_CHARS || /[\n\r]/.test(raw)) return null
+
+  // One trailing space is kept: it is the moment between a forename and a
+  // surname, and the picker blinking out there is the bug in miniature.
+  const trailing = raw.endsWith(' ')
+  const body = trailing ? raw.slice(0, -1) : raw
+  if (body === '') return trailing ? null : { start: at, end: caret, query: '' }
+  if (body.endsWith(' ')) return null
+
+  const words = body.split(' ')
+  if (words.length > MAX_WORDS) return null
+  if (!words.every((w) => NAME_WORD.test(w))) return null
+
+  const known = candidates.flatMap((c) => [c.name, ...(c.aliases ?? [])])
+  for (let i = 1; i < words.length; i++) {
+    if (/^\p{Lu}/u.test(words[i])) continue
+    const sofar = words.slice(0, i + 1).join(' ').toLowerCase()
+    if (known.some((n) => n.toLowerCase().startsWith(sofar))) continue
+    return null
+  }
+
+  return { start: at, end: caret, query: body }
+}
+
 /** Characters first: they are what most "@" typing is for, and the picker was
  *  theirs before it was anyone else's. */
 const KIND_ORDER: Record<MentionKind, number> = { character: 0, item: 1, location: 2 }

@@ -2,7 +2,8 @@ import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { Users, Package, MapPin, Plus } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import {
-  mentionSuggestions, type MentionCandidate, type MentionKind, type MentionSuggestion,
+  findMentionToken, mentionSuggestions,
+  type MentionCandidate, type MentionKind, type MentionSuggestion, type MentionToken,
 } from '@/lib/mentionPicker'
 
 interface SceneDraftEditorProps {
@@ -24,22 +25,6 @@ interface SceneDraftEditorProps {
    *  in HTML-AAM and it disappears the moment the field has prose in it. */
   ariaLabel?: string
   rows?: number
-}
-
-interface MentionState {
-  /** Index of the "@" in the text. */
-  start: number
-  /** Caret position (end of the query). */
-  end: number
-  query: string
-}
-
-/** Find an in-progress "@name" token immediately before the caret, if any. */
-function findMention(text: string, caret: number): MentionState | null {
-  const before = text.slice(0, caret)
-  const m = before.match(/@(\w*)$/)
-  if (!m) return null
-  return { start: caret - m[0].length, end: caret, query: m[1] }
 }
 
 /**
@@ -64,7 +49,7 @@ export function SceneDraftEditor({
   value, onChange, onBlur, candidates, canCreateLocation, onPick, placeholder, ariaLabel, rows = 5,
 }: SceneDraftEditorProps) {
   const taRef = useRef<HTMLTextAreaElement>(null)
-  const [mention, setMention] = useState<MentionState | null>(null)
+  const [mention, setMention] = useState<MentionToken | null>(null)
   const [highlight, setHighlight] = useState(0)
   const pendingCaret = useRef<number | null>(null)
 
@@ -98,8 +83,10 @@ export function SceneDraftEditor({
     : []
 
   function refresh(text: string, caret: number) {
-    const m = findMention(text, caret)
-    setMention(m)
+    // The candidates go in because the token's own bounds depend on them: a
+    // lowercase word only stays part of a name while the run still spells one
+    // that exists, which is what makes "Renée de Saint-Méran" reachable.
+    setMention(findMentionToken(text, caret, candidates))
     setHighlight(0)
   }
 

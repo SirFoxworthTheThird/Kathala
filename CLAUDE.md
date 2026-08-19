@@ -67,14 +67,15 @@ and durable backup. It is entirely local: no network work is required for a muta
 Single Zustand store (`useAppStore`) with slices for: active world/event/map, map drill-down history stack, playback, and UI panel open/close state. Only `activeWorldId`, `activeEventId`, `sidebarOpen`, `navPinned`, `barScope`, and `theme` are persisted (localStorage key: `plotweave-ui`).
 
 ### Snapshot model
-Per-chapter state is stored as explicit snapshot records — not computed:
-- `CharacterSnapshot` — location, inventory, alive status, travel mode per (character × chapter)
-- `ItemPlacement` — where an item is per (item × chapter)  
-- `LocationSnapshot` — status/notes per (location × chapter)
-- `ItemSnapshot` — condition/notes per (item × chapter)
-- `RelationshipSnapshot` — relationship state per (relationship × chapter)
+State is stored as explicit snapshot records — not computed. **Every snapshot keys on `eventId`, i.e. per scene, not per chapter** (check the interfaces in `src/types/`; this file said chapter for a long time and the code never did):
+- `CharacterSnapshot` — location, inventory, alive status, travel mode per (character × scene)
+- `ItemPlacement` — where an item is per (item × scene)
+- `LocationSnapshot` — status/notes per (location × scene)
+- `ItemSnapshot` — condition/notes per (item × scene)
+- `RelationshipSnapshot` — relationship state per (relationship × scene)
+- `MapRegionSnapshot` — region state per (region × scene)
 
-When a new chapter is created, it inherits all snapshots from the immediately preceding chapter in the same timeline.
+**Nothing is copied forward when a scene or chapter is created.** This is a delta/last-known model: a snapshot is written only by a direct user edit, and state at the cursor is resolved at read time by looking back to the most recent prior snapshot in global order (`sortKey` = chapter.number × 10_000 + event.sortOrder). `createEvent` performs no inheritance — see the note on it in `src/db/hooks/useTimeline.ts`, and the operation-journal section below, which depends on there being no bulk snapshot write.
 
 ### Map system (`src/features/maps/`)
 Uses Leaflet with `CRS.Simple` (pixel coordinates) for custom/fantasy image maps. Sub-maps are supported via `LinkedMapLayerId` on location markers; the map drill-down history is tracked as `mapLayerHistory: string[]` in Zustand. `LeafletMapCanvas.tsx` is the main map renderer. Map layers have optional `scalePixelsPerUnit` / `scaleUnit` for distance calculations.

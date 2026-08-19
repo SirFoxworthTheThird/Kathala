@@ -451,6 +451,8 @@ interface LeafletMapCanvasProps {
   charPins: CharacterPin[]
   movementLines: MovementLine[]
   isDraggingCharacter: boolean
+  /** True while the sidebar's crosshair is armed and waiting for a tap. */
+  placingCharacter?: boolean
   onMarkerClick: (markerId: string) => void
   onMapClick: (x: number, y: number) => void
   onDrillDown: (mapLayerId: string) => void
@@ -522,7 +524,7 @@ interface LeafletMapCanvasProps {
 export function LeafletMapCanvas({
   readOnly,
   layer, imageUrl, markers, charPins, movementLines,
-  isDraggingCharacter, onMarkerClick, onMapClick, onDrillDown,
+  isDraggingCharacter, placingCharacter = false, onMarkerClick, onMapClick, onDrillDown,
   onCharacterDrop, onCharacterDropOnEmpty, onCharacterClick, mapRef: externalMapRef,
   scaleMode, onScalePoints, showSubMapLinks = true, locationStatuses = {},
   pinAnimation, onAnimationEnd, initialCenter, initialZoom, onViewChange, measureLine, ghostPins,
@@ -534,6 +536,13 @@ export function LeafletMapCanvas({
   onContextAddLabel, onContextStartRoute, onContextStartRegion,
   mapAnnotations = [], onAnnotationClick, selectedAnnotationId,
 }: LeafletMapCanvasProps) {
+  /*
+    Both ways of putting a character somewhere aim at a location marker — the
+    drag from the sidebar and the armed crosshair — so both have to lift the
+    markers above the character pins that otherwise cover them. One flag, so the
+    next gesture that aims at a marker cannot be added to only half of it.
+  */
+  const markersAreTargets = isDraggingCharacter || placingCharacter
   const { setIsAnimating } = useAppStore()
   // The marker the reader has open keeps its name even in a crowd.
   const selectedMarkerId = useAppStore((st) => st.selectedLocationMarkerId)
@@ -1207,13 +1216,26 @@ export function LeafletMapCanvas({
           </>
         )}
 
-        {/* Location markers — guard against markers with missing coordinates (data integrity) */}
+        {/*
+          Location markers — guard against markers with missing coordinates
+          (data integrity).
+
+          W19-1: the markers rise above the character pins whenever they are the
+          thing being aimed at, which is both gestures and not just the drag.
+          Raising them for `isDraggingCharacter` alone left tap-to-place aiming
+          at a target underneath the pins: a character pin covers its own
+          location pin to within about three pixels, so tapping the middle of an
+          occupied place selected the character standing there and opened their
+          panel — over a hint still reading "Tap a location to place …" — while
+          the placement quietly did not happen. Two people in one room is the
+          ordinary case, and on touch the drag does not exist to fall back on.
+        */}
         {markers.filter((m) => typeof m.x === 'number' && typeof m.y === 'number').map((marker) => (
           <Marker
             key={marker.id}
             position={[marker.y, marker.x]}
-            icon={makeLocationIcon(marker.iconType, !!marker.linkedMapLayerId && showSubMapLinks, marker.name, isDraggingCharacter, locationStatuses[marker.id] ?? 'active', showLocationLabels && labelledIds.has(marker.id))}
-            zIndexOffset={isDraggingCharacter ? 2000 : -100}
+            icon={makeLocationIcon(marker.iconType, !!marker.linkedMapLayerId && showSubMapLinks, marker.name, markersAreTargets, locationStatuses[marker.id] ?? 'active', showLocationLabels && labelledIds.has(marker.id))}
+            zIndexOffset={markersAreTargets ? 2000 : -100}
             // A marker under the measuring point must not take the click or be
             // shoved aside by the drag that places it.
             draggable={!readOnly && !scaleMode}

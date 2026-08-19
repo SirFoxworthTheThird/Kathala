@@ -128,6 +128,63 @@ test.describe('Naming things from the scene prose', () => {
   })
 
   /**
+   * W19-2. The token the editor read was one `\w` run, so the picker closed at
+   * the space and the writer was left with a literal "@Ysolde Vane" in the
+   * manuscript — nothing created, nothing recorded, nothing said. **516 of the
+   * 760 character names in the shipped library are not a single `\w` run**, so
+   * the one thing the picker exists for was unavailable for most names a
+   * fantasy writer has.
+   */
+  test('a two-word name can be made from the sentence, and no "@" is left behind', async ({ page }) => {
+    await sceneWithProse(page)
+    await mention(page, 'Ysolde Vane')
+
+    await page.getByRole('button', { name: /Ysolde Vane\s+new character/ }).click()
+    await expect(prose(page)).toHaveValue(/Ysolde Vane/)
+    await expect(prose(page)).not.toHaveValue(/@/)
+
+    await expect.poll(async () => {
+      const { event, characters } = await storedEvent(page)
+      // The whole name, not the forename: a record called "Ysolde" would look
+      // like a pass on the screen and be the bug underneath it.
+      const ysolde = characters.find((c) => c.name === 'Ysolde Vane')
+      return !!ysolde && event.mentionedCharacterIds.includes(ysolde.id)
+    }, { timeout: 15_000 }).toBe(true)
+
+    const { characters } = await storedEvent(page)
+    expect(characters.map((c) => c.name)).not.toContain('Ysolde')
+  })
+
+  /**
+   * The bound on the token, and the reason it is the shape it is. While the
+   * picker is open it owns Enter, so a token that ran on through a sentence
+   * would turn a paragraph break into a silent commit. Prose resumes at the
+   * first lowercase word.
+   */
+  test('a lowercase word ends the name, so Enter is still a paragraph break', async ({ page }) => {
+    await sceneWithProse(page)
+    await prose(page).click()
+    await page.keyboard.type(' @Marren waited')
+    await page.waitForTimeout(500)
+
+    // The picker is gone: "waited" is prose, not the second half of a name.
+    await expect(page.getByRole('button', { name: /new character/ })).toHaveCount(0)
+
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('Then the bell rang.')
+    await expect(prose(page)).toHaveValue(/@Marren waited\nThen the bell rang\./)
+
+    // Nothing was created behind the writer's back.
+    const { characters } = await storedEvent(page)
+    expect(characters).toHaveLength(0)
+
+    // The presence half, in the same test: stop at the capital and the picker
+    // is there, offering the two-word name.
+    await page.keyboard.type(' @Marren Vale')
+    await expect(page.getByRole('button', { name: /Marren Vale\s+new character/ })).toBeVisible()
+  })
+
+  /**
    * A place is a pin, so it needs a map to be on. With no map in the world the
    * row is withheld rather than inventing coordinates — and the other two kinds
    * are still offered, which is what stops this passing on a picker that has

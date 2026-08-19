@@ -409,6 +409,16 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   }
 
   function handleCharacterClick(characterId: string) {
+    /*
+      While the crosshair is armed the map is a target, not a browser. A tap
+      that lands on a character pin instead of the location under it must leave
+      the crosshair armed rather than swap to somebody's panel — which is what
+      it used to do, over a hint still asking for a location, with nothing
+      placed and nothing said. The pins no longer cover the markers (see
+      `markersAreTargets` in LeafletMapCanvas), so this is the case that should
+      not arise; it costs nothing here and it fails visibly instead of quietly.
+    */
+    if (placingCharacterId) return
     setSelectedLocationMarkerId(null)
     setSelectedCharacterId((prev) => prev === characterId ? null : characterId)
   }
@@ -814,6 +824,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               : undefined}
             locationStatuses={locationStatusMap}
             isDraggingCharacter={isDraggingCharacter}
+            placingCharacter={placingCharacterId != null}
             pinAnimation={pinAnimation}
             onAnimationEnd={handlePlaybackAnimationEnd}
             onMarkerClick={handleMarkerClick}

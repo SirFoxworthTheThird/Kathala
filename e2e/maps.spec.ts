@@ -230,12 +230,11 @@ test.describe('Map management', () => {
 
   // ── Tap-to-place a character (touch-friendly, no HTML5 drag) ────────────────
 
-  test('places a character by arming the crosshair then tapping a location', async ({ page }) => {
-    // The Leaflet map + timeline round-trip is heavy; give slow renders headroom.
-    test.setTimeout(120_000)
-    page.setDefaultTimeout(60_000)
-
-    // Upload a map and add a location first (no active-event cursor yet).
+  /**
+   * A map with one location called Rivendell, and the time cursor parked on a
+   * scene so there is a moment to place a character into.
+   */
+  async function mapWithRivendellAndCursor(page: Page) {
     await page.getByRole('button', { name: 'Upload Map' }).first().click()
     await uploadMap(page, MAIN_MAP, 'Middle Earth')
     await expect(page.locator('.leaflet-container')).toBeVisible()
@@ -263,10 +262,38 @@ test.describe('Map management', () => {
     await settleNav(page)
     await page.getByTitle('The Departure', { exact: true }).click()
 
-    // Back to the map — arm placement for Aragorn; the placement HUD appears.
     await page.getByRole('link', { name: /maps/i }).click()
     await settleNav(page)
     await expect(page.locator('.leaflet-container')).toBeVisible()
+  }
+
+  /** Where each character is recorded, by location name, straight from Dexie. */
+  const placements = (page: Page) => page.evaluate(async () => {
+    const db = (window as { __pwdb?: never }).__pwdb as unknown as {
+      characters: { toArray: () => Promise<Array<{ id: string; name: string }>> }
+      locationMarkers: { toArray: () => Promise<Array<{ id: string; name: string }>> }
+      characterSnapshots: { toArray: () => Promise<Array<{ characterId: string; currentLocationMarkerId: string | null }>> }
+    }
+    const [characters, markers, snaps] = await Promise.all([
+      db.characters.toArray(), db.locationMarkers.toArray(), db.characterSnapshots.toArray(),
+    ])
+    const markerName = new Map(markers.map((m) => [m.id, m.name]))
+    const out: Record<string, string | null> = {}
+    for (const c of characters) {
+      const s = snaps.find((x) => x.characterId === c.id)
+      out[c.name] = s ? (s.currentLocationMarkerId ? markerName.get(s.currentLocationMarkerId) ?? null : null) : null
+    }
+    return out
+  })
+
+  test('places a character by arming the crosshair then tapping a location', async ({ page }) => {
+    // The Leaflet map + timeline round-trip is heavy; give slow renders headroom.
+    test.setTimeout(120_000)
+    page.setDefaultTimeout(60_000)
+
+    await mapWithRivendellAndCursor(page)
+
+    // Arm placement for Aragorn; the placement HUD appears.
     await page.getByRole('button', { name: 'Place Aragorn on the map' }).click()
     await expect(page.getByText(/Tap a location to place/)).toBeVisible()
 
@@ -276,5 +303,46 @@ test.describe('Map management', () => {
 
     // Aragorn's pin now renders on the map.
     await expect(page.locator('.leaflet-container').getByText('Aragorn')).toBeVisible()
+  })
+
+  /**
+   * W19-1. The test above places into an *empty* location, which is the only
+   * case that ever worked: a character pin covers its own location pin to
+   * within about three pixels, and the location markers were lifted above the
+   * pins only while an HTML5 drag was in flight. So tapping the middle of a
+   * place somebody already stood in selected *them* and opened their panel —
+   * over a hint still reading "Tap a location to place …" — while the placement
+   * silently did not happen. Two people in one room is the ordinary case, and
+   * the drag that worked around it does not exist on touch.
+   *
+   * This taps the exact centre of the occupied pin, which is the point that
+   * failed, and reads the answer out of Dexie rather than off the screen.
+   */
+  test('and places a second character onto a location the first one is standing in', async ({ page }) => {
+    test.setTimeout(120_000)
+    page.setDefaultTimeout(60_000)
+
+    await mapWithRivendellAndCursor(page)
+
+    await page.getByRole('button', { name: 'Place Aragorn on the map' }).click()
+    await page.getByText('Rivendell').first().click()
+    const aragornPin = page.locator('.leaflet-container').getByText('Aragorn')
+    await expect(aragornPin).toBeVisible()
+    await expect.poll(async () => (await placements(page)).Aragorn).toBe('Rivendell')
+
+    // Now Legolas, onto the same place — aiming at the middle of Aragorn's pin.
+    await page.getByRole('button', { name: 'Place Legolas on the map' }).click()
+    await expect(page.getByText(/Tap a location to place/)).toBeVisible()
+
+    const box = (await aragornPin.boundingBox())!
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+
+    // Both are at Rivendell. Aragorn is in the assertion because a fix that
+    // moved him instead of placing her would satisfy a check on Legolas alone.
+    await expect.poll(async () => await placements(page), { timeout: 15_000 })
+      .toMatchObject({ Aragorn: 'Rivendell', Legolas: 'Rivendell' })
+
+    // And the crosshair let go, rather than the tap being swallowed by a panel.
+    await expect(page.getByText(/Tap a location to place/)).toHaveCount(0)
   })
 })
