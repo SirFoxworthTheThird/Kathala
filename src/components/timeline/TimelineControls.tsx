@@ -129,11 +129,39 @@ export function EventPanel({ chapterNum, chapterTitle, eventTitle, hasPrev, hasN
           fontSize: '0.54rem', color: 'var(--tl-text-muted)', fontFamily: 'var(--font-body)',
           letterSpacing: '0.03em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
-          {timelineLabel && <span style={{ color, fontWeight: 700 }}>{timelineLabel} · </span>}
+          {/*
+            W19-10: a timeline's stored colour is an **identity mark, not ink**.
+            It was painted straight onto this label at 0.54rem and onto the
+            scene title below at 0.76rem — two runs of small bold text in a
+            colour the writer picked, on a ground the theme picked, with nothing
+            checking the pair. On the Paper theme the shipped default `#6366f1`
+            measures **3.89:1** against the card, where 4.5 is the bar for text
+            this size; it was the only sub-AA text on four screens. And it is
+            not a Paper problem — any colour can fail on any ground, so no
+            per-theme value would have fixed it.
+
+            The colour stays, as a dot: 3:1 is the bar for a non-text mark and
+            it clears that comfortably. Same shape the Writer's Brief already
+            uses for a POV character — a dot in their colour, their name in the
+            readable ink.
+          */}
+          {timelineLabel && (
+            <>
+              <span
+                aria-hidden="true"
+                style={{
+                  display: 'inline-block', width: '0.4rem', height: '0.4rem',
+                  borderRadius: '9999px', background: color, marginRight: '0.25rem',
+                  verticalAlign: 'baseline', flexShrink: 0,
+                }}
+              />
+              <span style={{ fontWeight: 700 }}>{timelineLabel} · </span>
+            </>
+          )}
           Ch.{chapterNum} · {chapterTitle}
         </div>
         <div style={{
-          fontSize: '0.76rem', fontWeight: 700, color, fontFamily: 'var(--font-body)',
+          fontSize: '0.76rem', fontWeight: 700, color: 'var(--tl-text)', fontFamily: 'var(--font-body)',
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           lineHeight: 1.25, marginTop: '2px', transition: 'color 0.2s',
         }}>

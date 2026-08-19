@@ -11,6 +11,7 @@ import {
   parseLocationsSpec, addLocationsToWorld, countLocations, LOCATIONS_MAP_NAME,
   formatLocationTree,
 } from '@/lib/sectionImport'
+import { labelledMarkers } from '@/features/maps/labelDeclutter'
 
 describe('parseCharactersSpec', () => {
   it('accepts a bare array of characters', () => {
@@ -827,5 +828,105 @@ describe('parseLocationsSpec — keys it does not recognise', () => {
     }))
     expect(locations).toHaveLength(1)
     expect(warning).toBeUndefined()
+  })
+})
+
+// ── The auto-layout and the labels it has to leave room for (W19-8) ───────────
+
+/*
+  Three places on an empty 1600×1000 canvas came out with two labels: *The
+  Ledger Room* rendered as a nameless 14px dot while *The Flats* and *The Tide
+  Bell* kept their pills. The declutterer was right — the pill genuinely
+  overran its column — so the fault was the layout, which dealt three markers
+  into the first three cells of a grid built for fifty-four.
+
+  These run the **real declutterer** at the zoom the app opens such a map at,
+  rather than asserting coordinates, because a coordinate test would pass on any
+  spacing somebody typed in and this one only passes on spacing that fits.
+*/
+describe('the auto-layout leaves room for the names it places', () => {
+  const worldId = 'w-layout'
+  const fakeImage = async () => ({ blob: new Blob(['x'], { type: 'image/png' }), width: 1600, height: 1000 })
+
+  /*
+    `CRS.Simple` scales by 2^zoom, and the map opens fitted to its container —
+    so this is the zoom a 1600×1000 placeholder gets in a 1100×700 canvas, which
+    is roughly what the Maps screen offers in a 1440×900 window.
+  */
+  const FIT_ZOOM = Math.log2(Math.min(1100 / 1600, 700 / 1000))
+
+  beforeEach(async () => {
+    await db.delete()
+    await db.open()
+    await db.worlds.put({ id: worldId, name: 'W', description: '', coverImageId: null, theme: null, continuityStaleThreshold: 5, createdAt: 0, updatedAt: 0 })
+  })
+
+  it('keeps every name on the three-place sub-map that lost one', async () => {
+    await addLocationsToWorld(worldId, [
+      { name: 'Salt Gate', children: [
+        { name: 'The Ledger Room' },
+        { name: 'The Flats' },
+        { name: 'The Tide Bell' },
+      ]},
+    ], fakeImage)
+
+    const parent = (await db.locationMarkers.where('worldId').equals(worldId).toArray())
+      .find((m) => m.name === 'Salt Gate')!
+    const children = (await db.locationMarkers.where('worldId').equals(worldId).toArray())
+      .filter((m) => m.mapLayerId === parent.linkedMapLayerId)
+    expect(children.map((m) => m.name).sort()).toEqual(['The Flats', 'The Ledger Room', 'The Tide Bell'])
+
+    const labelled = labelledMarkers(children, FIT_ZOOM)
+    const unnamed = children.filter((m) => !labelled.has(m.id)).map((m) => m.name)
+    expect(unnamed, `dropped at fit zoom: ${unnamed.join(', ')}`).toEqual([])
+  })
+
+  /*
+    The other half, and the one that makes the test above mean something: the
+    *old* fixed 6-column grid, through the same declutterer at the same zoom,
+    loses a name. Without this, "no labels dropped" would be just as satisfiable
+    by a declutterer that had stopped decluttering.
+
+    **Which** name goes is not asserted, because it is not a property of the
+    layout: the declutterer walks markers in a stable id order and keeps the
+    first that fits, so on real ids from `generateId()` the loser is whichever
+    lost that tiebreak. The run that reported this saw *The Ledger Room* go; the
+    same three names in id order here lose *The Flats* instead. The defect is
+    that three pins on an empty canvas cannot all be read, and that is what this
+    pins down.
+  */
+  it('and the grid it replaced cannot fit all three', () => {
+    const OLD_COLS = 6, w = 1600, h = 1000
+    const mx = w * 0.1, my = h * 0.1
+    const cw = (w - 2 * mx) / (OLD_COLS - 1), rh = (h - 2 * my) / 8
+    const oldGrid = ['The Ledger Room', 'The Flats', 'The Tide Bell'].map((name, i) => ({
+      id: `m${i}`, name,
+      x: Math.round(mx + (i % OLD_COLS) * cw),
+      y: Math.round(my + Math.floor(i / OLD_COLS) * rh),
+    }))
+
+    expect(labelledMarkers(oldGrid, FIT_ZOOM).size).toBeLessThan(3)
+  })
+
+  it('still declutters a genuinely crowded map', async () => {
+    // The cap is deliberate: past about three dozen pins a map *is* crowded and
+    // dropping labels is the right answer rather than more spreading. Without
+    // this the fix could have been "never declutter", which is a worse map.
+    await addLocationsToWorld(worldId, [
+      { name: 'The Wide World', children: Array.from({ length: 30 }, (_, i) => ({ name: `Longish Placename ${i}` })) },
+    ], fakeImage)
+
+    const parent = (await db.locationMarkers.where('worldId').equals(worldId).toArray())
+      .find((m) => m.name === 'The Wide World')!
+    const crowd = (await db.locationMarkers.where('worldId').equals(worldId).toArray())
+      .filter((m) => m.mapLayerId === parent.linkedMapLayerId)
+    expect(crowd).toHaveLength(30)
+    expect(labelledMarkers(crowd, FIT_ZOOM).size).toBeLessThan(crowd.length)
+  })
+
+  it('puts a lone place in the middle rather than in a corner', async () => {
+    await addLocationsToWorld(worldId, [{ name: 'The Only Place' }], fakeImage)
+    const [only] = await db.locationMarkers.where('worldId').equals(worldId).toArray()
+    expect({ x: only.x, y: only.y }).toEqual({ x: 800, y: 500 })
   })
 })

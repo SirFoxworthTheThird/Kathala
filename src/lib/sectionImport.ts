@@ -1074,16 +1074,36 @@ function iconTypeFor(node: SpecLocation): LocationIconType {
   return node.children && node.children.length > 0 ? 'region' : 'landmark'
 }
 
-/** Grid position for the i-th marker on a `w`×`h` map, clamped within margins. */
-function positionForIndex(i: number, w: number, h: number): { x: number; y: number } {
-  const cols = 6
+/**
+ * Grid position for the i-th of `n` markers on a `w`×`h` map, within margins.
+ *
+ * W19-8: the grid was a fixed 6 columns and 8 rows whatever `n` was, so three
+ * places on an empty 1600×1000 canvas were dealt into the first three cells of
+ * a layout built for fifty-four — 256 map px apart, which at the default fit
+ * zoom is about 176 screen px. A label pill is `max(88, len × 8 + 16) + 47`
+ * wide, so any name of 15 characters or more overran its column and the
+ * declutterer — correctly — dropped it. On a three-marker sub-map that is one
+ * name in three missing, and *The Ledger Room* rendered as a nameless 14px dot
+ * on an otherwise empty canvas. The declutter was right; the spacing was not.
+ *
+ * The grid is shaped to the count now and markers sit at cell centres, so a
+ * handful of places spread across the canvas and a single one lands in the
+ * middle. Six columns is still the cap — beyond about three dozen pins a map
+ * *is* crowded, and decluttering is the right answer rather than more spreading.
+ *
+ * `i` may run past `n` when a later import adds to a layer that was laid out
+ * for fewer, so the row is clamped rather than trusted.
+ */
+function positionForIndex(i: number, n: number, w: number, h: number): { x: number; y: number } {
+  const cols = Math.max(1, Math.min(6, Math.ceil(Math.sqrt(Math.max(1, n)))))
+  const rows = Math.max(1, Math.ceil(Math.max(1, n) / cols))
   const mx = w * 0.1, my = h * 0.1
-  const cw = (w - 2 * mx) / Math.max(1, cols - 1)
-  const rh = (h - 2 * my) / 8
+  const cw = (w - 2 * mx) / cols
+  const rh = (h - 2 * my) / rows
   const col = i % cols, row = Math.floor(i / cols)
   return {
-    x: Math.round(mx + col * cw),
-    y: Math.round(Math.min(h - my, my + row * rh)),
+    x: Math.round(mx + (col + 0.5) * cw),
+    y: Math.round(Math.min(h - my, my + (Math.min(row, rows - 1) + 0.5) * rh)),
   }
 }
 
@@ -1239,6 +1259,11 @@ export async function addLocationsToWorld(
   }
 
   async function placeNodes(nodes: SpecLocation[], mapLayerId: string): Promise<void> {
+    // How many pins this layer is expected to hold once these siblings land —
+    // what the grid is shaped to. An over-estimate (some of `nodes` may already
+    // exist elsewhere and only be updated) costs a little spread and nothing
+    // else, which is the safe direction.
+    const expected = (countByLayer.get(mapLayerId) ?? 0) + nodes.length
     for (const node of nodes) {
       const name = node.name.trim()
       if (!name) { skipped++; continue }
@@ -1273,7 +1298,7 @@ export async function addLocationsToWorld(
       // New place — create it on the current map layer.
       const idx = countByLayer.get(mapLayerId) ?? 0
       countByLayer.set(mapLayerId, idx + 1)
-      const pos = positionForIndex(idx, imageDims.width, imageDims.height)
+      const pos = positionForIndex(idx, expected, imageDims.width, imageDims.height)
       const hasLevels = !!(node.levels && node.levels.length > 0)
       let subId: string | null = null
       if (!hasLevels && node.children && node.children.length > 0) subId = (await createLayer(mapLayerId, name)).id

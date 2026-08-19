@@ -34,7 +34,15 @@ export function ChapterSegment({
   const activeIdx  = activeEventId ? events.findIndex((e) => e.id === activeEventId) : -1
   const fillRatio  = isPast ? 1 : (isActive && activeIdx >= 0) ? (activeIdx + 0.5) / events.length : 0
   const opacity    = isEmpty ? 0.28 : (!isActive && !isPast) ? 0.42 : 1
-  const labelColor = isActive ? color : 'var(--tl-text-muted)'
+  /*
+    W19-10, the same rule as the panel beside it: a timeline's stored colour is
+    an identity mark, not ink. The active chapter's name was painted in it at
+    0.56rem — `#6366f1` on Paper's active segment measures **3.63:1**, under the
+    4.5 this size needs. The colour is already all over this component as marks
+    — the fill rail, every event tick, the active tick's glow — so the label
+    only has to stop competing with them, not replace them.
+  */
+  const labelColor = isActive ? 'var(--tl-text)' : 'var(--tl-text-muted)'
 
   const slotRem  = compact ? 1.5 : 2
   /*
