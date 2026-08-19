@@ -1974,7 +1974,11 @@ cast darkened to read on a pale page rather than a dark one. Set it as the app
 theme and everything wears it, or set it on a single world and leave the rest as
 they are. The other sixteen are dark by design — Paper is a light *theme*, not a
 switch that turns the other sixteen inside out, and PlotWeave does not follow
-your system's light/dark setting on its own. Themes colour the space around your
+your system's light/dark setting on its own.
+
+Each theme also has a **tempo**: the dot marking your place on the timeline bar
+pulses at a speed that suits it — Action races, Noir barely stirs, Cosy is
+unhurried. If your system asks for reduced motion, it stops in every theme. Themes colour the space around your
 cards and panels but never draw over it: what sits behind the app is soft
 gradient, and nothing is ruled across the screen.
 

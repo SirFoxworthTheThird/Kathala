@@ -130,6 +130,71 @@ test.describe('Theme atmosphere', () => {
   })
 
   /**
+   * Reduced motion stops the timeline pulse in **every** theme.
+   *
+   * The stop used to be a hand-written list — the bare class, cyberpunk and
+   * action — and a per-theme rhythm like `.theme-noir .tl-dot-active` outweighs
+   * a bare `.tl-dot-active` on specificity. Noir and Romance had already been
+   * left animating for anyone who asked for less motion, silently, because
+   * nobody updated the list when their rhythms were added.
+   *
+   * A list cannot be trusted to keep up with a picker that grows, so the stop
+   * is `!important` now and this walks all seventeen rather than the three
+   * somebody remembered.
+   */
+  test('reduced motion stops the pulse in every theme', async ({ browser }) => {
+    const page = await (await browser.newContext({ reducedMotion: 'reduce' })).newPage()
+    await themedWorld(page)
+
+    for (const t of APP_THEMES) {
+      await applyTheme(page, themeClass(t.id))
+      const animation = await page.evaluate(() => {
+        const probe = document.createElement('div')
+        probe.className = 'tl-dot-active'
+        document.body.appendChild(probe)
+        const name = getComputedStyle(probe).animationName
+        probe.remove()
+        return name
+      })
+      expect(animation, `${t.id} keeps pulsing under reduced motion`).toBe('none')
+    }
+    await page.close()
+  })
+
+  /**
+   * The presence half, and the reason the test above is not satisfied by an app
+   * that simply never animates: with motion allowed, the dot pulses — and the
+   * themes that were given their own tempo run at their own speed.
+   */
+  test('and with motion allowed each theme keeps its own tempo', async ({ page }) => {
+    await themedWorld(page)
+
+    const beat = async (id: string) => {
+      await applyTheme(page, themeClass(id as never))
+      return page.evaluate(() => {
+        const probe = document.createElement('div')
+        probe.className = 'tl-dot-active'
+        document.body.appendChild(probe)
+        const s = getComputedStyle(probe)
+        const out = `${s.animationName} ${s.animationDuration}`
+        probe.remove()
+        return out
+      })
+    }
+
+    // Slow, quick, and a different set of keyframes entirely.
+    const noir = await beat('noir')
+    const adventure = await beat('adventure')
+    const dystopian = await beat('dystopian')
+
+    for (const [id, v] of [['noir', noir], ['adventure', adventure], ['dystopian', dystopian]] as const) {
+      expect(v, `${id} should animate`).not.toContain('none')
+    }
+    expect(noir).not.toBe(adventure)
+    expect(dystopian.split(' ')[0]).not.toBe(noir.split(' ')[0])
+  })
+
+  /**
    * Where the layer sits, measured rather than asserted about the stylesheet:
    * the same dialog is photographed with the texture on and with it suppressed,
    * and the two must be identical — the texture cannot reach the dialog.

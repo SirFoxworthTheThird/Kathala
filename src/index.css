@@ -1155,6 +1155,23 @@
 .theme-noir    .tl-dot-active { animation: tl-pulse 4s ease-in-out infinite; }
 .theme-romance .tl-dot-active { animation: tl-pulse 3s ease-in-out infinite; }
 
+/* ── Pulse rhythm for the themes added after the first nine ── */
+/*
+  A theme's tempo. Action races, Noir barely moves; the eight added since sat on
+  the 2.4s default whatever they were meant to feel like. Dystopian takes the
+  harder-edged keyframes rather than a slower speed — the difference is a snap
+  rather than a breath, which is the register.
+*/
+.theme-gothic     .tl-dot-active { animation: tl-pulse 3.6s ease-in-out infinite; }
+.theme-mystery    .tl-dot-active { animation: tl-pulse 2.8s ease-in-out infinite; }
+.theme-mythic     .tl-dot-active { animation: tl-pulse 3.2s ease-in-out infinite; }
+.theme-adventure  .tl-dot-active { animation: tl-pulse 2s ease-in-out infinite; }
+.theme-dystopian  .tl-dot-active { animation: tl-pulse-cyber 2.8s ease-in-out infinite; }
+.theme-historical .tl-dot-active { animation: tl-pulse 3.4s ease-in-out infinite; }
+.theme-cosy       .tl-dot-active { animation: tl-pulse 3.6s ease-in-out infinite; }
+.theme-paper      .tl-dot-active { animation: tl-pulse 3s ease-in-out infinite; }
+
+
 /* ── Cyberpunk neon glow accents ── */
 .theme-cyberpunk .leaflet-popup-content-wrapper {
   box-shadow: 0 0 14px hsl(304 88% 50% / 0.55), 0 4px 18px rgba(0,0,0,0.82);
@@ -1241,15 +1258,97 @@
   letter-spacing: 0.03em;
 }
 
+/* ── Heading treatment for the themes added after the first nine ── */
+/*
+  The original nine each set tracking, weight and sometimes a shadow on their
+  headings; the eight added since inherited the face and nothing else, which is
+  why they read as flatter than the themes they sit beside in the picker.
+
+  No `text-transform` anywhere. Inscriptional caps were the obvious move for
+  Mythic and institutional caps for Dystopian, and both would shout a world's
+  own name back at whoever typed it — headings here carry proper nouns.
+*/
+.theme-gothic h1,
+.theme-gothic h2,
+.theme-gothic h3 {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  /* A candle behind the letter, not a glow around it. */
+  text-shadow: 0 1px 14px hsl(344 44% 52% / 0.10);
+}
+
+.theme-mystery h1,
+.theme-mystery h2,
+.theme-mystery h3 {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.theme-mythic h1,
+.theme-mythic h2,
+.theme-mythic h3 {
+  /* Wide and light, the way a thing cut into stone is spaced. */
+  font-weight: 500;
+  letter-spacing: 0.1em;
+}
+
+.theme-adventure h1,
+.theme-adventure h2,
+.theme-adventure h3 {
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.theme-dystopian h1,
+.theme-dystopian h2,
+.theme-dystopian h3 {
+  font-weight: 600;
+  letter-spacing: 0.12em;
+}
+
+.theme-historical h1,
+.theme-historical h2,
+.theme-historical h3 {
+  font-weight: 600;
+  letter-spacing: 0.015em;
+}
+
+.theme-cosy h1,
+.theme-cosy h2,
+.theme-cosy h3 {
+  font-weight: 600;
+  letter-spacing: 0.005em;
+}
+
+.theme-paper h1,
+.theme-paper h2,
+.theme-paper h3 {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+
 @media (prefers-reduced-motion: reduce) {
   body {
     transition: none;
   }
 
-  .tl-dot-active,
-  .theme-cyberpunk .tl-dot-active,
-  .theme-action .tl-dot-active {
-    animation: none;
+  /*
+    `!important` on purpose, and it is the point rather than a shortcut.
+
+    This was a hand-written list of theme selectors — the bare class, cyberpunk
+    and action — and a per-theme override like `.theme-noir .tl-dot-active`
+    outweighs a bare `.tl-dot-active` on specificity. Noir and Romance had
+    already been left animating for anyone who asked for less motion, silently,
+    because the list was never updated when their rhythms were added. Eight
+    more themes would have made it ten.
+
+    A stop that cannot fall behind is worth more here than one that reads
+    tidily: a request for reduced motion is not a thing to lose to a
+    stylesheet's ordering.
+  */
+  .tl-dot-active {
+    animation: none !important;
   }
 }
 
