@@ -729,7 +729,12 @@ If nothing answers what you've typed, the last rows offer to **make it**:
 *new character*, *new item*, *new place*. The record is created and attached in
 one step, so a name you invent mid-sentence doesn't cost you the sentence. A new
 place needs somewhere to be a pin, so that row appears only once your world has
-a map; the pin lands in the middle of it, ready to be dragged where it belongs.
+a map — [places go on maps and sub-maps that already exist](#maps), and nowhere
+else. The prompt inside the empty box says which kinds are on offer, so it never
+names a place in a world that cannot hold one. Where there is a map, the pin
+lands in the middle of it, ready to be dragged where it belongs; if the scene
+already has a place, the new pin goes on that place's map rather than the
+world's first.
 
 **Names with spaces work.** Keep typing past the space and the picker follows
 you — *Ysolde Vane*, *Barrow-wight*, *O'Brien* — so the record you make carries
@@ -1188,6 +1193,15 @@ included in *Export map as PNG*, since browsers restrict drawing cross-origin
 images to a canvas — uploaded maps always export.)
 
 ![Maps](images/08-maps.png)
+
+**A location lives on a map.** Places are pins, so you can add them to maps and
+sub-maps that already exist and nowhere else — there is no separate list of
+places kept apart from the geography. That is why, in a world with no map yet,
+a scene has no **Location** section to fill in, a character's **Current
+Location** has nothing to offer, and the scene editor's `@` picker offers a new
+character or a new item but not a new place. Add a map first (or generate a tree
+of locations with AI, which builds one for you and lays them out on it), and all
+three appear.
 
 The map's own controls **float over the canvas** rather than sitting in header
 rows above it, so the map itself runs from the top of the view to the chapter

@@ -83,6 +83,18 @@ export function SceneDraftSection({
    * the scene somewhere else on the strength of a word in the prose. Naming a
    * second place in a scene is ordinary; relocating the scene is not.
    */
+  /*
+    A location is a pin, so it only exists on a map: places may be added to
+    maps and sub-maps that are already there, and nowhere else. That rule was
+    already enforced — the picker withholds the *new place* row, the scene's
+    Location chip does not appear, and a character's Current Location has
+    nothing to offer — but the prompt above the box named "place" **always**
+    (W19-9), so a brand-new world advertised a third option that was not in the
+    list and gave no reason. One flag now decides both, which is what stops the
+    text and the behaviour drifting apart again.
+  */
+  const canCreateLocation = mapLayers.length > 0
+
   async function handlePick(suggestion: MentionSuggestion) {
     if (suggestion.type === 'create') {
       if (suggestion.kind === 'character') {
@@ -210,9 +222,9 @@ export function SceneDraftSection({
         onChange={handleChange}
         onBlur={saveScene}
         candidates={candidates}
-        canCreateLocation={mapLayers.length > 0}
+        canCreateLocation={canCreateLocation}
         onPick={(s) => { void handlePick(s) }}
-        placeholder="Write or paste this scene's prose… (type @ to name a character, item or place; word count feeds the pacing curve)"
+        placeholder={`Write or paste this scene's prose… (type @ to name a character${canCreateLocation ? ', item or place' : ' or item'}; word count feeds the pacing curve)`}
         ariaLabel="Scene prose"
         rows={5}
       />

@@ -185,10 +185,11 @@ test.describe('Naming things from the scene prose', () => {
   })
 
   /**
-   * A place is a pin, so it needs a map to be on. With no map in the world the
-   * row is withheld rather than inventing coordinates — and the other two kinds
-   * are still offered, which is what stops this passing on a picker that has
-   * simply stopped working.
+   * A place is a pin, so it needs a map to be on: **locations may only be added
+   * to maps and sub-maps that already exist**. With no map in the world the row
+   * is withheld rather than inventing coordinates — and the other two kinds are
+   * still offered, which is what stops this passing on a picker that has simply
+   * stopped working.
    */
   test('a place cannot be created in a world with no map', async ({ page }) => {
     await sceneWithProse(page)
@@ -200,6 +201,17 @@ test.describe('Naming things from the scene prose', () => {
 
     const { locationMarkers } = await storedEvent(page)
     expect(locationMarkers).toHaveLength(0)
+  })
+
+  /**
+   * W19-9: the prompt above the box named "place" unconditionally, so a
+   * brand-new world advertised a third option the rule above forbids and the
+   * picker never offered. The prompt and the picker are the same flag now.
+   */
+  test('and the prompt above the box does not offer one either', async ({ page }) => {
+    await sceneWithProse(page)
+    await expect(prose(page)).toHaveAttribute('placeholder', /name a character or item;/)
+    await expect(prose(page)).not.toHaveAttribute('placeholder', /place/)
   })
 
   /**
@@ -228,6 +240,10 @@ test.describe('Naming things from the scene prose', () => {
     await page.getByTitle('Open chapter detail').first().click()
     await page.getByRole('button', { name: 'Expand “The letter arrives”' }).click({ timeout: 30_000 })
     await mention(page, 'Thornfield')
+
+    // …and the prompt says so now that it is true — the presence half of the
+    // placeholder test above, in the one world that has a map.
+    await expect(prose(page)).toHaveAttribute('placeholder', /a character, item or place;/)
 
     await page.getByRole('button', { name: /Thornfield\s+new place/ }).click()
     await expect(prose(page)).toHaveValue(/Thornfield/)
