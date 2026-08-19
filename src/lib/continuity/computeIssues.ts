@@ -83,6 +83,8 @@ export interface Issue {
   fix?:
     | { kind: 'travelDays'; label: string; eventId: string; setTravelDays: number }
     | { kind: 'initialSnapshot'; label: string; eventId: string; characterId: string }
+    | { kind: 'clearPov'; label: string; eventId: string }
+    | { kind: 'addToCast'; label: string; eventId: string; characterId: string }
 }
 
 /** Everything the checks read — the ContinuityChecker gathers these via hooks
@@ -960,9 +962,42 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
 
     // ── POV checks ──────────────────────────────────────────────────────────────
 
+    /*
+      Check 0: the POV points at no character at all.
+
+      W19-6: this was reported as *"POV \"?\" is not in the cast"* by the check
+      below, which is the wrong fault twice over — the id names nobody, so there
+      is no cast to be missing from, and the remedy it offered ("add them to
+      Characters") cannot be carried out, because "them" does not exist. On one
+      shipped book that was **128 of 161 warnings**, one unactionable row
+      repeated, burying the 33 real ones.
+
+      It goes first so the two checks after it can skip these events rather than
+      each describe the same broken id in its own wrong words. The fix is the
+      one thing that is actually true: the POV is not a character, so clear it.
+    */
+    const povIsUnknown = (ev: (typeof allEvents)[number]) =>
+      !!ev.povCharacterId && !charById.has(ev.povCharacterId)
+
+    for (const ev of allEvents) {
+      if (!povIsUnknown(ev)) continue
+      const ch = chapById.get(ev.chapterId)
+      out.push({
+        id: `pov-unknown-${ev.id}`,
+        kind: 'pov-unknown',
+        severity: 'warning',
+        category: 'pov',
+        message: `The POV of "${ev.title || 'untitled'}" names no character`,
+        detail: `Ch. ${ch?.number ?? '?'} — the character it pointed at is gone. Clear the POV, or set it to someone who exists.`,
+        navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+        eventId: ev.id,
+        fix: { kind: 'clearPov', label: 'Clear the POV', eventId: ev.id },
+      })
+    }
+
     // Check 3: POV character not listed in involvedCharacterIds
     for (const ev of allEvents) {
-      if (!ev.povCharacterId) continue
+      if (!ev.povCharacterId || povIsUnknown(ev)) continue
       if (!ev.involvedCharacterIds.includes(ev.povCharacterId)) {
         const char = charById.get(ev.povCharacterId)
         const ch = chapById.get(ev.chapterId)
@@ -981,7 +1016,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
 
     // Check 2: POV character dead at that event (non-flashback only)
     for (const ev of allEvents) {
-      if (!ev.povCharacterId || ev.isFlashback) continue
+      if (!ev.povCharacterId || ev.isFlashback || povIsUnknown(ev)) continue
       const evOrder = eventOrder(ev.id)
       if (!isDeadAtOrder(ev.povCharacterId, evOrder)) continue
       const char = charById.get(ev.povCharacterId)
@@ -1090,6 +1125,14 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           detail: `Ch. ${ch?.number ?? '?'} — appears ${p.count}× in the scene text. Add them to the event or check the reference.`,
           navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
           eventId: p.eventId,
+          /*
+            W19-7: the warning already knew the character and the scene, and
+            still sent the writer to the chapter with every scene collapsed —
+            four clicks to do what the scene editor's own chip does in one. It
+            is the check a drafting writer meets most often: 143 words of prose
+            produced five of them. The chip and the row now agree.
+          */
+          fix: ev ? { kind: 'addToCast', label: 'Add to this scene', eventId: p.eventId, characterId: p.characterId } : undefined,
         })
       }
     }

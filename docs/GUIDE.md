@@ -138,7 +138,7 @@ than repeating buttons that are already on screen.
 
 ![Empty world selector](images/01-home-empty.png)
 
-Once you have worlds, each appears as a card with its name, last-edited date, and
+Once you have worlds, each appears as a card with its name, creation date, and
 description. Click a card to open it; the ⋯ menu on each card exports or deletes
 that world.
 
@@ -154,6 +154,12 @@ nothing in reading mode there is only one list and no headings at all.
 Each card carries the world's name, when it was **created**, its description,
 and how much is in it — chapters and cast — so you can tell two drafts apart
 without opening either.
+
+**The newest world is listed first**, which is the same date the card prints, so
+the order explains itself. This matters for library books: a downloaded world
+keeps the creation date written into the file it came from — every shipped book
+is dated in the past — so a book you fetched this morning sits by its own age
+rather than at the top, and the world you started today leads.
 
 ![World selector with worlds](images/02-home-worlds.png)
 
@@ -1745,6 +1751,12 @@ or day number if you haven't set up a calendar), the other scenes in that
 chapter, and a per-character state readout — including **"carried forward"**
 badges where a character's state was inherited rather than freshly set.
 
+If the scene has a **place** set on it, the brief names it as the scene's
+**Setting**, above the description. That is the scene's own location — where it
+happens — as distinct from where each character is recorded as being, which is
+what the per-character readout underneath shows. The two can disagree, and
+seeing both is how you notice.
+
 **The brief walks the book on its own.** Its header carries **previous** and
 **next moment** buttons, and every scene it lists is clickable, so you can read
 straight through a run of scenes — across chapter boundaries — without closing
@@ -1894,6 +1906,15 @@ count. Typical catches:
   way). The finding offers a one-click **"Allow N more days"** that lengthens the
   scene so the journey becomes possible.
 - A character who **travels through a destroyed or abandoned region**.
+- A character **named in the prose but not in the cast** of that scene. This is
+  the one you meet most while drafting, and it offers **Add to this scene** —
+  the same one-click fix the scene editor's chip has, so you can clear it from
+  whichever screen you are on.
+- A scene whose **POV names no character** — the point-of-view field is still
+  pointing at somebody who has since been deleted. It offers **Clear the POV**,
+  and because this is usually one deleted character repeated across many scenes,
+  the group carries **Clear every unknown POV** as well. Nothing is discarded:
+  the field already referred to a record that is not there.
 - An item that is used before it was acquired, an impossible item handoff, a
   relationship or faction membership that starts at an invalid moment, or a POV
   character who should not be available at that scene.
@@ -1910,10 +1931,13 @@ plainly, since a heading there would only repeat the category name.
 
 **A run of the same fixable fault can be cleared in one go.** Where two or more
 findings share a kind and each offers the same one-click fix, the group carries
-a **Record initial state for all N** button above it — the case worth having
-when eight characters walk into one scene and none of them has a starting state
-yet. Anything you have suppressed is left out, and the count on the button tells
-you how many it will touch.
+a batch button above it — **Record initial state for all N**, for the case where
+eight characters walk into one scene and none of them has a starting state yet,
+or **Clear every unknown POV N**, for a deleted character still named as the
+point of view of half a book. Anything you have suppressed is left out, and the
+count on the button tells you how many it will touch. Only fixes that mean the
+same thing for every row get a batch button: the travel-days fix picks a
+different number for each scene, so it stays one at a time.
 
 Each finding links straight to the offending scene so you can fix it in context.
 The travel checks rely on a **map scale** (set one on the map) and **travel

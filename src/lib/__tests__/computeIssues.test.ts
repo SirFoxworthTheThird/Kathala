@@ -220,3 +220,113 @@ describe('computeContinuityIssues', () => {
   })
 
 })
+
+// ── A POV that names nobody (W19-6) ───────────────────────────────────────────
+
+/*
+  On one shipped book this was 128 of 161 warnings: every one of them reading
+  `POV "?" is not in the cast of "…"`, over a remedy — *add them to Characters*
+  — that cannot be carried out, because "them" does not exist. Eighty per cent
+  of the panel was one unactionable row, and the 33 real warnings were under it.
+*/
+describe('a POV pointing at a character that does not exist', () => {
+  const danglingInput = () => {
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1)]
+    input.characters = [character('kvothe', 'Kvothe')]
+    input.allEvents = [event('e1', 'c1', 0, { povCharacterId: 'nobody' })]
+    return input
+  }
+
+  it('is reported as the fault it is, and not as a missing cast member', () => {
+    const pov = computeContinuityIssues(danglingInput()).filter((i) => i.category === 'pov')
+    expect(pov).toHaveLength(1)
+    expect(pov[0].kind).toBe('pov-unknown')
+    expect(pov[0].message).toContain('names no character')
+    // The old wording, and the remedy nobody could carry out.
+    expect(pov[0].message).not.toContain('not in the cast')
+    expect(pov[0].detail).not.toContain('add them to Characters')
+  })
+
+  it('offers the one fix that is actually true', () => {
+    const [issue] = computeContinuityIssues(danglingInput()).filter((i) => i.category === 'pov')
+    expect(issue.fix).toEqual({ kind: 'clearPov', label: 'Clear the POV', eventId: 'e1' })
+  })
+
+  it('does not also report it as dead, which it cannot be', () => {
+    expect(computeContinuityIssues(danglingInput()).filter((i) => i.kind === 'dead-pov')).toHaveLength(0)
+  })
+
+  /*
+    The presence half. Without it, "no pov-not-involved row" would pass just as
+    well on a check that had been switched off — which is the shape of the
+    change, so it is exactly the mistake available here.
+  */
+  it('still reports a real POV who is genuinely missing from the cast', () => {
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1)]
+    input.characters = [character('kvothe', 'Kvothe')]
+    input.allEvents = [event('e1', 'c1', 0, { povCharacterId: 'kvothe' })]
+
+    const pov = computeContinuityIssues(input).filter((i) => i.category === 'pov')
+    expect(pov).toHaveLength(1)
+    expect(pov[0].kind).toBe('pov-not-involved')
+    expect(pov[0].message).toContain('Kvothe')
+    // …and a character who exists is never reported as one who does not.
+    expect(pov.map((i) => i.kind)).not.toContain('pov-unknown')
+  })
+
+  it('reports one row per scene, so a book-wide break can be cleared in a batch', () => {
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1)]
+    input.characters = [character('kvothe', 'Kvothe')]
+    input.allEvents = [
+      event('e1', 'c1', 0, { povCharacterId: 'nobody' }),
+      event('e2', 'c1', 1, { povCharacterId: 'nobody' }),
+      event('e3', 'c1', 2, { povCharacterId: 'kvothe', involvedCharacterIds: ['kvothe'] }),
+    ]
+    const unknown = computeContinuityIssues(input).filter((i) => i.kind === 'pov-unknown')
+    expect(unknown.map((i) => i.eventId)).toEqual(['e1', 'e2'])
+    expect(unknown.every((i) => i.fix?.kind === 'clearPov')).toBe(true)
+  })
+})
+
+// ── The prose/cast warning carries its own fix (W19-7) ────────────────────────
+
+/*
+  The check a drafting writer meets most often — 143 words of new prose produced
+  five of them — and the only remedy it offered was a chevron to the chapter,
+  with every scene card collapsed. The scene editor has had the one-click fix all
+  along, as a chip reading "In the text but not on this scene: + Maren Vale".
+  Two screens, one fault, four clicks apart.
+*/
+describe('a character named in the prose but not in the cast', () => {
+  const untaggedInput = () => {
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1)]
+    input.characters = [character('maren', 'Maren Vale')]
+    input.allEvents = [event('e1', 'c1', 0)]
+    input.sceneTexts = [{
+      id: 'st1', worldId: 'w', eventId: 'e1',
+      text: 'Maren Vale found the letter and did not open it.',
+      wordCount: 9, createdAt: 0, updatedAt: 0,
+    }]
+    return input
+  }
+
+  it('offers the fix the scene editor already had', () => {
+    const [issue] = computeContinuityIssues(untaggedInput()).filter((i) => i.kind === 'prose-untagged')
+    expect(issue).toBeDefined()
+    expect(issue.fix).toEqual({
+      kind: 'addToCast', label: 'Add to this scene', eventId: 'e1', characterId: 'maren',
+    })
+  })
+
+  it('stops reporting it once the character is in the cast', () => {
+    // The presence/absence pair, and the check that the fix is the right one:
+    // doing what `addToCast` does is what makes the warning go away.
+    const input = untaggedInput()
+    input.allEvents = [event('e1', 'c1', 0, { involvedCharacterIds: ['maren'] })]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'prose-untagged')).toHaveLength(0)
+  })
+})

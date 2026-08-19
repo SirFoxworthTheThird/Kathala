@@ -26,7 +26,7 @@ export type IssueKind =
   // faction
   | 'faction-gap' | 'hostile-loc'
   // pov
-  | 'pov-not-involved' | 'dead-pov' | 'pov-consecutive'
+  | 'pov-unknown' | 'pov-not-involved' | 'dead-pov' | 'pov-consecutive'
   // prose
   | 'prose-dead' | 'prose-untagged' | 'prose-leak'
   // thread
@@ -44,6 +44,13 @@ export type IssueKind =
  */
 export const FIX_ALL_LABELS: Partial<Record<IssueKind, string>> = {
   'char-before-intro': 'Record initial state for all',
+  /*
+    W19-6: a broken POV id is usually one id repeated — 128 scenes of one
+    shipped book point at the same deleted character — so this is the shape the
+    batch was built for. Clearing a POV that names nobody discards nothing: the
+    field already refers to a record that is not there.
+  */
+  'pov-unknown': 'Clear every unknown POV',
 }
 
 /**
@@ -75,6 +82,7 @@ export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
   'dead-char-in-rel-snap': 'Relationship with a dead character',
   'faction-gap':           'Leaves a faction with no replacement',
   'hostile-loc':           'In hostile territory',
+  'pov-unknown':           'POV names no character',
   'pov-not-involved':      'POV character not in the scene',
   'dead-pov':              'Dead POV character',
   'pov-consecutive':       'Long run of one POV',

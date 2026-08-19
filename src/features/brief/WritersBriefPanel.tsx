@@ -316,6 +316,23 @@ export function WritersBriefPanel() {
                         {calendar ? formatInWorldDate(calendar, activeDay) : `In-world day ${activeDay}`}
                       </p>
                     )}
+                    {/*
+                      W19-4: the brief listed where every character was and
+                      never said where the *scene* was. Every one of the 149
+                      events in one shipped book carries a `locationMarkerId`,
+                      and the only place it surfaced was as somebody's snapshot
+                      location — so a setting the writer had recorded could not
+                      be read back on the screen whose whole job is the moment.
+                    */}
+                    {activeEvent.locationMarkerId && markerById.get(activeEvent.locationMarkerId) && (
+                      <div className="mt-1 flex items-center gap-1.5 text-[10px]">
+                        <MapPin className="h-2.5 w-2.5 shrink-0 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+                        <span className="text-[hsl(var(--muted-foreground))]">Setting:</span>
+                        <span className="font-medium text-[hsl(var(--foreground))]">
+                          {markerById.get(activeEvent.locationMarkerId)!.name}
+                        </span>
+                      </div>
+                    )}
                     {activeEvent.description && (
                       <p className="mt-0.5 text-[10px] text-[hsl(var(--muted-foreground))] leading-relaxed">{activeEvent.description}</p>
                     )}
@@ -567,13 +584,22 @@ export function WritersBriefPanel() {
                   activeEventId,
                 })
                 if (gaps.length === 0) return null
-                const nameOf = (id: string) => charById.get(id)?.name ?? '—'
+                /*
+                  W19-6: this was `?? '—'`, so a POV or cast id left pointing at
+                  a deleted character rendered as *"The reader knows — —
+                  doesn't."* — an em-dash dropped into a sentence that already
+                  had one. An id that names nobody names nobody: it leaves the
+                  list, and a gap with nobody left on either side leaves with it.
+                */
+                const namesOf = (ids: string[]) =>
+                  ids.map((id) => charById.get(id)?.name).filter((n): n is string => !!n)
                 return (
                   <Section title="Knowledge gaps" icon={Drama} count={gaps.length}>
                     <div className="space-y-1.5">
                       {gaps.map((g) => {
-                        const known = g.knownBy.map(nameOf)
-                        const unknown = g.unknownBy.map(nameOf)
+                        const known = namesOf(g.knownBy)
+                        const unknown = namesOf(g.unknownBy)
+                        if (g.kind === 'irony' ? unknown.length === 0 : known.length === 0) return null
                         return (
                           <div key={g.fact.id} className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1.5 text-xs">
                             <div className="flex items-center gap-1.5">

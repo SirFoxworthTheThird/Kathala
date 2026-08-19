@@ -408,6 +408,20 @@ export function ContinuityChecker() {
           travelModeId: null,
         })
         return
+      case 'clearPov':
+        // Nothing is discarded: the field already pointed at a record that is
+        // not there, which is the whole of the finding.
+        await updateEvent(fix.eventId, { povCharacterId: null })
+        return
+      case 'addToCast': {
+        const ev = await db.events.get(fix.eventId)
+        if (!ev) return
+        if (ev.involvedCharacterIds.includes(fix.characterId)) return
+        await updateEvent(fix.eventId, {
+          involvedCharacterIds: [...ev.involvedCharacterIds, fix.characterId],
+        })
+        return
+      }
     }
   }
 

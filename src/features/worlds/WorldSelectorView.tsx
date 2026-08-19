@@ -263,12 +263,17 @@ export default function WorldSelectorView() {
             Two shelves, not one.
 
             A book downloaded from the library and a draft being written are
-            different things that happen to share a card. They sort together by
-            creation date, which for a download is whenever it was fetched, so a
-            reader with half the library loses their own two drafts among eight
-            other people's books. The cards already differ — a reading world
-            carries "Chapter 5 of 17" and a draft does not — and the actions do
-            too: you export and sequel a draft, you resume a book.
+            different things that happen to share a card, and they sort
+            together, so a reader with half the library loses their own two
+            drafts among eight other people's books. The cards already differ —
+            a reading world carries "Chapter 5 of 17" and a draft does not — and
+            the actions do too: you export and sequel a draft, you resume a book.
+
+            This used to say the sort date "for a download is whenever it was
+            fetched". It is not: `applyWorldImport` writes the world record
+            straight out of the `.pwk`, so a downloaded book keeps the date the
+            fixture was authored on. That is why the split alone was not enough
+            — see W19-5 on the ordering in `useWorlds`.
 
             Your own work leads, because this is a writing tool. Either shelf is
             dropped when empty rather than standing there as an empty heading.

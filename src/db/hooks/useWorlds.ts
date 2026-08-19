@@ -3,8 +3,29 @@ import { db } from '@/db/database'
 import type { World, WorldCalendar } from '@/types'
 import { generateId } from '@/lib/id'
 
+/**
+ * Every world, newest first.
+ *
+ * W19-5: this was `orderBy('createdAt')` — ascending, **oldest first** — so a
+ * morning's work sat *below* a book downloaded from the library once and read
+ * for ten minutes. A library world keeps the `createdAt` written into its
+ * `.pwk` (all 25 of them are dated in the past), and the shelf split only
+ * separates them while reading mode is on — which the app itself tells you to
+ * turn off to edit one. The moment you do, the fixture's date outranks
+ * everything you own.
+ *
+ * Descending, so the list is sorted by the fact the card already prints and the
+ * order explains itself. **Not** by "last worked on", which would be the better
+ * key and does not exist: `world.updatedAt` moves only when world *metadata* is
+ * edited — writing a scene never touches it — so sorting on it today would look
+ * like a fix and behave like the bug.
+ */
+export async function listWorlds(): Promise<World[]> {
+  return db.worlds.orderBy('createdAt').reverse().toArray()
+}
+
 export function useWorlds() {
-  return useLiveQuery(() => db.worlds.orderBy('createdAt').toArray(), [], [])
+  return useLiveQuery(() => listWorlds(), [], [])
 }
 
 export function useWorld(id: string | null) {

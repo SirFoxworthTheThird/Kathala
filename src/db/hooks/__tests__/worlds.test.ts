@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
-import { createWorld, updateWorld, deleteWorld } from '@/db/hooks/useWorlds'
+import { createWorld, updateWorld, deleteWorld, listWorlds } from '@/db/hooks/useWorlds'
 
 beforeEach(async () => {
   await db.delete()
@@ -130,5 +130,46 @@ describe('deleteWorld', () => {
     })
     await deleteWorld(a.id)
     expect(await db.characters.where('worldId').equals(b.id).count()).toBe(1)
+  })
+})
+
+// ── listWorlds ────────────────────────────────────────────────────────────────
+
+/*
+  W19-5: the selector listed worlds oldest first, so a morning's work sat below
+  a book downloaded from the library once. A downloaded world keeps the
+  `createdAt` written into its `.pwk` — every shipped book is dated in the past
+  — so an ascending sort put every one of them above anything you made today.
+*/
+describe('listWorlds', () => {
+  it('puts the newest world first', async () => {
+    // Written straight to Dexie so the dates are the point rather than the
+    // order the rows happened to be inserted in.
+    const at = (id: string, createdAt: number) => db.worlds.put({
+      id, name: id, description: '', coverImageId: null, theme: null,
+      continuityStaleThreshold: 3, createdAt, updatedAt: createdAt,
+    })
+    await at('older', Date.parse('2024-04-15'))
+    await at('newest', Date.parse('2026-08-19'))
+    await at('middle', Date.parse('2026-08-16'))
+
+    expect((await listWorlds()).map((w) => w.id)).toEqual(['newest', 'middle', 'older'])
+  })
+
+  it('puts a world made today above a library book dated years ago', async () => {
+    // The reported case, with the two real dates: The Name of the Wind carries
+    // 15 Apr 2024 in its .pwk, and it was listed above the world made today.
+    await db.worlds.put({
+      id: 'name-of-the-wind', name: 'The Name of the Wind', description: '',
+      coverImageId: null, theme: null, continuityStaleThreshold: 3,
+      createdAt: Date.parse('2024-04-15'), updatedAt: Date.parse('2024-04-15'),
+    })
+    const mine = await createWorld({ name: 'The Salt Gate', description: '' })
+
+    expect((await listWorlds())[0].id).toBe(mine.id)
+  })
+
+  it('returns an empty list rather than throwing when there are no worlds', async () => {
+    expect(await listWorlds()).toEqual([])
   })
 })
