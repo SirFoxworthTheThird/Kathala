@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { computeContinuityIssues, type ContinuityInput } from '@/lib/continuity/computeIssues'
-import type { Chapter, Character, CharacterSnapshot, PlotThread, WorldEvent } from '@/types'
+import type { Chapter, Character, CharacterSnapshot, LocationMarker, LocationSnapshot, PlotThread, RelationshipSnapshot, WorldEvent } from '@/types'
 
 // Direct tests against the extracted checker core — previously these checks
 // were only exercisable through the ContinuityChecker component.
@@ -328,5 +328,284 @@ describe('a character named in the prose but not in the cast', () => {
     const input = untaggedInput()
     input.allEvents = [event('e1', 'c1', 0, { involvedCharacterIds: ['maren'] })]
     expect(computeContinuityIssues(input).filter((i) => i.kind === 'prose-untagged')).toHaveLength(0)
+  })
+})
+
+// ── Five checks the model could answer and nobody had asked ──────────────────
+
+/*
+  Each of these reads a field the app already writes and no check had ever read:
+  the scene's own place, a character's birth date, a relationship's `isActive`
+  flag, and a location's status history.
+*/
+
+function marker(id: string, name: string): LocationMarker {
+  return {
+    id, worldId: 'w', mapLayerId: 'map1', linkedMapLayerId: null, name,
+    description: '', x: 100, y: 100, imageId: null, iconType: 'building',
+    tags: [], factionId: null, createdAt: 0, updatedAt: 0,
+  }
+}
+function locSnap(id: string, locationMarkerId: string, eventId: string, status: string): LocationSnapshot {
+  return { id, worldId: 'w', locationMarkerId, eventId, status, notes: '', createdAt: 0, updatedAt: 0 }
+}
+function placed(id: string, characterId: string, eventId: string, markerId: string | null): CharacterSnapshot {
+  return {
+    id, worldId: 'w', characterId, eventId, isAlive: true,
+    currentLocationMarkerId: markerId, currentMapLayerId: markerId ? 'map1' : null,
+    inventoryItemIds: [], inventoryNotes: '', statusNotes: '', travelModeId: null,
+    createdAt: 0, updatedAt: 0,
+  }
+}
+
+describe('a scene set here, with somebody recorded there', () => {
+  /** Maren is in a scene set at the Ledger Room; her record says the Flats. */
+  const elsewhereInput = () => {
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1)]
+    input.characters = [character('maren', 'Maren Vale')]
+    input.allMarkers = [marker('ledger', 'The Ledger Room'), marker('flats', 'The Flats')]
+    input.allEvents = [
+      event('e1', 'c1', 0, { involvedCharacterIds: ['maren'] }),
+      event('e2', 'c1', 1, { involvedCharacterIds: ['maren'], locationMarkerId: 'ledger' }),
+    ]
+    input.snapshots = [placed('s1', 'maren', 'e1', 'flats')]
+    return input
+  }
+
+  it('is reported, naming both places', () => {
+    const [issue] = computeContinuityIssues(elsewhereInput()).filter((i) => i.kind === 'scene-cast-elsewhere')
+    expect(issue).toBeDefined()
+    expect(issue.message).toContain('Maren Vale')
+    expect(issue.detail).toContain('The Ledger Room')
+    expect(issue.message).toContain('The Flats')
+    expect(issue.eventId).toBe('e2')
+  })
+
+  it('offers to move them to the place the scene already names', () => {
+    const [issue] = computeContinuityIssues(elsewhereInput()).filter((i) => i.kind === 'scene-cast-elsewhere')
+    expect(issue.fix).toEqual({
+      kind: 'moveHere', label: 'Move to The Ledger Room',
+      eventId: 'e2', characterId: 'maren', markerId: 'ledger',
+    })
+  })
+
+  it('says nothing once they are recorded there', () => {
+    // The pair that proves the fix is the right one: doing what `moveHere` does
+    // is what makes the finding go away.
+    const input = elsewhereInput()
+    input.snapshots = [...input.snapshots, placed('s2', 'maren', 'e2', 'ledger')]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'scene-cast-elsewhere')).toHaveLength(0)
+  })
+
+  it('treats a journey into the scene as an answer, not a contradiction', () => {
+    // People walk into rooms. A movement naming this scene's place says so.
+    const input = elsewhereInput()
+    input.allMovements = [{
+      id: 'mv1', worldId: 'w', characterId: 'maren', eventId: 'e2',
+      waypoints: ['flats', 'ledger'], travelModeId: null, notes: '', createdAt: 0, updatedAt: 0,
+    }]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'scene-cast-elsewhere')).toHaveLength(0)
+  })
+
+  it('stays quiet when nothing is recorded at all', () => {
+    // Silence is not disagreement — a check that cannot tell where somebody is
+    // has nothing to say. This is most worlds, most of the time.
+    const input = elsewhereInput()
+    input.snapshots = []
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'scene-cast-elsewhere')).toHaveLength(0)
+  })
+
+  it('leaves flashbacks alone', () => {
+    // Their place in the linear order is not where they sit in the story, so a
+    // look-back reads the wrong state for them.
+    const input = elsewhereInput()
+    input.allEvents[1] = { ...input.allEvents[1], isFlashback: true }
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'scene-cast-elsewhere')).toHaveLength(0)
+  })
+})
+
+describe('a character in a scene before they were born', () => {
+  const born = (year: number) => ({ year, month: 0, day: 1 })
+  const withCalendar = (): ContinuityInput => {
+    const input = emptyInput()
+    input.world = {
+      id: 'w', name: 'W', description: '', coverImageId: null, theme: null,
+      continuityStaleThreshold: 5, createdAt: 0, updatedAt: 0,
+      calendar: { startYear: 1, yearSuffix: '', months: [{ name: 'M1', days: 30 }, { name: 'M2', days: 30 }] },
+    }
+    input.chapters = [chapter('c1', 1)]
+    return input
+  }
+
+  it('is reported when the scene is dated before the birth date', () => {
+    const input = withCalendar()
+    input.characters = [{ ...character('kid', 'Young Kvothe'), birthDate: born(5) }]
+    // Day 0 is the first day of year 1 — four years before they are born.
+    input.allEvents = [event('e1', 'c1', 0, { involvedCharacterIds: ['kid'], inWorldTime: 0 })]
+    const [issue] = computeContinuityIssues(input).filter((i) => i.kind === 'age-unborn')
+    expect(issue).toBeDefined()
+    expect(issue.message).toContain('Young Kvothe')
+    expect(issue.category).toBe('character')
+  })
+
+  it('says nothing once the scene is after the birth date', () => {
+    const input = withCalendar()
+    input.characters = [{ ...character('kid', 'Young Kvothe'), birthDate: born(1) }]
+    input.allEvents = [event('e1', 'c1', 0, { involvedCharacterIds: ['kid'], inWorldTime: 300 })]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'age-unborn')).toHaveLength(0)
+  })
+
+  it('stays silent in a world with no calendar, and with no birth dates', () => {
+    // Both halves are needed for this to say anything, which is why it is
+    // quiet in every world that does not date its people.
+    const noCal = withCalendar()
+    noCal.world = { ...noCal.world!, calendar: undefined }
+    noCal.characters = [{ ...character('kid', 'Young Kvothe'), birthDate: born(5) }]
+    noCal.allEvents = [event('e1', 'c1', 0, { involvedCharacterIds: ['kid'], inWorldTime: 0 })]
+    expect(computeContinuityIssues(noCal).filter((i) => i.kind === 'age-unborn')).toHaveLength(0)
+
+    const noBirth = withCalendar()
+    noBirth.characters = [character('kid', 'Young Kvothe')]
+    noBirth.allEvents = [event('e1', 'c1', 0, { involvedCharacterIds: ['kid'], inWorldTime: 0 })]
+    expect(computeContinuityIssues(noBirth).filter((i) => i.kind === 'age-unborn')).toHaveLength(0)
+  })
+
+  it('does not judge an undated flashback', () => {
+    // Its day is borrowed from the scene beside it, and a borrowed date is not
+    // evidence. A flashback that states its own date is still checked.
+    const input = withCalendar()
+    input.characters = [{ ...character('kid', 'Young Kvothe'), birthDate: born(5) }]
+    input.allEvents = [event('e1', 'c1', 0, { involvedCharacterIds: ['kid'], isFlashback: true })]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'age-unborn')).toHaveLength(0)
+
+    input.allEvents = [event('e1', 'c1', 0, { involvedCharacterIds: ['kid'], isFlashback: true, inWorldTime: 0 })]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'age-unborn')).toHaveLength(1)
+  })
+})
+
+describe('a relationship with a state after it ended', () => {
+  const relSnap = (id: string, eventId: string, isActive: boolean): RelationshipSnapshot => ({
+    id, worldId: 'w', relationshipId: 'r1', eventId, label: '', strength: 'moderate',
+    sentiment: 'neutral', description: '', isActive, createdAt: 0, updatedAt: 0,
+  })
+  const endedInput = () => {
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1), chapter('c2', 2), chapter('c3', 3)]
+    input.characters = [character('a', 'Ayla'), character('b', 'Bran')]
+    input.allEvents = [event('e1', 'c1', 0), event('e2', 'c2', 0), event('e3', 'c3', 0)]
+    input.rels = [{
+      id: 'r1', worldId: 'w', characterAId: 'a', characterBId: 'b',
+      label: '', description: '', startEventId: 'e1', strength: 'moderate',
+      sentiment: 'neutral', isBidirectional: true, createdAt: 0, updatedAt: 0,
+    }]
+    input.allRelSnaps = [relSnap('rs1', 'e1', true), relSnap('rs2', 'e2', false), relSnap('rs3', 'e3', true)]
+    return input
+  }
+
+  it('is reported, naming both chapters', () => {
+    const [issue] = computeContinuityIssues(endedInput()).filter((i) => i.kind === 'rel-after-end')
+    expect(issue).toBeDefined()
+    expect(issue.message).toContain('Ayla')
+    expect(issue.message).toContain('Bran')
+    expect(issue.detail).toContain('Ch. 2')
+    expect(issue.detail).toContain('Ch. 3')
+    expect(issue.eventId).toBe('e3')
+  })
+
+  it('says nothing about a relationship that simply runs on', () => {
+    // The presence half. Without it, "no rel-after-end" would pass on a check
+    // that never fires at all.
+    const input = endedInput()
+    input.allRelSnaps = [relSnap('rs1', 'e1', true), relSnap('rs2', 'e2', true), relSnap('rs3', 'e3', true)]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'rel-after-end')).toHaveLength(0)
+  })
+
+  it('reads the last ending, not the first', () => {
+    // Relationships in fiction break and mend. A writer who records the mend
+    // has said what happened; only the ending nobody came back to is a finding.
+    const input = endedInput()
+    input.allRelSnaps = [relSnap('rs1', 'e1', false), relSnap('rs2', 'e2', true), relSnap('rs3', 'e3', false)]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'rel-after-end')).toHaveLength(0)
+  })
+})
+
+describe('a destroyed place standing again', () => {
+  const razedInput = (lastStatus: string) => {
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1), chapter('c2', 2)]
+    input.allMarkers = [marker('town', 'Trebon')]
+    input.allEvents = [event('e1', 'c1', 0), event('e2', 'c2', 0)]
+    input.allLocationSnapshots = [
+      locSnap('ls1', 'town', 'e1', 'destroyed'),
+      locSnap('ls2', 'town', 'e2', lastStatus),
+    ]
+    return input
+  }
+
+  it('is reported, naming the place and both chapters', () => {
+    const [issue] = computeContinuityIssues(razedInput('active')).filter((i) => i.kind === 'loc-resurrected')
+    expect(issue).toBeDefined()
+    expect(issue.message).toContain('Trebon')
+    expect(issue.category).toBe('world')
+    expect(issue.detail).toContain('Ch. 1')
+    expect(issue.detail).toContain('Ch. 2')
+  })
+
+  it('says nothing about a place that stays destroyed', () => {
+    expect(computeContinuityIssues(razedInput('destroyed')).filter((i) => i.kind === 'loc-resurrected')).toHaveLength(0)
+  })
+
+  it('treats "unknown" as not knowing rather than as a return', () => {
+    expect(computeContinuityIssues(razedInput('unknown')).filter((i) => i.kind === 'loc-resurrected')).toHaveLength(0)
+  })
+
+  it('reports one return, not every scene after it', () => {
+    // A place that comes back and is razed again is a place with a history.
+    const input = razedInput('active')
+    input.chapters = [...input.chapters, chapter('c3', 3), chapter('c4', 4)]
+    input.allEvents = [...input.allEvents, event('e3', 'c3', 0), event('e4', 'c4', 0)]
+    input.allLocationSnapshots = [
+      ...input.allLocationSnapshots,
+      locSnap('ls3', 'town', 'e3', 'occupied'),
+      locSnap('ls4', 'town', 'e4', 'active'),
+    ]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'loc-resurrected')).toHaveLength(1)
+  })
+})
+
+describe('a scene set before the one in front of it', () => {
+  const pinned = (t2: number | null) => {
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1), chapter('c2', 2)]
+    input.allEvents = [
+      event('e1', 'c1', 0, { inWorldTime: 100 }),
+      event('e2', 'c2', 0, t2 == null ? {} : { inWorldTime: t2 }),
+    ]
+    return input
+  }
+
+  it('is reported when a pin puts a scene earlier than the scene before it', () => {
+    const [issue] = computeContinuityIssues(pinned(40)).filter((i) => i.kind === 'time-backwards')
+    expect(issue).toBeDefined()
+    expect(issue.category).toBe('world')
+    expect(issue.detail).toContain('day 40')
+    expect(issue.detail).toContain('day 100')
+    expect(issue.eventId).toBe('e2')
+  })
+
+  it('says nothing when the pin moves the story forward', () => {
+    expect(computeContinuityIssues(pinned(140)).filter((i) => i.kind === 'time-backwards')).toHaveLength(0)
+  })
+
+  it('leaves a flashback alone, which is what the pin is for', () => {
+    const input = pinned(40)
+    input.allEvents[1] = { ...input.allEvents[1], isFlashback: true }
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'time-backwards')).toHaveLength(0)
+  })
+
+  it('does not check a derived day, which can only move forward', () => {
+    // Comparing those would be checking the arithmetic rather than the writing.
+    expect(computeContinuityIssues(pinned(null)).filter((i) => i.kind === 'time-backwards')).toHaveLength(0)
   })
 })

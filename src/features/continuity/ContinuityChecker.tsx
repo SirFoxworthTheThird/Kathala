@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { groupIssuesByKind, FIX_ALL_LABELS } from '@/lib/continuity/issueKinds'
 import { useFocusTrap } from '@/lib/useFocusTrap'
-import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, Shield, ChevronRight, EyeOff, Eye, Check, PenLine, Spline } from 'lucide-react'
+import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, Shield, ChevronRight, EyeOff, Eye, Check, PenLine, Spline, MapPin } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store'
 import { useWorldChapters, useWorldEvents, updateEvent } from '@/db/hooks/useTimeline'
@@ -370,7 +370,7 @@ export function ContinuityChecker() {
   // focus cannot walk off in an order nothing on screen is in.
   const navigableIssues = useMemo(() => {
     const byCategory: Issue['category'][] =
-      ['character', 'item', 'relationship', 'faction', 'pov', 'prose', 'thread']
+      ['character', 'item', 'relationship', 'faction', 'pov', 'prose', 'thread', 'world']
     return byCategory.flatMap((category) =>
       groupIssuesByKind(issues.filter((i) => i.category === category && !suppressedSet.has(i.id)))
         .flatMap((g) => g.issues)
@@ -419,6 +419,32 @@ export function ContinuityChecker() {
         if (ev.involvedCharacterIds.includes(fix.characterId)) return
         await updateEvent(fix.eventId, {
           involvedCharacterIds: [...ev.involvedCharacterIds, fix.characterId],
+        })
+        return
+      }
+      case 'moveHere': {
+        /*
+          Put them where the scene already says it happens. Everything else
+          about their state carries forward from the last record — this writes
+          the one field the finding is about, at the one moment it is about,
+          which is what makes it safe to apply to a whole ensemble at once.
+        */
+        const marker = await db.locationMarkers.get(fix.markerId)
+        if (!marker) return
+        const prev = await db.characterSnapshots
+          .where('characterId').equals(fix.characterId)
+          .and((sn) => sn.eventId === fix.eventId).first()
+        await upsertSnapshot({
+          worldId,
+          characterId: fix.characterId,
+          eventId: fix.eventId,
+          isAlive: prev?.isAlive ?? true,
+          currentLocationMarkerId: marker.id,
+          currentMapLayerId: marker.mapLayerId,
+          inventoryItemIds: prev?.inventoryItemIds ?? [],
+          inventoryNotes: prev?.inventoryNotes ?? '',
+          statusNotes: prev?.statusNotes ?? '',
+          travelModeId: prev?.travelModeId ?? null,
         })
         return
       }
@@ -471,6 +497,7 @@ export function ContinuityChecker() {
   const povIssues     = issues.filter((i) => i.category === 'pov')
   const proseIssues   = issues.filter((i) => i.category === 'prose')
   const threadIssues  = issues.filter((i) => i.category === 'thread')
+  const worldIssues   = issues.filter((i) => i.category === 'world')
 
 
 
@@ -555,6 +582,16 @@ export function ContinuityChecker() {
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
                 onNavigate={handleNavigate} onFix={handleFix} onFixAll={handleFixAll} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
               <CategorySection title="Plot threads" icon={Spline} issues={threadIssues}
+                focusedId={focusedId}
+                suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
+                onNavigate={handleNavigate} onFix={handleFix} onFixAll={handleFixAll} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />
+              {/*
+                Places and the clock. Every other heading names something a
+                finding is *about* — a character, an item, a subplot — and these
+                two are about neither: a razed town standing again, and a scene
+                dated before the one in front of it. They belong to the world.
+              */}
+              <CategorySection title="Places & time" icon={MapPin} issues={worldIssues}
                 focusedId={focusedId}
                 suppressedIds={suppressedSet} suppressedNotes={suppressedNotes} showSuppressed={showSuppressed}
                 onNavigate={handleNavigate} onFix={handleFix} onFixAll={handleFixAll} onSuppress={(i, note) => { toggleContinuitySuppression(worldId ?? '', i.id); if (note) setContinuitySuppressionNote(worldId ?? '', i.id, note) }} />

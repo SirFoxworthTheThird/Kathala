@@ -2,6 +2,7 @@ import type { IssueKind } from './issueKinds'
 import { pixelDist } from '@/lib/mapScale'
 import { assessTravel, ROUTE_SPEED_MULTIPLIERS } from '@/lib/travelTime'
 import { computeInWorldDays } from '@/lib/inWorldTime'
+import { ageInYears, formatInWorldDate } from '@/lib/calendar'
 import { computeKnowledgeAnachronisms } from '@/lib/knowledgeAnachronisms'
 import { computeDeadKnowerIssues } from '@/lib/knowledgeRevealContinuity'
 import { computeProseMentionIssues, computeKnowledgeLeaks } from '@/lib/proseContinuity'
@@ -64,7 +65,7 @@ export type IssueSeverity = 'error' | 'warning'
 export interface Issue {
   id: string
   severity: IssueSeverity
-  category: 'character' | 'item' | 'relationship' | 'faction' | 'pov' | 'prose' | 'thread'
+  category: 'character' | 'item' | 'relationship' | 'faction' | 'pov' | 'prose' | 'thread' | 'world'
   /** What sort of fault this is, within its category — see `issueKinds.ts`. */
   kind: IssueKind
   message: string
@@ -85,6 +86,7 @@ export interface Issue {
     | { kind: 'initialSnapshot'; label: string; eventId: string; characterId: string }
     | { kind: 'clearPov'; label: string; eventId: string }
     | { kind: 'addToCast'; label: string; eventId: string; characterId: string }
+    | { kind: 'moveHere'; label: string; eventId: string; characterId: string; markerId: string }
 }
 
 /** Everything the checks read — the ContinuityChecker gathers these via hooks
@@ -225,6 +227,113 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         lastAlive = entry.isAlive
       }
       return lastAlive === false
+    }
+
+    /**
+     * Where this character was last recorded at or before `order`.
+     *
+     * The delta model, read the way every screen reads it: the most recent
+     * snapshot wins. `null` means nothing is recorded — either no snapshot yet,
+     * or one that leaves the location blank — and a check that cannot tell
+     * where somebody is has nothing to say about it.
+     */
+    function bestLocationAtOrder(charId: string, order: number): string | null {
+      const snaps = snapsByChar.get(charId)
+      if (!snaps) return null
+      let best: { order: number; markerId: string | null } | null = null
+      for (const sn of snaps) {
+        const o = eventOrder(sn.eventId)
+        if (o > order) continue
+        if (!best || o >= best.order) best = { order: o, markerId: sn.currentLocationMarkerId }
+      }
+      return best?.markerId ?? null
+    }
+
+    /*
+      ── A scene set here, with somebody recorded there ──────────────────────
+
+      The scene carries a place of its own and every character carries theirs,
+      and until now nothing compared the two — so a scene set in The Ledger Room
+      with a cast member recorded at The Flats drew no comment at all. That is
+      the app's headline question ("where was she when he found the letter?")
+      going unasked about its own data.
+
+      Three things keep it from crying wolf:
+
+      - **A movement at this scene is an answer, not a contradiction.** People
+        walk into rooms; that is what `CharacterMovement` records, and one
+        naming this scene's place means they arrived.
+      - **Silence is not disagreement.** No location recorded means no finding.
+      - **Flashbacks are out.** Their place in the linear order is not where
+        they sit in the story, so a look-back reads the wrong state for them.
+    */
+    for (const ev of allEvents) {
+      if (!ev.locationMarkerId || ev.isFlashback) continue
+      const sceneMarker = markerById.get(ev.locationMarkerId)
+      if (!sceneMarker) continue
+      const evOrder = eventOrder(ev.id)
+      const ch = chapById.get(ev.chapterId)
+
+      for (const charId of ev.involvedCharacterIds) {
+        const char = charById.get(charId)
+        if (!char) continue
+        const whereRecorded = bestLocationAtOrder(charId, evOrder)
+        if (!whereRecorded || whereRecorded === ev.locationMarkerId) continue
+
+        const arrived = (allMovements ?? []).some(
+          (m) => m.characterId === charId && m.eventId === ev.id && m.waypoints.includes(ev.locationMarkerId!))
+        if (arrived) continue
+
+        const at = markerById.get(whereRecorded)
+        out.push({
+          id: `scene-cast-elsewhere-${charId}-${ev.id}`,
+          kind: 'scene-cast-elsewhere',
+          severity: 'warning',
+          category: 'character',
+          message: `${char.name} is in "${ev.title || 'untitled'}" but recorded at "${at?.name ?? 'somewhere else'}"`,
+          detail: `Ch. ${ch?.number ?? '?'} — the scene is set at "${sceneMarker.name}". Move them there, record the journey, or change the scene's place.`,
+          navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+          eventId: ev.id,
+          fix: { kind: 'moveHere', label: `Move to ${sceneMarker.name}`, eventId: ev.id, characterId: charId, markerId: ev.locationMarkerId },
+        })
+      }
+    }
+
+    /*
+      ── In a scene before they were born ────────────────────────────────────
+
+      `birthDate` and the world calendar have been feeding the Writer's Brief's
+      age readout for a while and no check ever read them. `ageInYears` returns
+      null for a day before the birth date, which is exactly the finding.
+
+      Both halves have to be set for this to say anything, so it is silent in
+      every world that does not date its characters. A flashback only counts
+      when it carries an explicit `inWorldTime` — otherwise its day is borrowed
+      from the scene beside it, and a borrowed date is not evidence.
+    */
+    const calendar = world?.calendar
+    if (calendar) {
+      for (const ev of allEvents) {
+        if (ev.isFlashback && ev.inWorldTime == null) continue
+        const day = inWorldDay.get(ev.id)
+        if (day == null) continue
+        const ch = chapById.get(ev.chapterId)
+        for (const charId of ev.involvedCharacterIds) {
+          const char = charById.get(charId)
+          if (!char?.birthDate) continue
+          if (ageInYears(calendar, char.birthDate, day) !== null) continue
+          out.push({
+            id: `age-unborn-${charId}-${ev.id}`,
+            kind: 'age-unborn',
+            severity: 'warning',
+            category: 'character',
+            message: `${char.name} is in "${ev.title || 'untitled'}" before they were born`,
+            detail: `Ch. ${ch?.number ?? '?'} — ${formatInWorldDate(calendar, day)} is earlier than their birth date. Check the date, the birth date, or mark the scene a flashback.`,
+            navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+            eventId: ev.id,
+          })
+        }
+      }
     }
 
     // Event IDs where each character has a snapshot (for stale-snapshot check)
@@ -409,6 +518,10 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       if (!locSnapsByMarker.has(ls.locationMarkerId)) locSnapsByMarker.set(ls.locationMarkerId, [])
       locSnapsByMarker.get(ls.locationMarkerId)!.push({ order: eventOrder(ls.eventId), status: ls.status })
     }
+    // Sorted, because `loc-resurrected` reads this as a history and not as a
+    // set. The destroyed-location check below only asks whether *any* earlier
+    // snapshot was destroyed, so the order was never load-bearing until now.
+    for (const hist of locSnapsByMarker.values()) hist.sort((a, b) => a.order - b.order)
 
     for (const snap of snapshots) {
       if (!snap.currentLocationMarkerId) continue
@@ -661,6 +774,49 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       if (!rel.startEventId) continue
       const startOrder = eventOrder(rel.startEventId)
       const startChapNum = chapNumById.get(eventById.get(rel.startEventId)?.chapterId ?? '') ?? 0
+
+      /*
+        A relationship marked over, and then live again.
+
+        `rel-before-start` has always caught the other end of this. The flag
+        that says a relationship has ended — `RelationshipSnapshot.isActive` —
+        was read by no check at all, so a friendship recorded as over in Ch.4
+        could go on having states recorded in Ch.9 in silence.
+
+        Only the *last* ending matters. Relationships in fiction break and mend,
+        and a writer who records the mend has said what happened; what this is
+        for is the ending nobody came back to.
+      */
+      const relSnapsSorted = (allRelSnaps ?? [])
+        .filter((rs) => rs.relationshipId === rel.id)
+        .map((rs) => ({ rs, order: eventOrder(rs.eventId) }))
+        .sort((a, b) => a.order - b.order)
+
+      let endedAt: { rs: (typeof relSnapsSorted)[number]['rs']; order: number } | null = null
+      for (const entry of relSnapsSorted) {
+        if (entry.rs.isActive === false) endedAt = { rs: entry.rs, order: entry.order }
+      }
+      if (endedAt) {
+        const endEv = eventById.get(endedAt.rs.eventId)
+        const endCh = endEv ? chapById.get(endEv.chapterId) : undefined
+        for (const entry of relSnapsSorted) {
+          if (entry.order <= endedAt.order || entry.rs.isActive !== true) continue
+          const laterEv = eventById.get(entry.rs.eventId)
+          const laterCh = laterEv ? chapById.get(laterEv.chapterId) : undefined
+          const a = charById.get(rel.characterAId)
+          const b = charById.get(rel.characterBId)
+          out.push({
+            id: `rel-after-end-${entry.rs.id}`,
+            kind: 'rel-after-end',
+            severity: 'warning',
+            category: 'relationship',
+            message: `${a?.name ?? '?'} and ${b?.name ?? '?'} have a state after their relationship ended`,
+            detail: `Ended in Ch. ${endCh?.number ?? '?'} ("${endEv?.title || 'untitled'}"), active again in Ch. ${laterCh?.number ?? '?'}. Record the mend, or clear the later state.`,
+            navigatePath: laterEv ? `/worlds/${worldId}/timeline/${laterEv.chapterId}` : undefined,
+            eventId: entry.rs.eventId,
+          })
+        }
+      }
 
       // Any snapshot for an event BEFORE the relationship started
       const earlySnaps = (allRelSnaps ?? []).filter((rs) => {
@@ -1152,6 +1308,94 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         navigatePath: leakEv ? `/worlds/${worldId}/timeline/${leakEv.chapterId}` : undefined,
         eventId: leak.leakEventId,
       })
+    }
+
+    // ── World checks: places and the clock ──────────────────────────────────
+
+    /*
+      A place destroyed, and then standing again.
+
+      The character version of this — `dead-then-alive` — has been here from the
+      start; the place version never existed, though `LocationSnapshot.status`
+      records exactly the same shape of history. A town razed in Ch.7 could be
+      "active" again in Ch.12 with nothing said.
+
+      Towns *are* rebuilt, so this is a warning rather than an error, and it
+      reports the first return only: a place that comes back and is razed again
+      is a place with a history, not a place with a bug.
+
+      Deliberately unlike the item check beside it, which treats a later
+      non-destroyed condition as restoration and says nothing. A mended sword is
+      ordinary. A city un-burning is worth one line.
+    */
+    const GONE = new Set(['destroyed', 'ruined'])
+    for (const [markerId, hist] of locSnapsByMarker) {
+      const marker = markerById.get(markerId)
+      if (!marker) continue
+      let goneAt: number | null = null
+      for (const entry of hist) {
+        if (GONE.has(entry.status)) { if (goneAt == null) goneAt = entry.order; continue }
+        if (goneAt == null || entry.status === 'unknown') continue
+        const backEv = allEvents.find((e) => eventOrder(e.id) === entry.order)
+        const goneEv = allEvents.find((e) => eventOrder(e.id) === goneAt)
+        const backCh = backEv ? chapById.get(backEv.chapterId) : undefined
+        const goneCh = goneEv ? chapById.get(goneEv.chapterId) : undefined
+        out.push({
+          id: `loc-resurrected-${markerId}-${backEv?.id ?? entry.order}`,
+          kind: 'loc-resurrected',
+          severity: 'warning',
+          category: 'world',
+          message: `"${marker.name}" is "${entry.status}" again after being destroyed`,
+          detail: `Destroyed in Ch. ${goneCh?.number ?? '?'}, ${entry.status} again in Ch. ${backCh?.number ?? '?'}. Record the rebuilding, or correct one of the two.`,
+          navigatePath: backEv ? `/worlds/${worldId}/timeline/${backEv.chapterId}` : undefined,
+          eventId: backEv?.id,
+        })
+        break // one return is the finding; a second razing is a history.
+      }
+    }
+
+    /*
+      The story going backwards.
+
+      `computeInWorldDays` takes an explicit `inWorldTime` as gospel and says so
+      in its own comment — it "does not disturb the running derived clock". So a
+      scene can be pinned to a day earlier than the scene before it and the
+      calendar will draw it, the Brief will state it, and nothing will mention
+      that the book has just travelled back in time.
+
+      Flashbacks are the legitimate form of this and are the reason the pin
+      exists, so they are excluded — and only *pinned* scenes are compared,
+      because a derived day can only ever move forward and comparing those would
+      be checking the arithmetic rather than the writing.
+    */
+    const byTimelineOrdered = new Map<string, typeof allEvents>()
+    for (const ev of allEvents) {
+      const list = byTimelineOrdered.get(ev.timelineId)
+      if (list) list.push(ev); else byTimelineOrdered.set(ev.timelineId, [ev])
+    }
+    for (const list of byTimelineOrdered.values()) {
+      const ordered = [...list].sort((a, b) => eventOrder(a.id) - eventOrder(b.id))
+      let prev: { ev: (typeof ordered)[number]; day: number } | null = null
+      for (const ev of ordered) {
+        if (ev.isFlashback) continue
+        const day = inWorldDay.get(ev.id)
+        if (day == null) continue
+        if (prev && ev.inWorldTime != null && day < prev.day) {
+          const ch = chapById.get(ev.chapterId)
+          const prevCh = chapById.get(prev.ev.chapterId)
+          out.push({
+            id: `time-backwards-${ev.id}`,
+            kind: 'time-backwards',
+            severity: 'warning',
+            category: 'world',
+            message: `"${ev.title || 'untitled'}" happens before the scene in front of it`,
+            detail: `Ch. ${ch?.number ?? '?'} is set on day ${day}, and Ch. ${prevCh?.number ?? '?'} ("${prev.ev.title || 'untitled'}") on day ${prev.day}. Mark it a flashback, or correct the in-world time.`,
+            navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+            eventId: ev.id,
+          })
+        }
+        prev = { ev, day }
+      }
     }
 
     // ── Plot-thread cadence: dangling / dormant / unstarted subplots ─────────

@@ -18,11 +18,12 @@ export type IssueKind =
   | 'dead-then-alive' | 'orphan-snap' | 'dead-in-event' | 'char-before-intro'
   | 'stale-snapshot' | 'loc-destroyed' | 'char-in-region' | 'region-traversal'
   | 'travel-dist' | 'knowledge-anachronism' | 'dead-knower'
+  | 'scene-cast-elsewhere' | 'age-unborn'
   // item
   | 'dup-item' | 'item-before-acquired' | 'item-after-destroyed-ev'
   | 'item-after-destroyed-inv' | 'item-handoff' | 'artifact-wrong-timeline'
   // relationship
-  | 'rel-before-start' | 'dead-char-in-rel-snap'
+  | 'rel-before-start' | 'rel-after-end' | 'dead-char-in-rel-snap'
   // faction
   | 'faction-gap' | 'hostile-loc'
   // pov
@@ -31,6 +32,8 @@ export type IssueKind =
   | 'prose-dead' | 'prose-untagged' | 'prose-leak'
   // thread
   | 'thread-dangling' | 'thread-dormant' | 'thread-unstarted'
+  // world — the places and the clock, rather than anybody in particular
+  | 'loc-resurrected' | 'time-backwards'
 
 /**
  * The batch form of a kind's one-click fix, for a run of them.
@@ -51,6 +54,12 @@ export const FIX_ALL_LABELS: Partial<Record<IssueKind, string>> = {
     field already refers to a record that is not there.
   */
   'pov-unknown': 'Clear every unknown POV',
+  /*
+    An ensemble walking into a room together is the same answer repeated, the
+    same as the initial-state case: each fix moves one named character to the
+    one place the scene already declares. Nothing is guessed.
+  */
+  'scene-cast-elsewhere': 'Move everyone to the scene',
 }
 
 /**
@@ -71,6 +80,8 @@ export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
   'region-traversal':      'Travels through a dangerous region',
   'travel-dist':           'Cannot travel that far in time',
   'knowledge-anachronism': 'Knows something too early',
+  'scene-cast-elsewhere':  'In the scene, recorded somewhere else',
+  'age-unborn':            'In a scene before they were born',
   'dead-knower':           'Learns something after dying',
   'dup-item':              'Item in two places at once',
   'item-before-acquired':  'Item used before it was acquired',
@@ -79,6 +90,7 @@ export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
   'item-handoff':          'Item changes hands across a distance',
   'artifact-wrong-timeline': 'Item outside its declared timelines',
   'rel-before-start':      'Relationship state before it began',
+  'rel-after-end':         'Relationship state after it ended',
   'dead-char-in-rel-snap': 'Relationship with a dead character',
   'faction-gap':           'Leaves a faction with no replacement',
   'hostile-loc':           'In hostile territory',
@@ -92,6 +104,8 @@ export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
   'thread-dangling':       'Subplot raised and never resolved',
   'thread-dormant':        'Subplot goes quiet',
   'thread-unstarted':      'Subplot with no scenes',
+  'loc-resurrected':       'Destroyed place standing again',
+  'time-backwards':        'Scene set before the one in front of it',
 }
 
 export interface IssueGroup {

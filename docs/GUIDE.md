@@ -1929,9 +1929,34 @@ count. Typical catches:
   and because this is usually one deleted character repeated across many scenes,
   the group carries **Clear every unknown POV** as well. Nothing is discarded:
   the field already referred to a record that is not there.
+- A character **in a scene set somewhere they are not**. The scene carries a
+  place and every character carries theirs, and when the two disagree the
+  finding offers **Move to <place>** — one click records them at the place the
+  scene already names. It stays quiet in the two cases where a disagreement is
+  not one: a journey recorded at that scene means they walked in, and a
+  character with no location recorded yet is not disagreeing with anything.
+- A character **in a scene dated before they were born** — for worlds that set
+  both a [calendar](#calendar--character-ages) and a birth date. Undated
+  flashbacks are left alone, since their day is borrowed from the scene beside
+  them; a flashback that states its own in-world time is checked like any scene.
+- A **relationship with a state recorded after it ended**, the counterpart to
+  the one that starts too early. Only the last ending counts — relationships
+  break and mend, and a writer who records the mend has said what happened.
 - An item that is used before it was acquired, an impossible item handoff, a
   relationship or faction membership that starts at an invalid moment, or a POV
   character who should not be available at that scene.
+
+A **Places & time** section holds the two findings that are about the world
+rather than about anybody in it:
+
+- A **destroyed place standing again** — the counterpart of *alive after dying*,
+  for locations. Towns do get rebuilt, so it is a warning and it reports the
+  first return only; a place that comes back and is razed again has a history,
+  not a fault.
+- A **scene set before the one in front of it**. Giving a scene an explicit
+  in-world time overrides the clock derived from travel days, so a pin can put a
+  scene earlier than the scene preceding it. Mark it a flashback — which is what
+  the pin is mostly for — or correct the date.
 
 ![Continuity Checker](images/18-continuity.png)
 
@@ -1947,6 +1972,7 @@ plainly, since a heading there would only repeat the category name.
 findings share a kind and each offers the same one-click fix, the group carries
 a batch button above it — **Record initial state for all N**, for the case where
 eight characters walk into one scene and none of them has a starting state yet,
+**Move everyone to the scene N**, for an ensemble arriving somewhere together,
 or **Clear every unknown POV N**, for a deleted character still named as the
 point of view of half a book. Anything you have suppressed is left out, and the
 count on the button tells you how many it will touch. Only fixes that mean the
