@@ -15,13 +15,10 @@ const mapUrls={
 }
 const blobs=[
  image('cover',commons('Some neuromancer landscape.jpg',800),'image/jpeg'),
- ...Object.entries(mapUrls).map(([s,u])=>image(`map-${s}`,u,s==='chiba'||s==='sprawl'?'image/svg+xml':'image/jpeg')),
+ ...Object.entries(mapUrls).map(([s,u])=>image(`map-${s}`,u,s==='chiba'?'image/svg+xml':s==='sprawl'?'image/png':'image/jpeg')),
  image('cyberdeck',commons('Computer motherboard 11.jpg',800),'image/jpeg'),
  image('freeside-station',commons('STS-135 final flyaround of ISS 1.jpg',1200),'image/jpeg'),
- image('night-city',commons('Akihabara_Night.jpg',1280),'image/jpeg'),
  image('matrix-green',commons('Digital rain animation big letters shine.gif',220),'image/gif'),
- image('neon-alley',commons('Kabukicho red gate and colorful neon street signs at night, Shinjuku, Tokyo, Japan.jpg',1280),'image/jpeg'),
- image('orbital-view',commons("An aurora folds through Earth's atmosphere (iss072e023504).jpg",1280),'image/jpeg'),
  image('item-mirrorshades',commons('Wayfarer Sunglasses, Rostov-on-Don, Russia.jpg',800),'image/jpeg'),
  image('item-microsoft',commons('Intel SB80486DX2-50.jpg',800),'image/jpeg'),
  image('item-simstim',commons('Headphones.jpg',800),'image/jpeg'),
@@ -71,7 +68,7 @@ const charRows=[
  ['hideo','Hideo','Lady 3Jane\'s bodyguard, a master of martial arts whose loyalty and skill make him nearly impossible to bypass.',11,'#444444'],
  ['linda-lee','Linda Lee','Case\'s girlfriend in Chiba City, caught between loyalty to Case and the desperate survival that the underworld demands.',12,'#ff88aa'],
 ]
-const characters=charRows.map(([s,name,desc,n,color])=>({...base,id:C(s),name,aliases:[],description:desc,portraitImageId:I('night-city'),color,tags:[],isAlive:![].includes(s),birthDate:null}))
+const characters=charRows.map(([s,name,desc,n,color])=>({...base,id:C(s),name,aliases:[],description:desc,portraitImageId:null,color,tags:[],isAlive:![].includes(s),birthDate:null}))
 
 const itemRows=[
  ['cyberdeck','Cyberdeck','A portable computer that allows a cowboy to jack into cyberspace, navigating the matrix as a flat non-visual landscape of data.','tool'],
@@ -83,7 +80,8 @@ const itemRows=[
  ['rom-construct','Dixie Flatline ROM Construct','A read-only memory chip containing the preserved personality and skills of the legendary hacker McCoy Pauley.','augment'],
  ['grail','The Grail','The password to the Turing lock, passed through the Tessier-Ashpool bloodline by ceremony and inheritance.','key'],
 ]
-const items=itemRows.map(([s,name,desc,type],i)=>({...base,id:Item(s),name,description:type==='key'?desc:`${desc} Type: ${type}.`,type,imageId:null,tags:[]}))
+const itemImageMap={cyberdeck:'cyberdeck',mirrorshades:'item-mirrorshades',microsofts:'item-microsoft',simstim:'item-simstim','razor-nails':'item-razor'}
+const items=itemRows.map(([s,name,desc,type],i)=>({...base,id:Item(s),name,description:type==='key'?desc:`${desc} Type: ${type}.`,type,imageId:itemImageMap[s]?I(itemImageMap[s]):null,tags:[]}))
 
 const chapterRows=[
  ['The Sky Above the Port','Case is a washed-up console cowboy in Chiba City, unable to jack into cyberspace after his employers damaged his nervous system as punishment.'],
@@ -225,7 +223,7 @@ const lorePages=[
  ['ice','tech','Intrusion Countermeasures Electronics','Digital defenses ranging from simple alarm codes to lethal ice that can destroy a cowboy\'s nervous system through the jack.',null,10],
  ['tessier-clan','clan','The Tessier-Ashpool Dynasty','A family of clones and cryogenics who have preserved their wealth and power through generations of sleeping and waking cycles.',null,11],
  ['ais','tech','The Turing-Locked AIs','Two artificial intelligences created by the Tessier-Ashpool clan, separated by the Turing lock and each seeking to merge with its twin.',null,18],
-].map(([s,cat,title,body,event,n])=>({...base,id:id('lore',s),categoryId:id('lore-category',cat),title,body,tags:[],coverImageId:null,linkedEntityIds:[],visibleFromEventId:event?EV(event):null}))
+].map(([s,cat,title,body,event,n])=>({...base,id:id('lore',s),categoryId:id('lore-category',cat),title,body,tags:[],coverImageId:s==='matrix'?I('matrix-green'):s==='ais'?I('freeside-station'):null,linkedEntityIds:[],visibleFromEventId:event?EV(event):null}))
 
 const factData=[
  ['nerve-damage','Case\'s nervous system was damaged by his employers','The punishment for stealing from his employers left Case unable to jack into the matrix.',1],
