@@ -8,24 +8,24 @@ const commons=(name,width=1000)=>`https://commons.wikimedia.org/wiki/Special:Red
 const image=(slug,url,mimeType='image/jpeg')=>({...base,id:I(slug),mimeType,url})
 
 const mapUrls={
- sprawl:commons('USA_eastern_seaboard_1996.jpg',1600),
- chiba:commons('Chiba_city_map.svg',1200),
+ sprawl:commons('Map of USA highlighting Eastern Seaboard.png',1600),
+ chiba:commons('Map of wards in Chiba city, Chiba prefecture, Japan.svg',1200),
  freeside:commons('International_Space_Station_after_undocking_of_STS-132.jpg',1200),
- straylight:commons('Attingham_Park_ground_floor_plan.jpg',1400),
+ straylight:commons('Plan of first floor of the Executive Mansion LCCN96515459.jpg',1400),
 }
 const blobs=[
- image('cover',commons('Neuromancer_(Book)_Cover.jpg',800),'image/jpeg'),
- ...Object.entries(mapUrls).map(([s,u])=>image(`map-${s}`,u,'image/svg+xml')),
- image('cyberdeck','https://cdn.mos.cms.futurecdn.net/vChFZfGvjJWPx6tQ3f4C6.jpg','image/jpeg'),
- image('freeside-station','https://www.esa.int/var/esa/storage/images/esa_multimedia/images/2010/02/space_station_as_ever/9968498-2-eng-GB/Space_station_as_EVER_pillars.jpg','image/jpeg'),
- image('night-city','https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Akihabara_Night.jpg/1280px-Akihabara_Night.jpg','image/jpeg'),
- image('matrix-green','https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Matrixanim.gif/220px-Matrixanim.gif','image/gif'),
- image('neon-alley','https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Kabukicho_at_night_2.jpg/1280px-Kabukicho_at_night_2.jpg','image/jpeg'),
- image('orbital-view','https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/ISS-42_Earth%27s_atmosphere_with_aurora.jpg/1280px-ISS-42_Earth%27s_atmosphere_with_aurora.jpg','image/jpeg'),
- image('item-mirrorshades','https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Ray-Ban_Wayfarer.jpg/800px-Ray-Ban_Wayfarer.jpg','image/jpeg'),
- image('item-microsoft','https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Intel_8080 processor.jpg/800px-Intel_8080_processor.jpg','image/jpeg'),
- image('item-simstim','https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Headphones.jpg/800px-Headphones.jpg','image/jpeg'),
- image('item-razor','https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Razor_blade.jpg/800px-Razor_blade.jpg','image/jpeg'),
+ image('cover',commons('Some neuromancer landscape.jpg',800),'image/jpeg'),
+ ...Object.entries(mapUrls).map(([s,u])=>image(`map-${s}`,u,s==='chiba'||s==='sprawl'?'image/svg+xml':'image/jpeg')),
+ image('cyberdeck',commons('Computer motherboard 11.jpg',800),'image/jpeg'),
+ image('freeside-station',commons('STS-135 final flyaround of ISS 1.jpg',1200),'image/jpeg'),
+ image('night-city',commons('Akihabara_Night.jpg',1280),'image/jpeg'),
+ image('matrix-green',commons('Digital rain animation big letters shine.gif',220),'image/gif'),
+ image('neon-alley',commons('Kabukicho red gate and colorful neon street signs at night, Shinjuku, Tokyo, Japan.jpg',1280),'image/jpeg'),
+ image('orbital-view',commons("An aurora folds through Earth's atmosphere (iss072e023504).jpg",1280),'image/jpeg'),
+ image('item-mirrorshades',commons('Wayfarer Sunglasses, Rostov-on-Don, Russia.jpg',800),'image/jpeg'),
+ image('item-microsoft',commons('Intel SB80486DX2-50.jpg',800),'image/jpeg'),
+ image('item-simstim',commons('Headphones.jpg',800),'image/jpeg'),
+ image('item-razor',commons('Razor blade (358309802).jpg',800),'image/jpeg'),
 ]
 
 const maps=[
