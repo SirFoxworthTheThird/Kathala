@@ -60,15 +60,15 @@ const blobs=[
 
 const maps=[
  ['chiba',null,'Chiba City','The neon-lit Japanese port city where Case washes up in the underworld after losing his cyberspace abilities.',1200,900],
- ['sprawl','chiba','The Sprawl (BAMA)','The Boston-Atlanta Metropolitan Axis: a vast corridor of urban sprawl stretching along the Eastern Seaboard.',1600,1000],
- ['freeside','sprawl','Freeside','A spindle-shaped orbital space station, playground of the Tessier-Ashpool clan and gateway to Villa Straylight.',1200,800],
+ ['sprawl',null,'The Sprawl (BAMA)','The Boston-Atlanta Metropolitan Axis: a vast corridor of urban sprawl stretching along the Eastern Seaboard.',1600,1000],
+ ['freeside',null,'Freeside','A spindle-shaped orbital space station, playground of the Tessier-Ashpool clan and gateway to Villa Straylight.',1200,800],
  ['straylight','freeside','Villa Straylight','The Tessier-Ashpool family estate at the end of Freeside, a maze of gardens, corridors, and hidden rooms.',1400,1000],
 ].map(([s,p,name,desc,w,h])=>({...base,id:M(s),parentMapId:p?M(p):null,name,description:desc,imageId:I(`map-${s}`),imageWidth:w,imageHeight:h,scalePixelsPerUnit:null,scaleUnit:null,levelGroupId:null,levelIndex:0,levelLabel:''}))
 
 const locRows=[
  ['sprawl-boston','sprawl','Boston-Atlanta Metropolitan Axis','The BAMA sprawl: an endless corridor of subways, ribbed freeways, and huddled towers connecting Boston to Atlanta.',800,400,'city'],
- ['sprawl-japan','sprawl','Chiba Prefecture, Japan','Chiba City sprawls along Tokyo Bay, a port of hostels, clinics, and underworld bars.',350,300,'city'],
- ['freeside-orbit','sprawl','Low Earth Orbit','The orbital plane where Freeside spins, far above the weather and the law.',900,200,'region'],
+ ['sprawl-japan','chiba','Chiba Prefecture, Japan','Chiba City sprawls along Tokyo Bay, a port of hostels, clinics, and underworld bars.',350,300,'city'],
+ ['freeside-orbit','freeside','Low Earth Orbit','The orbital plane where Freeside spins, far above the weather and the law.',900,200,'region'],
  ['chiba-case-apt','chiba','Case\'s Apartment','A cramped coffin hotel room where Case counts the days and avoids the Yakuza.',200,600,'room'],
  ['chiba-finn','chiba','The Finn\'s Shop','A cluttered electronics fence shop where information and stolen hardware change hands.',400,350,'building'],
  ['chiba-bar','chiba','The Gentleman Loser','A Chiba City bar where cowboys and hustlers drink beneath simulated British atmosphere.',300,500,'building'],
