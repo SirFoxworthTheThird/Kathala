@@ -59,8 +59,8 @@ const blobs=[
 ]
 
 const maps=[
- ['sprawl',null,'The Sprawl (BAMA)','The Boston-Atlanta Metropolitan Axis: a vast corridor of urban sprawl stretching along the Eastern Seaboard.',1600,1000],
- ['chiba','sprawl','Chiba City','The neon-lit Japanese port city where Case washes up in the underworld after losing his cyberspace abilities.',1200,900],
+ ['chiba',null,'Chiba City','The neon-lit Japanese port city where Case washes up in the underworld after losing his cyberspace abilities.',1200,900],
+ ['sprawl','chiba','The Sprawl (BAMA)','The Boston-Atlanta Metropolitan Axis: a vast corridor of urban sprawl stretching along the Eastern Seaboard.',1600,1000],
  ['freeside','sprawl','Freeside','A spindle-shaped orbital space station, playground of the Tessier-Ashpool clan and gateway to Villa Straylight.',1200,800],
  ['straylight','freeside','Villa Straylight','The Tessier-Ashpool family estate at the end of Freeside, a maze of gardens, corridors, and hidden rooms.',1400,1000],
 ].map(([s,p,name,desc,w,h])=>({...base,id:M(s),parentMapId:p?M(p):null,name,description:desc,imageId:I(`map-${s}`),imageWidth:w,imageHeight:h,scalePixelsPerUnit:null,scaleUnit:null,levelGroupId:null,levelIndex:0,levelLabel:''}))
