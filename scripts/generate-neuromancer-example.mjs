@@ -23,6 +23,18 @@ const blobs=[
  image('item-microsoft',commons('Intel SB80486DX2-50.jpg',800),'image/jpeg'),
  image('item-simstim',commons('Headphones.jpg',800),'image/jpeg'),
  image('item-razor',commons('Razor blade (358309802).jpg',800),'image/jpeg'),
+ image('char-case','https://images.unsplash.com/photo-1580428180163-76ab1efe2aed?w=400&fit=crop&auto=format','image/jpeg'),
+ image('char-molly','https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&fit=crop&auto=format','image/jpeg'),
+ image('char-armitage','https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&fit=crop&auto=format','image/jpeg'),
+ image('char-dixie','https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=400&fit=crop&auto=format','image/jpeg'),
+ image('char-3jane','https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&fit=crop&auto=format','image/jpeg'),
+ image('char-riviera','https://images.unsplash.com/photo-1504703395950-b89145a5425b?w=400&fit=crop&auto=format','image/jpeg'),
+ image('char-finn','https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&fit=crop&auto=format','image/jpeg'),
+ image('char-maelcum','https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=400&fit=crop&auto=format','image/jpeg'),
+ image('char-wintermute','https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=400&fit=crop&auto=format','image/jpeg'),
+ image('char-neuromancer','https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=400&fit=crop&auto=format','image/jpeg'),
+ image('char-hideo','https://images.unsplash.com/photo-1555597673-b21d5c935865?w=400&fit=crop&auto=format','image/jpeg'),
+ image('char-linda','https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&fit=crop&auto=format','image/jpeg'),
 ]
 
 const maps=[
@@ -68,7 +80,8 @@ const charRows=[
  ['hideo','Hideo','Lady 3Jane\'s bodyguard, a master of martial arts whose loyalty and skill make him nearly impossible to bypass.',11,'#444444'],
  ['linda-lee','Linda Lee','Case\'s girlfriend in Chiba City, caught between loyalty to Case and the desperate survival that the underworld demands.',12,'#ff88aa'],
 ]
-const characters=charRows.map(([s,name,desc,n,color])=>({...base,id:C(s),name,aliases:[],description:desc,portraitImageId:null,color,tags:[],isAlive:![].includes(s),birthDate:null}))
+const charPortraitMap={case:'char-case',molly:'char-molly',armitage:'char-armitage','dixie-flatline':'char-dixie','lady-3jane':'char-3jane',riviera:'char-riviera',finn:'char-finn',maelcum:'char-maelcum',wintermute:'char-wintermute',neuromancer:'char-neuromancer',hideo:'char-hideo','linda-lee':'char-linda'}
+const characters=charRows.map(([s,name,desc,n,color])=>({...base,id:C(s),name,aliases:[],description:desc,portraitImageId:charPortraitMap[s]?I(charPortraitMap[s]):null,color,tags:[],isAlive:![].includes(s),birthDate:null}))
 
 const itemRows=[
  ['cyberdeck','Cyberdeck','A portable computer that allows a cowboy to jack into cyberspace, navigating the matrix as a flat non-visual landscape of data.','tool'],
