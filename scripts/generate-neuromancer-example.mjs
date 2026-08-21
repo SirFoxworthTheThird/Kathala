@@ -35,6 +35,27 @@ const blobs=[
  image('char-neuromancer','https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=400&fit=crop&auto=format','image/jpeg'),
  image('char-hideo','https://images.unsplash.com/photo-1555597673-b21d5c935865?w=400&fit=crop&auto=format','image/jpeg'),
  image('char-linda','https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&fit=crop&auto=format','image/jpeg'),
+ image('item-finn-gear','https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&fit=crop&auto=format','image/jpeg'),
+ image('item-rom-construct','https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&fit=crop&auto=format','image/jpeg'),
+ image('item-grail','https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&fit=crop&auto=format','image/jpeg'),
+ image('loc-sprawl-boston','https://images.unsplash.com/photo-1501426026826-31c667bdf23d?w=400&fit=crop&auto=format','image/jpeg'),
+ image('loc-sprawl-japan','https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400&fit=crop&auto=format','image/jpeg'),
+ image('loc-freeside-orbit','https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400&fit=crop&auto=format','image/jpeg'),
+ image('loc-chiba-case-apt','https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400&fit=crop&auto=format','image/jpeg'),
+ image('loc-chiba-finn','https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&fit=crop&auto=format','image/jpeg'),
+ image('loc-chiba-bar','https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=400&fit=crop&auto=format','image/jpeg'),
+ image('loc-chiba-clinic','https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=400&fit=crop&auto=format','image/jpeg'),
+ image('loc-chiba-nightmarket','https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=400&fit=crop&auto=format','image/jpeg'),
+ image('loc-chiba-docklands','https://images.unsplash.com/photo-1524522173746-f628baad3644?w=400&fit=crop&auto=format','image/jpeg'),
+ image('loc-freeside-golden','https://images.unsplash.com/photo-1573052905904-34ad8c27f0cc?w=400&fit=crop&auto=format','image/jpeg'),
+ image('loc-freeside-lagoon','https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&fit=crop&auto=format','image/jpeg'),
+ image('loc-freeside-tesh','https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&fit=crop&auto=format','image/jpeg'),
+ image('loc-straylight-entry','https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400&fit=crop&auto=format','image/jpeg'),
+ image('loc-straylight-garden','https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=400&fit=crop&auto=format','image/jpeg'),
+ image('loc-straylight-hall','https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=400&fit=crop&auto=format','image/jpeg'),
+ image('loc-straylight-3jane','https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=400&fit=crop&auto=format','image/jpeg'),
+ image('loc-straylight-turing','https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&fit=crop&auto=format','image/jpeg'),
+ image('loc-straylight-pool','https://images.unsplash.com/photo-1575429198097-0414ec08e8cd?w=400&fit=crop&auto=format','image/jpeg'),
 ]
 
 const maps=[
@@ -64,7 +85,8 @@ const locRows=[
  ['straylight-turing','straylight','Turing Lock Chamber','The hidden room where the AIs\' cage is maintained and the Turing lock is physically housed.',1000,600,'room'],
  ['straylight-pool','straylight','Pool Area','A sunken pool beneath artificial skylights where 3Jane entertains and waits.',600,700,'room'],
 ]
-const locations=locRows.map(([s,map,name,desc,x,y,icon])=>{const layer=maps.find(m=>m.id===M(map));return{...base,id:L(s),mapLayerId:M(map),linkedMapLayerId:null,name,description:desc,x,y:layer?layer.imageHeight-y:0,imageId:null,iconType:icon,tags:[],factionId:null}})
+const locImageMap={'sprawl-boston':'loc-sprawl-boston','sprawl-japan':'loc-sprawl-japan','freeside-orbit':'loc-freeside-orbit','chiba-case-apt':'loc-chiba-case-apt','chiba-finn':'loc-chiba-finn','chiba-bar':'loc-chiba-bar','chiba-clinic':'loc-chiba-clinic','chiba-nightmarket':'loc-chiba-nightmarket','chiba-docklands':'loc-chiba-docklands','freeside-golden':'loc-freeside-golden','freeside-lagoon':'loc-freeside-lagoon','freeside-tesh':'loc-freeside-tesh','straylight-entry':'loc-straylight-entry','straylight-garden':'loc-straylight-garden','straylight-hall':'loc-straylight-hall','straylight-3jane':'loc-straylight-3jane','straylight-turing':'loc-straylight-turing','straylight-pool':'loc-straylight-pool'}
+const locations=locRows.map(([s,map,name,desc,x,y,icon])=>{const layer=maps.find(m=>m.id===M(map));return{...base,id:L(s),mapLayerId:M(map),linkedMapLayerId:null,name,description:desc,x,y:layer?layer.imageHeight-y:0,imageId:locImageMap[s]?I(locImageMap[s]):null,iconType:icon,tags:[],factionId:null}})
 
 const charRows=[
  ['case','Henry Dorsett Case','A console cowboy whose skill at jacking into cyberspace made him one of the best data thieves alive, until his employers damaged his nervous system as punishment.',1,'#00ccff'],
@@ -93,7 +115,7 @@ const itemRows=[
  ['rom-construct','Dixie Flatline ROM Construct','A read-only memory chip containing the preserved personality and skills of the legendary hacker McCoy Pauley.','augment'],
  ['grail','The Grail','The password to the Turing lock, passed through the Tessier-Ashpool bloodline by ceremony and inheritance.','key'],
 ]
-const itemImageMap={cyberdeck:'cyberdeck',mirrorshades:'item-mirrorshades',microsofts:'item-microsoft',simstim:'item-simstim','razor-nails':'item-razor'}
+const itemImageMap={cyberdeck:'cyberdeck',mirrorshades:'item-mirrorshades',microsofts:'item-microsoft',simstim:'item-simstim','razor-nails':'item-razor','finn-gear':'item-finn-gear','rom-construct':'item-rom-construct',grail:'item-grail'}
 const items=itemRows.map(([s,name,desc,type],i)=>({...base,id:Item(s),name,description:type==='key'?desc:`${desc} Type: ${type}.`,type,imageId:itemImageMap[s]?I(itemImageMap[s]):null,tags:[]}))
 
 const chapterRows=[
