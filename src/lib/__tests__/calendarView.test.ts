@@ -64,6 +64,17 @@ describe('buildCalendarMonths', () => {
     expect(months[0].eventsByDay.get(1)!.map((e) => e.id)).toEqual(['a', 'b'])
   })
 
+  it('groups fractional story-clock times into the correct day cell', () => {
+    const chapters = [chapter('c1', 1)]
+    const events = [
+      event('morning', 'c1', 0, { inWorldTime: 10.1 }),
+      event('night', 'c1', 1, { inWorldTime: 10.9 }),
+    ]
+    const months = buildCalendarMonths({ events, chapters, calendar })
+    const bloom = months.find((m) => m.monthName === 'Bloom')!
+    expect(bloom.eventsByDay.get(1)!.map((e) => e.id)).toEqual(['morning', 'night'])
+  })
+
   it('the drop target day maps back to a poke-able in-world day number', () => {
     // Dropping an event on (year 100, Bloom, day 6) should pin it to that date.
     const dayNumber = dateToDayNumber(calendar, { year: 100, month: 1, day: 6 })

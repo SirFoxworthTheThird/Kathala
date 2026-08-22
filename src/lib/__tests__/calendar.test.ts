@@ -31,6 +31,11 @@ describe('dayNumberToDate', () => {
   it('handles days before the epoch', () => {
     expect(dayNumberToDate(cal, -1)).toEqual({ year: 99, month: 2, day: 5 }) // last day of year 99
   })
+  it('places fractional story-clock times on their containing calendar day', () => {
+    expect(dayNumberToDate(cal, 10.1)).toEqual({ year: 100, month: 1, day: 1 })
+    expect(dayNumberToDate(cal, 10.9)).toEqual({ year: 100, month: 1, day: 1 })
+    expect(dayNumberToDate(cal, -0.1)).toEqual({ year: 99, month: 2, day: 5 })
+  })
 })
 
 describe('dateToDayNumber round-trips with dayNumberToDate', () => {
