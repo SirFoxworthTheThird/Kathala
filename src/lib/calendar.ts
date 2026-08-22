@@ -15,8 +15,12 @@ export function daysPerYear(cal: WorldCalendar): number {
 export function dayNumberToDate(cal: WorldCalendar, dayNumber: number): InWorldDate {
   const dpy = daysPerYear(cal)
   if (dpy <= 0 || cal.months.length === 0) return { year: cal.startYear, month: 0, day: 1 }
-  const yearOffset = Math.floor(dayNumber / dpy)
-  let dayInYear = dayNumber - yearOffset * dpy // 0-based, always in [0, dpy)
+  // The story clock may use fractions to preserve time-of-day ordering. A
+  // calendar date represents the containing whole day, so 10.75 and 10.1 both
+  // belong to day 10 rather than producing fractional grid-cell keys.
+  const wholeDay = Math.floor(dayNumber)
+  const yearOffset = Math.floor(wholeDay / dpy)
+  let dayInYear = wholeDay - yearOffset * dpy // 0-based, always in [0, dpy)
   let month = 0
   for (let i = 0; i < cal.months.length; i++) {
     const len = Math.max(1, Math.floor(cal.months[i].days))
