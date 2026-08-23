@@ -1,4 +1,5 @@
 import type { Chapter, WorldEvent, SceneText } from '@/types'
+import { splitParagraphs as paragraphs } from '@/lib/manuscriptParagraphs'
 
 /**
  * Manuscript assembly: stitch per-scene prose (one SceneText per event) into a
@@ -110,13 +111,6 @@ export interface CompileOptions {
   title?: string
 }
 
-/** Split prose into paragraphs on blank lines, trimming each. */
-function paragraphs(text: string): string[] {
-  return text
-    .split(/\n\s*\n/)
-    .map((p) => p.trim())
-    .filter(Boolean)
-}
 
 function escapeHtml(s: string): string {
   return s

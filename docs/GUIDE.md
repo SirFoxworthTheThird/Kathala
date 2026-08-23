@@ -776,6 +776,14 @@ offered as a person to create, while `@Ysolde waited` is just something you
 wrote. A lowercase particle is fine when it belongs to someone who already
 exists — typing `@Renée de` still finds *Renée de Saint-Méran*.
 
+**A blank line starts a new paragraph — a single Enter does not.** One newline
+keeps you in the same paragraph, which is what lets you paste prose from a text
+file or a PDF, hard-wrapped at whatever column it came in at, without it
+becoming one paragraph per line. The line under the box counts them as you type,
+so you can see which you have: press Enter once and it still says *1 paragraph*,
+press it twice and it says *2*. The [Manuscript](#manuscript) and every export
+read your prose the same way.
+
 The draft **auto-saves as you write**: a second's pause writes it, and it is
 written again when you collapse the card or leave the chapter. The line under
 the box says which of the two states you are in — *Saving draft…* while there is

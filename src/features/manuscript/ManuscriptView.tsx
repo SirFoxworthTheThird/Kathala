@@ -11,13 +11,10 @@ import { cn } from '@/lib/utils'
 import { ExportManuscriptDialog } from './ExportManuscriptDialog'
 import { FindReplaceDialog } from './FindReplaceDialog'
 import { plural } from '@/lib/plural'
+import { splitParagraphs as paragraphs } from '@/lib/manuscriptParagraphs'
 
 const nf = new Intl.NumberFormat()
 
-/** Split prose into paragraphs on blank lines. */
-function paragraphs(text: string): string[] {
-  return text.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean)
-}
 
 /** Editable per-chapter word goal with a progress bar; persists on blur/Enter. */
 function ChapterGoal({ chapterId, words, goal }: { chapterId: string; words: number; goal: number | null }) {

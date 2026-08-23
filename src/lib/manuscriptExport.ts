@@ -1,5 +1,6 @@
 import type { BuiltManuscript, CompileOptions } from './manuscriptCompile'
 import { zipStore, type ZipEntry } from './zip'
+import { splitParagraphs as paragraphs } from '@/lib/manuscriptParagraphs'
 
 /**
  * Compile a built manuscript to a binary book file — Word (`.docx`) or EPUB —
@@ -14,10 +15,6 @@ function xml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-/** Split prose into paragraphs on blank lines. */
-function paragraphs(text: string): string[] {
-  return text.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean)
-}
 
 export interface BookExportOptions extends CompileOptions {
   author?: string

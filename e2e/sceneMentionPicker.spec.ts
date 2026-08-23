@@ -185,6 +185,33 @@ test.describe('Naming things from the scene prose', () => {
   })
 
   /**
+   * W23-8. A blank line starts a paragraph; a single Enter does not — and the
+   * editor says how many you have, so the rule explains itself.
+   *
+   * The Manuscript and every export split on a blank line, which is right:
+   * prose pasted from a text file or a PDF arrives hard-wrapped, and treating
+   * every newline as a break would make it one paragraph per line. But it was
+   * stated nowhere, so a writer typing one Enter between paragraphs found out
+   * on reading their own book back.
+   */
+  test('the editor counts paragraphs the way the manuscript will', async ({ page }) => {
+    await sceneWithProse(page)
+    await prose(page).click()
+
+    // One Enter: still one paragraph, and the count says so while you type.
+    await page.keyboard.type('One line.')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('Second line, one Enter.')
+    await expect(page.getByText(/paragraph/).first()).toContainText('1 paragraph')
+
+    // A blank line: two.
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('Third line, blank line before it.')
+    await expect(page.getByText(/paragraphs/).first()).toContainText('2 paragraphs')
+  })
+
+  /**
    * W23-6. Adding somebody to a scene must not make the picker read as though
    * they were added twice.
    *
