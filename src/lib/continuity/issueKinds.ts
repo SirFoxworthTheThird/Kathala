@@ -22,19 +22,19 @@ export type IssueKind =
   // item
   | 'dup-item' | 'item-before-acquired' | 'item-after-destroyed-ev'
   | 'item-after-destroyed-inv' | 'item-handoff' | 'artifact-wrong-timeline'
-  | 'item-restored'
+  | 'item-restored' | 'item-dead-holder'
   // relationship
   | 'rel-before-start' | 'rel-after-end' | 'dead-char-in-rel-snap'
   // faction
-  | 'faction-gap' | 'hostile-loc'
+  | 'faction-gap' | 'hostile-loc' | 'faction-conflict'
   // pov
-  | 'pov-unknown' | 'pov-not-involved' | 'dead-pov' | 'pov-consecutive'
+  | 'pov-unknown' | 'pov-not-involved' | 'dead-pov' | 'pov-consecutive' | 'pov-missing'
   // prose
-  | 'prose-dead' | 'prose-untagged' | 'prose-leak'
+  | 'prose-dead' | 'prose-untagged' | 'prose-leak' | 'knowledge-unrevealed'
   // thread
   | 'thread-dangling' | 'thread-dormant' | 'thread-unstarted'
   // world — the places and the clock, rather than anybody in particular
-  | 'loc-resurrected' | 'time-backwards'
+  | 'loc-resurrected' | 'time-backwards' | 'chapter-empty'
 
 /**
  * The batch form of a kind's one-click fix, for a run of them.
@@ -89,6 +89,7 @@ export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
   'item-after-destroyed-ev':  'Item used after being destroyed',
   'item-after-destroyed-inv': 'Destroyed item still carried',
   'item-restored':         'Destroyed item whole again',
+  'item-dead-holder':      'Carried by a dead character',
   'item-handoff':          'Item changes hands across a distance',
   'artifact-wrong-timeline': 'Item outside its declared timelines',
   'rel-before-start':      'Relationship state before it began',
@@ -96,18 +97,22 @@ export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
   'dead-char-in-rel-snap': 'Relationship with a dead character',
   'faction-gap':           'Leaves a faction with no replacement',
   'hostile-loc':           'In hostile territory',
+  'faction-conflict':      'In two hostile factions at once',
   'pov-unknown':           'POV names no character',
   'pov-not-involved':      'POV character not in the scene',
   'dead-pov':              'Dead POV character',
   'pov-consecutive':       'Long run of one POV',
+  'pov-missing':           'Scene with no point of view',
   'prose-dead':            'Dead character named in the prose',
   'prose-untagged':        'Named in the prose but not in the cast',
   'prose-leak':            'Possible early reveal in the prose',
+  'knowledge-unrevealed':  'The reader never learns it',
   'thread-dangling':       'Subplot raised and never resolved',
   'thread-dormant':        'Subplot goes quiet',
   'thread-unstarted':      'Subplot with no scenes',
   'loc-resurrected':       'Destroyed place standing again',
   'time-backwards':        'Scene set before the one in front of it',
+  'chapter-empty':         'Chapter with no scenes',
 }
 
 export interface IssueGroup {

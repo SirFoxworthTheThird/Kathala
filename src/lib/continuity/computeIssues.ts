@@ -1130,6 +1130,8 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
     }
 
     // ── Hostile faction location check ──────────────────────────────────────
+    // `areHostile` and `membershipsByChar` are defined here and read again by
+    // the two-allegiances check further down, which is why that one follows.
     // Warn when a character is at a location controlled by a faction that is
     // hostile to one of the character's own active factions.
 
@@ -1459,6 +1461,200 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           })
         }
         prev = { ev, day }
+      }
+    }
+
+    /*
+      ── Two hostile allegiances at once ─────────────────────────────────────
+
+      `hostile-loc` already reads the faction-stance graph to ask whether a
+      character is standing in enemy territory. It never asked the simpler
+      question beside it: whether the character belongs to **both** sides at the
+      same moment. Memberships carry a start and an end, so "at the same moment"
+      is an interval overlap and not a guess.
+
+      Reported once per pair rather than once per scene — it is one fact about
+      two records, and the scene it happens to be noticed at is arbitrary. A
+      double agent is a real thing, which is why it is a warning.
+    */
+    {
+      const overlapKey = new Set<string>()
+      for (const [charId, memberships] of membershipsByChar) {
+        const spans = memberships.map((m) => ({
+          factionId: m.factionId,
+          start: m.startEventId ? eventOrder(m.startEventId) : 0,
+          end: m.endEventId ? eventOrder(m.endEventId) : Infinity,
+          startEventId: m.startEventId,
+        }))
+        for (let i = 0; i < spans.length; i++) {
+          for (let j = i + 1; j < spans.length; j++) {
+            const a = spans[i], b = spans[j]
+            if (a.factionId === b.factionId) continue
+            if (a.start >= b.end || b.start >= a.end) continue
+            if (!areHostile(a.factionId, b.factionId)) continue
+            const pair = [a.factionId, b.factionId].sort().join('|')
+            const key = `${charId}|${pair}`
+            if (overlapKey.has(key)) continue
+            overlapKey.add(key)
+
+            const char = charById.get(charId)
+            const later = a.start >= b.start ? a : b
+            const ev = later.startEventId ? eventById.get(later.startEventId) : undefined
+            const ch = ev ? chapById.get(ev.chapterId) : undefined
+            out.push({
+              id: `faction-conflict-${charId}-${pair}`,
+              kind: 'faction-conflict',
+              severity: 'warning',
+              category: 'faction',
+              message: `${char?.name ?? '?'} belongs to "${factionById.get(a.factionId)?.name ?? '?'}" and "${factionById.get(b.factionId)?.name ?? '?'}" at once, and they are hostile`,
+              detail: ch
+                ? `Both memberships are open across Ch. ${ch.number}. End one, or say so if they are playing both sides.`
+                : 'Both memberships are open at the same time. End one, or say so if they are playing both sides.',
+              navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+              eventId: ev?.id,
+            })
+          }
+        }
+      }
+    }
+
+    /*
+      ── A fact the reader never learns ──────────────────────────────────────
+
+      `thread-dangling` for knowledge. A `KnowledgeFact` with no explicit reader
+      reveal is meant to reach the reader through POV — the writer's own comment
+      on `readerLearnsAtEventId` says so: *"null = derive it from POV (the
+      reader learns it when a POV character who knows it holds the POV)"*. When
+      neither happens, the fact is planted and never fires: it shapes nothing a
+      reader can feel, and the knowledge screen shows it as though it did.
+
+      Withholding on purpose is ordinary in a mystery, so this is a warning, and
+      it stays silent in a world with no POV recorded anywhere — there, POV
+      derivation cannot resolve for *any* fact and the finding would be about
+      the field being unused rather than about this fact.
+    */
+    if (knowledgeFacts.length > 0 && allEvents.some((e) => e.povCharacterId)) {
+      const knowersByFact = new Map<string, Set<string>>()
+      for (const r of knowledgeReveals) {
+        if (!knowersByFact.has(r.factId)) knowersByFact.set(r.factId, new Set())
+        knowersByFact.get(r.factId)!.add(r.characterId)
+      }
+      for (const fact of knowledgeFacts) {
+        if (fact.readerLearnsAtEventId) continue
+        const knowers = knowersByFact.get(fact.id)
+        // A POV scene held by somebody who knows it, at or after they learn it.
+        const reaches = !!knowers && allEvents.some((ev) => {
+          if (!ev.povCharacterId || !knowers.has(ev.povCharacterId)) return false
+          const learn = knowledgeReveals.find((r) => r.factId === fact.id && r.characterId === ev.povCharacterId)
+          return !!learn && eventOrder(learn.eventId) <= eventOrder(ev.id)
+        })
+        if (reaches) continue
+        out.push({
+          id: `knowledge-unrevealed-${fact.id}`,
+          kind: 'knowledge-unrevealed',
+          severity: 'warning',
+          category: 'prose',
+          message: `The reader never learns "${fact.title}"`,
+          detail: knowers?.size
+            ? `${knowers.size} character${knowers.size === 1 ? '' : 's'} know it, but no POV scene carries it and no reader reveal is set. Set one, or leave it withheld on purpose.`
+            : 'Nobody learns it and no reader reveal is set, so it never reaches the page.',
+          navigatePath: `/worlds/${worldId}/knowledge`,
+        })
+      }
+    }
+
+    /*
+      ── A chapter with no scenes ────────────────────────────────────────────
+
+      The structural counterpart of `thread-unstarted`, which has always said
+      this about subplots. An empty chapter is a heading with nothing under it:
+      the manuscript skips it, the pacing curve has no point for it, and the
+      time cursor steps straight past.
+    */
+    {
+      const eventCountByChapter = new Map<string, number>()
+      for (const ev of allEvents) eventCountByChapter.set(ev.chapterId, (eventCountByChapter.get(ev.chapterId) ?? 0) + 1)
+      for (const ch of chapters) {
+        if (eventCountByChapter.get(ch.id)) continue
+        out.push({
+          id: `chapter-empty-${ch.id}`,
+          kind: 'chapter-empty',
+          severity: 'warning',
+          category: 'world',
+          message: `Ch. ${ch.number} "${ch.title || 'untitled'}" has no scenes`,
+          detail: 'Nothing in it reaches the manuscript, the pacing curve or the time cursor. Add a scene, or delete the chapter.',
+          navigatePath: `/worlds/${worldId}/timeline/${ch.id}`,
+        })
+      }
+    }
+
+    /*
+      ── An item carried by somebody who is dead ─────────────────────────────
+
+      `item-after-destroyed-inv` asks whether the *item* is gone; this asks
+      whether the *holder* is. Reads the same `isDeadAtOrder` as the cast
+      checks, so the scene where a death is recorded is not itself a finding —
+      dying with your sword in your hand is not a continuity error.
+    */
+    for (const snap of snapshots) {
+      if (!snap.inventoryItemIds?.length) continue
+      const order = eventOrder(snap.eventId)
+      if (!isDeadAtOrder(snap.characterId, order)) continue
+      const char = charById.get(snap.characterId)
+      const ev = eventById.get(snap.eventId)
+      const ch = ev ? chapById.get(ev.chapterId) : undefined
+      for (const itemId of snap.inventoryItemIds) {
+        const item = itemById.get(itemId)
+        out.push({
+          id: `item-dead-holder-${itemId}-${snap.eventId}-${snap.characterId}`,
+          kind: 'item-dead-holder',
+          severity: 'warning',
+          category: 'item',
+          message: `"${item?.name ?? itemId}" is carried by ${char?.name ?? '?'}, who is dead`,
+          detail: `Ch. ${ch?.number ?? '?'} — move it to whoever takes it, or to the place it was left.`,
+          navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+          eventId: snap.eventId,
+        })
+      }
+    }
+
+    /*
+      ── A scene with no point of view, in a book that has one ───────────────
+
+      **The gate is the whole design.** Most writers never touch the POV field,
+      and a check that simply flagged every empty one would put a row on every
+      scene of every world that does not use it — the shape of fault that made
+      the checker look broken on a flagship example (W19-6). So it asks what
+      this book's own habit is, and only speaks when a scene departs from it.
+
+      "Has a habit" is deliberately strict: enough scenes to be a pattern rather
+      than a coincidence, and few enough gaps that the gaps read as omissions.
+      Below that the field is simply unused, which is not a fault.
+    */
+    {
+      const MIN_POV_SCENES = 5
+      const MAX_GAP_SHARE = 0.2
+      const scenes = allEvents.filter((e) => !e.isFlashback)
+      const withPov = scenes.filter((e) => e.povCharacterId && charById.has(e.povCharacterId))
+      const without = scenes.filter((e) => !e.povCharacterId)
+      const hasHabit =
+        withPov.length >= MIN_POV_SCENES &&
+        scenes.length > 0 &&
+        without.length / scenes.length <= MAX_GAP_SHARE
+      if (hasHabit) {
+        for (const ev of without) {
+          const ch = chapById.get(ev.chapterId)
+          out.push({
+            id: `pov-missing-${ev.id}`,
+            kind: 'pov-missing',
+            severity: 'warning',
+            category: 'pov',
+            message: `"${ev.title || 'untitled'}" has no point of view`,
+            detail: `Ch. ${ch?.number ?? '?'} — ${withPov.length} of this book's ${scenes.length} scenes name one. Set it, or leave it if the scene is deliberately unanchored.`,
+            navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+            eventId: ev.id,
+          })
+        }
       }
     }
 

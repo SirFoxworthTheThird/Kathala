@@ -753,3 +753,186 @@ describe('a place standing again after being destroyed', () => {
     expect(computeContinuityIssues(input).filter((i) => i.kind === 'loc-resurrected')).toHaveLength(1)
   })
 })
+
+// ── The second tier of the audit ─────────────────────────────────────────────
+
+describe('a character in two hostile factions at once', () => {
+  const twoSides = (endFirst: string | null) => {
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1), chapter('c2', 2), chapter('c3', 3)]
+    input.allEvents = [event('e1', 'c1', 0), event('e2', 'c2', 0), event('e3', 'c3', 0)]
+    input.characters = [character('mole', 'The Mole')]
+    input.allFactions = [
+      { id: 'crown', worldId: 'w', name: 'The Crown', description: '', color: '#fff', coverImageId: null, tags: [], createdAt: 0, updatedAt: 0 },
+      { id: 'rebels', worldId: 'w', name: 'The Rebels', description: '', color: '#000', coverImageId: null, tags: [], createdAt: 0, updatedAt: 0 },
+    ]
+    input.allFactionRels = [{
+      id: 'fr1', worldId: 'w', factionAId: 'crown', factionBId: 'rebels',
+      stance: 'hostile', notes: '', createdAt: 0, updatedAt: 0,
+    }]
+    input.allMemberships = [
+      { id: 'm1', worldId: 'w', factionId: 'crown', characterId: 'mole', role: null, notes: '', startEventId: 'e1', endEventId: endFirst, createdAt: 0, updatedAt: 0 },
+      { id: 'm2', worldId: 'w', factionId: 'rebels', characterId: 'mole', role: null, notes: '', startEventId: 'e2', endEventId: null, createdAt: 0, updatedAt: 0 },
+    ]
+    return input
+  }
+
+  it('is reported when the memberships overlap', () => {
+    const [issue] = computeContinuityIssues(twoSides(null)).filter((i) => i.kind === 'faction-conflict')
+    expect(issue).toBeDefined()
+    expect(issue.message).toContain('The Mole')
+    expect(issue.message).toContain('The Crown')
+    expect(issue.message).toContain('The Rebels')
+  })
+
+  it('says nothing when the first membership ends before the second begins', () => {
+    // Changing sides is a story; being on both is the finding.
+    expect(computeContinuityIssues(twoSides('e2')).filter((i) => i.kind === 'faction-conflict')).toHaveLength(0)
+  })
+
+  it('says nothing when the two factions are not hostile', () => {
+    const input = twoSides(null)
+    input.allFactionRels = [{ ...input.allFactionRels[0], stance: 'allied' }]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'faction-conflict')).toHaveLength(0)
+  })
+
+  it('reports one row per pair of sides, however many memberships say so', () => {
+    /*
+      A mutation caught the first version of this: it added *scenes*, and the
+      loop is over membership pairs, so removing the dedupe changed nothing and
+      the test passed either way. The case the dedupe is actually for is a
+      character who joined one side twice — two Crown memberships against one
+      Rebels membership is two hostile pairs saying the same thing.
+    */
+    const input = twoSides(null)
+    input.allMemberships = [
+      ...input.allMemberships,
+      { id: 'm3', worldId: 'w', factionId: 'crown', characterId: 'mole', role: null, notes: '', startEventId: 'e3', endEventId: null, createdAt: 0, updatedAt: 0 },
+    ]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'faction-conflict')).toHaveLength(1)
+  })
+})
+
+describe('a fact the reader never learns', () => {
+  const fact = (readerLearnsAtEventId: string | null) => ({
+    id: 'f1', worldId: 'w', title: 'The king is dead', description: '', tags: [],
+    readerLearnsAtEventId, originEventId: null, createdAt: 0, updatedAt: 0,
+  })
+  const reveal = (characterId: string, eventId: string) => ({
+    id: `r-${characterId}`, worldId: 'w', factId: 'f1', characterId, eventId, note: '', createdAt: 0, updatedAt: 0,
+  })
+  /** A book that uses POV, so derivation is a live route. */
+  const povBook = () => {
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1), chapter('c2', 2)]
+    input.characters = [character('a', 'Ayla'), character('b', 'Bran')]
+    input.allEvents = [
+      event('e1', 'c1', 0, { povCharacterId: 'a', involvedCharacterIds: ['a'] }),
+      event('e2', 'c2', 0, { povCharacterId: 'a', involvedCharacterIds: ['a'] }),
+    ]
+    return input
+  }
+
+  it('is reported when only a non-POV character knows it', () => {
+    const input = povBook()
+    input.knowledgeFacts = [fact(null)]
+    input.knowledgeReveals = [reveal('b', 'e1')]
+    const [issue] = computeContinuityIssues(input).filter((i) => i.kind === 'knowledge-unrevealed')
+    expect(issue).toBeDefined()
+    expect(issue.message).toContain('The king is dead')
+  })
+
+  it('says nothing when a POV character knows it by the time they hold the POV', () => {
+    const input = povBook()
+    input.knowledgeFacts = [fact(null)]
+    input.knowledgeReveals = [reveal('a', 'e1')]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'knowledge-unrevealed')).toHaveLength(0)
+  })
+
+  it('says nothing when a reader reveal is set explicitly', () => {
+    const input = povBook()
+    input.knowledgeFacts = [fact('e2')]
+    input.knowledgeReveals = []
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'knowledge-unrevealed')).toHaveLength(0)
+  })
+
+  it('stays out of a book that records no POV at all', () => {
+    // There, POV derivation resolves for *no* fact, so the finding would be
+    // about the field being unused rather than about this fact.
+    const input = povBook()
+    input.allEvents = input.allEvents.map((e) => ({ ...e, povCharacterId: null }))
+    input.knowledgeFacts = [fact(null)]
+    input.knowledgeReveals = [reveal('b', 'e1')]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'knowledge-unrevealed')).toHaveLength(0)
+  })
+})
+
+describe('a chapter with no scenes', () => {
+  it('is reported, and the populated one beside it is not', () => {
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1), chapter('c2', 2)]
+    input.allEvents = [event('e1', 'c1', 0)]
+    const found = computeContinuityIssues(input).filter((i) => i.kind === 'chapter-empty')
+    expect(found).toHaveLength(1)
+    expect(found[0].message).toContain('Ch. 2')
+    expect(found[0].category).toBe('world')
+  })
+})
+
+describe('an item carried by a dead character', () => {
+  const carried = (aliveAtDeath: boolean) => {
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1), chapter('c2', 2)]
+    input.characters = [character('boromir', 'Boromir')]
+    input.items = [{ id: 'horn', worldId: 'w', name: 'The Horn of Gondor', description: '', iconType: 'misc', imageId: null, tags: [], createdAt: 0, updatedAt: 0 } as ContinuityInput['items'][number]]
+    input.allEvents = [event('e1', 'c1', 0), event('e2', 'c2', 0)]
+    input.snapshots = [
+      { ...snapshot('s1', 'boromir', 'e1', aliveAtDeath), inventoryItemIds: [] },
+      { ...snapshot('s2', 'boromir', 'e2', false), inventoryItemIds: ['horn'] },
+    ]
+    return input
+  }
+
+  it('is reported when he was already dead walking in', () => {
+    const [issue] = computeContinuityIssues(carried(false)).filter((i) => i.kind === 'item-dead-holder')
+    expect(issue).toBeDefined()
+    expect(issue.message).toContain('The Horn of Gondor')
+    expect(issue.message).toContain('Boromir')
+  })
+
+  it('says nothing about the scene where the death is recorded', () => {
+    // Dying with your sword in your hand is not a continuity error — the same
+    // rule `dead-in-event` already follows.
+    expect(computeContinuityIssues(carried(true)).filter((i) => i.kind === 'item-dead-holder')).toHaveLength(0)
+  })
+})
+
+describe('a scene with no point of view', () => {
+  /** `withPov` scenes name one; `without` do not. */
+  const book = (withPov: number, without: number) => {
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1)]
+    input.characters = [character('a', 'Ayla')]
+    input.allEvents = [
+      ...Array.from({ length: withPov }, (_, i) => event(`p${i}`, 'c1', i, { povCharacterId: 'a', involvedCharacterIds: ['a'] })),
+      ...Array.from({ length: without }, (_, i) => event(`n${i}`, 'c1', withPov + i)),
+    ]
+    return input
+  }
+
+  it('is reported for the odd scene in a book that otherwise names one', () => {
+    const found = computeContinuityIssues(book(19, 1)).filter((i) => i.kind === 'pov-missing')
+    expect(found).toHaveLength(1)
+    expect(found[0].detail).toContain('19 of this book')
+  })
+
+  it('stays silent in a book that barely uses the field', () => {
+    // The gate is the whole design: without it every scene of every world that
+    // ignores POV would carry a row.
+    expect(computeContinuityIssues(book(2, 8)).filter((i) => i.kind === 'pov-missing')).toHaveLength(0)
+  })
+
+  it('stays silent when the gaps are too many to read as omissions', () => {
+    expect(computeContinuityIssues(book(10, 10)).filter((i) => i.kind === 'pov-missing')).toHaveLength(0)
+  })
+})

@@ -1925,10 +1925,21 @@ count. Typical catches:
   way). The finding offers a one-click **"Allow N more days"** that lengthens the
   scene so the journey becomes possible.
 - A character who **travels through a destroyed or abandoned region**.
+- A character who belongs to **two hostile factions at the same time** —
+  memberships carry a start and an end, so "at the same time" is an overlap and
+  not a guess. Reported once per pair of sides rather than once per scene. A
+  double agent is a real thing, so it is a warning.
+- An **item carried by a character who is dead**. The scene where the death is
+  recorded is not one of these — dying with your sword in your hand is not a
+  continuity error.
 - A character **named in the prose but not in the cast** of that scene. This is
   the one you meet most while drafting, and it offers **Add to this scene** —
   the same one-click fix the scene editor's chip has, so you can clear it from
   whichever screen you are on.
+- A scene with **no point of view**, but only in a book that otherwise names
+  one. The check asks what your own habit is — enough scenes with a POV to be a
+  pattern, and few enough without to read as omissions — and stays silent
+  otherwise, so a book that never uses the field is never nagged about it.
 - A scene whose **POV names no character** — the point-of-view field is still
   pointing at somebody who has since been deleted. It offers **Clear the POV**,
   and because this is usually one deleted character repeated across many scenes,
@@ -1947,6 +1958,10 @@ count. Typical catches:
 - A **relationship with a state recorded after it ended**, the counterpart to
   the one that starts too early. Only the last ending counts — relationships
   break and mend, and a writer who records the mend has said what happened.
+- A **fact the reader never learns** — recorded knowledge that no point-of-view
+  scene ever carries and that has no explicit reader reveal set, so it shapes
+  nothing a reader can feel. Withholding on purpose is ordinary in a mystery, so
+  it is a warning; set a reader reveal to say the withholding is deliberate.
 - A **destroyed item whole again**. Set its condition to **repaired** on the
   scene where it was mended and the finding goes — the same bargain as a
   revival. Ordinary repair is not reported at all: *damaged → intact* and
@@ -1963,6 +1978,9 @@ rather than about anybody in it:
   **rebuilt** on the scene where it happens and the finding goes. It reports the
   first return only; a place that comes back and is razed again has a history,
   not a fault.
+- A **chapter with no scenes** — a heading with nothing under it, which the
+  manuscript skips, the pacing curve has no point for, and the time cursor steps
+  straight past.
 - A **scene set before the one in front of it**. Giving a scene an explicit
   in-world time overrides the clock derived from travel days, so a pin can put a
   scene earlier than the scene preceding it. Mark it a flashback — which is what

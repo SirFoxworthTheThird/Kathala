@@ -1296,11 +1296,26 @@ export default function MapExplorerView() {
   const [uploadOpen, setUploadOpen] = useState(false)
   const [genLocOpen, setGenLocOpen] = useState(false)
 
-  if (!worldId) return null
+  /*
+    BUG-1: opening Maps with no layer chosen used to call `setActiveMapLayerId`
+    **in the render body**, which React reports as *"Cannot update a component
+    (TopBar) while rendering a different component (MapExplorerView)"* — the top
+    bar reads the same store, so rendering one component was writing state
+    another was already rendering from.
 
-  if (!activeLayerId && rootLayers.length > 0) {
-    setActiveMapLayerId(rootLayers[0].id)
-  }
+    The choice is now *derived* for this render and *persisted* afterwards. An
+    effect alone would have been the obvious fix and is worse: it lands after
+    paint, so the screen would show a blank map for one frame before the first
+    layer appeared. Deriving means the very first render already draws the right
+    map, and the store catches up in the effect with nothing depending on when.
+  */
+  const layerId = activeLayerId ?? rootLayers[0]?.id ?? null
+
+  useEffect(() => {
+    if (!activeLayerId && rootLayers.length > 0) setActiveMapLayerId(rootLayers[0].id)
+  }, [activeLayerId, rootLayers, setActiveMapLayerId])
+
+  if (!worldId) return null
 
   if (rootLayers.length === 0) {
     return (
@@ -1349,7 +1364,7 @@ export default function MapExplorerView() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex-1 overflow-hidden">
-        {activeLayerId ? <MapView worldId={worldId} layerId={activeLayerId} /> : null}
+        {layerId ? <MapView worldId={worldId} layerId={layerId} /> : null}
       </div>
     </div>
   )
