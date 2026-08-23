@@ -72,7 +72,14 @@ describe('the published library catalogue', () => {
           expect(linked ?? null, 'world links a cover the manifest omits').toBeNull()
         } else {
           expect(entry.cover).toBe(linked)
-          expect(entry.cover).toMatch(/^https:\/\//)
+          /*
+            Either a link out to the web, or a file this app ships. W23-7 moved
+            the project's own artwork from `raw.githubusercontent.com/…` to a
+            path resolved against `import.meta.env.BASE_URL`, so a cover is no
+            longer necessarily absolute — but it must still be one of the two
+            shapes, never a bare filename or an accidental empty string.
+          */
+          expect(entry.cover).toMatch(/^(https:\/\/|library\/)/)
         }
       })
 

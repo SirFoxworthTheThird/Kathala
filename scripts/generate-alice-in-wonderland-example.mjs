@@ -4,7 +4,13 @@ const P='alice-wonderland',worldId=`${P}-world`,now=1787529600000,base={worldId,
 const id=(k,s)=>`${P}-${k}-${s}`,I=s=>id('image',s),C=s=>id('character',s),L=s=>id('location',s),M=s=>id('map',s),Ch=n=>id('chapter',String(n).padStart(2,'0')),EV=s=>id('event',s),Item=s=>id('item',s),T=s=>id('thread',s),O=s=>id('motif',s),F=s=>id('faction',s),K=s=>id('fact',s),R=s=>id('relationship',s)
 // Keep linked artwork in the repository so downloaded reading-mode worlds can
 // resolve it from local development, GitHub Pages, and production deployments.
-const repo='https://raw.githubusercontent.com/SirFoxworthTheThird/PlotWeave/development/public/library/alice-in-wonderland'
+// W23-7: assets are named by the path this app serves them from, resolved at
+// read time against `import.meta.env.BASE_URL` (see `blobEntryUrl`). They used
+// to be absolute `raw.githubusercontent.com` URLs, which made three books
+// depend on a branch of a public repository for artwork that is already in
+// `dist/` — and made them fail offline, under a banner saying the picture was
+// "kept on the web rather than in the book" when it was in the book all along.
+const repo='library/alice-in-wonderland'
 const mkdir=p=>fs.mkdirSync(p,{recursive:true}),write=(p,s)=>{if(p.startsWith('public/library/alice-in-wonderland/maps/')&&p.endsWith('.svg'))return;mkdir(p.slice(0,p.lastIndexOf('/')));fs.writeFileSync(p,s)}
 const image=(s,url,mimeType)=>({...base,id:I(s),mimeType,url})
 const blobs=[]

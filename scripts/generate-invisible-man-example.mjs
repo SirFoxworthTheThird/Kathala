@@ -3,7 +3,13 @@ import fs from 'node:fs'
 const P='invisible-man', worldId=`${P}-world`, now=1787529600000, base={worldId,createdAt:now,updatedAt:now}
 const id=(k,s)=>`${P}-${k}-${s}`, I=s=>id('image',s), C=s=>id('character',s), L=s=>id('location',s), M=s=>id('map',s), Ch=n=>id('chapter',String(n).padStart(2,'0')), EV=s=>id('event',s), Item=s=>id('item',s), T=s=>id('thread',s), O=s=>id('motif',s), F=s=>id('faction',s), K=s=>id('fact',s), R=s=>id('relationship',s)
 const commons=(name,width=1600)=>`https://commons.wikimedia.org/wiki/Special:Redirect/file/${encodeURIComponent(name)}?width=${width}`
-const repo='https://raw.githubusercontent.com/SirFoxworthTheThird/PlotWeave/development/public/library/the-invisible-man'
+// W23-7: assets are named by the path this app serves them from, resolved at
+// read time against `import.meta.env.BASE_URL` (see `blobEntryUrl`). They used
+// to be absolute `raw.githubusercontent.com` URLs, which made three books
+// depend on a branch of a public repository for artwork that is already in
+// `dist/` — and made them fail offline, under a banner saying the picture was
+// "kept on the web rather than in the book" when it was in the book all along.
+const repo='library/the-invisible-man'
 const image=(s,url,mimeType='image/jpeg')=>({...base,id:I(s),mimeType,url})
 const repoImage=(group,s)=>image(`${group}-${s}`,`${repo}/art/${group}/${s}.jpg`,'image/jpeg')
 

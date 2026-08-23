@@ -42,7 +42,7 @@ export interface LibraryEntry {
    */
   notice: string
   /**
-   * Cover art for the card, as an absolute URL.
+   * Cover art for the card: an absolute URL, or a path to a file this app ships.
    *
    * Only entries whose cover is a *linked* image can have one. Where the cover
    * is binary it lives in the `.pwb` bundle, which is tens of megabytes and the
@@ -50,8 +50,9 @@ export interface LibraryEntry {
    * text, rather than the catalogue quietly pulling the very payload its own
    * "with images" button exists to make optional.
    *
-   * **This is the exception to "no backend, same origin" above.** A cover is an
-   * absolute URL to somebody else's host, so opening the Library asks that host
+   * **An off-origin cover is the exception to "no backend, same origin" above.**
+   * Such a cover is an absolute URL to somebody else's host, so opening the
+   * Library asks that host
    * for an image and discloses the reader's IP to it. No world data goes with
    * it, and `LibraryCover` renders nothing when the request fails — but this is
    * the one place the catalogue reaches off-origin, and it is currently 23 of
@@ -76,6 +77,20 @@ export function libraryBaseUrl(base: string): string {
 }
 
 /** Reject anything that isn't the shape we expect, rather than half-rendering it. */
+/**
+ * Whether a catalogue cover is one we are willing to put in an `<img>`.
+ *
+ * Absolute http(s), or a file under `library/` that this app ships. A path is
+ * checked for traversal explicitly rather than by resolving it, because the
+ * value is data from a file and the answer should not depend on where the
+ * document happens to be.
+ */
+function isAllowedCover(cover: string): boolean {
+  if (/^https?:\/\//i.test(cover)) return true
+  if (!cover.startsWith('library/')) return false
+  return !cover.includes('..') && !cover.includes('\\') && !/^[a-z][a-z0-9+.-]*:/i.test(cover)
+}
+
 export function parseLibraryIndex(raw: unknown): LibraryIndex {
   if (typeof raw !== 'object' || raw === null) throw new Error('Library index is not an object')
   const obj = raw as Record<string, unknown>
@@ -90,10 +105,19 @@ export function parseLibraryIndex(raw: unknown): LibraryIndex {
       }
     }
     if (typeof e.dataBytes !== 'number') throw new Error(`Library entry ${i} is missing dataBytes`)
-    // A cover is optional, but a malformed one is dropped rather than rendered:
-    // an <img> pointing at a relative path or a javascript: string is not
-    // something to hand to the browser because a catalogue file said so.
-    if (e.cover !== undefined && !(typeof e.cover === 'string' && /^https?:\/\//i.test(e.cover))) {
+    /*
+      A cover is optional, and a malformed one is dropped rather than rendered:
+      a `javascript:` string, or a path that could climb out of the library, is
+      not something to hand to the browser because a catalogue file said so.
+
+      Two shapes are allowed. An **absolute http(s) URL** is somebody else's
+      host, which is the disclosure described above. A path under **`library/`**
+      is a file this app ships and serves itself — W23-7 moved the project's own
+      artwork there from `raw.githubusercontent.com`, so admitting it is what
+      lets a cover stop leaving the origin at all. Nothing else: no scheme, no
+      leading slash, no `..`, no backslash.
+    */
+    if (e.cover !== undefined && !(typeof e.cover === 'string' && isAllowedCover(e.cover))) {
       delete e.cover
     }
     return e as unknown as LibraryEntry

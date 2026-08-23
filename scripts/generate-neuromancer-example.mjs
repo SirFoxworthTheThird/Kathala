@@ -6,7 +6,13 @@ const P='neuromancer',worldId=`${P}-world`,now=1787443200000,base={worldId,creat
 const id=(k,s)=>`${P}-${k}-${s}`,I=s=>id('image',s),C=s=>id('char',s),L=s=>id('loc',s),M=s=>id('map',s)
 const Ch=n=>id('chapter',String(n).padStart(2,'0')),EV=s=>id('event',s),Item=s=>id('item',s),R=s=>id('relationship',s)
 const timelineId=id('timeline','main')
-const repositoryAssetBase='https://raw.githubusercontent.com/SirFoxworthTheThird/PlotWeave/development/public/library/neuromancer'
+// W23-7: assets are named by the path this app serves them from, resolved at
+// read time against `import.meta.env.BASE_URL` (see `blobEntryUrl`). They used
+// to be absolute `raw.githubusercontent.com` URLs, which made three books
+// depend on a branch of a public repository for artwork that is already in
+// `dist/` — and made them fail offline, under a banner saying the picture was
+// "kept on the web rather than in the book" when it was in the book all along.
+const repositoryAssetBase='library/neuromancer'
 const asset=s=>`${repositoryAssetBase}/${s}`
 const image=(s,url,mimeType='image/jpeg')=>({...base,id:I(s),mimeType,url})
 

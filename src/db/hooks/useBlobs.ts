@@ -22,11 +22,42 @@ export function useWorldBlobUrls(worldId: string | null): Map<string, string> {
   }, [entries])
 }
 
-/** Resolve a blob entry to a usable image URL — its external link, or an object
- *  URL for uploaded binary data. */
+/**
+ * A blob `url` that names a file this app ships, rather than one on the web.
+ *
+ * W23-7: four library books referenced their own artwork as
+ * `https://raw.githubusercontent.com/…/development/public/library/<book>/…` —
+ * **246 URLs** pointing at a branch of a public repository, for 146 MB of files
+ * that are already in `dist/` and already served by the app at that very path.
+ * A commit fixing GitHub Pages did it, because a root-absolute `/library/…`
+ * breaks under a Pages subpath. But `vite.config.ts` already sets
+ * `base: './'`, so the fix was to resolve against the base rather than to leave
+ * the site and come back.
+ *
+ * Offline, every one of them failed, and the map said so — *"This map's picture
+ * could not be loaded — it is kept on the web rather than in the book"*. That
+ * banner is right about what it was told and wrong about the book: the picture
+ * **is** in the book, in the folder beside the `.pwk` the app had just read.
+ *
+ * A stored url is a bundled asset when it has no scheme and no leading slash.
+ * Third-party links (DEC-1) are absolute and untouched by this.
+ */
+function isBundledAsset(url: string): boolean {
+  return !/^[a-z][a-z0-9+.-]*:/i.test(url) && !url.startsWith('/')
+}
+
+/** Resolve a blob entry to a usable image URL — a file this app ships, its
+ *  external link, or an object URL for uploaded binary data. */
 export function blobEntryUrl(entry: BlobEntry | undefined): string | undefined {
   if (!entry) return undefined
-  if (entry.url) return entry.url
+  if (entry.url) {
+    return isBundledAsset(entry.url)
+      // `BASE_URL` is `./` in this project, so this resolves against the
+      // document — correct at a domain root, under a Pages subpath, and in the
+      // Electron build, none of which the stored path has to know about.
+      ? `${import.meta.env.BASE_URL}${entry.url}`.replace(/([^:]\/)\/+/g, '$1')
+      : entry.url
+  }
   if (entry.data) return URL.createObjectURL(entry.data)
   return undefined
 }
