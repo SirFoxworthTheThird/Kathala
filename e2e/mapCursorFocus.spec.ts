@@ -54,10 +54,13 @@ async function setupWorld(page: Page): Promise<string> {
     await page.getByRole('button', { name: 'Add Scene' }).last().click()
     // The location picker lives in the expanded card, and saves on change.
     await main.getByRole('button', { name: title, exact: true }).click()
-    // A scene with no location does not draw the Location section any more — it
-    // is offered as a chip instead, so open it first.
-    await main.getByRole('button', { name: '+ Location' }).click()
-    await main.getByRole('button', { name: 'No location' }).click()
+    // A scene with no setting does not draw the Setting section any more — it
+    // is offered as a chip instead, so open it first. (The field was called
+    // *Location* here until W23-5 gave one field one name; the empty state is
+    // "Nowhere in particular", which is what a scene without a setting is
+    // rather than a missing value.)
+    await main.getByRole('button', { name: '+ Setting' }).click()
+    await main.getByRole('button', { name: 'Nowhere in particular' }).click()
     await page.getByRole('option', { name: place, exact: true }).click()
     await expect(main.getByRole('button', { name: place, exact: true }).first()).toBeVisible()
     await main.getByRole('button', { name: title, exact: true }).click()

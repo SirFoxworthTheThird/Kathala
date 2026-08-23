@@ -185,6 +185,65 @@ test.describe('Naming things from the scene prose', () => {
   })
 
   /**
+   * W23-5. The Setting is settable where a scene is *made*.
+   *
+   * Three of the newest features depend on it — the continuity checker compares
+   * it against the cast, the Writer's Brief names it, the map reads it — and
+   * Add Scene did not offer it. A writer doing the obvious thing ended up with
+   * a book where none of that could answer, and reaching it meant chapter
+   * detail, expand the scene, `+ Location`, pick: four clicks per scene.
+   *
+   * It is withheld with no map, on the same rule as everywhere else — a place
+   * is a pin (DEC/W19-3) — which is the absence half asserted here too.
+   */
+  test('a scene can be given its setting where the scene is made', async ({ page }) => {
+    const worldId = await sceneWithProse(page)
+
+    // No map yet: the field is not offered, because a place is a pin.
+    await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
+    await expect(page.getByRole('dialog').getByText('Setting', { exact: true })).toHaveCount(0)
+    await page.keyboard.press('Escape')
+
+    // Give the world a map with a place on it.
+    await page.evaluate(async (id) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as
+        Record<string, { add: (v: unknown) => Promise<unknown> }>
+      const now = Date.now()
+      await db.mapLayers.add({
+        id: 'map1', worldId: id, parentMapId: null, name: 'Salt Gate', description: '',
+        imageId: null, imageWidth: 1600, imageHeight: 1000, scalePixelsPerUnit: null,
+        scaleUnit: null, levelGroupId: null, levelIndex: 0, levelLabel: '', createdAt: now, updatedAt: now,
+      })
+      await db.locationMarkers.add({
+        id: 'ledger', worldId: id, mapLayerId: 'map1', linkedMapLayerId: null,
+        name: 'The Ledger Room', description: '', x: 400, y: 400, imageId: null,
+        iconType: 'building', tags: [], factionId: null, createdAt: now, updatedAt: now,
+      })
+    }, worldId)
+    await page.reload({ waitUntil: 'load' })
+    await page.waitForTimeout(1500)
+
+    // Now it is offered, and setting it writes to the scene.
+    await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByText('Setting', { exact: true })).toBeVisible()
+    await dialog.getByPlaceholder('Scene title').fill('A letter under the door')
+    // The Radix select trigger exposes as a `button` here, not a `combobox` —
+    // the first version of this waited five minutes for a role that is not on it.
+    await dialog.getByRole('button', { name: 'Nowhere in particular' }).click()
+    await page.getByRole('option', { name: 'The Ledger Room' }).click()
+    await dialog.getByRole('button', { name: 'Add Scene' }).click()
+
+    await expect.poll(async () => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as {
+        events: { toArray: () => Promise<Array<{ title: string; locationMarkerId: string | null }>> }
+      }
+      const evs = await db.events.toArray()
+      return evs.find((e) => e.title === 'A letter under the door')?.locationMarkerId ?? null
+    }), { timeout: 15_000 }).toBe('ledger')
+  })
+
+  /**
    * W23-4. **Enter may complete a name; it may not invent a record.**
    *
    * The picker always offers create rows for a name not already taken, so

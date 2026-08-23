@@ -1228,7 +1228,7 @@ images to a canvas — uploaded maps always export.)
 **A location lives on a map.** Places are pins, so you can add them to maps and
 sub-maps that already exist and nowhere else — there is no separate list of
 places kept apart from the geography. That is why, in a world with no map yet,
-a scene has no **Location** section to fill in, a character's **Current
+a scene has no **Setting** to fill in, a character's **Current
 Location** has nothing to offer, and the scene editor's `@` picker offers a new
 character or a new item but not a new place. Add a map first (or generate a tree
 of locations with AI, which builds one for you and lays them out on it), and all
@@ -1796,8 +1796,9 @@ or day number if you haven't set up a calendar), the other scenes in that
 chapter, and a per-character state readout — including **"carried forward"**
 badges where a character's state was inherited rather than freshly set.
 
-If the scene has a **place** set on it, the brief names it as the scene's
-**Setting**, above the description. That is the scene's own location — where it
+If the scene has a **Setting** — the place it happens, set on the scene itself
+when you add it or from its card afterwards — the brief names it above the
+description. That is the scene's own location — where it
 happens — as distinct from where each character is recorded as being, which is
 what the per-character readout underneath shows. The two can disagree, and
 seeing both is how you notice.

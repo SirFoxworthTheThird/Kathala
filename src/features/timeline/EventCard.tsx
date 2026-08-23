@@ -100,7 +100,18 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
    */
   const [revealed, setRevealed] = useState<Set<string>>(new Set())
   const optionalSections = [
-    { id: 'location',   label: 'Location',   available: locationMarkers.length > 0, filled: locationMarkerId !== null },
+    /*
+      W23-5: one field, three names. The chip and its section said *Location*,
+      the Writer's Brief said **Setting:**, and the continuity checker said
+      *"change the scene's place"* — the same `locationMarkerId` under three
+      words, on three screens, all shipped within days of each other.
+
+      **Setting** is the one that survives, because it is the only one that says
+      what the field is *about*: a scene's setting is where it happens, as
+      distinct from where each character is recorded as being, which the panel
+      below calls their location and which can legitimately differ.
+    */
+    { id: 'location',   label: 'Setting',    available: locationMarkers.length > 0, filled: locationMarkerId !== null },
     { id: 'tags',       label: 'Tags',       available: true,  filled: tags.length > 0 },
     { id: 'characters', label: 'Characters', available: true,  filled: involvedIds.length > 0 },
     { id: 'mentions',   label: 'Mentioned',  available: true,  filled: mentionedIds.length > 0 },
@@ -524,14 +535,14 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
           {shows('location') && (
             <div className="flex flex-col gap-1.5">
               <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
-                <MapPin className="h-3 w-3" /> Location
+                <MapPin className="h-3 w-3" /> Setting
               </span>
               <Select value={locationMarkerId ?? '__none__'} onValueChange={changeLocation}>
                 <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Select location…" />
+                  <SelectValue placeholder="Nowhere in particular…" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__" className="text-xs italic text-[hsl(var(--muted-foreground))]">No location</SelectItem>
+                  <SelectItem value="__none__" className="text-xs italic text-[hsl(var(--muted-foreground))]">Nowhere in particular</SelectItem>
                   {locationMarkers.map((m) => (
                     <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
                   ))}

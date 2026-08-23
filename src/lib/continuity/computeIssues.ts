@@ -317,7 +317,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           severity: 'warning',
           category: 'character',
           message: `${char.name} is in "${ev.title || 'untitled'}" but recorded at "${at?.name ?? 'somewhere else'}"`,
-          detail: `Ch. ${ch?.number ?? '?'} — the scene is set at "${sceneMarker.name}", and nothing records where they are in it. Move them there, record the journey, or record where they really are.`,
+          detail: `Ch. ${ch?.number ?? '?'} — the scene's setting is "${sceneMarker.name}", and nothing records where they are in it. Move them there, record the journey, or record where they really are.`,
           navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
           eventId: ev.id,
           fix: { kind: 'moveHere', label: `Move to ${sceneMarker.name}`, eventId: ev.id, characterId: charId, markerId: ev.locationMarkerId },

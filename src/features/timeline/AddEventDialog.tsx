@@ -1,5 +1,5 @@
 import { useState, useRef, type KeyboardEvent } from 'react'
-import { X, Eye } from 'lucide-react'
+import { X, Eye, MapPin } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,6 +10,7 @@ import type { EventStatus } from '@/types'
 import { EVENT_STATUSES, eventStatusConfig } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
 import { createEvent } from '@/db/hooks/useTimeline'
+import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useCharacters } from '@/db/hooks/useCharacters'
 
 interface AddEventDialogProps {
@@ -28,11 +29,13 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
   const [status, setStatus] = useState<EventStatus>('draft')
+  const [locationMarkerId, setLocationMarkerId] = useState<string | null>(null)
   const [povCharacterId, setPovCharacterId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const tagInputRef = useRef<HTMLInputElement>(null)
 
   const characters = useCharacters(worldId)
+  const markers = useAllLocationMarkers(worldId)
   const availableChars = characters.filter((c) => !involvedIds.includes(c.id))
   const selectedChars = characters.filter((c) => involvedIds.includes(c.id))
 
@@ -64,6 +67,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
     setTags([])
     setTagInput('')
     setStatus('draft')
+    setLocationMarkerId(null)
     setPovCharacterId(null)
   }
 
@@ -77,7 +81,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
       timelineId,
       title: title.trim(),
       description: description.trim(),
-      locationMarkerId: null,
+      locationMarkerId,
       involvedCharacterIds: involvedIds,
       involvedItemIds: [],
       tags,
@@ -137,6 +141,42 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
                   </SelectContent>
                 </Select>
               )}
+            </div>
+          )}
+
+          {/*
+            W23-5: the field three of the newest features depend on was not
+            offered where a scene is made.
+
+            The continuity checker's `scene-cast-elsewhere` compares it against
+            the cast, the Writer's Brief names it, and the map reads it — and a
+            writer who did the obvious thing, filling in this dialog, ended up
+            with a book where none of that could answer, and no screen said why.
+            Setting it meant going to chapter detail, expanding the scene,
+            clicking `+ Location` and picking: four clicks per scene, plus the
+            navigation.
+
+            Withheld when the world has no map, on the same rule as everywhere
+            else: a place is a pin, so it only exists on a map that already
+            exists (DEC/W19-3).
+          */}
+          {markers.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <Label className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> Setting</Label>
+              <Select
+                value={locationMarkerId ?? '__none__'}
+                onValueChange={(v) => setLocationMarkerId(v === '__none__' ? null : v)}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Nowhere in particular…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__" className="text-xs italic text-[hsl(var(--muted-foreground))]">Nowhere in particular</SelectItem>
+                  {markers.map((m) => (
+                    <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 
