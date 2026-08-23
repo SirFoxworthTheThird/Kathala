@@ -185,6 +185,69 @@ test.describe('Naming things from the scene prose', () => {
   })
 
   /**
+   * W23-4. **Enter may complete a name; it may not invent a record.**
+   *
+   * The picker always offers create rows for a name not already taken, so
+   * `matches` is never empty while a token is open and Enter was never a
+   * paragraph break. Typing *"…knew every stone of @Wenmere"* and pressing
+   * Enter to start the next paragraph created a character called Wenmere,
+   * silently — a chip under MENTIONED, a Cast Balance row reading *never
+   * appears*, and an entry in the picker for the rest of the book.
+   */
+  test('Enter after a name nothing answers breaks the paragraph, and creates nothing', async ({ page }) => {
+    await sceneWithProse(page)
+    await prose(page).click()
+    await page.keyboard.type('She knew every stone of @Wenmere')
+
+    // The picker is open and offering to invent one — this is the live case,
+    // not a closed-picker one.
+    await expect(page.getByRole('button', { name: /Wenmere\s+new character/ })).toBeVisible()
+
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('The tide was out.')
+
+    await expect(prose(page)).toHaveValue(/@Wenmere\nThe tide was out\./)
+    const { characters } = await storedEvent(page)
+    expect(characters.map((c) => c.name)).not.toContain('Wenmere')
+    expect(characters).toHaveLength(0)
+  })
+
+  /**
+   * The presence half, in the gesture that *is* consent. Without it, "Enter
+   * creates nothing" would pass just as well on a picker that had stopped
+   * creating anything at all.
+   */
+  test('and Tab in the same place does create it', async ({ page }) => {
+    await sceneWithProse(page)
+    await prose(page).click()
+    await page.keyboard.type('She knew every stone of @Wenmere')
+    await expect(page.getByRole('button', { name: /Wenmere\s+new character/ })).toBeVisible()
+
+    await page.keyboard.press('Tab')
+
+    await expect(prose(page)).toHaveValue(/Wenmere/)
+    await expect(prose(page)).not.toHaveValue(/@/)
+    await expect.poll(async () => {
+      const { characters } = await storedEvent(page)
+      return characters.map((c) => c.name)
+    }, { timeout: 15_000 }).toContain('Wenmere')
+  })
+
+  /**
+   * And Enter still completes a record that already exists, which is the whole
+   * reason it is bound at all — that only inserts text the writer was typing.
+   */
+  test('and Enter still completes a name that already exists', async ({ page }) => {
+    await sceneWithProse(page)
+    await mention(page, 'Sealed')
+    await expect(page.getByRole('button', { name: /The Sealed Letter\s+item/ })).toBeVisible()
+
+    await page.keyboard.press('Enter')
+    await expect(prose(page)).toHaveValue(/The Sealed Letter/)
+    await expect(prose(page)).not.toHaveValue(/@/)
+  })
+
+  /**
    * A place is a pin, so it needs a map to be on: **locations may only be added
    * to maps and sub-maps that already exist**. With no map in the world the row
    * is withheld rather than inventing coordinates — and the other two kinds are

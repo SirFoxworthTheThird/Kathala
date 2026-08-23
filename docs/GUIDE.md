@@ -757,6 +757,16 @@ lands in the middle of it, ready to be dragged where it belongs; if the scene
 already has a place, the new pin goes on that place's map rather than the
 world's first.
 
+**Enter completes a name; it never invents one.** With the picker open, Enter
+takes a row for something that **already exists** — that only types the name you
+were already writing. To *create* a character, item or place from the picker,
+press **Tab** or click the row: making a record changes your world, and Enter
+means "new paragraph" in every prose editor there is. So writing *"…knew every
+stone of @Wenmere"* and pressing Enter starts your next paragraph and leaves the
+`@Wenmere` you typed as ordinary text, rather than quietly adding a character
+called Wenmere to your cast. **Escape** puts the picker away and leaves
+everything alone.
+
 **Names with spaces work.** Keep typing past the space and the picker follows
 you — *Ysolde Vane*, *Barrow-wight*, *O'Brien* — so the record you make carries
 the whole name rather than the first word of it. It knows where a name ends the
