@@ -185,6 +185,51 @@ test.describe('Naming things from the scene prose', () => {
   })
 
   /**
+   * W23-6. Adding somebody to a scene must not make the picker read as though
+   * they were added twice.
+   *
+   * A Radix `Select` with an `onValueChange` and no `value` keeps the last pick
+   * as its own label — so choosing *Ysolde Vane* left a chip reading Ysolde
+   * Vane and, directly beneath it, a box also reading Ysolde Vane, with the
+   * add-someone affordance apparently gone. Opening it listed everyone
+   * *except* her: the value on the trigger was not in its own option list.
+   *
+   * The rule that fixes it is source-checked in
+   * `src/lib/__tests__/selectValue.test.ts`; what is driven here is the thing a
+   * writer actually sees.
+   */
+  test('the add-a-character box goes back to inviting the next one', async ({ page }) => {
+    const worldId = await sceneWithProse(page)
+
+    await page.evaluate(async (id) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as
+        Record<string, { bulkAdd: (v: unknown[]) => Promise<unknown> }>
+      const now = Date.now()
+      await db.characters.bulkAdd(['Ysolde Vane', 'Corin Ashgrave'].map((name, i) => ({
+        id: `c${i}`, worldId: id, name, aliases: [], description: '',
+        portraitImageId: null, tags: [], isAlive: true, color: null, createdAt: now, updatedAt: now,
+      })))
+    }, worldId)
+    await page.reload({ waitUntil: 'load' })
+    await page.waitForTimeout(1500)
+
+    const main = page.getByRole('main')
+    await main.getByRole('button', { name: 'Expand “The letter arrives”' }).click({ timeout: 30_000 })
+    await main.getByRole('button', { name: '+ Characters' }).click()
+
+    const adder = main.getByRole('button', { name: '+ Add character…' })
+    await expect(adder).toBeVisible()
+    await adder.click()
+    await page.getByRole('option', { name: 'Ysolde Vane' }).click()
+
+    // She is on the scene…
+    await expect(main.getByText('Ysolde Vane')).toBeVisible()
+    // …and the box still invites the next one, rather than wearing her name.
+    await expect(main.getByRole('button', { name: '+ Add character…' })).toBeVisible()
+    await expect(main.getByRole('button', { name: 'Ysolde Vane', exact: true })).toHaveCount(0)
+  })
+
+  /**
    * W23-5. The Setting is settable where a scene is *made*.
    *
    * Three of the newest features depend on it — the continuity checker compares

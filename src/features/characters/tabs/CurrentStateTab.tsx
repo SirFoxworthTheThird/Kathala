@@ -400,7 +400,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
           const taken = available.filter((i) => heldByOthers.has(i.id))
           if (available.length === 0) return null
           return (
-            <Select onValueChange={(v) => mark(() => setInventoryIds((ids) => [...ids, v]))}>
+            <Select onValueChange={(v) => mark(() => setInventoryIds((ids) => [...ids, v]))} value="">
               <SelectTrigger className="text-xs">
                 <SelectValue placeholder="Add existing item..." />
               </SelectTrigger>

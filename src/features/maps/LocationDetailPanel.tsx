@@ -374,7 +374,7 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
                 Select a scene to place characters, or create one now:
               </p>
               {chapters.length > 0 && (
-                <Select onValueChange={setActiveEventId}>
+                <Select onValueChange={setActiveEventId} value="">
                   <SelectTrigger className="text-xs h-8">
                     <SelectValue placeholder="Select chapter..." />
                   </SelectTrigger>
@@ -437,7 +437,7 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
           {/* Add a character */}
           {activeEventId && !gate.active && charsElsewhere.length > 0 && (
             addingChar ? (
-              <Select onValueChange={assignCharacter}>
+              <Select onValueChange={assignCharacter} value="">
                 <SelectTrigger className="text-xs h-8">
                   <SelectValue placeholder="Choose character..." />
                 </SelectTrigger>
@@ -499,7 +499,7 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
               const elsewhere = allItems.filter((i) => !hereIds.has(i.id) && (inInventory.has(i.id) || elsewhereIds.has(i.id)))
               if (allItems.length === 0) return <p className="text-xs italic text-[hsl(var(--muted-foreground))]">No items in this world yet.</p>
               return (
-                <Select onValueChange={(v) => placeItemAtLocation(worldId, v, activeEventId, markerId)}>
+                <Select onValueChange={(v) => placeItemAtLocation(worldId, v, activeEventId, markerId)} value="">
                   <SelectTrigger className="text-xs h-8">
                     <SelectValue placeholder="Place item here..." />
                   </SelectTrigger>

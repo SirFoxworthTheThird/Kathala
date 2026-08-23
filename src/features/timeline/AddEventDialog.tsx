@@ -130,7 +130,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
                 </div>
               )}
               {availableChars.length > 0 && (
-                <Select onValueChange={addCharacter}>
+                <Select onValueChange={addCharacter} value="">
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="+ Add character…" />
                   </SelectTrigger>

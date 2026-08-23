@@ -611,7 +611,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
               <p className="text-xs text-[hsl(var(--muted-foreground))]">No characters in this world yet.</p>
             ) : null}
             {availableChars.length > 0 && (
-              <Select onValueChange={addCharacter}>
+              <Select onValueChange={addCharacter} value="">
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="+ Add character…" />
                 </SelectTrigger>
@@ -655,7 +655,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
               </p>
             )}
             {availableForMention.length > 0 && (
-              <Select onValueChange={addMention}>
+              <Select onValueChange={addMention} value="">
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="+ Mention character…" />
                 </SelectTrigger>
@@ -690,7 +690,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                 </div>
               )}
               {availableThreads.length > 0 && (
-                <Select onValueChange={addThread}>
+                <Select onValueChange={addThread} value="">
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="+ Tag a thread…" />
                   </SelectTrigger>
@@ -725,7 +725,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                 </div>
               )}
               {availableMotifs.length > 0 && (
-                <Select onValueChange={addMotif}>
+                <Select onValueChange={addMotif} value="">
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="+ Tag a motif…" />
                   </SelectTrigger>
@@ -768,7 +768,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                   empty list here guarantees the picker below. Rule 3 applies
                   outright. */}
               {availableItems.length > 0 && (
-                <Select onValueChange={addItem}>
+                <Select onValueChange={addItem} value="">
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="+ Add item…" />
                   </SelectTrigger>

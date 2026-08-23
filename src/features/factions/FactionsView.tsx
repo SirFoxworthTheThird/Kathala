@@ -475,7 +475,7 @@ function FactionDetailPanel({
           </div>
 
           {gate.active ? null : addingMember ? (
-            <Select onValueChange={addMember}>
+            <Select onValueChange={addMember} value="">
               <SelectTrigger className="text-xs h-8">
                 <SelectValue placeholder="Choose character…" />
               </SelectTrigger>
@@ -533,7 +533,7 @@ function FactionDetailPanel({
             </div>
 
             {gate.active ? null : addingRelation ? (
-              <Select onValueChange={addRelation}>
+              <Select onValueChange={addRelation} value="">
                 <SelectTrigger className="text-xs h-8">
                   <SelectValue placeholder="Choose faction…" />
                 </SelectTrigger>

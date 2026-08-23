@@ -208,7 +208,7 @@ export function FactionsTab({ character }: { character: Character }) {
       )}
 
       {gate.active ? null : adding ? (
-        <Select onValueChange={handleJoin}>
+        <Select onValueChange={handleJoin} value="">
           <SelectTrigger className="text-xs h-8">
             <SelectValue placeholder="Choose faction…" />
           </SelectTrigger>
