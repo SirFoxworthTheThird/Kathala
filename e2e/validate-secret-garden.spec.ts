@@ -2,10 +2,10 @@ import { test, expect } from '@playwright/test'
 import { fileURLToPath } from 'url'
 import * as path from 'path'
 import { resetDB } from './helpers/reset'
+import { shot } from './helpers/shot'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PWK_PATH = path.resolve(__dirname, '../public/library/the-secret-garden.pwk')
-const SS = (name: string) => path.join(__dirname, '../screenshots/validation', name)
 
 test.describe('Secret Garden Visual Validation', () => {
   test.beforeEach(async ({ page }) => {
@@ -13,13 +13,13 @@ test.describe('Secret Garden Visual Validation', () => {
     await resetDB(page)
   })
 
-  test('import and validate The Secret Garden', async ({ page }) => {
+  test('import and validate The Secret Garden', async ({ page }, testInfo) => {
     // Import
     const fileInput = page.locator('input[type="file"][accept=".pwk,.pwb,application/json"]')
     await fileInput.setInputFiles(PWK_PATH)
     await expect(page.getByRole('heading', { name: 'The Secret Garden' })).toBeVisible({ timeout: 10000 })
     await page.waitForTimeout(2000)
-    await page.screenshot({ path: SS('01-world-home.png'), fullPage: false })
+    await shot(page, testInfo, '01-world-home.png')
 
     // Disable reading mode via Dexie's own API (window.__pwdb is exposed in dev/e2e)
     await page.evaluate(async () => {
@@ -31,7 +31,7 @@ test.describe('Secret Garden Visual Validation', () => {
     // Characters
     await page.getByRole('link', { name: /characters/i }).first().click()
     await page.waitForTimeout(3000)
-    await page.screenshot({ path: SS('02-characters.png'), fullPage: false })
+    await shot(page, testInfo, '02-characters.png')
 
     // Verify key characters (use exact:true + first() to avoid ambiguity)
     const main = page.getByRole('main')
@@ -44,7 +44,7 @@ test.describe('Secret Garden Visual Validation', () => {
     // Timeline
     await page.getByRole('link', { name: /timeline/i }).first().click()
     await page.waitForTimeout(3000)
-    await page.screenshot({ path: SS('03-timeline.png'), fullPage: false })
+    await shot(page, testInfo, '03-timeline.png')
     // Verify Ch.7 title fix
     await expect(main.getByText('The Key in the Garden')).toBeVisible()
     console.log('Ch.7 title verified')
@@ -52,37 +52,37 @@ test.describe('Secret Garden Visual Validation', () => {
     // Maps
     await page.getByRole('link', { name: /maps/i }).first().click()
     await page.waitForTimeout(3000)
-    await page.screenshot({ path: SS('04-maps.png'), fullPage: false })
+    await shot(page, testInfo, '04-maps.png')
 
     // Relationships
     await page.getByRole('link', { name: /relations/i }).first().click()
     await page.waitForTimeout(3000)
-    await page.screenshot({ path: SS('05-relationships.png'), fullPage: false })
+    await shot(page, testInfo, '05-relationships.png')
 
     // Lore
     await page.getByRole('link', { name: /lore/i }).first().click()
     await page.waitForTimeout(3000)
-    await page.screenshot({ path: SS('06-lore.png'), fullPage: false })
+    await shot(page, testInfo, '06-lore.png')
 
     // Factions
     await page.getByRole('link', { name: /factions/i }).first().click()
     await page.waitForTimeout(3000)
-    await page.screenshot({ path: SS('07-factions.png'), fullPage: false })
+    await shot(page, testInfo, '07-factions.png')
 
     // Knowledge
     await page.getByRole('link', { name: /knowledge/i }).first().click()
     await page.waitForTimeout(3000)
-    await page.screenshot({ path: SS('08-knowledge.png'), fullPage: false })
+    await shot(page, testInfo, '08-knowledge.png')
 
     // Items
     await page.getByRole('link', { name: /items/i }).first().click()
     await page.waitForTimeout(3000)
-    await page.screenshot({ path: SS('09-items.png'), fullPage: false })
+    await shot(page, testInfo, '09-items.png')
 
     // Calendar
     await page.getByRole('link', { name: /calendar/i }).first().click()
     await page.waitForTimeout(3000)
-    await page.screenshot({ path: SS('10-calendar.png'), fullPage: false })
+    await shot(page, testInfo, '10-calendar.png')
 
     console.log('Visual validation complete')
   })
