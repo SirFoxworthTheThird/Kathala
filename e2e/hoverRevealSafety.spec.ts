@@ -88,7 +88,7 @@ async function seedWorld(page: Page, name: string) {
 }
 
 /** Hidden at rest, and back on hover — both halves, or the test proves nothing. */
-async function assertHiddenThenRevealed(page: Page, control: Locator, row: Locator, what: string) {
+async function assertHiddenThenRevealed(control: Locator, row: Locator, what: string) {
   await expect(control, `${what} should exist`).toHaveCount(1)
 
   // Polled, not sampled. These fade on a `transition-opacity`, so a reading
@@ -118,7 +118,7 @@ test.describe('Hover-revealed controls cannot be activated while invisible', () 
 
     const card = page.locator('.group').filter({ hasText: 'Highbarrow' }).first()
     const del = card.getByRole('button', { name: /delete/i }).first()
-    await assertHiddenThenRevealed(page, del, card, 'the world delete')
+    await assertHiddenThenRevealed(del, card, 'the world delete')
   })
 
   test('the plot-thread row, and its delete is named after its thread', async ({ page }) => {
@@ -136,7 +136,7 @@ test.describe('Hover-revealed controls cannot be activated while invisible', () 
 
     const row = page.locator('.group').filter({ hasText: 'The Rebellion' }).first()
     const del = page.getByRole('button', { name: 'Delete thread The Rebellion', exact: true })
-    await assertHiddenThenRevealed(page, del, row, 'the thread delete')
+    await assertHiddenThenRevealed(del, row, 'the thread delete')
   })
 
   test('and the lore category controls, which had no name at all', async ({ page }) => {
@@ -155,7 +155,7 @@ test.describe('Hover-revealed controls cannot be activated while invisible', () 
     // Both had no accessible name at all, which is the half the review filed.
     for (const label of ['Rename category Houses', 'Delete category Houses']) {
       const control = page.getByRole('button', { name: label, exact: true })
-      await assertHiddenThenRevealed(page, control, row, label)
+      await assertHiddenThenRevealed(control, row, label)
       await page.mouse.move(0, 0)
     }
   })

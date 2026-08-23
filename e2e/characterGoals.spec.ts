@@ -74,7 +74,9 @@ test('goals can be added, scoped in time, and reach the Writer\'s Brief', async 
     const [chars, events, chapters] = await Promise.all([
       db.characters.toArray(), db.events.toArray(), db.chapters.toArray(),
     ])
-    const chapterNumber = new Map(chapters.map((c: { id: string; number: number }) => [c.id, c.number]))
+    const chapterNumber = new Map<string, number>(
+      chapters.map((c: { id: string; number: number }) => [c.id, c.number] as [string, number]),
+    )
     for (const ev of events) {
       await db.characterSnapshots.add({
         id: crypto.randomUUID(), worldId: chars[0].worldId, characterId: chars[0].id, eventId: ev.id,

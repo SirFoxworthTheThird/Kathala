@@ -28,7 +28,11 @@ async function datedWorld(page: Page) {
 
   await page.evaluate(async (id) => {
     const db = (window as { __pwdb?: never }).__pwdb as unknown as
-      Record<string, { add: (v: unknown) => Promise<unknown>; bulkAdd: (v: unknown[]) => Promise<unknown> }>
+      Record<string, {
+        add: (v: unknown) => Promise<unknown>
+        bulkAdd: (v: unknown[]) => Promise<unknown>
+        update: (id: string, changes: object) => Promise<unknown>
+      }>
     const now = Date.now()
     await db.timelines.add({
       id: 'tl1', worldId: id, name: 'Main', description: '',
@@ -54,7 +58,7 @@ async function datedWorld(page: Page) {
       { ...base, id: 'ev3', title: 'Seven specialists return', sortOrder: 3 },
       { ...base, id: 'ev4', title: 'The compact is broken', sortOrder: 4 },
     ])
-    await db.worlds.update?.(id, {})
+    await db.worlds.update(id, {})
   }, worldId)
 
   // The calendar is off by default; its own empty state turns it on.
