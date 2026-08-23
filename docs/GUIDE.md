@@ -17,18 +17,37 @@ Your story never does. Worlds, scenes, images and every edit live in your
 browser's own storage, and nothing is uploaded, synced or backed up anywhere —
 which is also why exporting is worth doing.
 
-One thing is fetched from elsewhere, and it is an ordinary web request that
-carries no information about your work:
+**The app itself loads nothing from anywhere but itself.** No fonts, no scripts,
+no stylesheets — so opening it offline behaves exactly as opening it online
+does, and it paints without waiting on anyone. (It used to fetch a webfont from
+Google Fonts on every page load, for a typeface it never actually used.) The
+desktop build and the browser build behave the same way.
 
-- **Library cover images**, when you open the Library and scroll to a card. See
-  [The library](#the-library).
+**Pictures are the exception, and they are ordinary web requests that carry
+nothing about your work.** A picture in PlotWeave is either a file you uploaded
+— which lives in your browser's storage like everything else — or a **link** to
+one somewhere on the web. A linked picture is fetched from wherever it lives,
+each time it is shown, by your browser. Two things are linked:
 
-Nothing else leaves your device — the app loads no fonts, scripts or stylesheets
-from anywhere but itself, so opening it offline behaves exactly as opening it
-online does, and it paints without waiting on anyone. (It used to fetch a webfont
-from Google Fonts on every page load, for a typeface it never actually used.)
+- **Library cover images**, when you open the Library and scroll to a card.
+- **Pictures inside the library worlds themselves.** These are linked rather
+  than bundled: character portraits, location and item pictures, map images,
+  faction and world covers. Across the shipped library that is a little over
+  1,700 images from around sixty different sites — Wikimedia Commons and
+  Project Gutenberg for well over half of them, and a long tail of others. So
+  opening a downloaded book contacts those sites for as long as the pictures are
+  still there. A link that has since gone dead never breaks the screen: a map
+  says so in [a bar above it](#maps) and keeps drawing your locations, routes
+  and regions, and every other picture falls back to its icon.
 
-The desktop build and the browser build behave the same way here.
+**Anything you link yourself is your own responsibility.** Wherever the app
+offers **link by URL** — a map image, a location or item picture, a portrait, a
+cover — PlotWeave stores the address you gave it and fetches it when the picture
+is shown. It does not check, host, cache or vouch for what is at the other end.
+Whether you may use that image, whether the site is happy to serve it to you,
+and what that site sees when your browser asks for it are between you and them.
+If you would rather nothing left your device at all, **upload** the file instead
+of linking it — an uploaded picture is stored locally and is never fetched.
 
 ---
 
