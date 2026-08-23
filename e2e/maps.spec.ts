@@ -345,4 +345,51 @@ test.describe('Map management', () => {
     // And the crosshair let go, rather than the tap being swallowed by a panel.
     await expect(page.getByText(/Tap a location to place/)).toHaveCount(0)
   })
+
+  /**
+   * W23-3. The character pill is painted over the location marker it stands on
+   * — measured at 145×34 against the marker's 143×34, on the same anchor — and
+   * the pill used to drop the place name the moment a second character arrived:
+   * `YS · Ysolde Vane / Wenmere Weir` became `YS +1 / 2 characters`. So the map
+   * stopped answering *where* exactly when the answer to *who* got interesting,
+   * and on the shipped Alice map `Riverbank above Wonderland` read as
+   * `…lerland`.
+   *
+   * Both halves are asserted in one test, because the finding *is* the
+   * difference between them: one character keeps the name, two must too.
+   */
+  test('and the place name stays on the pin when a second character joins', async ({ page }) => {
+    test.setTimeout(120_000)
+    page.setDefaultTimeout(60_000)
+
+    await mapWithRivendellAndCursor(page)
+    const canvas = page.locator('.leaflet-container')
+
+    await page.getByRole('button', { name: 'Place Aragorn on the map' }).click()
+    await page.getByText('Rivendell').first().click()
+    await expect(canvas.getByText('Aragorn')).toBeVisible()
+
+    /*
+      Scoped to the character pin, not to the canvas.
+
+      The first version of this asserted `canvas.getByText('Rivendell')` and was
+      **vacuous**: the location marker's own label says Rivendell too and is
+      still in the DOM, merely painted under the pill — so it passed with the
+      fix reverted. Caught by mutating. What has to be true is that the *pin*
+      carries the name.
+    */
+    const pinWith = (text: string) => canvas.locator('.leaflet-marker-icon', { hasText: text })
+
+    // One character: the pill names them, and the place under them.
+    await expect(pinWith('Aragorn')).toContainText('Rivendell')
+
+    await page.getByRole('button', { name: 'Place Legolas on the map' }).click()
+    const box = (await canvas.getByText('Aragorn').boundingBox())!
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+
+    // Two characters: the pill stops naming one of them, and must not stop
+    // naming where they are.
+    await expect(pinWith('2 characters')).toBeVisible({ timeout: 15_000 })
+    await expect(pinWith('2 characters')).toContainText('Rivendell')
+  })
 })

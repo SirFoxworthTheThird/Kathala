@@ -183,19 +183,33 @@ function makeCharacterGroupIcon(pins: CharacterPin[], zoom: number): L.DivIcon {
 
   const divider = `<div style="width:1px;height:${Math.round(size * 0.65)}px;align-self:center;background:${V.frame};opacity:0.6;flex-shrink:0;"></div>`
 
+  /*
+    W23-3: the place name is on the pill whether one character stands there or
+    six.
+
+    It used to be dropped the moment a second arrived — `subText` was computed
+    only for `n === 1` — so a pin reading `YS · Ysolde Vane / Wenmere Weir`
+    became `YS +1 / 2 characters` and the name of the place vanished. The pill
+    is painted over the location marker it stands on (measured: 145×34 against
+    143×34, same anchor), so with the subtitle gone the map stopped answering
+    *where* exactly when the answer to *who* got interesting. On the shipped
+    Alice map the effect is visible to the eye: `Riverbank above Wonderland`
+    reduced to `…lerland`.
+
+    A group is grouped *by position*, so they are all at one place and one name
+    describes them all.
+  */
   const labelText = n === 1 ? escapeHtml(first.character.name) : `${n} characters`
-  const subText   = n === 1
-    ? first.inSubMap
-      ? `${first.locationName ? escapeHtml(first.locationName) + ' · ' : ''}Sub-map`
-      : (first.locationName ? escapeHtml(first.locationName) : '')
-    : ''
+  const subText   = first.inSubMap
+    ? `${first.locationName ? escapeHtml(first.locationName) + ' · ' : ''}Sub-map`
+    : (first.locationName ? escapeHtml(first.locationName) : '')
   const fsPrimary = Math.max(10, Math.round(size * 0.3))
   const fsSub     = Math.max(8,  Math.round(size * 0.24))
   const labelW    = 110
 
   const labelBox = `<div style="display:flex;flex-direction:column;justify-content:center;padding:0 8px;min-width:${labelW}px;height:${size}px;overflow:hidden;">
     <div style="color:${V.fg};font-size:${fsPrimary}px;font-family:${V.font};line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${labelText}</div>
-    ${subText ? `<div style="color:${V.muted};font-size:${fsSub}px;font-family:${V.font};line-height:1.3;white-space:nowrap;">${subText}</div>` : ''}
+    ${subText ? `<div style="color:${V.muted};font-size:${fsSub}px;font-family:${V.font};line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${subText}</div>` : ''}
   </div>`
 
   // Left border-radius matches avatar circle curvature so the pill "is" the avatar on the left
