@@ -260,7 +260,24 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       the app's headline question ("where was she when he found the letter?")
       going unasked about its own data.
 
-      Three things keep it from crying wolf:
+      **It asks about an *inferred* location, never an asserted one.** That is
+      the distinction the first version missed, and it cost 32 warnings on the
+      shipped *Neuromancer* (W23-1). Every one of that book's 118 (character ×
+      scene) pairs carries its own snapshot with an explicit location, because
+      the book is about people who are present without being in the room: Case
+      rides Molly's simstim from a tug at Marcus Garvey Dock, Wintermute is an
+      AI whose body is a mainframe in Berne, Dixie Flatline is a ROM construct,
+      Linda Lee is dead and on Neuromancer's beach. A snapshot *at this scene*
+      is the writer stating where somebody is; reporting it is telling them they
+      are wrong about their own book — and the batch fix then rewrote all 32.
+
+      A location carried forward from an earlier scene is a different thing: the
+      app inferred it, nobody asserted it, and a disagreement with the scene's
+      own place is an omission worth naming. That is the case this was built for
+      (W19-4) and it still fires. It also makes the fix **additive** — it writes
+      a record where there was none, rather than overwriting an authored one.
+
+      Three more things keep it from crying wolf:
 
       - **A movement at this scene is an answer, not a contradiction.** People
         walk into rooms; that is what `CharacterMovement` records, and one
@@ -269,6 +286,11 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       - **Flashbacks are out.** Their place in the linear order is not where
         they sit in the story, so a look-back reads the wrong state for them.
     */
+    /** Did the writer record this character's state at this very scene? */
+    function hasOwnSnapshot(charId: string, eventId: string): boolean {
+      return (snapsByChar.get(charId) ?? []).some((sn) => sn.eventId === eventId)
+    }
+
     for (const ev of allEvents) {
       if (!ev.locationMarkerId || ev.isFlashback) continue
       const sceneMarker = markerById.get(ev.locationMarkerId)
@@ -279,6 +301,8 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       for (const charId of ev.involvedCharacterIds) {
         const char = charById.get(charId)
         if (!char) continue
+        // An assertion at this scene is the writer's word on it, not a gap.
+        if (hasOwnSnapshot(charId, ev.id)) continue
         const whereRecorded = bestLocationAtOrder(charId, evOrder)
         if (!whereRecorded || whereRecorded === ev.locationMarkerId) continue
 
@@ -293,7 +317,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           severity: 'warning',
           category: 'character',
           message: `${char.name} is in "${ev.title || 'untitled'}" but recorded at "${at?.name ?? 'somewhere else'}"`,
-          detail: `Ch. ${ch?.number ?? '?'} — the scene is set at "${sceneMarker.name}". Move them there, record the journey, or change the scene's place.`,
+          detail: `Ch. ${ch?.number ?? '?'} — the scene is set at "${sceneMarker.name}", and nothing records where they are in it. Move them there, record the journey, or record where they really are.`,
           navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
           eventId: ev.id,
           fix: { kind: 'moveHere', label: `Move to ${sceneMarker.name}`, eventId: ev.id, characterId: charId, markerId: ev.locationMarkerId },

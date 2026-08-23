@@ -198,7 +198,9 @@ it makes what you have just named and moves the guide on.
 Step 1 asks for two names — the **timeline**, meaning the stretch of time your
 story runs over, and the **first scene**, the moment it opens on — and says what
 it will build from them: the timeline, a *Chapter 1* inside it, and that scene
-inside the chapter. All three can be renamed later. PlotWeave then moves the
+inside the chapter. All three can be renamed later — the scene from its own
+card, the chapter from **Rename chapter** in its ⋯ menu on the Timeline, and the
+timeline from its tab (which appears once a world has more than one). PlotWeave then moves the
 [time cursor](#core-concept-the-time-cursor) to that scene, so when the guide
 hands the app back, everything that answers "what is true right now?" already has
 an answer.

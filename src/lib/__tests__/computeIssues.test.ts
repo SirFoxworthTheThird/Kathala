@@ -390,6 +390,31 @@ describe('a scene set here, with somebody recorded there', () => {
     })
   })
 
+  /*
+    W23-1, and the distinction the first version of this check missed. A
+    snapshot **at this scene** is the writer stating where somebody is — often
+    somewhere other than the room, because that is what simstim, a phone call, a
+    séance, a vision or an AI in a distant mainframe *is*. Measured across the
+    27 shipped books, **every one of the 63 firings was of this shape**: 32 on
+    Neuromancer, 22 on The Wise Man's Fear, 5 on Frankenstein, 3 on Philosopher's
+    Stone, 1 on Dracula — and all 63 had their own snapshot. The batch fix then
+    rewrote them.
+  */
+  it('says nothing when the writer recorded them elsewhere on purpose', () => {
+    const input = elsewhereInput()
+    // An explicit snapshot at the scene itself, still pointing away from it.
+    input.snapshots = [...input.snapshots, placed('s2', 'maren', 'e2', 'flats')]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'scene-cast-elsewhere')).toHaveLength(0)
+  })
+
+  it('still fires when the location was only carried forward', () => {
+    // The presence half, and the case it was built for (W19-4): nobody has said
+    // where she is in this scene, so the app inferred it from an earlier one.
+    const found = computeContinuityIssues(elsewhereInput()).filter((i) => i.kind === 'scene-cast-elsewhere')
+    expect(found).toHaveLength(1)
+    expect(found[0].eventId).toBe('e2')
+  })
+
   it('says nothing once they are recorded there', () => {
     // The pair that proves the fix is the right one: doing what `moveHere` does
     // is what makes the finding go away.

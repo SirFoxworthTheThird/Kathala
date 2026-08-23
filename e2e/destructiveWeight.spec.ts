@@ -98,7 +98,23 @@ test.describe('A destructive action does not sit in the routine row', () => {
     // is the defect the hover pattern below has in its touch form.
     await menu.focus()
     await page.keyboard.press('ArrowDown')
-    await expect(page.getByRole('menuitem', { name: 'Delete chapter' })).toBeFocused()
+
+    /*
+      Focus lands on the **first** item, whichever it is — asserted by position
+      rather than by name. This read `getByRole('menuitem', { name: 'Delete
+      chapter' })` while Delete was the menu's only item, so adding *Rename
+      chapter* above it (W23-2) broke a test that was never about Delete: its
+      subject is that the menu is reachable from the keyboard and gives focus
+      back. Naming the item made it a test of the menu's contents as well.
+
+      What this file *is* about is still asserted, and more directly than
+      before: the destructive item is in the menu, and it is not the one the
+      first keystroke lands on.
+    */
+    const items = page.getByRole('menuitem')
+    await expect(items.first()).toBeFocused()
+    await expect(page.getByRole('menuitem', { name: 'Delete chapter' })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: 'Delete chapter' })).not.toBeFocused()
 
     await page.keyboard.press('Escape')
     await expect(page.getByRole('menuitem', { name: 'Delete chapter' })).toHaveCount(0)

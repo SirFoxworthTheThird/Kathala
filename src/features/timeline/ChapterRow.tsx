@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ChevronDown, ChevronRight, Trash2, BookOpen, BookLock, Plus, ExternalLink, Scroll } from 'lucide-react'
+import { ChevronDown, ChevronRight, Trash2, BookOpen, BookLock, Plus, ExternalLink, Scroll, Pencil, Check, X } from 'lucide-react'
 import type { Chapter } from '@/types'
-import { deleteChapter, useEvents, updateEvent } from '@/db/hooks/useTimeline'
+import { deleteChapter, useEvents, updateEvent, updateChapter } from '@/db/hooks/useTimeline'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Menu, MenuItem } from '@/components/ui/menu'
 import { chapterProgress, describeProgress, describeStatus } from '@/lib/chapterProgress'
@@ -37,6 +38,16 @@ export function ChapterRow({ chapter, threadFilter = null, wordsByEvent = NO_WOR
   const [expanded, setExpanded] = useState(false)
   const [addEventOpen, setAddEventOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [renaming, setRenaming] = useState(false)
+  const [draftTitle, setDraftTitle] = useState('')
+
+  /** A chapter may not be blanked by accident, the same rule a scene title has. */
+  async function commitRename() {
+    const next = draftTitle.trim()
+    if (!next) return
+    if (next !== chapter.title) await updateChapter(chapter.id, { title: next })
+    setRenaming(false)
+  }
   const events = useEvents(chapter.id)
 
   // A chapter is reached once the cursor is at or past its number. Comparing
@@ -165,6 +176,47 @@ export function ChapterRow({ chapter, threadFilter = null, wordsByEvent = NO_WOR
           No disclosure on a chapter that cannot open: a chevron that turns
           nothing is the visible-but-inert shape HB-2d was filed for.
         */}
+        {/*
+          W23-2: a chapter's title could not be changed anywhere in the app.
+          `updateChapter` had exactly two call sites — `{ notes }` and
+          `{ wordGoal }` — so `title` and `synopsis` were write-once at the Add
+          Chapter dialog, while the first-run guide said *"All three can be
+          renamed later"* and *"Rename any of the three whenever you like, from
+          the Timeline screen"*, and `GUIDE.md` said it twice more. The rename
+          those notes pointed at renames the **timeline**, and only renders when
+          a world has more than one — which a novel does not.
+
+          It goes in this row's menu because that is the screen the guide
+          already names. Enter commits and Escape cancels, the pair `EventCard`
+          uses for a scene; blur is not a third way in, so tabbing to the tick
+          does not end the session behind you.
+        */}
+        {renaming ? (
+          <div className="flex items-center gap-2 basis-full min-w-0 sm:basis-auto sm:flex-1">
+            <span className="shrink-0 text-sm font-medium text-[hsl(var(--muted-foreground))]">Ch. {chapter.number} —</span>
+            <Input
+              value={draftTitle}
+              onChange={(e) => setDraftTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); void commitRename() }
+                else if (e.key === 'Escape') { e.preventDefault(); setRenaming(false) }
+              }}
+              aria-label="Chapter title"
+              className="h-7 flex-1 min-w-0 text-sm"
+              autoFocus
+            />
+            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 hover:text-green-400"
+              aria-label={`Save chapter ${chapter.number}`} title="Save"
+              onClick={() => void commitRename()} disabled={!draftTitle.trim()}>
+              <Check className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0"
+              aria-label={`Stop renaming chapter ${chapter.number}`} title="Cancel"
+              onClick={() => setRenaming(false)}>
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ) : (
         <button
           onClick={synopsisHidden ? undefined : () => setExpanded((v) => !v)}
           aria-expanded={synopsisHidden ? undefined : effectiveExpanded}
@@ -189,6 +241,7 @@ export function ChapterRow({ chapter, threadFilter = null, wordsByEvent = NO_WOR
             </span>
           )}
         </button>
+        )}
 
         {/*
           TL-4: the row used to carry the chapter's title and a truncated
@@ -260,6 +313,11 @@ export function ChapterRow({ chapter, threadFilter = null, wordsByEvent = NO_WOR
         {/* TL-3: delete used to be a bare trash icon here, on all 22 rows,
             immediately beside open-detail. See `src/components/ui/menu.tsx`. */}
         <Menu label={`More actions for chapter ${chapter.number}`}>
+          <MenuItem
+            icon={Pencil}
+            label="Rename chapter"
+            onClick={() => { setDraftTitle(chapter.title); setRenaming(true) }}
+          />
           <MenuItem
             icon={Trash2}
             label="Delete chapter"
