@@ -39,8 +39,9 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     Does the record already have them dying, before the moment being edited?
     That is what makes "they came back" a sentence rather than a stray control,
     so it decides whether the checkbox is offered at all. `sortKey` is the
-    global order every snapshot carries — chapter × 10_000 + scene — and the
-    hook is already cut at the reading cursor, so this cannot see ahead.
+    global order every snapshot carries — `chapter.number + sortOrder / 1_000_000`,
+    which is what `computeSortKeySync` below returns — and the hook is already cut
+    at the reading cursor, so this cannot see ahead.
   */
   const ownSnapshots = useCharacterSnapshots(character.id)
   const worldEvents = useWorldEvents(character.worldId)
