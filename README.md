@@ -240,7 +240,7 @@ electron/      # desktop entry point and packaging integration
 example/       # importable example worlds
 ```
 
-Book examples follow the maintained [example authoring checklist](docs/EXAMPLE_AUTHORING_CHECKLIST.md). Its automated guardrails run as part of the Vitest suite and cover the recurring data-quality failures that are not purely visual.
+Book examples must follow the [mandatory example-authoring rules](docs/EXAMPLE_AUTHORING_RULES.md) and pass the companion [release checklist](docs/EXAMPLE_AUTHORING_CHECKLIST.md). These are release requirements, not recommendations. Automated guardrails run as part of the Vitest suite; visual and editorial requirements must also be verified in PlotWeave before an example is merged.
 
 ---
 
