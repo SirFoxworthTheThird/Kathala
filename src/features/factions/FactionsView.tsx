@@ -104,7 +104,7 @@ function MembershipRow({
           </div>
           <div className="flex gap-2">
             <div className="flex-1">
-              <Label className="text-xs">From event</Label>
+              <Label className="text-xs">From scene</Label>
               <Select
                 value={membership.startEventId ?? 'none'}
                 onValueChange={(v) => updateFactionMembership(membership.id, { startEventId: v === 'none' ? null : v })}
@@ -119,7 +119,7 @@ function MembershipRow({
               </Select>
             </div>
             <div className="flex-1">
-              <Label className="text-xs">Until event</Label>
+              <Label className="text-xs">Until scene</Label>
               <Select
                 value={membership.endEventId ?? 'none'}
                 onValueChange={(v) => updateFactionMembership(membership.id, { endEventId: v === 'none' ? null : v })}

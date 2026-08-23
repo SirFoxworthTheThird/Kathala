@@ -743,7 +743,7 @@ export default function RelationshipGraphView() {
               <span className="text-sm font-semibold">Relationship</span>
               {activeEventId && (
                 <p className="text-[10px] text-[hsl(var(--muted-foreground))] leading-tight">
-                  Event active
+                  Scene active
                 </p>
               )}
             </div>

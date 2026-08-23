@@ -799,7 +799,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                   <SelectItem value="__none__" className="text-xs italic text-[hsl(var(--muted-foreground))]">No POV character</SelectItem>
                   {involvedChars.length > 0 && (
                     <SelectGroup>
-                      <SelectLabel className="text-[10px] uppercase tracking-wide">In this event</SelectLabel>
+                      <SelectLabel className="text-[10px] uppercase tracking-wide">In this scene</SelectLabel>
                       {involvedChars.map((c) => (
                         <SelectItem key={c.id} value={c.id} className="text-xs">
                           <span className="flex items-center gap-1.5">
@@ -845,7 +845,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                 value={travelDays ?? ''}
                 onChange={(e) => handleTravelDaysChange(e.target.value)}
               />
-              <span className="text-xs text-[hsl(var(--muted-foreground))]">days since the previous event</span>
+              <span className="text-xs text-[hsl(var(--muted-foreground))]">days since the previous scene</span>
             </div>
             <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
               Builds the in-world clock and powers the travel-time continuity check.

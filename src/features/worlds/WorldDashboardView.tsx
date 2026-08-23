@@ -222,7 +222,13 @@ export default function WorldDashboardView() {
       count: totalChapters,
       onClick: () => navigate('timeline'),
       pills: [
-        { label: 'events', value: totalEvents },
+        /*
+          W23-11: this read **"1 events"** on every dashboard — VOCAB-1 renamed
+          the app's word for a moment from *event* to *scene* and this hardcoded
+          label was missed, taking the missing plural with it. The pill next to
+          it already says `/ N scenes`, a few lines down in the same file.
+        */
+        { label: totalEvents === 1 ? 'scene' : 'scenes', value: totalEvents },
         ...(timelines.length > 1 ? [{ label: 'timelines', value: timelines.length }] : []),
         ...(timelineRelationships.length > 0 ? [{ label: 'links', value: timelineRelationships.length }] : []),
       ],

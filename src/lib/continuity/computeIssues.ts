@@ -429,8 +429,8 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
             kind: 'orphan-snap',
             severity: 'warning',
             category: 'character',
-            message: `${char.name} has a snapshot for a deleted event`,
-            detail: `Snapshot ID ${snap.id} — event no longer exists`,
+            message: `${char.name} has a snapshot for a deleted scene`,
+            detail: `Snapshot ID ${snap.id} — scene no longer exists`,
           })
         }
       }
@@ -543,7 +543,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
               kind: 'stale-snapshot',
               severity: 'warning',
               category: 'character',
-              message: `${char.name}'s state may be stale (${streakCount}+ events without update)`,
+              message: `${char.name}'s state may be stale (${streakCount}+ scenes without update)`,
               detail: `Involved from Ch. ${startCh?.number ?? '?'} to Ch. ${endCh?.number ?? '?'} with no snapshot update`,
               navigatePath: `/worlds/${worldId}/timeline/${streakStart.chapterId}`,
               eventId: streakStart.id,
@@ -588,7 +588,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         severity: 'warning',
         category: 'character',
         message: `${char?.name ?? '?'} is at a destroyed location in Ch. ${ch?.number ?? '?'}`,
-        detail: `"${marker?.name ?? snap.currentLocationMarkerId}" was destroyed at or before this event`,
+        detail: `"${marker?.name ?? snap.currentLocationMarkerId}" was destroyed at or before this scene`,
         navigatePath: `/worlds/${worldId}/timeline/${ev?.chapterId ?? snap.eventId}`,
         eventId: snap.eventId,
       })
@@ -619,7 +619,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           severity: 'warning',
           category: 'character',
           message: `${char?.name ?? '?'} is inside a ${status} region in Ch. ${ch?.number ?? '?'}`,
-          detail: `"${marker.name}" is inside "${region.name}" which is ${status} at this event`,
+          detail: `"${marker.name}" is inside "${region.name}" which is ${status} at this scene`,
           navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
           eventId: snap.eventId,
         })
@@ -715,7 +715,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
             severity: 'warning',
             category: 'item',
             message: `"${item?.name ?? itemId}" used before acquired in Ch. ${ch.number}`,
-            detail: `Appears in event "${ev.title}" but isn't in any inventory until later`,
+            detail: `Appears in scene "${ev.title}" but isn't in any inventory until later`,
             navigatePath: `/worlds/${worldId}/timeline/${ch.id}`,
             eventId: ev.id,
           })
@@ -1271,24 +1271,58 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         severity: 'warning',
         category: 'pov',
         message: `POV "${char?.name ?? '?'}" is dead at "${ev.title || 'untitled'}"`,
-        detail: `Ch. ${ch?.number ?? '?'} — mark event as Flashback if intentional`,
+        detail: `Ch. ${ch?.number ?? '?'} — mark the scene as a flashback if intentional`,
         navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
         eventId: ev.id,
       })
     }
 
-    // Check 4: 3+ consecutive events with the same POV character (considers only events with POV set)
+    /*
+      ── A long run in one head, measured against this book's own rhythm ──────
+
+      W23-9: this was a hard `runLen >= 3` with the advice *"consider
+      alternating perspectives"*, which fires on **every single-POV novel** —
+      the most common form the novel takes. Measured on the shipped books:
+      *Alice* 51 consecutive (1 of its 4 total warnings), *The Secret Garden*
+      50, *Neuromancer* 29, *The Invisible Man* three separate runs. None of
+      those is a continuity fault; they are close third with one viewpoint.
+
+      `pov-missing`, added next door, carries the argument against it in its own
+      docblock: *"it asks what this book's own habit is, and only speaks when a
+      scene departs from it."* This asked nothing.
+
+      **A run is now notable when it is more than twice the book's median run.**
+      That yardstick handles the single-POV case without a special rule for it:
+      one run means the median *is* that run, so it can never exceed twice
+      itself and the check stays quiet. In a book that alternates every three or
+      four scenes, a run of fifteen clears it and is worth saying.
+    */
     const povEvents = allEvents
       .filter((ev) => !!ev.povCharacterId)
       .sort((a, b) => eventOrder(a.id) - eventOrder(b.id))
 
-    let runStart = 0
-    while (runStart < povEvents.length) {
-      const charId = povEvents[runStart].povCharacterId!
-      let runEnd = runStart + 1
-      while (runEnd < povEvents.length && povEvents[runEnd].povCharacterId === charId) runEnd++
-      const runLen = runEnd - runStart
-      if (runLen >= 3) {
+    /** Every unbroken run of one POV, in story order. */
+    const povRuns: Array<{ charId: string; start: number; len: number }> = []
+    for (let i = 0; i < povEvents.length;) {
+      const charId = povEvents[i].povCharacterId!
+      let j = i + 1
+      while (j < povEvents.length && povEvents[j].povCharacterId === charId) j++
+      povRuns.push({ charId, start: i, len: j - i })
+      i = j
+    }
+    const lengths = povRuns.map((r) => r.len).sort((a, b) => a - b)
+    const median = lengths.length === 0
+      ? 0
+      : lengths.length % 2
+        ? lengths[(lengths.length - 1) / 2]
+        : (lengths[lengths.length / 2 - 1] + lengths[lengths.length / 2]) / 2
+
+    for (const run of povRuns) {
+      const runStart = run.start
+      const runEnd = run.start + run.len
+      const charId = run.charId
+      const runLen = run.len
+      if (runLen >= 3 && runLen > median * 2) {
         const char = charById.get(charId)
         const firstEv = povEvents[runStart]
         const lastEv  = povEvents[runEnd - 1]
@@ -1299,27 +1333,37 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           kind: 'pov-consecutive',
           severity: 'warning',
           category: 'pov',
-          message: `${char?.name ?? '?'} is POV for ${runLen} consecutive events`,
-          detail: `Ch. ${firstCh?.number ?? '?'} → Ch. ${lastCh?.number ?? '?'} — consider alternating perspectives`,
+          message: `${char?.name ?? '?'} is the point of view for ${runLen} scenes running`,
+          detail: `Ch. ${firstCh?.number ?? '?'} → Ch. ${lastCh?.number ?? '?'} — longer than this book's usual ${median === Math.round(median) ? median : median.toFixed(1)}. Fine if it is deliberate.`,
           navigatePath: `/worlds/${worldId}/timeline/${firstEv.chapterId}`,
           eventId: firstEv.id,
         })
       }
-      runStart = runEnd
     }
 
     // ── Anachronistic knowledge: knowing a fact before it becomes true ────────
     for (const a of computeKnowledgeAnachronisms({ facts: knowledgeFacts, reveals: knowledgeReveals, events: allEvents, chapters })) {
       const knownCh  = chapById.get(eventById.get(a.knownAtEventId)?.chapterId ?? '')
       const originCh = chapById.get(eventById.get(a.originEventId)?.chapterId ?? '')
-      const who = a.characterId ? (charById.get(a.characterId)?.name ?? 'A character') : 'The reader'
+      /*
+        W23-12: the detail line read `${who.toLowerCase()}` so that *"The
+        reader"* would read as *"the reader"* mid-sentence — and lowercased
+        every character's name with it. On *The Secret Garden*: *"…but **mary
+        lennox** knows it in Ch. 7."* A writer's proper nouns are theirs, and
+        the app does not get to re-case them. Two forms instead of one
+        transform: the reader has a sentence-start form and a mid-sentence one,
+        and a name is a name in both.
+      */
+      const named = a.characterId ? (charById.get(a.characterId)?.name ?? 'A character') : null
+      const who = named ?? 'The reader'
+      const whoMidSentence = named ?? 'the reader'
       out.push({
         id: `knowledge-anachronism-${a.fact.id}-${a.characterId ?? 'reader'}-${a.knownAtEventId}`,
         kind: 'knowledge-anachronism',
         severity: 'warning',
         category: 'character',
         message: `${who} knows "${a.fact.title}" before it happens`,
-        detail: `"${a.fact.title}" isn't true until Ch. ${originCh?.number ?? '?'}, but ${who.toLowerCase()} knows it in Ch. ${knownCh?.number ?? '?'}.`,
+        detail: `"${a.fact.title}" isn't true until Ch. ${originCh?.number ?? '?'}, but ${whoMidSentence} knows it in Ch. ${knownCh?.number ?? '?'}.`,
         navigatePath: `/worlds/${worldId}/timeline/${eventById.get(a.knownAtEventId)?.chapterId ?? ''}`,
         eventId: a.knownAtEventId,
       })
@@ -1336,7 +1380,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         severity: 'warning',
         category: 'character',
         message: `${char?.name ?? '?'} learns "${d.fact.title}" after dying`,
-        detail: `A reveal places this knowledge with ${char?.name ?? '?'} in Ch. ${ch?.number ?? '?'}, but they're already dead by then. Move the reveal earlier, or mark the event a flashback if intentional.`,
+        detail: `A reveal places this knowledge with ${char?.name ?? '?'} in Ch. ${ch?.number ?? '?'}, but they're already dead by then. Move the reveal earlier, or mark the scene a flashback if intentional.`,
         navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
         eventId: d.revealEventId,
       })
@@ -1355,7 +1399,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           severity: 'warning',
           category: 'prose',
           message: `Dead character ${p.characterName} is named in the prose of "${ev?.title || 'untitled'}"`,
-          detail: `Ch. ${ch?.number ?? '?'} — ${p.characterName} is dead at this point. Mark the event as a flashback or update their status if intentional.`,
+          detail: `Ch. ${ch?.number ?? '?'} — ${p.characterName} is dead at this point. Mark the scene as a flashback or update their status if intentional.`,
           navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
           eventId: p.eventId,
         })
@@ -1366,7 +1410,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           severity: 'warning',
           category: 'prose',
           message: `${p.characterName} is named in the prose but not in the cast of "${ev?.title || 'untitled'}"`,
-          detail: `Ch. ${ch?.number ?? '?'} — appears ${p.count}× in the scene text. Add them to the event or check the reference.`,
+          detail: `Ch. ${ch?.number ?? '?'} — appears ${p.count}× in the scene text. Add them to the scene or check the reference.`,
           navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
           eventId: p.eventId,
           /*

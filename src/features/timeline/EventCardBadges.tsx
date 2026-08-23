@@ -79,7 +79,7 @@ export function EventCardBadges({
         className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium transition-opacity hover:opacity-80"
         style={{ background: eventStatusConfig(status).color, color: eventStatusConfig(status).textColor }}
         title={`Status: ${eventStatusConfig(status).label} — click to advance`}
-        aria-label={`Event status: ${eventStatusConfig(status).label}`}
+        aria-label={`Scene status: ${eventStatusConfig(status).label}`}
       >
         {eventStatusConfig(status).label}
       </button>

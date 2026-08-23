@@ -56,7 +56,7 @@ export function DbHealthPanel({ worldId }: Props) {
 
   return (
     <SettingsSection id="settings-db-health" label="DB Health"
-      blurb={<>Scan for snapshot or membership records whose parent entity (event, character, item, etc.) has been deleted,
+      blurb={<>Scan for snapshot or membership records whose parent entity (scene, character, item, etc.) has been deleted,
           and for sub-maps whose parent map is gone. Orphaned records can cause ghost entries in the continuity
           checker, and orphaned sub-maps keep showing up as linkable maps.</>}
     >

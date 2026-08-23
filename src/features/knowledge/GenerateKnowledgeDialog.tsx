@@ -40,7 +40,7 @@ export function GenerateKnowledgeDialog({ open, onOpenChange, worldId }: Props) 
       open={open}
       onOpenChange={onOpenChange}
       title="Generate Knowledge with AI"
-      intro="Map out your story's secrets with any AI assistant (ChatGPT, Claude, Gemini…). Copy the prompt, describe your story, and paste back the JSON — facts are added to the world you're in now, linked to events and characters that already exist."
+      intro="Map out your story's secrets with any AI assistant (ChatGPT, Claude, Gemini…). Copy the prompt, describe your story, and paste back the JSON — facts are added to the world you're in now, linked to scenes and characters that already exist."
       noun={['fact', 'facts']}
       prompt={PROMPT}
       parse={(text) => {

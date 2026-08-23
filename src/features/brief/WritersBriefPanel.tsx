@@ -355,7 +355,7 @@ export function WritersBriefPanel() {
               {/* Events */}
               <Section title="Scenes" icon={Scroll} count={events.length}>
                 {events.length === 0 ? (
-                  <p className="text-xs text-[hsl(var(--muted-foreground))]">No events in this chapter yet.</p>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))]">No scenes in this chapter yet.</p>
                 ) : (
                   <ul className="space-y-1">
                     {[...events].sort((a, b) => a.sortOrder - b.sortOrder).map((ev) => {

@@ -234,7 +234,7 @@ export function LibraryDialog({
                           {[
                             entry.counts.characters && `${entry.counts.characters} characters`,
                             entry.counts.chapters && `${entry.counts.chapters} chapters`,
-                            entry.counts.events && `${entry.counts.events} events`,
+                            entry.counts.events && `${entry.counts.events} ${entry.counts.events === 1 ? 'scene' : 'scenes'}`,
                             entry.counts.locations && `${entry.counts.locations} locations`,
                           ].filter(Boolean).join(' · ')}
                         </p>

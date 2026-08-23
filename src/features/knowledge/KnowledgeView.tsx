@@ -391,7 +391,7 @@ export default function KnowledgeView() {
                 />
               )}
               {!gate.active && events.length === 0 && (
-                <p className="mt-2 text-[10px] text-[hsl(var(--muted-foreground))]">Add events on the timeline to record when characters learn this.</p>
+                <p className="mt-2 text-[10px] text-[hsl(var(--muted-foreground))]">Add scenes on the timeline to record when characters learn this.</p>
               )}
 
               {/* Co-presence suggestions: who shared a scene with a knower */}

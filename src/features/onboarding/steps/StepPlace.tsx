@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
+import { useWorldEvents, useWorldChapters, updateEvent } from '@/db/hooks/useTimeline'
+import { db } from '@/db/database'
 import { upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { StepBack } from './StepBack'
 
@@ -58,6 +59,24 @@ export function StepPlace({ worldId, characterId, createdEventId, onComplete, on
         statusNotes: '',
         travelModeId: null,
       })
+      /*
+        W23-10: the step said it was placing them *in the story*, and wrote only
+        a snapshot. Presence is `involvedCharacterIds.includes(id) ||
+        povCharacterId === id` (`castBalance.ts`), so the dashboard's Cast
+        Balance greeted the writer with **"Ysolde Vane — never appears — 0 sc"**
+        about the character the guide had just placed, while chapter detail
+        listed her under that very scene. Two panels in one world disagreeing
+        about one character, on the first screen after onboarding.
+
+        The snapshot says *where she is*; the cast says *she is in this*. The
+        step promises the second, so it writes both.
+      */
+      const ev = await db.events.get(selectedEventId)
+      if (ev && !ev.involvedCharacterIds.includes(characterId)) {
+        await updateEvent(selectedEventId, {
+          involvedCharacterIds: [...ev.involvedCharacterIds, characterId],
+        })
+      }
       onComplete()
     } finally {
       setLoading(false)

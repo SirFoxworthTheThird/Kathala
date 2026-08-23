@@ -137,7 +137,7 @@ export default function CalendarView() {
       <div className="flex-1 overflow-y-auto p-4">
         {months.length === 0 ? (
           <p className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">
-            No dated events yet. Add events (with travel days or an in-world date) to see them here.
+            No dated scenes yet. Add scenes (with travel days or an in-world date) to see them here.
           </p>
         ) : (
           <div className="mx-auto flex max-w-4xl flex-col gap-6">

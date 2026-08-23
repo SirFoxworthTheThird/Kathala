@@ -459,7 +459,7 @@ function WorldSettingsBody() {
                   if (worldId && !isNaN(n) && n >= 2) updateWorld(worldId, { continuityStaleThreshold: n })
                 }}
               />
-              <span className="text-xs text-[hsl(var(--muted-foreground))]">events</span>
+              <span className="text-xs text-[hsl(var(--muted-foreground))]">scenes</span>
             </div>
           </SettingsSection>
 

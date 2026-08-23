@@ -602,7 +602,7 @@ export function ContinuityChecker() {
         {/* Footer */}
         <div className="flex items-center gap-3 border-t border-[hsl(var(--border))] px-5 py-2">
           <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
-            ↑↓ navigate · Enter go to event
+            ↑↓ navigate · Enter go to scene
           </span>
           {suppressedCount > 0 && (
             <button

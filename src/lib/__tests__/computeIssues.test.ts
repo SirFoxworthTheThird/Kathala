@@ -961,3 +961,53 @@ describe('a scene with no point of view', () => {
     expect(computeContinuityIssues(book(10, 10)).filter((i) => i.kind === 'pov-missing')).toHaveLength(0)
   })
 })
+
+// ── A long run in one head (W23-9) ───────────────────────────────────────────
+
+describe('a long run of one point of view', () => {
+  /** `runs` describes alternating POV runs: [3, 1, 3] = A A A, B, A A A. */
+  const withRuns = (runs: number[]) => {
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1)]
+    input.characters = [character('a', 'Ayla'), character('b', 'Bran')]
+    const evs: ReturnType<typeof event>[] = []
+    let n = 0
+    runs.forEach((len, i) => {
+      for (let k = 0; k < len; k++) {
+        evs.push(event(`e${n}`, 'c1', n, { povCharacterId: i % 2 ? 'b' : 'a', involvedCharacterIds: [i % 2 ? 'b' : 'a'] }))
+        n++
+      }
+    })
+    input.allEvents = evs
+    return input
+  }
+  const runsFound = (runs: number[]) =>
+    computeContinuityIssues(withRuns(runs)).filter((i) => i.kind === 'pov-consecutive')
+
+  it('says nothing about a single-viewpoint novel, however long', () => {
+    /*
+      The finding. A hard `runLen >= 3` fired on every book with one viewpoint
+      character — Alice 51 consecutive, The Secret Garden 50, Neuromancer 29 —
+      which is not a fault but the most common form the novel takes.
+    */
+    expect(runsFound([51])).toHaveLength(0)
+  })
+
+  it('says nothing when every run is about as long as the others', () => {
+    expect(runsFound([3, 4, 3, 4])).toHaveLength(0)
+  })
+
+  it('names a run much longer than the book is used to', () => {
+    // The presence half: the same check, on a book that does alternate.
+    const found = runsFound([3, 4, 3, 15])
+    expect(found).toHaveLength(1)
+    expect(found[0].message).toContain('15 scenes running')
+    expect(found[0].detail).toContain("this book's usual")
+  })
+
+  it('still needs three scenes, however short the book is used to', () => {
+    // Two in a row is not a run worth naming, even in a book that alternates
+    // every single scene.
+    expect(runsFound([1, 1, 1, 1, 2])).toHaveLength(0)
+  })
+})

@@ -968,7 +968,7 @@ export function LeafletMapCanvas({
         interactive: true,
       })
         .bindTooltip(
-          `${escapeHtml(em.counterpartTimelineName)} — ${em.eventCount} event${em.eventCount !== 1 ? 's' : ''}`,
+          `${escapeHtml(em.counterpartTimelineName)} — ${em.eventCount} scene${em.eventCount !== 1 ? 's' : ''}`,
           { permanent: false, direction: 'top' },
         )
         .on('click', (e) => { L.DomEvent.stopPropagation(e); onEchoRingClick?.(em.markerId) })
