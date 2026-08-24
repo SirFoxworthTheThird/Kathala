@@ -30,3 +30,46 @@ export function snippet(text: string | null | undefined, limit = SNIPPET_LIMIT):
   const body = lastSpace > 0 ? cut.slice(0, lastSpace) : cut
   return `${body.replace(/[,;:.\s]+$/, '')}…`
 }
+
+/**
+ * A preview centred on where the query actually matched.
+ *
+ * `snippet` previews from the start, which is right for a description — the
+ * first sixty characters are the summary. It is wrong for a scene's prose: a
+ * writer searching for a half-remembered line wants to see *that line*, and the
+ * opening of the scene tells them nothing about whether this is the hit they
+ * meant. On a 300-word scene the match is almost never in the first sixty
+ * characters.
+ *
+ * So the window is placed around the match, cut at word boundaries, with a
+ * leading ellipsis when it does not start at the beginning. Falls back to
+ * `snippet` when the query is absent, so a caller never has to check first.
+ */
+export function snippetAround(
+  text: string | null | undefined,
+  query: string,
+  limit = SNIPPET_LIMIT,
+): string | undefined {
+  if (!text) return undefined
+  const flat = text.replace(/\s+/g, ' ').trim()
+  if (!flat) return undefined
+  const at = query ? flat.toLowerCase().indexOf(query.toLowerCase()) : -1
+  if (at === -1) return snippet(flat, limit)
+  if (flat.length <= limit) return flat
+
+  // Centre the window on the match, then pull it back inside the text.
+  const half = Math.max(0, Math.floor((limit - query.length) / 2))
+  let start = Math.max(0, at - half)
+  if (start + limit > flat.length) start = Math.max(0, flat.length - limit)
+
+  // Start at a word boundary, but never so late that the match is cut off.
+  if (start > 0) {
+    const space = flat.indexOf(' ', start)
+    if (space !== -1 && space < at) start = space + 1
+  }
+
+  const head = start > 0 ? '…' : ''
+  const body = flat.slice(start, start + limit - head.length)
+  const tail = start + body.length < flat.length
+  return `${head}${tail ? snippet(body, body.length) : body}`
+}

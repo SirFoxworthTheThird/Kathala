@@ -10,7 +10,7 @@ import { resetDB } from './helpers/reset'
  * `setSearchOpen(true)` rather than toggling, so pressing again is harmless.
  */
 async function openPaletteWithShortcut(page: import('@playwright/test').Page) {
-  const palette = page.getByPlaceholder('Search characters, factions, locations, lore…')
+  const palette = page.getByPlaceholder('Search your world and the prose you wrote…')
   await expect(page.getByTitle('Search (Ctrl+K)')).toBeVisible()
   await expect(async () => {
     await page.keyboard.press('Control+k')
@@ -49,7 +49,7 @@ test.describe('Search palette', () => {
 
   test('opens search palette via toolbar button', async ({ page }) => {
     await page.getByTitle('Search (Ctrl+K)').click()
-    await expect(page.getByPlaceholder('Search characters, factions, locations, lore…')).toBeVisible()
+    await expect(page.getByPlaceholder('Search your world and the prose you wrote…')).toBeVisible()
   })
 
   test('opens search palette via Ctrl+K keyboard shortcut', async ({ page }) => {
@@ -58,7 +58,7 @@ test.describe('Search palette', () => {
 
   test('closes palette with Escape key', async ({ page }) => {
     await page.getByTitle('Search (Ctrl+K)').click()
-    const input = page.getByPlaceholder('Search characters, factions, locations, lore…')
+    const input = page.getByPlaceholder('Search your world and the prose you wrote…')
     await expect(input).toBeVisible()
     // Press Escape directly on the focused input
     await input.press('Escape')
@@ -72,24 +72,24 @@ test.describe('Search palette', () => {
 
   test('finds a character by name', async ({ page }) => {
     await page.getByTitle('Search (Ctrl+K)').click()
-    await page.getByPlaceholder('Search characters, factions, locations, lore…').fill('Gandalf')
+    await page.getByPlaceholder('Search your world and the prose you wrote…').fill('Gandalf')
     await expect(page.getByRole('button', { name: 'Gandalf' })).toBeVisible()
   })
 
   test('finds an item by name', async ({ page }) => {
     await page.getByTitle('Search (Ctrl+K)').click()
-    await page.getByPlaceholder('Search characters, factions, locations, lore…').fill('Staff')
+    await page.getByPlaceholder('Search your world and the prose you wrote…').fill('Staff')
     // The result renders as a button with the item name
     await expect(page.getByRole('button', { name: 'Staff of Power' })).toBeVisible()
   })
 
   test('navigates to character from search result', async ({ page }) => {
     await page.getByTitle('Search (Ctrl+K)').click()
-    await page.getByPlaceholder('Search characters, factions, locations, lore…').fill('Gandalf')
+    await page.getByPlaceholder('Search your world and the prose you wrote…').fill('Gandalf')
     await page.getByRole('button', { name: 'Gandalf' }).click()
 
     // Palette closes and we navigate to character detail
-    await expect(page.getByPlaceholder('Search characters, factions, locations, lore…')).not.toBeVisible()
+    await expect(page.getByPlaceholder('Search your world and the prose you wrote…')).not.toBeVisible()
     await expect(page).toHaveURL(/#\/worlds\/.+\/characters\//)
   })
 
@@ -108,7 +108,7 @@ test.describe('Search palette', () => {
     await nameField.fill('Palantir')
     await expect(nameField).toBeVisible()
 
-    const palette = page.getByPlaceholder('Search characters, factions, locations, lore…')
+    const palette = page.getByPlaceholder('Search your world and the prose you wrote…')
     await page.keyboard.press('Control+k')
     await expect(palette).toBeVisible()
     // Wait for focus to actually land before pressing: if the keypress goes to
@@ -153,7 +153,7 @@ test.describe('Search palette', () => {
 
   test('no results message when search has no matches', async ({ page }) => {
     await page.getByTitle('Search (Ctrl+K)').click()
-    await page.getByPlaceholder('Search characters, factions, locations, lore…').fill('xyzzy-no-match-12345')
+    await page.getByPlaceholder('Search your world and the prose you wrote…').fill('xyzzy-no-match-12345')
     // With no results the list should be empty — the empty-state text is gone
     await expect(page.getByText('Start typing to search your world…')).not.toBeVisible()
     // And no result items visible

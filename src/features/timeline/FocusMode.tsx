@@ -55,7 +55,19 @@ export function FocusMode({ worldId, eventId, title, initialText, onExit }: Focu
     window.addEventListener('keydown', onKey)
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    taRef.current?.focus()
+    /*
+      Caret to the end, not index 0. A programmatic `focus()` on a textarea that
+      already has content leaves the caret at the start, so the first thing a
+      writer typed in Focus mode was prepended to their own draft — measured at
+      `selectionStart 0` against a 1,602-character scene. You enter Focus mode
+      to carry on writing, so the caret belongs where the writing stopped.
+    */
+    const ta = taRef.current
+    if (ta) {
+      ta.focus()
+      const end = ta.value.length
+      ta.setSelectionRange(end, end)
+    }
     return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev }
   }, [onExit])
 

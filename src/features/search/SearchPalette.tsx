@@ -1,18 +1,18 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useFocusTrap } from '@/lib/useFocusTrap'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { Search, Users, Map, Package, BookOpen, Network, Scroll, X, Route, Hexagon, BookMarked, Shield } from 'lucide-react'
+import { Search, Users, Map, Package, BookOpen, Network, Scroll, X, Route, Hexagon, BookMarked, Shield, KeyRound } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useAppStore } from '@/store'
 import { useShowMoment } from '@/db/hooks/useShowMoment'
 import { useFactionReveal } from '@/db/hooks/useFactions'
 import { useGate } from '@/db/hooks/ReadingGateContext'
-import { snippet } from '@/lib/snippet'
+import { snippet, snippetAround } from '@/lib/snippet'
 import { cn } from '@/lib/utils'
 import { MODAL_BACKDROP } from '@/components/ui/dialog'
 
-type ResultType = 'character' | 'item' | 'location' | 'chapter' | 'event' | 'timeline' | 'relationship' | 'route' | 'region' | 'lore' | 'faction'
+type ResultType = 'character' | 'item' | 'location' | 'chapter' | 'event' | 'timeline' | 'relationship' | 'route' | 'region' | 'lore' | 'faction' | 'knowledge'
 
 interface SearchResult {
   id: string
@@ -34,6 +34,7 @@ const TYPE_META: Record<ResultType, { icon: React.ElementType; color: string; gr
   region:       { icon: Hexagon,     color: 'text-violet-400', group: 'Regions' },
   lore:         { icon: BookMarked,  color: 'text-indigo-400', group: 'Lore' },
   faction:      { icon: Shield,      color: 'text-red-400',    group: 'Factions' },
+  knowledge:    { icon: KeyRound,    color: 'text-yellow-400', group: 'Knowledge' },
 }
 
 function highlight(text: string, query: string) {
@@ -100,6 +101,15 @@ export function SearchPalette() {
   const regions       = useLiveQuery(() => worldId ? db.mapRegions.where('worldId').equals(worldId).toArray() : [], [worldId], [])
   const lorePages     = useLiveQuery(() => worldId ? db.lorePages.where('worldId').equals(worldId).toArray() : [], [worldId], [])
   const factions      = useLiveQuery(() => worldId ? db.factions.where('worldId').equals(worldId).toArray() : [], [worldId], [])
+  const facts         = useLiveQuery(() => worldId ? db.knowledgeFacts.where('worldId').equals(worldId).toArray() : [], [worldId], [])
+  /*
+    The manuscript, loaded only while the palette is open. Every other query
+    here is a row per record; this one is the whole book, and the palette's
+    hooks run on every render of the shell whether it is open or not.
+  */
+  const sceneTexts    = useLiveQuery(
+    () => (searchOpen && worldId) ? db.sceneTexts.where('worldId').equals(worldId).toArray() : [],
+    [worldId, searchOpen], [])
 
   // Which chapters the reader has reached, by their first event: a chapter's
   // synopsis waits for it even though its title does not.
@@ -144,9 +154,51 @@ export function SearchPalette() {
         out.push({ id: ch.id, type: 'chapter', label: `Ch. ${ch.number} — ${ch.title}`, sublabel: snippet(synopsis), path: `/worlds/${worldId}/timeline/${ch.id}` })
       }
     }
+    /*
+      A scene matches on its title, its synopsis, or **the prose written in it**.
+      "Where did I write that line" is the lookup a writer makes most, and the
+      palette used to answer "No results" to a word that was in the manuscript
+      twice — the prose was searchable only from Find & Replace, which nothing
+      pointed at.
+
+      A prose hit is still a *scene* result rather than a kind of its own,
+      because what the writer wants from it is to be taken to that scene, which
+      is what a scene result already does. It inherits the gate with it: prose
+      belongs to a scene, and a scene the reader has not reached is not searched.
+    */
+    const proseByEvent = new globalThis.Map((sceneTexts ?? []).map((t): [string, string] => [t.eventId, t.text]))
     for (const ev of (events ?? []).filter((e) => gate.hasReached(e.id))) {
-      if (ev.title?.toLowerCase().includes(q) || ev.description?.toLowerCase().includes(q)) {
-        out.push({ id: ev.id, type: 'event', label: ev.title, sublabel: snippet(ev.description), path: `/worlds/${worldId}/timeline/${ev.chapterId}` })
+      const prose = proseByEvent.get(ev.id)
+      const inProse = !!prose && prose.toLowerCase().includes(q)
+      if (ev.title?.toLowerCase().includes(q) || ev.description?.toLowerCase().includes(q) || inProse) {
+        out.push({
+          id: ev.id,
+          type: 'event',
+          label: ev.title,
+          // Show the line that matched, not the opening of the scene.
+          sublabel: inProse ? snippetAround(prose, q) : snippet(ev.description),
+          path: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+        })
+      }
+    }
+
+    /*
+      Knowledge facts, and only while writing. Every panel in `KnowledgeView` is
+      behind `!gate.active` — a fact is the most spoiler-shaped record the app
+      holds, and who-knows-what-when is the thing reading mode exists to protect.
+      Searching them for a reader would hand back exactly that.
+    */
+    if (!gate.active) {
+      for (const f of (facts ?? [])) {
+        if (f.title?.toLowerCase().includes(q) || f.description?.toLowerCase().includes(q)) {
+          out.push({
+            id: f.id,
+            type: 'knowledge',
+            label: f.title,
+            sublabel: snippetAround(f.description, q),
+            path: `/worlds/${worldId}/knowledge`,
+          })
+        }
       }
     }
     for (const tl of (timelines ?? [])) {
@@ -189,7 +241,7 @@ export function SearchPalette() {
     }
 
     return out
-  }, [query, worldId, gate, chapterReached, factionRevealed, characters, items, markers, chapters, events, timelines, relationships, routes, regions, lorePages, factions])
+  }, [query, worldId, gate, chapterReached, factionRevealed, characters, items, markers, chapters, events, timelines, relationships, routes, regions, lorePages, factions, facts, sceneTexts])
 
   // Reset active index when results change
   useEffect(() => setActiveIdx(0), [results])
@@ -249,7 +301,7 @@ export function SearchPalette() {
   // Group results by type for display
   const grouped: { group: string; type: ResultType; items: (SearchResult & { globalIdx: number })[] }[] = []
   let globalIdx = 0
-  const typeOrder: ResultType[] = ['character', 'faction', 'item', 'location', 'chapter', 'event', 'timeline', 'relationship', 'route', 'region', 'lore']
+  const typeOrder: ResultType[] = ['character', 'faction', 'item', 'location', 'chapter', 'event', 'timeline', 'relationship', 'route', 'region', 'lore', 'knowledge']
   for (const type of typeOrder) {
     const typeResults = results.filter((r) => r.type === type)
     if (typeResults.length === 0) continue
@@ -285,7 +337,7 @@ export function SearchPalette() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Search characters, factions, locations, lore…"
+            placeholder="Search your world and the prose you wrote…"
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-[hsl(var(--muted-foreground))]"
           />
           {query && (

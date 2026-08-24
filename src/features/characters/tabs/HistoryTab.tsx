@@ -74,8 +74,17 @@ function SnapshotRow({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
           <BookOpen className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))]" />
+          {/*
+            Named by the scene, not just the chapter. Every snapshot keys on an
+            event, so a chapter with several scenes produced several rows all
+            headed "Ch. 92 — …" and a character read as being in two places at
+            once. The chapter still leads, because that is how a writer finds
+            their place; the scene is what distinguishes the row.
+          */}
           <span className="text-sm font-medium truncate">
-            {chapter ? `Ch. ${chapter.number} — ${chapter.title}` : eventId}
+            {chapter
+              ? `Ch. ${chapter.number}${event?.title ? ` · ${event.title}` : ` — ${chapter.title}`}`
+              : eventId}
           </span>
         </div>
         <div className="flex items-center gap-1.5 shrink-0 ml-2">

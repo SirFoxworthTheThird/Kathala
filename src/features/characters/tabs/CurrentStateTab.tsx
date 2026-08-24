@@ -257,7 +257,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
           <span>
             This state is{' '}
             <strong className="font-medium text-[hsl(var(--foreground))]">carried forward</strong>{' '}
-            from an earlier chapter — nothing has been recorded here yet. Editing and saving will pin it to this chapter.
+            from an earlier scene — nothing has been recorded here yet. Editing and saving will pin it to this scene.
           </span>
         </div>
       )}

@@ -1,4 +1,4 @@
-import { useState, useRef, type KeyboardEvent } from 'react'
+import { useState, useRef, useEffect, type KeyboardEvent } from 'react'
 import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye, History, Flame, Milestone } from 'lucide-react'
 import { TENSION_LEVELS, tensionColor, tensionLabel } from '@/lib/tension'
 import { STORY_BEATS, beatById, beatActColor } from '@/lib/storyBeats'
@@ -57,6 +57,25 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
   const [inWorldTime, setInWorldTime] = useState<number | null>(event.inWorldTime ?? null)
   const [tension, setTension] = useState<number | null>(event.tension ?? null)
   const [structureBeat, setStructureBeat] = useState<string | null>(event.structureBeat ?? null)
+  /*
+    Follow the record while not editing.
+
+    This is an edit buffer seeded once at mount, and the scene's setting is not
+    only set from this card: typing `@somewhere` in the draft and choosing "new
+    place" creates the marker and writes `locationMarkerId` straight to the
+    database, from a child component. The card never heard, so it went on
+    offering `+ Setting` and showing no setting section for a place the writer
+    had just made — and the obvious conclusion is that it did not work, so they
+    make it again. Nothing was lost (`startEdit` re-syncs before a save can
+    commit the stale value), but the card denied the record until a reload.
+
+    Only while not editing: mid-edit the buffer is the writer's, not the
+    record's.
+  */
+  useEffect(() => {
+    if (!editing) setLocationMarkerId(event.locationMarkerId)
+  }, [event.locationMarkerId, editing])
+
   // Live scene word count, reported up by SceneDraftSection so the header chip
   // reflects unsaved edits without this card owning the prose state.
   const [sceneWords, setSceneWords] = useState(0)
