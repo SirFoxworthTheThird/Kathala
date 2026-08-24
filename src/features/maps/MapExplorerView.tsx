@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import L from 'leaflet'
 import { useParams } from 'react-router-dom'
-import { Upload, Map as MapIcon, X, Route, Sparkles, Type, Trash2, Crosshair, ImageUp, ImageOff, Layers } from 'lucide-react'
+import { Upload, Grid3x3, Map as MapIcon, X, Route, Sparkles, Type, Trash2, Crosshair, ImageUp, ImageOff, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore, useActiveMapLayerId } from '@/store'
-import { useRootMapLayers, updateMapLayer, deleteMapLevel } from '@/db/hooks/useMapLayers'
+import { useRootMapLayers, updateMapLayer, deleteMapLevel, createBlankMapLayer } from '@/db/hooks/useMapLayers'
 import { levelsInGroup } from '@/lib/mapLevels'
 import { FloorSwitcher } from './FloorSwitcher'
 import { Button } from '@/components/ui/button'
@@ -1295,6 +1295,7 @@ export default function MapExplorerView() {
   const { setActiveMapLayerId } = useAppStore()
   const [uploadOpen, setUploadOpen] = useState(false)
   const [genLocOpen, setGenLocOpen] = useState(false)
+  const [blankPending, setBlankPending] = useState(false)
 
   /*
     BUG-1: opening Maps with no layer chosen used to call `setActiveMapLayerId`
@@ -1317,6 +1318,17 @@ export default function MapExplorerView() {
 
   if (!worldId) return null
 
+  async function startBlankMap() {
+    if (!worldId || blankPending) return
+    setBlankPending(true)
+    try {
+      const layer = await createBlankMapLayer(worldId, 'Places')
+      setActiveMapLayerId(layer.id)
+    } finally {
+      setBlankPending(false)
+    }
+  }
+
   if (rootLayers.length === 0) {
     return (
       <div className="flex h-full flex-col">
@@ -1333,15 +1345,30 @@ export default function MapExplorerView() {
             </Button>
           </div>
         </div>
+        {/*
+          Three doors, and the middle one is new.
+
+          A place in PlotWeave is a pin and a pin needs a map, which is
+          deliberate. But a writer who has no picture of their world had only two
+          ways in: upload an image, whose button stays disabled until you supply
+          one, or a button labelled AI. Nothing said that a setting needs a map,
+          so a mapless world just never offered `+ Setting` and never explained
+          itself. The blank map is the same grid the AI import has always drawn
+          for itself, offered plainly.
+        */}
         <EmptyState
           icon={MapIcon}
           title="No maps yet"
-          description="Upload an image of your world and place locations on it — or generate a tree of locations with AI and PlotWeave will lay them out on a map for you."
+          description="Places in PlotWeave are pins on a map, so a scene can only be given a setting once the world has one. Upload a picture of your world, start a blank map and drop pins on it, or describe your locations to an AI assistant and have them laid out for you."
           action={
             <div className="flex flex-wrap items-center justify-center gap-2">
               <Button onClick={() => setUploadOpen(true)}>
                 <Upload className="h-4 w-4" />
                 Add Map
+              </Button>
+              <Button variant="outline" className="gap-1.5" disabled={blankPending} onClick={() => { void startBlankMap() }}>
+                <Grid3x3 className="h-4 w-4" />
+                {blankPending ? 'Starting…' : 'Start a blank map'}
               </Button>
               <Button variant="outline" className="gap-1.5" onClick={() => setGenLocOpen(true)}>
                 <Sparkles className="h-4 w-4" />

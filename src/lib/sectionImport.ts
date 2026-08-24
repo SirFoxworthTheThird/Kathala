@@ -3,6 +3,9 @@ import { markJournalDiscontinuity } from '@/db/hooks/useOperations'
 import { INVALID_JSON_MESSAGE, stripCodeFence } from '@/lib/codeFence'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
+import {
+  defaultPlaceholderImage, PLACEHOLDER_W, PLACEHOLDER_H, type PlaceholderImage,
+} from '@/lib/placeholderMap'
 import type {
   Character, Item, Faction, FactionMembership, Relationship, RelationshipSnapshot,
   RelationshipStrength, RelationshipSentiment, LoreCategory, LorePage,
@@ -907,8 +910,6 @@ export interface SpecLocation {
 const LOCATION_ICON_TYPES: LocationIconType[] = ['city', 'town', 'dungeon', 'landmark', 'building', 'region', 'custom']
 
 /** Dimensions of the auto-created placeholder map(s), in pixels. */
-const PLACEHOLDER_W = 1600
-const PLACEHOLDER_H = 1000
 /** Reused name for the auto-created root map, so re-runs extend it. */
 export const LOCATIONS_MAP_NAME = 'Locations'
 
@@ -1105,26 +1106,6 @@ function positionForIndex(i: number, n: number, w: number, h: number): { x: numb
     x: Math.round(mx + (col + 0.5) * cw),
     y: Math.round(Math.min(h - my, my + (Math.min(row, rows - 1) + 0.5) * rh)),
   }
-}
-
-/** A blank placeholder map image + its dimensions. */
-export interface PlaceholderImage { blob: Blob; width: number; height: number }
-
-/** Runtime default: draw a subtle blank canvas to stand in for a map image. */
-async function defaultPlaceholderImage(): Promise<PlaceholderImage> {
-  const canvas = document.createElement('canvas')
-  canvas.width = PLACEHOLDER_W
-  canvas.height = PLACEHOLDER_H
-  const ctx = canvas.getContext('2d')!
-  ctx.fillStyle = '#0f172a'
-  ctx.fillRect(0, 0, PLACEHOLDER_W, PLACEHOLDER_H)
-  ctx.strokeStyle = 'rgba(148,163,184,0.12)'
-  ctx.lineWidth = 1
-  for (let x = 0; x <= PLACEHOLDER_W; x += 80) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, PLACEHOLDER_H); ctx.stroke() }
-  for (let y = 0; y <= PLACEHOLDER_H; y += 80) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(PLACEHOLDER_W, y); ctx.stroke() }
-  const blob = await new Promise<Blob>((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not render placeholder map'))), 'image/png'))
-  return { blob, width: PLACEHOLDER_W, height: PLACEHOLDER_H }
 }
 
 /**

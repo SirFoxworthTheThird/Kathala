@@ -1445,10 +1445,26 @@ shows the current chapter, synopsis, and relevant character status notes. For a
 frame narrative, the map can display outer-timeline characters as **ghost pins**;
 a historical-echo relationship marks shared places with echo rings.
 
+### Starting a map without a picture
+
+A place in PlotWeave is a **pin on a map**, so a scene can only be given a
+setting once the world has one — and a location is only ever added to a map or
+sub-map that already exists. If you have no picture of your world, **Start a
+blank map** on the empty Maps screen makes one anyway: a plain grid you can drop
+pins on straight away. It behaves like any other map — sub-maps, floors, routes,
+regions and playback all work on it — and you can give it a real image later with
+**Replace image** in the map toolbar.
+
+With a map in the world, naming a place in your prose starts working too: typing
+`@Ferrow Crossing` in a scene draft offers **new place**, which puts a pin at the
+centre of the map for you to drag where it belongs.
+
 ### Generate locations with AI
 
-Don't have a map image? **Generate with AI** (on the empty Maps screen, and as
-**AI Locations** in the map toolbar’s **⋯** menu) builds a whole **tree of places** for you.
+Have a world in mind but no places recorded yet? **Generate with AI** (on the
+empty Maps screen, and as **AI Locations** in the map toolbar’s **⋯** menu)
+builds a whole **tree of places** for you — where a blank map gives you somewhere
+to put pins, this fills it.
 Copy the prompt, describe your world, and paste back a nested JSON tree
 (continent → kingdom → city → district). PlotWeave creates a blank **Locations**
 map and drops each place on it as a pin; a place with children becomes a pin that

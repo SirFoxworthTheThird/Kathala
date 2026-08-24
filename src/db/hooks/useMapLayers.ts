@@ -2,10 +2,11 @@ import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useGate } from './ReadingGateContext'
-import type { MapLayer } from '@/types'
+import type { MapLayer, BlobEntry } from '@/types'
 import { generateId } from '@/lib/id'
 import { descendantLayerIds } from '@/lib/mapTree'
 import { groupRepresentativeId } from '@/lib/mapLevels'
+import { defaultPlaceholderImage } from '@/lib/placeholderMap'
 import { mapLayerRevealer } from '@/lib/spoilers'
 
 const MAP_DELETE_TABLES = [
@@ -148,6 +149,27 @@ export async function createMapLayer(
   }
   await db.mapLayers.add(layer)
   return layer
+}
+
+/**
+ * A map with no picture yet, so a writer without one can still place pins.
+ *
+ * A place is a pin and a pin needs a map, which is deliberate — but it meant a
+ * writer with no image of their world could not record a setting at all, and the
+ * only door that did not demand a picture was a button labelled AI. It draws the
+ * same blank grid the AI location import has always drawn for itself.
+ */
+export async function createBlankMapLayer(worldId: string, name: string): Promise<MapLayer> {
+  const { blob, width, height } = await defaultPlaceholderImage()
+  const entry: BlobEntry = {
+    id: generateId(), worldId, mimeType: blob.type || 'image/png', data: blob, createdAt: Date.now(),
+  }
+  await db.blobs.add(entry)
+  return createMapLayer({
+    worldId, parentMapId: null, name, description: '',
+    imageId: entry.id, imageWidth: width, imageHeight: height,
+    scalePixelsPerUnit: null, scaleUnit: null,
+  })
 }
 
 export async function updateMapLayer(id: string, data: Partial<Omit<MapLayer, 'id' | 'createdAt'>>) {
