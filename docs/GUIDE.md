@@ -1506,6 +1506,15 @@ about, so the line is left off rather than guessed at.
 
 ![Items](images/09-items.png)
 
+**Where it has been.** Open an item and, under **Whereabouts**, it lists its
+chain of custody in story order — one row per change, naming the scene, who was
+carrying it and where: *Ch. 1 · The letter arrives — carried by Mira Vasse · The
+Reed House*, then *Ch. 2 · The seal breaks — carried by Corvin Ashe · Ferrow
+Crossing*. A run of scenes where nothing about the item moved is one row rather
+than forty, and putting it down shows as *left at* somewhere. It reads the same
+records you already keep — a character's inventory, and any explicit placement —
+so nothing extra needs filling in. While reading, the list stops where you have.
+
 **Things there is more than one of.** An item is normally one particular object,
 and the [Continuity Checker](#continuity-checker) treats it that way — if two
 characters hold it at the same moment, that is a contradiction worth flagging.

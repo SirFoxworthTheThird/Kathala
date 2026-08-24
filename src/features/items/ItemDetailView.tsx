@@ -1,15 +1,20 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { BlockingReason } from '@/components/BlockingReason'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Upload, Trash2, Check, X, Plus, Layers } from 'lucide-react'
+import { ArrowLeft, Upload, Trash2, Check, X, Plus, Layers, History } from 'lucide-react'
 import { useItem, updateItem, deleteItem } from '@/db/hooks/useItems'
 import { storeBlob } from '@/db/hooks/useBlobs'
 import { LinkImageButton } from '@/components/LinkImageButton'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { NotReachedYet } from '@/components/NotReachedYet'
 import { useCrossTimelineArtifactsForItem, createCrossTimelineArtifact, deleteCrossTimelineArtifact } from '@/db/hooks/useTimelineRelationships'
-import { useTimelines } from '@/db/hooks/useTimeline'
+import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
+import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
+import { useWorldItemPlacements } from '@/db/hooks/useItemPlacements'
+import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
+import { useCharacters } from '@/db/hooks/useCharacters'
+import { itemCustodyChain, describeCustodyStep } from '@/lib/itemCustody'
 import { PortraitImage } from '@/components/PortraitImage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,6 +32,36 @@ export default function ItemDetailView() {
   const timelines = useTimelines(worldId ?? null)
 
   const gate = useGate()
+
+  /*
+    F11: the Items roster answered "where is it now" and the item's own page
+    answered nothing — no custody, no location, no history — while the sequence
+    is the thing you open an item's page to check. The data was there the whole
+    time, split across ItemPlacement and CharacterSnapshot.inventoryItemIds.
+  */
+  const chapters = useWorldChapters(worldId ?? null)
+  const events = useWorldEvents(worldId ?? null)
+  const snapshots = useWorldSnapshots(worldId ?? null)
+  const placements = useWorldItemPlacements(worldId ?? null)
+  const markers = useAllLocationMarkers(worldId ?? null)
+  const characters = useCharacters(worldId ?? null)
+
+  /*
+    While reading, this stops where the reader has. Not by filtering here —
+    `useWorldEvents` and `useWorldSnapshots` are already gated, and the chain
+    only ever emits a step at an event in the list it was given, so a scene the
+    reader has not reached cannot produce one. `useWorldItemPlacements` is not
+    gated, but a placement at an unreached event has no event to attach to and
+    is passed over for the same reason. A filter here looked prudent and was
+    dead code; the mutation that should have killed it did not.
+  */
+  const custody = useMemo(() => {
+    if (!itemId) return []
+    return itemCustodyChain({
+      itemId, placements, snapshots, markers, characters, events, chapters,
+    })
+  }, [itemId, placements, snapshots, markers, characters, events, chapters])
+
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -227,6 +262,34 @@ export default function ItemDetailView() {
                 <X className="h-3.5 w-3.5" /> Cancel
               </Button>
             </div>
+          </div>
+        )}
+
+        {/* Whereabouts over time */}
+        {custody.length > 0 && (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <History className="h-3.5 w-3.5 text-amber-500" />
+              <span className="text-xs font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+                Whereabouts
+              </span>
+            </div>
+            <ol className="flex flex-col gap-1.5">
+              {custody.map((step) => (
+                <li
+                  key={step.eventId}
+                  className="flex items-baseline gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-2 text-xs"
+                >
+                  <span className="shrink-0 tabular-nums text-[hsl(var(--muted-foreground))]">
+                    Ch. {step.chapterNumber}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{step.sceneTitle || 'Untitled scene'}</span>
+                  <span className="shrink-0 text-[hsl(var(--muted-foreground))]">
+                    {describeCustodyStep(step)}
+                  </span>
+                </li>
+              ))}
+            </ol>
           </div>
         )}
 
