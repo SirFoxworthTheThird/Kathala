@@ -1657,6 +1657,15 @@ change, the grid shows the state inherited from earlier — dimmed, and marked w
 a small clock — so a run of eleven unchanged chapters reads as one decision
 holding rather than eleven decisions taken.
 
+**Click a cell to record what is missing.** The grid stays a readout — you don't
+type into it — but every cell is a way *to* the place you'd type. Clicking a cell
+puts the time cursor on that scene and opens that character's **Current State**,
+so filling a gap the grid just showed you is one click instead of a trip through
+three screens. Cells with status notes still expand in place when you click them,
+as before. The same is true of the **Character States** panel in chapter detail:
+a cast member reading *"no state recorded — record it"* is a button that takes
+you there.
+
 **Columns take the room they have.** A book with a handful of chapters spreads
 its columns across the screen rather than crowding into a narrow strip with the
 window empty beside it; a long book keeps them compact and scrolls, which is

@@ -249,8 +249,13 @@ test.describe('Naming things from the scene prose', () => {
     await adder.click()
     await page.getByRole('option', { name: 'Ysolde Vane' }).click()
 
-    // She is on the scene…
-    await expect(main.getByText('Ysolde Vane')).toBeVisible()
+    /*
+      She is on the scene… — with room to get there. This is a Dexie write and
+      a live query behind it, and the default five seconds is tight when the
+      suite is running four files at once: it went flaky exactly there, passed
+      on retry, and passes three times out of three on its own.
+    */
+    await expect(main.getByText('Ysolde Vane')).toBeVisible({ timeout: 15_000 })
     // …and the box still invites the next one, rather than wearing her name.
     await expect(main.getByRole('button', { name: '+ Add character…' })).toBeVisible()
     await expect(main.getByRole('button', { name: 'Ysolde Vane', exact: true })).toHaveCount(0)

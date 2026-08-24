@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Upload, Link2, Trash2 } from 'lucide-react'
 import { useCharacter, deleteCharacter } from '@/db/hooks/useCharacters'
 import { updateCharacter } from '@/db/hooks/useCharacters'
@@ -32,6 +32,22 @@ export default function CharacterDetailView() {
   const { worldId, characterId } = useParams<{ worldId: string; characterId: string }>()
   const navigate = useNavigate()
   const character = useCharacter(characterId ?? null)
+  /*
+    The tab lives in the query string so somewhere else can send you to it.
+    The Arc grid and the chapter-detail cast rows both point at a character's
+    Current State for a particular scene, and "go to the character, then find
+    the tab" is two of the six-to-eight clicks that recording one state used to
+    cost. `replace` so a run of these does not fill the back button.
+  */
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab = searchParams.get('tab') ?? 'overview'
+  const selectTab = (next: string) => {
+    const params = new URLSearchParams(searchParams)
+    if (next === 'overview') params.delete('tab')
+    else params.set('tab', next)
+    setSearchParams(params, { replace: true })
+  }
+
   const gate = useGate()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [portraitLinkOpen, setPortraitLinkOpen] = useState(false)
@@ -165,7 +181,7 @@ export default function CharacterDetailView() {
 
       {/* Tabs */}
       <div className="flex-1 overflow-auto p-4">
-        <Tabs defaultValue="overview">
+        <Tabs value={tab} onValueChange={selectTab}>
           <TabsList className="mb-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="state">Current State</TabsTrigger>

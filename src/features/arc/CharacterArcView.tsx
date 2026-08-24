@@ -467,6 +467,26 @@ export default function CharacterArcView() {
   }
 
   /** Spread onto any cell to put it in the grid's roving tab order. */
+  /*
+    F14, second half: the grid is the one surface laid out exactly like the
+    bookkeeping — a character against the scenes of the book — and recording a
+    single state cost six to eight clicks across three screens.
+
+    It stays a readout rather than becoming an editor, deliberately. In chapter
+    mode a column is a *chapter* while every snapshot keys on a *scene*, so
+    typing into a cell would have no well-defined target and the app would have
+    to guess which scene it meant — the shape of the two worst faults this
+    review found. Navigation may guess; writing may not. So activating a cell
+    takes you to the panel that already knows how to write all six fields, with
+    the cursor on the scene and the right character open, and the writer sees
+    which scene they landed on before anything is recorded.
+  */
+  function recordStateAt(charId: string, colId: string) {
+    const eventId = viewMode === 'event' ? colId : firstEventByChapter.get(colId)
+    if (eventId) setActiveEventId(eventId)
+    navigate(`/worlds/${worldId}/characters/${charId}?tab=state`)
+  }
+
   function cellProps(row: number, col: number, onActivate?: () => void) {
     const isFocused = focus.row === row && focus.col === col
     return {
@@ -502,7 +522,23 @@ export default function CharacterArcView() {
     }
   }
 
-  function SnapCell({ snap, isActive, charId, colId, factionColor, isInherited, row, col }: {
+  /*
+    Render helpers, not components — and lowercase to say so.
+
+    They were declared inside `CharacterArcView`, so every render gave each a
+    new function identity and React remounted the whole cell rather than
+    updating it. Focus fires before click, focusing a cell sets state, and the
+    re-render that followed pulled the node out from under the click: **the
+    first click on any cell in the grid did nothing, and the second worked.**
+    That had been true of the notes-expand click all along; it only came to
+    light when a cell was given somewhere to go. The `onFocus` handler in
+    `cellProps` already carries a workaround for the same remount.
+
+    None of the three uses a hook, so calling them inline puts their `<td>`
+    straight into the parent's tree, where there is no component identity to
+    change. Each carries its own `key` for the same reason.
+  */
+  function snapCell({ snap, isActive, charId, colId, factionColor, isInherited, row, col }: {
     snap: typeof snapshots[0] | undefined
     isActive: boolean
     charId: string
@@ -519,13 +555,16 @@ export default function CharacterArcView() {
     if (!snap) {
       return (
         <td
-          {...cellProps(row, col)}
-          aria-label="No state recorded"
+          key={colId}
+          {...cellProps(row, col, gate.active ? undefined : () => recordStateAt(charId, colId))}
+          aria-label={gate.active ? 'No state recorded' : 'No state recorded — record it'}
+          onClick={gate.active ? undefined : () => recordStateAt(charId, colId)}
           style={{ minWidth: colWidth, maxWidth: colWidth, ...factionStyle }}
           className={cn(
             'border-b border-r border-[hsl(var(--border))] px-2 py-1.5 text-center',
             FOCUS_RING,
-            isActive && 'bg-[hsl(var(--accent)/0.15)]'
+            isActive && 'bg-[hsl(var(--accent)/0.15)]',
+            !gate.active && 'cursor-pointer hover:bg-[hsl(var(--accent)/0.08)]'
           )}
         >
           <Minus className="mx-auto h-3 w-3 text-[hsl(var(--border))]" />
@@ -538,7 +577,10 @@ export default function CharacterArcView() {
 
     return (
       <td
-        {...cellProps(row, col, hasNotes ? () => toggleExpand(charId, colId) : undefined)}
+        key={colId}
+        {...cellProps(row, col, hasNotes
+          ? () => toggleExpand(charId, colId)
+          : (gate.active ? undefined : () => recordStateAt(charId, colId)))}
         aria-expanded={hasNotes ? isExpanded : undefined}
         style={{ minWidth: colWidth, maxWidth: colWidth, ...factionStyle }}
         className={cn(
@@ -546,9 +588,13 @@ export default function CharacterArcView() {
           FOCUS_RING,
           isActive && 'bg-[hsl(var(--accent)/0.15)]',
           !snap.isAlive && 'opacity-50',
-          hasNotes && 'cursor-pointer hover:bg-[hsl(var(--accent)/0.08)]'
+          (hasNotes || !gate.active) && 'cursor-pointer hover:bg-[hsl(var(--accent)/0.08)]'
         )}
-        onClick={() => hasNotes && toggleExpand(charId, colId)}
+        /* Notes keep expanding in place; a cell without them takes you to it. */
+        onClick={() => {
+          if (hasNotes) { toggleExpand(charId, colId); return }
+          if (!gate.active) recordStateAt(charId, colId)
+        }}
         title={hasNotes && !isExpanded ? snap.statusNotes : undefined}
       >
         {/*
@@ -599,7 +645,7 @@ export default function CharacterArcView() {
     )
   }
 
-  function ThreadCell({ threadId, color, colId, beats, isActive, row, col }: {
+  function threadCell({ threadId, color, colId, beats, isActive, row, col }: {
     threadId: string
     color: string
     colId: string
@@ -641,7 +687,7 @@ export default function CharacterArcView() {
     )
   }
 
-  function FactionSnapCell({ factionId, colId, targetPos, isActive, row, col }: {
+  function factionSnapCell({ factionId, colId, targetPos, isActive, row, col }: {
     factionId: string
     colId: string
     targetPos: number
@@ -1097,7 +1143,7 @@ export default function CharacterArcView() {
                     const snap = targetPos >= 0 ? getBestSnap(char.id, targetPos) : undefined
                     const fc = targetPos >= 0 ? getFactionColor(char.id, targetPos) : null
                     const isInh = !!snap && chapterByEvent.get(snap.eventId) !== ch.id
-                    return <SnapCell key={ch.id} colId={ch.id} charId={char.id} snap={snap} isActive={ch.id === activeChapterId} factionColor={fc} isInherited={isInh} row={rowIdx + 1} col={colIdx + 1} />
+                    return snapCell({ colId: ch.id, charId: char.id, snap, isActive: ch.id === activeChapterId, factionColor: fc, isInherited: isInh, row: rowIdx + 1, col: colIdx + 1 })
                   })}
 
                   {viewMode === 'event' && sortedEvents.map((ev, colIdx) => {
@@ -1105,7 +1151,7 @@ export default function CharacterArcView() {
                     const snap = targetPos >= 0 ? getBestSnap(char.id, targetPos) : undefined
                     const fc = targetPos >= 0 ? getFactionColor(char.id, targetPos) : null
                     const isInh = !!snap && snap.eventId !== ev.id
-                    return <SnapCell key={ev.id} colId={ev.id} charId={char.id} snap={snap} isActive={ev.id === activeEventId} factionColor={fc} isInherited={isInh} row={rowIdx + 1} col={colIdx + 1} />
+                    return snapCell({ colId: ev.id, charId: char.id, snap, isActive: ev.id === activeEventId, factionColor: fc, isInherited: isInh, row: rowIdx + 1, col: colIdx + 1 })
                   })}
                 </tr>
               )
@@ -1133,12 +1179,12 @@ export default function CharacterArcView() {
 
                 {viewMode === 'chapter' && sortedChapters.map((ch, colIdx) => {
                   const pos = lastEventPosByChapter.get(ch.id) ?? -1
-                  return <FactionSnapCell key={ch.id} factionId={faction.id} colId={ch.id} targetPos={pos} isActive={ch.id === activeChapterId} row={rowIdx + 1} col={colIdx + 1} />
+                  return factionSnapCell({ factionId: faction.id, colId: ch.id, targetPos: pos, isActive: ch.id === activeChapterId, row: rowIdx + 1, col: colIdx + 1 })
                 })}
 
                 {viewMode === 'event' && sortedEvents.map((ev, colIdx) => {
                   const pos = eventPosition.get(ev.id) ?? -1
-                  return <FactionSnapCell key={ev.id} factionId={faction.id} colId={ev.id} targetPos={pos} isActive={ev.id === activeEventId} row={rowIdx + 1} col={colIdx + 1} />
+                  return factionSnapCell({ factionId: faction.id, colId: ev.id, targetPos: pos, isActive: ev.id === activeEventId, row: rowIdx + 1, col: colIdx + 1 })
                 })}
               </tr>
             ))}
@@ -1156,31 +1202,25 @@ export default function CharacterArcView() {
                   </div>
                 </td>
 
-                {viewMode === 'chapter' && sortedChapters.map((ch, colIdx) => (
-                  <ThreadCell
-                    key={ch.id}
-                    threadId={thread.id}
-                    color={thread.color}
-                    colId={ch.id}
-                    beats={threadBeatsInChapter(thread.id, ch.id)}
-                    isActive={ch.id === activeChapterId}
-                    row={rowIdx + 1}
-                    col={colIdx + 1}
-                  />
-                ))}
+                {viewMode === 'chapter' && sortedChapters.map((ch, colIdx) => threadCell({
+                  threadId: thread.id,
+                  color: thread.color,
+                  colId: ch.id,
+                  beats: threadBeatsInChapter(thread.id, ch.id),
+                  isActive: ch.id === activeChapterId,
+                  row: rowIdx + 1,
+                  col: colIdx + 1,
+                }))}
 
-                {viewMode === 'event' && sortedEvents.map((ev, colIdx) => (
-                  <ThreadCell
-                    key={ev.id}
-                    threadId={thread.id}
-                    color={thread.color}
-                    colId={ev.id}
-                    beats={eventCarriesThread(thread.id, ev) ? [ev] : []}
-                    isActive={ev.id === activeEventId}
-                    row={rowIdx + 1}
-                    col={colIdx + 1}
-                  />
-                ))}
+                {viewMode === 'event' && sortedEvents.map((ev, colIdx) => threadCell({
+                  threadId: thread.id,
+                  color: thread.color,
+                  colId: ev.id,
+                  beats: eventCarriesThread(thread.id, ev) ? [ev] : [],
+                  isActive: ev.id === activeEventId,
+                  row: rowIdx + 1,
+                  col: colIdx + 1,
+                }))}
               </tr>
             ))}
           </tbody>
@@ -1212,7 +1252,16 @@ export default function CharacterArcView() {
             {c.name}
           </div>
         ))}
-        <div className="ml-auto">Click a column to set cursor · Click a notes cell to expand</div>
+        {/*
+          Says only what the grid actually does *here*. While reading, a column
+          header is a label and a cell goes nowhere — promising either would be
+          the inert control HB-2d was filed for, described in words.
+        */}
+        <div className="ml-auto">
+          {gate.active
+            ? 'Click a notes cell to expand'
+            : 'Click a column to set cursor · Click a notes cell to expand · Click any other cell to record state there'}
+        </div>
       </div>
     </div>
   )

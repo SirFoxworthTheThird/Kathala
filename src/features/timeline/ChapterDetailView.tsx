@@ -18,6 +18,7 @@ import { AddEventDialog } from './AddEventDialog'
 import { EmptyState } from '@/components/EmptyState'
 import type { Character, WorldEvent } from '@/types'
 import { useAppStore } from '@/store'
+import { cn } from '@/lib/utils'
 import { cursorForChapter } from '@/lib/chapterCursor'
 import { castWithoutState, charactersNotInChapter, hasAnyCharacterState } from '@/lib/chapterCast'
 
@@ -36,10 +37,13 @@ function EventSnapshotSection({
   event,
   snapshots,
   characters,
+  onRecordState,
 }: {
   event: WorldEvent
   snapshots: ReturnType<typeof useChapterEventSnapshots>
   characters: Character[]
+  /** Absent while reading: this is a readout then, not a way in. */
+  onRecordState?: (characterId: string, eventId: string) => void
 }) {
   const [open, setOpen] = useState(true)
   const eventSnapshots = snapshots.filter((s) => s.eventId === event.id)
@@ -67,10 +71,20 @@ function EventSnapshotSection({
           {eventSnapshots.map((s) => (
             <SnapshotCard key={s.id} snapshot={s} />
           ))}
-          {uncast.map((c) => (
-            <div
+          {uncast.map((c) => {
+            /*
+              F15's other half: the row told you a state was missing and gave
+              you no way to record it — filling the gap it names cost six to
+              eight clicks across three screens. It is the way there now, which
+              is the same move the Arc grid's cells make.
+            */
+            const Row = onRecordState ? 'button' : 'div'
+            return (
+            <Row
               key={c.id}
               data-cast-without-state={c.id}
+              onClick={onRecordState ? () => onRecordState(c.id, event.id) : undefined}
+              title={onRecordState ? `Record ${c.name}'s state in this scene` : undefined}
               /*
                 F15: the caption was `shrink-0` and the name was not, so in a
                 296px column the italic note took what it wanted and the name —
@@ -83,12 +97,17 @@ function EventSnapshotSection({
                 legible, a truncated name is not. `max-w-full truncate` keeps an
                 extreme name inside the row rather than breaking the layout.
               */
-              className="flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-lg border border-dashed border-[hsl(var(--border))] px-3 py-2 text-xs"
+              className={cn(
+                'flex w-full flex-wrap items-center gap-x-2 gap-y-0.5 rounded-lg border border-dashed border-[hsl(var(--border))] px-3 py-2 text-left text-xs',
+                onRecordState && 'transition-colors hover:border-[hsl(var(--ring))] hover:bg-[hsl(var(--accent))]',
+              )}
             >
               <span className="max-w-full shrink-0 truncate font-medium">{c.name}</span>
-              <span className="shrink-0 italic text-[hsl(var(--muted-foreground))]">no state recorded</span>
-            </div>
-          ))}
+              <span className="shrink-0 italic text-[hsl(var(--muted-foreground))]">
+                {onRecordState ? 'no state recorded — record it' : 'no state recorded'}
+              </span>
+            </Row>
+          )})}
         </div>
       )}
     </div>
@@ -351,6 +370,12 @@ export default function ChapterDetailView() {
                 event={ev}
                 snapshots={allSnapshots}
                 characters={characters}
+                onRecordState={gate.active ? undefined : (characterId, eventId) => {
+                  // The cursor first, so the panel opens on the scene the gap
+                  // is in rather than wherever the writer happened to be.
+                  setActiveEventId(eventId)
+                  navigate(`/worlds/${worldId}/characters/${characterId}?tab=state`)
+                }}
               />
             ))}
 
