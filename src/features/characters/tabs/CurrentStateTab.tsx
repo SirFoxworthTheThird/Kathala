@@ -250,15 +250,34 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
   async function save() {
     // Read before writing: `snapshot` is a live query and will have moved on.
     const before = snapshot
-    // Remove these items from any other character's snapshot in the same chapter
+    /*
+      An item has one holder, so taking it here takes it from whoever had it —
+      **recorded at this scene**, not written back over the scene where they
+      last held it.
+
+      `useBestSnapshots` resolves each character's *last known* record at or
+      before the cursor, so for someone untouched since Chapter 1 it hands back
+      their Chapter 1 row. Spreading that row carried its `eventId` with it, and
+      `upsertSnapshot` dutifully updated the record it named: handing an item
+      over deleted the previous holder's evidence of ever having held it. The
+      Whereabouts chain then showed the shortened history and looked right.
+
+      Forcing `eventId` writes a new row here instead, carrying the rest of
+      their last-known state forward — the same rule as everywhere else: a
+      record at a scene is an assertion about that scene and is never rewritten
+      from somewhere later. The identity fields are dropped rather than spread,
+      because an `id` reaching `upsertSnapshot` would name a row that already
+      exists.
+    */
     const others = chapterSnapshots.filter(
       (s) => s.characterId !== character.id && s.inventoryItemIds.some((id) => inventoryIds.includes(id))
     )
     await Promise.all(
-      others.map((s) =>
+      others.map(({ id: _id, sortKey: _sortKey, createdAt: _createdAt, updatedAt: _updatedAt, ...held }) =>
         upsertSnapshot({
-          ...s,
-          inventoryItemIds: s.inventoryItemIds.filter((id) => !inventoryIds.includes(id)),
+          ...held,
+          eventId: activeEventId!,
+          inventoryItemIds: held.inventoryItemIds.filter((id) => !inventoryIds.includes(id)),
         })
       )
     )

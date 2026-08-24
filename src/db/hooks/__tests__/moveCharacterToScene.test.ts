@@ -72,6 +72,31 @@ async function snapshotAt(eventId: string) {
     .where('[characterId+eventId]').equals([CHAR, eventId]).first()
 }
 
+/**
+ * Callers build a new state by spreading an existing snapshot — the item
+ * hand-off does, the map panel does — and an `id` riding along in that spread
+ * used to win over `generateId()`, so a record for a *new* scene was created
+ * under an old row's primary key.
+ */
+describe('upsertSnapshot given a whole record to copy', () => {
+  it('writes a new row rather than reusing the id it was handed', async () => {
+    const first = await upsertSnapshot({
+      worldId: W, characterId: CHAR, eventId: 'ev-ch2',
+      isAlive: true, currentLocationMarkerId: THERE, currentMapLayerId: MAP,
+      inventoryItemIds: ['item-letter'], inventoryNotes: '', statusNotes: '', travelModeId: null,
+    })
+
+    // Exactly what a caller does with a resolved snapshot: spread it, change
+    // the scene and one field.
+    const second = await upsertSnapshot({ ...first, eventId: 'ev-ch3', inventoryItemIds: [] })
+
+    expect(second.id).not.toBe(first.id)
+    expect(await db.characterSnapshots.count()).toBe(2)
+    // …and the record it was copied from is untouched.
+    expect((await db.characterSnapshots.get(first.id))?.inventoryItemIds).toEqual(['item-letter'])
+  })
+})
+
 describe('moveCharacterToScene', () => {
   it('carries the inventory forward from the last record', async () => {
     await upsertSnapshot({

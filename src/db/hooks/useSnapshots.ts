@@ -196,8 +196,11 @@ export async function upsertSnapshot(
   }
 
   const snapshot: CharacterSnapshot = {
-    id: generateId(),
     ...data,
+    // After the spread, not before: callers build `data` by spreading an
+    // existing snapshot, and an `id` riding along would name a row that already
+    // exists — so a *new* record would be created under an old primary key.
+    id: generateId(),
     sortKey,
     createdAt: now,
     updatedAt: now,
