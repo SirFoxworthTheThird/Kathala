@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ChevronDown, ChevronRight, Trash2, BookOpen, BookLock, Plus, ExternalLink, Scroll, Pencil, Check, X } from 'lucide-react'
 import type { Chapter } from '@/types'
-import { deleteChapter, useEvents, updateEvent, updateChapter } from '@/db/hooks/useTimeline'
+import { deleteChapter, useEvents, updateEvent, updateChapter, moveEventOnBoard } from '@/db/hooks/useTimeline'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
@@ -27,11 +27,23 @@ interface ChapterRowProps {
    * row would be twenty-odd reads of the same table.
    */
   wordsByEvent?: Map<string, number>
+  /**
+   * The chapters either side of this one, so a scene at the edge of a chapter
+   * can leave it (**F12**).
+   *
+   * Taken from the true chapter order rather than the thread-filtered view: a
+   * filter changes what is on screen, not where a scene belongs.
+   */
+  prevChapterId?: string | null
+  nextChapterId?: string | null
 }
 
 const NO_WORDS: Map<string, number> = new Map()
 
-export function ChapterRow({ chapter, threadFilter = null, wordsByEvent = NO_WORDS }: ChapterRowProps) {
+export function ChapterRow({
+  chapter, threadFilter = null, wordsByEvent = NO_WORDS,
+  prevChapterId = null, nextChapterId = null,
+}: ChapterRowProps) {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
   const { activeEventId, setActiveEventId, selectedEventIds, selectEventRange, clearSelection } = useAppStore()
@@ -101,8 +113,27 @@ export function ChapterRow({ chapter, threadFilter = null, wordsByEvent = NO_WOR
   async function moveEvent(eventId: string, direction: 'up' | 'down') {
     // Reorder against the true chapter order, not the thread-filtered view.
     const idx = allSorted.findIndex((e) => e.id === eventId)
-    if (direction === 'up' && idx === 0) return
-    if (direction === 'down' && idx === allSorted.length - 1) return
+
+    /*
+      F12: at the edge of a chapter the arrow was permanently disabled, and the
+      only way across a boundary was dragging a card on the Corkboard — which
+      has no keyboard equivalent, and which nothing on the Timeline mentions.
+      A scene at the top of a chapter now moves to the end of the one before,
+      and one at the bottom to the start of the one after.
+
+      `moveEventOnBoard` is the Corkboard's own mover, so the two routes cannot
+      disagree: it re-points the chapter and timeline, renumbers the column, and
+      recomputes the snapshot sortKeys on both sides. The index is clamped by
+      `moveTo`, so a number past the end simply means "last".
+    */
+    if (direction === 'up' && idx === 0) {
+      if (prevChapterId) await moveEventOnBoard(eventId, prevChapterId, Number.MAX_SAFE_INTEGER)
+      return
+    }
+    if (direction === 'down' && idx === allSorted.length - 1) {
+      if (nextChapterId) await moveEventOnBoard(eventId, nextChapterId, 0)
+      return
+    }
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1
     const a = allSorted[idx]
     const b = allSorted[swapIdx]
@@ -345,8 +376,10 @@ export function ChapterRow({ chapter, threadFilter = null, wordsByEvent = NO_WOR
                 <EventRow
                   key={e.id}
                   event={e}
-                  isFirst={i === 0}
-                  isLast={i === sortedEvents.length - 1}
+                  isFirst={i === 0 && !prevChapterId}
+                  isLast={i === sortedEvents.length - 1 && !nextChapterId}
+                  moveUpHint={i === 0 && prevChapterId ? 'Move to the end of the previous chapter' : undefined}
+                  moveDownHint={i === sortedEvents.length - 1 && nextChapterId ? 'Move to the start of the next chapter' : undefined}
                   onMoveUp={() => moveEvent(e.id, 'up')}
                   onMoveDown={() => moveEvent(e.id, 'down')}
                   chapterEventIds={chapterEventIds}

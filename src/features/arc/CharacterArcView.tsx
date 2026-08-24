@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, type KeyboardEvent as ReactKeyboardEvent, type FocusEvent as ReactFocusEvent } from 'react'
+import { useState, useRef, useCallback, useEffect, useLayoutEffect, type KeyboardEvent as ReactKeyboardEvent, type FocusEvent as ReactFocusEvent } from 'react'
 import { toPng } from 'html-to-image'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Heart, Skull, MapPin, Minus, Search, Download, X, Shield, FileEdit, Eye, History, Spline, Target } from 'lucide-react'
@@ -6,6 +6,7 @@ import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTi
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
+import { arcColumnWidth } from '@/lib/arcColumnWidth'
 import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { nextCell, clampCell, type Cell } from './gridNavigation'
@@ -68,7 +69,34 @@ export default function CharacterArcView() {
   const [showStatusOverlay, setShowStatusOverlay]   = useState(false)
   const [showPovOverlay, setShowPovOverlay]         = useState(false)
   const [showGoalsOverlay, setShowGoalsOverlay]     = useState(false)
-  const tableRef = useRef<HTMLDivElement>(null)
+  const tableRef = useRef<HTMLDivElement | null>(null)
+
+  /*
+    The scroller's width, watched rather than measured once: the nav rail pins
+    and unpins, the window resizes, and a width computed at mount would be wrong
+    for the rest of the session.
+
+    Through a callback ref rather than an effect on `tableRef`, because this
+    component returns early while its live queries resolve — so on the render
+    that runs the effect there is no table yet, and an effect with an empty
+    dependency list would never look again. That is not hypothetical: the first
+    version did exactly that and left the grid on its old fixed width, which the
+    test caught by reproducing the finding's own numbers.
+  */
+  const [tableEl, setTableEl] = useState<HTMLDivElement | null>(null)
+  const [tableWidth, setTableWidth] = useState(0)
+  const attachTable = useCallback((el: HTMLDivElement | null) => {
+    tableRef.current = el
+    setTableEl(el)
+  }, [])
+  useLayoutEffect(() => {
+    if (!tableEl) return
+    const measure = () => setTableWidth(tableEl.clientWidth)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(tableEl)
+    return () => ro.disconnect()
+  }, [tableEl])
   // The grid's one tab stop. Clamped at render rather than in an effect, so
   // switching from the per-event view to the per-chapter one — an order of
   // magnitude fewer columns — cannot leave the grid with no tab stop at all.
@@ -379,7 +407,22 @@ export default function CharacterArcView() {
     )
   }
 
-  const colWidth = viewMode === 'event' ? 100 : 110
+  /*
+    F14: this was a constant, applied as both `minWidth` and `maxWidth`, so
+    columns never took space that was going spare — measured on a three-chapter
+    world at 1440px as a 512px table with every location string clipped and
+    928px of empty screen beside it. The constant is right for the 117-chapter
+    case, which has to scroll; it was applied unconditionally, which was the
+    finding. It is a floor now. See `arcColumnWidth`.
+  */
+  const columnCount = viewMode === 'chapter' ? sortedChapters.length : sortedEvents.length
+  const colWidth = arcColumnWidth({
+    containerWidth: tableWidth,
+    // The sticky name column, which is not shared out: 132px, 180px at `sm`.
+    rowHeaderWidth: tableWidth >= 640 ? 180 : 132,
+    columnCount,
+    base: viewMode === 'event' ? 100 : 110,
+  })
 
   // Build timeline header spans: [{timeline, colSpan}] for the header row
   const timelineSpans = (() => {
@@ -896,7 +939,7 @@ export default function CharacterArcView() {
       </div>
 
       {/* Scrollable table — sticky name column; horizontal scroll when content overflows */}
-      <div ref={tableRef} className="flex-1 overflow-auto relative">
+      <div ref={attachTable} className="flex-1 overflow-auto relative">
         <table
           role="grid"
           aria-label="Character arc grid"

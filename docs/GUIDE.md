@@ -603,6 +603,13 @@ the full width and the curve scrolls inside it.
 - Click a scene to move the time cursor to that exact moment. Each chapter row
   also has an **open** button for its detail page, and chapters can be dragged to
   reorder the narrative.
+- **The ↑ ↓ arrows on a scene move it, including out of its chapter.** At the
+  top of a chapter, ↑ moves the scene to the end of the one before; at the
+  bottom, ↓ moves it to the start of the one after, and the button says so
+  before you press it. Only the very first and very last scenes in the book have
+  nowhere to go. This does the same thing as dragging a card on the
+  [Corkboard](#corkboard), so either route is fine — the arrows just don't need
+  a mouse.
 - **View from here** on a chapter row moves the time cursor to that chapter's
   first moment; it reads **Viewing** while the cursor is inside the chapter, and
   pressing it again goes back to *All chapters*.
@@ -1634,6 +1641,12 @@ of blanks. Pressing it again brings them back.
 change, the grid shows the state inherited from earlier — dimmed, and marked with
 a small clock — so a run of eleven unchanged chapters reads as one decision
 holding rather than eleven decisions taken.
+
+**Columns take the room they have.** A book with a handful of chapters spreads
+its columns across the screen rather than crowding into a narrow strip with the
+window empty beside it; a long book keeps them compact and scrolls, which is
+what you want when there are a hundred of them. Either way a column never gets
+narrower than it used to be.
 
 ![Character Arc grid](images/11-arc.png)
 

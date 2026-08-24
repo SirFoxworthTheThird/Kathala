@@ -28,13 +28,21 @@ interface EventCardProps {
   isLast: boolean
   onMoveUp: () => void
   onMoveDown: () => void
+  /**
+   * Said instead of "Move earlier"/"Move later" when the move leaves the
+   * chapter, so a scene does not silently jump somewhere else (**F12**).
+   */
+  moveUpHint?: string
+  moveDownHint?: string
   /** Derived in-world day (cumulative travel days along narrative order). */
   inWorldDay?: number
   /** The world's calendar, when it has one (CD-3) — the day chip becomes a date. */
   calendar?: WorldCalendar | null
 }
 
-export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorldDay, calendar }: EventCardProps) {
+export function EventCard({
+  event, isFirst, isLast, onMoveUp, onMoveDown, moveUpHint, moveDownHint, inWorldDay, calendar,
+}: EventCardProps) {
   /** Names the card's icon buttons, which are otherwise identical across scenes. */
   const eventName = event.title ? `“${event.title}”` : 'this untitled scene'
   const [expanded, setExpanded] = useState(false)
@@ -429,12 +437,14 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                 has to say which scene it acts on — "Move up" four times over is
                 no more use to a screen reader than no name at all. */}
             <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 hover:text-[hsl(var(--foreground))]"
-              aria-label={`Move ${eventName} earlier`} title="Move earlier"
+              aria-label={moveUpHint ? `${moveUpHint}: ${eventName}` : `Move ${eventName} earlier`}
+              title={moveUpHint ?? 'Move earlier'}
               disabled={isFirst} onClick={(e) => { e.stopPropagation(); onMoveUp() }}>
               <ArrowUp className="h-3.5 w-3.5" />
             </Button>
             <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 hover:text-[hsl(var(--foreground))]"
-              aria-label={`Move ${eventName} later`} title="Move later"
+              aria-label={moveDownHint ? `${moveDownHint}: ${eventName}` : `Move ${eventName} later`}
+              title={moveDownHint ?? 'Move later'}
               disabled={isLast} onClick={(e) => { e.stopPropagation(); onMoveDown() }}>
               <ArrowDown className="h-3.5 w-3.5" />
             </Button>

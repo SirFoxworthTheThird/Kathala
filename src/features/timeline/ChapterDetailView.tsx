@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus, Users, Network, StickyNote, ChevronDown, ChevronRight, Scroll, BookLock } from 'lucide-react'
-import { useChapter, useEvents, useWorldEvents, useWorldChapters, useTimelines, updateChapter, updateEvent } from '@/db/hooks/useTimeline'
+import { useChapter, useEvents, useWorldEvents, useWorldChapters, useTimelines, updateChapter, updateEvent, moveEventOnBoard } from '@/db/hooks/useTimeline'
 import { useWorld } from '@/db/hooks/useWorlds'
 import { journalGroup } from '@/db/hooks/useOperations'
 import { useChapterEventSnapshots } from '@/db/hooks/useSnapshots'
@@ -160,10 +160,32 @@ export default function ChapterDetailView() {
   )
   const relSnapshots = useEventRelationshipSnapshots(lastEventId)
 
+  /*
+    F12: the neighbouring chapters, so a scene at the edge of this one can leave
+    it. The Corkboard's drag could already do this and the arrow could not, with
+    nothing on either screen saying so.
+  */
+  const chapterOrder = useMemo(
+    () => [...worldChapters].filter((c) => c.timelineId === chapter?.timelineId).sort((a, b) => a.number - b.number),
+    [worldChapters, chapter?.timelineId],
+  )
+  const chapterAt = chapterOrder.findIndex((c) => c.id === chapterId)
+  const prevChapterId = chapterAt > 0 ? chapterOrder[chapterAt - 1].id : null
+  const nextChapterId =
+    chapterAt >= 0 && chapterAt < chapterOrder.length - 1 ? chapterOrder[chapterAt + 1].id : null
+
   async function moveEvent(eventId: string, direction: 'up' | 'down') {
     const idx = sortedEvents.findIndex((e) => e.id === eventId)
-    if (direction === 'up' && idx === 0) return
-    if (direction === 'down' && idx === sortedEvents.length - 1) return
+    // `moveEventOnBoard` is the Corkboard's own mover, so the two routes cannot
+    // disagree about what a cross-chapter move does to sortKeys.
+    if (direction === 'up' && idx === 0) {
+      if (prevChapterId) await moveEventOnBoard(eventId, prevChapterId, Number.MAX_SAFE_INTEGER)
+      return
+    }
+    if (direction === 'down' && idx === sortedEvents.length - 1) {
+      if (nextChapterId) await moveEventOnBoard(eventId, nextChapterId, 0)
+      return
+    }
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1
     const a = sortedEvents[idx]
     const b = sortedEvents[swapIdx]
@@ -287,8 +309,10 @@ export default function ChapterDetailView() {
                 <EventCard
                   key={e.id}
                   event={e}
-                  isFirst={i === 0}
-                  isLast={i === sortedEvents.length - 1}
+                  isFirst={i === 0 && !prevChapterId}
+                  isLast={i === sortedEvents.length - 1 && !nextChapterId}
+                  moveUpHint={i === 0 && prevChapterId ? 'Move to the end of the previous chapter' : undefined}
+                  moveDownHint={i === sortedEvents.length - 1 && nextChapterId ? 'Move to the start of the next chapter' : undefined}
                   onMoveUp={() => moveEvent(e.id, 'up')}
                   onMoveDown={() => moveEvent(e.id, 'down')}
                   inWorldDay={inWorldDays.get(e.id)}

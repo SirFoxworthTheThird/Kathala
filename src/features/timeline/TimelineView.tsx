@@ -526,9 +526,26 @@ export default function TimelineView() {
                       </p>
                     )
                   }
-                  return shown.map((ch) => (
-                    <ChapterRow key={ch.id} chapter={ch} threadFilter={threadFilter} wordsByEvent={wordsByEvent} />
-                  ))
+                  /*
+                    Neighbours come from the full chapter list, not `shown`: a
+                    thread filter changes what is on screen, not where a scene
+                    belongs, so an arrow at a chapter edge must move it to the
+                    real next chapter even when that one is filtered out.
+                  */
+                  const order = [...chapters].sort((a, b) => a.number - b.number)
+                  return shown.map((ch) => {
+                    const at = order.findIndex((c) => c.id === ch.id)
+                    return (
+                      <ChapterRow
+                        key={ch.id}
+                        chapter={ch}
+                        threadFilter={threadFilter}
+                        wordsByEvent={wordsByEvent}
+                        prevChapterId={at > 0 ? order[at - 1].id : null}
+                        nextChapterId={at >= 0 && at < order.length - 1 ? order[at + 1].id : null}
+                      />
+                    )
+                  })
                 })()}
               </>
             ) : (

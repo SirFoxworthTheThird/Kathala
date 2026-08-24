@@ -20,11 +20,19 @@ interface EventRowProps {
   isLast: boolean
   onMoveUp: () => void
   onMoveDown: () => void
+  /**
+   * Said instead of "Move earlier"/"Move later" when the move leaves the
+   * chapter, so a scene does not silently jump somewhere else (**F12**).
+   */
+  moveUpHint?: string
+  moveDownHint?: string
   /** All event IDs in this chapter in order, for shift-click range selection */
   chapterEventIds: string[]
 }
 
-export function EventRow({ event, isFirst, isLast, onMoveUp, onMoveDown, chapterEventIds }: EventRowProps) {
+export function EventRow({
+  event, isFirst, isLast, onMoveUp, onMoveDown, moveUpHint, moveDownHint, chapterEventIds,
+}: EventRowProps) {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
   const [expanded, setExpanded] = useState(false)
@@ -157,12 +165,14 @@ export function EventRow({ event, isFirst, isLast, onMoveUp, onMoveDown, chapter
             `controlNames` visits the Timeline with every chapter collapsed.
           */}
           <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0 hover:text-[hsl(var(--foreground))]"
-            aria-label={`Move ${sceneName} earlier`} title={`Move ${sceneName} earlier`}
+            aria-label={moveUpHint ? `${moveUpHint}: ${sceneName}` : `Move ${sceneName} earlier`}
+            title={moveUpHint ?? `Move ${sceneName} earlier`}
             disabled={isFirst} onClick={(e) => { e.stopPropagation(); onMoveUp() }}>
             <ArrowUp className="h-3 w-3" />
           </Button>
           <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0 hover:text-[hsl(var(--foreground))]"
-            aria-label={`Move ${sceneName} later`} title={`Move ${sceneName} later`}
+            aria-label={moveDownHint ? `${moveDownHint}: ${sceneName}` : `Move ${sceneName} later`}
+            title={moveDownHint ?? `Move ${sceneName} later`}
             disabled={isLast} onClick={(e) => { e.stopPropagation(); onMoveDown() }}>
             <ArrowDown className="h-3 w-3" />
           </Button>
