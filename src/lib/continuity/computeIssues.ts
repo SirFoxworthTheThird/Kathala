@@ -320,7 +320,15 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           detail: `Ch. ${ch?.number ?? '?'} — the scene's setting is "${sceneMarker.name}", and nothing records where they are in it. Move them there, record the journey, or record where they really are.`,
           navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
           eventId: ev.id,
-          fix: { kind: 'moveHere', label: `Move to ${sceneMarker.name}`, eventId: ev.id, characterId: charId, markerId: ev.locationMarkerId },
+          /*
+            No fix offered for someone already dead at this point. The warning
+            still stands — they *are* recorded elsewhere — but "Move to X" for a
+            corpse is an offer to walk it across town, and `dead-in-event` is
+            already reporting the real fault beside this one.
+          */
+          fix: isDeadAtOrder(charId, evOrder)
+            ? undefined
+            : { kind: 'moveHere', label: `Move to ${sceneMarker.name}`, eventId: ev.id, characterId: charId, markerId: ev.locationMarkerId },
         })
       }
     }

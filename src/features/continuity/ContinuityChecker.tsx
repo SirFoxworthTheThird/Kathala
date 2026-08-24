@@ -9,7 +9,7 @@ import { useWorld } from '@/db/hooks/useWorlds'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
-import { useWorldSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { useWorldSnapshots, upsertSnapshot, moveCharacterToScene } from '@/db/hooks/useSnapshots'
 import { useCrossTimelineArtifacts } from '@/db/hooks/useTimelineRelationships'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
@@ -423,29 +423,15 @@ export function ContinuityChecker() {
         return
       }
       case 'moveHere': {
-        /*
-          Put them where the scene already says it happens. Everything else
-          about their state carries forward from the last record — this writes
-          the one field the finding is about, at the one moment it is about,
-          which is what makes it safe to apply to a whole ensemble at once.
-        */
-        const marker = await db.locationMarkers.get(fix.markerId)
-        if (!marker) return
-        const prev = await db.characterSnapshots
-          .where('characterId').equals(fix.characterId)
-          .and((sn) => sn.eventId === fix.eventId).first()
-        await upsertSnapshot({
-          worldId,
-          characterId: fix.characterId,
-          eventId: fix.eventId,
-          isAlive: prev?.isAlive ?? true,
-          currentLocationMarkerId: marker.id,
-          currentMapLayerId: marker.mapLayerId,
-          inventoryItemIds: prev?.inventoryItemIds ?? [],
-          inventoryNotes: prev?.inventoryNotes ?? '',
-          statusNotes: prev?.statusNotes ?? '',
-          travelModeId: prev?.travelModeId ?? null,
-        })
+        // Writes the one field the finding is about, at the one moment it is
+        // about, and carries the rest of the state forward from the last record
+        // at or before this scene. See `moveCharacterToScene`, which is where
+        // that carry-forward lives and is tested.
+        await moveCharacterToScene(
+          { worldId, characterId: fix.characterId, eventId: fix.eventId, markerId: fix.markerId },
+          allEvents,
+          chapters,
+        )
         return
       }
     }

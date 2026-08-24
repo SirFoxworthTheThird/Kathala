@@ -210,3 +210,47 @@ export async function deleteSnapshot(id: string) {
     await db.characterSnapshots.delete(id)
   })
 }
+
+/**
+ * Record a character at a scene's setting, keeping everything else they had.
+ *
+ * This is the continuity checker's "Move to <place>" fix, and it used to look
+ * for the state to carry forward with `sn.eventId === eventId` — a snapshot at
+ * the very scene being fixed. But that fix is only ever offered when no such
+ * snapshot exists (an assertion there is the writer's word, not a gap), so the
+ * lookup found nothing every time and every fallback fired: the character was
+ * written alive, empty-handed, with no notes and no travel mode. Applied over
+ * an ensemble from "Fix all", it emptied eight characters' hands at once and
+ * revived anyone who had died, and the checker then reported the resurrection
+ * it had just performed. Undo recovered it, but the label said only "Added
+ * character state" — and the point of a fix-it button is that you stop looking.
+ *
+ * The state to carry forward is the last one at or before this scene, which is
+ * what `resolveSnapshot` returns. `MapExplorerView` already did it this way.
+ */
+export async function moveCharacterToScene(
+  args: { worldId: string; characterId: string; eventId: string; markerId: string },
+  allEvents: EventStub[],
+  allChapters: ChapterStub[]
+): Promise<void> {
+  const marker = await db.locationMarkers.get(args.markerId)
+  if (!marker) return
+
+  const own = await db.characterSnapshots
+    .where('characterId').equals(args.characterId)
+    .toArray()
+  const carried = resolveSnapshot(own, args.eventId, allEvents, allChapters)
+
+  await upsertSnapshot({
+    worldId: args.worldId,
+    characterId: args.characterId,
+    eventId: args.eventId,
+    isAlive: carried?.isAlive ?? true,
+    currentLocationMarkerId: marker.id,
+    currentMapLayerId: marker.mapLayerId,
+    inventoryItemIds: carried?.inventoryItemIds ?? [],
+    inventoryNotes: carried?.inventoryNotes ?? '',
+    statusNotes: carried?.statusNotes ?? '',
+    travelModeId: carried?.travelModeId ?? null,
+  })
+}

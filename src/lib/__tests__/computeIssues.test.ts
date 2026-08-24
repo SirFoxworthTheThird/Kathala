@@ -391,6 +391,28 @@ describe('a scene set here, with somebody recorded there', () => {
   })
 
   /*
+    The blind writer run's F1, second half. The checker offered "Move to Ferrow
+    Crossing" for a character it was simultaneously reporting as dead in that
+    scene — an offer to walk a corpse across town, and taking it wrote a record
+    for them there. The warning still stands, because they really are recorded
+    somewhere else; what is withdrawn is the button.
+  */
+  it('offers no move for someone already dead by this scene', () => {
+    const input = elsewhereInput()
+    input.snapshots = [{ ...placed('s1', 'maren', 'e1', 'flats'), isAlive: false }]
+    const [issue] = computeContinuityIssues(input).filter((i) => i.kind === 'scene-cast-elsewhere')
+    // The finding survives — she is still recorded at The Flats.
+    expect(issue).toBeDefined()
+    expect(issue.message).toContain('The Flats')
+    expect(issue.fix).toBeUndefined()
+  })
+
+  it('still offers the move while they are alive, which is the pair', () => {
+    const [issue] = computeContinuityIssues(elsewhereInput()).filter((i) => i.kind === 'scene-cast-elsewhere')
+    expect(issue.fix).toBeDefined()
+  })
+
+  /*
     W23-1, and the distinction the first version of this check missed. A
     snapshot **at this scene** is the writer stating where somebody is — often
     somewhere other than the room, because that is what simstim, a phone call, a
