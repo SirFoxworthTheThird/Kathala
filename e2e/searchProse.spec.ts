@@ -117,6 +117,21 @@ test.describe('searching the prose you wrote', () => {
     await expect(dialog.getByText(/slick with the morning/i)).toHaveCount(0)
   })
 
+  /*
+    F13: in a 117-chapter book, `74` and `Chapter 74` both returned "No
+    results" — the number was printed in the result label and never searched.
+    The alternative was the chapter bar, 6,500px of ~50px segments for that
+    world.
+  */
+  test('finds a chapter by its number', async ({ page }) => {
+    expect(await search(page, '1')).toContain('Ch. 1 — The Reed House')
+    expect(await search(page, 'chapter 1')).toContain('Ch. 1 — The Reed House')
+
+    // Exact, not a substring: a chapter number is an exact thing, unlike a
+    // title, so a number no chapter has finds nothing.
+    expect(await search(page, '9')).toEqual([])
+  })
+
   test('does not search prose the reader has not reached', async ({ page }) => {
     await page.evaluate(async () => {
       const db = (window as { __pwdb?: never }).__pwdb as unknown as {

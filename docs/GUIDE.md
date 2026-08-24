@@ -1762,7 +1762,9 @@ you off the page. When it is opened over another panel, Esc closes the palette
 and leaves what was underneath alone. It searches
 characters, factions, items, locations, chapters, scenes, timelines,
 relationships, routes, regions, lore pages, and knowledge facts, grouped by
-type. Use the arrow keys and **Enter** to navigate; opening a scene also sets
+type. A chapter is also findable **by its number** — `74`, `ch 74` or
+`chapter 74` all go straight to it, which in a long book beats scrolling the
+chapter bar. Use the arrow keys and **Enter** to navigate; opening a scene also sets
 the time cursor, and opening a location focuses its map marker.
 
 **It searches the prose you wrote, too.** A scene matches on a word in its

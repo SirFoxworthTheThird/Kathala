@@ -76,7 +76,8 @@ test.describe('Chapter detail — the Character States panel is about the scene'
     await expect(chase.getByText('Frodo', { exact: true })).toBeVisible({ timeout: 15_000 })
     await expect(chase.getByText('Wounded and slipping out of the world.')).toBeVisible()
     await expect(chase.getByText('Strider', { exact: true })).toBeVisible()
-    await expect(chase.getByText('in the scene, no state recorded')).toBeVisible()
+    await expect(chase.getByText('no state recorded')).toBeVisible()
+
 
     // Absence: the five who are nowhere near this chapter are not the panel's
     // content. The count is offered; the roll-call is not.

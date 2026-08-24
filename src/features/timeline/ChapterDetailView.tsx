@@ -71,10 +71,22 @@ function EventSnapshotSection({
             <div
               key={c.id}
               data-cast-without-state={c.id}
-              className="flex items-center gap-2 rounded-lg border border-dashed border-[hsl(var(--border))] px-3 py-2 text-xs"
+              /*
+                F15: the caption was `shrink-0` and the name was not, so in a
+                296px column the italic note took what it wanted and the name —
+                the part you are scanning for — was crushed to "Corvin …",
+                measured at a 57px box holding 72px of text.
+
+                The name is the rigid one now and the note is what moves: when
+                the two do not fit side by side the note wraps to a second line,
+                which is the right way round — a note on its own line is still
+                legible, a truncated name is not. `max-w-full truncate` keeps an
+                extreme name inside the row rather than breaking the layout.
+              */
+              className="flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-lg border border-dashed border-[hsl(var(--border))] px-3 py-2 text-xs"
             >
-              <span className="truncate font-medium">{c.name}</span>
-              <span className="ml-auto shrink-0 italic text-[hsl(var(--muted-foreground))]">in the scene, no state recorded</span>
+              <span className="max-w-full shrink-0 truncate font-medium">{c.name}</span>
+              <span className="shrink-0 italic text-[hsl(var(--muted-foreground))]">no state recorded</span>
             </div>
           ))}
         </div>

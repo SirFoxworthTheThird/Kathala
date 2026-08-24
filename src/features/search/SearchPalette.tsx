@@ -9,6 +9,7 @@ import { useShowMoment } from '@/db/hooks/useShowMoment'
 import { useFactionReveal } from '@/db/hooks/useFactions'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { snippet, snippetAround } from '@/lib/snippet'
+import { chapterNumberQuery } from '@/lib/chapterQuery'
 import { cn } from '@/lib/utils'
 import { MODAL_BACKDROP } from '@/components/ui/dialog'
 
@@ -145,12 +146,22 @@ export function SearchPalette() {
         out.push({ id: m.id, type: 'location', label: m.name, sublabel: snippet(m.description), path: `/worlds/${worldId}/maps` })
       }
     }
+    /*
+      A chapter is also findable by its number — `74`, `ch 74`, `chapter 74`.
+      The number was printed in the result label and never searched, so in a
+      117-chapter book the only way to reach one was the chapter bar, which for
+      that world is 6,500px of ~50px segments in a 1,066px strip.
+
+      The number is not gated: it is on the reader's own contents page, exactly
+      as the title is.
+    */
+    const byNumber = chapterNumberQuery(query.trim())
     for (const ch of (chapters ?? [])) {
       // A chapter's title is printed on the reader's own contents page, so it
       // stays searchable. Its synopsis is an authored summary of what happens
       // in it, so it neither matches nor shows until the reader gets there.
       const synopsis = chapterReached.has(ch.id) ? ch.synopsis : ''
-      if (ch.title?.toLowerCase().includes(q) || synopsis?.toLowerCase().includes(q)) {
+      if (ch.number === byNumber || ch.title?.toLowerCase().includes(q) || synopsis?.toLowerCase().includes(q)) {
         out.push({ id: ch.id, type: 'chapter', label: `Ch. ${ch.number} — ${ch.title}`, sublabel: snippet(synopsis), path: `/worlds/${worldId}/timeline/${ch.id}` })
       }
     }

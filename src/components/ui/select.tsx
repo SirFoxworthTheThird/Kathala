@@ -13,6 +13,8 @@ interface SelectContextValue {
   triggerRef: React.RefObject<HTMLButtonElement | null>
   registerLabel: (value: string, label: string) => void
   getLabel: (value: string) => string | undefined
+  /** So the trigger can point `aria-controls` at the list it opens. */
+  listboxId: string
 }
 
 const SelectContext = React.createContext<SelectContextValue>({
@@ -23,6 +25,7 @@ const SelectContext = React.createContext<SelectContextValue>({
   triggerRef: { current: null },
   registerLabel: () => {},
   getLabel: () => undefined,
+  listboxId: '',
 })
 
 interface SelectProps {
@@ -37,6 +40,7 @@ function Select({ value: controlledValue, defaultValue = '', onValueChange, chil
   const [open, setOpen] = React.useState(false)
   const triggerRef = React.useRef<HTMLButtonElement>(null)
   const [labels, setLabels] = React.useState<Record<string, string>>({})
+  const listboxId = React.useId()
 
   const value = controlledValue !== undefined ? controlledValue : internalValue
 
@@ -68,7 +72,7 @@ function Select({ value: controlledValue, defaultValue = '', onValueChange, chil
   }, [open])
 
   return (
-    <SelectContext.Provider value={{ value, onValueChange: handleValueChange, open, setOpen, triggerRef, registerLabel, getLabel }}>
+    <SelectContext.Provider value={{ value, onValueChange: handleValueChange, open, setOpen, triggerRef, registerLabel, getLabel, listboxId }}>
       {children}
     </SelectContext.Provider>
   )
@@ -76,7 +80,7 @@ function Select({ value: controlledValue, defaultValue = '', onValueChange, chil
 
 const SelectTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
   ({ className, children, ...props }, ref) => {
-    const { open, setOpen, triggerRef } = React.useContext(SelectContext)
+    const { open, setOpen, triggerRef, listboxId } = React.useContext(SelectContext)
 
     function handleRef(el: HTMLButtonElement | null) {
       (triggerRef as React.MutableRefObject<HTMLButtonElement | null>).current = el
@@ -88,6 +92,22 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttrib
       <button
         ref={handleRef}
         type="button"
+        /*
+          F16: the trigger was a bare button, so a screen reader announced
+          "Select…, button" and gave no sign that pressing it opens a list, or
+          whether it is open. Two adjacent selects in the New Relationship
+          dialog were announced identically and indistinguishably.
+
+          `aria-haspopup` + `aria-expanded` on a button is the long-standing
+          pattern for this and is what fixes all seventy selects in the app at
+          once. The role stays `button` on purpose: `role="combobox"` is the
+          newer APG shape, and switching it would change what every
+          `getByRole('button', …)` in the suite resolves to for no gain a
+          screen-reader user can hear.
+        */
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={open ? listboxId : undefined}
         className={cn(
           'flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-[hsl(var(--input))] bg-transparent px-3 py-2 text-sm text-[hsl(var(--foreground))] shadow-sm focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))] disabled:cursor-not-allowed disabled:opacity-50',
           className
@@ -119,7 +139,7 @@ interface SelectContentProps {
 }
 
 function SelectContent({ children, className }: SelectContentProps) {
-  const { open, triggerRef } = React.useContext(SelectContext)
+  const { open, triggerRef, listboxId } = React.useContext(SelectContext)
   const [rect, setRect] = React.useState<DOMRect | null>(null)
 
   React.useEffect(() => {
@@ -162,6 +182,7 @@ function SelectContent({ children, className }: SelectContentProps) {
         >
           <div
             role="listbox"
+            id={listboxId}
             style={{ maxHeight: pos.maxHeight }}
             className={cn(
               'overflow-auto rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--popover))] p-1 shadow-lg',

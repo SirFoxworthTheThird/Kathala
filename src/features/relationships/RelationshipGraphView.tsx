@@ -320,7 +320,12 @@ function CreateRelationshipDialog({ open, onOpenChange, worldId, characters, sta
             <div className="flex flex-col gap-1.5">
               <Label>Character A</Label>
               <Select value={aId} onValueChange={setAId}>
-                <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                {/*
+                  Named, because these two sit side by side and a screen reader
+                  read both as "Select…, button" — indistinguishable, with no way
+                  to tell which half of the relationship you were filling in.
+                */}
+                <SelectTrigger aria-label="Character A"><SelectValue placeholder="Select…" /></SelectTrigger>
                 <SelectContent>
                   {characters.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
@@ -329,7 +334,7 @@ function CreateRelationshipDialog({ open, onOpenChange, worldId, characters, sta
             <div className="flex flex-col gap-1.5">
               <Label>Character B</Label>
               <Select value={bId} onValueChange={setBId}>
-                <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                <SelectTrigger aria-label="Character B"><SelectValue placeholder="Select…" /></SelectTrigger>
                 <SelectContent>
                   {characters.filter((c) => c.id !== aId).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
