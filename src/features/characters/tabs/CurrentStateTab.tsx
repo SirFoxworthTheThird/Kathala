@@ -6,8 +6,7 @@ import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import { computeSortKeySync } from '@/lib/sortKey'
 import { removeItemPlacement } from '@/db/hooks/useItemPlacements'
 import { useItems, createItem } from '@/db/hooks/useItems'
-import { useLocationMarkers, useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
-import { useRootMapLayers } from '@/db/hooks/useMapLayers'
+import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
 import { useActiveEventId, useAppStore } from '@/store'
 import {
@@ -32,11 +31,23 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
   const isInherited = !!snapshot && snapshot.eventId !== activeEventId
   const chapterSnapshots = useBestSnapshots(character.worldId, activeEventId)
   const items = useItems(character.worldId)
-  const maps = useRootMapLayers(character.worldId)
-  const firstMapId = maps[0]?.id ?? null
-  const locationMarkers = useLocationMarkers(firstMapId)
-  const travelModes = useTravelModes(character.worldId)
+  /*
+    N2: this used to offer, and display, only the markers on the world's *first
+    root map* — and `useRootMapLayers` returns an unordered `toArray()`, so
+    which map that was had nothing to do with the writer either. In the shipped
+    Monte Cristo, 373 of 417 character snapshots (89.4%) point at a marker on
+    some other layer, so this tab read "Unknown / not set" for nine records in
+    ten while the History tab beside it named the place correctly.
+
+    Every marker in the world is offered now, sorted by name rather than left in
+    Dexie's primary-key order, which for nanoid ids is arbitrary.
+  */
   const allMarkers = useAllLocationMarkers(character.worldId)
+  const markerOptions = useMemo(
+    () => [...allMarkers].sort((a, b) => a.name.localeCompare(b.name)),
+    [allMarkers],
+  )
+  const travelModes = useTravelModes(character.worldId)
   const gate = useGate()
 
   /*
@@ -294,7 +305,11 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
       // record that says they are dead and were revived here.
       revived: isAlive && revived,
       currentLocationMarkerId: locationId || null,
-      currentMapLayerId: firstMapId,
+      // The layer the chosen marker actually lives on. This wrote the first root
+      // map unconditionally, so saving *any* edit — a typo in a status note —
+      // left the marker and the layer disagreeing, which cost a travel route on
+      // the following scene.
+      currentMapLayerId: allMarkers.find((m) => m.id === locationId)?.mapLayerId ?? null,
       inventoryItemIds: inventoryIds,
       inventoryNotes,
       statusNotes,
@@ -391,7 +406,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="none">Unknown / not set</SelectItem>
-            {locationMarkers.map((m) => (
+            {markerOptions.map((m) => (
               <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
             ))}
           </SelectContent>
