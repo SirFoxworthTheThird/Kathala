@@ -1058,6 +1058,21 @@ Opening a character gives you a tabbed profile:
 
 ![Character detail](images/07-character-detail.png)
 
+**Editing an earlier scene, and how far it reaches.** State is recorded *per
+scene*: what you save at one scene holds until the next scene that records
+something of its own. So going back on a second draft to say *"actually she has
+had this since chapter one"* reaches forward only as far as the next scene with
+its own record — which is usually what you want, because that record is your own
+earlier decision about that scene.
+
+When it stops somewhere, PlotWeave says so rather than letting you assume it went
+all the way: after saving you'll see a line like *"Corvin Ashe's inventory is
+recorded again at Ch. 2 · The seal breaks, without this change"*, with **Carry it
+forward**. Taking it applies the change to the later scenes that were only
+inheriting the old value, and **stops at the first scene where you had already
+decided something different** — that one is left exactly as you wrote it. It is
+one step for undo, so you can take it back in one go.
+
 ### Goals & motivations
 
 The **Goals** tab tracks the inner life behind a character's scenes, along the

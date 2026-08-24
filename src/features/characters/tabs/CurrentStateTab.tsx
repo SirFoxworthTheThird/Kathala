@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { MapPin, Package, Plus, X, Heart, Skull, Footprints, History } from 'lucide-react'
 import type { Character } from '@/types'
-import { useResolvedCharacterSnapshot, useBestSnapshots, useCharacterSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { useResolvedCharacterSnapshot, useBestSnapshots, useCharacterSnapshots, upsertSnapshot, carryFieldForward } from '@/db/hooks/useSnapshots'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import { computeSortKeySync } from '@/lib/sortKey'
 import { removeItemPlacement } from '@/db/hooks/useItemPlacements'
@@ -9,7 +9,11 @@ import { useItems, createItem } from '@/db/hooks/useItems'
 import { useLocationMarkers, useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useRootMapLayers } from '@/db/hooks/useMapLayers'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
-import { useActiveEventId } from '@/store'
+import { useActiveEventId, useAppStore } from '@/store'
+import {
+  carryForwardPlan, describeCarryForward, sameFieldValue,
+  type CarryField, type CarryForwardPlan,
+} from '@/lib/carryForward'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -46,6 +50,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
   const ownSnapshots = useCharacterSnapshots(character.id)
   const worldEvents = useWorldEvents(character.worldId)
   const worldChapters = useWorldChapters(character.worldId)
+  const pushToast = useAppStore((s) => s.pushToast)
   const diedEarlier = useMemo(() => {
     if (!activeEventId) return false
     const here = computeSortKeySync(
@@ -196,7 +201,55 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     )
   }
 
+  /*
+    F2: a snapshot is a whole state record, so what is saved here reaches
+    forward only until the next scene that recorded anything at all — and the
+    most natural draft-two edit, "actually she has had this since chapter one",
+    stops there with nothing said. The record at that later scene is the
+    writer's statement about it and is not overwritten; what was missing is
+    being told, and being offered the choice.
+  */
+  function noticeWhereThisStops(before: typeof snapshot) {
+    if (!before || !activeEventId) return
+    type Change = { field: CarryField; previous: unknown; next: unknown }
+    const changes: Change[] = ([
+      { field: 'inventoryItemIds', previous: before.inventoryItemIds, next: inventoryIds },
+      { field: 'currentLocationMarkerId', previous: before.currentLocationMarkerId, next: locationId || null },
+      { field: 'isAlive', previous: before.isAlive, next: isAlive },
+      { field: 'statusNotes', previous: before.statusNotes, next: statusNotes },
+      { field: 'inventoryNotes', previous: before.inventoryNotes, next: inventoryNotes },
+      { field: 'travelModeId', previous: before.travelModeId, next: travelModeId || null },
+    ] as Change[]).filter((c) => !sameFieldValue(c.previous, c.next))
+
+    const planned = changes
+      .map((c) => ({ ...c, plan: carryForwardPlan({
+        snapshots: ownSnapshots, fromEventId: activeEventId, field: c.field,
+        previousValue: c.previous, events: worldEvents, chapters: worldChapters,
+      }) }))
+      .filter((c) => c.plan.targets.length > 0)
+
+    if (planned.length === 0) return
+
+    // The sentence names one field, so it names the one with most to say.
+    const primary = [...planned].sort((a, b) => b.plan.targets.length - a.plan.targets.length)[0]
+    const message = describeCarryForward(primary.plan as CarryForwardPlan, character.name, primary.field)
+    if (!message) return
+
+    pushToast({
+      message,
+      actionLabel: 'Carry it forward',
+      onAction: () => {
+        // Every changed field, not just the one named: the sentence is a
+        // summary, the action is the whole edit.
+        void Promise.all(planned.map((c) =>
+          carryFieldForward(c.plan.targets.map((t) => t.snapshot), c.field, c.next as never)))
+      },
+    })
+  }
+
   async function save() {
+    // Read before writing: `snapshot` is a live query and will have moved on.
+    const before = snapshot
     // Remove these items from any other character's snapshot in the same chapter
     const others = chapterSnapshots.filter(
       (s) => s.characterId !== character.id && s.inventoryItemIds.some((id) => inventoryIds.includes(id))
@@ -229,6 +282,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
       travelModeId: travelModeId || null,
     })
     setDirty(false)
+    noticeWhereThisStops(before)
   }
 
   function mark(fn: () => void) {
