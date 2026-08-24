@@ -2017,8 +2017,19 @@ the surrounding scene's, not its own.
 ## Continuity Checker
 
 The **Continuity Checker** (the shield icon) scans your whole world for
-contradictions and surfaces them grouped by category, with an error/warning
-count. Typical catches:
+contradictions and surfaces them grouped by category, with a count of errors,
+warnings and observations.
+
+**Errors and warnings are contradictions in your record. Observations are
+opinions about craft**, and they are ranked below both, drawn without the
+warning triangle, and counted separately — because they are the ones where "yes,
+I meant that" is the usual answer. A long run of one point of view, a subplot
+that goes quiet, a character who leaves a faction with nobody replacing them:
+all of these are ordinary things a novel does. They are still reported, because
+on your book one of them may be exactly what you wanted to know — but they never
+sit above *"this object is in two places at once"*.
+
+Typical catches:
 
 - A character who is **alive again after dying** in an earlier chapter —
   reported once, where they come back, not on every scene afterwards. If they

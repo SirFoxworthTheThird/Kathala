@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { groupIssuesByKind, FIX_ALL_LABELS } from '@/lib/continuity/issueKinds'
 import { useFocusTrap } from '@/lib/useFocusTrap'
-import { X, ShieldCheck, ShieldAlert, AlertTriangle, Users, Package, Network, Shield, ChevronRight, EyeOff, Eye, Check, PenLine, Spline, MapPin } from 'lucide-react'
+import { X, ShieldCheck, ShieldAlert, AlertTriangle, Lightbulb, Users, Package, Network, Shield, ChevronRight, EyeOff, Eye, Check, PenLine, Spline, MapPin } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store'
 import { useWorldChapters, useWorldEvents, updateEvent } from '@/db/hooks/useTimeline'
@@ -80,18 +80,34 @@ function IssueRow({
         ? 'border-[hsl(var(--border))] bg-transparent opacity-40'
         : issue.severity === 'error'
           ? 'border-red-500/30 bg-red-500/10'
-          : 'border-amber-500/30 bg-amber-500/10',
+          : issue.severity === 'note'
+            ? 'border-[hsl(var(--border))] bg-transparent'
+            : 'border-amber-500/30 bg-amber-500/10',
       focused && !suppressed && 'ring-1 ring-[hsl(var(--ring))]',
     )}>
       <div className="flex items-start gap-3 px-3 py-2.5">
-        <AlertTriangle className={cn(
-          'mt-0.5 h-3.5 w-3.5 shrink-0',
-          suppressed ? 'text-[hsl(var(--muted-foreground))]' : issue.severity === 'error' ? 'text-red-400' : 'text-amber-400'
-        )} />
+        {/*
+          N4: an observation does not get the warning triangle. Twelve "long run
+          of one POV" and nineteen dangling subplots on a finished Dumas novel,
+          drawn exactly like "this object is in two places at once", is what
+          teaches a writer to skim the list — and the one that mattered was row 1
+          of fifty.
+        */}
+        {issue.severity === 'note' ? (
+          <Lightbulb className={cn('mt-0.5 h-3.5 w-3.5 shrink-0',
+            suppressed ? 'text-[hsl(var(--muted-foreground))]' : 'text-[hsl(var(--muted-foreground))]')} />
+        ) : (
+          <AlertTriangle className={cn(
+            'mt-0.5 h-3.5 w-3.5 shrink-0',
+            suppressed ? 'text-[hsl(var(--muted-foreground))]' : issue.severity === 'error' ? 'text-red-400' : 'text-amber-400'
+          )} />
+        )}
         <div className="min-w-0 flex-1">
           <p className={cn(
             'font-medium',
-            suppressed ? 'text-[hsl(var(--muted-foreground))]' : issue.severity === 'error' ? 'text-red-300' : 'text-amber-300'
+            suppressed || issue.severity === 'note'
+              ? 'text-[hsl(var(--muted-foreground))]'
+              : issue.severity === 'error' ? 'text-red-300' : 'text-amber-300'
           )}>{issue.message}</p>
           {issue.detail && <p className="mt-0.5 text-[hsl(var(--muted-foreground))]">{issue.detail}</p>}
           {issue.fix && !suppressed && (
@@ -200,7 +216,8 @@ function CategorySection({ title, icon: Icon, issues, focusedId, suppressedIds, 
               <span
                 className={cn(
                   'h-1.5 w-1.5 shrink-0 rounded-full',
-                  group.severity === 'error' ? 'bg-red-400' : 'bg-amber-400',
+                  group.severity === 'error' ? 'bg-red-400'
+                    : group.severity === 'note' ? 'bg-[hsl(var(--muted-foreground))]' : 'bg-amber-400',
                 )}
                 aria-hidden="true"
               />
@@ -490,6 +507,9 @@ export function ContinuityChecker() {
 
   const errors   = issues.filter((i) => i.severity === 'error')
   const warnings = issues.filter((i) => i.severity === 'warning')
+  // Counted apart, so "50 warnings" on a finished novel stops being the headline
+  // when 35 of them were observations about how the book is written.
+  const notes    = issues.filter((i) => i.severity === 'note')
   const activeCount = issues.filter((i) => !suppressedSet.has(i.id)).length
   const suppressedCount = suppressedIds.size
 
@@ -534,6 +554,9 @@ export function ContinuityChecker() {
             <div className="flex items-center gap-2 text-xs">
               {errors.length > 0 && (
                 <span className="rounded bg-red-500/20 px-2 py-0.5 text-red-400">{errors.length} error{errors.length !== 1 ? 's' : ''}</span>
+              )}
+              {notes.length > 0 && (
+                <span className="rounded bg-[hsl(var(--muted))] px-2 py-0.5 text-[hsl(var(--muted-foreground))]">{notes.length} observation{notes.length !== 1 ? 's' : ''}</span>
               )}
               {warnings.length > 0 && (
                 <span className="rounded bg-amber-500/20 px-2 py-0.5 text-amber-400">{warnings.length} warning{warnings.length !== 1 ? 's' : ''}</span>

@@ -349,6 +349,47 @@ describe('a character named in the prose but not in the cast', () => {
   })
 })
 
+/*
+  N4: the checks that are opinions about craft rather than contradictions in the
+  record are reported as observations. Fifty "warnings" on a finished Monte
+  Cristo, thirty-five of which were this, is what trains a writer to skim.
+*/
+describe('craft observations are not filed as warnings', () => {
+  it('reports a long POV run as an observation', () => {
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1)]
+    input.characters = [character('mira', 'Mira'), character('rell', 'Rell')]
+    input.allEvents = [
+      // A book whose habit is to switch every scene, then does not.
+      event('e1', 'c1', 0, { povCharacterId: 'rell' }),
+      event('e2', 'c1', 1, { povCharacterId: 'mira' }),
+      event('e3', 'c1', 2, { povCharacterId: 'rell' }),
+      event('e4', 'c1', 3, { povCharacterId: 'mira' }),
+      event('e5', 'c1', 4, { povCharacterId: 'mira' }),
+      event('e6', 'c1', 5, { povCharacterId: 'mira' }),
+      event('e7', 'c1', 6, { povCharacterId: 'mira' }),
+    ]
+    const found = computeContinuityIssues(input).filter((i) => i.kind === 'pov-consecutive')
+    expect(found).toHaveLength(1)
+    expect(found[0].severity).toBe('note')
+  })
+
+  it('but a contradiction in the record is still a warning', () => {
+    // The pair: severity did not simply become "note" for everything.
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1)]
+    input.characters = [character('boromir', 'Boromir')]
+    input.allEvents = [
+      event('e1', 'c1', 0, { involvedCharacterIds: ['boromir'] }),
+      event('e2', 'c1', 1, { involvedCharacterIds: ['boromir'] }),
+    ]
+    input.snapshots = [snapshot('s1', 'boromir', 'e1', false)]
+    const dead = computeContinuityIssues(input).filter((i) => i.kind === 'dead-in-event')
+    expect(dead).toHaveLength(1)
+    expect(dead[0].severity).toBe('warning')
+  })
+})
+
 // ── Five checks the model could answer and nobody had asked ──────────────────
 
 /*

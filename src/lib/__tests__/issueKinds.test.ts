@@ -66,6 +66,33 @@ describe('groupIssuesByKind', () => {
   })
 })
 
+/*
+  N4: a craft observation is not a contradiction. On the shipped Monte Cristo,
+  35 of 50 "warnings" were of that shape — twelve long POV runs, nineteen
+  dangling or dormant subplots, thirteen faction gaps — every one of them Dumas
+  writing a novel. Drawn and ranked like a real fault, they teach the writer to
+  skim, and the one that mattered was row 1 of 50.
+*/
+describe('notes rank below warnings', () => {
+  it('sorts observations after both errors and warnings', () => {
+    const groups = groupIssuesByKind([
+      issue('n1', 'pov-consecutive', 'note'),
+      issue('w1', 'dead-in-event', 'warning'),
+      issue('e1', 'orphan-snap', 'error'),
+    ])
+    expect(groups.map((g) => g.severity)).toEqual(['error', 'warning', 'note'])
+  })
+
+  it('does not let a note drag a group below its worst member', () => {
+    // A group's severity is still the worst thing in it.
+    const groups = groupIssuesByKind([
+      issue('a', 'pov-consecutive', 'note'),
+      issue('b', 'pov-consecutive', 'warning'),
+    ])
+    expect(groups[0].severity).toBe('warning')
+  })
+})
+
 describe('ISSUE_KIND_LABELS', () => {
   it('names every kind, with no duplicates', () => {
     // A missing label renders as undefined in a heading; a duplicated one makes

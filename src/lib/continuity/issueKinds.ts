@@ -130,7 +130,7 @@ export interface IssueGroup {
   issues: Issue[]
 }
 
-const SEVERITY_RANK: Record<IssueSeverity, number> = { error: 0, warning: 1 }
+const SEVERITY_RANK: Record<IssueSeverity, number> = { error: 0, warning: 1, note: 2 }
 
 /**
  * A category's issues, grouped by kind.

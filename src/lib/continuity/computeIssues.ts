@@ -62,7 +62,21 @@ function pathCrossesPolygon(
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
-export type IssueSeverity = 'error' | 'warning'
+/**
+ * `note` is a craft observation, not a contradiction (**N4**).
+ *
+ * On the shipped Monte Cristo the checker reported 50 warnings, of which 35
+ * were of this shape: twelve "long run of one POV", nineteen dangling or dormant
+ * subplots, thirteen characters leaving a faction with nobody replacing them —
+ * every one of which is Dumas writing a novel rather than making a mistake.
+ * Filed with the same triangle as "this object is in two places at once", they
+ * train the writer to skim, and the one that mattered was row 1 of 50.
+ *
+ * A note says "fine if it is deliberate" and is ranked below both an error and a
+ * warning. It is still reported, because on somebody else's book it may be the
+ * thing they wanted to know.
+ */
+export type IssueSeverity = 'error' | 'warning' | 'note'
 
 export interface Issue {
   id: string
@@ -1150,7 +1164,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           out.push({
             id: `faction-gap-${charId}-${m.id}`,
             kind: 'faction-gap',
-            severity: 'warning',
+            severity: 'note',
             category: 'faction',
             message: `${char.name} leaves "${faction?.name ?? '?'}" with no replacement faction`,
             detail: `Membership ends at "${endEvent?.title ?? '?'}" (Ch. ${endCh?.number ?? '?'}) — no other faction active from this point.`,
@@ -1339,7 +1353,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         out.push({
           id: `pov-consecutive-${charId}-${firstEv.id}`,
           kind: 'pov-consecutive',
-          severity: 'warning',
+          severity: 'note',
           category: 'pov',
           message: `${char?.name ?? '?'} is the point of view for ${runLen} scenes running`,
           detail: `Ch. ${firstCh?.number ?? '?'} → Ch. ${lastCh?.number ?? '?'} — longer than this book's usual ${median === Math.round(median) ? median : median.toFixed(1)}. Fine if it is deliberate.`,
@@ -1747,7 +1761,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       out.push({
         id: `thread-${ti.kind}-${ti.threadId}`,
         kind: `thread-${ti.kind}` as IssueKind,
-        severity: 'warning',
+        severity: 'note',
         category: 'thread',
         message: ti.message,
         detail: ti.detail,
