@@ -2048,9 +2048,14 @@ count. Typical catches:
   recorded is not one of these — dying with your sword in your hand is not a
   continuity error.
 - A character **named in the prose but not in the cast** of that scene. This is
-  the one you meet most while drafting, and it offers **Add to this scene** —
-  the same one-click fix the scene editor's chip has, so you can clear it from
-  whichever screen you are on.
+  the one you meet most while drafting, and it offers **Record as mentioned** —
+  which says only what the check observed: the name is in the text. That clears
+  the warning without claiming the character is in the room, and there is a
+  **Record every name as mentioned** button to clear a drafting session's worth
+  at once. If they really are in the scene, add them to the **cast** on the
+  scene card instead; that is the larger claim, and the rest of the app reads
+  it — the map places them, the Brief lists them, and the Character States panel
+  will ask you what state they are in.
 - A scene with **no point of view**, but only in a book that otherwise names
   one. The check asks what your own habit is — enough scenes with a POV to be a
   pattern, and few enough without to read as omissions — and stays silent

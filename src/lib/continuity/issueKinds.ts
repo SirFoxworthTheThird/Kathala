@@ -61,6 +61,13 @@ export const FIX_ALL_LABELS: Partial<Record<IssueKind, string>> = {
     one place the scene already declares. Nothing is guessed.
   */
   'scene-cast-elsewhere': 'Move everyone to the scene',
+  /*
+    Every row here says the same true thing — this name is in this scene's prose
+    — and recording it as a mention claims no more than that. It is the most
+    frequent warning a drafting writer meets, so it is also the one most worth
+    being able to clear in one go.
+  */
+  'prose-untagged': 'Record every name as mentioned',
 }
 
 /**

@@ -65,7 +65,7 @@ async function checkerFor(page: Page, seed: { pov: string | null; prose: string 
 /** The stored scene, read from the store rather than inferred off the screen. */
 const storedEvent = (page: Page) => page.evaluate(async () => {
   const db = (window as { __pwdb?: never }).__pwdb as unknown as {
-    events: { get: (id: string) => Promise<{ povCharacterId: string | null; involvedCharacterIds: string[] }> }
+    events: { get: (id: string) => Promise<{ povCharacterId: string | null; involvedCharacterIds: string[]; mentionedCharacterIds: string[] }> }
   }
   return db.events.get('ev1')
 })
@@ -101,16 +101,23 @@ test.describe('The continuity warnings that knew their own fix', () => {
     await expect(dialog.getByText(/names no character/)).toHaveCount(0)
   })
 
-  test('a character named in the prose can be added to the scene from the panel', async ({ page }) => {
+  /*
+    N3: this used to add the character to the *cast*, which is a claim the
+    warning never made — it observed a name in the prose. Recording a mention
+    clears the warning and cannot put somebody in a room they are not in.
+  */
+  test('a character named in the prose can be recorded as mentioned from the panel', async ({ page }) => {
     await checkerFor(page, { pov: null, prose: 'Maren Vale found the letter and did not open it.' })
 
     const dialog = page.getByRole('dialog').first()
     await expect(dialog.getByText(/named in the prose but not in the cast/)).toBeVisible()
 
-    await dialog.getByRole('button', { name: 'Add to this scene' }).first().click()
+    await dialog.getByRole('button', { name: 'Record as mentioned' }).first().click()
 
-    await expect.poll(async () => (await storedEvent(page)).involvedCharacterIds, { timeout: 15_000 })
+    await expect.poll(async () => (await storedEvent(page)).mentionedCharacterIds, { timeout: 15_000 })
       .toEqual(['maren'])
+    // …and the scene's cast is untouched, which is the whole of the finding.
+    expect((await storedEvent(page)).involvedCharacterIds).toEqual([])
     await expect(dialog.getByText(/named in the prose but not in the cast/)).toHaveCount(0)
   })
 })

@@ -413,12 +413,30 @@ export function ContinuityChecker() {
         // not there, which is the whole of the finding.
         await updateEvent(fix.eventId, { povCharacterId: null })
         return
-      case 'addToCast': {
+      case 'addMention': {
+        /*
+          A mention, not a cast entry.
+
+          This warning is "named in the prose", and the button used to answer it
+          by putting the character *in the scene*. Taken seventeen times on a
+          1,489-word draft it produced a two-hander with a cast of four — a
+          woman who was across the city, a man who had already left, and a dead
+          one — while leaving out the character actually in the room, because
+          the prose called her "she". Silencing the warnings also created four
+          fresh "no state recorded" prompts for people who are not there.
+
+          `mentionedCharacterIds` is true by construction: the name is in the
+          text. `proseContinuity` already counts it as acknowledgement, so the
+          warning clears for the right reason. Being in the room is the larger
+          claim and stays a deliberate act on the scene card, which the detail
+          text now says.
+        */
         const ev = await db.events.get(fix.eventId)
         if (!ev) return
-        if (ev.involvedCharacterIds.includes(fix.characterId)) return
+        const mentioned = ev.mentionedCharacterIds ?? []
+        if (mentioned.includes(fix.characterId) || ev.involvedCharacterIds.includes(fix.characterId)) return
         await updateEvent(fix.eventId, {
-          involvedCharacterIds: [...ev.involvedCharacterIds, fix.characterId],
+          mentionedCharacterIds: [...mentioned, fix.characterId],
         })
         return
       }

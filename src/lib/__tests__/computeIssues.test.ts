@@ -314,17 +314,35 @@ describe('a character named in the prose but not in the cast', () => {
     return input
   }
 
-  it('offers the fix the scene editor already had', () => {
+  /*
+    N3: the remedy used to be "Add to this scene", which answered "this name is
+    in the prose" by putting the character *in the room*. Taken seventeen times
+    on a 1,489-word draft it gave a two-hander a cast of four — including a dead
+    man — and left out the character who was actually there, because the prose
+    called her "she". A mention claims only what the warning observed.
+  */
+  it('offers to record the name as a mention, which is all it observed', () => {
     const [issue] = computeContinuityIssues(untaggedInput()).filter((i) => i.kind === 'prose-untagged')
     expect(issue).toBeDefined()
     expect(issue.fix).toEqual({
-      kind: 'addToCast', label: 'Add to this scene', eventId: 'e1', characterId: 'maren',
+      kind: 'addMention', label: 'Record as mentioned', eventId: 'e1', characterId: 'maren',
     })
   })
 
-  it('stops reporting it once the character is in the cast', () => {
-    // The presence/absence pair, and the check that the fix is the right one:
-    // doing what `addToCast` does is what makes the warning go away.
+  it('says where to go if they are really in the room', () => {
+    const [issue] = computeContinuityIssues(untaggedInput()).filter((i) => i.kind === 'prose-untagged')
+    expect(issue.detail).toContain('add them to the cast on the scene card')
+  })
+
+  it('stops reporting it once the name is recorded as a mention', () => {
+    // The pair, and the check that the fix is the right one: doing what
+    // `addMention` does is what makes the warning go away.
+    const input = untaggedInput()
+    input.allEvents = [event('e1', 'c1', 0, { mentionedCharacterIds: ['maren'] })]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'prose-untagged')).toHaveLength(0)
+  })
+
+  it('and being in the cast still clears it too', () => {
     const input = untaggedInput()
     input.allEvents = [event('e1', 'c1', 0, { involvedCharacterIds: ['maren'] })]
     expect(computeContinuityIssues(input).filter((i) => i.kind === 'prose-untagged')).toHaveLength(0)

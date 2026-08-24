@@ -87,7 +87,7 @@ export interface Issue {
     | { kind: 'travelDays'; label: string; eventId: string; setTravelDays: number }
     | { kind: 'initialSnapshot'; label: string; eventId: string; characterId: string }
     | { kind: 'clearPov'; label: string; eventId: string }
-    | { kind: 'addToCast'; label: string; eventId: string; characterId: string }
+    | { kind: 'addMention'; label: string; eventId: string; characterId: string }
     | { kind: 'moveHere'; label: string; eventId: string; characterId: string; markerId: string }
 }
 
@@ -1418,7 +1418,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           severity: 'warning',
           category: 'prose',
           message: `${p.characterName} is named in the prose but not in the cast of "${ev?.title || 'untitled'}"`,
-          detail: `Ch. ${ch?.number ?? '?'} — appears ${p.count}× in the scene text. Add them to the scene or check the reference.`,
+          detail: `Ch. ${ch?.number ?? '?'} — appears ${p.count}× in the scene text. Recording it as a mention says only that: the name is in the prose. If they are actually in the room, add them to the cast on the scene card instead.`,
           navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
           eventId: p.eventId,
           /*
@@ -1428,7 +1428,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
             is the check a drafting writer meets most often: 143 words of prose
             produced five of them. The chip and the row now agree.
           */
-          fix: ev ? { kind: 'addToCast', label: 'Add to this scene', eventId: p.eventId, characterId: p.characterId } : undefined,
+          fix: ev ? { kind: 'addMention', label: 'Record as mentioned', eventId: p.eventId, characterId: p.characterId } : undefined,
         })
       }
     }
