@@ -5,6 +5,7 @@ import {
   findMentionToken, mentionSuggestions,
   type MentionCandidate, type MentionKind, type MentionSuggestion, type MentionToken,
 } from '@/lib/mentionPicker'
+import { caretPoint, placePanel } from '@/lib/caretPoint'
 
 interface SceneDraftEditorProps {
   value: string
@@ -52,6 +53,8 @@ export function SceneDraftEditor({
   const [mention, setMention] = useState<MentionToken | null>(null)
   const [highlight, setHighlight] = useState(0)
   const pendingCaret = useRef<number | null>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  const [listPos, setListPos] = useState<{ top: number; left: number } | null>(null)
 
   /*
     WR-1: the box was a fixed five rows with its own scrollbar, so 882 words of
@@ -81,6 +84,46 @@ export function SceneDraftEditor({
   const matches = mention
     ? mentionSuggestions(mention.query, candidates, { canCreateLocation })
     : []
+
+  /*
+    F4: the list used to be `absolute top-full` — below the whole textarea. The
+    textarea auto-grows to its content, and `main` owns the scrolling with
+    `overflow-auto`, so on a scene longer than the screen the list was laid out
+    past the bottom of `main` and simply never painted. Measured in a 900px
+    viewport: rows at 859, 887 and 915, with the chapter bar occupying the first
+    two and `new place` below the viewport entirely — and nothing scrollable to
+    reach any of them.
+
+    So it is positioned against the *caret* instead, in viewport coordinates,
+    flipped above when there is no room below and clamped when there is room for
+    neither. Fixed rather than absolute, so no ancestor's `overflow` can clip it.
+  */
+  useLayoutEffect(() => {
+    const ta = taRef.current
+    const list = listRef.current
+    if (!mention || matches.length === 0 || !ta || !list) {
+      setListPos(null)
+      return
+    }
+    const place = () => {
+      const point = caretPoint(ta)
+      if (!point) return
+      setListPos(placePanel(
+        point,
+        { width: list.offsetWidth, height: list.offsetHeight },
+        { width: window.innerWidth, height: window.innerHeight },
+      ))
+    }
+    place()
+    // The window can move under an open list: a resize, or a scroll of any
+    // ancestor. `capture` catches scrolls on `main` as well as on the window.
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => {
+      window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
+    }
+  }, [mention, matches.length, value])
 
   function refresh(text: string, caret: number) {
     // The candidates go in because the token's own bounds depend on them: a
@@ -166,7 +209,22 @@ export function SceneDraftEditor({
         style={{ fontFamily: 'var(--font-prose)' }}
       />
       {mention && matches.length > 0 && (
-        <div className="absolute left-2 top-full z-20 mt-1 w-64 overflow-hidden rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--popover))] shadow-lg">
+        <div
+          ref={listRef}
+          /*
+            Rendered before it is placed so it can be measured, but not painted
+            at the wrong spot first: `useLayoutEffect` runs before paint, so the
+            hidden frame never reaches the screen. z above the chapter bar,
+            which is what was covering the first two rows.
+          */
+          style={{
+            position: 'fixed',
+            top: listPos?.top ?? 0,
+            left: listPos?.left ?? 0,
+            visibility: listPos ? 'visible' : 'hidden',
+          }}
+          className="z-[3000] w-64 overflow-hidden rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--popover))] shadow-lg"
+        >
           {matches.map((s, i) => {
             const Icon = s.type === 'create' ? Plus : KIND_ICON[s.kind]
             return (
@@ -174,7 +232,21 @@ export function SceneDraftEditor({
                 key={`${s.type}:${s.kind}:${s.type === 'existing' ? s.id : s.name}`}
                 // Keep textarea focus (avoid onBlur/save) while clicking.
                 onMouseDown={(e) => { e.preventDefault(); select(s) }}
-                onMouseEnter={() => setHighlight(i)}
+                /*
+                  `mousemove`, not `mouseenter`. Now that the list opens at the
+                  caret it can appear directly under a pointer that is not
+                  moving — the pointer is wherever the writer last clicked into
+                  the prose — and `mouseenter` fires on appearance, silently
+                  moving the selection off the row the typing had chosen. That
+                  turned Enter on an exact match into a paragraph break, because
+                  the highlighted row had become a *create* row and Enter
+                  rightly refuses to invent a record.
+
+                  `mousemove` only fires when the pointer actually moves, so
+                  hovering still works and appearing under a still pointer does
+                  not steal the choice.
+                */
+                onMouseMove={() => setHighlight(i)}
                 className={`flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs transition-colors ${
                   i === highlight ? 'bg-[hsl(var(--accent))]' : ''
                 }`}

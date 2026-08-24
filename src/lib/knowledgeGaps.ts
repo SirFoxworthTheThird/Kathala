@@ -21,6 +21,9 @@ export interface SceneKnowledgeGap {
  * The reader's "learned at" is taken from `fact.readerLearnsAtEventId` when set,
  * otherwise derived from POV: the reader learns a fact at the first event whose
  * POV character already knows it. Everything is read against narrative order.
+ *
+ * A book that records no POV on any scene gives no way to derive it, and a fact
+ * with nothing stated and nothing derivable produces no gap at all.
  */
 export function computeSceneKnowledgeGaps({
   facts, reveals, events, chapters, presentCharacterIds, activeEventId,
@@ -54,9 +57,32 @@ export function computeSceneKnowledgeGaps({
     if (prev === undefined || o < prev) byChar.set(r.characterId, o)
   }
 
-  /** Order at which the reader learns a fact (explicit, or derived from POV). */
-  function readerOrder(fact: KnowledgeFact): number {
+  /*
+    Does the book say where the reader stands, anywhere at all?
+
+    The reader's position is either stated on the fact or derived from POV, and
+    POV is optional, empty by default, and set behind a `+ Point of View` chip on
+    the scene card. With no POV recorded anywhere, the derivation had nothing to
+    read and returned Infinity — "the reader never learns this" — so every fact
+    in a new world was reported WITHHELD. Three facts, three gaps, all false; on
+    a book with forty facts, forty red herrings and no clue what caused them.
+    Setting POV on a single scene cleared all three at once, which is the tell.
+
+    Infinity is a claim, and this had no evidence for it. So when the book
+    records no POV at all, a fact with no explicit `readerLearnsAtEventId` has an
+    *unknown* reader position rather than a late one, and no gap is reported from
+    it. A book that sets POV somewhere is still checked everywhere — partial data
+    is data.
+  */
+  const povIsRecorded = ordered.some((ev) => ev.povCharacterId)
+
+  /**
+   * Order at which the reader learns a fact (explicit, or derived from POV).
+   * `null` when the book gives no way to tell.
+   */
+  function readerOrder(fact: KnowledgeFact): number | null {
     if (fact.readerLearnsAtEventId) return order.get(fact.readerLearnsAtEventId) ?? Infinity
+    if (!povIsRecorded) return null
     const byChar = learnedOrder.get(fact.id)
     if (!byChar) return Infinity
     for (const ev of ordered) {
@@ -80,7 +106,10 @@ export function computeSceneKnowledgeGaps({
       if (learned !== undefined && learned <= cursorOrder) knownBy.push(cid)
       else unknownBy.push(cid)
     }
-    const readerKnows = readerOrder(fact) <= cursorOrder
+    const reader = readerOrder(fact)
+    // No way to tell where the reader stands: say nothing rather than guess.
+    if (reader === null) continue
+    const readerKnows = reader <= cursorOrder
 
     if (readerKnows && unknownBy.length > 0) {
       gaps.push({ fact, readerKnows, knownBy, unknownBy, kind: 'irony' })
