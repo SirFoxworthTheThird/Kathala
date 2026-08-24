@@ -63,6 +63,25 @@ and durable backup. It is entirely local: no network work is required for a muta
   the tombstone set (`src/lib/mergeTombstones.ts`). A record edited *after* its deletion is kept —
   keeping is recoverable, discarding later work is not — and its stale tombstone is dropped.
 
+**A resolved snapshot is not a record at this scene.** `useBestSnapshots`,
+`resolveSnapshot` and `useResolvedCharacterSnapshot` return each character's
+*last known* state at or before the cursor — a record whose `eventId` is often an
+**earlier** scene. Spreading one into `upsertSnapshot` carries that `eventId`,
+and the write lands on the earlier scene, rewriting an assertion about a moment
+the writer was not editing. That mistake has been made four times, in four
+places, and cost data every time: the checker's move fix, the Current State
+item hand-off, the map panel's inventory transfer, and the location panel's
+`id` collision. Each fix was one word.
+
+The two are the same TypeScript type and a spread is exactly the operation that
+hides the difference, so the guard is a rule rather than a signature:
+`src/lib/__tests__/snapshotWriteScenes.test.ts` requires every `upsertSnapshot`
+call that spreads to name its `eventId` — including the call sites that would
+have inherited it correctly, because a uniform rule is the only kind the
+dangerous case cannot hide inside. Drop the identity fields (`id`, `sortKey`,
+`createdAt`, `updatedAt`) when you spread, too: `upsertSnapshot` assigns the id
+after the spread, but a stray one is still a lie about which row you mean.
+
 ### State (`src/store/index.ts`)
 Single Zustand store (`useAppStore`) with slices for: active world/event/map, map drill-down history stack, playback, and UI panel open/close state. Only `activeWorldId`, `activeEventId`, `sidebarOpen`, `navPinned`, `barScope`, and `theme` are persisted (localStorage key: `plotweave-ui`).
 

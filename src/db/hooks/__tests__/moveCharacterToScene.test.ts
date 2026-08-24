@@ -97,6 +97,32 @@ describe('upsertSnapshot given a whole record to copy', () => {
   })
 })
 
+/**
+ * The fault the whole `snapshotWriteScenes` rule exists for, at the data layer:
+ * a *resolved* snapshot — one whose `eventId` is an earlier scene — spread into
+ * a write. The write must land where the caller says, leaving the earlier record
+ * exactly as the writer left it.
+ */
+describe('writing from a record resolved at an earlier scene', () => {
+  it('lands where it is told and leaves the earlier scene alone', async () => {
+    const earlier = await upsertSnapshot({
+      worldId: W, characterId: CHAR, eventId: 'ev-ch2',
+      isAlive: true, currentLocationMarkerId: THERE, currentMapLayerId: MAP,
+      inventoryItemIds: ['item-letter'], inventoryNotes: '', statusNotes: '', travelModeId: null,
+    })
+
+    // What every caller now does: drop the identity fields, name the scene.
+    const { id: _id, sortKey: _k, createdAt: _c, updatedAt: _u, ...held } = earlier
+    await upsertSnapshot({ ...held, eventId: 'ev-ch3', inventoryItemIds: [] })
+
+    expect((await db.characterSnapshots.get(earlier.id))?.inventoryItemIds).toEqual(['item-letter'])
+    const written = await db.characterSnapshots
+      .where('[characterId+eventId]').equals([CHAR, 'ev-ch3']).first()
+    expect(written?.inventoryItemIds).toEqual([])
+    expect(written?.id).not.toBe(earlier.id)
+  })
+})
+
 describe('moveCharacterToScene', () => {
   it('carries the inventory forward from the last record', async () => {
     await upsertSnapshot({

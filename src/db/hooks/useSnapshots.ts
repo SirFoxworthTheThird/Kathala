@@ -280,6 +280,9 @@ export async function carryFieldForward<K extends keyof CharacterSnapshot>(
 ): Promise<void> {
   if (targets.length === 0) return
   await journalGroup(() => Promise.all(
-    targets.map((s) => upsertSnapshot({ ...s, [field]: value })),
+    // `eventId` named although it is the record's own: a write that spreads has
+    // to say which scene it lands on, so that the one dangerous case — spreading
+    // a *resolved* snapshot — cannot hide among the safe ones.
+    targets.map((s) => upsertSnapshot({ ...s, eventId: s.eventId, [field]: value })),
   ))
 }

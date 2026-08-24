@@ -169,7 +169,9 @@ export function CharacterSnapshotPanel({
 
   async function saveField(patch: Partial<Omit<CharacterSnapshot, 'id' | 'worldId' | 'characterId' | 'eventId' | 'createdAt' | 'updatedAt'>>) {
     if (!activeEventId) return
-    await upsertSnapshot({ ...baseData(), ...patch })
+    // `eventId` named even though `baseData()` sets it: every write that spreads
+    // has to say which scene it lands on. See `snapshotWriteScenes.test.ts`.
+    await upsertSnapshot({ ...baseData(), ...patch, eventId: activeEventId })
   }
 
   async function handleAliveToggle() {
@@ -181,13 +183,27 @@ export function CharacterSnapshotPanel({
   }
 
   async function handleAddInventory(itemId: string) {
-    // Remove from any other character's snapshot at this moment first
+    /*
+      Take it out of whoever had it — **recorded at this moment**, not written
+      back over the scene where they last held it.
+
+      `useBestSnapshots` resolves each character's last known record at or before
+      the cursor, so for someone untouched since an earlier chapter it returns
+      that earlier row. Spreading it carried its `eventId`, so this erased the
+      previous holder's evidence of ever having had the item. Identical to the
+      fault the Current State tab had; found by grepping for the shape after
+      fixing that one.
+    */
     const others = chapterSnapshots.filter(
       (s) => s.characterId !== character.id && s.inventoryItemIds.includes(itemId)
     )
     await Promise.all(
-      others.map((s) =>
-        upsertSnapshot({ ...s, inventoryItemIds: s.inventoryItemIds.filter((id) => id !== itemId) })
+      others.map(({ id: _id, sortKey: _sortKey, createdAt: _createdAt, updatedAt: _updatedAt, ...held }) =>
+        upsertSnapshot({
+          ...held,
+          eventId: activeEventId!,
+          inventoryItemIds: held.inventoryItemIds.filter((id) => id !== itemId),
+        })
       )
     )
     const current = snapshot?.inventoryItemIds ?? []
