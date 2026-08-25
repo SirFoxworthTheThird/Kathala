@@ -159,6 +159,7 @@ export default function ChapterDetailView() {
 
   const [addEventOpen, setAddEventOpen] = useState(false)
   const [notes, setNotes] = useState('')
+  const [synopsis, setSynopsis] = useState('')
   const [showAbsent, setShowAbsent] = useState(false)
 
   const sortedEvents = [...events].sort((a, b) => a.sortOrder - b.sortOrder)
@@ -216,9 +217,14 @@ export default function ChapterDetailView() {
     ]))
   }
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const synopsisTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (chapter) setNotes(chapter.notes ?? '')
+  }, [chapter?.id])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (chapter) setSynopsis(chapter.synopsis ?? '')
   }, [chapter?.id])  // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleNotesChange(value: string) {
@@ -227,6 +233,29 @@ export default function ChapterDetailView() {
     saveTimer.current = setTimeout(() => {
       // One writing burst is one undo step, not one per typing pause.
       if (chapterId) updateChapter(chapterId, { notes: value }, { coalesce: true })
+    }, 600)
+  }
+
+  /*
+    N5: the synopsis was write-once. The Add Chapter dialog offered the field and
+    nothing anywhere edited it afterwards — `updateChapter` had three call sites,
+    for title, notes and word goal. So a wrong one was permanent short of
+    deleting the chapter, and Chapter 1, which the four-step setup guide creates
+    without asking, could never have one at all: the chapter every writer has was
+    the one chapter that could not carry a summary.
+
+    It is not decorative. It prints in the Manuscript in draft mode, in the
+    Writer's Brief and in chapter detail, it feeds the chapter-AI prompt, and it
+    is searchable once the reader has reached the chapter.
+
+    Saved like the notes beside it — debounced and coalesced, so a sentence typed
+    in one go is one undo step.
+  */
+  function handleSynopsisChange(value: string) {
+    setSynopsis(value)
+    if (synopsisTimer.current) clearTimeout(synopsisTimer.current)
+    synopsisTimer.current = setTimeout(() => {
+      if (chapterId) updateChapter(chapterId, { synopsis: value }, { coalesce: true })
     }, 600)
   }
 
@@ -297,8 +326,19 @@ export default function ChapterDetailView() {
         </Button>
         <div className="min-w-0 flex-1">
           <h2 className="text-base font-semibold">Ch. {chapter.number} — {chapter.title}</h2>
-          {chapter.synopsis && (
-            <p className="text-xs text-[hsl(var(--muted-foreground))] line-clamp-2" title={chapter.synopsis}>{chapter.synopsis}</p>
+          {gate.active ? (
+            // A reader's chapter summary is the author's writing, shown and not typed in.
+            chapter.synopsis ? (
+              <p className="text-xs text-[hsl(var(--muted-foreground))] line-clamp-2" title={chapter.synopsis}>{chapter.synopsis}</p>
+            ) : null
+          ) : (
+            <input
+              className="w-full truncate bg-transparent text-xs text-[hsl(var(--muted-foreground))] outline-none placeholder:text-[hsl(var(--muted-foreground))] focus:text-[hsl(var(--foreground))]"
+              aria-label="Chapter synopsis"
+              placeholder="One line on what happens in this chapter…"
+              value={synopsis}
+              onChange={(e) => handleSynopsisChange(e.target.value)}
+            />
           )}
         </div>
       </div>

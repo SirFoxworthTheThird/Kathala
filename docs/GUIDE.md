@@ -742,6 +742,15 @@ already on a scene inside that chapter, it stays where you put it; and while
 [reading](#reading-alongside-a-book) nothing moves at all, since there the cursor
 is your own place in the book.
 
+**The chapter's synopsis sits under its title and can be edited there**, at any
+time — click the line and type. It is the one-liner you set when the chapter was
+made, and it is no longer set-once: a chapter created by the first-run guide,
+which never asks for one, can be given a synopsis here like any other. It
+auto-saves as you type, one undo step per burst. It is worth keeping current:
+the synopsis prints in the [Manuscript](#manuscript) in draft mode, in the
+[Writer's Brief](#writers-brief), on the chapter row in the timeline, and it is
+searchable. While reading, it is shown rather than editable.
+
 An expanded scene card leads with the **scene draft** — the prose itself — and
 puts the one-line **Description** below it. An empty description is a control
 rather than a note: click it and the card opens for editing with the field ready.
