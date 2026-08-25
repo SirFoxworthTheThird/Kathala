@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { PanelHeader, PanelDangerFooter } from './PanelChrome'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Field, FieldName } from '@/components/ui/field'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -105,8 +106,9 @@ export function RouteDetailPanel({
 
         {/* Route type */}
         <div className="flex flex-col gap-1.5">
-          <Label>Type</Label>
-          <div className="flex flex-wrap gap-1.5">
+          {/* A row of buttons, so the row is named rather than one of them. */}
+          <FieldName id="route-type-label">Type</FieldName>
+          <div className="flex flex-wrap gap-1.5" role="group" aria-labelledby="route-type-label">
             {ROUTE_TYPES.map((t) => (
               <button
                 key={t}
@@ -270,8 +272,7 @@ export function RegionDetailPanel({
         </div>
 
         {/* Fill color */}
-        <div className="flex flex-col gap-1.5">
-          <Label>Fill color</Label>
+        <Field label="Fill color" className="flex flex-col gap-1.5">
           <div className="flex flex-wrap gap-2">
             {PRESET_COLORS.map((c) => (
               <button
@@ -303,7 +304,7 @@ export function RegionDetailPanel({
               </div>
             </div>
           </div>
-        </div>
+        </Field>
 
         {/* Preview swatch */}
         <div
@@ -312,8 +313,7 @@ export function RegionDetailPanel({
         />
 
         {/* Opacity */}
-        <div className="flex flex-col gap-1.5">
-          <Label>Opacity — {Math.round(opacity * 100)}%</Label>
+        <Field label={<>Opacity — {Math.round(opacity * 100)}%</>} className="flex flex-col gap-1.5">
           <input
             type="range"
             min={0.05} max={0.8} step={0.05}
@@ -321,7 +321,7 @@ export function RegionDetailPanel({
             onChange={(e) => change(setOpacity)(Number(e.target.value))}
             className="h-1.5 w-full"
           />
-        </div>
+        </Field>
 
         {/* Notes */}
         <div className="flex flex-col gap-1.5">
@@ -336,8 +336,7 @@ export function RegionDetailPanel({
         </div>
 
         {/* Owning faction */}
-        <div className="flex flex-col gap-1.5">
-          <Label>Owning faction</Label>
+        <Field label="Owning faction" className="flex flex-col gap-1.5">
           {factions.length === 0 ? (
             /* X-4 rule 2, and the twin of LP-3: the location panel got its link
                and this one, with the same copy, did not. */
@@ -372,13 +371,10 @@ export function RegionDetailPanel({
               </SelectContent>
             </Select>
           )}
-        </div>
+        </Field>
 
         {/* Sub-map link */}
-        <div className="flex flex-col gap-1.5">
-          <Label className="flex items-center gap-1.5">
-            <LinkIcon className="h-3.5 w-3.5" /> Sub-map
-          </Label>
+        <Field label={<><LinkIcon className="h-3.5 w-3.5" /> Sub-map</>} className="flex flex-col gap-1.5" labelClassName="flex items-center gap-1.5">
           {otherLayers.length > 0 && (
             <Select value={region.linkedMapLayerId ?? 'none'} onValueChange={handleLinkSubMap}>
               <SelectTrigger className="text-xs">
@@ -397,7 +393,7 @@ export function RegionDetailPanel({
               <Map className="h-3.5 w-3.5" /> Open Sub-map
             </Button>
           )}
-        </div>
+        </Field>
 
         {/*
           RG-1: a region's *status* is the one part of it that changes with the

@@ -31,7 +31,7 @@ import { PortraitImage } from '@/components/PortraitImage'
 import { charColor } from '@/lib/characterColor'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Field } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { GenerateRelationshipsDialog } from './GenerateRelationshipsDialog'
@@ -181,12 +181,10 @@ function SnapshotEditor({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1.5">
-        <Label className="text-xs">Label</Label>
+      <Field label="Label" className="flex flex-col gap-1.5" labelClassName="text-xs">
         <Input className="h-7 text-xs" value={label} onChange={(e) => setLabel(e.target.value)} />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label className="text-xs">Strength</Label>
+      </Field>
+      <Field label="Strength" className="flex flex-col gap-1.5" labelClassName="text-xs">
         <Select value={strength} onValueChange={(v) => setStrength(v as RelationshipStrength)}>
           <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -195,9 +193,8 @@ function SnapshotEditor({
             ))}
           </SelectContent>
         </Select>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label className="text-xs">Sentiment</Label>
+      </Field>
+      <Field label="Sentiment" className="flex flex-col gap-1.5" labelClassName="text-xs">
         <Select value={sentiment} onValueChange={(v) => setSentiment(v as RelationshipSentiment)}>
           <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -206,11 +203,10 @@ function SnapshotEditor({
             ))}
           </SelectContent>
         </Select>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label className="text-xs">Description</Label>
+      </Field>
+      <Field label="Description" className="flex flex-col gap-1.5" labelClassName="text-xs">
         <Textarea className="text-xs resize-none" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
-      </div>
+      </Field>
       <Button size="sm" disabled={!label.trim() || saving} onClick={save}>
         <Check className="h-3.5 w-3.5" /> Save
       </Button>
@@ -236,12 +232,10 @@ function BaseEditor({ relationship, onSaved }: { relationship: Relationship; onS
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1.5">
-        <Label className="text-xs">Label</Label>
+      <Field label="Label" className="flex flex-col gap-1.5" labelClassName="text-xs">
         <Input className="h-7 text-xs" value={label} onChange={(e) => setLabel(e.target.value)} />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label className="text-xs">Strength</Label>
+      </Field>
+      <Field label="Strength" className="flex flex-col gap-1.5" labelClassName="text-xs">
         <Select value={strength} onValueChange={(v) => setStrength(v as RelationshipStrength)}>
           <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -250,9 +244,8 @@ function BaseEditor({ relationship, onSaved }: { relationship: Relationship; onS
             ))}
           </SelectContent>
         </Select>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label className="text-xs">Sentiment</Label>
+      </Field>
+      <Field label="Sentiment" className="flex flex-col gap-1.5" labelClassName="text-xs">
         <Select value={sentiment} onValueChange={(v) => setSentiment(v as RelationshipSentiment)}>
           <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -261,11 +254,10 @@ function BaseEditor({ relationship, onSaved }: { relationship: Relationship; onS
             ))}
           </SelectContent>
         </Select>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label className="text-xs">Description</Label>
+      </Field>
+      <Field label="Description" className="flex flex-col gap-1.5" labelClassName="text-xs">
         <Textarea className="text-xs resize-none" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
-      </div>
+      </Field>
       <Button size="sm" disabled={!label.trim() || saving} onClick={save}>
         <Check className="h-3.5 w-3.5" /> Save relationship
       </Button>
@@ -317,8 +309,7 @@ function CreateRelationshipDialog({ open, onOpenChange, worldId, characters, sta
         <DialogHeader><DialogTitle>New Relationship</DialogTitle></DialogHeader>
         <form onSubmit={submit} className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label>Character A</Label>
+            <Field label="Character A" className="flex flex-col gap-1.5">
               <Select value={aId} onValueChange={setAId}>
                 {/*
                   Named, because these two sit side by side and a screen reader
@@ -330,24 +321,21 @@ function CreateRelationshipDialog({ open, onOpenChange, worldId, characters, sta
                   {characters.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>Character B</Label>
+            </Field>
+            <Field label="Character B" className="flex flex-col gap-1.5">
               <Select value={bId} onValueChange={setBId}>
                 <SelectTrigger aria-label="Character B"><SelectValue placeholder="Select…" /></SelectTrigger>
                 <SelectContent>
                   {characters.filter((c) => c.id !== aId).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <Label>Relationship Label</Label>
+          <Field label="Relationship Label" className="flex flex-col gap-1.5">
             <Input placeholder="e.g. mentor, rival, sibling" value={label} onChange={(e) => setLabel(e.target.value)} />
-          </div>
+          </Field>
           <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label>Strength</Label>
+            <Field label="Strength" className="flex flex-col gap-1.5">
               <Select value={strength} onValueChange={(v) => setStrength(v as RelationshipStrength)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -356,9 +344,8 @@ function CreateRelationshipDialog({ open, onOpenChange, worldId, characters, sta
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>Sentiment</Label>
+            </Field>
+            <Field label="Sentiment" className="flex flex-col gap-1.5">
               <Select value={sentiment} onValueChange={(v) => setSentiment(v as RelationshipSentiment)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -367,12 +354,11 @@ function CreateRelationshipDialog({ open, onOpenChange, worldId, characters, sta
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <Label>Description</Label>
+          <Field label="Description" className="flex flex-col gap-1.5">
             <Input placeholder="Optional description…" value={description} onChange={(e) => setDescription(e.target.value)} />
-          </div>
+          </Field>
           {startChapterLabel && (
             <p className="text-xs text-[hsl(var(--muted-foreground))]">
               Starts at <span className="font-medium text-[hsl(var(--foreground))]">{startChapterLabel}</span> and won't appear in earlier chapters.
@@ -775,8 +761,7 @@ export default function RelationshipGraphView() {
                 return cn !== 0 ? cn : a.sortOrder - b.sortOrder
               })
               return (
-                <div className="flex flex-col gap-1.5">
-                  <Label className="text-xs">Started in</Label>
+                <Field label="Started in" className="flex flex-col gap-1.5" labelClassName="text-xs">
                   <Select
                     value={selectedRel.startEventId ?? '__beginning__'}
                     onValueChange={async (v) => {
@@ -796,7 +781,7 @@ export default function RelationshipGraphView() {
                       })}
                     </SelectContent>
                   </Select>
-                </div>
+                </Field>
               )
             })()}
 

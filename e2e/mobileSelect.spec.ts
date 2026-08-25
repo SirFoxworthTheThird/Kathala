@@ -39,8 +39,14 @@ test('sub-map link dropdown stays within the viewport on mobile', async ({ page 
   // The drawer sits above the detail panel on mobile; close it to reveal the panel.
   await page.getByRole('button', { name: 'Close map panels' }).click()
 
-  // Open the sub-map link Select (shows "None" since this leaf has no sub-map).
-  const trigger = page.getByRole('button', { name: 'None', exact: true })
+  /*
+    Open the sub-map link Select. Its name is the field plus the value it is
+    showing — "Sub-map None", this leaf having no sub-map yet — because an
+    associated label replaces a button's content in its name rather than adding
+    to it, so the trigger names itself by both (see `useFieldLabelId`). It read
+    "None" alone while the field had no name at all.
+  */
+  const trigger = page.getByRole('button', { name: 'Sub-map None', exact: true })
   await expect(trigger).toBeVisible()
   await trigger.scrollIntoViewIfNeeded()
   await trigger.click()

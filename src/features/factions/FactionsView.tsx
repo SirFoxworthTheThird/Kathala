@@ -7,7 +7,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Field } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -92,19 +92,17 @@ function MembershipRow({
       {expanded && (
         <div className="border-t border-[hsl(var(--border))] px-3 pb-3 pt-2 flex flex-col gap-2">
           <div className="flex gap-2">
-            <div className="flex-1">
-              <Label className="text-xs">Role</Label>
+            <Field label="Role" className="flex-1" labelClassName="text-xs">
               <Input
                 className="mt-1 h-7 text-xs"
                 value={membership.role ?? ''}
                 placeholder="e.g. Leader, Spy…"
                 onChange={(e) => updateFactionMembership(membership.id, { role: e.target.value || null })}
               />
-            </div>
+            </Field>
           </div>
           <div className="flex gap-2">
-            <div className="flex-1">
-              <Label className="text-xs">From scene</Label>
+            <Field label="From scene" className="flex-1" labelClassName="text-xs">
               <Select
                 value={membership.startEventId ?? 'none'}
                 onValueChange={(v) => updateFactionMembership(membership.id, { startEventId: v === 'none' ? null : v })}
@@ -117,9 +115,8 @@ function MembershipRow({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="flex-1">
-              <Label className="text-xs">Until scene</Label>
+            </Field>
+            <Field label="Until scene" className="flex-1" labelClassName="text-xs">
               <Select
                 value={membership.endEventId ?? 'none'}
                 onValueChange={(v) => updateFactionMembership(membership.id, { endEventId: v === 'none' ? null : v })}
@@ -132,7 +129,7 @@ function MembershipRow({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
           </div>
           {(startEv || endEv) && (
             <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
@@ -141,8 +138,7 @@ function MembershipRow({
               {endEv ? `Until: ${endEv.title}` : 'Ongoing'}
             </p>
           )}
-          <div>
-            <Label className="text-xs">Notes</Label>
+          <Field label="Notes" labelClassName="text-xs">
             <Textarea
               className="mt-1 text-xs resize-none"
               rows={2}
@@ -150,7 +146,7 @@ function MembershipRow({
               placeholder="Notes about this membership…"
               onChange={(e) => updateFactionMembership(membership.id, { notes: e.target.value })}
             />
-          </div>
+          </Field>
         </div>
       )}
     </div>
@@ -385,16 +381,13 @@ function FactionDetailPanel({
           ) : null
         ) : (
           <div className="flex flex-col gap-3">
-            <div>
-              <Label>Name</Label>
+            <Field label="Name">
               <Input className="mt-1" value={name} onChange={(e) => setName(e.target.value)} onBlur={save} />
-            </div>
-            <div>
-              <Label>Description</Label>
+            </Field>
+            <Field label="Description">
               <Textarea className="mt-1 resize-none text-sm" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} onBlur={save} />
-            </div>
-            <div>
-              <Label>Colour</Label>
+            </Field>
+            <Field label="Colour">
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {PRESET_COLORS.map((c) => (
                   <button
@@ -413,14 +406,13 @@ function FactionDetailPanel({
                   title="Custom colour"
                 />
               </div>
-            </div>
+            </Field>
           </div>
         )}
 
         {/* Tags */}
         {(gate.active ? tags.length > 0 : true) && (
-          <div>
-            <Label>Tags</Label>
+          <Field label="Tags">
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {tags.map((t) => (
                 <span key={t} className="flex items-center gap-1 rounded bg-[hsl(var(--border))] px-2 py-0.5 text-xs text-[hsl(var(--foreground))]">
@@ -446,7 +438,7 @@ function FactionDetailPanel({
                 />
               )}
             </div>
-          </div>
+          </Field>
         )}
 
         {/* Members */}

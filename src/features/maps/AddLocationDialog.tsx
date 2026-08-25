@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { BlockingReason } from '@/components/BlockingReason'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Field } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { createLocationMarker } from '@/db/hooks/useLocationMarkers'
@@ -68,18 +68,16 @@ export function AddLocationDialog({
           )}
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
+          <Field label={<>Name <span className="text-[hsl(var(--muted-foreground))]">(required)</span></>} className="flex flex-col gap-1.5">
             {/* OP-6: three fields, one of them required, and nothing said which. */}
-            <Label>Name <span className="text-[hsl(var(--muted-foreground))]">(required)</span></Label>
             <Input
               placeholder="e.g. Thornwall City"
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoFocus
             />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label>Type</Label>
+          </Field>
+          <Field label="Type" className="flex flex-col gap-1.5">
             <Select value={iconType} onValueChange={(v) => setIconType(v as LocationIconType)}>
               <SelectTrigger>
                 <SelectValue />
@@ -90,16 +88,15 @@ export function AddLocationDialog({
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label>Description</Label>
+          </Field>
+          <Field label="Description" className="flex flex-col gap-1.5">
             <Textarea
               placeholder="Optional description..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
             />
-          </div>
+          </Field>
           <DialogFooter className="items-center">
             <BlockingReason className="mr-auto" checks={[{ met: !!name.trim(), need: 'a name' }]} />
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>

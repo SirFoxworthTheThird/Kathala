@@ -11,6 +11,7 @@ import { LinkImageButton } from '@/components/LinkImageButton'
 import { PortraitImage } from '@/components/PortraitImage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Field } from '@/components/ui/field'
 import { Label } from '@/components/ui/label'
 import type { TravelMode } from '@/types'
 import { CloudSyncPanel } from './CloudSyncPanel'
@@ -164,8 +165,7 @@ function WorldSettingsBody() {
         <SettingsSection id="settings-world" label="World">
 
           {/* Name */}
-          <div className="space-y-1.5">
-            <Label>Name</Label>
+          <Field label="Name" className="space-y-1.5">
             {nameEditing ? (
               <div className="flex items-center gap-2">
                 <Input
@@ -199,11 +199,10 @@ function WorldSettingsBody() {
                 <Pencil className="ml-auto h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))] transition-colors group-hover:text-[hsl(var(--foreground))]" aria-hidden="true" />
               </button>
             )}
-          </div>
+          </Field>
 
           {/* Description */}
-          <div className="space-y-1.5">
-            <Label>Description</Label>
+          <Field label="Description" className="space-y-1.5">
             {descEditing ? (
               <div className="space-y-2">
                 <textarea
@@ -235,11 +234,10 @@ function WorldSettingsBody() {
                 <Pencil className="ml-auto mt-0.5 h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))] transition-colors group-hover:text-[hsl(var(--foreground))]" aria-hidden="true" />
               </button>
             )}
-          </div>
+          </Field>
 
           {/* Cover image */}
-          <div className="space-y-1.5">
-            <Label>Cover image</Label>
+          <Field label="Cover image" className="space-y-1.5">
             <div className="flex items-center gap-4">
               <PortraitImage
                 imageId={world?.coverImageId}
@@ -275,7 +273,7 @@ function WorldSettingsBody() {
                 )}
               </div>
             </div>
-          </div>
+          </Field>
         </SettingsSection>
       )}
 

@@ -5,7 +5,7 @@ import { X, MapPin, Package, Heart, HeartOff, Plus, Footprints, ExternalLink, Ro
 import { PanelHeader } from './PanelChrome'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
+import { Field, FieldName } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PortraitImage } from '@/components/PortraitImage'
 import { InheritedBadge } from '@/components/InheritedBadge'
@@ -298,10 +298,7 @@ export function CharacterSnapshotPanel({
               {/* Status notes. Reading shows what was written, or nothing at
                   all — an empty box invites typing into it. */}
               {(!readOnly || statusNotes.trim()) && (
-                <div className="flex flex-col gap-1.5">
-                  <Label className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                    Status
-                  </Label>
+                <Field label="Status" className="flex flex-col gap-1.5" labelClassName="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
                   {readOnly ? (
                     <p className="whitespace-pre-wrap text-xs text-[hsl(var(--foreground))]">{statusNotes}</p>
                   ) : (
@@ -314,26 +311,21 @@ export function CharacterSnapshotPanel({
                       onBlur={() => saveField({ statusNotes })}
                     />
                   )}
-                </div>
+                </Field>
               )}
 
               {/* Travel mode */}
               {travelModes.length > 0 && (readOnly
                 ? (snapshot?.travelModeId && (
                   <div className="flex flex-col gap-1.5">
-                    <Label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                      <Footprints className="h-3 w-3" /> Travel Mode
-                    </Label>
+                    <FieldName className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]"><Footprints className="h-3 w-3" /> Travel Mode</FieldName>
                     <p className="text-xs text-[hsl(var(--foreground))]">
                       {travelModes.find((m) => m.id === snapshot.travelModeId)?.name ?? 'None'}
                     </p>
                   </div>
                 ))
                 : (
-                <div className="flex flex-col gap-1.5">
-                  <Label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                    <Footprints className="h-3 w-3" /> Travel Mode
-                  </Label>
+                <Field label={<><Footprints className="h-3 w-3" /> Travel Mode</>} className="flex flex-col gap-1.5" labelClassName="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
                   <Select
                     value={snapshot?.travelModeId ?? 'none'}
                     onValueChange={handleTravelMode}
@@ -348,7 +340,7 @@ export function CharacterSnapshotPanel({
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
+                </Field>
               ))}
 
               {/* Current location (read-only — change by dragging on the map) */}
@@ -375,9 +367,7 @@ export function CharacterSnapshotPanel({
 
               {/* Inventory */}
               <div className="flex flex-col gap-1.5">
-                <Label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                  <Package className="h-3 w-3" /> Inventory
-                </Label>
+                <FieldName className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]"><Package className="h-3 w-3" /> Inventory</FieldName>
 
                 {inventoryItems.length > 0 && (
                   <div className="flex flex-col gap-1">

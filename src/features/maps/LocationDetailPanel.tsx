@@ -5,7 +5,7 @@ import { PanelHeader, PanelDangerFooter } from './PanelChrome'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Field, FieldName } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useLocationMarker, updateLocationMarker, deleteLocationMarker } from '@/db/hooks/useLocationMarkers'
@@ -335,14 +335,12 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
         {/* Name / edit */}
         {editing ? (
           <>
-            <div className="flex flex-col gap-1.5">
-              <Label>Name</Label>
+            <Field label="Name" className="flex flex-col gap-1.5">
               <Input value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>Description</Label>
+            </Field>
+            <Field label="Description" className="flex flex-col gap-1.5">
               <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
-            </div>
+            </Field>
             <div className="flex gap-2">
               <Button size="sm" onClick={saveEdit} disabled={!name.trim()}>Save</Button>
               <Button size="sm" variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
@@ -363,9 +361,7 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
 
         {/* ── Characters ── */}
         <div className="flex flex-col gap-2">
-          <Label className="flex items-center gap-1.5">
-            <Users className="h-3.5 w-3.5" /> Characters here
-          </Label>
+          <FieldName className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> Characters here</FieldName>
 
           {/* No chapter selected → prompt */}
           {!activeEventId && !gate.active && (
@@ -461,10 +457,7 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
 
         {/* ── Items ── */}
         {activeEventId && (
-          <div className="flex flex-col gap-2">
-            <Label className="flex items-center gap-1.5">
-              <Package className="h-3.5 w-3.5" /> Items here
-            </Label>
+          <Field label={<><Package className="h-3.5 w-3.5" /> Items here</>} className="flex flex-col gap-2" labelClassName="flex items-center gap-1.5">
 
             {itemsHere.length > 0 && (
               <div className="flex flex-col gap-1">
@@ -516,15 +509,13 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
                 </Select>
               )
             })()}
-          </div>
+          </Field>
         )}
 
         {/* ── Chapter State ── */}
         {activeEventId && (
           <div className="flex flex-col gap-2">
-            <Label className="flex items-center gap-1.5">
-              <BookOpen className="h-3.5 w-3.5" /> Chapter State
-            </Label>
+            <FieldName className="flex items-center gap-1.5"><BookOpen className="h-3.5 w-3.5" /> Chapter State</FieldName>
             {gate.active ? (
               <>
                 <p className="text-xs capitalize text-[hsl(var(--muted-foreground))]">
@@ -586,9 +577,7 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
             if (!owner) return null
             return (
               <div className="flex flex-col gap-1.5">
-                <Label className="flex items-center gap-1.5">
-                  <Users className="h-3.5 w-3.5" /> Controlling Faction
-                </Label>
+                <FieldName className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> Controlling Faction</FieldName>
                 <span className="flex items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))]">
                   <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: owner.color }} />
                   {owner.name}
@@ -597,10 +586,7 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
             )
           })()
         ) : (
-          <div className="flex flex-col gap-1.5">
-            <Label className="flex items-center gap-1.5">
-              <Users className="h-3.5 w-3.5" /> Controlling Faction
-            </Label>
+          <Field label={<><Users className="h-3.5 w-3.5" /> Controlling Faction</>} className="flex flex-col gap-1.5" labelClassName="flex items-center gap-1.5">
             {factions.length === 0 ? (
               /* LP-3: the copy named the screen and then left you to find it. */
               <div className="flex flex-col items-start gap-1.5">
@@ -635,7 +621,7 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
                 </SelectContent>
               </Select>
             )}
-          </div>
+          </Field>
         )}
 
         {/* ── Related Lore ── */}
@@ -643,10 +629,7 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
 
         {/* ── Sub-map ── */}
         {(!gate.active || marker.linkedMapLayerId) && (
-          <div className="flex flex-col gap-1.5">
-            <Label className="flex items-center gap-1.5">
-              <Link className="h-3.5 w-3.5" /> Sub-map
-            </Label>
+          <Field label={<><Link className="h-3.5 w-3.5" /> Sub-map</>} className="flex flex-col gap-1.5" labelClassName="flex items-center gap-1.5">
             {!gate.active && (
               <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setUploadSubMapOpen(true)}>
                 <Upload className="h-3.5 w-3.5" /> Upload Sub-map
@@ -670,7 +653,7 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
                 <Map className="h-3.5 w-3.5" /> Open Sub-map
               </Button>
             )}
-          </div>
+          </Field>
         )}
       </div>
 

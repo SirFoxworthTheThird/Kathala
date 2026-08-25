@@ -4,7 +4,7 @@ import { Plus, Shield, ChevronRight, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Field } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import {
@@ -72,18 +72,16 @@ function MembershipCard({
 
       {expanded && (
         <div className="border-t border-[hsl(var(--border))] px-3 pb-3 pt-2 flex flex-col gap-2">
-          <div>
-            <Label className="text-xs">Role</Label>
+          <Field label="Role" labelClassName="text-xs">
             <Input
               className="mt-1 h-7 text-xs"
               value={membership.role ?? ''}
               placeholder="e.g. Leader, Spy…"
               onChange={(e) => updateFactionMembership(membership.id, { role: e.target.value || null })}
             />
-          </div>
+          </Field>
           <div className="flex gap-2">
-            <div className="flex-1">
-              <Label className="text-xs">From scene</Label>
+            <Field label="From scene" className="flex-1" labelClassName="text-xs">
               <Select
                 value={membership.startEventId ?? 'none'}
                 onValueChange={(v) => updateFactionMembership(membership.id, { startEventId: v === 'none' ? null : v })}
@@ -96,9 +94,8 @@ function MembershipCard({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="flex-1">
-              <Label className="text-xs">Until scene</Label>
+            </Field>
+            <Field label="Until scene" className="flex-1" labelClassName="text-xs">
               <Select
                 value={membership.endEventId ?? 'none'}
                 onValueChange={(v) => updateFactionMembership(membership.id, { endEventId: v === 'none' ? null : v })}
@@ -111,10 +108,9 @@ function MembershipCard({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
           </div>
-          <div>
-            <Label className="text-xs">Notes</Label>
+          <Field label="Notes" labelClassName="text-xs">
             <Textarea
               className="mt-1 text-xs resize-none"
               rows={2}
@@ -122,7 +118,7 @@ function MembershipCard({
               placeholder="Notes about this membership…"
               onChange={(e) => updateFactionMembership(membership.id, { notes: e.target.value })}
             />
-          </div>
+          </Field>
           <Button
             size="sm"
             variant="destructive"

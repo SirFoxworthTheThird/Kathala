@@ -5,6 +5,7 @@ import { defaultCalendar, daysPerYear } from '@/lib/calendar'
 import type { World, WorldCalendar } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { FieldName } from '@/components/ui/field'
 import { Label } from '@/components/ui/label'
 import { plural } from '@/lib/plural'
 import { CALENDAR_PRESETS } from '@/lib/calendarPresets'
@@ -162,7 +163,7 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
                 className={`h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))] transition-transform ${monthsOpen ? 'rotate-90' : ''}`}
                 aria-hidden="true"
               />
-              <Label className="cursor-pointer">Months</Label>
+              <FieldName className="cursor-pointer">Months</FieldName>
               <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
                 {plural(cal.months.length, 'entry', 'entries')}
               </span>

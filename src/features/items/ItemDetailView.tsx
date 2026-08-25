@@ -18,7 +18,7 @@ import { itemCustodyChain, describeCustodyStep } from '@/lib/itemCustody'
 import { PortraitImage } from '@/components/PortraitImage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Field } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RelatedLoreSection } from '@/features/lore'
@@ -221,22 +221,19 @@ export default function ItemDetailView() {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label>Name</Label>
+            <Field label="Name" className="flex flex-col gap-1.5">
               <Input value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>Type / Category</Label>
+            </Field>
+            <Field label="Type / Category" className="flex flex-col gap-1.5">
               <Input
                 value={iconType}
                 onChange={(e) => setIconType(e.target.value)}
                 placeholder="e.g. weapon, artifact, key item"
               />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>Description</Label>
+            </Field>
+            <Field label="Description" className="flex flex-col gap-1.5">
               <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={6} />
-            </div>
+            </Field>
             <div className="flex flex-col gap-1.5">
               <label className="flex items-start gap-2 text-sm">
                 <input
@@ -317,8 +314,7 @@ export default function ItemDetailView() {
 
             {addingArtifact && (
               <div className="flex flex-col gap-2 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3">
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs">Originates in</Label>
+                <Field label="Originates in" className="flex flex-col gap-1" labelClassName="text-xs">
                   <Select value={artifactOriginId} onValueChange={setArtifactOriginId}>
                     <SelectTrigger className="h-7 text-xs">
                       <SelectValue placeholder="Timeline…" />
@@ -329,9 +325,8 @@ export default function ItemDetailView() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs">Found / encountered in</Label>
+                </Field>
+                <Field label="Found / encountered in" className="flex flex-col gap-1" labelClassName="text-xs">
                   <Select value={artifactEncounterId} onValueChange={setArtifactEncounterId}>
                     <SelectTrigger className="h-7 text-xs">
                       <SelectValue placeholder="Timeline…" />
@@ -342,16 +337,15 @@ export default function ItemDetailView() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs">Encounter notes</Label>
+                </Field>
+                <Field label="Encounter notes" className="flex flex-col gap-1" labelClassName="text-xs">
                   <Input
                     className="h-7 text-xs"
                     placeholder='e.g. "found in archive box 14"'
                     value={artifactNotes}
                     onChange={(e) => setArtifactNotes(e.target.value)}
                   />
-                </div>
+                </Field>
                 {/* X-9 */}
                 <BlockingReason
                   className="text-[10px]"

@@ -2380,6 +2380,13 @@ something to say. That includes the ones drawn as icons alone — the scene
 steppers on the chapter bar, the add button beside a travel mode, the rename and
 delete beside a lore category.
 
+A field's name belongs to the field, so **clicking a label puts the cursor in
+the box beside it** — on Current State, in the Add Location dialog, anywhere a
+name sits above a control. Where a name sits above something that isn't a single
+control — the Alive/Deceased pair, a list of what someone is carrying — it names
+the group instead, so a screen reader is never promised a control that isn't
+there.
+
 **Controls that appear on hover cannot be clicked while they are hidden.** The
 small delete on a world card, a plot thread, a lore category, a saved scene
 version, a map route or region shows itself when you hover the row or move focus

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useId } from 'react'
 import { MapPin, Package, Plus, X, Heart, Skull, Footprints, History, Users, UserPlus } from 'lucide-react'
 import type { Character } from '@/types'
 import { useResolvedCharacterSnapshot, useBestSnapshots, useCharacterSnapshots, upsertSnapshot, carryFieldForward } from '@/db/hooks/useSnapshots'
@@ -18,7 +18,7 @@ import { describeSceneStanding, isOnStage, sceneStanding } from '@/lib/sceneStan
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
+import { Field, FieldName } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { PortraitImage } from '@/components/PortraitImage'
@@ -29,6 +29,7 @@ interface CurrentStateTabProps {
 
 export function CurrentStateTab({ character }: CurrentStateTabProps) {
   const activeEventId = useActiveEventId()
+  const statusLabelId = useId()
   const snapshot = useResolvedCharacterSnapshot(character.id, character.worldId, activeEventId)
   const isInherited = !!snapshot && snapshot.eventId !== activeEventId
   const chapterSnapshots = useBestSnapshots(character.worldId, activeEventId)
@@ -162,7 +163,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     return (
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-1.5">
-          <Label>Status</Label>
+          <FieldName>Status</FieldName>
           <span className="flex w-fit items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-2.5 py-1 text-sm">
             {snapshot.isAlive
               ? <><Heart className="h-3.5 w-3.5 text-green-400" aria-hidden="true" /> Alive</>
@@ -171,9 +172,9 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label className="flex items-center gap-1.5">
+          <FieldName className="flex items-center gap-1.5">
             <MapPin className="h-3.5 w-3.5" aria-hidden="true" /> Current Location
-          </Label>
+          </FieldName>
           <p className="text-sm text-[hsl(var(--muted-foreground))]">
             {locationName ?? <span className="italic">Unknown</span>}
           </p>
@@ -181,25 +182,25 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
 
         {travelName && (
           <div className="flex flex-col gap-1.5">
-            <Label className="flex items-center gap-1.5">
+            <FieldName className="flex items-center gap-1.5">
               <Footprints className="h-3.5 w-3.5" aria-hidden="true" /> Arrived by
-            </Label>
+            </FieldName>
             <p className="text-sm text-[hsl(var(--muted-foreground))]">{travelName}</p>
           </div>
         )}
 
         {snapshot.statusNotes && (
           <div className="flex flex-col gap-1.5">
-            <Label>Status Notes</Label>
+            <FieldName>Status Notes</FieldName>
             <p className="whitespace-pre-wrap text-sm text-[hsl(var(--muted-foreground))]">{snapshot.statusNotes}</p>
           </div>
         )}
 
         {inventory.length > 0 && (
           <div className="flex flex-col gap-2">
-            <Label className="flex items-center gap-1.5">
+            <FieldName className="flex items-center gap-1.5">
               <Package className="h-3.5 w-3.5" aria-hidden="true" /> Inventory
-            </Label>
+            </FieldName>
             <div className="flex flex-col gap-1">
               {inventory.map(({ id, item }) => (
                 <div
@@ -389,8 +390,12 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
 
       {/* Alive / Deceased */}
       <div className="flex flex-col gap-1.5">
-        <Label>Status</Label>
-        <div className="flex gap-2">
+        {/*
+          Two buttons, not one control: a <label> can only point at one of them,
+          so the pair is named as a group instead (N10).
+        */}
+        <FieldName id={statusLabelId}>Status</FieldName>
+        <div className="flex gap-2" role="group" aria-labelledby={statusLabelId}>
           <Button
             size="sm"
             variant={isAlive ? 'default' : 'outline'}
@@ -433,10 +438,10 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
       </div>
 
       {/* Location */}
-      <div className="flex flex-col gap-1.5">
-        <Label className="flex items-center gap-1.5">
-          <MapPin className="h-3.5 w-3.5" /> Current Location
-        </Label>
+      <Field
+        labelClassName="flex items-center gap-1.5"
+        label={<><MapPin className="h-3.5 w-3.5" aria-hidden="true" /> Current Location</>}
+      >
         <Select value={locationId} onValueChange={(v) => mark(() => setLocationId(v === 'none' ? '' : v))}>
           <SelectTrigger>
             <SelectValue placeholder="Unknown / not set" />
@@ -448,14 +453,14 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </Field>
 
       {/* Travel mode — how did the character get here? */}
       {travelModes.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          <Label className="flex items-center gap-1.5">
-            <Footprints className="h-3.5 w-3.5" /> Arrived by
-          </Label>
+        <Field
+          labelClassName="flex items-center gap-1.5"
+          label={<><Footprints className="h-3.5 w-3.5" aria-hidden="true" /> Arrived by</>}
+        >
           <Select value={travelModeId} onValueChange={(v) => mark(() => setTravelModeId(v === 'none' ? '' : v))}>
             <SelectTrigger>
               <SelectValue placeholder="Unknown / not specified" />
@@ -467,25 +472,26 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
               ))}
             </SelectContent>
           </Select>
-        </div>
+        </Field>
       )}
 
       {/* Status notes */}
-      <div className="flex flex-col gap-1.5">
-        <Label>Status Notes</Label>
+      <Field label="Status Notes">
         <Textarea
           placeholder="Physical condition, disguise, mood..."
           value={statusNotes}
           onChange={(e) => { setStatusNotes(e.target.value); setDirty(true) }}
           rows={2}
         />
-      </div>
+      </Field>
 
       {/* Inventory */}
       <div className="flex flex-col gap-2">
-        <Label className="flex items-center gap-1.5">
-          <Package className="h-3.5 w-3.5" /> Inventory
-        </Label>
+        {/* Heads the whole section — a list, two pickers and a note — not one
+            control, so it names rather than labels (N10). */}
+        <FieldName className="flex items-center gap-1.5">
+          <Package className="h-3.5 w-3.5" aria-hidden="true" /> Inventory
+        </FieldName>
 
         {inventoryIds.length > 0 && (
           <div className="flex flex-col gap-1">
@@ -548,6 +554,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
         <div className="flex gap-2">
           <Input
             placeholder="New item name..."
+            aria-label="New item name"
             value={newItemName}
             onChange={(e) => setNewItemName(e.target.value)}
             className="h-8 text-xs"
@@ -558,15 +565,14 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
           </Button>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <Label className="text-xs">Inventory Notes</Label>
+        <Field label="Inventory Notes" labelClassName="text-xs">
           <Textarea
             placeholder="Quantities, conditions, notes..."
             value={inventoryNotes}
             onChange={(e) => { setInventoryNotes(e.target.value); setDirty(true) }}
             rows={2}
           />
-        </div>
+        </Field>
       </div>
 
       <Button onClick={save} disabled={!dirty} className="w-full">

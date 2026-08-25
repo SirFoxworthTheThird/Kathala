@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { computeSelectPosition } from '@/lib/selectPosition'
 import { selectItemLabel } from '@/lib/selectLabel'
 import { matchesQuery } from '@/lib/selectFilter'
+import { useFieldId, useFieldLabelId } from './field'
 
 interface SelectContextValue {
   value: string
@@ -80,8 +81,19 @@ function Select({ value: controlledValue, defaultValue = '', onValueChange, chil
 }
 
 const SelectTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
-  ({ className, children, ...props }, ref) => {
+  ({ className, children, id, ...props }, ref) => {
     const { open, setOpen, triggerRef, listboxId } = React.useContext(SelectContext)
+    // The trigger is the focusable control, so a <Field>'s label points here.
+    const fieldId = useFieldId(id)
+    /*
+      Named by the label *and* its own content — see `useFieldLabelId`. Without
+      the self-reference the label simply replaces the value, and the trigger
+      stops announcing the answer it is showing. Skipped when the caller named
+      the trigger itself, which is how the triggers outside a <Field> are named.
+    */
+    const fieldLabelId = useFieldLabelId()
+    const named = props['aria-label'] !== undefined || props['aria-labelledby'] !== undefined
+    const labelledBy = !named && fieldLabelId && fieldId ? `${fieldLabelId} ${fieldId}` : undefined
 
     function handleRef(el: HTMLButtonElement | null) {
       (triggerRef as React.MutableRefObject<HTMLButtonElement | null>).current = el
@@ -92,6 +104,7 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttrib
     return (
       <button
         ref={handleRef}
+        id={fieldId}
         type="button"
         /*
           F16: the trigger was a bare button, so a screen reader announced
@@ -107,6 +120,7 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttrib
           screen-reader user can hear.
         */
         aria-haspopup="listbox"
+        aria-labelledby={labelledBy}
         aria-expanded={open}
         aria-controls={open ? listboxId : undefined}
         className={cn(

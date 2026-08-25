@@ -3,6 +3,7 @@ import { X, Eye, MapPin } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Field, FieldName } from '@/components/ui/field'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -115,8 +116,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
           </div>
 
           {characters.length > 0 && (
-            <div className="flex flex-col gap-1.5" role="group" aria-labelledby="event-cast-label">
-              <Label id="event-cast-label">Characters involved</Label>
+            <Field label="Characters involved" className="flex flex-col gap-1.5">
               {selectedChars.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-1">
                   {selectedChars.map((c) => (
@@ -141,7 +141,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
                   </SelectContent>
                 </Select>
               )}
-            </div>
+            </Field>
           )}
 
           {/*
@@ -161,8 +161,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
             exists (DEC/W19-3).
           */}
           {markers.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              <Label className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> Setting</Label>
+            <Field label={<><MapPin className="h-3.5 w-3.5" /> Setting</>} className="flex flex-col gap-1.5" labelClassName="flex items-center gap-1">
               <Select
                 value={locationMarkerId ?? '__none__'}
                 onValueChange={(v) => setLocationMarkerId(v === '__none__' ? null : v)}
@@ -177,12 +176,11 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
           )}
 
           {characters.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              <Label className="flex items-center gap-1"><Eye className="h-3.5 w-3.5" /> Point of View</Label>
+            <Field label={<><Eye className="h-3.5 w-3.5" /> Point of View</>} className="flex flex-col gap-1.5" labelClassName="flex items-center gap-1">
               <Select
                 value={povCharacterId ?? '__none__'}
                 onValueChange={(v) => setPovCharacterId(v === '__none__' ? null : v)}
@@ -220,7 +218,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
                   )}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
           )}
 
           <div className="flex flex-col gap-1.5">
@@ -251,7 +249,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
           </div>
 
           <div className="flex flex-col gap-1.5" role="group" aria-labelledby="event-status-label">
-            <Label id="event-status-label">Status</Label>
+            <FieldName id="event-status-label">Status</FieldName>
             <div className="flex gap-1">
               {EVENT_STATUSES.map((s) => (
                 <button

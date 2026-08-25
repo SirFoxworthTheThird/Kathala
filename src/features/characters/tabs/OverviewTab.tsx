@@ -9,7 +9,7 @@ import { formatInWorldDate, dateToDayNumber } from '@/lib/calendar'
 import { InWorldDatePicker } from '@/components/InWorldDatePicker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Field, FieldName } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 
 interface OverviewTabProps {
@@ -118,16 +118,13 @@ export function OverviewTab({ character }: OverviewTabProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1.5">
-        <Label>Name</Label>
+      <Field label="Name" className="flex flex-col gap-1.5">
         <Input value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label>Aliases (comma-separated)</Label>
+      </Field>
+      <Field label="Aliases (comma-separated)" className="flex flex-col gap-1.5">
         <Input value={aliases} onChange={(e) => setAliases(e.target.value)} placeholder="e.g. The Shadow, Lord of Nothing" />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label>Arc colour</Label>
+      </Field>
+      <Field label="Arc colour" className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
           <input
             type="color"
@@ -148,9 +145,9 @@ export function OverviewTab({ character }: OverviewTabProps) {
             <span className="text-xs text-[hsl(var(--muted-foreground))] italic">No colour set</span>
           )}
         </div>
-      </div>
+      </Field>
       <div className="flex flex-col gap-1.5">
-        <Label>Birth date</Label>
+        <FieldName>Birth date</FieldName>
         {calendar ? (
           <InWorldDatePicker calendar={calendar} value={birthDate} onChange={setBirthDate} setLabel="Set birth date" />
         ) : (
@@ -171,10 +168,9 @@ export function OverviewTab({ character }: OverviewTabProps) {
           </div>
         )}
       </div>
-      <div className="flex flex-col gap-1.5">
-        <Label>Description</Label>
+      <Field label="Description" className="flex flex-col gap-1.5">
         <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} />
-      </div>
+      </Field>
       <div className="flex gap-2">
         <Button size="sm" onClick={save} disabled={!name.trim()}>
           <Check className="h-3.5 w-3.5" /> Save
