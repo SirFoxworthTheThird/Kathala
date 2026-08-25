@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type KeyboardEvent } from 'react'
-import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye, History, Flame, Milestone } from 'lucide-react'
+import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye, History, Flame, Milestone, FolderInput } from 'lucide-react'
 import { TENSION_LEVELS, tensionColor, tensionLabel } from '@/lib/tension'
 import { STORY_BEATS, beatById, beatActColor } from '@/lib/storyBeats'
 import { AtSign, Spline, Sparkle } from 'lucide-react'
@@ -7,6 +7,7 @@ import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { useMotifs } from '@/db/hooks/useMotifs'
 import { SceneDraftSection } from './SceneDraftSection'
 import { EventCardBadges } from './EventCardBadges'
+import { MoveSceneDialog } from './MoveSceneDialog'
 import type { WorldEvent, EventStatus, WorldCalendar } from '@/types'
 import { EVENT_STATUSES, eventStatusConfig } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
@@ -87,6 +88,7 @@ export function EventCard({
   // Live scene word count, reported up by SceneDraftSection so the header chip
   // reflects unsaved edits without this card owning the prose state.
   const [sceneWords, setSceneWords] = useState(0)
+  const [moveOpen, setMoveOpen] = useState(false)
   const tagInputRef = useRef<HTMLInputElement>(null)
 
   const characters = useCharacters(event.worldId)
@@ -459,9 +461,21 @@ export function EventCard({
                 reorder arrows and the expand chevron beside it — a destructive
                 action with the weight of a routine one, on every scene in the
                 chapter. See `src/components/ui/menu.tsx`. */}
+            {/* N13: this menu held one item and that item was Delete. Moving a
+                scene to another chapter existed on the Corkboard and in the
+                bulk toolbar, but not where a writer opens first. */}
             <Menu label={`More actions for ${eventName}`} triggerClassName="h-6 w-6">
+              <MenuItem icon={FolderInput} label="Move to chapter…" onClick={() => setMoveOpen(true)} />
               <MenuItem icon={Trash2} label="Delete scene" danger onClick={() => setConfirmOpen(true)} />
             </Menu>
+            <MoveSceneDialog
+              open={moveOpen}
+              onOpenChange={setMoveOpen}
+              eventId={event.id}
+              timelineId={event.timelineId}
+              currentChapterId={event.chapterId}
+              sceneName={event.title || 'this scene'}
+            />
             <ConfirmDialog
               open={confirmOpen}
               onOpenChange={setConfirmOpen}

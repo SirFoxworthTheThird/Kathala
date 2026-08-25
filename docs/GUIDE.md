@@ -620,6 +620,11 @@ the full width and the curve scrolls inside it.
   of them: four Final scenes and one Idea reads *Idea*, because the chapter is
   not finished until all of it is. Hover the pill and it tells you which of the
   two it means — *Every scene is Final*, or *Least advanced of 5 scenes: Idea*.
+- **A scene's ⋯ menu also moves it.** *Move to chapter…* sends the scene to
+  another chapter of the same timeline, picking from a filterable list — the
+  same act as dragging it on the [Corkboard](#corkboard), for when you are
+  already looking at the scene. The chapter it is in is not offered, since that
+  is not a move.
 - **Deleting is always one step in.** A chapter row, a scene card, a character's
   header and a lore card each carry a **⋯** menu, and delete lives inside it,
   set apart and in red. Nothing destructive sits in the row beside the everyday
@@ -928,7 +933,10 @@ through a five-line window.
   or **compile a finished book file**: **Word (.docx)** or **EPUB**. The book
   formats build a title page (with an optional author), start each chapter on its
   own heading, and separate scenes — EPUB also gets a linked table of contents.
-  Both are generated right in the browser, so nothing leaves your device.
+  Both are generated right in the browser, so nothing leaves your device. The
+  file is named after **your world** — the book — so exporting *The Ninth Bell*
+  gives you `the-ninth-bell.md`. If the world has more than one timeline, the
+  timeline's name is added, so the exports don't overwrite each other.
 
 Empty scenes are flagged with a "write this scene" link, so the manuscript
 doubles as a checklist of what's left to draft.

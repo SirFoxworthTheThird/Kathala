@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
 import { useTimelines, useChapters, useTimelineEvents, updateChapter } from '@/db/hooks/useTimeline'
+import { useWorld } from '@/db/hooks/useWorlds'
 import { useSceneTextsByEvent } from '@/db/hooks/useManuscript'
 import { buildManuscript } from '@/lib/manuscriptCompile'
 import { cn } from '@/lib/utils'
@@ -61,6 +62,7 @@ function ChapterGoal({ chapterId, words, goal }: { chapterId: string; words: num
 export default function ManuscriptView() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
+  const world = useWorld(worldId ?? null)
   const timelines = useTimelines(worldId ?? null)
   const ordered = useMemo(() => [...timelines].sort((a, b) => a.createdAt - b.createdAt), [timelines])
   const [timelineId, setTimelineId] = useState<string | null>(null)
@@ -259,7 +261,11 @@ export default function ManuscriptView() {
         open={exportOpen}
         onOpenChange={setExportOpen}
         manuscript={manuscript}
-        title={ordered.find((t) => t.id === activeTimelineId)?.name ?? 'Manuscript'}
+        /* The book is the world. The timeline named the file and the title
+           page both, so a novel exported as its own internal grouping (N11). */
+        title={world?.name ?? 'Manuscript'}
+        timelineName={ordered.find((t) => t.id === activeTimelineId)?.name}
+        timelineCount={ordered.length}
       />
       {worldId && <FindReplaceDialog open={findOpen} onOpenChange={setFindOpen} worldId={worldId} />}
     </div>

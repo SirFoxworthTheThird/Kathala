@@ -7,6 +7,7 @@ import { compileManuscript, type BuiltManuscript, type CompileFormat } from '@/l
 import { compileDocx, compileEpub } from '@/lib/manuscriptExport'
 import { Input } from '@/components/ui/input'
 import { plural } from '@/lib/plural'
+import { manuscriptFileName } from '@/lib/manuscriptFileName'
 
 type ExportFormat = CompileFormat | 'docx' | 'epub'
 
@@ -18,20 +19,22 @@ const FORMATS: { id: ExportFormat; label: string; ext: string; mime: string; bin
   { id: 'epub', label: 'EPUB', ext: 'epub', mime: 'application/epub+zip', binary: true },
 ]
 
-function slugify(s: string): string {
-  return s.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'manuscript'
-}
-
 export function ExportManuscriptDialog({
   open,
   onOpenChange,
   manuscript,
   title,
+  timelineName,
+  timelineCount,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   manuscript: BuiltManuscript
+  /** The book's title — the world's name, which is what goes on the page. */
   title: string
+  /** Only reaches the file name, and only when there is more than one (N11). */
+  timelineName: string | undefined
+  timelineCount: number
 }) {
   const [format, setFormat] = useState<ExportFormat>('markdown')
   const [chapterTitles, setChapterTitles] = useState(true)
@@ -64,7 +67,9 @@ export function ExportManuscriptDialog({
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${slugify(title)}.${fmt.ext}`
+    a.download = manuscriptFileName({
+      worldName: title, timelineName, timelineCount, ext: fmt.ext,
+    })
     document.body.appendChild(a)
     a.click()
     a.remove()

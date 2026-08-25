@@ -250,12 +250,21 @@ test.describe('Naming things from the scene prose', () => {
     await page.getByRole('option', { name: 'Ysolde Vane' }).click()
 
     /*
-      She is on the scene… — with room to get there. This is a Dexie write and
-      a live query behind it, and the default five seconds is tight when the
-      suite is running four files at once: it went flaky exactly there, passed
-      on retry, and passes three times out of three on its own.
+      She is on the scene… — asserted through the control that takes her off it
+      again, which exists only for a cast member of *this* scene.
+
+      By her name alone this matched two elements: the cast chip, and the
+      chapter's Character States row, which appears saying "no state recorded"
+      precisely *because* she has just joined the cast. So the assertion was
+      ambiguous from the moment it started passing, and which of the two
+      resolved first was a race.
+
+      Room to get there, too: this is a Dexie write with a live query behind it,
+      and the default five seconds is tight when the suite runs four files at
+      once.
     */
-    await expect(main.getByText('Ysolde Vane')).toBeVisible({ timeout: 15_000 })
+    await expect(main.getByRole('button', { name: 'Remove Ysolde Vane from this scene' }))
+      .toBeVisible({ timeout: 15_000 })
     // …and the box still invites the next one, rather than wearing her name.
     await expect(main.getByRole('button', { name: '+ Add character…' })).toBeVisible()
     await expect(main.getByRole('button', { name: 'Ysolde Vane', exact: true })).toHaveCount(0)
