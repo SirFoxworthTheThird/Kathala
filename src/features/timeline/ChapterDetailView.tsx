@@ -13,6 +13,7 @@ import { useGate } from '@/db/hooks/ReadingGateContext'
 import { chapterWithheld } from '@/lib/chapterReached'
 import { Button } from '@/components/ui/button'
 import { EventCard } from './EventCard'
+import { RecordStateInline } from './RecordStateInline'
 import { SnapshotCard } from './SnapshotCard'
 import { AddEventDialog } from './AddEventDialog'
 import { EmptyState } from '@/components/EmptyState'
@@ -37,15 +38,19 @@ function EventSnapshotSection({
   event,
   snapshots,
   characters,
+  worldId,
   onRecordState,
 }: {
   event: WorldEvent
   snapshots: ReturnType<typeof useChapterEventSnapshots>
   characters: Character[]
+  worldId: string
   /** Absent while reading: this is a readout then, not a way in. */
   onRecordState?: (characterId: string, eventId: string) => void
 }) {
   const [open, setOpen] = useState(true)
+  /** Which gap row has the quick form open, if any — one at a time. */
+  const [recording, setRecording] = useState<string | null>(null)
   const eventSnapshots = snapshots.filter((s) => s.eventId === event.id)
   const uncast = castWithoutState(event, snapshots, characters)
 
@@ -75,15 +80,33 @@ function EventSnapshotSection({
             /*
               F15's other half: the row told you a state was missing and gave
               you no way to record it — filling the gap it names cost six to
-              eight clicks across three screens. It is the way there now, which
-              is the same move the Arc grid's cells make.
+              eight clicks across three screens.
+
+              It routed to the character's own page next, which made it one
+              click and a change of screen. Both writer runs still priced the
+              whole act at six to eight interactions, so the row now *takes* the
+              answer: the three questions somebody walking down a cast is
+              answering, in place, with the full editor still one click away.
             */
+            if (onRecordState && recording === c.id) {
+              return (
+                <RecordStateInline
+                  key={c.id}
+                  worldId={worldId}
+                  characterId={c.id}
+                  characterName={c.name}
+                  eventId={event.id}
+                  onDone={() => setRecording(null)}
+                  onOpenFullEditor={() => { setRecording(null); onRecordState(c.id, event.id) }}
+                />
+              )
+            }
             const Row = onRecordState ? 'button' : 'div'
             return (
             <Row
               key={c.id}
               data-cast-without-state={c.id}
-              onClick={onRecordState ? () => onRecordState(c.id, event.id) : undefined}
+              onClick={onRecordState ? () => setRecording(c.id) : undefined}
               title={onRecordState ? `Record ${c.name}'s state in this scene` : undefined}
               /*
                 F15: the caption was `shrink-0` and the name was not, so in a
@@ -410,6 +433,7 @@ export default function ChapterDetailView() {
                 event={ev}
                 snapshots={allSnapshots}
                 characters={characters}
+                worldId={worldId ?? ''}
                 onRecordState={gate.active ? undefined : (characterId, eventId) => {
                   // The cursor first, so the panel opens on the scene the gap
                   // is in rather than wherever the writer happened to be.

@@ -109,7 +109,7 @@ test.describe('the screens that name a gap are the way to fill it', () => {
     expect(page.url()).toContain('/characters/corvin?tab=state')
   })
 
-  test('and one click from the cast row that names the gap', async ({ page }) => {
+  test('and in place from the cast row that names the gap', async ({ page }) => {
     const worldId = await worldWithAGap(page)
     await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
     await page.waitForTimeout(1800)
@@ -119,6 +119,22 @@ test.describe('the screens that name a gap are the way to fill it', () => {
     await expect(row.getByText('no state recorded — record it')).toBeVisible()
     await row.click()
 
+    /*
+      This used to navigate to the character's page, which was one click and a
+      change of screen. Both writer runs still priced the whole act at six to
+      eight interactions, so the row takes the answer where it stands — see
+      `e2e/recordStateInline.spec.ts` for the recording itself.
+    */
+    await expect(page.getByRole('button', { name: 'Record state' })).toBeVisible()
+    await expect(page).toHaveURL(/timeline\/ch1/)
+
+    /*
+      And the route this test was written for is still here, one click further
+      in, still carrying the cursor with it — the character's page reads the
+      cursor, so arriving there on the wrong scene would be the dead end the
+      shortcut exists to avoid.
+    */
+    await page.getByRole('button', { name: 'Full editor' }).click()
     await expect(page).toHaveURL(/\/characters\/corvin\?tab=state/)
     expect(await cursorEventId(page)).toBe('ev1')
   })

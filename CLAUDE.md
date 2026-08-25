@@ -145,6 +145,32 @@ Two habits, both cheap:
   Vacuity cannot satisfy both halves. `e2e/readingMode.spec.ts` does this for
   the settings sections and the reveal-all confirm.
 
+**A mutation run that fails to build proves nothing, and it fails in the shape
+of success.** Break the fix, and the suite prints failures — except the failures
+may be `Process from config.webServer was not able to start`, because the mutant
+did not compile. "2 failed" then means the tests never ran. It has happened
+repeatedly here: `false &&` on a used binding, a now-unused import, a
+`FolderInput ? …` that tripped `no-constant-condition`. So gate the run:
+
+```
+npx tsc -b && npx eslint <files> && echo MUTANT-OK && grep -n <the mutation>
+```
+
+Chained on `&&`, never `;` — an `echo` after a semicolon prints whatever
+happened. The `grep` is the other half: confirm the mutation actually landed in
+the file, since a `replace` whose target string has drifted silently changes
+nothing and the green run then reads as a surviving mutant.
+
+**Match the whole name a control is currently showing.** A wizard step indicator
+renders *every* step's label at once — "Step 1 of 4: Begin your story", "Step 2
+of 4: Add a character" — and marks only the current one `(current)`. So
+`getByLabel(/Step 2 of 4/)` matches from the moment the wizard appears, at step
+1. A spec built on it waited for nothing, reloaded into the middle of step 1's
+writes, and would have passed on a guide that had restarted from the beginning —
+the one thing it existed to detect. Vacuous in both directions, and it passed on
+the first run. When a set of labels is rendered together, assert on what
+distinguishes the live one.
+
 **Do not describe behaviour that is not there yet.** A comment or doc block
 saying a function is bounded, gated, or retried is a claim, and reviewers read
 it as one. Journal pruning carried a paragraph about a hard ceiling before the
@@ -200,6 +226,33 @@ Renaming the first-run guide's step-1 button to "Create timeline" collided with
 the Timeline screen's own "Create Timeline" — `getByRole` matches names
 case-insensitively — and two specs began clicking the wizard while a navigation
 was still settling. Before naming a button, grep for the name.
+
+**An associated `<label>` replaces a button's accessible name, it does not add
+to it.** `<Field>` mints an id, puts it on the label's `htmlFor` and on the
+control — right for an `<input>`, whose content is not a name source, and a
+regression for a `<SelectTrigger>`, whose content is the value it is showing.
+Wrapping the location picker in a `Field` made it announce "Current Location"
+where it had announced "Château d'If": the field gained a name and the answer
+disappeared with it. Ten specs failed by looking those triggers up by their
+value, and they were right to — it is also a WCAG 2.5.3 failure, since the
+visible text was no longer in the accessible name and voice control could not
+ask for what was on screen.
+
+So a select names itself by *both*: `aria-labelledby="<labelId> <triggerId>"`,
+the self-reference splicing its own content back in, giving "Current Location
+Château d'If". `SelectTrigger` does this for any trigger inside a `Field` and
+stands back where the caller named the trigger itself. The same rule kills the
+reflex to "fix" an unnamed control with an `aria-label`: one that does not
+contain the visible text replaces correct text with different text.
+
+A label over something that is not a single control — a read-only value, a row
+of buttons — is `<FieldName>` (the same text as a `<span>`) or a `role="group"`
+with `aria-labelledby`. A `<label>` that names nothing is worse than a heading
+that names nothing: it promises a screen reader a control and does not produce
+one. `src/lib/__tests__/labelAssociation.test.ts` holds the source rule; the
+DOM half is `e2e/fieldLabels.spec.ts`, because source scanning cannot tell
+whether an id actually reaches a control — a mutant that stops `useFieldId`
+reading the context passes the scan and fails the specs.
 
 ### Documentation
 The illustrated user guide lives at `docs/GUIDE.md`, with screenshots in `docs/images/` (numbered, e.g. `24-manuscript.png`). `README.md` links to it.

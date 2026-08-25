@@ -864,6 +864,19 @@ in the world is folded into a single line at the bottom (*"36 other characters
 not in this chapter"*) which you can open when you want it. A chapter with nobody
 in it says so instead of showing a blank column.
 
+**And it takes the answer.** Click a *no state recorded* row and a short form
+opens in place: **alive or deceased**, **where they are**, and a **note** for
+this moment. It arrives filled in from where that character was last recorded —
+saying so, so you can tell it apart from something already written here — which
+makes confirming that somebody hasn't moved a single click. Saving pins it to
+that scene and nothing else.
+
+Those are the three questions worth asking while you're reading down a scene's
+cast. Everything else about a character at a moment — what they're carrying, how
+they travelled, whether they came back from the dead — lives on **Current
+State**, which the form links to as **Full editor**. What the short form doesn't
+ask about, it leaves exactly as it was.
+
 ![Chapter detail](images/05-chapter-detail.png)
 
 **A scene card shows what it holds.** A scene can carry a dozen things —
