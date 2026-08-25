@@ -16,6 +16,16 @@ import { settleNav } from './helpers/nav'
  * `src/lib/__tests__/describeOperation.test.ts`. This is about the panel: that
  * the line reaches the screen, and that the explanation appears exactly when
  * there is something to explain.
+ *
+ * A later blind run (N6) found the other half of the same complaint: naming the
+ * *field* was not enough, because the row still did not say which record it was
+ * about. Seventeen accepted continuity fixes produced seventeen rows reading
+ * *"Edited scene — involved characters"*, and undo was pressed five times into
+ * work the panel had given no way to recognise. The record's name is now
+ * resolved from the store — an update stores only the fields it changed, so it
+ * is the only place it can come from — and the last test here is the one that
+ * would have caught it: two edits of the same kind, on the same screen, that
+ * must not read the same.
  */
 
 const panel = (page: Page) => page.getByRole('dialog', { name: 'Recent changes' })
@@ -68,7 +78,43 @@ test.describe('Recent changes says what changed', () => {
     await page.waitForTimeout(1500)
 
     await openRecentChanges(page)
-    await expect(panel(page).getByText('Edited chapter — notes')).toBeVisible()
+    await expect(panel(page).getByText('Edited chapter “The First Chapter” — notes')).toBeVisible()
+  })
+
+  /**
+   * The finding, in the smallest shape that reproduces it: two edits of the
+   * same kind to two different records. Before the name was resolved these
+   * were the same sentence twice, and the panel is where you choose what to
+   * undo.
+   */
+  test('tells two edits of the same kind apart', async ({ page }) => {
+    await worldWithAScene(page)
+
+    await page.getByLabel("Writer's notes for this chapter").fill('Remember the gate.')
+    await expect(page.getByText('Auto-saved')).toBeVisible()
+    await page.waitForTimeout(1500)
+
+    // A second chapter, edited the same way. Back to the timeline first.
+    await page.getByRole('link', { name: /timeline/i }).first().click()
+    await settleNav(page)
+    await page.getByRole('button', { name: 'Add Chapter' }).first().click()
+    await page.getByPlaceholder('Chapter title').fill('The Second Chapter')
+    await page.getByRole('button', { name: 'Add Chapter' }).last().click()
+    await expect(page.getByRole('main').getByText('The Second Chapter').first()).toBeVisible()
+    await page.getByTitle('Open chapter detail').last().click()
+    await settleNav(page)
+    // Empty notes are how we know this is the *second* chapter's editor and not
+    // the first one still mounted — the first chapter's notes are filled in
+    // above, and without this the second edit lands on chapter one and the two
+    // rows agree for the wrong reason.
+    await expect(page.getByLabel("Writer's notes for this chapter")).toHaveValue('')
+    await page.getByLabel("Writer's notes for this chapter").fill('And the bell.')
+    await expect(page.getByText('Auto-saved')).toBeVisible()
+    await page.waitForTimeout(1500)
+
+    await openRecentChanges(page)
+    await expect(panel(page).getByText('Edited chapter “The Second Chapter” — notes')).toBeVisible()
+    await expect(panel(page).getByText('Edited chapter “The First Chapter” — notes')).toBeVisible()
   })
 
   /**

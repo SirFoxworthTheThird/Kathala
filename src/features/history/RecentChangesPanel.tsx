@@ -25,7 +25,7 @@ export function RecentChangesPanel({ worldId }: { worldId: string | null }) {
   const setOpen = useAppStore((s) => s.setHistoryOpen)
   // Only subscribe while open — the panel is mounted for the whole session, and
   // an idle live query would re-read the journal on every write.
-  const { stack, undo, canUndo } = useUndo(open ? worldId : null)
+  const { stack, subjects, undo, canUndo } = useUndo(open ? worldId : null)
   // Sampled once per open rather than read during render, so the relative times
   // don't shift on unrelated re-renders.
   const [now, setNow] = useState(() => Date.now())
@@ -88,7 +88,7 @@ export function RecentChangesPanel({ worldId }: { worldId: string | null }) {
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm text-[hsl(var(--foreground))]">
-                      {describeOperation(op)}
+                      {describeOperation(op, subjects.get(op.id))}
                     </p>
                     <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
                       {relativeTime(op.createdAt, now)}

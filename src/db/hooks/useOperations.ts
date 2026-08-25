@@ -15,6 +15,7 @@ import {
   redoableBatch,
 } from '@/lib/operations'
 import { ENTITY_TABLE } from '@/lib/entityTables'
+import { SUBJECT_OWNER, needsSubjectLookup, recordName } from '@/lib/operationSubject'
 import type { PruneLimits } from '@/lib/operations'
 import type { Operation, OperationEntity, OperationType, Tombstone } from '@/types/operation'
 
@@ -474,6 +475,67 @@ export function useUndoHead(worldId: string | null) {
     undefined,
   )
 }
+
+/**
+ * What each operation is about, keyed by operation id.
+ *
+ * Only operations whose payload cannot name themselves are looked up — see
+ * `needsSubjectLookup`. Each lookup is a primary-key read, and a snapshot costs
+ * two: the snapshot names a character or an item, not itself.
+ *
+ * Absent from the map means "no name to show", not "not loaded": a record that
+ * has since been deleted, or one that never had a name. The caller falls back
+ * to the bare entity label, which is what every row used to say.
+ */
+export async function resolveSubjects(ops: readonly Operation[]): Promise<Map<string, string>> {
+  const out = new globalThis.Map<string, string>()
+  for (const op of ops) {
+    if (!needsSubjectLookup(op)) continue
+    const name = await subjectFor(op)
+    if (name) out.set(op.id, name)
+  }
+  return out
+}
+
+async function subjectFor(op: Operation): Promise<string | null> {
+  const owner = SUBJECT_OWNER[op.entityType]
+  if (!owner) return recordName(await tableFor(op.entityType)?.get(op.entityId))
+
+  // The foreign key is on the snapshot. A create's payload is the whole
+  // snapshot and already has it; an update's payload has only the fields it
+  // touched, so the row itself has to be read.
+  let ownerId = op.payload[owner.key]
+  if (typeof ownerId !== 'string') {
+    const record = await tableFor(op.entityType)?.get(op.entityId)
+    ownerId = record?.[owner.key]
+  }
+  if (typeof ownerId !== 'string') return null
+  const table = (db as unknown as Record<string, unknown>)[owner.table] as
+    | Table<Record<string, unknown>, string>
+    | undefined
+  return recordName(await table?.get(ownerId))
+}
+
+/**
+ * The live version of `resolveSubjects`, for the panel and the toolbar button.
+ *
+ * Live rather than resolved once because the name it shows is the record's
+ * name *now*: rename a scene and the history rows about it follow, which is
+ * what makes them a way to find the record rather than a quotation of it.
+ */
+export function useOperationSubjects(ops: readonly Operation[]): Map<string, string> {
+  const key = ops.map((op) => op.id).join(',')
+  return useLiveQuery(
+    () => resolveSubjects(ops),
+    // Keyed by the ids rather than the array, which is a fresh object on every
+    // live-query emission and would re-run this forever.
+    [key],
+    EMPTY_SUBJECTS,
+  )
+}
+
+/** Shared so the pre-resolution render isn't a new Map on every pass. */
+const EMPTY_SUBJECTS: Map<string, string> = new globalThis.Map()
 
 export function useUndoStack(worldId: string | null, limit = 30) {
   return useLiveQuery(

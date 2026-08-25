@@ -1,4 +1,5 @@
 import { ENTITY_LABEL } from '@/lib/entityTables'
+import { recordName } from '@/lib/operationSubject'
 import type { Operation, OperationEntity, OperationType, Tombstone } from '@/types/operation'
 
 /**
@@ -114,10 +115,10 @@ export function coalesceOperations(prev: Operation, next: Operation): Operation 
  * a created character that reads "Deleted…", the opposite of what the button is
  * about to do. This flips the verb so the label matches the effect.
  */
-export function describeInverse(op: Operation): string {
+export function describeInverse(op: Operation, subject?: string | null): string {
   const flipped: OperationType =
     op.type === 'create' ? 'delete' : op.type === 'delete' ? 'create' : 'update'
-  return describeOperation({ ...op, type: flipped })
+  return describeOperation({ ...op, type: flipped }, subject)
 }
 
 /** A short human description of an operation, for the history list and toasts. */
@@ -173,21 +174,22 @@ export function describeChangedFields(fields: readonly string[]): string | null 
   return `${labels[0]}, ${labels[1]} and ${labels.length - 2} more`
 }
 
-export function describeOperation(op: Operation): string {
+export function describeOperation(op: Operation, subject?: string | null): string {
   const label = ENTITY_LABEL[op.entityType] ?? 'record'
-  const name = typeof op.payload.name === 'string' && op.payload.name.trim()
-    ? op.payload.name.trim()
-    : typeof op.payload.title === 'string' && op.payload.title.trim()
-      ? op.payload.title.trim()
-      : null
+  // The payload first: for a create and a delete it holds the whole record, so
+  // it names the thing without a read. `subject` is what the store says the
+  // record is called now, and is the only source an ordinary update has — an
+  // update stores just the fields it touched, and a scene's cast edit carries
+  // no title at all.
+  const name = recordName(op.payload) ?? (subject?.trim() || null)
   const verb = op.type === 'create' ? 'Added' : op.type === 'delete' ? 'Deleted' : 'Edited'
-  const subject = name ? `${verb} ${label} “${name}”` : `${verb} ${label}`
+  const opening = name ? `${verb} ${label} “${name}”` : `${verb} ${label}`
   // No test on `op.type` here: `makeOperation` records `changedFields` only for
   // an update, so a create and a delete already arrive with none — a guard
   // would be dead code reading like the rule. The fallback is for operations
   // written before the field existed, which are still in people's browsers.
   const detail = describeChangedFields(op.changedFields ?? [])
-  return detail ? `${subject} — ${detail}` : subject
+  return detail ? `${opening} — ${detail}` : opening
 }
 
 /**

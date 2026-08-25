@@ -1859,11 +1859,13 @@ it's right under your thumb.
 
 **Recent changes** (the clock icon in the top bar, or in the menu on a phone)
 lists your recent edits, newest first, with the time each happened. Each entry
-says what it touched — *Edited chapter — notes*, *Edited scene — tension and
-title* — so you can tell one edit from the next without opening anything. Only
-the newest can be undone, and the panel says so once there's more than one
-entry: history is a stack, so taking one from the middle would leave the later
-edits resting on a state that never existed.
+names the record and what it touched — *Edited chapter “The Bell Tower” —
+notes*, *Edited scene “The gate opens” — tension and title* — so you can tell
+one edit from the next, and recognise your own work, without opening anything.
+The name is the record's current one, so renaming something updates the history
+entries that mention it. Only the newest can be undone, and the panel says so
+once there's more than one entry: history is a stack, so taking one from the
+middle would leave the later edits resting on a state that never existed.
 
 ![Recent changes](images/53-recent-changes.png)
 
