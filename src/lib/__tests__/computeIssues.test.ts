@@ -360,7 +360,8 @@ describe('craft observations are not filed as warnings', () => {
     input.chapters = [chapter('c1', 1)]
     input.characters = [character('mira', 'Mira'), character('rell', 'Rell')]
     input.allEvents = [
-      // A book whose habit is to switch every scene, then does not.
+      // A book whose habit is to switch every scene, then does not. Five in a
+      // row, which is the floor: four is a moment, not a stretch.
       event('e1', 'c1', 0, { povCharacterId: 'rell' }),
       event('e2', 'c1', 1, { povCharacterId: 'mira' }),
       event('e3', 'c1', 2, { povCharacterId: 'rell' }),
@@ -368,6 +369,7 @@ describe('craft observations are not filed as warnings', () => {
       event('e5', 'c1', 4, { povCharacterId: 'mira' }),
       event('e6', 'c1', 5, { povCharacterId: 'mira' }),
       event('e7', 'c1', 6, { povCharacterId: 'mira' }),
+      event('e8', 'c1', 7, { povCharacterId: 'mira' }),
     ]
     const found = computeContinuityIssues(input).filter((i) => i.kind === 'pov-consecutive')
     expect(found).toHaveLength(1)
@@ -1091,6 +1093,26 @@ describe('a long run of one point of view', () => {
     // every single scene.
     expect(runsFound([1, 1, 1, 1, 2])).toHaveLength(0)
   })
+
+  /**
+   * And needs five, which is the measured half of the rule.
+   *
+   * On the shipped Monte Cristo the median run is 1, so twice it is 2 and the
+   * smallest reportable run already cleared the bar — twelve findings, eight of
+   * them runs of three or four. Three scenes in one head is a paragraph of a
+   * book that changes viewpoint constantly. With the floor the same book
+   * reports three: the run of ten, and the two of five.
+   */
+  it('does not name three or four scenes in a book that alternates every one', () => {
+    expect(runsFound([1, 1, 1, 1, 3])).toHaveLength(0)
+    expect(runsFound([1, 1, 1, 1, 4])).toHaveLength(0)
+  })
+
+  it('but does name five — the pair, so the floor is a floor and not a wall', () => {
+    const found = runsFound([1, 1, 1, 1, 5])
+    expect(found).toHaveLength(1)
+    expect(found[0].message).toContain('5 scenes running')
+  })
 })
 
 /**
@@ -1150,5 +1172,67 @@ describe('a faction departure with nothing after it', () => {
    */
   it('is not reported for someone who dies as they leave', () => {
     expect(gaps(world({ dies: true }))).toEqual([])
+  })
+})
+
+/**
+ * What kind of book this is.
+ *
+ * The POV checks assume nothing about that, and two shapes would be ruinous if
+ * they did: a novel told entirely from one character, and one told by a narrator
+ * with no POV character at all. Either would collect a finding on every scene
+ * from a naive rule — the shape of fault that once made the checker look broken
+ * on a flagship example.
+ *
+ * Both are handled, and both are handled by design rather than by luck, so this
+ * pins the behaviour the comments in `computeIssues` claim. The single-POV case
+ * falls out of measuring a run against the book's *median* run: one run means
+ * the median is that run, and nothing can exceed twice itself. The narrator case
+ * falls out of `pov-missing` asking whether the book has a POV habit at all
+ * before it speaks.
+ */
+describe('books the POV checks must stay quiet about', () => {
+  function book(povOf: (i: number) => string | null, scenes = 12): ContinuityInput {
+    const input = emptyInput()
+    input.chapters = Array.from({ length: scenes }, (_, i) => chapter(`c${i}`, i + 1))
+    input.allEvents = Array.from({ length: scenes }, (_, i) => {
+      const pov = povOf(i)
+      // The POV character is in the scene, which is the ordinary case — a POV
+      // outside the cast is its own warning and would drown out this one.
+      return event(`e${i}`, `c${i}`, 0, {
+        povCharacterId: pov,
+        involvedCharacterIds: pov ? [pov] : [],
+      })
+    })
+    input.characters = [character('rell', 'Rell'), character('corvin', 'Corvin')]
+    return input
+  }
+  const povIssues = (input: ContinuityInput) =>
+    computeContinuityIssues(input).filter((i) => i.kind.startsWith('pov-'))
+
+  it('says nothing about a novel told entirely from one character', () => {
+    expect(povIssues(book(() => 'rell'))).toEqual([])
+  })
+
+  it('says nothing about a narrator — no POV character anywhere', () => {
+    expect(povIssues(book(() => null))).toEqual([])
+  })
+
+  it('still says something about a book that has a habit and breaks it', () => {
+    /*
+      The presence half: without it both absences above would be satisfied by a
+      check that never fires at all. This book alternates every scene — so its
+      median run is 1 — and then holds one POV for six.
+    */
+    const mixed = book((i) => (i < 6 ? (i % 2 ? 'rell' : 'corvin') : 'rell'))
+    const kinds = povIssues(mixed).map((i) => i.kind)
+    expect(kinds).toContain('pov-consecutive')
+  })
+
+  it('and about a scene that forgets the POV the rest of the book keeps', () => {
+    // A habit — eleven of twelve scenes — with one gap, which reads as an
+    // omission rather than as a book that does not use the field.
+    const oneGap = book((i) => (i === 7 ? null : i % 2 ? 'rell' : 'corvin'))
+    expect(povIssues(oneGap).map((i) => i.kind)).toContain('pov-missing')
   })
 })

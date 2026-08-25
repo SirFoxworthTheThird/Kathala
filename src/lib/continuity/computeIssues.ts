@@ -1339,12 +1339,28 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       docblock: *"it asks what this book's own habit is, and only speaks when a
       scene departs from it."* This asked nothing.
 
-      **A run is now notable when it is more than twice the book's median run.**
-      That yardstick handles the single-POV case without a special rule for it:
-      one run means the median *is* that run, so it can never exceed twice
-      itself and the check stays quiet. In a book that alternates every three or
-      four scenes, a run of fifteen clears it and is worth saying.
+      **A run is notable when it is more than twice the book's median run, and
+      at least five scenes long.**
+
+      The median yardstick handles the single-POV case without a special rule
+      for it: one run means the median *is* that run, so it can never exceed
+      twice itself and the check stays quiet. In a book that alternates every
+      three or four scenes, a run of fifteen clears it and is worth saying.
+
+      The floor of five is the other half, and it was measured. On the shipped
+      Monte Cristo — 149 scenes, all with a POV, 93 runs — the run lengths are
+      65×1, 16×2, 4×3, 5×4, 2×5, 1×10. The median is therefore **1**, twice it
+      is 2, and the smallest run that can possibly be reported already cleared
+      the bar: the rule had no resistance at the low end and produced twelve
+      findings, eight of them runs of three or four. Three scenes in one head is
+      a paragraph of a book that changes viewpoint constantly, not a structural
+      feature. With the floor it reports three — the run of ten across Ch. 20 to
+      Ch. 26, and the two of five — which is what a writer would want pointed
+      out.
     */
+    /** Shorter than this is a moment, not a stretch — see above. */
+    const MIN_NOTABLE_POV_RUN = 5
+
     const povEvents = allEvents
       .filter((ev) => !!ev.povCharacterId)
       .sort((a, b) => eventOrder(a.id) - eventOrder(b.id))
@@ -1370,7 +1386,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       const runEnd = run.start + run.len
       const charId = run.charId
       const runLen = run.len
-      if (runLen >= 3 && runLen > median * 2) {
+      if (runLen >= MIN_NOTABLE_POV_RUN && runLen > median * 2) {
         const char = charById.get(charId)
         const firstEv = povEvents[runStart]
         const lastEv  = povEvents[runEnd - 1]

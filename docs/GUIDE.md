@@ -2117,6 +2117,12 @@ Typical catches:
   their status to Alive on the **Current State** tab and tick **"They came back
   in this scene"**. The finding goes, and the revival is recorded in the world
   rather than dismissed.
+- A **long run of one point of view** — five scenes or more in one head, in a
+  book that usually changes viewpoint more often than that. Both halves matter:
+  a novel told entirely from one character is never reported, because its runs
+  *are* its habit, and neither is a stretch of three or four in a book that
+  alternates every scene. A book with no point-of-view characters at all — a
+  narrator — is left alone entirely.
 - A character who **leaves a faction with nothing following it**. Often that is
   the point — they walk away from the family and join nobody — so the finding
   offers *"X leaves for good"*, which records it on the membership. You can also
