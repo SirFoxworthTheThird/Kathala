@@ -110,6 +110,24 @@ function MembershipCard({
               </Select>
             </Field>
           </div>
+          {/*
+            Offered only where it means something. "Leaves for good" on an
+            ongoing membership is a control with nothing to do — the departure
+            has to exist before it can be final. It is the faction's form of a
+            subplot's *resolves here* and a character's *came back*: the writer
+            states what happened, and the check has nothing to report.
+          */}
+          {membership.endEventId && (
+            <label className="mt-1 flex items-center gap-2 text-xs text-[hsl(var(--muted-foreground))]">
+              <input
+                type="checkbox"
+                checked={!!membership.leavesForGood}
+                onChange={(e) => updateFactionMembership(membership.id, { leavesForGood: e.target.checked })}
+                className="h-3.5 w-3.5 accent-[hsl(var(--primary))]"
+              />
+              They leave for good — no allegiance follows this
+            </label>
+          )}
           <Field label="Notes" labelClassName="text-xs">
             <Textarea
               className="mt-1 text-xs resize-none"

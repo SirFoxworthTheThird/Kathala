@@ -15,7 +15,7 @@ import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
 import { useWorldMovements } from '@/db/hooks/useMovements'
-import { useFactions, useFactionMemberships, useFactionRelationships } from '@/db/hooks/useFactions'
+import { useFactions, useFactionMemberships, useFactionRelationships, updateFactionMembership } from '@/db/hooks/useFactions'
 import { usePlotThreads, updatePlotThread } from '@/db/hooks/usePlotThreads'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
@@ -455,6 +455,15 @@ export function ContinuityChecker() {
         await updateEvent(fix.eventId, {
           mentionedCharacterIds: [...mentioned, fix.characterId],
         })
+        return
+      }
+      case 'leavesForGood': {
+        /*
+          A fact about the character's allegiance: nothing follows this, and
+          that is the point. The dead never reach here — the check skips them
+          on its own, since the dead join nothing.
+        */
+        await updateFactionMembership(fix.membershipId, { leavesForGood: true })
         return
       }
       case 'resolveThread': {

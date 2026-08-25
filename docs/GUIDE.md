@@ -2100,6 +2100,15 @@ all of these are ordinary things a novel does. They are still reported, because
 on your book one of them may be exactly what you wanted to know — but they never
 sit above *"this object is in two places at once"*.
 
+**And where an observation has an answer, the app takes the answer rather than a
+dismissal.** Say where a subplot resolves, or that a character leaves a faction
+for good, and the finding goes because it has been *answered* — the same way
+ticking **"They came back in this scene"** settles a revival. What you record is
+a fact about your book, so the map, the cadence strips and the faction views know
+it too; a "hide this" button would tell them nothing. Each of these answers only
+what it answers: a resolved subplot that still goes quiet for ten chapters in the
+middle is still reported for that.
+
 Typical catches:
 
 - A character who is **alive again after dying** in an earlier chapter —
@@ -2108,6 +2117,12 @@ Typical catches:
   their status to Alive on the **Current State** tab and tick **"They came back
   in this scene"**. The finding goes, and the revival is recorded in the world
   rather than dismissed.
+- A character who **leaves a faction with nothing following it**. Often that is
+  the point — they walk away from the family and join nobody — so the finding
+  offers *"X leaves for good"*, which records it on the membership. You can also
+  tick **"They leave for good"** on the membership itself, under **Factions** on
+  the character. Someone who *dies* as they leave is never reported here: the
+  dead join nothing, and the checker knows it.
 - A **dead character** appearing in a later scene (with a one-click "mark as
   flashback" if intentional). The scene where you *record* the death is not one
   of these — that scene is where they die, so they are alive walking into it.

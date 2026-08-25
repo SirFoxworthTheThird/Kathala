@@ -1092,3 +1092,63 @@ describe('a long run of one point of view', () => {
     expect(runsFound([1, 1, 1, 1, 2])).toHaveLength(0)
   })
 })
+
+/**
+ * A departure a writer cannot answer.
+ *
+ * "X leaves 'Y' with no replacement faction" was 13 of the 50 findings measured
+ * on the shipped Monte Cristo, and not one could be acted on. Mercédès leaves
+ * the House of Morcerf for a cottage and poverty: the finding is right that
+ * nothing follows, and wrong that it is a loose end. Half the rest were the
+ * Villefort household leaving the family in the scene that destroys it — which
+ * is what death means, not a gap in the record.
+ */
+describe('a faction departure with nothing after it', () => {
+  function world(over: { leavesForGood?: boolean; dies?: boolean } = {}) {
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1), chapter('c2', 2)]
+    input.allEvents = [event('e1', 'c1', 0), event('e2', 'c2', 0)]
+    input.characters = [character('mercedes', 'Mercédès')]
+    input.allFactions = [{
+      id: 'f1', worldId: 'w', name: 'House of Morcerf', color: '#f00',
+      description: '', coverImageId: null, tags: [], createdAt: 0, updatedAt: 0,
+    }]
+    input.allMemberships = [{
+      id: 'm1', worldId: 'w', factionId: 'f1', characterId: 'mercedes',
+      role: null, startEventId: 'e1', endEventId: 'e2', notes: '',
+      ...(over.leavesForGood ? { leavesForGood: true } : {}),
+      createdAt: 0, updatedAt: 0,
+    }]
+    // A death recorded in the very scene the membership ends.
+    if (over.dies) input.snapshots = [snapshot('s1', 'mercedes', 'e2', false)]
+    return input
+  }
+
+  const gaps = (input: ContinuityInput) =>
+    computeContinuityIssues(input).filter((i) => i.kind === 'faction-gap')
+
+  it('is reported when the writer has said nothing', () => {
+    // The presence half — without it, every absence below is vacuous.
+    expect(gaps(world())).toHaveLength(1)
+  })
+
+  it('offers an answer that names the character, not a way to dismiss it', () => {
+    const fix = gaps(world())[0].fix
+    expect(fix).toMatchObject({ kind: 'leavesForGood', membershipId: 'm1' })
+    expect(fix?.label).toContain('Mercédès')
+  })
+
+  it('goes once the writer says the departure is final', () => {
+    expect(gaps(world({ leavesForGood: true }))).toEqual([])
+  })
+
+  /**
+   * The dead join nothing, so this was never a finding about them. Note the
+   * death is recorded *in* the scene the membership ends: `isDeadAtOrder` stops
+   * at the first entry at or after the order it is given, so asking about the
+   * end order itself would miss it.
+   */
+  it('is not reported for someone who dies as they leave', () => {
+    expect(gaps(world({ dies: true }))).toEqual([])
+  })
+})

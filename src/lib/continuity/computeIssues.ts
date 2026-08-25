@@ -110,6 +110,8 @@ export interface Issue {
       room they were not in.
     */
     | { kind: 'resolveThread'; label: string; threadId: string; eventId: string }
+    /** Says a departure from a faction is final — see `FactionMembership`. */
+    | { kind: 'leavesForGood'; label: string; membershipId: string }
 }
 
 /** Everything the checks read — the ContinuityChecker gathers these via hooks
@@ -1166,6 +1168,18 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           const otherEnd   = other.endEventId   ? eventOrder(other.endEventId)   : Infinity
           return otherStart <= endOrder + 1 && otherEnd > endOrder
         })
+        /*
+          The dead join nothing, so "no replacement faction" is not a finding
+          about them — it is what death means. Half the Villefort household
+          appeared here for leaving the family in the scene that destroys it.
+
+          `endOrder + 1` rather than `endOrder`: `isDeadAtOrder` stops at the
+          first entry *at or after* the order it is given, so a death recorded
+          in the very scene the membership ends would not count as dead there.
+        */
+        if (isDeadAtOrder(charId, endOrder + 1)) continue
+        // And a departure the writer has said is final is answered, not hidden.
+        if (m.leavesForGood) continue
         if (!hasOtherActive) {
           const endCh = endEvent ? chapById.get(endEvent.chapterId) : undefined
           out.push({
@@ -1174,9 +1188,14 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
             severity: 'note',
             category: 'faction',
             message: `${char.name} leaves "${faction?.name ?? '?'}" with no replacement faction`,
-            detail: `Membership ends at "${endEvent?.title ?? '?'}" (Ch. ${endCh?.number ?? '?'}) — no other faction active from this point.`,
+            detail: `Membership ends at "${endEvent?.title ?? '?'}" (Ch. ${endCh?.number ?? '?'}) — no other faction active from this point. Say they leave for good, or give them the allegiance that follows.`,
             navigatePath: endEvent ? `/worlds/${worldId}/timeline/${endEvent.chapterId}` : undefined,
             eventId: m.endEventId,
+            fix: {
+              kind: 'leavesForGood',
+              label: `${char.name} leaves for good`,
+              membershipId: m.id,
+            },
           })
         }
       }
