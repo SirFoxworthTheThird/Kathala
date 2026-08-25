@@ -41,14 +41,11 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     some other layer, so this tab read "Unknown / not set" for nine records in
     ten while the History tab beside it named the place correctly.
 
-    Every marker in the world is offered now, sorted by name rather than left in
-    Dexie's primary-key order, which for nanoid ids is arbitrary.
+    Every marker in the world is offered now. The by-name order is the hook's
+    (N9) — it was Dexie's primary-key order, which for nanoid ids is arbitrary,
+    and every other picker in the app had the same problem.
   */
   const allMarkers = useAllLocationMarkers(character.worldId)
-  const markerOptions = useMemo(
-    () => [...allMarkers].sort((a, b) => a.name.localeCompare(b.name)),
-    [allMarkers],
-  )
   const travelModes = useTravelModes(character.worldId)
   const gate = useGate()
 
@@ -446,7 +443,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="none">Unknown / not set</SelectItem>
-            {markerOptions.map((m) => (
+            {allMarkers.map((m) => (
               <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
             ))}
           </SelectContent>

@@ -1,9 +1,10 @@
 import * as React from 'react'
 import { createPortal } from 'react-dom'
-import { Check, ChevronDown } from 'lucide-react'
+import { Check, ChevronDown, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { computeSelectPosition } from '@/lib/selectPosition'
 import { selectItemLabel } from '@/lib/selectLabel'
+import { matchesQuery } from '@/lib/selectFilter'
 
 interface SelectContextValue {
   value: string
@@ -136,11 +137,27 @@ function SelectValue({ placeholder }: { placeholder?: string }) {
 interface SelectContentProps {
   children: React.ReactNode
   className?: string
+  /**
+   * Puts a filter box at the top of the list, with this as its placeholder and
+   * its accessible name.
+   *
+   * Opt-in rather than always-on: most selects in the app are a handful of
+   * options, where a box to type in is one more thing between the writer and
+   * the answer. It is for the lists that are as long as the book — see
+   * `matchesQuery`.
+   */
+  filterPlaceholder?: string
+  /** Shown when the filter excludes everything. */
+  emptyLabel?: string
 }
 
-function SelectContent({ children, className }: SelectContentProps) {
+function SelectContent({ children, className, filterPlaceholder, emptyLabel = 'No matches' }: SelectContentProps) {
   const { open, triggerRef, listboxId } = React.useContext(SelectContext)
   const [rect, setRect] = React.useState<DOMRect | null>(null)
+  const [query, setQuery] = React.useState('')
+
+  // A filter is about this opening of the list, not the last one.
+  React.useEffect(() => { if (!open) setQuery('') }, [open])
 
   React.useEffect(() => {
     if (!open || !triggerRef.current) return
@@ -160,12 +177,39 @@ function SelectContent({ children, className }: SelectContentProps) {
   // Fit the panel to the viewport so no options end up off-screen (it flips
   // above the trigger when there's more room up top, and scrolls internally).
   const pos = rect
-    ? computeSelectPosition(rect, { width: window.innerWidth, height: window.innerHeight })
+    ? computeSelectPosition(
+        rect,
+        { width: window.innerWidth, height: window.innerHeight },
+        // A filtered list is a long list, and a long list is one whose options
+        // are worth reading. The trigger that opens it is often much narrower
+        // than the options it holds.
+        filterPlaceholder ? { minWidth: 320 } : {},
+      )
     : null
+
+  /*
+    Filtering works on the item's own label — the same text `SelectItem`
+    registers for the trigger — so an option reads and matches as one thing.
+    Anything that is not a `SelectItem` (a separator, a heading) is left in
+    place: it is not an option, so it is not a candidate to exclude.
+  */
+  const shown = filterPlaceholder
+    ? React.Children.toArray(children).filter((child) => {
+        if (!React.isValidElement(child)) return true
+        const props = child.props as Partial<SelectItemProps>
+        if (typeof props.value !== 'string') return true
+        return matchesQuery(props.textValue ?? selectItemLabel(props.children), query)
+      })
+    : children
+  const empty = filterPlaceholder && React.Children.count(shown) === 0
 
   return (
     <>
-      {/* Always render hidden copy so SelectItems can register their labels */}
+      {/*
+        Always render a hidden copy of *every* child so SelectItems can register
+        their labels — including the ones the filter is currently hiding, or the
+        trigger would go blank whenever the selected option is filtered out.
+      */}
       <div style={{ display: 'none' }}>{children}</div>
 
       {open && pos && createPortal(
@@ -181,15 +225,33 @@ function SelectContent({ children, className }: SelectContentProps) {
           onMouseDown={(e) => e.stopPropagation()}
         >
           <div
-            role="listbox"
-            id={listboxId}
             style={{ maxHeight: pos.maxHeight }}
-            className={cn(
-              'overflow-auto rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--popover))] p-1 shadow-lg',
-              className
-            )}
+            className="flex flex-col overflow-hidden rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--popover))] shadow-lg"
           >
-            {children}
+            {filterPlaceholder && (
+              <div className="flex shrink-0 items-center gap-1.5 border-b border-[hsl(var(--border))] px-2">
+                <Search className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+                <input
+                  autoFocus
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={filterPlaceholder}
+                  aria-label={filterPlaceholder}
+                  className="h-8 w-full bg-transparent text-sm text-[hsl(var(--foreground))] outline-none placeholder:text-[hsl(var(--muted-foreground))]"
+                />
+              </div>
+            )}
+            <div
+              role="listbox"
+              id={listboxId}
+              className={cn('min-h-0 flex-1 overflow-auto p-1', className)}
+            >
+              {shown}
+              {empty && (
+                <p className="px-2 py-1.5 text-sm text-[hsl(var(--muted-foreground))]">{emptyLabel}</p>
+              )}
+            </div>
           </div>
         </div>,
         document.body

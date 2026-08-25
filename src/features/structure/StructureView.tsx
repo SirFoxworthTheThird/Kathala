@@ -248,11 +248,21 @@ export default function StructureView() {
                   >
                     <SelectTrigger
                       aria-label={`Assign a scene to ${slot.beat.label}`}
-                      className="h-7 w-40 shrink-0 border-dashed text-xs text-[hsl(var(--muted-foreground))]"
+                      className="h-7 w-44 shrink-0 border-dashed text-xs text-[hsl(var(--muted-foreground))]"
                     >
                       <SelectValue placeholder="+ Assign a scene…" />
                     </SelectTrigger>
-                    <SelectContent>
+                    {/*
+                      N8: this offered every scene in the book with nothing to
+                      type into — 149 options and about ten thousand pixels of
+                      list on the shipped Monte Cristo, seen four at a time.
+                      Marking one beat meant scrolling roughly forty screenfuls.
+                    */}
+                    <SelectContent
+                      className="max-h-72"
+                      filterPlaceholder="Filter scenes…"
+                      emptyLabel="No scene matches"
+                    >
                       {orderedEvents.map(({ e, label }) => (
                         <SelectItem key={e.id} value={e.id}>{label}</SelectItem>
                       ))}

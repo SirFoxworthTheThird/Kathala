@@ -1232,7 +1232,10 @@ its beats appears as a slot, in order and tinted by act.
 ![Structure board](images/45-structure.png)
 
 - **Assign a scene** to a beat from its "+ Assign a scene…" picker; the slot then
-  shows that scene (click it to jump to the scene in the timeline).
+  shows that scene (click it to jump to the scene in the timeline). The picker
+  holds every scene in the book, so it has a **filter box** at the top: type a
+  word from the title — or a chapter number and a word, in either order — and
+  the list narrows to it.
 - A **X / N beats placed** counter tells you how much of the structure is filled,
   so **gaps** — a missing midpoint, no clear climax — stand out.
 - A beat is flagged **out of order** when its scene falls earlier in the story
