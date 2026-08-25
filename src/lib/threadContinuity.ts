@@ -1,8 +1,45 @@
 import type { Chapter, PlotThread, WorldEvent } from '@/types'
 import { computeThreadCadence } from '@/lib/plotThreads'
 
-/** How long a thread may go quiet mid-story before it's worth flagging. */
-export const DORMANCY_CHAPTERS = 3
+/**
+ * How long a thread may go quiet mid-story before it's worth flagging, and how
+ * much of its own life that silence has to be.
+ *
+ * **Both, because either alone is wrong.** This was a flat three chapters, which
+ * on the shipped Monte Cristo reported 9 of its 14 threads — including *The Four
+ * Debts of Revenge*, the spine of the book, which has 52 beats across 101
+ * chapters and whose longest silence is 7. A subplot going quiet for three
+ * chapters of a 117-chapter novel is a subplot breathing.
+ *
+ * Measured on that book, by longest interior gap against the thread's own span:
+ * Four Debts 7/101, Château d'If 4/106, Benedetto 12/68, Valentine 12/67,
+ * Villefort Poisonings 15/65 — all ordinary rhythm — against *The Limits of
+ * Providence* at **32/69** and *The Truth of Yanina* at **15/44**, which really
+ * do disappear for a third of their own lives. The pair of tests reports those
+ * two and nothing else.
+ *
+ * The share is measured against the thread's life rather than the book's, so a
+ * subplot that runs six chapters and one that runs a hundred are each judged on
+ * their own rhythm.
+ */
+export const DORMANCY_CHAPTERS = 5
+/** ...and it must be more than this much of the thread's own span. */
+export const DORMANCY_SHARE = 1 / 3
+
+/**
+ * Whether a thread's longest silence is notable — shared so the dashboard's
+ * cadence strip and the checker cannot drift apart on the question.
+ */
+export function isDormant(
+  row: { longestDormancy: number; firstChapterNumber: number | null; lastChapterNumber: number | null },
+  dormancyChapters = DORMANCY_CHAPTERS,
+  share = DORMANCY_SHARE,
+): boolean {
+  if (row.longestDormancy < dormancyChapters) return false
+  if (row.firstChapterNumber === null || row.lastChapterNumber === null) return false
+  const span = row.lastChapterNumber - row.firstChapterNumber + 1
+  return row.longestDormancy > span * share
+}
 /** How many chapters may pass after a thread's last beat before it reads as dangling. */
 export const TRAILING_CHAPTERS = 3
 
@@ -85,13 +122,13 @@ export function computeThreadIssues({
       })
     }
 
-    if (row.longestDormancy >= dormancyChapters) {
+    if (isDormant(row, dormancyChapters)) {
       issues.push({
         threadId: row.thread.id,
         threadName: name,
         kind: 'dormant',
         message: `Plot thread "${name}" goes quiet mid-story`,
-        detail: `A run of ${row.longestDormancy} chapters between Ch. ${row.firstChapterNumber} and Ch. ${row.lastChapterNumber} has no beat on this thread — readers may lose the thread.`,
+        detail: `A run of ${row.longestDormancy} chapters between Ch. ${row.firstChapterNumber} and Ch. ${row.lastChapterNumber} has no beat on this thread, out of the ${(row.lastChapterNumber ?? 0) - (row.firstChapterNumber ?? 0) + 1} it runs across — readers may lose the thread.`,
         chapterNumber: row.firstChapterNumber,
       })
     }

@@ -1174,7 +1174,11 @@ side character who's quietly taken over.
 they advance. The dashboard widget then draws a **cadence strip** per thread
 across your chapters and flags trouble:
 
-- **"goes quiet for N chapters"** — a thread that disappears mid-story.
+- **"goes quiet for N chapters"** — a thread that disappears for a long stretch
+  *of its own life*: at least five chapters, and more than a third of the span
+  it runs across. Both halves matter. A subplot with a beat every few chapters
+  is breathing, not neglected, however long the book — and three quiet chapters
+  of a five-chapter thread is not a stretch.
 - **"dangling"** — a thread that was raised and then never resolved.
 
 **Say where a subplot lands.** A thread that stops advancing before the end
@@ -1228,7 +1232,8 @@ The same cadence analysis is reported as findings under **Plot threads** in the
 just visible:
 
 - **left dangling** — raised, then quiet for the last three chapters or more.
-- **goes quiet mid-story** — a run of three or more chapters with no beat.
+- **goes quiet mid-story** — a silence of five chapters or more that is also
+  more than a third of the thread's own span.
 - **has no scenes** — a thread that exists but was never tagged onto a scene.
 
 Each finding links to the chapter where the thread was last (or first) seen, and

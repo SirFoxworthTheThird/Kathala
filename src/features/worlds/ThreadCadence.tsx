@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import type { Chapter, WorldEvent } from '@/types'
 import { usePlotThreads, createPlotThread, deletePlotThread, updatePlotThread } from '@/db/hooks/usePlotThreads'
 import { computeTagCadence, type TagCadenceRow } from '@/lib/tagCadence'
+import { isDormant } from '@/lib/threadContinuity'
 import type { PlotThread } from '@/types'
 import { CadenceManager } from './CadenceManager'
 
@@ -27,7 +28,10 @@ export function ThreadCadence({ worldId, chapters, events }: {
   function warningFor(r: TagCadenceRow<PlotThread>): string | null {
     if (r.eventCount === 0) return 'no scenes tagged yet'
     if (r.trailingGap >= 3) return `dangling — last advanced Ch. ${r.lastChapterNumber}, quiet ${r.trailingGap} chapters`
-    if (r.longestDormancy >= 3) return `goes quiet for ${r.longestDormancy} chapters mid-story`
+    // The same question the checker asks, asked once — a flat three chapters
+    // here and a measured rule there would have the strip and the panel
+    // disagreeing about the same thread.
+    if (isDormant(r)) return `goes quiet for ${r.longestDormancy} chapters mid-story`
     return null
   }
 
