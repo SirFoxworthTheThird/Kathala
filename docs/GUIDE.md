@@ -1067,6 +1067,21 @@ Opening a character gives you a tabbed profile:
 
 ![Character detail](images/07-character-detail.png)
 
+**Recorded state is not an entrance.** *Current State* and a scene's **cast** are
+two different records, and both are worth keeping. A saved state says *where this
+character is* at that point in the story — which is just as useful for the ones
+who are somewhere else, and is what lets the map and the Writer's Brief answer
+"where is everyone right now". The cast says *this character is in this scene*.
+
+So a character can have a full **History** and **Appearances 0**: you have said
+where they are, but never that they are in the room. Current State says which of
+the two this scene has them in — *"Corvin Adze is not in this scene's cast"* —
+and offers **Add to this scene's cast** when they aren't in it. Adding them there
+is what puts the scene in their Appearances, on the map's scene cast, and in the
+chapter's Character States panel.
+
+![Current State says which ledger the scene has them in](images/65-scene-standing.png)
+
 **Editing an earlier scene, and how far it reaches.** State is recorded *per
 scene*: what you save at one scene holds until the next scene that records
 something of its own. So going back on a second draft to say *"actually she has

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { MapPin, Package, Plus, X, Heart, Skull, Footprints, History } from 'lucide-react'
+import { MapPin, Package, Plus, X, Heart, Skull, Footprints, History, Users, UserPlus } from 'lucide-react'
 import type { Character } from '@/types'
 import { useResolvedCharacterSnapshot, useBestSnapshots, useCharacterSnapshots, upsertSnapshot, carryFieldForward } from '@/db/hooks/useSnapshots'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
@@ -13,6 +13,8 @@ import {
   carryForwardPlan, describeCarryForward, sameFieldValue,
   type CarryField, type CarryForwardPlan,
 } from '@/lib/carryForward'
+import { updateEvent } from '@/db/hooks/useTimeline'
+import { describeSceneStanding, isOnStage, sceneStanding } from '@/lib/sceneStanding'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -62,6 +64,22 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
   const worldEvents = useWorldEvents(character.worldId)
   const worldChapters = useWorldChapters(character.worldId)
   const pushToast = useAppStore((s) => s.pushToast)
+
+  /*
+    Which of the two ledgers this scene has them in — see `sceneStanding`. The
+    state written here is not an entrance, and nothing used to say so: a blind
+    writer run recorded two characters by hand and was told "Appearances 0".
+  */
+  const activeEvent = worldEvents.find((e) => e.id === activeEventId)
+  const standing = sceneStanding(activeEvent, character.id)
+
+  async function addToCast() {
+    if (!activeEvent) return
+    if (activeEvent.involvedCharacterIds.includes(character.id)) return
+    await updateEvent(activeEvent.id, {
+      involvedCharacterIds: [...activeEvent.involvedCharacterIds, character.id],
+    })
+  }
   const diedEarlier = useMemo(() => {
     if (!activeEventId) return false
     const here = computeSortKeySync(
@@ -339,6 +357,28 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
 
   return (
     <div className="flex flex-col gap-5">
+      {/*
+        Which ledger this scene has them in. Shown for every standing, not only
+        the off-stage one — a line that appears only when something is missing
+        reads as a warning, and recording an absent character's position is what
+        this editor is for.
+      */}
+      <div className="flex items-start gap-2 text-xs text-[hsl(var(--muted-foreground))]">
+        <Users className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        <div className="flex flex-col items-start gap-1.5">
+          <span>{describeSceneStanding(standing, character.name)}</span>
+          {!isOnStage(standing) && (
+            <button
+              onClick={() => { void addToCast() }}
+              className="pw-tap inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
+            >
+              <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
+              Add to this scene's cast
+            </button>
+          )}
+        </div>
+      </div>
+
       {isInherited && (
         <div className="flex items-start gap-2 rounded-md border border-dashed border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)] px-3 py-2 text-xs text-[hsl(var(--muted-foreground))]">
           <History className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />

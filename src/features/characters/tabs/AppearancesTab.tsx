@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { BookOpen, Users, AtSign, History as HistoryIcon, Eye } from 'lucide-react'
 import type { Character } from '@/types'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
+import { useCharacterSnapshots } from '@/db/hooks/useSnapshots'
 import { useAppStore } from '@/store'
 import { useShowMoment } from '@/db/hooks/useShowMoment'
 import { cn } from '@/lib/utils'
@@ -63,6 +64,20 @@ export function AppearancesTab({ character }: AppearancesTabProps) {
     () => computeCharacterAppearances({ characterId: character.id, events, chapters }),
     [character.id, events, chapters]
   )
+  /*
+    The other ledger. State recorded at a scene says where someone is, not that
+    they are in it (`sceneStanding.ts`), so a character can have a full History
+    and no appearances at all — which a blind writer run read as "you have
+    recorded nothing", having just recorded two. The empty state says which
+    count it is not, and goes there.
+  */
+  const snapshots = useCharacterSnapshots(character.id)
+  const [searchParams, setSearchParams] = useSearchParams()
+  function openHistory() {
+    const params = new URLSearchParams(searchParams)
+    params.set('tab', 'history')
+    setSearchParams(params, { replace: true })
+  }
 
   function go(a: CharacterAppearance) {
     // Navigates either way; only a writer's cursor follows.
@@ -78,11 +93,20 @@ export function AppearancesTab({ character }: AppearancesTabProps) {
       <EmptyState
         icon={Users}
         title="No appearances yet"
-        description="Add this character to a scene's cast, or mention them in a scene draft with @."
+        description={snapshots.length > 0
+          ? `${character.name} has state recorded at ${snapshots.length} ${snapshots.length === 1 ? 'scene' : 'scenes'}, which says where they are rather than that they are in it. Add them to a scene's cast, or mention them in a draft with @.`
+          : "Add this character to a scene's cast, or mention them in a scene draft with @."}
         action={(
-          <Button size="sm" variant="outline" onClick={() => navigate(`/worlds/${character.worldId}/timeline`)}>
-            <BookOpen className="h-4 w-4" aria-hidden="true" /> Open Timeline
-          </Button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => navigate(`/worlds/${character.worldId}/timeline`)}>
+              <BookOpen className="h-4 w-4" aria-hidden="true" /> Open Timeline
+            </Button>
+            {snapshots.length > 0 && (
+              <Button size="sm" variant="ghost" onClick={openHistory}>
+                <HistoryIcon className="h-4 w-4" aria-hidden="true" /> See recorded state
+              </Button>
+            )}
+          </div>
         )}
         className="py-8"
       />
