@@ -1,22 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store'
+import { guideKey, hasGuideProgress, readGuide, type GuideProgress, type GuideStep } from '@/lib/guideProgress'
 import { StepTimeline } from './steps/StepTimeline'
 import { StepCharacter } from './steps/StepCharacter'
 import { StepPlace } from './steps/StepPlace'
 import { StepDone } from './steps/StepDone'
 
-type WizardStep = 1 | 2 | 3 | 4
+type WizardStep = GuideStep
 
-interface WizardState {
-  step: WizardStep
-  createdEventId: string | null
-  createdCharacterId: string | null
-  /** What steps 1 and 2 made, so that stepping back can show it (**NEW-5**). */
-  createdEventTitle: string | null
-  createdCharacterName: string | null
-}
+/** What steps 1 and 2 made is kept so stepping back can show it (**NEW-5**),
+ *  and so a reload can resume where the writer was (**N14**). */
+type WizardState = GuideProgress
 
 const STEP_LABELS = [
   'Begin your story',
@@ -24,6 +20,11 @@ const STEP_LABELS = [
   'Place them in the story',
   'Done',
 ]
+
+/** localStorage throws outright in some private-browsing modes. */
+function safeRead(key: string): string | null {
+  try { return localStorage.getItem(key) } catch { return null }
+}
 
 interface OnboardingWizardProps {
   worldId: string
@@ -33,13 +34,43 @@ interface OnboardingWizardProps {
 export function OnboardingWizard({ worldId, onExit }: OnboardingWizardProps) {
   const navigate = useNavigate()
   const setActiveEventId = useAppStore((s) => s.setActiveEventId)
-  const [state, setState] = useState<WizardState>({
-    step: 1,
-    createdEventId: null,
-    createdCharacterId: null,
-    createdEventTitle: null,
-    createdCharacterName: null,
+  /*
+    N14: this was component state, and the condition that summons the guide is
+    "this world has no timeline" — which step 1 makes false. So a reload between
+    step 1 and step 2 dropped the writer on the dashboard with the rest of the
+    guide skipped and no way back in.
+  */
+  const storageKey = guideKey(worldId)
+  const [state, setState] = useState<WizardState>(() => {
+    const stored = readGuide(safeRead(storageKey))
+    if (stored && stored !== 'done') return stored
+    return {
+      step: 1,
+      createdEventId: null,
+      createdCharacterId: null,
+      createdEventTitle: null,
+      createdCharacterName: null,
+    }
   })
+
+  /*
+    Written on every change rather than at each of the six places that make one,
+    so a step added later cannot forget to record itself — but only once there
+    is something to come back to. This effect runs on mount too, and storing the
+    pristine step 1 would mean the sight of the guide counted as being part-way
+    through it. See `hasGuideProgress`.
+
+    A layout effect, so the write lands before the new step is painted. As a
+    passive effect it ran *after* paint, leaving a window where the guide was
+    visibly on step 2 and storage still said step 1 — reload inside it and the
+    progress was gone. The e2e caught it as a flake, which is what that window
+    looks like from the outside; a writer who finishes a step and reloads at
+    once is in the same window.
+  */
+  useLayoutEffect(() => {
+    if (!hasGuideProgress(state)) return
+    try { localStorage.setItem(storageKey, JSON.stringify(state)) } catch { /* private mode */ }
+  }, [storageKey, state])
 
   /*
     NEW-1: while the guide is on screen it should be the loudest thing on it.

@@ -28,6 +28,7 @@ import { useAppStore, useActiveEventId } from '@/store'
 import { castAliveSplit } from '@/lib/castAtCursor'
 import { cn } from '@/lib/utils'
 import { OnboardingWizard } from '@/features/onboarding'
+import { guideKey, readGuide, shouldShowGuide } from '@/lib/guideProgress'
 import { DashboardSuggestion } from './DashboardSuggestion'
 import { CastBalance } from './CastBalance'
 import { ThreadCadence } from './ThreadCadence'
@@ -36,6 +37,11 @@ import { WritingProgress } from './WritingProgress'
 import { evaluateSuggestions, type WorldSummaryData } from './suggestionRules'
 import { relativeTime } from '@/lib/relativeTime'
 import { plural } from '@/lib/plural'
+
+/** localStorage throws outright in some private-browsing modes. */
+function safeRead(key: string): string | null {
+  try { return localStorage.getItem(key) } catch { return null }
+}
 
 // ── Stat pill ────────────────────────────────────────────────────────────────
 
@@ -100,21 +106,40 @@ export default function WorldDashboardView() {
   // Latch: keep the wizard mounted until it explicitly exits, even after step 1
   // creates an event (which would clear the trigger condition mid-session).
   const [wizardLatch, setWizardLatch] = useState(false)
-  // ...and once it has exited, leave it exited. Without this the latch re-armed
-  // itself the moment it was released: "Skip and explore on my own" set it
-  // false, the effect below saw the trigger condition still true and set it
-  // straight back, so skipping was a no-op for any world without an event —
-  // which is every world the wizard appears for.
+  /*
+    ...and once it has exited, leave it exited. Without this the latch re-armed
+    itself the moment it was released: "Skip and explore on my own" set it
+    false, the effect below saw the trigger condition still true and set it
+    straight back, so skipping was a no-op for any world without an event —
+    which is every world the wizard appears for.
+
+    Both halves are read from storage now (N14). In-session state answered the
+    wrong question after a reload: the guide's own step 1 creates the timeline,
+    so "does this world have one?" says no-guide-needed to someone three
+    quarters of the way through it — and said guide-needed again to someone who
+    had skipped it.
+  */
+  const guideStore = worldId ? guideKey(worldId) : null
   const [wizardDismissed, setWizardDismissed] = useState(false)
+  const stored = useMemo(
+    () => (guideStore ? readGuide(safeRead(guideStore)) : null),
+    // Read once per world: the guide writes this while it is mounted, and
+    // re-reading on its every write would fight it.
+    [guideStore],
+  )
   useEffect(() => {
-    // Only for a world that has not been started. It used to trigger on
-    // `eventCount === 0` too, so a writer who built a timeline and chapters on
-    // the Timeline screen came back to the dashboard and was asked, at step 1
-    // of 4, to name a timeline they had already named.
-    if (wizardReady && !wizardLatch && !wizardDismissed && timelineCount === 0) {
-      setWizardLatch(true)
+    if (!wizardReady || wizardLatch || wizardDismissed) return
+    if (shouldShowGuide({ stored, timelineCount })) setWizardLatch(true)
+  }, [wizardReady, wizardLatch, wizardDismissed, timelineCount, stored])
+
+  function leaveGuide() {
+    setWizardDismissed(true)
+    setWizardLatch(false)
+    // So a reload does not bring it back — see `shouldShowGuide`.
+    if (guideStore) {
+      try { localStorage.setItem(guideStore, JSON.stringify('done')) } catch { /* private mode */ }
     }
-  }, [wizardReady, wizardLatch, wizardDismissed, timelineCount])
+  }
 
   // ── Dashboard suggestions ─────────────────────────────────────────────────
   const dismissedKey = worldId ? `plotweave-dismissed-suggestions-${worldId}` : null
@@ -318,7 +343,7 @@ export default function WorldDashboardView() {
 
   // Wizard replaces the dashboard while active
   if (wizardLatch && worldId) {
-    return <OnboardingWizard worldId={worldId} onExit={() => { setWizardDismissed(true); setWizardLatch(false) }} />
+    return <OnboardingWizard worldId={worldId} onExit={leaveGuide} />
   }
 
   return (

@@ -189,6 +189,11 @@ you create the first timeline and scene, add a main character, place that
 character at the opening moment, and then continue to the Timeline. Each optional
 step has **Skip** so you can leave the guide and build the world in any order.
 
+**The guide keeps its place.** Close the tab or reload the page part-way through
+and it comes back on the step you were on, with what the earlier steps made
+still there. And once you have finished it or skipped it, it stays gone — it
+won't reappear on that world.
+
 The four steps are named across the top — *Begin your story*, *Add a character*,
 *Place them in the story*, *Done* — so you can see what the guide will ask before
 you agree to any of it. On a phone only the step you are on is named; the numbers
