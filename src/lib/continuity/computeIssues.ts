@@ -103,6 +103,13 @@ export interface Issue {
     | { kind: 'clearPov'; label: string; eventId: string }
     | { kind: 'addMention'; label: string; eventId: string; characterId: string }
     | { kind: 'moveHere'; label: string; eventId: string; characterId: string; markerId: string }
+    /*
+      Says where a subplot lands. Not a dismissal: the scene is named in the
+      label, so the writer sees the assertion before agreeing to it — which is
+      what the cast fix failed to do when it silently wrote four people into a
+      room they were not in.
+    */
+    | { kind: 'resolveThread'; label: string; threadId: string; eventId: string }
 }
 
 /** Everything the checks read — the ContinuityChecker gathers these via hooks
@@ -1758,6 +1765,15 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       const firstEvent = targetChapter
         ? allEvents.filter((e) => e.chapterId === targetChapter.id).sort((a, b) => a.sortOrder - b.sortOrder)[0]
         : undefined
+      /*
+        A dangling subplot can be answered by saying where it resolves, and the
+        beat it last advanced in is the answer nearly every time — so the offer
+        names that scene rather than asking for one. Measured on the shipped
+        Monte Cristo, this was 10 of the checker's 50 findings and not one of
+        them could be acted on at all.
+      */
+      const lastEvent = ti.lastEventId ? eventById.get(ti.lastEventId) : undefined
+      const lastChapter = lastEvent ? chapById.get(lastEvent.chapterId) : undefined
       out.push({
         id: `thread-${ti.kind}-${ti.threadId}`,
         kind: `thread-${ti.kind}` as IssueKind,
@@ -1767,6 +1783,14 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         detail: ti.detail,
         navigatePath: targetChapter ? `/worlds/${worldId}/timeline/${targetChapter.id}` : undefined,
         eventId: firstEvent?.id,
+        fix: lastEvent
+          ? {
+              kind: 'resolveThread',
+              label: `Resolves at Ch. ${lastChapter?.number ?? '?'} — "${lastEvent.title || 'untitled'}"`,
+              threadId: ti.threadId,
+              eventId: lastEvent.id,
+            }
+          : undefined,
       })
     }
 

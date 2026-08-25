@@ -21,6 +21,12 @@ interface CadenceManagerProps<T extends Entity> {
   onDelete: (id: string) => void | Promise<void>
   /** Warning copy for a dangling / dormant row, or null when it's healthy. */
   warningFor: (row: TagCadenceRow<T>) => string | null
+  /**
+   * What this row has already been answered with, and how to take it back —
+   * a subplot the writer has said resolves somewhere. Motifs have no such
+   * notion, so the panel that has one supplies it and the other does not.
+   */
+  settledFor?: (row: TagCadenceRow<T>) => { label: string; onClear: () => void | Promise<void> } | null
   /** Which list on a scene carries this entity, for the attach dialog (HB-8). */
   field: TagField
   chapters: Chapter[]
@@ -33,7 +39,7 @@ interface CadenceManagerProps<T extends Entity> {
  * and delete. Both the Plot Threads and Motifs dashboard panels render this.
  */
 export function CadenceManager<T extends Entity>({
-  rows, chapterCount, noun, placeholder, onCreate, onDelete, warningFor, field, chapters, events,
+  rows, chapterCount, noun, placeholder, onCreate, onDelete, warningFor, settledFor, field, chapters, events,
 }: CadenceManagerProps<T>) {
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
@@ -59,7 +65,9 @@ export function CadenceManager<T extends Entity>({
       {rows.length > 0 && (
         <div className="flex flex-col gap-1.5">
           {rows.map((r) => {
-            const warn = warningFor(r)
+            const settled = settledFor?.(r) ?? null
+            // An answered row is not a warning row: it has been dealt with.
+            const warn = settled ? null : warningFor(r)
             return (
               <div
                 key={r.entity.id}
@@ -82,6 +90,17 @@ export function CadenceManager<T extends Entity>({
                   ))}
                 </div>
 
+                {settled && (
+                  <span className="flex shrink-0 items-center gap-1 text-[11px] text-[hsl(var(--muted-foreground))]">
+                    {settled.label}
+                    <button
+                      onClick={() => { void settled.onClear() }}
+                      className="pw-tap rounded px-1 underline decoration-dotted hover:text-[hsl(var(--foreground))]"
+                    >
+                      reopen
+                    </button>
+                  </span>
+                )}
                 <span className="w-16 shrink-0 text-right text-[11px] tabular-nums text-[hsl(var(--muted-foreground))]"
                   title={`${r.eventCount} scene${r.eventCount === 1 ? '' : 's'} across ${plural(chapterCount, 'chapter')}`}>
                   {r.eventCount} sc

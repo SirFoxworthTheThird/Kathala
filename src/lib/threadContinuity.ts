@@ -14,6 +14,12 @@ export interface ThreadIssue {
   detail: string
   /** Chapter the reader should be sent to, when there is a meaningful one. */
   chapterNumber: number | null
+  /**
+   * The scene this thread last advanced in — what a writer marking it resolved
+   * would almost always choose, so the offer can name it rather than asking.
+   * Only set on `dangling`, which is the only kind resolution answers.
+   */
+  lastEventId?: string
 }
 
 /**
@@ -42,6 +48,18 @@ export function computeThreadIssues({
 
   for (const row of rows) {
     const name = row.thread.name
+    /*
+      A subplot the writer has said lands somewhere does not dangle. Measured on
+      the shipped Monte Cristo, this rule alone produced 10 of the checker's 50
+      findings, every one of them unanswerable: the advice was "resolve it", and
+      resolving one was not a thing the app could do.
+
+      Beats *after* the resolution are deliberately not a finding. A resolved
+      thread can still echo — the Château d'If is spoken of long after Edmond
+      leaves it — and inventing a new complaint here would put back the noise
+      this removes.
+    */
+    const resolved = !!row.thread.resolvedEventId
 
     if (row.eventCount === 0) {
       issues.push({
@@ -55,14 +73,15 @@ export function computeThreadIssues({
       continue
     }
 
-    if (row.trailingGap >= trailingChapters) {
+    if (!resolved && row.trailingGap >= trailingChapters) {
       issues.push({
         threadId: row.thread.id,
         threadName: name,
         kind: 'dangling',
         message: `Plot thread "${name}" is left dangling`,
-        detail: `Last advanced in Ch. ${row.lastChapterNumber}, then quiet for the final ${row.trailingGap} chapter${row.trailingGap === 1 ? '' : 's'} — resolve it or carry it into a later scene.`,
+        detail: `Last advanced in Ch. ${row.lastChapterNumber}, then quiet for the final ${row.trailingGap} chapter${row.trailingGap === 1 ? '' : 's'} — say where it resolves, or carry it into a later scene.`,
         chapterNumber: row.lastChapterNumber,
+        lastEventId: row.lastEventId ?? undefined,
       })
     }
 

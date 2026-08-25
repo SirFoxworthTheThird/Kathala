@@ -16,7 +16,7 @@ import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
 import { useWorldMovements } from '@/db/hooks/useMovements'
 import { useFactions, useFactionMemberships, useFactionRelationships } from '@/db/hooks/useFactions'
-import { usePlotThreads } from '@/db/hooks/usePlotThreads'
+import { usePlotThreads, updatePlotThread } from '@/db/hooks/usePlotThreads'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useContinuitySuppressions, toggleContinuitySuppression, setContinuitySuppressionNote } from '@/db/hooks/useContinuitySuppressions'
@@ -455,6 +455,16 @@ export function ContinuityChecker() {
         await updateEvent(fix.eventId, {
           mentionedCharacterIds: [...mentioned, fix.characterId],
         })
+        return
+      }
+      case 'resolveThread': {
+        /*
+          Where the subplot lands, which is a fact about the book — not a mute
+          button. The scene is the thread's own last beat and is named in the
+          label, so the writer agreed to this exact assertion rather than to
+          "make the warning go away".
+        */
+        await updatePlotThread(fix.threadId, { resolvedEventId: fix.eventId })
         return
       }
       case 'moveHere': {

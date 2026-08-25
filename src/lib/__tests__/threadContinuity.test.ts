@@ -67,3 +67,58 @@ describe('computeThreadIssues', () => {
     expect(computeThreadIssues({ threads: [thread('t', 'T')], events: [], chapters: [] })).toEqual([])
   })
 })
+
+/**
+ * A writer needs a way to *answer* this, not just to dismiss it. The report
+ * told them to "resolve it or carry it into a later scene", and resolving one
+ * was not something the app could do — so the only way to clear the warning was
+ * to tag a late scene, which is a lie about a subplot that genuinely lands in
+ * Ch. 40 of 117.
+ *
+ * Measured on the shipped Monte Cristo, this rule alone was 10 of the checker's
+ * 50 findings, none of them actionable.
+ */
+describe('a thread that says where it lands', () => {
+  const events = [event('e1', 'c1', ['heist'])]
+
+  it('does not dangle once the writer says where it resolves', () => {
+    const heist: PlotThread = { ...thread('heist', 'The Heist'), resolvedEventId: 'e1' }
+    expect(computeThreadIssues({ threads: [heist], events, chapters })).toEqual([])
+  })
+
+  it('and does dangle until they do — the pair, so neither half is vacuous', () => {
+    const heist = thread('heist', 'The Heist')
+    expect(computeThreadIssues({ threads: [heist], events, chapters })[0].kind).toBe('dangling')
+  })
+
+  it('treats an explicit null the way it treats an absent field', () => {
+    // Reopening writes null rather than deleting the key.
+    const reopened: PlotThread = { ...thread('heist', 'The Heist'), resolvedEventId: null }
+    expect(computeThreadIssues({ threads: [reopened], events, chapters })[0].kind).toBe('dangling')
+  })
+
+  /**
+   * Resolution answers "never resolved". It does not answer "went quiet for ten
+   * chapters in the middle", which is a different observation about a different
+   * part of the book — and silencing it here would be dismissal wearing the
+   * costume of an answer.
+   */
+  it('does not silence a mid-story gap, which it has not answered', () => {
+    const slow: PlotThread = { ...thread('slow', 'The Slow Burn'), resolvedEventId: 'e5' }
+    const spread = [event('e1', 'c1', ['slow']), event('e5', 'c5', ['slow'])]
+    const kinds = computeThreadIssues({ threads: [slow], events: spread, chapters }).map((i) => i.kind)
+    expect(kinds).toEqual(['dormant'])
+  })
+
+  it('still says a resolved thread has no scenes, since that is not resolution either', () => {
+    const ghost: PlotThread = { ...thread('ghost', 'The Ghost'), resolvedEventId: 'e1' }
+    expect(computeThreadIssues({ threads: [ghost], events: [], chapters })[0].kind).toBe('unstarted')
+  })
+
+  it('names the scene a writer would resolve at — its own last beat', () => {
+    const heist = thread('heist', 'The Heist')
+    const twoBeats = [event('e1', 'c1', ['heist']), event('e2', 'c2', ['heist'])]
+    const issue = computeThreadIssues({ threads: [heist], events: twoBeats, chapters })[0]
+    expect(issue.lastEventId).toBe('e2')
+  })
+})

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { Chapter, WorldEvent } from '@/types'
-import { usePlotThreads, createPlotThread, deletePlotThread } from '@/db/hooks/usePlotThreads'
+import { usePlotThreads, createPlotThread, deletePlotThread, updatePlotThread } from '@/db/hooks/usePlotThreads'
 import { computeTagCadence, type TagCadenceRow } from '@/lib/tagCadence'
 import type { PlotThread } from '@/types'
 import { CadenceManager } from './CadenceManager'
@@ -31,6 +31,23 @@ export function ThreadCadence({ worldId, chapters, events }: {
     return null
   }
 
+  /*
+    A subplot the writer has said lands somewhere. Shown here as well as in the
+    continuity checker so it can be taken back from the same place it is seen —
+    a statement about the book should be as easy to change as it was to make,
+    and "reopen" is the only way back once the warning it answered is gone.
+  */
+  function settledFor(r: TagCadenceRow<PlotThread>) {
+    const at = r.entity.resolvedEventId
+    if (!at) return null
+    const ev = events.find((e) => e.id === at)
+    const ch = ev ? chapters.find((c) => c.id === ev.chapterId) : undefined
+    return {
+      label: ch ? `resolves Ch. ${ch.number}` : 'resolved',
+      onClear: () => updatePlotThread(r.entity.id, { resolvedEventId: null }),
+    }
+  }
+
   return (
     <CadenceManager
       rows={rows}
@@ -40,6 +57,7 @@ export function ThreadCadence({ worldId, chapters, events }: {
       onCreate={async (name) => { await createPlotThread({ worldId, name, color: THREAD_COLORS[threads.length % THREAD_COLORS.length] }) }}
       onDelete={deletePlotThread}
       warningFor={warningFor}
+      settledFor={settledFor}
       field="threadIds"
       chapters={chapters}
       events={events}

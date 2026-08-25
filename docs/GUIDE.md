@@ -1177,6 +1177,14 @@ across your chapters and flags trouble:
 - **"goes quiet for N chapters"** — a thread that disappears mid-story.
 - **"dangling"** — a thread that was raised and then never resolved.
 
+**Say where a subplot lands.** A thread that stops advancing before the end
+isn't necessarily a mistake — plenty of subplots resolve in the middle of a
+book. Tell PlotWeave where one lands and it stops calling it dangling: the row
+reads **resolves Ch. N**, and **reopen** beside it takes that back if you change
+your mind. This is a fact about your book, not a way of hiding the warning —
+which is why a resolved thread that still goes quiet for ten chapters in the
+middle is *still* reported for that. It answers what it answers.
+
 ![Plot Threads](images/21-plot-threads.png)
 
 Tag a thread onto a scene from the scene's card; create threads inline with the
@@ -1225,6 +1233,14 @@ just visible:
 
 Each finding links to the chapter where the thread was last (or first) seen, and
 can be suppressed with a note like any other continuity issue.
+
+**A dangling thread can be answered rather than suppressed.** The finding offers
+**Resolves at Ch. N — "scene title"**, naming the scene it will record: the last
+one that advances that thread, which is usually where it lands. Take the offer
+and the subplot is marked as resolving there, and the finding goes because it
+has been answered. If it really lands somewhere else, say so on the thread's own
+row instead. There is deliberately no "fix all" for this one — where a subplot
+ends is a decision per subplot, not a batch.
 
 ---
 
