@@ -157,14 +157,20 @@ export function TopBar() {
         {world && (
           <>
             <span aria-hidden="true" className="hidden text-[hsl(var(--muted-foreground))] lg:inline">/</span>
-            <span className="hidden max-w-[120px] truncate text-sm text-[hsl(var(--foreground))] lg:inline" title={world.name}>{world.name}</span>
+            {/*
+              The cap grows with the window. It was a flat 120px at every width,
+              so "The Weight of Bells" read "The Weight of …" on a 1440px screen
+              with roughly 800px of empty bar beside it. `truncate` is still the
+              safety net; it just stops being the normal case.
+            */}
+            <span className="hidden max-w-[120px] truncate text-sm text-[hsl(var(--foreground))] lg:inline xl:max-w-[280px] 2xl:max-w-[420px]" title={world.name}>{world.name}</span>
           </>
         )}
         {world && mapLayer && (
           <>
             <span aria-hidden="true" className="hidden text-[hsl(var(--muted-foreground))] lg:inline">/</span>
             <span
-              className="hidden max-w-[160px] truncate text-sm text-[hsl(var(--foreground))] lg:inline"
+              className="hidden max-w-[160px] truncate text-sm text-[hsl(var(--foreground))] lg:inline xl:max-w-[280px]"
               title={mapScale ? `${mapLayer.name} — ${mapScale}` : mapLayer.name}
             >
               {mapLayer.name}

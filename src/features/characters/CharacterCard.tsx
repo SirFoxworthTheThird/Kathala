@@ -12,13 +12,22 @@ interface CharacterCardProps {
   character: Character
 }
 
+/**
+ * Where the card says they are — including when the record says nobody knows.
+ *
+ * This returned `null` for a record with no marker, so a character carrying an
+ * empty state showed a blank line where every other card has text: the cards
+ * for "nothing recorded here" and "a record here that names no place" looked
+ * identical, and only the second one is a statement. That is the same
+ * distinction the Current State panel draws between carried-forward and
+ * recorded-at-this-scene, on the screen a writer scans first.
+ */
 function LocationBadge({ locationId }: { locationId: string | null }) {
   const loc = useLocationMarker(locationId)
-  if (!loc) return null
   return (
     <span className="flex items-center gap-1 text-xs text-[hsl(var(--muted-foreground))]">
       <MapPin className="h-3 w-3" />
-      {loc.name}
+      {loc ? loc.name : <span className="italic">Whereabouts not recorded</span>}
     </span>
   )
 }

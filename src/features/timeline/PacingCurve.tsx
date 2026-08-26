@@ -95,6 +95,17 @@ export function PacingCurve({ worldId, events, chapters, order, activeEventId, o
           </span>
         )}
       </div>
+      {/*
+        Nothing is rated yet, so there is no curve — only a row of grey dots on
+        the baseline and about 150px of empty plot, on the screen a writer opens
+        most. The header above already says what the chart is and how to fill
+        it, which is the whole of what an unrated world can learn here; the plot
+        appears the moment the first scene is rated.
+
+        `ratedCount`, not `points.length`: a world with scenes but no ratings is
+        the ordinary state of every new world, and it is the one this is for.
+      */}
+      {ratedCount > 0 && (
       <div className="flex items-start pb-2">
         {/*
           The scale, outside the scrolling area so it stays visible while you
@@ -238,6 +249,7 @@ export function PacingCurve({ worldId, events, chapters, order, activeEventId, o
         </svg>
         </div>
       </div>
+      )}
 
       <PacingTable points={points} />
     </div>

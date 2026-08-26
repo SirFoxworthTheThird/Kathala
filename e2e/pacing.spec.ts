@@ -38,6 +38,13 @@ test.describe('Pacing curve', () => {
     await page.getByRole('link', { name: /timeline/i }).click()
     await expect(page.getByText('Pacing — dramatic tension')).toBeVisible()
     await expect(page.getByText('rate scenes on their cards to draw the curve')).toBeVisible()
+    /*
+      …and the plot itself is not drawn yet. With nothing rated it was ~150px of
+      empty grid and a row of grey dots on the baseline, on the screen a writer
+      opens most. The header above is the whole of what an unrated world can
+      learn here; the presence half is asserted after the rating below.
+    */
+    await expect(page.getByRole('img', { name: 'Dramatic tension across the story' })).toHaveCount(0)
 
     // Rate the scene's tension from the event card (browser-only picker). The
     // picker buttons are labelled by level; target by exact name so the header
@@ -55,6 +62,7 @@ test.describe('Pacing curve', () => {
     await page.getByRole('link', { name: /timeline/i }).click()
     await settleNav(page)
     await expect(page.getByText('rate scenes on their cards to draw the curve')).not.toBeVisible()
+    await expect(page.getByRole('img', { name: 'Dramatic tension across the story' })).toBeVisible()
 
     // Clicking the curve point moves the global time cursor to that event —
     // verified via the Writer's Brief, which briefs that moment once one is

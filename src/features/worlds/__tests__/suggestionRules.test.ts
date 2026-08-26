@@ -312,14 +312,30 @@ describe('SUGG-13 — dismissible contract', () => {
     expect(rule.dismissible).toBe(false)
   })
 
-  it('add-relationships is not dismissible', () => {
+  /*
+    Relationships and maps became dismissible: they are choices, not the three
+    structural things above. A memoir with two named people needs no
+    relationship graph, and a writer who does not think spatially may never
+    want a map — the banner used to sit there permanently with no way to
+    answer it.
+  */
+  it('add-relationships is dismissible', () => {
     const rule = SUGGESTION_RULES.find((r) => r.id === 'add-relationships')!
-    expect(rule.dismissible).toBe(false)
+    expect(rule.dismissible).toBe(true)
   })
 
-  it('add-map is not dismissible', () => {
+  it('add-map is dismissible', () => {
     const rule = SUGGESTION_RULES.find((r) => r.id === 'add-map')!
-    expect(rule.dismissible).toBe(false)
+    expect(rule.dismissible).toBe(true)
+  })
+
+  /*
+    And the pair, so this cannot drift into "everything is dismissible": the
+    three the app genuinely cannot work without stay put.
+  */
+  it('leaves exactly the three structural nudges non-dismissible', () => {
+    const stuck = SUGGESTION_RULES.filter((r) => !r.dismissible).map((r) => r.id)
+    expect(stuck).toEqual(['add-character', 'add-first-event', 'place-character'])
   })
 
   it('document-lore is dismissible', () => {

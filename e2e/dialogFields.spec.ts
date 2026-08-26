@@ -81,9 +81,16 @@ test.describe('The first dialogs name their fields', () => {
     await page.waitForTimeout(800)
     await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
 
-    await expect(page.getByLabel('Title')).toBeVisible()
-    await expect(page.getByLabel('Description')).toBeVisible()
-    await expect(page.getByLabel('Tags')).toBeVisible()
+    /*
+      Scoped to the dialog, which is what this test is about. Unscoped,
+      `getByLabel('Title')` also matched the chapter screen behind it once its
+      heading became an editable "Chapter title" — a substring match on a field
+      that was ambiguous-in-waiting rather than a regression in the dialog.
+    */
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByLabel('Title')).toBeVisible()
+    await expect(dialog.getByLabel('Description')).toBeVisible()
+    await expect(dialog.getByLabel('Tags')).toBeVisible()
 
     const bad = await unnamedFields(page)
     expect(bad, `fields with no accessible name:\n${bad.join('\n')}`).toEqual([])

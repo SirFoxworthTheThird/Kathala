@@ -594,10 +594,13 @@ your streak and history survive a backup or a move to another device.
 The Timeline is the spine of your story: a list of chapters, each holding an
 ordered set of **scenes** (scenes/beats). A **pacing curve** across the top plots
 dramatic tension chapter by chapter once you rate scenes, so you can see the
-shape of your story at a glance. It is drawn at a fixed width per scene and its
-panel is only as wide as the curve needs, so an early draft gets a small chart
-rather than a small chart in a very large frame; on a long book the panel takes
-the full width and the curve scrolls inside it.
+shape of your story at a glance. Until you have rated something there is no
+curve to draw, so the panel is a single line telling you where the ratings live
+rather than an empty grid; the plot appears with the first rating. It is drawn
+at a fixed width per scene and its panel is only as wide as the curve needs, so
+an early draft gets a small chart rather than a small chart in a very large
+frame; on a long book the panel takes the full width and the curve scrolls
+inside it.
 
 ![Timeline view](images/04-timeline.png)
 
@@ -752,12 +755,15 @@ already on a scene inside that chapter, it stays where you put it; and while
 [reading](#reading-alongside-a-book) nothing moves at all, since there the cursor
 is your own place in the book.
 
-**The chapter's synopsis sits under its title and can be edited there**, at any
-time — click the line and type. It is the one-liner you set when the chapter was
-made, and it is no longer set-once: a chapter created by the first-run guide,
-which never asks for one, can be given a synopsis here like any other. It
-auto-saves as you type, one undo step per burst. It is worth keeping current:
-the synopsis prints in the [Manuscript](#manuscript) in draft mode, in the
+**The chapter's title and synopsis are both edited in place**, at the top of the
+screen — click either line and type. Renaming used to live only on the chapter's
+row back on the Timeline, which in a long book meant going back and finding the
+row; both are here now, and a blank title is refused rather than written.
+
+The synopsis is the one-liner you set when the chapter was made, and it is no
+longer set-once: a chapter created by the first-run guide, which never asks for
+one, can be given a synopsis here like any other. Both fields auto-save as you
+type, one undo step per burst. The synopsis is worth keeping current: it prints in the [Manuscript](#manuscript) in draft mode, in the
 [Writer's Brief](#writers-brief), on the chapter row in the timeline, and it is
 searchable. While reading, it is shown rather than editable.
 
@@ -1629,6 +1635,12 @@ about, so the line is left off rather than guessed at.
 per-scene states, and also takes it out of every character's inventory and every
 scene's item list — so nothing is left pointing at a record that is gone. Undo
 brings the whole lot back.
+
+**Putting one down.** Placing an item at a location takes it out of whoever is
+carrying it at that moment — including a character whose last inventory record
+is chapters back, which is the ordinary case. Their earlier record stands
+untouched; what is written is a new record at the scene you are on, so the
+custody chain reads as a hand-off rather than a rewrite of history.
 
 **Where it has been.** Open an item and, under **Whereabouts**, it lists its
 chain of custody in story order — one row per change, naming the scene, who was

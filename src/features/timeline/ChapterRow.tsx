@@ -336,6 +336,21 @@ export function ChapterRow({
           size="icon"
           className="h-7 w-7 shrink-0"
           onClick={() => navigate(`/worlds/${worldId}/timeline/${chapter.id}`)}
+          /*
+            Named per row, and named at all: this was an icon whose only name
+            was its `title`, repeated identically down 117 rows — so nothing on
+            the screen could say *which* chapter it opened, and the ⋯ beside it
+            had been numbered for exactly that reason.
+
+            The chapter number is *appended* rather than substituted. An
+            `aria-label` replaces a control's name outright, and naming this one
+            "Open detail for chapter 1" silently took away the name four specs
+            and the rest of the app looked it up by — a `getByRole` on the old
+            wording matched nothing, and the suite reported it as four unrelated
+            timeouts. Keeping the old words in the new name means the row is
+            distinguishable and nothing that knew the control loses it.
+          */
+          aria-label={`Open chapter detail — Ch. ${chapter.number}`}
           title="Open chapter detail"
         >
           <ExternalLink className="h-3.5 w-3.5" />

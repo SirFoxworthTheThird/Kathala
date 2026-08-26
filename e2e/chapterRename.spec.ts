@@ -60,6 +60,35 @@ test.describe('Renaming a chapter', () => {
     await expect(page.getByRole('main').getByText('Ch. 1 — The Weir')).toBeVisible()
   })
 
+  /*
+    N6 from a blind writer run: the chapter's own screen showed "Ch. 1 —
+    Chapter 1" as static text, and renaming meant going Back, finding the row
+    among 117 of them, and opening its ⋯ menu. The synopsis directly below the
+    heading has always been typed in place there, so the title is too.
+  */
+  test('is also offered on the chapter\'s own screen, in place', async ({ page }) => {
+    const worldId = await timelineWithAChapter(page)
+    await page.getByRole('button', { name: 'Open chapter detail — Ch. 1' }).click()
+    await expect(page).toHaveURL(/#\/worlds\/.*\/timeline\//)
+
+    const field = page.getByRole('main').getByLabel('Chapter title')
+    await expect(field).toBeVisible({ timeout: 20_000 })
+    await expect(field).toHaveValue('Chapter 1')
+
+    await field.fill('The Weir')
+    await expect.poll(async () => await storedTitle(page), { timeout: 15_000 }).toBe('The Weir')
+
+    // …and the pair: clearing it does not leave a nameless chapter behind.
+    await field.fill('   ')
+    await page.waitForTimeout(1500)
+    expect(await storedTitle(page)).toBe('The Weir')
+
+    // The timeline row shows the new name, so the two screens agree.
+    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await settleNav(page)
+    await expect(page.getByRole('main').getByText('Ch. 1 — The Weir')).toBeVisible({ timeout: 20_000 })
+  })
+
   test('Escape leaves the title alone', async ({ page }) => {
     // The pair to the test above: the same field, the other key. Without it,
     // "the title changed" would pass on a control that committed on any exit.

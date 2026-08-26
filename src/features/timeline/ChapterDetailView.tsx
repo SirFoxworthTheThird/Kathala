@@ -183,6 +183,7 @@ export default function ChapterDetailView() {
   const [addEventOpen, setAddEventOpen] = useState(false)
   const [notes, setNotes] = useState('')
   const [synopsis, setSynopsis] = useState('')
+  const [title, setTitle] = useState('')
   const [showAbsent, setShowAbsent] = useState(false)
 
   const sortedEvents = [...events].sort((a, b) => a.sortOrder - b.sortOrder)
@@ -241,6 +242,7 @@ export default function ChapterDetailView() {
   }
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const synopsisTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const titleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (chapter) setNotes(chapter.notes ?? '')
@@ -248,6 +250,10 @@ export default function ChapterDetailView() {
 
   useEffect(() => {
     if (chapter) setSynopsis(chapter.synopsis ?? '')
+  }, [chapter?.id])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (chapter) setTitle(chapter.title)
   }, [chapter?.id])  // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleNotesChange(value: string) {
@@ -279,6 +285,23 @@ export default function ChapterDetailView() {
     if (synopsisTimer.current) clearTimeout(synopsisTimer.current)
     synopsisTimer.current = setTimeout(() => {
       if (chapterId) updateChapter(chapterId, { synopsis: value }, { coalesce: true })
+    }, 600)
+  }
+
+  /*
+    Renaming lived only on the chapter's row back on the timeline: Back → find
+    the row → ⋯ → Rename chapter, and at 117 chapters "find the row" is eleven
+    screens of scrolling. The synopsis directly below has always been typed in
+    place here, so the title is too, and saved the same way.
+  */
+  function handleTitleChange(value: string) {
+    setTitle(value)
+    if (titleTimer.current) clearTimeout(titleTimer.current)
+    titleTimer.current = setTimeout(() => {
+      // Blank is not a rename. The row's own rename dialog refuses an empty
+      // title rather than writing one, and clearing the field to retype should
+      // not leave a nameless chapter behind in the moment between.
+      if (chapterId && value.trim()) updateChapter(chapterId, { title: value.trim() }, { coalesce: true })
     }, 600)
   }
 
@@ -348,7 +371,20 @@ export default function ChapterDetailView() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="min-w-0 flex-1">
-          <h2 className="text-base font-semibold">Ch. {chapter.number} — {chapter.title}</h2>
+          {gate.active ? (
+            <h2 className="text-base font-semibold">Ch. {chapter.number} — {chapter.title}</h2>
+          ) : (
+            <h2 className="flex items-baseline gap-1 text-base font-semibold">
+              <span className="shrink-0">Ch. {chapter.number} —</span>
+              <input
+                className="min-w-0 flex-1 truncate rounded bg-transparent text-base font-semibold outline-none placeholder:font-normal placeholder:text-[hsl(var(--muted-foreground))] focus:bg-[hsl(var(--muted))]"
+                aria-label="Chapter title"
+                placeholder="Untitled chapter"
+                value={title}
+                onChange={(e) => handleTitleChange(e.target.value)}
+              />
+            </h2>
+          )}
           {gate.active ? (
             // A reader's chapter summary is the author's writing, shown and not typed in.
             chapter.synopsis ? (
