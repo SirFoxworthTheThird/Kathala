@@ -71,7 +71,6 @@ test.describe('searching whole words', () => {
   test.describe.configure({ timeout: 240_000 })
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await seed(page)
   })

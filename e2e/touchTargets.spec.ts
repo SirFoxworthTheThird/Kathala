@@ -19,7 +19,6 @@ test.describe('Touch targets', () => {
    */
   async function worldWithAMoment(page: Page) {
     await page.setViewportSize({ width: 1440, height: 900 })
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Thumbs')
@@ -89,7 +88,6 @@ test.describe('Touch targets', () => {
     // as "Ch. 1 — The Vanish…". The row wraps below `sm` so the title gets the
     // full first line.
     await page.setViewportSize({ width: 1440, height: 900 })
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Wrapping')

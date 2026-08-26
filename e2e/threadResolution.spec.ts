@@ -21,7 +21,6 @@ import { settleNav, dismissFirstRunGuide } from './helpers/nav'
  */
 
 async function bookWithADanglingThread(page: Page): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('The Ninth Bell')

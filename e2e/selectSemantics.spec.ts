@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -14,7 +15,6 @@ test.describe('a select says what it is', () => {
   test.describe.configure({ timeout: 180_000 })
 
   test('announces that it opens a list, and whether it is open', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Semantics')
@@ -33,7 +33,7 @@ test.describe('a select says what it is', () => {
     }, worldId)
 
     await page.goto(`/#/worlds/${worldId}/relationships`, { waitUntil: 'load' })
-    await page.waitForTimeout(1500)
+    await settle(page)
     await page.getByRole('button', { name: /New Relationship/ }).first().click()
 
     const dialog = page.getByRole('dialog')

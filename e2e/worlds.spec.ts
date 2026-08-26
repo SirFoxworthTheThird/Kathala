@@ -3,7 +3,6 @@ import { resetDB } from './helpers/reset'
 
 test.describe('World management', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
   })
 

@@ -21,7 +21,6 @@ async function openPaletteWithShortcut(page: import('@playwright/test').Page) {
 
 test.describe('Search palette', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     // Create a world with a character and item to search

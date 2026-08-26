@@ -14,7 +14,6 @@ const topBarUndo = (page: Page) => page.getByRole('banner').getByRole('button', 
 const topBarRedo = (page: Page) => page.getByRole('banner').getByRole('button', { name: 'Redo', exact: true })
 
 async function setupWorld(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Undo World')

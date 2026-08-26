@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -24,7 +25,6 @@ import { dismissFirstRunGuide } from './helpers/nav'
 const BRIEF = "Writer's Brief"
 
 async function threeChapterWorld(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Salt')
@@ -58,7 +58,7 @@ async function threeChapterWorld(page: Page) {
   }, worldId)
 
   await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
-  await page.waitForTimeout(1800)
+  await settle(page)
   return worldId
 }
 

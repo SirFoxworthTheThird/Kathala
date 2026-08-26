@@ -26,7 +26,6 @@ test.describe('Chapter detail — Character States', () => {
   test.describe.configure({ timeout: 90_000 })
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
   })
 

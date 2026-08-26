@@ -13,7 +13,6 @@ test.describe('Dialog accessibility', () => {
   test.describe.configure({ timeout: 120_000 })
 
   async function worldWithCharacters(page: Page) {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('A11y')

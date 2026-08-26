@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { downloadLibraryBook, DEFAULT_BOOK } from './helpers/library'
 
 /**
@@ -19,13 +20,12 @@ const storedCursor = (page: Page) => page.evaluate(() => {
 })
 
 async function readerOnTheDashboard(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await downloadLibraryBook(page, DEFAULT_BOOK)
-  await page.waitForTimeout(2000)
+  await settle(page)
   const worldId = new URL(page.url()).hash.split('/')[2]
   await page.goto(`/#/worlds/${worldId}`, { waitUntil: 'load' })
-  await page.waitForTimeout(2000)
+  await settle(page)
   return worldId
 }
 
@@ -50,7 +50,7 @@ test.describe('A reader can say how far they have got', () => {
   test('and the control there is named for what a reader is doing', async ({ page }) => {
     const worldId = await readerOnTheDashboard(page)
     await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
-    await page.waitForTimeout(2500)
+    await settle(page)
 
     const readToHere = page.getByRole('button', { name: 'Read to here' })
     await expect(readToHere.first()).toBeVisible({ timeout: 30_000 })
@@ -83,7 +83,7 @@ test.describe('A reader can say how far they have got', () => {
       await db.worlds.update(w.id, { readingMode: false })
     })
     await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
-    await page.waitForTimeout(2500)
+    await settle(page)
 
     await expect(page.getByRole('button', { name: 'View from here' }).first()).toBeVisible({ timeout: 30_000 })
     await expect(page.getByRole('button', { name: 'Read to here' })).toHaveCount(0)

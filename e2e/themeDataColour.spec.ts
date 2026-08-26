@@ -55,7 +55,6 @@ function contrast(a: string, b: string): number {
 }
 
 async function themedWorld(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Data Colour Probe')

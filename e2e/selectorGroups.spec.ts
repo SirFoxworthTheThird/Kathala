@@ -13,7 +13,6 @@ test.describe('World selector entry points', () => {
   test.describe.configure({ timeout: 90_000 })
 
   test('the five ways in are grouped by what you already have', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     const fresh = page.getByRole('group', { name: 'Start something new' })
@@ -51,7 +50,6 @@ test.describe('World selector entry points', () => {
     // header's two groups — a second hierarchy with a different label for the
     // same thing, and no Library at all. Repeating them here was what caused
     // that, so it names them in prose and points up.
-    await page.goto('/')
     await resetDB(page)
 
     const empty = page.getByRole('main')

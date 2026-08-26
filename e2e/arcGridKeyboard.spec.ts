@@ -14,7 +14,6 @@ test.describe('Arc grid keyboard navigation', () => {
   test.describe.configure({ timeout: 150_000 })
 
   async function open(page: import('@playwright/test').Page) {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Arc')

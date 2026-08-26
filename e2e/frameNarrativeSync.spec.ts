@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 /**
  * MT-2 and MT-7, both about a frame-narrative bar that showed two tracks and
@@ -17,7 +18,6 @@ test.describe('The frame-narrative bar says what its parts are', () => {
   test.describe.configure({ timeout: 180_000 })
 
   test('each play button names its own track, and paired moments are marked', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Frame')
@@ -74,9 +74,9 @@ test.describe('The frame-narrative bar says what its parts are', () => {
     expect(seeded, 'the seeding seam should be present in an e2e build').toBe(true)
 
     await page.reload({ waitUntil: 'load' })
-    await page.waitForTimeout(1500)
+    await settle(page)
     await page.getByRole('link', { name: /timeline/i }).first().click()
-    await page.waitForTimeout(2500)
+    await settle(page)
 
     const bar = page.locator('[data-chapter-bar]')
     await expect(bar).toBeVisible({ timeout: 15_000 })

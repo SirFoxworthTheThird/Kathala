@@ -29,7 +29,6 @@ const CHAPTERS = 30
 const SCENES = 149
 
 async function bigWorld(page: Page): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('At Scale')

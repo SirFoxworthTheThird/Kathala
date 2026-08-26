@@ -35,7 +35,6 @@ async function fillRelationshipDialog(
  * Helper: creates a world, two characters, and lands on the characters roster.
  */
 async function setupTwoCharacters(page: import('@playwright/test').Page) {
-  await page.goto('/')
   await resetDB(page)
 
   await page.getByRole('button', { name: 'New World' }).click()
@@ -63,7 +62,6 @@ test.describe('Relationship graph', () => {
   })
 
   test('shows an empty state (with a way to add) when no characters exist', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()

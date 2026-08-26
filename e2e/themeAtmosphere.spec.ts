@@ -25,7 +25,6 @@ import { APP_THEMES, themeClass } from '../src/lib/themes'
  */
 
 async function themedWorld(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Theme Probe')

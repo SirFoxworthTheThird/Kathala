@@ -28,7 +28,6 @@ const SPEC = JSON.stringify({
 })
 
 async function worldFromSpec(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'Generate World from AI' }).first().click()
   await page.getByLabel('Story spec JSON').fill(SPEC)
@@ -40,7 +39,6 @@ async function worldFromSpec(page: Page) {
 /** A world seeded straight into Dexie, so birth date and colour can be set —
  *  neither is expressible in the import spec. */
 async function seedCharacters(page: Page, withCalendar: boolean) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Seeded')

@@ -14,7 +14,6 @@ test.describe('Reading mode toggle', () => {
   test.describe.configure({ timeout: 120_000 })
 
   async function settings(page: Page) {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Toggle')
@@ -51,7 +50,6 @@ test.describe('Reading mode toggle', () => {
   })
 
   test('an action tile shows an affordance, not a missing value', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Tiles')
@@ -79,7 +77,6 @@ test.describe('Reading mode toggle', () => {
     // The latch that keeps the wizard mounted used to re-arm itself the instant
     // it was released, so skipping did nothing for any world without an event —
     // which is every world the wizard appears for.
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Skipper')
@@ -99,7 +96,6 @@ test.describe('Reading mode toggle', () => {
     // It used to trigger on "no events" as well, so a writer who built a
     // timeline and chapters on the Timeline screen came back to the dashboard
     // and was asked, at step 1 of 4, to name a timeline they had already named.
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Started')

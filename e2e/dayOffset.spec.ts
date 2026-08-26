@@ -8,7 +8,6 @@ import { resetDB } from './helpers/reset'
 
 test('a timeline start day shifts its era in the chronological merge', async ({ page }) => {
   test.setTimeout(90000)
-  await page.goto('/')
   await resetDB(page)
 
   await page.getByRole('button', { name: 'New World' }).click()

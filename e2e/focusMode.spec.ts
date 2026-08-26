@@ -8,7 +8,6 @@ import { resetDB } from './helpers/reset'
 test.describe('Focus mode', () => {
   test('opens full-screen, tracks the session, saves and exits', async ({ page }) => {
     test.setTimeout(90000)
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()

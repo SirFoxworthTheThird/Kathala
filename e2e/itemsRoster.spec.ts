@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 /**
  * IT-2 — the Items roster showed a type and a description, so with a cursor set
@@ -22,7 +23,6 @@ const SPEC = JSON.stringify({
 })
 
 async function itemsRoster(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'Generate World from AI' }).first().click()
   await page.getByLabel('Story spec JSON').fill(SPEC)
@@ -47,7 +47,7 @@ test.describe('The Items roster', () => {
     // Kestrel's hands at that moment.
     await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
     await page.getByRole('button', { name: 'Open chapter detail' }).first().click()
-    await page.waitForTimeout(1200)
+    await settle(page)
     await page.goto(`/#/worlds/${worldId}/items`, { waitUntil: 'load' })
 
     await expect(page.getByText(/carried by Kestrel/)).toBeVisible({ timeout: 20_000 })

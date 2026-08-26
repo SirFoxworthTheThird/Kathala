@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 /**
  * A roster card is a way to that entity's page, so it should be a link.
@@ -14,7 +15,6 @@ test.describe('Roster cards', () => {
   test.describe.configure({ timeout: 180_000 })
 
   async function seeded(page: Page) {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'Library', exact: true }).click()
     await page.getByRole('button', { name: /^Download \(/ }).first().click()
@@ -51,7 +51,7 @@ test.describe('Roster cards', () => {
     test(`the ${screen} roster is made of links`, async ({ page }) => {
       const id = await seeded(page)
       await page.goto(`/#/worlds/${id}/${screen}`)
-      await page.waitForTimeout(2500)
+      await settle(page)
 
       // Presence: the roster rendered and its entries are reachable links.
       const links = page.getByRole('main').getByRole('link')

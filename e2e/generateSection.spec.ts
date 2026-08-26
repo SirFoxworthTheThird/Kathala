@@ -4,7 +4,6 @@ import { openMapTools, waitForMapReady } from './helpers/map'
 
 test.describe('Generate a section with AI', () => {
   test('adds new characters and updates an existing one in place', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()
@@ -47,7 +46,6 @@ test.describe('Generate a section with AI', () => {
   })
 
   test('adds pasted items to the current world', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()
@@ -76,7 +74,6 @@ test.describe('Generate a section with AI', () => {
   })
 
   test('adds pasted factions and links members to existing characters', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()
@@ -115,7 +112,6 @@ test.describe('Generate a section with AI', () => {
 
   test('adds pasted relationships between existing characters', async ({ page }) => {
     test.slow() // the relationships graph mounts a heavy ReactFlow canvas
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()
@@ -154,7 +150,6 @@ test.describe('Generate a section with AI', () => {
   })
 
   test('adds pasted lore pages grouped into categories', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()
@@ -185,7 +180,6 @@ test.describe('Generate a section with AI', () => {
   })
 
   test('adds pasted knowledge facts to the current world', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()
@@ -215,7 +209,6 @@ test.describe('Generate a section with AI', () => {
 
   test('generates a location tree onto an auto-created map', async ({ page }) => {
     test.slow() // rendering the generated map mounts a Leaflet canvas
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()
@@ -266,7 +259,6 @@ test.describe('Generate a section with AI', () => {
     // Closing used to discard the box, including on an Escape or a click on the
     // backdrop — which is the whole screen. A writer who pasted a long response
     // that failed to validate lost it with no confirm and no undo.
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Paste Keeper')

@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 /**
  * MS-2, MS-3, MS-4 and WR-1 — the screens the app is actually for.
@@ -14,7 +15,6 @@ const SPEC = JSON.stringify({
 })
 
 async function worldFromSpec(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'Generate World from AI' }).first().click()
   await page.getByLabel('Story spec JSON').fill(SPEC)
@@ -68,7 +68,7 @@ test.describe('The writing screens', () => {
     // fails the moment the guard stops holding.
     await page.goto(`/#/worlds/${worldId}/settings`, { waitUntil: 'load' })
     await page.getByRole('button', { name: 'Turn on reading mode' }).click()
-    await page.waitForTimeout(800)
+    await settle(page)
     await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await expect(page).toHaveURL(new RegExp(`/worlds/${worldId}$`), { timeout: 20_000 })
     await expect(page.getByText(/Write prose on your scenes/)).toHaveCount(0)

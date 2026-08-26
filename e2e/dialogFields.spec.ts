@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -23,7 +24,6 @@ const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map
  */
 
 async function aWorld(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Salt')
@@ -56,7 +56,7 @@ test.describe('The first dialogs name their fields', () => {
   test('Add Chapter', async ({ page }) => {
     const worldId = await aWorld(page)
     await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
-    await page.waitForTimeout(1200)
+    await settle(page)
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
 
@@ -72,7 +72,7 @@ test.describe('The first dialogs name their fields', () => {
   test('Add Scene', async ({ page }) => {
     const worldId = await aWorld(page)
     await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
-    await page.waitForTimeout(1200)
+    await settle(page)
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('The Letter')

@@ -8,7 +8,6 @@ import { resetDB } from './helpers/reset'
 test.describe('Scene revision history', () => {
   test('captures a prior draft and restores it', async ({ page }) => {
     test.setTimeout(90000)
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()
@@ -68,7 +67,6 @@ test.describe('Scene revision history', () => {
     // whitespace between, so unpadded highlights ran together: "years, and it
     // showed." then "years." rendered as one unreadable string.
     test.setTimeout(90000)
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Diff World')

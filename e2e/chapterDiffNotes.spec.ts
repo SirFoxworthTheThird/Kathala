@@ -20,7 +20,6 @@ const AFTER =
   'Downstairs again, thinner, and civil to her brother for the first time since the reading of the will — though she still will not go near the east wing.'
 
 async function twoChaptersWithANoteChange(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Highbarrow')

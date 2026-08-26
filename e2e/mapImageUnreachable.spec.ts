@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { downloadLibraryBook } from './helpers/library'
 
 /**
@@ -30,17 +31,16 @@ const PNG = Buffer.from(
 const REMOTE = /^https?:\/\/(?!localhost|127\.0\.0\.1)/
 
 async function libraryMapWithRemote(page: Page, mode: 'refused' | 'served') {
-  await page.goto('/')
   await resetDB(page)
   await downloadLibraryBook(page, 'The Woman in White')
-  await page.waitForTimeout(2000)
+  await settle(page)
   const worldId = new URL(page.url()).hash.split('/')[2]
   await page.route(REMOTE, (route) =>
     mode === 'refused'
       ? route.abort()
       : route.fulfill({ status: 200, contentType: 'image/png', body: PNG }))
   await page.goto(`/#/worlds/${worldId}/maps`, { waitUntil: 'load' })
-  await page.waitForTimeout(5000)
+  await settle(page)
 }
 
 async function stopReading(page: Page) {
@@ -119,7 +119,7 @@ test.describe('A map whose picture lives on the web', () => {
 
     await stopReading(page)
     await page.reload({ waitUntil: 'load' })
-    await page.waitForTimeout(5000)
+    await settle(page)
 
     await expect(page.getByText(UNREACHABLE)).toBeVisible()
     await expect(page.getByRole('button', { name: 'Add map image' })).toBeVisible()

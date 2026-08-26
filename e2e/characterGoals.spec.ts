@@ -8,7 +8,6 @@ import { resetDB } from './helpers/reset'
 const settleNav = (page: Page) => page.mouse.move(700, 400).then(() => page.waitForTimeout(150))
 
 async function setupWorld(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Inner Life')

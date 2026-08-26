@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -19,7 +20,6 @@ import { dismissFirstRunGuide } from './helpers/nav'
 const START = 'The wreck'
 
 async function chapterWithAScene(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Ashcorn')
@@ -59,9 +59,9 @@ const storedTitle = (page: Page) => page.evaluate(async () => {
 
 async function openChapterAndEdit(page: Page, worldId: string) {
   await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
-  await page.waitForTimeout(1800)
+  await settle(page)
   await page.getByRole('button', { name: /^Expand/ }).first().click()
-  await page.waitForTimeout(900)
+  await settle(page)
   await startEditing(page)
 }
 

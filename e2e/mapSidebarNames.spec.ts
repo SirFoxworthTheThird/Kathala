@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { settle } from './helpers/settle'
 
 const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map_example/main_map.jpg')
 
@@ -24,7 +25,6 @@ const TWINS = ['The Witch-king of Angmar', 'The Witch-king of the North']
 const FITTING = ['Samwise Gamgee', 'Radagast the Brown']
 
 async function mapWithCast(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Long Names')
@@ -39,7 +39,7 @@ async function mapWithCast(page: Page) {
   await page.getByLabel('Map Name').fill('Middle Earth')
   await page.getByRole('button', { name: 'Upload', exact: true }).click()
   await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
-  await page.waitForTimeout(1500)
+  await settle(page)
 
   const seeded = await page.evaluate(async (names) => {
     const db = (window as { __pwdb?: never }).__pwdb as unknown as {
@@ -96,14 +96,14 @@ async function mapWithCast(page: Page) {
   // Opening a chapter sets the cursor, which is what puts the sidebar into its
   // per-event state — the state the finding was measured in.
   await page.reload({ waitUntil: 'load' })
-  await page.waitForTimeout(1200)
+  await settle(page)
   await page.getByRole('link', { name: /timeline/i }).first().click()
-  await page.waitForTimeout(1000)
+  await settle(page)
   await page.getByTitle('Open chapter detail').first().click()
   await page.waitForTimeout(1000)
   await page.getByRole('link', { name: /maps/i }).first().click()
   await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
-  await page.waitForTimeout(2000)
+  await settle(page)
 }
 
 /** What each sidebar name row actually renders, not what it contains. */
@@ -180,7 +180,7 @@ test.describe('The map sidebar says which name is which', () => {
     // The opposite condition, in the same test: with no moment selected there
     // is no per-event state to report, so neither line is drawn.
     await page.getByRole('button', { name: 'View all chapters' }).click()
-    await page.waitForTimeout(800)
+    await settle(page)
     await expect(characters.getByText('Not placed', { exact: true })).toHaveCount(0)
     await expect(characters.getByText('Rivendell')).toHaveCount(0)
   })

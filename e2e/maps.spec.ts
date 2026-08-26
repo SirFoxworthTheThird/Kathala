@@ -59,7 +59,6 @@ test.describe('Map management', () => {
   test.describe.configure({ timeout: 90_000 })
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     // Create a world

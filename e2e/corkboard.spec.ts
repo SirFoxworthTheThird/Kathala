@@ -14,7 +14,6 @@ const settleNav = (page: Page) => page.mouse.move(700, 400).then(() => page.wait
 test.describe('Corkboard', () => {
   test('drags a scene card to reorder it within a chapter', async ({ page }) => {
     test.setTimeout(90000)
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()

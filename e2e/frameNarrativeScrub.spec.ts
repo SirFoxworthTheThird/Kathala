@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { settle } from './helpers/settle'
 
 const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map_example/main_map.jpg')
 
@@ -25,7 +26,6 @@ test.describe('Sync points follow the cursor, not only the timer', () => {
   test.describe.configure({ timeout: 180_000 })
 
   test('scrubbing the tale onto a paired moment brings the frame moment with it', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Frame Scrub')
@@ -40,7 +40,7 @@ test.describe('Sync points follow the cursor, not only the timer', () => {
     await page.getByLabel('Map Name').fill('Middle Earth')
     await page.getByRole('button', { name: 'Upload', exact: true }).click()
     await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
-    await page.waitForTimeout(1500)
+    await settle(page)
 
     const seeded = await page.evaluate(async () => {
       const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, {
@@ -106,7 +106,7 @@ test.describe('Sync points follow the cursor, not only the timer', () => {
     expect(seeded, 'the seeding seam should be present in an e2e build').toBe(true)
 
     await page.reload({ waitUntil: 'load' })
-    await page.waitForTimeout(2500)
+    await settle(page)
     await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
 
     const bar = page.locator('[data-chapter-bar]')

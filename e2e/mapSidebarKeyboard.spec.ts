@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { settle } from './helpers/settle'
 
 const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map_example/main_map.jpg')
 
@@ -25,7 +26,6 @@ const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map
  */
 
 async function mapWithRegion(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Reachable')
@@ -41,7 +41,7 @@ async function mapWithRegion(page: Page) {
   await page.getByLabel('Map Name').fill('Middle Earth')
   await page.getByRole('button', { name: 'Upload', exact: true }).click()
   await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
-  await page.waitForTimeout(1500)
+  await settle(page)
 
   const seeded = await page.evaluate(async (id) => {
     const db = (window as { __pwdb?: never }).__pwdb as unknown as {

@@ -80,7 +80,6 @@ async function importHostile(page: Page) {
 
 test.describe('a world written by something else', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
   })
 

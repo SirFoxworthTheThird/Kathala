@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { fileURLToPath } from 'url'
 import * as path from 'path'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide, settleNav } from './helpers/nav'
 import { waitForMapReady } from './helpers/map'
 
@@ -23,7 +24,6 @@ const MAIN_MAP = path.resolve(__dirname, 'map_example/main_map.jpg')
  */
 
 async function seed(page: Page): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Named Controls')
@@ -62,9 +62,9 @@ test.describe('Editing controls have names', () => {
   test('every control on Current State can be found by its name', async ({ page }) => {
     const worldId = await seed(page)
     await page.goto(`/#/worlds/${worldId}/characters/corvin?tab=state`, { waitUntil: 'load' })
-    await page.waitForTimeout(1200)
+    await settle(page)
     await page.getByRole('button', { name: 'Next moment' }).click()
-    await page.waitForTimeout(900)
+    await settle(page)
 
     const main = page.getByRole('main')
     // The five the report measured, each resolved by accessible name alone.
@@ -97,7 +97,6 @@ test.describe('Editing controls have names', () => {
     // only while there is nothing there yet, and the dialog under test lives
     // behind a real map — the Location tool, then a click on the canvas that
     // decides where the pin goes.
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Cartography')

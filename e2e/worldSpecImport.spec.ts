@@ -28,7 +28,6 @@ const SPEC = JSON.stringify({
 
 test.describe('Generate World from AI (spec import)', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
   })
 

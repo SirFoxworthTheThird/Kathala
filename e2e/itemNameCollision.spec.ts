@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -18,7 +19,6 @@ import { dismissFirstRunGuide } from './helpers/nav'
 const SLATE = 'The tally-slate'
 
 async function worldWithSlate(page: Page): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Bells')
@@ -61,9 +61,9 @@ const inventory = (page: Page) => page.evaluate(async () => {
 
 async function openState(page: Page, worldId: string) {
   await page.goto(`/#/worlds/${worldId}/characters/cathe?tab=state`, { waitUntil: 'load' })
-  await page.waitForTimeout(1500)
+  await settle(page)
   await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(900)
+  await settle(page)
 }
 
 test.describe('typing an item name you already have', () => {
@@ -81,19 +81,19 @@ test.describe('typing an item name you already have', () => {
     await expect(page.getByText(`"${SLATE}" already exists`)).toBeVisible()
 
     await page.getByRole('button', { name: `Add the existing "${SLATE}"` }).click()
-    await page.waitForTimeout(700)
+    await settle(page)
 
     // One item, still — and saving puts *that* item in her hands, not a twin.
     expect(await itemNames(page)).toEqual([SLATE])
     await page.getByRole('button', { name: 'Save State' }).click()
-    await page.waitForTimeout(1200)
+    await settle(page)
     expect(await inventory(page)).toEqual(['slate'])
 
     // And the presence half: a name the world does not have still creates one.
     await field.fill('The ninth bell')
     await expect(page.getByText('already exists')).toHaveCount(0)
     await page.getByRole('button', { name: 'Create item' }).click()
-    await page.waitForTimeout(900)
+    await settle(page)
     expect(await itemNames(page)).toEqual(['The ninth bell', SLATE])
   })
 
@@ -105,7 +105,7 @@ test.describe('typing an item name you already have', () => {
     await expect(field).toBeVisible({ timeout: 20_000 })
     await field.fill(SLATE)
     await page.getByRole('button', { name: `Add the existing "${SLATE}"` }).click()
-    await page.waitForTimeout(700)
+    await settle(page)
 
     // Type the same name a second time: it is hers now, so there is nothing to add.
     await field.fill(SLATE)

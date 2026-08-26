@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -17,7 +18,6 @@ import { dismissFirstRunGuide } from './helpers/nav'
  */
 
 async function worldWithAScene(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Salt')
@@ -61,12 +61,12 @@ test.describe('Deletes that used to fire on the click now ask first', () => {
   test('a saved scene version', async ({ page }) => {
     const worldId = await worldWithAScene(page)
     await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
-    await page.waitForTimeout(1800)
+    await settle(page)
 
     // The draft section — and its History button — live inside the expanded
     // scene, so open the row first.
     await page.getByRole('button', { name: /^Expand/ }).first().click()
-    await page.waitForTimeout(900)
+    await settle(page)
     await page.getByRole('button', { name: /^History \(2\)/ }).click()
     const history = page.getByRole('dialog')
     await expect(history).toBeVisible()
@@ -90,7 +90,7 @@ test.describe('Deletes that used to fire on the click now ask first', () => {
     // Backing out keeps it — the half that stops "a dialog appeared" passing
     // for a confirm that deletes regardless.
     await page.getByRole('button', { name: 'Cancel' }).click()
-    await page.waitForTimeout(500)
+    await settle(page)
     expect(await revisionCount(page)).toBe(2)
 
     // And confirming does the thing.
@@ -103,7 +103,7 @@ test.describe('Deletes that used to fire on the click now ask first', () => {
   test('a plot thread in the cadence panel', async ({ page }) => {
     const worldId = await worldWithAScene(page)
     await page.goto(`/#/worlds/${worldId}`, { waitUntil: 'load' })
-    await page.waitForTimeout(1800)
+    await settle(page)
 
     await page.getByRole('button', { name: 'New thread' }).click()
     await page.getByPlaceholder(/Thread name/).fill('The Rebellion')
@@ -118,7 +118,7 @@ test.describe('Deletes that used to fire on the click now ask first', () => {
 
     await expect(page.getByText('Delete thread?')).toBeVisible()
     await page.getByRole('button', { name: 'Cancel' }).click()
-    await page.waitForTimeout(500)
+    await settle(page)
     // Still there, because the question was declined.
     await expect(page.getByText('The Rebellion').first()).toBeVisible()
   })

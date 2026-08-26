@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 /**
  * OP-5 and CD-2 are the same defect with two symptoms: nothing set the time
@@ -15,7 +16,6 @@ test.describe('The time cursor follows you', () => {
   const cursor = (page: import('@playwright/test').Page) => page.locator('header').first()
 
   test('CD-2: opening a chapter puts you in it, and leaves you where you already were', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Cursor')
@@ -93,7 +93,6 @@ test.describe('The time cursor follows you', () => {
   })
 
   test('OP-5: finishing the first-run guide leaves you at the moment it made', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Guided')
@@ -120,7 +119,6 @@ test.describe('The time cursor follows you', () => {
     // There the cursor is the reader's own place in the book, so moving it
     // forward to wherever a chapter happened to be opened would hand them the
     // part they have not reached.
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'Library', exact: true }).click()
     await page.getByRole('button', { name: /^Download \(/ }).first().click()
@@ -129,7 +127,7 @@ test.describe('The time cursor follows you', () => {
     const worldId = new URL(page.url()).hash.split('/')[2]
 
     await page.getByRole('button', { name: 'Next moment' }).click()
-    await page.waitForTimeout(1200)
+    await settle(page)
     const before = await cursor(page).innerText()
     expect(before, 'the reader should be near the start').toContain('Ch.1')
 
@@ -146,7 +144,7 @@ test.describe('The time cursor follows you', () => {
     expect(chapterId, 'the fixture should have chapters').not.toBeNull()
 
     await page.goto(`/#/worlds/${worldId}/timeline/${chapterId}`, { waitUntil: 'load' })
-    await page.waitForTimeout(2000)
+    await settle(page)
     expect(await cursor(page).innerText(), 'reading mode should not move the reader').toBe(before)
   })
 })

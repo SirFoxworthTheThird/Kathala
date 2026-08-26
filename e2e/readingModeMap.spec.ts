@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { downloadLibraryBook, DEFAULT_BOOK } from './helpers/library'
+import { settle } from './helpers/settle'
 
 /**
  * Reported from use: *in reading mode, on the map, if I select a character I'm
@@ -27,10 +28,9 @@ const READER_TYPED = 'A READER TYPED THIS'
 
 /** Reading mode arrives with the world — this is the path a reader takes. */
 async function libraryWorldOnItsMap(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await downloadLibraryBook(page, DEFAULT_BOOK)
-  await page.waitForTimeout(2500)
+  await settle(page)
 
   // The premise, asserted rather than assumed: if the world did not arrive in
   // reading mode, everything below would be testing the writing app.

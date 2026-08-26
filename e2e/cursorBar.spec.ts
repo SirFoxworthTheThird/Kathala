@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 /**
  * W-1 — where the time cursor's own control belongs.
@@ -26,7 +27,6 @@ const SPEC = JSON.stringify({
 })
 
 async function worldFromSpec(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'Generate World from AI' }).first().click()
   await page.getByLabel('Story spec JSON').fill(SPEC)
@@ -55,7 +55,7 @@ test.describe("The time cursor's control follows the cursor", () => {
     // them, so vacuity cannot satisfy both halves.
     for (const path of ['', 'settings']) {
       await page.goto(`/#/worlds/${worldId}/${path}`, { waitUntil: 'load' })
-      await page.waitForTimeout(1200)
+      await settle(page)
       await expect(bar(page), `bar should not be on /${path}`).toHaveCount(0)
     }
   })

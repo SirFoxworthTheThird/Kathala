@@ -10,7 +10,6 @@ import { settleNav } from './helpers/nav'
  */
 test('the thread filter stops growing, and folds the rest behind a count', async ({ page }) => {
   test.setTimeout(120000)
-  await page.goto('/')
   await resetDB(page)
 
   await page.getByRole('button', { name: 'New World' }).click()

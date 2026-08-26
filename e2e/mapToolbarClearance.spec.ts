@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { settle } from './helpers/settle'
 
 const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map_example/main_map.jpg')
 
@@ -17,7 +18,6 @@ const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map
  */
 test('a marker at the top of the map opens clear of the toolbar', async ({ page }) => {
   test.setTimeout(120_000)
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Clearance')
@@ -32,7 +32,7 @@ test('a marker at the top of the map opens clear of the toolbar', async ({ page 
   await page.getByLabel('Map Name').fill('Middle Earth')
   await page.getByRole('button', { name: 'Upload', exact: true }).click()
   await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
-  await page.waitForTimeout(1500)
+  await settle(page)
 
   // One marker in the very top-right of the image — the corner the finding
   // names — and one in the middle for the paired read.
@@ -62,7 +62,7 @@ test('a marker at the top of the map opens clear of the toolbar', async ({ page 
 
   await page.reload({ waitUntil: 'load' })
   await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
-  await page.waitForTimeout(3000)
+  await settle(page)
 
   const geometry = await page.evaluate(() => {
     const band = document.querySelector('[data-map-overlay="top"]')

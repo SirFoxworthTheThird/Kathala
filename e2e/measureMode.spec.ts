@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { settle } from './helpers/settle'
 
 const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map_example/main_map.jpg')
 
@@ -19,7 +20,6 @@ test.describe('Measure mode owns the canvas', () => {
   test.describe.configure({ timeout: 180_000 })
 
   test('a region under the first point neither opens nor swallows the second', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Measuring')
@@ -34,7 +34,7 @@ test.describe('Measure mode owns the canvas', () => {
     await page.getByLabel('Map Name').fill('Middle Earth')
     await page.getByRole('button', { name: 'Upload', exact: true }).click()
     await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
-    await page.waitForTimeout(1500)
+    await settle(page)
 
     // A scale (so Measure is available) and one very large region covering the
     // whole image, so both measuring clicks land on top of it.
@@ -59,7 +59,7 @@ test.describe('Measure mode owns the canvas', () => {
 
     await page.reload({ waitUntil: 'load' })
     await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
-    await page.waitForTimeout(2000)
+    await settle(page)
 
     // Presence: with Measure off, the region is a normal control — clicking it
     // opens its panel. Without this the absence below could pass because the

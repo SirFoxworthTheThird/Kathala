@@ -24,7 +24,6 @@ const IMAGE = IMAGE_URL
 test.describe('A location picture', () => {
   test.beforeEach(async ({ page }) => {
     test.setTimeout(150_000)
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Cartography')

@@ -20,7 +20,6 @@ const SCENE = 'The ninth bell does not ring'
 const EARLIER = 'Low water'
 
 async function chapterWithACastGap(page: Page): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('The Ninth Bell')

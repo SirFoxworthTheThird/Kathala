@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { settleNav } from './helpers/nav'
+import { settle } from './helpers/settle'
 
 /**
  * RD-3: the dashboard is where the Library drops a reader, and it was the one
@@ -12,7 +13,6 @@ import { settleNav } from './helpers/nav'
  */
 test('the landing screen says it is in reading mode, and how to leave', async ({ page }) => {
   test.setTimeout(180_000)
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'Library', exact: true }).click()
   await page.getByRole('button', { name: /^Download \(/ }).first().click()
@@ -36,7 +36,7 @@ test('the landing screen says it is in reading mode, and how to leave', async ({
   // be passing on a banner that is simply always there.
   await settleNav(page)
   await page.getByRole('button', { name: 'Turn off reading mode' }).click()
-  await page.waitForTimeout(800)
+  await settle(page)
   await page.goto(`/#${world}`)
   await settleNav(page)
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 })

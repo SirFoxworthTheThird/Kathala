@@ -19,7 +19,6 @@ async function openMonths(page: Page) {
 test.describe('Calendar view', () => {
   test('CAL-2: the first visit to Calendar can start one instead of being a dead end', async ({ page }) => {
     test.setTimeout(90000)
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()
@@ -62,7 +61,6 @@ test.describe('Calendar view', () => {
    */
   test('editing the year and its suffix keeps both, and the months with them', async ({ page }) => {
     test.setTimeout(90000)
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()
@@ -103,7 +101,6 @@ test.describe('Calendar view', () => {
 
   test('a day outside the months can be built, and reads as its name', async ({ page }) => {
     test.setTimeout(120000)
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()
@@ -197,7 +194,6 @@ test.describe('Calendar view', () => {
 
   test('drags an event to a new day to pin its in-world date', async ({ page }) => {
     test.setTimeout(90000)
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()

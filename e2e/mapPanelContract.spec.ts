@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { settle } from './helpers/settle'
 
 const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map_example/main_map.jpg')
 
@@ -24,7 +25,6 @@ function headerOf(page: Page, closeLabel: string) {
 }
 
 async function setUpMap(page: Page, world: string) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill(world)
@@ -38,7 +38,7 @@ async function setUpMap(page: Page, world: string) {
   await page.getByLabel('Map Name').fill('Middle Earth')
   await page.getByRole('button', { name: 'Upload', exact: true }).click()
   await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
-  await page.waitForTimeout(1500)
+  await settle(page)
 }
 
 test.describe('The four map panels share one contract', () => {
@@ -88,7 +88,7 @@ test.describe('The four map panels share one contract', () => {
 
     await page.reload({ waitUntil: 'load' })
     await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
-    await page.waitForTimeout(2500)
+    await settle(page)
 
     // ── Location ──
     await page.getByText('Rivendell').first().click()
@@ -148,7 +148,7 @@ test.describe('The four map panels share one contract', () => {
 
     await page.reload({ waitUntil: 'load' })
     await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
-    await page.waitForTimeout(2500)
+    await settle(page)
 
     await page.getByText('Rivendell').first().click()
     const del = page.getByRole('button', { name: /Delete location/i })
@@ -206,7 +206,7 @@ test.describe('The four map panels share one contract', () => {
 
     await page.reload({ waitUntil: 'load' })
     await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
-    await page.waitForTimeout(2500)
+    await settle(page)
     await page.getByText('Rivendell').first().click()
     await expect(page.getByRole('button', { name: 'Close location panel' })).toBeVisible({ timeout: 10_000 })
 
@@ -244,7 +244,7 @@ test.describe('The four map panels share one contract', () => {
     await expect(page.getByText('Rivendell Guard').first()).toBeVisible({ timeout: 15_000 })
     await page.getByRole('link', { name: /maps/i }).first().click()
     await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
-    await page.waitForTimeout(2000)
+    await settle(page)
     await page.getByText('Rivendell').first().click()
     await expect(page.getByRole('button', { name: 'Close location panel' })).toBeVisible({ timeout: 10_000 })
     await expect(page.getByRole('link', { name: 'Open Factions' })).toHaveCount(0)

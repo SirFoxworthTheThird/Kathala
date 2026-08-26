@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -19,7 +20,6 @@ import { dismissFirstRunGuide } from './helpers/nav'
  */
 
 async function worldWithScenes(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Highbarrow')
@@ -70,7 +70,7 @@ test.describe('HB-7: the two rosters create the same way', () => {
     test(`${kind.path}: creating leaves you on the roster`, async ({ page }) => {
       const worldId = await worldWithScenes(page)
       await page.goto(`/#/worlds/${worldId}/${kind.path}`)
-      await page.waitForTimeout(800)
+      await settle(page)
 
       await page.getByRole('button', { name: kind.open }).first().click()
       await page.getByPlaceholder(kind.field).fill(kind.name)
@@ -85,7 +85,7 @@ test.describe('HB-7: the two rosters create the same way', () => {
     test(`${kind.path}: "Add another" keeps the dialog open and clears it`, async ({ page }) => {
       const worldId = await worldWithScenes(page)
       await page.goto(`/#/worlds/${worldId}/${kind.path}`)
-      await page.waitForTimeout(800)
+      await settle(page)
 
       await page.getByRole('button', { name: kind.open }).first().click()
       const nameField = page.getByPlaceholder(kind.field)

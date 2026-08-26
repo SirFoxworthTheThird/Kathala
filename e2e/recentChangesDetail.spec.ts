@@ -32,7 +32,6 @@ const panel = (page: Page) => page.getByRole('dialog', { name: 'Recent changes' 
 const ONLY_NEWEST = /Only the newest change can be undone/
 
 async function worldWithAScene(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Journal World')
@@ -137,7 +136,6 @@ test.describe('Recent changes says what changed', () => {
   })
 
   test('and says nothing about it when there is only one change', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('One Change')

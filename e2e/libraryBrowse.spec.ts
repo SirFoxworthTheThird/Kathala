@@ -14,7 +14,6 @@ import { resetDB } from './helpers/reset'
  */
 
 async function openLibrary(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'Library', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Library' })).toBeVisible()

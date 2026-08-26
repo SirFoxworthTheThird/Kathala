@@ -20,7 +20,6 @@ import { resetDB } from './helpers/reset'
 const rail = '[data-rail-chrome]'
 
 async function firstRunWorld(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('First Run')

@@ -30,7 +30,6 @@ const theme = (page: Page) => page.getByRole('button', { name: 'Theme', exact: t
 const themeBody = (page: Page) => page.getByLabel('App theme')
 
 async function settings(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Folded')

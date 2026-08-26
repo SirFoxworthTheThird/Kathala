@@ -16,7 +16,6 @@ const MANUSCRIPT = [
 test.describe('Manuscript find & replace', () => {
   test('replaces across scenes and renames the matching character', async ({ page }) => {
     test.setTimeout(90000)
-    await page.goto('/')
     await resetDB(page)
 
     // Import a manuscript whose prose repeats a name.

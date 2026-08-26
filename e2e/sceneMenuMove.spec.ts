@@ -19,7 +19,6 @@ import { settleNav, dismissFirstRunGuide } from './helpers/nav'
 const WORLD = 'The Ninth Bell'
 
 async function worldWithTwoChapters(page: Page): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill(WORLD)

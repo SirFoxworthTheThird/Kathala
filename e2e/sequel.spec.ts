@@ -3,7 +3,6 @@ import { resetDB } from './helpers/reset'
 
 test.describe('Start a sequel', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     // Create a source world with a character.

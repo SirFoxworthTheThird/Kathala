@@ -4,6 +4,7 @@ import { dismissFirstRunGuide } from './helpers/nav'
 import { waitForMapReady, sidebarSection } from './helpers/map'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { settle } from './helpers/settle'
 
 const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map_example/main_map.jpg')
 
@@ -32,7 +33,6 @@ const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map
 const STATUS = 'What is this character doing in this scene?'
 
 async function worldWithACharacterOnAMap(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Salt')
@@ -49,7 +49,7 @@ async function worldWithACharacterOnAMap(page: Page) {
   await page.getByLabel('Map Name').fill('The Reach')
   await page.getByRole('button', { name: 'Upload', exact: true }).click()
   await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 60_000 })
-  await page.waitForTimeout(1500)
+  await settle(page)
 
   await page.evaluate(async (id: string) => {
     const db = (window as { __pwdb?: never }).__pwdb as unknown as
@@ -100,7 +100,7 @@ async function writeStatus(page: Page, text: string) {
 
 const step = async (page: Page, dir: 'Next moment' | 'Previous moment') => {
   await page.getByRole('button', { name: dir }).first().click()
-  await page.waitForTimeout(900)
+  await settle(page)
 }
 
 /**
@@ -114,7 +114,7 @@ async function typeThenStepForward(page: Page, text: string) {
   await box.click()
   await box.fill(text)
   await page.getByRole('button', { name: 'Next moment' }).first().click()
-  await page.waitForTimeout(1200)
+  await settle(page)
 }
 
 /** Every status note in the store, by the scene it is filed under. */

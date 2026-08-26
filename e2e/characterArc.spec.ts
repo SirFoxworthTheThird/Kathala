@@ -3,7 +3,6 @@ import { resetDB } from './helpers/reset'
 
 test.describe('Character Arc view', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     // Create a world

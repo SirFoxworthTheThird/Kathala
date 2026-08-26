@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 import { waitForMapReady, sidebarSection } from './helpers/map'
 import path from 'path'
@@ -26,7 +27,6 @@ const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map
 const CAST = 'Characters in your cast'
 
 async function worldWithADeath(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Salt')
@@ -101,7 +101,7 @@ async function cursorAt(page: Page, worldId: string, eventId: string) {
     localStorage.setItem('plotweave-ui', JSON.stringify(st))
   }, { eid: eventId, wid: worldId })
   await page.reload({ waitUntil: 'load' })
-  await page.waitForTimeout(2000)
+  await settle(page)
 }
 
 test.describe('The app describes the moment you are on', () => {
@@ -110,7 +110,7 @@ test.describe('The app describes the moment you are on', () => {
   test('the cast split follows the cursor instead of the last page', async ({ page }) => {
     const worldId = await worldWithADeath(page)
     await page.goto(`/#/worlds/${worldId}`, { waitUntil: 'load' })
-    await page.waitForTimeout(2000)
+    await settle(page)
 
     // Before she dies: nobody is dead, and the split says so.
     await cursorAt(page, worldId, 'ev1')
@@ -134,7 +134,7 @@ test.describe('The app describes the moment you are on', () => {
     await page.getByLabel('Map Name').fill('The Reach')
     await page.getByRole('button', { name: 'Upload', exact: true }).click()
     await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 60_000 })
-    await page.waitForTimeout(1500)
+    await settle(page)
     await waitForMapReady(page)
 
     await stepTo(page, 'Rhun finds the letter')

@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -13,7 +14,6 @@ import { dismissFirstRunGuide } from './helpers/nav'
  */
 
 async function letterChangingHands(page: Page): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Custody')
@@ -59,7 +59,7 @@ test.describe("an item's own page tells its story", () => {
   test('lists who had it, in order', async ({ page }) => {
     const worldId = await letterChangingHands(page)
     await page.goto(`/#/worlds/${worldId}/items/letter`, { waitUntil: 'load' })
-    await page.waitForTimeout(1500)
+    await settle(page)
 
     const main = page.getByRole('main')
     await expect(main.getByText('Whereabouts')).toBeVisible()
@@ -81,7 +81,7 @@ test.describe("an item's own page tells its story", () => {
     }, worldId)
 
     await page.goto(`/#/worlds/${worldId}/items/letter`, { waitUntil: 'load' })
-    await page.waitForTimeout(1500)
+    await settle(page)
 
     const main = page.getByRole('main')
     // Presence: the scene the reader is in is there…

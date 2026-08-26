@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 /**
  * WB-3. The populated Writer's Brief states a faction under each character in
@@ -26,7 +27,6 @@ interface Seed {
 }
 
 async function briefFor(page: Page, seed: Seed) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Highbarrow')
@@ -75,7 +75,7 @@ async function briefFor(page: Page, seed: Seed) {
   }, { id: worldId, seed })
 
   await page.goto(`/#/worlds/${worldId}/timeline/ch1`)
-  await page.waitForTimeout(2000)
+  await settle(page)
   await page.getByTitle("Writer's Brief").click()
 
   // With no cursor the panel lists every scene and fills the brief in around

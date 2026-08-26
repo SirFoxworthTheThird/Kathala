@@ -26,7 +26,6 @@ function levelSnapshot(page: Page) {
 test('AI location generation can create a leveled place with per-floor locations', async ({ page }) => {
   test.slow()
 
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Aethel')
@@ -82,7 +81,6 @@ test('a drifted key is named in the preview rather than dropped in silence', asy
   // count line was honest about what it was importing, so the only signal was
   // noticing later that the rooms were missing.
   test.slow()
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Drifted')

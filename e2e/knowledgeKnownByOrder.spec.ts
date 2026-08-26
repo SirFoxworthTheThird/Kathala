@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -43,7 +44,6 @@ const REVEALS = [
 const STORED_ORDER = ['Ch.3 — The crypt at dawn', 'Ch.1 — A letter arrives', 'Ch.2 — The harbour at night']
 
 async function worldWithAKnownFact(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Salt')
@@ -89,9 +89,9 @@ async function worldWithAKnownFact(page: Page) {
   }, { id: worldId, scenes: SCENES, characters: CHARACTERS, reveals: REVEALS })
 
   await page.goto(`/#/worlds/${worldId}/knowledge`, { waitUntil: 'load' })
-  await page.waitForTimeout(2000)
+  await settle(page)
   await page.getByRole('button', { name: /The letter was never sent/ }).first().click()
-  await page.waitForTimeout(1000)
+  await settle(page)
   return worldId
 }
 

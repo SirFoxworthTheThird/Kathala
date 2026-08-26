@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { settle } from './helpers/settle'
 
 const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map_example/main_map.jpg')
 
@@ -19,7 +20,6 @@ const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map
 const CROWD = Array.from({ length: 16 }, (_, i) => `Character ${String(i + 1).padStart(2, '0')}`)
 
 async function mapWithCrowdedPin(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Crowded')
@@ -34,7 +34,7 @@ async function mapWithCrowdedPin(page: Page) {
   await page.getByLabel('Map Name').fill('Middle Earth')
   await page.getByRole('button', { name: 'Upload', exact: true }).click()
   await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
-  await page.waitForTimeout(1500)
+  await settle(page)
 
   const seeded = await page.evaluate(async (names) => {
     const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<
@@ -101,14 +101,14 @@ async function mapWithCrowdedPin(page: Page) {
   expect(seeded, 'the seeding seam should be present in an e2e build').toBe(true)
 
   await page.reload({ waitUntil: 'load' })
-  await page.waitForTimeout(1200)
+  await settle(page)
   await page.getByRole('link', { name: /timeline/i }).first().click()
-  await page.waitForTimeout(1000)
+  await settle(page)
   await page.getByTitle('Open chapter detail').first().click()
   await page.waitForTimeout(1000)
   await page.getByRole('link', { name: /maps/i }).first().click()
   await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
-  await page.waitForTimeout(2500)
+  await settle(page)
 }
 
 test.use({ viewport: { width: 1024, height: 600 } })

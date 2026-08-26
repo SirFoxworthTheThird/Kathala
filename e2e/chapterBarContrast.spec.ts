@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 /**
  * W19-10. **A timeline's stored colour is an identity mark, not ink.**
@@ -26,7 +27,6 @@ import { resetDB } from './helpers/reset'
 const THEME_COLOUR = 'rgb(99, 102, 241)' // #6366f1, the shipped default
 
 async function barInPaper(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Contrast World')
@@ -53,7 +53,7 @@ async function barInPaper(page: Page) {
   }, worldId)
 
   await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
-  await page.waitForTimeout(800)
+  await settle(page)
   await page.getByRole('button', { name: 'Add Chapter' }).first().click()
   await page.getByPlaceholder('Chapter title').fill('The Drowning Year')
   await page.getByRole('button', { name: 'Add Chapter' }).last().click()

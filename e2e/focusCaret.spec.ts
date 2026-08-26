@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -12,7 +13,6 @@ import { dismissFirstRunGuide } from './helpers/nav'
 const PROSE = 'The towpath was slick with the morning and Mira kept to the inside of it.'
 
 async function sceneWithProse(page: Page): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Caret World')
@@ -49,10 +49,10 @@ test.describe('Focus mode picks up where the writing stopped', () => {
   test('puts the caret at the end of the draft, not the top', async ({ page }) => {
     const worldId = await sceneWithProse(page)
     await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
-    await page.waitForTimeout(1500)
+    await settle(page)
 
     await page.getByRole('button', { name: /^Expand/ }).first().click()
-    await page.waitForTimeout(700)
+    await settle(page)
     await page.getByRole('main').getByRole('button', { name: 'Focus' }).click()
 
     const focusArea = page.getByPlaceholder('Write…')

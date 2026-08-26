@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 /**
  * Every visible control announces itself.
@@ -34,7 +35,6 @@ test.describe('Button names', () => {
   }
 
   test('the timeline and its chapter rows', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Named')
@@ -61,7 +61,6 @@ test.describe('Button names', () => {
   })
 
   test('and the scene rows inside an expanded chapter', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Named')
@@ -88,7 +87,7 @@ test.describe('Button names', () => {
     }, worldId)
 
     await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
-    await page.waitForTimeout(1500)
+    await settle(page)
     await page.getByRole('main').getByRole('button', { name: /^Ch\. 1/ }).first().click()
 
     // The rows are open — checked before sweeping, because a sweep of a screen

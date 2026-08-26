@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { downloadLibraryBook, DEFAULT_BOOK } from './helpers/library'
 
 /**
@@ -13,10 +14,9 @@ import { downloadLibraryBook, DEFAULT_BOOK } from './helpers/library'
 test('the pacing curve names its scale and its chapters', async ({ page }) => {
   test.setTimeout(180_000)
   await page.setViewportSize({ width: 1600, height: 900 })
-  await page.goto('/')
   await resetDB(page)
   await downloadLibraryBook(page, DEFAULT_BOOK)
-  await page.waitForTimeout(2000)
+  await settle(page)
   const id = new URL(page.url()).hash.split('/')[2]
   await page.goto(`/#/worlds/${id}/settings`)
   await page.getByRole('button', { name: 'Turn off reading mode' }).click().catch(() => {})
@@ -53,10 +53,9 @@ test('the pacing curve names its scale and its chapters', async ({ page }) => {
 test('the pacing curve carries its data as a table for anyone not reading the picture', async ({ page }) => {
   test.setTimeout(180_000)
   await page.setViewportSize({ width: 1600, height: 900 })
-  await page.goto('/')
   await resetDB(page)
   await downloadLibraryBook(page, DEFAULT_BOOK)
-  await page.waitForTimeout(2000)
+  await settle(page)
   const id = new URL(page.url()).hash.split('/')[2]
   await page.goto(`/#/worlds/${id}/settings`)
   await page.getByRole('button', { name: 'Turn off reading mode' }).click().catch(() => {})
@@ -105,20 +104,19 @@ test('the pacing curve carries its data as a table for anyone not reading the pi
 test('the pacing curve does not name scenes the reader has not reached', async ({ page }) => {
   test.setTimeout(180_000)
   await page.setViewportSize({ width: 1600, height: 900 })
-  await page.goto('/')
   await resetDB(page)
   await downloadLibraryBook(page, DEFAULT_BOOK)
-  await page.waitForTimeout(2000)
+  await settle(page)
   const id = new URL(page.url()).hash.split('/')[2]
 
   // Stay in reading mode, at the opening moment.
   await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(1500)
+  await settle(page)
 
   // The gate really is holding things back — otherwise the absence below would
   // pass for an unrelated reason.
   await page.goto(`/#/worlds/${id}/characters`)
-  await page.waitForTimeout(2000)
+  await settle(page)
   const roster = await page.getByRole('main').innerText()
   expect(roster, 'the gate should be active at chapter one').not.toContain('Quirrell')
 
@@ -140,7 +138,7 @@ test('the pacing curve does not name scenes the reader has not reached', async (
   // what makes the absence above a gate rather than a missing feature.
   await page.goto(`/#/worlds/${id}/settings`)
   await page.getByRole('button', { name: 'Turn off reading mode' }).click()
-  await page.waitForTimeout(1500)
+  await settle(page)
   await page.goto(`/#/worlds/${id}/timeline`)
   await expect(table).toBeAttached({ timeout: 30_000 })
   await expect

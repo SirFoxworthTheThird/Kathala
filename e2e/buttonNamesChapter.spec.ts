@@ -15,7 +15,6 @@ test.describe('Chapter detail button names', () => {
   test.describe.configure({ timeout: 120_000 })
 
   test('every control on a scene card says what it does and which scene', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()
@@ -91,7 +90,6 @@ test.describe('Chapter detail button names', () => {
     // accessible name, overlaid on the pill; the original probe looked for
     // role=button and found nothing. This pins the behaviour so the finding
     // cannot be re-raised from the same measurement.
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()

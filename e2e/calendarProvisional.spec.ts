@@ -18,7 +18,6 @@ import { resetDB } from './helpers/reset'
  */
 
 async function datedWorld(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Highbarrow')

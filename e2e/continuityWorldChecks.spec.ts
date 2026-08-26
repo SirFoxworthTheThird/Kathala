@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 /**
  * The checks added for fields the app already wrote and no check had read: the
@@ -20,7 +21,6 @@ interface Seed {
 }
 
 async function checkerFor(page: Page, seed: Seed) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Salt Gate')
@@ -82,7 +82,7 @@ async function checkerFor(page: Page, seed: Seed) {
   }, { id: worldId, seed })
 
   await page.goto(`/#/worlds/${worldId}`)
-  await page.waitForTimeout(1000)
+  await settle(page)
   await page.getByTitle('Continuity Checker').click()
   const dialog = page.getByRole('dialog').first()
   await expect(dialog.getByText('Continuity Checker')).toBeVisible()

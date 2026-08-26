@@ -4,7 +4,6 @@ import { settleNav } from './helpers/nav'
 
 test.describe('Timeline and chapters', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     // Create a world and navigate to Timeline

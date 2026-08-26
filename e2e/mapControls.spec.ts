@@ -15,7 +15,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const MAIN_MAP = path.resolve(__dirname, 'map_example/main_map.jpg')
 
 async function setupMap(page: Page, opts: { withCharacter?: boolean } = {}) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Cartography')

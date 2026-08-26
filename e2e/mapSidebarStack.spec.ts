@@ -3,6 +3,7 @@ import { resetDB } from './helpers/reset'
 import { sidebarSection } from './helpers/map'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { settle } from './helpers/settle'
 
 const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map_example/main_map.jpg')
 
@@ -20,7 +21,6 @@ test.describe('The map sidebar is a panel stack', () => {
   test.describe.configure({ timeout: 180_000 })
 
   test('every section header stays in the column, however much is open', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Crowded Sidebar')
@@ -35,7 +35,7 @@ test.describe('The map sidebar is a panel stack', () => {
     await page.getByLabel('Map Name').fill('Middle Earth')
     await page.getByRole('button', { name: 'Upload', exact: true }).click()
     await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
-    await page.waitForTimeout(1500)
+    await settle(page)
 
     // The review's world: 29 locations, 45 characters, 18 items. Enough that any
     // two open sections used to bury the rest.
@@ -72,7 +72,7 @@ test.describe('The map sidebar is a panel stack', () => {
 
     await page.reload({ waitUntil: 'load' })
     await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
-    await page.waitForTimeout(2500)
+    await settle(page)
 
     // Open the four that ship closed, so all six sections are expanded at once.
     for (const name of [/^Locations/i, /^Items/i, /^Routes/i, /^Regions/i]) {

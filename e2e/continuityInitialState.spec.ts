@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 /**
  * HB-1, the Highbarrow review's strongest finding.
@@ -23,7 +24,6 @@ import { resetDB } from './helpers/reset'
 const CAST = ['Foxworth', 'Barnaby', 'Vargan']
 
 async function ensembleScene(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Highbarrow')
@@ -60,7 +60,7 @@ async function ensembleScene(page: Page) {
   }, { id: worldId, cast: CAST })
 
   await page.goto(`/#/worlds/${worldId}`)
-  await page.waitForTimeout(800)
+  await settle(page)
   await page.getByTitle('Continuity Checker').click()
   await expect(page.getByText('Continuity Checker')).toBeVisible()
   return worldId

@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -12,7 +13,6 @@ import { dismissFirstRunGuide } from './helpers/nav'
  */
 
 async function twoScenesOneChapter(page: Page): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('History World')
@@ -61,10 +61,10 @@ test.describe('character history names the scene', () => {
   test('tells two rows in one chapter apart', async ({ page }) => {
     const worldId = await twoScenesOneChapter(page)
     await page.goto(`/#/worlds/${worldId}/characters/c1`, { waitUntil: 'load' })
-    await page.waitForTimeout(1500)
+    await settle(page)
 
     await page.getByRole('tab', { name: /history/i }).click()
-    await page.waitForTimeout(900)
+    await settle(page)
 
     const main = page.getByRole('main')
     // Presence: each row is named by its own scene.

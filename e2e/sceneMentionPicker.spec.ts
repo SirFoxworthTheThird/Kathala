@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url'
 import * as path from 'path'
 import { resetDB } from './helpers/reset'
 import { settleNav } from './helpers/nav'
+import { settle } from './helpers/settle'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const MAIN_MAP = path.resolve(__dirname, 'map_example/main_map.jpg')
@@ -35,7 +36,6 @@ const storedEvent = (page: Page) => page.evaluate(async () => {
 
 /** A world with one scene open for editing, and one existing item. */
 async function sceneWithProse(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Mention World')
@@ -120,7 +120,7 @@ test.describe('Naming things from the scene prose', () => {
     await sceneWithProse(page)
     await mention(page, 'Marren')
     await page.getByRole('button', { name: /Marren\s+new character/ }).click()
-    await page.waitForTimeout(1200)
+    await settle(page)
 
     await mention(page, 'Marren')
     await expect(page.getByRole('button', { name: /Marren\s+character/ })).toBeVisible()
@@ -238,7 +238,7 @@ test.describe('Naming things from the scene prose', () => {
       })))
     }, worldId)
     await page.reload({ waitUntil: 'load' })
-    await page.waitForTimeout(1500)
+    await settle(page)
 
     const main = page.getByRole('main')
     await main.getByRole('button', { name: 'Expand “The letter arrives”' }).click({ timeout: 30_000 })
@@ -307,7 +307,7 @@ test.describe('Naming things from the scene prose', () => {
       })
     }, worldId)
     await page.reload({ waitUntil: 'load' })
-    await page.waitForTimeout(1500)
+    await settle(page)
 
     // Now it is offered, and setting it writes to the scene.
     await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()

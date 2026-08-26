@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -17,7 +18,6 @@ import { dismissFirstRunGuide } from './helpers/nav'
 const LONG_NAME = 'Corvin Ashe of the Marrow'
 
 async function sceneWithUnrecordedCast(page: Page): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Crush')
@@ -53,7 +53,7 @@ test.describe('a cast member without state keeps their name', () => {
     await page.setViewportSize({ width: 1024, height: 900 })
     const worldId = await sceneWithUnrecordedCast(page)
     await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
-    await page.waitForTimeout(1500)
+    await settle(page)
 
     const row = page.locator('[data-cast-without-state="corvin"]')
     await expect(row).toBeVisible({ timeout: 20_000 })

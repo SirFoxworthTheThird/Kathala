@@ -56,7 +56,6 @@ test.describe('Structure proportion', () => {
   }
 
   test('the ruler shows how the chapters divide, and the dots where beats fall', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()
@@ -113,7 +112,6 @@ test.describe('Structure proportion', () => {
     // The opposite condition, in the same spec: with nothing placed in Act 2 or
     // Act 3 there is no division to draw, so the bands must be absent and the
     // reason present. Vacuity cannot satisfy both this test and the one above.
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()

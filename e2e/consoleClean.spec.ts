@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { downloadLibraryBook, DEFAULT_BOOK } from './helpers/library'
 
 /**
@@ -50,10 +51,9 @@ test.describe('a populated world does not shout at the console', () => {
   test('every main screen loads without throwing', async ({ page }) => {
     const { errors, warnings } = watch(page)
 
-    await page.goto('/')
     await resetDB(page)
     await downloadLibraryBook(page, DEFAULT_BOOK)
-    await page.waitForTimeout(2500)
+    await settle(page)
     const id = new URL(page.url()).hash.split('/')[2]
 
     // Writing mode: reading mode puts half these screens away, and the two
@@ -81,21 +81,21 @@ test.describe('a populated world does not shout at the console', () => {
 
     await page.goto(`/#/worlds/${id}/maps`)
     await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 60_000 })
-    await page.waitForTimeout(3000)
+    await settle(page)
 
     await page.goto(`/#/worlds/${id}/arc`)
     await expect(page.getByRole('grid')).toBeVisible({ timeout: 60_000 })
 
     await page.goto(`/#/worlds/${id}/corkboard`)
-    await page.waitForTimeout(3000)
+    await settle(page)
     await page.goto(`/#/worlds/${id}/manuscript`)
-    await page.waitForTimeout(3000)
+    await settle(page)
     await page.goto(`/#/worlds/${id}/items`)
-    await page.waitForTimeout(2000)
+    await settle(page)
     await page.goto(`/#/worlds/${id}/knowledge`)
-    await page.waitForTimeout(2000)
+    await settle(page)
     await page.goto(`/#/worlds/${id}/`)
-    await page.waitForTimeout(2500)
+    await settle(page)
 
     expect(errors, `errors:\n${[...new Set(errors)].join('\n')}`).toEqual([])
 

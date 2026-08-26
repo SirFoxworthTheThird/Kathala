@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -21,7 +22,6 @@ const LONG_SCENE = Array.from(
 ).join('\n\n')
 
 async function openScene(page: Page, prose: string | null): Promise<void> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Mention World')
@@ -55,9 +55,9 @@ async function openScene(page: Page, prose: string | null): Promise<void> {
   }, [worldId, prose] as const)
 
   await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
-  await page.waitForTimeout(1500)
+  await settle(page)
   await page.getByRole('button', { name: /^Expand/ }).first().click()
-  await page.waitForTimeout(800)
+  await settle(page)
 }
 
 test.describe('the @-mention list stays on screen', () => {
@@ -160,7 +160,7 @@ test.describe('the @-mention list stays on screen', () => {
       is what the chapter bar was doing to the rows above it.
     */
     await page.getByRole('button', { name: /new place/ }).click()
-    await page.waitForTimeout(900)
+    await settle(page)
 
     const created = await page.evaluate(async () => {
       const db = (window as { __pwdb?: never }).__pwdb as unknown as

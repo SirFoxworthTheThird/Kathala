@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -34,7 +35,6 @@ const PLACES: Array<[string, string]> = [
 ]
 
 async function seed(page: Page): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Long Lists')
@@ -109,9 +109,9 @@ test.describe('Pickers long enough to get lost in', () => {
   test('N9: the location picker is in name order, not the order it was stored in', async ({ page }) => {
     const worldId = await seed(page)
     await page.goto(`/#/worlds/${worldId}/characters/corvin?tab=state`, { waitUntil: 'load' })
-    await page.waitForTimeout(1200)
+    await settle(page)
     await page.getByRole('button', { name: 'Next moment' }).click()
-    await page.waitForTimeout(900)
+    await settle(page)
 
     await page.getByRole('main').getByRole('button', { name: /Unknown \/ not set/ }).click()
     const names = (await page.getByRole('option').allTextContents())

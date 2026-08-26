@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { downloadLibraryBook, DEFAULT_BOOK } from './helpers/library'
 import { unmetNames } from './helpers/unmet'
 
@@ -45,10 +46,9 @@ async function revealAll(page: Page) {
 }
 
 async function downloadFirstLibraryWorld(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await downloadLibraryBook(page, DEFAULT_BOOK)
-  await page.waitForTimeout(1000)
+  await settle(page)
 }
 
 test('a library world arrives in reading mode and hides the writing screens', async ({ page }) => {
@@ -162,7 +162,7 @@ test('settings keeps only what a reader can decide', async ({ page }) => {
 test('showing the whole book asks first, but only while reading', async ({ page }) => {
   await downloadFirstLibraryWorld(page)
   await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(1200)
+  await settle(page)
   await page.getByRole('link', { name: /characters/i }).first().click()
   await settleNav(page)
   // The badge renders 0 until the live query resolves, so wait for the real
@@ -185,11 +185,11 @@ test('showing the whole book asks first, but only while reading', async ({ page 
   await page.goto(`/#${await worldPath(page)}/settings`)
   await settleNav(page)
   await page.getByRole('button', { name: 'Turn off reading mode' }).click()
-  await page.waitForTimeout(800)
+  await settle(page)
   await page.goto(`/#${await worldPath(page)}/characters`)
   await settleNav(page)
   await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(1000)
+  await settle(page)
   await page.getByRole('button', { name: 'View all chapters' }).click()
   await expect(page.getByRole('heading', { name: 'Show the whole book?' })).toHaveCount(0)
 })
@@ -203,7 +203,7 @@ test('the corkboard is a plotting board, not a reading screen', async ({ page })
 test('relationship counts do not betray the size of the cast', async ({ page }) => {
   await downloadFirstLibraryWorld(page)
   await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(1200)
+  await settle(page)
 
   // Every relationship on show must join two characters the reader has met —
   // otherwise "61 connections" between three people gives the game away.
@@ -227,7 +227,7 @@ test('relationship counts do not betray the size of the cast', async ({ page }) 
   expect(hidden.length, 'the fixture should hold relationships involving unmet characters').toBeGreaterThan(0)
 
   await page.goto(`/#${await worldPath(page)}/relationships`)
-  await page.waitForTimeout(2000)
+  await settle(page)
   const shown = await page.getByRole('main').innerText()
   const leaked = hidden.filter(([a, b]) => shown.includes(a) && shown.includes(b))
   expect(leaked, `relationships shown between unmet characters: ${JSON.stringify(leaked)}`).toEqual([])
@@ -236,7 +236,7 @@ test('relationship counts do not betray the size of the cast', async ({ page }) 
 test('a character page has nothing to edit and no future', async ({ page }) => {
   await downloadFirstLibraryWorld(page)
   await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(800)
+  await settle(page)
   await page.getByRole('link', { name: /characters/i }).first().click()
   await settleNav(page)
 
@@ -258,14 +258,14 @@ test('a character page has nothing to edit and no future', async ({ page }) => {
 
   // Current State is a form for a writer; a reader gets the same facts as text.
   await page.getByRole('tab', { name: 'Current State' }).click()
-  await page.waitForTimeout(600)
+  await settle(page)
   await expect(page.getByRole('button', { name: 'Save State' })).toHaveCount(0)
   await expect(page.getByRole('main').locator('textarea')).toHaveCount(0)
 
   // History is a character's whole future — every chapter it lists must be one
   // the reader has already reached.
   await page.getByRole('tab', { name: 'History' }).click()
-  await page.waitForTimeout(600)
+  await settle(page)
   const history = await page.getByRole('main').innerText()
   const chapters = [...history.matchAll(/\bCh\.\s*(\d+)/g)].map((m) => Number(m[1]))
   expect(Math.max(0, ...chapters), `history listed ${history}`).toBeLessThanOrEqual(1)
@@ -312,7 +312,7 @@ test('undo and redo shortcuts are inert while reading', async ({ page }) => {
 test('the map list keeps back places the reader has not been', async ({ page }) => {
   await downloadFirstLibraryWorld(page)
   await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(800)
+  await settle(page)
 
   // A sub-map is reached through the marker that links to it, so it is exactly
   // as much of a spoiler as that marker. Work out which maps are behind a
@@ -344,7 +344,7 @@ test('the map list keeps back places the reader has not been', async ({ page }) 
   expect(shouldHide.length, 'the fixture should put at least one map behind an unmet place').toBeGreaterThan(0)
 
   await page.goto(`/#${await worldPath(page)}/maps`)
-  await page.waitForTimeout(2500)
+  await settle(page)
 
   // Read the layer tree itself rather than the page text: a chapter titled
   // after a place would otherwise look like a leak, and chapter titles stay
@@ -369,7 +369,7 @@ test('the map list keeps back places the reader has not been', async ({ page }) 
 test('map territories wait for the story to reach them', async ({ page }) => {
   await downloadFirstLibraryWorld(page)
   await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(1200)
+  await settle(page)
 
   // No library world records region state yet, so the rule would go untested on
   // the fixture as it stands — and a skipped test protects nothing. Seed both
@@ -421,13 +421,13 @@ test('map territories wait for the story to reach them', async ({ page }) => {
   // moving between hash routes does not reload the document — so reload, or the
   // gate answers from the data it read before any of this existed.
   await page.reload()
-  await page.waitForTimeout(1500)
+  await settle(page)
 
   // The reload drops the persisted cursor, and a null cursor means "all
   // chapters", where everything is revealed on purpose. Step back onto the
   // opening moment or this asserts against a gate that is deliberately open.
   await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(1200)
+  await settle(page)
   await page.goto(`/#${await worldPath(page)}/maps`)
 
   // Both directions: the rule has to hide the later one *and* keep the earlier
@@ -448,7 +448,7 @@ test('map territories wait for the story to reach them', async ({ page }) => {
 test('the map can be read and exported but not redrawn', async ({ page }) => {
   await downloadFirstLibraryWorld(page)
   await page.goto(`/#${await worldPath(page)}/maps`)
-  await page.waitForTimeout(2500)
+  await settle(page)
 
   await expect(page.getByTitle('Add a location marker')).toHaveCount(0)
   await expect(page.getByTitle('Place a text label on the map')).toHaveCount(0)
@@ -473,7 +473,7 @@ test('a book opens where it was left, not at the whole plot', async ({ page }) =
   await expect.poll(() => cursorTitle(page), { timeout: 15_000 }).toMatch(/^Ch\.1 /)
 
   for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(1000)
+  await settle(page)
   const place = await cursorTitle(page)
   expect(place).toMatch(/^Ch\./)
 
@@ -484,7 +484,7 @@ test('a book opens where it was left, not at the whole plot', async ({ page }) =
 
   // Leave to the shelf and come back, the way a reader does between sittings.
   await page.goto('/#/')
-  await page.waitForTimeout(1200)
+  await settle(page)
   await page.goto(`/#${book}/characters`)
   await settleNav(page)
   // Settle before asserting: the position is restored synchronously, but the
@@ -510,7 +510,7 @@ test('coming back honours a deliberate "show everything"', async ({ page }) => {
   const all = await shownCount(page)
 
   await page.goto('/#/')
-  await page.waitForTimeout(1200)
+  await settle(page)
   await page.goto(`/#${book}/characters`)
   await settleNav(page)
   await page.waitForTimeout(2500)
@@ -548,7 +548,7 @@ test('the shelf shows how far into each book the reader has got', async ({ page 
   await page.goto(`/#${book}`)
   await settleNav(page)
   for (let i = 0; i < 14; i++) await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(1200)
+  await settle(page)
   const reached = (await cursorTitle(page)).match(/^Ch\.(\d+)/)![1]
   expect(Number(reached)).toBeGreaterThan(1)
 
@@ -580,7 +580,7 @@ test('the map cannot be redrawn by dragging what is on it', async ({ page }) => 
   await downloadFirstLibraryWorld(page)
   const world = await worldPath(page)
   await page.goto(`/#${world}/maps`)
-  await page.waitForTimeout(3000)
+  await settle(page)
 
   const marker = page.locator('.leaflet-marker-icon').first()
   await expect(marker).toBeVisible()
@@ -600,9 +600,9 @@ test('the map cannot be redrawn by dragging what is on it', async ({ page }) => 
   await page.goto(`/#${world}/settings`)
   await settleNav(page)
   await page.getByRole('button', { name: 'Turn off reading mode' }).click()
-  await page.waitForTimeout(800)
+  await settle(page)
   await page.goto(`/#${world}/maps`)
-  await page.waitForTimeout(3000)
+  await settle(page)
 
   await expect(page.locator('.leaflet-marker-icon').first()).toHaveClass(/leaflet-marker-draggable/)
 })
@@ -619,7 +619,7 @@ test('the writing screens are closed by URL, not just hidden from the nav', asyn
 
   for (const screen of ['corkboard', 'structure', 'manuscript']) {
     await page.goto(`/#${world}/${screen}`)
-    await page.waitForTimeout(1500)
+    await settle(page)
     // Bounced back to the dashboard rather than served the writing screen.
     expect(new URL(page.url()).hash, screen).toBe(`#${world}`)
   }
@@ -629,11 +629,11 @@ test('the writing screens are closed by URL, not just hidden from the nav', asyn
   await page.goto(`/#${world}/settings`)
   await settleNav(page)
   await page.getByRole('button', { name: 'Turn off reading mode' }).click()
-  await page.waitForTimeout(800)
+  await settle(page)
 
   for (const screen of ['corkboard', 'structure', 'manuscript']) {
     await page.goto(`/#${world}/${screen}`)
-    await page.waitForTimeout(1500)
+    await settle(page)
     expect(new URL(page.url()).hash, screen).toBe(`#${world}/${screen}`)
   }
 })
@@ -659,7 +659,7 @@ test('the chapter roll-up gives a reader the size but not the state', async ({ p
   await page.goto(`/#${world}/settings`)
   await settleNav(page)
   await page.getByRole('button', { name: 'Turn off reading mode' }).click()
-  await page.waitForTimeout(800)
+  await settle(page)
   await page.goto(`/#${world}/timeline`)
   await expect(rollupStatus.first()).toBeVisible({ timeout: 15_000 })
 })

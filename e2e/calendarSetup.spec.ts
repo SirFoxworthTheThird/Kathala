@@ -16,7 +16,6 @@ import { resetDB } from './helpers/reset'
 const monthsToggle = (page: Page) => page.getByRole('button', { name: /^Months/ })
 
 async function settings(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Calendared')

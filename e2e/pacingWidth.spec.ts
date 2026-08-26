@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -17,7 +18,6 @@ import { dismissFirstRunGuide } from './helpers/nav'
  */
 
 async function draft(page: Page, chapters: number, scenesPer: number) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Salt')
@@ -53,7 +53,7 @@ async function draft(page: Page, chapters: number, scenesPer: number) {
   }, { id: worldId, chapters, scenesPer })
 
   await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
-  await page.waitForTimeout(2200)
+  await settle(page)
 }
 
 /** The chart, the panel framing it, and the column they sit in. */

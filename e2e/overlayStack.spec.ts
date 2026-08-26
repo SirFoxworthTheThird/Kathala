@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { settleNav } from './helpers/nav'
+import { settle } from './helpers/settle'
 
 /**
  * **OP-2** — filed as "an open palette traps you… and Escape does not respect
@@ -25,7 +26,6 @@ const SPEC = JSON.stringify({
 })
 
 async function world(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'Generate World from AI' }).first().click()
   await page.getByLabel('Story spec JSON').fill(SPEC)
@@ -124,7 +124,7 @@ test.describe('Overlays', () => {
 
     await page.getByRole('button', { name: 'Order facts by' }).click()
     await page.getByRole('option', { name: 'When it gets out' }).click()
-    await page.waitForTimeout(500)
+    await settle(page)
 
     // Earliest reveal first; the fact nobody knows goes last rather than first,
     // which is what treating "no reveal" as position zero would have done.
@@ -135,7 +135,7 @@ test.describe('Overlays', () => {
     // Marren lied and one knows about Zephyr, so widest-known leads.
     await page.getByRole('button', { name: 'Order facts by' }).click()
     await page.getByRole('option', { name: 'How widely known' }).click()
-    await page.waitForTimeout(500)
+    await settle(page)
     expect((await titles()).map((t) => t.split('\n')[0])[0]).toBe('Marren lied')
     expect((await titles()).map((t) => t.split('\n')[0]).at(-1)).toBe('Nobody knows this')
   })

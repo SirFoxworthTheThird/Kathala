@@ -33,7 +33,6 @@ const SPEC = JSON.stringify({
 })
 
 async function world(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'Generate World from AI' }).first().click()
   await page.getByLabel('Story spec JSON').fill(SPEC)

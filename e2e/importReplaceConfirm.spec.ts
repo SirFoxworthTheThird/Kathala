@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -19,7 +20,6 @@ import { dismissFirstRunGuide } from './helpers/nav'
 const TODAYS_WORK = 'TODAY’S WORK — do not lose me'
 
 async function worldWithTodaysWork(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Highbarrow')
@@ -89,7 +89,7 @@ test.describe('Importing over a world you already have asks first', () => {
   test('it names the world, and backing out changes nothing', async ({ page }) => {
     const worldId = await worldWithTodaysWork(page)
     await page.goto('/', { waitUntil: 'load' })
-    await page.waitForTimeout(1200)
+    await settle(page)
     expect(await eventTitles(page)).toEqual([TODAYS_WORK])
 
     await chooseImportFile(page, exportFileFor(worldId, 'Highbarrow'))
@@ -120,7 +120,7 @@ test.describe('Importing over a world you already have asks first', () => {
   test('and a world that is not here yet imports without a question', async ({ page }) => {
     await worldWithTodaysWork(page)
     await page.goto('/', { waitUntil: 'load' })
-    await page.waitForTimeout(1200)
+    await settle(page)
 
     await chooseImportFile(page, exportFileFor('w-somewhere-else', 'The Salt Road'))
 

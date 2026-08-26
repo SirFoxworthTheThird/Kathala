@@ -18,7 +18,6 @@ test.describe('The relationship minimap', () => {
   test.describe.configure({ timeout: 180_000 })
 
   test('draws its nodes as the graph does, and outlines the viewport', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Minimap')

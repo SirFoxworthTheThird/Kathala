@@ -10,7 +10,6 @@ const settleNav = (page: Page) => page.mouse.move(700, 400).then(() => page.wait
 
 /** A world with two chapters where "The Heist" is raised in ch.1 and dropped. */
 async function setupDanglingThread(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Threaded')

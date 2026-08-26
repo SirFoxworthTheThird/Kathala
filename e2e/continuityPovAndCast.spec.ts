@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 /**
  * Two findings from the 19 Aug writer run, both about a warning that knew more
@@ -21,7 +22,6 @@ import { resetDB } from './helpers/reset'
  */
 
 async function checkerFor(page: Page, seed: { pov: string | null; prose: string }) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Salt Gate')
@@ -56,7 +56,7 @@ async function checkerFor(page: Page, seed: { pov: string | null; prose: string 
   }, { id: worldId, seed })
 
   await page.goto(`/#/worlds/${worldId}`)
-  await page.waitForTimeout(800)
+  await settle(page)
   await page.getByTitle('Continuity Checker').click()
   await expect(page.getByText('Continuity Checker')).toBeVisible()
   return worldId

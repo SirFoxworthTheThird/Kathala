@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -36,7 +37,6 @@ const EXPECTED = [...SCENES]
   .map((s) => `Ch.${s.chapter} — ${s.title}`)
 
 async function worldWithAFact(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Salt')
@@ -72,9 +72,9 @@ async function worldWithAFact(page: Page) {
   }, { id: worldId, scenes: SCENES })
 
   await page.goto(`/#/worlds/${worldId}/knowledge`, { waitUntil: 'load' })
-  await page.waitForTimeout(2000)
+  await settle(page)
   await page.getByRole('button', { name: /The letter was never sent/ }).first().click()
-  await page.waitForTimeout(1000)
+  await settle(page)
   return worldId
 }
 
@@ -118,7 +118,7 @@ test.describe("Knowledge's pickers list scenes in reading order", () => {
 
     // The trigger is a plain button, not a combobox, and shows this while unset.
     await page.getByRole('button', { name: 'True from the start' }).click()
-    await page.waitForTimeout(600)
+    await settle(page)
 
     expect(await options(page)).toEqual(EXPECTED)
   })

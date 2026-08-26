@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { downloadLibraryBook, DEFAULT_BOOK } from './helpers/library'
 
 /**
@@ -25,13 +26,12 @@ const READABLE = 180
 const TALLEST = 260
 
 async function readerOnTheDashboard(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await downloadLibraryBook(page, DEFAULT_BOOK)
-  await page.waitForTimeout(2000)
+  await settle(page)
   const worldId = new URL(page.url()).hash.split('/')[2]
   await page.goto(`/#/worlds/${worldId}`, { waitUntil: 'load' })
-  await page.waitForTimeout(2000)
+  await settle(page)
 }
 
 /** Width and height of the notice and of the column holding its sentences. */

@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -16,7 +17,6 @@ import { dismissFirstRunGuide } from './helpers/nav'
  */
 
 async function worldWithAScene(page: Page): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Mapless')
@@ -53,9 +53,9 @@ async function worldWithAScene(page: Page): Promise<string> {
  */
 async function canNamePlaceInProse(page: Page, worldId: string): Promise<boolean> {
   await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
-  await page.waitForTimeout(1400)
+  await settle(page)
   await page.getByRole('button', { name: /^Expand/ }).first().click()
-  await page.waitForTimeout(700)
+  await settle(page)
   await page.getByRole('textbox', { name: 'Scene prose' }).click()
   await page.keyboard.type(' @Ferrow Crossing')
   await page.waitForTimeout(600)
@@ -74,7 +74,7 @@ test.describe('a writer with no map image can still place a scene', () => {
     expect(await canNamePlaceInProse(page, worldId)).toBe(false)
 
     await page.goto(`/#/worlds/${worldId}/maps`, { waitUntil: 'load' })
-    await page.waitForTimeout(1200)
+    await settle(page)
     // The empty state says why a map is needed at all, which is what was missing.
     await expect(page.getByText(/pins on a map/i)).toBeVisible()
 

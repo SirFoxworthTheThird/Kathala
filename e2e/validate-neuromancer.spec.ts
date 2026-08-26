@@ -3,13 +3,13 @@ import { fileURLToPath } from 'url'
 import * as path from 'path'
 import { resetDB } from './helpers/reset'
 import { shot } from './helpers/shot'
+import { settle } from './helpers/settle'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PWK_PATH = path.resolve(__dirname, '../public/library/neuromancer.pwk')
 
 test.describe('Neuromancer Visual Validation', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
   })
 
@@ -31,7 +31,7 @@ test.describe('Neuromancer Visual Validation', () => {
 
     // Characters
     await page.getByRole('link', { name: /characters/i }).first().click()
-    await page.waitForTimeout(3000)
+    await settle(page)
     await shot(page, testInfo, '02-characters.png')
     for (const name of ['Henry Dorsett Case', 'Molly Millions', 'Armitage', 'Dixie Flatline',
       'Lady 3Jane Tessier-Ashpool', 'Peter Riviera', 'Maelcum']) {
@@ -41,37 +41,37 @@ test.describe('Neuromancer Visual Validation', () => {
 
     // Timeline
     await page.getByRole('link', { name: /timeline/i }).first().click()
-    await page.waitForTimeout(3000)
+    await settle(page)
     await shot(page, testInfo, '03-timeline.png')
 
     // Maps
     await page.getByRole('link', { name: /maps/i }).first().click()
-    await page.waitForTimeout(3000)
+    await settle(page)
     await shot(page, testInfo, '04-maps.png')
 
     // Relationships
     await page.getByRole('link', { name: /relations/i }).first().click()
-    await page.waitForTimeout(3000)
+    await settle(page)
     await shot(page, testInfo, '05-relationships.png')
 
     // Lore
     await page.getByRole('link', { name: /lore/i }).first().click()
-    await page.waitForTimeout(3000)
+    await settle(page)
     await shot(page, testInfo, '06-lore.png')
 
     // Factions
     await page.getByRole('link', { name: /factions/i }).first().click()
-    await page.waitForTimeout(3000)
+    await settle(page)
     await shot(page, testInfo, '07-factions.png')
 
     // Items
     await page.getByRole('link', { name: /items/i }).first().click()
-    await page.waitForTimeout(3000)
+    await settle(page)
     await shot(page, testInfo, '08-items.png')
 
     // Calendar
     await page.getByRole('link', { name: /calendar/i }).first().click()
-    await page.waitForTimeout(3000)
+    await settle(page)
     await shot(page, testInfo, '09-calendar.png')
 
     console.log('Visual validation complete')

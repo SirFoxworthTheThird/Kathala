@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -19,7 +20,6 @@ import { dismissFirstRunGuide } from './helpers/nav'
 const LEDGER = "Ovin's Tide-Ledger"
 
 async function twoCharactersAndAnItem(page: Page): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Handoff')
@@ -80,7 +80,7 @@ test.describe('handing an item over keeps the record of who had it', () => {
 
     // Rell takes it at chapter two, by the app's own supported route.
     await page.goto(`/#/worlds/${worldId}/characters/rell?tab=state`, { waitUntil: 'load' })
-    await page.waitForTimeout(1500)
+    await settle(page)
     await page.getByRole('button', { name: 'Next moment' }).click()   // Ch.1
     await page.waitForTimeout(700)
     await page.getByRole('button', { name: 'Next moment' }).click()   // Ch.2

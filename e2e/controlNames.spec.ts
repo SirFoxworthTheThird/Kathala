@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 /**
  * Every visible control has a name a screen reader can read.
@@ -64,7 +65,6 @@ async function unnamedControls(page: Page): Promise<{ total: number; bad: Unname
 }
 
 async function seedWorld(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Named')
@@ -133,7 +133,7 @@ test.describe('Every visible control has an accessible name', () => {
     const failures: string[] = []
     for (const { path, floor } of screens) {
       await page.goto(path)
-      await page.waitForTimeout(1200)
+      await settle(page)
       const { total, bad } = await unnamedControls(page)
       expect(total, `${path} should render controls at all`).toBeGreaterThanOrEqual(floor)
       if (bad.length) failures.push(report(path, bad))

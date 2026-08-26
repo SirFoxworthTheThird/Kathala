@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 /**
  * N14, from a blind writer run: the four-step first-run guide kept its progress
@@ -26,7 +27,6 @@ import { resetDB } from './helpers/reset'
 const ON_STEP_2 = /Step 2 of 4:.*\(current\)/
 
 async function newWorld(page: Page): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('First Light')
@@ -74,7 +74,7 @@ test.describe('The first-run guide survives a reload', () => {
       someone who had just said no.
     */
     await page.reload({ waitUntil: 'load' })
-    await page.waitForTimeout(2000)
+    await settle(page)
     await expect(page.getByRole('navigation', { name: 'Wizard progress' })).toHaveCount(0)
   })
 })

@@ -5,7 +5,6 @@ import { IMAGE_URL } from './helpers/imageUrl'
 
 test.describe('World cover image', () => {
   test('links a cover in settings and shows it on the world card', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()

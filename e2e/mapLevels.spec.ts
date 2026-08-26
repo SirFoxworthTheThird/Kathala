@@ -29,7 +29,6 @@ function levelSnapshot(page: Page) {
 test('add a level to a map and switch between floors, each with its own locations', async ({ page }) => {
   test.slow() // the maps view mounts a Leaflet canvas
 
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Aethel')

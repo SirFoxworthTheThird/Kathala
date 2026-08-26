@@ -7,7 +7,6 @@ import { settleNav } from './helpers/nav'
 
 test.describe('Chapter diff', () => {
   test('compares the active chapter against another', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()

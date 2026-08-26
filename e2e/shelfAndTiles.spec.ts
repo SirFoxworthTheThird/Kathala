@@ -30,7 +30,6 @@ const SPEC = JSON.stringify({
 })
 
 async function specWorld(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'Generate World from AI' }).first().click()
   await page.getByLabel('Story spec JSON').fill(SPEC)
@@ -49,7 +48,6 @@ test.describe('The shelf and the dashboard', () => {
     await page.route(COVER_HOSTS, (route) =>
       route.fulfill({ status: 200, contentType: 'image/svg+xml', body: PLACEHOLDER }))
 
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'Library', exact: true }).click()
     const dracula = page.locator('li', { hasText: 'Dracula' }).first()

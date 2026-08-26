@@ -10,7 +10,6 @@ test.describe('The first ten minutes', () => {
   test.describe.configure({ timeout: 120_000 })
 
   test('SEL-2: the import formats are explained when you ask to import', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     // Absent from the header, where it described an action nobody had started.

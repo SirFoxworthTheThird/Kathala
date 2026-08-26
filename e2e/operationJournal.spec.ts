@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 // The operation journal (#115) in a real browser: the v52 migration against a
 // genuine IndexedDB, and the guarantee that a mutation is committed locally
@@ -12,7 +13,6 @@ test.describe('Operation journal', () => {
   const settleNav = (page: Page) => page.mouse.move(700, 400).then(() => page.waitForTimeout(150))
 
   test('journals character writes and survives a reload', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Journal World')
@@ -45,7 +45,7 @@ test.describe('Operation journal', () => {
     // A reload must not lose the journal — it is durable local state, not
     // something held in memory pending a network round-trip.
     await page.reload()
-    await page.waitForTimeout(1500)
+    await settle(page)
     const afterReload = await page.evaluate(async () => {
       const db = (window as { __pwdb?: any }).__pwdb
       return (await db.operations.toArray()).length
@@ -58,7 +58,6 @@ test.describe('Operation journal', () => {
   })
 
   test('migrates a pre-v52 world without touching its data', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     // Build a v51-shaped database by hand: no operations/tombstones stores, and
@@ -103,7 +102,7 @@ test.describe('Operation journal', () => {
 
     // Reload so the app opens the legacy database and runs the v52 upgrade.
     await page.reload()
-    await page.waitForTimeout(2500)
+    await settle(page)
 
     const migrated = await page.evaluate(async () => {
       const db = (window as { __pwdb?: any }).__pwdb

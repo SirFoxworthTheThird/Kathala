@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { settle } from './helpers/settle'
 
 const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map_example/main_map.jpg')
 
@@ -18,7 +19,6 @@ const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map
  */
 
 async function newWorld(page: Page, name: string) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill(name)
@@ -39,7 +39,7 @@ test.describe('A blocked action says what it is waiting for', () => {
     await page.getByLabel('Map Name').fill('Middle Earth')
     await page.getByRole('button', { name: 'Upload', exact: true }).click()
     await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
-    await page.waitForTimeout(1500)
+    await settle(page)
 
     await page.getByRole('button', { name: 'Location', exact: true }).click()
     await page.locator('.leaflet-container').click({ position: { x: 300, y: 200 } })
@@ -70,7 +70,7 @@ test.describe('A blocked action says what it is waiting for', () => {
     await page.getByLabel('Map Name').fill('Middle Earth')
     await page.getByRole('button', { name: 'Upload', exact: true }).click()
     await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
-    await page.waitForTimeout(1500)
+    await settle(page)
 
     await page.getByRole('button', { name: /^Routes/i }).first().click()
     await page.getByRole('button', { name: 'New route' }).click()
@@ -98,7 +98,7 @@ test.describe('A blocked action says what it is waiting for', () => {
     // connect them to the tab that put you there.
     await newWorld(page, 'Two Timelines')
     await page.getByRole('link', { name: /timeline/i }).first().click()
-    await page.waitForTimeout(1200)
+    await settle(page)
 
     const seeded = await page.evaluate(async () => {
       const db = (window as { __pwdb?: never }).__pwdb as unknown as {
@@ -115,7 +115,7 @@ test.describe('A blocked action says what it is waiting for', () => {
     expect(seeded, 'the seeding seam should be present in an e2e build').toBeGreaterThanOrEqual(2)
 
     await page.reload({ waitUntil: 'load' })
-    await page.waitForTimeout(2500)
+    await settle(page)
 
     // Two "Add Chapter" buttons exist: the header action and the empty-state
     // CTA inside the panel. The header one is what goes dead on the merged view.

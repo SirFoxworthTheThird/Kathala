@@ -10,7 +10,6 @@ const settleNav = (page: Page) => page.mouse.move(700, 400).then(() => page.wait
 
 /** Two timelines, each with one chapter + event. Leaves the app on the timeline. */
 async function setupTwoTimelines(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Braided')

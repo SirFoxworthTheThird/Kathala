@@ -11,7 +11,6 @@ import { resetDB } from './helpers/reset'
  */
 test('an item can be marked as something there is more than one of', async ({ page }) => {
   test.setTimeout(120_000)
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Quartermaster')

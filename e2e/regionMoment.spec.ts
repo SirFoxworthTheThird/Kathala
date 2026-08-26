@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { settle } from './helpers/settle'
 
 const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map_example/main_map.jpg')
 
@@ -23,7 +24,6 @@ const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map
  */
 
 async function mapWithRegion(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Middle Earth')
@@ -39,7 +39,7 @@ async function mapWithRegion(page: Page) {
   await page.getByLabel('Map Name').fill('Middle Earth')
   await page.getByRole('button', { name: 'Upload', exact: true }).click()
   await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 60_000 })
-  await page.waitForTimeout(1500)
+  await settle(page)
 
   await page.evaluate(async (id) => {
     const db = (window as { __pwdb?: never }).__pwdb as unknown as
@@ -66,9 +66,9 @@ async function mapWithRegion(page: Page) {
 
   await page.reload()
   await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 60_000 })
-  await page.waitForTimeout(2000)
+  await settle(page)
   await page.getByRole('button', { name: /^Regions/ }).first().click()
-  await page.waitForTimeout(600)
+  await settle(page)
   return worldId
 }
 
@@ -98,7 +98,7 @@ test.describe('A region says what has become of it, in its own panel', () => {
     // Put the cursor on a scene — the status is per-moment, so without one
     // there is nothing for it to be about.
     await page.getByRole('button', { name: /Departure/ }).first().click()
-    await page.waitForTimeout(800)
+    await settle(page)
 
     await page.getByRole('button', { name: /^Rohan/ }).first().click()
     await expect(panel(page)).toBeVisible()
@@ -122,7 +122,7 @@ test.describe('A region says what has become of it, in its own panel', () => {
   test('the two notes are named apart, and go to different places', async ({ page }) => {
     await mapWithRegion(page)
     await page.getByRole('button', { name: /Departure/ }).first().click()
-    await page.waitForTimeout(800)
+    await settle(page)
     await page.getByRole('button', { name: /^Rohan/ }).first().click()
     await expect(panel(page)).toBeVisible()
 
@@ -160,7 +160,7 @@ test.describe('A region says what has become of it, in its own panel', () => {
   test('the sidebar shows the status but no longer edits it', async ({ page }) => {
     await mapWithRegion(page)
     await page.getByRole('button', { name: /Departure/ }).first().click()
-    await page.waitForTimeout(800)
+    await settle(page)
     await page.getByRole('button', { name: /^Rohan/ }).first().click()
     await expect(panel(page)).toBeVisible()
 

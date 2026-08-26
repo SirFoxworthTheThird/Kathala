@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -19,7 +20,6 @@ import { dismissFirstRunGuide } from './helpers/nav'
 const PROSE = 'The gate opened on a courtyard full of rain, and nobody was waiting.'
 
 async function chapterWithAScene(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Ashcorn')
@@ -59,10 +59,10 @@ test.describe('Scene prose survives without being blurred', () => {
   test('a pause writes it, and the line under the box says which state it is in', async ({ page }) => {
     const worldId = await chapterWithAScene(page)
     await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
-    await page.waitForTimeout(1800)
+    await settle(page)
 
     await page.getByRole('button', { name: /^Expand/ }).first().click()
-    await page.waitForTimeout(900)
+    await settle(page)
 
     const box = page.getByRole('textbox', { name: 'Scene prose' })
     await expect(box).toBeVisible()
@@ -89,9 +89,9 @@ test.describe('Scene prose survives without being blurred', () => {
     // And the writer sees it again on the way back in. A reload is the case
     // that lost the work: React never unmounts, so no flush can help here.
     await page.reload({ waitUntil: 'load' })
-    await page.waitForTimeout(1800)
+    await settle(page)
     await page.getByRole('button', { name: /^Expand/ }).first().click()
-    await page.waitForTimeout(900)
+    await settle(page)
     await expect(page.getByRole('textbox', { name: 'Scene prose' })).toHaveValue(PROSE)
   })
 
@@ -104,10 +104,10 @@ test.describe('Scene prose survives without being blurred', () => {
   test('and History does not fill up with one version per pause', async ({ page }) => {
     const worldId = await chapterWithAScene(page)
     await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
-    await page.waitForTimeout(1800)
+    await settle(page)
 
     await page.getByRole('button', { name: /^Expand/ }).first().click()
-    await page.waitForTimeout(900)
+    await settle(page)
 
     const box = page.getByRole('textbox', { name: 'Scene prose' })
     await box.click()

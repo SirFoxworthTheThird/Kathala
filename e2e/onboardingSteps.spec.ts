@@ -11,7 +11,6 @@ import { resetDB } from './helpers/reset'
  */
 
 async function firstRun(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   // resetDB pre-dismisses the tutorial; the wizard is the thing under test.
   await page.evaluate(() => localStorage.removeItem('plotweave-tutorial'))

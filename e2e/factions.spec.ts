@@ -10,7 +10,6 @@ test.describe('Factions on a phone viewport', () => {
     // Phone-sized viewport: the two-column split layout must collapse.
     await page.setViewportSize({ width: 390, height: 780 })
 
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()
@@ -54,7 +53,6 @@ test.describe('Factions on a desktop viewport', () => {
     test.setTimeout(90_000)
     await page.setViewportSize({ width: 1440, height: 820 })
 
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Fac Desktop')

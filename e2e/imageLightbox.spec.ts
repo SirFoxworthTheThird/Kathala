@@ -28,7 +28,6 @@ const lightbox = (page: import('@playwright/test').Page) => page.getByTestId('im
 
 test.describe('Opening images full size', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Gallery World')

@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -17,7 +18,6 @@ import { dismissFirstRunGuide } from './helpers/nav'
 const SYNOPSIS = 'The bell does not ring, and the harbour notices before the city does.'
 
 async function chapterWithoutSynopsis(page: Page): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Synopsis')
@@ -49,7 +49,7 @@ test.describe('a chapter synopsis can be written after the chapter exists', () =
   test('the chapter the setup guide made can be given one', async ({ page }) => {
     const worldId = await chapterWithoutSynopsis(page)
     await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
-    await page.waitForTimeout(1500)
+    await settle(page)
 
     const field = page.getByRole('textbox', { name: 'Chapter synopsis' })
     await expect(field).toBeVisible({ timeout: 20_000 })
@@ -60,14 +60,14 @@ test.describe('a chapter synopsis can be written after the chapter exists', () =
 
     // And it survives a reload, which is what "written" has to mean.
     await page.reload({ waitUntil: 'load' })
-    await page.waitForTimeout(1500)
+    await settle(page)
     await expect(page.getByRole('textbox', { name: 'Chapter synopsis' })).toHaveValue(SYNOPSIS)
   })
 
   test('and can be corrected, not just filled once', async ({ page }) => {
     const worldId = await chapterWithoutSynopsis(page)
     await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
-    await page.waitForTimeout(1500)
+    await settle(page)
 
     const field = page.getByRole('textbox', { name: 'Chapter synopsis' })
     await field.fill('Wrong on the first pass.')
@@ -90,7 +90,7 @@ test.describe('a chapter synopsis can be written after the chapter exists', () =
     }, worldId)
 
     await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
-    await page.waitForTimeout(1500)
+    await settle(page)
 
     await expect(page.getByText('The bell does not ring.')).toBeVisible({ timeout: 20_000 })
     await expect(page.getByRole('textbox', { name: 'Chapter synopsis' })).toHaveCount(0)

@@ -48,7 +48,6 @@ async function seedSnapshot(page: Page, eventIndex: number, isAlive: boolean) {
 
 test('a category with more than one kind of fault says which is which', async ({ page }) => {
   test.setTimeout(120_000)
-  await page.goto('/')
   await resetDB(page)
 
   await page.getByRole('button', { name: 'New World' }).click()

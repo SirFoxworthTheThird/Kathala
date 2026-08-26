@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 /**
  * Help should describe the app the reader is actually looking at.
@@ -17,7 +18,6 @@ test.describe('Help panel', () => {
   const ALWAYS = ['Getting started', 'Core concept: the time cursor', 'Maps']
 
   async function downloadBook(page: Page) {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'Library', exact: true }).click()
     await page.getByRole('button', { name: /^Download \(/ }).first().click()
@@ -44,7 +44,7 @@ test.describe('Help panel', () => {
     // Turn reading mode off; the same topics come back.
     await page.goto(`/#/worlds/${id}/settings`)
     await page.getByRole('button', { name: 'Turn off reading mode' }).click()
-    await page.waitForTimeout(1500)
+    await settle(page)
 
     await page.getByRole('button', { name: 'Help' }).click()
     for (const t of [...WRITER_ONLY, ...ALWAYS]) {

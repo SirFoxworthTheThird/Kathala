@@ -3,7 +3,6 @@ import { resetDB } from './helpers/reset'
 
 test.describe('Character management', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     // Create a world to work in

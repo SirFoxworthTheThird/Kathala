@@ -32,6 +32,17 @@ export default defineConfig({
   // own browser context and storage is partitioned per context, so the specs do
   // not see each other's databases. Measured against the built bundle on the
   // same 16 tests: 42s at one worker, 25s at four.
+  //
+  // Four, and not more: raising it was tried and measured against. On a
+  // four-core box the suite is already CPU-saturated — a full run shows a load
+  // average near 19 — so six workers only adds contention. Paired A/B/A/B over
+  // a 45-file subset: **4 workers 215s and 212s, 6 workers 216s and 261s**,
+  // with the extra workers also producing retries that four did not.
+  //
+  // That pairing matters more than the numbers. This container's throughput
+  // drifts by a third between runs — the same tree measured 713s and then 948s
+  // — so any two runs taken an hour apart say nothing, and every conclusion
+  // here comes from variants interleaved back to back instead.
   workers: 4,
   // Playwright's per-test default is 30s, and a great many of these specs land
   // between 28s and 30s because each rebuilds a world through the real UI. That

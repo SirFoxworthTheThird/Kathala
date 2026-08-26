@@ -49,7 +49,6 @@ test.describe('Relationship graph at scale', () => {
   }
 
   async function openGraph(page: import('@playwright/test').Page) {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Big Cast')

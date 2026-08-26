@@ -17,7 +17,6 @@ import { settleNav } from './helpers/nav'
  */
 test('a timeline that starts late says where it starts', async ({ page }) => {
   test.setTimeout(120_000)
-  await page.goto('/')
   await resetDB(page)
 
   await page.getByRole('button', { name: 'New World' }).click()

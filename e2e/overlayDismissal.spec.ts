@@ -17,7 +17,6 @@ test.describe('Overlay dismissal', () => {
   test.describe.configure({ timeout: 120_000 })
 
   async function worldWithChapters(page: Page) {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Dismiss')

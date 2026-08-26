@@ -7,7 +7,6 @@ import { resetDB } from './helpers/reset'
 
 test.describe('@-mentions in the scene draft', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()

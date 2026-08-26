@@ -12,7 +12,6 @@ import { settleNav } from './helpers/nav'
 
 /** A world with one timeline and one chapter, left on the chapter detail screen. */
 async function seedChapter(page: Page, worldName: string, statuses: string[]) {
-  await page.goto('/')
   await resetDB(page)
 
   await page.getByRole('button', { name: 'New World' }).click()

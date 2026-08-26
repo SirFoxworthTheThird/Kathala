@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -21,7 +22,6 @@ import { dismissFirstRunGuide } from './helpers/nav'
 const FOUNDRY = 'Ash Foundry'
 
 async function severedWorld(page: Page): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Bells')
@@ -88,7 +88,7 @@ async function severedWorld(page: Page): Promise<string> {
  */
 async function openStateAt(page: Page, worldId: string, eventId: string) {
   await page.goto(`/#/worlds/${worldId}/characters/ossian?tab=state`, { waitUntil: 'load' })
-  await page.waitForTimeout(1000)
+  await settle(page)
   await page.evaluate(([world, event]) => {
     const raw = localStorage.getItem('plotweave-ui')
     const stored = raw ? JSON.parse(raw) : { state: {}, version: 0 }
@@ -103,7 +103,7 @@ async function openStateAt(page: Page, worldId: string, eventId: string) {
     because of it.
   */
   await page.reload({ waitUntil: 'load' })
-  await page.waitForTimeout(1800)
+  await settle(page)
   // The cursor really is where it was put — otherwise every assertion below is
   // about some other scene.
   await expect(page.getByRole('banner').getByRole('button', { name: SCENE_TITLE[eventId] })).toBeVisible({ timeout: 20_000 })
@@ -167,7 +167,7 @@ test.describe('a recorded state can be withdrawn', () => {
   test('the History tab can withdraw a record too', async ({ page }) => {
     const worldId = await severedWorld(page)
     await page.goto(`/#/worlds/${worldId}/characters/ossian?tab=history`, { waitUntil: 'load' })
-    await page.waitForTimeout(1800)
+    await settle(page)
 
     const main = page.getByRole('main')
     // Both records are listed…

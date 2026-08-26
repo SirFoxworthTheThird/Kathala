@@ -26,7 +26,6 @@ const WITH_SCENES = JSON.stringify({
 })
 
 async function worldFromSpec(page: Page, spec: string) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'Generate World from AI' }).first().click()
   await page.getByLabel('Story spec JSON').fill(spec)
@@ -85,7 +84,6 @@ test.describe("The Writer's Brief with no scene selected", () => {
   })
 
   test('WB-1: with no scene in the world, the panel routes at the screen that makes one', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Unwritten')

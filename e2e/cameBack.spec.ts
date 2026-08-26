@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 /**
  * Coming back — the character half.
@@ -19,7 +20,6 @@ import { resetDB } from './helpers/reset'
  */
 
 async function worldWithADeath(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Moria')
@@ -77,17 +77,17 @@ async function worldWithADeath(page: Page) {
  */
 async function currentStateAt(page: Page, worldId: string, sceneTitle: string) {
   await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
-  await page.waitForTimeout(1200)
+  await settle(page)
   await page.getByTitle(sceneTitle, { exact: true }).first().click()
   await page.waitForTimeout(600)
 
   await page.goto(`/#/worlds/${worldId}/characters/gandalf`)
-  await page.waitForTimeout(1200)
+  await settle(page)
   // Unconditionally, and as a tab — an `if (await tab.count())` guard here hid
   // the fact that the locator matched nothing, and both tests "passed" their
   // way to a screen that was still showing Overview.
   await page.getByRole('tab', { name: 'Current State' }).click()
-  await page.waitForTimeout(600)
+  await settle(page)
 }
 
 const storedRevived = (page: Page) => page.evaluate(async () => {

@@ -7,7 +7,6 @@ import { settleNav } from './helpers/nav'
 // a curve point to move the global time cursor.
 
 async function setupEvent(page: Page) {
-  await page.goto('/')
   await resetDB(page)
 
   await page.getByRole('button', { name: 'New World' }).click()

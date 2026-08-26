@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 /**
  * Two shelves on the world selector.
@@ -34,7 +35,6 @@ const shelf = (page: Page, name: RegExp) =>
 
 test('a draft and a downloaded book land on different shelves', async ({ page }) => {
   test.setTimeout(180_000)
-  await page.goto('/')
   await resetDB(page)
 
   await newWorld(page, 'My Novel')
@@ -56,7 +56,6 @@ test('a draft and a downloaded book land on different shelves', async ({ page })
 
 test('the start-from-scratch tile stays with the drafts', async ({ page }) => {
   test.setTimeout(180_000)
-  await page.goto('/')
   await resetDB(page)
   await newWorld(page, 'My Novel')
   await downloadBook(page, 'Dracula')
@@ -80,7 +79,6 @@ test('the start-from-scratch tile stays with the drafts', async ({ page }) => {
 
 test('turning reading mode off moves the book to your own shelf', async ({ page }) => {
   test.setTimeout(180_000)
-  await page.goto('/')
   await resetDB(page)
   await downloadBook(page, 'Dracula')
 
@@ -93,7 +91,7 @@ test('turning reading mode off moves the book to your own shelf', async ({ page 
   await expect(page).toHaveURL(/#\/worlds\//)
   await page.goto(`/#${new URL(page.url()).hash.replace('#', '').split('/').slice(0, 3).join('/')}/settings`)
   await page.getByRole('button', { name: 'Turn off reading mode' }).click()
-  await page.waitForTimeout(800)
+  await settle(page)
 
   await page.goto('/#/')
   // No reading shelf left to be on, and the book is still here — the pairing

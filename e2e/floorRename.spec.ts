@@ -20,7 +20,6 @@ function labels(page: Page) {
 test('rename a floor from the switcher', async ({ page }) => {
   test.slow()
 
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Aethel')

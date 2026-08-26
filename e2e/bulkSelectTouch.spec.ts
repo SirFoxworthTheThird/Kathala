@@ -25,7 +25,6 @@ test.use({ viewport: { width: 390, height: 667 }, hasTouch: true })
 const SCENES = ['The gate opens', 'The road south', 'Rain on the ford']
 
 async function timelineWithScenes(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Highbarrow')

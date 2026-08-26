@@ -8,7 +8,6 @@ import { resetDB } from './helpers/reset'
 
 test('All timelines tab shows events from every timeline in one sequence', async ({ page }) => {
   test.setTimeout(90000)
-  await page.goto('/')
   await resetDB(page)
 
   await page.getByRole('button', { name: 'New World' }).click()

@@ -9,7 +9,6 @@ test.use({ viewport: { width: 390, height: 667 } })
 test('sub-map link dropdown stays within the viewport on mobile', async ({ page }) => {
   test.slow() // the maps view mounts a Leaflet canvas
 
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Aethel')

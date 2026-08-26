@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -16,7 +17,6 @@ import { dismissFirstRunGuide } from './helpers/nav'
 const PLACE = 'Hallowmere Lock'
 
 async function threeChapterWorld(page: Page): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Arc')
@@ -63,7 +63,7 @@ test.describe('the Arc grid uses the room it has', () => {
     await page.setViewportSize({ width: 1440, height: 900 })
     const worldId = await threeChapterWorld(page)
     await page.goto(`/#/worlds/${worldId}/arc`, { waitUntil: 'load' })
-    await page.waitForTimeout(2000)
+    await settle(page)
 
     const cell = page.getByRole('main').getByText(PLACE).first()
     await expect(cell).toBeVisible({ timeout: 20_000 })

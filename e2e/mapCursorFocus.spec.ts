@@ -20,7 +20,6 @@ const CLOSE_PANEL = 'Close location panel'
 
 /** A world with two places and two scenes, each scene set at one of them. */
 async function setupWorld(page: Page): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Aethel')

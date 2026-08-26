@@ -19,7 +19,6 @@ const rowNames = (page: Page) => page.evaluate(() =>
 
 test('the grid leads with who is in the book, and can put the blanks away', async ({ page }) => {
   test.setTimeout(120000)
-  await page.goto('/')
   await resetDB(page)
 
   await page.getByRole('button', { name: 'New World' }).click()

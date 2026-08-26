@@ -17,7 +17,6 @@ const SPEC = JSON.stringify({
 })
 
 async function worldList(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'Generate World from AI' }).first().click()
   await page.getByLabel('Story spec JSON').fill(SPEC)
@@ -70,7 +69,6 @@ test.describe('The world list', () => {
     to say. See `src/lib/worldActivity.ts`.
   */
   test('the date follows the work, once there is work to follow', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Anhalt')
@@ -99,7 +97,6 @@ test.describe('The world list', () => {
   })
 
   test('SEL-4: the product describes itself', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await expect(page.getByText('A story bible for fiction writers')).toBeVisible({ timeout: 30_000 })
     await expect(page.getByText('Story Tracker')).toHaveCount(0)

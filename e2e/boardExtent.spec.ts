@@ -12,7 +12,6 @@ import { settleNav } from './helpers/nav'
  */
 test('the board says how much board there is, and offers a way through it', async ({ page }) => {
   test.setTimeout(120000)
-  await page.goto('/')
   await resetDB(page)
 
   await page.getByRole('button', { name: 'New World' }).click()

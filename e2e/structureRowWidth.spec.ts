@@ -16,7 +16,6 @@ test.describe('Structure rows use their width', () => {
   test.describe.configure({ timeout: 180_000 })
 
   test('the position track takes the middle rather than leaving it empty', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Structure')

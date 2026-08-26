@@ -1,5 +1,6 @@
 import { test, expect, type Page, type Locator } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -50,7 +51,6 @@ async function restingState(control: Locator) {
 }
 
 async function seedWorld(page: Page, name: string) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill(name)
@@ -112,7 +112,7 @@ test.describe('Hover-revealed controls cannot be activated while invisible', () 
   test('the world card, whose row deletes a world', async ({ page }) => {
     await seedWorld(page, 'Highbarrow')
     await page.goto('/')
-    await page.waitForTimeout(1200)
+    await settle(page)
     // Park the pointer away from the card, or the "at rest" reading is a hover.
     await page.mouse.move(0, 0)
 
@@ -124,14 +124,14 @@ test.describe('Hover-revealed controls cannot be activated while invisible', () 
   test('the plot-thread row, and its delete is named after its thread', async ({ page }) => {
     const worldId = await seedWorld(page, 'Highbarrow')
     await page.goto(`/#/worlds/${worldId}`)
-    await page.waitForTimeout(1500)
+    await settle(page)
 
     const newThread = page.getByRole('button', { name: 'New thread' })
     await expect(newThread, 'the dashboard should offer the threads panel').toBeVisible({ timeout: 60_000 })
     await newThread.click()
     await page.getByPlaceholder(/Thread name/).fill('The Rebellion')
     await page.getByRole('button', { name: 'Add', exact: true }).click()
-    await page.waitForTimeout(1000)
+    await settle(page)
     await page.mouse.move(0, 0)
 
     const row = page.locator('.group').filter({ hasText: 'The Rebellion' }).first()
@@ -142,7 +142,7 @@ test.describe('Hover-revealed controls cannot be activated while invisible', () 
   test('and the lore category controls, which had no name at all', async ({ page }) => {
     const worldId = await seedWorld(page, 'Highbarrow')
     await page.goto(`/#/worlds/${worldId}/lore`)
-    await page.waitForTimeout(1500)
+    await settle(page)
 
     await page.getByRole('button', { name: /New category/i }).first().click()
     const field = page.getByPlaceholder('Category name')
@@ -183,7 +183,7 @@ test.describe('Hover-revealed controls cannot be activated while invisible', () 
     test('the delete is drawn, tappable, and asks before it acts', async ({ page }) => {
       await seedWorld(page, 'Highbarrow')
       await page.goto('/')
-      await page.waitForTimeout(1200)
+      await settle(page)
 
       const card = page.locator('.group').filter({ hasText: 'Highbarrow' }).first()
       const del = card.getByRole('button', { name: /delete/i }).first()

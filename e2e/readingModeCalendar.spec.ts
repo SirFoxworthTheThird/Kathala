@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { downloadLibraryBook, DEFAULT_BOOK } from './helpers/library'
 
 /**
@@ -32,13 +33,12 @@ const inWorldTimes = (page: Page) => page.evaluate(async () => {
 })
 
 async function onTheCalendar(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await downloadLibraryBook(page, DEFAULT_BOOK)
-  await page.waitForTimeout(2000)
+  await settle(page)
   const worldId = new URL(page.url()).hash.split('/')[2]
   await page.goto(`/#/worlds/${worldId}/calendar`, { waitUntil: 'load' })
-  await page.waitForTimeout(2500)
+  await settle(page)
   return worldId
 }
 
@@ -55,7 +55,7 @@ async function stopReading(page: Page) {
     await db.worlds.update(w.id, { readingMode: false })
   })
   await page.reload({ waitUntil: 'load' })
-  await page.waitForTimeout(2500)
+  await settle(page)
 }
 
 /**

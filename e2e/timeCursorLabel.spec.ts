@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -29,7 +30,6 @@ const TWO_DIGIT = 12
 const ONE_DIGIT = 4
 
 async function worldAtAMoment(page: Page, chapterNumber: number) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Ashcorn')
@@ -55,10 +55,10 @@ async function worldAtAMoment(page: Page, chapterNumber: number) {
   }, { id: worldId, number: chapterNumber })
 
   await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
-  await page.waitForTimeout(2000)
+  await settle(page)
   // From "all chapters", stepping forward lands on the first moment.
   await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(1000)
+  await settle(page)
 }
 
 /**

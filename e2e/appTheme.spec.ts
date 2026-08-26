@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 /**
  * SET-1: World Settings offered to override a setting the app gave no way to
@@ -14,7 +15,6 @@ import { resetDB } from './helpers/reset'
  */
 
 async function openSettings(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Themed')
@@ -65,7 +65,7 @@ test.describe('The app theme has a control', () => {
     await expect.poll(() => rootClass(page)).toContain('theme-noir')
 
     await page.reload({ waitUntil: 'load' })
-    await page.waitForTimeout(1500)
+    await settle(page)
     expect(await rootClass(page)).toContain('theme-noir')
     await expect(page.getByLabel('App theme')).toHaveValue('noir')
   })

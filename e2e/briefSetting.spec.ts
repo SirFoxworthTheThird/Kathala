@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 /**
  * W19-4. The Writer's Brief listed where every character was and never said
@@ -15,7 +16,6 @@ import { resetDB } from './helpers/reset'
  */
 
 async function briefFor(page: Page, opts: { withSetting: boolean }) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Salt Gate')
@@ -65,7 +65,7 @@ async function briefFor(page: Page, opts: { withSetting: boolean }) {
   }, { id: worldId, withSetting: opts.withSetting })
 
   await page.goto(`/#/worlds/${worldId}/timeline/ch1`)
-  await page.waitForTimeout(2000)
+  await settle(page)
   await page.getByTitle("Writer's Brief").click()
 
   const dialog = page.getByRole('dialog', { name: "Writer's Brief" })

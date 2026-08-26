@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { downloadLibraryBook, DEFAULT_BOOK } from './helpers/library'
 
 /**
@@ -19,18 +20,17 @@ test.describe('Faction reveal', () => {
   const MET = 'The Dursley Household'
 
   test('the roster hides factions the reader has met nobody in', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await downloadLibraryBook(page, DEFAULT_BOOK)
-    await page.waitForTimeout(1500)
+    await settle(page)
     const worldId = new URL(page.url()).hash.split('/')[2]
 
     // Step onto the opening moment, where nearly the whole book is unread.
     await page.getByRole('button', { name: 'Next moment' }).click()
-    await page.waitForTimeout(1200)
+    await settle(page)
 
     await page.goto(`/#/worlds/${worldId}/factions`)
-    await page.waitForTimeout(2000)
+    await settle(page)
 
     // Present: the reader has met all four Dursleys by now.
     await expect(page.getByText(MET).first(), `"${MET}" should be listed`).toBeVisible()
@@ -57,14 +57,13 @@ test.describe('Faction reveal', () => {
     // a place they had not. No shipped book has a faction territory, so nothing
     // exercised this path — the leak that first pointed at it turned out to be a
     // faction description instead.
-    await page.goto('/')
     await resetDB(page)
     await downloadLibraryBook(page, DEFAULT_BOOK)
-    await page.waitForTimeout(1500)
+    await settle(page)
     const worldId = new URL(page.url()).hash.split('/')[2]
 
     await page.getByRole('button', { name: 'Next moment' }).click()
-    await page.waitForTimeout(1200)
+    await settle(page)
 
     // Give a faction the reader *has* met a territory they have *not*: a marker
     // tied to no event at all, which the gate treats as unreached.
@@ -98,7 +97,7 @@ test.describe('Faction reveal', () => {
     // withheld, so this cannot pass because the territory simply failed to save.
     await page.goto(`/#/worlds/${worldId}/settings`)
     await page.getByRole('button', { name: 'Turn off reading mode' }).click()
-    await page.waitForTimeout(1500)
+    await settle(page)
     await page.goto(`/#/worlds/${worldId}/factions`)
     await page.getByText('The Dursley Household').first().click()
     await expect(page.getByText('Hollow of Testing'),

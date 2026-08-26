@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { downloadLibraryBook, DEFAULT_BOOK } from './helpers/library'
 
 /**
@@ -26,15 +27,14 @@ const cursorLabel = (page: Page) =>
   page.locator('header button[title*="open timeline"]').first().getAttribute('title')
 
 async function readerAtAMoment(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await downloadLibraryBook(page, DEFAULT_BOOK)
-  await page.waitForTimeout(2000)
+  await settle(page)
 
   // Read on a few moments, so there is a position worth losing.
   for (let i = 0; i < 4; i++) {
     await page.getByRole('button', { name: 'Next moment' }).click()
-    await page.waitForTimeout(300)
+    await settle(page)
   }
   await page.waitForTimeout(800)
   const worldId = new URL(page.url()).hash.split('/')[2]
@@ -49,7 +49,7 @@ test.describe('A reader keeps their place in the book', () => {
     expect(mark, 'the reader should have a position to lose').not.toBeNull()
 
     await page.goto(`/#/worlds/${worldId}/calendar`, { waitUntil: 'load' })
-    await page.waitForTimeout(2500)
+    await settle(page)
 
     // The first scene chip on the calendar — an earlier moment than the mark.
     const chip = page.getByRole('main').locator('[draggable], button').filter({ hasText: /\w/ }).first()
@@ -79,7 +79,7 @@ test.describe('A reader keeps their place in the book', () => {
       await db.worlds.update(w.id, { readingMode: false })
     })
     await page.goto(`/#/worlds/${worldId}/calendar`, { waitUntil: 'load' })
-    await page.waitForTimeout(2500)
+    await settle(page)
 
     const chip = page.getByRole('main').locator('[draggable], button').filter({ hasText: /\w/ }).first()
     await chip.click({ timeout: 30_000 }).catch(() => {})

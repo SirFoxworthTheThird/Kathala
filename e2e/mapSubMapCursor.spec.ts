@@ -4,6 +4,7 @@ import { dismissFirstRunGuide } from './helpers/nav'
 import { waitForMapReady } from './helpers/map'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { settle } from './helpers/settle'
 
 const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map_example/main_map.jpg')
 
@@ -29,7 +30,6 @@ const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map
 const CURSOR = { onTheRoad: 'ev1', insideTheInn: 'ev2' } as const
 
 async function middleEarth(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Middle Earth')
@@ -47,7 +47,7 @@ async function middleEarth(page: Page) {
   await page.getByLabel('Map Name').fill('Eriador')
   await page.getByRole('button', { name: 'Upload', exact: true }).click()
   await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 60_000 })
-  await page.waitForTimeout(1500)
+  await settle(page)
 
   await page.evaluate(async (id: string) => {
     const db = (window as { __pwdb?: never }).__pwdb as unknown as
@@ -97,7 +97,7 @@ async function readAt(page: Page, worldId: string, eventId: string) {
     await db.worlds.update(id, { readingMode: true })
   }, worldId)
   await page.reload({ waitUntil: 'load' })
-  await page.waitForTimeout(2000)
+  await settle(page)
   // Set the cursor *after* the mode is on: opening a world in reading mode
   // moves it, so a value written beforehand does not survive.
   await page.evaluate((eid: string) => {
@@ -160,7 +160,7 @@ test.describe('A scene inside a sub-map opens that sub-map', () => {
     */
     for (let i = 0; i < 4; i++) {
       await page.getByRole('button', { name: 'Zoom in' }).click()
-      await page.waitForTimeout(300)
+      await settle(page)
     }
     await page.waitForTimeout(1000)
 

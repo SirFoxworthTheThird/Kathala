@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -16,7 +17,6 @@ import { dismissFirstRunGuide } from './helpers/nav'
  */
 
 async function worldWithAGap(page: Page): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Gap')
@@ -71,7 +71,7 @@ test.describe('the screens that name a gap are the way to fill it', () => {
   test('one click from the Arc grid to the right character and scene', async ({ page }) => {
     const worldId = await worldWithAGap(page)
     await page.goto(`/#/worlds/${worldId}/arc`, { waitUntil: 'load' })
-    await page.waitForTimeout(2000)
+    await settle(page)
 
     // The empty cell says it is a way in, not just that something is missing.
     const gap = page.getByRole('gridcell', { name: 'No state recorded — record it' }).first()
@@ -99,7 +99,7 @@ test.describe('the screens that name a gap are the way to fill it', () => {
   test('the first click works, without a warm-up click', async ({ page }) => {
     const worldId = await worldWithAGap(page)
     await page.goto(`/#/worlds/${worldId}/arc`, { waitUntil: 'load' })
-    await page.waitForTimeout(2000)
+    await settle(page)
 
     const gap = page.getByRole('gridcell', { name: 'No state recorded — record it' }).first()
     await expect(gap).toBeVisible({ timeout: 20_000 })
@@ -112,7 +112,7 @@ test.describe('the screens that name a gap are the way to fill it', () => {
   test('and in place from the cast row that names the gap', async ({ page }) => {
     const worldId = await worldWithAGap(page)
     await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
-    await page.waitForTimeout(1800)
+    await settle(page)
 
     const row = page.locator('[data-cast-without-state="corvin"]')
     await expect(row).toBeVisible({ timeout: 20_000 })
@@ -149,7 +149,7 @@ test.describe('the screens that name a gap are the way to fill it', () => {
     }, worldId)
 
     await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
-    await page.waitForTimeout(1800)
+    await settle(page)
     await expect(page.getByText(/record it/)).toHaveCount(0)
   })
 })

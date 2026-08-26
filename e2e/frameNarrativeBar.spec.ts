@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 /**
  * MT-1: in the frame-narrative bar the outer track lost its chapter titles
@@ -23,7 +24,6 @@ test.describe('The frame-narrative bar reads the same on both tracks', () => {
   test.describe.configure({ timeout: 180_000 })
 
   test('the outer track carries chapter titles, clear of its own rail', async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Frame')
@@ -87,9 +87,9 @@ test.describe('The frame-narrative bar reads the same on both tracks', () => {
     expect(seeded, 'the seeding seam should be present in an e2e build').toBe(true)
 
     await page.reload({ waitUntil: 'load' })
-    await page.waitForTimeout(1500)
+    await settle(page)
     await page.getByRole('link', { name: /timeline/i }).first().click()
-    await page.waitForTimeout(2500)
+    await settle(page)
 
     const tracks = await page.evaluate(() => {
       const segments = [...document.querySelectorAll<HTMLElement>('[title^="Ch. "]')]

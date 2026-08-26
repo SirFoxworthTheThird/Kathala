@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -25,7 +26,6 @@ const CHAR = 'Corvin Adze'
 const SCENE = 'The ninth bell does not ring'
 
 async function seed(page: Page): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Two Ledgers')
@@ -63,7 +63,7 @@ async function seed(page: Page): Promise<string> {
 /** The character page at one tab, with the cursor moved onto the only scene. */
 async function open(page: Page, worldId: string, tab: string) {
   await page.goto(`/#/worlds/${worldId}/characters/corvin?tab=${tab}`, { waitUntil: 'load' })
-  await page.waitForTimeout(1200)
+  await settle(page)
 }
 
 /**

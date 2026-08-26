@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { unmetNames, benignText } from './helpers/unmet'
 import { downloadLibraryBook, DEFAULT_BOOK } from './helpers/library'
+import { settle } from './helpers/settle'
 
 /**
  * The promise reading mode makes, checked as one property rather than screen by
@@ -33,7 +34,6 @@ const INDEX_ROUTES = [
 ]
 
 test('no unmet name appears anywhere in reading mode', async ({ page }) => {
-  await page.goto('/')
   await resetDB(page)
   /*
     Named, not `.first()`. Filing the catalogue alphabetically (**LIB-1**) moved
@@ -41,12 +41,12 @@ test('no unmet name appears anywhere in reading mode', async ({ page }) => {
     as a side effect of a UI change and nobody chose it.
   */
   await downloadLibraryBook(page, DEFAULT_BOOK)
-  await page.waitForTimeout(1500)
+  await settle(page)
   const worldId = new URL(page.url()).hash.split('/')[2]
 
   // Step onto the opening moment, where nearly the whole book is still unread.
   await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(1200)
+  await settle(page)
 
   const unmet = await unmetNames(page)
   const benign = await benignText(page)
@@ -102,9 +102,16 @@ test('no unmet name appears anywhere in reading mode', async ({ page }) => {
   }) as Record<string, string>
 
   const leaks: string[] = []
+  /*
+    Roughly a hundred routes, each of which used to be given a flat
+    `waitForTimeout(1200)` — about two minutes of the suite's wall clock in this
+    one test. `settle` waits for the screen to stop changing instead, which
+    averages 463ms on this book and, on a slow one, waits longer than 1,200 ever
+    did. See `helpers/settle.ts`.
+  */
   for (const route of [...INDEX_ROUTES, ...detail]) {
     await page.goto(`/#/worlds/${worldId}/${route}`)
-    await page.waitForTimeout(1200)
+    await settle(page)
 
     /*
       Open everything that opens before reading the page.
@@ -121,7 +128,7 @@ test('no unmet name appears anywhere in reading mode', async ({ page }) => {
       for (let i = 0; i < n; i++) {
         await disclosures.nth(i).click({ timeout: 5_000 }).catch(() => {})
       }
-      await page.waitForTimeout(800)
+      await settle(page)
     }
     // The whole document, not just <main>. The time-cursor bar, the top bar and
     // the nav rail all sit outside it, and checking only <main> is how a
@@ -144,13 +151,12 @@ test('no unmet name appears anywhere in reading mode', async ({ page }) => {
  * and a single letter matches most of the world. It gets its own pass.
  */
 test('search does not answer with what the reader has not met', async ({ page }) => {
-  await page.goto('/')
   await resetDB(page)
   await downloadLibraryBook(page, DEFAULT_BOOK)
-  await page.waitForTimeout(1500)
+  await settle(page)
 
   await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(1200)
+  await settle(page)
 
   const unmet = await unmetNames(page)
   const benign = await benignText(page)
@@ -196,19 +202,18 @@ test('search does not answer with what the reader has not met', async ({ page })
  * open cannot leak, and one left reachable is a hole waiting to be found.
  */
 test('no writing-mode overlay is reachable while reading', async ({ page }) => {
-  await page.goto('/')
   await resetDB(page)
   await downloadLibraryBook(page, DEFAULT_BOOK)
-  await page.waitForTimeout(1500)
+  await settle(page)
 
   // Step onto a moment and open the timeline. The diff button lives in the
   // event bar and needs both: an active event, and the bar expanded on the
   // timeline route. Asserting from the dashboard passes for the wrong reason.
   await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(1200)
+  await settle(page)
   const worldId = new URL(page.url()).hash.split('/')[2]
   await page.goto(`/#/worlds/${worldId}/timeline`)
-  await page.waitForTimeout(2000)
+  await settle(page)
   await expect(page.getByTitle('Play story on the map')).toHaveCount(1)
 
   for (const label of ['Compare chapters', "Writer's Brief", 'Continuity Checker', 'Recent changes']) {

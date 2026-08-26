@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -18,7 +19,6 @@ const HOME = 'Château d’If'   // on the second map — the one that was invis
 const OTHER = 'Old Port'      // on the first, which was all you could pick
 
 async function twoMapWorld(page: Page): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Two Maps')
@@ -74,9 +74,9 @@ const snapshot = (page: Page) => page.evaluate(async () => {
 
 async function openState(page: Page, worldId: string) {
   await page.goto(`/#/worlds/${worldId}/characters/edmond?tab=state`, { waitUntil: 'load' })
-  await page.waitForTimeout(1500)
+  await settle(page)
   await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(900)
+  await settle(page)
 }
 
 test.describe('Current State can see every map', () => {
@@ -118,7 +118,7 @@ test.describe('Current State can see every map', () => {
     const notes = page.getByPlaceholder('Physical condition, disguise, mood...')
     await notes.fill('Mourning Leclere.')
     await page.getByRole('button', { name: 'Save State' }).click()
-    await page.waitForTimeout(1200)
+    await settle(page)
 
     // The marker and its layer still agree.
     expect(await snapshot(page)).toMatchObject({

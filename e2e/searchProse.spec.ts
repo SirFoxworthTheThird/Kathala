@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 /**
  * The writer's most frequent lookup is "where did I write that line", and the
@@ -81,7 +82,6 @@ async function search(page: Page, q: string): Promise<string[]> {
 
 test.describe('searching the prose you wrote', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await seed(page)
   })
@@ -154,7 +154,7 @@ test.describe('searching the prose you wrote', () => {
 
     // Read on, and the same word is now findable.
     await page.getByRole('button', { name: 'Next moment' }).click()
-    await page.waitForTimeout(800)
+    await settle(page)
     expect(await search(page, 'shutter')).toContain('The seal breaks')
   })
 })

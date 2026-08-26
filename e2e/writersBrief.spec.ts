@@ -4,7 +4,6 @@ import { settleNav } from './helpers/nav'
 
 test.describe("Writer's Brief panel", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     // Create a world

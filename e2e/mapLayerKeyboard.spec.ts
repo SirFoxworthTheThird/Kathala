@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { settle } from './helpers/settle'
 
 const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map_example/main_map.jpg')
 
@@ -23,7 +24,6 @@ const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map
  */
 
 async function twoLayers(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Middle Earth')
@@ -38,7 +38,7 @@ async function twoLayers(page: Page) {
   await page.getByLabel('Map Name').fill('Eriador')
   await page.getByRole('button', { name: 'Upload', exact: true }).click()
   await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 60_000 })
-  await page.waitForTimeout(1500)
+  await settle(page)
 
   // A second root layer, so selecting one is a visible change rather than a
   // no-op on the only map there is.
@@ -53,7 +53,7 @@ async function twoLayers(page: Page) {
   })
   await page.reload()
   await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 60_000 })
-  await page.waitForTimeout(2000)
+  await settle(page)
 
   // *Which* of the two the app opens on load is not this spec's business, and
   // it is not stable: with no active layer `MapExplorerView` takes

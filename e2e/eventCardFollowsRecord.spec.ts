@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -18,7 +19,6 @@ import { dismissFirstRunGuide } from './helpers/nav'
  */
 
 async function chapterWithScene(page: Page): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Marrow')
@@ -53,10 +53,10 @@ test.describe('the scene card follows the record', () => {
   test('shows a setting written from elsewhere, without a reload', async ({ page }) => {
     const worldId = await chapterWithScene(page)
     await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
-    await page.waitForTimeout(1500)
+    await settle(page)
 
     await page.getByRole('button', { name: /^Expand/ }).first().click()
-    await page.waitForTimeout(700)
+    await settle(page)
 
     const main = page.getByRole('main')
     // Absence first: nothing is set, so the card offers to set it.

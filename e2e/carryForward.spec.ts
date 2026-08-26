@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -21,7 +22,6 @@ const KNIFE = 'The bread knife'
  * scene one stop at scene two.
  */
 async function threeRecordedScenes(page: Page, lastInventory: string[]): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Carry')
@@ -75,7 +75,7 @@ const inventories = (page: Page) => page.evaluate(async () => {
 /** Give Corvin the knife at the first scene, from the Current State panel. */
 async function giveKnifeAtFirstScene(page: Page, worldId: string) {
   await page.goto(`/#/worlds/${worldId}/characters/corvin`, { waitUntil: 'load' })
-  await page.waitForTimeout(1500)
+  await settle(page)
 
   /*
     The panel is about the scene under the time cursor, and a world opens with
@@ -83,9 +83,9 @@ async function giveKnifeAtFirstScene(page: Page, worldId: string) {
     state." So put it on the first moment before editing anything.
   */
   await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(900)
+  await settle(page)
   await page.getByRole('tab', { name: 'Current State' }).click()
-  await page.waitForTimeout(700)
+  await settle(page)
 
   // Inventory is added through a select, not a button per item.
   await page.getByRole('button', { name: 'Add existing item...' }).click()

@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 /**
  * A map whose picture is not in the store says so, instead of spinning.
@@ -21,7 +22,6 @@ import { resetDB } from './helpers/reset'
  */
 
 async function worldWithBrokenMap(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Middle Earth')
@@ -41,7 +41,7 @@ async function worldWithBrokenMap(page: Page) {
   }, worldId)
 
   await page.goto(`/#/worlds/${worldId}/maps`)
-  await page.waitForTimeout(2500)
+  await settle(page)
   return worldId
 }
 
@@ -63,7 +63,6 @@ test.describe('A map layer whose image never arrived', () => {
   test('a layer with no image at all keeps its own, different message', async ({ page }) => {
     // Paired with the test above: two states that used to be one, so neither
     // can pass by rendering the other.
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Middle Earth')
@@ -83,7 +82,7 @@ test.describe('A map layer whose image never arrived', () => {
     }, worldId)
 
     await page.goto(`/#/worlds/${worldId}/maps`)
-    await page.waitForTimeout(2500)
+    await settle(page)
 
     await expect(page.getByText('This map needs an image')).toBeVisible()
     await expect(page.getByText("This map's image isn't here")).toHaveCount(0)

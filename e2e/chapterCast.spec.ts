@@ -51,7 +51,6 @@ const EMPTY = JSON.stringify({
 })
 
 async function openTheChapter(page: Page, spec: string) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'Generate World from AI' }).first().click()
   await page.getByLabel('Story spec JSON').fill(spec)
