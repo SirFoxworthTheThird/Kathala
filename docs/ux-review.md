@@ -1332,7 +1332,35 @@ list in section 27.)*
 
 Not UX, but surfaced while capturing.
 
-| ID | Finding |
-|---|---|
-| BUG-1 | `Cannot update a component (TopBar) while rendering a different component (MapExplorerView)` — a setState-during-render on the Maps screen. |
-| BUG-2 | `Encountered two children with the same key, 'lotr-ev-last-alliance'` — duplicate React key, in the Fellowship example data or its render. |
+Both were filed without a status and carried none for months, because nothing in
+the suite watched the console — they were found by a person looking at a devtools
+panel, which is not a thing that happens twice. Both are now **closed on
+measurement**, and the watching is automated (see the note below the table).
+
+| ID | Status | Finding |
+|---|---|---|
+| BUG-1 | **not reproducible** | `Cannot update a component (TopBar) while rendering a different component (MapExplorerView)` — a setState-during-render on the Maps screen. **Driven again on the world the review used**: `The Fellowship of the Ring.pwk` imported *with* its 15MB `.pwb`, giving 91 events, 22 chapters, 45 characters, 16 map layers, 43 relationships and 149 blobs, then every main screen visited and waited on real content (Leaflet up, 45 graph nodes drawn). No such warning, and none on a Library download of the same book either. |
+| BUG-2 | **not reproducible; the data half is clean by construction** | `Encountered two children with the same key, 'lotr-ev-last-alliance'` — filed as "the Fellowship example data or its render". Same run as BUG-1: no duplicate-key warning on any screen. The data half cannot be the cause — a scan of all 30 shipped `.pwk` files found **no duplicate id in any table**, and could not: a `.pwk` is exported from Dexie, where `id` is the primary key, so a duplicate is unrepresentable at the source. The event itself exists exactly once and is a flashback in `chap_14_council_of_elrond`. |
+
+**The first attempt at this proved nothing, and it is worth saying why.** It ran
+against the built bundle, like the rest of the suite — and React's duplicate-key
+and setState-during-render messages are `console.warn` behind
+`NODE_ENV !== 'production'`, so they are *stripped from the bundle entirely*.
+A clean console there was not evidence of anything. The runs above were driven
+with `E2E_DEV=1`, against the dev server, where a control warning (React Flow's)
+did come through — which is what makes the two absences mean something.
+
+`e2e/consoleClean.spec.ts` now tours a populated world on every run and fails on
+any uncaught exception or `console.error`; with `E2E_DEV=1` it additionally
+asserts no React warnings. Verified by making one screen log an error, which
+turns it red.
+
+**One warning does appear, and it is not a fault.** React Flow's *"It looks like
+you've created a new nodeTypes or edgeTypes object"* fires on the Relationships
+screen, and both objects are already module-level constants
+(`RelationshipGraphView.tsx:153-154`). Measured rather than assumed: **2 per
+mount, still 2 after seven re-renders that rebuild the graph, 4 after a second
+mount.** A real "new object every render" fault climbs with renders; this counts
+with mounts, which is React 18 StrictMode's double-invocation. It is excluded by
+name in the spec, with that measurement recorded beside it, so nobody writes a
+fix for it.
