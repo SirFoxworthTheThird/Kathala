@@ -97,13 +97,64 @@ test.describe('Browsing the Library', () => {
 
     /*
       The pair, and the reason this is not just "print a line on every card":
-      four of the thirty worlds *do* ship an image bundle, offer it instead, and
-      must not be labelled as loading from the web.
+      four of the thirty worlds *do* ship an image bundle, and must say the
+      opposite rather than being labelled as loading from the web.
     */
-    const bundled = page.getByRole('button', { name: /^With images \(/ })
-    await expect(bundled.first()).toBeVisible()
-    const card = bundled.first().locator('xpath=ancestor::li[1]')
+    const bundled = page.getByText('Embedded images').first()
+    await expect(bundled).toBeVisible()
+    const card = bundled.locator('xpath=ancestor::li[1]')
     await expect(card.getByText('Pictures load from the web')).toHaveCount(0)
+
+    /*
+      One way in, on both kinds of card. There used to be a second button —
+      "With images (14.6 MB)" — and choosing between the two meant knowing what
+      a `.pwb` was; the one a reader was likelier to press was the one that left
+      the maps blank. The bundle's size is now inside the single button, which
+      is the part that matters on a phone.
+    */
+    await expect(page.getByRole('button', { name: /^With images/ })).toHaveCount(0)
+    await expect(card.getByRole('button', { name: /^Download \(/ })).toHaveCount(1)
+    const plain = page.getByText('Pictures load from the web').first().locator('xpath=ancestor::li[1]')
+    await expect(plain.getByRole('button', { name: /^Download \(/ })).toHaveCount(1)
+
+    /*
+      And the size on it is the whole download. The Fellowship's data is 587 KB
+      against a 15 MB bundle, so a button still reading a few hundred kilobytes
+      would be the old promise with the old button removed.
+    */
+    const label = await card.getByRole('button', { name: /^Download \(/ }).textContent()
+    expect(label, 'a bundled world quotes megabytes, not kilobytes').toMatch(/\d+(\.\d+)? MB/)
+  })
+
+  /*
+    The half the card's wording rests on. "Embedded images" is a claim that the
+    pictures arrive with the book, and the button that used to make that happen
+    is gone — so the remaining one has to ask for the bundle. Asserting the
+    label alone would pass just as happily on a card that says so and downloads
+    the text.
+
+    The `.pwb` is intercepted rather than really fetched: the smallest is 1.2 MB
+    and the largest 15 MB, and a suite that pulls those down to prove a request
+    was made is paying megabytes for one boolean.
+  */
+  test('the one button asks for the image bundle', async ({ page }) => {
+    await openLibrary(page)
+    let asked: string | null = null
+    await page.route('**/*.pwb', async (route) => {
+      asked = new URL(route.request().url()).pathname
+      // A valid, empty images file, so the download finishes rather than
+      // reporting a failure that would mask what is being tested.
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ version: 1, type: 'images', images: [] }),
+      })
+    })
+
+    const card = page.getByText('Embedded images').first().locator('xpath=ancestor::li[1]')
+    await card.getByRole('button', { name: /^Download \(/ }).click()
+    await expect(page.getByRole('heading', { name: 'Library' })).toHaveCount(0, { timeout: 120_000 })
+    expect(asked, 'the bundle should have been requested').toMatch(/\.pwb$/)
   })
 
   test('Escape closes it — and not the confirm stacked over it', async ({ page }) => {

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { BookOpen, Download, Check, X, AlertTriangle, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
-  downloadLibraryWorld, fetchLibraryIndex, formatBytes, libraryBaseUrl,
+  downloadBytes, downloadLibraryWorld, fetchLibraryIndex, formatBytes, libraryBaseUrl,
   type LibraryEntry,
 } from '@/lib/library'
 import { browseLibrary } from '@/lib/libraryBrowse'
@@ -257,48 +257,46 @@ export function LibraryDialog({
                           size="sm"
                           variant="outline"
                           disabled={busy}
-                          onClick={() => start(entry, false)}
+                          onClick={() => start(entry, !!entry.images)}
                         >
                           {busy ? stage || 'Downloading…' : 'Download again'}
                         </Button>
                       </>
                     ) : (
                       <>
-                        <Button size="sm" disabled={busy} onClick={() => start(entry, false)}>
+                        {/*
+                          One button. Where a world ships an image bundle it
+                          comes with the book, and the size on the button is the
+                          whole of what will be fetched — which is the part that
+                          matters on a phone. It used to be a second button,
+                          "With images (14.6 MB)", on the reasoning that nobody
+                          should start fifteen megabytes without meaning to; but
+                          a reader choosing between two downloads has to know
+                          what a `.pwb` is to choose, and the one they were more
+                          likely to press was the one that quietly left the maps
+                          blank.
+                        */}
+                        <Button size="sm" disabled={busy} onClick={() => start(entry, !!entry.images)}>
                           {busy ? stage || 'Downloading…' : (
                             <>
                               <Download className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-                              Download ({formatBytes(entry.dataBytes)})
+                              Download ({formatBytes(downloadBytes(entry))})
                             </>
                           )}
                         </Button>
-                        {entry.images ? (
-                          // A separate button rather than a checkbox: the image
-                          // bundle is often twenty times the data, and nobody on
-                          // a phone should start that without meaning to.
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={busy}
-                            onClick={() => start(entry, true)}
-                          >
-                            With images ({formatBytes(entry.imagesBytes ?? 0)})
-                          </Button>
-                        ) : (
-                          /*
-                            Said before the download rather than discovered after
-                            it. Most shipped worlds keep their maps and covers as
-                            links rather than bytes — Dracula's `.pwk` carries 76
-                            of them — so the book arrives complete in every
-                            respect except that its maps need a connection to
-                            draw. The map screen says so honestly once you are
-                            there; the card was offering "Download (363 KB)" and
-                            leaving you to find out on a train.
-                          */
-                          <span className="text-[11px] text-[hsl(var(--muted-foreground))]">
-                            Pictures load from the web
-                          </span>
-                        )}
+                        {/*
+                          Said before the download rather than discovered after
+                          it. Most shipped worlds keep their maps and covers as
+                          links rather than bytes — Dracula's `.pwk` carries 76
+                          of them — so the book arrives complete in every respect
+                          except that its maps need a connection to draw. The map
+                          screen says so honestly once you are there; the card
+                          was offering "Download (363 KB)" and leaving you to
+                          find out on a train.
+                        */}
+                        <span className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                          {entry.images ? 'Embedded images' : 'Pictures load from the web'}
+                        </span>
                       </>
                     )}
                   </div>

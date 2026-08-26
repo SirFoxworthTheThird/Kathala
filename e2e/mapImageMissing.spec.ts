@@ -5,12 +5,12 @@ import { settle } from './helpers/settle'
 /**
  * A map whose picture is not in the store says so, instead of spinning.
  *
- * Worlds from the Library keep their images in a separate `.pwb` bundle,
- * because it dwarfs the data and pulling it is deliberately its own decision.
- * Download a world *without* images and its map layers still carry an
- * `imageId` — pointing at blobs nobody fetched. Measured on the shipped
- * *Fellowship*: 16 layers, 0 of their images in the store, and the Maps screen
- * rendered an empty `main` forever.
+ * Worlds from the Library keep their images in a separate `.pwb` file. That
+ * file now comes down with the book, so this state is reached by a world
+ * downloaded before it did, or by an image fetch that failed — either way the
+ * map layers carry an `imageId` pointing at blobs nobody has. Measured on the
+ * shipped *Fellowship*: 16 layers, 0 of their images in the store, and the Maps
+ * screen rendered an empty `main` forever.
  *
  * The cause is that `useBlobUrl` returns `undefined` for *loading* and for
  * *absent* alike, so the screen could not tell a slow map from a missing one
@@ -52,7 +52,11 @@ test.describe('A map layer whose image never arrived', () => {
     await worldWithBrokenMap(page)
 
     await expect(page.getByText("This map's image isn't here")).toBeVisible()
-    await expect(page.getByText(/separate bundle/)).toBeVisible()
+    await expect(page.getByText(/separate file/)).toBeVisible()
+    // The way out is named, and it is the one that exists: there is no longer a
+    // second Library button to press, so an instruction to include images would
+    // send a reader looking for a control that is not there.
+    await expect(page.getByText(/Download the world again from the Library/)).toBeVisible()
     // The layer is still named, so the writer knows which map this is about.
     await expect(page.getByText('Image not downloaded')).toBeVisible()
 

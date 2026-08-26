@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
-  formatBytes, libraryBaseUrl, parseLibraryIndex, fetchLibraryIndex,
+  downloadBytes, formatBytes, libraryBaseUrl, parseLibraryIndex, fetchLibraryIndex,
   type LibraryEntry,
 } from '@/lib/library'
 
@@ -128,5 +128,33 @@ describe('formatBytes', () => {
     expect(formatBytes(2048)).toBe('2 KB')
     expect(formatBytes(540_611)).toBe('528 KB')
     expect(formatBytes(15_352_825)).toBe('14.6 MB')
+  })
+})
+
+describe('downloadBytes', () => {
+  const of = (over: Partial<LibraryEntry>) =>
+    parseLibraryIndex({ version: 1, entries: [entry(over)] }).entries[0]
+
+  /*
+    The Library used to offer the image bundle as a second button and quote
+    only the `.pwk` on the first. The bundle now comes with the book, so the one
+    number on the one button has to be the whole download — the Fellowship is
+    587 KB of story against 15 MB of pictures, and a card still saying 587 KB
+    would be the old promise with the old button taken away.
+  */
+  it('counts the image bundle when a world ships one', () => {
+    expect(downloadBytes(of({ dataBytes: 587_307, images: 'f.pwb', imagesBytes: 15_352_825 })))
+      .toBe(587_307 + 15_352_825)
+  })
+
+  // The pair: 26 of the 30 ship no bundle, and must not be inflated by one.
+  it('is just the data where there is no bundle', () => {
+    expect(downloadBytes(of({ dataBytes: 331_203 }))).toBe(331_203)
+  })
+
+  it('does not turn a label into NaN when the size was never recorded', () => {
+    // `imagesBytes` is optional in the index; `images` is the field that says
+    // whether there is a bundle at all.
+    expect(downloadBytes(of({ dataBytes: 1000, images: 'f.pwb' }))).toBe(1000)
   })
 })

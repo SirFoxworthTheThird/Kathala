@@ -157,9 +157,12 @@ have:
 
 Most books keep their maps and cover art on the web rather than inside the file,
 so the card says **Pictures load from the web** — the book itself works offline,
-and its maps will not draw without a connection. A few offer **With images**
-alongside the download, which brings the pictures with them; those are much
-larger, and the button says how much.
+and its maps will not draw without a connection. A few say **Embedded images**
+instead: those carry their pictures with them, they come down with the book
+rather than as a second download, and the size on the **Download** button is the
+whole of what will be fetched — which for those is megabytes rather than
+kilobytes. (For a world whose pictures are links, you can take a copy afterwards
+from **World settings → Pictures**.)
 
 **Import World** asks which files to choose before opening the picker: a `.pwk`
 export on its own, or — if you exported with split files — the `.pwk` and its
@@ -283,8 +286,9 @@ you opened it. Nothing about your worlds is sent, and nothing is uploaded; it is
 an ordinary image request, of the kind any web page makes. Cards load lazily, so
 only the ones you scroll to are fetched, and a card whose cover cannot be loaded
 simply goes without one rather than showing a broken frame. Books whose artwork lives inside the image bundle stay
-text-only here, since drawing them would mean downloading the very bundle the
-*With images* button exists to make optional.
+text-only here: opening the catalogue is not the same as asking for a book, and
+pulling tens of megabytes down to decorate a card you may scroll past would make
+it so.
 
 ### Reading alongside a book
 
@@ -1487,9 +1491,10 @@ hidden — the rest are just below, ready to be placed.
 **If a map opens without its picture**, the screen says so — *"This map's image
 isn't here"* — and everything else about the map is intact: its locations,
 routes and regions are all still there. This happens to worlds taken from the
-**Library** without their images, because those live in a separate bundle that
-is a separate download. Fetch the world again with images included, or add a
-picture of your own from that screen.
+**Library** whose image file did not arrive — either because it was downloaded
+before the pictures came with the book, or because that part of the download
+failed. Fetch the world again from the Library, or add a picture of your own
+from that screen.
 
 **If a map's picture is linked from the web** rather than stored in the world,
 a bar above the map says *"This map's picture could not be loaded"* when that

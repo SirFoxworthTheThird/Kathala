@@ -583,16 +583,17 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   }
 
   /*
-    The layer names an image that is not in the store. A library world
-    downloaded *without* its image bundle is exactly this: sixteen map layers
-    whose `imageId` points into a `.pwb` nobody fetched — the bundle is
-    deliberately a separate decision, because it dwarfs the data.
+    The layer names an image that is not in the store: sixteen map layers whose
+    `imageId` points into a `.pwb` nobody fetched. The Library now brings the
+    bundle down with the book, so this is reached by a world downloaded before
+    that changed, or by an image fetch that failed — not by a choice the reader
+    made and could simply unmake.
 
     This used to fall through to the spinner below and stay there, because
     `useBlobUrl` returns `undefined` both while loading and when the record is
     absent. A screen that says nothing is the worst of the three answers: the
-    writer cannot tell a slow map from a missing one, and the way out — the
-    Library's "with images" download — is never mentioned.
+    writer cannot tell a slow map from a missing one, and the way out — download
+    the world again — is never mentioned.
   */
   if (imageState === 'not-downloaded') {
     return (
@@ -609,7 +610,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           description={
             gate.active
               ? "The map itself — its places, routes and regions — is all here; only the picture is missing, because a book's images are kept in a separate bundle from its text. Nothing is being held back from you."
-              : 'The map itself — its locations, routes and regions — is all present; only the picture is missing. Worlds from the Library keep their images in a separate bundle, so a download without images leaves the maps blank. Download the world again from the Library with images included, or add a picture of your own.'
+              : 'The map itself — its locations, routes and regions — is all present; only the picture is missing. Worlds from the Library keep their images in a separate file, and this world was downloaded without it. Download the world again from the Library, or add a picture of your own.'
           }
           className="flex-1"
           action={

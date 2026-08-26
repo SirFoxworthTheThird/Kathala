@@ -45,10 +45,11 @@ export interface LibraryEntry {
    * Cover art for the card: an absolute URL, or a path to a file this app ships.
    *
    * Only entries whose cover is a *linked* image can have one. Where the cover
-   * is binary it lives in the `.pwb` bundle, which is tens of megabytes and the
-   * one thing the reader has not agreed to download yet — so those cards stay
-   * text, rather than the catalogue quietly pulling the very payload its own
-   * "with images" button exists to make optional.
+   * is binary it lives in the `.pwb` bundle, which is tens of megabytes, and
+   * opening the catalogue is not asking for it — so those cards stay text
+   * rather than pulling a bundle down to decorate a card the reader may scroll
+   * straight past. (The bundle does come with the book once they press
+   * Download; that is a different act, and the button says the size.)
    *
    * **An off-origin cover is the exception to "no backend, same origin" above.**
    * Such a cover is an absolute URL to somebody else's host, so opening the
@@ -179,6 +180,23 @@ export async function downloadLibraryWorld(
   } catch {
     return { worldId, imagesFailed: true }
   }
+}
+
+/**
+ * What pressing **Download** on a catalogue card will actually fetch.
+ *
+ * Four of the thirty worlds ship a `.pwb` image bundle, and it dwarfs the data
+ * — the Fellowship is 587 KB of story against 15 MB of pictures. That used to
+ * be a second button the reader could decline; it now comes with the book, so
+ * the number on the one button has to be the whole of it. A card still quoting
+ * the `.pwk` alone would be the old promise with the old button removed.
+ *
+ * `imagesBytes` is optional in the index while `images` is the file that
+ * decides, so a bundle whose size was never recorded adds nothing rather than
+ * turning the label into `NaN`.
+ */
+export function downloadBytes(entry: LibraryEntry): number {
+  return entry.dataBytes + (entry.images ? entry.imagesBytes ?? 0 : 0)
 }
 
 /** Human-readable download size, so nobody starts a 15 MB fetch unaware. */
