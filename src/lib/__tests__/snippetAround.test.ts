@@ -56,3 +56,24 @@ describe('snippetAround', () => {
     expect(snippetAround('a shutter knocked', 'shutter', 60)).toBe('a shutter knocked')
   })
 })
+
+/*
+  The palette's "whole words" switch has to reach the snippet, or the result
+  says it matched one thing and shows you another. `tin` appears inside
+  "casting" long before it appears as a word.
+*/
+describe('snippetAround with whole words', () => {
+  const PROSE =
+    'The slate was kept until the next casting, then washed clean with river water and hung ' +
+    'back on its nail beside the door. The tin was thin, and everyone in the yard knew it.'
+
+  it('centres on the earlier partial hit when the option is off', () => {
+    expect(snippetAround(PROSE, 'tin', 60, false)).toContain('casting')
+  })
+
+  it('centres on the standalone word when the option is on', () => {
+    const out = snippetAround(PROSE, 'tin', 60, true)!
+    expect(out).toContain('The tin was thin')
+    expect(out).not.toContain('casting')
+  })
+})

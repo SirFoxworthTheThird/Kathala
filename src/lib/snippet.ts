@@ -1,3 +1,5 @@
+import { searchIndex } from './searchMatch'
+
 /** How much of a description a search result shows before it is cut. */
 const SNIPPET_LIMIT = 60
 
@@ -49,11 +51,19 @@ export function snippetAround(
   text: string | null | undefined,
   query: string,
   limit = SNIPPET_LIMIT,
+  /*
+    Which occurrence to centre on. With the palette's "whole words" switch on,
+    the first *substring* hit is usually not the match that produced this
+    result — searching `tin` matches a scene on the standalone word while
+    "casting" appears two sentences earlier. Centring on the earlier one would
+    show the writer exactly the hit they asked not to be given.
+  */
+  wholeWord = false,
 ): string | undefined {
   if (!text) return undefined
   const flat = text.replace(/\s+/g, ' ').trim()
   if (!flat) return undefined
-  const at = query ? flat.toLowerCase().indexOf(query.toLowerCase()) : -1
+  const at = searchIndex(flat, query, wholeWord)
   if (at === -1) return snippet(flat, limit)
   if (flat.length <= limit) return flat
 

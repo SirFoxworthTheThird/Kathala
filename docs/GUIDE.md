@@ -1921,7 +1921,16 @@ the time cursor, and opening a location focuses its map marker.
 **It searches the prose you wrote, too.** A scene matches on a word in its
 draft as well as on its title or synopsis, and the preview under the result
 shows the line the word was found in rather than the opening of the scene — so
-"where did I write that" is one shortcut away. To change what you find rather
+"where did I write that" is one shortcut away.
+
+**Whole words**, beside the search box, narrows matching to complete words.
+Off — the default — `tin` also finds *casting* and `Bel` also finds *Bellhouse*,
+which is what you want when you are hunting a half-remembered line. On, it finds
+only the word itself, which is what you want when your names are short and
+invented. It behaves exactly like the switch of the same name in
+[Find & replace](#find--replace), and the preview and the highlight follow it,
+so a result always shows you the match it was found by. PlotWeave remembers the
+setting. To change what you find rather
 than just go to it, use **Find & replace** on the Manuscript screen, which
 works across every scene at once.
 

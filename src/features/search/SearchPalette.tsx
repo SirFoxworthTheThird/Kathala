@@ -9,6 +9,7 @@ import { useShowMoment } from '@/db/hooks/useShowMoment'
 import { useFactionReveal } from '@/db/hooks/useFactions'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { snippet, snippetAround } from '@/lib/snippet'
+import { searchMatches, searchIndex } from '@/lib/searchMatch'
 import { chapterNumberQuery } from '@/lib/chapterQuery'
 import { cn } from '@/lib/utils'
 import { MODAL_BACKDROP } from '@/components/ui/dialog'
@@ -38,9 +39,12 @@ const TYPE_META: Record<ResultType, { icon: React.ElementType; color: string; gr
   knowledge:    { icon: KeyRound,    color: 'text-yellow-400', group: 'Knowledge' },
 }
 
-function highlight(text: string, query: string) {
+function highlight(text: string, query: string, wholeWord: boolean) {
   if (!query) return <>{text}</>
-  const idx = text.toLowerCase().indexOf(query.toLowerCase())
+  // The same match the result was found by — see `searchIndex`. Highlighting
+  // the first *substring* hit would underline "Bell" in "Bellhouse" on a result
+  // that is only here because "Bel" stands alone further along.
+  const idx = searchIndex(text, query, wholeWord)
   if (idx === -1) return <>{text}</>
   return (
     <>
@@ -58,6 +62,8 @@ export function SearchPalette() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const { searchOpen, setSearchOpen, setPendingFocusRouteId, setPendingFocusRegionId, setPendingFocusMarkerId } = useAppStore()
+  const wholeWord = useAppStore((s) => s.searchWholeWord)
+  const setWholeWord = useAppStore((s) => s.setSearchWholeWord)
   const showMoment = useShowMoment()
   const [query, setQuery] = useState('')
   const [activeIdx, setActiveIdx] = useState(0)
@@ -125,24 +131,31 @@ export function SearchPalette() {
   const factionRevealed = useFactionReveal(worldId ?? null, gate)
 
   const results: SearchResult[] = useMemo(() => {
-    const q = query.trim().toLowerCase()
+    const q = query.trim()
     if (!q || !worldId) return []
+    /*
+      One matcher for every field, so the "whole words" switch cannot reach
+      some of them and not others. It used to be `field.toLowerCase().includes()`
+      written out at each of two dozen call sites, which is exactly the shape a
+      half-applied option hides in.
+    */
+    const hit = (text: string | null | undefined) => searchMatches(text, q, wholeWord)
 
     const out: SearchResult[] = []
     const layerRevealed = new Set(gate.filter(markers ?? []).map((m) => m.mapLayerId))
 
     for (const c of gate.filter(characters ?? [])) {
-      if (c.name?.toLowerCase().includes(q) || c.aliases?.some((a) => a.toLowerCase().includes(q))) {
+      if (hit(c.name) || c.aliases?.some((a) => hit(a))) {
         out.push({ id: c.id, type: 'character', label: c.name, sublabel: snippet(c.description), path: `/worlds/${worldId}/characters/${c.id}` })
       }
     }
     for (const i of gate.filter(items ?? [])) {
-      if (i.name?.toLowerCase().includes(q)) {
+      if (hit(i.name)) {
         out.push({ id: i.id, type: 'item', label: i.name, sublabel: snippet(i.description), path: `/worlds/${worldId}/items/${i.id}` })
       }
     }
     for (const m of gate.filter(markers ?? [])) {
-      if (m.name?.toLowerCase().includes(q) || m.description?.toLowerCase().includes(q)) {
+      if (hit(m.name) || hit(m.description)) {
         out.push({ id: m.id, type: 'location', label: m.name, sublabel: snippet(m.description), path: `/worlds/${worldId}/maps` })
       }
     }
@@ -161,7 +174,7 @@ export function SearchPalette() {
       // stays searchable. Its synopsis is an authored summary of what happens
       // in it, so it neither matches nor shows until the reader gets there.
       const synopsis = chapterReached.has(ch.id) ? ch.synopsis : ''
-      if (ch.number === byNumber || ch.title?.toLowerCase().includes(q) || synopsis?.toLowerCase().includes(q)) {
+      if (ch.number === byNumber || hit(ch.title) || hit(synopsis)) {
         out.push({ id: ch.id, type: 'chapter', label: `Ch. ${ch.number} — ${ch.title}`, sublabel: snippet(synopsis), path: `/worlds/${worldId}/timeline/${ch.id}` })
       }
     }
@@ -180,14 +193,14 @@ export function SearchPalette() {
     const proseByEvent = new globalThis.Map((sceneTexts ?? []).map((t): [string, string] => [t.eventId, t.text]))
     for (const ev of (events ?? []).filter((e) => gate.hasReached(e.id))) {
       const prose = proseByEvent.get(ev.id)
-      const inProse = !!prose && prose.toLowerCase().includes(q)
-      if (ev.title?.toLowerCase().includes(q) || ev.description?.toLowerCase().includes(q) || inProse) {
+      const inProse = !!prose && hit(prose)
+      if (hit(ev.title) || hit(ev.description) || inProse) {
         out.push({
           id: ev.id,
           type: 'event',
           label: ev.title,
           // Show the line that matched, not the opening of the scene.
-          sublabel: inProse ? snippetAround(prose, q) : snippet(ev.description),
+          sublabel: inProse ? snippetAround(prose, q, undefined, wholeWord) : snippet(ev.description),
           path: `/worlds/${worldId}/timeline/${ev.chapterId}`,
         })
       }
@@ -201,19 +214,19 @@ export function SearchPalette() {
     */
     if (!gate.active) {
       for (const f of (facts ?? [])) {
-        if (f.title?.toLowerCase().includes(q) || f.description?.toLowerCase().includes(q)) {
+        if (hit(f.title) || hit(f.description)) {
           out.push({
             id: f.id,
             type: 'knowledge',
             label: f.title,
-            sublabel: snippetAround(f.description, q),
+            sublabel: snippetAround(f.description, q, undefined, wholeWord),
             path: `/worlds/${worldId}/knowledge`,
           })
         }
       }
     }
     for (const tl of (timelines ?? [])) {
-      if (tl.name?.toLowerCase().includes(q)) {
+      if (hit(tl.name)) {
         out.push({ id: tl.id, type: 'timeline', label: tl.name, sublabel: snippet(tl.description), path: `/worlds/${worldId}/timeline` })
       }
     }
@@ -221,7 +234,7 @@ export function SearchPalette() {
       // A relationship names both of its characters, and its own label often
       // gives away what happens between them.
       if (!gate.linksRevealed([r.characterAId, r.characterBId]) || !gate.hasReached(r.startEventId)) continue
-      if (r.label?.toLowerCase().includes(q) || r.description?.toLowerCase().includes(q)) {
+      if (hit(r.label) || hit(r.description)) {
         const charA = (characters ?? []).find((c) => c.id === r.characterAId)
         const charB = (characters ?? []).find((c) => c.id === r.characterBId)
         const charNames = charA && charB ? `${charA.name} → ${charB.name}` : `${r.sentiment} · ${r.strength}`
@@ -229,30 +242,30 @@ export function SearchPalette() {
       }
     }
     for (const r of (routes ?? []).filter((r) => layerRevealed.has(r.mapLayerId))) {
-      if (r.name?.toLowerCase().includes(q) || r.notes?.toLowerCase().includes(q)) {
+      if (hit(r.name) || hit(r.notes)) {
         out.push({ id: r.id, type: 'route', label: r.name, sublabel: r.routeType.replace('_', ' '), path: `/worlds/${worldId}/maps` })
       }
     }
     for (const r of (regions ?? []).filter((r) => layerRevealed.has(r.mapLayerId))) {
-      if (r.name?.toLowerCase().includes(q) || r.notes?.toLowerCase().includes(q)) {
+      if (hit(r.name) || hit(r.notes)) {
         out.push({ id: r.id, type: 'region', label: r.name, sublabel: snippet(r.notes), path: `/worlds/${worldId}/maps` })
       }
     }
     for (const p of (lorePages ?? []).filter(
       (p) => gate.hasReached(p.visibleFromEventId) && gate.linksRevealed(p.linkedEntityIds),
     )) {
-      if (p.title?.toLowerCase().includes(q) || p.body?.toLowerCase().includes(q) || p.tags?.some((t) => t.toLowerCase().includes(q))) {
+      if (hit(p.title) || hit(p.body) || p.tags?.some((t) => hit(t))) {
         out.push({ id: p.id, type: 'lore', label: p.title, sublabel: snippet(p.body?.replace(/[#*`_>-]/g, '')), path: `/worlds/${worldId}/lore/${p.id}` })
       }
     }
     for (const f of (factions ?? []).filter((f) => factionRevealed.has(f.id))) {
-      if (f.name?.toLowerCase().includes(q) || f.description?.toLowerCase().includes(q)) {
+      if (hit(f.name) || hit(f.description)) {
         out.push({ id: f.id, type: 'faction', label: f.name, sublabel: snippet(f.description), path: `/worlds/${worldId}/factions` })
       }
     }
 
     return out
-  }, [query, worldId, gate, chapterReached, factionRevealed, characters, items, markers, chapters, events, timelines, relationships, routes, regions, lorePages, factions, facts, sceneTexts])
+  }, [query, wholeWord, worldId, gate, chapterReached, factionRevealed, characters, items, markers, chapters, events, timelines, relationships, routes, regions, lorePages, factions, facts, sceneTexts])
 
   // Reset active index when results change
   useEffect(() => setActiveIdx(0), [results])
@@ -349,13 +362,34 @@ export function SearchPalette() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder="Search your world and the prose you wrote…"
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-[hsl(var(--muted-foreground))]"
+            className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[hsl(var(--muted-foreground))]"
           />
           {query && (
             <button aria-label="Clear search" onClick={() => setQuery('')} className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">
               <X className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           )}
+          {/*
+            Whole words. The palette matches inside words by default, which is
+            right for "where did I write that" — but for a writer whose names
+            are short and invented it means `tin` returns every casting and
+            `Bel` returns every bell. Find & Replace has had the same switch all
+            along and this matches its behaviour exactly, so there is one rule
+            to learn rather than two.
+
+            A real checkbox rather than a styled button: it is a two-state
+            preference, screen readers announce it as one, and the label is the
+            visible text beside it.
+          */}
+          <label className="flex shrink-0 cursor-pointer select-none items-center gap-1.5 text-[11px] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">
+            <input
+              type="checkbox"
+              checked={wholeWord}
+              onChange={(e) => setWholeWord(e.target.checked)}
+              className="h-3 w-3 accent-[hsl(var(--primary))]"
+            />
+            Whole words
+          </label>
           <kbd className="hidden sm:inline-block rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-1.5 py-0.5 text-[10px] text-[hsl(var(--muted-foreground))]">Esc</kbd>
         </div>
 
@@ -396,7 +430,7 @@ export function SearchPalette() {
                       <Icon className={cn('h-4 w-4 shrink-0', color)} aria-hidden="true" />
                       <span className="min-w-0 flex-1">
                         <span data-search-result-label className="block truncate font-medium">
-                          {highlight(result.label, query.trim())}
+                          {highlight(result.label, query.trim(), wholeWord)}
                         </span>
                         {result.sublabel && (
                           <span className="block truncate text-xs text-[hsl(var(--muted-foreground))]">{result.sublabel}</span>

@@ -70,6 +70,13 @@ interface PlaybackSlice {
    */
   barCollapsed: boolean
   setBarCollapsed: (v: boolean) => void
+  /**
+   * Whether the search palette matches whole words only. Persisted for the same
+   * reason as the bar above: a writer whose invented names are short — `Bel`,
+   * `tin` — turns this on once and means it, not once per palette.
+   */
+  searchWholeWord: boolean
+  setSearchWholeWord: (v: boolean) => void
   /** The timeline currently shown as the "active depth" in the stacked timeline bar.
    *  null = no frame relationship active. */
   activeDepthTimelineId: string | null
@@ -231,6 +238,8 @@ export const useAppStore = create<AppStore>()(
       setActiveOuterEventId: (id) => set({ activeOuterEventId: id }),
       barCollapsed: false,
       setBarCollapsed: (v) => set({ barCollapsed: v }),
+      searchWholeWord: false,
+      setSearchWholeWord: (v) => set({ searchWholeWord: v }),
       activeDepthTimelineId: null,
       setActiveDepthTimelineId: (id) => set({ activeDepthTimelineId: id }),
 
@@ -288,6 +297,7 @@ export const useAppStore = create<AppStore>()(
         navPinned: state.navPinned,
         barScope: state.barScope,
         barCollapsed: state.barCollapsed,
+        searchWholeWord: state.searchWholeWord,
         theme: state.theme,
       }),
     }
