@@ -1,13 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Clock, X } from 'lucide-react'
 import { useActiveEventId, useAppStore } from '@/store'
 import { useWorldChapters, useAllWorldEvents } from '@/db/hooks/useTimeline'
 import { useWorld } from '@/db/hooks/useWorlds'
-import { useGate } from '@/db/hooks/ReadingGateContext'
-import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { cn } from '@/lib/utils'
-import { revealAllAction } from '@/lib/revealAll'
+import { useRevealAll } from '@/components/useRevealAll'
 
 /**
  * Always-visible readout + stepper for the global time cursor (`activeEventId`).
@@ -37,9 +35,9 @@ export function TimeCursor({ worldId }: { worldId: string }) {
   // "All chapters" is a full reveal by design. For a writer that is just the
   // default view; for a reader it undoes the thing they turned reading mode on
   // for, and this button is an X beside the stepper — which reads as "dismiss",
-  // not "show me the ending". So while reading, it asks first.
-  const gate = useGate()
-  const [confirmRevealAll, setConfirmRevealAll] = useState(false)
+  // not "show me the ending". So while reading, it asks first — see
+  // `useRevealAll`, which is shared with the bottom bar's identical control.
+  const { requestClear, revealAllDialog } = useRevealAll(worldId)
   // Ungated: the cursor has to be able to step forward into what has not been
   // revealed yet — stepping forward is how a reader reveals it.
   const events = useAllWorldEvents(worldId)
@@ -162,11 +160,7 @@ export function TimeCursor({ worldId }: { worldId: string }) {
 
       {activeEvent && (
         <button
-          onClick={() => {
-            const action = revealAllAction({ worldLoaded: world !== undefined, gateActive: gate.active })
-            if (action === 'confirm') setConfirmRevealAll(true)
-            else if (action === 'clear') setActiveEventId(null)
-          }}
+          onClick={requestClear}
           disabled={isPlayingStory || world === undefined}
           aria-label="View all chapters"
           title="View all chapters"
@@ -188,15 +182,7 @@ export function TimeCursor({ worldId }: { worldId: string }) {
         </button>
       )}
 
-      <ConfirmDialog
-        open={confirmRevealAll}
-        onOpenChange={setConfirmRevealAll}
-        title="Show the whole book?"
-        description="Viewing all chapters drops back to the full world — every character, place and subplot, including the ones the story has not introduced yet. Step the cursor instead to keep reading spoiler-free."
-        confirmLabel="Show everything"
-        destructive={false}
-        onConfirm={() => setActiveEventId(null)}
-      />
+      {revealAllDialog}
     </div>
   )
 }

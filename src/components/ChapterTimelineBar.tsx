@@ -15,6 +15,7 @@ import { CombinedTrack } from './timeline/CombinedTrack'
 import { CollapsedBar } from './timeline/CollapsedBar'
 import { TimelineScopeSelect } from './timeline/TimelineScopeSelect'
 import { selectFirstEvent, activateEvent } from './timeline/TimelineControls'
+import { useRevealAll } from './useRevealAll'
 
 /** Narrative order within a single timeline: chapter number, then sortOrder. */
 function orderByChapter(events: WorldEvent[], chapters: Chapter[]): WorldEvent[] {
@@ -38,6 +39,20 @@ export function ChapterTimelineBar() {
     barCollapsed, setBarCollapsed,
   } = useAppStore()
   const worldId = useActiveWorldId()
+  /*
+    Clearing the cursor is a full reveal while reading, so it asks first — the
+    same guard the top bar's ✕ uses, shared rather than copied. Both tracks
+    below route through it: a blind reader run found the combined one, and the
+    single-timeline one had the identical fault by a different route
+    (`handleStop`, which stops playback *and* clears).
+  */
+  const { requestClear, revealAllDialog } = useRevealAll(worldId)
+  function handleClearCursor() {
+    // Stopping playback is not the destructive half and needs no confirming;
+    // discarding the reading position is, and does.
+    setIsPlayingStory(false)
+    requestClear()
+  }
 
   const timelines     = useTimelines(worldId)
   const relationships = useTimelineRelationships(worldId)
@@ -195,43 +210,46 @@ export function ChapterTimelineBar() {
     const prevEvent     = idx > 0 ? frameOrdered[idx - 1] : null
     const nextEvent     = idx >= 0 && idx < frameOrdered.length - 1 ? frameOrdered[idx + 1] : null
     return (
-      <StackedTrack
-        outerChapters={outerChapters}
-        outerRawEvents={outerRawEvents}
-        innerChapters={innerChapters}
-        innerRawEvents={innerRawEvents}
-        outerTimelineId={outerTimelineId}
-        innerTimelineId={innerTimelineId}
-        outerTimelineLabel={outerTimelineName}
-        innerTimelineLabel={innerTimelineName}
-        isFrameNarrative
-        isOuterActive={activeDepthTimelineId !== innerTimelineId}
-        outerColor={outerColor}
-        innerColor={innerColor}
-        isPlayingStory={isPlayingStory}
-        playbackSpeed={playbackSpeed}
-        activeEventId={activeEventId}
-        activeEvent={activeEvent}
-        activeChapter={activeChapter}
-        prevEvent={prevEvent}
-        nextEvent={nextEvent}
-        outerScrollerRef={outerScrollerRef}
-        innerScrollerRef={innerScrollerRef}
-        outerMarkerRef={outerMarkerRef}
-        innerMarkerRef={innerMarkerRef}
-        onPlayPause={handlePlayPause}
-        onStop={handleStop}
-        onSpeedChange={cycleSpeed}
-        onDiffOpen={() => setDiffOpen(true)}
-        onPrev={() => prevEvent && setActiveEventId(prevEvent.id)}
-        onNext={() => nextEvent && setActiveEventId(nextEvent.id)}
-        onEventSelect={handleEventSelect}
-        onChapterSelect={handleChapterSelect}
-        onActivateDepth={handleActivateDepth}
-        linkedOuterEventIds={linkedOuterEventIds}
-        linkedInnerEventIds={linkedInnerEventIds}
-        setActiveEventId={setActiveEventId}
-      />
+      <>
+        <StackedTrack
+          outerChapters={outerChapters}
+          outerRawEvents={outerRawEvents}
+          innerChapters={innerChapters}
+          innerRawEvents={innerRawEvents}
+          outerTimelineId={outerTimelineId}
+          innerTimelineId={innerTimelineId}
+          outerTimelineLabel={outerTimelineName}
+          innerTimelineLabel={innerTimelineName}
+          isFrameNarrative
+          isOuterActive={activeDepthTimelineId !== innerTimelineId}
+          outerColor={outerColor}
+          innerColor={innerColor}
+          isPlayingStory={isPlayingStory}
+          playbackSpeed={playbackSpeed}
+          activeEventId={activeEventId}
+          activeEvent={activeEvent}
+          activeChapter={activeChapter}
+          prevEvent={prevEvent}
+          nextEvent={nextEvent}
+          outerScrollerRef={outerScrollerRef}
+          innerScrollerRef={innerScrollerRef}
+          outerMarkerRef={outerMarkerRef}
+          innerMarkerRef={innerMarkerRef}
+          onPlayPause={handlePlayPause}
+          onStop={handleStop}
+          onSpeedChange={cycleSpeed}
+          onDiffOpen={() => setDiffOpen(true)}
+          onPrev={() => prevEvent && setActiveEventId(prevEvent.id)}
+          onNext={() => nextEvent && setActiveEventId(nextEvent.id)}
+          onEventSelect={handleEventSelect}
+          onChapterSelect={handleChapterSelect}
+          onActivateDepth={handleActivateDepth}
+          linkedOuterEventIds={linkedOuterEventIds}
+          linkedInnerEventIds={linkedInnerEventIds}
+          setActiveEventId={setActiveEventId}
+        />
+      {revealAllDialog}
+      </>
     )
   }
 
@@ -245,30 +263,33 @@ export function ChapterTimelineBar() {
     const prevEvent      = idx > 0 ? combinedOrdered[idx - 1] : null
     const nextEvent      = idx >= 0 && idx < combinedOrdered.length - 1 ? combinedOrdered[idx + 1] : null
     return (
-      <CombinedTrack
-        timelines={timelines}
-        scope={scope}
-        onScopeChange={setBarScope}
-        runs={runs}
-        activeEventId={activeEventId}
-        activeEvent={activeEvent}
-        activeChapter={activeChapter}
-        activeTimeline={activeTimeline}
-        hasPrev={!!prevEvent}
-        hasNext={!!nextEvent}
-        isPlaying={isPlayingStory}
-        playbackSpeed={playbackSpeed}
-        scrollerRef={scrollerRef}
-        activeMarkerRef={activeMarkerRef}
-        onPlayPause={handlePlayPause}
-        onStop={handleStop}
-        onSpeedChange={cycleSpeed}
-        onDiffOpen={() => setDiffOpen(true)}
-        onClear={() => setActiveEventId(null)}
-        onPrev={() => prevEvent && setActiveEventId(prevEvent.id)}
-        onNext={() => nextEvent && setActiveEventId(nextEvent.id)}
-        onEventSelect={handleEventSelect}
-      />
+      <>
+        <CombinedTrack
+          timelines={timelines}
+          scope={scope}
+          onScopeChange={setBarScope}
+          runs={runs}
+          activeEventId={activeEventId}
+          activeEvent={activeEvent}
+          activeChapter={activeChapter}
+          activeTimeline={activeTimeline}
+          hasPrev={!!prevEvent}
+          hasNext={!!nextEvent}
+          isPlaying={isPlayingStory}
+          playbackSpeed={playbackSpeed}
+          scrollerRef={scrollerRef}
+          activeMarkerRef={activeMarkerRef}
+          onPlayPause={handlePlayPause}
+          onStop={handleStop}
+          onSpeedChange={cycleSpeed}
+          onDiffOpen={() => setDiffOpen(true)}
+          onClear={handleClearCursor}
+          onPrev={() => prevEvent && setActiveEventId(prevEvent.id)}
+          onNext={() => nextEvent && setActiveEventId(nextEvent.id)}
+          onEventSelect={handleEventSelect}
+        />
+      {revealAllDialog}
+      </>
     )
   }
 
@@ -284,29 +305,32 @@ export function ChapterTimelineBar() {
   const nextEvent     = idx >= 0 && idx < singleOrdered.length - 1 ? singleOrdered[idx + 1] : null
 
   return (
-    <SingleTrack
-      chapters={singleChapters}
-      allEvents={singleRawEvents}
-      activeEventId={activeEventId}
-      activeEvent={activeEvent}
-      activeChapter={activeChapter}
-      prevEvent={prevEvent}
-      nextEvent={nextEvent}
-      accentColor={accentColor}
-      isPlayingStory={isPlayingStory}
-      playbackSpeed={playbackSpeed}
-      scrollerRef={scrollerRef}
-      activeMarkerRef={activeMarkerRef}
-      onPlayPause={handlePlayPause}
-      onStop={handleStop}
-      onSpeedChange={cycleSpeed}
-      onDiffOpen={() => setDiffOpen(true)}
-      onClear={handleStop}
-      onPrev={() => prevEvent && setActiveEventId(prevEvent.id)}
-      onNext={() => nextEvent && setActiveEventId(nextEvent.id)}
-      onEventSelect={handleEventSelect}
-      onChapterSelect={(chId) => handleChapterSelect(chId, singleRawEvents)}
-      scopeSelector={multi ? <TimelineScopeSelect timelines={timelines} value={scope} onChange={setBarScope} /> : undefined}
-    />
+    <>
+      <SingleTrack
+        chapters={singleChapters}
+        allEvents={singleRawEvents}
+        activeEventId={activeEventId}
+        activeEvent={activeEvent}
+        activeChapter={activeChapter}
+        prevEvent={prevEvent}
+        nextEvent={nextEvent}
+        accentColor={accentColor}
+        isPlayingStory={isPlayingStory}
+        playbackSpeed={playbackSpeed}
+        scrollerRef={scrollerRef}
+        activeMarkerRef={activeMarkerRef}
+        onPlayPause={handlePlayPause}
+        onStop={handleStop}
+        onSpeedChange={cycleSpeed}
+        onDiffOpen={() => setDiffOpen(true)}
+        onClear={handleClearCursor}
+        onPrev={() => prevEvent && setActiveEventId(prevEvent.id)}
+        onNext={() => nextEvent && setActiveEventId(nextEvent.id)}
+        onEventSelect={handleEventSelect}
+        onChapterSelect={(chId) => handleChapterSelect(chId, singleRawEvents)}
+        scopeSelector={multi ? <TimelineScopeSelect timelines={timelines} value={scope} onChange={setBarScope} /> : undefined}
+      />
+    {revealAllDialog}
+    </>
   )
 }

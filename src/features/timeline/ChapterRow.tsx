@@ -402,14 +402,24 @@ export function ChapterRow({
               ))}
             </div>
           )}
-          <Button
-            size="sm"
-            variant="outline"
-            className="gap-1.5 text-xs self-start mt-1"
-            onClick={() => setAddEventOpen(true)}
-          >
-            <Plus className="h-3.5 w-3.5" /> Add Scene
-          </Button>
+          {/*
+            The chapter screen guards the identical button and this one did not,
+            so a reader could open the full author dialog — title, cast, POV,
+            draft status — and write a scene into *Dracula*. A blind reader run
+            did, and then could not remove it: `EventRow` *is* gated, so the row
+            it had just created offered no delete. Turning reading mode off is
+            the one thing the mode exists to make unnecessary.
+          */}
+          {!gate.active && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs self-start mt-1"
+              onClick={() => setAddEventOpen(true)}
+            >
+              <Plus className="h-3.5 w-3.5" /> Add Scene
+            </Button>
+          )}
         </div>
       )}
 

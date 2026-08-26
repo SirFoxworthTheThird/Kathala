@@ -17,6 +17,15 @@ import type { Page } from '@playwright/test'
  * than the sleeps it replaces — so where 1,200ms would have given up and read a
  * half-drawn screen, this is still waiting.
  *
+ * **It watches text, so it cannot see a canvas.** Zooming a Leaflet map changes
+ * no text whatsoever — measured, four zoom clicks take the image layer from
+ * 716px wide to 10,240px with `body.innerText` identical throughout — so this
+ * returns at its floor and the animation is still running. A mechanical sweep
+ * converted such a wait in `mapSubMapCursor` and the spec began failing
+ * honestly rather than passing weakly, which is how it was caught. For map
+ * geometry, wait a fixed interval or poll the measurement you are about to
+ * assert on.
+ *
  * `innerText` rather than a DOM-node count: a live query resolving usually
  * swaps placeholder text for real text without changing the element count, and
  * a spoiler sweep reads `innerText` anyway, so this settles on exactly the thing

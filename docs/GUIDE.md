@@ -346,6 +346,13 @@ it to you without quietly relocating your bookmark. Where a control's only job
 was moving the cursor, it becomes a label rather than a button, so nothing on
 screen looks pressable and does nothing.
 
+**Showing the whole book asks first.** The ✕ beside your place — in the top bar,
+and in the chapter bar along the bottom — drops back to the full world, every
+character, place and subplot the story has not introduced yet. While reading
+that undoes the thing reading mode is for, so both of them ask before doing it,
+and both offer to step the cursor instead. While writing, where "all chapters"
+is just the default view, it stays a single click.
+
 **A chapter you have not reached yet does not open.** On the timeline its row
 does not expand — the scene list inside would name what happens in it — and its
 summary stays hidden, as it always has. The chapter's own title stays visible,

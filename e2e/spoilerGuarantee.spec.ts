@@ -192,6 +192,50 @@ test('search does not answer with what the reader has not met', async ({ page })
   expect(leaks, `search returned unmet names:\n${leaks.join('\n')}`).toEqual([])
 })
 
+/*
+  R2 from a blind reader run, on the book that shows it.
+
+  A map layer is revealed as soon as any marker on it is, and search gated
+  routes and regions on the *layer* while the map screen gated them on their
+  waypoints. Dracula's Europe layer opens in chapter 1, so "The Hunters to
+  Varna" — the pursuit of chapters 24 to 26 — was searchable from the first page
+  of the book, while the Maps screen at the same cursor showed `ROUTES 0`.
+
+  Paired against reading mode off rather than against chapter 24: the route has
+  to be findable *somewhere*, or "no results" would pass on a search that was
+  broken rather than gated.
+*/
+test('search does not hand a reader a route from the end of the book', async ({ page }) => {
+  const search = async (q: string) => {
+    await page.keyboard.press('Control+k')
+    await page.waitForTimeout(400)
+    await page.keyboard.insertText(q)
+    await page.waitForTimeout(800)
+    const labels = (await page.evaluate(
+      `(() => [...document.querySelectorAll('[data-search-result-label]')].map((n) => n.textContent ?? ''))()`,
+    )) as string[]
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(300)
+    return labels
+  }
+
+  await resetDB(page)
+  await downloadLibraryBook(page, 'Dracula')
+  await settle(page)
+  await page.getByRole('button', { name: 'Next moment' }).click()
+  await settle(page)
+
+  expect(await search('Hunters')).not.toContain('The Hunters to Varna')
+
+  // The presence half: with the gate off, the very same query finds it.
+  const worldPath = new URL(page.url()).hash.replace(/^#/, '').split('/').slice(0, 3).join('/')
+  await page.goto(`/#${worldPath}/settings`)
+  await settle(page)
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
+  await settle(page)
+  expect(await search('Hunters')).toContain('The Hunters to Varna')
+})
+
 /**
  * The overlays mounted app-wide, checked as a set.
  *

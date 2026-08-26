@@ -194,6 +194,126 @@ test('showing the whole book asks first, but only while reading', async ({ page 
   await expect(page.getByRole('heading', { name: 'Show the whole book?' })).toHaveCount(0)
 })
 
+/*
+  The other ✕, which is the one a thumb finds.
+
+  A blind reader run measured this: the bottom bar's "Clear selection" is 16×16
+  CSS px, sits between the speed toggle and a collapse chevron — so it reads as
+  "close this bar" — and on a 390px phone it lands 40px from the bottom of the
+  screen. One tap took a reader at chapter 7 of *Dracula* from 14 characters to
+  25 and 21 map markers to 60, with no dialog and no way back, while its
+  properly-guarded twin sat 750px away at the top of the same screen.
+
+  The test above covers the twin. This is the half that was missing, which is
+  exactly why the two drifted: both now route through `useRevealAll`.
+*/
+test('the bottom bar\'s clear asks first too, and is reachable on a phone', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await downloadFirstLibraryWorld(page)
+  await page.getByRole('button', { name: 'Next moment' }).click()
+  await settle(page)
+  await page.goto(`/#${await worldPath(page)}/characters`)
+  await settleNav(page)
+  await expect.poll(() => shownCount(page), { timeout: 15_000 }).toBeGreaterThan(0)
+  const met = await shownCount(page)
+
+  // Present, and on the phone — an absence asserted on a control that never
+  // renders at this width would pass for the wrong reason.
+  const clear = page.getByRole('button', { name: 'Clear selection' })
+  await expect(clear).toBeVisible({ timeout: 15_000 })
+
+  await clear.click()
+  await expect(page.getByRole('heading', { name: 'Show the whole book?' })).toBeVisible()
+  await expect.poll(() => shownCount(page), { timeout: 10_000 }).toBe(met)
+
+  // …and confirming still does the thing, so the guard is a question and not a
+  // block.
+  await page.getByRole('button', { name: 'Show everything' }).click()
+  await expect.poll(() => shownCount(page), { timeout: 15_000 }).toBeGreaterThan(met)
+})
+
+/*
+  The writer's half, on the same control. Without this the test above would be
+  satisfied by a confirm that fires for everyone, which would put a dialog in
+  front of a control a writer reaches for constantly.
+*/
+test('the bottom bar\'s clear stays one click while writing', async ({ page }) => {
+  await downloadFirstLibraryWorld(page)
+  await page.goto(`/#${await worldPath(page)}/settings`)
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
+  await settle(page)
+  await page.goto(`/#${await worldPath(page)}/characters`)
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Next moment' }).click()
+  await settle(page)
+
+  await page.getByRole('button', { name: 'Clear selection' }).click()
+  await expect(page.getByRole('heading', { name: 'Show the whole book?' })).toHaveCount(0)
+  // It really cleared, rather than the control having quietly stopped working.
+  await expect(page.getByRole('button', { name: 'Clear selection' })).toHaveCount(0)
+})
+
+/*
+  R5 from a blind reader run, which opened the author's Add Scene dialog while
+  reading *Dracula*, filled it in, and measured `events` 216 → 217 — then found
+  no way to remove the row, because `EventRow` is gated and the button that made
+  it was not.
+*/
+test('a reader cannot add a scene to the book they are reading', async ({ page }) => {
+  await downloadFirstLibraryWorld(page)
+  await page.goto(`/#${await worldPath(page)}/timeline`)
+  await settleNav(page)
+
+  const main = page.getByRole('main')
+  const firstChapter = main.getByRole('button', { name: /^Ch\. 1/ }).first()
+  await expect(firstChapter).toBeVisible({ timeout: 20_000 })
+  await firstChapter.click()
+  await settle(page)
+
+  await expect(main.getByRole('button', { name: 'Add Scene' })).toHaveCount(0)
+
+  // The presence half, on the same expanded row: a writer still has it, so the
+  // absence above is about the gate and not about the row being collapsed.
+  await page.goto(`/#${await worldPath(page)}/settings`)
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
+  await settle(page)
+  await page.goto(`/#${await worldPath(page)}/timeline`)
+  await settleNav(page)
+  await main.getByRole('button', { name: /^Ch\. 1/ }).first().click()
+  await settle(page)
+  await expect(main.getByRole('button', { name: 'Add Scene' }).first()).toBeVisible({ timeout: 20_000 })
+})
+
+/*
+  R4 from the same run: the Lore screen's "Revealed" toggle is a writer's
+  preview of their own gating, and while reading it can only ever be inert —
+  the real gate has already filtered the list. Pressed, nothing happened in
+  either direction, and its default-off state with a "Show all lore" tooltip
+  suggested the reader was looking at the unfiltered set.
+*/
+test('the lore screen does not offer a filter that cannot do anything', async ({ page }) => {
+  await downloadFirstLibraryWorld(page)
+  await page.getByRole('button', { name: 'Next moment' }).click()
+  await settle(page)
+  await page.goto(`/#${await worldPath(page)}/lore`)
+  await settleNav(page)
+
+  // There is a lore screen with pages on it, or the absence below means nothing.
+  await expect(page.getByRole('heading', { name: 'Lore', level: 1 })).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole('button', { name: 'Revealed' })).toHaveCount(0)
+
+  // …and the writer, who can act on it, still has it.
+  await page.goto(`/#${await worldPath(page)}/settings`)
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
+  await settle(page)
+  await page.goto(`/#${await worldPath(page)}/lore`)
+  await settleNav(page)
+  await expect(page.getByRole('button', { name: 'Revealed' })).toBeVisible({ timeout: 20_000 })
+})
+
 test('the corkboard is a plotting board, not a reading screen', async ({ page }) => {
   await downloadFirstLibraryWorld(page)
   const nav = page.getByRole('navigation', { name: 'Main navigation' })

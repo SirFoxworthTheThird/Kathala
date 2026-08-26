@@ -10,6 +10,7 @@ import { useFactionReveal } from '@/db/hooks/useFactions'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { snippet, snippetAround } from '@/lib/snippet'
 import { searchMatches, searchIndex } from '@/lib/searchMatch'
+import { regionRevealed, routeRevealed } from '@/lib/mapGating'
 import { chapterNumberQuery } from '@/lib/chapterQuery'
 import { cn } from '@/lib/utils'
 import { MODAL_BACKDROP } from '@/components/ui/dialog'
@@ -241,12 +242,17 @@ export function SearchPalette() {
         out.push({ id: r.id, type: 'relationship', label: r.label, sublabel: charNames, path: `/worlds/${worldId}/relationships` })
       }
     }
-    for (const r of (routes ?? []).filter((r) => layerRevealed.has(r.mapLayerId))) {
+    /*
+      The same rule the map screen uses, shared rather than restated — see
+      `mapGating`. This filtered on the layer alone, which reveals every route
+      drawn on a layer the moment any marker on it is met.
+    */
+    for (const r of (routes ?? []).filter((r) => routeRevealed(gate, r, (id) => layerRevealed.has(id)))) {
       if (hit(r.name) || hit(r.notes)) {
         out.push({ id: r.id, type: 'route', label: r.name, sublabel: r.routeType.replace('_', ' '), path: `/worlds/${worldId}/maps` })
       }
     }
-    for (const r of (regions ?? []).filter((r) => layerRevealed.has(r.mapLayerId))) {
+    for (const r of (regions ?? []).filter((r) => regionRevealed(gate, r, (id) => layerRevealed.has(id)))) {
       if (hit(r.name) || hit(r.notes)) {
         out.push({ id: r.id, type: 'region', label: r.name, sublabel: snippet(r.notes), path: `/worlds/${worldId}/maps` })
       }

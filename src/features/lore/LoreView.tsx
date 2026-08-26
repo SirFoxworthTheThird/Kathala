@@ -387,7 +387,19 @@ export default function LoreView() {
             onChange={(e) => setSearch(e.target.value)}
             className="h-8 max-w-xs text-sm"
           />
-          {activeEventId && (
+          {/*
+            A writer's preview of their own gating — "show me lore as of this
+            scene" — so it is not offered while reading, where the real gate has
+            already filtered the list and the control can only ever be inert.
+
+            A blind reader run pressed it and nothing happened, in either
+            direction. That is the visible-but-inert shape this codebase files
+            as HB-2d, and it was worse than inert here: default-off with a
+            tooltip reading "Show all lore", it suggested to a reader that what
+            they were looking at was the *unfiltered* set, which is a claim
+            about spoilers and not a claim this screen can make.
+          */}
+          {activeEventId && !gate.active && (
             <button
               onClick={() => setTimelineFilter((v) => !v)}
               title={timelineFilter ? 'Showing lore revealed up to this scene' : 'Show all lore'}

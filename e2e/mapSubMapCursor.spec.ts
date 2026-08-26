@@ -158,9 +158,18 @@ test.describe('A scene inside a sub-map opens that sub-map', () => {
       is clamped straight back and the whole map is on screen already. Four
       steps in, the image is far larger than its frame and the move is plain.
     */
+    /*
+      Fixed waits, deliberately, and the one place in this suite where that is
+      the honest answer. `settle` watches `document.body.innerText`, and a zoom
+      changes no text at all — measured, the image layer goes from 716px wide to
+      10,240px across these four clicks while the text is identical throughout.
+      A mechanical conversion to `settle` turned this into four clicks with no
+      wait between them, and the precondition below then measured the pin 104px
+      from centre where it expects more than 200.
+    */
     for (let i = 0; i < 4; i++) {
       await page.getByRole('button', { name: 'Zoom in' }).click()
-      await settle(page)
+      await page.waitForTimeout(300)
     }
     await page.waitForTimeout(1000)
 
