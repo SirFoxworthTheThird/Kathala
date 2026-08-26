@@ -85,4 +85,46 @@ describe('deleteItem', () => {
     await deleteItem(a.id)
     expect(await db.items.get(b.id)).toBeDefined()
   })
+
+  /*
+    The confirmation promises the item and all its snapshots are gone. Two
+    tables kept its id and rendered the leftover through `item?.name ?? itemId`:
+    a character's inventory printed a raw nanoid, and a scene's item list fed
+    the same fallback into the continuity checker's findings.
+  */
+  it('takes the item out of every inventory holding it, and leaves the rest', async () => {
+    const doomed = await createItem({ worldId: 'w', name: "Reeve's seal", description: '', iconType: '', tags: [] })
+    const keeper = await createItem({ worldId: 'w', name: 'The ninth bell', description: '', iconType: '', tags: [] })
+    const snap = {
+      worldId: 'w', isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
+      inventoryNotes: '', statusNotes: '', travelModeId: null, sortKey: 1,
+      createdAt: 0, updatedAt: 0,
+    }
+    await db.characterSnapshots.add({ ...snap, id: 's1', characterId: 'ossian', eventId: 'ev1', inventoryItemIds: [doomed.id, keeper.id] })
+    await db.characterSnapshots.add({ ...snap, id: 's2', characterId: 'cathe', eventId: 'ev2', inventoryItemIds: [keeper.id] })
+
+    await deleteItem(doomed.id)
+
+    expect((await db.characterSnapshots.get('s1'))!.inventoryItemIds).toEqual([keeper.id])
+    expect((await db.characterSnapshots.get('s2'))!.inventoryItemIds).toEqual([keeper.id])
+  })
+
+  it("takes the item out of every scene's cast of objects", async () => {
+    const doomed = await createItem({ worldId: 'w', name: 'The tally-slate', description: '', iconType: '', tags: [] })
+    const keeper = await createItem({ worldId: 'w', name: 'The letter', description: '', iconType: '', tags: [] })
+    const base = {
+      worldId: 'w', chapterId: 'ch1', timelineId: 'tl', title: '', description: '', sortOrder: 0,
+      tags: [], locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [],
+      threadIds: [], motifIds: [], travelDays: null, inWorldTime: null, structureBeat: null,
+      status: 'draft' as const, povCharacterId: null, tension: null, isFlashback: false,
+      createdAt: 0, updatedAt: 0,
+    }
+    await db.events.add({ ...base, id: 'ev1', involvedItemIds: [doomed.id, keeper.id] })
+    await db.events.add({ ...base, id: 'ev2', involvedItemIds: [keeper.id] })
+
+    await deleteItem(doomed.id)
+
+    expect((await db.events.get('ev1'))!.involvedItemIds).toEqual([keeper.id])
+    expect((await db.events.get('ev2'))!.involvedItemIds).toEqual([keeper.id])
+  })
 })

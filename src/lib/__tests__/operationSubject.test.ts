@@ -100,8 +100,11 @@ describe('SUBJECT_OWNER', () => {
    */
   it('points every snapshot group at a table the journal knows', () => {
     const tables = new Set(Object.values(ENTITY_TABLE))
-    for (const [entity, owner] of Object.entries(SUBJECT_OWNER)) {
-      expect(tables, `${entity} → ${owner.table}`).toContain(owner.table)
+    for (const [entity, owners] of Object.entries(SUBJECT_OWNER)) {
+      expect(owners.length, entity).toBeGreaterThan(0)
+      for (const owner of owners) {
+        expect(tables, `${entity} → ${owner.table}`).toContain(owner.table)
+      }
     }
   })
 
@@ -117,6 +120,32 @@ describe('SUBJECT_OWNER', () => {
     expect(snapshotGroups.length).toBeGreaterThan(0)
     for (const group of snapshotGroups) {
       expect(SUBJECT_OWNER, group).toHaveProperty(group)
+    }
+  })
+
+  /**
+   * The other half of the same finding. A snapshot is not the only kind of
+   * nameless record: a knowledge reveal, a faction membership, a route and a
+   * timeline link are all foreign keys and dates, and every one of them
+   * arrived in Recent changes as a row indistinguishable from its neighbours.
+   *
+   * The list is spelled out rather than derived, because deriving it from the
+   * types is exactly what nothing can do — that is why they were missed. A new
+   * nameless group added without an entry fails here.
+   */
+  it('covers the join groups that carry no name of their own', () => {
+    for (const group of [
+      'knowledgeReveal', 'factionMembership', 'factionRelationship',
+      'characterMovement', 'crossTimelineArtifact', 'timelineRelationship',
+    ]) {
+      expect(SUBJECT_OWNER, group).toHaveProperty(group)
+    }
+  })
+
+  /** A pair of foreign keys needs both, or the two halves read alike. */
+  it('names both ends of a group that joins two records', () => {
+    for (const group of ['knowledgeReveal', 'factionMembership', 'factionRelationship', 'timelineRelationship']) {
+      expect(SUBJECT_OWNER[group as keyof typeof SUBJECT_OWNER], group).toHaveLength(2)
     }
   })
 })

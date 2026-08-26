@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useId } from 'react'
-import { MapPin, Package, Plus, X, Heart, Skull, Footprints, History, Users, UserPlus } from 'lucide-react'
+import { MapPin, Package, Plus, X, Heart, Skull, Footprints, History, Pin, Users, UserPlus } from 'lucide-react'
 import type { Character } from '@/types'
 import { useResolvedCharacterSnapshot, useBestSnapshots, useCharacterSnapshots, upsertSnapshot, carryFieldForward } from '@/db/hooks/useSnapshots'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
@@ -15,6 +15,7 @@ import {
 } from '@/lib/carryForward'
 import { updateEvent } from '@/db/hooks/useTimeline'
 import { describeSceneStanding, isOnStage, sceneStanding } from '@/lib/sceneStanding'
+import { itemNameCollision } from '@/lib/itemNameCollision'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -22,6 +23,7 @@ import { Field, FieldName } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { PortraitImage } from '@/components/PortraitImage'
+import { WithdrawSnapshotDialog } from '../WithdrawSnapshotDialog'
 
 interface CurrentStateTabProps {
   character: Character
@@ -107,6 +109,13 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
   const [travelModeId, setTravelModeId] = useState<string>('')
   const [newItemName, setNewItemName] = useState('')
   const [dirty, setDirty] = useState(false)
+  const [confirmWithdraw, setConfirmWithdraw] = useState(false)
+
+  /** The record pinned to *this* scene, if any — never the resolved one. */
+  const recordedHere = snapshot && !isInherited ? snapshot : null
+
+  /** Whether "New item name…" is about to mint a twin of something you have. */
+  const collision = itemNameCollision(newItemName, items, inventoryIds)
 
   useEffect(() => {
     if (snapshot) {
@@ -340,8 +349,26 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     setDirty(true)
   }
 
+  /*
+    Typing a name the world already has used to call `createItem` regardless, so
+    a writer who typed "The tally-slate" instead of picking it from the list two
+    lines above got a second item with the same name and no warning — and since
+    the hand-off logic and the duplicate-item check both key on item *id*, the
+    two records were two objects and the machinery stayed silent about them.
+
+    Creating a genuine second object of the same name is still possible from the
+    Items screen; what is not possible any more is doing it by accident from a
+    field labelled "New item name…".
+  */
   async function addNewItem() {
     if (!newItemName.trim()) return
+    if (collision.kind === 'held') return
+    if (collision.kind === 'existing') {
+      const { id } = collision
+      mark(() => setInventoryIds((ids) => [...ids, id]))
+      setNewItemName('')
+      return
+    }
     const item = await createItem({
       worldId: character.worldId,
       name: newItemName.trim(),
@@ -387,6 +414,42 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
           </span>
         </div>
       )}
+
+      {/*
+        The other half of the sentence above. A record pinned to this scene had
+        no way to be unpinned: the carried-forward note said what an *absence*
+        meant and nothing said what a *presence* meant, so an empty record made
+        by accident was indistinguishable from a deliberate "nobody knows where
+        he is" — and, being an assertion, it stopped every later scene reading
+        back past it.
+      */}
+      {recordedHere && (
+        <div className="flex items-start justify-between gap-2 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)] px-3 py-2 text-xs text-[hsl(var(--muted-foreground))]">
+          <span className="flex items-start gap-2">
+            <Pin className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>
+              This state is{' '}
+              <strong className="font-medium text-[hsl(var(--foreground))]">recorded at this scene</strong>{' '}
+              — later scenes read it from here until you record another.
+            </span>
+          </span>
+          <button
+            onClick={() => setConfirmWithdraw(true)}
+            className="pw-tap shrink-0 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--destructive))]"
+          >
+            Remove record
+          </button>
+        </div>
+      )}
+
+      <WithdrawSnapshotDialog
+        open={confirmWithdraw}
+        onOpenChange={setConfirmWithdraw}
+        characterName={character.name}
+        worldId={character.worldId}
+        snapshots={ownSnapshots}
+        snapshotId={recordedHere?.id ?? null}
+      />
 
       {/* Alive / Deceased */}
       <div className="flex flex-col gap-1.5">
@@ -551,18 +614,37 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
         })()}
 
         {/* Create new item */}
-        <div className="flex gap-2">
-          <Input
-            placeholder="New item name..."
-            aria-label="New item name"
-            value={newItemName}
-            onChange={(e) => setNewItemName(e.target.value)}
-            className="h-8 text-xs"
-            onKeyDown={(e) => e.key === 'Enter' && addNewItem()}
-          />
-          <Button size="sm" variant="outline" onClick={addNewItem} disabled={!newItemName.trim()}>
-            <Plus className="h-3.5 w-3.5" />
-          </Button>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex gap-2">
+            <Input
+              placeholder="New item name..."
+              aria-label="New item name"
+              value={newItemName}
+              onChange={(e) => setNewItemName(e.target.value)}
+              className="h-8 text-xs"
+              onKeyDown={(e) => e.key === 'Enter' && addNewItem()}
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              aria-label={
+                collision.kind === 'existing' ? `Add the existing "${collision.name}"`
+                : collision.kind === 'held' ? `Already holding "${collision.name}"`
+                : 'Create item'
+              }
+              onClick={addNewItem}
+              disabled={!newItemName.trim() || collision.kind === 'held'}
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+          {collision.kind !== 'none' && (
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">
+              {collision.kind === 'held'
+                ? `"${collision.name}" is already in this inventory.`
+                : `"${collision.name}" already exists — this will add that one, not make a second.`}
+            </p>
+          )}
         </div>
 
         <Field label="Inventory Notes" labelClassName="text-xs">

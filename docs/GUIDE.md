@@ -1123,6 +1123,29 @@ inheriting the old value, and **stops at the first scene where you had already
 decided something different** — that one is left exactly as you wrote it. It is
 one step for undo, so you can take it back in one go.
 
+**Taking a record back.** Because a record is an assertion about one scene, a
+record you didn't mean to make is not harmless — an empty one says *nobody knows
+where they are*, and every later scene reads that back through it until the next
+record of its own. So Current State says which of the two this scene has:
+*"carried forward from an earlier scene"*, or *"recorded at this scene"* with a
+**Remove record** beside it. The **History** tab has the same control on every
+row, since that tab is the list of records.
+
+Removing one asks first, and the question names the consequence rather than the
+row: *"Ossian Marl's state at this scene will go back to being carried forward
+from Ch. 1 · The pour. 2 later scenes currently read from this record and will
+follow."* Records at later scenes of their own are untouched — this withdraws
+one assertion, it does not cascade. Undo takes it back.
+
+**Naming an item you already have.** Inventory offers *Add existing item…*
+above *New item name…*. Typing a name the world already has into the second one
+no longer makes a second item with the same name: the panel tells you the name
+exists and the **+** adds the item you had. If they are already holding it, it
+says so and there is nothing to add. Two records with one name would be two
+different objects to the item hand-off and to the continuity checker, which is
+why this one is worth being careful about; a genuine second object of the same
+name can still be made from the Items screen.
+
 ### Goals & motivations
 
 The **Goals** tab tracks the inner life behind a character's scenes, along the
@@ -1602,6 +1625,11 @@ about, so the line is left off rather than guessed at.
 
 ![Items](images/09-items.png)
 
+**Deleting one.** *Delete item* removes the item, its placements and its
+per-scene states, and also takes it out of every character's inventory and every
+scene's item list — so nothing is left pointing at a record that is gone. Undo
+brings the whole lot back.
+
 **Where it has been.** Open an item and, under **Whereabouts**, it lists its
 chain of custody in story order — one row per change, naming the scene, who was
 carrying it and where: *Ch. 1 · The letter arrives — carried by Mira Vasse · The
@@ -1927,6 +1955,10 @@ lists your recent edits, newest first, with the time each happened. Each entry
 names the record and what it touched — *Edited chapter “The Bell Tower” —
 notes*, *Edited scene “The gate opens” — tension and title* — so you can tell
 one edit from the next, and recognise your own work, without opening anything.
+Records that carry no name of their own are named by what they join: a knowledge
+reveal reads *Added knowledge reveal “Perrin Vaux — Cathe Vaux thinned the tin”*,
+a faction membership names the character and the faction, and a character's state
+at a scene is named by the character.
 The name is the record's current one, so renaming something updates the history
 entries that mention it. Only the newest can be undone, and the panel says so
 once there's more than one entry: history is a stack, so taking one from the

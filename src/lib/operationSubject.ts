@@ -22,8 +22,13 @@ import type { Operation, OperationEntity } from '@/types/operation'
  * a plain function over plain data.
  */
 
-/** Fields a record may carry its display name in, best first. */
-const NAME_FIELDS = ['name', 'title', 'label'] as const
+/**
+ * Fields a record may carry its display name in, best first.
+ *
+ * `text` is last and is here for map labels, whose whole content is their text
+ * — no other journalled group has the field, so it cannot displace a real name.
+ */
+const NAME_FIELDS = ['name', 'title', 'label', 'text'] as const
 
 /** A record's display name, or null when it has none. */
 export function recordName(record: unknown): string | null {
@@ -35,20 +40,52 @@ export function recordName(record: unknown): string | null {
   return null
 }
 
+/** One hop: read this foreign key on the record, then read that table's name. */
+export interface SubjectOwner {
+  table: string
+  key: string
+}
+
 /**
- * Snapshot groups whose name belongs to something else.
+ * Groups whose name belongs to something else.
  *
  * A `CharacterSnapshot` holds a character's state at one scene and carries no
  * name of its own — the name a writer would recognise is the character's. So
  * these resolve one hop further: read the foreign key, then read that table.
+ *
+ * Some groups are a *pair* of foreign keys and nothing else, and one name is
+ * not enough to tell them apart. A blind writer run recorded twelve knowledge
+ * reveals and got twelve rows reading *"Added knowledge reveal"*, in a panel
+ * whose only purpose is deciding which change to take back; a reveal is a
+ * character and a fact, so both are named. `SUBJECT_JOIN` is what goes between.
  */
-export const SUBJECT_OWNER: Partial<Record<OperationEntity, { table: string; key: string }>> = {
-  characterSnapshot: { table: 'characters', key: 'characterId' },
-  itemPlacement: { table: 'items', key: 'itemId' },
-  itemSnapshot: { table: 'items', key: 'itemId' },
-  locationSnapshot: { table: 'locationMarkers', key: 'locationMarkerId' },
-  relationshipSnapshot: { table: 'relationships', key: 'relationshipId' },
-  mapRegionSnapshot: { table: 'mapRegions', key: 'regionId' },
+export const SUBJECT_JOIN = ' — '
+
+export const SUBJECT_OWNER: Partial<Record<OperationEntity, SubjectOwner[]>> = {
+  characterSnapshot: [{ table: 'characters', key: 'characterId' }],
+  itemPlacement: [{ table: 'items', key: 'itemId' }],
+  itemSnapshot: [{ table: 'items', key: 'itemId' }],
+  locationSnapshot: [{ table: 'locationMarkers', key: 'locationMarkerId' }],
+  relationshipSnapshot: [{ table: 'relationships', key: 'relationshipId' }],
+  mapRegionSnapshot: [{ table: 'mapRegions', key: 'regionId' }],
+  knowledgeReveal: [
+    { table: 'characters', key: 'characterId' },
+    { table: 'knowledgeFacts', key: 'factId' },
+  ],
+  factionMembership: [
+    { table: 'characters', key: 'characterId' },
+    { table: 'factions', key: 'factionId' },
+  ],
+  factionRelationship: [
+    { table: 'factions', key: 'factionAId' },
+    { table: 'factions', key: 'factionBId' },
+  ],
+  characterMovement: [{ table: 'characters', key: 'characterId' }],
+  crossTimelineArtifact: [{ table: 'items', key: 'itemId' }],
+  timelineRelationship: [
+    { table: 'timelines', key: 'sourceTimelineId' },
+    { table: 'timelines', key: 'targetTimelineId' },
+  ],
 }
 
 /**

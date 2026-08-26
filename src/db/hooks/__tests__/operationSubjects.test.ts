@@ -4,6 +4,7 @@ import { db } from '@/db/database'
 import { createWorld } from '@/db/hooks/useWorlds'
 import { createCharacter, deleteCharacter } from '@/db/hooks/useCharacters'
 import { createTimeline, createChapter, createEvent, updateEvent } from '@/db/hooks/useTimeline'
+import { createKnowledgeFact, createKnowledgeReveal } from '@/db/hooks/useKnowledge'
 import { upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { operationsForEntity, resolveSubjects } from '@/db/hooks/useOperations'
 import { describeOperation } from '@/lib/operations'
@@ -143,6 +144,38 @@ describe('resolveSubjects', () => {
     const subjects = await resolveSubjects([created])
     expect(subjects.size).toBe(0)
     expect(describeOperation(created, subjects.get(created.id))).toBe('Added character “Corvin Adze”')
+  })
+
+  /*
+    The same finding, a run later: twelve reveals recorded in one sitting gave
+    twelve rows reading "Added knowledge reveal", with nothing to choose
+    between them — and this is the panel you use to decide what to take back.
+    A reveal is a character and a fact and nothing else, so both are named.
+  */
+  it('names both ends of a knowledge reveal, which is only foreign keys', async () => {
+    const { world, ev } = await seedScene('The lining of the coat')
+    const perrin = await createCharacter({ worldId: world.id, name: 'Perrin Vaux', description: '' })
+    const isquel = await createCharacter({ worldId: world.id, name: 'Isquel Vaux', description: '' })
+    const fact = await createKnowledgeFact({
+      worldId: world.id, title: 'Cathe Vaux thinned the tin', description: '', tags: [],
+    })
+
+    const a = await createKnowledgeReveal({ worldId: world.id, factId: fact.id, characterId: perrin.id, eventId: ev.id, note: '' })
+    const b = await createKnowledgeReveal({ worldId: world.id, factId: fact.id, characterId: isquel.id, eventId: ev.id, note: '' })
+    const ops = [
+      (await operationsForEntity('knowledgeReveal', a.id))[0],
+      (await operationsForEntity('knowledgeReveal', b.id))[0],
+    ]
+
+    const subjects = await resolveSubjects(ops)
+    const rows = ops.map((op) => describeOperation(op, subjects.get(op.id)))
+    expect(rows).toEqual([
+      'Added knowledge reveal “Perrin Vaux — Cathe Vaux thinned the tin”',
+      'Added knowledge reveal “Isquel Vaux — Cathe Vaux thinned the tin”',
+    ])
+    // The point of the fix, stated as itself: two rows about two records read
+    // differently.
+    expect(rows[0]).not.toBe(rows[1])
   })
 
   it('follows a rename, because the row is a way to find the record', async () => {

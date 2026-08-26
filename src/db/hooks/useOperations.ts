@@ -15,7 +15,7 @@ import {
   redoableBatch,
 } from '@/lib/operations'
 import { ENTITY_TABLE } from '@/lib/entityTables'
-import { SUBJECT_OWNER, needsSubjectLookup, recordName } from '@/lib/operationSubject'
+import { SUBJECT_JOIN, SUBJECT_OWNER, needsSubjectLookup, recordName } from '@/lib/operationSubject'
 import type { PruneLimits } from '@/lib/operations'
 import type { Operation, OperationEntity, OperationType, Tombstone } from '@/types/operation'
 
@@ -498,22 +498,32 @@ export async function resolveSubjects(ops: readonly Operation[]): Promise<Map<st
 }
 
 async function subjectFor(op: Operation): Promise<string | null> {
-  const owner = SUBJECT_OWNER[op.entityType]
-  if (!owner) return recordName(await tableFor(op.entityType)?.get(op.entityId))
+  const owners = SUBJECT_OWNER[op.entityType]
+  if (!owners) return recordName(await tableFor(op.entityType)?.get(op.entityId))
 
-  // The foreign key is on the snapshot. A create's payload is the whole
-  // snapshot and already has it; an update's payload has only the fields it
-  // touched, so the row itself has to be read.
-  let ownerId = op.payload[owner.key]
-  if (typeof ownerId !== 'string') {
-    const record = await tableFor(op.entityType)?.get(op.entityId)
-    ownerId = record?.[owner.key]
+  // The foreign keys are on the record. A create's payload is the whole record
+  // and already has them; an update's payload has only the fields it touched,
+  // so the row itself has to be read — once, however many keys are wanted.
+  let record: Record<string, unknown> | undefined
+  const keyOf = async (key: string): Promise<string | null> => {
+    const fromPayload = op.payload[key]
+    if (typeof fromPayload === 'string') return fromPayload
+    record ??= await tableFor(op.entityType)?.get(op.entityId)
+    const fromRecord = record?.[key]
+    return typeof fromRecord === 'string' ? fromRecord : null
   }
-  if (typeof ownerId !== 'string') return null
-  const table = (db as unknown as Record<string, unknown>)[owner.table] as
-    | Table<Record<string, unknown>, string>
-    | undefined
-  return recordName(await table?.get(ownerId))
+
+  const names: string[] = []
+  for (const owner of owners) {
+    const ownerId = await keyOf(owner.key)
+    if (!ownerId) continue
+    const table = (db as unknown as Record<string, unknown>)[owner.table] as
+      | Table<Record<string, unknown>, string>
+      | undefined
+    const name = recordName(await table?.get(ownerId))
+    if (name) names.push(name)
+  }
+  return names.length ? names.join(SUBJECT_JOIN) : null
 }
 
 /**

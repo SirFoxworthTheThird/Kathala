@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { MapPin, Package, Heart, Skull, BookOpen, Camera, Footprints, Route, Ruler } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { MapPin, Package, Heart, Skull, BookOpen, Camera, Footprints, Route, Ruler, Trash2 } from 'lucide-react'
 import type { Character, Timeline } from '@/types'
 import { useCharacterSnapshots } from '@/db/hooks/useSnapshots'
 import { useChapter, useEvent, useTimelines } from '@/db/hooks/useTimeline'
@@ -14,9 +14,9 @@ import { useGate } from '@/db/hooks/ReadingGateContext'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/EmptyState'
 import { formatDistance } from '@/lib/mapScale'
+import { WithdrawSnapshotDialog } from '../WithdrawSnapshotDialog'
 
 function SnapshotRow({
-  snapshotId: _snapshotId,
   eventId,
   isAlive,
   locationMarkerId,
@@ -29,8 +29,8 @@ function SnapshotRow({
   routeLabel,
   distanceLabel,
   onClick,
+  onDelete,
 }: {
-  snapshotId: string
   eventId: string
   isAlive: boolean
   locationMarkerId: string | null
@@ -44,6 +44,8 @@ function SnapshotRow({
   distanceLabel: string | null
   /** Absent while reading: the row is a readout, not a way to move the cursor. */
   onClick?: () => void
+  /** Absent while reading, for the same reason: a reader does not edit the record. */
+  onDelete?: () => void
 }) {
   const event = useEvent(eventId)
   const chapter = useChapter(event?.chapterId ?? null)
@@ -52,6 +54,9 @@ function SnapshotRow({
   const travelModes = useTravelModes(worldId)
   const timeline = chapter ? timelines.find((t) => t.id === chapter.timelineId) ?? null : null
   const travelModeName = travelModeId ? (travelModes.find((m) => m.id === travelModeId)?.name ?? null) : null
+  const headline = chapter
+    ? `Ch. ${chapter.number}${event?.title ? ` · ${event.title}` : ` — ${chapter.title}`}`
+    : eventId
 
   /*
     A button only when pressing it does something. With no handler it would
@@ -60,12 +65,20 @@ function SnapshotRow({
     readout, so it is rendered as one.
   */
   const Row = onClick ? 'button' : 'div'
+  /*
+    The row is itself a button, and a button cannot contain one — so the
+    withdrawal control sits beside it in a wrapper rather than inside the card.
+    Nesting it produced a control that moved the cursor *and* opened the
+    dialog, which is two answers to one click.
+  */
   return (
+    <div className="relative">
     <Row
       onClick={onClick}
       className={cn(
         'w-full flex flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors',
         onClick && 'hover:bg-[hsl(var(--accent))]',
+        onDelete && 'pr-11',
         isActive
           ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))]'
           : 'border-[hsl(var(--border))] bg-[hsl(var(--card))]'
@@ -81,11 +94,7 @@ function SnapshotRow({
             once. The chapter still leads, because that is how a writer finds
             their place; the scene is what distinguishes the row.
           */}
-          <span className="text-sm font-medium truncate">
-            {chapter
-              ? `Ch. ${chapter.number}${event?.title ? ` · ${event.title}` : ` — ${chapter.title}`}`
-              : eventId}
-          </span>
+          <span className="text-sm font-medium truncate">{headline}</span>
         </div>
         <div className="flex items-center gap-1.5 shrink-0 ml-2">
           {timeline && timelines.length >= 2 && (
@@ -141,6 +150,17 @@ function SnapshotRow({
         <p className="text-xs text-[hsl(var(--muted-foreground))] italic line-clamp-1">{statusNotes}</p>
       )}
     </Row>
+    {onDelete && (
+      <button
+        onClick={onDelete}
+        aria-label={`Remove the recorded state at ${headline}`}
+        title="Remove this recorded state"
+        className="pw-tap absolute right-2 top-2 rounded-md p-1.5 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--background))] hover:text-[hsl(var(--destructive))]"
+      >
+        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+      </button>
+    )}
+    </div>
   )
 }
 
@@ -153,6 +173,7 @@ export function HistoryTab({ character }: HistoryTabProps) {
   const timelines = useTimelines(character.worldId)
   const { activeEventId, setActiveEventId } = useAppStore()
   const gate = useGate()
+  const [pendingWithdraw, setPendingWithdraw] = useState<string | null>(null)
 
   // Data for enrichment
   const allMarkers = useAllLocationMarkers(character.worldId)
@@ -234,7 +255,6 @@ export function HistoryTab({ character }: HistoryTabProps) {
       {enriched.map(({ snap, routeLabel, distanceLabel }) => (
         <SnapshotRow
           key={snap.id}
-          snapshotId={snap.id}
           eventId={snap.eventId}
           isAlive={snap.isAlive}
           locationMarkerId={snap.currentLocationMarkerId}
@@ -253,8 +273,18 @@ export function HistoryTab({ character }: HistoryTabProps) {
             shape HB-2d was filed for.
           */
           onClick={gate.active ? undefined : () => setActiveEventId(snap.eventId)}
+          onDelete={gate.active ? undefined : () => setPendingWithdraw(snap.id)}
         />
       ))}
+      <WithdrawSnapshotDialog
+        open={pendingWithdraw !== null}
+        onOpenChange={(v) => { if (!v) setPendingWithdraw(null) }}
+        characterName={character.name}
+        worldId={character.worldId}
+        snapshots={snapshots}
+        snapshotId={pendingWithdraw}
+        onWithdrawn={() => setPendingWithdraw(null)}
+      />
     </div>
   )
 }
