@@ -148,14 +148,17 @@ test('settings keeps only what a reader can decide', async ({ page }) => {
   const sections = async () =>
     (await page.evaluate(`(() => [...document.querySelectorAll('main h2')].map((h) => h.textContent?.trim()))()`)) as string[]
 
-  // How it looks, and whether to keep reading this way. Nothing else here is
-  // the reader's to decide, and Export as HTML would write out the whole book.
-  await expect.poll(sections, { timeout: 15_000 }).toEqual(['Reading mode', 'Theme'])
+  // How it looks, whether to keep reading this way, and whether the pictures
+  // come with the book — a downloaded world whose art is still links draws
+  // nothing on a train, so saving them is the reader's decision about their own
+  // device rather than an authoring act. Nothing else here is the reader's to
+  // decide, and Export as HTML would write out the whole book.
+  await expect.poll(sections, { timeout: 15_000 }).toEqual(['Reading mode', 'Pictures', 'Theme'])
   await expect(page.getByRole('button', { name: 'Export as HTML' })).toHaveCount(0)
 
   // Turning reading mode off is the escape hatch, and it brings the rest back.
   await page.getByRole('button', { name: 'Turn off reading mode' }).click()
-  await expect.poll(async () => (await sections()).length, { timeout: 15_000 }).toBeGreaterThan(2)
+  await expect.poll(async () => (await sections()).length, { timeout: 15_000 }).toBeGreaterThan(3)
   await expect(page.getByRole('button', { name: 'Export as HTML' })).toBeVisible()
 })
 

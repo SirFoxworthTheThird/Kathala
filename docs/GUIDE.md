@@ -29,6 +29,21 @@ nothing about your work.** A picture in PlotWeave is either a file you uploaded
 one somewhere on the web. A linked picture is fetched from wherever it lives,
 each time it is shown, by your browser. Two things are linked:
 
+**You can take a copy.** World settings → **Pictures** says how many of this
+world's pictures are links and how many sites they come from, and offers to save
+them into this browser. Afterwards they behave like an uploaded file: they work
+offline, they travel in a `.pwk`/`.pwb` export, and they do not stop working if
+the site takes them down. It is offered rather than done for you — linking is
+what keeps a library download a few hundred kilobytes instead of tens of
+megabytes, and the choice belongs to whoever is about to get on a plane.
+
+Not every site allows it. A picture is *shown* by your browser without needing
+permission, but *copying* one needs the site to allow it, and plenty do not.
+Those are named in the summary afterwards, stay as links, and go on appearing
+when you are online. Bear in mind, too, that linking to somebody's picture and
+copying it into a file you then export are different acts, and only you know
+what you are allowed to reuse.
+
 - **Library cover images**, when you open the Library and scroll to a card.
 - **Pictures inside the library worlds themselves.** These are linked rather
   than bundled: character portraits, location and item pictures, map images,

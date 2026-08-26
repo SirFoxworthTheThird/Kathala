@@ -21,6 +21,7 @@ import { SettingsIndex, useSettingsSections } from './SettingsIndex'
 import { APP_THEMES, themeClass } from '@/lib/themes'
 import { useAppStore, type AppTheme } from '@/store'
 import { SettingsSection, SettingsFoldProvider } from './SettingsSection'
+import { LocalPicturesSection } from './LocalPicturesSection'
 
 // ── Travel mode row ───────────────────────────────────────────────────────────
 
@@ -315,6 +316,17 @@ function WorldSettingsBody() {
             export it first if you want to keep them.
           </p>
         )}
+      </SettingsSection>
+      )}
+
+      {/* `world` loads asynchronously — same guard as the section above. */}
+      {world && (
+      <SettingsSection id="settings-pictures" label="Pictures"
+        blurb={<>A picture is either a file kept in this browser or a link to one on the web.
+              Linked pictures are fetched each time they are shown, so they need a connection
+              — and they stop working if the site takes them down.</>}
+      >
+        <LocalPicturesSection worldId={world.id} />
       </SettingsSection>
       )}
 

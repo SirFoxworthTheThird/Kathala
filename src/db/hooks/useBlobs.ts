@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import type { BlobEntry } from '@/types'
 import { generateId } from '@/lib/id'
+import { hostOf } from '@/lib/localiseImages'
 
 /** Returns a stable map of blobId → object URL for all blobs in a world.
  *  The Map reference only changes when the underlying Dexie data changes. */
@@ -181,6 +182,80 @@ function guessMimeType(url: string): string {
     case 'svg': return 'image/svg+xml'
     default: return 'image/*'
   }
+}
+
+/**
+ * Take a copy of a linked picture, so it no longer needs the site it came from.
+ *
+ * `BlobEntry` holds *either* `data` or `url`, and everything that shows a
+ * picture reads it through the same id — so this is one field on one record and
+ * nothing that references the blob changes. The `url` is cleared rather than
+ * kept: leaving both would make "exactly one of data / url is set" untrue, and
+ * a later reader would have to guess which one the app meant.
+ *
+ * It throws rather than returning false on failure, and the callers turn that
+ * into a count. A linked picture is drawn by the browser as an `<img>`, which
+ * needs no permission; reading its *bytes* needs `fetch`, which needs the site
+ * to send CORS headers. Many do not, and that is not a bug in this app or a
+ * thing a retry fixes.
+ */
+export async function saveImageLocally(id: string): Promise<number> {
+  const entry = await db.blobs.get(id)
+  if (!entry) throw new Error('That picture is no longer here.')
+  if (!entry.url) return 0 // already local; saving again would be a no-op
+
+  const res = await fetch(entry.url, { mode: 'cors' })
+  if (!res.ok) throw new Error(`The site answered ${res.status}.`)
+  const data = await res.blob()
+  if (data.size === 0) throw new Error('The site returned an empty file.')
+
+  await db.blobs.update(id, {
+    data,
+    // `undefined` deletes the key in Dexie, which is what keeps the "exactly
+    // one of these" invariant true rather than merely mostly true.
+    url: undefined,
+    mimeType: data.type || entry.mimeType,
+  })
+  return data.size
+}
+
+/** Every picture in a world that is still a link rather than bytes. */
+export async function linkedBlobs(worldId: string): Promise<BlobEntry[]> {
+  const all = await db.blobs.where('worldId').equals(worldId).toArray()
+  return all.filter((b) => !!b.url && !b.data)
+}
+
+/**
+ * Take a copy of every linked picture in a world, reporting what could not be
+ * taken.
+ *
+ * Sequential rather than parallel, deliberately: this is somebody else's
+ * bandwidth and a writer's browser, and forty simultaneous image fetches is the
+ * kind of thing that gets an IP rate-limited. `onProgress` exists so the screen
+ * can say where it has got to rather than freezing on a spinner.
+ */
+export async function saveWorldImagesLocally(
+  worldId: string,
+  onProgress?: (done: number, total: number) => void,
+): Promise<{ saved: number; failed: Array<{ host: string; reason: string }>; bytes: number }> {
+  const linked = await linkedBlobs(worldId)
+  const failed: Array<{ host: string; reason: string }> = []
+  let saved = 0
+  let bytes = 0
+
+  for (const [i, entry] of linked.entries()) {
+    try {
+      bytes += await saveImageLocally(entry.id)
+      saved += 1
+    } catch (err) {
+      failed.push({
+        host: hostOf(entry.url ?? ''),
+        reason: err instanceof Error ? err.message : String(err),
+      })
+    }
+    onProgress?.(i + 1, linked.length)
+  }
+  return { saved, failed, bytes }
 }
 
 export async function deleteBlob(id: string) {

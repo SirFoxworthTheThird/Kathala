@@ -38,7 +38,7 @@ const shippedPaths = new Set(
     .filter(Boolean),
 )
 
-interface Blob { id: string; url?: string }
+interface Blob { id: string; url?: string; data?: unknown }
 const blobsOf = (text: string): Blob[] => (JSON.parse(text).blobs ?? []) as Blob[]
 
 describe("the library's own artwork", () => {
@@ -58,6 +58,28 @@ describe("the library's own artwork", () => {
     }
     expect(offenders, `these ship in dist/ and should be named by their served path:\n${offenders.slice(0, 5).join('\n')}`)
       .toEqual([])
+  })
+
+  /*
+    What the Pictures section in World settings is for (`src/lib/localiseImages
+    .ts`): a shipped world names its pictures and ships none of their bytes,
+    which is why a download is a few hundred kilobytes and why it draws nothing
+    offline until a reader asks for a copy. Bundling bytes into a `.pwk` would
+    quietly undo both halves, so it is asserted rather than assumed.
+  */
+  it('ships every picture as a link and none as bytes', () => {
+    const bundled: string[] = []
+    let links = 0
+    for (const [file, text] of Object.entries(worldFiles)) {
+      for (const b of blobsOf(text)) {
+        if (b.data !== undefined) bundled.push(`${file} — ${b.id}`)
+        if (b.url) links++
+      }
+    }
+    // Presence beside the absence: an empty `blobs` array would satisfy the
+    // first assertion on its own.
+    expect(links).toBeGreaterThan(1_000)
+    expect(bundled, `these carry bytes rather than a link:\n${bundled.slice(0, 5).join('\n')}`).toEqual([])
   })
 
   it('names files that are actually there', () => {

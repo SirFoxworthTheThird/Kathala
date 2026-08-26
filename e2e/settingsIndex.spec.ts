@@ -69,13 +69,17 @@ test.describe('World settings can be navigated', () => {
 
     // Reading mode hides the World block — a downloaded book is not the
     // reader's to rename — along with everything else that calibrates a draft,
-    // leaving two sections. A list maintained by hand would go on offering
-    // chips that scroll nowhere; reading the DOM leaves nothing to offer, and
-    // an index of two is more chrome than the scrolling it saves.
+    // leaving the three a reader decides: how to read, whether to keep the
+    // pictures on this device, and how it looks. A list maintained by hand
+    // would go on offering chips that scroll nowhere; reading the DOM drops
+    // the World chip with the block it points at, and keeps the rest.
     await page.getByRole('button', { name: 'Turn on reading mode' }).click()
     await expect(page.locator('#settings-world')).toHaveCount(0, { timeout: 15_000 })
-    await expect(page.locator('[data-settings-section]')).toHaveCount(2)
-    await expect(index(page)).toHaveCount(0)
+    await expect(page.locator('[data-settings-section]')).toHaveCount(3)
+    await expect(index(page).getByRole('link', { name: 'World', exact: true })).toHaveCount(0)
+    for (const label of ['Reading mode', 'Pictures', 'Theme']) {
+      await expect(index(page).getByRole('link', { name: label, exact: true })).toBeVisible()
+    }
 
     // Back again — so this is not passing because the index broke on the first
     // render and stayed broken.

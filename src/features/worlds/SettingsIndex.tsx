@@ -64,7 +64,11 @@ export function SettingsIndex({ sections }: { sections: SettingsSectionRef[] }) 
   const folded = allCollapsed(collapsed, ids)
 
   // One section is not a list, and two barely are — below that the index costs
-  // more than the scrolling it saves.
+  // more than the scrolling it saves. The reachable case today is zero: the
+  // sections are read from the DOM in an effect, so the first paint has none,
+  // and rendering an empty bar there would flash chrome with nothing in it.
+  // Reading mode used to be the two-section case, and is three since Pictures
+  // joined the reader's own decisions.
   if (sections.length < 3) return null
 
   return (
