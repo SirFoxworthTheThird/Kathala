@@ -92,16 +92,27 @@ test('the pacing curve carries its data as a table for anyone not reading the pi
 })
 
 /**
- * The curve stops where the reader has got to.
+ * The curve is not a reader's screen at all.
  *
- * `useTimelineEvents` is deliberately ungated, and the curve drew all of it.
- * That was survivable while the curve was anonymous circles; adding an
- * accessible data table named every scene in the book. At chapter one of the
- * bundled Philosopher's Stone the table listed "Quirrell and Voldemort" and
- * "Gryffindor Wins the House Cup" — the ending, readable by a screen reader,
- * on a world downloaded specifically to be safe to open mid-book.
+ * This began as "the curve stops where the reader has got to": `useTimelineEvents`
+ * is deliberately ungated and the curve drew all of it, which was survivable
+ * while the curve was anonymous circles and stopped being so when an accessible
+ * data table named every scene in the book. At chapter one of the bundled
+ * Philosopher's Stone the table listed "Quirrell and Voldemort" and "Gryffindor
+ * Wins the House Cup" — the ending, readable by a screen reader, on a world
+ * downloaded specifically to be safe to open mid-book. Gating it fixed that.
+ *
+ * A blind reader run then made the stronger point: the chart plots ratings a
+ * reader cannot see, cannot set and did not ask for, and on a 390px phone it
+ * and the thread strip together pushed the first chapter row past half the
+ * screen. So it is no longer drawn while reading, and the question this test
+ * asks becomes the simpler one — a table that does not exist cannot name
+ * anything.
+ *
+ * The names are still checked, on the other side of the switch. That is what
+ * keeps this a test about the gate rather than about a deleted feature.
  */
-test('the pacing curve does not name scenes the reader has not reached', async ({ page }) => {
+test('the pacing curve is not shown to a reader, and names the whole book to a writer', async ({ page }) => {
   test.setTimeout(180_000)
   await page.setViewportSize({ width: 1600, height: 900 })
   await resetDB(page)
@@ -109,7 +120,6 @@ test('the pacing curve does not name scenes the reader has not reached', async (
   await settle(page)
   const id = new URL(page.url()).hash.split('/')[2]
 
-  // Stay in reading mode, at the opening moment.
   await page.getByRole('button', { name: 'Next moment' }).click()
   await settle(page)
 
@@ -120,22 +130,16 @@ test('the pacing curve does not name scenes the reader has not reached', async (
   const roster = await page.getByRole('main').innerText()
   expect(roster, 'the gate should be active at chapter one').not.toContain('Quirrell')
 
-  await page.goto(`/#/worlds/${id}/timeline`)
   const table = page.getByRole('table', { name: 'Dramatic tension by scene, in the order shown' })
-  await expect(table).toBeAttached({ timeout: 30_000 })
-  const body = await table.innerText()
+  await page.goto(`/#/worlds/${id}/timeline`)
+  // The chapters are there, so the screen rendered and this is the curve's
+  // absence rather than the page's.
+  await expect(page.getByRole('main').getByText(/^Ch\. 1/).first()).toBeVisible({ timeout: 30_000 })
+  await expect(table).toHaveCount(0)
+  await expect(page.getByText('Pacing — dramatic tension')).toHaveCount(0)
 
-  for (const spoiler of ['Quirrell and Voldemort', 'Gryffindor Wins the House Cup', "Ron's Wizard Chess Sacrifice"]) {
-    expect(body, `"${spoiler}" is past the reader's cursor`).not.toContain(spoiler)
-  }
-
-  // The presence half: the scene the reader is actually on is listed, so this
-  // cannot pass because the table failed to render.
-  expect(body.length, 'the table should still describe the part already read').toBeGreaterThan(0)
-  await expect(table.getByRole('row')).not.toHaveCount(0)
-
-  // With the whole book revealed the same table names them again — which is
-  // what makes the absence above a gate rather than a missing feature.
+  // With reading mode off the chart is back, and the table names the whole book
+  // — which is what makes the absence above a gate and not a missing feature.
   await page.goto(`/#/worlds/${id}/settings`)
   await page.getByRole('button', { name: 'Turn off reading mode' }).click()
   await settle(page)

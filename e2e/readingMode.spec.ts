@@ -314,6 +314,127 @@ test('the lore screen does not offer a filter that cannot do anything', async ({
   await expect(page.getByRole('button', { name: 'Revealed' })).toBeVisible({ timeout: 20_000 })
 })
 
+/*
+  R10: Mr Swales, one click from the roster, showed eight tabs of which four read
+  Goals 0, Relationships 0, Lore 0, Factions 0 — one click each to a panel
+  explaining how to fill it in, one of them advising the reader to "type @ in a
+  scene's draft" on a screen where there are no scene drafts. CH-3 draws a zero
+  deliberately, because for a writer *none* is an answer; a reader cannot act on
+  it.
+*/
+test('a character page does not offer tabs with nothing behind them', async ({ page }) => {
+  await downloadFirstLibraryWorld(page)
+  await page.goto(`/#${await worldPath(page)}/characters`)
+  await settleNav(page)
+  const firstCharacter = page.getByRole('main').getByRole('link').first()
+  await expect(firstCharacter).toBeVisible({ timeout: 20_000 })
+  await firstCharacter.click()
+  await settle(page)
+
+  const tabs = page.getByRole('tab')
+  await expect(tabs.first()).toBeVisible({ timeout: 20_000 })
+  const reading = await tabs.allTextContents()
+  // Whatever is offered, none of it is empty.
+  expect(reading.filter((t) => /\b0$/.test(t.trim())), `empty tabs: ${reading.join(' | ')}`).toEqual([])
+  // …and the two that answer "who is this again" are always there.
+  expect(reading.some((t) => t.includes('Overview'))).toBe(true)
+
+  /*
+    The presence half. A writer sees the zeros, which is the point of CH-3 — so
+    the absence above is the gate and not the tabs having been deleted.
+  */
+  await page.goto(`/#${await worldPath(page)}/settings`)
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
+  await settle(page)
+  await page.goto(`/#${await worldPath(page)}/characters`)
+  await settleNav(page)
+  await page.getByRole('main').getByRole('link').first().click()
+  await settle(page)
+  const writing = await page.getByRole('tab').allTextContents()
+  expect(writing.length).toBeGreaterThan(reading.length)
+})
+
+/*
+  R7 and R9: on a 390px phone the pacing chart and the plot-thread strip pushed
+  the first chapter row to y=436 of 844 — more than half the screen was author
+  analytics before any chapter. The thread names spoil besides: at chapter 7 of
+  Dracula, where Lucy has sleepwalked once, a chip read "Lucy's Illness and
+  Undeath", which is chapter 16.
+*/
+test('the timeline leads with chapters, not with the author\'s instruments', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await downloadFirstLibraryWorld(page)
+  await page.getByRole('button', { name: 'Next moment' }).click()
+  await settle(page)
+  await page.goto(`/#${await worldPath(page)}/timeline`)
+  await settleNav(page)
+
+  const main = page.getByRole('main')
+  await expect(main.getByText(/^Ch\. 1/).first()).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText('Pacing — dramatic tension')).toHaveCount(0)
+  await expect(page.getByRole('group', { name: 'Filter by plot thread' })).toHaveCount(0)
+
+  /*
+    And the line the reader actually came for is on the phone. Below `lg` the
+    chapter summary was `hidden`, so "what happened in chapter 3 again?" was
+    answerable only on the device you are not reading on. Paired against a
+    chapter beyond the cursor, whose summary must still be withheld — so this
+    cannot pass by simply printing every synopsis.
+  */
+  const synopses = await page.evaluate(async () => {
+    const db = (window as { __pwdb?: never }).__pwdb as unknown as
+      { chapters: { toArray: () => Promise<Array<{ number: number; synopsis?: string }>> } }
+    const all = (await db.chapters.toArray()).sort((a, b) => a.number - b.number)
+    return { first: all[0]?.synopsis ?? '', last: all[all.length - 1]?.synopsis ?? '' }
+  })
+  expect(synopses.first.length, 'the fixture needs a synopsis to look for').toBeGreaterThan(10)
+  expect(synopses.last.length).toBeGreaterThan(10)
+
+  const bodyText = async () => (await page.evaluate(`(() => document.body.innerText)()`)) as string
+  const text = await bodyText()
+  expect(text, 'the reached chapter summary should be on the phone').toContain(synopses.first)
+  expect(text, 'a chapter beyond the cursor keeps its summary').not.toContain(synopses.last)
+
+  // The presence half: both are a writer's, and a writer still has them.
+  await page.goto(`/#${await worldPath(page)}/settings`)
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
+  await settle(page)
+  await page.goto(`/#${await worldPath(page)}/timeline`)
+  await settleNav(page)
+  await expect(page.getByRole('group', { name: 'Filter by plot thread' })).toBeVisible({ timeout: 20_000 })
+})
+
+/*
+  R12: twenty-nine help sections, five hidden while reading, and none about
+  reading — so a reader wondering what the ✕ beside their place does had
+  twenty-four wrong answers and no right one.
+*/
+test('help answers the question a reader actually has', async ({ page }) => {
+  await downloadFirstLibraryWorld(page)
+  await page.getByRole('button', { name: 'Help' }).click()
+  await settle(page)
+
+  const reading = await page.getByRole('button', { expanded: false }).allTextContents()
+  expect(reading.some((t) => t.includes('Reading a book')), `sections: ${reading.join(' | ')}`).toBe(true)
+  // And the ones describing screens a reader does not have are gone.
+  expect(reading.some((t) => t.includes('Database health'))).toBe(false)
+  expect(reading.some((t) => t.includes('Corkboard'))).toBe(false)
+
+  // The mirror: a writer gets those and not the reading section.
+  await page.keyboard.press('Escape')
+  await page.goto(`/#${await worldPath(page)}/settings`)
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
+  await settle(page)
+  await page.getByRole('button', { name: 'Help' }).click()
+  await settle(page)
+  const writing = await page.getByRole('button', { expanded: false }).allTextContents()
+  expect(writing.some((t) => t.includes('Database health'))).toBe(true)
+  expect(writing.some((t) => t.includes('Reading a book'))).toBe(false)
+})
+
 test('the corkboard is a plotting board, not a reading screen', async ({ page }) => {
   await downloadFirstLibraryWorld(page)
   const nav = page.getByRole('navigation', { name: 'Main navigation' })

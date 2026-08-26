@@ -60,6 +60,8 @@ export default function CharacterDetailView() {
   const memberships = useMembershipsForCharacter(characterId ?? null)
   const lorePages = useLorePagesForEntity(worldId ?? null, characterId ?? null)
   const snapshots = useCharacterSnapshots(characterId ?? null)
+
+
   const worldEvents = useWorldEvents(character?.worldId ?? null)
   const worldChapters = useWorldChapters(character?.worldId ?? null)
   const appearances = computeCharacterAppearances({
@@ -68,6 +70,37 @@ export default function CharacterDetailView() {
     chapters: worldChapters,
   })
   const appearanceCount = appearances.present.length + appearances.mentioned.length
+
+  /*
+    An empty tab is an answer to a writer and a dead end to a reader.
+
+    CH-3 draws a count of 0 rather than leaving the tab off, because for the
+    person writing the book *none* is a finding — nobody has given this
+    character a goal yet. A reader cannot act on that: a blind reader run opened
+    Mr Swales and found four tabs reading Goals 0, Relationships 0, Lore 0,
+    Factions 0, one click each to a panel explaining how to fill it in — one of
+    them advising them to "type @ in a scene's draft", on a screen where there
+    are no scene drafts.
+
+    So while reading, a tab with nothing behind it is not offered. Overview and
+    Current State always are: they answer "who is this again", which is the
+    whole reason the page is open.
+  */
+  const tabCounts: Record<string, number> = {
+    history: snapshots.length,
+    appearances: appearanceCount,
+    goals: goals.length,
+    relationships: relationships.length,
+    lore: lorePages.length,
+    factions: memberships.length,
+  }
+  const hasTab = (name: string) => !gate.active || (tabCounts[name] ?? 0) > 0
+  /*
+    A tab can be addressed by URL, and a reader arriving at `?tab=goals` on a
+    character with none would otherwise land on a panel with no way back to it.
+    Falling back is what the tab strip already shows them.
+  */
+  const activeTab = hasTab(tab) ? tab : 'overview'
 
   if (!character) {
     return (
@@ -181,16 +214,16 @@ export default function CharacterDetailView() {
 
       {/* Tabs */}
       <div className="flex-1 overflow-auto p-4">
-        <Tabs value={tab} onValueChange={selectTab}>
+        <Tabs value={activeTab} onValueChange={selectTab}>
           <TabsList className="mb-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="state">Current State</TabsTrigger>
-            <TabsTrigger value="history">History<TabCount n={snapshots.length} /></TabsTrigger>
-            <TabsTrigger value="appearances">Appearances<TabCount n={appearanceCount} /></TabsTrigger>
-            <TabsTrigger value="goals">Goals<TabCount n={goals.length} /></TabsTrigger>
-            <TabsTrigger value="relationships">Relationships<TabCount n={relationships.length} /></TabsTrigger>
-            <TabsTrigger value="lore">Lore<TabCount n={lorePages.length} /></TabsTrigger>
-            <TabsTrigger value="factions">Factions<TabCount n={memberships.length} /></TabsTrigger>
+            {hasTab('history') && <TabsTrigger value="history">History<TabCount n={snapshots.length} /></TabsTrigger>}
+            {hasTab('appearances') && <TabsTrigger value="appearances">Appearances<TabCount n={appearanceCount} /></TabsTrigger>}
+            {hasTab('goals') && <TabsTrigger value="goals">Goals<TabCount n={goals.length} /></TabsTrigger>}
+            {hasTab('relationships') && <TabsTrigger value="relationships">Relationships<TabCount n={relationships.length} /></TabsTrigger>}
+            {hasTab('lore') && <TabsTrigger value="lore">Lore<TabCount n={lorePages.length} /></TabsTrigger>}
+            {hasTab('factions') && <TabsTrigger value="factions">Factions<TabCount n={memberships.length} /></TabsTrigger>}
           </TabsList>
           <TabsContent value="overview">
             <OverviewTab character={character} />

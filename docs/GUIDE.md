@@ -346,6 +346,24 @@ it to you without quietly relocating your bookmark. Where a control's only job
 was moving the cursor, it becomes a label rather than a button, so nothing on
 screen looks pressable and does nothing.
 
+**The workbench steps aside too.** The Timeline's pacing curve and its
+plot-thread filter are the author's instruments — the curve plots ratings you
+cannot see or set, and a thread's name is the author's shorthand for an arc,
+which on a subplot you are seven chapters into is a summary of where it goes. So
+neither is offered while reading, and the chapter list starts at the top of the
+screen, which matters most on a phone. A character's tabs work the same way: one
+with nothing behind it is not offered, because *none* is an answer to a writer
+and a dead end to a reader.
+
+**A chapter's one-line summary is shown on a phone**, wrapped onto its own line
+under the title rather than dropped for want of room. It is the answer to "what
+happened in chapter 3 again?", which is the question the screen exists for.
+
+**Help knows which of the two you are.** While reading it opens with **Reading a
+book** — where your place is kept, how to move it, what the ✕ beside it does, and
+what is being held back — and leaves out the sections describing screens reading
+mode has taken away.
+
 **Showing the whole book asks first.** The ✕ beside your place — in the top bar,
 and in the chapter bar along the bottom — drops back to the full world, every
 character, place and subplot the story has not introduced yet. While reading

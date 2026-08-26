@@ -467,17 +467,38 @@ export default function TimelineView() {
           />
         ) : (
           <div className="flex flex-col gap-3">
-            <PacingCurve
-              worldId={worldId!}
-              events={pacingEvents}
-              chapters={chapters}
-              order={viewMode}
-              activeEventId={activeEventId}
-              onSelect={setActiveEventId}
-            />
+            {/*
+              An author's instrument, not a reader's. It plots dramatic tension
+              from ratings the reader cannot see, cannot set, and did not ask
+              for — and it is expensive where it can least be afforded: measured
+              on a 390px phone, the pacing chart and the thread strip together
+              pushed the first chapter row to y=436 of 844, so more than half
+              the screen was analytics before any chapter appeared. A reader
+              came for the chapters.
+            */}
+            {!gate.active && (
+              <PacingCurve
+                worldId={worldId!}
+                events={pacingEvents}
+                chapters={chapters}
+                order={viewMode}
+                activeEventId={activeEventId}
+                onSelect={setActiveEventId}
+              />
+            )}
             {viewMode === 'narrative' ? (
               <>
-                {threads.length > 0 && (
+                {/*
+                  The thread strip is the same kind of thing, and it carries a
+                  spoiler besides: the gate holds back a thread until its first
+                  scene is read, but the *name* then arrives whole. A blind
+                  reader run at chapter 7 of Dracula — where Lucy has sleepwalked
+                  once — was shown a chip reading "Lucy's Illness and Undeath",
+                  which is chapter 16. Filtering a timeline by subplot is a
+                  plotting move; the name is the author's shorthand for an arc,
+                  not a label the book has given the reader yet.
+                */}
+                {threads.length > 0 && !gate.active && (
                   <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter by plot thread">
                     <Filter className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
                     <button

@@ -251,7 +251,7 @@ export function ChapterRow({
         <button
           onClick={synopsisHidden ? undefined : () => setExpanded((v) => !v)}
           aria-expanded={synopsisHidden ? undefined : effectiveExpanded}
-          className="flex items-center gap-2 basis-full min-w-0 text-left sm:basis-auto sm:flex-1"
+          className="flex flex-wrap items-center gap-x-2 basis-full min-w-0 text-left sm:basis-auto sm:flex-1"
         >
           {synopsisHidden
             ? <BookLock className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
@@ -267,8 +267,21 @@ export function ChapterRow({
               which is precisely what a reader who has not got there yet must
               not be shown. */}
           {chapter.synopsis && !synopsisHidden && (
-            <span className="hidden lg:block text-xs text-[hsl(var(--muted-foreground))] truncate min-w-0">
-              — {chapter.synopsis}
+            /*
+              Below `lg` this was `hidden`, so *"Jonathan travels through
+              Bistritz and the Borgo Pass to Castle Dracula"* — the answer to
+              "what happened in chapter 3 again?", and the single most useful
+              line on the screen — was simply not rendered on a phone. A blind
+              reader run checked `body.innerText` at 390px and at 1280px and
+              found it in one and not the other: available on the device you are
+              not reading on.
+
+              It wraps to its own line instead of being dropped. The row already
+              wraps below `sm` (PH-3), so this is the space that argument freed,
+              spent on the thing the row is about.
+            */
+            <span className="w-full shrink-0 pl-8 text-xs text-[hsl(var(--muted-foreground))] line-clamp-2 lg:w-auto lg:shrink lg:pl-0 lg:truncate lg:min-w-0">
+              <span className="hidden lg:inline">— </span>{chapter.synopsis}
             </span>
           )}
         </button>

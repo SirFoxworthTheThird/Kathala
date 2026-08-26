@@ -12,14 +12,22 @@ import { useGate } from '@/db/hooks/ReadingGateContext'
  * worse than offering nothing: it reads as a missing feature rather than an
  * absent one.
  */
-function Section({ title, writerOnly, children }: {
+function Section({ title, writerOnly, readerOnly, children }: {
   title: string
   writerOnly?: boolean
+  /**
+   * The mirror of `writerOnly`, and it existed only in one direction. Twenty-nine
+   * sections, five of them hidden while reading, and not one about reading — so
+   * a reader wondering what the ✕ beside their place does had twenty-four wrong
+   * answers to choose from and no right one.
+   */
+  readerOnly?: boolean
   children: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
   const gate = useGate()
   if (writerOnly && gate.active) return null
+  if (readerOnly && !gate.active) return null
   return (
     <div className="border-b border-[hsl(var(--border))] last:border-0">
       <button
@@ -113,13 +121,22 @@ export function HelpPanel() {
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto divide-y divide-[hsl(var(--border))]">
 
+          <Section title="Reading a book" readerOnly>
+            <P>This world is a companion to a book you are reading. It shows you only what the story has introduced by the point you have reached, so you can look something up without being told what happens next.</P>
+            <P><B>Your place</B> is the chapter and scene named in the top bar. Set it with <B>Read to here</B> on a chapter row in the Timeline — the notice on the dashboard links straight there — and nudge it a scene at a time with the <B>‹</B> and <B>›</B> arrows beside it. Looking at something does not move it: opening a scene, a search result or a character's history shows it to you and leaves your place alone.</P>
+            <P>The <B>✕</B> beside your place drops back to the whole world — every character, place and subplot, including the ones you have not met. It asks first, because that is not usually what you want in the middle of a book. There is one in the chapter bar along the bottom too, and it does the same thing and asks the same question.</P>
+            <P><B>What is hidden</B> is counted for you on the dashboard, so you can tell the difference between a world with nothing in it and a world holding things back. A chapter you have not reached does not open, and its summary stays closed, though its title stays visible because that is printed on your own contents page.</P>
+            <P><B>Knowledge</B> is the screen worth knowing about: it answers who else knows a given secret, and by which chapter they learned it — a question the book itself cannot answer without a re-read.</P>
+            <P>To use this world as a writer instead — to edit it, or to see all of it at once — turn reading mode off in <B>World settings</B>.</P>
+          </Section>
+
           <Section title="Getting started">
             <P>The world selector is your library. Create a blank world, <B>Import Manuscript</B> from Markdown or plain text, <B>Generate World from AI</B> from a synopsis, or import a PlotWeave <code>.pwk</code> backup (plus its optional <code>.pwb</code> images file).</P>
             <P>A blank world opens a short setup guide for creating a timeline and opening scene, adding a main character, and placing them at the story's starting point. Every optional step can be skipped.</P>
             <P>Use a world's menu to export it or <B>Start a sequel</B>. A sequel can carry selected characters, factions, items, maps, relationships, and lore into a new independent world.</P>
           </Section>
 
-          <Section title="Dashboard & story planning">
+          <Section title="Dashboard & story planning" writerOnly>
             <P>The <B>Dashboard</B> summarises your project and links to its timeline, cast, maps, relationships, items, snapshot coverage, continuity results, recent scenes, and writing progress.</P>
             <P><B>Cast Balance</B> shows how evenly characters appear. <B>Plot Threads</B> tracks which scenes advance each storyline, while <B>Motifs & Themes</B> tracks recurring symbols and ideas. Create threads and motifs on the Dashboard, then attach them to scenes.</P>
             <P>Writing Progress records daily word-count changes from scene prose and compares the manuscript with the word target set in World Settings.</P>
@@ -132,7 +149,7 @@ export function HelpPanel() {
             <Tip>Set the time cursor before opening a character or the map to see their state at that moment in the story.</Tip>
           </Section>
 
-          <Section title="Snapshots">
+          <Section title="Snapshots" writerOnly>
             <P>State changes are stored as <B>snapshot records</B> — explicit saves for a character, item, location, or relationship at a specific scene.</P>
             <P>When no snapshot exists yet for an entity at the current scene, PlotWeave looks back and shows the <B>last known state</B> — the most recent snapshot before the cursor. This is the delta model: you only record what changes.</P>
             <P>Use <B>Save State</B> while a scene is active to create or update a snapshot. Character and item History views show the saved record across story time.</P>
@@ -232,13 +249,13 @@ export function HelpPanel() {
             <P>Click <B>Export</B> (download icon) to save the arc grid as a PNG image.</P>
           </Section>
 
-          <Section title="World settings">
+          <Section title="World settings" writerOnly>
             <P><B>Themes</B> — each world can have its own visual theme (Fantasy, Sci-Fi, Horror, Cyberpunk, and more), set in World Settings → Theme. Overrides the global app default just for that world.</P>
             <P><B>Travel modes</B> — define movement types (on foot, horse, sailing…) with a speed in scale-units per in-world day. Travel modes are used by the Continuity checker to validate whether a character could realistically cover a distance between two scenes.</P>
             <P>Settings also holds the world name and cover, manuscript word target, continuity sensitivity, calendar, export tools, database health, and folder sync. Travel-time checks require a map calibrated with a scale.</P>
           </Section>
 
-          <Section title="Timeline relationships">
+          <Section title="Timeline relationships" writerOnly>
             <P>Multiple timelines can be <B>linked</B> — useful for frame narratives, alternate histories, or embedded stories-within-stories.</P>
             <P>Relationship types: <B>Frame narrative</B> (outer/inner story), <B>Historical echo</B> (scenes repeat across eras), <B>Embedded fiction</B> (story-within-story), <B>Alternate timeline</B> (diverging branch).</P>
             <P>Add character, location, or document anchors. Frame narratives can also pair inner and outer scenes with <B>sync points</B> so playback keeps the framing moment aligned.</P>
@@ -297,12 +314,12 @@ export function HelpPanel() {
             <P>Selecting a result navigates to that entity. Scenes set the time cursor, and locations focus their map marker.</P>
           </Section>
 
-          <Section title="Database health">
+          <Section title="Database health" writerOnly>
             <P>World Settings can <B>Scan for orphans</B>: old snapshots, memberships, or map references whose parent no longer exists, often left by older imports or deleted data.</P>
             <P><B>Clean up</B> removes only the orphaned records listed by the scan; valid world data is left untouched.</P>
           </Section>
 
-          <Section title="Folder sync & export">
+          <Section title="Folder sync & export" writerOnly>
             <P><B>Folder sync</B> (in World Settings → Folder Sync) links your world to a folder on your computer. Use <B>Save</B> to write a <code>.pwk</code> backup and <B>Load</B> to restore or merge from one.</P>
             <P>Load offers two modes: <B>Smart merge</B> (newer record wins per entity — safe for sharing edits) and <B>Replace all</B> (full overwrite).</P>
             <P><B>Export as HTML</B> generates a self-contained, shareable snapshot of your world — characters, timeline, locations, items, and relationships — readable in any browser with no app required.</P>
