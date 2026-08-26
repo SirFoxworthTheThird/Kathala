@@ -157,7 +157,7 @@ than repeating buttons that are already on screen.
 
 ![Empty world selector](images/01-home-empty.png)
 
-Once you have worlds, each appears as a card with its name, creation date, and
+Once you have worlds, each appears as a card with its name, date, and
 description. Click a card to open it; the ⋯ menu on each card exports or deletes
 that world.
 
@@ -170,15 +170,23 @@ Turning reading mode off in a world's settings moves it back up to *Your
 worlds*, since at that point you are editing it rather than reading it. With
 nothing in reading mode there is only one list and no headings at all.
 
-Each card carries the world's name, when it was **created**, its description,
-and how much is in it — chapters and cast — so you can tell two drafts apart
-without opening either.
+Each card carries the world's name, a date, its description, and how much is in
+it — chapters and cast — so you can tell two drafts apart without opening either.
 
-**The newest world is listed first**, which is the same date the card prints, so
-the order explains itself. This matters for library books: a downloaded world
-keeps the creation date written into the file it came from — every shipped book
-is dated in the past — so a book you fetched this morning sits by its own age
-rather than at the top, and the world you started today leads.
+**The date says which kind it is.** A world you have worked in reads *Edited 26
+Aug 2026*; one nothing has happened to since you made it reads *Created*. That
+is not a guess: PlotWeave keeps a journal of every edit you make (the same one
+[undo](#undo-redo--recent-changes) reads), so "last worked on" is a fact it
+holds rather than something inferred. Where the journal has nothing to say — an
+imported world, or a library book, both of which start a fresh history — the
+card says *Created* rather than printing a date it cannot stand behind.
+
+**The world you last worked in is listed first**, which is the same date the
+card prints, so the order explains itself. This matters for library books: a
+downloaded world keeps the date written into the file it came from — every
+shipped book is dated in the past — and has no edit history of its own, so a
+book you fetched this morning sits by its own age rather than at the top, and
+anything you have actually written in leads.
 
 ![World selector with worlds](images/02-home-worlds.png)
 

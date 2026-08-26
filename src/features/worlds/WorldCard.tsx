@@ -9,10 +9,11 @@ import { StartSequelDialog } from './StartSequelDialog'
 import { deleteWorld } from '@/db/hooks/useWorlds'
 import { useReadingProgress } from '@/db/hooks/useReading'
 import { useWorldSummary } from '@/db/hooks/useWorldSummary'
+import { worldActivity } from '@/lib/worldActivity'
 import { exportWorld, exportWorldSplit } from '@/lib/exportImport'
 
 /** A date a reader cannot misread: the month is named, not numbered (X-6). */
-function formatCreated(ts: number): string {
+function formatDate(ts: number): string {
   return new Date(ts).toLocaleDateString(undefined, {
     day: 'numeric', month: 'short', year: 'numeric',
   })
@@ -32,6 +33,7 @@ export function WorldCard({ world }: WorldCardProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const progress = useReadingProgress(world.id)
   const summary = useWorldSummary(world.id)
+  const activity = worldActivity(world, summary.lastOperationAt)
 
   // Close the export dropdown when clicking outside
   useEffect(() => {
@@ -84,14 +86,20 @@ export function WorldCard({ world }: WorldCardProps) {
             <h3 className="font-semibold text-[hsl(var(--foreground))]">{world.name}</h3>
             {/*
               SEL-3 and X-6: this was a bare `4/1/2026` — created or edited?
-              April or January? It is the creation date, so it says so, and the
-              month is named rather than numbered, which is the whole of the
-              ambiguity. The counts are the other half: the card a writer sees a
-              hundred times told them less about the world than the Library card
-              they saw once.
+              April or January? The month is named rather than numbered, and the
+              line says which of the two it is. The counts are the other half:
+              the card a writer sees a hundred times told them less about the
+              world than the Library card they saw once.
+
+              It now answers "which of these did I last touch", which is the
+              question a returning writer with several worlds actually has — but
+              only where it can. See `worldActivity`: the operation journal is
+              what knows, and an imported world's journal is deliberately empty,
+              so such a card goes on saying "Created" rather than printing a
+              date the app cannot stand behind.
             */}
             <p className="text-xs text-[hsl(var(--muted-foreground))]">
-              Created {formatCreated(world.createdAt)}
+              {activity.label} {formatDate(activity.at)}
             </p>
           </div>
         </div>

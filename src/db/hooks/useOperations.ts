@@ -547,6 +547,24 @@ export function useOperationSubjects(ops: readonly Operation[]): Map<string, str
 /** Shared so the pre-resolution render isn't a new Map on every pass. */
 const EMPTY_SUBJECTS: Map<string, string> = new globalThis.Map()
 
+/**
+ * When the journal last recorded a change in this world, or null when it has
+ * nothing to say.
+ *
+ * One index seek, not a scan: `operations` carries `[worldId+seq]` and `seq` is
+ * monotonic per world, so the newest entry is the last key in that range. Kept
+ * here, where the journal lives, because two callers need it — the world card's
+ * date and the order of the list that card sits in — and a card whose date
+ * disagreed with its own list's ordering would be worse than either.
+ */
+export async function lastOperationAt(worldId: string): Promise<number | null> {
+  const newest = await db.operations
+    .where('[worldId+seq]')
+    .between([worldId, Dexie.minKey], [worldId, Dexie.maxKey])
+    .last()
+  return newest?.createdAt ?? null
+}
+
 export function useUndoStack(worldId: string | null, limit = 30) {
   return useLiveQuery(
     async () => {

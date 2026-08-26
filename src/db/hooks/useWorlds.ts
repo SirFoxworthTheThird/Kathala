@@ -2,9 +2,11 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import type { World, WorldCalendar } from '@/types'
 import { generateId } from '@/lib/id'
+import { worldActivity } from '@/lib/worldActivity'
+import { lastOperationAt } from './useOperations'
 
 /**
- * Every world, newest first.
+ * Every world, most recently worked on first.
  *
  * W19-5: this was `orderBy('createdAt')` — ascending, **oldest first** — so a
  * morning's work sat *below* a book downloaded from the library once and read
@@ -14,14 +16,33 @@ import { generateId } from '@/lib/id'
  * turn off to edit one. The moment you do, the fixture's date outranks
  * everything you own.
  *
- * Descending, so the list is sorted by the fact the card already prints and the
- * order explains itself. **Not** by "last worked on", which would be the better
- * key and does not exist: `world.updatedAt` moves only when world *metadata* is
- * edited — writing a scene never touches it — so sorting on it today would look
- * like a fix and behave like the bug.
+ * That was fixed by reversing it, with a note saying the *better* key would be
+ * "last worked on" and that it did not exist — `world.updatedAt` moves only
+ * when world metadata is edited, so writing two hundred scenes never touches
+ * it, and sorting on it would have looked like a fix and behaved like the bug.
+ *
+ * It exists now. The operation journal is the record of "something in this
+ * world changed", and `worldActivity` is the same function the card uses to
+ * decide what date to print — so the list is still ordered by the fact the card
+ * shows, and the order still explains itself. W19-5's own case is unharmed: a
+ * downloaded book's journal is reset on import, so it falls back to the date in
+ * its `.pwk` and stays where it was, while anything you have actually worked in
+ * now outranks it.
+ *
+ * One index seek per world, once per list render. `useWorldSummary` reads the
+ * same value per card; both go through `lastOperationAt` so they cannot drift.
  */
 export async function listWorlds(): Promise<World[]> {
-  return db.worlds.orderBy('createdAt').reverse().toArray()
+  const worlds = await db.worlds.toArray()
+  const keyed = await Promise.all(
+    worlds.map(async (w) => ({ w, at: worldActivity(w, await lastOperationAt(w.id)).at })),
+  )
+  return keyed
+    .sort((a, b) =>
+      // Ties broken by creation, then by id, so the order is stable rather than
+      // whatever `toArray()` happened to hand back.
+      b.at - a.at || b.w.createdAt - a.w.createdAt || a.w.id.localeCompare(b.w.id))
+    .map(({ w }) => w)
 }
 
 export function useWorlds() {
