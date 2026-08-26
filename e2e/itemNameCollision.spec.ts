@@ -83,18 +83,22 @@ test.describe('typing an item name you already have', () => {
     await page.getByRole('button', { name: `Add the existing "${SLATE}"` }).click()
     await settle(page)
 
-    // One item, still — and saving puts *that* item in her hands, not a twin.
+    /*
+      Polled, not slept on. Saving writes a snapshot through Dexie and `settle`
+      watches the *screen*, which does not change when a write lands — so this
+      read the database before the write arrived and failed intermittently in
+      four consecutive runs, always with an empty inventory. Waiting for the
+      condition is both correct and quicker than the sleep it replaces.
+    */
     expect(await itemNames(page)).toEqual([SLATE])
     await page.getByRole('button', { name: 'Save State' }).click()
-    await settle(page)
-    expect(await inventory(page)).toEqual(['slate'])
+    await expect.poll(() => inventory(page), { timeout: 15_000 }).toEqual(['slate'])
 
     // And the presence half: a name the world does not have still creates one.
     await field.fill('The ninth bell')
     await expect(page.getByText('already exists')).toHaveCount(0)
     await page.getByRole('button', { name: 'Create item' }).click()
-    await settle(page)
-    expect(await itemNames(page)).toEqual(['The ninth bell', SLATE])
+    await expect.poll(() => itemNames(page), { timeout: 15_000 }).toEqual(['The ninth bell', SLATE])
   })
 
   test('says so, and offers nothing, when they are already holding it', async ({ page }) => {
@@ -111,6 +115,6 @@ test.describe('typing an item name you already have', () => {
     await field.fill(SLATE)
     await expect(page.getByText(`"${SLATE}" is already in this inventory.`)).toBeVisible()
     await expect(page.getByRole('button', { name: `Already holding "${SLATE}"` })).toBeDisabled()
-    expect(await itemNames(page)).toEqual([SLATE])
+    await expect.poll(() => itemNames(page), { timeout: 15_000 }).toEqual([SLATE])
   })
 })

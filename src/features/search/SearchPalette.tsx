@@ -367,7 +367,17 @@ export function SearchPalette() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Search your world and the prose you wrote…"
+            /*
+              The placeholder is this box's accessible name, so it is also what
+              the app calls the thing being searched. "your world and the prose
+              you wrote" is addressed to the author; a reader is searching
+              somebody else's book, and only as far as they have read — which is
+              worth saying, because a word from three chapters ahead genuinely
+              returns nothing and the honest reason is not "no results".
+            */
+            placeholder={gate.active
+              ? 'Search this book, as far as you have read…'
+              : 'Search your world and the prose you wrote…'}
             className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[hsl(var(--muted-foreground))]"
           />
           {query && (

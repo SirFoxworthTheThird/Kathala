@@ -140,6 +140,12 @@ have:
   **Import World** for an existing `.pwk` file, or **Import Manuscript** to build
   a world from a draft.
 
+Most books keep their maps and cover art on the web rather than inside the file,
+so the card says **Pictures load from the web** — the book itself works offline,
+and its maps will not draw without a connection. A few offer **With images**
+alongside the download, which brings the pictures with them; those are much
+larger, and the button says how much.
+
 **Import World** asks which files to choose before opening the picker: a `.pwk`
 export on its own, or — if you exported with split files — the `.pwk` and its
 `.pwb` images file together.
@@ -358,6 +364,12 @@ and a dead end to a reader.
 **A chapter's one-line summary is shown on a phone**, wrapped onto its own line
 under the title rather than dropped for want of room. It is the answer to "what
 happened in chapter 3 again?", which is the question the screen exists for.
+
+**The words change with you.** A character page leads with the description
+rather than with the colour PlotWeave draws them in, and the search box offers
+to search *this book, as far as you have read* rather than "your world and the
+prose you wrote" — which matters, because a word from three chapters ahead
+really does return nothing, and the honest reason is not "no results".
 
 **Help knows which of the two you are.** While reading it opens with **Reading a
 book** — where your place is kept, how to move it, what the ✕ beside it does, and

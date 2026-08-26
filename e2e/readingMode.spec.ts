@@ -435,6 +435,39 @@ test('help answers the question a reader actually has', async ({ page }) => {
   expect(writing.some((t) => t.includes('Reading a book'))).toBe(false)
 })
 
+/*
+  Two bits of copy addressed to the wrong person. The character page led with
+  "Colour ● on the map and the Arc grid" — where this app draws them, a fact
+  about the tool — above the description a reader opened the page for. And the
+  search box called the book "your world and the prose you wrote".
+*/
+test('the app does not address a reader as the author', async ({ page }) => {
+  await downloadFirstLibraryWorld(page)
+  await page.goto(`/#${await worldPath(page)}/characters`)
+  await settleNav(page)
+  const firstCharacter = page.getByRole('main').getByRole('link').first()
+  await expect(firstCharacter).toBeVisible({ timeout: 20_000 })
+  await firstCharacter.click()
+  await settle(page)
+
+  // The page rendered — so the absence below is the gate, not an empty screen.
+  await expect(page.getByRole('tab', { name: /Overview/ })).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText('on the map and the Arc grid')).toHaveCount(0)
+
+  await page.getByTitle('Search (Ctrl+K)').click()
+  await expect(page.getByPlaceholder('Search this book, as far as you have read…')).toBeVisible()
+  await expect(page.getByPlaceholder('Search your world and the prose you wrote…')).toHaveCount(0)
+  await page.keyboard.press('Escape')
+
+  // The writer's half: the same two say the author's version.
+  await page.goto(`/#${await worldPath(page)}/settings`)
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
+  await settle(page)
+  await page.getByTitle('Search (Ctrl+K)').click()
+  await expect(page.getByPlaceholder('Search your world and the prose you wrote…')).toBeVisible()
+})
+
 test('the corkboard is a plotting board, not a reading screen', async ({ page }) => {
   await downloadFirstLibraryWorld(page)
   const nav = page.getByRole('navigation', { name: 'Main navigation' })

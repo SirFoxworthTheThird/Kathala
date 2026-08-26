@@ -70,7 +70,9 @@ async function seed(page: Page): Promise<void> {
 /** Search for `q` and return the visible result labels. */
 async function search(page: Page, q: string): Promise<string[]> {
   await page.getByTitle('Search (Ctrl+K)').click()
-  const box = page.getByPlaceholder('Search your world and the prose you wrote…')
+  // Either wording — the placeholder is the box's name and it says which of the
+  // two kinds of person is searching. See SearchPalette.
+  const box = page.getByPlaceholder(/^Search /)
   await expect(box).toBeVisible()
   await box.fill(q)
   await page.waitForTimeout(500)
@@ -103,7 +105,9 @@ test.describe('searching the prose you wrote', () => {
   */
   test('previews the line that matched, not the start of the scene', async ({ page }) => {
     await page.getByTitle('Search (Ctrl+K)').click()
-    const box = page.getByPlaceholder('Search your world and the prose you wrote…')
+    // Either wording — the placeholder is the box's name and it says which of the
+  // two kinds of person is searching. See SearchPalette.
+  const box = page.getByPlaceholder(/^Search /)
     // Last sentence of a four-sentence scene.
     await box.fill('weathercock')
     await page.waitForTimeout(500)

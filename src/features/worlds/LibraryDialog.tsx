@@ -272,7 +272,7 @@ export function LibraryDialog({
                             </>
                           )}
                         </Button>
-                        {entry.images && (
+                        {entry.images ? (
                           // A separate button rather than a checkbox: the image
                           // bundle is often twenty times the data, and nobody on
                           // a phone should start that without meaning to.
@@ -284,6 +284,20 @@ export function LibraryDialog({
                           >
                             With images ({formatBytes(entry.imagesBytes ?? 0)})
                           </Button>
+                        ) : (
+                          /*
+                            Said before the download rather than discovered after
+                            it. Most shipped worlds keep their maps and covers as
+                            links rather than bytes — Dracula's `.pwk` carries 76
+                            of them — so the book arrives complete in every
+                            respect except that its maps need a connection to
+                            draw. The map screen says so honestly once you are
+                            there; the card was offering "Download (363 KB)" and
+                            leaving you to find out on a train.
+                          */
+                          <span className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                            Pictures load from the web
+                          </span>
                         )}
                       </>
                     )}

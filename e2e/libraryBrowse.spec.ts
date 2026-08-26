@@ -81,6 +81,31 @@ test.describe('Browsing the Library', () => {
     await expect.poll(() => listed(page)).toEqual(all)
   })
 
+  /*
+    Most shipped worlds keep their maps and covers as links rather than bytes —
+    Dracula's `.pwk` carries 76 of them — so the book arrives complete except
+    that its pictures need a connection. The map screen says so honestly once
+    you are there; the card said "Download (363 KB)" and left a reader to find
+    out on a train.
+  */
+  test('a card says whether its pictures come with it', async ({ page }) => {
+    await openLibrary(page)
+    // Page-level: the Library overlay is not a `role="dialog"`, so scoping to
+    // one matched nothing and the first version of this failed for that reason
+    // rather than for the app's.
+    await expect(page.getByText('Pictures load from the web').first()).toBeVisible({ timeout: 30_000 })
+
+    /*
+      The pair, and the reason this is not just "print a line on every card":
+      four of the thirty worlds *do* ship an image bundle, offer it instead, and
+      must not be labelled as loading from the web.
+    */
+    const bundled = page.getByRole('button', { name: /^With images \(/ })
+    await expect(bundled.first()).toBeVisible()
+    const card = bundled.first().locator('xpath=ancestor::li[1]')
+    await expect(card.getByText('Pictures load from the web')).toHaveCount(0)
+  })
+
   test('Escape closes it — and not the confirm stacked over it', async ({ page }) => {
     await openLibrary(page)
     await page.keyboard.press('Escape')

@@ -81,7 +81,14 @@ export function OverviewTab({ character }: OverviewTabProps) {
                 <dd className="text-[hsl(var(--foreground))]">{born}</dd>
               </div>
             )}
-            {character.color && (
+            {/*
+              The author's own field, and it was the first line of the page — a
+              reader opening a character to remember who they are met "Colour ●
+              on the map and the Arc grid" above the description they came for.
+              It says where *this app* draws them, which is a fact about the
+              tool rather than about the person.
+            */}
+            {character.color && !gate.active && (
               <div className="flex gap-2">
                 <dt className="shrink-0 text-[hsl(var(--muted-foreground))]">Colour</dt>
                 <dd className="flex items-center gap-1.5 text-[hsl(var(--foreground))]">
