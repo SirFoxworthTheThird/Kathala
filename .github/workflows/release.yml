@@ -94,6 +94,34 @@ jobs:
         env:
           NODE_ENV: production
 
+      # The notes for a version live at `docs/release-notes/<version>.md`, so
+      # writing them is an ordinary reviewed change rather than something typed
+      # into the Releases page once and never seen again. A version without a
+      # notes file still releases: the download table below is always appended,
+      # and the file is prepended only when it is there.
+      #
+      # `$VERSION` reaches the shell through the environment rather than through
+      # `${{ }}` inside the script, for the reason given above the version check.
+      - name: Compose the release body
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          notes="docs/release-notes/${VERSION}.md"
+          {
+            printf '## PlotWeave %s\n\n' "$VERSION"
+            if [ -f "$notes" ]; then
+              cat "$notes"
+              printf '\n---\n\n'
+            fi
+            cat .github/release-body.md
+          } > RELEASE_BODY.md
+          if [ -f "$notes" ]; then
+            echo "Release notes taken from $notes"
+          else
+            echo "::warning::No $notes — releasing with the download table only."
+          fi
+
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -104,19 +132,4 @@ jobs:
           # cannot disagree about what shipped.
           tag_name: ${{ steps.version.outputs.value }}
           files: out/make/**/*
-          body: |
-            ## PlotWeave ${{ steps.version.outputs.value }}
-
-            ### Download
-            | Platform | File |
-            |----------|------|
-            | Windows  | `PlotWeave-*-Setup.exe` |
-            | macOS    | `PlotWeave-*.zip` |
-            | Linux    | `plotweave_*.deb` |
-
-            ### Install
-            - **Windows**: Run the `.exe` installer
-            - **macOS**: Unzip and drag PlotWeave to your Applications folder. On first run, right-click → Open if macOS warns about the developer.
-            - **Linux**: Install the `.deb` with `sudo dpkg -i plotweave_*.deb`
-
-            > All data is stored locally on your machine. No account or internet connection required.
+          body_path: RELEASE_BODY.md
