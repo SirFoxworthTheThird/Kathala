@@ -20,11 +20,19 @@ interface EventRowProps {
   isLast: boolean
   onMoveUp: () => void
   onMoveDown: () => void
+  /**
+   * Said instead of "Move earlier"/"Move later" when the move leaves the
+   * chapter, so a scene does not silently jump somewhere else (**F12**).
+   */
+  moveUpHint?: string
+  moveDownHint?: string
   /** All event IDs in this chapter in order, for shift-click range selection */
   chapterEventIds: string[]
 }
 
-export function EventRow({ event, isFirst, isLast, onMoveUp, onMoveDown, chapterEventIds }: EventRowProps) {
+export function EventRow({
+  event, isFirst, isLast, onMoveUp, onMoveDown, moveUpHint, moveDownHint, chapterEventIds,
+}: EventRowProps) {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
   const [expanded, setExpanded] = useState(false)
@@ -43,6 +51,8 @@ export function EventRow({ event, isFirst, isLast, onMoveUp, onMoveDown, chapter
   const povChar = characters.find((c) => c.id === event.povCharacterId) ?? null
 
   const hasMeta = involvedChars.length > 0 || location !== null || event.tags.length > 0
+  /** What to call this scene in a control's name; untitled scenes have one too. */
+  const sceneName = event.title || 'this untitled scene'
 
   function handleCheckboxClick(e: React.MouseEvent) {
     e.stopPropagation()
@@ -67,14 +77,18 @@ export function EventRow({ event, isFirst, isLast, onMoveUp, onMoveDown, chapter
         {!gate.active && (
           <div
             className={cn(
-              'mt-2.5 shrink-0 flex items-center justify-center cursor-pointer',
+              'pw-tap-row mt-2.5 shrink-0 flex items-center justify-center cursor-pointer',
               anySelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
               'transition-opacity'
             )}
             onClick={handleCheckboxClick}
           >
+            {/* Named but not pointer-gated — see the note in `ChapterRow`.
+                `pw-tap-row` (HB-2c) gives it a 24x36 hit area on touch: the box
+                itself is 12px, in a list whose rows are 40px apart. */}
             <input
               type="checkbox"
+              aria-label={`Select scene ${event.title || 'Untitled'}`}
               checked={isSelected}
               onChange={() => {}} // controlled via onClick
               className="h-3 w-3 cursor-pointer accent-[hsl(var(--ring))]"
@@ -142,27 +156,41 @@ export function EventRow({ event, isFirst, isLast, onMoveUp, onMoveDown, chapter
             </div>
           )}
 
+          {/*
+            WRUN-6: named after the scene they act on, not just "move up".
+            Three of these per row and nine rows on an open chapter made 27
+            controls announced as nothing but "button" — the largest block of
+            nameless controls left in the app, and invisible to both existing
+            sweeps: `buttonNames` builds a world with no scenes, and
+            `controlNames` visits the Timeline with every chapter collapsed.
+          */}
           <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0 hover:text-[hsl(var(--foreground))]"
+            aria-label={moveUpHint ? `${moveUpHint}: ${sceneName}` : `Move ${sceneName} earlier`}
+            title={moveUpHint ?? `Move ${sceneName} earlier`}
             disabled={isFirst} onClick={(e) => { e.stopPropagation(); onMoveUp() }}>
             <ArrowUp className="h-3 w-3" />
           </Button>
           <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0 hover:text-[hsl(var(--foreground))]"
+            aria-label={moveDownHint ? `${moveDownHint}: ${sceneName}` : `Move ${sceneName} later`}
+            title={moveDownHint ?? `Move ${sceneName} later`}
             disabled={isLast} onClick={(e) => { e.stopPropagation(); onMoveDown() }}>
             <ArrowDown className="h-3 w-3" />
           </Button>
           <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0"
             onClick={(e) => { e.stopPropagation(); navigate(`/worlds/${worldId}/timeline/${event.chapterId}`) }}
+            aria-label={`Open the chapter holding ${sceneName}`}
             title="Open in chapter detail">
             <ExternalLink className="h-3 w-3" />
           </Button>
           <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0 hover:text-red-400"
+            aria-label={`Delete ${sceneName}`} title={`Delete ${sceneName}`}
             onClick={(e) => { e.stopPropagation(); setConfirmOpen(true) }}>
             <Trash2 className="h-3 w-3" />
           </Button>
           <ConfirmDialog
             open={confirmOpen}
             onOpenChange={setConfirmOpen}
-            title={`Delete "${event.title || 'this event'}"?`}
+            title={`Delete "${event.title || 'this scene'}"?`}
             onConfirm={() => deleteEvent(event.id)}
           />
         </div>

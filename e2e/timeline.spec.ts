@@ -4,7 +4,6 @@ import { settleNav } from './helpers/nav'
 
 test.describe('Timeline and chapters', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     // Create a world and navigate to Timeline
@@ -75,14 +74,14 @@ test.describe('Timeline and chapters', () => {
     await page.getByTitle('Open chapter detail').click()
     await expect(page).toHaveURL(/#\/worlds\/.+\/timeline\/.+/)
 
-    await page.getByRole('button', { name: 'Add Event' }).first().click()
-    await expect(page.getByRole('heading', { name: 'Add Event' })).toBeVisible()
+    await page.getByRole('button', { name: 'Add Scene' }).first().click()
+    await expect(page.getByRole('heading', { name: 'Add Scene' })).toBeVisible()
 
-    await page.getByPlaceholder('Event title').fill('The Departure')
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await page.getByPlaceholder('Scene title').fill('The Departure')
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
 
-    await expect(page.getByRole('heading', { name: 'Add Event' })).not.toBeVisible()
-    await expect(page.getByText('The Departure')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Add Scene' })).not.toBeVisible()
+    await expect(page.getByRole('main').getByRole('button', { name: 'The Departure', exact: true })).toBeVisible()
   })
 
   test('requires a title to create an event', async ({ page }) => {
@@ -92,9 +91,9 @@ test.describe('Timeline and chapters', () => {
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
     await page.getByTitle('Open chapter detail').click()
 
-    await page.getByRole('button', { name: 'Add Event' }).first().click()
-    await expect(page.getByRole('heading', { name: 'Add Event' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Add Event' }).last()).toBeDisabled()
+    await page.getByRole('button', { name: 'Add Scene' }).first().click()
+    await expect(page.getByRole('heading', { name: 'Add Scene' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Add Scene' }).last()).toBeDisabled()
   })
 
   test('sets active event cursor via timeline bar', async ({ page }) => {
@@ -105,15 +104,15 @@ test.describe('Timeline and chapters', () => {
     await page.getByTitle('Open chapter detail').click()
 
     // Create two events
-    await page.getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill('First Event')
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await page.getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill('First Event')
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
     // Event name appears in both the event card and the timeline bar.
     await expect(page.getByText('First Event').first()).toBeVisible()
 
-    await page.getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill('Second Event')
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await page.getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill('Second Event')
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
     await expect(page.getByText('Second Event').first()).toBeVisible()
 
     // Navigate back to timeline — the bottom bar renders event markers with title= attributes

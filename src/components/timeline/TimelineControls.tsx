@@ -1,7 +1,7 @@
 import { type CSSProperties } from 'react'
 import { useGate } from '@/db/hooks/ReadingGateContext'
-import { ChevronLeft, ChevronRight, Play, Pause, Square, GitCompareArrows, X } from 'lucide-react'
-import type { PlaybackSpeed } from '@/store'
+import { ChevronLeft, ChevronRight, ChevronDown, Play, Pause, Square, GitCompareArrows, X } from 'lucide-react'
+import { useAppStore, type PlaybackSpeed } from '@/store'
 import { SPEED_LABEL } from '@/features/timeline/useTimelinePlayback'
 import type { Chapter, WorldEvent } from '@/types'
 
@@ -23,14 +23,24 @@ export interface ControlsProps {
   showPlay?: boolean
   /** Tooltip for the play button — differs for the merged read-through. */
   playLabel?: string
+  /**
+   * Show the roll-up control. Off for the frame narrative's outer track, which
+   * renders a second copy of this cluster: one bar rolls up as one thing, so a
+   * second button for it would be a duplicate rather than a choice.
+   */
+  showCollapse?: boolean
 }
 
-export function Controls({ isPlaying, speed, showStop, showDiff, showClear, color, onPlayPause, onStop, onSpeedChange, onDiffOpen, onClear, showPlay = true, playLabel = 'Play story on the map' }: ControlsProps) {
+export function Controls({ isPlaying, speed, showStop, showDiff, showClear, color, onPlayPause, onStop, onSpeedChange, onDiffOpen, onClear, showPlay = true, playLabel = 'Play story on the map', showCollapse = true }: ControlsProps) {
   // Comparing two chapters exists to catch continuity drift in a draft, and it
   // shows the later chapter's contents wholesale — the sharpest way left to
   // read ahead by accident. Gating it here rather than at each of the four
   // tracks that render these controls keeps a fifth one right by default.
   const gate = useGate()
+  // MT-3: rolling the bar up is read from the store here rather than passed
+  // down, for the same reason the gate is — all four tracks render this cluster,
+  // and the control should not have to be wired through each of them.
+  const setBarCollapsed = useAppStore((s) => s.setBarCollapsed)
   const btn = (clr: string): CSSProperties => ({
     background: 'none', border: 'none', cursor: 'pointer', color: clr,
     padding: '0.2rem', display: 'flex', alignItems: 'center',
@@ -72,6 +82,16 @@ export function Controls({ isPlaying, speed, showStop, showDiff, showClear, colo
           <X size={10} />
         </button>
       )}
+      {showCollapse && (
+      <button
+        onClick={() => setBarCollapsed(true)}
+        aria-label="Hide the chapter bar"
+        title="Hide the chapter bar"
+        style={btn('var(--tl-text-muted)')}
+      >
+        <ChevronDown size={11} />
+      </button>
+      )}
     </div>
   )
 }
@@ -109,11 +129,39 @@ export function EventPanel({ chapterNum, chapterTitle, eventTitle, hasPrev, hasN
           fontSize: '0.54rem', color: 'var(--tl-text-muted)', fontFamily: 'var(--font-body)',
           letterSpacing: '0.03em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
-          {timelineLabel && <span style={{ color, fontWeight: 700 }}>{timelineLabel} · </span>}
+          {/*
+            W19-10: a timeline's stored colour is an **identity mark, not ink**.
+            It was painted straight onto this label at 0.54rem and onto the
+            scene title below at 0.76rem — two runs of small bold text in a
+            colour the writer picked, on a ground the theme picked, with nothing
+            checking the pair. On the Paper theme the shipped default `#6366f1`
+            measures **3.89:1** against the card, where 4.5 is the bar for text
+            this size; it was the only sub-AA text on four screens. And it is
+            not a Paper problem — any colour can fail on any ground, so no
+            per-theme value would have fixed it.
+
+            The colour stays, as a dot: 3:1 is the bar for a non-text mark and
+            it clears that comfortably. Same shape the Writer's Brief already
+            uses for a POV character — a dot in their colour, their name in the
+            readable ink.
+          */}
+          {timelineLabel && (
+            <>
+              <span
+                aria-hidden="true"
+                style={{
+                  display: 'inline-block', width: '0.4rem', height: '0.4rem',
+                  borderRadius: '9999px', background: color, marginRight: '0.25rem',
+                  verticalAlign: 'baseline', flexShrink: 0,
+                }}
+              />
+              <span style={{ fontWeight: 700 }}>{timelineLabel} · </span>
+            </>
+          )}
           Ch.{chapterNum} · {chapterTitle}
         </div>
         <div style={{
-          fontSize: '0.76rem', fontWeight: 700, color, fontFamily: 'var(--font-body)',
+          fontSize: '0.76rem', fontWeight: 700, color: 'var(--tl-text)', fontFamily: 'var(--font-body)',
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           lineHeight: 1.25, marginTop: '2px', transition: 'color 0.2s',
         }}>
@@ -121,8 +169,8 @@ export function EventPanel({ chapterNum, chapterTitle, eventTitle, hasPrev, hasN
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingRight: '0.3rem', gap: '1px' }}>
-        <button onClick={onPrev} disabled={!hasPrev} style={navBtn(hasPrev)}><ChevronLeft size={11} /></button>
-        <button onClick={onNext} disabled={!hasNext} style={navBtn(hasNext)}><ChevronRight size={11} /></button>
+        <button onClick={onPrev} disabled={!hasPrev} aria-label="Previous scene in this chapter" style={navBtn(hasPrev)}><ChevronLeft size={11} aria-hidden="true" /></button>
+        <button onClick={onNext} disabled={!hasNext} aria-label="Next scene in this chapter" style={navBtn(hasNext)}><ChevronRight size={11} aria-hidden="true" /></button>
       </div>
     </div>
   )

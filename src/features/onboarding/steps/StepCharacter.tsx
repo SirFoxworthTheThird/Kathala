@@ -6,14 +6,19 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { createCharacter } from '@/db/hooks/useCharacters'
 import { cn } from '@/lib/utils'
+import { StepBack } from './StepBack'
 
 interface StepCharacterProps {
   worldId: string
-  onComplete: (characterId: string) => void
+  onComplete: (characterId: string, name: string) => void
   onSkip: () => void
+  onBack: () => void
+  /** The character this step already made, when stepped back into (**NEW-5**). */
+  doneName?: string | null
+  onContinue?: () => void
 }
 
-export function StepCharacter({ worldId, onComplete, onSkip }: StepCharacterProps) {
+export function StepCharacter({ worldId, onComplete, onSkip, onBack, doneName, onContinue }: StepCharacterProps) {
   const [name, setName]           = useState('')
   const [description, setDesc]    = useState('')
   const [descExpanded, setDescExp] = useState(false)
@@ -29,10 +34,33 @@ export function StepCharacter({ worldId, onComplete, onSkip }: StepCharacterProp
     setLoading(true)
     try {
       const character = await createCharacter({ worldId, name: name.trim(), description: description.trim() })
-      onComplete(character.id)
+      onComplete(character.id, name.trim())
     } finally {
       setLoading(false)
     }
+  }
+
+  if (doneName && onContinue) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div>
+          <h2
+            ref={headingRef}
+            tabIndex={-1}
+            className="text-xl font-semibold text-[hsl(var(--foreground))] focus-visible:outline-none"
+          >
+            Every story needs someone to follow
+          </h2>
+          <p className="mt-1.5 text-sm text-[hsl(var(--muted-foreground))]">
+            Done — <strong className="text-[hsl(var(--foreground))]">{doneName}</strong> is in your cast.
+          </p>
+        </div>
+        <div className="flex flex-col items-start gap-2">
+          <Button onClick={onContinue}>Continue</Button>
+          <StepBack onBack={onBack} />
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -83,8 +111,16 @@ export function StepCharacter({ worldId, onComplete, onSkip }: StepCharacterProp
             )}
             aria-expanded={descExpanded}
           >
+            {/*
+              OP-4: this read "Add a description (optional)" and sat directly
+              above the primary "Add them to the story". Two adjacent buttons
+              both starting with "Add", one of which submits the step and one of
+              which expands a field — pressing the wrong one looked like nothing
+              happening. A disclosure is named for what it reveals, not for an
+              action, so it is a noun now and the collision is gone.
+            */}
             <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', descExpanded && 'rotate-180')} />
-            Add a description (optional)
+            Description (optional)
           </button>
           {descExpanded && (
             <Textarea
@@ -105,13 +141,16 @@ export function StepCharacter({ worldId, onComplete, onSkip }: StepCharacterProp
         <Button type="submit" disabled={loading} aria-busy={loading}>
           {loading ? 'Adding…' : 'Add them to the story'}
         </Button>
-        <button
-          type="button"
-          onClick={onSkip}
-          className="text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] rounded"
-        >
-          Skip for now →
-        </button>
+        <div className="flex items-center gap-3">
+          <StepBack onBack={onBack} />
+          <button
+            type="button"
+            onClick={onSkip}
+            className="text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] rounded"
+          >
+            Skip for now →
+          </button>
+        </div>
       </div>
     </form>
   )

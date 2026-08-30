@@ -9,7 +9,6 @@ import { resetDB } from './helpers/reset'
 
 test('a multi-child dropdown shows its selected value in the trigger', async ({ page }) => {
   test.setTimeout(90000)
-  await page.goto('/')
   await resetDB(page)
 
   await page.getByRole('button', { name: 'New World' }).click()
@@ -24,12 +23,16 @@ test('a multi-child dropdown shows its selected value in the trigger', async ({ 
   await page.getByPlaceholder('Chapter title').fill('One')
   await page.getByRole('button', { name: 'Add Chapter' }).last().click()
   await page.getByTitle('Open chapter detail').first().click()
-  await page.getByRole('main').getByRole('button', { name: 'Add Event' }).first().click()
-  await page.getByPlaceholder('Event title').fill('The gate')
-  await page.getByRole('button', { name: 'Add Event' }).last().click()
+  await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
+  await page.getByPlaceholder('Scene title').fill('The gate')
+  await page.getByRole('button', { name: 'Add Scene' }).last().click()
 
   const main = page.getByRole('main')
   await main.getByText('The gate', { exact: true }).click()
+
+  // A scene with no beat does not draw the Story Beat section any more — it is
+  // offered as a chip instead, so open it first.
+  await main.getByRole('button', { name: '+ Story Beat' }).click()
 
   // The Story Beat picker starts on its placeholder…
   const beatTrigger = main.getByRole('button', { name: /No beat/ })

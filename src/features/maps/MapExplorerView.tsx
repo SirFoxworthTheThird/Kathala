@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import L from 'leaflet'
 import { useParams } from 'react-router-dom'
-import { Upload, Map as MapIcon, X, Route, Sparkles, Type, Trash2, Crosshair, ImageUp, Layers } from 'lucide-react'
+import { Upload, Grid3x3, Map as MapIcon, X, Route, Sparkles, Type, Trash2, Crosshair, ImageUp, ImageOff, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore, useActiveMapLayerId } from '@/store'
-import { useRootMapLayers, updateMapLayer, deleteMapLevel } from '@/db/hooks/useMapLayers'
+import { useRootMapLayers, updateMapLayer, deleteMapLevel, createBlankMapLayer } from '@/db/hooks/useMapLayers'
 import { levelsInGroup } from '@/lib/mapLevels'
 import { FloorSwitcher } from './FloorSwitcher'
 import { Button } from '@/components/ui/button'
@@ -41,9 +41,9 @@ import type { LocationMarker } from '@/types'
 
 function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const {
-    layer, imageUrl, markers, allLayers, allMarkers, characters,
+    layer, imageUrl, imageState, markers, allLayers, allMarkers, characters,
     activeEventId, orderedEvents,
-    activeChapter, activeChapterTitle,
+    activeChapter, activeMomentLabel,
     snapshots, prevSnapshots,
     chapterPlacements, chapters,
     mapRoutes, mapRegions, regionStatusMap, routeMarkerPositions,
@@ -81,6 +81,17 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const [genLocOpen, setGenLocOpen] = useState(false)
   const [replaceImageOpen, setReplaceImageOpen] = useState(false)
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null)
+  /*
+    PAN-2: selecting a character opened the right panel and the film strip
+    together, costing the panel's width and a band of map height in one click,
+    with no way to keep one without the other — the strip's own X cleared the
+    selection, which closed the panel too.
+
+    The strip can be put away on its own now, and stays away until it is asked
+    for again: someone who dismissed it once was not asking to be shown it again
+    by the next character they click.
+  */
+  const [journeyHidden, setJourneyHidden] = useState(false)
   const [scaleMode, setScaleMode] = useState(false)
   const [scaleDialog, setScaleDialog] = useState<{ pixelDist: number } | null>(null)
   const [measureMode, setMeasureMode] = useState(false)
@@ -258,6 +269,22 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       setSelectedCharacterId(null)
       setSelectedLocationMarkerId(marker.id)
     }
+    /*
+      A place on another map means going there, not panning to its coordinates.
+      This used to `panTo` unconditionally, so a scene set inside a sub-map slid
+      the *current* map to a point that means nothing on it — the pin never came
+      into view, because it is not on this image at all. `focusOnCharacter`
+      below already crosses layers; this is the same move for a location.
+
+      No reading-gate check here, and none is reachable: every caller finds its
+      marker in `allMarkers`, which the gate filters, so a marker the reader has
+      not met never arrives. A revealed marker's own map is revealed with it.
+    */
+    if (marker.mapLayerId !== layerId) {
+      crossLayerPanTargetRef.current = [marker.y, marker.x]
+      pushMapLayer(marker.mapLayerId)
+      return
+    }
     mapRef.current?.panTo([marker.y, marker.x])
   }
 
@@ -382,6 +409,16 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   }
 
   function handleCharacterClick(characterId: string) {
+    /*
+      While the crosshair is armed the map is a target, not a browser. A tap
+      that lands on a character pin instead of the location under it must leave
+      the crosshair armed rather than swap to somebody's panel — which is what
+      it used to do, over a hint still asking for a location, with nothing
+      placed and nothing said. The pins no longer cover the markers (see
+      `markersAreTargets` in LeafletMapCanvas), so this is the case that should
+      not arise; it costs nothing here and it fails visibly instead of quietly.
+    */
+    if (placingCharacterId) return
     setSelectedLocationMarkerId(null)
     setSelectedCharacterId((prev) => prev === characterId ? null : characterId)
   }
@@ -389,6 +426,25 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   // ── Character placement ───────────────────────────────────────────────────
   async function placeCharacterAtMarker(characterId: string, marker: LocationMarker) {
     if (!activeEventId) return
+    /*
+      The gate lives here rather than on the callers, because there are two of
+      them and only one had it: dragging a character onto a marker checked, and
+      tap-to-place — arm the crosshair in the sidebar, tap a location — did not,
+      so a reader could move a character through the story and leave a trail
+      behind them. A choke point means the next caller is safe by default, which
+      is the argument `ReadingGateContext` already makes for the entity hooks.
+
+      **Kept even though no test can kill it.** Both ways in are closed upstream
+      now — the sidebar's crosshair is not rendered while reading, and the canvas
+      is passed `readOnly`, which is what makes a character pin `draggable` or
+      not — so removing this line leaves every test green. That usually argues
+      for deleting a branch, and two were deleted elsewhere today on exactly
+      that evidence. The asymmetry is what it guards: those shaped output, and
+      this is the last thing between a reader and a silent rewrite of somebody
+      else's book. A third caller arriving unguarded is a likelier mistake than
+      this line being wrong.
+    */
+    if (gate.active) return
     const existingInDb = await fetchSnapshot(characterId, activeEventId)
     const fromMarkerId = existingInDb?.currentLocationMarkerId
     const existing = snapshots.find((s) => s.characterId === characterId)
@@ -413,7 +469,6 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   }
 
   async function handleCharacterDrop(characterId: string, markerId: string) {
-    if (gate.active) return
     const targetMarker = markers.find((m) => m.id === markerId)
     if (!targetMarker) return
     await placeCharacterAtMarker(characterId, targetMarker)
@@ -478,7 +533,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     )
   }
 
-  if (!layer.imageId) {
+  if (imageState === 'no-image') {
     return (
       <div className="flex h-full flex-col overflow-hidden">
         <div className="flex shrink-0 items-center justify-between border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
@@ -501,9 +556,16 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
         <EmptyState
           icon={ImageUp}
           title="This map needs an image"
-          description="Upload an image or link to one. Existing locations will remain attached to this map and will be rescaled to the new image if needed."
+          description={
+            gate.active
+              ? 'No picture was ever drawn for this map. Nothing is being held back from you.'
+              : 'Upload an image or link to one. Existing locations will remain attached to this map and will be rescaled to the new image if needed.'
+          }
           className="flex-1"
           action={
+            // Offered unconditionally: `EmptyState` drops the call to action
+            // while reading, so a second gate here would be dead code claiming
+            // to be the rule.
             <Button className="gap-1.5" onClick={() => setReplaceImageOpen(true)}>
               <Upload className="h-4 w-4" />
               Add map image
@@ -520,7 +582,61 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     )
   }
 
-  if (!imageUrl) {
+  /*
+    The layer names an image that is not in the store: sixteen map layers whose
+    `imageId` points into a `.pwb` nobody fetched. The Library now brings the
+    bundle down with the book, so this is reached by a world downloaded before
+    that changed, or by an image fetch that failed — not by a choice the reader
+    made and could simply unmake.
+
+    This used to fall through to the spinner below and stay there, because
+    `useBlobUrl` returns `undefined` both while loading and when the record is
+    absent. A screen that says nothing is the worst of the three answers: the
+    writer cannot tell a slow map from a missing one, and the way out — download
+    the world again — is never mentioned.
+  */
+  if (imageState === 'not-downloaded') {
+    return (
+      <div className="flex h-full flex-col overflow-hidden">
+        <div className="flex shrink-0 items-center justify-between border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-[hsl(var(--foreground))]">{layer.name}</p>
+            <p className="truncate text-[11px] text-[hsl(var(--muted-foreground))]">Image not downloaded</p>
+          </div>
+        </div>
+        <EmptyState
+          icon={ImageUp}
+          title="This map's image isn't here"
+          description={
+            gate.active
+              ? "The map itself — its places, routes and regions — is all here; only the picture is missing, because a book's images are kept in a separate bundle from its text. Nothing is being held back from you."
+              : 'The map itself — its locations, routes and regions — is all present; only the picture is missing. Worlds from the Library keep their images in a separate file, and this world was downloaded without it. Download the world again from the Library, or add a picture of your own.'
+          }
+          className="flex-1"
+          action={
+            // Offered unconditionally: `EmptyState` drops the call to action
+            // while reading, so a second gate here would be dead code claiming
+            // to be the rule.
+            <Button className="gap-1.5" onClick={() => setReplaceImageOpen(true)}>
+              <Upload className="h-4 w-4" />
+              Add map image
+            </Button>
+          }
+        />
+        <UploadMapDialog
+          open={replaceImageOpen}
+          onOpenChange={setReplaceImageOpen}
+          worldId={worldId}
+          replaceLayerId={layer.id}
+        />
+      </div>
+    )
+  }
+
+  // The second half of this condition adds no case: `mapImageState` returns
+  // 'loading' exactly when there is no url yet. It is here so the compiler can
+  // narrow `imageUrl` to a string for the canvas below.
+  if (imageState === 'loading' || !imageUrl) {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-[hsl(var(--border))] border-t-[hsl(var(--ring))]" />
@@ -541,8 +657,14 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       {/* ── Left sidebar (static column on lg+, slide-in drawer on mobile) ── */}
       <div
         className={cn(
-          'flex w-64 shrink-0 flex-col overflow-y-auto border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] transition-transform',
-          'absolute inset-y-0 left-0 z-[1200] lg:static lg:z-auto lg:w-52 lg:translate-x-0',
+          // No outer scroll: each section scrolls inside itself, so every
+          // section header stays reachable however much is open (SB-1).
+          'flex w-64 shrink-0 flex-col overflow-hidden border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] transition-transform',
+          // SB-2: at lg:w-52 a row's name got 101px once the place-on-map
+          // control appeared, which cut *Samwise Gamgee* and left *The
+          // Witch-king of Angmar* and *…of the North* identical. One width for
+          // both breakpoints; the map gives up 48px of a screen it has most of.
+          'absolute inset-y-0 left-0 z-[1200] lg:static lg:z-auto lg:translate-x-0',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
@@ -587,6 +709,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           allMarkers={allMarkers}
           snapshots={snapshots}
           onFocus={focusOnItem}
+          characters={characters}
         />
         <RoutesSection
           mapLayerId={layerId}
@@ -630,11 +753,48 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           />
         )}
 
+        {/*
+          The picture's record is here and it points at the web, which did not
+          answer. Every image in the Library is stored that way — 1,573 of them
+          across the 25 books, on twenty-odd hosts — so this is not an edge case
+          for a companion someone reads on a train.
+
+          A banner, not a replacement, and it took two goes to learn why. The
+          canvas was silent about this, which left a reader three explanations
+          for a blank rectangle and made two of them ours. But replacing the
+          canvas with an empty state lost the sidebar; replacing only the canvas
+          lost the markers, routes and regions, which Leaflet still draws in
+          pixel space with no picture behind them — an unlabelled diagram of the
+          place, which is worth more than a paragraph about its absence. Each
+          attempt was caught by a spec written for something else.
+
+          So the map keeps everything it can still do, and the banner says why
+          it looks the way it does. A reader is offered nothing to act on:
+          supplying a picture is an author's action, and unlike `EmptyState`
+          this is our own markup, so the gate here is load-bearing.
+        */}
+        {imageState === 'unreachable' && (
+          <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.4)] px-4 py-2">
+            <ImageOff className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+            <p className="min-w-[13rem] flex-1 text-xs text-[hsl(var(--muted-foreground))]">
+              {gate.active
+                ? "This map's picture could not be loaded — it is kept on the web rather than in the book, so it needs a connection. Everything marked on the map is still here."
+                : "This map's picture could not be loaded. It is linked from the web rather than stored here, and that address did not answer. Everything marked on the map is still here."}
+            </p>
+            {!gate.active && (
+              <Button size="sm" variant="outline" className="shrink-0 gap-1.5 text-xs" onClick={() => setReplaceImageOpen(true)}>
+                <Upload className="h-3.5 w-3.5" />
+                Add map image
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Map canvas. data-film-strip lifts Leaflet's bottom controls clear of
             the character film strip, which shares the canvas's bottom edge. */}
         <div
           className="relative flex-1 overflow-hidden"
-          data-film-strip={selectedCharacterId ? '' : undefined}
+          data-film-strip={selectedCharacterId && !journeyHidden ? '' : undefined}
           style={canvasTransitionStyle}
           onTransitionEnd={handleCanvasTransitionEnd}
         >
@@ -665,6 +825,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               : undefined}
             locationStatuses={locationStatusMap}
             isDraggingCharacter={isDraggingCharacter}
+            placingCharacter={placingCharacterId != null}
             pinAnimation={pinAnimation}
             onAnimationEnd={handlePlaybackAnimationEnd}
             onMarkerClick={handleMarkerClick}
@@ -764,6 +925,11 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               toolbar reachable beside it. On phones the panel takes 85vw and
               there is no room left, so the band steps aside entirely. */}
           <div
+            /* MAP-2: the fit insets by this band's measured height so the map
+               opens with nothing underneath it. Marked rather than measured by
+               a constant — the band wraps, and its height depends on the filter
+               bar and the info chip inside it. */
+            data-map-overlay="top"
             className={cn(
               'pointer-events-none absolute inset-x-0 top-0 z-[1100] flex flex-wrap items-start justify-between gap-2 p-2',
               rightPanelOpen && 'max-sm:hidden sm:pr-[19rem]',
@@ -1003,6 +1169,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               <LocationDetailPanel
                 markerId={selectedLocationMarkerId}
                 worldId={worldId}
+                activeMomentLabel={activeMomentLabel}
                 onClose={() => setSelectedLocationMarkerId(null)}
                 onDrillDown={pushMapLayer}
               />
@@ -1015,7 +1182,14 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           )}
           {selectedRegionId && !selectedLocationMarkerId && !selectedCharacterId && (
             <div className="absolute inset-y-0 right-0 z-[500] flex">
-              <RegionDetailPanel regionId={selectedRegionId} worldId={worldId} onClose={() => setSelectedRegionId(null)} onDrillDown={pushMapLayer} />
+              <RegionDetailPanel
+                regionId={selectedRegionId}
+                worldId={worldId}
+                activeEventId={activeEventId}
+                activeMomentLabel={activeMomentLabel}
+                onClose={() => setSelectedRegionId(null)}
+                onDrillDown={pushMapLayer}
+              />
             </div>
           )}
           {selectedCharacterId && (() => {
@@ -1030,16 +1204,18 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
                   allMarkers={allMarkers}
                   allLayers={allLayers}
                   allCharacters={characters}
-                  activeChapterTitle={activeChapterTitle}
+                  activeMomentLabel={activeMomentLabel}
                   worldId={worldId}
                   onClose={() => setSelectedCharacterId(null)}
+                  journeyShown={!journeyHidden}
+                  onToggleJourney={() => setJourneyHidden((v) => !v)}
                 />
               </div>
             )
           })()}
 
           {/* Character film strip */}
-          {selectedCharacterId && (() => {
+          {selectedCharacterId && !journeyHidden && (() => {
             const char = characters.find((c) => c.id === selectedCharacterId)
             if (!char) return null
             return (
@@ -1049,7 +1225,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
                 orderedEvents={orderedEvents}
                 chapters={chapters}
                 activeEventId={activeEventId}
-                onClose={() => setSelectedCharacterId(null)}
+                onClose={() => setJourneyHidden(true)}
               />
             )
           })()}
@@ -1060,6 +1236,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             open
             onOpenChange={(v) => { if (!v) setScaleDialog(null) }}
             pixelDistance={scaleDialog.pixelDist}
+            imageWidth={layer.imageWidth}
             layerId={layer.id}
           />
         )}
@@ -1119,11 +1296,38 @@ export default function MapExplorerView() {
   const { setActiveMapLayerId } = useAppStore()
   const [uploadOpen, setUploadOpen] = useState(false)
   const [genLocOpen, setGenLocOpen] = useState(false)
+  const [blankPending, setBlankPending] = useState(false)
+
+  /*
+    BUG-1: opening Maps with no layer chosen used to call `setActiveMapLayerId`
+    **in the render body**, which React reports as *"Cannot update a component
+    (TopBar) while rendering a different component (MapExplorerView)"* — the top
+    bar reads the same store, so rendering one component was writing state
+    another was already rendering from.
+
+    The choice is now *derived* for this render and *persisted* afterwards. An
+    effect alone would have been the obvious fix and is worse: it lands after
+    paint, so the screen would show a blank map for one frame before the first
+    layer appeared. Deriving means the very first render already draws the right
+    map, and the store catches up in the effect with nothing depending on when.
+  */
+  const layerId = activeLayerId ?? rootLayers[0]?.id ?? null
+
+  useEffect(() => {
+    if (!activeLayerId && rootLayers.length > 0) setActiveMapLayerId(rootLayers[0].id)
+  }, [activeLayerId, rootLayers, setActiveMapLayerId])
 
   if (!worldId) return null
 
-  if (!activeLayerId && rootLayers.length > 0) {
-    setActiveMapLayerId(rootLayers[0].id)
+  async function startBlankMap() {
+    if (!worldId || blankPending) return
+    setBlankPending(true)
+    try {
+      const layer = await createBlankMapLayer(worldId, 'Places')
+      setActiveMapLayerId(layer.id)
+    } finally {
+      setBlankPending(false)
+    }
   }
 
   if (rootLayers.length === 0) {
@@ -1142,15 +1346,30 @@ export default function MapExplorerView() {
             </Button>
           </div>
         </div>
+        {/*
+          Three doors, and the middle one is new.
+
+          A place in PlotWeave is a pin and a pin needs a map, which is
+          deliberate. But a writer who has no picture of their world had only two
+          ways in: upload an image, whose button stays disabled until you supply
+          one, or a button labelled AI. Nothing said that a setting needs a map,
+          so a mapless world just never offered `+ Setting` and never explained
+          itself. The blank map is the same grid the AI import has always drawn
+          for itself, offered plainly.
+        */}
         <EmptyState
           icon={MapIcon}
           title="No maps yet"
-          description="Upload an image of your world and place locations on it — or generate a tree of locations with AI and PlotWeave will lay them out on a map for you."
+          description="Places in PlotWeave are pins on a map, so a scene can only be given a setting once the world has one. Upload a picture of your world, start a blank map and drop pins on it, or describe your locations to an AI assistant and have them laid out for you."
           action={
             <div className="flex flex-wrap items-center justify-center gap-2">
               <Button onClick={() => setUploadOpen(true)}>
                 <Upload className="h-4 w-4" />
                 Add Map
+              </Button>
+              <Button variant="outline" className="gap-1.5" disabled={blankPending} onClick={() => { void startBlankMap() }}>
+                <Grid3x3 className="h-4 w-4" />
+                {blankPending ? 'Starting…' : 'Start a blank map'}
               </Button>
               <Button variant="outline" className="gap-1.5" onClick={() => setGenLocOpen(true)}>
                 <Sparkles className="h-4 w-4" />
@@ -1173,7 +1392,7 @@ export default function MapExplorerView() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex-1 overflow-hidden">
-        {activeLayerId ? <MapView worldId={worldId} layerId={activeLayerId} /> : null}
+        {layerId ? <MapView worldId={worldId} layerId={layerId} /> : null}
       </div>
     </div>
   )

@@ -3,13 +3,16 @@ import { resetDB } from './helpers/reset'
 
 test.describe('World management', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
   })
 
-  test('shows empty state with "Create World" prompt', async ({ page }) => {
+  test('shows the empty state and the ways in', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'PlotWeave' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Create World' })).toBeVisible()
+    await expect(page.getByRole('main')).toContainText('No worlds yet')
+    // The empty state no longer carries its own copy of the entry points — they
+    // live in the header's two groups, one control each.
+    await expect(page.getByRole('group', { name: 'Start something new' })
+      .getByRole('button', { name: 'New World' })).toBeVisible()
   })
 
   test('creates a new world and navigates to its dashboard', async ({ page }) => {
@@ -23,7 +26,19 @@ test.describe('World management', () => {
     await page.getByRole('button', { name: 'Create World' }).last().click()
 
     await expect(page).toHaveURL(/#\/worlds\//)
-    await expect(page.getByText('Middle Earth')).toBeVisible()
+    /*
+      The banner's copy of the name, the way `mapControls.spec.ts` already reads
+      it — not a page-wide `getByText`, which resolves to both the top bar and
+      the dashboard heading and fails strict mode the moment the second one
+      renders. That is what this test reported as a flake: ambiguous the whole
+      time, and only fatal when the two settled in the same tick.
+
+      Not the dashboard heading either, which is the obvious repair and is
+      wrong: a world created with no timeline yet meets the first-run guide
+      rather than the dashboard, so the `h1` is often not there at all. Scoping
+      to it turned an intermittent failure into a reliable one.
+    */
+    await expect(page.getByRole('banner').getByText('Middle Earth')).toBeVisible()
   })
 
   test('shows the created world on the selector page', async ({ page }) => {

@@ -28,7 +28,7 @@ export interface DeadKnowerIssue {
  * true) and reader leaks, but has no dead-character guard the way the cast and
  * relationship checks do; this fills that gap.
  *
- * Only "already dead going into the event" counts: a reveal placed *at* the very
+ * Only "already dead going into the scene" counts: a reveal placed *at* the very
  * event where the character dies (a death-bed revelation) is left alone, and so
  * is anything in a flashback. Pure and side-effect free.
  */

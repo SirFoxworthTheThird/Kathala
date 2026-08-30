@@ -1,0 +1,168 @@
+import type { Issue, IssueSeverity } from './computeIssues'
+
+/**
+ * What sort of fault an issue is, within its category (CC-3).
+ *
+ * A category was the only grouping there was, so *Items 79* was one heading
+ * over a single repeated fault with the real findings buried inside it. The
+ * category says which part of the world is involved; the kind says what went
+ * wrong, and it is the kind that tells you whether a run of rows is one mistake
+ * repeated or twenty separate ones.
+ *
+ * These names match the prefixes the issue ids already used, so a kind is read
+ * off the issue rather than inferred from the wording of its message — which
+ * would break the first time a message was reworded.
+ */
+export type IssueKind =
+  // character
+  | 'dead-then-alive' | 'orphan-snap' | 'dead-in-event' | 'char-before-intro'
+  | 'stale-snapshot' | 'loc-destroyed' | 'char-in-region' | 'region-traversal'
+  | 'travel-dist' | 'knowledge-anachronism' | 'dead-knower'
+  | 'scene-cast-elsewhere' | 'age-unborn'
+  // item
+  | 'dup-item' | 'item-before-acquired' | 'item-after-destroyed-ev'
+  | 'item-after-destroyed-inv' | 'item-handoff' | 'artifact-wrong-timeline'
+  | 'item-restored' | 'item-dead-holder'
+  // relationship
+  | 'rel-before-start' | 'rel-after-end' | 'dead-char-in-rel-snap'
+  // faction
+  | 'faction-gap' | 'hostile-loc' | 'faction-conflict'
+  // pov
+  | 'pov-unknown' | 'pov-not-involved' | 'dead-pov' | 'pov-consecutive' | 'pov-missing'
+  // prose
+  | 'prose-dead' | 'prose-untagged' | 'prose-leak' | 'knowledge-unrevealed'
+  // thread
+  | 'thread-dangling' | 'thread-dormant' | 'thread-unstarted'
+  // world — the places and the clock, rather than anybody in particular
+  | 'loc-resurrected' | 'time-backwards' | 'chapter-empty'
+
+/**
+ * The batch form of a kind's one-click fix, for a run of them.
+ *
+ * Only kinds whose fix is safe to apply unattended appear here — the
+ * Highbarrow review asked for "a batch initial-state workflow for ensemble
+ * scenes", and an initial record is the same answer for every character it
+ * applies to. `travelDays` is deliberately absent: each of those picks a
+ * different number for a different scene, and applying them together would be
+ * a bulk edit of the clock rather than a fix.
+ */
+export const FIX_ALL_LABELS: Partial<Record<IssueKind, string>> = {
+  'char-before-intro': 'Record initial state for all',
+  /*
+    W19-6: a broken POV id is usually one id repeated — 128 scenes of one
+    shipped book point at the same deleted character — so this is the shape the
+    batch was built for. Clearing a POV that names nobody discards nothing: the
+    field already refers to a record that is not there.
+  */
+  'pov-unknown': 'Clear every unknown POV',
+  /*
+    An ensemble walking into a room together is the same answer repeated, the
+    same as the initial-state case: each fix moves one named character to the
+    one place the scene already declares. Nothing is guessed.
+  */
+  'scene-cast-elsewhere': 'Move everyone to the scene',
+  /*
+    Every row here says the same true thing — this name is in this scene's prose
+    — and recording it as a mention claims no more than that. It is the most
+    frequent warning a drafting writer meets, so it is also the one most worth
+    being able to clear in one go.
+  */
+  'prose-untagged': 'Record every name as mentioned',
+}
+
+/**
+ * What each kind is called when it heads a group.
+ *
+ * Written as the fault rather than as the check — "Alive after dying" rather
+ * than "Death consistency" — because the heading has to be readable as a
+ * summary of the rows underneath it.
+ */
+export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
+  'dead-then-alive':       'Alive again after dying',
+  'orphan-snap':           'State recorded for a deleted scene',
+  'dead-in-event':         'Dead character in a scene',
+  'char-before-intro':     'Appears before any state was recorded',
+  'stale-snapshot':        'State may be out of date',
+  'loc-destroyed':         'At a destroyed place',
+  'char-in-region':        'Inside a dangerous region',
+  'region-traversal':      'Travels through a dangerous region',
+  'travel-dist':           'Cannot travel that far in time',
+  'knowledge-anachronism': 'Knows something too early',
+  'scene-cast-elsewhere':  'In the scene, recorded somewhere else',
+  'age-unborn':            'In a scene before they were born',
+  'dead-knower':           'Learns something after dying',
+  'dup-item':              'Item in two places at once',
+  'item-before-acquired':  'Item used before it was acquired',
+  'item-after-destroyed-ev':  'Item used after being destroyed',
+  'item-after-destroyed-inv': 'Destroyed item still carried',
+  'item-restored':         'Destroyed item whole again',
+  'item-dead-holder':      'Carried by a dead character',
+  'item-handoff':          'Item changes hands across a distance',
+  'artifact-wrong-timeline': 'Item outside its declared timelines',
+  'rel-before-start':      'Relationship state before it began',
+  'rel-after-end':         'Relationship state after it ended',
+  'dead-char-in-rel-snap': 'Relationship with a dead character',
+  'faction-gap':           'Leaves a faction with no replacement',
+  'hostile-loc':           'In hostile territory',
+  'faction-conflict':      'In two hostile factions at once',
+  'pov-unknown':           'POV names no character',
+  'pov-not-involved':      'POV character not in the scene',
+  'dead-pov':              'Dead POV character',
+  'pov-consecutive':       'Long run of one POV',
+  'pov-missing':           'Scene with no point of view',
+  'prose-dead':            'Dead character named in the prose',
+  'prose-untagged':        'Named in the prose but not in the cast',
+  'prose-leak':            'Possible early reveal in the prose',
+  'knowledge-unrevealed':  'The reader never learns it',
+  'thread-dangling':       'Subplot raised and never resolved',
+  'thread-dormant':        'Subplot goes quiet',
+  'thread-unstarted':      'Subplot with no scenes',
+  'loc-resurrected':       'Destroyed place standing again',
+  'time-backwards':        'Scene set before the one in front of it',
+  'chapter-empty':         'Chapter with no scenes',
+}
+
+export interface IssueGroup {
+  kind: IssueKind
+  label: string
+  /** The worst severity in the group — what its heading is coloured by. */
+  severity: IssueSeverity
+  issues: Issue[]
+}
+
+const SEVERITY_RANK: Record<IssueSeverity, number> = { error: 0, warning: 1, note: 2 }
+
+/**
+ * A category's issues, grouped by kind.
+ *
+ * Errors lead, then the largest groups, so a category opens on its most serious
+ * fault rather than on whichever check happened to run first. Within a group
+ * the issues keep the order the checks produced them in, which is story order.
+ *
+ * The order this returns is the order the panel renders *and* the order the
+ * keyboard walks — they are derived from the same call, so arrow-key focus
+ * cannot drift away from what is on screen.
+ */
+export function groupIssuesByKind(issues: readonly Issue[]): IssueGroup[] {
+  const byKind = new Map<IssueKind, Issue[]>()
+  for (const issue of issues) {
+    const list = byKind.get(issue.kind)
+    if (list) list.push(issue)
+    else byKind.set(issue.kind, [issue])
+  }
+
+  const groups: IssueGroup[] = [...byKind].map(([kind, list]) => ({
+    kind,
+    label: ISSUE_KIND_LABELS[kind],
+    severity: list.reduce<IssueSeverity>(
+      (worst, i) => (SEVERITY_RANK[i.severity] < SEVERITY_RANK[worst] ? i.severity : worst),
+      list[0].severity,
+    ),
+    issues: list,
+  }))
+
+  return groups.sort((a, b) =>
+    SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] ||
+    b.issues.length - a.issues.length ||
+    a.label.localeCompare(b.label))
+}

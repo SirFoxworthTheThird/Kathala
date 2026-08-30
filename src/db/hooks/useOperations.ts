@@ -15,6 +15,7 @@ import {
   redoableBatch,
 } from '@/lib/operations'
 import { ENTITY_TABLE } from '@/lib/entityTables'
+import { SUBJECT_JOIN, SUBJECT_OWNER, needsSubjectLookup, recordName } from '@/lib/operationSubject'
 import type { PruneLimits } from '@/lib/operations'
 import type { Operation, OperationEntity, OperationType, Tombstone } from '@/types/operation'
 
@@ -473,6 +474,95 @@ export function useUndoHead(worldId: string | null) {
     [worldId],
     undefined,
   )
+}
+
+/**
+ * What each operation is about, keyed by operation id.
+ *
+ * Only operations whose payload cannot name themselves are looked up — see
+ * `needsSubjectLookup`. Each lookup is a primary-key read, and a snapshot costs
+ * two: the snapshot names a character or an item, not itself.
+ *
+ * Absent from the map means "no name to show", not "not loaded": a record that
+ * has since been deleted, or one that never had a name. The caller falls back
+ * to the bare entity label, which is what every row used to say.
+ */
+export async function resolveSubjects(ops: readonly Operation[]): Promise<Map<string, string>> {
+  const out = new globalThis.Map<string, string>()
+  for (const op of ops) {
+    if (!needsSubjectLookup(op)) continue
+    const name = await subjectFor(op)
+    if (name) out.set(op.id, name)
+  }
+  return out
+}
+
+async function subjectFor(op: Operation): Promise<string | null> {
+  const owners = SUBJECT_OWNER[op.entityType]
+  if (!owners) return recordName(await tableFor(op.entityType)?.get(op.entityId))
+
+  // The foreign keys are on the record. A create's payload is the whole record
+  // and already has them; an update's payload has only the fields it touched,
+  // so the row itself has to be read — once, however many keys are wanted.
+  let record: Record<string, unknown> | undefined
+  const keyOf = async (key: string): Promise<string | null> => {
+    const fromPayload = op.payload[key]
+    if (typeof fromPayload === 'string') return fromPayload
+    record ??= await tableFor(op.entityType)?.get(op.entityId)
+    const fromRecord = record?.[key]
+    return typeof fromRecord === 'string' ? fromRecord : null
+  }
+
+  const names: string[] = []
+  for (const owner of owners) {
+    const ownerId = await keyOf(owner.key)
+    if (!ownerId) continue
+    const table = (db as unknown as Record<string, unknown>)[owner.table] as
+      | Table<Record<string, unknown>, string>
+      | undefined
+    const name = recordName(await table?.get(ownerId))
+    if (name) names.push(name)
+  }
+  return names.length ? names.join(SUBJECT_JOIN) : null
+}
+
+/**
+ * The live version of `resolveSubjects`, for the panel and the toolbar button.
+ *
+ * Live rather than resolved once because the name it shows is the record's
+ * name *now*: rename a scene and the history rows about it follow, which is
+ * what makes them a way to find the record rather than a quotation of it.
+ */
+export function useOperationSubjects(ops: readonly Operation[]): Map<string, string> {
+  const key = ops.map((op) => op.id).join(',')
+  return useLiveQuery(
+    () => resolveSubjects(ops),
+    // Keyed by the ids rather than the array, which is a fresh object on every
+    // live-query emission and would re-run this forever.
+    [key],
+    EMPTY_SUBJECTS,
+  )
+}
+
+/** Shared so the pre-resolution render isn't a new Map on every pass. */
+const EMPTY_SUBJECTS: Map<string, string> = new globalThis.Map()
+
+/**
+ * When the journal last recorded a change in this world, or null when it has
+ * nothing to say.
+ *
+ * One index seek, not a scan: `operations` carries `[worldId+seq]` and `seq` is
+ * monotonic per world, so the newest entry is the last key in that range. Kept
+ * here, where the journal lives, because two callers need it — the world card's
+ * date and the order of the list that card sits in — and a card whose date
+ * disagreed with its own list's ordering would be worse than either.
+ */
+export async function lastOperationAt(worldId: string): Promise<number | null> {
+  const newest = await db.operations
+    .where('[worldId+seq]')
+    .between([worldId, Dexie.minKey], [worldId, Dexie.maxKey])
+    .last()
+  return newest?.createdAt ?? null
 }
 
 export function useUndoStack(worldId: string | null, limit = 30) {

@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
+import { useWorldEvents, useWorldChapters, updateEvent } from '@/db/hooks/useTimeline'
+import { db } from '@/db/database'
 import { upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { StepBack } from './StepBack'
 
 interface StepPlaceProps {
   worldId: string
@@ -11,9 +13,10 @@ interface StepPlaceProps {
   createdEventId: string | null
   onComplete: () => void
   onSkip: () => void
+  onBack: () => void
 }
 
-export function StepPlace({ worldId, characterId, createdEventId, onComplete, onSkip }: StepPlaceProps) {
+export function StepPlace({ worldId, characterId, createdEventId, onComplete, onSkip, onBack }: StepPlaceProps) {
   const events   = useWorldEvents(worldId)
   const chapters = useWorldChapters(worldId)
   const [selectedEventId, setSelectedEventId] = useState<string>(createdEventId ?? '')
@@ -29,7 +32,7 @@ export function StepPlace({ worldId, characterId, createdEventId, onComplete, on
 
   const noEvents = events.length === 0
 
-  // Build display labels: "Chapter 1 — Event title"
+  // Build display labels: "Chapter 1 — Scene title"
   const chapterById = new Map(chapters.map((c) => [c.id, c]))
   const eventOptions = [...events].sort((a, b) => {
     const ca = chapterById.get(a.chapterId)
@@ -56,6 +59,24 @@ export function StepPlace({ worldId, characterId, createdEventId, onComplete, on
         statusNotes: '',
         travelModeId: null,
       })
+      /*
+        W23-10: the step said it was placing them *in the story*, and wrote only
+        a snapshot. Presence is `involvedCharacterIds.includes(id) ||
+        povCharacterId === id` (`castBalance.ts`), so the dashboard's Cast
+        Balance greeted the writer with **"Ysolde Vane — never appears — 0 sc"**
+        about the character the guide had just placed, while chapter detail
+        listed her under that very scene. Two panels in one world disagreeing
+        about one character, on the first screen after onboarding.
+
+        The snapshot says *where she is*; the cast says *she is in this*. The
+        step promises the second, so it writes both.
+      */
+      const ev = await db.events.get(selectedEventId)
+      if (ev && !ev.involvedCharacterIds.includes(characterId)) {
+        await updateEvent(selectedEventId, {
+          involvedCharacterIds: [...ev.involvedCharacterIds, characterId],
+        })
+      }
       onComplete()
     } finally {
       setLoading(false)
@@ -99,8 +120,8 @@ export function StepPlace({ worldId, characterId, createdEventId, onComplete, on
                 // Single string child — Radix SelectValue requires this to
                 // display the selection in the trigger correctly.
                 const label = ch
-                  ? `Ch. ${ch.number} — ${ev.title || 'Untitled event'}`
-                  : (ev.title || 'Untitled event')
+                  ? `Ch. ${ch.number} — ${ev.title || 'Untitled scene'}`
+                  : (ev.title || 'Untitled scene')
                 return (
                   <SelectItem key={ev.id} value={ev.id}>
                     {label}
@@ -116,13 +137,16 @@ export function StepPlace({ worldId, characterId, createdEventId, onComplete, on
         <Button type="submit" disabled={loading || (!noEvents && !selectedEventId)} aria-busy={loading}>
           {loading ? 'Placing…' : noEvents ? 'Continue' : 'Place them here'}
         </Button>
-        <button
-          type="button"
-          onClick={onSkip}
-          className="text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] rounded"
-        >
-          Skip for now →
-        </button>
+        <div className="flex items-center gap-3">
+          <StepBack onBack={onBack} />
+          <button
+            type="button"
+            onClick={onSkip}
+            className="text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] rounded"
+          >
+            Skip for now →
+          </button>
+        </div>
       </div>
     </form>
   )

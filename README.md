@@ -21,7 +21,7 @@ arrived? Who had the dagger during the ambush? Had these two characters become
 enemies yet? Most tools make you answer those questions by searching or
 re-reading your manuscript.
 
-PlotWeave records story state against exact **events**. Select an event with the
+PlotWeave records story state against exact **scenes**. Select a scene with the
 time cursor and the entire workspace resolves to that moment: characters move
 to their last-known locations, inventories change hands, relationships evolve,
 knowledge is revealed, and maps show the relevant world state.
@@ -56,11 +56,11 @@ manuscript to an AI provider itself.
 *See writing progress, story statistics, cast balance, plot threads, motifs,
 continuity warnings, and timeline relationships at a glance.*
 
-### Timeline and event cursor
+### Timeline and scene cursor
 
-![Timeline with chapters and events](docs/images/04-timeline.png)
+![Timeline with chapters and scenes](docs/images/04-timeline.png)
 
-*Organize chapters and events across one or more timelines. Selecting an event
+*Organize chapters and scenes across one or more timelines. Selecting a scene
 moves the global time cursor to that exact story moment.*
 
 ### Map Explorer
@@ -79,9 +79,9 @@ find and replace across scenes, and export the result.*
 
 ### Characters and goals
 
-![Character detail with event-aware state](docs/images/07-character-detail.png)
+![Character detail with scene-aware state](docs/images/07-character-detail.png)
 
-*Track identity, portraits, event-specific state, inventory, location,
+*Track identity, portraits, scene-specific state, inventory, location,
 relationships, history, faction membership, lore, and goals.*
 
 ### Character Arc
@@ -89,39 +89,39 @@ relationships, history, faction membership, lore, and goals.*
 ![Character Arc with plot-thread lanes](docs/images/50-arc-thread-lane.png)
 
 *Compare character, faction, and plot-thread state across chapters or individual
-events, with overlays for status, POV, goals, and factions.*
+scenes, with overlays for status, POV, goals, and factions.*
 
 ---
 
 ## What you can do
 
-- **Scrub through story time.** The event cursor drives every time-aware view.
+- **Scrub through story time.** The scene cursor drives every time-aware view.
   Snapshots carry forward until something changes.
 - **Build multiple timelines.** Model parallel plots, flashbacks, frame stories,
   and eras with independent clocks and explicit relationships.
 - **Plan chapters and scenes.** Use the Timeline, Corkboard, pacing curve,
-  tension ratings, event statuses, POV tracking, and Structure beat sheets.
-- **Write the manuscript.** Store prose per event, read it continuously, preserve
+  tension ratings, scene statuses, POV tracking, and Structure beat sheets.
+- **Write the manuscript.** Store prose per scene, read it continuously, preserve
   revision history, set writing goals, and export to common writing formats.
 - **Track the cast.** Record location, inventory, status, travel mode,
   alive/dead state, relationships, faction membership, and goals.
 - **Map your world.** Add nested maps, city maps, building floors, locations,
-  labels, routes, regions, scale, measurement, and event-aware character paths.
-- **Model relationships.** Track sentiment and strength with per-event snapshots
+  labels, routes, regions, scale, measurement, and scene-aware character paths.
+- **Model relationships.** Track sentiment and strength with per-scene snapshots
   and visualize the cast as a graph.
 - **Manage story objects.** Follow item ownership, condition, placement, and
-  movement across events and timelines.
+  movement across scenes and timelines.
 - **Develop the world.** Maintain Lore, Factions, Knowledge, Plot Threads, and
-  Motifs & Themes with event-based reveal and membership information.
-- **Use an in-world calendar.** Place events on custom calendars and calculate
+  Motifs & Themes with scene-based reveal and membership information.
+- **Use an in-world calendar.** Place scenes on custom calendars and calculate
   character ages at the selected moment.
 - **Catch continuity mistakes.** Detect impossible states, stale snapshots,
   premature knowledge, conflicting placements, and other inconsistencies.
-- **Replay the story.** Animate events and character movement across maps and
+- **Replay the story.** Animate scenes and character movement across maps and
   levels while notes appear in sequence.
 - **Undo and inspect changes.** Use `Ctrl/⌘+Z` and Recent Changes to understand
   and reverse local edits.
-- **Search everything.** Press `Ctrl/⌘+K` to find characters, events, items,
+- **Search everything.** Press `Ctrl/⌘+K` to find characters, scenes, items,
   locations, factions, lore, relationships, routes, regions, and more.
 - **Import or generate a starting point.** Turn Markdown/plain text into a
   manuscript, generate structured data with copy/paste AI prompts, or start a
@@ -160,11 +160,11 @@ sync folder for additional backups.
 
 1. **Create a blank world**, import a manuscript, generate a world from a
    synopsis, or import an existing `.pwk` backup.
-2. **Create a timeline, chapter, and event.** Events are the moments against
+2. **Create a timeline, chapter, and scene.** Scenes are the moments against
    which PlotWeave records state.
 3. **Add characters and locations**, then save character state at the selected
-   event.
-4. **Add later events** and record only what changes. PlotWeave carries earlier
+   scene.
+4. **Add later scenes** and record only what changes. PlotWeave carries earlier
    snapshots forward automatically.
 5. **Write scene prose**, connect plot threads, add world knowledge, and use the
    Continuity Checker as the story grows.
@@ -240,7 +240,7 @@ electron/      # desktop entry point and packaging integration
 example/       # importable example worlds
 ```
 
-Book examples follow the maintained [example authoring checklist](docs/EXAMPLE_AUTHORING_CHECKLIST.md). Its automated guardrails run as part of the Vitest suite and cover the recurring data-quality failures that are not purely visual.
+Book examples must follow the [mandatory example-authoring rules](docs/EXAMPLE_AUTHORING_RULES.md) and pass the companion [release checklist](docs/EXAMPLE_AUTHORING_CHECKLIST.md). These are release requirements, not recommendations. Automated guardrails run as part of the Vitest suite; visual and editorial requirements must also be verified in PlotWeave before an example is merged.
 
 ---
 

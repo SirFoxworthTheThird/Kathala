@@ -30,15 +30,31 @@ export function AppShell() {
   // top bar — the shortcuts have to go with them, or the one route left into
   // editing is the one nobody sees.
   const readingMode = useReadingMode(worldId ?? null)
+  /*
+    W-1: where the time cursor's own control belongs.
+
+    The finding says the bar is missing on Corkboard and Structure, "the screens
+    most about story order", while the top-bar pill still shows a chapter on
+    them. Measuring which screens actually *read* `activeEventId` inverted it:
+    the Arc grid (8 uses), the Lore roster (4) and the Calendar (2) all answer
+    to the cursor and all hid its control, which is worse than the case filed —
+    those screens change under a cursor the user cannot reach. Corkboard and
+    Structure read nothing; Structure only *sets* it, by opening a scene.
+
+    So the rule is: the bar shows where the cursor means something, and Corkboard
+    and Structure were made to mean something (each marks the scene the cursor is
+    on) rather than being given a control that moved nothing.
+
+    Still hidden, on the evidence: the dashboard and settings, neither of which
+    has a moment in it, and the lore page editor, which is a full-height writing
+    surface like Focus mode. Factions is left alone deliberately — it does not
+    read the cursor and was not filed, and expanding past both would be guessing.
+  */
   const isDashboard = !!useMatch('/worlds/:worldId')
-  const isArc = !!useMatch('/worlds/:worldId/arc')
   const isSettings = !!useMatch('/worlds/:worldId/settings')
-  const isLore = !!useMatch('/worlds/:worldId/lore/*')
+  const isLorePage = !!useMatch('/worlds/:worldId/lore/:pageId')
   const isFactions = !!useMatch('/worlds/:worldId/factions')
-  const isCorkboard = !!useMatch('/worlds/:worldId/corkboard')
-  const isCalendar = !!useMatch('/worlds/:worldId/calendar')
-  const isStructure = !!useMatch('/worlds/:worldId/structure')
-  const showBar = !isDashboard && !isArc && !isSettings && !isLore && !isFactions && !isCorkboard && !isCalendar && !isStructure
+  const showBar = !isDashboard && !isSettings && !isLorePage && !isFactions
   const barHeight = useBarHeight(showBar ? worldId : null)
 
   useEffect(() => {

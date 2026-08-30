@@ -33,10 +33,29 @@ export async function updateItem(id: string, data: Partial<Omit<Item, 'id'>>) {
   await journalUpdate('item', db.items, id, data)
 }
 
+/**
+ * The confirmation says this "will permanently remove the item and all its
+ * snapshots", and for a long time two of the places holding its id were left
+ * alone: a character's inventory went on listing it, falling through to
+ * `{item?.name ?? itemId}` and printing a raw nanoid on the Current State tab
+ * and nothing at all in History, and a scene's `involvedItemIds` kept it, where
+ * the continuity checker prints the same fallback into its findings.
+ *
+ * `deleteLocationMarker` has always nulled out the character snapshots naming
+ * the marker it removes; this is the same cascade over an array field. Both are
+ * `filter` scans because neither column is indexed, which is affordable for an
+ * action a writer takes by hand and confirms.
+ */
 export async function deleteItem(id: string) {
   await journalDelete('item', db.items, id, async () => {
     await db.items.delete(id)
     await db.itemPlacements.where('itemId').equals(id).delete()
     await db.itemSnapshots.where('itemId').equals(id).delete()
-  }, [db.itemPlacements, db.itemSnapshots])
+    await db.characterSnapshots
+      .filter((s) => s.inventoryItemIds.includes(id))
+      .modify((s) => { s.inventoryItemIds = s.inventoryItemIds.filter((i) => i !== id) })
+    await db.events
+      .filter((e) => e.involvedItemIds.includes(id))
+      .modify((e) => { e.involvedItemIds = e.involvedItemIds.filter((i) => i !== id) })
+  }, [db.itemPlacements, db.itemSnapshots, db.characterSnapshots, db.events])
 }

@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { X } from 'lucide-react'
 import { useCharacterSnapshots } from '@/db/hooks/useSnapshots'
 import { useAppStore } from '@/store'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import type { Character, LocationMarker } from '@/types'
 import type { WorldEvent, Chapter } from '@/types'
 
@@ -30,6 +31,13 @@ export function CharacterFilmStrip({
   onClose: () => void
 }) {
   const { setActiveEventId } = useAppStore()
+  const gate = useGate()
+  /*
+    A stop is a control for a writer and a label for a reader: its only effect
+    was moving the time cursor, which for a reader is their place in the book.
+    Rendered as a button only when pressing it does something.
+  */
+  const Stop = gate.active ? 'div' : 'button'
   const snapshots = useCharacterSnapshots(character.id)
 
   const stops = useMemo<FilmStripStop[]>(() => {
@@ -72,7 +80,14 @@ export function CharacterFilmStrip({
     // z-1050 sits above the detail panels (500) — the strip is a full-width bar
     // and shouldn't be clipped by one. Leaflet's bottom controls are lifted
     // clear of it by the [data-film-strip] rule in index.css rather than by z.
-    <div className="absolute bottom-0 inset-x-0 z-[1050] border-t border-[hsl(var(--border))] bg-[hsl(var(--card)/0.95)] backdrop-blur-sm">
+    // Named so it can be reached as a thing in its own right — it is a
+    // separate band of information from the panel beside it, and PAN-2 is about
+    // being able to keep one without the other.
+    <div
+      role="group"
+      aria-label={`${character.name}'s journey`}
+      className="absolute bottom-0 inset-x-0 z-[1050] border-t border-[hsl(var(--border))] bg-[hsl(var(--card)/0.95)] backdrop-blur-sm"
+    >
       <div className="flex items-center gap-2 px-3 py-1.5">
         {/* Label */}
         <div className="shrink-0 flex items-center gap-1.5">
@@ -92,8 +107,9 @@ export function CharacterFilmStrip({
               {idx > 0 && (
                 <div className="h-px w-6 shrink-0 bg-[hsl(var(--border))]" />
               )}
-              <button
-                onClick={() => setActiveEventId(stop.eventId)}
+              {/* A readout while reading — see HistoryTab for why. */}
+              <Stop
+                onClick={gate.active ? undefined : () => setActiveEventId(stop.eventId)}
                 title={`Ch.${stop.chapterNumber} — ${stop.chapterTitle}`}
                 className={`flex flex-col items-center rounded px-2 py-1 transition-colors ${
                   stop.isCurrentEvent
@@ -111,14 +127,23 @@ export function CharacterFilmStrip({
                 <span className="text-[8px] leading-tight text-[hsl(var(--muted-foreground))] whitespace-nowrap">
                   Ch.{stop.chapterNumber}
                 </span>
-              </button>
+              </Stop>
             </div>
           ))}
         </div>
 
-        {/* Close */}
+        {/*
+          Named, and named for what it does. It carried no accessible name at
+          all — an X and nothing else — and it used to clear the character
+          selection, so the one control that looked like "close the strip"
+          closed the panel with it (PAN-2). Deliberately not "Hide journey",
+          which is the panel's toggle: `getByRole` matches names by substring,
+          and two controls on screen at once whose names contain one another
+          make every unscoped lookup ambiguous.
+        */}
         <button
           onClick={onClose}
+          aria-label="Close journey strip"
           className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
         >
           <X className="h-3.5 w-3.5" />

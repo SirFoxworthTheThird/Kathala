@@ -71,8 +71,8 @@ export function GenerateLocationsDialog({ open, onOpenChange, worldId }: Props) 
       noun={['location', 'locations']}
       prompt={prompt}
       parse={(text) => {
-        const { locations, error } = parseLocationsSpec(text)
-        return error ? { error } : { data: locations }
+        const { locations, error, warning } = parseLocationsSpec(text)
+        return error ? { error } : { data: locations, warning }
       }}
       count={(nodes) => countLocations(nodes)}
       apply={(nodes) => addLocationsToWorld(worldId, nodes)}

@@ -142,6 +142,24 @@ describe('parseWorldSpec', () => {
     expect(parseWorldSpec('{"chapters":[]}').error).toMatch(/world\.name/)
     expect(parseWorldSpec('{"world":{"name":"W"}}').error).toMatch(/chapters/)
   })
+
+  it('accepts a spec the assistant wrapped in a markdown fence', () => {
+    const body = '{"world":{"name":"Fenced"},"chapters":[]}'
+    for (const text of [
+      '```json\n' + body + '\n```',
+      '```\n' + body + '\n```',
+      '\n  ```json\n' + body + '\n```  \n',
+    ]) {
+      const { spec, error } = parseWorldSpec(text)
+      expect(error).toBeUndefined()
+      expect(spec?.world.name).toBe('Fenced')
+    }
+  })
+
+  it('still rejects genuinely broken JSON, fenced or not', () => {
+    expect(parseWorldSpec('```json\n{"world": \n```').error).toMatch(/valid JSON/i)
+    expect(parseWorldSpec('here is your world!').error).toMatch(/valid JSON/i)
+  })
 })
 
 describe('worldSpecStats', () => {

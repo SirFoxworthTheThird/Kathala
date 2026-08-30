@@ -7,7 +7,6 @@ import { resetDB } from './helpers/reset'
 
 test.describe('@-mentions in the scene draft', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()
@@ -36,12 +35,14 @@ test.describe('@-mentions in the scene draft', () => {
     await expect(page).toHaveURL(/#\/worlds\/.+\/timeline\/.+/)
 
     const main = page.getByRole('main')
-    await main.getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill('The Departure')
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await main.getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill('The Departure')
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
 
     // Expand the event card via its title button (inside <main>).
-    await main.getByRole('button', { name: 'The Departure' }).click()
+    // Exact: the card's icon controls are named after the scene they act on,
+    // so a substring match on the title finds five buttons.
+    await main.getByRole('button', { name: 'The Departure', exact: true }).click()
     const draft = page.getByPlaceholder(/Write or paste this scene/)
     await expect(draft).toBeVisible()
     return draft

@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { X, Trash2, Map, Link, Upload, Users, Plus, UserMinus, Package, BookOpen, ChevronDown, Image as ImageIcon } from 'lucide-react'
+import { Link as RouterLink } from 'react-router-dom'
+import { X, Map, MapPin, Link, Upload, Users, Plus, UserMinus, Package, BookOpen, ChevronDown, Image as ImageIcon } from 'lucide-react'
+import { PanelHeader, PanelDangerFooter } from './PanelChrome'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Field, FieldName } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useLocationMarker, updateLocationMarker, deleteLocationMarker } from '@/db/hooks/useLocationMarkers'
@@ -25,12 +27,12 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { RelatedLoreSection } from '@/features/lore'
 import { useFactions } from '@/db/hooks/useFactions'
 import type { Item } from '@/types'
+import { ITEM_CONDITIONS, CONDITION_COLORS } from '@/lib/itemCondition'
+import { LOCATION_STATUSES } from '@/lib/locationStatus'
 
-const ITEM_CONDITIONS = ['intact', 'damaged', 'broken', 'lost', 'used', 'depleted']
-const CONDITION_COLORS: Record<string, string> = {
-  intact: '#34d399', damaged: '#fbbf24', broken: '#f87171',
-  lost: '#94a3b8', used: '#fb923c', depleted: '#94a3b8',
-}
+// The item conditions and their colours are canonical and shared — this file
+// used to keep its own list, writing the same field from a different
+// vocabulary, so an item marked "broken" here was invisible to every check.
 
 function LocationItemRow({ item, eventId, worldId, onRemove }: {
   item: Item
@@ -124,11 +126,13 @@ function LocationItemRow({ item, eventId, worldId, onRemove }: {
 interface LocationDetailPanelProps {
   markerId: string
   worldId: string
+  /** The moment the panel is showing, for the header (PAN-1). */
+  activeMomentLabel: string | null
   onClose: () => void
   onDrillDown: (mapLayerId: string) => void
 }
 
-export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }: LocationDetailPanelProps) {
+export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onClose, onDrillDown }: LocationDetailPanelProps) {
   const marker = useLocationMarker(markerId)
   const allLayers = useMapLayers(worldId)
   const characters = useCharacters(worldId)
@@ -247,12 +251,14 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
 
   return (
     <div className="flex h-full w-[85vw] max-w-sm shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl sm:w-72 sm:max-w-none">
-      <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-3">
-        <span className="text-sm font-semibold text-[hsl(var(--foreground))]">Location</span>
-        <Button variant="ghost" size="icon" className="pw-tap h-7 w-7" aria-label="Close location panel" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
+      <PanelHeader
+        icon={MapPin}
+        name={marker.name}
+        kind={marker.iconType || 'Location'}
+        moment={activeMomentLabel}
+        closeLabel="Close location panel"
+        onClose={onClose}
+      />
 
       <div className="flex-1 overflow-auto p-4 flex flex-col gap-4">
 
@@ -329,14 +335,12 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
         {/* Name / edit */}
         {editing ? (
           <>
-            <div className="flex flex-col gap-1.5">
-              <Label>Name</Label>
+            <Field label="Name" className="flex flex-col gap-1.5">
               <Input value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>Description</Label>
+            </Field>
+            <Field label="Description" className="flex flex-col gap-1.5">
               <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
-            </div>
+            </Field>
             <div className="flex gap-2">
               <Button size="sm" onClick={saveEdit} disabled={!name.trim()}>Save</Button>
               <Button size="sm" variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
@@ -344,31 +348,29 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
           </>
         ) : (
           <>
-            <div>
-              <h3 className="font-semibold text-[hsl(var(--foreground))]">{marker.name}</h3>
-              <p className="mt-0.5 text-xs capitalize text-[hsl(var(--muted-foreground))]">{marker.iconType}</p>
-              {marker.description && (
-                <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">{marker.description}</p>
-              )}
-            </div>
-            {!gate.active && <Button size="sm" variant="outline" onClick={startEdit}>Edit</Button>}
+            {/* Name and kind live in the header (LP-4) — the body carries what
+                the header cannot hold. */}
+            {marker.description && (
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">{marker.description}</p>
+            )}
+            {!gate.active && (
+              <Button size="sm" variant="outline" className="self-start" onClick={startEdit}>Edit</Button>
+            )}
           </>
         )}
 
         {/* ── Characters ── */}
         <div className="flex flex-col gap-2">
-          <Label className="flex items-center gap-1.5">
-            <Users className="h-3.5 w-3.5" /> Characters here
-          </Label>
+          <FieldName className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> Characters here</FieldName>
 
           {/* No chapter selected → prompt */}
           {!activeEventId && !gate.active && (
             <div className="rounded-md border border-dashed border-[hsl(var(--border))] p-3 flex flex-col gap-2">
               <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                Select an event to place characters, or create one now:
+                Select a scene to place characters, or create one now:
               </p>
               {chapters.length > 0 && (
-                <Select onValueChange={setActiveEventId}>
+                <Select onValueChange={setActiveEventId} value="">
                   <SelectTrigger className="text-xs h-8">
                     <SelectValue placeholder="Select chapter..." />
                   </SelectTrigger>
@@ -431,7 +433,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
           {/* Add a character */}
           {activeEventId && !gate.active && charsElsewhere.length > 0 && (
             addingChar ? (
-              <Select onValueChange={assignCharacter}>
+              <Select onValueChange={assignCharacter} value="">
                 <SelectTrigger className="text-xs h-8">
                   <SelectValue placeholder="Choose character..." />
                 </SelectTrigger>
@@ -455,10 +457,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
 
         {/* ── Items ── */}
         {activeEventId && (
-          <div className="flex flex-col gap-2">
-            <Label className="flex items-center gap-1.5">
-              <Package className="h-3.5 w-3.5" /> Items here
-            </Label>
+          <Field label={<><Package className="h-3.5 w-3.5" /> Items here</>} className="flex flex-col gap-2" labelClassName="flex items-center gap-1.5">
 
             {itemsHere.length > 0 && (
               <div className="flex flex-col gap-1">
@@ -493,7 +492,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
               const elsewhere = allItems.filter((i) => !hereIds.has(i.id) && (inInventory.has(i.id) || elsewhereIds.has(i.id)))
               if (allItems.length === 0) return <p className="text-xs italic text-[hsl(var(--muted-foreground))]">No items in this world yet.</p>
               return (
-                <Select onValueChange={(v) => placeItemAtLocation(worldId, v, activeEventId, markerId)}>
+                <Select onValueChange={(v) => placeItemAtLocation(worldId, v, activeEventId, markerId)} value="">
                   <SelectTrigger className="text-xs h-8">
                     <SelectValue placeholder="Place item here..." />
                   </SelectTrigger>
@@ -510,15 +509,13 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
                 </Select>
               )
             })()}
-          </div>
+          </Field>
         )}
 
         {/* ── Chapter State ── */}
         {activeEventId && (
           <div className="flex flex-col gap-2">
-            <Label className="flex items-center gap-1.5">
-              <BookOpen className="h-3.5 w-3.5" /> Chapter State
-            </Label>
+            <FieldName className="flex items-center gap-1.5"><BookOpen className="h-3.5 w-3.5" /> Chapter State</FieldName>
             {gate.active ? (
               <>
                 <p className="text-xs capitalize text-[hsl(var(--muted-foreground))]">
@@ -548,7 +545,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {['active', 'occupied', 'sieged', 'abandoned', 'ruined', 'destroyed', 'unknown'].map((s) => (
+                    {LOCATION_STATUSES.map((s) => (
                       <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
                     ))}
                   </SelectContent>
@@ -580,9 +577,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
             if (!owner) return null
             return (
               <div className="flex flex-col gap-1.5">
-                <Label className="flex items-center gap-1.5">
-                  <Users className="h-3.5 w-3.5" /> Controlling Faction
-                </Label>
+                <FieldName className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> Controlling Faction</FieldName>
                 <span className="flex items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))]">
                   <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: owner.color }} />
                   {owner.name}
@@ -591,14 +586,21 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
             )
           })()
         ) : (
-          <div className="flex flex-col gap-1.5">
-            <Label className="flex items-center gap-1.5">
-              <Users className="h-3.5 w-3.5" /> Controlling Faction
-            </Label>
+          <Field label={<><Users className="h-3.5 w-3.5" /> Controlling Faction</>} className="flex flex-col gap-1.5" labelClassName="flex items-center gap-1.5">
             {factions.length === 0 ? (
-              <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                No factions yet — create one in the Factions view.
-              </p>
+              /* LP-3: the copy named the screen and then left you to find it. */
+              <div className="flex flex-col items-start gap-1.5">
+                <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                  No factions yet — create one to say who holds this place.
+                </p>
+                <RouterLink
+                  to={`/worlds/${worldId}/factions`}
+                  className="pw-tap inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
+                >
+                  <Users className="h-3.5 w-3.5" aria-hidden="true" />
+                  Open Factions
+                </RouterLink>
+              </div>
             ) : (
               <Select
                 value={marker.factionId ?? 'none'}
@@ -619,7 +621,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
                 </SelectContent>
               </Select>
             )}
-          </div>
+          </Field>
         )}
 
         {/* ── Related Lore ── */}
@@ -627,10 +629,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
 
         {/* ── Sub-map ── */}
         {(!gate.active || marker.linkedMapLayerId) && (
-          <div className="flex flex-col gap-1.5">
-            <Label className="flex items-center gap-1.5">
-              <Link className="h-3.5 w-3.5" /> Sub-map
-            </Label>
+          <Field label={<><Link className="h-3.5 w-3.5" /> Sub-map</>} className="flex flex-col gap-1.5" labelClassName="flex items-center gap-1.5">
             {!gate.active && (
               <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setUploadSubMapOpen(true)}>
                 <Upload className="h-3.5 w-3.5" /> Upload Sub-map
@@ -654,7 +653,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
                 <Map className="h-3.5 w-3.5" /> Open Sub-map
               </Button>
             )}
-          </div>
+          </Field>
         )}
       </div>
 
@@ -670,11 +669,7 @@ export function LocationDetailPanel({ markerId, worldId, onClose, onDrillDown }:
       />
 
       {!gate.active && (
-        <div className="border-t border-[hsl(var(--border))] p-3">
-          <Button variant="destructive" size="sm" className="w-full gap-1.5" onClick={() => setConfirmOpen(true)}>
-            <Trash2 className="h-3.5 w-3.5" /> Delete Location
-          </Button>
-        </div>
+        <PanelDangerFooter label="Delete location" onClick={() => setConfirmOpen(true)} />
       )}
       <ConfirmDialog
         open={confirmOpen}

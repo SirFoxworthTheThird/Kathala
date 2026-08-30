@@ -26,3 +26,6 @@ test-results
 *.njsproj
 *.sln
 *.sw?
+
+# Composed by the release workflow; only ever a build artefact.
+RELEASE_BODY.md

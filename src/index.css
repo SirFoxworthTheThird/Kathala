@@ -24,12 +24,68 @@
     --input: 217 33% 22%;
     --ring: 212 72% 59%;
     --radius: 0.5rem;
+
+    /*
+      **Data colours follow the theme.**
+
+      The tension ramp, the scene-status pills and the cast colours were all
+      hardcoded — a fixed blue→red sweep, five Tailwind-ish hex values, and
+      full-spectrum character hues. So Noir, a deliberately monochrome theme,
+      drew a rainbow pacing curve and a cast in every colour of the wheel.
+      Every screen carrying data stopped being themed at the moment the data
+      appeared, which is most of why the themes read as skin-deep.
+
+      Each ramp is two hues and a fixed saturation and lightness. Holding S and
+      L constant is what keeps the promises: the status ink stays legible on
+      every step of every theme (worst case 5.67:1 at these values, and a theme
+      may only lower the saturation, which raises it), and a tension level reads
+      as the same *weight* whichever theme is on.
+    */
+    --tension-h-cool: 210;
+    --tension-h-hot: 0;
+    --tension-sat: 72%;
+    --tension-light: 52%;
+
+    --status-h-early: 220;
+    --status-h-late: 140;
+    --status-sat: 52%;
+    --status-light: 72%;
+    /* One dark ink for every pill, in every theme. See the note above. */
+    --status-ink: 220 20% 14%;
+
+    /*
+      The cast is the one ramp a theme may not mute into uniformity: a
+      character's colour is an identifier, and two characters the same shade is
+      a bug rather than a mood. Themes lower this floor to about 42% and no
+      further.
+    */
+    --cast-sat: 60%;
+    --cast-light: 55%;
+
+    /*
+      The face the **manuscript** is set in.
+      `ManuscriptView`, `SceneDraftEditor` and Focus mode all hardcoded
+      Tailwind's `font-serif`, so a theme dressed the app's chrome and stopped
+      at the page: sixteen themes, one generic serif for the writer's own
+      words, which is the surface they look at for hours.
+      Its own token rather than `--font-body`, because a theme may want a
+      reading face for prose and something else entirely for labels — and
+      because a writer who wants one steady face for their prose should be able
+      to have it while the chrome changes around them.
+    */
+    --font-prose: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
     --font-body: ui-sans-serif, system-ui, sans-serif;
     --font-heading: ui-sans-serif, system-ui, sans-serif;
     --canvas: 218 34% 9%;
-    --app-image: url('/background.png');
+    /* No backdrop illustration.
+       It was a large PW logo over a map, showing through at 8% behind every
+       screen: loudest on the empty ones, where it had more visual mass than the
+       message telling you what to do, and competing with content on the full
+       ones. Every named theme below already set this to none, so the default was
+       the only one still carrying it. */
+    --app-image: none;
     --theme-backdrop: radial-gradient(circle at 18% 12%, hsl(211 48% 22% / 0.5), transparent 34%), linear-gradient(145deg, hsl(222 47% 8%), hsl(215 38% 13%));
-    --theme-atmosphere: linear-gradient(115deg, transparent 0 48%, hsl(210 70% 65% / 0.025) 48% 49%, transparent 49% 100%);
+    --theme-atmosphere: none;
     --leaflet-bg: 222, 47%, 8%;
     --leaflet-card: 222, 47%, 22%;
     --leaflet-border: 217, 33%, 22%;
@@ -59,8 +115,13 @@
     --input: 42 24% 25%;
     --ring: 43 70% 58%;
     --radius: 0.25rem;
+    --tension-h-cool: 100;
+    --tension-h-hot: 30;
+    --status-h-early: 90;
+    --status-h-late: 43;
     --font-body: Georgia, 'Palatino Linotype', 'Book Antiqua', serif;
     --font-heading: Copperplate, 'Copperplate Gothic Light', 'Palatino Linotype', serif;
+    --font-prose: var(--font-body);
     --leaflet-bg: 42, 24%, 6%;
     --leaflet-card: 40, 22%, 19%;
     --leaflet-border: 42, 24%, 27%;
@@ -68,7 +129,7 @@
     --leaflet-muted: 40, 24%, 63%;
     --canvas: 42 31% 6%;
     --theme-backdrop: radial-gradient(circle at 78% 8%, hsl(43 72% 42% / 0.18), transparent 30%), radial-gradient(circle at 14% 80%, hsl(88 30% 24% / 0.2), transparent 35%), linear-gradient(145deg, hsl(42 28% 6%), hsl(35 26% 11%));
-    --theme-atmosphere: repeating-linear-gradient(45deg, transparent 0 23px, hsl(43 55% 65% / 0.018) 23px 24px), repeating-linear-gradient(-45deg, transparent 0 23px, hsl(89 35% 60% / 0.014) 23px 24px);
+    --theme-atmosphere: none;
   }
 
   /* ── Timeline overlay variables (Default) ── */
@@ -165,7 +226,11 @@
     --border: 196 43% 24%;
     --input: 196 43% 24%;
     --ring: 185 78% 57%;
-    --radius: 0.125rem;
+    --radius: 0.375rem;
+    --tension-h-cool: 195;
+    --tension-h-hot: 320;
+    --status-h-early: 200;
+    --status-h-late: 165;
     --font-body: 'Segoe UI', Arial, sans-serif;
     --font-heading: 'Arial Narrow', 'Segoe UI Semibold', sans-serif;
     --leaflet-bg: 222, 52%, 3%;
@@ -175,7 +240,7 @@
     --leaflet-muted: 203, 30%, 63%;
     --canvas: 222 60% 3%;
     --theme-backdrop: radial-gradient(circle at 72% 18%, hsl(187 70% 44% / 0.18), transparent 24%), radial-gradient(circle at 18% 76%, hsl(225 65% 30% / 0.22), transparent 36%), linear-gradient(145deg, hsl(226 58% 3%), hsl(216 47% 9%));
-    --theme-atmosphere: radial-gradient(circle at 18% 22%, white 0 1px, transparent 1.5px), radial-gradient(circle at 76% 68%, hsl(185 80% 80% / 0.7) 0 1px, transparent 1.5px), repeating-linear-gradient(90deg, transparent 0 79px, hsl(185 65% 60% / 0.025) 79px 80px), repeating-linear-gradient(0deg, transparent 0 79px, hsl(185 65% 60% / 0.025) 79px 80px);
+    --theme-atmosphere: none;
   }
 
   /* ── Cyberpunk (Neon Noir) ── */
@@ -200,6 +265,10 @@
     --input: 300 40% 26%;
     --ring: 304 90% 64%;
     --radius: 0rem;
+    --tension-h-cool: 185;
+    --tension-h-hot: 304;
+    --status-h-early: 190;
+    --status-h-late: 304;
     --font-body: 'Segoe UI', Arial, sans-serif;
     --font-heading: 'Arial Black', 'Segoe UI Black', sans-serif;
     --leaflet-bg: 266, 31%, 4%;
@@ -209,7 +278,7 @@
     --leaflet-muted: 275, 22%, 66%;
     --canvas: 266 38% 4%;
     --theme-backdrop: radial-gradient(circle at 84% 16%, hsl(304 88% 52% / 0.22), transparent 28%), radial-gradient(circle at 12% 82%, hsl(72 82% 50% / 0.1), transparent 28%), linear-gradient(145deg, hsl(267 38% 4%), hsl(250 31% 10%));
-    --theme-atmosphere: repeating-linear-gradient(90deg, transparent 0 39px, hsl(304 90% 65% / 0.035) 39px 40px), repeating-linear-gradient(0deg, transparent 0 39px, hsl(72 85% 65% / 0.025) 39px 40px), linear-gradient(115deg, transparent 0 73%, hsl(304 88% 58% / 0.045) 73% 73.5%, transparent 73.5% 100%);
+    --theme-atmosphere: none;
   }
 
   /* ── Horror (Blood & Shadow) ── */
@@ -234,8 +303,13 @@
     --input: 353 24% 22%;
     --ring: 354 63% 48%;
     --radius: 0rem;
+    --tension-h-cool: 20;
+    --tension-h-hot: 354;
+    --status-h-early: 30;
+    --status-h-late: 354;
     --font-body: Georgia, 'Times New Roman', serif;
     --font-heading: Baskerville, 'Palatino Linotype', Georgia, serif;
+    --font-prose: var(--font-body);
     --leaflet-bg: 350, 13%, 3%;
     --leaflet-card: 350, 11%, 15%;
     --leaflet-border: 353, 24%, 24%;
@@ -243,7 +317,7 @@
     --leaflet-muted: 25, 12%, 62%;
     --canvas: 350 18% 3%;
     --theme-backdrop: radial-gradient(circle at 50% 0%, hsl(354 48% 25% / 0.22), transparent 32%), linear-gradient(160deg, hsl(350 18% 3%), hsl(20 8% 7%));
-    --theme-atmosphere: radial-gradient(circle at 50% 0%, hsl(354 55% 35% / 0.035), transparent 38%), repeating-linear-gradient(96deg, transparent 0 91px, hsl(35 15% 75% / 0.024) 91px 92px, transparent 92px 137px);
+    --theme-atmosphere: radial-gradient(circle at 50% 0%, hsl(354 55% 35% / 0.035), transparent 38%);
   }
 
   /* ── Western (Dusty Frontier) ── */
@@ -267,9 +341,14 @@
     --border: 30 32% 26%;
     --input: 30 32% 26%;
     --ring: 34 70% 55%;
-    --radius: 0.125rem;
+    --radius: 0.1875rem;
+    --tension-h-cool: 45;
+    --tension-h-hot: 15;
+    --status-h-early: 48;
+    --status-h-late: 20;
     --font-body: 'Bookman Old Style', Georgia, serif;
     --font-heading: Rockwell, 'Courier New', serif;
+    --font-prose: var(--font-body);
     --leaflet-bg: 24, 34%, 5%;
     --leaflet-card: 27, 31%, 19%;
     --leaflet-border: 30, 32%, 28%;
@@ -277,7 +356,7 @@
     --leaflet-muted: 34, 25%, 63%;
     --canvas: 24 40% 5%;
     --theme-backdrop: radial-gradient(ellipse at 78% 10%, hsl(32 70% 46% / 0.24), transparent 32%), radial-gradient(ellipse at 20% 95%, hsl(13 50% 25% / 0.2), transparent 38%), linear-gradient(155deg, hsl(25 37% 6%), hsl(30 32% 12%));
-    --theme-atmosphere: repeating-linear-gradient(8deg, transparent 0 31px, hsl(35 45% 72% / 0.018) 31px 32px), repeating-linear-gradient(98deg, transparent 0 67px, hsl(15 28% 20% / 0.025) 67px 68px);
+    --theme-atmosphere: none;
   }
 
   /* ── Action (Gunmetal & Orange) ── */
@@ -301,7 +380,11 @@
     --border: 213 14% 25%;
     --input: 213 14% 25%;
     --ring: 24 95% 57%;
-    --radius: 0.125rem;
+    --radius: 0rem;
+    --tension-h-cool: 210;
+    --tension-h-hot: 24;
+    --status-h-early: 205;
+    --status-h-late: 24;
     --font-body: 'Segoe UI', Arial, sans-serif;
     --font-heading: Impact, 'Arial Black', 'Franklin Gothic Medium', sans-serif;
     --leaflet-bg: 214, 18%, 5%;
@@ -320,7 +403,7 @@
     --tl-backdrop:       none;
     --canvas: 214 22% 5%;
     --theme-backdrop: radial-gradient(circle at 88% 14%, hsl(24 95% 50% / 0.2), transparent 25%), linear-gradient(145deg, hsl(215 20% 5%), hsl(210 15% 12%));
-    --theme-atmosphere: repeating-linear-gradient(-45deg, transparent 0 14px, hsl(24 95% 58% / 0.025) 14px 15px), linear-gradient(110deg, transparent 0 70%, hsl(24 95% 55% / 0.04) 70% 71%, transparent 71% 100%);
+    --theme-atmosphere: none;
   }
 
   /* ── Noir (Moody Grayscale) ── */
@@ -345,8 +428,16 @@
     --input: 40 4% 24%;
     --ring: 3 48% 50%;
     --radius: 0rem;
+    --tension-h-cool: 45;
+    --tension-h-hot: 3;
+    --status-h-early: 45;
+    --status-h-late: 3;
+    --tension-sat: 34%;
+    --status-sat: 26%;
+    --cast-sat: 42%;
     --font-body: 'Courier New', Courier, monospace;
     --font-heading: Didot, Bodoni MT, Georgia, serif;
+    --font-prose: var(--font-body);
     --leaflet-bg: 45, 5%, 4%;
     --leaflet-card: 45, 4%, 18%;
     --leaflet-border: 40, 4%, 25%;
@@ -363,7 +454,8 @@
     --tl-backdrop:       none;
     --canvas: 45 6% 3%;
     --theme-backdrop: radial-gradient(circle at 72% 16%, hsl(45 10% 55% / 0.12), transparent 28%), linear-gradient(145deg, hsl(0 0% 3%), hsl(45 5% 9%));
-    --theme-atmosphere: repeating-linear-gradient(105deg, transparent 0 42px, hsl(45 18% 92% / 0.035) 42px 49px, transparent 49px 73px), radial-gradient(ellipse at center, transparent 55%, hsl(0 0% 0% / 0.24) 100%);
+    /* A vignette, and nothing ruled. See the note on the atmosphere layer. */
+    --theme-atmosphere: radial-gradient(ellipse at center, transparent 55%, hsl(0 0% 0% / 0.24) 100%);
   }
 
   /* ── Romance (Cream & Rose-Gold) ── */
@@ -388,8 +480,13 @@
     --input: 338 25% 27%;
     --ring: 344 55% 67%;
     --radius: 0.75rem;
+    --tension-h-cool: 280;
+    --tension-h-hot: 344;
+    --status-h-early: 285;
+    --status-h-late: 344;
     --font-body: Georgia, 'Palatino Linotype', 'Times New Roman', serif;
     --font-heading: Baskerville, 'Palatino Linotype', Georgia, serif;
+    --font-prose: var(--font-body);
     --leaflet-bg: 330, 20%, 5%;
     --leaflet-card: 332, 18%, 20%;
     --leaflet-border: 338, 25%, 29%;
@@ -406,8 +503,436 @@
     --tl-backdrop:       blur(8px) saturate(140%);
     --canvas: 330 24% 5%;
     --theme-backdrop: radial-gradient(circle at 20% 12%, hsl(345 55% 56% / 0.16), transparent 30%), radial-gradient(circle at 82% 82%, hsl(35 55% 56% / 0.1), transparent 34%), linear-gradient(145deg, hsl(330 24% 6%), hsl(342 20% 12%));
-    --theme-atmosphere: radial-gradient(ellipse at 24% 16%, hsl(345 58% 68% / 0.08), transparent 46%), repeating-radial-gradient(circle at 80% 10%, transparent 0 28px, hsl(35 38% 80% / 0.018) 29px 30px);
+    --theme-atmosphere: radial-gradient(ellipse at 24% 16%, hsl(345 58% 68% / 0.08), transparent 46%);
   }
+
+  /* ── Gothic (Candle & Cold Stone) ── */
+  .theme-gothic {
+    --background: 265 18% 7%;
+    --foreground: 270 14% 90%;
+    --card: 265 16% 12%;
+    --card-foreground: 270 14% 90%;
+    --popover: 265 18% 7%;
+    --popover-foreground: 270 14% 90%;
+    --primary: 270 14% 90%;
+    --primary-foreground: 265 18% 7%;
+    --secondary: 265 15% 17%;
+    --secondary-foreground: 270 14% 90%;
+    --muted: 265 14% 17%;
+    --muted-foreground: 268 14% 66%;
+    --accent: 268 18% 20%;
+    --accent-foreground: 270 14% 90%;
+    --destructive: 348 52% 38%;
+    --destructive-foreground: 340 30% 92%;
+    --border: 267 16% 25%;
+    --input: 267 16% 25%;
+    --ring: 344 44% 52%;
+    --radius: 0rem;
+    --tension-h-cool: 265;
+    --tension-h-hot: 344;
+    --status-h-early: 265;
+    --status-h-late: 344;
+    --tension-sat: 60%;
+    --status-sat: 44%;
+    --cast-sat: 50%;
+    --font-body: 'Hoefler Text', Garamond, 'Times New Roman', serif;
+    --font-heading: 'Big Caslon', 'Hoefler Text', Garamond, serif;
+    --font-prose: var(--font-body);
+    --leaflet-bg: 265, 20%, 5%;
+    --leaflet-card: 265, 16%, 17%;
+    --leaflet-border: 267, 16%, 27%;
+    --leaflet-fg: 270, 14%, 90%;
+    --leaflet-muted: 268, 14%, 66%;
+    --tl-bg:             hsl(265, 20%, 6%);
+    --tl-border:         hsl(267, 16%, 25%);
+    --tl-accent:         hsl(344, 44%, 52%);
+    --tl-glow:           rgba(196, 120, 146, 0.42);
+    --tl-text:           hsl(270, 14%, 90%);
+    --tl-text-muted:     hsl(268, 13%, 65%);
+    --tl-callout-bg:     hsl(265, 16%, 10%);
+    --tl-callout-shadow: 0 -12px 48px rgba(0,0,0,0.85), 0 0 0 1px hsl(267,16%,25%);
+    --tl-backdrop:       none;
+    --canvas: 265 22% 4%;
+    /* Candle at a high window, and the cold of the room away from it. */
+    --theme-backdrop: radial-gradient(ellipse at 76% 6%, hsl(38 60% 55% / 0.13), transparent 30%), radial-gradient(ellipse at 12% 88%, hsl(268 40% 30% / 0.22), transparent 38%), linear-gradient(160deg, hsl(268 24% 4%), hsl(263 18% 10%));
+    --theme-atmosphere: none;
+  }
+
+  /* ── Mystery (Gaslight & Foolscap) ── */
+  .theme-mystery {
+    --background: 214 30% 8%;
+    --foreground: 40 24% 91%;
+    --card: 213 26% 13%;
+    --card-foreground: 40 24% 91%;
+    --popover: 214 30% 8%;
+    --popover-foreground: 40 24% 91%;
+    --primary: 40 24% 91%;
+    --primary-foreground: 214 30% 8%;
+    --secondary: 213 24% 18%;
+    --secondary-foreground: 40 24% 91%;
+    --muted: 213 22% 18%;
+    --muted-foreground: 40 18% 66%;
+    --accent: 212 26% 21%;
+    --accent-foreground: 40 24% 91%;
+    --destructive: 2 58% 40%;
+    --destructive-foreground: 30 40% 92%;
+    --border: 212 24% 26%;
+    --input: 212 24% 26%;
+    --ring: 40 68% 55%;
+    --radius: 0.0625rem;
+    --tension-h-cool: 210;
+    --tension-h-hot: 40;
+    --status-h-early: 215;
+    --status-h-late: 40;
+    --font-body: Cambria, 'Sitka Text', Georgia, serif;
+    --font-heading: Perpetua, 'Perpetua Titling MT', 'Times New Roman', serif;
+    --font-prose: var(--font-body);
+    --leaflet-bg: 214, 32%, 5%;
+    --leaflet-card: 213, 26%, 18%;
+    --leaflet-border: 212, 24%, 28%;
+    --leaflet-fg: 40, 24%, 91%;
+    --leaflet-muted: 40, 18%, 66%;
+    --tl-bg:             hsl(214, 32%, 7%);
+    --tl-border:         hsl(212, 24%, 26%);
+    --tl-accent:         hsl(40, 68%, 55%);
+    --tl-glow:           rgba(214, 168, 78, 0.45);
+    --tl-text:           hsl(40, 24%, 91%);
+    --tl-text-muted:     hsl(40, 16%, 65%);
+    --tl-callout-bg:     hsl(213, 26%, 11%);
+    --tl-callout-shadow: 0 -12px 48px rgba(0,0,0,0.85), 0 0 0 1px hsl(212,24%,26%);
+    --tl-backdrop:       none;
+    --canvas: 214 34% 5%;
+    /* A lamp at the kerb, and fog taking the rest of the street. */
+    --theme-backdrop: radial-gradient(circle at 22% 14%, hsl(40 70% 55% / 0.16), transparent 26%), radial-gradient(ellipse at 82% 92%, hsl(212 40% 32% / 0.22), transparent 40%), linear-gradient(150deg, hsl(215 34% 5%), hsl(212 26% 11%));
+    --theme-atmosphere: none;
+  }
+
+  /* ── Mythic (Bronze & Aegean) ── */
+  .theme-mythic {
+    --background: 196 34% 7%;
+    --foreground: 42 30% 91%;
+    --card: 195 28% 12%;
+    --card-foreground: 42 30% 91%;
+    --popover: 196 34% 7%;
+    --popover-foreground: 42 30% 91%;
+    --primary: 42 30% 91%;
+    --primary-foreground: 196 34% 7%;
+    --secondary: 195 26% 17%;
+    --secondary-foreground: 42 30% 91%;
+    --muted: 195 24% 17%;
+    --muted-foreground: 40 20% 67%;
+    --accent: 194 28% 20%;
+    --accent-foreground: 42 30% 91%;
+    --destructive: 8 56% 40%;
+    --destructive-foreground: 35 40% 92%;
+    --border: 194 26% 25%;
+    --input: 194 26% 25%;
+    --ring: 32 62% 52%;
+    --radius: 0.25rem;
+    --tension-h-cool: 196;
+    --tension-h-hot: 32;
+    --status-h-early: 196;
+    --status-h-late: 32;
+    --font-body: Optima, Candara, 'Gill Sans MT', sans-serif;
+    --font-heading: 'Trajan Pro', Optima, 'Gill Sans MT', serif;
+    --leaflet-bg: 196, 36%, 5%;
+    --leaflet-card: 195, 28%, 17%;
+    --leaflet-border: 194, 26%, 27%;
+    --leaflet-fg: 42, 30%, 91%;
+    --leaflet-muted: 40, 20%, 67%;
+    --tl-bg:             hsl(196, 36%, 6%);
+    --tl-border:         hsl(194, 26%, 25%);
+    --tl-accent:         hsl(32, 62%, 52%);
+    --tl-glow:           rgba(198, 133, 63, 0.45);
+    --tl-text:           hsl(42, 30%, 91%);
+    --tl-text-muted:     hsl(40, 18%, 66%);
+    --tl-callout-bg:     hsl(195, 28%, 10%);
+    --tl-callout-shadow: 0 -12px 48px rgba(0,0,0,0.85), 0 0 0 1px hsl(194,26%,25%);
+    --tl-backdrop:       none;
+    --canvas: 196 38% 4%;
+    /* Sun off the water, and the deep away from it. */
+    --theme-backdrop: radial-gradient(ellipse at 84% 10%, hsl(38 78% 58% / 0.16), transparent 30%), radial-gradient(ellipse at 10% 84%, hsl(196 60% 26% / 0.26), transparent 40%), linear-gradient(150deg, hsl(198 40% 4%), hsl(194 30% 11%));
+    --theme-atmosphere: none;
+  }
+
+  /* ── Adventure (Brass & Sea Green) ── */
+  .theme-adventure {
+    --background: 168 26% 7%;
+    --foreground: 40 32% 90%;
+    --card: 168 22% 12%;
+    --card-foreground: 40 32% 90%;
+    --popover: 168 26% 7%;
+    --popover-foreground: 40 32% 90%;
+    --primary: 40 32% 90%;
+    --primary-foreground: 168 26% 7%;
+    --secondary: 168 20% 17%;
+    --secondary-foreground: 40 32% 90%;
+    --muted: 168 18% 17%;
+    --muted-foreground: 38 22% 66%;
+    --accent: 167 22% 20%;
+    --accent-foreground: 40 32% 90%;
+    --destructive: 6 56% 40%;
+    --destructive-foreground: 35 42% 92%;
+    --border: 167 20% 25%;
+    --input: 167 20% 25%;
+    --ring: 36 66% 54%;
+    --radius: 0.1875rem;
+    --tension-h-cool: 168;
+    --tension-h-hot: 36;
+    --status-h-early: 170;
+    --status-h-late: 36;
+    --font-body: 'Iowan Old Style', Cochin, Georgia, serif;
+    --font-heading: 'Goudy Old Style', 'Bookman Old Style', Palatino, serif;
+    --font-prose: var(--font-body);
+    --leaflet-bg: 168, 28%, 5%;
+    --leaflet-card: 168, 22%, 17%;
+    --leaflet-border: 167, 20%, 27%;
+    --leaflet-fg: 40, 32%, 90%;
+    --leaflet-muted: 38, 22%, 66%;
+    --tl-bg:             hsl(168, 28%, 6%);
+    --tl-border:         hsl(167, 20%, 25%);
+    --tl-accent:         hsl(36, 66%, 54%);
+    --tl-glow:           rgba(212, 152, 62, 0.45);
+    --tl-text:           hsl(40, 32%, 90%);
+    --tl-text-muted:     hsl(38, 20%, 65%);
+    --tl-callout-bg:     hsl(168, 22%, 10%);
+    --tl-callout-shadow: 0 -12px 48px rgba(0,0,0,0.85), 0 0 0 1px hsl(167,20%,25%);
+    --tl-backdrop:       none;
+    --canvas: 168 30% 4%;
+    /* Lamplight on a chart, and open water past the edge of it. */
+    --theme-backdrop: radial-gradient(ellipse at 20% 12%, hsl(38 74% 56% / 0.15), transparent 28%), radial-gradient(ellipse at 86% 88%, hsl(168 50% 24% / 0.24), transparent 40%), linear-gradient(150deg, hsl(170 32% 4%), hsl(166 24% 11%));
+    --theme-atmosphere: none;
+  }
+
+  /* ── Dystopian (Ash & Rust) ── */
+  .theme-dystopian {
+    --background: 90 8% 7%;
+    --foreground: 80 8% 88%;
+    --card: 90 7% 12%;
+    --card-foreground: 80 8% 88%;
+    --popover: 90 8% 7%;
+    --popover-foreground: 80 8% 88%;
+    --primary: 80 8% 88%;
+    --primary-foreground: 90 8% 7%;
+    --secondary: 90 7% 17%;
+    --secondary-foreground: 80 8% 88%;
+    --muted: 90 6% 17%;
+    --muted-foreground: 85 8% 65%;
+    --accent: 88 8% 19%;
+    --accent-foreground: 80 8% 88%;
+    --destructive: 12 58% 40%;
+    --destructive-foreground: 20 30% 92%;
+    --border: 88 9% 25%;
+    --input: 88 9% 25%;
+    --ring: 16 58% 48%;
+    --radius: 0rem;
+    --tension-h-cool: 80;
+    --tension-h-hot: 20;
+    --status-h-early: 85;
+    --status-h-late: 30;
+    --tension-sat: 58%;
+    --status-sat: 38%;
+    --cast-sat: 45%;
+    --font-body: Consolas, 'Lucida Console', monospace;
+    --font-heading: 'Franklin Gothic Medium', Haettenschweiler, Tahoma, sans-serif;
+    --font-prose: var(--font-body);
+    --leaflet-bg: 90, 9%, 5%;
+    --leaflet-card: 90, 7%, 17%;
+    --leaflet-border: 88, 9%, 27%;
+    --leaflet-fg: 80, 8%, 88%;
+    --leaflet-muted: 85, 8%, 65%;
+    --tl-bg:             hsl(90, 9%, 6%);
+    --tl-border:         hsl(88, 9%, 25%);
+    --tl-accent:         hsl(16, 58%, 48%);
+    --tl-glow:           rgba(186, 96, 56, 0.42);
+    --tl-text:           hsl(80, 8%, 88%);
+    --tl-text-muted:     hsl(85, 7%, 64%);
+    --tl-callout-bg:     hsl(90, 7%, 10%);
+    --tl-callout-shadow: 0 -12px 48px rgba(0,0,0,0.9), 0 0 0 1px hsl(88,9%,25%);
+    --tl-backdrop:       none;
+    --canvas: 90 10% 4%;
+    /* Sodium light through smoke, and rust where the water has run. */
+    --theme-backdrop: radial-gradient(ellipse at 80% 8%, hsl(38 45% 45% / 0.12), transparent 30%), radial-gradient(ellipse at 14% 88%, hsl(16 40% 26% / 0.2), transparent 38%), linear-gradient(155deg, hsl(90 10% 4%), hsl(88 8% 10%));
+    --theme-atmosphere: none;
+  }
+
+  /* ── Historical (Ink & Parchment) ── */
+  .theme-historical {
+    --background: 32 14% 8%;
+    --foreground: 38 26% 89%;
+    --card: 30 12% 13%;
+    --card-foreground: 38 26% 89%;
+    --popover: 32 14% 8%;
+    --popover-foreground: 38 26% 89%;
+    --primary: 38 26% 89%;
+    --primary-foreground: 32 14% 8%;
+    --secondary: 31 12% 18%;
+    --secondary-foreground: 38 26% 89%;
+    --muted: 31 11% 18%;
+    --muted-foreground: 34 16% 66%;
+    --accent: 30 14% 20%;
+    --accent-foreground: 38 26% 89%;
+    --destructive: 355 50% 38%;
+    --destructive-foreground: 30 35% 92%;
+    --border: 32 14% 26%;
+    --input: 32 14% 26%;
+    --ring: 350 42% 44%;
+    --radius: 0.0625rem;
+    --tension-h-cool: 32;
+    --tension-h-hot: 350;
+    --status-h-early: 35;
+    --status-h-late: 350;
+    --tension-sat: 58%;
+    --status-sat: 42%;
+    --cast-sat: 48%;
+    --font-body: 'Book Antiqua', Palatino, Georgia, serif;
+    --font-heading: Garamond, 'Adobe Garamond Pro', 'Times New Roman', serif;
+    --font-prose: var(--font-body);
+    --leaflet-bg: 32, 16%, 5%;
+    --leaflet-card: 30, 12%, 18%;
+    --leaflet-border: 32, 14%, 28%;
+    --leaflet-fg: 38, 26%, 89%;
+    --leaflet-muted: 34, 16%, 66%;
+    --tl-bg:             hsl(32, 16%, 7%);
+    --tl-border:         hsl(32, 14%, 26%);
+    --tl-accent:         hsl(350, 42%, 44%);
+    --tl-glow:           rgba(164, 78, 92, 0.4);
+    --tl-text:           hsl(38, 26%, 89%);
+    --tl-text-muted:     hsl(34, 15%, 65%);
+    --tl-callout-bg:     hsl(30, 12%, 11%);
+    --tl-callout-shadow: 0 -12px 48px rgba(0,0,0,0.85), 0 0 0 1px hsl(32,14%,26%);
+    --tl-backdrop:       none;
+    --canvas: 32 18% 5%;
+    /* Candle on paper, and the oxblood of a binding in the dark. */
+    --theme-backdrop: radial-gradient(ellipse at 24% 10%, hsl(40 55% 52% / 0.14), transparent 30%), radial-gradient(ellipse at 84% 86%, hsl(350 40% 26% / 0.2), transparent 38%), linear-gradient(150deg, hsl(30 18% 5%), hsl(32 14% 11%));
+    --theme-atmosphere: none;
+  }
+
+  /* ── Cosy (Moss & Cream) ── */
+  .theme-cosy {
+    --background: 140 14% 8%;
+    --foreground: 45 30% 91%;
+    --card: 138 12% 13%;
+    --card-foreground: 45 30% 91%;
+    --popover: 140 14% 8%;
+    --popover-foreground: 45 30% 91%;
+    --primary: 45 30% 91%;
+    --primary-foreground: 140 14% 8%;
+    --secondary: 139 12% 18%;
+    --secondary-foreground: 45 30% 91%;
+    --muted: 139 11% 18%;
+    --muted-foreground: 45 16% 67%;
+    --accent: 140 12% 20%;
+    --accent-foreground: 45 30% 91%;
+    --destructive: 4 48% 42%;
+    --destructive-foreground: 30 35% 92%;
+    --border: 140 12% 26%;
+    --input: 140 12% 26%;
+    --ring: 58 42% 54%;
+    --radius: 0.625rem;
+    --tension-h-cool: 140;
+    --tension-h-hot: 58;
+    --status-h-early: 145;
+    --status-h-late: 58;
+    --tension-sat: 56%;
+    --status-sat: 42%;
+    --cast-sat: 50%;
+    --font-body: Verdana, 'Segoe UI', Tahoma, sans-serif;
+    --font-heading: 'Century Gothic', 'URW Gothic', 'Trebuchet MS', sans-serif;
+    --leaflet-bg: 140, 16%, 5%;
+    --leaflet-card: 138, 12%, 18%;
+    --leaflet-border: 140, 12%, 28%;
+    --leaflet-fg: 45, 30%, 91%;
+    --leaflet-muted: 45, 16%, 67%;
+    --tl-bg:             hsl(140, 16%, 7%);
+    --tl-border:         hsl(140, 12%, 26%);
+    --tl-accent:         hsl(58, 42%, 54%);
+    --tl-glow:           rgba(186, 184, 92, 0.4);
+    --tl-text:           hsl(45, 30%, 91%);
+    --tl-text-muted:     hsl(45, 15%, 66%);
+    --tl-callout-bg:     hsl(138, 12%, 11%);
+    --tl-callout-shadow: 0 -12px 48px rgba(0,0,0,0.8), 0 0 0 1px hsl(140,12%,26%);
+    --tl-backdrop:       none;
+    --canvas: 140 18% 5%;
+    /* Lamp in a window and a garden going dark behind it. The only theme
+       whose corners are round: everything else here is a blade or a book. */
+    --theme-backdrop: radial-gradient(ellipse at 18% 14%, hsl(45 60% 55% / 0.14), transparent 30%), radial-gradient(ellipse at 84% 84%, hsl(140 35% 24% / 0.2), transparent 38%), linear-gradient(150deg, hsl(142 18% 5%), hsl(138 13% 11%));
+    --theme-atmosphere: none;
+  }
+
+  /* ── Paper (Light) ── */
+  /*
+    The one light theme, and the only one that inverts the app.
+
+    Sixteen themes were dark, and `AppPreferences` had declared
+    `theme: 'dark' | 'light'` with a `preferences` table that nothing ever read
+    — an intention with no implementation behind it. This is that intention as
+    a theme rather than a second mode, because themes are already how this app
+    changes its appearance and a parallel switch would mean every palette twice.
+
+    **Its data ramps are inverted, not inherited.** The pills and the cast are
+    tuned for a dark ground everywhere else: on paper the pills would be pale
+    marks on a pale card, and a cast at 55% lightness reads at 1.6:1 against
+    white. So Paper darkens both and flips the pill ink, which the per-theme
+    tokens already allowed for.
+  */
+  .theme-paper {
+    --background: 40 30% 96%;
+    --foreground: 30 14% 15%;
+    --card: 40 40% 99%;
+    --card-foreground: 30 14% 15%;
+    --popover: 40 40% 99%;
+    --popover-foreground: 30 14% 15%;
+    --primary: 30 14% 15%;
+    --primary-foreground: 40 40% 99%;
+    --secondary: 40 22% 91%;
+    --secondary-foreground: 30 14% 15%;
+    --muted: 40 20% 92%;
+    --muted-foreground: 30 10% 40%;
+    --accent: 40 26% 90%;
+    --accent-foreground: 30 14% 15%;
+    --destructive: 0 62% 42%;
+    --destructive-foreground: 40 40% 99%;
+    --border: 38 18% 84%;
+    --input: 38 18% 84%;
+    --ring: 214 58% 44%;
+    --radius: 0.25rem;
+    --tension-h-cool: 210;
+    --tension-h-hot: 0;
+    --tension-sat: 72%;
+    /* Dark enough to read as a mark on white; the dark themes sit at 52%. */
+    --tension-light: 34%;
+    --status-h-early: 220;
+    --status-h-late: 140;
+    --status-sat: 52%;
+    --status-light: 28%;
+    /* The ink flips with the pills: near-white on a dark pill. */
+    --status-ink: 40 40% 97%;
+    --cast-sat: 58%;
+    --cast-light: 35%;
+    --font-body: Charter, 'Bitstream Charter', Georgia, serif;
+    --font-heading: 'Palatino Linotype', Palatino, Georgia, serif;
+    --font-prose: var(--font-body);
+    --leaflet-bg: 40, 26%, 92%;
+    --leaflet-card: 40, 40%, 99%;
+    --leaflet-border: 38, 18%, 82%;
+    --leaflet-fg: 30, 14%, 15%;
+    --leaflet-muted: 30, 10%, 40%;
+    --tl-bg:             hsl(40, 26%, 93%);
+    --tl-border:         hsl(38, 18%, 82%);
+    --tl-accent:         hsl(214, 58%, 44%);
+    --tl-glow:           rgba(38, 90, 160, 0.35);
+    --tl-text:           hsl(30, 14%, 15%);
+    --tl-text-muted:     hsl(30, 10%, 40%);
+    --tl-callout-bg:     hsl(40, 40%, 98%);
+    --tl-callout-shadow: 0 -12px 48px rgba(60,50,35,0.16), 0 0 0 1px hsl(38,18%,82%);
+    --tl-backdrop:       none;
+    --canvas: 40 34% 93%;
+    /* Daylight off the page, not a glow in the dark. */
+    --theme-backdrop: radial-gradient(ellipse at 22% 8%, hsl(45 70% 88% / 0.7), transparent 34%), radial-gradient(ellipse at 86% 90%, hsl(35 40% 86% / 0.6), transparent 38%), linear-gradient(150deg, hsl(42 34% 97%), hsl(38 26% 93%));
+    --theme-atmosphere: none;
+  }
+
 
   .theme-fantasy,
   .theme-scifi,
@@ -416,8 +941,34 @@
   .theme-western,
   .theme-action,
   .theme-noir,
-  .theme-romance {
+  .theme-romance,
+  .theme-gothic,
+  .theme-mystery,
+  .theme-mythic,
+  .theme-adventure,
+  .theme-dystopian,
+  .theme-historical,
+  .theme-cosy,
+  .theme-paper {
     --app-image: none;
+  }
+
+
+  /*
+    The five steps of each ramp, derived from the two hues its theme supplies.
+    Written once here rather than five times in sixteen themes.
+  */
+  :root {
+    --tension-1: hsl(calc(var(--tension-h-cool) + (var(--tension-h-hot) - var(--tension-h-cool)) * 0.0) var(--tension-sat) var(--tension-light));
+    --tension-2: hsl(calc(var(--tension-h-cool) + (var(--tension-h-hot) - var(--tension-h-cool)) * 0.25) var(--tension-sat) var(--tension-light));
+    --tension-3: hsl(calc(var(--tension-h-cool) + (var(--tension-h-hot) - var(--tension-h-cool)) * 0.5) var(--tension-sat) var(--tension-light));
+    --tension-4: hsl(calc(var(--tension-h-cool) + (var(--tension-h-hot) - var(--tension-h-cool)) * 0.75) var(--tension-sat) var(--tension-light));
+    --tension-5: hsl(calc(var(--tension-h-cool) + (var(--tension-h-hot) - var(--tension-h-cool)) * 1.0) var(--tension-sat) var(--tension-light));
+    --status-1: hsl(calc(var(--status-h-early) + (var(--status-h-late) - var(--status-h-early)) * 0.0) var(--status-sat) var(--status-light));
+    --status-2: hsl(calc(var(--status-h-early) + (var(--status-h-late) - var(--status-h-early)) * 0.25) var(--status-sat) var(--status-light));
+    --status-3: hsl(calc(var(--status-h-early) + (var(--status-h-late) - var(--status-h-early)) * 0.5) var(--status-sat) var(--status-light));
+    --status-4: hsl(calc(var(--status-h-early) + (var(--status-h-late) - var(--status-h-early)) * 0.75) var(--status-sat) var(--status-light));
+    --status-5: hsl(calc(var(--status-h-early) + (var(--status-h-late) - var(--status-h-early)) * 1.0) var(--status-sat) var(--status-light));
   }
 
   * {
@@ -444,13 +995,37 @@
     transition: background-color 180ms ease, color 180ms ease;
   }
 
+  /*
+    The theme's texture — grain, hatching, a grid — sits *behind* the app.
+
+    It used to be `z-index: 9999`, which is the value dialogs use, so it won a
+    tie on document order and painted over cards, dialogs and their text.
+    Noir's film scratches ran straight across the words of a modal. What is
+    meant to be a whisper behind the furniture was in front of all of it.
+
+    Zero here, and a stacking context on `#root` above it: the layer stays over
+    the page's own background and under everything the app draws.
+  */
+  /*
+    **Nothing in this layer is ruled.** Every theme carried hatching, a grid or
+    a band at some point — a cyberpunk grid, a fantasy cross-hatch, noir's
+    light-leak bands, laid-paper chain lines for mystery. They were removed on
+    the plain ground that they did not look good: at the opacity that keeps
+    them subtle they read as moiré or as damage to the screen, and at any
+    opacity where they read as *intent* they compete with the app.
+
+    What is left is soft radial wash — horror's glow at the top, romance's, and
+    noir's vignette — plus each theme's `--theme-backdrop`, which is where the
+    colour character actually lives. A straight line has no business in a
+    layer whose whole job is to be unnoticed.
+  */
   body::after {
     content: '';
     position: fixed;
     inset: 0;
     background: var(--theme-atmosphere);
     pointer-events: none;
-    z-index: 9999;
+    z-index: 0;
   }
 
   h1,
@@ -469,6 +1044,11 @@
     height: 100vh;
     display: flex;
     flex-direction: column;
+    /* Above the atmosphere layer. Everything the app draws lives in here, so
+       one stacking context puts all of it over the texture without touching a
+       single component's own z-index. */
+    position: relative;
+    z-index: 1;
   }
 }
 
@@ -575,6 +1155,23 @@
 .theme-noir    .tl-dot-active { animation: tl-pulse 4s ease-in-out infinite; }
 .theme-romance .tl-dot-active { animation: tl-pulse 3s ease-in-out infinite; }
 
+/* ── Pulse rhythm for the themes added after the first nine ── */
+/*
+  A theme's tempo. Action races, Noir barely moves; the eight added since sat on
+  the 2.4s default whatever they were meant to feel like. Dystopian takes the
+  harder-edged keyframes rather than a slower speed — the difference is a snap
+  rather than a breath, which is the register.
+*/
+.theme-gothic     .tl-dot-active { animation: tl-pulse 3.6s ease-in-out infinite; }
+.theme-mystery    .tl-dot-active { animation: tl-pulse 2.8s ease-in-out infinite; }
+.theme-mythic     .tl-dot-active { animation: tl-pulse 3.2s ease-in-out infinite; }
+.theme-adventure  .tl-dot-active { animation: tl-pulse 2s ease-in-out infinite; }
+.theme-dystopian  .tl-dot-active { animation: tl-pulse-cyber 2.8s ease-in-out infinite; }
+.theme-historical .tl-dot-active { animation: tl-pulse 3.4s ease-in-out infinite; }
+.theme-cosy       .tl-dot-active { animation: tl-pulse 3.6s ease-in-out infinite; }
+.theme-paper      .tl-dot-active { animation: tl-pulse 3s ease-in-out infinite; }
+
+
 /* ── Cyberpunk neon glow accents ── */
 .theme-cyberpunk .leaflet-popup-content-wrapper {
   box-shadow: 0 0 14px hsl(304 88% 50% / 0.55), 0 4px 18px rgba(0,0,0,0.82);
@@ -661,15 +1258,97 @@
   letter-spacing: 0.03em;
 }
 
+/* ── Heading treatment for the themes added after the first nine ── */
+/*
+  The original nine each set tracking, weight and sometimes a shadow on their
+  headings; the eight added since inherited the face and nothing else, which is
+  why they read as flatter than the themes they sit beside in the picker.
+
+  No `text-transform` anywhere. Inscriptional caps were the obvious move for
+  Mythic and institutional caps for Dystopian, and both would shout a world's
+  own name back at whoever typed it — headings here carry proper nouns.
+*/
+.theme-gothic h1,
+.theme-gothic h2,
+.theme-gothic h3 {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  /* A candle behind the letter, not a glow around it. */
+  text-shadow: 0 1px 14px hsl(344 44% 52% / 0.10);
+}
+
+.theme-mystery h1,
+.theme-mystery h2,
+.theme-mystery h3 {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.theme-mythic h1,
+.theme-mythic h2,
+.theme-mythic h3 {
+  /* Wide and light, the way a thing cut into stone is spaced. */
+  font-weight: 500;
+  letter-spacing: 0.1em;
+}
+
+.theme-adventure h1,
+.theme-adventure h2,
+.theme-adventure h3 {
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.theme-dystopian h1,
+.theme-dystopian h2,
+.theme-dystopian h3 {
+  font-weight: 600;
+  letter-spacing: 0.12em;
+}
+
+.theme-historical h1,
+.theme-historical h2,
+.theme-historical h3 {
+  font-weight: 600;
+  letter-spacing: 0.015em;
+}
+
+.theme-cosy h1,
+.theme-cosy h2,
+.theme-cosy h3 {
+  font-weight: 600;
+  letter-spacing: 0.005em;
+}
+
+.theme-paper h1,
+.theme-paper h2,
+.theme-paper h3 {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+
 @media (prefers-reduced-motion: reduce) {
   body {
     transition: none;
   }
 
-  .tl-dot-active,
-  .theme-cyberpunk .tl-dot-active,
-  .theme-action .tl-dot-active {
-    animation: none;
+  /*
+    `!important` on purpose, and it is the point rather than a shortcut.
+
+    This was a hand-written list of theme selectors — the bare class, cyberpunk
+    and action — and a per-theme override like `.theme-noir .tl-dot-active`
+    outweighs a bare `.tl-dot-active` on specificity. Noir and Romance had
+    already been left animating for anyone who asked for less motion, silently,
+    because the list was never updated when their rhythms were added. Eight
+    more themes would have made it ten.
+
+    A stop that cannot fall behind is worth more here than one that reads
+    tidily: a request for reduced motion is not a thing to lose to a
+    stylesheet's ordering.
+  */
+  .tl-dot-active {
+    animation: none !important;
   }
 }
 
@@ -703,6 +1382,26 @@
     opacity: 1 !important;
   }
 
+  /* ── HB-2d: and tappable, since they are showing ────────────────────────────
+     The rule above lifts the *opacity* half of a hover reveal and left the
+     `pointer-events` half in place, so on a phone these controls were drawn at
+     full strength and took no taps — a button indistinguishable from a working
+     one that ignores you. Measured on the world card: `opacity: 1`,
+     `pointer-events: none`, and a tap leaves the world where it was.
+
+     It looked like it might be deliberate — "no deleting from a list on touch",
+     with the gate on the delete alone so Export beside it still worked. It was
+     not: `deleteWorld` is called from exactly one place in the app, and that is
+     this control. So a world could not be deleted on a phone at all, and the
+     same holds for a lore category, a saved scene version and a cadence entry.
+
+     Visible therefore implies tappable. The invisible-and-live shape LORE-1
+     measured is a *hover* device's problem, and there the gate is untouched: no
+     hover, no reveal, no pointer events. */
+  [class~="pointer-events-none"][class*="group-hover:pointer-events-"] {
+    pointer-events: auto !important;
+  }
+
   /* ── Comfortable touch targets ──────────────────────────────────────────────
      Compact icon buttons (~32px) are hard to hit on touch. `.pw-tap` overlays a
      transparent, centred ≥44px hit area via ::after — enlarging the tappable
@@ -718,4 +1417,87 @@
     width: 44px;
     transform: translate(-50%, -50%);
   }
+
+  /* ── HB-2c: the same idea, bounded to a dense row ───────────────────────────
+     The timeline's scene checkbox is the smallest target in the app — 12px —
+     but it sits in a list whose rows are 40px apart, so `.pw-tap` above would
+     overlap its neighbour by 4px and a tap in that band would select the wrong
+     scene. That is worse than a small target, which is what the warning on
+     `.pw-tap` is about.
+
+     24x36 is what the row actually has to give: as wide as the `w-6` gutter the
+     checkbox sits in, and 4px shorter than the pitch, so neighbouring overlays
+     never touch. Six times the area, no overlap, and no change to the layout or
+     to how the row looks.
+
+     Scene rows only. `ChapterRow`'s select-all is 14px and looks like the same
+     problem, but its header wraps on a phone and the chapter title button sits
+     8px below the box — an overlay this tall would cover the button's top edge
+     and turn "open the chapter" into "select every scene in it".
+
+     `position: relative` is what the absolute `::after` is placed against, and
+     it is also what puts the overlay above the gutter's 1px timeline rule: that
+     rule is a later sibling, but a static one, and positioned content paints
+     after static content. No `z-index` is needed, and adding one changed
+     nothing when it was tried. */
+  .pw-tap-row { position: relative; }
+  .pw-tap-row::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    height: 36px;
+    width: 24px;
+    transform: translate(-50%, -50%);
+  }
+}
+
+/*
+  Measure (and Set scale) own the canvas while they are armed.
+
+  Regions, routes, markers and annotations each take their own clicks, so the
+  first click of a measurement used to place the point *and* select whatever was
+  underneath — opening a detail panel that then covered the spot meant for the
+  second point. Leaflet reads `interactive` when it creates a layer, so the prop
+  cannot be flipped on overlays already on the map; switching the panes off does
+  work, and lets the click through to the map, which is what makes the
+  measurement land.
+*/
+.pw-measuring .leaflet-overlay-pane,
+.pw-measuring .leaflet-marker-pane,
+.pw-measuring .leaflet-tooltip-pane,
+/* Leaflet marks every clickable path and marker with this and sets pointer
+   events on the element itself, so the pane alone is not enough. */
+.pw-measuring .leaflet-interactive {
+  pointer-events: none !important;
+}
+
+/*
+  NEW-1: the full 14-icon rail sat at full strength beside the first-run guide,
+  so a dozen necessarily-empty screens were one click from a flow trying to
+  lead somewhere. The guide and the freedom undercut each other.
+
+  The rail recedes rather than disappearing. Two earlier attempts removed it —
+  the whole thing (which broke 33 specs, and the specs were right: wandering off
+  by the rail is a supported path) and the extended tier (which flickered, since
+  the dashboard paints the rail before the wizard latches). Opacity has neither
+  problem: nothing leaves the DOM, nothing is unclickable, and a 200ms ease a
+  beat after paint reads as intentional rather than broken.
+
+  Hover and focus restore it in full, so it never *looks* disabled to whoever is
+  reaching for it — including a keyboard user, who gets it back on focus-within
+  before they can see where they have landed.
+*/
+[data-rail-chrome] {
+  transition: opacity 200ms ease;
+}
+.pw-guiding [data-rail-chrome] {
+  opacity: 0.55;
+}
+.pw-guiding [data-rail-chrome]:hover,
+.pw-guiding [data-rail-chrome]:focus-within {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-rail-chrome] { transition: none; }
 }

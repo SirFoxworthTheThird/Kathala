@@ -4,7 +4,9 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useSceneRevisions, restoreSceneRevision, deleteSceneRevision } from '@/db/hooks/useSceneRevisions'
-import { diffWords, diffStats } from '@/lib/textDiff'
+import { diffWords, diffStats, splitEdges } from '@/lib/textDiff'
+import { relativeTime } from '@/lib/relativeTime'
+import { plural } from '@/lib/plural'
 
 interface SceneHistoryDialogProps {
   open: boolean
@@ -19,20 +21,20 @@ function nowMs(): number {
   return Date.now()
 }
 
-function relativeTime(ts: number, now: number): string {
-  const diff = now - ts
-  if (diff < 60_000) return 'just now'
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
-  if (diff < 7 * 86_400_000) return `${Math.floor(diff / 86_400_000)}d ago`
-  return new Date(ts).toLocaleDateString()
-}
 
 export function SceneHistoryDialog({ open, onOpenChange, eventId, currentText }: SceneHistoryDialogProps) {
   const revisions = useSceneRevisions(open ? eventId : null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [mode, setMode] = useState<'text' | 'diff'>('diff')
   const [confirmRestore, setConfirmRestore] = useState(false)
+  /*
+    HB-2d: deleting a saved version used to fire on the click itself. That was
+    survivable only because reaching the control needed a deliberate hover —
+    and on a touch device, where these are drawn permanently and are now
+    tappable, it would be one stray tap away from destroying a draft that
+    nothing else in the app keeps a copy of.
+  */
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const now = nowMs()
   const selected = revisions.find((r) => r.id === selectedId) ?? revisions[0] ?? null
@@ -75,13 +77,13 @@ export function SceneHistoryDialog({ open, onOpenChange, eventId, currentText }:
                     >
                       <button className="min-w-0 flex-1 text-left" onClick={() => setSelectedId(r.id)}>
                         <p className="text-xs font-medium text-[hsl(var(--foreground))]">{relativeTime(r.createdAt, now)}</p>
-                        <p className="text-[10px] tabular-nums text-[hsl(var(--muted-foreground))]">{r.wordCount} words</p>
+                        <p className="text-[10px] tabular-nums text-[hsl(var(--muted-foreground))]">{plural(r.wordCount, 'word')}</p>
                       </button>
                       <button
-                        onClick={() => deleteSceneRevision(r.id)}
+                        onClick={() => setConfirmDeleteId(r.id)}
                         aria-label="Delete this version"
                         title="Delete this version"
-                        className="shrink-0 text-[hsl(var(--muted-foreground))] opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
+                        className="shrink-0 text-[hsl(var(--muted-foreground))] opacity-0 pointer-events-none transition-opacity hover:text-red-400 group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto"
                       >
                         <Trash2 className="h-3 w-3" />
                       </button>
@@ -123,8 +125,24 @@ export function SceneHistoryDialog({ open, onOpenChange, eventId, currentText }:
                     ? selected?.text
                     : diff.map((tok, i) => {
                         if (tok.op === 'equal') return <span key={i}>{tok.text}</span>
-                        if (tok.op === 'add') return <span key={i} className="rounded bg-emerald-500/20 text-emerald-300">{tok.text}</span>
-                        return <span key={i} className="rounded bg-red-500/20 text-red-300 line-through">{tok.text}</span>
+                        // A deletion is very often followed immediately by the
+                        // insertion replacing it, with no whitespace between —
+                        // "years, and it showed." then "years." ran together as
+                        // one unreadable string. The padding and margin give the
+                        // two blocks their own edges; splitEdges keeps the
+                        // highlight off the surrounding spaces so they stay
+                        // tight around the words that changed.
+                        const { lead, core, trail } = splitEdges(tok.text)
+                        const tone = tok.op === 'add'
+                          ? 'bg-emerald-500/20 text-emerald-300'
+                          : 'bg-red-500/20 text-red-300 line-through'
+                        return (
+                          <span key={i}>
+                            {lead}
+                            {core && <span className={`mx-0.5 rounded px-1 ${tone}`}>{core}</span>}
+                            {trail}
+                          </span>
+                        )
                       })}
                 </div>
               </div>
@@ -144,6 +162,18 @@ export function SceneHistoryDialog({ open, onOpenChange, eventId, currentText }:
           if (selected) await restoreSceneRevision(selected.id)
           setConfirmRestore(false)
           onOpenChange(false)
+        }}
+      />
+
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        onOpenChange={(v) => { if (!v) setConfirmDeleteId(null) }}
+        title="Delete this version?"
+        description="This saved version will be removed. It cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={async () => {
+          if (confirmDeleteId) await deleteSceneRevision(confirmDeleteId)
+          setConfirmDeleteId(null)
         }}
       />
     </>

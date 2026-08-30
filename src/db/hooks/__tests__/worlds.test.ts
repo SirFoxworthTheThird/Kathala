@@ -1,7 +1,8 @@
 import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
-import { createWorld, updateWorld, deleteWorld } from '@/db/hooks/useWorlds'
+import { createWorld, updateWorld, deleteWorld, listWorlds } from '@/db/hooks/useWorlds'
+import { createCharacter } from '@/db/hooks/useCharacters'
 
 beforeEach(async () => {
   await db.delete()
@@ -130,5 +131,103 @@ describe('deleteWorld', () => {
     })
     await deleteWorld(a.id)
     expect(await db.characters.where('worldId').equals(b.id).count()).toBe(1)
+  })
+})
+
+// ── listWorlds ────────────────────────────────────────────────────────────────
+
+/*
+  W19-5: the selector listed worlds oldest first, so a morning's work sat below
+  a book downloaded from the library once. A downloaded world keeps the
+  `createdAt` written into its `.pwk` — every shipped book is dated in the past
+  — so an ascending sort put every one of them above anything you made today.
+*/
+describe('listWorlds', () => {
+  it('puts the newest world first', async () => {
+    // Written straight to Dexie so the dates are the point rather than the
+    // order the rows happened to be inserted in.
+    const at = (id: string, createdAt: number) => db.worlds.put({
+      id, name: id, description: '', coverImageId: null, theme: null,
+      continuityStaleThreshold: 3, createdAt, updatedAt: createdAt,
+    })
+    await at('older', Date.parse('2024-04-15'))
+    await at('newest', Date.parse('2026-08-19'))
+    await at('middle', Date.parse('2026-08-16'))
+
+    expect((await listWorlds()).map((w) => w.id)).toEqual(['newest', 'middle', 'older'])
+  })
+
+  it('puts a world made today above a library book dated years ago', async () => {
+    // The reported case, with the two real dates: The Name of the Wind carries
+    // 15 Apr 2024 in its .pwk, and it was listed above the world made today.
+    await db.worlds.put({
+      id: 'name-of-the-wind', name: 'The Name of the Wind', description: '',
+      coverImageId: null, theme: null, continuityStaleThreshold: 3,
+      createdAt: Date.parse('2024-04-15'), updatedAt: Date.parse('2024-04-15'),
+    })
+    const mine = await createWorld({ name: 'The Salt Gate', description: '' })
+
+    expect((await listWorlds())[0].id).toBe(mine.id)
+  })
+
+  /*
+    The order is now "last worked on", read from the operation journal — the key
+    the W19-5 note called better and said did not exist. These three are the
+    cases that make it more than a rename of the old one.
+  */
+  it('lifts a world that has been worked in above a newer one that has not', async () => {
+    const at = (id: string, createdAt: number) => db.worlds.put({
+      id, name: id, description: '', coverImageId: null, theme: null,
+      continuityStaleThreshold: 3, createdAt, updatedAt: createdAt,
+    })
+    await at('old-but-active', Date.parse('2024-04-15'))
+    await at('new-and-idle', Date.parse('2026-08-19'))
+
+    // By creation date alone the idle one leads — asserted first, so the change
+    // below cannot pass on an ordering that was already what it wanted.
+    expect((await listWorlds()).map((w) => w.id)).toEqual(['new-and-idle', 'old-but-active'])
+
+    // One journalled edit in the older world.
+    await createCharacter({ worldId: 'old-but-active', name: 'Ossian Marl', description: '' })
+
+    expect((await listWorlds()).map((w) => w.id)).toEqual(['old-but-active', 'new-and-idle'])
+  })
+
+  it('leaves a library book where its own date puts it, since its journal is reset', async () => {
+    /*
+      The W19-5 case has to survive the new key. `applyWorldImport` calls
+      `markJournalDiscontinuity`, so a downloaded book has no operations at all
+      — it falls back to the date in its `.pwk` and stays below your own work,
+      which is the whole point of the original fix.
+    */
+    await db.worlds.put({
+      id: 'name-of-the-wind', name: 'The Name of the Wind', description: '',
+      coverImageId: null, theme: null, continuityStaleThreshold: 3,
+      createdAt: Date.parse('2024-04-15'), updatedAt: Date.parse('2024-04-15'),
+    })
+    const mine = await createWorld({ name: 'The Salt Gate', description: '' })
+    await createCharacter({ worldId: mine.id, name: 'Cathe Vaux', description: '' })
+
+    expect((await listWorlds())[0].id).toBe(mine.id)
+    expect(await db.operations.where('worldId').equals('name-of-the-wind').count()).toBe(0)
+  })
+
+  it('orders ties by creation, so the list does not shuffle between renders', async () => {
+    const same = Date.parse('2026-08-19')
+    const at = (id: string, createdAt: number) => db.worlds.put({
+      id, name: id, description: '', coverImageId: null, theme: null,
+      continuityStaleThreshold: 3, createdAt, updatedAt: same,
+    })
+    await at('b', Date.parse('2026-08-16'))
+    await at('a', Date.parse('2026-08-17'))
+
+    const once = (await listWorlds()).map((w) => w.id)
+    const twice = (await listWorlds()).map((w) => w.id)
+    expect(once).toEqual(['a', 'b'])
+    expect(twice).toEqual(once)
+  })
+
+  it('returns an empty list rather than throwing when there are no worlds', async () => {
+    expect(await listWorlds()).toEqual([])
   })
 })

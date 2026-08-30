@@ -34,3 +34,30 @@ export function partitionWorlds<T extends ShelvedWorld>(worlds: readonly T[]): S
   }
   return { drafts, reading }
 }
+
+/**
+ * Which shelf leads.
+ *
+ * Drafts lead by default, and the reason is in this file's own header: this is
+ * a writing tool. But a reader coming back the next evening on a 390px phone
+ * met the whole of the author's chrome first — the strapline, five ways to
+ * start a world, then any demo worlds — and their book began **916px down an
+ * 844px viewport**. They scrolled past everything they were not doing to reach
+ * the one thing they were.
+ *
+ * The screen cannot know which person opened it, but it can know something
+ * nearly as good: whether a book on the reading shelf has somebody's place kept
+ * in it. `eventByWorld` holds that, it is per world, and it survives a cold
+ * start — so a reader who is part-way through a book gets their shelf first,
+ * and everyone who has not started one keeps the writing tool they opened.
+ *
+ * A reading world with no position is not a book in progress: it is one that
+ * was downloaded and never opened, or one whose reader asked to see the whole
+ * book, which is not a place. Neither should demote a novelist's own drafts.
+ */
+export function readingLeads(
+  reading: readonly { id: string }[],
+  positionByWorld: Readonly<Record<string, string | null>>,
+): boolean {
+  return reading.some((w) => !!positionByWorld[w.id])
+}

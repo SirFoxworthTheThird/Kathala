@@ -20,7 +20,6 @@ async function goHome(page: Parameters<typeof resetDB>[0]) {
 
 test.describe('Import / Export', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
   })
 

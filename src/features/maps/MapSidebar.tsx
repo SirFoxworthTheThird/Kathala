@@ -14,13 +14,16 @@ import { useEventItemPlacements } from '@/db/hooks/useItemPlacements'
 import { useItemSnapshot, upsertItemSnapshot } from '@/db/hooks/useItemSnapshots'
 import { useCrossTimelineArtifacts } from '@/db/hooks/useTimelineRelationships'
 import { useMapRoutes, deleteMapRoute } from '@/db/hooks/useMapRoutes'
-import { useMapRegions, deleteMapRegion, useBestRegionSnapshots, upsertMapRegionSnapshot } from '@/db/hooks/useMapRegions'
+import { useMapRegions, deleteMapRegion, useBestRegionSnapshots } from '@/db/hooks/useMapRegions'
 import { PortraitImage } from '@/components/PortraitImage'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import type { Character, CharacterSnapshot, Item, LocationMarker, MapLayer, RouteType, MapRegionStatus } from '@/types'
 import { pathPixelLength, formatDistance } from '@/lib/mapScale'
 import { characterColor, ICON_COLORS } from './mapUtils'
+import { splitMapCast } from '@/lib/mapCast'
+import { resolveItemWhereabouts } from '@/lib/itemWhereabouts'
+import { ITEM_CONDITIONS, CONDITION_COLORS } from '@/lib/itemCondition'
 
 // ─── SidebarSection ──────────────────────────────────────────────────────────
 
@@ -38,11 +41,29 @@ export function SidebarSection({
   count?: number
 }) {
   const [open, setOpen] = useState(defaultOpen)
+  /*
+    SB-1: the six sections used to sit in one unbounded scroll, so expanding
+    Items (18 rows) pushed Map Layers, Characters and Locations off the top, and
+    opening two sections made the third unreachable without hunting.
+
+    The column is a panel stack instead — headers and bodies are siblings in the
+    sidebar's own flex column rather than each pair being wrapped in a box. The
+    wrapper was the problem: a flex item's automatic minimum height is its
+    min-content height, and a wrapper's min-content includes the whole body, so
+    nothing could shrink. Flat, the headers are `shrink-0` and always on screen,
+    and only the bodies give way.
+
+    `flex-1` shares the leftover height between the open bodies, and `max-h-fit`
+    stops a body growing past its own content — a one-row section keeps its one
+    row and hands the surplus back to whichever section actually needs it, which
+    is how flexbox resolves an item clamped by its max size.
+  */
   return (
-    <div className="flex flex-col border-b border-[hsl(var(--border))]">
+    <>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 px-3 py-2 hover:bg-[hsl(var(--muted))] transition-colors select-none"
+        aria-expanded={open}
+        className="flex shrink-0 items-center gap-2 border-b border-[hsl(var(--border))] px-3 py-2 hover:bg-[hsl(var(--muted))] transition-colors select-none"
       >
         <Icon className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))]" />
         <span className="flex-1 text-left text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
@@ -57,8 +78,17 @@ export function SidebarSection({
           ? <ChevronDown className="h-3 w-3 shrink-0 text-[hsl(var(--muted-foreground))]" />
           : <ChevronRight className="h-3 w-3 shrink-0 text-[hsl(var(--muted-foreground))]" />}
       </button>
-      {open && children}
-    </div>
+      {/* A block, not a flex column: the children keep their natural heights and
+          this box scrolls, rather than the children being squashed. */}
+      {open && (
+        <div
+          data-sidebar-section-body={title}
+          className="min-h-0 max-h-fit flex-1 overflow-y-auto border-b border-[hsl(var(--border))]"
+        >
+          {children}
+        </div>
+      )}
+    </>
   )
 }
 
@@ -112,6 +142,9 @@ function LayerTreeNode({
   const [open, setOpen] = useState(true)
   const [hovered, setHovered] = useState(false)
   const gate = useGate()
+  // The activator button owns the click, so the row needs the same action the
+  // pointer-gesture handler in the section above uses.
+  const resetMapHistory = useAppStore((st) => st.resetMapHistory)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const isActive = layer.id === activeLayerId
   const childCount = children.length
@@ -130,8 +163,13 @@ function LayerTreeNode({
         data-layer-drop={layer.id}
         onPointerDown={(e) => {
           // Ignore right/middle mouse and presses that start on a control button.
+          //
+          // SB-6: the row's *own* activator is a button now, and it is the
+          // widest thing in the row — so skipping every button would mean a
+          // drag could only be started from the padding. It is excluded by
+          // name; the chevron and the delete still stop a drag from starting.
           if (e.pointerType === 'mouse' && e.button !== 0) return
-          if ((e.target as HTMLElement).closest('button')) return
+          if ((e.target as HTMLElement).closest('button:not([data-layer-activate])')) return
           onBeginDrag(layer.id, e)
         }}
         className={`group flex items-center gap-1 cursor-pointer select-none transition-colors rounded-sm mx-1 ${
@@ -157,7 +195,29 @@ function LayerTreeNode({
           <MapPin className="h-3 w-3 shrink-0 opacity-40" />
         )}
         {depth === 0 && <MapIcon className="h-3 w-3 shrink-0 opacity-70" />}
-        <span data-map-layer className="flex-1 truncate text-xs">{layer.name}</span>
+        {/*
+          SB-6: this row was a `div` whose entire activation was a pointer
+          gesture — `pointerup` without movement selects the layer, with
+          movement re-parents it — so there was no way to open a map from the
+          keyboard at all. The chevron and the delete beside it were already
+          buttons, which is what made the row look fine.
+
+          The name is the activator, as a real button: `Enter` and `Space` come
+          free, and a screen reader gets a control rather than a span. Drag
+          stays on the row around it, because the drag source has to be the
+          whole row for the crosshair and chevron to be draggable too.
+        */}
+        <button
+          type="button"
+          data-layer-activate
+          data-map-layer
+          aria-current={isActive ? 'true' : undefined}
+          onClick={() => resetMapHistory(layer.id)}
+          className="flex-1 truncate text-left text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]"
+          title={layer.name}
+        >
+          {layer.name}
+        </button>
         {hovered && !gate.active && (
           <button
             className="shrink-0 rounded p-0.5 hover:text-red-400 transition-colors"
@@ -301,8 +361,17 @@ export function LayersSection({ worldId }: { worldId: string }) {
       const p = pressRef.current
       if (!p) { reset(); return }
       if (!p.armed) {
-        // A quick tap / click without dragging selects the layer.
-        resetMapHistory(p.id)
+        /*
+          A quick tap / click without dragging selects the layer — unless it
+          landed on the row's own activator button, whose `onClick` does it.
+          The button has to own the click, because that is what makes Enter and
+          Space work; without this check the two paths would both fire on a
+          mouse click. Selecting twice is harmless — the action is idempotent —
+          so this is tidiness rather than a fix, and there is deliberately no
+          test claiming otherwise.
+        */
+        const onActivator = (e.target as HTMLElement | null)?.closest?.('[data-layer-activate]')
+        if (!onActivator) resetMapHistory(p.id)
       } else {
         const raw = targetAt(e.clientX, e.clientY)
         const target = raw === '__root__' ? null : raw
@@ -425,11 +494,31 @@ export function CharactersSection({
     ? characters.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
     : characters
 
+  /*
+    MW-3: the list put all 45 characters at equal weight while only a handful
+    carried a location, so "who is here now" — the question this screen exists
+    to answer — was a minority of the rows and looked like the rest of them.
+
+    With a cursor the two are separated; without one there is no moment for a
+    placement to belong to, so it stays one list. The groups only appear when
+    both are non-empty, because a heading over the whole list says nothing.
+  */
+  const { placed, unplaced } = useMemo(
+    () => splitMapCast(filtered, activeEventId ? snapshots : [], allMarkers),
+    [filtered, snapshots, allMarkers, activeEventId],
+  )
+  const groups = activeEventId && placed.length > 0 && unplaced.length > 0
+    ? [
+        { label: `On the map (${placed.length})`, rows: placed },
+        { label: `Not placed (${unplaced.length})`, rows: unplaced },
+      ]
+    : [{ label: null, rows: [...placed, ...unplaced] }]
+
   return (
     <SidebarSection title="Characters" icon={Users} count={characters.length}>
       {!activeEventId && (
         <p className="px-3 pb-2 text-[10px] italic text-[hsl(var(--muted-foreground))]">
-          Select an event from the timeline bar below to place characters onto the map.
+          Select a scene from the timeline bar below to place characters onto the map.
         </p>
       )}
       {characters.length > 0 && <SidebarSearch value={search} onChange={setSearch} />}
@@ -439,11 +528,16 @@ export function CharactersSection({
         ) : filtered.length === 0 ? (
           <p className="px-1 py-1 text-xs italic text-[hsl(var(--muted-foreground))]">No matches.</p>
         ) : (
-          filtered.map((c) => {
-            const snap = snapshots.find((s) => s.characterId === c.id)
-            const locationName = snap?.currentLocationMarkerId
-              ? allMarkers.find((m) => m.id === snap.currentLocationMarkerId)?.name
-              : null
+          groups.flatMap((group) => [
+            group.label !== null ? (
+              <p
+                key={`h-${group.label}`}
+                className="px-1 pb-0.5 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]"
+              >
+                {group.label}
+              </p>
+            ) : null,
+            ...group.rows.map(({ character: c, locationName }) => {
             const movement = movements.find((m) => m.characterId === c.id)
             const color = characterColor(c.id)
             const isPlacing = placingCharacterId === c.id
@@ -457,30 +551,53 @@ export function CharactersSection({
                     onDragStart()
                   }}
                   onDragEnd={onDragEnd}
-                  onClick={() => onFocus(c.id)}
-                  className={`flex items-center gap-2 rounded-md border bg-[hsl(var(--muted))] px-2 py-1.5 select-none cursor-pointer ${
+                  className={`flex items-center gap-2 rounded-md border bg-[hsl(var(--muted))] pr-2 select-none ${
                     isPlacing ? 'border-[hsl(var(--ring))] ring-1 ring-[hsl(var(--ring))]' : activeEventId ? 'hover:border-[hsl(var(--ring))]' : 'opacity-60'
                   }`}
                   style={{ borderColor: isPlacing ? undefined : movement ? color : 'hsl(var(--border))' }}
                 >
-                  <PortraitImage
-                    imageId={c.portraitImageId}
-                    className="h-6 w-6 rounded-full object-cover shrink-0"
-                    fallbackClassName="h-6 w-6 rounded-full shrink-0"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium">{c.name}</p>
-                    {locationName && (
-                      <p className="truncate text-[10px] text-[hsl(var(--muted-foreground))]">{locationName}</p>
-                    )}
-                  </div>
-                  {activeEventId && (
+                  {/*
+                    SB-4: the row itself carries the drag, because the drag
+                    source is the nearest draggable ancestor and it should be
+                    the whole row — but the *click* belongs to a real control.
+                    The place-on-map button below cannot be nested inside it,
+                    so the name is the button and the crosshair is its sibling.
+                  */}
+                  <button
+                    type="button"
+                    onClick={() => onFocus(c.id)}
+                    className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]"
+                  >
+                    <PortraitImage
+                      imageId={c.portraitImageId}
+                      className="h-6 w-6 rounded-full object-cover shrink-0"
+                      fallbackClassName="h-6 w-6 rounded-full shrink-0"
+                    />
+                    <span className="min-w-0 flex-1">
+                      {/* SB-2: a name wide enough to be cut is worth having in
+                          full somewhere, and two Witch-kings truncate alike. */}
+                      <span className="block truncate text-xs font-medium" title={c.name}>{c.name}</span>
+                      {/* SB-3: every row says where it stands, so a blank second
+                          line means "nowhere" rather than "not loaded yet". */}
+                      {activeEventId && (
+                        <span className={`block truncate text-[10px] ${locationName ? 'text-[hsl(var(--muted-foreground))]' : 'italic text-[hsl(var(--muted-foreground))/0.7]'}`}>
+                          {locationName ?? 'Not placed'}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                  {/*
+                    Not while reading: tapping this and then a location writes
+                    the character's snapshot and a waypoint, which is the
+                    author's record of where they were.
+                  */}
+                  {activeEventId && !gate.active && (
                     <button
                       type="button"
                       aria-label={isPlacing ? `Cancel placing ${c.name}` : `Place ${c.name} on the map`}
                       aria-pressed={isPlacing}
                       title={isPlacing ? 'Tap a location on the map, or tap here to cancel' : 'Place on map: tap here, then tap a location'}
-                      onClick={(e) => { e.stopPropagation(); onPlace(c.id) }}
+                      onClick={() => onPlace(c.id)}
                       className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors ${
                         isPlacing
                           ? 'bg-[hsl(var(--ring))] text-[hsl(var(--background))]'
@@ -524,7 +641,8 @@ export function CharactersSection({
                 )}
               </div>
             )
-          })
+            }),
+          ])
         )}
       </div>
     </SidebarSection>
@@ -572,7 +690,7 @@ export function LocationsSection({
                 className="h-2 w-2 rounded-full shrink-0"
                 style={{ background: ICON_COLORS[m.iconType] ?? '#94a3b8' }}
               />
-              <span className="flex-1 truncate text-xs">{m.name}</span>
+              <span className="flex-1 truncate text-xs" title={m.name}>{m.name}</span>
               {m.linkedMapLayerId && (
                 <MapIcon className="h-3 w-3 shrink-0 opacity-50" />
               )}
@@ -586,11 +704,6 @@ export function LocationsSection({
 
 // ─── Items section ────────────────────────────────────────────────────────────
 
-const ITEM_CONDITIONS = ['intact', 'damaged', 'destroyed', 'lost', 'found', 'unknown']
-const CONDITION_COLORS: Record<string, string> = {
-  intact: '#34d399', damaged: '#fbbf24', destroyed: '#f87171',
-  lost: '#94a3b8', found: '#60a5fa', unknown: '#a78bfa',
-}
 
 function ItemRow({
   item,
@@ -613,8 +726,19 @@ function ItemRow({
 
   return (
     <div className="mx-1 rounded-sm border border-transparent hover:border-[hsl(var(--border))] transition-colors">
-      <div
-        className="flex items-center gap-2 px-2 py-1.5 cursor-pointer text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+      {/*
+        X-7 again, in the one place it never reached. This row, the route row
+        and the region row were `div`s with click handlers: no role, no tab
+        stop, no key handler — so the region panel could not be opened from the
+        keyboard at all, which section 16 of the review records in prose rather
+        than as a finding. The location markers immediately above them were
+        already buttons, so the same sidebar was navigable in some rows and not
+        others.
+      */}
+      <button
+        type="button"
+        aria-expanded={activeEventId ? expanded : undefined}
+        className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]"
         onClick={() => { onFocus(); setExpanded((v) => !v) }}
       >
         <PortraitImage
@@ -625,13 +749,16 @@ function ItemRow({
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 min-w-0">
-            <p className="truncate text-xs">{item.name}</p>
+            <p className="truncate text-xs" title={item.name}>{item.name}</p>
             {isCrossTimeline && (
               <span className="shrink-0 rounded px-1 py-px text-[9px] font-semibold uppercase tracking-wide bg-amber-500/20 text-amber-400">echo era</span>
             )}
           </div>
-          {locationName && (
-            <p className="truncate text-[10px] opacity-60">{locationName}</p>
+          {/* SB-3, as for characters: every row states where it is. */}
+          {activeEventId && (
+            <p className={`truncate text-[10px] ${locationName ? 'opacity-60' : 'italic opacity-40'}`}>
+              {locationName ?? 'Not placed'}
+            </p>
           )}
         </div>
         {activeEventId && (
@@ -644,7 +771,7 @@ function ItemRow({
         {activeEventId && (
           <ChevronDown className={`h-3 w-3 shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`} />
         )}
-      </div>
+      </button>
 
       {expanded && activeEventId && (
         <div className="flex flex-col gap-1.5 border-t border-[hsl(var(--border))] px-2 pb-2 pt-1.5">
@@ -694,12 +821,15 @@ export function ItemsSection({
   activeEventId,
   allMarkers,
   snapshots,
+  characters,
   onFocus,
 }: {
   worldId: string
   activeEventId: string | null
   allMarkers: LocationMarker[]
   snapshots: CharacterSnapshot[]
+  /** Needed to name whoever is carrying an item — see `resolveItemWhereabouts`. */
+  characters: Character[]
   onFocus: (itemId: string) => void
 }) {
   const items = useItems(worldId)
@@ -711,19 +841,12 @@ export function ItemsSection({
     ? items.filter((i) => i.name.toLowerCase().includes(search.toLowerCase()))
     : items
 
+  // Shared with the Items roster, which had no answer to "where is it" at all
+  // until IT-2 — see `src/lib/itemWhereabouts.ts`.
   function getItemLocation(itemId: string): string | null {
-    const placement = placements.find((p) => p.itemId === itemId)
-    if (placement) {
-      return allMarkers.find((m) => m.id === placement.locationMarkerId)?.name ?? null
-    }
-    const snap = snapshots.find((s) => s.inventoryItemIds.includes(itemId))
-    if (snap) {
-      const loc = snap.currentLocationMarkerId
-        ? allMarkers.find((m) => m.id === snap.currentLocationMarkerId)?.name
-        : null
-      return loc ?? null
-    }
-    return null
+    return resolveItemWhereabouts({
+      itemId, placements, snapshots, markers: allMarkers, characters,
+    }).location
   }
 
   return (
@@ -812,26 +935,42 @@ export function RoutesSection({
           routes.map((route) => (
             <div
               key={route.id}
-              className={`group flex items-center gap-2 rounded-sm mx-1 px-2 py-1.5 cursor-pointer transition-colors ${
+              className={`group flex items-center rounded-sm mx-1 pr-2 transition-colors ${
                 selectedRouteId === route.id
                   ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
                   : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]'
               }`}
-              onClick={() => onSelectRoute(selectedRouteId === route.id ? null : route.id)}
             >
-              <span
-                className="h-2 w-2 rounded-full shrink-0"
-                style={{ background: route.color ?? ROUTE_TYPE_COLORS[route.routeType] }}
-              />
-              <div className="flex flex-col flex-1 min-w-0">
-                <span className="truncate text-xs leading-tight">{route.name}</span>
-                <span className="text-[9px] capitalize text-[hsl(var(--muted-foreground))] leading-tight">
-                  {ROUTE_TYPE_LABELS[route.routeType]} · {route.waypoints.length} stops
-                </span>
-              </div>
               <button
-                onClick={(e) => { e.stopPropagation(); setConfirmId(route.id) }}
-                className="shrink-0 opacity-0 group-hover:opacity-100 text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
+                type="button"
+                aria-pressed={selectedRouteId === route.id}
+                className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]"
+                onClick={() => onSelectRoute(selectedRouteId === route.id ? null : route.id)}
+              >
+                <span
+                  className="h-2 w-2 rounded-full shrink-0"
+                  style={{ background: route.color ?? ROUTE_TYPE_COLORS[route.routeType] }}
+                />
+                <span className="flex flex-col flex-1 min-w-0">
+                  <span className="truncate text-xs leading-tight" title={route.name}>{route.name}</span>
+                  <span className="text-[9px] capitalize text-[hsl(var(--muted-foreground))] leading-tight">
+                    {ROUTE_TYPE_LABELS[route.routeType]} · {route.waypoints.length} stops
+                  </span>
+                </span>
+              </button>
+              {/*
+                LORE-1 measured this exact shape and found it worse than a
+                permanent icon: `opacity-0` with pointer events still live hit-
+                tests to itself, so on a touch device — where the resting state
+                is the only state — a tap on apparently blank row deletes the
+                thing. It keeps its hover reveal, but it cannot be tapped while
+                invisible, it shows itself on keyboard focus, and it has a name.
+              */}
+              <button
+                type="button"
+                aria-label={`Delete route ${route.name}`}
+                onClick={() => setConfirmId(route.id)}
+                className="shrink-0 opacity-0 pointer-events-none transition-colors group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto text-[hsl(var(--muted-foreground))] hover:text-red-400"
               >
                 <Trash2 className="h-3 w-3" />
               </button>
@@ -854,9 +993,9 @@ export function RoutesSection({
 
 export const REGION_STATUS_COLORS: Record<MapRegionStatus, string> = {
   active: '#34d399', occupied: '#fb923c', contested: '#ef4444',
-  abandoned: '#94a3b8', destroyed: '#dc2626', unknown: '#a78bfa',
+  abandoned: '#94a3b8', destroyed: '#dc2626', rebuilt: '#4ade80', unknown: '#a78bfa',
 }
-const ALL_REGION_STATUSES: MapRegionStatus[] = ['active', 'occupied', 'contested', 'abandoned', 'destroyed', 'unknown']
+export const ALL_REGION_STATUSES: MapRegionStatus[] = ['active', 'occupied', 'contested', 'abandoned', 'destroyed', 'rebuilt', 'unknown']
 
 // ─── Regions section ──────────────────────────────────────────────────────────
 
@@ -883,31 +1022,16 @@ export function RegionsSection({
   const regionSnaps = useBestRegionSnapshots(worldId, activeEventId)
   const snapByRegionId = useMemo(() => new Map(regionSnaps.map((s) => [s.regionId, s])), [regionSnaps])
   const [confirmId, setConfirmId] = useState<string | null>(null)
-  const [editingNotes, setEditingNotes] = useState<Record<string, string>>({})
   const confirmRegion = confirmId ? regions.find((r) => r.id === confirmId) : null
 
-  function handleStatusChange(regionId: string, status: MapRegionStatus) {
-    if (!activeEventId) return
-    upsertMapRegionSnapshot({
-      worldId,
-      regionId,
-      eventId: activeEventId,
-      status,
-      notes: editingNotes[regionId] ?? snapByRegionId.get(regionId)?.notes ?? '',
-    })
-  }
-
-  function handleNotesSave(regionId: string) {
-    if (!activeEventId) return
-    const currentSnap = snapByRegionId.get(regionId)
-    upsertMapRegionSnapshot({
-      worldId,
-      regionId,
-      eventId: activeEventId,
-      status: currentSnap?.status ?? 'active',
-      notes: editingNotes[regionId] ?? '',
-    })
-  }
+  /*
+    RG-1: the status pills and the per-event notes used to live here, in an
+    editor that unfolded under the selected row — which is exactly when the
+    region panel is open, so the same region had two homes side by side. They
+    are in the panel now, next to the name, colour, notes and faction they
+    belong with. The row keeps *showing* the status, which is what a list is
+    for.
+  */
 
   return (
     <SidebarSection title="Regions" icon={Hexagon} count={regions.length} defaultOpen={false}>
@@ -936,84 +1060,56 @@ export function RegionsSection({
             const snap = snapByRegionId.get(region.id)
             const status: MapRegionStatus = snap?.status ?? 'active'
             const isSelected = selectedRegionId === region.id
-            const notes = editingNotes[region.id] ?? snap?.notes ?? ''
             return (
               <div key={region.id} className="flex flex-col">
                 {/* Region row */}
                 <div
-                  className={`group flex items-center gap-2 rounded-sm mx-1 px-2 py-1.5 cursor-pointer transition-colors ${
+                  className={`group flex items-center rounded-sm mx-1 pr-2 transition-colors ${
                     isSelected
                       ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
                       : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]'
                   }`}
-                  onClick={() => onSelectRegion(isSelected ? null : region.id)}
                 >
-                  <span
-                    className="h-2 w-2 rounded-full shrink-0 ring-1 ring-black/20"
-                    style={{ background: region.fillColor }}
-                  />
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <div className="flex items-center gap-1 min-w-0">
-                      <span className="truncate text-xs leading-tight">{region.name}</span>
-                      {region.linkedMapLayerId && (
-                        <Link className="h-2.5 w-2.5 shrink-0 text-[hsl(var(--muted-foreground))] opacity-60" />
-                      )}
-                    </div>
-                    {activeEventId && (
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <span
-                          className="h-1.5 w-1.5 rounded-full shrink-0"
-                          style={{ background: REGION_STATUS_COLORS[status] }}
-                        />
-                        <span className="text-[9px] capitalize text-[hsl(var(--muted-foreground))] leading-tight">
-                          {status}
-                        </span>
-                      </div>
-                    )}
-                  </div>
                   <button
-                    onClick={(e) => { e.stopPropagation(); setConfirmId(region.id) }}
-                    className="shrink-0 opacity-0 group-hover:opacity-100 text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
+                    type="button"
+                    aria-pressed={isSelected}
+                    className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]"
+                    onClick={() => onSelectRegion(isSelected ? null : region.id)}
+                  >
+                    <span
+                      className="h-2 w-2 rounded-full shrink-0 ring-1 ring-black/20"
+                      style={{ background: region.fillColor }}
+                    />
+                    <span className="flex flex-col flex-1 min-w-0">
+                      <span className="flex items-center gap-1 min-w-0">
+                        <span className="truncate text-xs leading-tight" title={region.name}>{region.name}</span>
+                        {region.linkedMapLayerId && (
+                          <Link className="h-2.5 w-2.5 shrink-0 text-[hsl(var(--muted-foreground))] opacity-60" />
+                        )}
+                      </span>
+                      {activeEventId && (
+                        <span className="flex items-center gap-1 mt-0.5">
+                          <span
+                            className="h-1.5 w-1.5 rounded-full shrink-0"
+                            style={{ background: REGION_STATUS_COLORS[status] }}
+                          />
+                          <span className="text-[9px] capitalize text-[hsl(var(--muted-foreground))] leading-tight">
+                            {status}
+                          </span>
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Delete region ${region.name}`}
+                    onClick={() => setConfirmId(region.id)}
+                    className="shrink-0 opacity-0 pointer-events-none transition-colors group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto text-[hsl(var(--muted-foreground))] hover:text-red-400"
                   >
                     <Trash2 className="h-3 w-3" />
                   </button>
                 </div>
 
-                {/* Inline status editor — only when selected and an event is active */}
-                {isSelected && activeEventId && (
-                  <div className="mx-2 mb-2 flex flex-col gap-1.5 rounded border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.4)] px-2 py-2">
-                    <span className="text-[9px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                      Status at this event
-                    </span>
-                    <div className="flex flex-wrap gap-1">
-                      {ALL_REGION_STATUSES.map((s) => (
-                        <button
-                          key={s}
-                          onClick={() => handleStatusChange(region.id, s)}
-                          className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] capitalize transition-colors ${
-                            status === s
-                              ? 'bg-[hsl(var(--ring))] text-[hsl(var(--background))]'
-                              : 'border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
-                          }`}
-                        >
-                          <span
-                            className="h-1.5 w-1.5 rounded-full"
-                            style={{ background: status === s ? 'currentColor' : REGION_STATUS_COLORS[s] }}
-                          />
-                          {s}
-                        </button>
-                      ))}
-                    </div>
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setEditingNotes((prev) => ({ ...prev, [region.id]: e.target.value }))}
-                      onBlur={() => handleNotesSave(region.id)}
-                      placeholder="Notes for this event…"
-                      rows={2}
-                      className="w-full resize-none rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 py-1 text-[11px] text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:outline-none focus:border-[hsl(var(--ring))] transition-colors"
-                    />
-                  </div>
-                )}
               </div>
             )
           })

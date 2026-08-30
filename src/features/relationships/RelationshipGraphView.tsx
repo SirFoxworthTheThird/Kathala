@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { BlockingReason } from '@/components/BlockingReason'
 import { useParams } from 'react-router-dom'
 import ReactFlow, {
   Background,
@@ -15,9 +16,12 @@ import ReactFlow, {
   getStraightPath,
   useNodesState,
   useEdgesState,
+  useStore,
+  useReactFlow,
+  useNodesInitialized,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
-import { X, Trash2, Network, Plus, Check, Shield, Sparkles } from 'lucide-react'
+import { X, Trash2, Network, Plus, Check, Shield, Sparkles, LayoutGrid, Focus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships, createRelationship, deleteRelationship, updateRelationship } from '@/db/hooks/useRelationships'
@@ -26,9 +30,10 @@ import { computeRelationshipTimeline } from '@/lib/relationshipTimeline'
 import { useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useActiveEventId } from '@/store'
 import { PortraitImage } from '@/components/PortraitImage'
+import { charColor } from '@/lib/characterColor'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Field } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { GenerateRelationshipsDialog } from './GenerateRelationshipsDialog'
@@ -38,6 +43,7 @@ import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
 import { cn } from '@/lib/utils'
 import type { Character, Relationship, RelationshipSentiment, RelationshipStrength, RelationshipSnapshot } from '@/types'
 import { useGate } from '@/db/hooks/ReadingGateContext'
+import { layoutRelationshipGraph, neighbourhood } from './graphLayout'
 
 // ─── Custom Node ────────────────────────────────────────────────────────────
 
@@ -95,6 +101,13 @@ const SENTIMENT_COLORS: Record<RelationshipSentiment, string> = {
   complex: '#fbbf24',
 }
 
+/**
+ * Below this zoom the labels are too small to read anyway, and on a large cast
+ * they pile into an unreadable mat that hides the graph underneath. The lines
+ * and their colours stay; clicking one still opens the relationship.
+ */
+const LABEL_MIN_ZOOM = 0.55
+
 function RelationshipEdge({
   id, sourceX, sourceY, targetX, targetY, data, markerEnd,
 }: {
@@ -103,6 +116,7 @@ function RelationshipEdge({
   data?: { label: string; sentiment: RelationshipSentiment; isInherited: boolean; onSelect: (id: string) => void }
   markerEnd?: string
 }) {
+  const zoom = useStore((s) => s.transform[2])
   const [edgePath, labelX, labelY] = getStraightPath({ sourceX, sourceY, targetX, targetY })
   const color = SENTIMENT_COLORS[data!.sentiment] ?? '#94a3b8'
   // Inherited edges are dashed to signal "carrying forward from a previous chapter"
@@ -111,17 +125,72 @@ function RelationshipEdge({
   return (
     <>
       <BaseEdge id={id} path={edgePath} markerEnd={markerEnd} style={{ stroke: color, strokeWidth: 2, strokeDasharray }} />
-      <EdgeLabelRenderer>
-        <button
-          style={{ transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`, pointerEvents: 'all' }}
-          className="absolute cursor-pointer rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-1.5 py-0.5 text-xs hover:bg-[hsl(var(--accent))] nodrag nopan"
-          onClick={() => data!.onSelect(id)}
-        >
-          {data!.label}
-        </button>
-      </EdgeLabelRenderer>
+      {zoom >= LABEL_MIN_ZOOM && (
+        <EdgeLabelRenderer>
+          <button
+            data-edge-label={id}
+            style={{ transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`, pointerEvents: 'all' }}
+            className="absolute cursor-pointer rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-1.5 py-0.5 text-xs hover:bg-[hsl(var(--accent))] nodrag nopan"
+            onClick={() => data!.onSelect(id)}
+          >
+            {data!.label}
+          </button>
+        </EdgeLabelRenderer>
+      )}
     </>
   )
+}
+
+/** Says why the labels are gone. Must live inside ReactFlow to read its zoom. */
+function ZoomHint() {
+  const zoom = useStore((s) => s.transform[2])
+  if (zoom >= LABEL_MIN_ZOOM) return null
+  return (
+    <span className="rounded-md bg-[hsl(222,47%,14%)] px-2 py-1 text-[11px] text-[hsl(210,40%,70%)] shadow-md">
+      Zoom in to read the relationship labels
+    </span>
+  )
+}
+
+/**
+ * Fit the graph once its nodes actually exist, and once its gate has spoken.
+ *
+ * `fitView` on `<ReactFlow>` fits at init, and neither of the two things it
+ * needs is ready then. Both were measured in an e2e run rather than reasoned
+ * about:
+ *
+ * - **The nodes have no size yet.** `fitView()` returned `false` — v11 refuses
+ *   when nothing has been measured — and nothing ever tried again, so the pane
+ *   sat at `scale(0.302913)` with three nodes on screen and was still at
+ *   `scale(0.302913)` after the cursor moved and forty-two arrived.
+ * - **The reading gate is still open.** The gate answers `OPEN_GATE` while it
+ *   loads, so at that instant the graph had all fifty characters and no
+ *   `minZoom`. A zoom floor conditioned on a gate that has not resolved is a
+ *   floor on nothing.
+ *
+ * So: wait for `useNodesInitialized`, and fit again if the floor itself
+ * changes — undefined to `LABEL_MIN_ZOOM` is the gate arriving. At most two
+ * fits, and the second only where reading mode is on.
+ *
+ * Not on every change: the layout is deliberately computed from *every*
+ * relationship rather than the visible ones, so that stepping through the story
+ * does not rearrange the graph under the reader. Refitting as the cast grew
+ * would undo that by moving the camera instead of the nodes.
+ *
+ * Must live inside `ReactFlow`, like `ZoomHint`, to reach its instance.
+ */
+function FitWhenNodesArrive({ count, minZoom }: { count: number; minZoom?: number }) {
+  const { fitView } = useReactFlow()
+  const initialized = useNodesInitialized()
+  const fittedWith = useRef<number | 'open' | null>(null)
+  useEffect(() => {
+    if (!initialized || count === 0) return
+    const key = minZoom ?? 'open'
+    if (fittedWith.current === key) return
+    fittedWith.current = key
+    fitView({ padding: 0.15, ...(minZoom !== undefined && { minZoom }) })
+  }, [initialized, count, minZoom, fitView])
+  return null
 }
 
 const nodeTypes: NodeTypes = { character: CharacterNode }
@@ -155,12 +224,10 @@ function SnapshotEditor({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1.5">
-        <Label className="text-xs">Label</Label>
+      <Field label="Label" className="flex flex-col gap-1.5" labelClassName="text-xs">
         <Input className="h-7 text-xs" value={label} onChange={(e) => setLabel(e.target.value)} />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label className="text-xs">Strength</Label>
+      </Field>
+      <Field label="Strength" className="flex flex-col gap-1.5" labelClassName="text-xs">
         <Select value={strength} onValueChange={(v) => setStrength(v as RelationshipStrength)}>
           <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -169,9 +236,8 @@ function SnapshotEditor({
             ))}
           </SelectContent>
         </Select>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label className="text-xs">Sentiment</Label>
+      </Field>
+      <Field label="Sentiment" className="flex flex-col gap-1.5" labelClassName="text-xs">
         <Select value={sentiment} onValueChange={(v) => setSentiment(v as RelationshipSentiment)}>
           <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -180,11 +246,10 @@ function SnapshotEditor({
             ))}
           </SelectContent>
         </Select>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label className="text-xs">Description</Label>
+      </Field>
+      <Field label="Description" className="flex flex-col gap-1.5" labelClassName="text-xs">
         <Textarea className="text-xs resize-none" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
-      </div>
+      </Field>
       <Button size="sm" disabled={!label.trim() || saving} onClick={save}>
         <Check className="h-3.5 w-3.5" /> Save
       </Button>
@@ -210,12 +275,10 @@ function BaseEditor({ relationship, onSaved }: { relationship: Relationship; onS
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1.5">
-        <Label className="text-xs">Label</Label>
+      <Field label="Label" className="flex flex-col gap-1.5" labelClassName="text-xs">
         <Input className="h-7 text-xs" value={label} onChange={(e) => setLabel(e.target.value)} />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label className="text-xs">Strength</Label>
+      </Field>
+      <Field label="Strength" className="flex flex-col gap-1.5" labelClassName="text-xs">
         <Select value={strength} onValueChange={(v) => setStrength(v as RelationshipStrength)}>
           <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -224,9 +287,8 @@ function BaseEditor({ relationship, onSaved }: { relationship: Relationship; onS
             ))}
           </SelectContent>
         </Select>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label className="text-xs">Sentiment</Label>
+      </Field>
+      <Field label="Sentiment" className="flex flex-col gap-1.5" labelClassName="text-xs">
         <Select value={sentiment} onValueChange={(v) => setSentiment(v as RelationshipSentiment)}>
           <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -235,11 +297,10 @@ function BaseEditor({ relationship, onSaved }: { relationship: Relationship; onS
             ))}
           </SelectContent>
         </Select>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label className="text-xs">Description</Label>
+      </Field>
+      <Field label="Description" className="flex flex-col gap-1.5" labelClassName="text-xs">
         <Textarea className="text-xs resize-none" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
-      </div>
+      </Field>
       <Button size="sm" disabled={!label.trim() || saving} onClick={save}>
         <Check className="h-3.5 w-3.5" /> Save relationship
       </Button>
@@ -291,32 +352,33 @@ function CreateRelationshipDialog({ open, onOpenChange, worldId, characters, sta
         <DialogHeader><DialogTitle>New Relationship</DialogTitle></DialogHeader>
         <form onSubmit={submit} className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label>Character A</Label>
+            <Field label="Character A" className="flex flex-col gap-1.5">
               <Select value={aId} onValueChange={setAId}>
-                <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                {/*
+                  Named, because these two sit side by side and a screen reader
+                  read both as "Select…, button" — indistinguishable, with no way
+                  to tell which half of the relationship you were filling in.
+                */}
+                <SelectTrigger aria-label="Character A"><SelectValue placeholder="Select…" /></SelectTrigger>
                 <SelectContent>
                   {characters.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>Character B</Label>
+            </Field>
+            <Field label="Character B" className="flex flex-col gap-1.5">
               <Select value={bId} onValueChange={setBId}>
-                <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                <SelectTrigger aria-label="Character B"><SelectValue placeholder="Select…" /></SelectTrigger>
                 <SelectContent>
                   {characters.filter((c) => c.id !== aId).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <Label>Relationship Label</Label>
+          <Field label="Relationship Label" className="flex flex-col gap-1.5">
             <Input placeholder="e.g. mentor, rival, sibling" value={label} onChange={(e) => setLabel(e.target.value)} />
-          </div>
+          </Field>
           <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label>Strength</Label>
+            <Field label="Strength" className="flex flex-col gap-1.5">
               <Select value={strength} onValueChange={(v) => setStrength(v as RelationshipStrength)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -325,9 +387,8 @@ function CreateRelationshipDialog({ open, onOpenChange, worldId, characters, sta
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>Sentiment</Label>
+            </Field>
+            <Field label="Sentiment" className="flex flex-col gap-1.5">
               <Select value={sentiment} onValueChange={(v) => setSentiment(v as RelationshipSentiment)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -336,18 +397,27 @@ function CreateRelationshipDialog({ open, onOpenChange, worldId, characters, sta
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <Label>Description</Label>
+          <Field label="Description" className="flex flex-col gap-1.5">
             <Input placeholder="Optional description…" value={description} onChange={(e) => setDescription(e.target.value)} />
-          </div>
+          </Field>
           {startChapterLabel && (
             <p className="text-xs text-[hsl(var(--muted-foreground))]">
               Starts at <span className="font-medium text-[hsl(var(--foreground))]">{startChapterLabel}</span> and won't appear in earlier chapters.
             </p>
           )}
-          <DialogFooter>
+          {/* X-9: four conditions behind one dead button. */}
+          <DialogFooter className="items-center">
+            <BlockingReason
+              className="mr-auto"
+              checks={[
+                { met: !!aId, need: 'a first character' },
+                { met: !!bId, need: 'a second character' },
+                { met: !aId || !bId || aId !== bId, need: 'two different characters' },
+                { met: !!label.trim(), need: 'a label' },
+              ]}
+            />
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={!aId || !bId || aId === bId || !label.trim() || saving}>
               {saving ? 'Saving…' : 'Create'}
@@ -401,27 +471,74 @@ export default function RelationshipGraphView() {
     try { return JSON.parse(localStorage.getItem(posKey) ?? '{}') } catch { return {} }
   })
   const posRef = useRef(persistedPositions)
+  // Bumped by "Tidy up" to throw away hand-placed positions and start again.
+  const [layoutGeneration, setLayoutGeneration] = useState(0)
+
+  // Where each character goes before anyone drags them. Computed from every
+  // relationship rather than the ones visible at the cursor, so stepping through
+  // the story does not rearrange the graph under the writer.
+  const computedLayout = useMemo(
+    () => layoutRelationshipGraph(
+      characters.map((c) => c.id),
+      relationships.map((r) => ({ a: r.characterAId, b: r.characterBId })),
+    ),
+    [characters, relationships],
+  )
+
+  // Show only one character's corner of the graph.
+  const [focusId, setFocusId] = useState<string | null>(null)
+  const [focusDepth, setFocusDepth] = useState(1)
+  const visibleIds = useMemo(() => {
+    if (!focusId) return null
+    return neighbourhood(
+      characters.map((c) => c.id),
+      relationships.map((r) => ({ a: r.characterAId, b: r.characterBId })),
+      focusId,
+      focusDepth,
+    )
+  }, [focusId, focusDepth, characters, relationships])
+
+  // A character deleted while focused would otherwise empty the canvas with no
+  // way back, since the picker no longer offers them.
+  useEffect(() => {
+    if (focusId && !characters.some((c) => c.id === focusId)) setFocusId(null)
+  }, [characters, focusId])
 
   // Sync nodes — preserve positions across renders and navigation
   useEffect(() => {
     setNodes((prev) => {
       const livePos = new Map(prev.map((n) => [n.id, n.position]))
-      return characters.map((c, i) => {
-        const faction = showFactionOverlay ? charFactionMap.get(c.id) : undefined
-        return {
-          id: c.id,
-          type: 'character',
-          position: livePos.get(c.id) ?? posRef.current[c.id] ?? { x: (i % 4) * 220, y: Math.floor(i / 4) * 160 },
-          data: {
-            name: c.name,
-            portraitImageId: c.portraitImageId,
-            factionColor: faction?.color ?? null,
-            factionName: faction?.name ?? null,
-          },
-        }
-      })
+      return characters
+        .filter((c) => !visibleIds || visibleIds.has(c.id))
+        .map((c) => {
+          const faction = showFactionOverlay ? charFactionMap.get(c.id) : undefined
+          return {
+            id: c.id,
+            type: 'character',
+            position: livePos.get(c.id) ?? posRef.current[c.id] ?? computedLayout[c.id] ?? { x: 0, y: 0 },
+            data: {
+              name: c.name,
+              portraitImageId: c.portraitImageId,
+              factionColor: faction?.color ?? null,
+              factionName: faction?.name ?? null,
+              // REL-2: what this character is drawn as, so the minimap can use
+              // the same answer instead of one flat near-background grey.
+              // Faction first when the overlay is on, which is what the node's
+              // own border does.
+              miniColor: faction?.color ?? charColor(c),
+            },
+          }
+        })
     })
-  }, [characters, setNodes, showFactionOverlay, allMemberships, allFactions]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [characters, setNodes, showFactionOverlay, allMemberships, allFactions, computedLayout, visibleIds, layoutGeneration]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Throws away hand-placed positions and re-runs the layout. */
+  function tidyUp() {
+    posRef.current = {}
+    localStorage.removeItem(posKey)
+    setNodes((prev) => prev.map((n) => ({ ...n, position: computedLayout[n.id] ?? n.position })))
+    setLayoutGeneration((g) => g + 1)
+  }
 
   // Sync edges — filter by startEventId, hide inactive, use snapshot data when available
   useEffect(() => {
@@ -438,6 +555,9 @@ export default function RelationshipGraphView() {
     const activeOrder = activeEventId ? globalOrder(activeEventId) : null
 
     const edges = relationships.flatMap((r) => {
+      // Focused on one character: only links with both ends still on screen.
+      if (visibleIds && (!visibleIds.has(r.characterAId) || !visibleIds.has(r.characterBId))) return []
+
       // Hide relationships that haven't started yet in the active event
       if (activeOrder !== null && r.startEventId) {
         const startOrder = globalOrder(r.startEventId)
@@ -467,7 +587,7 @@ export default function RelationshipGraphView() {
       }]
     })
     setEdges(edges)
-  }, [relationships, snapshots, setEdges, activeEventId, allChapters, allEvents])
+  }, [relationships, snapshots, setEdges, activeEventId, allChapters, allEvents, visibleIds])
 
   const selectedRel      = relationships.find((r) => r.id === selectedRelId)
   const selectedSnap     = snapshots.find((s) => s.relationshipId === selectedRelId)
@@ -511,7 +631,21 @@ export default function RelationshipGraphView() {
           edgeTypes={edgeTypes}
           connectionMode={ConnectionMode.Loose}
           fitView
-          fitViewOptions={{ padding: 0.15 }}
+          /*
+            R13: fitting everything is the right arrival for a writer surveying
+            a cast, and the wrong one for a reader. At 14 nodes the fit landed
+            under `LABEL_MIN_ZOOM`, so the graph opened in its own degraded mode
+            — 7px names and a banner admitting it, *"Zoom in to read the
+            relationship labels"* — and the reader's question ("how is Arthur
+            connected to Lucy?") cost a zoom and a pan before it could even be
+            asked.
+
+            While reading, the fit is floored at the zoom the labels need, so
+            the graph opens legible and cropped rather than complete and
+            unreadable; panning is the cheaper of the two. Writing keeps the
+            survey, because there the whole shape *is* the answer.
+          */
+          fitViewOptions={{ padding: 0.15, ...(gate.active && { minZoom: LABEL_MIN_ZOOM }) }}
           minZoom={0.1}
           style={{ background: 'hsl(222,47%,9%)' }}
           onConnect={(c) => {
@@ -532,25 +666,94 @@ export default function RelationshipGraphView() {
             localStorage.setItem(posKey, JSON.stringify(posRef.current))
           }}
         >
+          <FitWhenNodesArrive count={nodes.length} minZoom={gate.active ? LABEL_MIN_ZOOM : undefined} />
           <Background color="#334155" gap={20} />
           <Panel position="top-left">
-            {!gate.active && (
-              <div className="flex items-center gap-2">
-                <Button size="sm" className="gap-1.5 shadow-md" onClick={() => { setPendingConn(null); setCreating(true) }} disabled={characters.length < 2}>
-                  <Plus className="h-4 w-4" /> New Relationship
+            <div className="flex flex-col items-start gap-2">
+              {!gate.active && (
+                <div className="flex items-center gap-2">
+                  <Button size="sm" className="gap-1.5 shadow-md" onClick={() => { setPendingConn(null); setCreating(true) }} disabled={characters.length < 2}>
+                    <Plus className="h-4 w-4" /> New Relationship
+                  </Button>
+                  <Button size="sm" variant="outline" className="gap-1.5 shadow-md" onClick={() => setAiOpen(true)}>
+                    <Sparkles className="h-4 w-4" /> Generate with AI
+                  </Button>
+                </div>
+              )}
+
+              {/* Two ways to make a large cast readable: rearrange it, or draw
+                  less of it. Without either, forty-five characters is a knot. */}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="outline" className="gap-1.5 shadow-md" onClick={tidyUp} title="Rearrange the graph, discarding any cards you have moved by hand">
+                  <LayoutGrid className="h-4 w-4" /> Tidy up
                 </Button>
-                <Button size="sm" variant="outline" className="gap-1.5 shadow-md" onClick={() => setAiOpen(true)}>
-                  <Sparkles className="h-4 w-4" /> Generate with AI
-                </Button>
+
+                <div className="flex items-center gap-1.5 rounded-md border border-[hsl(217,33%,30%)] bg-[hsl(222,47%,14%)] px-2 py-1 shadow-md">
+                  <Focus className="h-3.5 w-3.5 text-[hsl(210,40%,70%)]" aria-hidden="true" />
+                  <select
+                    aria-label="Focus on one character"
+                    value={focusId ?? ''}
+                    onChange={(e) => setFocusId(e.target.value || null)}
+                    className="h-6 max-w-[10rem] rounded bg-transparent text-xs text-[hsl(210,40%,80%)] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
+                  >
+                    <option value="">Everyone</option>
+                    {characters.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  {focusId && (
+                    <select
+                      aria-label="How far from them to show"
+                      value={focusDepth}
+                      onChange={(e) => setFocusDepth(Number(e.target.value))}
+                      className="h-6 rounded bg-transparent text-xs text-[hsl(210,40%,80%)] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
+                    >
+                      <option value={1}>who they know</option>
+                      <option value={2}>and who those know</option>
+                    </select>
+                  )}
+                </div>
+
+                {focusId && (
+                  <span className="rounded-md bg-[hsl(222,47%,14%)] px-2 py-1 text-[11px] text-[hsl(210,40%,70%)] shadow-md">
+                    {nodes.length} of {characters.length} shown
+                  </span>
+                )}
+
+                {/* A big cast fits on screen only at a zoom where the labels are
+                    illegible, so they are dropped — but silently dropping them
+                    would leave a reader thinking the graph has none. */}
+                <ZoomHint />
               </div>
-            )}
+            </div>
           </Panel>
           <Controls style={{ background: 'hsl(222,47%,14%)', borderColor: 'hsl(217,33%,22%)' }} />
+          {/*
+            REL-2: the minimap was a smear. Its nodes were `hsl(222,47%,20%)` on
+            an `hsl(222,47%,11%)` background — the same hue nine points apart —
+            and the only thing marking the viewport was a 40% mask with no edge,
+            so there was no rectangle to find. It also hardcoded a slate palette
+            that every other theme had to live with.
+
+            Nodes now carry the colour the graph gives them, the viewport has an
+            actual outline, and the mask is dark enough for inside and outside to
+            read as different places. It is pannable and zoomable too: on a graph
+            big enough to need a minimap, being able to steer from it is the
+            point of having one.
+          */}
           <MiniMap
-            nodeColor="hsl(222,47%,20%)"
-            maskColor="rgba(0,0,0,0.4)"
+            nodeColor={(n) => (n.data?.miniColor as string) ?? 'hsl(var(--muted-foreground))'}
+            nodeStrokeColor="hsl(var(--background))"
+            nodeStrokeWidth={2}
+            nodeBorderRadius={3}
+            maskColor="hsl(var(--background) / 0.72)"
+            maskStrokeColor="hsl(var(--ring))"
+            maskStrokeWidth={2}
+            pannable
+            zoomable
+            ariaLabel="Relationship graph minimap"
             className="!hidden md:!block"
-            style={{ background: 'hsl(222,47%,11%)', border: '1px solid hsl(217,33%,22%)' }}
+            style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
           />
           {allFactions.length > 0 && (
             <Panel position="top-right">
@@ -589,7 +792,7 @@ export default function RelationshipGraphView() {
               <span className="text-sm font-semibold">Relationship</span>
               {activeEventId && (
                 <p className="text-[10px] text-[hsl(var(--muted-foreground))] leading-tight">
-                  Event active
+                  Scene active
                 </p>
               )}
             </div>
@@ -616,8 +819,7 @@ export default function RelationshipGraphView() {
                 return cn !== 0 ? cn : a.sortOrder - b.sortOrder
               })
               return (
-                <div className="flex flex-col gap-1.5">
-                  <Label className="text-xs">Started in</Label>
+                <Field label="Started in" className="flex flex-col gap-1.5" labelClassName="text-xs">
                   <Select
                     value={selectedRel.startEventId ?? '__beginning__'}
                     onValueChange={async (v) => {
@@ -637,7 +839,7 @@ export default function RelationshipGraphView() {
                       })}
                     </SelectContent>
                   </Select>
-                </div>
+                </Field>
               )
             })()}
 
@@ -680,7 +882,7 @@ export default function RelationshipGraphView() {
 
             {activeEventId && !editingSnapshot && (
               <Button size="sm" variant="outline" onClick={() => setEditingSnapshot(true)}>
-                {!selectedSnap ? 'Set for this event' : isSnapInherited ? 'Override for this event' : 'Edit event state'}
+                {!selectedSnap ? 'Set for this scene' : isSnapInherited ? 'Override for this scene' : 'Edit scene state'}
               </Button>
             )}
 
@@ -737,7 +939,7 @@ export default function RelationshipGraphView() {
                   setEditingSnapshot(false)
                 }}
               >
-                <Trash2 className="h-3.5 w-3.5" /> End in this event
+                <Trash2 className="h-3.5 w-3.5" /> End in this scene
               </Button>
             )}
             <Button

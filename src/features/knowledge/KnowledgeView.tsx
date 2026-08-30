@@ -21,6 +21,8 @@ import { EmptyState } from '@/components/EmptyState'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { GenerateKnowledgeDialog } from './GenerateKnowledgeDialog'
 import type { KnowledgeFact } from '@/types'
+import { orderFacts, FACT_ORDERS, FACT_ORDER_LABELS, type FactOrder } from '@/lib/factOrder'
+import { eventsInReadingOrder, byReadingPosition } from '@/lib/readingOrder'
 
 export default function KnowledgeView() {
   const { worldId } = useParams<{ worldId: string }>()
@@ -54,16 +56,25 @@ export default function KnowledgeView() {
   const [creating, setCreating] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [aiOpen, setAiOpen] = useState(false)
+  const [factOrder, setFactOrder] = useState<FactOrder>('added')
+
+  /*
+    Every event in the world, in the order they are read.
+
+    `useWorldEvents` returns them in Dexie's order, which is by primary key —
+    no relation to the story. This was already sorted here for "known as of the
+    cursor" to be decidable, and then the *unsorted* array was handed to the
+    three "when did they learn it" pickers, so the writer chose a moment from a
+    shuffled list: on the shipped *Dracula*, 84 options with chapters 1 to 3
+    sitting at positions 12, 23, 34, 45, 56, 67, 78 and 84.
+  */
+  const orderedEvents = useMemo(() => eventsInReadingOrder(events, chapters), [events, chapters])
 
   // Narrative position of each event, so "known as of the cursor" is decidable.
-  const eventPos = useMemo(() => {
-    const chapterNumber = new Map(chapters.map((c) => [c.id, c.number]))
-    const ordered = [...events].sort((a, b) => {
-      const byChapter = (chapterNumber.get(a.chapterId) ?? 0) - (chapterNumber.get(b.chapterId) ?? 0)
-      return byChapter !== 0 ? byChapter : a.sortOrder - b.sortOrder
-    })
-    return new Map(ordered.map((e, i) => [e.id, i]))
-  }, [events, chapters])
+  const eventPos = useMemo(
+    () => new Map(orderedEvents.map((e, i) => [e.id, i])),
+    [orderedEvents],
+  )
   const cursorPos = activeEventId ? eventPos.get(activeEventId) ?? null : null
 
   const eventLabel = useMemo(() => {
@@ -71,16 +82,45 @@ export default function KnowledgeView() {
     const m = new Map<string, string>()
     for (const e of events) {
       const n = chapterNumber.get(e.chapterId)
-      m.set(e.id, `${n !== undefined ? `Ch.${n} — ` : ''}${e.title || 'Untitled event'}`)
+      m.set(e.id, `${n !== undefined ? `Ch.${n} — ` : ''}${e.title || 'Untitled scene'}`)
     }
     return m
   }, [events, chapters])
 
   const charById = useMemo(() => new Map(characters.map((c) => [c.id, c])), [characters])
 
-  const filtered = facts.filter((f) => f.title.toLowerCase().includes(search.toLowerCase()))
+  /**
+   * KN-4: the roster had one order — the order facts were added — and no way to
+   * ask the two questions the screen exists for. Both numbers are already on
+   * the cards; they simply had no say in the sequence. See `src/lib/factOrder.ts`.
+   */
+  const firstRevealPos = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const r of reveals) {
+      const p = eventPos.get(r.eventId)
+      if (p === undefined) continue
+      const current = m.get(r.factId)
+      if (current === undefined || p < current) m.set(r.factId, p)
+    }
+    return m
+  }, [reveals, eventPos])
+
+  const searched = facts.filter((f) => f.title.toLowerCase().includes(search.toLowerCase()))
+  const filtered = orderFacts(searched, factOrder, {
+    firstRevealPos: (id) => firstRevealPos.get(id) ?? null,
+    knownCount: (id) => knownCount(id),
+  })
   const selected = facts.find((f) => f.id === selectedId) ?? null
-  const revealsForSelected = reveals.filter((r) => r.factId === selectedId)
+  /*
+    In reading order, not the order Dexie hands them back. A fact learned in
+    chapters 1, 2 and 3 listed as "Ch.3, Ch.1, Ch.2" — the same fault WRUN-3
+    fixed for the three pickers on this screen, in the list right beside them.
+    The positions are already computed above for the cursor.
+  */
+  const revealsForSelected = useMemo(
+    () => byReadingPosition(reveals.filter((r) => r.factId === selectedId), eventPos),
+    [reveals, selectedId, eventPos],
+  )
 
   /** Is a reveal in effect at the active cursor? (No cursor → treat as visible.) */
   function knownAtCursor(eventId: string): boolean {
@@ -150,9 +190,19 @@ export default function KnowledgeView() {
             onChange={(e) => setSearch(e.target.value)}
             className="h-8 max-w-xs text-sm"
           />
+          <Select value={factOrder} onValueChange={(v) => setFactOrder(v as FactOrder)}>
+            <SelectTrigger className="h-8 w-auto gap-2 text-xs" aria-label="Order facts by">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {FACT_ORDERS.map((o) => (
+                <SelectItem key={o} value={o}>{FACT_ORDER_LABELS[o]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {activeEventId && (
             <span className="text-xs text-[hsl(var(--muted-foreground))]">
-              Counts reflect the active chapter cursor.
+              Counts reflect the moment the cursor is on.
             </span>
           )}
         </PageHeader>
@@ -259,7 +309,7 @@ export default function KnowledgeView() {
                   <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__auto__">Auto — when a POV character knows it</SelectItem>
-                    {events.map((e) => (
+                    {orderedEvents.map((e) => (
                       <SelectItem key={e.id} value={e.id}>{eventLabel.get(e.id) ?? e.title}</SelectItem>
                     ))}
                   </SelectContent>
@@ -282,7 +332,7 @@ export default function KnowledgeView() {
                   <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__origin_none__">True from the start</SelectItem>
-                    {events.map((e) => (
+                    {orderedEvents.map((e) => (
                       <SelectItem key={e.id} value={e.id}>{eventLabel.get(e.id) ?? e.title}</SelectItem>
                     ))}
                   </SelectContent>
@@ -333,7 +383,7 @@ export default function KnowledgeView() {
               {!gate.active && unrevealedChars.length > 0 && events.length > 0 && (
                 <AddRevealRow
                   chars={unrevealedChars}
-                  eventOptions={events}
+                  eventOptions={orderedEvents}
                   eventLabel={eventLabel}
                   onAdd={(characterId, eventId) =>
                     worldId && createKnowledgeReveal({ worldId, factId: selected.id, characterId, eventId, note: '' })
@@ -341,7 +391,7 @@ export default function KnowledgeView() {
                 />
               )}
               {!gate.active && events.length === 0 && (
-                <p className="mt-2 text-[10px] text-[hsl(var(--muted-foreground))]">Add events on the timeline to record when characters learn this.</p>
+                <p className="mt-2 text-[10px] text-[hsl(var(--muted-foreground))]">Add scenes on the timeline to record when characters learn this.</p>
               )}
 
               {/* Co-presence suggestions: who shared a scene with a knower */}
@@ -401,6 +451,7 @@ function FactCard({ fact, known, total, selected, onClick }: {
 }) {
   return (
     <button
+      data-fact-card
       onClick={onClick}
       className={`rounded-lg border p-4 text-left transition-colors hover:border-[hsl(var(--ring)/0.4)] ${
         selected ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent)/0.15)]' : 'border-[hsl(var(--border))] bg-[hsl(var(--card))]'

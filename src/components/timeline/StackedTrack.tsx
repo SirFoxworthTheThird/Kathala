@@ -40,6 +40,10 @@ export interface StackedTrackProps {
   onChapterSelect: (chapterId: string, events: WorldEvent[]) => void
   onActivateDepth: (timelineId: string) => void
   setActiveEventId: (id: string) => void
+  /** Outer-track events paired with an inner moment by a sync point (MT-7). */
+  linkedOuterEventIds?: ReadonlySet<string>
+  /** Inner-track events paired with an outer moment (MT-7). */
+  linkedInnerEventIds?: ReadonlySet<string>
 }
 
 export function StackedTrack({
@@ -51,12 +55,28 @@ export function StackedTrack({
   outerScrollerRef, innerScrollerRef, outerMarkerRef, innerMarkerRef,
   onPlayPause, onStop, onSpeedChange, onDiffOpen,
   onPrev, onNext, onEventSelect, onChapterSelect, onActivateDepth,
+  linkedOuterEventIds, linkedInnerEventIds,
 }: StackedTrackProps) {
-  const badgeStyle = (active: boolean, color: string): CSSProperties => ({
+  /*
+    W19-10, same rule as `EventPanel`: a stored timeline colour is an identity
+    mark, not ink. At 0.48rem this is the smallest text in the bar, and it was
+    painted in whatever colour the writer gave the timeline — which on a light
+    ground can land anywhere. The active badge takes the bar's own ink; the
+    colour is carried by the dot beside it, where 3:1 is the bar rather than 4.5.
+  */
+  const badgeStyle = (active: boolean): CSSProperties => ({
     fontSize: '0.48rem', fontWeight: 800, letterSpacing: '0.12em',
-    color: active ? color : 'var(--tl-text-muted)',
+    color: active ? 'var(--tl-text)' : 'var(--tl-text-muted)',
     fontFamily: 'var(--font-body)', textTransform: 'uppercase',
     transition: 'color 0.2s', whiteSpace: 'nowrap',
+    display: 'inline-flex', alignItems: 'center', gap: '0.2rem',
+  })
+
+  /** The timeline's colour, as a mark rather than as text. */
+  const badgeDot = (color: string, active: boolean): CSSProperties => ({
+    display: 'inline-block', width: '0.35rem', height: '0.35rem',
+    borderRadius: '9999px', background: color, flexShrink: 0,
+    opacity: active ? 1 : 0.5,
   })
 
   const trackStyle = (active: boolean, height: string): CSSProperties => ({
@@ -66,7 +86,7 @@ export function StackedTrack({
   })
 
   return (
-    <div style={{ position: 'fixed', bottom: 0, left: 'var(--pw-nav-w, 0px)', right: 0, zIndex: 1000 }}>
+    <div data-chapter-bar style={{ position: 'fixed', bottom: 0, left: 'var(--pw-nav-w, 0px)', right: 0, zIndex: 1000 }}>
       <div style={{
         height: BAR_H_STACKED,
         background: 'var(--tl-bg)',
@@ -86,15 +106,26 @@ export function StackedTrack({
             padding: '0 0.5rem', height: '100%', display: 'flex', alignItems: 'center',
             borderRight: '1px solid var(--tl-border)', flexShrink: 0, gap: '0.35rem',
           }}>
-            <span style={badgeStyle(isOuterActive, outerColor)}>{outerTimelineLabel}</span>
+            <span style={badgeStyle(isOuterActive)}>
+              <span aria-hidden="true" style={badgeDot(outerColor, isOuterActive)} />
+              {outerTimelineLabel}
+            </span>
           </div>
           <Controls
             isPlaying={isPlayingStory && isOuterActive}
             speed={playbackSpeed}
             showStop={isPlayingStory && isOuterActive}
-            showDiff={isOuterActive && !!activeEventId}
+            showDiff={isOuterActive && outerChapters.length >= 2}
             showClear={isOuterActive && !!activeEventId}
             color={outerColor}
+            /*
+              MT-2: both tracks carried the same "Play story on the map", so
+              neither said which of the two it would move. Each names its own
+              track now, which is also the answer to "which one is play the
+              story" — the inner track is the story, the outer one frames it.
+            */
+            playLabel={`Play ${outerTimelineLabel} — moves the cursor along this track`}
+            showCollapse={false}
             onPlayPause={onPlayPause}
             onStop={onStop}
             onSpeedChange={onSpeedChange}
@@ -122,6 +153,7 @@ export function StackedTrack({
             activeMarkerRef={outerMarkerRef}
             onEventSelect={onEventSelect}
             onChapterSelect={(chId) => onChapterSelect(chId, outerRawEvents)}
+            linkedEventIds={linkedOuterEventIds}
           />
         </div>
 
@@ -137,15 +169,19 @@ export function StackedTrack({
             padding: '0 0.5rem', height: '100%', display: 'flex', alignItems: 'center',
             borderRight: '1px solid var(--tl-border)', flexShrink: 0,
           }}>
-            <span style={badgeStyle(!isOuterActive, innerColor)}>{innerTimelineLabel}</span>
+            <span style={badgeStyle(!isOuterActive)}>
+              <span aria-hidden="true" style={badgeDot(innerColor, !isOuterActive)} />
+              {innerTimelineLabel}
+            </span>
           </div>
           <Controls
             isPlaying={isPlayingStory && !isOuterActive}
             speed={playbackSpeed}
             showStop={isPlayingStory && !isOuterActive}
-            showDiff={!isOuterActive && !!activeEventId}
+            showDiff={!isOuterActive && innerChapters.length >= 2}
             showClear={!isOuterActive && !!activeEventId}
             color={innerColor}
+            playLabel={`Play ${innerTimelineLabel} — moves the cursor along this track`}
             onPlayPause={onPlayPause}
             onStop={onStop}
             onSpeedChange={onSpeedChange}
@@ -173,6 +209,7 @@ export function StackedTrack({
             activeMarkerRef={innerMarkerRef}
             onEventSelect={onEventSelect}
             onChapterSelect={(chId) => onChapterSelect(chId, innerRawEvents)}
+            linkedEventIds={linkedInnerEventIds}
           />
         </div>
 

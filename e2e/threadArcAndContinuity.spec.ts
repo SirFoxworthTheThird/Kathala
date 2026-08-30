@@ -10,7 +10,6 @@ const settleNav = (page: Page) => page.mouse.move(700, 400).then(() => page.wait
 
 /** A world with two chapters where "The Heist" is raised in ch.1 and dropped. */
 async function setupDanglingThread(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Threaded')
@@ -25,9 +24,9 @@ async function setupDanglingThread(page: Page) {
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
   }
   const addEvent = async (title: string) => {
-    await main.getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill(title)
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await main.getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill(title)
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
   }
 
   // Arc View is character-centric, so the world needs at least one character.
@@ -61,6 +60,9 @@ async function setupDanglingThread(page: Page) {
   await gotoTimeline()
   await page.getByTitle('Open chapter detail').first().click()
   await main.getByText('Casing the vault', { exact: true }).click()
+  // A scene with no threads on it does not draw the Plot Threads section any
+  // more — it is offered as a chip instead, so open it first.
+  await main.getByRole('button', { name: '+ Plot Threads' }).click()
   await main.getByRole('button', { name: '+ Tag a thread…' }).click()
   await page.getByRole('option', { name: 'The Heist' }).click()
   await expect(main.getByLabel('Remove thread The Heist')).toBeVisible()

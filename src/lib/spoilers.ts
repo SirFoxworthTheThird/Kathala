@@ -92,7 +92,7 @@ export function readingProgress(
   return total > 0 ? { chapter, total } : null
 }
 
-/** One "this entity is used at this event" fact. */
+/** One "this entity is used at this scene" fact. */
 export interface Appearance {
   entityId: string
   eventId: string
@@ -131,9 +131,19 @@ export function firstAppearances(
  * position is picked — makes the app look broken to someone who has not
  * realised the cursor exists.
  *
- * An entity with no appearance at all is shown. It is not part of the narrated
- * sequence, so there is no moment to reveal it at, and hiding it would make
- * standalone reference material permanently invisible rather than merely late.
+ * An entity with no appearance at all is *hidden*. A guard that fails open is
+ * not a guard: the reader cannot tell "the story has not placed this yet" from
+ * "nobody recorded where this goes", and the second silently reveals the first.
+ * In the shipped Philosopher's Stone that gap put Charlie Weasley, a flying
+ * motorcycle and Godric's Hollow on screen at chapter one.
+ *
+ * This costs nothing permanently, which is what makes it affordable: "all
+ * chapters" is one control away and reveals everything, so an entity the story
+ * never places is late rather than lost. It applies only to entities discovered
+ * through appearances — characters, items, places, threads, motifs, regions.
+ * Records carrying their own reveal point go through `hasReached`, and records
+ * that are merely *linked* to others go through `linksRevealed`; genuine
+ * standalone reference material is gated there, not here.
  */
 export function isRevealed(
   entityId: string,
@@ -142,7 +152,7 @@ export function isRevealed(
 ): boolean {
   if (cursor === null) return true
   const first = firstSeen.get(entityId)
-  if (first === undefined) return true
+  if (first === undefined) return false
   return first <= cursor
 }
 
@@ -167,4 +177,124 @@ export function hiddenCount<T extends { id: string }>(
 ): number {
   if (cursor === null) return 0
   return records.length - revealed(records, firstSeen, cursor).length
+}
+
+/** Just enough of a location marker to decide which maps it reveals. */
+export interface RevealingMarker {
+  id: string
+  mapLayerId: string
+  linkedMapLayerId?: string | null
+}
+
+export interface RevealingMapLayer {
+  id: string
+  parentMapId?: string | null
+}
+
+/**
+ * Give each sub-map gateway the first appearance of the map it opens.
+ *
+ * Events normally name the precise location inside a sub-map, not the generic
+ * marker on its parent map. Without this propagation the child map is revealed
+ * but the marker used to navigate to it remains hidden. Repeating until stable
+ * carries the same reveal point through arbitrarily deep map hierarchies.
+ */
+export function mapGatewayFirstAppearances(
+  firstSeen: ReadonlyMap<string, SortKey>,
+  markers: readonly RevealingMarker[],
+): Map<string, SortKey> {
+  const out = new Map(firstSeen)
+  const firstReachedByLayer = new Map<string, SortKey>()
+
+  const recordLayer = (layerId: string, key: SortKey): boolean => {
+    const current = firstReachedByLayer.get(layerId)
+    if (current !== undefined && current <= key) return false
+    firstReachedByLayer.set(layerId, key)
+    return true
+  }
+
+  for (const marker of markers) {
+    const key = out.get(marker.id)
+    if (key !== undefined) recordLayer(marker.mapLayerId, key)
+  }
+
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const gateway of markers) {
+      if (!gateway.linkedMapLayerId) continue
+      const key = firstReachedByLayer.get(gateway.linkedMapLayerId)
+      if (key === undefined) continue
+
+      const current = out.get(gateway.id)
+      if (current === undefined || key < current) {
+        out.set(gateway.id, key)
+        changed = true
+      }
+      if (recordLayer(gateway.mapLayerId, key)) changed = true
+    }
+  }
+
+  return out
+}
+
+/**
+ * Which maps the reader has been to, given which markers they have met.
+ *
+ * Markers are gated but the maps holding them were not, so a world with a map
+ * per setting listed every place in the book by name before the reader arrived
+ * — the gating defeated by its own sidebar. A map is shown when either reveal
+ * point has been reached:
+ *
+ * - a marker **on** it is revealed — the reader is looking at somewhere on this
+ *   map, so the map itself is no longer news;
+ * - or the marker **linking** to it is revealed — a sub-map called "Diagon
+ *   Alley" is exactly as much of a spoiler as the marker of the same name, and
+ *   keeps step with it.
+ *
+ * Either will do. Waiting for the link alone hid the one place the reader was
+ * actually in: a scene names where it happens and that marker is revealed with
+ * the scene, but if it sits on a sub-map, the sub-map waited on a *different*
+ * marker pointing at it — so a chapter set inside the Prancing Pony left the
+ * map of Bree missing, with the scene's own location on it.
+ *
+ * A map with neither — nothing on it, nothing pointing at it — has no reveal
+ * point to wait for and stays, the same choice made for an entity that never
+ * appears anywhere.
+ */
+export function mapLayerRevealer(
+  markers: readonly RevealingMarker[],
+  markerRevealed: (markerId: string) => boolean,
+  layers: readonly RevealingMapLayer[] = [],
+): (layerId: string) => boolean {
+  const linked = new Set<string>()
+  const populated = new Set<string>()
+  // Kept apart rather than merged, because they are the two reveal points and
+  // the bug was reading only one of them.
+  const standingOn = new Set<string>()
+  const linkedFrom = new Set<string>()
+  for (const m of markers) {
+    populated.add(m.mapLayerId)
+    if (m.linkedMapLayerId) linked.add(m.linkedMapLayerId)
+    if (!markerRevealed(m.id)) continue
+    standingOn.add(m.mapLayerId)
+    if (m.linkedMapLayerId) linkedFrom.add(m.linkedMapLayerId)
+  }
+  const parentById = new Map(layers.map((layer) => [layer.id, layer.parentMapId ?? null]))
+  const reached = new Set([...standingOn, ...linkedFrom])
+  // Reveal the complete navigation path to each reached layer. Guarding with
+  // `reached` also makes malformed cyclic map data harmless.
+  for (const layerId of [...reached]) {
+    let parentId = parentById.get(layerId) ?? null
+    while (parentId && !reached.has(parentId)) {
+      reached.add(parentId)
+      parentId = parentById.get(parentId) ?? null
+    }
+  }
+  return (id) => {
+    if (reached.has(id)) return true
+    // Nothing revealed points here yet: it waits only if there was something to
+    // wait for in the first place.
+    return !linked.has(id) && !populated.has(id)
+  }
 }

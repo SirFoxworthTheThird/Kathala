@@ -146,8 +146,23 @@ export function UploadMapDialog({ open, onOpenChange, worldId, parentMapId = nul
               <span className="h-px flex-1 bg-[hsl(var(--border))]" /> or link a URL <span className="h-px flex-1 bg-[hsl(var(--border))]" />
             </div>
             <div className="flex items-center gap-1.5">
+              {/*
+                WRUN-10: `type="text"` with a URL keyboard, not `type="url"`.
+
+                This field is not part of the submit — it has its own **Link**
+                button and its own error line, and `handleLink` reports what
+                went wrong in the dialog. But a `type="url"` input inside the
+                form joins the form's validity, so half-typed text left behind
+                here — *"ashcorn map"*, a plausible half-thought — blocked the
+                upload of a file already chosen and previewed just above, with a
+                native bubble pointing at the field the writer had abandoned.
+
+                `inputMode` keeps the URL keyboard on a phone, which is the part
+                of `type="url"` worth having.
+              */}
               <Input
-                type="url"
+                type="text"
+                inputMode="url"
                 placeholder="https://…/map.jpg"
                 value={linkUrl}
                 onChange={(e) => setLinkUrl(e.target.value)}

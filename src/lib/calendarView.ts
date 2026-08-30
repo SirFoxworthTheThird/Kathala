@@ -1,5 +1,5 @@
 import type { WorldEvent, Chapter, WorldCalendar, Timeline } from '@/types'
-import { computeInWorldDays } from '@/lib/inWorldTime'
+import { computeInWorldDays, provisionallyDatedEvents } from '@/lib/inWorldTime'
 import { dayNumberToDate } from '@/lib/calendar'
 
 /**
@@ -14,6 +14,12 @@ export interface CalendarEvent {
   dayNumber: number
   isFlashback: boolean
   chapterNumber: number
+  /**
+   * The clock derived this date rather than the writer stating it (HB-5). The
+   * grid draws these differently and counts them, so the calendar cannot read
+   * authoritative about a date nobody chose.
+   */
+  provisional: boolean
 }
 
 export interface CalendarMonthGrid {
@@ -25,6 +31,13 @@ export interface CalendarMonthGrid {
   monthName: string
   /** Number of days in this month. */
   days: number
+  /**
+   * Days that belong to no month (`CalendarMonth.intercalary`). The grid is
+   * built the same way — they are a stretch of the year like any other — but a
+   * one-day stretch drawn as a seven-column month reads as a broken month
+   * rather than as the named day it is, so the view is told which it has.
+   */
+  intercalary: boolean
   /** Events on each 1-based day of the month. */
   eventsByDay: Map<number, CalendarEvent[]>
 }
@@ -45,6 +58,7 @@ export function buildCalendarMonths({
   if (monthsPerYear === 0) return []
 
   const dayByEvent = computeInWorldDays(events, chapters, timelines)
+  const provisional = provisionallyDatedEvents(events, chapters)
   const chapterNumberById = new Map(chapters.map((c) => [c.id, c.number]))
 
   // Absolute month ordinal so months order across years (and pre-epoch years).
@@ -65,6 +79,7 @@ export function buildCalendarMonths({
         dayNumber,
         isFlashback: ev.isFlashback ?? false,
         chapterNumber: chapterNumberById.get(ev.chapterId) ?? 0,
+        provisional: provisional.has(ev.id),
       },
       ordinal: ordinalOf(date.year, date.month),
       day: date.day,
@@ -112,6 +127,7 @@ export function buildCalendarMonths({
       month,
       monthName: calendar.months[month]?.name ?? `Month ${month + 1}`,
       days: Math.max(1, Math.floor(calendar.months[month]?.days ?? 30)),
+      intercalary: !!calendar.months[month]?.intercalary,
       eventsByDay,
     }
   })

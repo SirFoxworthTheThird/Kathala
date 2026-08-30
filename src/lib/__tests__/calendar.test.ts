@@ -31,6 +31,11 @@ describe('dayNumberToDate', () => {
   it('handles days before the epoch', () => {
     expect(dayNumberToDate(cal, -1)).toEqual({ year: 99, month: 2, day: 5 }) // last day of year 99
   })
+  it('places fractional story-clock times on their containing calendar day', () => {
+    expect(dayNumberToDate(cal, 10.1)).toEqual({ year: 100, month: 1, day: 1 })
+    expect(dayNumberToDate(cal, 10.9)).toEqual({ year: 100, month: 1, day: 1 })
+    expect(dayNumberToDate(cal, -0.1)).toEqual({ year: 99, month: 2, day: 5 })
+  })
 })
 
 describe('dateToDayNumber round-trips with dayNumberToDate', () => {
@@ -67,5 +72,75 @@ describe('defaultCalendar', () => {
   it('is a 12-month, 365-day year', () => {
     expect(defaultCalendar().months).toHaveLength(12)
     expect(daysPerYear(defaultCalendar())).toBe(365)
+  })
+})
+
+/**
+ * Days that belong to no month.
+ *
+ * The Shire Reckoning is twelve thirty-day months plus five named days that sit
+ * outside them — 1 Yule, 1 Lithe, Midyear's Day, 2 Lithe, 2 Yule — and the
+ * Lithedays fall in the *middle* of the year rather than at the end. It was
+ * always enterable, because the arithmetic only ever asks how long each entry
+ * is; what it could not do was read right. `intercalary` is that display flag.
+ */
+const MONTHS = [
+  'Afteryule', 'Solmath', 'Rethe', 'Astron', 'Thrimidge', 'Forelithe',
+  'Afterlithe', 'Wedmath', 'Halimath', 'Winterfilth', 'Blotmath', 'Foreyule',
+]
+const day = (name: string) => ({ name, days: 1, intercalary: true })
+const shire: WorldCalendar = {
+  startYear: 1418,
+  yearSuffix: 'S.R.',
+  months: [
+    day('2 Yule'),
+    ...MONTHS.slice(0, 6).map((name) => ({ name, days: 30 })),
+    day('1 Lithe'), day("Midyear's Day"), day('2 Lithe'),
+    ...MONTHS.slice(6).map((name) => ({ name, days: 30 })),
+    day('1 Yule'),
+  ],
+}
+
+describe('a calendar with intercalary days', () => {
+  it('adds up to a real year', () => {
+    expect(daysPerYear(shire)).toBe(365)
+  })
+
+  it('prints a lone named day as its name, with no day number in front of it', () => {
+    // Day 0 is 2 Yule; the six months and 1 Lithe follow.
+    expect(formatInWorldDate(shire, 0)).toBe('2 Yule, 1418 S.R.')
+    expect(formatInWorldDate(shire, 1 + 180)).toBe('1 Lithe, 1418 S.R.')
+    expect(formatInWorldDate(shire, 1 + 180 + 1)).toBe("Midyear's Day, 1418 S.R.")
+  })
+
+  it('still numbers within an ordinary month, which is the pairing that matters', () => {
+    expect(formatInWorldDate(shire, 1)).toBe('1 Afteryule, 1418 S.R.')
+    expect(formatInWorldDate(shire, 30)).toBe('30 Afteryule, 1418 S.R.')
+  })
+
+  it('keeps the number on a multi-day intercalary run, which is what "2 Lithe" means', () => {
+    const merged: WorldCalendar = {
+      ...shire,
+      months: [{ name: 'Lithe', days: 3, intercalary: true }, { name: 'Afteryule', days: 30 }],
+    }
+    expect(formatInWorldDate(merged, 1)).toBe('2 Lithe, 1418 S.R.')
+  })
+
+  it('round-trips a named day through the day number', () => {
+    const midyear = 1 + 180 + 1
+    const d = dayNumberToDate(shire, midyear)
+    expect(shire.months[d.month].name).toBe("Midyear's Day")
+    expect(dateToDayNumber(shire, d)).toBe(midyear)
+  })
+
+  it('counts a birthday on a named day like any other', () => {
+    const born = dayNumberToDate(shire, 1 + 180 + 1)
+    expect(ageInYears(shire, born, 1 + 180 + 1 + 365)).toBe(1)
+    expect(ageInYears(shire, born, 1 + 180 + 365)).toBe(0)
+  })
+
+  it('leaves a calendar written before the flag existed alone', () => {
+    // `intercalary` absent is an ordinary month, so nothing already stored moves.
+    expect(formatInWorldDate(cal, 0)).toBe('1 Frost, 100 AC')
   })
 })

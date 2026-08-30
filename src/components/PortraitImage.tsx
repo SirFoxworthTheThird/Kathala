@@ -40,8 +40,25 @@ export function PortraitImage({
   const [broken, setBroken] = useState<string | null>(null)
 
   if (!url || broken === url) {
+    /*
+      SEL-3a, corrected. The finding read "an imported world gets no cover
+      image"; measured, every shipped world carries a `coverImageId` and so does
+      every `.pwk` of a world that had one. What produces the placeholder is the
+      opposite: the id is there and the *bytes* are not, because binary images
+      live in the `.pwb` bundle and downloading that is a separate, much larger
+      decision.
+
+      So the placeholder says which of the two it is, rather than looking
+      identical to "there is no picture here". An id with nothing behind it is a
+      picture that was not downloaded; no id at all is an empty slot, and stays
+      silent.
+    */
+    const missing = !!imageId
     return (
-      <div className={cn('flex items-center justify-center bg-[hsl(var(--muted))]', fallbackClassName ?? className)}>
+      <div
+        className={cn('flex items-center justify-center bg-[hsl(var(--muted))]', fallbackClassName ?? className)}
+        title={missing ? 'Image not available — it may not have been downloaded with this world' : undefined}
+      >
         <Icon className="h-1/2 w-1/2 text-[hsl(var(--muted-foreground))]" />
       </div>
     )

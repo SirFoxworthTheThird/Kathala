@@ -82,6 +82,43 @@ describe('placeItemAtLocation', () => {
     expect(snap2!.inventoryItemIds).toEqual(['item-3'])
   })
 
+  /*
+    The case both tests above miss, and the reason a blind run could not make
+    the `dup-item` continuity rule fire: they give the holder a record at the
+    very event being placed. The app resolves state by *last known*, so the
+    ordinary holder is somebody recorded chapters earlier with nothing since —
+    and a literal `where('eventId')` query does not see them. The item then sits
+    at a location and in their hands at the same moment, and the checker cannot
+    say so, because it compares literal records at one scene too.
+  */
+  it('takes the item off a holder whose record is at an earlier scene', async () => {
+    await db.chapters.add({ id: 'ch1', worldId: W, timelineId: 'tl', number: 1, title: 'One', synopsis: '', notes: '', wordGoal: null, createdAt: 0, updatedAt: 0 })
+    const ev = (id: string, sortOrder: number) => ({
+      id, worldId: W, chapterId: 'ch1', timelineId: 'tl', title: id, description: '',
+      sortOrder, tags: [], locationMarkerId: null, involvedCharacterIds: [],
+      mentionedCharacterIds: [], involvedItemIds: [], threadIds: [], motifIds: [],
+      travelDays: null, inWorldTime: null, structureBeat: null, status: 'draft' as const,
+      povCharacterId: null, tension: null, isFlashback: false, createdAt: 0, updatedAt: 0,
+    })
+    await db.events.bulkAdd([ev('ev-early', 0), ev('ev-late', 1)])
+
+    await upsertSnapshot({
+      worldId: W, characterId: 'char-1', eventId: 'ev-early',
+      isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
+      inventoryItemIds: ['item-1', 'item-2'], inventoryNotes: '', statusNotes: '', travelModeId: null,
+    })
+
+    await placeItemAtLocation(W, 'item-1', 'ev-late', 'loc-1')
+
+    // The earlier record is the writer's statement about that scene and stands.
+    const early = await db.characterSnapshots.where('[characterId+eventId]').equals(['char-1', 'ev-early']).first()
+    expect(early!.inventoryItemIds).toEqual(['item-1', 'item-2'])
+    // The hand-off is recorded *here*, carrying the rest of what they had.
+    const late = await db.characterSnapshots.where('[characterId+eventId]').equals(['char-1', 'ev-late']).first()
+    expect(late).toBeDefined()
+    expect(late!.inventoryItemIds).toEqual(['item-2'])
+  })
+
   it('keeps placements isolated by event', async () => {
     await placeItemAtLocation(W, 'item-1', 'ev-1', 'loc-A')
     await placeItemAtLocation(W, 'item-1', 'ev-2', 'loc-B')

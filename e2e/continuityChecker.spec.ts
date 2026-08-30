@@ -3,7 +3,6 @@ import { resetDB } from './helpers/reset'
 
 test.describe('Continuity Checker', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     await page.getByRole('button', { name: 'New World' }).click()
@@ -64,9 +63,9 @@ test.describe('Continuity Checker', () => {
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
 
     await page.getByTitle('Open chapter detail').click()
-    await page.getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill('Death Scene')
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await page.getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill('Death Scene')
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
     await expect(page.getByText('Death Scene').first()).toBeVisible()
 
     // Set event as active via timeline bar

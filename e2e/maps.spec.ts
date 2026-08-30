@@ -59,7 +59,6 @@ test.describe('Map management', () => {
   test.describe.configure({ timeout: 90_000 })
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     // Create a world
@@ -230,12 +229,11 @@ test.describe('Map management', () => {
 
   // ── Tap-to-place a character (touch-friendly, no HTML5 drag) ────────────────
 
-  test('places a character by arming the crosshair then tapping a location', async ({ page }) => {
-    // The Leaflet map + timeline round-trip is heavy; give slow renders headroom.
-    test.setTimeout(120_000)
-    page.setDefaultTimeout(60_000)
-
-    // Upload a map and add a location first (no active-event cursor yet).
+  /**
+   * A map with one location called Rivendell, and the time cursor parked on a
+   * scene so there is a moment to place a character into.
+   */
+  async function mapWithRivendellAndCursor(page: Page) {
     await page.getByRole('button', { name: 'Upload Map' }).first().click()
     await uploadMap(page, MAIN_MAP, 'Middle Earth')
     await expect(page.locator('.leaflet-container')).toBeVisible()
@@ -253,9 +251,9 @@ test.describe('Map management', () => {
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
     await page.getByTitle('Open chapter detail').click()
 
-    await page.getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill('The Departure')
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await page.getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill('The Departure')
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
     await expect(page.getByText('The Departure').first()).toBeVisible()
 
     // Select the event in the timeline bar to set the active cursor.
@@ -263,10 +261,38 @@ test.describe('Map management', () => {
     await settleNav(page)
     await page.getByTitle('The Departure', { exact: true }).click()
 
-    // Back to the map — arm placement for Aragorn; the placement HUD appears.
     await page.getByRole('link', { name: /maps/i }).click()
     await settleNav(page)
     await expect(page.locator('.leaflet-container')).toBeVisible()
+  }
+
+  /** Where each character is recorded, by location name, straight from Dexie. */
+  const placements = (page: Page) => page.evaluate(async () => {
+    const db = (window as { __pwdb?: never }).__pwdb as unknown as {
+      characters: { toArray: () => Promise<Array<{ id: string; name: string }>> }
+      locationMarkers: { toArray: () => Promise<Array<{ id: string; name: string }>> }
+      characterSnapshots: { toArray: () => Promise<Array<{ characterId: string; currentLocationMarkerId: string | null }>> }
+    }
+    const [characters, markers, snaps] = await Promise.all([
+      db.characters.toArray(), db.locationMarkers.toArray(), db.characterSnapshots.toArray(),
+    ])
+    const markerName = new Map(markers.map((m) => [m.id, m.name]))
+    const out: Record<string, string | null> = {}
+    for (const c of characters) {
+      const s = snaps.find((x) => x.characterId === c.id)
+      out[c.name] = s ? (s.currentLocationMarkerId ? markerName.get(s.currentLocationMarkerId) ?? null : null) : null
+    }
+    return out
+  })
+
+  test('places a character by arming the crosshair then tapping a location', async ({ page }) => {
+    // The Leaflet map + timeline round-trip is heavy; give slow renders headroom.
+    test.setTimeout(120_000)
+    page.setDefaultTimeout(60_000)
+
+    await mapWithRivendellAndCursor(page)
+
+    // Arm placement for Aragorn; the placement HUD appears.
     await page.getByRole('button', { name: 'Place Aragorn on the map' }).click()
     await expect(page.getByText(/Tap a location to place/)).toBeVisible()
 
@@ -276,5 +302,93 @@ test.describe('Map management', () => {
 
     // Aragorn's pin now renders on the map.
     await expect(page.locator('.leaflet-container').getByText('Aragorn')).toBeVisible()
+  })
+
+  /**
+   * W19-1. The test above places into an *empty* location, which is the only
+   * case that ever worked: a character pin covers its own location pin to
+   * within about three pixels, and the location markers were lifted above the
+   * pins only while an HTML5 drag was in flight. So tapping the middle of a
+   * place somebody already stood in selected *them* and opened their panel —
+   * over a hint still reading "Tap a location to place …" — while the placement
+   * silently did not happen. Two people in one room is the ordinary case, and
+   * the drag that worked around it does not exist on touch.
+   *
+   * This taps the exact centre of the occupied pin, which is the point that
+   * failed, and reads the answer out of Dexie rather than off the screen.
+   */
+  test('and places a second character onto a location the first one is standing in', async ({ page }) => {
+    test.setTimeout(120_000)
+    page.setDefaultTimeout(60_000)
+
+    await mapWithRivendellAndCursor(page)
+
+    await page.getByRole('button', { name: 'Place Aragorn on the map' }).click()
+    await page.getByText('Rivendell').first().click()
+    const aragornPin = page.locator('.leaflet-container').getByText('Aragorn')
+    await expect(aragornPin).toBeVisible()
+    await expect.poll(async () => (await placements(page)).Aragorn).toBe('Rivendell')
+
+    // Now Legolas, onto the same place — aiming at the middle of Aragorn's pin.
+    await page.getByRole('button', { name: 'Place Legolas on the map' }).click()
+    await expect(page.getByText(/Tap a location to place/)).toBeVisible()
+
+    const box = (await aragornPin.boundingBox())!
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+
+    // Both are at Rivendell. Aragorn is in the assertion because a fix that
+    // moved him instead of placing her would satisfy a check on Legolas alone.
+    await expect.poll(async () => await placements(page), { timeout: 15_000 })
+      .toMatchObject({ Aragorn: 'Rivendell', Legolas: 'Rivendell' })
+
+    // And the crosshair let go, rather than the tap being swallowed by a panel.
+    await expect(page.getByText(/Tap a location to place/)).toHaveCount(0)
+  })
+
+  /**
+   * W23-3. The character pill is painted over the location marker it stands on
+   * — measured at 145×34 against the marker's 143×34, on the same anchor — and
+   * the pill used to drop the place name the moment a second character arrived:
+   * `YS · Ysolde Vane / Wenmere Weir` became `YS +1 / 2 characters`. So the map
+   * stopped answering *where* exactly when the answer to *who* got interesting,
+   * and on the shipped Alice map `Riverbank above Wonderland` read as
+   * `…lerland`.
+   *
+   * Both halves are asserted in one test, because the finding *is* the
+   * difference between them: one character keeps the name, two must too.
+   */
+  test('and the place name stays on the pin when a second character joins', async ({ page }) => {
+    test.setTimeout(120_000)
+    page.setDefaultTimeout(60_000)
+
+    await mapWithRivendellAndCursor(page)
+    const canvas = page.locator('.leaflet-container')
+
+    await page.getByRole('button', { name: 'Place Aragorn on the map' }).click()
+    await page.getByText('Rivendell').first().click()
+    await expect(canvas.getByText('Aragorn')).toBeVisible()
+
+    /*
+      Scoped to the character pin, not to the canvas.
+
+      The first version of this asserted `canvas.getByText('Rivendell')` and was
+      **vacuous**: the location marker's own label says Rivendell too and is
+      still in the DOM, merely painted under the pill — so it passed with the
+      fix reverted. Caught by mutating. What has to be true is that the *pin*
+      carries the name.
+    */
+    const pinWith = (text: string) => canvas.locator('.leaflet-marker-icon', { hasText: text })
+
+    // One character: the pill names them, and the place under them.
+    await expect(pinWith('Aragorn')).toContainText('Rivendell')
+
+    await page.getByRole('button', { name: 'Place Legolas on the map' }).click()
+    const box = (await canvas.getByText('Aragorn').boundingBox())!
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+
+    // Two characters: the pill stops naming one of them, and must not stop
+    // naming where they are.
+    await expect(pinWith('2 characters')).toBeVisible({ timeout: 15_000 })
+    await expect(pinWith('2 characters')).toContainText('Rivendell')
   })
 })

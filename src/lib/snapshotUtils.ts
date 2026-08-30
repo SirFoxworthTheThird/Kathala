@@ -25,8 +25,7 @@ export function resolveSnapshot<T extends SnapBase>(
 
   const eventById = new Map(allEvents.map((e) => [e.id, e]))
   const chapNumById = new Map(allChapters.map((c) => [c.id, c.number]))
-  const getOrder = (snap: T) =>
-    snap.sortKey ?? computeSortKeySync(snap.eventId, eventById, chapNumById)
+  const getOrder = (snap: T) => orderOf(snap, eventById, chapNumById)
   const activeOrder = computeSortKeySync(activeEventId, eventById, chapNumById)
 
   if (activeOrder === -1) {
@@ -44,6 +43,40 @@ export function resolveSnapshot<T extends SnapBase>(
     }
   }
   return best
+}
+
+/**
+ * Where a snapshot sits in the story, on the same scale as the cursor it will
+ * be compared against.
+ *
+ * This used to read the record's **stored** `sortKey` and compare it against a
+ * **freshly computed** position for the cursor, which only holds while every
+ * writer of a `sortKey` agrees with the current formula. The shipped library
+ * does not: fourteen of the twenty `.pwk` files carry keys on the pre-v7 scale
+ * (`chapter + sortOrder / 1_000`) while the code computes
+ * `chapter + sortOrder / 1_000_000`, and the importer only rewrites them for
+ * files declaring version < 7 — these declare 16 and 18.
+ *
+ * The two orderings are identical among themselves, so nothing looked wrong.
+ * Compared against each other, `1.001 > 1.000001`, so a snapshot was ruled out
+ * as "after the cursor" while the cursor sat on the very event it was authored
+ * on. Measured on the Fellowship export: 396 of 533 character snapshots, which
+ * is why so much of that world's state resolved to an earlier chapter's.
+ *
+ * Computing both sides removes the class of fault rather than the instance: it
+ * cannot disagree with itself, whatever wrote the record or however the file
+ * got here. The stored key is still what `HistoryTab` sorts by and what the
+ * Dexie indexes carry; it is only unfit as a *comparand* for a computed one.
+ */
+function orderOf<T extends SnapBase>(
+  snap: T,
+  eventById: Map<string, { chapterId: string; sortOrder: number }>,
+  chapNumById: Map<string, number>,
+): number {
+  const computed = computeSortKeySync(snap.eventId, eventById, chapNumById)
+  // Fall back to the stored key only when the event is gone — an orphaned
+  // snapshot has no position to compute, and the stored one is all there is.
+  return computed === -1 ? snap.sortKey ?? -1 : computed
 }
 
 /**
@@ -75,8 +108,7 @@ export function selectBestSnapshots<T extends SnapBase>(
 
   const eventById = new Map(allEvents.map((e) => [e.id, e]))
   const chapNumById = new Map(allChapters.map((c) => [c.id, c.number]))
-  const getOrder = (snap: T) =>
-    snap.sortKey ?? computeSortKeySync(snap.eventId, eventById, chapNumById)
+  const getOrder = (snap: T) => orderOf(snap, eventById, chapNumById)
   const activeOrder = computeSortKeySync(activeEventId, eventById, chapNumById)
 
   if (activeOrder === -1) {

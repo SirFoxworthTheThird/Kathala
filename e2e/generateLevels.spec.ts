@@ -26,7 +26,6 @@ function levelSnapshot(page: Page) {
 test('AI location generation can create a leveled place with per-floor locations', async ({ page }) => {
   test.slow()
 
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Aethel')
@@ -74,4 +73,40 @@ test('AI location generation can create a leveled place with per-floor locations
   await expect(page.getByRole('button', { name: 'First floor' })).toBeVisible()
   await page.getByRole('button', { name: 'First floor' }).click()
   await expect(page.locator('[aria-current="true"]')).toHaveText('First floor')
+})
+
+test('a drifted key is named in the preview rather than dropped in silence', async ({ page }) => {
+  // The documented shape nests a floor's rooms under `levels[].children`.
+  // `levels[].locations` used to import two empty floors and say nothing: the
+  // count line was honest about what it was importing, so the only signal was
+  // noticing later that the rooms were missing.
+  test.slow()
+  await resetDB(page)
+  await page.getByRole('button', { name: 'New World' }).click()
+  await page.getByLabel('Name').fill('Drifted')
+  await page.getByRole('button', { name: 'Create World' }).last().click()
+  await expect(page).toHaveURL(/#\/worlds\//)
+  const worldId = page.url().match(/#\/worlds\/([^/]+)/)![1]
+
+  await page.goto(`/#/worlds/${worldId}/maps`, { waitUntil: 'load' })
+  await page.getByRole('button', { name: 'Generate locations with AI' }).click()
+  const box = page.getByRole('textbox', { name: 'locations JSON' })
+
+  await box.fill(JSON.stringify({
+    locations: [
+      { name: 'Keep of Ash', levels: [{ name: 'Undercroft', locations: [{ name: 'The Cistern' }] }] },
+    ],
+  }))
+  await expect(page.getByText(/Ready to import/)).toBeVisible()
+  await expect(page.getByText(/doesn.t recognise/)).toContainText('locations')
+
+  // The other half: a spec in the documented shape draws no warning, so this
+  // cannot pass by warning on every import.
+  await box.fill(JSON.stringify({
+    locations: [
+      { name: 'Keep of Ash', levels: [{ name: 'Undercroft', children: [{ name: 'The Cistern' }] }] },
+    ],
+  }))
+  await expect(page.getByText(/Ready to import/)).toBeVisible()
+  await expect(page.getByText(/doesn.t recognise/)).toHaveCount(0)
 })

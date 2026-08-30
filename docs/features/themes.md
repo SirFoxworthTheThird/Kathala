@@ -10,7 +10,8 @@ PlotWeave has nine visual themes that instantly transform the entire app — bac
 
 - **Nine themes** — Dark Slate, Fantasy, Sci-Fi, Cyberpunk, Horror, Western, Action, Noir, Romance
 - **`ThemeProvider`** — reads `theme` from Zustand store; on mount and theme change, applies the correct CSS variable block to `:root`; used in `AppShell`
-- **`ThemePicker`** — dropdown/grid in `TopBar`; shows theme name and a colour swatch; selecting a theme calls `setTheme` in the store
+- **App theme control** — the **Theme** section of World Settings; a labelled select of the nine themes that calls `setTheme` in the store. This is what the world list uses, and what any world set to *Inherit app theme* resolves to.
+- **Per-world theme** — the card grid in the same section writes `world.theme`; `ThemeProvider` resolves `activeWorldTheme ?? themeClass(theme)`, so a world's own theme wins and *Inherit app theme* falls through to the setting above
 - **CSS custom properties** — every themed element reads from variables like `--bg-primary`, `--border-color`, `--font-body`, `--glow-color`, `--tl-bg` (timeline bar), `--tl-dot-active`, `--tl-pulse-duration`, etc.
 - **Timeline bar theming** — all timeline bar colours, dot styles, glow, and pulse animation speed are theme-controlled via `--tl-*` variables
 - **Map callout theming** — map popups and callout cards read `--popup-bg`, `--popup-border`, `--popup-shadow`
@@ -48,8 +49,8 @@ PlotWeave has nine visual themes that instantly transform the entire app — bac
 ## Technical Approach
 
 ### Key files
-- `src/components/ThemePicker.tsx` — theme selector UI
-- `src/components/ThemeProvider.tsx` — injects CSS variables on theme change
+- `src/components/ThemeProvider.tsx` — applies the resolved theme class to `:root`
+- `src/features/worlds/WorldSettingsView.tsx` — the app-theme select and the per-world card grid
 - `src/store/index.ts` — `theme: ThemeName`, `setTheme`, persisted in localStorage
 - `src/types/theme.ts` — `ThemeName` union type + theme definition objects
 
@@ -71,7 +72,7 @@ All components reference `var(--some-var)` in inline styles or Tailwind `[var(--
 
 - [x] Nine themes with full CSS variable sets
 - [x] `ThemeProvider` injection on theme change
-- [x] `ThemePicker` in `TopBar`
+- [x] App-theme control in World Settings, beside the per-world override
 - [x] Timeline bar theme variables (`--tl-*`)
 - [x] Map callout theme variables
 - [x] Per-theme font families

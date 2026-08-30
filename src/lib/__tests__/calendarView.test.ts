@@ -64,6 +64,17 @@ describe('buildCalendarMonths', () => {
     expect(months[0].eventsByDay.get(1)!.map((e) => e.id)).toEqual(['a', 'b'])
   })
 
+  it('groups fractional story-clock times into the correct day cell', () => {
+    const chapters = [chapter('c1', 1)]
+    const events = [
+      event('morning', 'c1', 0, { inWorldTime: 10.1 }),
+      event('night', 'c1', 1, { inWorldTime: 10.9 }),
+    ]
+    const months = buildCalendarMonths({ events, chapters, calendar })
+    const bloom = months.find((m) => m.monthName === 'Bloom')!
+    expect(bloom.eventsByDay.get(1)!.map((e) => e.id)).toEqual(['morning', 'night'])
+  })
+
   it('the drop target day maps back to a poke-able in-world day number', () => {
     // Dropping an event on (year 100, Bloom, day 6) should pin it to that date.
     const dayNumber = dateToDayNumber(calendar, { year: 100, month: 1, day: 6 })
@@ -77,5 +88,43 @@ describe('buildCalendarMonths', () => {
 
   it('returns nothing when there are no events', () => {
     expect(buildCalendarMonths({ events: [], chapters: [], calendar })).toEqual([])
+  })
+})
+
+describe('a grid for days outside the months', () => {
+  // Frost 10, then a single named day, then Bloom 20.
+  const withNamedDay: WorldCalendar = {
+    startYear: 100,
+    yearSuffix: 'AC',
+    months: [
+      { name: 'Frost', days: 10 },
+      { name: 'Turnday', days: 1, intercalary: true },
+      { name: 'Bloom', days: 20 },
+    ],
+  }
+
+  it('marks the intercalary stretch so the view can draw it as one', () => {
+    // Day 10 is Turnday: ten days of Frost come first.
+    const grids = buildCalendarMonths({
+      events: [event('e1', 'c1', 0, { inWorldTime: 10 }), event('e2', 'c1', 1, { inWorldTime: 0 })],
+      chapters: [chapter('c1', 1)],
+      calendar: withNamedDay,
+    })
+    const byName = new Map(grids.map((g) => [g.monthName, g]))
+    expect(byName.get('Turnday')?.intercalary).toBe(true)
+    expect(byName.get('Turnday')?.days).toBe(1)
+    // Paired: an ordinary month on the same calendar is not marked, so the flag
+    // is about the entry rather than about every grid this builder returns.
+    expect(byName.get('Frost')?.intercalary).toBe(false)
+  })
+
+  it('places events on it like any other stretch of the year', () => {
+    const grids = buildCalendarMonths({
+      events: [event('turn', 'c1', 0, { inWorldTime: 10 })],
+      chapters: [chapter('c1', 1)],
+      calendar: withNamedDay,
+    })
+    const turnday = grids.find((g) => g.monthName === 'Turnday')!
+    expect(turnday.eventsByDay.get(1)?.map((e) => e.id)).toEqual(['turn'])
   })
 })

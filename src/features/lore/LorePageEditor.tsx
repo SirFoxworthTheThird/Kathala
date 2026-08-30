@@ -6,6 +6,7 @@ import {
   updateLorePage, deleteLorePage,
 } from '@/db/hooks/useLore'
 import { useGate } from '@/db/hooks/ReadingGateContext'
+import { NotReachedYet } from '@/components/NotReachedYet'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
@@ -175,7 +176,7 @@ function VisibilityPicker({
             visibleFromEventId
               ? activeEvent
                 ? `Ch. ${activeChapter?.number ?? '?'} · ${activeEvent.title.slice(0, 22)}`
-                : 'Unknown event'
+                : 'Unknown scene'
               : 'Always visible'
           }
         />
@@ -288,6 +289,15 @@ export default function LorePageEditor() {
   // or the autosave indicator. Returning early keeps the editor's save path
   // from ever being mounted for a reader.
   if (gate.active) {
+    /*
+      The reader branch below renders the article whether or not the reader has
+      reached it — `useLorePages` filters the *list* by exactly this rule and
+      the page behind it applied none of it. Same rule, same file it came from,
+      so the two cannot drift.
+    */
+    if (!(gate.hasReached(page.visibleFromEventId) && gate.linksRevealed(page.linkedEntityIds))) {
+      return <NotReachedYet what="page" />
+    }
     const category = categories.find((c) => c.id === page.categoryId) ?? null
     return (
       <div className="flex h-full flex-col">

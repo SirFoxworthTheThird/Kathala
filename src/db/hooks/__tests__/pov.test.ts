@@ -49,12 +49,12 @@ describe('charColor', () => {
 
   it('returns an hsl string when color is null', () => {
     const result = charColor({ id: 'abc', color: null })
-    expect(result).toMatch(/^hsl\(\d+,\s*60%,\s*55%\)$/)
+    expect(result).toMatch(/^hsl\(\d+ var\(--cast-sat, 60%\) var\(--cast-light, 55%\)\)$/)
   })
 
   it('returns an hsl string when color is undefined', () => {
     const result = charColor({ id: 'abc', color: undefined as unknown as null })
-    expect(result).toMatch(/^hsl\(\d+,\s*60%,\s*55%\)$/)
+    expect(result).toMatch(/^hsl\(\d+ var\(--cast-sat, 60%\) var\(--cast-light, 55%\)\)$/)
   })
 
   it('is deterministic — same id always produces the same color', () => {

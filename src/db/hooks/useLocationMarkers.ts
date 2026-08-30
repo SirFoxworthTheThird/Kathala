@@ -6,6 +6,17 @@ import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import type { LocationMarker, LocationIconType } from '@/types'
 import { generateId } from '@/lib/id'
 
+/**
+ * Places on one map, by name.
+ *
+ * Sorted here rather than at each of the twenty call sites. Dexie returns rows
+ * in primary-key order, and ids are nanoids, so the pickers built from these
+ * were in an order with nothing to do with the writer: three places created
+ * Hollowmark Tower → The Marrowgate → The Gullbone Cistern were offered as
+ * Marrowgate, Cistern, Tower. It looks sorted in the library worlds only
+ * because their ids are name-derived slugs (`…-loc-constantinople`), which is
+ * how it survived this long.
+ */
 export function useLocationMarkers(mapLayerId: string | null) {
   const gate = useGate()
   const all = useLiveQuery(
@@ -13,13 +24,19 @@ export function useLocationMarkers(mapLayerId: string | null) {
     [mapLayerId],
     []
   )
-  return useMemo(() => gate.filter(all), [gate, all])
+  return useMemo(() => byName(gate.filter(all)), [gate, all])
+}
+
+/** Copy sorted by name — the array from `useLiveQuery` is not ours to reorder. */
+function byName(markers: LocationMarker[]): LocationMarker[] {
+  return [...markers].sort((a, b) => a.name.localeCompare(b.name))
 }
 
 export function useLocationMarker(id: string | null) {
   return useLiveQuery(() => (id ? db.locationMarkers.get(id) : undefined), [id])
 }
 
+/** Every place in the world, by name — see `useLocationMarkers`. */
 export function useAllLocationMarkers(worldId: string | null) {
   const gate = useGate()
   const all = useLiveQuery(
@@ -27,7 +44,7 @@ export function useAllLocationMarkers(worldId: string | null) {
     [worldId],
     []
   )
-  return useMemo(() => gate.filter(all), [gate, all])
+  return useMemo(() => byName(gate.filter(all)), [gate, all])
 }
 
 export async function createLocationMarker(data: {

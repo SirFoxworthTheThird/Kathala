@@ -54,6 +54,7 @@ export default function CharacterRosterView() {
         }
       >
         <Input
+          aria-label="Search characters"
           placeholder="Search characters…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}

@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
-import { journalCreate, journalUpdate, journalDelete } from './useOperations'
+import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
 import type { CharacterSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
@@ -196,8 +196,11 @@ export async function upsertSnapshot(
   }
 
   const snapshot: CharacterSnapshot = {
-    id: generateId(),
     ...data,
+    // After the spread, not before: callers build `data` by spreading an
+    // existing snapshot, and an `id` riding along would name a row that already
+    // exists — so a *new* record would be created under an old primary key.
+    id: generateId(),
     sortKey,
     createdAt: now,
     updatedAt: now,
@@ -209,4 +212,77 @@ export async function deleteSnapshot(id: string) {
   await journalDelete('characterSnapshot', db.characterSnapshots, id, async () => {
     await db.characterSnapshots.delete(id)
   })
+}
+
+/**
+ * Record a character at a scene's setting, keeping everything else they had.
+ *
+ * This is the continuity checker's "Move to <place>" fix, and it used to look
+ * for the state to carry forward with `sn.eventId === eventId` — a snapshot at
+ * the very scene being fixed. But that fix is only ever offered when no such
+ * snapshot exists (an assertion there is the writer's word, not a gap), so the
+ * lookup found nothing every time and every fallback fired: the character was
+ * written alive, empty-handed, with no notes and no travel mode. Applied over
+ * an ensemble from "Fix all", it emptied eight characters' hands at once and
+ * revived anyone who had died, and the checker then reported the resurrection
+ * it had just performed. Undo recovered it, but the label said only "Added
+ * character state" — and the point of a fix-it button is that you stop looking.
+ *
+ * The state to carry forward is the last one at or before this scene, which is
+ * what `resolveSnapshot` returns. `MapExplorerView` already did it this way.
+ */
+export async function moveCharacterToScene(
+  args: { worldId: string; characterId: string; eventId: string; markerId: string },
+  allEvents: EventStub[],
+  allChapters: ChapterStub[]
+): Promise<void> {
+  const marker = await db.locationMarkers.get(args.markerId)
+  if (!marker) return
+
+  const own = await db.characterSnapshots
+    .where('characterId').equals(args.characterId)
+    .toArray()
+  const carried = resolveSnapshot(own, args.eventId, allEvents, allChapters)
+
+  await upsertSnapshot({
+    worldId: args.worldId,
+    characterId: args.characterId,
+    eventId: args.eventId,
+    isAlive: carried?.isAlive ?? true,
+    currentLocationMarkerId: marker.id,
+    currentMapLayerId: marker.mapLayerId,
+    inventoryItemIds: carried?.inventoryItemIds ?? [],
+    inventoryNotes: carried?.inventoryNotes ?? '',
+    statusNotes: carried?.statusNotes ?? '',
+    travelModeId: carried?.travelModeId ?? null,
+  })
+}
+
+/**
+ * Apply one field of a state to later records that merely inherited the value
+ * it replaced (**F2**).
+ *
+ * Offered, never automatic. A tool that silently rewrites six later scenes
+ * because you edited one is worse than one that stops — so the app says where
+ * the change stopped and this runs only if the writer asks for it.
+ *
+ * The targets are chosen by `carryForwardPlan`, which stops at the first later
+ * record holding something else: that is a decision already taken, and an
+ * earlier edit does not get to overwrite it.
+ *
+ * One `journalGroup`, so undo puts every scene back together rather than
+ * leaving the run half-applied.
+ */
+export async function carryFieldForward<K extends keyof CharacterSnapshot>(
+  targets: CharacterSnapshot[],
+  field: K,
+  value: CharacterSnapshot[K],
+): Promise<void> {
+  if (targets.length === 0) return
+  await journalGroup(() => Promise.all(
+    // `eventId` named although it is the record's own: a write that spreads has
+    // to say which scene it lands on, so that the one dangerous case — spreading
+    // a *resolved* snapshot — cannot hide among the safe ones.
+    targets.map((s) => upsertSnapshot({ ...s, eventId: s.eventId, [field]: value })),
+  ))
 }

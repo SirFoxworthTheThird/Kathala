@@ -2,10 +2,12 @@ import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useGate } from './ReadingGateContext'
-import type { MapLayer } from '@/types'
+import type { MapLayer, BlobEntry } from '@/types'
 import { generateId } from '@/lib/id'
 import { descendantLayerIds } from '@/lib/mapTree'
 import { groupRepresentativeId } from '@/lib/mapLevels'
+import { defaultPlaceholderImage } from '@/lib/placeholderMap'
+import { mapLayerRevealer } from '@/lib/spoilers'
 
 const MAP_DELETE_TABLES = [
   db.mapLayers, db.locationMarkers, db.locationSnapshots, db.characterSnapshots,
@@ -66,20 +68,10 @@ export async function deleteMapLayersCascade(layerIds: string[]): Promise<void> 
 }
 
 /**
- * Whether a map is one the reader has been to.
- *
- * Location markers are gated, but the maps holding them were not — so a world
- * with a map per setting listed every place in the book by name before the
- * reader arrived, which is the gating defeated by its own sidebar. The rule
- * here makes the map list agree with the locations list:
- *
- * 1. A sub-map is reached through the marker that links to it, so it waits for
- *    that marker. A map called "Diagon Alley" is exactly as much of a spoiler
- *    as the marker of the same name, and must keep step with it.
- * 2. Otherwise a map is shown once any marker on it is revealed.
- * 3. A map with neither — nothing on it and nothing pointing at it — has no
- *    reveal point to wait for, and stays. That is the same choice made for an
- *    entity that never appears anywhere.
+ * Whether a map is one the reader has been to — the gate's own rule, applied to
+ * this world's markers. `mapLayerRevealer` in `lib/spoilers` holds the rule and
+ * the reasoning; this only feeds it the markers and hands back `() => true`
+ * when there is no gate in force.
  */
 function useLayerRevealed(worldId: string | null): (layerId: string) => boolean {
   const gate = useGate()
@@ -88,26 +80,15 @@ function useLayerRevealed(worldId: string | null): (layerId: string) => boolean 
     [worldId],
     []
   )
+  const layers = useLiveQuery(
+    () => (worldId ? db.mapLayers.where('worldId').equals(worldId).toArray() : []),
+    [worldId],
+    []
+  )
   return useMemo(() => {
     if (!gate.active) return () => true
-    const linked = new Set<string>()
-    const linkedRevealed = new Set<string>()
-    const populated = new Set<string>()
-    const populatedRevealed = new Set<string>()
-    for (const m of markers) {
-      const shown = gate.isRevealed(m.id)
-      populated.add(m.mapLayerId)
-      if (shown) populatedRevealed.add(m.mapLayerId)
-      if (m.linkedMapLayerId) {
-        linked.add(m.linkedMapLayerId)
-        if (shown) linkedRevealed.add(m.linkedMapLayerId)
-      }
-    }
-    return (id: string) => {
-      if (linked.has(id)) return linkedRevealed.has(id)
-      return !populated.has(id) || populatedRevealed.has(id)
-    }
-  }, [gate, markers])
+    return mapLayerRevealer(markers, gate.isRevealed, layers)
+  }, [gate, markers, layers])
 }
 
 export function useMapLayers(worldId: string | null) {
@@ -168,6 +149,27 @@ export async function createMapLayer(
   }
   await db.mapLayers.add(layer)
   return layer
+}
+
+/**
+ * A map with no picture yet, so a writer without one can still place pins.
+ *
+ * A place is a pin and a pin needs a map, which is deliberate — but it meant a
+ * writer with no image of their world could not record a setting at all, and the
+ * only door that did not demand a picture was a button labelled AI. It draws the
+ * same blank grid the AI location import has always drawn for itself.
+ */
+export async function createBlankMapLayer(worldId: string, name: string): Promise<MapLayer> {
+  const { blob, width, height } = await defaultPlaceholderImage()
+  const entry: BlobEntry = {
+    id: generateId(), worldId, mimeType: blob.type || 'image/png', data: blob, createdAt: Date.now(),
+  }
+  await db.blobs.add(entry)
+  return createMapLayer({
+    worldId, parentMapId: null, name, description: '',
+    imageId: entry.id, imageWidth: width, imageHeight: height,
+    scalePixelsPerUnit: null, scaleUnit: null,
+  })
 }
 
 export async function updateMapLayer(id: string, data: Partial<Omit<MapLayer, 'id' | 'createdAt'>>) {

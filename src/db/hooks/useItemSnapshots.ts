@@ -6,7 +6,7 @@ import type { ItemSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
 import { useWorldEvents, useWorldChapters } from './useTimeline'
-import { resolveSnapshot } from '@/lib/snapshotUtils'
+import { resolveSnapshot, selectBestSnapshots } from '@/lib/snapshotUtils'
 import type { EventStub, ChapterStub } from '@/lib/snapshotUtils'
 
 /** Pure single-item resolution — exported for testing. */
@@ -41,6 +41,32 @@ export function useItemSnapshot(
   return useMemo(
     () => (!itemId ? undefined : resolveItemSnapshot(all, activeEventId, allEvents, allChapters)),
     [itemId, activeEventId, all, allEvents, allChapters]
+  )
+}
+
+/**
+ * The best-known snapshot per item at the active moment — the item twin of
+ * `useBestSnapshots` and `useBestRelationshipSnapshots`, and the same
+ * carry-forward rule.
+ *
+ * Added for the Items roster (**IT-2**), which needs every item's condition at
+ * once. Resolving per item would mean one live query per card, and the roster
+ * routinely shows dozens.
+ */
+export function useBestItemSnapshots(
+  worldId: string | null,
+  activeEventId: string | null,
+): ItemSnapshot[] {
+  const all = useLiveQuery(
+    () => (worldId ? db.itemSnapshots.where('worldId').equals(worldId).toArray() : []),
+    [worldId],
+    [],
+  )
+  const allEvents = useWorldEvents(worldId)
+  const allChapters = useWorldChapters(worldId)
+  return useMemo(
+    () => selectBestSnapshots(all, activeEventId, allEvents, allChapters, (s) => s.itemId),
+    [all, activeEventId, allEvents, allChapters],
   )
 }
 

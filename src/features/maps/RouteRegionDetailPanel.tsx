@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
-import { X, Trash2, Route, Hexagon, Link, Map } from 'lucide-react'
+import { Route, Hexagon, Link as LinkIcon, Map } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { PanelHeader, PanelDangerFooter } from './PanelChrome'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Field, FieldName } from '@/components/ui/field'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -11,10 +14,10 @@ import { db } from '@/db/database'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { isTreeVisible } from '@/lib/mapLevels'
 import { updateMapRoute, deleteMapRoute } from '@/db/hooks/useMapRoutes'
-import { updateMapRegion, deleteMapRegion } from '@/db/hooks/useMapRegions'
+import { updateMapRegion, deleteMapRegion, useMapRegionSnapshot, upsertMapRegionSnapshot } from '@/db/hooks/useMapRegions'
 import { useFactions } from '@/db/hooks/useFactions'
-import { ROUTE_TYPE_COLORS } from './MapSidebar'
-import type { RouteType } from '@/types'
+import { ROUTE_TYPE_COLORS, REGION_STATUS_COLORS, ALL_REGION_STATUSES } from './MapSidebar'
+import type { RouteType, MapRegionStatus } from '@/types'
 
 // ─── Shared constants ─────────────────────────────────────────────────────────
 
@@ -77,24 +80,24 @@ export function RouteDetailPanel({
 
   return (
     <div className="flex h-full w-[85vw] max-w-sm shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl sm:w-72 sm:max-w-none">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Route className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-          <span className="text-sm font-semibold text-[hsl(var(--foreground))]">Route</span>
-        </div>
-        <Button variant="ghost" size="icon" className="pw-tap h-7 w-7" aria-label="Close route panel" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
+      <PanelHeader
+        icon={Route}
+        name={route.name || 'Untitled route'}
+        kind={ROUTE_TYPE_LABELS[route.routeType] ?? 'Route'}
+        closeLabel="Close route panel"
+        onClose={onClose}
+      />
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
 
         {/* Name */}
         <div className="flex flex-col gap-1.5">
-          <Label>Name</Label>
+          {/* Associated, not adjacent — HB-2's defect, in a panel no screen in
+              `controlNames.spec.ts` has open, which is that check's boundary. */}
+          <Label htmlFor="route-name">Name</Label>
           <Input
+            id="route-name"
             value={name}
             onChange={(e) => change(setName)(e.target.value)}
             placeholder="Route name"
@@ -103,8 +106,9 @@ export function RouteDetailPanel({
 
         {/* Route type */}
         <div className="flex flex-col gap-1.5">
-          <Label>Type</Label>
-          <div className="flex flex-wrap gap-1.5">
+          {/* A row of buttons, so the row is named rather than one of them. */}
+          <FieldName id="route-type-label">Type</FieldName>
+          <div className="flex flex-wrap gap-1.5" role="group" aria-labelledby="route-type-label">
             {ROUTE_TYPES.map((t) => (
               <button
                 key={t}
@@ -127,8 +131,9 @@ export function RouteDetailPanel({
 
         {/* Notes */}
         <div className="flex flex-col gap-1.5">
-          <Label>Notes</Label>
+          <Label htmlFor="route-notes">Notes</Label>
           <Textarea
+            id="route-notes"
             value={notes}
             onChange={(e) => change(setNotes)(e.target.value)}
             placeholder="Add notes about this route…"
@@ -152,18 +157,7 @@ export function RouteDetailPanel({
         )}
       </div>
 
-      {/* Footer */}
-      <div className="shrink-0 border-t border-[hsl(var(--border))] px-4 py-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full gap-1.5 text-red-400 hover:text-red-400 hover:bg-red-400/10"
-          onClick={() => setConfirmDelete(true)}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          Delete route
-        </Button>
-      </div>
+      <PanelDangerFooter label="Delete route" onClick={() => setConfirmDelete(true)} />
 
       <ConfirmDialog
         open={confirmDelete}
@@ -181,16 +175,36 @@ export function RouteDetailPanel({
 export function RegionDetailPanel({
   regionId,
   worldId,
+  activeEventId,
+  activeMomentLabel,
   onClose,
   onDrillDown,
 }: {
   regionId: string
   worldId: string
+  /** The moment the per-event status and notes below are about. */
+  activeEventId: string | null
+  activeMomentLabel: string | null
   onClose: () => void
   onDrillDown?: (layerId: string) => void
 }) {
   const region = useLiveQuery(() => db.mapRegions.get(regionId), [regionId])
   const allLayers = useMapLayers(worldId)
+  const snapshot = useMapRegionSnapshot(regionId, activeEventId)
+  const status: MapRegionStatus = snapshot?.status ?? 'active'
+  const [eventNotes, setEventNotes] = useState('')
+  useEffect(() => { setEventNotes(snapshot?.notes ?? '') }, [snapshot?.notes, activeEventId])
+
+  function saveSnapshot(next: { status?: MapRegionStatus; notes?: string }) {
+    if (!activeEventId) return
+    upsertMapRegionSnapshot({
+      worldId,
+      regionId,
+      eventId: activeEventId,
+      status: next.status ?? status,
+      notes: next.notes ?? eventNotes,
+    })
+  }
   const factions = useFactions(worldId)
   const [name, setName] = useState('')
   const [fillColor, setFillColor] = useState(PRESET_COLORS[0])
@@ -234,24 +248,23 @@ export function RegionDetailPanel({
 
   return (
     <div className="flex h-full w-[85vw] max-w-sm shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl sm:w-72 sm:max-w-none">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Hexagon className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-          <span className="text-sm font-semibold text-[hsl(var(--foreground))]">Region</span>
-        </div>
-        <Button variant="ghost" size="icon" className="pw-tap h-7 w-7" aria-label="Close region panel" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
+      <PanelHeader
+        icon={Hexagon}
+        name={region.name || 'Untitled region'}
+        kind="Region"
+        moment={activeMomentLabel}
+        closeLabel="Close region panel"
+        onClose={onClose}
+      />
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
 
         {/* Name */}
         <div className="flex flex-col gap-1.5">
-          <Label>Name</Label>
+          <Label htmlFor="region-name">Name</Label>
           <Input
+            id="region-name"
             value={name}
             onChange={(e) => change(setName)(e.target.value)}
             placeholder="Region name"
@@ -259,8 +272,7 @@ export function RegionDetailPanel({
         </div>
 
         {/* Fill color */}
-        <div className="flex flex-col gap-1.5">
-          <Label>Fill color</Label>
+        <Field label="Fill color" className="flex flex-col gap-1.5">
           <div className="flex flex-wrap gap-2">
             {PRESET_COLORS.map((c) => (
               <button
@@ -292,7 +304,7 @@ export function RegionDetailPanel({
               </div>
             </div>
           </div>
-        </div>
+        </Field>
 
         {/* Preview swatch */}
         <div
@@ -301,8 +313,7 @@ export function RegionDetailPanel({
         />
 
         {/* Opacity */}
-        <div className="flex flex-col gap-1.5">
-          <Label>Opacity — {Math.round(opacity * 100)}%</Label>
+        <Field label={<>Opacity — {Math.round(opacity * 100)}%</>} className="flex flex-col gap-1.5">
           <input
             type="range"
             min={0.05} max={0.8} step={0.05}
@@ -310,12 +321,13 @@ export function RegionDetailPanel({
             onChange={(e) => change(setOpacity)(Number(e.target.value))}
             className="h-1.5 w-full"
           />
-        </div>
+        </Field>
 
         {/* Notes */}
         <div className="flex flex-col gap-1.5">
-          <Label>Notes</Label>
+          <Label htmlFor="region-notes">Notes</Label>
           <Textarea
+            id="region-notes"
             value={notes}
             onChange={(e) => change(setNotes)(e.target.value)}
             placeholder="Add notes about this region…"
@@ -324,12 +336,21 @@ export function RegionDetailPanel({
         </div>
 
         {/* Owning faction */}
-        <div className="flex flex-col gap-1.5">
-          <Label>Owning faction</Label>
+        <Field label="Owning faction" className="flex flex-col gap-1.5">
           {factions.length === 0 ? (
-            <p className="text-xs text-[hsl(var(--muted-foreground))]">
-              No factions yet — create one in the Factions view.
-            </p>
+            /* X-4 rule 2, and the twin of LP-3: the location panel got its link
+               and this one, with the same copy, did not. */
+            <div className="flex flex-col items-start gap-1.5">
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                No factions yet — create one to say who holds this ground.
+              </p>
+              <Link
+                to={`/worlds/${worldId}/factions`}
+                className="pw-tap inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
+              >
+                Open Factions
+              </Link>
+            </div>
           ) : (
             <Select
               value={region.factionId ?? 'none'}
@@ -350,13 +371,10 @@ export function RegionDetailPanel({
               </SelectContent>
             </Select>
           )}
-        </div>
+        </Field>
 
         {/* Sub-map link */}
-        <div className="flex flex-col gap-1.5">
-          <Label className="flex items-center gap-1.5">
-            <Link className="h-3.5 w-3.5" /> Sub-map
-          </Label>
+        <Field label={<><LinkIcon className="h-3.5 w-3.5" /> Sub-map</>} className="flex flex-col gap-1.5" labelClassName="flex items-center gap-1.5">
           {otherLayers.length > 0 && (
             <Select value={region.linkedMapLayerId ?? 'none'} onValueChange={handleLinkSubMap}>
               <SelectTrigger className="text-xs">
@@ -374,6 +392,65 @@ export function RegionDetailPanel({
             <Button size="sm" variant="secondary" className="gap-1.5" onClick={() => onDrillDown(region.linkedMapLayerId!)}>
               <Map className="h-3.5 w-3.5" /> Open Sub-map
             </Button>
+          )}
+        </Field>
+
+        {/*
+          RG-1: a region's *status* is the one part of it that changes with the
+          story — the Continuity Checker reads it, and it is what "abandoned" or
+          "destroyed" means for a character walking through. It lived only in an
+          inline editor inside the sidebar row, which appears exactly when this
+          panel is open, so a region had two homes side by side and this one —
+          the one holding its name, colour, notes and faction — was the half
+          that could not say what was happening to it.
+        */}
+        <div className="flex flex-col gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.4)] px-3 py-2.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+            At this moment
+          </span>
+          {!activeEventId ? (
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">
+              Pick a scene on the bar below to set what has become of this region, and
+              to leave a note about it for that moment.
+            </p>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-1">
+                {ALL_REGION_STATUSES.map((s) => (
+                  <button
+                    key={s}
+                    aria-pressed={status === s}
+                    onClick={() => saveSnapshot({ status: s })}
+                    className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] capitalize transition-colors ${
+                      status === s
+                        ? 'bg-[hsl(var(--ring))] text-[hsl(var(--background))]'
+                        : 'border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
+                    }`}
+                  >
+                    <span
+                      className="h-1.5 w-1.5 rounded-full"
+                      style={{ background: status === s ? 'currentColor' : REGION_STATUS_COLORS[s] }}
+                    />
+                    {s}
+                  </button>
+                ))}
+              </div>
+              {/* Named apart from the region's own Notes above, which are not
+                  per-moment — two fields called "Notes" on one panel would be
+                  the confusion this section exists to remove. */}
+              <Label htmlFor="region-event-notes" className="mt-1 text-[10px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                Notes at this moment
+              </Label>
+              <Textarea
+                id="region-event-notes"
+                value={eventNotes}
+                onChange={(e) => setEventNotes(e.target.value)}
+                onBlur={() => saveSnapshot({ notes: eventNotes })}
+                placeholder="What has happened here by now…"
+                rows={2}
+                className="text-xs"
+              />
+            </>
           )}
         </div>
 
@@ -393,18 +470,7 @@ export function RegionDetailPanel({
         )}
       </div>
 
-      {/* Footer */}
-      <div className="shrink-0 border-t border-[hsl(var(--border))] px-4 py-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full gap-1.5 text-red-400 hover:text-red-400 hover:bg-red-400/10"
-          onClick={() => setConfirmDelete(true)}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          Delete region
-        </Button>
-      </div>
+      <PanelDangerFooter label="Delete region" onClick={() => setConfirmDelete(true)} />
 
       <ConfirmDialog
         open={confirmDelete}

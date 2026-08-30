@@ -54,7 +54,12 @@ export async function unmetNames(page: Page): Promise<Unmet> {
         for (const p of ip) add(p.itemId, p.eventId)
         for (const s of isn) add(s.itemId, s.eventId)
         for (const s of ls) add(s.locationMarkerId, s.eventId)
-        const hidden = (rec) => { const f = first.get(rec.id); return f !== undefined && f > cursor }
+        // An entity the reader has not reached — including one the story never
+        // places at all. Counting only \`f > cursor\` would define "unmet" the way
+        // the implementation does rather than the way a reader does, and would
+        // make this helper structurally unable to report the very class of leak
+        // it exists to catch.
+        const hidden = (rec) => { const f = first.get(rec.id); return f === undefined || f > cursor }
         for (const e of events) for (const id of (e.threadIds || [])) add(id, e.id)
         for (const e of events) for (const id of (e.motifIds || [])) add(id, e.id)
         resolve({

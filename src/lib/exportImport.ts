@@ -1211,7 +1211,7 @@ export async function previewWorldMerge(
       items:      { added: itms.added,  updated: itms.updated  },
       conflicts: [
         ...chars.conflicts.map((c) => ({ ...c, entity: 'Character' })),
-        ...evts.conflicts.map((c) => ({ ...c, entity: 'Event' })),
+        ...evts.conflicts.map((c) => ({ ...c, entity: 'Scene' })),
         ...chaps.conflicts.map((c) => ({ ...c, entity: 'Chapter' })),
         ...locs.conflicts.map((c) => ({ ...c, entity: 'Location' })),
         ...itms.conflicts.map((c) => ({ ...c, entity: 'Item' })),

@@ -3,7 +3,6 @@ import { resetDB } from './helpers/reset'
 
 test.describe('Item management', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
 
     // Create a world and navigate to Items
@@ -47,34 +46,27 @@ test.describe('Item management', () => {
     await expect(page.getByText('Ghost Item')).not.toBeVisible()
   })
 
-  test('navigates to item detail view', async ({ page }) => {
+  test('opens item detail from the roster card', async ({ page }) => {
     await page.getByRole('button', { name: 'Add Item' }).first().click()
     await page.getByPlaceholder('Item name').fill('The Ring')
     await page.getByRole('button', { name: 'Add Item' }).last().click()
-    // CreateItemDialog navigates to item detail automatically after creation
-    await expect(page).toHaveURL(/#\/worlds\/.+\/items\//)
+
+    // Creating stays on the roster now (HB-7a), so the card is what opens the
+    // detail — which is the path a writer takes for every item after the first.
+    await expect(page).toHaveURL(/#\/worlds\/[^/]+\/items$/)
+    await page.getByRole('main').getByText('The Ring').first().click()
+    await expect(page).toHaveURL(/#\/worlds\/.+\/items\/.+/)
     await expect(page.getByText('The Ring').first()).toBeVisible()
   })
 
   test('filters items by search input', async ({ page }) => {
-    // Create first item — navigates to detail automatically
+    // Two items in one go: creating stays on the roster (HB-7a), so this no
+    // longer walks back from the detail page between them.
     await page.getByRole('button', { name: 'Add Item' }).first().click()
     await page.getByPlaceholder('Item name').fill('Mjolnir')
-    await page.getByRole('button', { name: 'Add Item' }).last().click()
-    await expect(page).toHaveURL(/#\/worlds\/.+\/items\//)
-
-    // Go back to items list for second item
-    await page.getByTitle('Items').click()
-    await expect(page.getByText('Mjolnir').first()).toBeVisible()
-
-    // Create second item
-    await page.getByRole('button', { name: 'Add Item' }).first().click()
+    await page.getByRole('button', { name: 'Add another item' }).click()
     await page.getByPlaceholder('Item name').fill('Shield of Aegis')
     await page.getByRole('button', { name: 'Add Item' }).last().click()
-    await expect(page).toHaveURL(/#\/worlds\/.+\/items\//)
-
-    // Go back to items list and filter
-    await page.getByTitle('Items').click()
     await expect(page.getByText('Shield of Aegis').first()).toBeVisible()
 
     // Filter by search

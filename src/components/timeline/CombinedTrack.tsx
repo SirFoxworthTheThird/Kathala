@@ -46,7 +46,7 @@ export function CombinedTrack({
 }: CombinedTrackProps) {
   const accent = activeTimeline?.color ?? 'var(--tl-accent)'
   return (
-    <div style={{ position: 'fixed', bottom: 0, left: 'var(--pw-nav-w, 0px)', right: 0, zIndex: 1000 }}>
+    <div data-chapter-bar style={{ position: 'fixed', bottom: 0, left: 'var(--pw-nav-w, 0px)', right: 0, zIndex: 1000 }}>
       <div style={{
         height: BAR_H_SINGLE,
         background: 'var(--tl-bg)',
@@ -62,7 +62,8 @@ export function CombinedTrack({
           isPlaying={isPlaying}
           speed={playbackSpeed}
           showStop={isPlaying}
-          showDiff={!!activeEventId}
+          // DF-1: comparing two chapters needs two chapters, not a cursor.
+          showDiff={new Set(runs.map((r) => r.chapter?.id)).size >= 2}
           showClear={!!activeEventId && !isPlaying}
           color={accent}
           onPlayPause={onPlayPause}

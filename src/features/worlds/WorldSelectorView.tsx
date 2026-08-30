@@ -11,7 +11,18 @@ import { LibraryDialog } from './LibraryDialog'
 import { LLMPromptDialog } from './LLMPromptDialog'
 import { useNavigate } from 'react-router-dom'
 import { importWorld, importWorldImages } from '@/lib/exportImport'
-import { partitionWorlds } from '@/lib/worldShelves'
+import { partitionWorlds, readingLeads } from '@/lib/worldShelves'
+import { importCollision, type ImportCollision } from '@/lib/importCollision'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { useAppStore } from '@/store'
+
+/** A chosen file set, parked while the writer decides whether to overwrite. */
+interface PendingImport {
+  files: File[]
+  dataIdx: number
+  imagesIdx: number
+  collision: ImportCollision
+}
 
 declare global {
   interface Window {
@@ -24,10 +35,42 @@ declare global {
 export default function WorldSelectorView() {
   const worlds = useWorlds()
   const { drafts, reading } = useMemo(() => partitionWorlds(worlds), [worlds])
+  const positionByWorld = useAppStore((st) => st.eventByWorld)
+  const readingFirst = useMemo(
+    () => readingLeads(reading, positionByWorld),
+    [reading, positionByWorld],
+  )
+
+  /*
+    One shelf, rendered at whichever end `readingFirst` puts it. Written once
+    rather than twice so the two orders cannot drift apart — a copy would be two
+    places to change the heading and one of them would be missed.
+  */
+  const readingShelf = reading.length > 0 && (
+    <section className="flex flex-col gap-3">
+      <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+        <BookOpen className="h-4 w-4" aria-hidden="true" />
+        Reading
+      </h2>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {reading.map((world) => (
+          <WorldCard key={world.id} world={world} />
+        ))}
+      </div>
+    </section>
+  )
   const [dialogOpen, setDialogOpen] = useState(false)
   const [manuscriptOpen, setManuscriptOpen] = useState(false)
   const [promptOpen, setPromptOpen] = useState(false)
   const [libraryOpen, setLibraryOpen] = useState(false)
+  /*
+    The file formats used to be explained permanently in the header — an action
+    nobody had started, described with two extensions a new user has never seen.
+    It is the same sentence, asked for at the one moment it is useful: just
+    before the picker opens, when "select both files together" is still
+    something you can act on.
+  */
+  const [importPromptOpen, setImportPromptOpen] = useState(false)
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
   const importRef = useRef<HTMLInputElement>(null)
@@ -35,27 +78,60 @@ export default function WorldSelectorView() {
 
   const isElectron = typeof window.electronAPI !== 'undefined'
 
+  /** A selection held back because importing it would overwrite a local world. */
+  const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
+
   async function processFiles(files: File[]) {
-    if (files.length === 1) {
-      const text = await files[0].text()
-      const parsed = JSON.parse(text) as Record<string, unknown>
-      if (parsed.type === 'images') {
-        const worldId = await importWorldImages(files[0])
-        navigate(`/worlds/${worldId}`)
-      } else {
-        const worldId = await importWorld(files[0])
-        navigate(`/worlds/${worldId}`)
-      }
-    } else {
-      // Two files: one data file + one images file (order doesn't matter)
-      const texts = await Promise.all(files.map((f) => f.text()))
-      const parsed = texts.map((t) => JSON.parse(t) as Record<string, unknown>)
-      const imagesIdx = parsed.findIndex((p) => p.type === 'images')
-      const dataIdx   = parsed.findIndex((_, i) => i !== imagesIdx)
-      if (dataIdx === -1) throw new Error('No data file found. Select the .pwk data file.')
-      const worldId = await importWorld(files[dataIdx])
-      if (imagesIdx !== -1) await importWorldImages(files[imagesIdx])
+    const texts = await Promise.all(files.map((f) => f.text()))
+    const parsed = texts.map((t) => JSON.parse(t) as Record<string, unknown>)
+    const imagesIdx = parsed.findIndex((p) => p.type === 'images')
+    const dataIdx = parsed.findIndex((_, i) => i !== imagesIdx)
+
+    if (dataIdx === -1) {
+      // Images only. Nothing to warn about: this path adds blobs to a world
+      // that already exists rather than replacing one.
+      if (imagesIdx === -1) throw new Error('No data file found. Select the .pwk data file.')
+      const worldId = await importWorldImages(files[imagesIdx])
       navigate(`/worlds/${worldId}`)
+      return
+    }
+
+    /*
+      Ask first when the file lands on a world that is already here.
+
+      `importWorld` replaces: it deletes every record for the incoming world's
+      id before writing the file's. Re-importing a backup over a day's writing
+      took the day's writing with it, with no confirm and nothing said
+      afterwards. The Library has asked this question before replacing a
+      downloaded copy for a long time — the same question, on the door writers
+      use for their own exports.
+    */
+    const collision = importCollision(parsed[dataIdx], worlds)
+    if (collision) {
+      setPendingImport({ files, dataIdx, imagesIdx, collision })
+      return
+    }
+    await runImport(files, dataIdx, imagesIdx)
+  }
+
+  async function runImport(files: File[], dataIdx: number, imagesIdx: number) {
+    const worldId = await importWorld(files[dataIdx])
+    if (imagesIdx !== -1) await importWorldImages(files[imagesIdx])
+    navigate(`/worlds/${worldId}`)
+  }
+
+  async function confirmPendingImport() {
+    const pending = pendingImport
+    if (!pending) return
+    setPendingImport(null)
+    setImporting(true)
+    setImportError(null)
+    try {
+      await runImport(pending.files, pending.dataIdx, pending.imagesIdx)
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Import failed')
+    } finally {
+      setImporting(false)
     }
   }
 
@@ -102,39 +178,70 @@ export default function WorldSelectorView() {
             <img src={faviconUrl} alt="PlotWeave" className="h-10 w-10 rounded object-cover" />
             <div>
               <h1 className="text-xl font-bold text-[hsl(var(--foreground))]">PlotWeave</h1>
-              <p className="text-sm text-[hsl(var(--muted-foreground))]">Story Tracker</p>
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">A story bible for fiction writers</p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setLibraryOpen(true)}
-            >
-              <BookOpen className="h-4 w-4" />
-              Library
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setPromptOpen(true)}
-            >
-              <Sparkles className="h-4 w-4" />
-              Generate World from AI
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleImportClick}
-              disabled={importing}
-            >
-              <Upload className="h-4 w-4" />
-              {importing ? 'Importing...' : 'Import World'}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setManuscriptOpen(true)}
-            >
-              <FileText className="h-4 w-4" />
-              Import Manuscript
-            </Button>
+          {/*
+            Five equal-weight buttons in a row meant a newcomer had to read all
+            five to find themselves. Two of them mean "I am starting fresh" and
+            three mean "I already have something"; the headings say so, and the
+            groups are real `role="group"`s so the split reaches a screen reader
+            rather than only the eye. Nothing is buried in a menu — Library is
+            the best first run this app has, and hiding it would cost more than
+            the row of five did.
+          */}
+          <div className="flex flex-wrap items-start gap-x-6 gap-y-4">
+            <div role="group" aria-labelledby="start-fresh-heading" className="flex flex-col gap-1.5">
+              <span id="start-fresh-heading" className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                Start something new
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button onClick={() => setDialogOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                  New World
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setPromptOpen(true)}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Generate World from AI
+                </Button>
+              </div>
+            </div>
+
+            <div aria-hidden="true" className="hidden w-px self-stretch bg-[hsl(var(--border))] sm:block" />
+
+            <div role="group" aria-labelledby="bring-in-heading" className="flex flex-col gap-1.5">
+              <span id="bring-in-heading" className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                Bring something in
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setLibraryOpen(true)}
+                >
+                  <BookOpen className="h-4 w-4" />
+                  Library
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setImportPromptOpen(true)}
+                  disabled={importing}
+                >
+                  <Upload className="h-4 w-4" />
+                  {importing ? 'Importing...' : 'Import World'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setManuscriptOpen(true)}
+                >
+                  <FileText className="h-4 w-4" />
+                  Import Manuscript
+                </Button>
+              </div>
+            </div>
+
             <input
               ref={importRef}
               type="file"
@@ -144,10 +251,6 @@ export default function WorldSelectorView() {
               className="hidden"
               onChange={handleImport}
             />
-            <Button onClick={() => setDialogOpen(true)}>
-              <Plus className="h-4 w-4" />
-              New World
-            </Button>
           </div>
         </div>
         {importError && (
@@ -156,53 +259,64 @@ export default function WorldSelectorView() {
             {importError}
           </p>
         )}
-        {!importError && (
-          <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">
-            Select a <code className="font-mono">.pwk</code> file to import.
-            If you exported with split files, select both the <code className="font-mono">.pwk</code> and the <code className="font-mono">.pwb</code> images file together.
-          </p>
-        )}
       </header>
 
       <main className="flex-1 p-6">
         {worlds.length === 0 ? (
+          /*
+            No buttons here on purpose.
+
+            Three of the five entry points used to sit in this space, ungrouped,
+            directly under the header's two labelled groups — a second, competing
+            hierarchy, with a different label for the same thing ("Create World"
+            for what the header calls "New World") and no mention of the Library
+            at all, which is the best first run this app has.
+
+            Repeating a button that is already on screen and already grouped is
+            what caused that, so the empty state names the routes in prose and
+            points up at them instead. It also keeps every entry point to exactly
+            one control: two buttons reading "New World" on one screen is an
+            ambiguity for anyone navigating by name, not only for a test.
+          */
           <EmptyState
             icon={Scroll}
             title="No worlds yet"
-            description="Create your first world or story to start tracking characters, locations, and events."
-            action={
-              <div className="flex flex-wrap justify-center gap-2">
-                <Button variant="outline" onClick={handleImportClick}>
-                  <Upload className="h-4 w-4" />
-                  Import World
-                </Button>
-                <Button variant="outline" onClick={() => setManuscriptOpen(true)}>
-                  <FileText className="h-4 w-4" />
-                  Import Manuscript
-                </Button>
-                <Button onClick={() => setDialogOpen(true)}>
-                  <Plus className="h-4 w-4" />
-                  Create World
-                </Button>
-              </div>
-            }
+            description="Use New World at the top of the screen to start from scratch, or the Library to open a world built from a published book. You can also bring in a .pwk export or a manuscript draft from there."
           />
         ) : (
           /*
             Two shelves, not one.
 
             A book downloaded from the library and a draft being written are
-            different things that happen to share a card. They sort together by
-            creation date, which for a download is whenever it was fetched, so a
-            reader with half the library loses their own two drafts among eight
-            other people's books. The cards already differ — a reading world
-            carries "Chapter 5 of 17" and a draft does not — and the actions do
-            too: you export and sequel a draft, you resume a book.
+            different things that happen to share a card, and they sort
+            together, so a reader with half the library loses their own two
+            drafts among eight other people's books. The cards already differ —
+            a reading world carries "Chapter 5 of 17" and a draft does not — and
+            the actions do too: you export and sequel a draft, you resume a book.
 
-            Your own work leads, because this is a writing tool. Either shelf is
-            dropped when empty rather than standing there as an empty heading.
+            This used to say the sort date "for a download is whenever it was
+            fetched". It is not: `applyWorldImport` writes the world record
+            straight out of the `.pwk`, so a downloaded book keeps the date the
+            fixture was authored on. That is why the split alone was not enough
+            — see W19-5 on the ordering in `useWorlds`.
+
+            Your own work leads, because this is a writing tool — unless a book
+            on the reading shelf has somebody's place kept in it, in which case
+            they are coming back to it and it goes first (`readingLeads`). A
+            reader on a 390px phone met the strapline, five ways to start a
+            world and the demo worlds before their book, which began 916px down
+            an 844px viewport.
+
+            Swapped by reordering the sections, not by CSS `order`: that would
+            leave the reading shelf second in the DOM and second in the tab
+            order while sitting first on screen, which is the visual-order trap
+            WCAG 1.3.2 and 2.4.3 name.
+
+            Either shelf is dropped when empty rather than standing there as an
+            empty heading.
           */
           <div className="flex flex-col gap-8">
+            {readingFirst && readingShelf}
             <section className="flex flex-col gap-3">
               {reading.length > 0 && (
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
@@ -213,30 +327,34 @@ export default function WorldSelectorView() {
                 {drafts.map((world) => (
                   <WorldCard key={world.id} world={world} />
                 ))}
-                {/* Stays with the drafts: it makes a world to write, not to read. */}
+                {/*
+                  Stays with the drafts: it makes a world to write, not to read.
+
+                  SEL-5: it read "New World", the same as the header button, so
+                  the screen offered the same thing under one name in two places
+                  with nothing saying they were the same thing. The empty state
+                  above already refuses to do that, and its comment says why —
+                  but the populated case did it anyway.
+
+                  Named for what it is instead, in the app's own words: the
+                  empty state calls this route "start from scratch". Deliberately
+                  not "Start a new world", which still *contains* "new world" —
+                  `getByRole` matches names by substring, so that would leave the
+                  ambiguity exactly where it was. The title states the relation
+                  the finding asked for.
+                */}
                 <button
                   onClick={() => setDialogOpen(true)}
+                  title="Start from scratch — the same as New World, at the top of the screen"
                   className="flex min-h-32 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] transition-colors hover:border-[hsl(var(--ring))] hover:text-[hsl(var(--foreground))]"
                 >
                   <Plus className="h-6 w-6" />
-                  <span className="text-sm">New World</span>
+                  <span className="text-sm">Start from scratch</span>
                 </button>
               </div>
             </section>
 
-            {reading.length > 0 && (
-              <section className="flex flex-col gap-3">
-                <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                  <BookOpen className="h-4 w-4" aria-hidden="true" />
-                  Reading
-                </h2>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {reading.map((world) => (
-                    <WorldCard key={world.id} world={world} />
-                  ))}
-                </div>
-              </section>
-            )}
+            {!readingFirst && readingShelf}
           </div>
         )}
       </main>
@@ -256,6 +374,43 @@ export default function WorldSelectorView() {
         onOpenChange={setPromptOpen}
         onImported={(id) => navigate(`/worlds/${id}`)}
       />
+      <ConfirmDialog
+        open={importPromptOpen}
+        onOpenChange={setImportPromptOpen}
+        title="Import a world"
+        description="Choose the .pwk file you exported. If you exported with split files, select both the .pwk and its .pwb images file together."
+        confirmLabel="Choose file…"
+        destructive={false}
+        onConfirm={() => { setImportPromptOpen(false); handleImportClick() }}
+      />
+
+      {/*
+        Names the world being overwritten and says what is lost, because "this
+        will replace the existing world" does not tell you whether the existing
+        world is the one you spent this morning in.
+      */}
+      <ConfirmDialog
+        open={pendingImport !== null}
+        onOpenChange={(v) => { if (!v) setPendingImport(null) }}
+        title={`Replace your copy of “${pendingImport?.collision.localName ?? ''}”?`}
+        description={
+          [
+            /*
+              Reachable: the file carries the name the world had when it was
+              exported, so renaming a world afterwards makes the two disagree —
+              and then "a world you already have" is the confusing half, since
+              the writer is looking for a name that is no longer on screen.
+            */
+            pendingImport && pendingImport.collision.incomingName !== pendingImport.collision.localName
+              ? `The file calls it “${pendingImport.collision.incomingName}”, but it is the same world.`
+              : 'This file is an export of a world you already have.',
+            'Importing it restores the file’s version and discards anything you have written in that world since it was exported. Your other worlds are untouched.',
+          ].join(' ')
+        }
+        confirmLabel="Replace"
+        onConfirm={() => void confirmPendingImport()}
+      />
+
       <LibraryDialog
         open={libraryOpen}
         onClose={() => setLibraryOpen(false)}

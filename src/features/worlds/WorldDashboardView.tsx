@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect, type ElementType, type ReactNode } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
-  Map as MapIcon, Users, Network, BookOpen,
+  Map as MapIcon, Users, Network, BookOpen, Globe,
   Package, BarChart2, ShieldAlert, Clock, Layers, Pencil, FileEdit, Spline, PenLine, Sparkle,
+  ChevronRight,
 } from 'lucide-react'
 import type { EventStatus } from '@/types'
 import { EVENT_STATUSES, eventStatusConfig } from '@/lib/eventStatus'
@@ -11,26 +12,36 @@ import { db } from '@/db/database'
 import { useWorld, updateWorld } from '@/db/hooks/useWorlds'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useReadingGate } from '@/db/hooks/useReading'
+import { describeReadingPosition } from '@/lib/readingNotice'
 import { useRootMapLayers } from '@/db/hooks/useMapLayers'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { useTimelineRelationships } from '@/db/hooks/useTimelineRelationships'
 import { useItems } from '@/db/hooks/useItems'
-import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
+import { useWorldSnapshots, useBestSnapshots } from '@/db/hooks/useSnapshots'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useLorePages } from '@/db/hooks/useLore'
 import { useFactions } from '@/db/hooks/useFactions'
 import { Button } from '@/components/ui/button'
 import { PortraitImage } from '@/components/PortraitImage'
-import { useAppStore } from '@/store'
+import { useAppStore, useActiveEventId } from '@/store'
+import { castAliveSplit } from '@/lib/castAtCursor'
 import { cn } from '@/lib/utils'
 import { OnboardingWizard } from '@/features/onboarding'
+import { guideKey, readGuide, shouldShowGuide } from '@/lib/guideProgress'
 import { DashboardSuggestion } from './DashboardSuggestion'
 import { CastBalance } from './CastBalance'
 import { ThreadCadence } from './ThreadCadence'
 import { MotifCadence } from './MotifCadence'
 import { WritingProgress } from './WritingProgress'
 import { evaluateSuggestions, type WorldSummaryData } from './suggestionRules'
+import { relativeTime } from '@/lib/relativeTime'
+import { plural } from '@/lib/plural'
+
+/** localStorage throws outright in some private-browsing modes. */
+function safeRead(key: string): string | null {
+  try { return localStorage.getItem(key) } catch { return null }
+}
 
 // ── Stat pill ────────────────────────────────────────────────────────────────
 
@@ -95,11 +106,40 @@ export default function WorldDashboardView() {
   // Latch: keep the wizard mounted until it explicitly exits, even after step 1
   // creates an event (which would clear the trigger condition mid-session).
   const [wizardLatch, setWizardLatch] = useState(false)
+  /*
+    ...and once it has exited, leave it exited. Without this the latch re-armed
+    itself the moment it was released: "Skip and explore on my own" set it
+    false, the effect below saw the trigger condition still true and set it
+    straight back, so skipping was a no-op for any world without an event —
+    which is every world the wizard appears for.
+
+    Both halves are read from storage now (N14). In-session state answered the
+    wrong question after a reload: the guide's own step 1 creates the timeline,
+    so "does this world have one?" says no-guide-needed to someone three
+    quarters of the way through it — and said guide-needed again to someone who
+    had skipped it.
+  */
+  const guideStore = worldId ? guideKey(worldId) : null
+  const [wizardDismissed, setWizardDismissed] = useState(false)
+  const stored = useMemo(
+    () => (guideStore ? readGuide(safeRead(guideStore)) : null),
+    // Read once per world: the guide writes this while it is mounted, and
+    // re-reading on its every write would fight it.
+    [guideStore],
+  )
   useEffect(() => {
-    if (wizardReady && !wizardLatch && (timelineCount === 0 || eventCount === 0)) {
-      setWizardLatch(true)
+    if (!wizardReady || wizardLatch || wizardDismissed) return
+    if (shouldShowGuide({ stored, timelineCount })) setWizardLatch(true)
+  }, [wizardReady, wizardLatch, wizardDismissed, timelineCount, stored])
+
+  function leaveGuide() {
+    setWizardDismissed(true)
+    setWizardLatch(false)
+    // So a reload does not bring it back — see `shouldShowGuide`.
+    if (guideStore) {
+      try { localStorage.setItem(guideStore, JSON.stringify('done')) } catch { /* private mode */ }
     }
-  }, [wizardReady, wizardLatch, timelineCount, eventCount])
+  }
 
   // ── Dashboard suggestions ─────────────────────────────────────────────────
   const dismissedKey = worldId ? `plotweave-dismissed-suggestions-${worldId}` : null
@@ -135,9 +175,16 @@ export default function WorldDashboardView() {
   const gate = useReadingGate(worldId ?? null)
   const characters = gate.filter(allCharacters)
 
-  // Derived stats
-  const aliveCount = characters.filter((c) => c.isAlive).length
-  const deadCount  = characters.length - aliveCount
+  /*
+    WRUN-4: alive and dead as of the moment being viewed, not as of the last
+    page of the book. `character.isAlive` is the record's own end-of-book flag,
+    so this tile used to read the same figure at chapter one and chapter
+    twenty-seven — and never moved when a writer marked someone deceased, since
+    Current State writes the snapshot rather than the flag.
+  */
+  const activeEventId = useActiveEventId()
+  const bestSnapshots = useBestSnapshots(worldId ?? null, activeEventId)
+  const { alive: aliveCount, dead: deadCount } = castAliveSplit(characters, bestSnapshots)
   const totalEvents   = allEvents.length
   const totalChapters = chapters.length
   // Events that have at least one snapshot recorded
@@ -200,7 +247,13 @@ export default function WorldDashboardView() {
       count: totalChapters,
       onClick: () => navigate('timeline'),
       pills: [
-        { label: 'events', value: totalEvents },
+        /*
+          W23-11: this read **"1 events"** on every dashboard — VOCAB-1 renamed
+          the app's word for a moment from *event* to *scene* and this hardcoded
+          label was missed, taking the missing plural with it. The pill next to
+          it already says `/ N scenes`, a few lines down in the same file.
+        */
+        { label: totalEvents === 1 ? 'scene' : 'scenes', value: totalEvents },
         ...(timelines.length > 1 ? [{ label: 'timelines', value: timelines.length }] : []),
         ...(timelineRelationships.length > 0 ? [{ label: 'links', value: timelineRelationships.length }] : []),
       ],
@@ -242,17 +295,23 @@ export default function WorldDashboardView() {
       description: gate.active ? 'you have seen so far' : 'in your catalogue',
     },
     {
-      label: 'Character Arc',
+      /*
+        DASH-2: this was titled "Character Arc" and counted snapshot coverage —
+        the name of a screen over a number measuring something else, two
+        concepts in one tile. The title names the number now, and the line
+        beneath says where pressing it goes. A reader gets the screen without
+        the scorecard, so for them the tile is named for the screen and carries
+        no number at all.
+      */
+      label: gate.active ? 'Character Arc' : 'Snapshot coverage',
       icon: BarChart2,
-      // Snapshot coverage measures how completely the world has been filled in
-      // — a writer's progress bar. A reader gets the arc without the scorecard.
       count: gate.active ? null : coveragePct,
       countSuffix: '%',
       onClick: () => navigate('arc'),
       pills: !gate.active && eventsWithSnap > 0
-        ? [{ label: `/ ${totalEvents} events`, value: eventsWithSnap }]
+        ? [{ label: `/ ${totalEvents} scenes`, value: eventsWithSnap }]
         : [],
-      description: gate.active ? 'how the cast changes' : 'snapshot coverage',
+      description: gate.active ? 'how the cast changes' : 'opens the Character Arc grid',
     },
     // The continuity checker reports on a draft, and reading mode takes it off
     // the top bar — a tile that opened it would be the one way back in.
@@ -269,12 +328,12 @@ export default function WorldDashboardView() {
   ]
 
   if (!wizardReady) return (
-    <div className="p-6 space-y-8 max-w-5xl">
+    <div className="p-6 space-y-8 max-w-[100rem]">
       <div className="animate-pulse space-y-3">
         <div className="h-7 w-48 rounded bg-[hsl(var(--muted))]" />
         <div className="h-4 w-72 rounded bg-[hsl(var(--muted))]" />
       </div>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="animate-pulse h-24 rounded-lg bg-[hsl(var(--muted))]" />
         ))}
@@ -284,11 +343,11 @@ export default function WorldDashboardView() {
 
   // Wizard replaces the dashboard while active
   if (wizardLatch && worldId) {
-    return <OnboardingWizard worldId={worldId} onExit={() => setWizardLatch(false)} />
+    return <OnboardingWizard worldId={worldId} onExit={leaveGuide} />
   }
 
   return (
-    <div className="p-6 space-y-8 max-w-5xl">
+    <div className="p-6 space-y-8 max-w-[100rem]">
 
       {/* World header */}
       <div className="flex items-start justify-between gap-4">
@@ -299,6 +358,16 @@ export default function WorldDashboardView() {
             alt={world.name ? `${world.name} cover` : 'World cover'}
             className="h-16 w-24 shrink-0 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))] object-contain"
             fallbackClassName="h-16 w-24 shrink-0 rounded-md border border-[hsl(var(--border))]"
+            /*
+              DASH-5: `PortraitImage` defaults its placeholder to a person, which
+              is right for the portraits it was built for and wrong for a world.
+              This slot only renders when a cover is set, so the placeholder is
+              reached exactly when the cover is a *linked* image that has stopped
+              answering — the world has pictures and is drawn as a stranger. The
+              world card next door already falls back to a globe; the same world
+              in two places should fall back to the same thing.
+            */
+            fallbackIcon={Globe}
             zoomable
           />
         )}
@@ -326,26 +395,101 @@ export default function WorldDashboardView() {
               </div>
             </div>
           ) : (
-            <div className="mt-1 flex items-start gap-2">
-              {world?.description
-                ? <p className="text-sm text-[hsl(var(--muted-foreground))] max-w-xl">{world.description}</p>
-                : gate.active
-                  ? null
-                  : <p className="text-sm italic text-[hsl(var(--muted-foreground)/0.5)]">No description — click to add one.</p>
-              }
-              {!gate.active && (
-                <button
-                  onClick={startEditDesc}
-                  className="mt-0.5 shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
-                  title="Edit description"
-                >
-                  <Pencil className="h-3 w-3" />
-                </button>
-              )}
-            </div>
+            /*
+              The same shape as SET-3 in World settings, fixed the same way: the
+              text is the control that opens the editor, rather than a paragraph
+              beside a 12px pencil. A reader gets the description as prose, since
+              nothing here is theirs to edit.
+            */
+            gate.active ? (
+              world?.description
+                ? <p className="mt-1 max-w-xl text-sm text-[hsl(var(--muted-foreground))]">{world.description}</p>
+                : null
+            ) : (
+              <button
+                onClick={startEditDesc}
+                aria-label={world?.description ? 'Edit world description' : 'Add a world description'}
+                className="group mt-1 flex max-w-xl items-start gap-2 rounded border border-transparent px-2 py-1 text-left transition-colors hover:border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.4)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]"
+              >
+                {world?.description
+                  ? <span className="text-sm text-[hsl(var(--muted-foreground))]">{world.description}</span>
+                  : <span className="text-sm italic text-[hsl(var(--muted-foreground)/0.5)]">Describe your world…</span>
+                }
+                <Pencil className="ml-auto mt-0.5 h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))] transition-colors group-hover:text-[hsl(var(--foreground))]" aria-hidden="true" />
+              </button>
+            )
           )}
         </div>
       </div>
+
+      {/*
+        RD-3: the dashboard is where the Library drops you, and it was the one
+        screen in reading mode that never used the words. The mode was
+        inferable only from a changed theme and sublabels like "you have met so
+        far", and nothing said how to leave. Every roster explains itself; the
+        landing screen now does too.
+      */}
+      {gate.active && (
+        <aside
+          aria-label="Reading mode"
+          className="flex flex-wrap items-start gap-x-3 gap-y-1 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3"
+        >
+          <BookOpen className="mt-0.5 h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+          {/*
+            `min-w-0` here — the reflex for a flex child — let this column shrink
+            to nothing rather than pushing the links onto a line of their own, so
+            the sentence explaining the mode became a ribbon a few pixels wide
+            and a few dozen lines tall, with the heading drawn underneath a link.
+            Measured on the built app: an 8px column at 414 and 24px at 430.
+
+            A floor instead. 13rem is the narrowest this reads at, and it is
+            under the 240px a 320px phone leaves after the icon, so the column
+            still fits beside it at the smallest width we support; anywhere the
+            links cannot also fit, they wrap below rather than being paid for out
+            of the text.
+          */}
+          <div className="min-w-[13rem] flex-1">
+            <p className="text-sm font-medium text-[hsl(var(--foreground))]">
+              Reading mode is on
+            </p>
+            <p className="mt-0.5 text-sm text-[hsl(var(--muted-foreground))]">
+              {describeReadingPosition(gate.chapterNumber, gate.hiddenCounts)}{' '}
+              Editing is put away while you read.
+            </p>
+          </div>
+          {/*
+            Two actions, and the order is the point.
+
+            This notice used to offer exactly one thing to do — *Turn it off in
+            settings* — so the single affordance on the screen a reader lands on
+            was the way to switch the feature off. What a reader actually needs
+            is to say how far they have got, and the cheap way to do that
+            (**Read to here**, on a chapter row) was two taps away with nothing
+            pointing at it: the reader run measured the always-visible stepper
+            at ~50 taps to walk a book, because it moves by moment rather than
+            by chapter.
+
+            They wrap as a group so that adding one does not squeeze the
+            sentence beside them.
+          */}
+          {worldId && (
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <Link
+                to={`/worlds/${worldId}/timeline`}
+                className="rounded-md border border-[hsl(var(--ring)/0.4)] bg-[hsl(var(--accent))] px-2.5 py-1 text-xs text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--accent)/0.7)]"
+              >
+                Set where you have read to
+              </Link>
+              <Link
+                to={`/worlds/${worldId}/settings`}
+                className="rounded-md border border-[hsl(var(--border))] px-2.5 py-1 text-xs text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent)/0.4)] hover:text-[hsl(var(--foreground))]"
+              >
+                Turn it off in settings
+              </Link>
+            </div>
+          )}
+        </aside>
+      )}
 
       {/* Suggestions are prompts to go and build something — "add your first
           character", "draw a map". There is nothing for a reader to act on. */}
@@ -366,19 +510,39 @@ export default function WorldDashboardView() {
         </section>
       )}
 
-      {/* Nav tiles */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      {/*
+        Nav tiles (DASH-4).
+
+        A grid put seven tiles into rows of four and left a hole where the eye
+        expects a fourth — and the count is not fixable by adding a tile, since
+        reading mode drops Continuity and makes it six. So the row fills itself:
+        the basis reproduces the old breakpoints exactly (two, three, four, six
+        across) and `flex-1` hands the remainder to whatever is on the last row,
+        so a short row is wide rather than gapped.
+      */}
+      <div data-dash-tiles className="flex flex-wrap gap-3">
         {tiles.map(({ label, icon: Icon, count, countSuffix, onClick, pills, description }) => (
           <button
             key={label}
             onClick={onClick}
-            className="flex flex-col gap-2 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 text-left transition-colors hover:border-[hsl(var(--ring))] hover:bg-[hsl(var(--accent))]"
+            className="flex flex-1 basis-[calc(50%-0.375rem)] flex-col gap-2 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 text-left transition-colors hover:border-[hsl(var(--ring))] hover:bg-[hsl(var(--accent))] sm:basis-[calc(33.333%-0.5rem)] lg:basis-[calc(25%-0.5625rem)] 2xl:basis-[calc(16.666%-0.625rem)]"
           >
             <div className="flex items-center justify-between">
               <Icon className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-              <span className="text-xl font-bold text-[hsl(var(--foreground))]">
-                {count !== null ? `${count}${countSuffix ?? ''}` : '—'}
-              </span>
+              {/*
+                A tile with no count is an action, not a statistic — Continuity
+                opens the checker, Character Arc opens the grid. A bold em-dash
+                in the number slot read as a missing or unknown value, which on
+                the Continuity tile especially is a different claim from "no
+                issues". A chevron says "this goes somewhere" instead.
+              */}
+              {count !== null ? (
+                <span className="text-xl font-bold text-[hsl(var(--foreground))]">
+                  {`${count}${countSuffix ?? ''}`}
+                </span>
+              ) : (
+                <ChevronRight className="h-5 w-5 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+              )}
             </div>
             <div>
               <p className="text-sm font-medium text-[hsl(var(--foreground))]">{label}</p>
@@ -400,7 +564,13 @@ export default function WorldDashboardView() {
           where the reader is in the book. */}
       {!gate.active && recentEvents.length > 0 && (
         <div>
-          <SectionHeading icon={Clock}>Recent Events</SectionHeading>
+          {/*
+            DASH-3: "Recent Events" never said what recent meant, and across two
+            columns the order was anyone's guess. The heading names the ordering
+            and each row carries how long ago it was, so the sequence is legible
+            from the rows themselves rather than from where they happen to land.
+          */}
+          <SectionHeading icon={Clock}>Recently edited</SectionHeading>
           <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
             {recentEvents.map((ev) => {
               const ch = chapterById.get(ev.chapterId)
@@ -416,12 +586,15 @@ export default function WorldDashboardView() {
                 >
                   <div className="flex-1 min-w-0">
                     <p className="truncate text-sm font-medium text-[hsl(var(--foreground))]">
-                      {ev.title || <span className="italic opacity-50">Untitled event</span>}
+                      {ev.title || <span className="italic opacity-50">Untitled scene</span>}
                     </p>
                     <p className="truncate text-[11px] text-[hsl(var(--muted-foreground))]">
                       {tl && timelines.length > 1 ? `${tl.name} · ` : ''}{ch ? `Ch. ${ch.number} — ${ch.title}` : ''}
                     </p>
                   </div>
+                  <span className="shrink-0 text-[10px] tabular-nums text-[hsl(var(--muted-foreground))]">
+                    {relativeTime(ev.updatedAt)}
+                  </span>
                 </button>
               )
             })}
@@ -435,7 +608,7 @@ export default function WorldDashboardView() {
         <div>
           <SectionHeading
             icon={FileEdit}
-            aside={<span className="text-xs text-[hsl(var(--muted-foreground))]">{totalEvents} events</span>}
+            aside={<span className="text-xs text-[hsl(var(--muted-foreground))]">{plural(totalEvents, 'scene')}</span>}
           >
             Scene Status
           </SectionHeading>

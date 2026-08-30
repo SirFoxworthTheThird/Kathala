@@ -109,7 +109,7 @@ export function LoadPreviewDialog({ preview, parsed, onReplace, onMerge, onCance
           <div className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)] p-3 space-y-1.5">
             <p className="text-xs font-medium mb-2">Changes detected vs. your local version:</p>
             <StatRow label="Characters" {...preview.characters} />
-            <StatRow label="Events"     {...preview.events}     />
+            <StatRow label="Scenes"     {...preview.events}     />
             <StatRow label="Chapters"   {...preview.chapters}   />
             <StatRow label="Locations"  {...preview.locations}  />
             <StatRow label="Items"      {...preview.items}      />

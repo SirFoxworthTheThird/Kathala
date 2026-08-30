@@ -1,11 +1,14 @@
 import { useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { BookOpen, Users, AtSign, History as HistoryIcon, Eye } from 'lucide-react'
 import type { Character } from '@/types'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
+import { useCharacterSnapshots } from '@/db/hooks/useSnapshots'
 import { useAppStore } from '@/store'
+import { useShowMoment } from '@/db/hooks/useShowMoment'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/EmptyState'
+import { Button } from '@/components/ui/button'
 import { computeCharacterAppearances, type CharacterAppearance } from '@/lib/characterAppearances'
 
 interface AppearancesTabProps {
@@ -30,7 +33,7 @@ function AppearanceRow({ appearance, isActive, onClick }: {
       <BookOpen className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))]" />
       <div className="min-w-0 flex-1">
         <span className="text-sm font-medium text-[hsl(var(--foreground))] truncate block">
-          {appearance.eventTitle || 'Untitled event'}
+          {appearance.eventTitle || 'Untitled scene'}
         </span>
         <span className="text-xs text-[hsl(var(--muted-foreground))] truncate block">
           Ch. {appearance.chapterNumber ?? '?'}{appearance.chapterTitle ? ` — ${appearance.chapterTitle}` : ''}
@@ -53,25 +56,58 @@ function AppearanceRow({ appearance, isActive, onClick }: {
 export function AppearancesTab({ character }: AppearancesTabProps) {
   const events = useWorldEvents(character.worldId)
   const chapters = useWorldChapters(character.worldId)
-  const { activeEventId, setActiveEventId } = useAppStore()
+  const { activeEventId } = useAppStore()
+  const showMoment = useShowMoment()
   const navigate = useNavigate()
 
   const { present, mentioned } = useMemo(
     () => computeCharacterAppearances({ characterId: character.id, events, chapters }),
     [character.id, events, chapters]
   )
+  /*
+    The other ledger. State recorded at a scene says where someone is, not that
+    they are in it (`sceneStanding.ts`), so a character can have a full History
+    and no appearances at all — which a blind writer run read as "you have
+    recorded nothing", having just recorded two. The empty state says which
+    count it is not, and goes there.
+  */
+  const snapshots = useCharacterSnapshots(character.id)
+  const [searchParams, setSearchParams] = useSearchParams()
+  function openHistory() {
+    const params = new URLSearchParams(searchParams)
+    params.set('tab', 'history')
+    setSearchParams(params, { replace: true })
+  }
 
   function go(a: CharacterAppearance) {
-    setActiveEventId(a.eventId)
+    // Navigates either way; only a writer's cursor follows.
+    showMoment(a.eventId)
     navigate(`/worlds/${character.worldId}/timeline/${a.chapterId}`)
   }
 
   if (present.length === 0 && mentioned.length === 0) {
     return (
+      /* X-4 rule 2: a heading and an explanation, and now the control that goes
+         where the act happens — a character joins a scene from the scene, not
+         from here. The Arc grid and Calendar (CAL-1) are the model. */
       <EmptyState
         icon={Users}
         title="No appearances yet"
-        description="Add this character to an event's cast, or mention them in a scene draft with @."
+        description={snapshots.length > 0
+          ? `${character.name} has state recorded at ${snapshots.length} ${snapshots.length === 1 ? 'scene' : 'scenes'}, which says where they are rather than that they are in it. Add them to a scene's cast, or mention them in a draft with @.`
+          : "Add this character to a scene's cast, or mention them in a scene draft with @."}
+        action={(
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => navigate(`/worlds/${character.worldId}/timeline`)}>
+              <BookOpen className="h-4 w-4" aria-hidden="true" /> Open Timeline
+            </Button>
+            {snapshots.length > 0 && (
+              <Button size="sm" variant="ghost" onClick={openHistory}>
+                <HistoryIcon className="h-4 w-4" aria-hidden="true" /> See recorded state
+              </Button>
+            )}
+          </div>
+        )}
         className="py-8"
       />
     )
@@ -92,7 +128,21 @@ export function AppearancesTab({ character }: AppearancesTabProps) {
             ))}
           </div>
         ) : (
-          <p className="text-xs italic text-[hsl(var(--muted-foreground))]">On-stage in no events yet.</p>
+          /* X-4 rule 2: a character joins a scene from the scene, not from
+             here, so this names the screen that does it and goes there. */
+          <div className="flex flex-col items-start gap-1.5">
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">
+              Not on stage in any scene yet. Add {character.name} to a scene's cast
+              and it will show here.
+            </p>
+            <button
+              onClick={() => navigate(`/worlds/${character.worldId}/timeline`)}
+              className="pw-tap inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
+            >
+              <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
+              Open Timeline
+            </button>
+          </div>
         )}
       </section>
 
@@ -109,7 +159,12 @@ export function AppearancesTab({ character }: AppearancesTabProps) {
             ))}
           </div>
         ) : (
-          <p className="text-xs italic text-[hsl(var(--muted-foreground))]">Referenced but not present in no events yet.</p>
+          /* "Referenced but not present in no scenes yet" — the old copy read
+             as a mistake because it was one sentence doing two jobs. */
+          <p className="text-xs text-[hsl(var(--muted-foreground))]">
+            Not mentioned in any scene yet. Type <span className="font-medium">@</span> in
+            a scene's draft to refer to {character.name} without putting them in the room.
+          </p>
         )}
       </section>
     </div>

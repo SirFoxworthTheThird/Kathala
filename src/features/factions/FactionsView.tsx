@@ -7,12 +7,12 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Field } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import {
-  useFactions, useFactionMemberships, useMembershipsForFaction,
+  useFactions, useFactionMemberships, useMembershipsForFaction, useFactionReveal,
   useFactionRelationships,
   createFaction, updateFaction, deleteFaction,
   createFactionMembership, updateFactionMembership, deleteFactionMembership,
@@ -24,6 +24,7 @@ import { useEvents, useChapters, useTimelines } from '@/db/hooks/useTimeline'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { GenerateFactionsDialog } from './GenerateFactionsDialog'
 import type { Faction, FactionMembership, FactionRelationship, FactionStance } from '@/types'
+import { plural } from '@/lib/plural'
 
 const PRESET_COLORS = [
   '#ef4444', '#f97316', '#eab308', '#22c55e',
@@ -91,19 +92,17 @@ function MembershipRow({
       {expanded && (
         <div className="border-t border-[hsl(var(--border))] px-3 pb-3 pt-2 flex flex-col gap-2">
           <div className="flex gap-2">
-            <div className="flex-1">
-              <Label className="text-xs">Role</Label>
+            <Field label="Role" className="flex-1" labelClassName="text-xs">
               <Input
                 className="mt-1 h-7 text-xs"
                 value={membership.role ?? ''}
                 placeholder="e.g. Leader, Spy…"
                 onChange={(e) => updateFactionMembership(membership.id, { role: e.target.value || null })}
               />
-            </div>
+            </Field>
           </div>
           <div className="flex gap-2">
-            <div className="flex-1">
-              <Label className="text-xs">From event</Label>
+            <Field label="From scene" className="flex-1" labelClassName="text-xs">
               <Select
                 value={membership.startEventId ?? 'none'}
                 onValueChange={(v) => updateFactionMembership(membership.id, { startEventId: v === 'none' ? null : v })}
@@ -116,9 +115,8 @@ function MembershipRow({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="flex-1">
-              <Label className="text-xs">Until event</Label>
+            </Field>
+            <Field label="Until scene" className="flex-1" labelClassName="text-xs">
               <Select
                 value={membership.endEventId ?? 'none'}
                 onValueChange={(v) => updateFactionMembership(membership.id, { endEventId: v === 'none' ? null : v })}
@@ -131,7 +129,7 @@ function MembershipRow({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
           </div>
           {(startEv || endEv) && (
             <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
@@ -140,8 +138,7 @@ function MembershipRow({
               {endEv ? `Until: ${endEv.title}` : 'Ongoing'}
             </p>
           )}
-          <div>
-            <Label className="text-xs">Notes</Label>
+          <Field label="Notes" labelClassName="text-xs">
             <Textarea
               className="mt-1 text-xs resize-none"
               rows={2}
@@ -149,7 +146,7 @@ function MembershipRow({
               placeholder="Notes about this membership…"
               onChange={(e) => updateFactionMembership(membership.id, { notes: e.target.value })}
             />
-          </div>
+          </Field>
         </div>
       )}
     </div>
@@ -278,16 +275,22 @@ function FactionDetailPanel({
   const unrelatedFactions = allFactions.filter(
     (f) => f.id !== faction.id && !relatedFactionIds.has(f.id)
   )
-  const territories = useLiveQuery(
+  // Territories name places, so they go through the reveal gate like any other
+  // place: a faction's holdings would otherwise list somewhere the reader has
+  // not reached, which is how "Hogwarts School of Witchcraft and Wizardry"
+  // reached this panel at chapter one.
+  const allTerritories = useLiveQuery(
     () => db.mapRegions.where('factionId').equals(faction.id).toArray(),
     [faction.id],
     []
   )
-  const territoryLocations = useLiveQuery(
+  const allTerritoryLocations = useLiveQuery(
     () => db.locationMarkers.where('factionId').equals(faction.id).toArray(),
     [faction.id],
     []
   )
+  const territories = gate.filter(allTerritories)
+  const territoryLocations = gate.filter(allTerritoryLocations)
   const allLayers = useMapLayers(worldId)
   const layerById = new Map(allLayers.map((l) => [l.id, l]))
   const characters = useCharacters(worldId)
@@ -378,16 +381,13 @@ function FactionDetailPanel({
           ) : null
         ) : (
           <div className="flex flex-col gap-3">
-            <div>
-              <Label>Name</Label>
+            <Field label="Name">
               <Input className="mt-1" value={name} onChange={(e) => setName(e.target.value)} onBlur={save} />
-            </div>
-            <div>
-              <Label>Description</Label>
+            </Field>
+            <Field label="Description">
               <Textarea className="mt-1 resize-none text-sm" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} onBlur={save} />
-            </div>
-            <div>
-              <Label>Colour</Label>
+            </Field>
+            <Field label="Colour">
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {PRESET_COLORS.map((c) => (
                   <button
@@ -406,14 +406,13 @@ function FactionDetailPanel({
                   title="Custom colour"
                 />
               </div>
-            </div>
+            </Field>
           </div>
         )}
 
         {/* Tags */}
         {(gate.active ? tags.length > 0 : true) && (
-          <div>
-            <Label>Tags</Label>
+          <Field label="Tags">
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {tags.map((t) => (
                 <span key={t} className="flex items-center gap-1 rounded bg-[hsl(var(--border))] px-2 py-0.5 text-xs text-[hsl(var(--foreground))]">
@@ -439,7 +438,7 @@ function FactionDetailPanel({
                 />
               )}
             </div>
-          </div>
+          </Field>
         )}
 
         {/* Members */}
@@ -468,7 +467,7 @@ function FactionDetailPanel({
           </div>
 
           {gate.active ? null : addingMember ? (
-            <Select onValueChange={addMember}>
+            <Select onValueChange={addMember} value="">
               <SelectTrigger className="text-xs h-8">
                 <SelectValue placeholder="Choose character…" />
               </SelectTrigger>
@@ -526,7 +525,7 @@ function FactionDetailPanel({
             </div>
 
             {gate.active ? null : addingRelation ? (
-              <Select onValueChange={addRelation}>
+              <Select onValueChange={addRelation} value="">
                 <SelectTrigger className="text-xs h-8">
                   <SelectValue placeholder="Choose faction…" />
                 </SelectTrigger>
@@ -632,19 +631,43 @@ function FactionDetailPanel({
 
 export default function FactionsView() {
   const { worldId } = useParams<{ worldId: string }>()
-  const factions = useFactions(worldId ?? null)
+  const gate = useGate()
+  const allWorldFactions = useFactions(worldId ?? null)
+  // A faction the reader has not met anybody in gives its existence away — the
+  // roster used to list every one of them while search hid the same faction at
+  // the same cursor.
+  const factionReveal = useFactionReveal(worldId ?? null, gate)
+  const factions = allWorldFactions.filter((f) => factionReveal.has(f.id))
   const allMemberships = useFactionMemberships(worldId ?? null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
   const [aiOpen, setAiOpen] = useState(false)
+  const [search, setSearch] = useState('')
 
   const selectedFaction = factions.find((f) => f.id === selectedId) ?? null
+  const allStances = useFactionRelationships(worldId ?? null)
+
+  const shown = search.trim()
+    ? factions.filter((f) => f.name.toLowerCase().includes(search.trim().toLowerCase()))
+    : factions
 
   // Count members per faction
   const memberCountById = new Map<string, number>()
   for (const m of allMemberships) {
     memberCountById.set(m.factionId, (memberCountById.get(m.factionId) ?? 0) + 1)
+  }
+
+  // Allies and enemies per faction. A stance is stored once for the pair, so
+  // both sides are counted from the one record.
+  const stanceCountById = new Map<string, { allied: number; hostile: number }>()
+  for (const rel of allStances) {
+    if (rel.stance !== 'allied' && rel.stance !== 'hostile') continue
+    for (const id of [rel.factionAId, rel.factionBId]) {
+      const cur = stanceCountById.get(id) ?? { allied: 0, hostile: 0 }
+      cur[rel.stance] += 1
+      stanceCountById.set(id, cur)
+    }
   }
 
   async function handleCreate() {
@@ -701,7 +724,17 @@ export default function FactionsView() {
               </div>
             )
           }
-        />
+        >
+          {/* FAC-2: Items, Knowledge, Lore and Characters all carry one here,
+              in this position. Ten factions do not need searching; the
+              inconsistency across four sibling rosters was the finding. */}
+          <Input
+            placeholder="Search factions…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-8 max-w-xs text-sm"
+          />
+        </PageHeader>
 
         {/* Grid */}
         <div className="flex-1 overflow-auto p-4">
@@ -717,9 +750,13 @@ export default function FactionsView() {
               }
               className="h-full"
             />
+          ) : shown.length === 0 ? (
+            // Matching the sibling rosters: an empty grid with no word for it
+            // reads as a loading failure rather than as a search with no hits.
+            <EmptyState icon={Shield} title="No matches" description="Try a different search." />
           ) : (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
-              {factions.map((faction) => {
+              {shown.map((faction) => {
                 const count = memberCountById.get(faction.id) ?? 0
                 const isSelected = faction.id === selectedId
                 return (
@@ -732,12 +769,20 @@ export default function FactionsView() {
                         : 'border-[hsl(var(--border))] bg-[hsl(var(--card))]'
                     }`}
                   >
-                    <div className="flex items-center gap-2 mb-2">
+                    {/*
+                      FAC-3: the name was `truncate` — one line, ellipsis — set
+                      directly above a description allowed two full lines, so
+                      "The Fellowship of the R…" was cut while the body text it
+                      titles wrapped freely. The name gets the same two lines.
+                      Aligned to the top rather than the centre, so the colour
+                      dot sits with the first line when the name does wrap.
+                    */}
+                    <div className="flex items-start gap-2 mb-2">
                       <div
-                        className="h-4 w-4 rounded-full shrink-0 shadow-sm"
+                        className="mt-0.5 h-4 w-4 rounded-full shrink-0 shadow-sm"
                         style={{ background: faction.color }}
                       />
-                      <span className="font-semibold text-sm truncate">{faction.name}</span>
+                      <span data-faction-name className="font-semibold text-sm line-clamp-2">{faction.name}</span>
                     </div>
                     {faction.description && (
                       <p className="text-xs text-[hsl(var(--muted-foreground))] line-clamp-2 mb-2">
@@ -746,8 +791,34 @@ export default function FactionsView() {
                     )}
                     <div className="flex items-center gap-1 text-[10px] text-[hsl(var(--muted-foreground))]">
                       <Users className="h-3 w-3" />
-                      <span>{count} member{count !== 1 ? 's' : ''}</span>
+                      <span>{plural(count, 'member')}</span>
                     </div>
+                    {/*
+                      FAC-1: the card carried a member count and nothing else,
+                      while who is hostile to whom is the point of having
+                      factions at all. Allies and enemies are counted here;
+                      neutral is the default and says nothing, so it is left off.
+                    */}
+                    {(() => {
+                      const stance = stanceCountById.get(faction.id)
+                      if (!stance || (stance.allied === 0 && stance.hostile === 0)) return null
+                      return (
+                        <div className="mt-1 flex items-center gap-2 text-[10px]">
+                          {stance.allied > 0 && (
+                            <span className="flex items-center gap-1 text-green-400">
+                              <Handshake className="h-3 w-3" aria-hidden="true" />
+                              {stance.allied} allied
+                            </span>
+                          )}
+                          {stance.hostile > 0 && (
+                            <span className="flex items-center gap-1 text-red-400">
+                              <Swords className="h-3 w-3" aria-hidden="true" />
+                              {stance.hostile} hostile
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </button>
                 )
               })}

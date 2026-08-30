@@ -29,7 +29,6 @@ function levelSnapshot(page: Page) {
 test('add a level to a map and switch between floors, each with its own locations', async ({ page }) => {
   test.slow() // the maps view mounts a Leaflet canvas
 
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Aethel')
@@ -82,12 +81,20 @@ test('add a level to a map and switch between floors, each with its own location
   expect(after.markerLayerIds.every((id) => id === ground.id)).toBe(true)
 
   // The floor switcher shows both, with the new First floor active.
-  const switcher = page.locator('[aria-current="true"]')
-  await expect(page.getByRole('button', { name: 'Ground floor' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'First floor' })).toBeVisible()
-  await expect(switcher).toHaveText('First floor')
+  //
+  // Asked of the floor buttons themselves rather than of a page-wide
+  // `[aria-current="true"]`: the sidebar's map-layer rows mark the open map the
+  // same way, so "the only current thing on the page" was never a safe way to
+  // ask which floor is showing. Each half names the button it is about, and the
+  // pair moves together when the floor changes.
+  const floor = (name: string) => page.getByRole('button', { name, exact: true })
+  await expect(floor('Ground floor')).toBeVisible()
+  await expect(floor('First floor')).toBeVisible()
+  await expect(floor('First floor')).toHaveAttribute('aria-current', 'true')
+  await expect(floor('Ground floor')).not.toHaveAttribute('aria-current', 'true')
 
   // Switch to the ground floor.
-  await page.getByRole('button', { name: 'Ground floor' }).click()
-  await expect(page.locator('[aria-current="true"]')).toHaveText('Ground floor')
+  await floor('Ground floor').click()
+  await expect(floor('Ground floor')).toHaveAttribute('aria-current', 'true')
+  await expect(floor('First floor')).not.toHaveAttribute('aria-current', 'true')
 })

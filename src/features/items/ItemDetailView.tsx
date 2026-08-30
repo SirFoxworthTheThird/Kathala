@@ -1,17 +1,24 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { BlockingReason } from '@/components/BlockingReason'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Upload, Trash2, Check, X, Plus, Layers } from 'lucide-react'
+import { ArrowLeft, Upload, Trash2, Check, X, Plus, Layers, History } from 'lucide-react'
 import { useItem, updateItem, deleteItem } from '@/db/hooks/useItems'
 import { storeBlob } from '@/db/hooks/useBlobs'
 import { LinkImageButton } from '@/components/LinkImageButton'
 import { useGate } from '@/db/hooks/ReadingGateContext'
+import { NotReachedYet } from '@/components/NotReachedYet'
 import { useCrossTimelineArtifactsForItem, createCrossTimelineArtifact, deleteCrossTimelineArtifact } from '@/db/hooks/useTimelineRelationships'
-import { useTimelines } from '@/db/hooks/useTimeline'
+import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
+import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
+import { useWorldItemPlacements } from '@/db/hooks/useItemPlacements'
+import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
+import { useCharacters } from '@/db/hooks/useCharacters'
+import { itemCustodyChain, describeCustodyStep } from '@/lib/itemCustody'
 import { PortraitImage } from '@/components/PortraitImage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Field } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RelatedLoreSection } from '@/features/lore'
@@ -25,10 +32,41 @@ export default function ItemDetailView() {
   const timelines = useTimelines(worldId ?? null)
 
   const gate = useGate()
+
+  /*
+    F11: the Items roster answered "where is it now" and the item's own page
+    answered nothing — no custody, no location, no history — while the sequence
+    is the thing you open an item's page to check. The data was there the whole
+    time, split across ItemPlacement and CharacterSnapshot.inventoryItemIds.
+  */
+  const chapters = useWorldChapters(worldId ?? null)
+  const events = useWorldEvents(worldId ?? null)
+  const snapshots = useWorldSnapshots(worldId ?? null)
+  const placements = useWorldItemPlacements(worldId ?? null)
+  const markers = useAllLocationMarkers(worldId ?? null)
+  const characters = useCharacters(worldId ?? null)
+
+  /*
+    While reading, this stops where the reader has. Not by filtering here —
+    `useWorldEvents` and `useWorldSnapshots` are already gated, and the chain
+    only ever emits a step at an event in the list it was given, so a scene the
+    reader has not reached cannot produce one. `useWorldItemPlacements` is not
+    gated, but a placement at an unreached event has no event to attach to and
+    is passed over for the same reason. A filter here looked prudent and was
+    dead code; the mutation that should have killed it did not.
+  */
+  const custody = useMemo(() => {
+    if (!itemId) return []
+    return itemCustodyChain({
+      itemId, placements, snapshots, markers, characters, events, chapters,
+    })
+  }, [itemId, placements, snapshots, markers, characters, events, chapters])
+
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [iconType, setIconType] = useState('')
+  const [isCollective, setIsCollective] = useState(false)
 
   // Cross-timeline artifact form state
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -43,6 +81,11 @@ export default function ItemDetailView() {
         Item not found.
       </div>
     )
+  }
+
+  // As for characters: filtered out of the roster, rendered in full by URL.
+  if (gate.active && !gate.isRevealed(item.id)) {
+    return <NotReachedYet what="item" />
   }
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -62,6 +105,7 @@ export default function ItemDetailView() {
       name: name.trim(),
       description: description.trim(),
       iconType: iconType.trim(),
+      isCollective,
     })
     setEditing(false)
   }
@@ -85,6 +129,7 @@ export default function ItemDetailView() {
     setName(item!.name)
     setDescription(item!.description)
     setIconType(item!.iconType)
+    setIsCollective(!!item!.isCollective)
     setEditing(true)
   }
 
@@ -176,21 +221,35 @@ export default function ItemDetailView() {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label>Name</Label>
+            <Field label="Name" className="flex flex-col gap-1.5">
               <Input value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>Type / Category</Label>
+            </Field>
+            <Field label="Type / Category" className="flex flex-col gap-1.5">
               <Input
                 value={iconType}
                 onChange={(e) => setIconType(e.target.value)}
                 placeholder="e.g. weapon, artifact, key item"
               />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>Description</Label>
+            </Field>
+            <Field label="Description" className="flex flex-col gap-1.5">
               <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={6} />
+            </Field>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer accent-[hsl(var(--ring))]"
+                  checked={isCollective}
+                  onChange={(e) => setIsCollective(e.target.checked)}
+                />
+                <span>
+                  There is more than one of these
+                  <span className="block text-xs text-[hsl(var(--muted-foreground))]">
+                    For a kind of thing rather than one object — lembas, a uniform, arrows.
+                    Continuity stops asking how it can be in two places at once.
+                  </span>
+                </span>
+              </label>
             </div>
             <div className="flex gap-2">
               <Button size="sm" onClick={save} disabled={!name.trim()}>
@@ -200,6 +259,34 @@ export default function ItemDetailView() {
                 <X className="h-3.5 w-3.5" /> Cancel
               </Button>
             </div>
+          </div>
+        )}
+
+        {/* Whereabouts over time */}
+        {custody.length > 0 && (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <History className="h-3.5 w-3.5 text-amber-500" />
+              <span className="text-xs font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+                Whereabouts
+              </span>
+            </div>
+            <ol className="flex flex-col gap-1.5">
+              {custody.map((step) => (
+                <li
+                  key={step.eventId}
+                  className="flex items-baseline gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-2 text-xs"
+                >
+                  <span className="shrink-0 tabular-nums text-[hsl(var(--muted-foreground))]">
+                    Ch. {step.chapterNumber}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{step.sceneTitle || 'Untitled scene'}</span>
+                  <span className="shrink-0 text-[hsl(var(--muted-foreground))]">
+                    {describeCustodyStep(step)}
+                  </span>
+                </li>
+              ))}
+            </ol>
           </div>
         )}
 
@@ -227,8 +314,7 @@ export default function ItemDetailView() {
 
             {addingArtifact && (
               <div className="flex flex-col gap-2 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3">
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs">Originates in</Label>
+                <Field label="Originates in" className="flex flex-col gap-1" labelClassName="text-xs">
                   <Select value={artifactOriginId} onValueChange={setArtifactOriginId}>
                     <SelectTrigger className="h-7 text-xs">
                       <SelectValue placeholder="Timeline…" />
@@ -239,9 +325,8 @@ export default function ItemDetailView() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs">Found / encountered in</Label>
+                </Field>
+                <Field label="Found / encountered in" className="flex flex-col gap-1" labelClassName="text-xs">
                   <Select value={artifactEncounterId} onValueChange={setArtifactEncounterId}>
                     <SelectTrigger className="h-7 text-xs">
                       <SelectValue placeholder="Timeline…" />
@@ -252,16 +337,24 @@ export default function ItemDetailView() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs">Encounter notes</Label>
+                </Field>
+                <Field label="Encounter notes" className="flex flex-col gap-1" labelClassName="text-xs">
                   <Input
                     className="h-7 text-xs"
                     placeholder='e.g. "found in archive box 14"'
                     value={artifactNotes}
                     onChange={(e) => setArtifactNotes(e.target.value)}
                   />
-                </div>
+                </Field>
+                {/* X-9 */}
+                <BlockingReason
+                  className="text-[10px]"
+                  checks={[
+                    { met: !!artifactOriginId, need: 'an origin era' },
+                    { met: !!artifactEncounterId, need: 'an encounter era' },
+                    { met: !artifactOriginId || !artifactEncounterId || artifactOriginId !== artifactEncounterId, need: 'two different eras' },
+                  ]}
+                />
                 <div className="flex gap-2">
                   <Button
                     size="sm"

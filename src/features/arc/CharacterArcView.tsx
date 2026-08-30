@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect, useLayoutEffect, type KeyboardEvent as ReactKeyboardEvent, type FocusEvent as ReactFocusEvent } from 'react'
 import { toPng } from 'html-to-image'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Heart, Skull, MapPin, Minus, Search, Download, X, Shield, FileEdit, Eye, History, Spline, Target } from 'lucide-react'
@@ -6,17 +6,24 @@ import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTi
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
+import { arcColumnWidth } from '@/lib/arcColumnWidth'
 import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
+import { nextCell, clampCell, type Cell } from './gridNavigation'
 import { useCharacterGoals } from '@/db/hooks/useCharacterGoals'
 import { eventPositions, activeGoalsAt, summariseGoals, goalTypeConfig } from '@/lib/characterGoals'
 import { useAppStore } from '@/store'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/EmptyState'
 import { BookOpen } from 'lucide-react'
 import type { EventStatus, WorldEvent } from '@/types'
 import { EVENT_STATUSES, eventStatusConfig } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
+import { arcRoster, countAppearances, countRecorded, type ArcOrder } from '@/lib/arcRoster'
+
+/** Cells are the tab stop, so focus has to be visible on them. */
+const FOCUS_RING = 'focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[hsl(var(--ring))]'
 
 // ── Inventory sparkline (pure SVG, no library) ────────────────────────────────
 
@@ -50,16 +57,67 @@ export default function CharacterArcView() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
   const { activeEventId, setActiveEventId } = useAppStore()
+  const gate = useGate()
   const [viewMode, setViewMode]             = useState<'chapter' | 'event'>('chapter')
   const [viewType, setViewType]             = useState<'characters' | 'factions' | 'threads'>('characters')
   const [filterText, setFilterText]         = useState('')
+  const [rowOrder, setRowOrder]             = useState<ArcOrder>('appearances')
+  const [hideUnrecorded, setHideUnrecorded] = useState(false)
   const [expandedKey, setExpandedKey]       = useState<string | null>(null) // `${charId}:${colId}`
   const [selectedTimelineId, setSelectedTimelineId] = useState<string | null>(null) // null = all
   const [showFactionOverlay, setShowFactionOverlay] = useState(false)
   const [showStatusOverlay, setShowStatusOverlay]   = useState(false)
   const [showPovOverlay, setShowPovOverlay]         = useState(false)
   const [showGoalsOverlay, setShowGoalsOverlay]     = useState(false)
-  const tableRef = useRef<HTMLDivElement>(null)
+  const tableRef = useRef<HTMLDivElement | null>(null)
+
+  /*
+    The scroller's width, watched rather than measured once: the nav rail pins
+    and unpins, the window resizes, and a width computed at mount would be wrong
+    for the rest of the session.
+
+    Through a callback ref rather than an effect on `tableRef`, because this
+    component returns early while its live queries resolve — so on the render
+    that runs the effect there is no table yet, and an effect with an empty
+    dependency list would never look again. That is not hypothetical: the first
+    version did exactly that and left the grid on its old fixed width, which the
+    test caught by reproducing the finding's own numbers.
+  */
+  const [tableEl, setTableEl] = useState<HTMLDivElement | null>(null)
+  const [tableWidth, setTableWidth] = useState(0)
+  const attachTable = useCallback((el: HTMLDivElement | null) => {
+    tableRef.current = el
+    setTableEl(el)
+  }, [])
+  useLayoutEffect(() => {
+    if (!tableEl) return
+    const measure = () => setTableWidth(tableEl.clientWidth)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(tableEl)
+    return () => ro.disconnect()
+  }, [tableEl])
+  // The grid's one tab stop. Clamped at render rather than in an effect, so
+  // switching from the per-event view to the per-chapter one — an order of
+  // magnitude fewer columns — cannot leave the grid with no tab stop at all.
+  const [focusedCell, setFocusedCell] = useState<Cell>({ row: 0, col: 0 })
+  /**
+   * The cell components are defined inside this one, so React sees a new
+   * component type on every render and remounts every cell — which throws away
+   * whichever DOM node had focus. Rather than fight that, focus is re-asserted
+   * after each render for as long as it belongs in the grid: the keypress moves
+   * the cell, and this puts the caret on the node that actually survived.
+   */
+  const gridFocusedRef = useRef(false)
+  const focusRef = useRef<Cell>({ row: 0, col: 0 })
+  useEffect(() => {
+    if (!gridFocusedRef.current) return
+    const { row, col } = focusRef.current
+    const el = tableRef.current?.querySelector<HTMLElement>(`[data-grid-cell="${row}-${col}"]`)
+    if (!el || el === document.activeElement) return
+    el.focus()
+    el.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  })
 
   const timelines      = useTimelines(worldId ?? null)
   const chapters       = useWorldChapters(worldId ?? null)
@@ -276,11 +334,26 @@ export default function CharacterArcView() {
     }))
   }
 
-  // Filtered character list
+  // Which characters get a row, and in what order (ARC-1, ARC-3). Appearances
+  // are counted across every event in the world rather than the current
+  // timeline's, so switching timelines does not reorder the cast under you.
   const q = filterText.trim().toLowerCase()
-  const displayedChars = q
-    ? characters.filter((c) => c.name.toLowerCase().includes(q))
-    : characters
+  const appearanceCounts = countAppearances(allEvents)
+  const recordedCounts = countRecorded(snapshots)
+  const roster = arcRoster({
+    characters,
+    appearances: appearanceCounts,
+    recorded: recordedCounts,
+    query: filterText,
+    order: rowOrder,
+    hideUnrecorded,
+  })
+  const displayedChars = roster.rows
+  // What the control would put away, in either state: once it is on, the roster
+  // has already removed them and reports the count itself.
+  const unrecordedCount = hideUnrecorded
+    ? roster.hidden
+    : roster.rows.filter((c) => (recordedCounts.get(c.id) ?? 0) === 0).length
 
   const multiTimeline = timelines.length > 1
 
@@ -315,7 +388,7 @@ export default function CharacterArcView() {
       <EmptyState
         icon={BookOpen}
         title="Nothing to visualize"
-        description="The Arc view shows character states across every chapter. Add characters and events first."
+        description="The Arc view shows character states across every chapter. Add characters and scenes first."
         action={
           <button
             onClick={() => navigate('timeline')}
@@ -330,11 +403,26 @@ export default function CharacterArcView() {
   }
   if (snapshots.length === 0) {
     return (
-      <EmptyState icon={BookOpen} title="No snapshots yet" description="Select an event and save character state to start tracking the arc." className="h-full" />
+      <EmptyState icon={BookOpen} title="No snapshots yet" description="Select a scene and save character state to start tracking the arc." className="h-full" />
     )
   }
 
-  const colWidth = viewMode === 'event' ? 100 : 110
+  /*
+    F14: this was a constant, applied as both `minWidth` and `maxWidth`, so
+    columns never took space that was going spare — measured on a three-chapter
+    world at 1440px as a 512px table with every location string clipped and
+    928px of empty screen beside it. The constant is right for the 117-chapter
+    case, which has to scroll; it was applied unconditionally, which was the
+    finding. It is a floor now. See `arcColumnWidth`.
+  */
+  const columnCount = viewMode === 'chapter' ? sortedChapters.length : sortedEvents.length
+  const colWidth = arcColumnWidth({
+    containerWidth: tableWidth,
+    // The sticky name column, which is not shared out: 132px, 180px at `sm`.
+    rowHeaderWidth: tableWidth >= 640 ? 180 : 132,
+    columnCount,
+    base: viewMode === 'event' ? 100 : 110,
+  })
 
   // Build timeline header spans: [{timeline, colSpan}] for the header row
   const timelineSpans = (() => {
@@ -359,13 +447,106 @@ export default function CharacterArcView() {
     setExpandedKey((prev) => (prev === key ? null : key))
   }
 
-  function SnapCell({ snap, isActive, charId, colId, factionColor, isInherited }: {
+  // ── Keyboard navigation ───────────────────────────────────────────────────
+  // Row 0 is the interactive column-header row, column 0 the row-header column,
+  // so the arrow keys reach everything the mouse can. One tab stop for the whole
+  // grid: 628 of them would be worse than none.
+  const columnIds = viewMode === 'chapter' ? sortedChapters.map((c) => c.id) : sortedEvents.map((e) => e.id)
+  const bodyRowCount =
+    viewType === 'characters' ? displayedChars.length
+    : viewType === 'factions' ? allFactions.length
+    : plotThreads.length
+  const gridSize = { rows: bodyRowCount + 1, cols: columnIds.length + 1 }
+
+  const focus = clampCell(focusedCell, gridSize)
+  focusRef.current = focus
+
+  function moveFocus(target: Cell) {
+    gridFocusedRef.current = true
+    setFocusedCell(target)
+  }
+
+  /** Spread onto any cell to put it in the grid's roving tab order. */
+  /*
+    F14, second half: the grid is the one surface laid out exactly like the
+    bookkeeping — a character against the scenes of the book — and recording a
+    single state cost six to eight clicks across three screens.
+
+    It stays a readout rather than becoming an editor, deliberately. In chapter
+    mode a column is a *chapter* while every snapshot keys on a *scene*, so
+    typing into a cell would have no well-defined target and the app would have
+    to guess which scene it meant — the shape of the two worst faults this
+    review found. Navigation may guess; writing may not. So activating a cell
+    takes you to the panel that already knows how to write all six fields, with
+    the cursor on the scene and the right character open, and the writer sees
+    which scene they landed on before anything is recorded.
+  */
+  function recordStateAt(charId: string, colId: string) {
+    const eventId = viewMode === 'event' ? colId : firstEventByChapter.get(colId)
+    if (eventId) setActiveEventId(eventId)
+    navigate(`/worlds/${worldId}/characters/${charId}?tab=state`)
+  }
+
+  function cellProps(row: number, col: number, onActivate?: () => void) {
+    const isFocused = focus.row === row && focus.col === col
+    return {
+      role: 'gridcell' as const,
+      tabIndex: isFocused ? 0 : -1,
+      'data-grid-cell': `${row}-${col}`,
+      onFocus: () => {
+        gridFocusedRef.current = true
+        // Bail out when nothing changed: a re-render here would remount the cell
+        // and take the focus straight back off it.
+        setFocusedCell((prev) => (prev.row === row && prev.col === col ? prev : { row, col }))
+      },
+      onBlur: (e: ReactFocusEvent) => {
+        // Focus leaving the grid entirely — stop re-asserting it.
+        if (!e.relatedTarget || !tableRef.current?.contains(e.relatedTarget as Node)) {
+          gridFocusedRef.current = false
+        }
+      },
+      onKeyDown: (e: ReactKeyboardEvent) => {
+        const target = nextCell({ row, col }, e.key, gridSize, e.ctrlKey || e.metaKey)
+        if (target) {
+          e.preventDefault()
+          moveFocus(target)
+          return
+        }
+        // Enter and Space do what a click does. Anything else — Tab out, typing
+        // to reach the filter — is left for the browser.
+        if (onActivate && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault()
+          onActivate()
+        }
+      },
+    }
+  }
+
+  /*
+    Render helpers, not components — and lowercase to say so.
+
+    They were declared inside `CharacterArcView`, so every render gave each a
+    new function identity and React remounted the whole cell rather than
+    updating it. Focus fires before click, focusing a cell sets state, and the
+    re-render that followed pulled the node out from under the click: **the
+    first click on any cell in the grid did nothing, and the second worked.**
+    That had been true of the notes-expand click all along; it only came to
+    light when a cell was given somewhere to go. The `onFocus` handler in
+    `cellProps` already carries a workaround for the same remount.
+
+    None of the three uses a hook, so calling them inline puts their `<td>`
+    straight into the parent's tree, where there is no component identity to
+    change. Each carries its own `key` for the same reason.
+  */
+  function snapCell({ snap, isActive, charId, colId, factionColor, isInherited, row, col }: {
     snap: typeof snapshots[0] | undefined
     isActive: boolean
     charId: string
     colId: string
     factionColor: string | null
     isInherited: boolean
+    row: number
+    col: number
   }) {
     const key = `${charId}:${colId}`
     const isExpanded = expandedKey === key
@@ -374,10 +555,16 @@ export default function CharacterArcView() {
     if (!snap) {
       return (
         <td
+          key={colId}
+          {...cellProps(row, col, gate.active ? undefined : () => recordStateAt(charId, colId))}
+          aria-label={gate.active ? 'No state recorded' : 'No state recorded — record it'}
+          onClick={gate.active ? undefined : () => recordStateAt(charId, colId)}
           style={{ minWidth: colWidth, maxWidth: colWidth, ...factionStyle }}
           className={cn(
             'border-b border-r border-[hsl(var(--border))] px-2 py-1.5 text-center',
-            isActive && 'bg-[hsl(var(--accent)/0.15)]'
+            FOCUS_RING,
+            isActive && 'bg-[hsl(var(--accent)/0.15)]',
+            !gate.active && 'cursor-pointer hover:bg-[hsl(var(--accent)/0.08)]'
           )}
         >
           <Minus className="mx-auto h-3 w-3 text-[hsl(var(--border))]" />
@@ -390,16 +577,35 @@ export default function CharacterArcView() {
 
     return (
       <td
+        key={colId}
+        {...cellProps(row, col, hasNotes
+          ? () => toggleExpand(charId, colId)
+          : (gate.active ? undefined : () => recordStateAt(charId, colId)))}
+        aria-expanded={hasNotes ? isExpanded : undefined}
         style={{ minWidth: colWidth, maxWidth: colWidth, ...factionStyle }}
         className={cn(
           'border-b border-r border-[hsl(var(--border))] px-2 py-1.5',
+          FOCUS_RING,
           isActive && 'bg-[hsl(var(--accent)/0.15)]',
           !snap.isAlive && 'opacity-50',
-          hasNotes && 'cursor-pointer hover:bg-[hsl(var(--accent)/0.08)]'
+          (hasNotes || !gate.active) && 'cursor-pointer hover:bg-[hsl(var(--accent)/0.08)]'
         )}
-        onClick={() => hasNotes && toggleExpand(charId, colId)}
+        /* Notes keep expanding in place; a cell without them takes you to it. */
+        onClick={() => {
+          if (hasNotes) { toggleExpand(charId, colId); return }
+          if (!gate.active) recordStateAt(charId, colId)
+        }}
         title={hasNotes && !isExpanded ? snap.statusNotes : undefined}
       >
+        {/*
+          ARC-2: a carried-forward cell was marked only by a small glyph in the
+          corner while its text read at full strength, so eleven inherited
+          chapters looked like eleven decisions. The content recedes now, which
+          is what makes the authored cells the ones you see first. Applied to
+          the content rather than the cell so the faction stripe, the active
+          highlight and the focus ring all keep their full contrast.
+        */}
+        <div className={cn(isInherited && 'opacity-50')}>
         <div className="flex items-center gap-1">
           {snap.isAlive
             ? <Heart className="h-2.5 w-2.5 shrink-0 text-green-400" />
@@ -414,6 +620,9 @@ export default function CharacterArcView() {
           {isInherited && (
             <span className="ml-auto shrink-0" title="Carried forward — no change recorded in this column">
               <History className="h-2.5 w-2.5 text-[hsl(var(--muted-foreground)/0.6)]" aria-hidden="true" />
+              {/* The glyph and the dimming are both visual; a screen reader gets
+                  the same distinction from here. */}
+              <span className="sr-only">Carried forward</span>
             </span>
           )}
         </div>
@@ -431,25 +640,30 @@ export default function CharacterArcView() {
             {snap.statusNotes}
           </p>
         )}
+        </div>
       </td>
     )
   }
 
-  function ThreadCell({ threadId, color, colId, beats, isActive }: {
+  function threadCell({ threadId, color, colId, beats, isActive, row, col }: {
     threadId: string
     color: string
     colId: string
     /** Events on this thread in this column (a chapter's beats, or the one event). */
     beats: WorldEvent[]
     isActive: boolean
+    row: number
+    col: number
   }) {
     void threadId
     if (beats.length === 0) {
       return (
         <td
           key={colId}
+          {...cellProps(row, col)}
+          aria-label="Not on this thread"
           style={{ minWidth: colWidth, maxWidth: colWidth }}
-          className={cn('border-b border-r border-[hsl(var(--border))] px-2 py-1.5 text-center', isActive && 'bg-[hsl(var(--accent)/0.15)]')}
+          className={cn('border-b border-r border-[hsl(var(--border))] px-2 py-1.5 text-center', FOCUS_RING, isActive && 'bg-[hsl(var(--accent)/0.15)]')}
         >
           <Minus className="mx-auto h-3 w-3 text-[hsl(var(--border))]" />
         </td>
@@ -458,8 +672,9 @@ export default function CharacterArcView() {
     return (
       <td
         key={colId}
+        {...cellProps(row, col)}
         style={{ minWidth: colWidth, maxWidth: colWidth }}
-        className={cn('border-b border-r border-[hsl(var(--border))] px-2 py-1.5', isActive && 'bg-[hsl(var(--accent)/0.15)]')}
+        className={cn('border-b border-r border-[hsl(var(--border))] px-2 py-1.5', FOCUS_RING, isActive && 'bg-[hsl(var(--accent)/0.15)]')}
         title={beats.map((b) => b.title || 'untitled').join(', ')}
       >
         <div className="flex items-center gap-1">
@@ -472,19 +687,23 @@ export default function CharacterArcView() {
     )
   }
 
-  function FactionSnapCell({ factionId, colId, targetPos, isActive }: {
+  function factionSnapCell({ factionId, colId, targetPos, isActive, row, col }: {
     factionId: string
     colId: string
     targetPos: number
     isActive: boolean
+    row: number
+    col: number
   }) {
     const members = getActiveMembersAtPos(factionId, targetPos)
     if (members.length === 0) {
       return (
         <td
           key={colId}
+          {...cellProps(row, col)}
+          aria-label="No members"
           style={{ minWidth: colWidth, maxWidth: colWidth }}
-          className={cn('border-b border-r border-[hsl(var(--border))] px-2 py-1.5 text-center', isActive && 'bg-[hsl(var(--accent)/0.15)]')}
+          className={cn('border-b border-r border-[hsl(var(--border))] px-2 py-1.5 text-center', FOCUS_RING, isActive && 'bg-[hsl(var(--accent)/0.15)]')}
         >
           <Minus className="mx-auto h-3 w-3 text-[hsl(var(--border))]" />
         </td>
@@ -493,8 +712,9 @@ export default function CharacterArcView() {
     return (
       <td
         key={colId}
+        {...cellProps(row, col)}
         style={{ minWidth: colWidth, maxWidth: colWidth }}
-        className={cn('border-b border-r border-[hsl(var(--border))] px-2 py-1.5', isActive && 'bg-[hsl(var(--accent)/0.15)]')}
+        className={cn('border-b border-r border-[hsl(var(--border))] px-2 py-1.5', FOCUS_RING, isActive && 'bg-[hsl(var(--accent)/0.15)]')}
       >
         <p className="truncate text-[10px] text-[hsl(var(--foreground))]">{members.join(', ')}</p>
         <p className="text-[9px] text-[hsl(var(--muted-foreground))]">{members.length} member{members.length !== 1 ? 's' : ''}</p>
@@ -579,7 +799,7 @@ export default function CharacterArcView() {
             )}
             onClick={() => setViewMode('event')}
           >
-            Events
+            Scenes
           </button>
         </div>
 
@@ -633,6 +853,60 @@ export default function CharacterArcView() {
             </button>
           )}
         </div>
+
+        {/*
+          ARC-3: the rows were alphabetical and nothing else, so Barrow-wight
+          and Bill the Pony sorted above Frodo and the top of a screen-tall grid
+          was reliably its least interesting part. Most-seen first is the
+          default; A–Z stays, because it is the right order for finding someone
+          you already have in mind.
+        */}
+        {viewType === 'characters' && (
+          <div className="ml-1 flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-xs">
+            {(['appearances', 'name'] as const).map((o) => (
+              <button
+                key={o}
+                onClick={() => setRowOrder(o)}
+                aria-pressed={rowOrder === o}
+                title={o === 'appearances'
+                  ? 'Order rows by how many scenes each character appears in'
+                  : 'Order rows alphabetically'}
+                className={cn(
+                  'px-2.5 py-1 transition-colors',
+                  o === 'name' && 'border-l border-[hsl(var(--border))]',
+                  rowOrder === o
+                    ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                    : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]',
+                )}
+              >
+                {o === 'appearances' ? 'Most seen' : 'A–Z'}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/*
+          ARC-1: a dozen of forty-five rows were entirely blank, so the grid was
+          mostly emptiness at exactly the scale it is meant for. The control
+          names how many rows it would put away, which is also what says
+          whether it is worth pressing.
+        */}
+        {viewType === 'characters' && (hideUnrecorded || unrecordedCount > 0) && (
+          <button
+            onClick={() => setHideUnrecorded((v) => !v)}
+            aria-pressed={hideUnrecorded}
+            className={cn(
+              'ml-1 rounded-md border px-2.5 py-1 text-xs transition-colors',
+              hideUnrecorded
+                ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)] hover:text-[hsl(var(--foreground))]',
+            )}
+          >
+            {hideUnrecorded
+              ? `Showing recorded only (${roster.hidden} hidden)`
+              : `Hide ${unrecordedCount} with no recorded state`}
+          </button>
+        )}
 
         <div className="ml-auto flex items-center gap-2">
           {activeEventId && (
@@ -711,8 +985,15 @@ export default function CharacterArcView() {
       </div>
 
       {/* Scrollable table — sticky name column; horizontal scroll when content overflows */}
-      <div ref={tableRef} className="flex-1 overflow-auto relative">
-        <table className="border-collapse text-xs" style={{ tableLayout: 'fixed' }}>
+      <div ref={attachTable} className="flex-1 overflow-auto relative">
+        <table
+          role="grid"
+          aria-label="Character arc grid"
+          aria-rowcount={gridSize.rows}
+          aria-colcount={gridSize.cols}
+          className="border-collapse text-xs"
+          style={{ tableLayout: 'fixed' }}
+        >
           <thead className="sticky top-0 z-10 bg-[hsl(var(--card))]">
             {/* Timeline header row — only rendered when multiple timelines exist */}
             {multiTimeline && (
@@ -730,34 +1011,50 @@ export default function CharacterArcView() {
               </tr>
             )}
             <tr>
-              <th className="sticky left-0 z-20 min-w-[132px] max-w-[132px] sm:min-w-[180px] sm:max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-2 text-left font-semibold text-[hsl(var(--muted-foreground))]">
+              <th
+                {...cellProps(0, 0)}
+                className="sticky left-0 z-20 min-w-[132px] max-w-[132px] sm:min-w-[180px] sm:max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-2 text-left font-semibold text-[hsl(var(--muted-foreground))] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[hsl(var(--ring))]"
+              >
                 {viewType === 'factions' ? 'Faction' : viewType === 'threads' ? 'Thread' : 'Character'}
               </th>
 
-              {viewMode === 'chapter' && sortedChapters.map((ch) => {
+              {viewMode === 'chapter' && sortedChapters.map((ch, colIdx) => {
                 const isActive = ch.id === activeChapterId
                 const statusColor = getChapterStatusColor(ch.id)
                 const povColor = chapterDomPovMap.get(ch.id) ?? null
+                /*
+                  Undefined while reading. A column header's only effect is
+                  moving the time cursor, and for a reader that is their place
+                  in the book, not a viewfinder — so the header is a label. Left
+                  activatable-but-ignored it would be the inert control HB-2d
+                  was filed for; `cellProps` already accepts no activator.
+                */
+                const activate = gate.active ? undefined : () => {
+                  if (isActive) { setActiveEventId(null); return }
+                  const firstEv = firstEventByChapter.get(ch.id)
+                  if (firstEv) setActiveEventId(firstEv)
+                }
                 return (
                   <th
                     key={ch.id}
+                    {...cellProps(0, colIdx + 1, activate)}
+                    role="columnheader"
+                    aria-label={`Chapter ${ch.number}, ${ch.title}`}
                     style={{
                       minWidth: colWidth, maxWidth: colWidth,
                       ...(statusColor ? { borderBottom: `3px solid ${statusColor}` } : {}),
                       ...(povColor ? { borderTop: `3px solid ${povColor}` } : {}),
                     }}
                     className={cn(
-                      'cursor-pointer border-r border-[hsl(var(--border))] px-2 py-2 text-center font-medium transition-colors',
+                      'border-r border-[hsl(var(--border))] px-2 py-2 text-center font-medium transition-colors',
+                      !gate.active && 'cursor-pointer',
+                      'focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[hsl(var(--ring))]',
                       !statusColor && 'border-b',
                       isActive
                         ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
                         : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
                     )}
-                    onClick={() => {
-                      if (isActive) { setActiveEventId(null); return }
-                      const firstEv = firstEventByChapter.get(ch.id)
-                      if (firstEv) setActiveEventId(firstEv)
-                    }}
+                    onClick={activate}
                     title={`Ch. ${ch.number} — ${ch.title}`}
                   >
                     <div className="truncate font-semibold">Ch. {ch.number}</div>
@@ -766,7 +1063,7 @@ export default function CharacterArcView() {
                 )
               })}
 
-              {viewMode === 'event' && sortedEvents.map((ev) => {
+              {viewMode === 'event' && sortedEvents.map((ev, colIdx) => {
                 const ch = chapterById.get(ev.chapterId)
                 const isActive = ev.id === activeEventId
                 const statusColor = getEventStatusColor(ev.id)
@@ -774,19 +1071,24 @@ export default function CharacterArcView() {
                 return (
                   <th
                     key={ev.id}
+                    {...cellProps(0, colIdx + 1, gate.active ? undefined : () => setActiveEventId(isActive ? null : ev.id))}
+                    role="columnheader"
+                    aria-label={`Chapter ${ch?.number ?? '?'}, ${ev.title || 'untitled scene'}`}
                     style={{
                       minWidth: colWidth, maxWidth: colWidth,
                       ...(statusColor ? { borderBottom: `3px solid ${statusColor}` } : {}),
                       ...(povColor ? { borderTop: `3px solid ${povColor}` } : {}),
                     }}
                     className={cn(
-                      'cursor-pointer border-r border-[hsl(var(--border))] px-2 py-2 text-center font-medium transition-colors',
+                      'border-r border-[hsl(var(--border))] px-2 py-2 text-center font-medium transition-colors',
+                      !gate.active && 'cursor-pointer',
+                      'focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[hsl(var(--ring))]',
                       !statusColor && 'border-b',
                       isActive
                         ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
                         : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
                     )}
-                    onClick={() => setActiveEventId(isActive ? null : ev.id)}
+                    onClick={gate.active ? undefined : () => setActiveEventId(isActive ? null : ev.id)}
                     title={`Ch. ${ch?.number ?? '?'} — ${ev.title} [${eventStatusConfig(ev.status).label}]`}
                   >
                     <div className="truncate text-[10px] opacity-60">Ch. {ch?.number ?? '?'}</div>
@@ -806,13 +1108,15 @@ export default function CharacterArcView() {
               return (
                 <tr
                   key={char.id}
+                  role="row"
                   className={cn(
                     rowIdx % 2 === 0 ? 'bg-[hsl(var(--background))]' : 'bg-[hsl(var(--card))]'
                   )}
                 >
                   {/* Name cell — left colour border + sparkline */}
                   <td
-                    className="sticky left-0 z-10 min-w-[132px] max-w-[132px] sm:min-w-[180px] sm:max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-inherit px-3 py-2"
+                    {...cellProps(rowIdx + 1, 0)}
+                    className={cn("sticky left-0 z-10 min-w-[132px] max-w-[132px] sm:min-w-[180px] sm:max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-inherit px-3 py-2", FOCUS_RING)}
                     style={{ borderLeft: `3px solid ${color}` }}
                   >
                     <span className="block truncate font-medium" title={goalSummary || undefined}>{char.name}</span>
@@ -833,21 +1137,21 @@ export default function CharacterArcView() {
                     </div>
                   </td>
 
-                  {viewMode === 'chapter' && sortedChapters.map((ch) => {
+                  {viewMode === 'chapter' && sortedChapters.map((ch, colIdx) => {
                     const lastEvId = lastEventByChapter.get(ch.id)
                     const targetPos = lastEvId !== undefined ? (eventPosition.get(lastEvId) ?? -1) : -1
                     const snap = targetPos >= 0 ? getBestSnap(char.id, targetPos) : undefined
                     const fc = targetPos >= 0 ? getFactionColor(char.id, targetPos) : null
                     const isInh = !!snap && chapterByEvent.get(snap.eventId) !== ch.id
-                    return <SnapCell key={ch.id} colId={ch.id} charId={char.id} snap={snap} isActive={ch.id === activeChapterId} factionColor={fc} isInherited={isInh} />
+                    return snapCell({ colId: ch.id, charId: char.id, snap, isActive: ch.id === activeChapterId, factionColor: fc, isInherited: isInh, row: rowIdx + 1, col: colIdx + 1 })
                   })}
 
-                  {viewMode === 'event' && sortedEvents.map((ev) => {
+                  {viewMode === 'event' && sortedEvents.map((ev, colIdx) => {
                     const targetPos = eventPosition.get(ev.id) ?? -1
                     const snap = targetPos >= 0 ? getBestSnap(char.id, targetPos) : undefined
                     const fc = targetPos >= 0 ? getFactionColor(char.id, targetPos) : null
                     const isInh = !!snap && snap.eventId !== ev.id
-                    return <SnapCell key={ev.id} colId={ev.id} charId={char.id} snap={snap} isActive={ev.id === activeEventId} factionColor={fc} isInherited={isInh} />
+                    return snapCell({ colId: ev.id, charId: char.id, snap, isActive: ev.id === activeEventId, factionColor: fc, isInherited: isInh, row: rowIdx + 1, col: colIdx + 1 })
                   })}
                 </tr>
               )
@@ -861,9 +1165,10 @@ export default function CharacterArcView() {
             )}
 
             {viewType === 'factions' && allFactions.map((faction, rowIdx) => (
-              <tr key={faction.id} className={cn(rowIdx % 2 === 0 ? 'bg-[hsl(var(--background))]' : 'bg-[hsl(var(--card))]')}>
+              <tr key={faction.id} role="row" className={cn(rowIdx % 2 === 0 ? 'bg-[hsl(var(--background))]' : 'bg-[hsl(var(--card))]')}>
                 <td
-                  className="sticky left-0 z-10 min-w-[132px] max-w-[132px] sm:min-w-[180px] sm:max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-inherit px-3 py-2"
+                  {...cellProps(rowIdx + 1, 0)}
+                  className={cn("sticky left-0 z-10 min-w-[132px] max-w-[132px] sm:min-w-[180px] sm:max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-inherit px-3 py-2", FOCUS_RING)}
                   style={{ borderLeft: `3px solid ${faction.color}` }}
                 >
                   <div className="flex items-center gap-2">
@@ -872,22 +1177,23 @@ export default function CharacterArcView() {
                   </div>
                 </td>
 
-                {viewMode === 'chapter' && sortedChapters.map((ch) => {
+                {viewMode === 'chapter' && sortedChapters.map((ch, colIdx) => {
                   const pos = lastEventPosByChapter.get(ch.id) ?? -1
-                  return <FactionSnapCell key={ch.id} factionId={faction.id} colId={ch.id} targetPos={pos} isActive={ch.id === activeChapterId} />
+                  return factionSnapCell({ factionId: faction.id, colId: ch.id, targetPos: pos, isActive: ch.id === activeChapterId, row: rowIdx + 1, col: colIdx + 1 })
                 })}
 
-                {viewMode === 'event' && sortedEvents.map((ev) => {
+                {viewMode === 'event' && sortedEvents.map((ev, colIdx) => {
                   const pos = eventPosition.get(ev.id) ?? -1
-                  return <FactionSnapCell key={ev.id} factionId={faction.id} colId={ev.id} targetPos={pos} isActive={ev.id === activeEventId} />
+                  return factionSnapCell({ factionId: faction.id, colId: ev.id, targetPos: pos, isActive: ev.id === activeEventId, row: rowIdx + 1, col: colIdx + 1 })
                 })}
               </tr>
             ))}
 
             {viewType === 'threads' && plotThreads.map((thread, rowIdx) => (
-              <tr key={thread.id} className={cn(rowIdx % 2 === 0 ? 'bg-[hsl(var(--background))]' : 'bg-[hsl(var(--card))]')}>
+              <tr key={thread.id} role="row" className={cn(rowIdx % 2 === 0 ? 'bg-[hsl(var(--background))]' : 'bg-[hsl(var(--card))]')}>
                 <td
-                  className="sticky left-0 z-10 min-w-[132px] max-w-[132px] sm:min-w-[180px] sm:max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-inherit px-3 py-2"
+                  {...cellProps(rowIdx + 1, 0)}
+                  className={cn("sticky left-0 z-10 min-w-[132px] max-w-[132px] sm:min-w-[180px] sm:max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-inherit px-3 py-2", FOCUS_RING)}
                   style={{ borderLeft: `3px solid ${thread.color}` }}
                 >
                   <div className="flex items-center gap-2">
@@ -896,27 +1202,25 @@ export default function CharacterArcView() {
                   </div>
                 </td>
 
-                {viewMode === 'chapter' && sortedChapters.map((ch) => (
-                  <ThreadCell
-                    key={ch.id}
-                    threadId={thread.id}
-                    color={thread.color}
-                    colId={ch.id}
-                    beats={threadBeatsInChapter(thread.id, ch.id)}
-                    isActive={ch.id === activeChapterId}
-                  />
-                ))}
+                {viewMode === 'chapter' && sortedChapters.map((ch, colIdx) => threadCell({
+                  threadId: thread.id,
+                  color: thread.color,
+                  colId: ch.id,
+                  beats: threadBeatsInChapter(thread.id, ch.id),
+                  isActive: ch.id === activeChapterId,
+                  row: rowIdx + 1,
+                  col: colIdx + 1,
+                }))}
 
-                {viewMode === 'event' && sortedEvents.map((ev) => (
-                  <ThreadCell
-                    key={ev.id}
-                    threadId={thread.id}
-                    color={thread.color}
-                    colId={ev.id}
-                    beats={eventCarriesThread(thread.id, ev) ? [ev] : []}
-                    isActive={ev.id === activeEventId}
-                  />
-                ))}
+                {viewMode === 'event' && sortedEvents.map((ev, colIdx) => threadCell({
+                  threadId: thread.id,
+                  color: thread.color,
+                  colId: ev.id,
+                  beats: eventCarriesThread(thread.id, ev) ? [ev] : [],
+                  isActive: ev.id === activeEventId,
+                  row: rowIdx + 1,
+                  col: colIdx + 1,
+                }))}
               </tr>
             ))}
           </tbody>
@@ -927,7 +1231,7 @@ export default function CharacterArcView() {
       <div className="flex items-center gap-4 border-t border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-1.5 text-[10px] text-[hsl(var(--muted-foreground))]">
         <div className="flex items-center gap-1"><Heart className="h-2.5 w-2.5 text-green-400" /> Alive</div>
         <div className="flex items-center gap-1"><Skull className="h-2.5 w-2.5 text-red-400" /> Dead</div>
-        <div className="flex items-center gap-1" title="No state recorded — character not yet introduced or state not set for this chapter/event">
+        <div className="flex items-center gap-1" title="No state recorded — character not yet introduced or state not set for this chapter/scene">
           <Minus className="h-2.5 w-2.5 text-[hsl(var(--border))]" /> No state recorded
         </div>
         {showFactionOverlay && allFactions.map((f) => (
@@ -948,7 +1252,16 @@ export default function CharacterArcView() {
             {c.name}
           </div>
         ))}
-        <div className="ml-auto">Click a column to set cursor · Click a notes cell to expand</div>
+        {/*
+          Says only what the grid actually does *here*. While reading, a column
+          header is a label and a cell goes nowhere — promising either would be
+          the inert control HB-2d was filed for, described in words.
+        */}
+        <div className="ml-auto">
+          {gate.active
+            ? 'Click a notes cell to expand'
+            : 'Click a column to set cursor · Click a notes cell to expand · Click any other cell to record state there'}
+        </div>
       </div>
     </div>
   )

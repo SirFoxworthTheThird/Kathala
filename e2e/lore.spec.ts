@@ -5,7 +5,6 @@ test.describe('Lore on a phone viewport', () => {
   test('category sidebar collapses into a drawer, no horizontal overflow', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 780 })
 
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Aethel')

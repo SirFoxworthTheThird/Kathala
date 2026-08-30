@@ -77,6 +77,58 @@ describe('computeSceneKnowledgeGaps', () => {
     expect(atE3.find((g) => g.fact.id === 'secret')?.kind).toBe('irony')
   })
 
+  /*
+    F6. POV is optional and empty by default, so in a new world nothing was
+    derivable and every fact came back WITHHELD — the panel named for finding
+    gaps reporting a gap for every fact it held. Setting POV on one scene
+    cleared all three at once, which is what pointed at the cause.
+  */
+  it('says nothing about the reader when the book records no POV at all', () => {
+    const events = [event('e1', 'c1', 0), event('e2', 'c2', 0)]
+    const gaps = computeSceneKnowledgeGaps({
+      facts: [fact('letter'), fact('names'), fact('lock')],
+      reveals: [
+        reveal('letter', 'mira', 'e1'),
+        reveal('names', 'mira', 'e1'),
+        reveal('lock', 'mira', 'e1'),
+      ],
+      events, chapters,
+      presentCharacterIds: ['mira'],
+      activeEventId: 'e2',
+    })
+    expect(gaps).toEqual([])
+  })
+
+  it('still derives it once any scene records a POV, which is the pair', () => {
+    // Same world, one POV set on a scene the cursor has not reached — so the
+    // derivation is possible and the fact really is still withheld. Without
+    // this half the assertion above would pass on a function that never spoke.
+    const events = [event('e1', 'c1', 0), event('e2', 'c2', 0), event('e3', 'c3', 0, 'corvin')]
+    const gaps = computeSceneKnowledgeGaps({
+      facts: [fact('letter')],
+      reveals: [reveal('letter', 'mira', 'e1')],
+      events, chapters,
+      presentCharacterIds: ['mira'],
+      activeEventId: 'e2',
+    })
+    expect(gaps).toHaveLength(1)
+    expect(gaps[0].kind).toBe('withheld')
+  })
+
+  it('keeps an explicitly stated reader position even with no POV anywhere', () => {
+    // `readerLearnsAtEventId` is the writer's own word and needs no derivation.
+    const events = [event('e1', 'c1', 0), event('e2', 'c2', 0)]
+    const gaps = computeSceneKnowledgeGaps({
+      facts: [fact('poison', 'e1')],
+      reveals: [],
+      events, chapters,
+      presentCharacterIds: ['alice'],
+      activeEventId: 'e2',
+    })
+    expect(gaps).toHaveLength(1)
+    expect(gaps[0].kind).toBe('irony')
+  })
+
   it('reports no gap when reader and all present characters are in sync', () => {
     const events = [event('e1', 'c1', 0), event('e2', 'c2', 0)]
     const gaps = computeSceneKnowledgeGaps({

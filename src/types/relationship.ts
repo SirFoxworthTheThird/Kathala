@@ -24,7 +24,16 @@ export interface RelationshipSnapshot {
   worldId: string
   relationshipId: string
   eventId: string
-  /** Globally comparable ordering key: chapter.number × 10_000 + event.sortOrder */
+  /**
+   * Globally comparable ordering key, written by `computeSortKey`:
+   * `chapter.number + event.sortOrder / 1_000_000`.
+   *
+   * Not the `chapter.number × 10_000 + sortOrder` these comments used to claim
+   * — that is the *separate* ordering the continuity checker derives in memory
+   * (`eventOrder`), and it is never stored. The two are order-equivalent, so
+   * nothing broke; a test seeded from the comment simply produced keys a
+   * thousandfold too large and the screen quietly disagreed with it.
+   */
   sortKey?: number
   label: string
   strength: RelationshipStrength

@@ -208,8 +208,8 @@ The panel is closed only by clicking the `X` button. `Escape` should also close 
 ### MEDIUM — Panel has no `aria-label` or `role="complementary"` / `role="dialog"`
 The slide-in panel is a visually distinct UI region but has no landmark role. Screen readers cannot navigate to or away from it as a named region.
 
-### LOW — "No event selected" empty state is not actionable
-When `!activeEventId`, the panel shows "Select an event from the timeline bar." This is correct copy, but there is no link or button to take the user to the timeline. A "Go to Timeline" nudge would reduce dead ends.
+### ~~LOW — "No event selected" empty state is not actionable~~ — fixed
+When `!activeEventId`, the panel showed "Select an event from the timeline bar." — correct copy with nothing to act on. Re-filed as **WB-1** and fixed: the panel now lists every scene in the world grouped by chapter and sets the cursor from there, which is better than the nudge suggested here, since the act can be done in the panel rather than elsewhere. The routing fallback ("Open Timeline") is kept for a world with no scenes.
 
 ---
 

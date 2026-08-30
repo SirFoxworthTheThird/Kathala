@@ -15,8 +15,12 @@ export function daysPerYear(cal: WorldCalendar): number {
 export function dayNumberToDate(cal: WorldCalendar, dayNumber: number): InWorldDate {
   const dpy = daysPerYear(cal)
   if (dpy <= 0 || cal.months.length === 0) return { year: cal.startYear, month: 0, day: 1 }
-  const yearOffset = Math.floor(dayNumber / dpy)
-  let dayInYear = dayNumber - yearOffset * dpy // 0-based, always in [0, dpy)
+  // The story clock may use fractions to preserve time-of-day ordering. A
+  // calendar date represents the containing whole day, so 10.75 and 10.1 both
+  // belong to day 10 rather than producing fractional grid-cell keys.
+  const wholeDay = Math.floor(dayNumber)
+  const yearOffset = Math.floor(wholeDay / dpy)
+  let dayInYear = wholeDay - yearOffset * dpy // 0-based, always in [0, dpy)
   let month = 0
   for (let i = 0; i < cal.months.length; i++) {
     const len = Math.max(1, Math.floor(cal.months[i].days))
@@ -38,9 +42,16 @@ export function dateToDayNumber(cal: WorldCalendar, date: InWorldDate): number {
 /** Human-readable date, e.g. "12 Firstmonth, 998 AC". Falls back gracefully. */
 export function formatInWorldDate(cal: WorldCalendar, dayNumber: number): string {
   const d = dayNumberToDate(cal, dayNumber)
-  const monthName = cal.months[d.month]?.name || `Month ${d.month + 1}`
+  const month = cal.months[d.month]
+  const monthName = month?.name || `Month ${d.month + 1}`
   const suffix = cal.yearSuffix ? ` ${cal.yearSuffix}` : ''
-  return `${d.day} ${monthName}, ${d.year}${suffix}`
+  // A single day outside the months is a name, not a position in something:
+  // "Midyear's Day, 1419", never "1 Midyear's Day, 1419". Longer intercalary
+  // runs keep their number, because that is exactly what "2 Lithe" means.
+  const bare = month?.intercalary && Math.max(1, Math.floor(month.days)) === 1
+  return bare
+    ? `${monthName}, ${d.year}${suffix}`
+    : `${d.day} ${monthName}, ${d.year}${suffix}`
 }
 
 /**

@@ -46,3 +46,53 @@ describe('computeSelectPosition', () => {
     expect(pos.width).toBeLessThanOrEqual(narrow.width - 16)
   })
 })
+
+/**
+ * N8: a filtered picker is a long picker, and its options are longer than the
+ * control that opens them — "+ Assign a scene…" is 176 px and its options read
+ * `Ch. 12 · The count returns to Paris`. Being able to find the scene is no use
+ * if the list cannot show which one you found.
+ */
+describe('computeSelectPosition minWidth', () => {
+  const trigger = { top: 100, bottom: 130, left: 40, width: 176 }
+
+  it('leaves a panel at its trigger width when nothing asks for more', () => {
+    // The presence half: without the option, the old behaviour is unchanged.
+    expect(computeSelectPosition(trigger, { width: 1280, height: 800 }).width).toBe(176)
+  })
+
+  it('widens a panel past a trigger narrower than its options', () => {
+    expect(computeSelectPosition(trigger, { width: 1280, height: 800 }, { minWidth: 320 }).width)
+      .toBe(320)
+  })
+
+  it('never shrinks a trigger that is already wider', () => {
+    const wide = { ...trigger, width: 480 }
+    expect(computeSelectPosition(wide, { width: 1280, height: 800 }, { minWidth: 320 }).width)
+      .toBe(480)
+  })
+
+  it('still yields to a screen too narrow to hold it', () => {
+    // 300 px of viewport leaves 284 once both margins are taken, so the panel
+    // gives up the width it asked for rather than opening off the edge.
+    const pos = computeSelectPosition(trigger, { width: 300, height: 800 }, { minWidth: 320 })
+    expect(pos.width).toBe(284)
+    expect(pos.left).toBe(8)
+    expect(pos.left + pos.width).toBeLessThanOrEqual(300 - 8)
+  })
+
+  it('takes the width it asked for on a phone that can hold it', () => {
+    // The pair to the above: 360 px has room for 320 plus both margins, so
+    // the clamp must not fire here. Without this the case above would pass
+    // just as well if the option were ignored altogether.
+    const pos = computeSelectPosition(trigger, { width: 360, height: 800 }, { minWidth: 320 })
+    expect(pos.width).toBe(320)
+    expect(pos.left + pos.width).toBeLessThanOrEqual(360 - 8)
+  })
+
+  it('keeps a widened panel on screen when its trigger is near the right edge', () => {
+    const nearRight = { ...trigger, left: 1100 }
+    const pos = computeSelectPosition(nearRight, { width: 1280, height: 800 }, { minWidth: 320 })
+    expect(pos.left + pos.width).toBeLessThanOrEqual(1280 - 8)
+  })
+})

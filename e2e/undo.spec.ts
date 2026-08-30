@@ -14,7 +14,6 @@ const topBarUndo = (page: Page) => page.getByRole('banner').getByRole('button', 
 const topBarRedo = (page: Page) => page.getByRole('banner').getByRole('button', { name: 'Redo', exact: true })
 
 async function setupWorld(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Undo World')
@@ -36,7 +35,9 @@ test('deleting offers an undo that brings the character back', async ({ page }) 
   await addCharacter(page, 'Aldric')
 
   await page.getByText('Aldric').first().click()
-  await page.getByRole('button', { name: /delete character/i }).first().click()
+  // Delete sits behind the header's menu now (CH-4).
+  await page.getByRole('button', { name: 'More actions for Aldric' }).click()
+  await page.getByRole('menuitem', { name: 'Delete character' }).click()
   await page.getByRole('button', { name: /^delete$/i }).last().click()
 
   // The toast names what went, and carries the way back.
@@ -170,11 +171,12 @@ test('the top bar does not overlap the chapter cursor on a phone', async ({ page
   await page.getByPlaceholder('Chapter title').fill('The Long Road North Through Emberfall')
   await page.getByRole('button', { name: 'Add Chapter' }).last().click()
   await page.getByTitle('Open chapter detail').first().click()
-  await page.getByRole('main').getByRole('button', { name: 'Add Event' }).first().click()
-  await page.getByPlaceholder('Event title').fill('The oath sworn at dawn beneath the broken tower')
-  await page.getByRole('button', { name: 'Add Event' }).last().click()
+  await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
+  await page.getByPlaceholder('Scene title').fill('The oath sworn at dawn beneath the broken tower')
+  await page.getByRole('button', { name: 'Add Scene' }).last().click()
 
-  await page.getByRole('button', { name: 'Next moment' }).click()
+  // Opening the chapter already put the cursor on its first scene, so there is
+  // no next moment to step to — the label this test needs is on screen already.
   await expect(page.getByRole('banner').getByText(/^Ch\.1/)).toBeVisible()
 
   for (const width of [320, 360, 390, 414]) {

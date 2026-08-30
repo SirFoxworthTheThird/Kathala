@@ -4,7 +4,7 @@ import { db } from '@/db/database'
 import { useActiveEventId, useAppStore } from '@/store'
 import { useWorld } from '@/db/hooks/useWorlds'
 import {
-  firstAppearances, hiddenCount, isRevealed, readingProgress, revealed, sortKeysByEvent,
+  firstAppearances, hiddenCount, isRevealed, mapGatewayFirstAppearances, readingProgress, revealed, sortKeysByEvent,
   type Appearance, type ReadingProgress, type SortKey,
 } from '@/lib/spoilers'
 
@@ -148,7 +148,12 @@ export function useReadingGate(worldId: string | null): ReadingGate {
       appearances.push({ entityId: s.regionId, eventId: s.eventId })
     }
 
-    const firstSeen = firstAppearances(appearances, sortKeyByEvent)
+    // A scene inside a sub-map also reveals the gateway marker on its parent
+    // map, otherwise the map exists in the tree but has no visible way in.
+    const firstSeen = mapGatewayFirstAppearances(
+      firstAppearances(appearances, sortKeyByEvent),
+      data.markers,
+    )
 
     return {
       active: true,

@@ -59,20 +59,33 @@ describe('EVENT_STATUS_CONFIG', () => {
     }
   })
 
-  it('every entry has a non-empty label and valid CSS hex colors for both color and textColor', () => {
-    const hexRe = /^#[0-9a-fA-F]{6}$/
+  it('every entry has a label and draws from the theme rather than a fixed hex', () => {
     for (const s of EVENT_STATUSES) {
       const { label, color, textColor } = EVENT_STATUS_CONFIG[s]
       expect(label.length).toBeGreaterThan(0)
-      expect(color).toMatch(hexRe)
-      expect(textColor).toMatch(hexRe)
+      expect(color, `${s} should take its colour from the theme`).toMatch(/^var\(--status-[1-5]\)$/)
+      expect(textColor).toBe('hsl(var(--status-ink))')
     }
   })
 
-  it('textColor is dark (#1f2937) for all statuses — WCAG AA compliance', () => {
-    for (const s of EVENT_STATUSES) {
-      expect(EVENT_STATUS_CONFIG[s].textColor).toBe('#1f2937')
-    }
+  it('walks the ramp in order, one step per status', () => {
+    // Five unrelated hues said nothing about Idea coming before Final.
+    expect(EVENT_STATUSES.map((s) => EVENT_STATUS_CONFIG[s].color))
+      .toEqual(['var(--status-1)', 'var(--status-2)', 'var(--status-3)', 'var(--status-4)', 'var(--status-5)'])
+  })
+
+  it('uses one ink for every pill, which is what makes the AA claim checkable', () => {
+    /*
+      This used to assert the literal `#1f2937` and carry the WCAG reasoning in
+      its name. The reasoning still holds and has moved to where it can be
+      *measured*: every step is drawn at one saturation and lightness, so
+      `themeDataColour.spec.ts` reads all five pills of all sixteen themes out
+      of the browser and checks each against this ink. What is left here is the
+      part that makes that possible — one ink, not five.
+    */
+    const inks = new Set(EVENT_STATUSES.map((s) => EVENT_STATUS_CONFIG[s].textColor))
+    expect(inks.size).toBe(1)
+    expect([...inks][0]).toBe('hsl(var(--status-ink))')
   })
 
   it('has no entries for statuses outside EVENT_STATUSES', () => {

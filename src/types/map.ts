@@ -93,7 +93,7 @@ export interface MapRegion {
   updatedAt: number
 }
 
-export type MapRegionStatus = 'active' | 'occupied' | 'contested' | 'abandoned' | 'destroyed' | 'unknown'
+export type MapRegionStatus = 'active' | 'occupied' | 'contested' | 'abandoned' | 'destroyed' | 'rebuilt' | 'unknown'
 
 export interface MapRegionSnapshot {
   id: string

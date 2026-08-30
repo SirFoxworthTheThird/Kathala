@@ -7,7 +7,7 @@ import { useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useActiveEventId } from '@/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Field } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import type { RelationshipStrength, RelationshipSentiment } from '@/types'
@@ -78,23 +78,20 @@ function RelationshipDialog({ open, onOpenChange, character, otherCharacters, st
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {!editing && (
-            <div className="flex flex-col gap-1.5">
-              <Label>With Character</Label>
+            <Field label="With Character" className="flex flex-col gap-1.5">
               <Select value={targetId} onValueChange={setTargetId}>
                 <SelectTrigger><SelectValue placeholder="Select character..." /></SelectTrigger>
                 <SelectContent>
                   {otherCharacters.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
           )}
-          <div className="flex flex-col gap-1.5">
-            <Label>Relationship Label</Label>
+          <Field label="Relationship Label" className="flex flex-col gap-1.5">
             <Input placeholder="e.g. mentor, rival, sibling" value={label} onChange={(e) => setLabel(e.target.value)} autoFocus={!!editing} />
-          </div>
+          </Field>
           <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label>Strength</Label>
+            <Field label="Strength" className="flex flex-col gap-1.5">
               <Select value={strength} onValueChange={(v) => setStrength(v as RelationshipStrength)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -103,9 +100,8 @@ function RelationshipDialog({ open, onOpenChange, character, otherCharacters, st
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>Sentiment</Label>
+            </Field>
+            <Field label="Sentiment" className="flex flex-col gap-1.5">
               <Select value={sentiment} onValueChange={(v) => setSentiment(v as RelationshipSentiment)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -114,12 +110,11 @@ function RelationshipDialog({ open, onOpenChange, character, otherCharacters, st
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <Label>Description</Label>
+          <Field label="Description" className="flex flex-col gap-1.5">
             <Input placeholder="Optional description..." value={description} onChange={(e) => setDescription(e.target.value)} />
-          </div>
+          </Field>
           {!editing && startChapterLabel && (
             <p className="text-xs text-[hsl(var(--muted-foreground))]">
               This relationship will start at <span className="font-medium text-[hsl(var(--foreground))]">{startChapterLabel}</span> and won't appear in earlier chapters.
@@ -200,7 +195,7 @@ export function RelationshipsTab({ character }: RelationshipsTabProps) {
         <EmptyState
           icon={Network}
           title={activeEventId ? 'No relationships at this point' : 'No relationships yet'}
-          description={activeEventId ? 'No relationship states recorded up to this event.' : 'Add a relationship to start tracking connections between characters.'}
+          description={activeEventId ? 'No relationship states recorded up to this scene.' : 'Add a relationship to start tracking connections between characters.'}
           className="py-4"
         />
       ) : (

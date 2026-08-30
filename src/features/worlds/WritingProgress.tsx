@@ -5,6 +5,7 @@ import { useWritingLogs } from '@/db/hooks/useWritingLog'
 import {
   localDayKey, wordsOnDay, computeStreak, lastNDays, progressSummary, writingForecast,
 } from '@/lib/writingProgress'
+import { plural } from '@/lib/plural'
 
 interface WritingProgressProps {
   worldId: string
@@ -145,7 +146,7 @@ export function WritingProgress({ worldId, wordTarget, targetDate }: WritingProg
           {summary.remaining === 0 ? (
             <span className="font-medium text-emerald-400">Target reached — nicely done.</span>
           ) : (forecast.daysToDeadline ?? 0) < 0 ? (
-            <span className="text-amber-400">Deadline {formatDate(targetDate)} has passed — {fmt(forecast.remaining ?? 0)} words still to go.</span>
+            <span className="text-amber-400">Deadline {formatDate(targetDate)} has passed — {plural(forecast.remaining ?? 0, 'word')} still to go.</span>
           ) : (
             <>
               <span className="text-[hsl(var(--foreground))]">
@@ -176,7 +177,7 @@ export function WritingProgress({ worldId, wordTarget, targetDate }: WritingProg
             const h = d.words > 0 ? Math.max(6, Math.round((d.words / maxDay) * 100)) : 2
             const isToday = d.date === todayKey
             return (
-              <div key={d.date} className="flex flex-1 flex-col items-center justify-end" title={`${d.date}: ${fmt(d.words)} words`}>
+              <div key={d.date} className="flex flex-1 flex-col items-center justify-end" title={`${d.date}: ${plural(d.words, 'word')}`}>
                 <div
                   className={`w-full rounded-sm ${d.words > 0 ? (isToday ? 'bg-emerald-400' : 'bg-emerald-500/60') : 'bg-[hsl(var(--muted))]'}`}
                   style={{ height: `${h}%` }}

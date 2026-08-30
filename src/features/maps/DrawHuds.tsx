@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { BlockingReason } from '@/components/BlockingReason'
 import { Check, Undo2, X } from 'lucide-react'
 import { createMapRoute } from '@/db/hooks/useMapRoutes'
 import { createMapRegion } from '@/db/hooks/useMapRegions'
@@ -114,6 +115,16 @@ export function RouteDrawHud({
               <Check className="h-3 w-3" /> Save route
             </button>
           </div>
+          {/* RT-1: the point counter hinted at half the condition and nothing
+              hinted at the other, so a named-less route with three points met a
+              dead button in silence. */}
+          <BlockingReason
+            className="text-[10px]"
+            checks={[
+              { met: !!name.trim(), need: 'a name' },
+              { met: waypoints.length >= 2, need: 'two points' },
+            ]}
+          />
         </div>
       </div>
     </div>
@@ -212,6 +223,15 @@ export function RegionDrawHud({
               <Check className="h-3 w-3" /> Save region
             </button>
           </div>
+          {/* The third instance X-9 said it had not gone looking for: the region
+              HUD disabled its save on exactly the same silent pair. */}
+          <BlockingReason
+            className="text-[10px]"
+            checks={[
+              { met: !!name.trim(), need: 'a name' },
+              { met: vertices.length >= 3, need: 'three points' },
+            ]}
+          />
         </div>
       </div>
     </div>

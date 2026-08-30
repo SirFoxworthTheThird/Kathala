@@ -1,5 +1,5 @@
-import { useState, useRef, type KeyboardEvent } from 'react'
-import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye, History, Flame, Milestone } from 'lucide-react'
+import { useState, useRef, useEffect, type KeyboardEvent } from 'react'
+import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye, History, Flame, Milestone, FolderInput } from 'lucide-react'
 import { TENSION_LEVELS, tensionColor, tensionLabel } from '@/lib/tension'
 import { STORY_BEATS, beatById, beatActColor } from '@/lib/storyBeats'
 import { AtSign, Spline, Sparkle } from 'lucide-react'
@@ -7,7 +7,8 @@ import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { useMotifs } from '@/db/hooks/useMotifs'
 import { SceneDraftSection } from './SceneDraftSection'
 import { EventCardBadges } from './EventCardBadges'
-import type { WorldEvent, EventStatus } from '@/types'
+import { MoveSceneDialog } from './MoveSceneDialog'
+import type { WorldEvent, EventStatus, WorldCalendar } from '@/types'
 import { EVENT_STATUSES, eventStatusConfig } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
 import { deleteEvent, updateEvent } from '@/db/hooks/useTimeline'
@@ -20,6 +21,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PortraitImage } from '@/components/PortraitImage'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { Menu, MenuItem } from '@/components/ui/menu'
 
 interface EventCardProps {
   event: WorldEvent
@@ -27,11 +29,23 @@ interface EventCardProps {
   isLast: boolean
   onMoveUp: () => void
   onMoveDown: () => void
+  /**
+   * Said instead of "Move earlier"/"Move later" when the move leaves the
+   * chapter, so a scene does not silently jump somewhere else (**F12**).
+   */
+  moveUpHint?: string
+  moveDownHint?: string
   /** Derived in-world day (cumulative travel days along narrative order). */
   inWorldDay?: number
+  /** The world's calendar, when it has one (CD-3) — the day chip becomes a date. */
+  calendar?: WorldCalendar | null
 }
 
-export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorldDay }: EventCardProps) {
+export function EventCard({
+  event, isFirst, isLast, onMoveUp, onMoveDown, moveUpHint, moveDownHint, inWorldDay, calendar,
+}: EventCardProps) {
+  /** Names the card's icon buttons, which are otherwise identical across scenes. */
+  const eventName = event.title ? `“${event.title}”` : 'this untitled scene'
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -52,9 +66,29 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
   const [inWorldTime, setInWorldTime] = useState<number | null>(event.inWorldTime ?? null)
   const [tension, setTension] = useState<number | null>(event.tension ?? null)
   const [structureBeat, setStructureBeat] = useState<string | null>(event.structureBeat ?? null)
+  /*
+    Follow the record while not editing.
+
+    This is an edit buffer seeded once at mount, and the scene's setting is not
+    only set from this card: typing `@somewhere` in the draft and choosing "new
+    place" creates the marker and writes `locationMarkerId` straight to the
+    database, from a child component. The card never heard, so it went on
+    offering `+ Setting` and showing no setting section for a place the writer
+    had just made — and the obvious conclusion is that it did not work, so they
+    make it again. Nothing was lost (`startEdit` re-syncs before a save can
+    commit the stale value), but the card denied the record until a reload.
+
+    Only while not editing: mid-edit the buffer is the writer's, not the
+    record's.
+  */
+  useEffect(() => {
+    if (!editing) setLocationMarkerId(event.locationMarkerId)
+  }, [event.locationMarkerId, editing])
+
   // Live scene word count, reported up by SceneDraftSection so the header chip
   // reflects unsaved edits without this card owning the prose state.
   const [sceneWords, setSceneWords] = useState(0)
+  const [moveOpen, setMoveOpen] = useState(false)
   const tagInputRef = useRef<HTMLInputElement>(null)
 
   const characters = useCharacters(event.worldId)
@@ -78,6 +112,55 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
 
   const mentionedChars = characters.filter((c) => mentionedIds.includes(c.id))
   const availableForMention = characters.filter((c) => !mentionedIds.includes(c.id) && !involvedIds.includes(c.id))
+
+  /**
+   * A scene has a dozen things it *can* carry and most scenes carry two or
+   * three. Opening every one of them at once meant a card created a minute ago,
+   * with a title and nothing else, presented the whole ontology before the
+   * writer had written a sentence.
+   *
+   * So: a section that holds something is shown, and the rest collapse into one
+   * row of named chips at the bottom. Nothing is hidden behind a menu or a mode
+   * — every one is still there, named, one click away — and the data decides
+   * rather than a ranking someone had to invent.
+   *
+   * `available` is the section's own precondition, unchanged: a world with no
+   * maps has no Location section to offer, so it is not offered as a chip either.
+   */
+  const [revealed, setRevealed] = useState<Set<string>>(new Set())
+  const optionalSections = [
+    /*
+      W23-5: one field, three names. The chip and its section said *Location*,
+      the Writer's Brief said **Setting:**, and the continuity checker said
+      *"change the scene's place"* — the same `locationMarkerId` under three
+      words, on three screens, all shipped within days of each other.
+
+      **Setting** is the one that survives, because it is the only one that says
+      what the field is *about*: a scene's setting is where it happens, as
+      distinct from where each character is recorded as being, which the panel
+      below calls their location and which can legitimately differ.
+    */
+    { id: 'location',   label: 'Setting',    available: locationMarkers.length > 0, filled: locationMarkerId !== null },
+    { id: 'tags',       label: 'Tags',       available: true,  filled: tags.length > 0 },
+    { id: 'characters', label: 'Characters', available: true,  filled: involvedIds.length > 0 },
+    { id: 'mentions',   label: 'Mentioned',  available: true,  filled: mentionedIds.length > 0 },
+    { id: 'threads',    label: 'Plot Threads', available: plotThreads.length > 0, filled: threadIds.length > 0 },
+    { id: 'motifs',     label: 'Motifs',     available: motifs.length > 0, filled: motifIds.length > 0 },
+    { id: 'items',      label: 'Items',      available: involvedItems.length > 0 || availableItems.length > 0, filled: involvedItemIds.length > 0 },
+    { id: 'pov',        label: 'Point of View', available: characters.length > 0, filled: povCharacterId !== null },
+    { id: 'time',       label: 'Elapsed Time', available: true, filled: travelDays !== null || inWorldTime !== null },
+    { id: 'flashback',  label: 'Flashback',  available: true,  filled: isFlashback },
+    { id: 'beat',       label: 'Story Beat', available: true,  filled: structureBeat !== null },
+    { id: 'tension',    label: 'Dramatic Tension', available: true, filled: tension !== null },
+  ]
+  const sectionById = new Map(optionalSections.map((s) => [s.id, s]))
+  /** Editing opens everything: the writer has asked to work on the whole scene. */
+  function shows(id: string): boolean {
+    const section = sectionById.get(id)!
+    if (!section.available) return false
+    return editing || section.filled || revealed.has(id)
+  }
+  const offerable = optionalSections.filter((s) => s.available && !s.filled && !revealed.has(s.id))
 
   async function saveEdit() {
     await updateEvent(event.id, {
@@ -268,23 +351,67 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
     <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
       {/* Header row */}
       <div className="flex items-center gap-1 px-3 py-2">
-        <button className="flex-1 min-w-0 text-left" onClick={() => !editing && setExpanded((v) => !v)}>
-          {editing ? (
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="h-7 text-sm"
-              onClick={(e) => e.stopPropagation()}
-              autoFocus
-            />
-          ) : (
-            <span className="text-sm font-medium text-[hsl(var(--foreground))] truncate block">{event.title}</span>
-          )}
-        </button>
+        {/*
+          The disclosure and the title field are alternatives, not one nested in
+          the other. While editing, the button wrapped the `Input` — inert,
+          because its own handler checked `!editing`, and nameless, because a
+          button takes its name from its content and the content was now a
+          field. Interactive content inside a button is not valid either.
+        */}
+        {editing ? (
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            /*
+              Enter commits, Escape backs out — the two keys the chapter rename
+              one screen up has always honoured (`TimelineView`), and which this
+              field ignored. Retitling a run of scenes was 34 interactions that
+              saved nothing and said nothing: Enter did not commit, and moving on
+              discarded what had been typed.
+
+              Blur is deliberately *not* a third way in. This is not an inline
+              rename — the whole card is in an edit session, and the same Save
+              writes the description, cast, items, location and tags — so
+              committing when focus leaves the title would end the session the
+              moment you tabbed to the field below it. `Escape` cancels the
+              session for the same reason: it is the counterpart of Enter, not
+              of blur.
+            */
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                // Mirrors the Save button's own `disabled={!title.trim()}`: a
+                // scene may be untitled, but it may not be blanked by accident.
+                if (title.trim()) void saveEdit()
+              } else if (e.key === 'Escape') {
+                e.preventDefault()
+                cancelEdit()
+              }
+            }}
+            aria-label="Scene title"
+            className="h-7 flex-1 min-w-0 text-sm"
+            autoFocus
+          />
+        ) : (
+          <button
+            className="flex-1 min-w-0 text-left"
+            // An untitled scene renders an empty span, which leaves this button
+            // with no accessible name at all — the one card on the page a screen
+            // reader could say nothing about.
+            aria-label={event.title ? undefined : 'Untitled scene'}
+            aria-expanded={expanded}
+            onClick={() => setExpanded((v) => !v)}
+          >
+            <span className="text-sm font-medium text-[hsl(var(--foreground))] truncate block">
+              {event.title || <span className="italic text-[hsl(var(--muted-foreground))]">Untitled scene</span>}
+            </span>
+          </button>
+        )}
 
         <EventCardBadges
           sceneWords={sceneWords}
           inWorldDay={inWorldDay}
+          calendar={calendar}
           isFlashback={isFlashback}
           status={status}
           structureBeat={structureBeat}
@@ -297,33 +424,62 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
 
         {editing ? (
           <>
-            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 hover:text-green-400" onClick={saveEdit} disabled={!title.trim()}>
+            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 hover:text-green-400"
+              aria-label={`Save ${eventName}`} title="Save" onClick={saveEdit} disabled={!title.trim()}>
               <Check className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={cancelEdit}>
+            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0"
+              aria-label={`Stop editing ${eventName}`} title="Cancel" onClick={cancelEdit}>
               <X className="h-3.5 w-3.5" />
             </Button>
           </>
         ) : (
           <>
+            {/* Every scene on the page has this same row of icons, so each name
+                has to say which scene it acts on — "Move up" four times over is
+                no more use to a screen reader than no name at all. */}
             <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 hover:text-[hsl(var(--foreground))]"
+              aria-label={moveUpHint ? `${moveUpHint}: ${eventName}` : `Move ${eventName} earlier`}
+              title={moveUpHint ?? 'Move earlier'}
               disabled={isFirst} onClick={(e) => { e.stopPropagation(); onMoveUp() }}>
               <ArrowUp className="h-3.5 w-3.5" />
             </Button>
             <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 hover:text-[hsl(var(--foreground))]"
+              aria-label={moveDownHint ? `${moveDownHint}: ${eventName}` : `Move ${eventName} later`}
+              title={moveDownHint ?? 'Move later'}
               disabled={isLast} onClick={(e) => { e.stopPropagation(); onMoveDown() }}>
               <ArrowDown className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => setExpanded((v) => !v)}>
+            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0"
+              aria-label={`${expanded ? 'Collapse' : 'Expand'} ${eventName}`}
+              aria-expanded={expanded}
+              title={expanded ? 'Collapse' : 'Expand'}
+              onClick={() => setExpanded((v) => !v)}>
               {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
             </Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 hover:text-red-400" onClick={() => setConfirmOpen(true)}>
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+            {/* EV-5: delete used to sit right here, drawn exactly like the two
+                reorder arrows and the expand chevron beside it — a destructive
+                action with the weight of a routine one, on every scene in the
+                chapter. See `src/components/ui/menu.tsx`. */}
+            {/* N13: this menu held one item and that item was Delete. Moving a
+                scene to another chapter existed on the Corkboard and in the
+                bulk toolbar, but not where a writer opens first. */}
+            <Menu label={`More actions for ${eventName}`} triggerClassName="h-6 w-6">
+              <MenuItem icon={FolderInput} label="Move to chapter…" onClick={() => setMoveOpen(true)} />
+              <MenuItem icon={Trash2} label="Delete scene" danger onClick={() => setConfirmOpen(true)} />
+            </Menu>
+            <MoveSceneDialog
+              open={moveOpen}
+              onOpenChange={setMoveOpen}
+              eventId={event.id}
+              timelineId={event.timelineId}
+              currentChapterId={event.chapterId}
+              sceneName={event.title || 'this scene'}
+            />
             <ConfirmDialog
               open={confirmOpen}
               onOpenChange={setConfirmOpen}
-              title={`Delete "${event.title || 'this event'}"?`}
+              title={`Delete "${event.title || 'this scene'}"?`}
               onConfirm={() => deleteEvent(event.id)}
             />
           </>
@@ -367,23 +523,12 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
       {expanded && (
         <div className="border-t border-[hsl(var(--border))] px-3 py-3 flex flex-col gap-4">
 
-          {/* Description */}
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide">Description</span>
-            {editing ? (
-              <Textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="What happened..."
-                rows={3}
-                className="text-sm"
-              />
-            ) : (
-              event.description
-                ? <p className="text-sm text-[hsl(var(--muted-foreground))] whitespace-pre-wrap">{event.description}</p>
-                : <p className="text-xs italic text-[hsl(var(--muted-foreground))]">No description.</p>
-            )}
-          </div>
+          {/*
+            EV-3: the prose came third, under a Description that renders as a
+            grey italic line. The scene is what the app is for and what is
+            always editable in place, so it leads; the description is a summary
+            that lives behind Edit, and follows.
+          */}
 
           {/* Scene draft (manuscript prose) */}
           <SceneDraftSection
@@ -396,18 +541,51 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
             onWordsChange={setSceneWords}
           />
 
+          {/* Description */}
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide">Description</span>
+            {editing ? (
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                aria-label="Scene description"
+                placeholder="What happened..."
+                rows={3}
+                className="text-sm"
+              />
+            ) : (
+              /*
+                EV-3, second half: this read as a note rather than a field,
+                because it *was* one — the text only becomes editable through
+                the card's Edit button somewhere else entirely. It is the
+                control that opens that mode now, so the thing you want to
+                change is the thing you click.
+              */
+              <button
+                type="button"
+                onClick={startEdit}
+                aria-label={event.description ? 'Edit the description' : 'Add a description'}
+                className="rounded text-left transition-colors hover:bg-[hsl(var(--accent)/0.4)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]"
+              >
+                {event.description
+                  ? <span className="block whitespace-pre-wrap text-sm text-[hsl(var(--muted-foreground))]">{event.description}</span>
+                  : <span className="block text-xs italic text-[hsl(var(--muted-foreground))]">No description — click to add one.</span>}
+              </button>
+            )}
+          </div>
+
           {/* Location */}
-          {locationMarkers.length > 0 && (
+          {shows('location') && (
             <div className="flex flex-col gap-1.5">
               <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
-                <MapPin className="h-3 w-3" /> Location
+                <MapPin className="h-3 w-3" /> Setting
               </span>
               <Select value={locationMarkerId ?? '__none__'} onValueChange={changeLocation}>
                 <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Select location…" />
+                  <SelectValue placeholder="Nowhere in particular…" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__" className="text-xs italic text-[hsl(var(--muted-foreground))]">No location</SelectItem>
+                  <SelectItem value="__none__" className="text-xs italic text-[hsl(var(--muted-foreground))]">Nowhere in particular</SelectItem>
                   {locationMarkers.map((m) => (
                     <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
                   ))}
@@ -417,6 +595,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
           )}
 
           {/* Tags */}
+          {shows('tags') && (
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
               <Tag className="h-3 w-3" /> Tags
@@ -437,13 +616,16 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={handleTagKeyDown}
                 onBlur={commitTag}
+                aria-label="Add a tag to this scene"
                 placeholder={tags.length === 0 ? 'Type a tag and press Enter…' : ''}
                 className="flex-1 min-w-[8rem] bg-transparent text-xs text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] outline-none"
               />
             </div>
           </div>
+          )}
 
           {/* Involved Characters */}
+          {shows('characters') && (
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide">Characters</span>
             {involvedChars.length > 0 ? (
@@ -456,17 +638,23 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                       fallbackClassName="h-5 w-5 rounded-full"
                     />
                     <span className="flex-1 text-xs">{c.name}</span>
-                    <Button variant="ghost" size="icon" className="h-5 w-5 hover:text-red-400" onClick={() => removeCharacter(c.id)}>
+                    <Button variant="ghost" size="icon" className="h-5 w-5 hover:text-red-400"
+                      aria-label={`Remove ${c.name} from this scene`} title={`Remove ${c.name}`}
+                      onClick={() => removeCharacter(c.id)}>
                       <UserMinus className="h-3 w-3" />
                     </Button>
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="text-xs italic text-[hsl(var(--muted-foreground))]">No characters assigned.</p>
-            )}
+            ) : availableChars.length === 0 ? (
+              /* X-4 rule 3: with the picker below, a sentence announcing the
+                 absence says nothing the picker does not. Without one — no
+                 characters exist yet — the section would be blank, so it says
+                 why there is nothing to pick. */
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">No characters in this world yet.</p>
+            ) : null}
             {availableChars.length > 0 && (
-              <Select onValueChange={addCharacter}>
+              <Select onValueChange={addCharacter} value="">
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="+ Add character…" />
                 </SelectTrigger>
@@ -478,8 +666,10 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
               </Select>
             )}
           </div>
+          )}
 
           {/* Mentioned (referenced but not present) */}
+          {shows('mentions') && (
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
               <AtSign className="h-3 w-3" /> Mentioned
@@ -501,10 +691,14 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                 ))}
               </div>
             ) : (
-              <p className="text-xs italic text-[hsl(var(--muted-foreground))]">No one mentioned. Type @ in the scene draft, or add below.</p>
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                {availableForMention.length > 0
+                  ? 'Type @ in the scene draft to mention someone.'
+                  : 'No characters in this world yet.'}
+              </p>
             )}
             {availableForMention.length > 0 && (
-              <Select onValueChange={addMention}>
+              <Select onValueChange={addMention} value="">
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="+ Mention character…" />
                 </SelectTrigger>
@@ -516,9 +710,10 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
               </Select>
             )}
           </div>
+          )}
 
           {/* Plot threads (created on the dashboard; tagged here) */}
-          {plotThreads.length > 0 && (
+          {shows('threads') && (
             <div className="flex flex-col gap-1.5">
               <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
                 <Spline className="h-3 w-3" /> Plot Threads
@@ -538,7 +733,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                 </div>
               )}
               {availableThreads.length > 0 && (
-                <Select onValueChange={addThread}>
+                <Select onValueChange={addThread} value="">
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="+ Tag a thread…" />
                   </SelectTrigger>
@@ -553,7 +748,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
           )}
 
           {/* Motifs / themes (created on the dashboard; tagged here) */}
-          {motifs.length > 0 && (
+          {shows('motifs') && (
             <div className="flex flex-col gap-1.5">
               <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
                 <Sparkle className="h-3 w-3" /> Motifs
@@ -573,7 +768,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                 </div>
               )}
               {availableMotifs.length > 0 && (
-                <Select onValueChange={addMotif}>
+                <Select onValueChange={addMotif} value="">
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="+ Tag a motif…" />
                   </SelectTrigger>
@@ -588,7 +783,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
           )}
 
           {/* Involved Items */}
-          {(involvedItems.length > 0 || availableItems.length > 0) && (
+          {shows('items') && (
             <div className="flex flex-col gap-1.5">
               <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide">Items</span>
               {involvedItems.length > 0 ? (
@@ -602,17 +797,21 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                         fallbackIcon={Package}
                       />
                       <span className="flex-1 text-xs">{it.name}</span>
-                      <Button variant="ghost" size="icon" className="h-5 w-5 hover:text-red-400" onClick={() => removeItem(it.id)}>
+                      <Button variant="ghost" size="icon" className="h-5 w-5 hover:text-red-400"
+                        aria-label={`Remove ${it.name} from this scene`} title={`Remove ${it.name}`}
+                        onClick={() => removeItem(it.id)}>
                         <PackageMinus className="h-3 w-3" />
                       </Button>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <p className="text-xs italic text-[hsl(var(--muted-foreground))]">No items assigned.</p>
-              )}
+              ) : null}
+              {/* No "no items yet" fallback: this section is only offerable when
+                  `involvedItems.length > 0 || availableItems.length > 0`, so an
+                  empty list here guarantees the picker below. Rule 3 applies
+                  outright. */}
               {availableItems.length > 0 && (
-                <Select onValueChange={addItem}>
+                <Select onValueChange={addItem} value="">
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="+ Add item…" />
                   </SelectTrigger>
@@ -627,7 +826,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
           )}
 
           {/* POV picker */}
-          {characters.length > 0 && (
+          {shows('pov') && (
             <div className="flex flex-col gap-1.5">
               <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
                 <Eye className="h-3 w-3" /> Point of View
@@ -643,7 +842,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                   <SelectItem value="__none__" className="text-xs italic text-[hsl(var(--muted-foreground))]">No POV character</SelectItem>
                   {involvedChars.length > 0 && (
                     <SelectGroup>
-                      <SelectLabel className="text-[10px] uppercase tracking-wide">In this event</SelectLabel>
+                      <SelectLabel className="text-[10px] uppercase tracking-wide">In this scene</SelectLabel>
                       {involvedChars.map((c) => (
                         <SelectItem key={c.id} value={c.id} className="text-xs">
                           <span className="flex items-center gap-1.5">
@@ -673,6 +872,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
           )}
 
           {/* Elapsed time before this event */}
+          {shows('time') && (
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
               <History className="h-3 w-3" /> Elapsed Time
@@ -682,12 +882,13 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                 type="number"
                 min={0}
                 step="any"
+                aria-label="Days since the previous scene"
                 className="h-8 w-24 text-xs"
                 placeholder="0"
                 value={travelDays ?? ''}
                 onChange={(e) => handleTravelDaysChange(e.target.value)}
               />
-              <span className="text-xs text-[hsl(var(--muted-foreground))]">days since the previous event</span>
+              <span className="text-xs text-[hsl(var(--muted-foreground))]">days since the previous scene</span>
             </div>
             <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
               Builds the in-world clock and powers the travel-time continuity check.
@@ -696,6 +897,7 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
               <Input
                 type="number"
                 step="any"
+                aria-label="Exact in-world day for this scene"
                 className="h-8 w-24 text-xs"
                 placeholder="auto"
                 value={inWorldTime ?? ''}
@@ -707,8 +909,10 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
               Overrides the derived clock — use for flashbacks or scenes out of narrative order.
             </p>
           </div>
+          )}
 
           {/* Flashback toggle */}
+          {shows('flashback') && (
           <div className="flex items-center gap-2">
             <button
               onClick={toggleFlashback}
@@ -717,14 +921,16 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                   ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
                   : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
               }`}
-              title="Mark as flashback or retrospective — suppresses present-state continuity checks for this event"
+              title="Mark as flashback or retrospective — suppresses present-state continuity checks for this scene"
             >
               <History className="h-3 w-3" />
               Flashback / Retrospective
             </button>
           </div>
+          )}
 
           {/* Story-structure beat */}
+          {shows('beat') && (
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
               <Milestone className="h-3 w-3" /> Story Beat
@@ -754,8 +960,10 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
               <p className="text-[10px] text-[hsl(var(--muted-foreground))]">{beatById(structureBeat)!.hint}</p>
             )}
           </div>
+          )}
 
           {/* Tension picker */}
+          {shows('tension') && (
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide flex items-center gap-1">
               <Flame className="h-3 w-3" /> Dramatic Tension
@@ -784,6 +992,23 @@ export function EventCard({ event, isFirst, isLast, onMoveUp, onMoveDown, inWorl
                 : 'Rate the intensity to plot this scene on the pacing curve.'}
             </p>
           </div>
+          )}
+
+          {/* Everything this scene is not yet tracking, named and one click away. */}
+          {!editing && offerable.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">Add</span>
+              {offerable.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => setRevealed((prev) => new Set(prev).add(s.id))}
+                  className="rounded-full border border-dashed border-[hsl(var(--border))] px-2 py-0.5 text-[11px] text-[hsl(var(--muted-foreground))] transition-colors hover:border-[hsl(var(--ring)/0.6)] hover:text-[hsl(var(--foreground))]"
+                >
+                  + {s.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Status picker */}
           <div className="flex flex-col gap-1.5">

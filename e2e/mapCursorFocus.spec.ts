@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
-import { waitForMapReady } from './helpers/map'
+import { waitForMapReady, sidebarSection } from './helpers/map'
 
 /**
  * Moving the time cursor on the map pans; it does not pick a place.
@@ -20,7 +20,6 @@ const CLOSE_PANEL = 'Close location panel'
 
 /** A world with two places and two scenes, each scene set at one of them. */
 async function setupWorld(page: Page): Promise<string> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Aethel')
@@ -49,12 +48,18 @@ async function setupWorld(page: Page): Promise<string> {
   // each scene, so an unscoped name match hits two elements.
   const main = page.getByRole('main')
   for (const [title, place] of [['First scene', 'Northshire'], ['Second scene', 'Southvale']]) {
-    await page.getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill(title)
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await page.getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill(title)
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
     // The location picker lives in the expanded card, and saves on change.
     await main.getByRole('button', { name: title, exact: true }).click()
-    await main.getByRole('button', { name: 'No location' }).click()
+    // A scene with no setting does not draw the Setting section any more — it
+    // is offered as a chip instead, so open it first. (The field was called
+    // *Location* here until W23-5 gave one field one name; the empty state is
+    // "Nowhere in particular", which is what a scene without a setting is
+    // rather than a missing value.)
+    await main.getByRole('button', { name: '+ Setting' }).click()
+    await main.getByRole('button', { name: 'Nowhere in particular' }).click()
     await page.getByRole('option', { name: place, exact: true }).click()
     await expect(main.getByRole('button', { name: place, exact: true }).first()).toBeVisible()
     await main.getByRole('button', { name: title, exact: true }).click()
@@ -93,7 +98,7 @@ test('moving the time cursor pans the map without opening a location', async ({ 
   // Asking for a place by name still opens it, on this same viewport — so the
   // absence above is the cursor being quiet, not the panel being unreachable.
   await page.getByRole('button', { name: 'Open map panels' }).click()
-  await page.getByRole('button', { name: /^Locations/ }).first().click()
+  await sidebarSection(page, 'Locations').click()
   await page.getByRole('button', { name: 'Southvale' }).first().click()
   await page.getByRole('button', { name: 'Close map panels' }).click()
   await expect(panel).toBeVisible()

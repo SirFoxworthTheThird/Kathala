@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
+import { BlockingReason } from '@/components/BlockingReason'
 import { useParams } from 'react-router-dom'
 import { Footprints, Plus, Pencil, Check, X, Trash2, FileCode2, Upload, Image as ImageIcon, BookOpen } from 'lucide-react'
 import { useWorld, updateWorld } from '@/db/hooks/useWorlds'
@@ -10,12 +11,17 @@ import { LinkImageButton } from '@/components/LinkImageButton'
 import { PortraitImage } from '@/components/PortraitImage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Field } from '@/components/ui/field'
 import { Label } from '@/components/ui/label'
 import type { TravelMode } from '@/types'
 import { CloudSyncPanel } from './CloudSyncPanel'
 import { DbHealthPanel } from './DbHealthPanel'
 import { CalendarEditor } from './CalendarEditor'
+import { SettingsIndex, useSettingsSections } from './SettingsIndex'
 import { APP_THEMES, themeClass } from '@/lib/themes'
+import { useAppStore, type AppTheme } from '@/store'
+import { SettingsSection, SettingsFoldProvider } from './SettingsSection'
+import { LocalPicturesSection } from './LocalPicturesSection'
 
 // ── Travel mode row ───────────────────────────────────────────────────────────
 
@@ -42,6 +48,7 @@ function TravelModeRow({ mode, scaleUnit }: { mode: TravelMode; scaleUnit: strin
       <div className="flex items-center gap-2">
         <Input
           className="h-7 flex-1 text-xs"
+          aria-label={`Name of travel mode ${mode.name}`}
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel() }}
@@ -52,6 +59,7 @@ function TravelModeRow({ mode, scaleUnit }: { mode: TravelMode; scaleUnit: strin
           type="number"
           min="0.1"
           step="any"
+          aria-label={`Speed of travel mode ${mode.name}, in ${scaleUnit} per day`}
           value={speed}
           onChange={(e) => setSpeed(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel() }}
@@ -79,7 +87,7 @@ function TravelModeRow({ mode, scaleUnit }: { mode: TravelMode; scaleUnit: strin
 
 // ── Main view ─────────────────────────────────────────────────────────────────
 
-export default function WorldSettingsView() {
+function WorldSettingsBody() {
   const { worldId } = useParams<{ worldId: string }>()
   const world = useWorld(worldId ?? null)
   // Settings is the escape hatch, so it stays reachable while reading — but
@@ -89,6 +97,12 @@ export default function WorldSettingsView() {
   const timelines = useTimelines(worldId ?? null)
   const maps = useRootMapLayers(worldId ?? null)
   const travelModes = useTravelModes(worldId ?? null)
+  const appTheme = useAppStore((s) => s.theme)
+  const setAppTheme = useAppStore((s) => s.setTheme)
+  // The index reads the sections that actually rendered, since half of them are
+  // conditional — see SettingsIndex.
+  const rootRef = useRef<HTMLDivElement>(null)
+  const sections = useSettingsSections(rootRef)
 
   // World name / description
   const [name, setName] = useState('')
@@ -143,16 +157,16 @@ export default function WorldSettingsView() {
   }
 
   return (
-    <div className="p-6 space-y-10 max-w-2xl">
+    <div ref={rootRef} className="p-6 space-y-10 max-w-2xl">
+      {/* SET-2: eleven sections in one scroll, with nothing to navigate by. */}
+      <SettingsIndex sections={sections} />
 
       {/* World identity — a downloaded book is not the reader's to rename. */}
       {!readingMode && (
-        <section className="space-y-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">World</h2>
+        <SettingsSection id="settings-world" label="World">
 
           {/* Name */}
-          <div className="space-y-1.5">
-            <Label>Name</Label>
+          <Field label="Name" className="space-y-1.5">
             {nameEditing ? (
               <div className="flex items-center gap-2">
                 <Input
@@ -166,21 +180,30 @@ export default function WorldSettingsView() {
                 <Button size="sm" variant="ghost" onClick={() => setNameEditing(false)}>Cancel</Button>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
+              /*
+                SET-3: this was a 12px pencil glyph with no accessible name at
+                all — no aria-label, no title, no text — beside a read-only
+                span. Two defects in one control, and the second is the same as
+                X-12 and LORE-1.
+
+                EV-3 settled the pattern for exactly this shape: the read view
+                is the control that opens the editor, so the thing you want to
+                change is the thing you click. The pencil stays as an affordance
+                cue inside the button rather than being the whole of it.
+              */
+              <button
+                onClick={startNameEdit}
+                aria-label={`Edit world name (currently ${world?.name || 'unset'})`}
+                className="group flex w-full items-center gap-2 rounded border border-transparent px-2 py-1.5 text-left transition-colors hover:border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.4)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]"
+              >
                 <span className="text-sm text-[hsl(var(--foreground))]">{world?.name ?? '—'}</span>
-                <button
-                  onClick={startNameEdit}
-                  className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
-                >
-                  <Pencil className="h-3 w-3" />
-                </button>
-              </div>
+                <Pencil className="ml-auto h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))] transition-colors group-hover:text-[hsl(var(--foreground))]" aria-hidden="true" />
+              </button>
             )}
-          </div>
+          </Field>
 
           {/* Description */}
-          <div className="space-y-1.5">
-            <Label>Description</Label>
+          <Field label="Description" className="space-y-1.5">
             {descEditing ? (
               <div className="space-y-2">
                 <textarea
@@ -197,24 +220,25 @@ export default function WorldSettingsView() {
                 </div>
               </div>
             ) : (
-              <div className="flex items-start gap-2">
+              /* SET-3, and the worse half of it: the pencil floated at the
+                 right of a three-line paragraph with nothing anchoring it to
+                 what it edited. The paragraph is the control. */
+              <button
+                onClick={startDescEdit}
+                aria-label={world?.description ? 'Edit world description' : 'Add a world description'}
+                className="group flex w-full items-start gap-2 rounded border border-transparent px-2 py-1.5 text-left transition-colors hover:border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.4)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]"
+              >
                 {world?.description
-                  ? <p className="text-sm text-[hsl(var(--muted-foreground))]">{world.description}</p>
-                  : <p className="text-sm italic text-[hsl(var(--muted-foreground)/0.5)]">No description yet.</p>
+                  ? <span className="text-sm text-[hsl(var(--muted-foreground))]">{world.description}</span>
+                  : <span className="text-sm italic text-[hsl(var(--muted-foreground)/0.5)]">Describe your world…</span>
                 }
-                <button
-                  onClick={startDescEdit}
-                  className="mt-0.5 shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
-                >
-                  <Pencil className="h-3 w-3" />
-                </button>
-              </div>
+                <Pencil className="ml-auto mt-0.5 h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))] transition-colors group-hover:text-[hsl(var(--foreground))]" aria-hidden="true" />
+              </button>
             )}
-          </div>
+          </Field>
 
           {/* Cover image */}
-          <div className="space-y-1.5">
-            <Label>Cover image</Label>
+          <Field label="Cover image" className="space-y-1.5">
             <div className="flex items-center gap-4">
               <PortraitImage
                 imageId={world?.coverImageId}
@@ -250,31 +274,40 @@ export default function WorldSettingsView() {
                 )}
               </div>
             </div>
-          </div>
-        </section>
+          </Field>
+        </SettingsSection>
       )}
 
       {/* Reading mode. `world` loads asynchronously, so guard it — the rest of
           this view uses `world?.` for the same reason. */}
       {world && (
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Reading mode</h2>
-          <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-            Present this world to someone reading the book rather than writing it. Characters,
+      <SettingsSection id="settings-reading-mode" label="Reading mode"
+      blurb={<>Present this world to someone reading the book rather than writing it. Characters,
             items and places the story has not introduced yet are hidden until the chapter
-            cursor reaches them, and the writing screens step aside.
-          </p>
-        </div>
+            cursor reaches them, and the writing screens step aside.</>}
+    >
         <div className="flex flex-wrap items-center gap-2">
+          {/*
+            A toggle, so it says so: `aria-pressed` carries the state and the
+            label stays an action in both directions. It previously read
+            "Reading mode is on" when on and "Turn on reading mode" when off —
+            a status in one direction and an instruction in the other, which
+            left the on state looking like a label rather than a control.
+          */}
           <Button
             variant={world.readingMode ? 'default' : 'outline'}
             size="sm"
+            aria-pressed={!!world.readingMode}
             onClick={() => void updateWorld(world.id, { readingMode: !world.readingMode })}
           >
             <BookOpen className="h-4 w-4" />
-            {world.readingMode ? 'Reading mode is on' : 'Turn on reading mode'}
+            {world.readingMode ? 'Turn off reading mode' : 'Turn on reading mode'}
           </Button>
+          {world.readingMode && (
+            <span className="text-xs font-medium text-[hsl(var(--muted-foreground))]">
+              Reading mode is on.
+            </span>
+          )}
         </div>
         {world.readingMode && (
           <p className="text-xs text-[hsl(var(--muted-foreground))]">
@@ -283,16 +316,50 @@ export default function WorldSettingsView() {
             export it first if you want to keep them.
           </p>
         )}
-      </section>
+      </SettingsSection>
+      )}
+
+      {/* `world` loads asynchronously — same guard as the section above. */}
+      {world && (
+      <SettingsSection id="settings-pictures" label="Pictures"
+        blurb={<>A picture is either a file kept in this browser or a link to one on the web.
+              Linked pictures are fetched each time they are shown, so they need a connection
+              — and they stop working if the site takes them down.</>}
+      >
+        <LocalPicturesSection worldId={world.id} />
+      </SettingsSection>
       )}
 
       {/* World theme */}
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Theme</h2>
-          <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-            Override the global app theme for this world. "Default" inherits your global setting.
-          </p>
+      <SettingsSection id="settings-theme" label="Theme"
+      blurb={<>Override the app theme for this world. <em>Inherit app theme</em> uses the setting below.</>}
+    >
+        {/*
+          SET-1: this section offered to override a setting the app gave no way
+          to set. The app theme is real and load-bearing — it is what the world
+          list uses, and what every world set to inherit resolves to — but its
+          only control, `ThemePicker`, was exported and never rendered. So the
+          default option inherited from a value nobody could change, and the
+          sentence above described a screen that did not exist. It exists here
+          now, beside the sentence that describes it.
+        */}
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card)/0.55)] p-3">
+          <div className="min-w-0 flex-1">
+            <Label htmlFor="app-theme" className="text-xs font-semibold">App theme</Label>
+            <p className="mt-0.5 text-[10px] leading-snug text-[hsl(var(--muted-foreground))]">
+              Used on the world list, and by every world set to inherit.
+            </p>
+          </div>
+          <select
+            id="app-theme"
+            value={appTheme}
+            onChange={(e) => setAppTheme(e.target.value as AppTheme)}
+            className="h-8 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 text-xs text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
+          >
+            {APP_THEMES.map((t) => (
+              <option key={t.id} value={t.id}>{t.icon} {t.label}</option>
+            ))}
+          </select>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
           {APP_THEMES.map((t) => {
@@ -314,7 +381,7 @@ export default function WorldSettingsView() {
                   style={{ background: t.swatch }}
                 />
                 <span className="min-w-0">
-                  <span className="block text-xs font-semibold text-[hsl(var(--foreground))]">{t.icon} {t.id === 'default' ? 'Inherit global theme' : t.label}</span>
+                  <span className="block text-xs font-semibold text-[hsl(var(--foreground))]">{t.icon} {t.id === 'default' ? 'Inherit app theme' : t.label}</span>
                   <span className="mt-0.5 block text-[10px] leading-snug text-[hsl(var(--muted-foreground))]">{t.description}</span>
                 </span>
                 {isActive && <Check className="h-4 w-4 text-[hsl(var(--ring))]" aria-hidden="true" />}
@@ -322,7 +389,7 @@ export default function WorldSettingsView() {
             )
           })}
         </div>
-      </section>
+      </SettingsSection>
 
       {/* Everything from here calibrates the draft rather than describing the
           story: travel speeds for map distances, the continuity checker's
@@ -333,19 +400,15 @@ export default function WorldSettingsView() {
       {!readingMode && (
         <>
           {/* Travel modes */}
-          <section className="space-y-4">
-            <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Travel Modes</h2>
-              <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                Used for distance calculations on the map. Speed is in {scaleUnit} per in-world day.{' '}
-                {scaleUnit === 'units' && 'Set the map scale unit in map settings to use real distances.'}
-              </p>
-            </div>
-
+          <SettingsSection id="settings-travel-modes" label="Travel Modes"
+      blurb={<>Used for distance calculations on the map. Speed is in {scaleUnit} per in-world day.{' '}
+                {scaleUnit === 'units' && 'Set the map scale unit in map settings to use real distances.'}</>}
+    >
             <div className="flex items-center gap-2">
               <Footprints className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />
               <Input
                 className="h-8 flex-1 text-xs"
+                aria-label="New travel mode name"
                 placeholder="Mode name (e.g. On foot)"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
@@ -356,16 +419,24 @@ export default function WorldSettingsView() {
                 type="number"
                 min="0.1"
                 step="any"
+                aria-label={`New travel mode speed, in ${scaleUnit} per day`}
                 placeholder="Speed"
                 value={newSpeed}
                 onChange={(e) => setNewSpeed(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
               />
               <span className="text-xs text-[hsl(var(--muted-foreground))] shrink-0">{scaleUnit}/day</span>
-              <Button size="sm" variant="outline" onClick={handleAdd} disabled={!newName.trim() || !newSpeed}>
-                <Plus className="h-3.5 w-3.5" />
+              <Button size="sm" variant="outline" aria-label="Add travel mode" onClick={handleAdd} disabled={!newName.trim() || !newSpeed}>
+                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
               </Button>
             </div>
+            {/* X-9: two fields, and the greyed-out + said which of them. */}
+            <BlockingReason
+              checks={[
+                { met: !!newName.trim(), need: 'a name' },
+                { met: !!newSpeed, need: 'a speed' },
+              ]}
+            />
 
             {travelModes.length === 0 ? (
               <p className="text-xs italic text-[hsl(var(--muted-foreground))]">
@@ -378,16 +449,12 @@ export default function WorldSettingsView() {
                 ))}
               </div>
             )}
-          </section>
+          </SettingsSection>
 
           {/* Continuity */}
-          <section className="space-y-4">
-            <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Continuity</h2>
-              <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                Number of consecutive events a character can be involved in without a snapshot update before a stale-state warning is raised.
-              </p>
-            </div>
+          <SettingsSection id="settings-continuity" label="Continuity"
+      blurb={<>Number of consecutive scenes a character can be involved in without a snapshot update before a stale-state warning is raised.</>}
+    >
             <div className="flex items-center gap-3">
               <Label htmlFor="stale-threshold" className="shrink-0">Stale snapshot threshold</Label>
               <input
@@ -402,19 +469,15 @@ export default function WorldSettingsView() {
                   if (worldId && !isNaN(n) && n >= 2) updateWorld(worldId, { continuityStaleThreshold: n })
                 }}
               />
-              <span className="text-xs text-[hsl(var(--muted-foreground))]">events</span>
+              <span className="text-xs text-[hsl(var(--muted-foreground))]">scenes</span>
             </div>
-          </section>
+          </SettingsSection>
 
           {/* Manuscript */}
-          <section className="space-y-4">
-            <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Manuscript</h2>
-              <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                A book-level word target and an optional deadline. The dashboard's Writing Progress panel
-                shows a burndown, the words/day needed, and a projected finish date.
-              </p>
-            </div>
+          <SettingsSection id="settings-manuscript" label="Manuscript"
+      blurb={<>A book-level word target and an optional deadline. The dashboard's Writing Progress panel
+                shows a burndown, the words/day needed, and a projected finish date.</>}
+    >
             <div className="flex items-center gap-3">
               <Label htmlFor="word-target" className="w-24 shrink-0">Word target</Label>
               <input
@@ -456,19 +519,15 @@ export default function WorldSettingsView() {
                 </button>
               )}
             </div>
-          </section>
+          </SettingsSection>
 
           {/* Timelines — per-timeline day offsets for multi-era worlds */}
           {timelines.length > 1 && (
-            <section className="space-y-4">
-              <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Timelines</h2>
-                <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                  Each timeline's clock starts at its own day. Give a historically-shifted timeline
+            <SettingsSection id="settings-timelines" label="Timelines"
+      blurb={<>Each timeline's clock starts at its own day. Give a historically-shifted timeline
                   (a frame narrative's past, an earlier era) a start day so it lines up with the others
-                  in chronological merges and on the calendar.
-                </p>
-              </div>
+                  in chronological merges and on the calendar.</>}
+    >
               <div className="flex flex-col gap-2">
                 {timelines.map((tl) => (
                   <div key={tl.id} className="flex items-center gap-3">
@@ -489,20 +548,16 @@ export default function WorldSettingsView() {
                   </div>
                 ))}
               </div>
-            </section>
+            </SettingsSection>
           )}
 
           {/* Calendar */}
           {world && <CalendarEditor world={world} />}
 
           {/* Share */}
-          <section className="space-y-4">
-            <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Share</h2>
-              <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                Export a read-only HTML snapshot of this world — characters, timeline, locations, items and relationships — that anyone can open in a browser.
-              </p>
-            </div>
+          <SettingsSection id="settings-share" label="Share"
+      blurb={<>Export a read-only HTML snapshot of this world — characters, timeline, locations, items and relationships — that anyone can open in a browser.</>}
+    >
             <Button
               variant="outline" size="sm" className="gap-2"
               onClick={async () => {
@@ -514,7 +569,7 @@ export default function WorldSettingsView() {
               <FileCode2 className="h-3.5 w-3.5" />
               Export as HTML
             </Button>
-          </section>
+          </SettingsSection>
 
           {/* DB Health */}
           {worldId && <DbHealthPanel worldId={worldId} />}
@@ -526,5 +581,17 @@ export default function WorldSettingsView() {
         </>
       )}
     </div>
+  )
+}
+
+/**
+ * The fold state is shared by every section *and* by the index above them, so
+ * it is provided around the whole screen rather than held inside it.
+ */
+export default function WorldSettingsView() {
+  return (
+    <SettingsFoldProvider>
+      <WorldSettingsBody />
+    </SettingsFoldProvider>
   )
 }

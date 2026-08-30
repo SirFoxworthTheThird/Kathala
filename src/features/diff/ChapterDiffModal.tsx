@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { X, Users, Network, Package, ArrowRight, MapPin, Heart, Skull } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -10,6 +10,7 @@ import { useRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { cn } from '@/lib/utils'
+import { MODAL_BACKDROP } from '@/components/ui/dialog'
 import type { CharacterSnapshot, RelationshipSnapshot } from '@/types'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -46,6 +47,7 @@ function SectionHeader({ title, icon: Icon }: { title: string; icon: React.Eleme
 export function ChapterDiffModal() {
   const { worldId } = useParams<{ worldId: string }>()
   const { diffOpen, setDiffOpen, activeEventId } = useAppStore()
+  const [baseChapterId, setBaseChapterId] = useState<string>('')
   const [compareChapterId, setCompareChapterId] = useState<string>('')
 
   const chapters   = useWorldChapters(worldId ?? null)
@@ -76,7 +78,7 @@ export function ChapterDiffModal() {
     return map
   }, [allEvents])
 
-  const eventIdA = activeChapter ? (lastEventByChapter.get(activeChapter.id) ?? null) : null
+  const eventIdA = baseChapterId ? (lastEventByChapter.get(baseChapterId) ?? null) : null
   const eventIdB = compareChapterId ? (lastEventByChapter.get(compareChapterId) ?? null) : null
 
   // Snapshots for both chapters (using last-event-of-chapter)
@@ -109,7 +111,36 @@ export function ChapterDiffModal() {
   const markerById = useMemo(() => new Map(markers.map((m) => [m.id, m])), [markers])
   const itemById   = useMemo(() => new Map(items.map((i) => [i.id, i])), [items])
 
-  const chapterA = activeChapter
+  /*
+    DF-1/DF-2: the tool used to take its base from the time cursor and nothing
+    else, which is why the button that opens it was hidden until an event was
+    active (`showDiff={!!activeEventId}`) — a headline feature gated on an
+    unrelated action. Comparing two chapters needs two chapters, not a cursor.
+
+    So both sides are chosen here, seeded when the panel opens: the base from
+    the cursor's chapter if there is one and the first chapter otherwise, and
+    the comparison from the only remaining candidate when there is exactly one
+    — which is the whole of DF-2 — or the next chapter along.
+  */
+  const ordered = useMemo(() => [...chapters].sort((a, b) => a.number - b.number), [chapters])
+  useEffect(() => {
+    if (!diffOpen || ordered.length === 0) return
+    const base = activeChapter?.id ?? ordered[0].id
+    setBaseChapterId((prev) => (prev && chapById.has(prev) ? prev : base))
+    setCompareChapterId((prev) => {
+      if (prev && chapById.has(prev) && prev !== base) return prev
+      const candidates = ordered.filter((c) => c.id !== base)
+      return candidates.length === 1 ? candidates[0].id : (candidates[0]?.id ?? '')
+    })
+  }, [diffOpen, ordered, activeChapter, chapById])
+
+  useEffect(() => {
+    if (!diffOpen || !baseChapterId || baseChapterId !== compareChapterId) return
+    const next = ordered.find((c) => c.id !== baseChapterId)
+    setCompareChapterId(next?.id ?? '')
+  }, [diffOpen, baseChapterId, compareChapterId, ordered])
+
+  const chapterA = chapById.get(baseChapterId) ?? null
   const chapterB = chapById.get(compareChapterId)
 
   // ── character diffs ────────────────────────────────────────────────────────
@@ -189,23 +220,47 @@ export function ChapterDiffModal() {
     return diffs
   }, [itemPlacementsA, itemPlacementsB, itemById, markerById])
 
+  // Escape closes this like every other overlay in the app. It is a hand-rolled
+  // overlay rather than the shared Dialog, which is why it never had one.
+  useEffect(() => {
+    if (!diffOpen) return
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setDiffOpen(false) }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [diffOpen, setDiffOpen])
+
   if (!diffOpen) return null
 
-  const otherChapters = chapters.filter((c) => c.id !== activeChapter?.id).sort((a, b) => a.number - b.number)
+  const otherChapters = ordered.filter((c) => c.id !== chapterA?.id)
 
   const totalChanges = charDiffs.filter((d) => d.changes.length > 0 || !d.a || !d.b).length
     + relDiffs.length
     + itemDiffs.length
+
+  /*
+    DF-3: "No recorded differences" was the answer a writer got for two chapters
+    full of scenes and prose, because the diff reads the *snapshots* at each
+    chapter's last scene and nothing else. Technically true, and completely
+    misleading — it sounds like the chapters are the same when in fact nothing
+    was ever recorded to compare. The two cases now read differently.
+  */
+  const comparedAnything =
+    snapsA.length + snapsB.length +
+    relSnapsA.length + relSnapsB.length +
+    (itemPlacementsA?.length ?? 0) + (itemPlacementsB?.length ?? 0) > 0
 
   return (
     <div
       className="fixed inset-0 z-[3000] flex items-start justify-center pt-[8vh]"
       onClick={() => setDiffOpen(false)}
     >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className={cn('absolute inset-0', MODAL_BACKDROP)} />
 
       <div
         className="relative z-10 flex w-full max-w-2xl flex-col rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Chapter Diff"
         style={{ maxHeight: '80vh' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -215,23 +270,29 @@ export function ChapterDiffModal() {
           <button
             className="ml-auto text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
             onClick={() => setDiffOpen(false)}
+            aria-label="Close chapter diff"
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
 
         {/* Chapter selectors */}
         <div className="flex items-center gap-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--background))] px-5 py-3">
-          <div className="flex-1 rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-1.5 text-sm">
-            {chapterA
-              ? <><span className="text-[hsl(var(--muted-foreground))] text-xs">Base: </span>Ch. {chapterA.number} — {chapterA.title}</>
-              : <span className="text-[hsl(var(--muted-foreground))] text-sm">No chapter selected</span>
-            }
-          </div>
+          <select
+            className="flex-1 rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-1.5 text-sm text-[hsl(var(--foreground))] outline-none"
+            value={baseChapterId}
+            aria-label="Base chapter"
+            onChange={(e) => setBaseChapterId(e.target.value)}
+          >
+            {ordered.map((c) => (
+              <option key={c.id} value={c.id}>Ch. {c.number} — {c.title}</option>
+            ))}
+          </select>
           <ArrowRight className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />
           <select
             className="flex-1 rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-1.5 text-sm text-[hsl(var(--foreground))] outline-none"
             value={compareChapterId}
+            aria-label="Chapter to compare against"
             onChange={(e) => setCompareChapterId(e.target.value)}
           >
             <option value="">Compare with…</option>
@@ -243,12 +304,26 @@ export function ChapterDiffModal() {
 
         {/* Body */}
         <div className="flex-1 overflow-auto px-5 py-2">
-          {!activeChapter ? (
-            <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">Select a chapter from the timeline bar first.</p>
+          {!chapterA ? (
+            <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">This world has no chapters to compare.</p>
           ) : !compareChapterId ? (
             <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">Choose a chapter to compare against.</p>
+          ) : totalChanges === 0 && !comparedAnything ? (
+            <div className="space-y-2 px-4 py-8 text-center">
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">
+                Neither chapter has any state recorded, so there is nothing to compare.
+              </p>
+              <p className="mx-auto max-w-sm text-xs text-[hsl(var(--muted-foreground))]">
+                This compares where each character is, what they carry, how relationships
+                stand and where items are — as recorded at each chapter&rsquo;s last scene.
+                Scene prose and word counts are not part of it. Record a character&rsquo;s
+                state on a scene, and the change shows up here.
+              </p>
+            </div>
           ) : totalChanges === 0 ? (
-            <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">No recorded differences between these chapters.</p>
+            <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">
+              Nothing changed between these chapters — both have state recorded, and it matches.
+            </p>
           ) : (
             <>
               {/* Characters */}
@@ -267,8 +342,11 @@ export function ChapterDiffModal() {
                             {!b && <DiffTag label="removed" kind="removed" />}
                           </div>
                           {changes.map(({ field, from, to }) => (
-                            <div key={field} className="flex items-center gap-1.5 text-[hsl(var(--muted-foreground))]">
-                              <span className="w-16 shrink-0 capitalize text-[10px]">{field}</span>
+                            <div key={field} className="flex items-start gap-1.5 text-[hsl(var(--muted-foreground))]">
+                              {/* `leading-4` matches the 16px line box of the
+                                  `text-xs` values beside it, so top-aligning the
+                                  row does not leave the label riding high. */}
+                              <span className="w-16 shrink-0 capitalize text-[10px] leading-4">{field}</span>
                               {field === 'status' ? (
                                 <>
                                   {from === 'alive' ? <Heart className="h-3 w-3 text-green-400" /> : <Skull className="h-3 w-3 text-red-400" />}
@@ -290,11 +368,29 @@ export function ChapterDiffModal() {
                               ) : field === 'lost' ? (
                                 <span className="text-red-400">− {from}</span>
                               ) : (
-                                <>
-                                  <span className="truncate max-w-[120px]">{from}</span>
-                                  <ArrowRight className="h-3 w-3 shrink-0" />
-                                  <span className="truncate max-w-[120px] text-amber-400">{to}</span>
-                                </>
+                                /*
+                                  Notes, and only notes — every other field here
+                                  is a word or two, and `statusNotes` is the one
+                                  piece of free prose in the comparison.
+
+                                  It was two `truncate max-w-[120px]` cells side
+                                  by side inside a 672px dialog, so a note ran
+                                  out of room after about a fifth of itself with
+                                  no tooltip and no way to open it: the panel
+                                  said a note had changed and would not say to
+                                  what. A `title` would have handed that back to
+                                  a mouse alone, and the dialog had the width
+                                  all along — so the two versions stack and wrap
+                                  instead, before and after on their own lines,
+                                  which is also the order they are read in.
+                                */
+                                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                  <span className="whitespace-pre-wrap break-words">{from}</span>
+                                  <span className="flex items-start gap-1.5">
+                                    <ArrowRight className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+                                    <span className="min-w-0 whitespace-pre-wrap break-words text-amber-400">{to}</span>
+                                  </span>
+                                </div>
                               )}
                             </div>
                           ))}

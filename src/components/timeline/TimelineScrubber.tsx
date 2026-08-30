@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect, useCallback, type ReactNode, type RefObje
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Chapter, WorldEvent } from '@/types'
 import type { ChapterRun } from '@/lib/combinedTimeline'
+import { useGate } from '@/db/hooks/ReadingGateContext'
+import { chapterBlockLabel, sceneTickLabel } from '@/lib/readingAhead'
 
 // ── Chapter segment ───────────────────────────────────────────────────────────
 
@@ -17,30 +19,70 @@ interface ChapterSegmentProps {
   activeMarkerRef: RefObject<HTMLButtonElement | null>
   onEventSelect: (eventId: string, locationMarkerId?: string | null) => void
   onChapterSelect: () => void
+  /** See `ScrubberProps.linkedEventIds`. */
+  linked?: ReadonlySet<string>
 }
+
+const NO_LINKS: ReadonlySet<string> = new Set()
 
 export function ChapterSegment({
   chapter, events, segmentState, activeEventId, color, compact,
-  activeMarkerRef, onEventSelect, onChapterSelect,
+  activeMarkerRef, onEventSelect, onChapterSelect, linked = NO_LINKS,
 }: ChapterSegmentProps) {
   const isActive = segmentState === 'active'
   const isPast   = segmentState === 'past'
   const isEmpty  = segmentState === 'empty'
 
+  /*
+    R14: while reading, a chapter the story has not reached keeps its number and
+    loses its title — and so does every scene inside it, since each tick is a
+    button whose accessible name was the scene's own title. Dimming to 0.42 was
+    never hiding, and this bar was the one ungated surface left in reading mode.
+  */
+  const gate = useGate()
+  const chapterRevealed = !gate.active || isPast || isActive
+  const label = chapterBlockLabel(chapter, chapterRevealed)
+
   const activeIdx  = activeEventId ? events.findIndex((e) => e.id === activeEventId) : -1
   const fillRatio  = isPast ? 1 : (isActive && activeIdx >= 0) ? (activeIdx + 0.5) / events.length : 0
   const opacity    = isEmpty ? 0.28 : (!isActive && !isPast) ? 0.42 : 1
-  const labelColor = isActive ? color : 'var(--tl-text-muted)'
+  /*
+    W19-10, the same rule as the panel beside it: a timeline's stored colour is
+    an identity mark, not ink. The active chapter's name was painted in it at
+    0.56rem — `#6366f1` on Paper's active segment measures **3.63:1**, under the
+    4.5 this size needs. The colour is already all over this component as marks
+    — the fill rail, every event tick, the active tick's glow — so the label
+    only has to stop competing with them, not replace them.
+  */
+  const labelColor = isActive ? 'var(--tl-text)' : 'var(--tl-text-muted)'
 
   const slotRem  = compact ? 1.5 : 2
-  const minRem   = compact ? 2.5 : 3
+  /*
+    MT-1: the frame track used to fall back to a 2.5rem segment, which fits a
+    chapter number and nothing else — so the outer track of a frame narrative
+    read `0 1 2 3 4 5 6 13 17 …` directly above an inner track reading
+    *8 · Thie…*, *12 · Puz…*. The same component at two densities, and the
+    *frame* of a frame narrative was the half you could not read. The floor is
+    now wide enough for a title to survive truncation, which is all the inner
+    track ever promised either.
+  */
+  const minRem   = compact ? 5.5 : 3
   const widthRem = Math.max(minRem, events.length * slotRem)
   const railH    = compact ? 2 : 3
 
   return (
     <div
       style={{
-        width: `${widthRem}rem`, flexShrink: 0, height: '100%',
+        /*
+          EV-7: a fixed width meant a one-chapter world drew a 48px stub in a
+          1300px bar — the title cut to "1 · L…" and the rail so short that it
+          and its single tick read as a clipped "+". Growing shares whatever the
+          chapters do not fill, in proportion to how many scenes each holds, so
+          the track is the width of the bar whenever it can be. Past that, the
+          minimum holds and the scroller takes over exactly as before.
+        */
+        flexGrow: Math.max(1, events.length), flexShrink: 0, flexBasis: `${widthRem}rem`,
+        minWidth: `${widthRem}rem`, height: '100%',
         display: 'flex', flexDirection: 'column',
         justifyContent: compact ? 'center' : 'space-between',
         padding: compact ? '0.3rem 0.5rem 0.25rem' : '0.45rem 0.5rem 0.4rem',
@@ -52,7 +94,13 @@ export function ChapterSegment({
         transition: 'opacity 0.2s, background 0.25s',
       }}
       onClick={isEmpty ? undefined : onChapterSelect}
-      title={isEmpty ? 'Add an event to this chapter to activate it.' : undefined}
+      // A truncated title is still worth having in full on hover, and the
+      // frame track truncates sooner than the story track does.
+      // The empty-chapter hint is an instruction to add a scene, so it is for
+      // the writer; a reader is told what everyone else is told.
+      title={isEmpty && !gate.active
+        ? 'Add a scene to this chapter to activate it.'
+        : label.tooltip}
     >
       {!compact && (
         <div style={{
@@ -63,15 +111,21 @@ export function ChapterSegment({
           transition: 'color 0.2s', flexShrink: 0,
         }}>
           <span style={{ opacity: 0.6 }}>{chapter.number}</span>
-          {chapter.title && <span> · {chapter.title}</span>}
+          {label.title && <span> · {label.title}</span>}
         </div>
       )}
 
+      {/*
+        The rail and its ticks are absolutely positioned, so without a height of
+        its own this box collapses and the rail draws straight through the label
+        beneath it. Invisible while the compact label was a bare digit; obvious
+        the moment it carries a title (MT-1). 14px clears the tallest tick.
+      */}
       <div style={{
         position: 'relative', flex: compact ? undefined : 1,
         display: 'flex', alignItems: 'center',
         margin: compact ? 0 : '0.2rem 0',
-        minHeight: compact ? undefined : `${railH * 6}px`,
+        minHeight: compact ? '14px' : `${railH * 6}px`,
       }}>
         <div style={{
           position: 'absolute', left: 0, right: 0, top: '50%',
@@ -91,11 +145,18 @@ export function ChapterSegment({
           const pct        = events.length <= 1 ? 50 : (i / (events.length - 1)) * 100
           const tickH      = isEvActive ? (compact ? 13 : 20) : (compact ? 8 : 12)
           const tickW      = isEvActive ? 3 : 2
+          const isLinked   = linked.has(ev.id)
           return (
             <button
               key={ev.id}
               ref={isEvActive ? activeMarkerRef : undefined}
-              title={ev.title}
+              title={sceneTickLabel({
+                chapterNumber: chapter.number,
+                index: i,
+                title: ev.title,
+                revealed: !gate.active || hasFired,
+                linked: isLinked,
+              })}
               onClick={(e) => { e.stopPropagation(); onEventSelect(ev.id, ev.locationMarkerId) }}
               style={{
                 position: 'absolute', left: `${pct}%`, top: '50%',
@@ -113,6 +174,21 @@ export function ChapterSegment({
                 boxShadow: isEvActive ? `0 0 5px ${color}99` : 'none',
                 transition: 'height 0.15s, box-shadow 0.15s',
               }} />
+              {/* MT-7: a paired moment carries a dot above its tick, so a
+                  pairing is visible on the bar rather than only in the
+                  relationship editor. Above rather than on the tick, which
+                  already encodes position and whether playback has passed it. */}
+              {isLinked && (
+                <span
+                  aria-hidden="true"
+                  style={{
+                    position: 'absolute', top: 0, left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: 4, height: 4, borderRadius: '50%',
+                    background: color, opacity: hasFired ? 1 : 0.6,
+                  }}
+                />
+              )}
             </button>
           )
         })}
@@ -122,10 +198,12 @@ export function ChapterSegment({
         <div style={{
           fontSize: '0.48rem', color: labelColor, fontFamily: 'var(--font-body)',
           fontWeight: isActive ? 700 : 400, letterSpacing: '0.04em',
-          textAlign: 'center', lineHeight: 1, whiteSpace: 'nowrap', flexShrink: 0,
+          textAlign: 'center', lineHeight: 1, flexShrink: 0,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           transition: 'color 0.2s',
         }}>
-          {chapter.number}
+          <span style={{ opacity: 0.6 }}>{chapter.number}</span>
+          {label.title && <span> · {label.title}</span>}
         </div>
       )}
     </div>
@@ -144,6 +222,12 @@ export interface ScrubberProps {
   activeMarkerRef: RefObject<HTMLButtonElement | null>
   onEventSelect: (eventId: string, locationMarkerId?: string | null) => void
   onChapterSelect: (chapterId: string) => void
+  /**
+   * Events paired with a moment on the other track by a sync point (MT-7).
+   * Nothing on the bar said a pairing existed, so the only way to know was to
+   * open the relationship editor and read the list.
+   */
+  linkedEventIds?: ReadonlySet<string>
 }
 
 /** Horizontal scroller shell shared by both scrubbers: edge fade-arrows,
@@ -232,6 +316,7 @@ function ScrubberShell({
 export function Scrubber({
   chapters, events, activeEventId, color, compact,
   scrollerRef, activeMarkerRef, onEventSelect, onChapterSelect,
+  linkedEventIds = NO_LINKS,
 }: ScrubberProps) {
   const eventsByChapter = useMemo(() => {
     const map = new Map<string, WorldEvent[]>()
@@ -265,6 +350,7 @@ export function Scrubber({
           activeMarkerRef={activeMarkerRef}
           onEventSelect={onEventSelect}
           onChapterSelect={() => onChapterSelect(ch.id)}
+          linked={linkedEventIds}
         />
       ))}
     </ScrubberShell>

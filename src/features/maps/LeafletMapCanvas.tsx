@@ -6,6 +6,7 @@ import { updateLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { useAppStore } from '@/store'
 import { type GhostPin, makeGhostIcon } from '@/lib/ghostMarkerIcon'
 import { playbackFocusTarget, playbackFocusZoom } from './mapUtils'
+import { labelledMarkers, PILL_HEIGHT } from './labelDeclutter'
 
 export type { GhostPin }
 
@@ -150,6 +151,8 @@ export interface CharacterPin {
   x: number
   y: number
   inSubMap: boolean
+  /** Name of the map the character is really on, when `inSubMap` (MW-7). */
+  subMapName?: string | null
   portraitUrl?: string | null
   locationName?: string | null
 }
@@ -180,19 +183,33 @@ function makeCharacterGroupIcon(pins: CharacterPin[], zoom: number): L.DivIcon {
 
   const divider = `<div style="width:1px;height:${Math.round(size * 0.65)}px;align-self:center;background:${V.frame};opacity:0.6;flex-shrink:0;"></div>`
 
+  /*
+    W23-3: the place name is on the pill whether one character stands there or
+    six.
+
+    It used to be dropped the moment a second arrived — `subText` was computed
+    only for `n === 1` — so a pin reading `YS · Ysolde Vane / Wenmere Weir`
+    became `YS +1 / 2 characters` and the name of the place vanished. The pill
+    is painted over the location marker it stands on (measured: 145×34 against
+    143×34, same anchor), so with the subtitle gone the map stopped answering
+    *where* exactly when the answer to *who* got interesting. On the shipped
+    Alice map the effect is visible to the eye: `Riverbank above Wonderland`
+    reduced to `…lerland`.
+
+    A group is grouped *by position*, so they are all at one place and one name
+    describes them all.
+  */
   const labelText = n === 1 ? escapeHtml(first.character.name) : `${n} characters`
-  const subText   = n === 1
-    ? first.inSubMap
-      ? `${first.locationName ? escapeHtml(first.locationName) + ' · ' : ''}Sub-map`
-      : (first.locationName ? escapeHtml(first.locationName) : '')
-    : ''
+  const subText   = first.inSubMap
+    ? `${first.locationName ? escapeHtml(first.locationName) + ' · ' : ''}Sub-map`
+    : (first.locationName ? escapeHtml(first.locationName) : '')
   const fsPrimary = Math.max(10, Math.round(size * 0.3))
   const fsSub     = Math.max(8,  Math.round(size * 0.24))
   const labelW    = 110
 
   const labelBox = `<div style="display:flex;flex-direction:column;justify-content:center;padding:0 8px;min-width:${labelW}px;height:${size}px;overflow:hidden;">
     <div style="color:${V.fg};font-size:${fsPrimary}px;font-family:${V.font};line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${labelText}</div>
-    ${subText ? `<div style="color:${V.muted};font-size:${fsSub}px;font-family:${V.font};line-height:1.3;white-space:nowrap;">${subText}</div>` : ''}
+    ${subText ? `<div style="color:${V.muted};font-size:${fsSub}px;font-family:${V.font};line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${subText}</div>` : ''}
   </div>`
 
   // Left border-radius matches avatar circle curvature so the pill "is" the avatar on the left
@@ -244,6 +261,14 @@ function ZoomTracker({ onZoomChange }: { onZoomChange: (zoom: number) => void })
   return null
 }
 
+/**
+ * A floor low enough that fitting is never clamped by it. Each zoom step halves
+ * the scale, so -10 accommodates an image about a thousand times wider than its
+ * container — far past anything a map layer will hold — while staying a finite
+ * number Leaflet is happy to compute against.
+ */
+const MIN_FIT_ZOOM = -10
+
 function FitBounds({ bounds, initialCenter, initialZoom, playbackFocus, onReady }: {
   bounds: L.LatLngBoundsExpression
   initialCenter?: [number, number] | null
@@ -266,10 +291,52 @@ function FitBounds({ bounds, initialCenter, initialZoom, playbackFocus, onReady 
       map.invalidateSize()
       const prevSnap = map.options.zoomSnap
       map.options.zoomSnap = 0
-      map.fitBounds(bounds, { padding: [0, 0], animate: false })
-      const minZoom = map.getBoundsZoom(bounds, false)
+      // Both `fitBounds` and `getBoundsZoom` clamp their result to the map's
+      // current minZoom, and Leaflet's default is 0 — the zoom at which a
+      // CRS.Simple image draws 1:1. So an image bigger than its container could
+      // never be fitted: the fit silently clamped to 0 and the map opened
+      // showing the middle of the image with everything else off-screen. It
+      // looked survivable on a desktop, where only the vertical overflow was
+      // cut; on a 390px phone it left three of five markers outside the
+      // viewport. Open the floor first, fit, and only then adopt the fitted
+      // zoom as the new floor so the reader still cannot zoom out past the map.
+      map.setMinZoom(MIN_FIT_ZOOM)
+      /*
+        MAP-2: the floating toolbar band sits over the top of the canvas, so a
+        fit that used the whole height put markers underneath it — the finding
+        names a marker and its label in the top-right corner. Insetting the fit
+        by the band's height opens the map with everything below it.
+
+        Measured rather than assumed: the band wraps, and its height depends on
+        the filter bar and the info chip it holds. Zero when it is not there,
+        which is the phone case where a detail panel takes the whole width and
+        the band steps aside.
+      */
+      const overlay = document.querySelector('[data-map-overlay="top"]')
+      const band = overlay ? Math.round(overlay.getBoundingClientRect().height) : 0
+      // Plus half a pill. A marker is anchored at its point with the label
+      // centred on it, so clearing the band with the image's edge still leaves
+      // a marker at that edge poking up into it by half its own height.
+      const inset = band > 0 ? band + PILL_HEIGHT / 2 : 0
+      const pad = L.point(0, inset)
+      map.fitBounds(bounds, { paddingTopLeft: pad, paddingBottomRight: [0, 0], animate: false })
+      // The floor has to agree with the fit, or the reader can zoom out past
+      // the view they were just given.
+      const minZoom = map.getBoundsZoom(bounds, false, pad)
       map.setMinZoom(minZoom)
-      map.setMaxBounds(bounds)
+      /*
+        The bounds have to allow the room the padding asked for, or the padded
+        fit is pulled straight back: `setMaxBounds(bounds)` forbids showing
+        anything above the image, which is exactly the space the inset needs.
+        Extended upward by the inset converted into image pixels at the fitted
+        scale, so the allowance is the band and not a fraction of it.
+      */
+      const scale = map.getZoomScale(minZoom, 0)
+      const headroom = scale > 0 ? inset / scale : 0
+      const box = L.latLngBounds(bounds as L.LatLngTuple[])
+      map.setMaxBounds(headroom > 0
+        ? L.latLngBounds(box.getSouthWest(), L.latLng(box.getNorth() + headroom, box.getEast()))
+        : box)
       map.options.zoomSnap = prevSnap ?? 0.25
       const focus = playbackFocusRef.current
       if (focus) {
@@ -398,6 +465,8 @@ interface LeafletMapCanvasProps {
   charPins: CharacterPin[]
   movementLines: MovementLine[]
   isDraggingCharacter: boolean
+  /** True while the sidebar's crosshair is armed and waiting for a tap. */
+  placingCharacter?: boolean
   onMarkerClick: (markerId: string) => void
   onMapClick: (x: number, y: number) => void
   onDrillDown: (mapLayerId: string) => void
@@ -469,7 +538,7 @@ interface LeafletMapCanvasProps {
 export function LeafletMapCanvas({
   readOnly,
   layer, imageUrl, markers, charPins, movementLines,
-  isDraggingCharacter, onMarkerClick, onMapClick, onDrillDown,
+  isDraggingCharacter, placingCharacter = false, onMarkerClick, onMapClick, onDrillDown,
   onCharacterDrop, onCharacterDropOnEmpty, onCharacterClick, mapRef: externalMapRef,
   scaleMode, onScalePoints, showSubMapLinks = true, locationStatuses = {},
   pinAnimation, onAnimationEnd, initialCenter, initialZoom, onViewChange, measureLine, ghostPins,
@@ -481,7 +550,16 @@ export function LeafletMapCanvas({
   onContextAddLabel, onContextStartRoute, onContextStartRegion,
   mapAnnotations = [], onAnnotationClick, selectedAnnotationId,
 }: LeafletMapCanvasProps) {
+  /*
+    Both ways of putting a character somewhere aim at a location marker — the
+    drag from the sidebar and the armed crosshair — so both have to lift the
+    markers above the character pins that otherwise cover them. One flag, so the
+    next gesture that aims at a marker cannot be added to only half of it.
+  */
+  const markersAreTargets = isDraggingCharacter || placingCharacter
   const { setIsAnimating } = useAppStore()
+  // The marker the reader has open keeps its name even in a crowd.
+  const selectedMarkerId = useAppStore((st) => st.selectedLocationMarkerId)
   const internalMapRef = useRef<L.Map | null>(null)
   const mapRef         = externalMapRef ?? internalMapRef
   // Imperative character marker management — bypasses react-leaflet's position-prop mechanism
@@ -514,6 +592,20 @@ export function LeafletMapCanvas({
   charPinsRef.current               = charPins
   mapZoomRef.current                = mapZoom
   markersRef.current                = markers
+
+  // Which markers can show their name without burying a neighbour's. Recomputed
+  // on zoom, so names come back as the map spreads out; the highlighted marker
+  // keeps its label regardless, because that is the one being asked about.
+  // MW-4: region polygons on this layer write their own name across what they
+  // cover, so a pin of the same name standing inside one is the second copy.
+  const namedAreas = useMemo(
+    () => mapRegions.filter((r) => r.vertices.length >= 3).map((r) => ({ name: r.name, vertices: r.vertices })),
+    [mapRegions],
+  )
+  const labelledIds = useMemo(
+    () => labelledMarkers(markers, mapZoom, selectedMarkerId ? [selectedMarkerId] : [], namedAreas),
+    [markers, mapZoom, selectedMarkerId, namedAreas],
+  )
 
   const w      = layer.imageWidth
   const h      = layer.imageHeight
@@ -554,6 +646,23 @@ export function LeafletMapCanvas({
   useEffect(() => {
     if (!scaleMode) setScalePoint1(null)
   }, [scaleMode])
+
+  /**
+   * While Measure (or Set scale) is armed, the canvas belongs to it.
+   *
+   * Every overlay used to take its own clicks, so the first click of a
+   * measurement both placed the point *and* selected whatever region polygon
+   * was underneath — opening its detail panel over the right of the map. On a
+   * wide map that panel covered the spot meant for the second point and
+   * swallowed the click, so the measurement could not be finished at all. A
+   * mode that says "click two points on the map" has to own those two clicks.
+   *
+   * Done at the pane rather than per layer: Leaflet reads `interactive` when it
+   * creates a layer, so flipping that prop on overlays that are already on the
+   * map does nothing. Turning off pointer events for the panes that hold them
+   * works however and whenever they were mounted, and lets the click through to
+   * the map underneath — which is the half that makes the measurement land.
+   */
 
   // ── Imperative character marker helpers ──────────────────────────────────────
 
@@ -608,20 +717,43 @@ export function LeafletMapCanvas({
       } else {
         const content = document.createElement('div')
         content.style.minWidth = '110px'
+        /*
+          MW-8: a single pin opens a character's panel and their journey strip;
+          a cluster opened this list, and nothing said the two were related. The
+          rows *are* the route — each one calls the same handler a single pin
+          does — so the heading says so rather than leaving it to be discovered.
+        */
         const title = document.createElement('p')
         title.style.cssText = `font-size:11px;font-weight:bold;margin-bottom:4px;color:hsl(var(--ring));font-family:var(--font-body);`
-        title.textContent = 'At this location:'
+        title.textContent = 'At this location — pick one to open their journey:'
         content.appendChild(title)
         for (const pin of group) {
           const btn = document.createElement('button')
           btn.style.cssText = `display:block;width:100%;text-align:left;padding:2px 4px;font-size:12px;cursor:pointer;border-radius:3px;background:none;border:none;font-family:var(--font-body);`
-          btn.textContent = pin.character.name + (pin.inSubMap ? ' (sub-map)' : '')
+          // MW-7: this read "(sub-map)" — the same word on fourteen of sixteen
+          // rows, saying only that the character is elsewhere and never where.
+          btn.textContent = pin.inSubMap
+            ? `${pin.character.name} · in ${pin.subMapName ?? 'a sub-map'}`
+            : pin.character.name
           btn.addEventListener('click', () => onCharacterClickRef.current?.(pin.character.id))
           btn.addEventListener('mouseenter', () => { btn.style.background = 'hsl(var(--accent))' })
           btn.addEventListener('mouseleave', () => { btn.style.background = 'none' })
           content.appendChild(btn)
         }
-        marker.bindPopup(content)
+        /*
+          MW-6: a pin holding sixteen characters opened a list taller than the
+          space above it, and its first rows rendered off the top of the canvas
+          behind the floating toolbar — not scrolled into view and unreachable.
+
+          `maxHeight` makes the list scroll inside the popup instead of growing
+          past the viewport, and the auto-pan padding keeps the whole popup clear
+          of the toolbar rather than merely inside the map.
+        */
+        marker.bindPopup(content, {
+          maxHeight: 220,
+          autoPanPaddingTopLeft: L.point(16, 72),
+          autoPanPaddingBottomRight: L.point(16, 16),
+        })
       }
 
       groupMarkersRef.current.set(key, marker)
@@ -836,7 +968,7 @@ export function LeafletMapCanvas({
         interactive: true,
       })
         .bindTooltip(
-          `${escapeHtml(em.counterpartTimelineName)} — ${em.eventCount} event${em.eventCount !== 1 ? 's' : ''}`,
+          `${escapeHtml(em.counterpartTimelineName)} — ${em.eventCount} scene${em.eventCount !== 1 ? 's' : ''}`,
           { permanent: false, direction: 'top' },
         )
         .on('click', (e) => { L.DomEvent.stopPropagation(e); onEchoRingClick?.(em.markerId) })
@@ -881,7 +1013,10 @@ export function LeafletMapCanvas({
 
   return (
     <div
-      className="relative h-full w-full"
+      // On the wrapper, not on MapContainer: react-leaflet hands `className` to
+      // the container div when it creates the map and never again, so a class
+      // that has to come and go cannot live there.
+      className={`relative h-full w-full${scaleMode ? ' pw-measuring' : ''}`}
       onDragOver={(e) => { if (isDraggingCharacter) e.preventDefault() }}
       onDrop={(e) => {
         e.preventDefault()
@@ -1095,14 +1230,29 @@ export function LeafletMapCanvas({
           </>
         )}
 
-        {/* Location markers — guard against markers with missing coordinates (data integrity) */}
+        {/*
+          Location markers — guard against markers with missing coordinates
+          (data integrity).
+
+          W19-1: the markers rise above the character pins whenever they are the
+          thing being aimed at, which is both gestures and not just the drag.
+          Raising them for `isDraggingCharacter` alone left tap-to-place aiming
+          at a target underneath the pins: a character pin covers its own
+          location pin to within about three pixels, so tapping the middle of an
+          occupied place selected the character standing there and opened their
+          panel — over a hint still reading "Tap a location to place …" — while
+          the placement quietly did not happen. Two people in one room is the
+          ordinary case, and on touch the drag does not exist to fall back on.
+        */}
         {markers.filter((m) => typeof m.x === 'number' && typeof m.y === 'number').map((marker) => (
           <Marker
             key={marker.id}
             position={[marker.y, marker.x]}
-            icon={makeLocationIcon(marker.iconType, !!marker.linkedMapLayerId && showSubMapLinks, marker.name, isDraggingCharacter, locationStatuses[marker.id] ?? 'active', showLocationLabels)}
-            zIndexOffset={isDraggingCharacter ? 2000 : -100}
-            draggable={!readOnly}
+            icon={makeLocationIcon(marker.iconType, !!marker.linkedMapLayerId && showSubMapLinks, marker.name, markersAreTargets, locationStatuses[marker.id] ?? 'active', showLocationLabels && labelledIds.has(marker.id))}
+            zIndexOffset={markersAreTargets ? 2000 : -100}
+            // A marker under the measuring point must not take the click or be
+            // shoved aside by the drag that places it.
+            draggable={!readOnly && !scaleMode}
             eventHandlers={{
               click: () => onMarkerClickRef.current(marker.id),
               dragend: (e) => {

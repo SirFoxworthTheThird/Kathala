@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
 
 /**
  * Two shelves on the world selector.
@@ -34,7 +35,6 @@ const shelf = (page: Page, name: RegExp) =>
 
 test('a draft and a downloaded book land on different shelves', async ({ page }) => {
   test.setTimeout(180_000)
-  await page.goto('/')
   await resetDB(page)
 
   await newWorld(page, 'My Novel')
@@ -54,21 +54,31 @@ test('a draft and a downloaded book land on different shelves', async ({ page })
   await expect(shelf(page, /Reading/i)).not.toContainText('My Novel')
 })
 
-test('the New World tile stays with the drafts', async ({ page }) => {
+test('the start-from-scratch tile stays with the drafts', async ({ page }) => {
   test.setTimeout(180_000)
-  await page.goto('/')
   await resetDB(page)
   await newWorld(page, 'My Novel')
   await downloadBook(page, 'Dracula')
 
   // It makes a world to write, so it belongs on that shelf and not the other.
-  await expect(shelf(page, /Your worlds/i).getByRole('button', { name: 'New World' })).toBeVisible()
-  await expect(shelf(page, /Reading/i).getByRole('button', { name: 'New World' })).toHaveCount(0)
+  // SEL-5: it used to be called "New World" — the header button's name — so a
+  // populated screen offered one thing under one name twice.
+  const tile = 'Start from scratch'
+  await expect(shelf(page, /Your worlds/i).getByRole('button', { name: tile })).toBeVisible()
+  await expect(shelf(page, /Reading/i).getByRole('button', { name: tile })).toHaveCount(0)
+
+  // And the name really is distinct: the header's button stays the only thing
+  // on the page called "New World", populated screen and all. The empty state
+  // already held this line (see selectorGroups.spec.ts); the populated one did
+  // not, which is the finding.
+  await expect(page.getByRole('button', { name: 'New World' })).toHaveCount(1)
+  // It still opens the same dialog the header's button does.
+  await shelf(page, /Your worlds/i).getByRole('button', { name: tile }).click()
+  await expect(page.getByRole('heading', { name: 'Create New World' })).toBeVisible()
 })
 
 test('turning reading mode off moves the book to your own shelf', async ({ page }) => {
   test.setTimeout(180_000)
-  await page.goto('/')
   await resetDB(page)
   await downloadBook(page, 'Dracula')
 
@@ -80,8 +90,8 @@ test('turning reading mode off moves the book to your own shelf', async ({ page 
   await page.getByText('Dracula').first().click()
   await expect(page).toHaveURL(/#\/worlds\//)
   await page.goto(`/#${new URL(page.url()).hash.replace('#', '').split('/').slice(0, 3).join('/')}/settings`)
-  await page.getByRole('button', { name: 'Reading mode is on' }).click()
-  await page.waitForTimeout(800)
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
+  await settle(page)
 
   await page.goto('/#/')
   // No reading shelf left to be on, and the book is still here — the pairing

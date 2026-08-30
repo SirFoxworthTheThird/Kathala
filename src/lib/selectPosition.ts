@@ -32,11 +32,18 @@ export interface SelectPosition {
  * capped to the available space so no options end up off-screen — the panel
  * scrolls internally instead — and the horizontal position is clamped so it
  * never spills off the left or right edge.
+ *
+ * `minWidth` widens a panel past its trigger. A panel is normally exactly as
+ * wide as the control that opened it, which is right until the trigger is a
+ * 176 px "+ Assign a scene…" button and every option in it reads
+ * `Ch. 12 · The count returns to Paris`. Finding the scene is no use if the
+ * list cannot show which one you found. The viewport still wins: a narrow
+ * screen clamps back down rather than opening a panel off the edge.
  */
 export function computeSelectPosition(
   rect: AnchorRect,
   viewport: Viewport,
-  opts: { margin?: number; gap?: number; maxHeight?: number } = {},
+  opts: { margin?: number; gap?: number; maxHeight?: number; minWidth?: number } = {},
 ): SelectPosition {
   const margin = opts.margin ?? 8
   const gap = opts.gap ?? 4
@@ -49,7 +56,8 @@ export function computeSelectPosition(
   const avail = below ? spaceBelow : spaceAbove
   const maxHeight = Math.max(0, Math.min(cap, avail))
 
-  const width = Math.min(rect.width, Math.max(0, viewport.width - margin * 2))
+  const wanted = Math.max(rect.width, opts.minWidth ?? 0)
+  const width = Math.min(wanted, Math.max(0, viewport.width - margin * 2))
   const left = Math.min(Math.max(margin, rect.left), Math.max(margin, viewport.width - width - margin))
 
   return below

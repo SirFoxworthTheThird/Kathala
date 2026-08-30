@@ -4,7 +4,7 @@ import { Plus, Shield, ChevronRight, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Field } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import {
@@ -72,18 +72,16 @@ function MembershipCard({
 
       {expanded && (
         <div className="border-t border-[hsl(var(--border))] px-3 pb-3 pt-2 flex flex-col gap-2">
-          <div>
-            <Label className="text-xs">Role</Label>
+          <Field label="Role" labelClassName="text-xs">
             <Input
               className="mt-1 h-7 text-xs"
               value={membership.role ?? ''}
               placeholder="e.g. Leader, Spy…"
               onChange={(e) => updateFactionMembership(membership.id, { role: e.target.value || null })}
             />
-          </div>
+          </Field>
           <div className="flex gap-2">
-            <div className="flex-1">
-              <Label className="text-xs">From event</Label>
+            <Field label="From scene" className="flex-1" labelClassName="text-xs">
               <Select
                 value={membership.startEventId ?? 'none'}
                 onValueChange={(v) => updateFactionMembership(membership.id, { startEventId: v === 'none' ? null : v })}
@@ -96,9 +94,8 @@ function MembershipCard({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="flex-1">
-              <Label className="text-xs">Until event</Label>
+            </Field>
+            <Field label="Until scene" className="flex-1" labelClassName="text-xs">
               <Select
                 value={membership.endEventId ?? 'none'}
                 onValueChange={(v) => updateFactionMembership(membership.id, { endEventId: v === 'none' ? null : v })}
@@ -111,10 +108,27 @@ function MembershipCard({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
           </div>
-          <div>
-            <Label className="text-xs">Notes</Label>
+          {/*
+            Offered only where it means something. "Leaves for good" on an
+            ongoing membership is a control with nothing to do — the departure
+            has to exist before it can be final. It is the faction's form of a
+            subplot's *resolves here* and a character's *came back*: the writer
+            states what happened, and the check has nothing to report.
+          */}
+          {membership.endEventId && (
+            <label className="mt-1 flex items-center gap-2 text-xs text-[hsl(var(--muted-foreground))]">
+              <input
+                type="checkbox"
+                checked={!!membership.leavesForGood}
+                onChange={(e) => updateFactionMembership(membership.id, { leavesForGood: e.target.checked })}
+                className="h-3.5 w-3.5 accent-[hsl(var(--primary))]"
+              />
+              They leave for good — no allegiance follows this
+            </label>
+          )}
+          <Field label="Notes" labelClassName="text-xs">
             <Textarea
               className="mt-1 text-xs resize-none"
               rows={2}
@@ -122,7 +136,7 @@ function MembershipCard({
               placeholder="Notes about this membership…"
               onChange={(e) => updateFactionMembership(membership.id, { notes: e.target.value })}
             />
-          </div>
+          </Field>
           <Button
             size="sm"
             variant="destructive"
@@ -208,7 +222,7 @@ export function FactionsTab({ character }: { character: Character }) {
       )}
 
       {gate.active ? null : adding ? (
-        <Select onValueChange={handleJoin}>
+        <Select onValueChange={handleJoin} value="">
           <SelectTrigger className="text-xs h-8">
             <SelectValue placeholder="Choose faction…" />
           </SelectTrigger>

@@ -5,6 +5,8 @@ import { resetDB } from './helpers/reset'
 import { settleNav } from './helpers/nav'
 import { waitForMapReady } from './helpers/map'
 
+import { IMAGE_URL } from './helpers/imageUrl'
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const MAIN_MAP = path.resolve(__dirname, 'map_example/main_map.jpg')
 
@@ -20,13 +22,12 @@ const MAIN_MAP = path.resolve(__dirname, 'map_example/main_map.jpg')
  */
 
 // Served by the dev server itself, so it genuinely loads and measures.
-const IMAGE = 'http://localhost:5173/favicon.png'
+const IMAGE = IMAGE_URL
 
 const lightbox = (page: import('@playwright/test').Page) => page.getByTestId('image-lightbox')
 
 test.describe('Opening images full size', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Gallery World')
@@ -35,8 +36,19 @@ test.describe('Opening images full size', () => {
   })
 
   /** Attach an image through the link-by-URL popover the detail screens expose. */
+  /**
+   * `triggerLabel` is the control that opens the URL popover. The character
+   * portrait's is inside its menu now (CH-5) — two 10px icons on the avatar's
+   * bottom edge became one named trigger — so a menu label is opened first and
+   * "Link by URL" chosen inside it.
+   */
   async function linkImage(page: import('@playwright/test').Page, triggerLabel: string) {
-    await page.getByRole('button', { name: triggerLabel }).click()
+    if (triggerLabel.startsWith('Portrait for ')) {
+      await page.getByRole('button', { name: triggerLabel }).click()
+      await page.getByRole('menuitem', { name: 'Link by URL' }).click()
+    } else {
+      await page.getByRole('button', { name: triggerLabel }).click()
+    }
     await page.getByPlaceholder('https://…/image.png').fill(IMAGE)
     await page.getByRole('button', { name: 'Add linked image' }).click()
     await expect(page.locator(`img[src="${IMAGE}"]`).first()).toBeVisible()
@@ -51,13 +63,15 @@ test.describe('Opening images full size', () => {
     await page.getByText('Aria').first().click()
     await expect(page).toHaveURL(/#\/worlds\/[^/]+\/characters\/[^/]+/)
 
-    await linkImage(page, 'Link portrait by URL')
+    await linkImage(page, 'Portrait for Aria')
 
     // Nothing is showing until it is asked for — the other half of the assertion
     // below, so neither can pass vacuously.
     await expect(lightbox(page)).toHaveCount(0)
 
-    await page.getByRole('button', { name: 'Aria' }).click()
+    // Exact: the header also carries "More actions for Aria" now (CH-4), and a
+    // substring match would find both.
+    await page.getByRole('button', { name: 'Aria', exact: true }).click()
     await expect(lightbox(page)).toBeVisible()
     // The picture in the overlay is the stored one, not a placeholder.
     await expect(lightbox(page).locator(`img[src="${IMAGE}"]`)).toBeVisible()
@@ -73,7 +87,7 @@ test.describe('Opening images full size', () => {
     await page.getByPlaceholder('Character name').fill('Aria')
     await page.getByRole('button', { name: 'Add Character' }).last().click()
     await page.getByText('Aria').first().click()
-    await linkImage(page, 'Link portrait by URL')
+    await linkImage(page, 'Portrait for Aria')
 
     // On the detail screen the portrait is the subject, so it is itself the
     // control that opens it.
@@ -123,7 +137,7 @@ test.describe('Opening images full size', () => {
     await page.getByPlaceholder('Character name').fill('Frodo')
     await page.getByRole('button', { name: 'Add Character' }).last().click()
     await page.getByText('Frodo').first().click()
-    await linkImage(page, 'Link portrait by URL')
+    await linkImage(page, 'Portrait for Frodo')
 
     await page.getByRole('link', { name: /maps/i }).first().click()
     await settleNav(page)
@@ -148,9 +162,9 @@ test.describe('Opening images full size', () => {
     await page.getByPlaceholder('Chapter title').fill('One')
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
     await page.getByTitle('Open chapter detail').first().click()
-    await page.getByRole('main').getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill('The Departure')
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill('The Departure')
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
     await page.getByRole('link', { name: /timeline/i }).first().click()
     await settleNav(page)
     await page.getByTitle('The Departure', { exact: true }).click()

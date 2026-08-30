@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, MapPin, Package, Heart, HeartOff, Plus, Footprints, ExternalLink, Route, GripVertical, ArrowUp, ArrowDown } from 'lucide-react'
+import { useGate } from '@/db/hooks/ReadingGateContext'
+import { X, MapPin, Package, Heart, HeartOff, Plus, Footprints, ExternalLink, Route, GripVertical, ArrowUp, ArrowDown, User } from 'lucide-react'
+import { PanelHeader } from './PanelChrome'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
+import { Field, FieldName } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PortraitImage } from '@/components/PortraitImage'
 import { InheritedBadge } from '@/components/InheritedBadge'
@@ -13,6 +15,7 @@ import { useTravelModes } from '@/db/hooks/useTravelModes'
 import { useBestSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { useCharacterMovement, updateMovement } from '@/db/hooks/useMovements'
 import { useActiveEventId } from '@/store'
+import { snapshotFieldSyncKey } from '@/lib/snapshotFields'
 import type { Character, CharacterSnapshot, LocationMarker, MapLayer, Relationship } from '@/types'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -56,9 +59,12 @@ interface CharacterSnapshotPanelProps {
   allMarkers: LocationMarker[]
   allLayers: MapLayer[]
   allCharacters: Character[]
-  activeChapterTitle: string | null
+  activeMomentLabel: string | null
   worldId: string
   onClose: () => void
+  /** Whether the journey strip along the bottom of the map is showing (PAN-2). */
+  journeyShown: boolean
+  onToggleJourney: () => void
 }
 
 export function CharacterSnapshotPanel({
@@ -67,9 +73,11 @@ export function CharacterSnapshotPanel({
   allMarkers,
   allLayers,
   allCharacters,
-  activeChapterTitle,
+  activeMomentLabel,
   worldId,
   onClose,
+  journeyShown,
+  onToggleJourney,
 }: CharacterSnapshotPanelProps) {
   const activeEventId = useActiveEventId()
   const isInherited = !!snapshot && !!activeEventId && snapshot.eventId !== activeEventId
@@ -79,17 +87,48 @@ export function CharacterSnapshotPanel({
   const chapterSnapshots = useBestSnapshots(worldId, activeEventId)
   const movement = useCharacterMovement(character.id, activeEventId)
   const navigate = useNavigate()
+  /*
+    Reading mode. This panel had no gate at all, so a reader who opened a
+    character on the map could retype the author's status note, kill them off,
+    empty their pockets and reorder their journey — measured on a freshly
+    downloaded *Philosopher's Stone*, where typing in the Status box and tabbing
+    away wrote the snapshot to the database. The location panel beside it has
+    been gated all along; this one was simply missed.
+
+    Everything below still *shows* what is recorded — that is what a reader came
+    for — and offers no way to change it.
+  */
+  const readOnly = useGate().active
 
   // Local state for text fields (save on blur to avoid cursor jumping)
   const [statusNotes, setStatusNotes] = useState(snapshot?.statusNotes ?? '')
   const [inventoryNotes, setInventoryNotes] = useState(snapshot?.inventoryNotes ?? '')
   const [movementNotes, setMovementNotes] = useState(movement?.notes ?? '')
 
-  // Re-sync text fields when the character or chapter changes (not on every save)
+  /*
+    W-1: re-sync the text fields when the record being shown changes — and not
+    on every save, which is what the `id` in the key buys.
+
+    Keying on `[character.id, activeEventId]` alone was wrong in a way that put
+    prose in the store nobody typed. `snapshot` arrives from a `useLiveQuery`
+    keyed on the same event id, and that resolves a tick *after* the id changes,
+    so stepping the cursor ran this effect while the outgoing record was still
+    in hand: the field showed the previous scene's note, and because the
+    textarea saves on blur, the next blur wrote that note into the new scene.
+    It sat exactly one edit behind, every time, and arriving at the same scene
+    by a fresh page load showed something different.
+
+    Including the resolved record's own id makes the effect run again when the
+    query catches up, so the field ends on the record it is actually showing.
+    Saving an existing record keeps its id, so typing is still never clobbered
+    mid-edit; the one re-run it does add is the first save at a scene, which
+    re-syncs to the text just written.
+  */
+  const syncKey = snapshotFieldSyncKey(character.id, activeEventId, snapshot)
   useEffect(() => {
     setStatusNotes(snapshot?.statusNotes ?? '')
     setInventoryNotes(snapshot?.inventoryNotes ?? '')
-  }, [character.id, activeEventId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [syncKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setMovementNotes(movement?.notes ?? '')
@@ -130,7 +169,9 @@ export function CharacterSnapshotPanel({
 
   async function saveField(patch: Partial<Omit<CharacterSnapshot, 'id' | 'worldId' | 'characterId' | 'eventId' | 'createdAt' | 'updatedAt'>>) {
     if (!activeEventId) return
-    await upsertSnapshot({ ...baseData(), ...patch })
+    // `eventId` named even though `baseData()` sets it: every write that spreads
+    // has to say which scene it lands on. See `snapshotWriteScenes.test.ts`.
+    await upsertSnapshot({ ...baseData(), ...patch, eventId: activeEventId })
   }
 
   async function handleAliveToggle() {
@@ -142,13 +183,27 @@ export function CharacterSnapshotPanel({
   }
 
   async function handleAddInventory(itemId: string) {
-    // Remove from any other character's snapshot in this chapter first
+    /*
+      Take it out of whoever had it — **recorded at this moment**, not written
+      back over the scene where they last held it.
+
+      `useBestSnapshots` resolves each character's last known record at or before
+      the cursor, so for someone untouched since an earlier chapter it returns
+      that earlier row. Spreading it carried its `eventId`, so this erased the
+      previous holder's evidence of ever having had the item. Identical to the
+      fault the Current State tab had; found by grepping for the shape after
+      fixing that one.
+    */
     const others = chapterSnapshots.filter(
       (s) => s.characterId !== character.id && s.inventoryItemIds.includes(itemId)
     )
     await Promise.all(
-      others.map((s) =>
-        upsertSnapshot({ ...s, inventoryItemIds: s.inventoryItemIds.filter((id) => id !== itemId) })
+      others.map(({ id: _id, sortKey: _sortKey, createdAt: _createdAt, updatedAt: _updatedAt, ...held }) =>
+        upsertSnapshot({
+          ...held,
+          eventId: activeEventId!,
+          inventoryItemIds: held.inventoryItemIds.filter((id) => id !== itemId),
+        })
       )
     )
     const current = snapshot?.inventoryItemIds ?? []
@@ -163,20 +218,33 @@ export function CharacterSnapshotPanel({
   return (
     <div className="flex h-full w-[85vw] max-w-sm shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl sm:w-72 sm:max-w-none">
 
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-3">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-[hsl(var(--foreground))]">{character.name}</p>
-          {activeChapterTitle && (
-            <p className="text-[10px] text-[hsl(var(--muted-foreground))]">{activeChapterTitle}</p>
-          )}
-        </div>
-        <Button variant="ghost" size="icon" className="pw-tap h-7 w-7 shrink-0" aria-label="Close character panel" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
+      <PanelHeader
+        icon={User}
+        name={character.name}
+        kind="Character"
+        moment={activeMomentLabel}
+        closeLabel="Close character panel"
+        onClose={onClose}
+      />
 
       <div className="flex-1 overflow-y-auto">
+
+        {/*
+          PAN-2: the journey strip used to arrive with this panel and could only
+          be dismissed by deselecting the character, which closed the panel too.
+          It is a separate thing to keep or put away, so it is a separate
+          control — and it says which it will do.
+        */}
+        <div className="flex justify-end border-b border-[hsl(var(--border))] px-4 py-2">
+          <button
+            onClick={onToggleJourney}
+            aria-pressed={journeyShown}
+            className="flex items-center gap-1.5 rounded border border-[hsl(var(--border))] px-2 py-1 text-[11px] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent)/0.4)] hover:text-[hsl(var(--foreground))]"
+          >
+            <Route className="h-3 w-3" aria-hidden="true" />
+            {journeyShown ? 'Hide journey' : 'Show journey'}
+          </button>
+        </div>
 
         {/* Portrait */}
         <div className="flex justify-center border-b border-[hsl(var(--border))] p-4">
@@ -194,7 +262,7 @@ export function CharacterSnapshotPanel({
           {/* No chapter selected */}
           {!activeEventId && (
             <p className="text-xs italic text-[hsl(var(--muted-foreground))]">
-              Select an event from the timeline bar to view and edit state.
+              Select an event from the timeline bar to {readOnly ? 'view' : 'view and edit'} state.
             </p>
           )}
 
@@ -202,42 +270,62 @@ export function CharacterSnapshotPanel({
             <>
               {isInherited && <InheritedBadge className="self-start" />}
 
-              {/* Alive toggle */}
-              <button
-                onClick={handleAliveToggle}
-                className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                  (snapshot?.isAlive ?? true)
-                    ? 'bg-green-950/30 text-green-400 hover:bg-green-950/50'
-                    : 'bg-red-950/30 text-red-400 hover:bg-red-950/50'
-                }`}
-              >
-                {(snapshot?.isAlive ?? true)
+              {/* Alive — a toggle while writing, a badge while reading. */}
+              {(() => {
+                const alive = snapshot?.isAlive ?? true
+                const tone = alive
+                  ? 'bg-green-950/30 text-green-400'
+                  : 'bg-red-950/30 text-red-400'
+                const face = alive
                   ? <><Heart className="h-3.5 w-3.5" /> Alive</>
                   : <><HeartOff className="h-3.5 w-3.5" /> Deceased</>
-                }
-              </button>
+                return readOnly ? (
+                  <span className={`flex w-fit items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium ${tone}`}>
+                    {face}
+                  </span>
+                ) : (
+                  <button
+                    onClick={handleAliveToggle}
+                    className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${tone} ${
+                      alive ? 'hover:bg-green-950/50' : 'hover:bg-red-950/50'
+                    }`}
+                  >
+                    {face}
+                  </button>
+                )
+              })()}
 
-              {/* Status notes */}
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                  Status
-                </Label>
-                <Textarea
-                  className="resize-none text-xs"
-                  rows={3}
-                  placeholder="What is this character doing this chapter?"
-                  value={statusNotes}
-                  onChange={(e) => setStatusNotes(e.target.value)}
-                  onBlur={() => saveField({ statusNotes })}
-                />
-              </div>
+              {/* Status notes. Reading shows what was written, or nothing at
+                  all — an empty box invites typing into it. */}
+              {(!readOnly || statusNotes.trim()) && (
+                <Field label="Status" className="flex flex-col gap-1.5" labelClassName="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                  {readOnly ? (
+                    <p className="whitespace-pre-wrap text-xs text-[hsl(var(--foreground))]">{statusNotes}</p>
+                  ) : (
+                    <Textarea
+                      className="resize-none text-xs"
+                      rows={3}
+                      placeholder="What is this character doing in this scene?"
+                      value={statusNotes}
+                      onChange={(e) => setStatusNotes(e.target.value)}
+                      onBlur={() => saveField({ statusNotes })}
+                    />
+                  )}
+                </Field>
+              )}
 
               {/* Travel mode */}
-              {travelModes.length > 0 && (
-                <div className="flex flex-col gap-1.5">
-                  <Label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                    <Footprints className="h-3 w-3" /> Travel Mode
-                  </Label>
+              {travelModes.length > 0 && (readOnly
+                ? (snapshot?.travelModeId && (
+                  <div className="flex flex-col gap-1.5">
+                    <FieldName className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]"><Footprints className="h-3 w-3" /> Travel Mode</FieldName>
+                    <p className="text-xs text-[hsl(var(--foreground))]">
+                      {travelModes.find((m) => m.id === snapshot.travelModeId)?.name ?? 'None'}
+                    </p>
+                  </div>
+                ))
+                : (
+                <Field label={<><Footprints className="h-3 w-3" /> Travel Mode</>} className="flex flex-col gap-1.5" labelClassName="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
                   <Select
                     value={snapshot?.travelModeId ?? 'none'}
                     onValueChange={handleTravelMode}
@@ -252,8 +340,8 @@ export function CharacterSnapshotPanel({
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-              )}
+                </Field>
+              ))}
 
               {/* Current location (read-only — change by dragging on the map) */}
               <div>
@@ -279,9 +367,7 @@ export function CharacterSnapshotPanel({
 
               {/* Inventory */}
               <div className="flex flex-col gap-1.5">
-                <Label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                  <Package className="h-3 w-3" /> Inventory
-                </Label>
+                <FieldName className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]"><Package className="h-3 w-3" /> Inventory</FieldName>
 
                 {inventoryItems.length > 0 && (
                   <div className="flex flex-col gap-1">
@@ -294,19 +380,21 @@ export function CharacterSnapshotPanel({
                           fallbackClassName="h-5 w-5 rounded shrink-0"
                         />
                         <span className="flex-1 truncate text-xs">{item.name}</span>
-                        <button
-                          onClick={() => handleRemoveInventory(item.id)}
-                          className="text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
-                          title="Remove from inventory"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
+                        {!readOnly && (
+                          <button
+                            onClick={() => handleRemoveInventory(item.id)}
+                            className="text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
+                            title="Remove from inventory"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
                 )}
 
-                {availableItems.length > 0 && (
+                {!readOnly && availableItems.length > 0 && (
                   <Select onValueChange={handleAddInventory} value="">
                     <SelectTrigger className="h-8 text-xs">
                       <span className="flex items-center gap-1.5 text-[hsl(var(--muted-foreground))]">
@@ -321,16 +409,20 @@ export function CharacterSnapshotPanel({
                   </Select>
                 )}
 
-                {inventoryItems.length > 0 && (
-                  <Textarea
-                    className="resize-none text-xs"
-                    rows={2}
-                    placeholder="Inventory notes..."
-                    value={inventoryNotes}
-                    onChange={(e) => setInventoryNotes(e.target.value)}
-                    onBlur={() => saveField({ inventoryNotes })}
-                  />
-                )}
+                {inventoryItems.length > 0 && (readOnly
+                  ? inventoryNotes.trim() && (
+                    <p className="whitespace-pre-wrap text-xs text-[hsl(var(--muted-foreground))]">{inventoryNotes}</p>
+                  )
+                  : (
+                    <Textarea
+                      className="resize-none text-xs"
+                      rows={2}
+                      placeholder="Inventory notes..."
+                      value={inventoryNotes}
+                      onChange={(e) => setInventoryNotes(e.target.value)}
+                      onBlur={() => saveField({ inventoryNotes })}
+                    />
+                  ))}
               </div>
             </>
           )}
@@ -355,9 +447,10 @@ export function CharacterSnapshotPanel({
 
                     return (
                       <div key={`${markerId}-${idx}`} className="flex items-center gap-1 rounded-md bg-[hsl(var(--muted))] px-2 py-1">
-                        <GripVertical className="h-3 w-3 shrink-0 text-[hsl(var(--muted-foreground))]" />
+                        {!readOnly && <GripVertical className="h-3 w-3 shrink-0 text-[hsl(var(--muted-foreground))]" />}
                         <MapPin className="h-3 w-3 shrink-0 text-[hsl(var(--muted-foreground))]" />
                         <span className="flex-1 truncate text-xs">{marker?.name ?? markerId}</span>
+                        {!readOnly && (
                         <div className="flex gap-0.5">
                           <button
                             onClick={() => {
@@ -384,14 +477,21 @@ export function CharacterSnapshotPanel({
                             <ArrowDown className="h-3 w-3" />
                           </button>
                         </div>
+                        )}
                       </div>
                     )
                   })}
                 </div>
 
                 {/* Travel mode for this movement */}
-                {travelModes.length > 0 && (
-                  <Select
+                {travelModes.length > 0 && (readOnly
+                  ? mov.travelModeId && (
+                    <p className="flex items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))]">
+                      <Footprints className="h-3 w-3" aria-hidden="true" />
+                      {travelModes.find((m) => m.id === mov.travelModeId)?.name}
+                    </p>
+                  )
+                  : <Select
                     value={mov.travelModeId ?? 'none'}
                     onValueChange={(v) =>
                       updateMovement(character.id, evId, { travelModeId: v === 'none' ? null : v })
@@ -413,14 +513,20 @@ export function CharacterSnapshotPanel({
                 )}
 
                 {/* Journey notes */}
-                <Textarea
-                  className="resize-none text-xs"
-                  rows={2}
-                  placeholder="Reason for travel, notes on the journey…"
-                  value={movementNotes}
-                  onChange={(e) => setMovementNotes(e.target.value)}
-                  onBlur={() => updateMovement(character.id, evId, { notes: movementNotes })}
-                />
+                {readOnly ? (
+                  movementNotes.trim() && (
+                    <p className="whitespace-pre-wrap text-xs text-[hsl(var(--muted-foreground))]">{movementNotes}</p>
+                  )
+                ) : (
+                  <Textarea
+                    className="resize-none text-xs"
+                    rows={2}
+                    placeholder="Reason for travel, notes on the journey…"
+                    value={movementNotes}
+                    onChange={(e) => setMovementNotes(e.target.value)}
+                    onBlur={() => updateMovement(character.id, evId, { notes: movementNotes })}
+                  />
+                )}
               </div>
             )
           })()}
@@ -446,8 +552,13 @@ export function CharacterSnapshotPanel({
         </div>
       </div>
 
-      {/* Footer: link to full character view */}
-      <div className="border-t border-[hsl(var(--border))] p-3">
+      {/*
+        Footer. Where the other panels put a delete, this puts the way to the
+        screen that owns the character — deliberately, and it is the contract
+        rather than a gap in it (PAN-1). A marker, a route and a region belong
+        to the map and die with it; a character does not.
+      */}
+      <div className="shrink-0 border-t border-[hsl(var(--border))] px-4 py-3">
         <Button
           variant="outline"
           size="sm"

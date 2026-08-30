@@ -15,6 +15,7 @@ import { useEventRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapsho
 import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
 import { db } from '@/db/database'
 import { markJournalDiscontinuity } from '@/db/hooks/useOperations'
+import { INVALID_JSON_MESSAGE, stripCodeFence } from '@/lib/codeFence'
 import type { Chapter, WorldEvent, CharacterSnapshot, RelationshipSnapshot, Faction, FactionMembership } from '@/types'
 
 // ── Types for the LLM response ────────────────────────────────────────────────
@@ -289,7 +290,7 @@ MY CHAPTER CONTENT
 
 // ── Validation + import ───────────────────────────────────────────────────────
 
-function validateResponse(
+export function validateResponse(
   raw: string,
   worldId: string,
   timelineId: string,
@@ -299,7 +300,7 @@ function validateResponse(
   relationshipIds: Set<string>,
 ): ChapterAIResponse {
   let parsed: unknown
-  try { parsed = JSON.parse(raw) } catch { throw new Error('Could not parse JSON. Make sure you copied the full response.') }
+  try { parsed = JSON.parse(stripCodeFence(raw)) } catch { throw new Error(INVALID_JSON_MESSAGE) }
 
   if (typeof parsed !== 'object' || parsed === null) throw new Error('Response is not a JSON object.')
   const d = parsed as Record<string, unknown>
@@ -315,19 +316,19 @@ function validateResponse(
   if (!Array.isArray(d.events)) throw new Error('Missing "events" array.')
   for (const ev of d.events as Record<string, unknown>[]) {
     if (typeof ev.id !== 'string') throw new Error('Each event must have an id string.')
-    if (ev.worldId !== worldId) throw new Error(`Event "${ev.title}" has wrong worldId.`)
-    if (ev.chapterId !== ch.id) throw new Error(`Event "${ev.title}" chapterId must match chapter.id.`)
+    if (ev.worldId !== worldId) throw new Error(`Scene "${ev.title}" has wrong worldId.`)
+    if (ev.chapterId !== ch.id) throw new Error(`Scene "${ev.title}" chapterId must match chapter.id.`)
     if (ev.locationMarkerId != null && !markerIds.has(ev.locationMarkerId as string)) {
-      throw new Error(`Event "${ev.title}" references unknown locationMarkerId "${ev.locationMarkerId}".`)
+      throw new Error(`Scene "${ev.title}" references unknown locationMarkerId "${ev.locationMarkerId}".`)
     }
     if (Array.isArray(ev.involvedCharacterIds)) {
       for (const cid of ev.involvedCharacterIds as string[]) {
-        if (!characterIds.has(cid)) throw new Error(`Event "${ev.title}" references unknown characterId "${cid}".`)
+        if (!characterIds.has(cid)) throw new Error(`Scene "${ev.title}" references unknown characterId "${cid}".`)
       }
     }
     if (Array.isArray(ev.involvedItemIds)) {
       for (const iid of ev.involvedItemIds as string[]) {
-        if (!itemIds.has(iid)) throw new Error(`Event "${ev.title}" references unknown itemId "${iid}".`)
+        if (!itemIds.has(iid)) throw new Error(`Scene "${ev.title}" references unknown itemId "${iid}".`)
       }
     }
   }

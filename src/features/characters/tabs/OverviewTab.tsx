@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Check, X } from 'lucide-react'
 import type { Character, InWorldDate } from '@/types'
 import { updateCharacter } from '@/db/hooks/useCharacters'
@@ -8,7 +9,7 @@ import { formatInWorldDate, dateToDayNumber } from '@/lib/calendar'
 import { InWorldDatePicker } from '@/components/InWorldDatePicker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Field, FieldName } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 
 interface OverviewTabProps {
@@ -38,27 +39,70 @@ export function OverviewTab({ character }: OverviewTabProps) {
   }
 
   if (!editing) {
+    /*
+      CH-1 was filed as "the Overview shows the name and biography only —
+      aliases, colour and birth date live behind Edit". Measured, two of the
+      three were already here: aliases rendered as "Also known as", and the
+      colour was the dot beside the name. What was true is the birth date, which
+      the read view dropped whenever the world had no calendar — the value was
+      stored, and the screen said nothing at all about it. A read view may omit
+      a field that is unset; it may not omit one that is set.
+
+      So: the birth date is shown either way, formatted where a calendar can
+      name the month and raw where none exists, and the colour is a labelled row
+      rather than a bare dot that says nothing about what the colour is *for*.
+
+      Aliases moved the other way. They are identity, they were already in the
+      page header beside the portrait, and repeating them here is the same
+      mistake as CH-2 one field over — so the header owns name and aliases, and
+      this tab owns everything else.
+
+      Absent rows still mean "unset" — no "Born: —" here. That is X-4's rule 3
+      and X-14's finding about the ambiguous em-dash, and a row per unset field
+      on every character would cost far more than it tells.
+    */
+    const born = character.birthDate
+      ? (calendar
+          ? formatInWorldDate(calendar, dateToDayNumber(calendar, character.birthDate))
+          // No calendar to name the month, so the stored numbers stand in — and
+          // `month` is 0-based in storage, which no reader should have to know.
+          : `year ${character.birthDate.year}, month ${character.birthDate.month + 1}, day ${character.birthDate.day}`)
+      : null
+
     return (
       <div className="flex flex-col gap-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            {character.color && (
-              <div
-                className="h-3.5 w-3.5 rounded-full shrink-0 border border-black/20"
-                style={{ background: character.color }}
-              />
+        {/* CH-2: the name used to be repeated here as a heading, directly under
+            the tabs and a few pixels below the same name in the page header. */}
+        <div className="flex items-start justify-between gap-3">
+          <dl className="flex min-w-0 flex-col gap-1.5 text-xs">
+            {born && (
+              <div className="flex gap-2">
+                <dt className="shrink-0 text-[hsl(var(--muted-foreground))]">Born</dt>
+                <dd className="text-[hsl(var(--foreground))]">{born}</dd>
+              </div>
             )}
-            <div>
-              <h3 className="text-base font-semibold text-[hsl(var(--foreground))]">{character.name}</h3>
-              {character.aliases.length > 0 && (
-                <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                  Also known as: {character.aliases.join(', ')}
-                </p>
-              )}
-            </div>
-          </div>
+            {/*
+              The author's own field, and it was the first line of the page — a
+              reader opening a character to remember who they are met "Colour ●
+              on the map and the Arc grid" above the description they came for.
+              It says where *this app* draws them, which is a fact about the
+              tool rather than about the person.
+            */}
+            {character.color && !gate.active && (
+              <div className="flex gap-2">
+                <dt className="shrink-0 text-[hsl(var(--muted-foreground))]">Colour</dt>
+                <dd className="flex items-center gap-1.5 text-[hsl(var(--foreground))]">
+                  <span
+                    className="h-3 w-3 shrink-0 rounded-full border border-black/20"
+                    style={{ background: character.color }}
+                  />
+                  <span className="text-[hsl(var(--muted-foreground))]">on the map and the Arc grid</span>
+                </dd>
+              </div>
+            )}
+          </dl>
           {!gate.active && (
-            <Button size="sm" variant="outline" onClick={() => {
+            <Button size="sm" variant="outline" className="shrink-0" onClick={() => {
               setName(character.name)
               setDescription(character.description)
               setAliases(character.aliases.join(', '))
@@ -70,11 +114,6 @@ export function OverviewTab({ character }: OverviewTabProps) {
             </Button>
           )}
         </div>
-        {calendar && character.birthDate && (
-          <p className="text-xs text-[hsl(var(--muted-foreground))]">
-            Born {formatInWorldDate(calendar, dateToDayNumber(calendar, character.birthDate))}
-          </p>
-        )}
         {character.description ? (
           <p className="text-sm text-[hsl(var(--muted-foreground))] whitespace-pre-wrap">{character.description}</p>
         ) : (
@@ -86,16 +125,13 @@ export function OverviewTab({ character }: OverviewTabProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1.5">
-        <Label>Name</Label>
+      <Field label="Name" className="flex flex-col gap-1.5">
         <Input value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label>Aliases (comma-separated)</Label>
+      </Field>
+      <Field label="Aliases (comma-separated)" className="flex flex-col gap-1.5">
         <Input value={aliases} onChange={(e) => setAliases(e.target.value)} placeholder="e.g. The Shadow, Lord of Nothing" />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label>Arc colour</Label>
+      </Field>
+      <Field label="Arc colour" className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
           <input
             type="color"
@@ -116,21 +152,32 @@ export function OverviewTab({ character }: OverviewTabProps) {
             <span className="text-xs text-[hsl(var(--muted-foreground))] italic">No colour set</span>
           )}
         </div>
-      </div>
+      </Field>
       <div className="flex flex-col gap-1.5">
-        <Label>Birth date</Label>
+        <FieldName>Birth date</FieldName>
         {calendar ? (
           <InWorldDatePicker calendar={calendar} value={birthDate} onChange={setBirthDate} setLabel="Set birth date" />
         ) : (
-          <p className="text-xs italic text-[hsl(var(--muted-foreground))]">
-            Enable a calendar in world settings to record a birth date and compute age.
-          </p>
+          /* X-4 rule 2: a birth date needs a calendar, which cannot be made
+             from here — so name the screen and go there, rather than naming it
+             and leaving the reader to find it (LP-3). */
+          <div className="flex flex-col items-start gap-1.5">
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">
+              A birth date needs an in-world calendar, so PlotWeave knows what a
+              date means and can work out an age.
+            </p>
+            <Link
+              to={`/worlds/${character.worldId}/settings`}
+              className="pw-tap inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
+            >
+              Open World settings
+            </Link>
+          </div>
         )}
       </div>
-      <div className="flex flex-col gap-1.5">
-        <Label>Description</Label>
+      <Field label="Description" className="flex flex-col gap-1.5">
         <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} />
-      </div>
+      </Field>
       <div className="flex gap-2">
         <Button size="sm" onClick={save} disabled={!name.trim()}>
           <Check className="h-3.5 w-3.5" /> Save

@@ -1,8 +1,9 @@
 import { useState, useRef, type KeyboardEvent } from 'react'
-import { X, Eye } from 'lucide-react'
+import { X, Eye, MapPin } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Field, FieldName } from '@/components/ui/field'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -10,6 +11,7 @@ import type { EventStatus } from '@/types'
 import { EVENT_STATUSES, eventStatusConfig } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
 import { createEvent } from '@/db/hooks/useTimeline'
+import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useCharacters } from '@/db/hooks/useCharacters'
 
 interface AddEventDialogProps {
@@ -28,11 +30,13 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
   const [status, setStatus] = useState<EventStatus>('draft')
+  const [locationMarkerId, setLocationMarkerId] = useState<string | null>(null)
   const [povCharacterId, setPovCharacterId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const tagInputRef = useRef<HTMLInputElement>(null)
 
   const characters = useCharacters(worldId)
+  const markers = useAllLocationMarkers(worldId)
   const availableChars = characters.filter((c) => !involvedIds.includes(c.id))
   const selectedChars = characters.filter((c) => involvedIds.includes(c.id))
 
@@ -64,6 +68,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
     setTags([])
     setTagInput('')
     setStatus('draft')
+    setLocationMarkerId(null)
     setPovCharacterId(null)
   }
 
@@ -77,7 +82,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
       timelineId,
       title: title.trim(),
       description: description.trim(),
-      locationMarkerId: null,
+      locationMarkerId,
       involvedCharacterIds: involvedIds,
       involvedItemIds: [],
       tags,
@@ -98,21 +103,20 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Add Event</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Add Scene</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <Label>Title</Label>
-            <Input placeholder="Event title" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+            <Label htmlFor="event-title">Title</Label>
+            <Input id="event-title" placeholder="Scene title" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label>Description</Label>
-            <Textarea placeholder="What happened..." value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
+            <Label htmlFor="event-description">Description</Label>
+            <Textarea id="event-description" placeholder="What happened..." value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
           </div>
 
           {characters.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              <Label>Characters involved</Label>
+            <Field label="Characters involved" className="flex flex-col gap-1.5">
               {selectedChars.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-1">
                   {selectedChars.map((c) => (
@@ -126,7 +130,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
                 </div>
               )}
               {availableChars.length > 0 && (
-                <Select onValueChange={addCharacter}>
+                <Select onValueChange={addCharacter} value="">
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="+ Add character…" />
                   </SelectTrigger>
@@ -137,12 +141,46 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
                   </SelectContent>
                 </Select>
               )}
-            </div>
+            </Field>
+          )}
+
+          {/*
+            W23-5: the field three of the newest features depend on was not
+            offered where a scene is made.
+
+            The continuity checker's `scene-cast-elsewhere` compares it against
+            the cast, the Writer's Brief names it, and the map reads it — and a
+            writer who did the obvious thing, filling in this dialog, ended up
+            with a book where none of that could answer, and no screen said why.
+            Setting it meant going to chapter detail, expanding the scene,
+            clicking `+ Location` and picking: four clicks per scene, plus the
+            navigation.
+
+            Withheld when the world has no map, on the same rule as everywhere
+            else: a place is a pin, so it only exists on a map that already
+            exists (DEC/W19-3).
+          */}
+          {markers.length > 0 && (
+            <Field label={<><MapPin className="h-3.5 w-3.5" /> Setting</>} className="flex flex-col gap-1.5" labelClassName="flex items-center gap-1">
+              <Select
+                value={locationMarkerId ?? '__none__'}
+                onValueChange={(v) => setLocationMarkerId(v === '__none__' ? null : v)}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Nowhere in particular…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__" className="text-xs italic text-[hsl(var(--muted-foreground))]">Nowhere in particular</SelectItem>
+                  {markers.map((m) => (
+                    <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
           )}
 
           {characters.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              <Label className="flex items-center gap-1"><Eye className="h-3.5 w-3.5" /> Point of View</Label>
+            <Field label={<><Eye className="h-3.5 w-3.5" /> Point of View</>} className="flex flex-col gap-1.5" labelClassName="flex items-center gap-1">
               <Select
                 value={povCharacterId ?? '__none__'}
                 onValueChange={(v) => setPovCharacterId(v === '__none__' ? null : v)}
@@ -154,7 +192,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
                   <SelectItem value="__none__" className="text-xs italic text-[hsl(var(--muted-foreground))]">No POV character</SelectItem>
                   {selectedChars.length > 0 && (
                     <SelectGroup>
-                      <SelectLabel className="text-[10px] uppercase tracking-wide">In this event</SelectLabel>
+                      <SelectLabel className="text-[10px] uppercase tracking-wide">In this scene</SelectLabel>
                       {selectedChars.map((c) => (
                         <SelectItem key={c.id} value={c.id} className="text-xs">
                           <span className="flex items-center gap-1.5">
@@ -180,11 +218,11 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
                   )}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
           )}
 
           <div className="flex flex-col gap-1.5">
-            <Label>Tags</Label>
+            <Label htmlFor="event-tags">Tags</Label>
             <div
               className="flex flex-wrap items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 py-1.5 min-h-[2.25rem] cursor-text"
               onClick={() => tagInputRef.current?.focus()}
@@ -199,6 +237,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
               ))}
               <input
                 ref={tagInputRef}
+                id="event-tags"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={handleTagKeyDown}
@@ -209,8 +248,8 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
             </div>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label>Status</Label>
+          <div className="flex flex-col gap-1.5" role="group" aria-labelledby="event-status-label">
+            <FieldName id="event-status-label">Status</FieldName>
             <div className="flex gap-1">
               {EVENT_STATUSES.map((s) => (
                 <button
@@ -234,7 +273,7 @@ export function AddEventDialog({ open, onOpenChange, worldId, chapterId, timelin
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={!title.trim() || saving}>
-              {saving ? 'Saving...' : 'Add Event'}
+              {saving ? 'Saving...' : 'Add Scene'}
             </Button>
           </DialogFooter>
         </form>

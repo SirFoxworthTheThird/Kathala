@@ -28,7 +28,6 @@ function dbSnapshot(page: Page) {
 test('replace an existing map image and rescale its locations', async ({ page }) => {
   test.slow() // the maps view mounts a Leaflet canvas
 
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Aethel')

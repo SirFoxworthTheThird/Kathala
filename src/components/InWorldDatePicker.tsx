@@ -26,10 +26,16 @@ export function InWorldDatePicker({ calendar, value, onChange, setLabel = 'Set d
     )
   }
 
-  const monthLen = Math.max(1, Math.floor(calendar.months[value.month]?.days ?? 30))
+  const month = calendar.months[value.month]
+  const monthLen = Math.max(1, Math.floor(month?.days ?? 30))
+  // A single day outside the months has no day number to pick — "Midyear's Day"
+  // is the whole of the date. The clamp below already forced it to 1; the field
+  // was just a spinner that could not spin.
+  const bare = !!month?.intercalary && monthLen === 1
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {!bare && (
       <Input
         className="h-8 w-16 text-xs"
         type="number"
@@ -42,6 +48,7 @@ export function InWorldDatePicker({ calendar, value, onChange, setLabel = 'Set d
           onChange({ ...value, day })
         }}
       />
+      )}
       <select
         className="h-8 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 text-xs text-[hsl(var(--foreground))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
         aria-label="Month"

@@ -1,10 +1,14 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
+import { BlockingReason } from '@/components/BlockingReason'
 import { useParams } from 'react-router-dom'
 import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter } from 'lucide-react'
 import { useTimelines, useChapters, useTimelineEvents, useWorldChapters, useWorldEvents, createTimeline, updateTimeline, deleteTimeline } from '@/db/hooks/useTimeline'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
+import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
 import { buildCombinedSequence, type CombinedOrder, type CombinedRow } from '@/lib/combinedTimeline'
 import { chaptersWithThread } from '@/lib/plotThreads'
+import { threadStrip } from '@/lib/threadStrip'
+import { describeChapterSpan } from '@/lib/chapterSpan'
 import { useWorld } from '@/db/hooks/useWorlds'
 import { useAppStore } from '@/store'
 import { computeInWorldDays } from '@/lib/inWorldTime'
@@ -20,6 +24,7 @@ import { PacingCurve } from './PacingCurve'
 import { TimelineRelationshipPanel } from './TimelineRelationshipPanel'
 import type { WorldEvent, Chapter, Timeline } from '@/types'
 import { useGate } from '@/db/hooks/ReadingGateContext'
+import { plural } from '@/lib/plural'
 
 // ── Chronological (in-world) order ──────────────────────────────────────────
 // Events flattened across chapters and ordered by their effective in-world day,
@@ -46,7 +51,7 @@ function ChronologicalList({ events, chapters, timelines, activeEventId, onSelec
   if (events.length === 0) {
     return (
       <p className="text-sm text-[hsl(var(--muted-foreground))]">
-        No events yet — add events to chapters to place them on the in-world timeline.
+        No scenes yet — add scenes to chapters to place them on the in-world timeline.
       </p>
     )
   }
@@ -77,7 +82,7 @@ function ChronologicalList({ events, chapters, timelines, activeEventId, onSelec
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-[hsl(var(--foreground))]">{ev.title || 'Untitled event'}</p>
+              <p className="truncate text-sm font-medium text-[hsl(var(--foreground))]">{ev.title || 'Untitled scene'}</p>
               <p className="truncate text-xs text-[hsl(var(--muted-foreground))]">{ch ? `Ch. ${ch.number} — ${ch.title}` : ''}</p>
             </div>
             {ev.isFlashback && (
@@ -106,7 +111,7 @@ function CombinedList({ rows, activeEventId, onSelect }: {
   if (rows.length === 0) {
     return (
       <p className="text-sm text-[hsl(var(--muted-foreground))]">
-        No events yet — add events across your timelines to see them in one sequence.
+        No scenes yet — add scenes across your timelines to see them in one sequence.
       </p>
     )
   }
@@ -133,7 +138,7 @@ function CombinedList({ rows, activeEventId, onSelect }: {
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-[hsl(var(--foreground))]">{ev.title || 'Untitled event'}</p>
+              <p className="truncate text-sm font-medium text-[hsl(var(--foreground))]">{ev.title || 'Untitled scene'}</p>
               <p className="flex items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))]">
                 <span
                   className="h-2 w-2 shrink-0 rounded-full"
@@ -171,10 +176,32 @@ export default function TimelineView() {
   const chapters = useChapters(isAll ? null : currentTimelineId)
   const timelineEvents = useTimelineEvents(isAll ? null : currentTimelineId)
   const worldChapters = useWorldChapters(isAll ? worldId ?? null : null)
+  /**
+   * The curve stops where the reader has got to.
+   *
+   * `useTimelineEvents` is deliberately ungated, and the curve used to draw all
+   * of it: anonymous circles, but beat markers carrying scene titles in their
+   * tooltips, and — once the curve gained an accessible data table — every
+   * scene title in the book named outright. At chapter one of the bundled
+   * Philosopher's Stone that meant "Quirrell and Voldemort" and "Gryffindor
+   * Wins the House Cup" were readable by a screen reader.
+   */
+  const pacingEvents = useMemo(
+    () => (gate.active ? timelineEvents.filter((e) => gate.hasReached(e.id)) : timelineEvents),
+    [timelineEvents, gate],
+  )
   const worldEvents = useWorldEvents(isAll ? worldId ?? null : null)
+  // TL-4: resolved once here rather than per chapter row — see `ChapterRow`.
+  const sceneTexts = useWorldSceneTexts(worldId ?? null)
+  const wordsByEvent = useMemo(
+    () => new Map(sceneTexts.map((t) => [t.eventId, t.wordCount ?? 0])),
+    [sceneTexts],
+  )
   const [viewMode, setViewMode] = useState<'narrative' | 'chronological'>('narrative')
   const threads = usePlotThreads(worldId ?? null)
   const [threadFilter, setThreadFilter] = useState<string | null>(null)
+  const [threadsExpanded, setThreadsExpanded] = useState(false)
+  const strip = threadStrip(threads, threadFilter, threadsExpanded)
   const setActiveEventId = useAppStore((s) => s.setActiveEventId)
   const activeEventId = useAppStore((s) => s.activeEventId)
   // The combined view's order is shared with the bottom bar's scope selector
@@ -232,7 +259,7 @@ export default function TimelineView() {
       <EmptyState
         icon={BookOpen}
         title="No timeline yet"
-        description="Create a timeline to start tracking chapters and events."
+        description="Create a timeline to start tracking chapters and scenes."
         action={
           <Button onClick={handleCreateTimeline}>
             <Plus className="h-4 w-4" /> Create Timeline
@@ -322,7 +349,7 @@ export default function TimelineView() {
             <>
               <span className="text-sm font-medium">All timelines</span>
               <span className="text-xs text-[hsl(var(--muted-foreground))]">
-                ({timelines.length} timelines · {worldChapters.length} chapters)
+                ({plural(timelines.length, 'timeline')} · {plural(worldChapters.length, 'chapter')})
               </span>
               {/* Shared with the bottom bar's scope selector (persisted). */}
               <div className="ml-2 flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-xs" role="group" aria-label="Combined order">
@@ -340,7 +367,7 @@ export default function TimelineView() {
                   aria-pressed={combinedOrder === 'chrono'}
                   className={cn('flex items-center gap-1 border-l border-[hsl(var(--border))] px-2 py-1 transition-colors',
                     combinedOrder === 'chrono' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
-                  title="In-world order — events by when they actually happen"
+                  title="In-world order — scenes by when they actually happen"
                 >
                   <Clock className="h-3.5 w-3.5" /> Chronological
                 </button>
@@ -351,7 +378,12 @@ export default function TimelineView() {
               <span className="text-sm font-medium">
                 {timelines.find((t) => t.id === currentTimelineId)?.name ?? 'Timeline'}
               </span>
-              <span className="text-xs text-[hsl(var(--muted-foreground))]">({chapters.length} chapters)</span>
+              {/* MT-4: a timeline can hold any chapter numbering — the shipped
+                  examples carry the book's own — so "10 chapters" could sit
+                  above a first row of Ch. 12 and read as missing data. */}
+              <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                ({describeChapterSpan(chapters.map((c) => c.number))})
+              </span>
               <div className="ml-2 flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-xs" role="group" aria-label="Timeline order">
                 <button
                   onClick={() => setViewMode('narrative')}
@@ -367,7 +399,7 @@ export default function TimelineView() {
                   aria-pressed={viewMode === 'chronological'}
                   className={cn('flex items-center gap-1 border-l border-[hsl(var(--border))] px-2 py-1 transition-colors',
                     viewMode === 'chronological' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
-                  title="In-world order — events by when they actually happen"
+                  title="In-world order — scenes by when they actually happen"
                 >
                   <Clock className="h-3.5 w-3.5" /> Chronological
                 </button>
@@ -386,6 +418,19 @@ export default function TimelineView() {
               <Button size="sm" variant="outline" onClick={handleCreateTimeline}>
                 <Layers className="h-4 w-4" /> New Timeline
               </Button>
+              {/* X-9, and the least guessable instance of it: a chapter belongs
+                  to one timeline, so both of these go dead on the merged view.
+                  The message names the tab that put you there — `isAll` is this
+                  view's own tab state, not the bottom bar's scope. */}
+              {/* No "make a timeline first" branch: `timelines.length === 0`
+                  returns the empty state above, so this header only ever renders
+                  where there are tabs to pick from. */}
+              <BlockingReason
+                checks={[{
+                  met: !!currentTimelineId && !isAll,
+                  need: 'one timeline — pick a tab above, since a chapter belongs to a single timeline',
+                }]}
+              />
               <Button size="sm" variant="outline" onClick={() => setAiChapterOpen(true)} disabled={!currentTimelineId || isAll}>
                 <Sparkles className="h-4 w-4" /> Generate with AI
               </Button>
@@ -413,7 +458,7 @@ export default function TimelineView() {
           <EmptyState
             icon={BookOpen}
             title="No chapters yet"
-            description="Add your first chapter to start tracking events and character states."
+            description="Add your first chapter to start tracking scenes and character states."
             action={
               <Button onClick={() => setAddChapterOpen(true)}>
                 <Plus className="h-4 w-4" /> Add Chapter
@@ -422,17 +467,38 @@ export default function TimelineView() {
           />
         ) : (
           <div className="flex flex-col gap-3">
-            <PacingCurve
-              worldId={worldId!}
-              events={timelineEvents}
-              chapters={chapters}
-              order={viewMode}
-              activeEventId={activeEventId}
-              onSelect={setActiveEventId}
-            />
+            {/*
+              An author's instrument, not a reader's. It plots dramatic tension
+              from ratings the reader cannot see, cannot set, and did not ask
+              for — and it is expensive where it can least be afforded: measured
+              on a 390px phone, the pacing chart and the thread strip together
+              pushed the first chapter row to y=436 of 844, so more than half
+              the screen was analytics before any chapter appeared. A reader
+              came for the chapters.
+            */}
+            {!gate.active && (
+              <PacingCurve
+                worldId={worldId!}
+                events={pacingEvents}
+                chapters={chapters}
+                order={viewMode}
+                activeEventId={activeEventId}
+                onSelect={setActiveEventId}
+              />
+            )}
             {viewMode === 'narrative' ? (
               <>
-                {threads.length > 0 && (
+                {/*
+                  The thread strip is the same kind of thing, and it carries a
+                  spoiler besides: the gate holds back a thread until its first
+                  scene is read, but the *name* then arrives whole. A blind
+                  reader run at chapter 7 of Dracula — where Lucy has sleepwalked
+                  once — was shown a chip reading "Lucy's Illness and Undeath",
+                  which is chapter 16. Filtering a timeline by subplot is a
+                  plotting move; the name is the author's shorthand for an arc,
+                  not a label the book has given the reader yet.
+                */}
+                {threads.length > 0 && !gate.active && (
                   <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter by plot thread">
                     <Filter className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
                     <button
@@ -445,7 +511,7 @@ export default function TimelineView() {
                     >
                       All threads
                     </button>
-                    {threads.map((t) => (
+                    {strip.shown.map((t) => (
                       <button
                         key={t.id}
                         onClick={() => setThreadFilter(threadFilter === t.id ? null : t.id)}
@@ -459,6 +525,17 @@ export default function TimelineView() {
                         {t.name}
                       </button>
                     ))}
+                    {/* TL-5: the strip used to wrap without limit, so it grew a
+                        row at a time as the writer added threads and took the
+                        space from the chapters below. */}
+                    {(strip.hidden > 0 || threadsExpanded) && (
+                      <button
+                        onClick={() => setThreadsExpanded((v) => !v)}
+                        className="rounded-full px-2 py-0.5 text-xs text-[hsl(var(--muted-foreground))] underline-offset-2 hover:underline hover:text-[hsl(var(--foreground))]"
+                      >
+                        {threadsExpanded ? 'Show fewer' : `+${strip.hidden} more`}
+                      </button>
+                    )}
                   </div>
                 )}
                 {(() => {
@@ -466,13 +543,30 @@ export default function TimelineView() {
                   if (shown.length === 0) {
                     return (
                       <p className="py-6 text-center text-sm text-[hsl(var(--muted-foreground))]">
-                        No chapters advance this thread yet — tag scenes with it on their event cards.
+                        No chapters advance this thread yet — tag scenes with it on their scene cards.
                       </p>
                     )
                   }
-                  return shown.map((ch) => (
-                    <ChapterRow key={ch.id} chapter={ch} threadFilter={threadFilter} />
-                  ))
+                  /*
+                    Neighbours come from the full chapter list, not `shown`: a
+                    thread filter changes what is on screen, not where a scene
+                    belongs, so an arrow at a chapter edge must move it to the
+                    real next chapter even when that one is filtered out.
+                  */
+                  const order = [...chapters].sort((a, b) => a.number - b.number)
+                  return shown.map((ch) => {
+                    const at = order.findIndex((c) => c.id === ch.id)
+                    return (
+                      <ChapterRow
+                        key={ch.id}
+                        chapter={ch}
+                        threadFilter={threadFilter}
+                        wordsByEvent={wordsByEvent}
+                        prevChapterId={at > 0 ? order[at - 1].id : null}
+                        nextChapterId={at >= 0 && at < order.length - 1 ? order[at + 1].id : null}
+                      />
+                    )
+                  })
                 })()}
               </>
             ) : (
@@ -523,7 +617,7 @@ export default function TimelineView() {
         open={!!deleteTarget}
         onOpenChange={(v) => { if (!v) setDeleteTarget(null) }}
         title={`Delete "${deleteTarget?.name ?? ''}"?`}
-        description="All chapters and events in this timeline will be permanently deleted."
+        description="All chapters and scenes in this timeline will be permanently deleted."
         onConfirm={doDeleteTimeline}
       />
     </div>

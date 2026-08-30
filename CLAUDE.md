@@ -63,18 +63,38 @@ and durable backup. It is entirely local: no network work is required for a muta
   the tombstone set (`src/lib/mergeTombstones.ts`). A record edited *after* its deletion is kept —
   keeping is recoverable, discarding later work is not — and its stale tombstone is dropped.
 
+**A resolved snapshot is not a record at this scene.** `useBestSnapshots`,
+`resolveSnapshot` and `useResolvedCharacterSnapshot` return each character's
+*last known* state at or before the cursor — a record whose `eventId` is often an
+**earlier** scene. Spreading one into `upsertSnapshot` carries that `eventId`,
+and the write lands on the earlier scene, rewriting an assertion about a moment
+the writer was not editing. That mistake has been made four times, in four
+places, and cost data every time: the checker's move fix, the Current State
+item hand-off, the map panel's inventory transfer, and the location panel's
+`id` collision. Each fix was one word.
+
+The two are the same TypeScript type and a spread is exactly the operation that
+hides the difference, so the guard is a rule rather than a signature:
+`src/lib/__tests__/snapshotWriteScenes.test.ts` requires every `upsertSnapshot`
+call that spreads to name its `eventId` — including the call sites that would
+have inherited it correctly, because a uniform rule is the only kind the
+dangerous case cannot hide inside. Drop the identity fields (`id`, `sortKey`,
+`createdAt`, `updatedAt`) when you spread, too: `upsertSnapshot` assigns the id
+after the spread, but a stray one is still a lie about which row you mean.
+
 ### State (`src/store/index.ts`)
 Single Zustand store (`useAppStore`) with slices for: active world/event/map, map drill-down history stack, playback, and UI panel open/close state. Only `activeWorldId`, `activeEventId`, `sidebarOpen`, `navPinned`, `barScope`, and `theme` are persisted (localStorage key: `plotweave-ui`).
 
 ### Snapshot model
-Per-chapter state is stored as explicit snapshot records — not computed:
-- `CharacterSnapshot` — location, inventory, alive status, travel mode per (character × chapter)
-- `ItemPlacement` — where an item is per (item × chapter)  
-- `LocationSnapshot` — status/notes per (location × chapter)
-- `ItemSnapshot` — condition/notes per (item × chapter)
-- `RelationshipSnapshot` — relationship state per (relationship × chapter)
+State is stored as explicit snapshot records — not computed. **Every snapshot keys on `eventId`, i.e. per scene, not per chapter** (check the interfaces in `src/types/`; this file said chapter for a long time and the code never did):
+- `CharacterSnapshot` — location, inventory, alive status, travel mode per (character × scene)
+- `ItemPlacement` — where an item is per (item × scene)
+- `LocationSnapshot` — status/notes per (location × scene)
+- `ItemSnapshot` — condition/notes per (item × scene)
+- `RelationshipSnapshot` — relationship state per (relationship × scene)
+- `MapRegionSnapshot` — region state per (region × scene)
 
-When a new chapter is created, it inherits all snapshots from the immediately preceding chapter in the same timeline.
+**Nothing is copied forward when a scene or chapter is created.** This is a delta/last-known model: a snapshot is written only by a direct user edit, and state at the cursor is resolved at read time by looking back to the most recent prior snapshot in global order (`sortKey` = `chapter.number + event.sortOrder / 1_000_000`, computed by `src/lib/sortKey.ts`). Do not confuse it with the `chapter.number * 10_000 + sortOrder` comparator that several views build in memory to sort a list they already hold: that one only has to be monotonic and is never compared against a stored key. `createEvent` performs no inheritance — see the note on it in `src/db/hooks/useTimeline.ts`, and the operation-journal section below, which depends on there being no bulk snapshot write.
 
 ### Map system (`src/features/maps/`)
 Uses Leaflet with `CRS.Simple` (pixel coordinates) for custom/fantasy image maps. Sub-maps are supported via `LinkedMapLayerId` on location markers; the map drill-down history is tracked as `mapLayerHistory: string[]` in Zustand. `LeafletMapCanvas.tsx` is the main map renderer. Map layers have optional `scalePixelsPerUnit` / `scaleUnit` for distance calculations.
@@ -93,7 +113,17 @@ Each feature folder is self-contained. Notable features:
 ### Testing
 Tests use Vitest + jsdom + `@testing-library/jest-dom`. Dexie is tested against `fake-indexeddb`. Tests live in `src/db/hooks/__tests__/` and `src/lib/__tests__/`. Coverage is scoped to `src/lib/**`, `src/store/**`, and `src/db/hooks/**`.
 
-Playwright e2e tests live in `e2e/*.spec.ts` (run with `npm run test:e2e`) and drive the real app in Chromium against a live dev server, resetting IndexedDB per test via `e2e/helpers/reset.ts`.
+Playwright e2e tests live in `e2e/*.spec.ts` (run with `npm run test:e2e`) and drive the real app in Chromium, resetting IndexedDB per test via `e2e/helpers/reset.ts`. They run against a **production build** (`vite build` + `vite preview`), four files at a time; use `npm run test:e2e:dev` to run against the dev server instead, which is slower but keeps hot reload while you are writing a spec. The dev server was costing roughly two-thirds of the suite's runtime, because each of the ~83 database resets is a full document load and Vite re-transformed the app for every one.
+
+The specs are type-checked by `tsc -b`, via `tsconfig.e2e.json`. Playwright itself
+strips types with esbuild and never checks them, so before that project existed a
+type error in a spec failed neither the build nor the run — it surfaced as a
+puzzling runtime failure minutes into a suite, or not at all, since a spec
+asserting on `undefined` still passes. Screenshots a spec saves go to
+`testInfo.outputPath` (the `shot` helper in `e2e/helpers/`), never to a tracked
+directory: two specs once wrote the same filenames into `screenshots/validation/`,
+so a green run left the working tree dirty and those images rode along in
+unrelated commits.
 
 **Testing rule:** every new behaviour needs a test. Prefer a Vitest unit test (pure logic in `src/lib/**`) or an integration test (real CRUD hooks against `fake-indexeddb`, as in `src/db/hooks/__tests__/`). When behaviour genuinely can't be exercised that way — because it depends on the browser/DOM (caret handling, autocomplete dropdowns, focus/blur timing, drag, canvas/Leaflet) or on a full multi-view user flow — add a Playwright e2e test in `e2e/` instead. Do not leave such behaviour untested with a note that it "needs a manual check"; write the e2e test.
 
@@ -115,17 +145,114 @@ Two habits, both cheap:
   Vacuity cannot satisfy both halves. `e2e/readingMode.spec.ts` does this for
   the settings sections and the reveal-all confirm.
 
+**A mutation run that fails to build proves nothing, and it fails in the shape
+of success.** Break the fix, and the suite prints failures — except the failures
+may be `Process from config.webServer was not able to start`, because the mutant
+did not compile. "2 failed" then means the tests never ran. It has happened
+repeatedly here: `false &&` on a used binding, a now-unused import, a
+`FolderInput ? …` that tripped `no-constant-condition`. So gate the run:
+
+```
+npx tsc -b && npx eslint <files> && echo MUTANT-OK && grep -n <the mutation>
+```
+
+Chained on `&&`, never `;` — an `echo` after a semicolon prints whatever
+happened. The `grep` is the other half: confirm the mutation actually landed in
+the file, since a `replace` whose target string has drifted silently changes
+nothing and the green run then reads as a surviving mutant.
+
+**Match the whole name a control is currently showing.** A wizard step indicator
+renders *every* step's label at once — "Step 1 of 4: Begin your story", "Step 2
+of 4: Add a character" — and marks only the current one `(current)`. So
+`getByLabel(/Step 2 of 4/)` matches from the moment the wizard appears, at step
+1. A spec built on it waited for nothing, reloaded into the middle of step 1's
+writes, and would have passed on a guide that had restarted from the beginning —
+the one thing it existed to detect. Vacuous in both directions, and it passed on
+the first run. When a set of labels is rendered together, assert on what
+distinguishes the live one.
+
 **Do not describe behaviour that is not there yet.** A comment or doc block
 saying a function is bounded, gated, or retried is a claim, and reviewers read
 it as one. Journal pruning carried a paragraph about a hard ceiling before the
 ceiling existed; the test caught it, but the comment would have outlived a
 weaker test. Write the claim after the code earns it.
 
+Two specific ways that goes wrong, both caught here more than once:
+
+- **A measurement you have not taken is not a measurement.** A comment reading
+  *"a 882-word scene rendered a 118px box"* was invented to sound concrete —
+  the word count came from a review, the pixels from nowhere. If a number is
+  worth writing down it is worth measuring, and the test is usually the right
+  place to keep it, since a number in a test goes red when it stops being true.
+- **Check the branch is reachable before you write it.** A reading-mode empty
+  state was written for the Manuscript screen, which reading mode redirects away
+  from; a "no picker possible" fallback was written for the Items section, which
+  is only offered when items exist. Both were unreachable, and both read as
+  behaviour to anyone reviewing them. Before adding a case for a state, find the
+  code that produces that state.
+
 **Verify at the commit you are shipping.** Long runs get overtaken: a suite
 started before the last three commits reports on none of them. Re-run at the
 tip before saying it passes, and read what the tools already wrote — Playwright
 saves a page snapshot to `test-results/…/error-context.md` that usually
 identifies the failure faster than reasoning about the error message does.
+
+**Nothing the suite reads may change while it runs.** The e2e run serves `dist/`
+from disk and reads the spec files from disk, so an `npm run build` or a spec
+edit part-way through does not queue up for the next run — it lands in the one
+already going, and every test after that point is reporting on a mixture of two
+states. It happened twice in one sitting: a rebuild produced two "failures" whose
+only symptom was `__pwdb` being undefined, and a spec edit produced one whose
+only symptom was a field the built app did not have yet. Both looked exactly like
+real regressions and neither was. If you have to change something under a run,
+stop the run — its result is no longer about any commit.
+
+**Scope a locator to what it is about.** A page-wide `getByText('First Scene')`
+or `getByRole('button', { name: /The gate opens/ })` is a bug waiting for a
+second match, and the app's own chrome supplies them: the time-cursor pill
+carries the active scene's title, the chapter bar carries every scene's title,
+and a per-row menu is named after its row. Four specs broke this way in one
+sitting — `calendar`, `corkboard`, `structure`, `imageLightbox` — and every one
+of them was ambiguous *before* the change that exposed it, passing only because
+nothing else happened to match yet. A failure that appears under one ordering
+and not another is this, not a flake. Reach through `page.getByRole('main')`,
+through the dialog, through the row — or pass `exact: true` where the name
+really is the whole name.
+
+The same trap works in reverse, from the app side: **giving a control a name
+another screen already uses** makes every unscoped lookup ambiguous *across a
+navigation*, which shows up as an intermittent rather than a strict-mode error.
+Renaming the first-run guide's step-1 button to "Create timeline" collided with
+the Timeline screen's own "Create Timeline" — `getByRole` matches names
+case-insensitively — and two specs began clicking the wizard while a navigation
+was still settling. Before naming a button, grep for the name.
+
+**An associated `<label>` replaces a button's accessible name, it does not add
+to it.** `<Field>` mints an id, puts it on the label's `htmlFor` and on the
+control — right for an `<input>`, whose content is not a name source, and a
+regression for a `<SelectTrigger>`, whose content is the value it is showing.
+Wrapping the location picker in a `Field` made it announce "Current Location"
+where it had announced "Château d'If": the field gained a name and the answer
+disappeared with it. Ten specs failed by looking those triggers up by their
+value, and they were right to — it is also a WCAG 2.5.3 failure, since the
+visible text was no longer in the accessible name and voice control could not
+ask for what was on screen.
+
+So a select names itself by *both*: `aria-labelledby="<labelId> <triggerId>"`,
+the self-reference splicing its own content back in, giving "Current Location
+Château d'If". `SelectTrigger` does this for any trigger inside a `Field` and
+stands back where the caller named the trigger itself. The same rule kills the
+reflex to "fix" an unnamed control with an `aria-label`: one that does not
+contain the visible text replaces correct text with different text.
+
+A label over something that is not a single control — a read-only value, a row
+of buttons — is `<FieldName>` (the same text as a `<span>`) or a `role="group"`
+with `aria-labelledby`. A `<label>` that names nothing is worse than a heading
+that names nothing: it promises a screen reader a control and does not produce
+one. `src/lib/__tests__/labelAssociation.test.ts` holds the source rule; the
+DOM half is `e2e/fieldLabels.spec.ts`, because source scanning cannot tell
+whether an id actually reaches a control — a mutant that stops `useFieldId`
+reading the context passes the scan and fails the specs.
 
 ### Documentation
 The illustrated user guide lives at `docs/GUIDE.md`, with screenshots in `docs/images/` (numbered, e.g. `24-manuscript.png`). `README.md` links to it.

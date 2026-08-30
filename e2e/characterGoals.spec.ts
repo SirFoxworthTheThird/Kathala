@@ -8,7 +8,6 @@ import { resetDB } from './helpers/reset'
 const settleNav = (page: Page) => page.mouse.move(700, 400).then(() => page.waitForTimeout(150))
 
 async function setupWorld(page: Page) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Inner Life')
@@ -34,9 +33,9 @@ async function setupWorld(page: Page) {
   await page.getByRole('button', { name: 'Add Chapter' }).last().click()
   await page.getByTitle('Open chapter detail').first().click()
   for (const title of ['The oath', 'The betrayal']) {
-    await main.getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill(title)
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await main.getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill(title)
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
   }
 }
 
@@ -74,7 +73,9 @@ test('goals can be added, scoped in time, and reach the Writer\'s Brief', async 
     const [chars, events, chapters] = await Promise.all([
       db.characters.toArray(), db.events.toArray(), db.chapters.toArray(),
     ])
-    const chapterNumber = new Map(chapters.map((c: { id: string; number: number }) => [c.id, c.number]))
+    const chapterNumber = new Map<string, number>(
+      chapters.map((c: { id: string; number: number }) => [c.id, c.number] as [string, number]),
+    )
     for (const ev of events) {
       await db.characterSnapshots.add({
         id: crypto.randomUUID(), worldId: chars[0].worldId, characterId: chars[0].id, eventId: ev.id,

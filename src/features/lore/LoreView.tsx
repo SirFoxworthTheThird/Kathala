@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Plus, BookMarked, Pencil, Trash2, Check, X, Eye, Sparkles, PanelLeft } from 'lucide-react'
 import {
   useLoreCategories, useLorePages,
@@ -15,6 +15,8 @@ import { EmptyState } from '@/components/EmptyState'
 import { PageHeader } from '@/components/PageHeader'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { GenerateLoreDialog } from './GenerateLoreDialog'
+import { Menu, MenuItem } from '@/components/ui/menu'
+import { relativeTime } from '@/lib/relativeTime'
 
 // ── Colour palette for categories ─────────────────────────────────────────────
 const CATEGORY_COLORS = [
@@ -22,13 +24,6 @@ const CATEGORY_COLORS = [
   '#f87171', '#f472b6', '#a78bfa', '#94a3b8',
 ]
 
-function relativeDate(ts: number): string {
-  const diff = Date.now() - ts
-  if (diff < 60_000) return 'just now'
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
-  return new Date(ts).toLocaleDateString()
-}
 
 // ── Category row ──────────────────────────────────────────────────────────────
 function CategoryRow({
@@ -103,31 +98,46 @@ function AddCategoryForm({ worldId, onDone }: { worldId: string; onDone: () => v
 
 // ── Page card ─────────────────────────────────────────────────────────────────
 function PageCard({
-  page, categoryColor, onOpen, onDelete,
+  page, categoryColor, to, onDelete, revealedAt,
 }: {
   page: { id: string; title: string; body: string; tags: string[]; updatedAt: number }
   categoryColor: string | null
-  onOpen: () => void
+  to: string
   onDelete: () => void
+  /** Where this page becomes visible, when it is gated (LORE-2). */
+  revealedAt?: string | null
 }) {
   const preview = page.body.slice(0, 120).replace(/[#*`_>-]/g, '').trim()
 
   return (
+    // The card carries a delete button, and a button inside an anchor is not
+    // valid, so the title is the link and its ::after covers the card. The
+    // whole card still opens the page on click, but there is one real link to
+    // Tab to and announce, and the delete button sits above the overlay.
     <div
-      className="group relative flex cursor-pointer flex-col gap-1.5 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3.5 hover:border-[hsl(var(--ring)/0.4)] transition-colors"
-      onClick={onOpen}
+      className="group relative flex flex-col gap-1.5 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3.5 hover:border-[hsl(var(--ring)/0.4)] transition-colors focus-within:border-[hsl(var(--ring))]"
     >
       {categoryColor && (
         <div className="absolute left-0 top-0 h-full w-1 rounded-l-lg" style={{ background: categoryColor }} />
       )}
       <div className="flex items-start justify-between gap-2 pl-2">
-        <h3 className="text-sm font-semibold text-[hsl(var(--foreground))] leading-snug">{page.title}</h3>
-        <button
-          className="shrink-0 opacity-0 group-hover:opacity-100 text-[hsl(var(--muted-foreground))] hover:text-destructive transition-all"
-          onClick={(e) => { e.stopPropagation(); onDelete() }}
+        <h3 className="text-sm font-semibold text-[hsl(var(--foreground))] leading-snug">
+          <Link to={to} className="after:absolute after:inset-0 after:rounded-lg focus:outline-none">
+            {page.title}
+          </Link>
+        </h3>
+        {/* LORE-1 was filed as the pattern the other rosters should copy. It is
+            not: at rest this was `opacity-0` with pointer events still live and
+            hit-testing to itself, at 14x14px, with no accessible name at all —
+            so on a phone, where there is no hover, a tap on apparently blank
+            card deleted the page. See `src/components/ui/menu.tsx`. */}
+        <Menu
+          label={`More actions for ${page.title}`}
+          className="relative z-10 shrink-0"
+          triggerClassName="h-7 w-7"
         >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
+          <MenuItem icon={Trash2} label="Delete page" danger onClick={onDelete} />
+        </Menu>
       </div>
       {preview && (
         <p className="pl-2 text-xs text-[hsl(var(--muted-foreground))] line-clamp-2 leading-relaxed">{preview}</p>
@@ -139,7 +149,24 @@ function PageCard({
         {page.tags.length > 3 && (
           <span className="text-[10px] text-[hsl(var(--muted-foreground))]">+{page.tags.length - 3}</span>
         )}
-        <span className="ml-auto text-[10px] text-[hsl(var(--muted-foreground))]">{relativeDate(page.updatedAt)}</span>
+        {/*
+          LORE-2: "Revealed at" is a headline feature and the card said nothing
+          about it, so a page held back to chapter 17 looked exactly like one
+          visible from the first page. Knowledge answers the same question with
+          "known by 4 / 45"; this is the lore version of that.
+        */}
+        {revealedAt && (
+          <span className="flex items-center gap-1 rounded bg-indigo-500/15 px-1.5 py-0.5 text-[10px] text-indigo-300">
+            <Eye className="h-2.5 w-2.5 shrink-0" aria-hidden="true" />
+            {revealedAt}
+          </span>
+        )}
+        {/*
+          LORE-3: an unlabelled date answers neither "which date" nor, in
+          `4/7/2026`, "which is the month". The word says which date it is; the
+          format question is answered in `relativeTime` for every caller.
+        */}
+        <span className="ml-auto text-[10px] text-[hsl(var(--muted-foreground))]">Edited {relativeTime(page.updatedAt)}</span>
       </div>
     </div>
   )
@@ -177,6 +204,22 @@ export default function LoreView() {
     worldEvents.map((ev) => [ev.id, (chapterNumberById.get(ev.chapterId) ?? 0) * 10_000 + ev.sortOrder])
   )
   const activeEventSortKey = activeEventId ? (eventSortKeyById.get(activeEventId) ?? Infinity) : Infinity
+
+  /*
+    LORE-2: which pages are held back, and until when. A gated page names the
+    chapter it opens at rather than the scene, because a chapter is the unit a
+    writer thinks in and a scene title on a card is one truncation too many.
+  */
+  const chapterById = new Map(worldChapters.map((c) => [c.id, c]))
+  const revealLabelById = new Map<string, string>()
+  for (const page of allPages) {
+    if (!page.visibleFromEventId) continue
+    const ev = worldEvents.find((e) => e.id === page.visibleFromEventId)
+    const ch = ev ? chapterById.get(ev.chapterId) : null
+    // A reveal point whose scene has been deleted is still a reveal point: the
+    // page is gated, and saying so vaguely beats saying nothing.
+    revealLabelById.set(page.id, ch ? `From ch. ${ch.number}` : 'Revealed later')
+  }
 
   const filteredPages = allPages.filter((p) => {
     if (activeCategoryId !== 'all' && p.categoryId !== activeCategoryId) return false
@@ -272,18 +315,20 @@ export default function LoreView() {
                     />
                   )}
                   {editingCategoryId !== cat.id && !gate.active && (
-                    <div className="flex shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex shrink-0 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto">
                       <button
+                        aria-label={`Rename category ${cat.name}`}
                         className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] p-0.5"
                         onClick={() => { setEditingCategoryId(cat.id); setEditingCategoryName(cat.name) }}
                       >
-                        <Pencil className="h-2.5 w-2.5" />
+                        <Pencil className="h-2.5 w-2.5" aria-hidden="true" />
                       </button>
                       <button
+                        aria-label={`Delete category ${cat.name}`}
                         className="text-[hsl(var(--muted-foreground))] hover:text-destructive p-0.5"
                         onClick={() => setDeleteCatId(cat.id)}
                       >
-                        <Trash2 className="h-2.5 w-2.5" />
+                        <Trash2 className="h-2.5 w-2.5" aria-hidden="true" />
                       </button>
                     </div>
                   )}
@@ -336,15 +381,28 @@ export default function LoreView() {
             <PanelLeft className="h-3.5 w-3.5" /> Categories
           </Button>
           <Input
-            placeholder="Search lore…"
+            aria-label="Search lore pages"
+          placeholder="Search lore…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="h-8 max-w-xs text-sm"
           />
-          {activeEventId && (
+          {/*
+            A writer's preview of their own gating — "show me lore as of this
+            scene" — so it is not offered while reading, where the real gate has
+            already filtered the list and the control can only ever be inert.
+
+            A blind reader run pressed it and nothing happened, in either
+            direction. That is the visible-but-inert shape this codebase files
+            as HB-2d, and it was worse than inert here: default-off with a
+            tooltip reading "Show all lore", it suggested to a reader that what
+            they were looking at was the *unfiltered* set, which is a claim
+            about spoilers and not a claim this screen can make.
+          */}
+          {activeEventId && !gate.active && (
             <button
               onClick={() => setTimelineFilter((v) => !v)}
-              title={timelineFilter ? 'Showing lore revealed up to this event' : 'Show all lore'}
+              title={timelineFilter ? 'Showing lore revealed up to this scene' : 'Show all lore'}
               className={`flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors ${
                 timelineFilter
                   ? 'border-[hsl(var(--ring)/0.4)] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
@@ -382,8 +440,9 @@ export default function LoreView() {
                   key={page.id}
                   page={page}
                   categoryColor={page.categoryId ? categoryColorMap.get(page.categoryId) ?? null : null}
-                  onOpen={() => navigate(`/worlds/${worldId}/lore/${page.id}`)}
+                  to={`/worlds/${worldId}/lore/${page.id}`}
                   onDelete={() => setDeletePageId(page.id)}
+                  revealedAt={revealLabelById.get(page.id) ?? null}
                 />
               ))}
             </div>

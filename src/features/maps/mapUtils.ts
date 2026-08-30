@@ -52,7 +52,16 @@ export interface PlaybackStep {
 }
 
 /** Position data returned by resolveCharacterPin — character is filled in by the caller. */
-export type ResolvedPinPosition = Pick<CharacterPin, 'x' | 'y' | 'inSubMap'>
+export type ResolvedPinPosition = Pick<CharacterPin, 'x' | 'y' | 'inSubMap'> & {
+  /**
+   * The layer the character is *actually* standing on, when that is not the one
+   * being viewed (**MW-7**). The pin says "here, but really below"; without this
+   * it could not say **where** below, and on a crowded pin every row read
+   * "(sub-map)" — the same word fourteen times, which is noise rather than
+   * information. Null when the character is on the layer being viewed.
+   */
+  subMapId: string | null
+}
 
 /**
  * Resolve the layer for a snapshot from its location marker.
@@ -104,7 +113,7 @@ export function resolveCharacterPin(
   const snapshotLayerId = resolvedSnapshotLayerId(snap, allMarkers)
   if (!snapshotLayerId) return null
   if (snapshotLayerId === currentLayerId) {
-    return { x: marker.x, y: marker.y, inSubMap: false }
+    return { x: marker.x, y: marker.y, inSubMap: false, subMapId: null }
   }
   let childLayerId = snapshotLayerId
   for (let depth = 0; depth < 20; depth++) {
@@ -119,7 +128,7 @@ export function resolveCharacterPin(
     )
     if (!linkMarker) return null
     if (parentLayerId === currentLayerId) {
-      return { x: linkMarker.x, y: linkMarker.y, inSubMap: true }
+      return { x: linkMarker.x, y: linkMarker.y, inSubMap: true, subMapId: snapshotLayerId }
     }
     childLayerId = parentLayerId
   }

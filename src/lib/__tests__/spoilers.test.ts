@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
-  firstAppearances, firstEventId, hiddenCount, isRevealed, readingProgress, revealed, sortKeysByEvent,
+  firstAppearances, firstEventId, hiddenCount, isRevealed, mapGatewayFirstAppearances, mapLayerRevealer, readingProgress,
+  revealed, sortKeysByEvent,
 } from '@/lib/spoilers'
 
 const chapters = new Map([['ch1', 1], ['ch2', 2], ['ch3', 3]])
@@ -71,10 +72,17 @@ describe('isRevealed', () => {
     expect(isRevealed('late', first, null)).toBe(true)
   })
 
-  it('shows an entity that never appears in the narration', () => {
-    // Standalone reference material has no moment to be revealed at; hiding it
-    // would make it permanently invisible rather than merely late.
-    expect(isRevealed('unreferenced', first, keys.get('e1')!)).toBe(true)
+  it('hides an entity that never appears in the narration', () => {
+    // A guard that fails open is not a guard: an entity nobody linked to a
+    // moment is indistinguishable from one the story has not reached, and
+    // showing it leaked Charlie Weasley and Godric's Hollow at chapter one.
+    expect(isRevealed('unreferenced', first, keys.get('e1')!)).toBe(false)
+  })
+
+  it('still shows it at all chapters, so nothing is permanently lost', () => {
+    // This is what makes hiding it affordable — the reveal-all control is one
+    // click away and brings back everything the story never placed.
+    expect(isRevealed('unreferenced', first, null)).toBe(true)
   })
 })
 
@@ -86,13 +94,14 @@ describe('revealed and hiddenCount', () => {
   ], keys)
 
   it('filters a list down to what has been met', () => {
-    expect(revealed(records, first, keys.get('e1')!).map((r) => r.id))
-      .toEqual(['early', 'unreferenced'])
+    expect(revealed(records, first, keys.get('e1')!).map((r) => r.id)).toEqual(['early'])
   })
 
   it('counts what is being held back, for the note that explains it', () => {
-    expect(hiddenCount(records, first, keys.get('e1')!)).toBe(1)
-    expect(hiddenCount(records, first, keys.get('e4')!)).toBe(0)
+    // 'late' has not been reached; 'unreferenced' is never placed at all.
+    expect(hiddenCount(records, first, keys.get('e1')!)).toBe(2)
+    // At the last moment only the unplaced one is still held back.
+    expect(hiddenCount(records, first, keys.get('e4')!)).toBe(1)
   })
 
   it('hides nothing at all chapters', () => {
@@ -149,5 +158,95 @@ describe('readingProgress', () => {
   it('counts to the highest chapter, not the number of events', () => {
     // Two events in chapter 1 must not make the book look two chapters long.
     expect(readingProgress('e2', events, chapters)!.total).toBe(3)
+  })
+})
+
+// ── mapLayerRevealer ──────────────────────────────────────────────────────────
+
+describe('mapGatewayFirstAppearances', () => {
+  const markers = [
+    { id: 'mk-city', mapLayerId: 'root', linkedMapLayerId: 'city' },
+    { id: 'mk-castle', mapLayerId: 'city', linkedMapLayerId: 'castle' },
+    { id: 'mk-room', mapLayerId: 'castle', linkedMapLayerId: null },
+    { id: 'mk-unreached', mapLayerId: 'root', linkedMapLayerId: 'elsewhere' },
+  ]
+
+  it('reveals the gateway when a location inside its sub-map first appears', () => {
+    const first = mapGatewayFirstAppearances(new Map([['mk-room', 3]]), markers)
+    expect(first.get('mk-castle')).toBe(3)
+  })
+
+  it('propagates the same reveal point through every ancestor gateway', () => {
+    const first = mapGatewayFirstAppearances(new Map([['mk-room', 3]]), markers)
+    expect(first.get('mk-city')).toBe(3)
+    expect(first.get('mk-castle')).toBe(3)
+  })
+
+  it('does not reveal gateways to maps the reader has not reached', () => {
+    const first = mapGatewayFirstAppearances(new Map([['mk-room', 3]]), markers)
+    expect(first.has('mk-unreached')).toBe(false)
+  })
+
+  it('keeps an earlier direct appearance of a gateway', () => {
+    const first = mapGatewayFirstAppearances(new Map([['mk-city', 1], ['mk-room', 3]]), markers)
+    expect(first.get('mk-city')).toBe(1)
+  })
+})
+
+describe('mapLayerRevealer', () => {
+  // Eriador holds Bree, which links down to the Bree street map; the Prancing
+  // Pony is a marker on that street map. This is the shape a scene set indoors
+  // has: the scene's own location is one level below the map you start on.
+  const markers = [
+    { id: 'mk-bree', mapLayerId: 'root', linkedMapLayerId: 'sub' },
+    { id: 'mk-weathertop', mapLayerId: 'root', linkedMapLayerId: null },
+    { id: 'mk-pony', mapLayerId: 'sub', linkedMapLayerId: null },
+    { id: 'mk-room', mapLayerId: 'deep', linkedMapLayerId: null },
+  ]
+  const layers = [
+    { id: 'root', parentMapId: null },
+    { id: 'sub', parentMapId: 'root' },
+    { id: 'deep', parentMapId: 'sub' },
+  ]
+  const withRevealed = (...ids: string[]) => mapLayerRevealer(markers, (id) => ids.includes(id), layers)
+
+  it('hides a sub-map the reader has no way to have met', () => {
+    const shown = withRevealed('mk-weathertop')
+    expect(shown('root')).toBe(true)
+    expect(shown('sub')).toBe(false)
+  })
+
+  it('shows a sub-map once the marker linking to it is revealed', () => {
+    expect(withRevealed('mk-bree')('sub')).toBe(true)
+  })
+
+  it('shows a sub-map the reader is standing on, even with the link still hidden', () => {
+    // The defect this was written for: a chapter set inside the Prancing Pony
+    // reveals `mk-pony`, but nothing reveals `mk-bree` — so the map holding the
+    // scene's own location was missing from a reader's sidebar.
+    const shown = withRevealed('mk-pony')
+    expect(shown('sub')).toBe(true)
+    expect(shown('root')).toBe(true)
+    // Paired with the absence that makes it meaningful: revealing a marker on
+    // the sub-map says nothing about maps nobody has reached.
+    expect(shown('empty-layer')).toBe(true) // nothing on it, nothing points at it
+    expect(withRevealed()('sub')).toBe(false)
+  })
+
+  it('shows every ancestor needed to navigate to a revealed nested map', () => {
+    const shown = withRevealed('mk-room')
+    expect(shown('deep')).toBe(true)
+    expect(shown('sub')).toBe(true)
+    expect(shown('root')).toBe(true)
+  })
+
+  it('keeps a map with nothing on it and nothing pointing at it', () => {
+    // No reveal point to wait for, so waiting would hide it for ever.
+    expect(withRevealed()('empty-layer')).toBe(true)
+  })
+
+  it('hides a populated map until one of its own markers is revealed', () => {
+    expect(withRevealed()('root')).toBe(false)
+    expect(withRevealed('mk-weathertop')('root')).toBe(true)
   })
 })

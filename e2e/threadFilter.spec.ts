@@ -7,7 +7,6 @@ import { resetDB } from './helpers/reset'
 
 test('the timeline thread filter shows only scenes on the chosen subplot', async ({ page }) => {
   test.setTimeout(90000)
-  await page.goto('/')
   await resetDB(page)
 
   await page.getByRole('button', { name: 'New World' }).click()
@@ -33,9 +32,9 @@ test('the timeline thread filter shows only scenes on the chosen subplot', async
   await page.getByRole('button', { name: 'Add Chapter' }).last().click()
   await page.getByTitle('Open chapter detail').first().click()
   const addEvent = async (title: string) => {
-    await main.getByRole('button', { name: 'Add Event' }).first().click()
-    await page.getByPlaceholder('Event title').fill(title)
-    await page.getByRole('button', { name: 'Add Event' }).last().click()
+    await main.getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill(title)
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
   }
   await addEvent('Romance scene')
   await addEvent('Heist scene')
@@ -51,7 +50,10 @@ test('the timeline thread filter shows only scenes on the chosen subplot', async
   // Tag only the first scene with the thread (in the chapter detail card).
   await gotoTimeline()
   await page.getByTitle('Open chapter detail').first().click()
-  await main.getByText('Romance scene', { exact: true }).click()
+  await main.getByRole('button', { name: 'Romance scene', exact: true }).click()
+  // A scene with no threads on it does not draw the Plot Threads section any
+  // more — it is offered as a chip instead, so open it first.
+  await main.getByRole('button', { name: '+ Plot Threads' }).click()
   await main.getByRole('button', { name: '+ Tag a thread…' }).click()
   await page.getByRole('option', { name: 'The Romance' }).click()
   await expect(main.getByLabel('Remove thread The Romance')).toBeVisible()
@@ -59,12 +61,12 @@ test('the timeline thread filter shows only scenes on the chosen subplot', async
   // Back on the timeline, filter to the thread → only the tagged scene remains.
   await gotoTimeline()
   await page.getByRole('button', { name: 'The Romance' }).click()
-  await expect(main.getByText('Romance scene', { exact: true })).toBeVisible()
-  await expect(main.getByText('Heist scene', { exact: true })).toHaveCount(0)
+  await expect(main.getByRole('button', { name: 'Romance scene', exact: true })).toBeVisible()
+  await expect(main.getByRole('button', { name: 'Heist scene', exact: true })).toHaveCount(0)
 
   // Clearing the filter and expanding the chapter brings the other scene back.
   await page.getByRole('button', { name: 'All threads' }).click()
   await main.getByText('Ch. 1 — One').click()
-  await expect(main.getByText('Romance scene', { exact: true })).toBeVisible()
-  await expect(main.getByText('Heist scene', { exact: true })).toBeVisible()
+  await expect(main.getByRole('button', { name: 'Romance scene', exact: true })).toBeVisible()
+  await expect(main.getByRole('button', { name: 'Heist scene', exact: true })).toBeVisible()
 })

@@ -1,9 +1,11 @@
 import * as React from 'react'
 import { createPortal } from 'react-dom'
-import { Check, ChevronDown } from 'lucide-react'
+import { Check, ChevronDown, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { computeSelectPosition } from '@/lib/selectPosition'
 import { selectItemLabel } from '@/lib/selectLabel'
+import { matchesQuery } from '@/lib/selectFilter'
+import { useFieldId, useFieldLabelId } from './field'
 
 interface SelectContextValue {
   value: string
@@ -13,6 +15,8 @@ interface SelectContextValue {
   triggerRef: React.RefObject<HTMLButtonElement | null>
   registerLabel: (value: string, label: string) => void
   getLabel: (value: string) => string | undefined
+  /** So the trigger can point `aria-controls` at the list it opens. */
+  listboxId: string
 }
 
 const SelectContext = React.createContext<SelectContextValue>({
@@ -23,6 +27,7 @@ const SelectContext = React.createContext<SelectContextValue>({
   triggerRef: { current: null },
   registerLabel: () => {},
   getLabel: () => undefined,
+  listboxId: '',
 })
 
 interface SelectProps {
@@ -37,6 +42,7 @@ function Select({ value: controlledValue, defaultValue = '', onValueChange, chil
   const [open, setOpen] = React.useState(false)
   const triggerRef = React.useRef<HTMLButtonElement>(null)
   const [labels, setLabels] = React.useState<Record<string, string>>({})
+  const listboxId = React.useId()
 
   const value = controlledValue !== undefined ? controlledValue : internalValue
 
@@ -68,15 +74,26 @@ function Select({ value: controlledValue, defaultValue = '', onValueChange, chil
   }, [open])
 
   return (
-    <SelectContext.Provider value={{ value, onValueChange: handleValueChange, open, setOpen, triggerRef, registerLabel, getLabel }}>
+    <SelectContext.Provider value={{ value, onValueChange: handleValueChange, open, setOpen, triggerRef, registerLabel, getLabel, listboxId }}>
       {children}
     </SelectContext.Provider>
   )
 }
 
 const SelectTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
-  ({ className, children, ...props }, ref) => {
-    const { open, setOpen, triggerRef } = React.useContext(SelectContext)
+  ({ className, children, id, ...props }, ref) => {
+    const { open, setOpen, triggerRef, listboxId } = React.useContext(SelectContext)
+    // The trigger is the focusable control, so a <Field>'s label points here.
+    const fieldId = useFieldId(id)
+    /*
+      Named by the label *and* its own content — see `useFieldLabelId`. Without
+      the self-reference the label simply replaces the value, and the trigger
+      stops announcing the answer it is showing. Skipped when the caller named
+      the trigger itself, which is how the triggers outside a <Field> are named.
+    */
+    const fieldLabelId = useFieldLabelId()
+    const named = props['aria-label'] !== undefined || props['aria-labelledby'] !== undefined
+    const labelledBy = !named && fieldLabelId && fieldId ? `${fieldLabelId} ${fieldId}` : undefined
 
     function handleRef(el: HTMLButtonElement | null) {
       (triggerRef as React.MutableRefObject<HTMLButtonElement | null>).current = el
@@ -87,7 +104,25 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttrib
     return (
       <button
         ref={handleRef}
+        id={fieldId}
         type="button"
+        /*
+          F16: the trigger was a bare button, so a screen reader announced
+          "Select…, button" and gave no sign that pressing it opens a list, or
+          whether it is open. Two adjacent selects in the New Relationship
+          dialog were announced identically and indistinguishably.
+
+          `aria-haspopup` + `aria-expanded` on a button is the long-standing
+          pattern for this and is what fixes all seventy selects in the app at
+          once. The role stays `button` on purpose: `role="combobox"` is the
+          newer APG shape, and switching it would change what every
+          `getByRole('button', …)` in the suite resolves to for no gain a
+          screen-reader user can hear.
+        */
+        aria-haspopup="listbox"
+        aria-labelledby={labelledBy}
+        aria-expanded={open}
+        aria-controls={open ? listboxId : undefined}
         className={cn(
           'flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-[hsl(var(--input))] bg-transparent px-3 py-2 text-sm text-[hsl(var(--foreground))] shadow-sm focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))] disabled:cursor-not-allowed disabled:opacity-50',
           className
@@ -116,11 +151,27 @@ function SelectValue({ placeholder }: { placeholder?: string }) {
 interface SelectContentProps {
   children: React.ReactNode
   className?: string
+  /**
+   * Puts a filter box at the top of the list, with this as its placeholder and
+   * its accessible name.
+   *
+   * Opt-in rather than always-on: most selects in the app are a handful of
+   * options, where a box to type in is one more thing between the writer and
+   * the answer. It is for the lists that are as long as the book — see
+   * `matchesQuery`.
+   */
+  filterPlaceholder?: string
+  /** Shown when the filter excludes everything. */
+  emptyLabel?: string
 }
 
-function SelectContent({ children, className }: SelectContentProps) {
-  const { open, triggerRef } = React.useContext(SelectContext)
+function SelectContent({ children, className, filterPlaceholder, emptyLabel = 'No matches' }: SelectContentProps) {
+  const { open, triggerRef, listboxId } = React.useContext(SelectContext)
   const [rect, setRect] = React.useState<DOMRect | null>(null)
+  const [query, setQuery] = React.useState('')
+
+  // A filter is about this opening of the list, not the last one.
+  React.useEffect(() => { if (!open) setQuery('') }, [open])
 
   React.useEffect(() => {
     if (!open || !triggerRef.current) return
@@ -140,12 +191,39 @@ function SelectContent({ children, className }: SelectContentProps) {
   // Fit the panel to the viewport so no options end up off-screen (it flips
   // above the trigger when there's more room up top, and scrolls internally).
   const pos = rect
-    ? computeSelectPosition(rect, { width: window.innerWidth, height: window.innerHeight })
+    ? computeSelectPosition(
+        rect,
+        { width: window.innerWidth, height: window.innerHeight },
+        // A filtered list is a long list, and a long list is one whose options
+        // are worth reading. The trigger that opens it is often much narrower
+        // than the options it holds.
+        filterPlaceholder ? { minWidth: 320 } : {},
+      )
     : null
+
+  /*
+    Filtering works on the item's own label — the same text `SelectItem`
+    registers for the trigger — so an option reads and matches as one thing.
+    Anything that is not a `SelectItem` (a separator, a heading) is left in
+    place: it is not an option, so it is not a candidate to exclude.
+  */
+  const shown = filterPlaceholder
+    ? React.Children.toArray(children).filter((child) => {
+        if (!React.isValidElement(child)) return true
+        const props = child.props as Partial<SelectItemProps>
+        if (typeof props.value !== 'string') return true
+        return matchesQuery(props.textValue ?? selectItemLabel(props.children), query)
+      })
+    : children
+  const empty = filterPlaceholder && React.Children.count(shown) === 0
 
   return (
     <>
-      {/* Always render hidden copy so SelectItems can register their labels */}
+      {/*
+        Always render a hidden copy of *every* child so SelectItems can register
+        their labels — including the ones the filter is currently hiding, or the
+        trigger would go blank whenever the selected option is filtered out.
+      */}
       <div style={{ display: 'none' }}>{children}</div>
 
       {open && pos && createPortal(
@@ -161,14 +239,33 @@ function SelectContent({ children, className }: SelectContentProps) {
           onMouseDown={(e) => e.stopPropagation()}
         >
           <div
-            role="listbox"
             style={{ maxHeight: pos.maxHeight }}
-            className={cn(
-              'overflow-auto rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--popover))] p-1 shadow-lg',
-              className
-            )}
+            className="flex flex-col overflow-hidden rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--popover))] shadow-lg"
           >
-            {children}
+            {filterPlaceholder && (
+              <div className="flex shrink-0 items-center gap-1.5 border-b border-[hsl(var(--border))] px-2">
+                <Search className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+                <input
+                  autoFocus
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={filterPlaceholder}
+                  aria-label={filterPlaceholder}
+                  className="h-8 w-full bg-transparent text-sm text-[hsl(var(--foreground))] outline-none placeholder:text-[hsl(var(--muted-foreground))]"
+                />
+              </div>
+            )}
+            <div
+              role="listbox"
+              id={listboxId}
+              className={cn('min-h-0 flex-1 overflow-auto p-1', className)}
+            >
+              {shown}
+              {empty && (
+                <p className="px-2 py-1.5 text-sm text-[hsl(var(--muted-foreground))]">{emptyLabel}</p>
+              )}
+            </div>
           </div>
         </div>,
         document.body

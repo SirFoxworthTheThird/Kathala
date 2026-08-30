@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 
+import { IMAGE_URL } from './helpers/imageUrl'
+
 test.describe('Linking images by URL', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
     await resetDB(page)
     await page.getByRole('button', { name: 'New World' }).click()
     await page.getByLabel('Name').fill('Image World')
@@ -23,9 +24,11 @@ test.describe('Linking images by URL', () => {
     await expect(page).toHaveURL(/#\/worlds\/[^/]+\/characters\/[^/]+/)
 
     // A same-origin image the dev server actually serves, so it loads + measures.
-    const imageUrl = 'http://localhost:5173/favicon.png'
+    const imageUrl = IMAGE_URL
 
-    await page.getByRole('button', { name: 'Link portrait by URL' }).click()
+    // CH-5: the portrait's two 10px controls became one menu.
+    await page.getByRole('button', { name: 'Portrait for Aria' }).click()
+    await page.getByRole('menuitem', { name: 'Link by URL' }).click()
 
     // The popover must stay within the viewport (it opens rightward from the
     // portrait, which sits near the left edge).

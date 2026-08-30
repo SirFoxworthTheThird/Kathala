@@ -1,9 +1,16 @@
-import { X, BookOpen, Users, Network, Package, Scroll, MapPin, Heart, Skull, ChevronRight, BookMarked, Shield, Eye, EyeOff, KeyRound, Drama } from 'lucide-react'
+import { X, BookOpen, Users, Network, Package, Scroll, MapPin, Heart, Skull, ChevronRight, ChevronLeft, BookMarked, Shield, Eye, EyeOff, KeyRound, Drama } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useAppStore } from '@/store'
+import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/EmptyState'
+import { MODAL_BACKDROP } from '@/components/ui/dialog'
+import { buildCombinedSequence, groupChapterRuns } from '@/lib/combinedTimeline'
+import type { Chapter, Timeline, WorldEvent } from '@/types'
 import { useFocusTrap } from '@/lib/useFocusTrap'
 import { useChapter, useEvent, useEvents, useWorldEvents, useWorldChapters, useTimelines } from '@/db/hooks/useTimeline'
+import { eventsInReadingOrder } from '@/lib/readingOrder'
+import { neighbouringMoments } from '@/lib/momentStep'
 import { computeInWorldDays } from '@/lib/inWorldTime'
 import { formatInWorldDate, ageInYears } from '@/lib/calendar'
 import { useWorld } from '@/db/hooks/useWorlds'
@@ -45,10 +52,78 @@ function Section({ title, icon: Icon, count, children }: {
   )
 }
 
+/**
+ * What the brief offers when no scene is selected (**WB-1**).
+ *
+ * It used to spend a full-height panel on one sentence — *"Select an event from
+ * the timeline bar to see the brief"* — which named a control without being one.
+ * Picking a scene is something that can be done from here: the cursor is a
+ * single store value, and the same list the timeline bar draws fits in the
+ * space the sentence was wasting. So the panel offers the act (**X-4** rule 1),
+ * and falls back to routing at the Timeline (rule 2) only when there is no
+ * scene to pick.
+ *
+ * Reading order — timeline, then chapter number, then position — is the bottom
+ * bar's own, so a scene sits where the writer last saw it.
+ */
+function ScenePicker({ events, chapters, timelines, onPick, onOpenTimeline }: {
+  events: WorldEvent[]
+  chapters: Chapter[]
+  timelines: Timeline[]
+  onPick: (eventId: string) => void
+  onOpenTimeline: () => void
+}) {
+  const runs = useMemo(
+    () => groupChapterRuns(buildCombinedSequence(events, chapters, timelines, 'chapter')),
+    [events, chapters, timelines],
+  )
+
+  if (runs.length === 0) {
+    return (
+      <EmptyState
+        icon={Scroll}
+        title="No scenes yet"
+        description="The brief gathers everything true at one moment — who is in the room, what they carry, what they know. It needs a scene to stand in."
+        action={<Button size="sm" onClick={onOpenTimeline}>Open Timeline</Button>}
+      />
+    )
+  }
+
+  return (
+    <div className="py-1">
+      <p className="mb-3 text-xs text-[hsl(var(--muted-foreground))]">
+        Pick the scene to brief. The timeline bar moves the same cursor.
+      </p>
+      <div className="space-y-3">
+        {runs.map((run) => (
+          <div key={run.key}>
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+              {run.chapter ? `Chapter ${run.chapter.number}${run.chapter.title ? ` · ${run.chapter.title}` : ''}` : 'Unfiled'}
+            </p>
+            <ul className="space-y-1">
+              {run.events.map((ev) => (
+                <li key={ev.id}>
+                  <button
+                    onClick={() => onPick(ev.id)}
+                    className="flex w-full items-start gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1.5 text-left text-xs text-[hsl(var(--foreground))] transition-colors hover:border-[hsl(var(--ring)/0.4)]"
+                  >
+                    <ChevronRight className="mt-0.5 h-3 w-3 shrink-0 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+                    <span className="min-w-0 flex-1">{ev.title}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function WritersBriefPanel() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
-  const { briefOpen, setBriefOpen, activeEventId } = useAppStore()
+  const { briefOpen, setBriefOpen, activeEventId, setActiveEventId } = useAppStore()
   const panelRef = useRef<HTMLDivElement>(null)
 
   useFocusTrap(panelRef, briefOpen)
@@ -72,6 +147,18 @@ export function WritersBriefPanel() {
   const characterGoals = useCharacterGoals(worldId ?? null)
   const goalPositions = eventPositions(worldEvents, worldChapters)
   const activeDay = activeEventId ? computeInWorldDays(worldEvents, worldChapters, worldTimelines).get(activeEventId) : undefined
+  /*
+    WRUN-12: the brief is a reference panel *about a moment*, and had no way to
+    change that moment — its scene rows were inert and its whole-world picker
+    showed only while there was no cursor. Crossing a chapter boundary meant
+    closing the panel, stepping, and opening it again.
+  */
+  const orderedWorldEvents = useMemo(
+    () => eventsInReadingOrder(worldEvents, worldChapters),
+    [worldEvents, worldChapters],
+  )
+  const { prev: prevMoment, next: nextMoment } = neighbouringMoments(orderedWorldEvents, activeEventId)
+
   const events     = useEvents(activeEvent?.chapterId ?? null)
   const snapshots  = useBestSnapshots(worldId ?? null, activeEventId)
   const characters = useCharacters(worldId ?? null)
@@ -148,7 +235,7 @@ export function WritersBriefPanel() {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[3000] bg-black/30"
+        className={cn('fixed inset-0 z-[3000]', MODAL_BACKDROP)}
         onClick={() => setBriefOpen(false)}
       />
 
@@ -164,21 +251,51 @@ export function WritersBriefPanel() {
         <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] px-4 py-3">
           <BookOpen className="h-4 w-4 text-[hsl(var(--accent-foreground))]" />
           <span className="text-sm font-semibold">Writer's Brief</span>
-          <button
-            aria-label="Close Writer's Brief"
-            className="ml-auto text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
-            onClick={() => setBriefOpen(false)}
-          >
-            <X className="h-4 w-4" aria-hidden="true" />
-          </button>
+          {/*
+            The panel walks the book on its own, so reading a run of scenes is
+            one open and a step each, rather than close/step/reopen at every
+            chapter boundary. Named "moment" to match the top bar's controls,
+            which do the same thing to the same cursor.
+          */}
+          <div className="ml-auto flex items-center gap-0.5">
+            <button
+              aria-label="Previous moment"
+              title="Previous moment"
+              disabled={!prevMoment}
+              onClick={() => prevMoment && setActiveEventId(prevMoment.id)}
+              className="pw-tap flex h-7 w-7 items-center justify-center rounded text-[hsl(var(--muted-foreground))] transition-colors enabled:hover:text-[hsl(var(--foreground))] disabled:opacity-30"
+            >
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            </button>
+            <button
+              aria-label="Next moment"
+              title="Next moment"
+              disabled={!nextMoment}
+              onClick={() => nextMoment && setActiveEventId(nextMoment.id)}
+              className="pw-tap flex h-7 w-7 items-center justify-center rounded text-[hsl(var(--muted-foreground))] transition-colors enabled:hover:text-[hsl(var(--foreground))] disabled:opacity-30"
+            >
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            </button>
+            <button
+              aria-label="Close Writer's Brief"
+              className="pw-tap flex h-7 w-7 items-center justify-center rounded text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+              onClick={() => setBriefOpen(false)}
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-auto px-4 py-3">
           {!activeEventId ? (
-            <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">
-              Select an event from the timeline bar to see the brief.
-            </p>
+            <ScenePicker
+              events={worldEvents}
+              chapters={worldChapters}
+              timelines={worldTimelines}
+              onPick={setActiveEventId}
+              onOpenTimeline={() => { navigate(`/worlds/${worldId}/timeline`); setBriefOpen(false) }}
+            />
           ) : !chapter ? (
             <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading…</p>
           ) : (
@@ -192,12 +309,29 @@ export function WritersBriefPanel() {
                 )}
                 {activeEvent?.title && (
                   <div className="mt-2 border-t border-[hsl(var(--border))] pt-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Active Event</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Active scene</p>
                     <p className="text-xs font-medium text-[hsl(var(--foreground))]">{activeEvent.title}</p>
                     {activeDay !== undefined && !activeEvent.isFlashback && (calendar || activeDay > 0) && (
                       <p className="mt-0.5 text-[10px] text-[hsl(var(--muted-foreground))]">
                         {calendar ? formatInWorldDate(calendar, activeDay) : `In-world day ${activeDay}`}
                       </p>
+                    )}
+                    {/*
+                      W19-4: the brief listed where every character was and
+                      never said where the *scene* was. Every one of the 149
+                      events in one shipped book carries a `locationMarkerId`,
+                      and the only place it surfaced was as somebody's snapshot
+                      location — so a setting the writer had recorded could not
+                      be read back on the screen whose whole job is the moment.
+                    */}
+                    {activeEvent.locationMarkerId && markerById.get(activeEvent.locationMarkerId) && (
+                      <div className="mt-1 flex items-center gap-1.5 text-[10px]">
+                        <MapPin className="h-2.5 w-2.5 shrink-0 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+                        <span className="text-[hsl(var(--muted-foreground))]">Setting:</span>
+                        <span className="font-medium text-[hsl(var(--foreground))]">
+                          {markerById.get(activeEvent.locationMarkerId)!.name}
+                        </span>
+                      </div>
                     )}
                     {activeEvent.description && (
                       <p className="mt-0.5 text-[10px] text-[hsl(var(--muted-foreground))] leading-relaxed">{activeEvent.description}</p>
@@ -219,25 +353,36 @@ export function WritersBriefPanel() {
               </div>
 
               {/* Events */}
-              <Section title="Events" icon={Scroll} count={events.length}>
+              <Section title="Scenes" icon={Scroll} count={events.length}>
                 {events.length === 0 ? (
-                  <p className="text-xs text-[hsl(var(--muted-foreground))]">No events in this chapter yet.</p>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))]">No scenes in this chapter yet.</p>
                 ) : (
                   <ul className="space-y-1">
                     {[...events].sort((a, b) => a.sortOrder - b.sortOrder).map((ev) => {
                       const isActive = ev.id === activeEventId
                       return (
-                        <li
-                          key={ev.id}
-                          className={cn(
-                            'flex items-start gap-2 rounded px-1.5 py-1 text-xs',
-                            isActive
-                              ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))] font-medium'
-                              : 'text-[hsl(var(--muted-foreground))]'
-                          )}
-                        >
-                          <ChevronRight className={cn('mt-0.5 h-3 w-3 shrink-0', isActive ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))]')} />
-                          <span>{ev.title}</span>
+                        <li key={ev.id}>
+                          {/*
+                            WRUN-12: these were inert `<li>`s that looked like
+                            controls — listed, chevroned, and highlighting the
+                            active one — while doing nothing at all. They move
+                            the cursor now, which is what the chevron was
+                            promising and what the panel exists to follow.
+                          */}
+                          <button
+                            type="button"
+                            aria-current={isActive ? 'true' : undefined}
+                            onClick={() => setActiveEventId(ev.id)}
+                            className={cn(
+                              'flex w-full items-start gap-2 rounded px-1.5 py-1 text-left text-xs transition-colors',
+                              isActive
+                                ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))] font-medium'
+                                : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]'
+                            )}
+                          >
+                            <ChevronRight className={cn('mt-0.5 h-3 w-3 shrink-0', isActive ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))]')} />
+                            <span>{ev.title || 'Untitled scene'}</span>
+                          </button>
                         </li>
                       )
                     })}
@@ -251,7 +396,7 @@ export function WritersBriefPanel() {
                   <p className="text-xs text-[hsl(var(--muted-foreground))]">
                     {characters.length === 0
                       ? 'No characters created yet.'
-                      : 'No character states recorded for this event.'}
+                      : 'No character states recorded for this scene.'}
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -339,14 +484,34 @@ export function WritersBriefPanel() {
                   allMemberships.some((m) => m.factionId === f.id && presentCharIds.has(m.characterId))
                 )
                 if (sceneFactions.length === 0) return null
+
+                const membersOf = (factionId: string) => allMemberships
+                  .filter((m) => m.factionId === factionId && presentCharIds.has(m.characterId))
+                  .map((m) => charById.get(m.characterId)?.name)
+                  .filter(Boolean)
+
+                /*
+                  WB-3: this section groups the cast into sides, and when there
+                  is only one side and everybody in the scene is on it, there is
+                  no grouping left to do. Measured on the shipped Philosopher's
+                  Stone at Ch.1 — three characters, each already badged *The
+                  Dursley Household* in the list above, and then the section
+                  named the household a fourth time and listed the same three.
+
+                  It earns its place the moment a second faction appears, or the
+                  moment one faction covers only some of the people present —
+                  which is exactly when knowing who is in it tells you something
+                  the badges alone do not.
+                */
+                const coversEveryone =
+                  sceneFactions.length === 1 && membersOf(sceneFactions[0].id).length === presentCharIds.size
+                if (coversEveryone) return null
+
                 return (
                   <Section title="Factions in scene" icon={Shield} count={sceneFactions.length}>
                     <div className="space-y-1.5">
                       {sceneFactions.map((f) => {
-                        const members = allMemberships
-                          .filter((m) => m.factionId === f.id && presentCharIds.has(m.characterId))
-                          .map((m) => charById.get(m.characterId)?.name)
-                          .filter(Boolean)
+                        const members = membersOf(f.id)
                         return (
                           <div key={f.id} className="flex items-center gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-2">
                             <span className="h-3 w-3 rounded-full shrink-0" style={{ background: f.color }} />
@@ -419,13 +584,22 @@ export function WritersBriefPanel() {
                   activeEventId,
                 })
                 if (gaps.length === 0) return null
-                const nameOf = (id: string) => charById.get(id)?.name ?? '—'
+                /*
+                  W19-6: this was `?? '—'`, so a POV or cast id left pointing at
+                  a deleted character rendered as *"The reader knows — —
+                  doesn't."* — an em-dash dropped into a sentence that already
+                  had one. An id that names nobody names nobody: it leaves the
+                  list, and a gap with nobody left on either side leaves with it.
+                */
+                const namesOf = (ids: string[]) =>
+                  ids.map((id) => charById.get(id)?.name).filter((n): n is string => !!n)
                 return (
                   <Section title="Knowledge gaps" icon={Drama} count={gaps.length}>
                     <div className="space-y-1.5">
                       {gaps.map((g) => {
-                        const known = g.knownBy.map(nameOf)
-                        const unknown = g.unknownBy.map(nameOf)
+                        const known = namesOf(g.knownBy)
+                        const unknown = namesOf(g.unknownBy)
+                        if (g.kind === 'irony' ? unknown.length === 0 : known.length === 0) return null
                         return (
                           <div key={g.fact.id} className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1.5 text-xs">
                             <div className="flex items-center gap-1.5">

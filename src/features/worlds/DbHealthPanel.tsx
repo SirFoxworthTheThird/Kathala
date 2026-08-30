@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { ShieldCheck, Trash2, RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { scanOrphans, purgeOrphans, totalOrphans, type OrphanReport } from '@/db/hooks/useDbHealth'
+import { SettingsSection } from './SettingsSection'
 
 const ORPHAN_LABELS: Record<keyof OrphanReport, string> = {
   characterSnapshots:   'Character snapshots',
@@ -54,18 +55,11 @@ export function DbHealthPanel({ worldId }: Props) {
     : []
 
   return (
-    <section className="space-y-4">
-      <div>
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-          DB Health
-        </h2>
-        <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-          Scan for snapshot or membership records whose parent entity (event, character, item, etc.) has been deleted,
+    <SettingsSection id="settings-db-health" label="DB Health"
+      blurb={<>Scan for snapshot or membership records whose parent entity (scene, character, item, etc.) has been deleted,
           and for sub-maps whose parent map is gone. Orphaned records can cause ghost entries in the continuity
-          checker, and orphaned sub-maps keep showing up as linkable maps.
-        </p>
-      </div>
-
+          checker, and orphaned sub-maps keep showing up as linkable maps.</>}
+    >
       <Button
         variant="outline"
         size="sm"
@@ -125,6 +119,6 @@ export function DbHealthPanel({ worldId }: Props) {
           </Button>
         </div>
       )}
-    </section>
+    </SettingsSection>
   )
 }

@@ -1,11 +1,18 @@
 import { describe, it, expect } from 'vitest'
+import { APP_THEMES } from '@/lib/themes'
 
 /**
- * Guards the readability of muted secondary text across every theme. All themes
- * are dark variants; `--muted-foreground` carries most secondary copy (captions,
- * metadata, hints) and `--tl-text-muted` carries the timeline bar's labels. If a
- * palette edit pushes either below the WCAG AA threshold (4.5:1 for normal text)
- * against the surface it sits on, this test fails.
+ * Guards the readability of muted secondary text across every theme.
+ * `--muted-foreground` carries most secondary copy (captions, metadata, hints)
+ * and `--tl-text-muted` carries the timeline bar's labels. If a palette edit
+ * pushes either below the WCAG AA threshold (4.5:1 for normal text) against the
+ * surface it sits on, this test fails.
+ *
+ * All but one are dark variants; **Paper is light**, which is why the maths
+ * below takes the ratio rather than assuming which side is brighter. The line
+ * about the card being the tougher surface holds for the dark themes and is
+ * inverted on Paper, where the card is the *lighter* one — so both surfaces are
+ * checked rather than one standing in for the other.
  *
  * The token values below MIRROR `src/index.css` — keep them in sync when a
  * theme's palette changes. (Vitest stubs CSS imports, so the stylesheet can't be
@@ -39,6 +46,14 @@ const THEMES: Record<string, ThemeTokens> = {
   action:    { background: [214, 18, 7],  card: [214, 17, 11], mutedForeground: [210, 10, 64], tlBg: [214, 18, 6],  tlTextMuted: [210, 9, 63] },
   noir:      { background: [45, 5, 6],    card: [45, 4, 11],   mutedForeground: [40, 8, 63],   tlBg: [45, 5, 5],    tlTextMuted: [40, 7, 62] },
   romance:   { background: [330, 20, 8],  card: [332, 18, 13], mutedForeground: [338, 18, 67], tlBg: [330, 21, 7],  tlTextMuted: [338, 17, 66] },
+  gothic:    { background: [265, 18, 7],  card: [265, 16, 12], mutedForeground: [268, 14, 66], tlBg: [265, 20, 6],  tlTextMuted: [268, 13, 65] },
+  mystery:   { background: [214, 30, 8],  card: [213, 26, 13], mutedForeground: [40, 18, 66],  tlBg: [214, 32, 7],  tlTextMuted: [40, 16, 65] },
+  mythic:    { background: [196, 34, 7],  card: [195, 28, 12], mutedForeground: [40, 20, 67],  tlBg: [196, 36, 6],  tlTextMuted: [40, 18, 66] },
+  adventure: { background: [168, 26, 7],  card: [168, 22, 12], mutedForeground: [38, 22, 66],  tlBg: [168, 28, 6],  tlTextMuted: [38, 20, 65] },
+  dystopian: { background: [90, 8, 7],    card: [90, 7, 12],   mutedForeground: [85, 8, 65],   tlBg: [90, 9, 6],    tlTextMuted: [85, 7, 64] },
+  historical:{ background: [32, 14, 8],   card: [30, 12, 13],  mutedForeground: [34, 16, 66],  tlBg: [32, 16, 7],   tlTextMuted: [34, 15, 65] },
+  cosy:      { background: [140, 14, 8],  card: [138, 12, 13], mutedForeground: [45, 16, 67],  tlBg: [140, 16, 7],  tlTextMuted: [45, 15, 66] },
+  paper:     { background: [40, 30, 96],  card: [40, 40, 99],  mutedForeground: [30, 10, 40],  tlBg: [40, 26, 93],  tlTextMuted: [30, 10, 40] },
 }
 
 const AA_NORMAL = 4.5
@@ -68,8 +83,10 @@ function contrast(a: HSL, b: HSL): number {
 }
 
 describe('theme muted-text contrast', () => {
-  it('covers the default plus the eight world themes', () => {
-    expect(Object.keys(THEMES).length).toBe(9)
+  it('covers the default plus every world theme', () => {
+    // Not a magic number: the table below must not fall behind the registry,
+    // which is the whole way this file stays a contract rather than a relic.
+    expect(Object.keys(THEMES).sort()).toEqual(APP_THEMES.map((t) => t.id).sort())
   })
 
   for (const [name, t] of Object.entries(THEMES)) {

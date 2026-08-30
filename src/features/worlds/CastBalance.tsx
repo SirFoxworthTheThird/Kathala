@@ -5,6 +5,7 @@ import { PortraitImage } from '@/components/PortraitImage'
 import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
 import { computeCastBalance, type CastMember } from '@/lib/castBalance'
 import { cn } from '@/lib/utils'
+import { plural } from '@/lib/plural'
 
 /**
  * "Who did I forget — and who's carrying the book?" Derives each character's
@@ -80,7 +81,7 @@ export function CastBalance({ worldId, characters, chapters, events }: {
 
             {/* Stats */}
             <span className="w-16 shrink-0 text-right text-[11px] tabular-nums text-[hsl(var(--muted-foreground))]"
-              title={usesWords ? `${m.wordCount} words on-stage` : `${m.sceneCount} scenes`}>
+              title={usesWords ? `${plural(m.wordCount, 'word')} on-stage` : plural(m.sceneCount, 'scene')}>
               {usesWords
                 ? (m.wordCount >= 1000 ? `${(m.wordCount / 1000).toFixed(1)}k w` : `${m.wordCount} w`)
                 : `${m.sceneCount} sc`}

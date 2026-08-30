@@ -5,6 +5,7 @@ import { useGate } from './ReadingGateContext'
 import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import { generateId } from '@/lib/id'
 import type { MapRoute, RouteType } from '@/types'
+import { routeRevealed } from '@/lib/mapGating'
 
 export function useMapRoutes(mapLayerId: string | null) {
   const gate = useGate()
@@ -13,11 +14,12 @@ export function useMapRoutes(mapLayerId: string | null) {
     [mapLayerId],
     []
   )
-  // A route is drawn between markers, so it waits for them: "the road to X"
-  // names X as surely as the marker does. Waypoints can also be bare
-  // coordinates, which have nothing to reveal and nothing to wait for.
+  // Shared with the search palette, which reads this table directly — see
+  // `mapGating`. These were two implementations and they disagreed.
+  // Layer-revealed is `true` here: this hook is already scoped to a layer the
+  // caller is looking at.
   return useMemo(
-    () => all.filter((r) => gate.linksRevealed(r.waypoints.filter((w): w is string => typeof w === 'string'))),
+    () => all.filter((r) => routeRevealed(gate, r, () => true)),
     [all, gate],
   )
 }

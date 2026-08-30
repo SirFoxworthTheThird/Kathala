@@ -1,14 +1,7 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { BookMarked } from 'lucide-react'
 import { useLorePagesForEntity } from '@/db/hooks/useLore'
-
-function relativeDate(ts: number): string {
-  const diff = Date.now() - ts
-  if (diff < 60_000) return 'just now'
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
-  return new Date(ts).toLocaleDateString()
-}
+import { relativeTime } from '@/lib/relativeTime'
 
 interface Props {
   worldId: string
@@ -28,6 +21,14 @@ export function RelatedLoreSection({ worldId, entityId, entityName }: Props) {
         <p className="text-xs text-[hsl(var(--muted-foreground))]">
           Open a lore page and use the link button to associate it with this entity.
         </p>
+        {/* LP-3: the copy said where to go and then made you find it yourself. */}
+        <Link
+          to={`/worlds/${worldId}/lore`}
+          className="pw-tap mt-1 inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
+        >
+          <BookMarked className="h-3.5 w-3.5" aria-hidden="true" />
+          Open Lore
+        </Link>
       </div>
     )
   }
@@ -44,7 +45,7 @@ export function RelatedLoreSection({ worldId, entityId, entityName }: Props) {
           >
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-semibold text-[hsl(var(--foreground))]">{page.title}</span>
-              <span className="text-[10px] text-[hsl(var(--muted-foreground))]">{relativeDate(page.updatedAt)}</span>
+              <span className="text-[10px] text-[hsl(var(--muted-foreground))]">{`Edited ${relativeTime(page.updatedAt)}`}</span>
             </div>
             {preview && (
               <p className="text-xs text-[hsl(var(--muted-foreground))] line-clamp-2 leading-relaxed">{preview}</p>

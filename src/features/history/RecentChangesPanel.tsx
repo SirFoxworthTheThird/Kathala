@@ -4,16 +4,8 @@ import { describeOperation } from '@/lib/operations'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { useUndo } from './useUndo'
+import { relativeTime } from '@/lib/relativeTime'
 
-function relativeTime(at: number, now: number): string {
-  const seconds = Math.max(0, Math.round((now - at) / 1000))
-  if (seconds < 60) return 'just now'
-  const minutes = Math.round(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.round(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  return `${Math.round(hours / 24)}d ago`
-}
 
 /**
  * Recent changes, newest first, with undo on the top entry.
@@ -33,13 +25,23 @@ export function RecentChangesPanel({ worldId }: { worldId: string | null }) {
   const setOpen = useAppStore((s) => s.setHistoryOpen)
   // Only subscribe while open — the panel is mounted for the whole session, and
   // an idle live query would re-read the journal on every write.
-  const { stack, undo, canUndo } = useUndo(open ? worldId : null)
+  const { stack, subjects, undo, canUndo } = useUndo(open ? worldId : null)
   // Sampled once per open rather than read during render, so the relative times
   // don't shift on unrelated re-renders.
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     if (open) setNow(Date.now())
   }, [open, stack.length])
+
+  // Escape closes this the way it closes the Writer's Brief and the Continuity
+  // Checker, which open from the same toolbar cluster. Without it the key that
+  // works on every neighbouring panel silently did nothing here.
+  useEffect(() => {
+    if (!open) return
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [open, setOpen])
 
   if (!open) return null
 
@@ -86,7 +88,7 @@ export function RecentChangesPanel({ worldId }: { worldId: string | null }) {
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm text-[hsl(var(--foreground))]">
-                      {describeOperation(op)}
+                      {describeOperation(op, subjects.get(op.id))}
                     </p>
                     <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
                       {relativeTime(op.createdAt, now)}
@@ -105,6 +107,24 @@ export function RecentChangesPanel({ worldId }: { worldId: string | null }) {
                 </li>
               ))}
             </ul>
+          )}
+
+          {/*
+            Why the rows below the first are dimmed and carry no button.
+
+            The rule was written down in this file's own comment and nowhere a
+            writer could see it, which is the half of the outside review's
+            finding that stood: the panel looked like undo was broken for older
+            entries rather than deliberately reserved for the newest. Shown only
+            once there is a second row, because with one entry there is no
+            "older" to explain.
+          */}
+          {stack.length > 1 && (
+            <p className="mt-2 border-t border-[hsl(var(--border))] px-2 pt-2 text-[11px] text-[hsl(var(--muted-foreground))]">
+              Only the newest change can be undone. The history is a stack, so taking one
+              from the middle would leave the changes after it resting on a version of your
+              world that never existed.
+            </p>
           )}
         </div>
       </div>

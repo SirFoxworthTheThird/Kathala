@@ -5,18 +5,17 @@ import { PageHeader } from '@/components/PageHeader'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
 import { useTimelines, useChapters, useTimelineEvents, updateChapter } from '@/db/hooks/useTimeline'
+import { useWorld } from '@/db/hooks/useWorlds'
 import { useSceneTextsByEvent } from '@/db/hooks/useManuscript'
 import { buildManuscript } from '@/lib/manuscriptCompile'
 import { cn } from '@/lib/utils'
 import { ExportManuscriptDialog } from './ExportManuscriptDialog'
 import { FindReplaceDialog } from './FindReplaceDialog'
+import { plural } from '@/lib/plural'
+import { splitParagraphs as paragraphs } from '@/lib/manuscriptParagraphs'
 
 const nf = new Intl.NumberFormat()
 
-/** Split prose into paragraphs on blank lines. */
-function paragraphs(text: string): string[] {
-  return text.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean)
-}
 
 /** Editable per-chapter word goal with a progress bar; persists on blur/Enter. */
 function ChapterGoal({ chapterId, words, goal }: { chapterId: string; words: number; goal: number | null }) {
@@ -40,7 +39,8 @@ function ChapterGoal({ chapterId, words, goal }: { chapterId: string; words: num
           min={0}
           step={500}
           value={value}
-          placeholder="—"
+          placeholder="none"
+          aria-label="Word goal for this chapter"
           onChange={(e) => setValue(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
@@ -62,6 +62,7 @@ function ChapterGoal({ chapterId, words, goal }: { chapterId: string; words: num
 export default function ManuscriptView() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
+  const world = useWorld(worldId ?? null)
   const timelines = useTimelines(worldId ?? null)
   const ordered = useMemo(() => [...timelines].sort((a, b) => a.createdAt - b.createdAt), [timelines])
   const [timelineId, setTimelineId] = useState<string | null>(null)
@@ -97,11 +98,17 @@ export default function ManuscriptView() {
 
   return (
     <div className="flex h-full flex-col">
+      {/*
+        MS-2: this carried `count={totalWords}` — a bare pill reading `0`, or
+        `48,000`, beside the word "Manuscript". The pill works on the rosters
+        because the title names what is being counted: "Characters 45" needs no
+        label. "Manuscript 0" needs one, and the subtitle a line below was
+        already giving the same number with its unit attached.
+      */}
       <PageHeader
         icon={FileText}
         title="Manuscript"
-        count={manuscript.totalWords}
-        description={`${nf.format(manuscript.writtenScenes)} of ${nf.format(manuscript.totalScenes)} scenes written · ${nf.format(manuscript.totalWords)} words`}
+        description={`${nf.format(manuscript.writtenScenes)} of ${nf.format(manuscript.totalScenes)} scenes written · ${plural(manuscript.totalWords, 'word')}`}
         actions={
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" onClick={() => setFindOpen(true)} disabled={!hasProse}>
@@ -150,7 +157,10 @@ export default function ManuscriptView() {
             min={0}
             step={1000}
             value={goal || ''}
-            placeholder="—"
+            // MS-3: this was an em-dash, which in a field reads as a value that
+            // failed to load rather than as one nobody has set.
+            placeholder="none"
+            aria-label="Word goal for the book"
             onChange={(e) => updateGoal(Number(e.target.value))}
             className="h-8 w-24 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 text-xs tabular-nums text-[hsl(var(--foreground))]"
           />
@@ -167,10 +177,19 @@ export default function ManuscriptView() {
 
       <div className="flex-1 overflow-auto">
         {!hasProse ? (
+          /*
+            MS-4 asked for a second version of this sentence, for a reader on a
+            Library world who cannot write the prose it tells them to write.
+            That reader never gets here: Manuscript is `writingOnly`, so the
+            router redirects a reading-mode world to its dashboard rather than
+            serving the screen. The only person who sees this is one who can act
+            on it. Adding the branch would have been unreachable code, which is
+            what the Items section in EventCard turned out to be under X-4.
+          */
           <EmptyState
             icon={FileText}
             title="No prose yet"
-            description="Write scene prose on your events, and it stitches together here into one continuous manuscript you can read and export."
+            description="Write prose on your scenes, and it stitches together here into one continuous manuscript you can read and export."
             className="h-full"
           />
         ) : (
@@ -185,7 +204,7 @@ export default function ManuscriptView() {
                       Ch. {ch.number} — {ch.title || 'Untitled'}
                     </h2>
                     <p className="mt-0.5 text-xs text-[hsl(var(--muted-foreground))]">
-                      {nf.format(ch.wordCount)} words · {ch.writtenScenes}/{ch.scenes.length} scenes
+                      {plural(ch.wordCount, 'word')} · {ch.writtenScenes}/{ch.scenes.length} scenes
                     </p>
                     {mode === 'draft' && ch.synopsis && (
                       <p className="mt-1 text-xs italic text-[hsl(var(--muted-foreground))]">{ch.synopsis}</p>
@@ -214,7 +233,7 @@ export default function ManuscriptView() {
                         </div>
                       )}
                       {s.written ? (
-                        <div className="font-serif text-[15px] leading-relaxed text-[hsl(var(--foreground))]">
+                        <div className="text-[15px] leading-relaxed text-[hsl(var(--foreground))]" style={{ fontFamily: 'var(--font-prose)' }}>
                           {paragraphs(s.text).map((p, j) => (
                             <p key={j} className="mb-4 [text-indent:1.5rem] first:[text-indent:0]">{p}</p>
                           ))}
@@ -242,7 +261,11 @@ export default function ManuscriptView() {
         open={exportOpen}
         onOpenChange={setExportOpen}
         manuscript={manuscript}
-        title={ordered.find((t) => t.id === activeTimelineId)?.name ?? 'Manuscript'}
+        /* The book is the world. The timeline named the file and the title
+           page both, so a novel exported as its own internal grouping (N11). */
+        title={world?.name ?? 'Manuscript'}
+        timelineName={ordered.find((t) => t.id === activeTimelineId)?.name}
+        timelineCount={ordered.length}
       />
       {worldId && <FindReplaceDialog open={findOpen} onOpenChange={setFindOpen} worldId={worldId} />}
     </div>

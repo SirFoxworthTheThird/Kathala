@@ -19,6 +19,13 @@ export interface TagCadenceRow<T> {
   trailingGap: number
   /** Longest interior run of chapters with no beat (an entity that goes quiet). */
   longestDormancy: number
+  /**
+   * The last scene this entity was tagged on, in narrative order.
+   *
+   * For a subplot that is the beat a writer marking it *resolved* would almost
+   * always pick, so the offer can name the scene rather than asking for one.
+   */
+  lastEventId: string | null
 }
 
 export interface TagCadenceResult<T> {
@@ -52,6 +59,14 @@ export function computeTagCadence<T extends { id: string; name: string }>({
     const firstIdx = presenceByChapter.indexOf(true)
     const lastIdx = presenceByChapter.lastIndexOf(true)
 
+    // Within the last chapter that carries it, the last scene by sort order.
+    const lastEventId = lastIdx >= 0
+      ? [...(eventsByChapter.get(sortedChapters[lastIdx].id) ?? [])]
+          .filter((e) => tagIdsOf(e).includes(entity.id))
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+          .at(-1)?.id ?? null
+      : null
+
     let longestDormancy = 0
     if (firstIdx !== -1) {
       let run = 0
@@ -69,6 +84,7 @@ export function computeTagCadence<T extends { id: string; name: string }>({
       lastChapterNumber: lastIdx >= 0 ? sortedChapters[lastIdx].number : null,
       trailingGap: lastIdx === -1 ? sortedChapters.length : sortedChapters.length - 1 - lastIdx,
       longestDormancy,
+      lastEventId,
     }
   })
 

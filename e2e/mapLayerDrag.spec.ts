@@ -27,7 +27,6 @@ function layerParents(page: Page): Promise<Record<string, string | null>> {
 
 /** New world with two top-level places that each have a child → two sub-maps. */
 async function setupTwoSubMaps(page: Page): Promise<void> {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Aethel')

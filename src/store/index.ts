@@ -38,7 +38,10 @@ interface MapSlice {
   swapActiveMapLayer: (id: string) => void
 }
 
-export type AppTheme = 'default' | 'fantasy' | 'scifi' | 'cyberpunk' | 'horror' | 'western' | 'action' | 'noir' | 'romance'
+export type AppTheme =
+  | 'default' | 'fantasy' | 'scifi' | 'cyberpunk' | 'horror' | 'western' | 'action' | 'noir' | 'romance'
+  | 'gothic' | 'mystery' | 'mythic' | 'adventure'
+  | 'dystopian' | 'historical' | 'cosy' | 'paper'
 export type PlaybackSpeed = 'slow' | 'normal' | 'fast'
 
 interface PlaybackSlice {
@@ -60,6 +63,20 @@ interface PlaybackSlice {
    *  Drives ghost pin positions. Separate from activeEventId which tracks the inner timeline. */
   activeOuterEventId: string | null
   setActiveOuterEventId: (id: string | null) => void
+  /**
+   * Whether the chapter bar is rolled up to a strip (MT-3). Persisted, because
+   * someone who put 100px of chrome away on the map did not mean "until the
+   * next navigation".
+   */
+  barCollapsed: boolean
+  setBarCollapsed: (v: boolean) => void
+  /**
+   * Whether the search palette matches whole words only. Persisted for the same
+   * reason as the bar above: a writer whose invented names are short — `Bel`,
+   * `tin` — turns this on once and means it, not once per palette.
+   */
+  searchWholeWord: boolean
+  setSearchWholeWord: (v: boolean) => void
   /** The timeline currently shown as the "active depth" in the stacked timeline bar.
    *  null = no frame relationship active. */
   activeDepthTimelineId: string | null
@@ -219,6 +236,10 @@ export const useAppStore = create<AppStore>()(
       setBarScope: (scope) => set({ barScope: scope }),
       activeOuterEventId: null,
       setActiveOuterEventId: (id) => set({ activeOuterEventId: id }),
+      barCollapsed: false,
+      setBarCollapsed: (v) => set({ barCollapsed: v }),
+      searchWholeWord: false,
+      setSearchWholeWord: (v) => set({ searchWholeWord: v }),
       activeDepthTimelineId: null,
       setActiveDepthTimelineId: (id) => set({ activeDepthTimelineId: id }),
 
@@ -275,6 +296,8 @@ export const useAppStore = create<AppStore>()(
         sidebarOpen: state.sidebarOpen,
         navPinned: state.navPinned,
         barScope: state.barScope,
+        barCollapsed: state.barCollapsed,
+        searchWholeWord: state.searchWholeWord,
         theme: state.theme,
       }),
     }

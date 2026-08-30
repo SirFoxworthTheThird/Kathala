@@ -124,10 +124,17 @@ export function TopBar() {
     ? `1 ${mapLayer.scaleUnit} = ${Math.round(mapLayer.scalePixelsPerUnit)} px`
     : null
 
+  /*
+    `px-2` and `gap-1` below `sm` are the other 8px F-5 needed. This header
+    carries seven 32px controls on a phone — menu, brand, two steppers, undo,
+    redo, search — and the time-cursor pill is the only thing in it that can
+    shrink, so every fixed pixel is taken out of the one label that says where
+    in the book you are. Nothing here is removed; the padding is.
+  */
   return (
-    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 sm:px-4">
+    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-2 sm:px-4">
       {/* Left: menu (mobile) + brand + world name + time cursor */}
-      <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+      <div className="flex min-w-0 items-center gap-1 sm:gap-2">
         {world && (
           <button
             onClick={() => setNavOpen(true)}
@@ -150,14 +157,20 @@ export function TopBar() {
         {world && (
           <>
             <span aria-hidden="true" className="hidden text-[hsl(var(--muted-foreground))] lg:inline">/</span>
-            <span className="hidden max-w-[120px] truncate text-sm text-[hsl(var(--foreground))] lg:inline" title={world.name}>{world.name}</span>
+            {/*
+              The cap grows with the window. It was a flat 120px at every width,
+              so "The Weight of Bells" read "The Weight of …" on a 1440px screen
+              with roughly 800px of empty bar beside it. `truncate` is still the
+              safety net; it just stops being the normal case.
+            */}
+            <span className="hidden max-w-[120px] truncate text-sm text-[hsl(var(--foreground))] lg:inline xl:max-w-[280px] 2xl:max-w-[420px]" title={world.name}>{world.name}</span>
           </>
         )}
         {world && mapLayer && (
           <>
             <span aria-hidden="true" className="hidden text-[hsl(var(--muted-foreground))] lg:inline">/</span>
             <span
-              className="hidden max-w-[160px] truncate text-sm text-[hsl(var(--foreground))] lg:inline"
+              className="hidden max-w-[160px] truncate text-sm text-[hsl(var(--foreground))] lg:inline xl:max-w-[280px]"
               title={mapScale ? `${mapLayer.name} — ${mapScale}` : mapLayer.name}
             >
               {mapLayer.name}

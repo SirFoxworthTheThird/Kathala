@@ -7,7 +7,6 @@ import { settleNav } from './helpers/nav'
 // a curve point to move the global time cursor.
 
 async function setupEvent(page: Page) {
-  await page.goto('/')
   await resetDB(page)
 
   await page.getByRole('button', { name: 'New World' }).click()
@@ -24,10 +23,10 @@ async function setupEvent(page: Page) {
   await expect(page).toHaveURL(/#\/worlds\/.+\/timeline\/.+/)
 
   const main = page.getByRole('main')
-  await main.getByRole('button', { name: 'Add Event' }).first().click()
-  await page.getByPlaceholder('Event title').fill('The Departure')
-  await page.getByRole('button', { name: 'Add Event' }).last().click()
-  await expect(main.getByRole('button', { name: 'The Departure' })).toBeVisible()
+  await main.getByRole('button', { name: 'Add Scene' }).first().click()
+  await page.getByPlaceholder('Scene title').fill('The Departure')
+  await page.getByRole('button', { name: 'Add Scene' }).last().click()
+  await expect(main.getByRole('button', { name: 'The Departure', exact: true })).toBeVisible()
 }
 
 test.describe('Pacing curve', () => {
@@ -38,12 +37,22 @@ test.describe('Pacing curve', () => {
     await page.getByRole('link', { name: /timeline/i }).click()
     await expect(page.getByText('Pacing — dramatic tension')).toBeVisible()
     await expect(page.getByText('rate scenes on their cards to draw the curve')).toBeVisible()
+    /*
+      …and the plot itself is not drawn yet. With nothing rated it was ~150px of
+      empty grid and a row of grey dots on the baseline, on the screen a writer
+      opens most. The header above is the whole of what an unrated world can
+      learn here; the presence half is asserted after the rating below.
+    */
+    await expect(page.getByRole('img', { name: 'Dramatic tension across the story' })).toHaveCount(0)
 
     // Rate the scene's tension from the event card (browser-only picker). The
     // picker buttons are labelled by level; target by exact name so the header
     // badge (whose title also contains "(5/5)") doesn't collide.
     await page.getByTitle('Open chapter detail').click()
-    await page.getByRole('main').getByRole('button', { name: 'The Departure' }).click()
+    await page.getByRole('main').getByRole('button', { name: 'The Departure', exact: true }).click()
+    // An unrated scene does not draw the Dramatic Tension section any more — it
+    // is offered as a chip instead, so open it first.
+    await page.getByRole('main').getByRole('button', { name: '+ Dramatic Tension' }).click()
     await page.getByRole('button', { name: '5', exact: true }).click()
     // Header badge reflects the rating.
     await expect(page.getByText('5/5')).toBeVisible()
@@ -52,19 +61,22 @@ test.describe('Pacing curve', () => {
     await page.getByRole('link', { name: /timeline/i }).click()
     await settleNav(page)
     await expect(page.getByText('rate scenes on their cards to draw the curve')).not.toBeVisible()
+    await expect(page.getByRole('img', { name: 'Dramatic tension across the story' })).toBeVisible()
 
     // Clicking the curve point moves the global time cursor to that event —
-    // verified via the Writer's Brief, which stops prompting once an event is
-    // active.
+    // verified via the Writer's Brief, which briefs that moment once one is
+    // active. Asserted as a presence: the panel's no-cursor state is now a
+    // scene picker (WB-1), so an absence here would pass either way.
     await page.locator('g.cursor-pointer').first().click()
     await page.getByTitle("Writer's Brief").click()
-    await expect(page.getByText('Select an event from the timeline bar to see the brief.')).not.toBeVisible()
+    await expect(page.getByText('Active scene')).toBeVisible()
   })
 
   test('clicking the active tension level clears the rating', async ({ page }) => {
     await setupEvent(page)
 
-    await page.getByRole('main').getByRole('button', { name: 'The Departure' }).click()
+    await page.getByRole('main').getByRole('button', { name: 'The Departure', exact: true }).click()
+    await page.getByRole('main').getByRole('button', { name: '+ Dramatic Tension' }).click()
     await page.getByRole('button', { name: '3', exact: true }).click()
     await expect(page.getByText('3/5')).toBeVisible()
 

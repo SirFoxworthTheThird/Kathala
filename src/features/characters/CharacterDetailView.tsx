@@ -1,14 +1,22 @@
-import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Upload, Trash2 } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { ArrowLeft, Upload, Link2, Trash2 } from 'lucide-react'
 import { useCharacter, deleteCharacter } from '@/db/hooks/useCharacters'
 import { updateCharacter } from '@/db/hooks/useCharacters'
 import { storeBlob } from '@/db/hooks/useBlobs'
 import { useGate } from '@/db/hooks/ReadingGateContext'
+import { NotReachedYet } from '@/components/NotReachedYet'
 import { LinkImageButton } from '@/components/LinkImageButton'
 import { PortraitImage } from '@/components/PortraitImage'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger, TabsContent, TabCount } from '@/components/ui/tabs'
+import { useGoalsForCharacter } from '@/db/hooks/useCharacterGoals'
+import { useCharacterRelationships } from '@/db/hooks/useRelationships'
+import { useMembershipsForCharacter } from '@/db/hooks/useFactions'
+import { useLorePagesForEntity } from '@/db/hooks/useLore'
+import { useCharacterSnapshots } from '@/db/hooks/useSnapshots'
+import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
+import { computeCharacterAppearances } from '@/lib/characterAppearances'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { OverviewTab } from './tabs/OverviewTab'
 import { CurrentStateTab } from './tabs/CurrentStateTab'
@@ -18,13 +26,81 @@ import { RelationshipsTab } from './tabs/RelationshipsTab'
 import { RelatedLoreSection } from '@/features/lore'
 import { FactionsTab } from './tabs/FactionsTab'
 import { GoalsTab } from './tabs/GoalsTab'
+import { Menu, MenuItem } from '@/components/ui/menu'
 
 export default function CharacterDetailView() {
   const { worldId, characterId } = useParams<{ worldId: string; characterId: string }>()
   const navigate = useNavigate()
   const character = useCharacter(characterId ?? null)
+  /*
+    The tab lives in the query string so somewhere else can send you to it.
+    The Arc grid and the chapter-detail cast rows both point at a character's
+    Current State for a particular scene, and "go to the character, then find
+    the tab" is two of the six-to-eight clicks that recording one state used to
+    cost. `replace` so a run of these does not fill the back button.
+  */
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab = searchParams.get('tab') ?? 'overview'
+  const selectTab = (next: string) => {
+    const params = new URLSearchParams(searchParams)
+    if (next === 'overview') params.delete('tab')
+    else params.set('tab', next)
+    setSearchParams(params, { replace: true })
+  }
+
   const gate = useGate()
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [portraitLinkOpen, setPortraitLinkOpen] = useState(false)
+  const portraitFileRef = useRef<HTMLInputElement>(null)
+
+  // CH-3: each count comes from the same hook the tab itself reads, so the
+  // number on the tab and the list behind it cannot disagree.
+  const goals = useGoalsForCharacter(characterId ?? null)
+  const relationships = useCharacterRelationships(characterId ?? null)
+  const memberships = useMembershipsForCharacter(characterId ?? null)
+  const lorePages = useLorePagesForEntity(worldId ?? null, characterId ?? null)
+  const snapshots = useCharacterSnapshots(characterId ?? null)
+
+
+  const worldEvents = useWorldEvents(character?.worldId ?? null)
+  const worldChapters = useWorldChapters(character?.worldId ?? null)
+  const appearances = computeCharacterAppearances({
+    characterId: characterId ?? '',
+    events: worldEvents,
+    chapters: worldChapters,
+  })
+  const appearanceCount = appearances.present.length + appearances.mentioned.length
+
+  /*
+    An empty tab is an answer to a writer and a dead end to a reader.
+
+    CH-3 draws a count of 0 rather than leaving the tab off, because for the
+    person writing the book *none* is a finding — nobody has given this
+    character a goal yet. A reader cannot act on that: a blind reader run opened
+    Mr Swales and found four tabs reading Goals 0, Relationships 0, Lore 0,
+    Factions 0, one click each to a panel explaining how to fill it in — one of
+    them advising them to "type @ in a scene's draft", on a screen where there
+    are no scene drafts.
+
+    So while reading, a tab with nothing behind it is not offered. Overview and
+    Current State always are: they answer "who is this again", which is the
+    whole reason the page is open.
+  */
+  const tabCounts: Record<string, number> = {
+    history: snapshots.length,
+    appearances: appearanceCount,
+    goals: goals.length,
+    relationships: relationships.length,
+    lore: lorePages.length,
+    factions: memberships.length,
+  }
+  const hasTab = (name: string) => !gate.active || (tabCounts[name] ?? 0) > 0
+  /*
+    A tab can be addressed by URL, and a reader arriving at `?tab=goals` on a
+    character with none would otherwise land on a panel with no way back to it.
+    Falling back is what the tab strip already shows them.
+  */
+  const activeTab = hasTab(tab) ? tab : 'overview'
 
   if (!character) {
     return (
@@ -32,6 +108,12 @@ export default function CharacterDetailView() {
         Character not found.
       </div>
     )
+  }
+
+  // Listed nowhere while unmet, but the page behind the listing rendered in
+  // full for anyone who arrived by URL or by an older link.
+  if (gate.active && !gate.isRevealed(character.id)) {
+    return <NotReachedYet what="character" />
   }
 
   async function handlePortraitUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -63,18 +145,38 @@ export default function CharacterDetailView() {
             fallbackClassName="h-12 w-12 rounded-full"
             zoomable
           />
+          {/*
+            CH-5: two 12px icons sat 2px apart in a pill on the bottom edge of a
+            48px avatar. Enlarging them in place was not available — `.pw-tap`
+            only works on well-spaced standalone controls, since two adjacent
+            ones would give overlapping 44px hit areas — so the pair is the
+            problem, not their size. One menu trigger instead, the same one the
+            review settled on for TL-3, EV-5, CH-4 and LORE-1, which carries
+            `.pw-tap` and a name of its own.
+          */}
           {!gate.active && (
-            <div className="absolute -bottom-1 -right-1 flex items-center gap-0.5 rounded-full bg-[hsl(var(--accent))] px-1 py-0.5">
-              <label aria-label="Upload portrait image" className="cursor-pointer text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]">
-                <Upload className="h-3 w-3" aria-hidden="true" />
-                <input type="file" accept="image/*" className="hidden" onChange={handlePortraitUpload} />
-              </label>
+            <div className="absolute -bottom-1.5 -right-1.5 rounded-full bg-[hsl(var(--accent))]">
+              <Menu
+                label={`Portrait for ${character.name}`}
+                triggerClassName="h-6 w-6 rounded-full"
+              >
+                <MenuItem icon={Upload} label="Upload an image" onClick={() => portraitFileRef.current?.click()} />
+                <MenuItem icon={Link2} label="Link by URL" onClick={() => setPortraitLinkOpen(true)} />
+              </Menu>
+              <input
+                ref={portraitFileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                aria-label="Upload portrait image"
+                onChange={handlePortraitUpload}
+              />
               {worldId && (
                 <LinkImageButton
                   worldId={worldId}
                   onLinked={(blobId) => updateCharacter(character!.id, { portraitImageId: blobId })}
-                  triggerClassName="text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]"
-                  triggerAriaLabel="Link portrait by URL"
+                  controlledOpen={portraitLinkOpen}
+                  onOpenChange={setPortraitLinkOpen}
                 />
               )}
             </div>
@@ -82,22 +184,24 @@ export default function CharacterDetailView() {
         </div>
 
         <div>
+          {/* The identity block: portrait, name, aliases, and nothing repeated
+              below (CH-2). The aliases were a bare list under the name, which
+              reads as a second name rather than as other names. */}
           <h2 className="text-base font-semibold text-[hsl(var(--foreground))]">{character.name}</h2>
           {character.aliases.length > 0 && (
-            <p className="text-xs text-[hsl(var(--muted-foreground))]">{character.aliases.join(', ')}</p>
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">
+              Also known as {character.aliases.join(', ')}
+            </p>
           )}
         </div>
 
+        {/* CH-4: delete was the only icon in this header, top right, drawn like
+            any other — the most destructive act on the screen with nothing
+            implying weight. See `src/components/ui/menu.tsx`. */}
         {!gate.active && (
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Delete character"
-            className="ml-auto h-8 w-8 hover:text-red-400"
-            onClick={() => setConfirmOpen(true)}
-          >
-            <Trash2 className="h-4 w-4" aria-hidden="true" />
-          </Button>
+          <Menu label={`More actions for ${character.name}`} className="ml-auto" triggerClassName="h-8 w-8">
+            <MenuItem icon={Trash2} label="Delete character" danger onClick={() => setConfirmOpen(true)} />
+          </Menu>
         )}
       </div>
       <ConfirmDialog
@@ -110,16 +214,16 @@ export default function CharacterDetailView() {
 
       {/* Tabs */}
       <div className="flex-1 overflow-auto p-4">
-        <Tabs defaultValue="overview">
+        <Tabs value={activeTab} onValueChange={selectTab}>
           <TabsList className="mb-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="state">Current State</TabsTrigger>
-            <TabsTrigger value="history">History</TabsTrigger>
-            <TabsTrigger value="appearances">Appearances</TabsTrigger>
-            <TabsTrigger value="goals">Goals</TabsTrigger>
-            <TabsTrigger value="relationships">Relationships</TabsTrigger>
-            <TabsTrigger value="lore">Lore</TabsTrigger>
-            <TabsTrigger value="factions">Factions</TabsTrigger>
+            {hasTab('history') && <TabsTrigger value="history">History<TabCount n={snapshots.length} /></TabsTrigger>}
+            {hasTab('appearances') && <TabsTrigger value="appearances">Appearances<TabCount n={appearanceCount} /></TabsTrigger>}
+            {hasTab('goals') && <TabsTrigger value="goals">Goals<TabCount n={goals.length} /></TabsTrigger>}
+            {hasTab('relationships') && <TabsTrigger value="relationships">Relationships<TabCount n={relationships.length} /></TabsTrigger>}
+            {hasTab('lore') && <TabsTrigger value="lore">Lore<TabCount n={lorePages.length} /></TabsTrigger>}
+            {hasTab('factions') && <TabsTrigger value="factions">Factions<TabCount n={memberships.length} /></TabsTrigger>}
           </TabsList>
           <TabsContent value="overview">
             <OverviewTab character={character} />

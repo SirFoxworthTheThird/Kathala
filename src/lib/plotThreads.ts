@@ -14,6 +14,8 @@ export interface ThreadCadence {
   trailingGap: number
   /** Longest interior run of chapters with no beat (a thread that goes quiet). */
   longestDormancy: number
+  /** The last scene the thread was advanced in — see `TagCadenceRow`. */
+  lastEventId: string | null
 }
 
 export interface ThreadCadenceResult {

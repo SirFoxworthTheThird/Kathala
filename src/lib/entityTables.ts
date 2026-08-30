@@ -40,7 +40,14 @@ export const ENTITY_TABLE: Record<OperationEntity, string> = {
   mapRegionSnapshot: 'mapRegionSnapshots',
 }
 
-/** Human-readable singular names, for describing an operation in the UI. */
+/**
+ * Human-readable singular names, for describing an operation in the UI.
+ *
+ * These are the words the app says, not the words it stores: `event` is a
+ * *scene* to a writer, and the table above keeps the storage name. Changing
+ * one must never change the other — an earlier pass at this rename did exactly
+ * that and pointed undo at a table called `scenes`.
+ */
 export const ENTITY_LABEL: Record<OperationEntity, string> = {
   character: 'character',
   characterGoal: 'goal',
@@ -48,7 +55,7 @@ export const ENTITY_LABEL: Record<OperationEntity, string> = {
   location: 'location',
   timeline: 'timeline',
   chapter: 'chapter',
-  event: 'event',
+  event: 'scene',
   relationship: 'relationship',
   lorePage: 'lore page',
   faction: 'faction',

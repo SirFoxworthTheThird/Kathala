@@ -1,5 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
+import { downloadLibraryBook, DEFAULT_BOOK } from './helpers/library'
 import { unmetNames } from './helpers/unmet'
 
 // Reading mode and spoiler gating, driven through the library so the
@@ -30,17 +32,23 @@ async function cursorTitle(page: Page): Promise<string> {
 
 /** The reader's deliberate "show me everything", confirm and all. */
 async function revealAll(page: Page) {
+  // "Show everything" lives in a confirm the first click raises. This used to
+  // retry the click until the dialog appeared, because on a loaded machine it
+  // could land while the world was still opening — and the control then took
+  // the *writing* path and cleared the cursor outright, confirm and all. That
+  // was a real defect rather than a slow dialog (see `src/lib/revealAll.ts`);
+  // the control now waits for the world, so one click is enough, and a
+  // regression fails here instead of being retried away.
+  const confirm = page.getByRole('button', { name: 'Show everything' })
   await page.getByRole('button', { name: 'View all chapters' }).click()
-  await page.getByRole('button', { name: 'Show everything' }).click()
+  await expect(confirm).toBeVisible({ timeout: 15_000 })
+  await confirm.click()
 }
 
 async function downloadFirstLibraryWorld(page: Page) {
-  await page.goto('/')
   await resetDB(page)
-  await page.getByRole('button', { name: 'Library', exact: true }).click()
-  await page.getByRole('button', { name: /^Download \(/ }).first().click()
-  await expect(page).toHaveURL(/#\/worlds\//, { timeout: 60_000 })
-  await page.waitForTimeout(1000)
+  await downloadLibraryBook(page, DEFAULT_BOOK)
+  await settle(page)
 }
 
 test('a library world arrives in reading mode and hides the writing screens', async ({ page }) => {
@@ -99,7 +107,7 @@ test('reading mode offers no way to add to the cast, and can be turned off', asy
   // rail's own behaviour is not what this test is about.
   await page.goto(`/#${await worldPath(page)}/settings`)
   await settleNav(page)
-  await page.getByRole('button', { name: 'Reading mode is on' }).click()
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
   await expect(page.getByRole('button', { name: 'Turn on reading mode' })).toBeVisible()
 
   await page.goto(`/#${await worldPath(page)}/characters`)
@@ -140,21 +148,24 @@ test('settings keeps only what a reader can decide', async ({ page }) => {
   const sections = async () =>
     (await page.evaluate(`(() => [...document.querySelectorAll('main h2')].map((h) => h.textContent?.trim()))()`)) as string[]
 
-  // How it looks, and whether to keep reading this way. Nothing else here is
-  // the reader's to decide, and Export as HTML would write out the whole book.
-  await expect.poll(sections, { timeout: 15_000 }).toEqual(['Reading mode', 'Theme'])
+  // How it looks, whether to keep reading this way, and whether the pictures
+  // come with the book — a downloaded world whose art is still links draws
+  // nothing on a train, so saving them is the reader's decision about their own
+  // device rather than an authoring act. Nothing else here is the reader's to
+  // decide, and Export as HTML would write out the whole book.
+  await expect.poll(sections, { timeout: 15_000 }).toEqual(['Reading mode', 'Pictures', 'Theme'])
   await expect(page.getByRole('button', { name: 'Export as HTML' })).toHaveCount(0)
 
   // Turning reading mode off is the escape hatch, and it brings the rest back.
-  await page.getByRole('button', { name: 'Reading mode is on' }).click()
-  await expect.poll(async () => (await sections()).length, { timeout: 15_000 }).toBeGreaterThan(2)
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
+  await expect.poll(async () => (await sections()).length, { timeout: 15_000 }).toBeGreaterThan(3)
   await expect(page.getByRole('button', { name: 'Export as HTML' })).toBeVisible()
 })
 
 test('showing the whole book asks first, but only while reading', async ({ page }) => {
   await downloadFirstLibraryWorld(page)
   await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(1200)
+  await settle(page)
   await page.getByRole('link', { name: /characters/i }).first().click()
   await settleNav(page)
   // The badge renders 0 until the live query resolves, so wait for the real
@@ -176,14 +187,288 @@ test('showing the whole book asks first, but only while reading', async ({ page 
   // A writer reaches for this constantly; it must stay a single click for them.
   await page.goto(`/#${await worldPath(page)}/settings`)
   await settleNav(page)
-  await page.getByRole('button', { name: 'Reading mode is on' }).click()
-  await page.waitForTimeout(800)
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
+  await settle(page)
   await page.goto(`/#${await worldPath(page)}/characters`)
   await settleNav(page)
   await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(1000)
+  await settle(page)
   await page.getByRole('button', { name: 'View all chapters' }).click()
   await expect(page.getByRole('heading', { name: 'Show the whole book?' })).toHaveCount(0)
+})
+
+/*
+  The other ✕, which is the one a thumb finds.
+
+  A blind reader run measured this: the bottom bar's "Clear selection" is 16×16
+  CSS px, sits between the speed toggle and a collapse chevron — so it reads as
+  "close this bar" — and on a 390px phone it lands 40px from the bottom of the
+  screen. One tap took a reader at chapter 7 of *Dracula* from 14 characters to
+  25 and 21 map markers to 60, with no dialog and no way back, while its
+  properly-guarded twin sat 750px away at the top of the same screen.
+
+  The test above covers the twin. This is the half that was missing, which is
+  exactly why the two drifted: both now route through `useRevealAll`.
+*/
+test('the bottom bar\'s clear asks first too, and is reachable on a phone', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await downloadFirstLibraryWorld(page)
+  await page.getByRole('button', { name: 'Next moment' }).click()
+  await settle(page)
+  await page.goto(`/#${await worldPath(page)}/characters`)
+  await settleNav(page)
+  await expect.poll(() => shownCount(page), { timeout: 15_000 }).toBeGreaterThan(0)
+  const met = await shownCount(page)
+
+  // Present, and on the phone — an absence asserted on a control that never
+  // renders at this width would pass for the wrong reason.
+  const clear = page.getByRole('button', { name: 'Clear selection' })
+  await expect(clear).toBeVisible({ timeout: 15_000 })
+
+  await clear.click()
+  await expect(page.getByRole('heading', { name: 'Show the whole book?' })).toBeVisible()
+  await expect.poll(() => shownCount(page), { timeout: 10_000 }).toBe(met)
+
+  // …and confirming still does the thing, so the guard is a question and not a
+  // block.
+  await page.getByRole('button', { name: 'Show everything' }).click()
+  await expect.poll(() => shownCount(page), { timeout: 15_000 }).toBeGreaterThan(met)
+})
+
+/*
+  The writer's half, on the same control. Without this the test above would be
+  satisfied by a confirm that fires for everyone, which would put a dialog in
+  front of a control a writer reaches for constantly.
+*/
+test('the bottom bar\'s clear stays one click while writing', async ({ page }) => {
+  await downloadFirstLibraryWorld(page)
+  await page.goto(`/#${await worldPath(page)}/settings`)
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
+  await settle(page)
+  await page.goto(`/#${await worldPath(page)}/characters`)
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Next moment' }).click()
+  await settle(page)
+
+  await page.getByRole('button', { name: 'Clear selection' }).click()
+  await expect(page.getByRole('heading', { name: 'Show the whole book?' })).toHaveCount(0)
+  // It really cleared, rather than the control having quietly stopped working.
+  await expect(page.getByRole('button', { name: 'Clear selection' })).toHaveCount(0)
+})
+
+/*
+  R5 from a blind reader run, which opened the author's Add Scene dialog while
+  reading *Dracula*, filled it in, and measured `events` 216 → 217 — then found
+  no way to remove the row, because `EventRow` is gated and the button that made
+  it was not.
+*/
+test('a reader cannot add a scene to the book they are reading', async ({ page }) => {
+  await downloadFirstLibraryWorld(page)
+  await page.goto(`/#${await worldPath(page)}/timeline`)
+  await settleNav(page)
+
+  const main = page.getByRole('main')
+  const firstChapter = main.getByRole('button', { name: /^Ch\. 1/ }).first()
+  await expect(firstChapter).toBeVisible({ timeout: 20_000 })
+  await firstChapter.click()
+  await settle(page)
+
+  await expect(main.getByRole('button', { name: 'Add Scene' })).toHaveCount(0)
+
+  // The presence half, on the same expanded row: a writer still has it, so the
+  // absence above is about the gate and not about the row being collapsed.
+  await page.goto(`/#${await worldPath(page)}/settings`)
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
+  await settle(page)
+  await page.goto(`/#${await worldPath(page)}/timeline`)
+  await settleNav(page)
+  await main.getByRole('button', { name: /^Ch\. 1/ }).first().click()
+  await settle(page)
+  await expect(main.getByRole('button', { name: 'Add Scene' }).first()).toBeVisible({ timeout: 20_000 })
+})
+
+/*
+  R4 from the same run: the Lore screen's "Revealed" toggle is a writer's
+  preview of their own gating, and while reading it can only ever be inert —
+  the real gate has already filtered the list. Pressed, nothing happened in
+  either direction, and its default-off state with a "Show all lore" tooltip
+  suggested the reader was looking at the unfiltered set.
+*/
+test('the lore screen does not offer a filter that cannot do anything', async ({ page }) => {
+  await downloadFirstLibraryWorld(page)
+  await page.getByRole('button', { name: 'Next moment' }).click()
+  await settle(page)
+  await page.goto(`/#${await worldPath(page)}/lore`)
+  await settleNav(page)
+
+  // There is a lore screen with pages on it, or the absence below means nothing.
+  await expect(page.getByRole('heading', { name: 'Lore', level: 1 })).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole('button', { name: 'Revealed' })).toHaveCount(0)
+
+  // …and the writer, who can act on it, still has it.
+  await page.goto(`/#${await worldPath(page)}/settings`)
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
+  await settle(page)
+  await page.goto(`/#${await worldPath(page)}/lore`)
+  await settleNav(page)
+  await expect(page.getByRole('button', { name: 'Revealed' })).toBeVisible({ timeout: 20_000 })
+})
+
+/*
+  R10: Mr Swales, one click from the roster, showed eight tabs of which four read
+  Goals 0, Relationships 0, Lore 0, Factions 0 — one click each to a panel
+  explaining how to fill it in, one of them advising the reader to "type @ in a
+  scene's draft" on a screen where there are no scene drafts. CH-3 draws a zero
+  deliberately, because for a writer *none* is an answer; a reader cannot act on
+  it.
+*/
+test('a character page does not offer tabs with nothing behind them', async ({ page }) => {
+  await downloadFirstLibraryWorld(page)
+  await page.goto(`/#${await worldPath(page)}/characters`)
+  await settleNav(page)
+  const firstCharacter = page.getByRole('main').getByRole('link').first()
+  await expect(firstCharacter).toBeVisible({ timeout: 20_000 })
+  await firstCharacter.click()
+  await settle(page)
+
+  const tabs = page.getByRole('tab')
+  await expect(tabs.first()).toBeVisible({ timeout: 20_000 })
+  const reading = await tabs.allTextContents()
+  // Whatever is offered, none of it is empty.
+  expect(reading.filter((t) => /\b0$/.test(t.trim())), `empty tabs: ${reading.join(' | ')}`).toEqual([])
+  // …and the two that answer "who is this again" are always there.
+  expect(reading.some((t) => t.includes('Overview'))).toBe(true)
+
+  /*
+    The presence half. A writer sees the zeros, which is the point of CH-3 — so
+    the absence above is the gate and not the tabs having been deleted.
+  */
+  await page.goto(`/#${await worldPath(page)}/settings`)
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
+  await settle(page)
+  await page.goto(`/#${await worldPath(page)}/characters`)
+  await settleNav(page)
+  await page.getByRole('main').getByRole('link').first().click()
+  await settle(page)
+  const writing = await page.getByRole('tab').allTextContents()
+  expect(writing.length).toBeGreaterThan(reading.length)
+})
+
+/*
+  R7 and R9: on a 390px phone the pacing chart and the plot-thread strip pushed
+  the first chapter row to y=436 of 844 — more than half the screen was author
+  analytics before any chapter. The thread names spoil besides: at chapter 7 of
+  Dracula, where Lucy has sleepwalked once, a chip read "Lucy's Illness and
+  Undeath", which is chapter 16.
+*/
+test('the timeline leads with chapters, not with the author\'s instruments', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await downloadFirstLibraryWorld(page)
+  await page.getByRole('button', { name: 'Next moment' }).click()
+  await settle(page)
+  await page.goto(`/#${await worldPath(page)}/timeline`)
+  await settleNav(page)
+
+  const main = page.getByRole('main')
+  await expect(main.getByText(/^Ch\. 1/).first()).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText('Pacing — dramatic tension')).toHaveCount(0)
+  await expect(page.getByRole('group', { name: 'Filter by plot thread' })).toHaveCount(0)
+
+  /*
+    And the line the reader actually came for is on the phone. Below `lg` the
+    chapter summary was `hidden`, so "what happened in chapter 3 again?" was
+    answerable only on the device you are not reading on. Paired against a
+    chapter beyond the cursor, whose summary must still be withheld — so this
+    cannot pass by simply printing every synopsis.
+  */
+  const synopses = await page.evaluate(async () => {
+    const db = (window as { __pwdb?: never }).__pwdb as unknown as
+      { chapters: { toArray: () => Promise<Array<{ number: number; synopsis?: string }>> } }
+    const all = (await db.chapters.toArray()).sort((a, b) => a.number - b.number)
+    return { first: all[0]?.synopsis ?? '', last: all[all.length - 1]?.synopsis ?? '' }
+  })
+  expect(synopses.first.length, 'the fixture needs a synopsis to look for').toBeGreaterThan(10)
+  expect(synopses.last.length).toBeGreaterThan(10)
+
+  const bodyText = async () => (await page.evaluate(`(() => document.body.innerText)()`)) as string
+  const text = await bodyText()
+  expect(text, 'the reached chapter summary should be on the phone').toContain(synopses.first)
+  expect(text, 'a chapter beyond the cursor keeps its summary').not.toContain(synopses.last)
+
+  // The presence half: both are a writer's, and a writer still has them.
+  await page.goto(`/#${await worldPath(page)}/settings`)
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
+  await settle(page)
+  await page.goto(`/#${await worldPath(page)}/timeline`)
+  await settleNav(page)
+  await expect(page.getByRole('group', { name: 'Filter by plot thread' })).toBeVisible({ timeout: 20_000 })
+})
+
+/*
+  R12: twenty-nine help sections, five hidden while reading, and none about
+  reading — so a reader wondering what the ✕ beside their place does had
+  twenty-four wrong answers and no right one.
+*/
+test('help answers the question a reader actually has', async ({ page }) => {
+  await downloadFirstLibraryWorld(page)
+  await page.getByRole('button', { name: 'Help' }).click()
+  await settle(page)
+
+  const reading = await page.getByRole('button', { expanded: false }).allTextContents()
+  expect(reading.some((t) => t.includes('Reading a book')), `sections: ${reading.join(' | ')}`).toBe(true)
+  // And the ones describing screens a reader does not have are gone.
+  expect(reading.some((t) => t.includes('Database health'))).toBe(false)
+  expect(reading.some((t) => t.includes('Corkboard'))).toBe(false)
+
+  // The mirror: a writer gets those and not the reading section.
+  await page.keyboard.press('Escape')
+  await page.goto(`/#${await worldPath(page)}/settings`)
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
+  await settle(page)
+  await page.getByRole('button', { name: 'Help' }).click()
+  await settle(page)
+  const writing = await page.getByRole('button', { expanded: false }).allTextContents()
+  expect(writing.some((t) => t.includes('Database health'))).toBe(true)
+  expect(writing.some((t) => t.includes('Reading a book'))).toBe(false)
+})
+
+/*
+  Two bits of copy addressed to the wrong person. The character page led with
+  "Colour ● on the map and the Arc grid" — where this app draws them, a fact
+  about the tool — above the description a reader opened the page for. And the
+  search box called the book "your world and the prose you wrote".
+*/
+test('the app does not address a reader as the author', async ({ page }) => {
+  await downloadFirstLibraryWorld(page)
+  await page.goto(`/#${await worldPath(page)}/characters`)
+  await settleNav(page)
+  const firstCharacter = page.getByRole('main').getByRole('link').first()
+  await expect(firstCharacter).toBeVisible({ timeout: 20_000 })
+  await firstCharacter.click()
+  await settle(page)
+
+  // The page rendered — so the absence below is the gate, not an empty screen.
+  await expect(page.getByRole('tab', { name: /Overview/ })).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText('on the map and the Arc grid')).toHaveCount(0)
+
+  await page.getByTitle('Search (Ctrl+K)').click()
+  await expect(page.getByPlaceholder('Search this book, as far as you have read…')).toBeVisible()
+  await expect(page.getByPlaceholder('Search your world and the prose you wrote…')).toHaveCount(0)
+  await page.keyboard.press('Escape')
+
+  // The writer's half: the same two say the author's version.
+  await page.goto(`/#${await worldPath(page)}/settings`)
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
+  await settle(page)
+  await page.getByTitle('Search (Ctrl+K)').click()
+  await expect(page.getByPlaceholder('Search your world and the prose you wrote…')).toBeVisible()
 })
 
 test('the corkboard is a plotting board, not a reading screen', async ({ page }) => {
@@ -195,7 +480,7 @@ test('the corkboard is a plotting board, not a reading screen', async ({ page })
 test('relationship counts do not betray the size of the cast', async ({ page }) => {
   await downloadFirstLibraryWorld(page)
   await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(1200)
+  await settle(page)
 
   // Every relationship on show must join two characters the reader has met —
   // otherwise "61 connections" between three people gives the game away.
@@ -219,7 +504,7 @@ test('relationship counts do not betray the size of the cast', async ({ page }) 
   expect(hidden.length, 'the fixture should hold relationships involving unmet characters').toBeGreaterThan(0)
 
   await page.goto(`/#${await worldPath(page)}/relationships`)
-  await page.waitForTimeout(2000)
+  await settle(page)
   const shown = await page.getByRole('main').innerText()
   const leaked = hidden.filter(([a, b]) => shown.includes(a) && shown.includes(b))
   expect(leaked, `relationships shown between unmet characters: ${JSON.stringify(leaked)}`).toEqual([])
@@ -228,29 +513,36 @@ test('relationship counts do not betray the size of the cast', async ({ page }) 
 test('a character page has nothing to edit and no future', async ({ page }) => {
   await downloadFirstLibraryWorld(page)
   await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(800)
+  await settle(page)
   await page.getByRole('link', { name: /characters/i }).first().click()
   await settleNav(page)
 
   await expect.poll(() => shownCount(page), { timeout: 15_000 }).toBeGreaterThan(0)
-  // Roster cards are clickable divs, not buttons.
-  await page.locator('main div.cursor-pointer').first().click()
+  // Roster cards are links now (X-7): reachable by Tab, openable with Enter.
+  await page.getByRole('main').getByRole('link').first().click()
   await expect(page).toHaveURL(/#\/worlds\/[^/]+\/characters\/./, { timeout: 15_000 })
 
-  await expect(page.getByRole('button', { name: 'Delete character' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Upload portrait image' })).toHaveCount(0)
+  // Delete lives behind a menu now, so the menu itself has to be gone — the
+  // old assertion would pass on a page that still offered the trigger.
+  await expect(page.getByRole('button', { name: /^More actions for/ })).toHaveCount(0)
+  await expect(page.getByRole('menuitem', { name: 'Delete character' })).toHaveCount(0)
+  // The portrait's controls are behind a menu of their own now (CH-5), so the
+  // trigger is what has to be gone. The old assertion named a control that no
+  // longer exists under that role anywhere, which would have passed on a page
+  // still offering the whole menu.
+  await expect(page.getByRole('button', { name: /^Portrait for/ })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0)
 
   // Current State is a form for a writer; a reader gets the same facts as text.
   await page.getByRole('tab', { name: 'Current State' }).click()
-  await page.waitForTimeout(600)
+  await settle(page)
   await expect(page.getByRole('button', { name: 'Save State' })).toHaveCount(0)
   await expect(page.getByRole('main').locator('textarea')).toHaveCount(0)
 
   // History is a character's whole future — every chapter it lists must be one
   // the reader has already reached.
   await page.getByRole('tab', { name: 'History' }).click()
-  await page.waitForTimeout(600)
+  await settle(page)
   const history = await page.getByRole('main').innerText()
   const chapters = [...history.matchAll(/\bCh\.\s*(\d+)/g)].map((m) => Number(m[1]))
   expect(Math.max(0, ...chapters), `history listed ${history}`).toBeLessThanOrEqual(1)
@@ -297,7 +589,7 @@ test('undo and redo shortcuts are inert while reading', async ({ page }) => {
 test('the map list keeps back places the reader has not been', async ({ page }) => {
   await downloadFirstLibraryWorld(page)
   await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(800)
+  await settle(page)
 
   // A sub-map is reached through the marker that links to it, so it is exactly
   // as much of a spoiler as that marker. Work out which maps are behind a
@@ -329,15 +621,23 @@ test('the map list keeps back places the reader has not been', async ({ page }) 
   expect(shouldHide.length, 'the fixture should put at least one map behind an unmet place').toBeGreaterThan(0)
 
   await page.goto(`/#${await worldPath(page)}/maps`)
-  await page.waitForTimeout(2500)
+  await settle(page)
 
   // Read the layer tree itself rather than the page text: a chapter titled
   // after a place would otherwise look like a leak, and chapter titles stay
   // visible on purpose.
-  const inTree = (await page.evaluate(
+  const layerNames = () => page.evaluate(
     `(() => [...document.querySelectorAll('[data-map-layer]')].map((n) => (n.textContent ?? '').trim()))()`,
-  )) as string[]
-  expect(inTree.length, 'the sidebar should be listing some maps').toBeGreaterThan(0)
+  ) as Promise<string[]>
+
+  // Polled, not read once after a sleep. The tree is filled by a live query, so
+  // a single reading is a race — and the half that loses it is this one, the
+  // presence guard that stops the absence check below passing on an empty
+  // sidebar. It went red once in a full run and green on the retry, which in
+  // this repo means a real race rather than a flake.
+  await expect.poll(async () => (await layerNames()).length,
+    { timeout: 30_000, message: 'the sidebar should be listing some maps' }).toBeGreaterThan(0)
+  const inTree = await layerNames()
 
   const listed = shouldHide.filter((l) => inTree.includes(l.layer)).map((l) => l.layer)
   expect(listed, `maps listed for places not yet reached: ${listed.join(', ')}`).toEqual([])
@@ -346,7 +646,7 @@ test('the map list keeps back places the reader has not been', async ({ page }) 
 test('map territories wait for the story to reach them', async ({ page }) => {
   await downloadFirstLibraryWorld(page)
   await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(1200)
+  await settle(page)
 
   // No library world records region state yet, so the rule would go untested on
   // the fixture as it stands — and a skipped test protects nothing. Seed both
@@ -398,27 +698,34 @@ test('map territories wait for the story to reach them', async ({ page }) => {
   // moving between hash routes does not reload the document — so reload, or the
   // gate answers from the data it read before any of this existed.
   await page.reload()
-  await page.waitForTimeout(1500)
+  await settle(page)
 
   // The reload drops the persisted cursor, and a null cursor means "all
   // chapters", where everything is revealed on purpose. Step back onto the
   // opening moment or this asserts against a gate that is deliberately open.
   await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(1200)
+  await settle(page)
   await page.goto(`/#${await worldPath(page)}/maps`)
-  await page.waitForTimeout(3000)
-  const shown = await page.evaluate(`(() => document.body.innerText)()`) as string
 
   // Both directions: the rule has to hide the later one *and* keep the earlier
   // one, or it is not gating, it is just hiding regions.
-  expect(shown, 'a territory recorded at the cursor should still be on the map').toContain('Marchlands of Testing')
+  //
+  // The presence half is an auto-waiting assertion rather than a snapshot of
+  // body text taken after a fixed pause. That pause used to decide the result
+  // under load — the snapshot caught the page shell before the map had drawn
+  // anything — and waiting for the region that *must* appear also guarantees
+  // the page has rendered before the absence half reads it.
+  await expect(page.getByText('Marchlands of Testing').first(),
+    'a territory recorded at the cursor should still be on the map').toBeVisible({ timeout: 30_000 })
+
+  const shown = await page.evaluate(`(() => document.body.innerText)()`) as string
   expect(shown, 'a territory not recorded until the end of the book should not').not.toContain('Sundered Vale of Testing')
 })
 
 test('the map can be read and exported but not redrawn', async ({ page }) => {
   await downloadFirstLibraryWorld(page)
   await page.goto(`/#${await worldPath(page)}/maps`)
-  await page.waitForTimeout(2500)
+  await settle(page)
 
   await expect(page.getByTitle('Add a location marker')).toHaveCount(0)
   await expect(page.getByTitle('Place a text label on the map')).toHaveCount(0)
@@ -443,7 +750,7 @@ test('a book opens where it was left, not at the whole plot', async ({ page }) =
   await expect.poll(() => cursorTitle(page), { timeout: 15_000 }).toMatch(/^Ch\.1 /)
 
   for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(1000)
+  await settle(page)
   const place = await cursorTitle(page)
   expect(place).toMatch(/^Ch\./)
 
@@ -454,7 +761,7 @@ test('a book opens where it was left, not at the whole plot', async ({ page }) =
 
   // Leave to the shelf and come back, the way a reader does between sittings.
   await page.goto('/#/')
-  await page.waitForTimeout(1200)
+  await settle(page)
   await page.goto(`/#${book}/characters`)
   await settleNav(page)
   // Settle before asserting: the position is restored synchronously, but the
@@ -480,7 +787,7 @@ test('coming back honours a deliberate "show everything"', async ({ page }) => {
   const all = await shownCount(page)
 
   await page.goto('/#/')
-  await page.waitForTimeout(1200)
+  await settle(page)
   await page.goto(`/#${book}/characters`)
   await settleNav(page)
   await page.waitForTimeout(2500)
@@ -491,6 +798,19 @@ test('coming back honours a deliberate "show everything"', async ({ page }) => {
 })
 
 
+/**
+ * Wait for the shelf itself before reading anything off it.
+ *
+ * `goto('/#/')` returns before the world list's live query has resolved, so an
+ * assertion fired straight after it is racing the render — which is how this
+ * test came back flaky. Worse, the *absence* check at the end passed trivially
+ * in that window: no shelf, no progress bars, nothing to count. Waiting on the
+ * heading makes both halves mean what they say.
+ */
+async function shelfRendered(page: Page) {
+  await expect(page.getByRole('heading', { name: 'Reading' })).toBeVisible({ timeout: 30_000 })
+}
+
 test('the shelf shows how far into each book the reader has got', async ({ page }) => {
   await downloadFirstLibraryWorld(page)
   const book = await worldPath(page)
@@ -498,18 +818,20 @@ test('the shelf shows how far into each book the reader has got', async ({ page 
   // Freshly downloaded: chapter 1, and the card says so.
   await page.goto('/#/')
   await settleNav(page)
+  await shelfRendered(page)
   await expect(page.getByText(/^Chapter 1 of \d+$/)).toBeVisible()
 
   // Read on, and the shelf follows.
   await page.goto(`/#${book}`)
   await settleNav(page)
   for (let i = 0; i < 14; i++) await page.getByRole('button', { name: 'Next moment' }).click()
-  await page.waitForTimeout(1200)
+  await settle(page)
   const reached = (await cursorTitle(page)).match(/^Ch\.(\d+)/)![1]
   expect(Number(reached)).toBeGreaterThan(1)
 
   await page.goto('/#/')
   await settleNav(page)
+  await shelfRendered(page)
   await expect(page.getByText(new RegExp(`^Chapter ${reached} of \\d+$`))).toBeVisible()
 
   // Asking for the whole book is not a place in it, so the bar goes away —
@@ -520,6 +842,7 @@ test('the shelf shows how far into each book the reader has got', async ({ page 
   await page.waitForTimeout(800)
   await page.goto('/#/')
   await settleNav(page)
+  await shelfRendered(page)
   await expect(page.getByText(/^Chapter \d+ of \d+$/)).toHaveCount(0)
 })
 
@@ -534,7 +857,7 @@ test('the map cannot be redrawn by dragging what is on it', async ({ page }) => 
   await downloadFirstLibraryWorld(page)
   const world = await worldPath(page)
   await page.goto(`/#${world}/maps`)
-  await page.waitForTimeout(3000)
+  await settle(page)
 
   const marker = page.locator('.leaflet-marker-icon').first()
   await expect(marker).toBeVisible()
@@ -553,10 +876,10 @@ test('the map cannot be redrawn by dragging what is on it', async ({ page }) => 
   // failed to load: turn reading mode off and the same marker becomes draggable.
   await page.goto(`/#${world}/settings`)
   await settleNav(page)
-  await page.getByRole('button', { name: 'Reading mode is on' }).click()
-  await page.waitForTimeout(800)
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
+  await settle(page)
   await page.goto(`/#${world}/maps`)
-  await page.waitForTimeout(3000)
+  await settle(page)
 
   await expect(page.locator('.leaflet-marker-icon').first()).toHaveClass(/leaflet-marker-draggable/)
 })
@@ -573,7 +896,7 @@ test('the writing screens are closed by URL, not just hidden from the nav', asyn
 
   for (const screen of ['corkboard', 'structure', 'manuscript']) {
     await page.goto(`/#${world}/${screen}`)
-    await page.waitForTimeout(1500)
+    await settle(page)
     // Bounced back to the dashboard rather than served the writing screen.
     expect(new URL(page.url()).hash, screen).toBe(`#${world}`)
   }
@@ -582,12 +905,38 @@ test('the writing screens are closed by URL, not just hidden from the nav', asyn
   // broken for everyone: turn reading mode off and all three open.
   await page.goto(`/#${world}/settings`)
   await settleNav(page)
-  await page.getByRole('button', { name: 'Reading mode is on' }).click()
-  await page.waitForTimeout(800)
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
+  await settle(page)
 
   for (const screen of ['corkboard', 'structure', 'manuscript']) {
     await page.goto(`/#${world}/${screen}`)
-    await page.waitForTimeout(1500)
+    await settle(page)
     expect(new URL(page.url()).hash, screen).toBe(`#${world}/${screen}`)
   }
+})
+
+test('the chapter roll-up gives a reader the size but not the state', async ({ page }) => {
+  // TL-4 put three numbers on every chapter row. Two of them — how many scenes,
+  // how many words — are the shape of the book, which a contents page carries.
+  // The third, how finished the chapter is, belongs to whoever is writing it.
+  test.setTimeout(180_000)
+  await downloadFirstLibraryWorld(page)
+  const world = await worldPath(page)
+  const main = page.getByRole('main')
+  const rollupStatus = main.getByTitle(/^Every scene is |^Least advanced of /)
+
+  await page.goto(`/#${world}/timeline`)
+  await settleNav(page)
+  await expect(main.getByText(/^\d+ scenes?( · [\d,]+ words?)?$/).first())
+    .toBeVisible({ timeout: 15_000 })
+  await expect(rollupStatus).toHaveCount(0)
+
+  // The presence half, on the same locator: turn reading mode off and the
+  // status appears, so the absence above cannot be passing vacuously.
+  await page.goto(`/#${world}/settings`)
+  await settleNav(page)
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
+  await settle(page)
+  await page.goto(`/#${world}/timeline`)
+  await expect(rollupStatus.first()).toBeVisible({ timeout: 15_000 })
 })

@@ -4,6 +4,7 @@ import { X, Minimize2 } from 'lucide-react'
 import { setSceneText } from '@/db/hooks/useManuscript'
 import { wordCount } from '@/lib/manuscript'
 import { focusStats, sessionGoalPercent } from '@/lib/focusSession'
+import { plural } from '@/lib/plural'
 
 interface FocusModeProps {
   worldId: string
@@ -54,7 +55,19 @@ export function FocusMode({ worldId, eventId, title, initialText, onExit }: Focu
     window.addEventListener('keydown', onKey)
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    taRef.current?.focus()
+    /*
+      Caret to the end, not index 0. A programmatic `focus()` on a textarea that
+      already has content leaves the caret at the start, so the first thing a
+      writer typed in Focus mode was prepended to their own draft — measured at
+      `selectionStart 0` against a 1,602-character scene. You enter Focus mode
+      to carry on writing, so the caret belongs where the writing stopped.
+    */
+    const ta = taRef.current
+    if (ta) {
+      ta.focus()
+      const end = ta.value.length
+      ta.setSelectionRange(end, end)
+    }
     return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev }
   }, [onExit])
 
@@ -98,7 +111,7 @@ export function FocusMode({ worldId, eventId, title, initialText, onExit }: Focu
       <div className="flex shrink-0 items-center gap-3 px-4 py-2 text-xs text-[hsl(var(--muted-foreground))]">
         <span className="truncate">{title || 'Untitled scene'}</span>
         <span className="ml-auto tabular-nums">
-          {stats.current.toLocaleString()} words
+          {plural(stats.current, 'word')}
           {stats.sessionDelta !== 0 && (
             <span className={stats.sessionDelta > 0 ? 'text-emerald-400' : 'text-[hsl(var(--muted-foreground))]'}>
               {' '}({stats.sessionDelta > 0 ? '+' : ''}{stats.sessionDelta.toLocaleString()} this session)
@@ -127,15 +140,16 @@ export function FocusMode({ worldId, eventId, title, initialText, onExit }: Focu
             onKeyUp={centreCaret}
             placeholder="Write…"
             spellCheck
-            className="w-full resize-none overflow-hidden bg-transparent font-serif text-lg leading-loose text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground)/0.5)] focus:outline-none"
+            className="w-full resize-none overflow-hidden bg-transparent text-lg leading-loose text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground)/0.5)] focus:outline-none"
+            style={{ fontFamily: 'var(--font-prose)' }}
           />
         </div>
         {/* Hidden mirror for caret measurement (matches the textarea's box). */}
         <div
           ref={mirrorRef}
           aria-hidden="true"
-          className="pointer-events-none invisible absolute left-1/2 top-0 w-full max-w-2xl -translate-x-1/2 whitespace-pre-wrap break-words px-6 font-serif text-lg leading-loose"
-          style={{ paddingTop: '42vh' }}
+          className="pointer-events-none invisible absolute left-1/2 top-0 w-full max-w-2xl -translate-x-1/2 whitespace-pre-wrap break-words px-6 text-lg leading-loose"
+          style={{ fontFamily: 'var(--font-prose)', paddingTop: '42vh' }}
         />
       </div>
 

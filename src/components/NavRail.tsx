@@ -63,6 +63,9 @@ export function NavRail() {
 
   return (
     <nav
+      // Distinct from AppShell's `data-nav-rail`, which carries the width
+      // variable ("pinned"/"collapsed") and would match a bare selector here.
+      data-rail-chrome
       aria-label="Main navigation"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -78,8 +81,10 @@ export function NavRail() {
           <RailLink key={item.to} item={item} worldId={worldId} expanded={expanded} />
         ))}
 
-        {/* Tier divider */}
-        <div className="my-2 flex items-center px-2.5">
+        {/* Tier divider. Collapsed, the "More" text is hidden and only the
+            hairline is left, so the break between everyday screens and the rest
+            barely registered — give it room to read as a grouping on its own. */}
+        <div className="my-3 flex items-center px-2.5">
           <span className="h-px flex-1 bg-[hsl(var(--border))]" />
           <span className={cn('overflow-hidden text-[10px] font-medium uppercase tracking-wider text-[hsl(var(--muted-foreground)/0.7)] transition-all duration-150', expanded ? 'ml-2 max-w-[6rem] opacity-100' : 'max-w-0 opacity-0')}>
             More

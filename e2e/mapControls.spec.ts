@@ -15,7 +15,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const MAIN_MAP = path.resolve(__dirname, 'map_example/main_map.jpg')
 
 async function setupMap(page: Page, opts: { withCharacter?: boolean } = {}) {
-  await page.goto('/')
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Cartography')
@@ -160,9 +159,9 @@ test('clicking a character keeps its panel, film strip and zoom all usable', asy
   await page.getByPlaceholder('Chapter title').fill('One')
   await page.getByRole('button', { name: 'Add Chapter' }).last().click()
   await page.getByTitle('Open chapter detail').first().click()
-  await page.getByRole('main').getByRole('button', { name: 'Add Event' }).first().click()
-  await page.getByPlaceholder('Event title').fill('The Departure')
-  await page.getByRole('button', { name: 'Add Event' }).last().click()
+  await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
+  await page.getByPlaceholder('Scene title').fill('The Departure')
+  await page.getByRole('button', { name: 'Add Scene' }).last().click()
 
   await page.getByRole('link', { name: /timeline/i }).first().click()
   await settleNav(page)
