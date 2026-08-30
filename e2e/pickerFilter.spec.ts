@@ -114,6 +114,19 @@ test.describe('Pickers long enough to get lost in', () => {
     await settle(page)
 
     await page.getByRole('main').getByRole('button', { name: /Unknown \/ not set/ }).click()
+    /*
+      `allTextContents` does not auto-wait: with no matches it returns `[]` at
+      once. This read raced the listbox mounting and failed intermittently with
+      `Received: []` — and the page snapshot Playwright saved alongside it showed
+      the listbox open with all four options in the right order, which is the
+      shape of a test that measured too early rather than a screen that was
+      wrong. So wait for the options to be there, and only then read them.
+
+      A count rather than a visibility check on the first one: the risk is a
+      partly-rendered list, which one visible option does not rule out.
+    */
+    const optionCount = PLACES.length + 1 // the places, plus "Unknown / not set"
+    await expect(page.getByRole('option')).toHaveCount(optionCount, { timeout: 20_000 })
     const names = (await page.getByRole('option').allTextContents())
       .map((t) => t.trim())
       .filter((t) => t !== 'Unknown / not set')

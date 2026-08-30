@@ -62,9 +62,20 @@ async function open(page: Page) {
   return box
 }
 
+/**
+ * The result labels, once there are some.
+ *
+ * `allTextContents` does not auto-wait — with nothing matched yet it returns
+ * `[]` at once — so a fixed sleep and a bulk read is a race, and the way it
+ * fails is silent: every `not.toContain` in this file passes against an empty
+ * list. Every search here is expected to match something, so waiting for the
+ * first result is both safe and the thing that makes those assertions mean
+ * anything.
+ */
 async function labels(page: Page): Promise<string[]> {
-  await page.waitForTimeout(500)
-  return page.locator('[data-search-result-label]').allTextContents()
+  const results = page.locator('[data-search-result-label]')
+  await expect(results.first()).toBeVisible({ timeout: 20_000 })
+  return results.allTextContents()
 }
 
 test.describe('searching whole words', () => {
@@ -134,6 +145,13 @@ test.describe('searching whole words', () => {
 
     // And it is still doing something after the reload, not merely drawn ticked.
     await reopened.fill('tin')
-    expect(await labels(page)).not.toContain('The pour')
+    const strict = await labels(page)
+    /*
+      Both halves, which this one was missing: an absence on its own is what an
+      empty result list looks like, so the claim in the comment above would have
+      survived the setting doing nothing at all.
+    */
+    expect(strict, 'the standalone word should still be found').toContain('Weighing the ninth')
+    expect(strict, 'and the substring match should still be excluded').not.toContain('The pour')
   })
 })

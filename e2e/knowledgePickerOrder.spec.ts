@@ -120,6 +120,15 @@ test.describe("Knowledge's pickers list scenes in reading order", () => {
     await page.getByRole('button', { name: 'True from the start' }).click()
     await settle(page)
 
-    expect(await options(page)).toEqual(EXPECTED)
+    /*
+      Polled, not read once. `allTextContents` returns `[]` immediately when
+      nothing matches yet, so a single read races the portal the options render
+      into — this failed intermittently with an empty array while the saved page
+      snapshot showed the list present and correctly ordered.
+
+      Polling to an exact list is still a real assertion: a picker in the wrong
+      order never reaches it and the test fails on timeout.
+    */
+    await expect.poll(() => options(page), { timeout: 20_000 }).toEqual(EXPECTED)
   })
 })
