@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo } from 'react'
+import { useEffect, useRef, useMemo, useState } from 'react'
 import { useActiveWorldId, useActiveEventId, useAppStore } from '@/store'
 import {
   useTimelines, useChapters, useTimelineEvents, useWorldChapters, useWorldEvents,
@@ -16,6 +16,9 @@ import { CollapsedBar } from './timeline/CollapsedBar'
 import { TimelineScopeSelect } from './timeline/TimelineScopeSelect'
 import { selectFirstEvent, activateEvent } from './timeline/TimelineControls'
 import { useRevealAll } from './useRevealAll'
+import { useGate } from '@/db/hooks/ReadingGateContext'
+import { asksBeforeJumping } from '@/lib/readingAhead'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 
 /** Narrative order within a single timeline: chapter number, then sortOrder. */
 function orderByChapter(events: WorldEvent[], chapters: Chapter[]): WorldEvent[] {
@@ -47,6 +50,20 @@ export function ChapterTimelineBar() {
     (`handleStop`, which stops playback *and* clears).
   */
   const { requestClear, revealAllDialog } = useRevealAll(worldId)
+  /*
+    R14: skipping ahead is the intended way to move your place and must not be
+    blocked — but two or more chapters forward is a deliberate skip, and it is
+    the one move that shows a reader something they were saving. The next
+    chapter, another scene in this one, and any move backwards all go straight
+    through.
+
+    The titles are withheld separately (`lib/readingAhead`), because that is the
+    half that mattered: the reader's report had the reveal in the *click*, on a
+    block reading "9 · Mina Murray's Journal". A confirm arriving after that
+    would have been asking about something already read.
+  */
+  const gate = useGate()
+  const [pendingJump, setPendingJump] = useState<{ to: number; go: () => void } | null>(null)
   function handleClearCursor() {
     // Stopping playback is not the destructive half and needs no confirming;
     // discarding the reading position is, and does.
@@ -141,6 +158,23 @@ export function ChapterTimelineBar() {
   const runs          = useMemo(() => groupChapterRuns(combinedRows), [combinedRows])
   const combinedOrdered = useMemo(() => combinedRows.map((r) => r.event), [combinedRows])
 
+  /*
+    Chapter numbers for the jump guard, over whichever sets this bar is holding.
+    The four track modes load different halves — `useWorldChapters` is only
+    asked for in merged mode — so the lookup unions what is present rather than
+    picking one, which would leave the guard silently inert in three of them.
+  */
+  const chapterNumberById = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const c of [...worldChapters, ...frameChapters, ...singleChapters]) m.set(c.id, c.number)
+    return m
+  }, [worldChapters, frameChapters, singleChapters])
+  const eventChapterId = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const e of [...worldEvents, ...frameEvents, ...singleRawEvents]) m.set(e.id, e.chapterId)
+    return m
+  }, [worldEvents, frameEvents, singleRawEvents])
+
   // ── Playback ───────────────────────────────────────────────────────────────
   // Single & frame → that timeline's events. Merged → the whole combined
   // sequence; the map follows each event's own timeline (see useMapViewState),
@@ -194,8 +228,49 @@ export function ChapterTimelineBar() {
   }
 
   // ── Shared handlers ────────────────────────────────────────────────────────
-  const handleEventSelect = (id: string, locId?: string | null) => activateEvent(id, locId, setActiveEventId)
-  const handleChapterSelect = (chId: string, events: WorldEvent[]) => selectFirstEvent(chId, events, setActiveEventId)
+  /** Ask before a move that reads ahead; otherwise just go. */
+  function guarded(toChapter: number | undefined, go: () => void) {
+    if (toChapter === undefined || !gate.active || !asksBeforeJumping(gate.chapterNumber, toChapter)) {
+      go()
+      return
+    }
+    setPendingJump({ to: toChapter, go })
+  }
+
+  const handleEventSelect = (id: string, locId?: string | null) => {
+    const chId = eventChapterId.get(id)
+    guarded(
+      chId === undefined ? undefined : chapterNumberById.get(chId),
+      () => activateEvent(id, locId, setActiveEventId),
+    )
+  }
+  const handleChapterSelect = (chId: string, events: WorldEvent[]) => guarded(
+    chapterNumberById.get(chId),
+    () => selectFirstEvent(chId, events, setActiveEventId),
+  )
+
+  /*
+    Rendered beside `revealAllDialog` at each of the four track returns below,
+    so it is one element wherever the bar is drawn.
+
+    The wording says what actually happens rather than warning of damage: the
+    reveals are computed from the cursor, so moving back hides them again. What
+    it cannot give back is not having seen them.
+  */
+  const jumpDialog = (
+    <ConfirmDialog
+      open={!!pendingJump}
+      onOpenChange={(v) => { if (!v) setPendingJump(null) }}
+      title={pendingJump ? `Read ahead to chapter ${pendingJump.to}?` : ''}
+      description={
+        gate.chapterNumber !== null && pendingJump
+          ? `You are on chapter ${gate.chapterNumber}. Moving there shows everything the story introduces in between — people, places and connections you have not met yet. Coming back hides them again.`
+          : undefined
+      }
+      confirmLabel="Read ahead"
+      onConfirm={() => { pendingJump?.go(); setPendingJump(null) }}
+    />
+  )
   const handleActivateDepth = (timelineId: string) => {
     setIsPlayingStory(false)
     setActiveDepthTimelineId(timelineId)
@@ -249,6 +324,7 @@ export function ChapterTimelineBar() {
           setActiveEventId={setActiveEventId}
         />
       {revealAllDialog}
+      {jumpDialog}
       </>
     )
   }
@@ -289,6 +365,7 @@ export function ChapterTimelineBar() {
           onEventSelect={handleEventSelect}
         />
       {revealAllDialog}
+      {jumpDialog}
       </>
     )
   }
@@ -331,6 +408,7 @@ export function ChapterTimelineBar() {
         scopeSelector={multi ? <TimelineScopeSelect timelines={timelines} value={scope} onChange={setBarScope} /> : undefined}
       />
     {revealAllDialog}
+    {jumpDialog}
     </>
   )
 }

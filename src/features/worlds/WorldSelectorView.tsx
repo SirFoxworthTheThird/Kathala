@@ -11,9 +11,10 @@ import { LibraryDialog } from './LibraryDialog'
 import { LLMPromptDialog } from './LLMPromptDialog'
 import { useNavigate } from 'react-router-dom'
 import { importWorld, importWorldImages } from '@/lib/exportImport'
-import { partitionWorlds } from '@/lib/worldShelves'
+import { partitionWorlds, readingLeads } from '@/lib/worldShelves'
 import { importCollision, type ImportCollision } from '@/lib/importCollision'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { useAppStore } from '@/store'
 
 /** A chosen file set, parked while the writer decides whether to overwrite. */
 interface PendingImport {
@@ -34,6 +35,30 @@ declare global {
 export default function WorldSelectorView() {
   const worlds = useWorlds()
   const { drafts, reading } = useMemo(() => partitionWorlds(worlds), [worlds])
+  const positionByWorld = useAppStore((st) => st.eventByWorld)
+  const readingFirst = useMemo(
+    () => readingLeads(reading, positionByWorld),
+    [reading, positionByWorld],
+  )
+
+  /*
+    One shelf, rendered at whichever end `readingFirst` puts it. Written once
+    rather than twice so the two orders cannot drift apart — a copy would be two
+    places to change the heading and one of them would be missed.
+  */
+  const readingShelf = reading.length > 0 && (
+    <section className="flex flex-col gap-3">
+      <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+        <BookOpen className="h-4 w-4" aria-hidden="true" />
+        Reading
+      </h2>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {reading.map((world) => (
+          <WorldCard key={world.id} world={world} />
+        ))}
+      </div>
+    </section>
+  )
   const [dialogOpen, setDialogOpen] = useState(false)
   const [manuscriptOpen, setManuscriptOpen] = useState(false)
   const [promptOpen, setPromptOpen] = useState(false)
@@ -275,10 +300,23 @@ export default function WorldSelectorView() {
             fixture was authored on. That is why the split alone was not enough
             — see W19-5 on the ordering in `useWorlds`.
 
-            Your own work leads, because this is a writing tool. Either shelf is
-            dropped when empty rather than standing there as an empty heading.
+            Your own work leads, because this is a writing tool — unless a book
+            on the reading shelf has somebody's place kept in it, in which case
+            they are coming back to it and it goes first (`readingLeads`). A
+            reader on a 390px phone met the strapline, five ways to start a
+            world and the demo worlds before their book, which began 916px down
+            an 844px viewport.
+
+            Swapped by reordering the sections, not by CSS `order`: that would
+            leave the reading shelf second in the DOM and second in the tab
+            order while sitting first on screen, which is the visual-order trap
+            WCAG 1.3.2 and 2.4.3 name.
+
+            Either shelf is dropped when empty rather than standing there as an
+            empty heading.
           */
           <div className="flex flex-col gap-8">
+            {readingFirst && readingShelf}
             <section className="flex flex-col gap-3">
               {reading.length > 0 && (
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
@@ -316,19 +354,7 @@ export default function WorldSelectorView() {
               </div>
             </section>
 
-            {reading.length > 0 && (
-              <section className="flex flex-col gap-3">
-                <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                  <BookOpen className="h-4 w-4" aria-hidden="true" />
-                  Reading
-                </h2>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {reading.map((world) => (
-                    <WorldCard key={world.id} world={world} />
-                  ))}
-                </div>
-              </section>
-            )}
+            {!readingFirst && readingShelf}
           </div>
         )}
       </main>

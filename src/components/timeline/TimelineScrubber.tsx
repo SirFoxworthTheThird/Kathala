@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect, useCallback, type ReactNode, type RefObje
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Chapter, WorldEvent } from '@/types'
 import type { ChapterRun } from '@/lib/combinedTimeline'
+import { useGate } from '@/db/hooks/ReadingGateContext'
+import { chapterBlockLabel, sceneTickLabel } from '@/lib/readingAhead'
 
 // ── Chapter segment ───────────────────────────────────────────────────────────
 
@@ -30,6 +32,16 @@ export function ChapterSegment({
   const isActive = segmentState === 'active'
   const isPast   = segmentState === 'past'
   const isEmpty  = segmentState === 'empty'
+
+  /*
+    R14: while reading, a chapter the story has not reached keeps its number and
+    loses its title — and so does every scene inside it, since each tick is a
+    button whose accessible name was the scene's own title. Dimming to 0.42 was
+    never hiding, and this bar was the one ungated surface left in reading mode.
+  */
+  const gate = useGate()
+  const chapterRevealed = !gate.active || isPast || isActive
+  const label = chapterBlockLabel(chapter, chapterRevealed)
 
   const activeIdx  = activeEventId ? events.findIndex((e) => e.id === activeEventId) : -1
   const fillRatio  = isPast ? 1 : (isActive && activeIdx >= 0) ? (activeIdx + 0.5) / events.length : 0
@@ -84,9 +96,11 @@ export function ChapterSegment({
       onClick={isEmpty ? undefined : onChapterSelect}
       // A truncated title is still worth having in full on hover, and the
       // frame track truncates sooner than the story track does.
-      title={isEmpty
+      // The empty-chapter hint is an instruction to add a scene, so it is for
+      // the writer; a reader is told what everyone else is told.
+      title={isEmpty && !gate.active
         ? 'Add a scene to this chapter to activate it.'
-        : `Ch. ${chapter.number}${chapter.title ? ` — ${chapter.title}` : ''}`}
+        : label.tooltip}
     >
       {!compact && (
         <div style={{
@@ -97,7 +111,7 @@ export function ChapterSegment({
           transition: 'color 0.2s', flexShrink: 0,
         }}>
           <span style={{ opacity: 0.6 }}>{chapter.number}</span>
-          {chapter.title && <span> · {chapter.title}</span>}
+          {label.title && <span> · {label.title}</span>}
         </div>
       )}
 
@@ -136,7 +150,13 @@ export function ChapterSegment({
             <button
               key={ev.id}
               ref={isEvActive ? activeMarkerRef : undefined}
-              title={isLinked ? `${ev.title} — paired with a moment on the other track` : ev.title}
+              title={sceneTickLabel({
+                chapterNumber: chapter.number,
+                index: i,
+                title: ev.title,
+                revealed: !gate.active || hasFired,
+                linked: isLinked,
+              })}
               onClick={(e) => { e.stopPropagation(); onEventSelect(ev.id, ev.locationMarkerId) }}
               style={{
                 position: 'absolute', left: `${pct}%`, top: '50%',
@@ -183,7 +203,7 @@ export function ChapterSegment({
           transition: 'color 0.2s',
         }}>
           <span style={{ opacity: 0.6 }}>{chapter.number}</span>
-          {chapter.title && <span> · {chapter.title}</span>}
+          {label.title && <span> · {label.title}</span>}
         </div>
       )}
     </div>

@@ -194,6 +194,12 @@ Turning reading mode off in a world's settings moves it back up to *Your
 worlds*, since at that point you are editing it rather than reading it. With
 nothing in reading mode there is only one list and no headings at all.
 
+**Once a book has your place in it, its shelf comes first.** Downloaded and
+never opened, it stays below — but the moment a book knows which chapter you are
+on, it is what you came back for, and on a phone that is the difference between
+your book being on screen and being a scroll away. Your drafts are still there,
+directly beneath.
+
 Each card carries the world's name, a date, its description, and how much is in
 it — chapters and cast — so you can tell two drafts apart without opening either.
 
@@ -401,6 +407,18 @@ character, place and subplot the story has not introduced yet. While reading
 that undoes the thing reading mode is for, so both of them ask before doing it,
 and both offer to step the cursor instead. While writing, where "all chapters"
 is just the default view, it stays a single click.
+
+**The chapter bar shows numbers, not titles, for what you have not read.** Along
+the bottom of the screen a chapter you have reached carries its title, and one
+you have not carries only its number; the scenes inside it are named by their
+position — *"Chapter 9, moment 1 — not yet reached"* — rather than by what
+happens in them. A chapter title is often the event itself, and dimming one you
+can still read is not hiding it.
+
+**Skipping ahead asks first.** Moving your place on into the next chapter, or
+back to any chapter, happens the moment you click. Jumping two or more chapters
+forward asks — it will show you everyone and everywhere the story introduces in
+between. Coming back hides them again; what it cannot do is unshow them.
 
 **A chapter you have not reached yet does not open.** On the timeline its row
 does not expand — the scene list inside would name what happens in it — and its
@@ -1764,6 +1782,13 @@ something. The arrangement is worked out fresh each time from the same
 relationships, so it doesn't shift between visits.
 
 ![Focusing the relationship graph on one character](images/56-relationship-focus.png)
+
+**While reading, the graph opens close enough to read.** Fitting a whole cast on
+screen is what a writer wants — the shape is the answer — but for a reader with
+one question ("how is this person connected to that one?") a graph fitted so far
+out that the names are illegible is no answer at all. In reading mode it opens
+at the zoom the labels need, showing part of the graph rather than all of it;
+pan to reach the rest.
 
 Three controls keep a big cast under control:
 

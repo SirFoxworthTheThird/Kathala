@@ -17,6 +17,8 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   useStore,
+  useReactFlow,
+  useNodesInitialized,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { X, Trash2, Network, Plus, Check, Shield, Sparkles, LayoutGrid, Focus } from 'lucide-react'
@@ -148,6 +150,47 @@ function ZoomHint() {
       Zoom in to read the relationship labels
     </span>
   )
+}
+
+/**
+ * Fit the graph once its nodes actually exist, and once its gate has spoken.
+ *
+ * `fitView` on `<ReactFlow>` fits at init, and neither of the two things it
+ * needs is ready then. Both were measured in an e2e run rather than reasoned
+ * about:
+ *
+ * - **The nodes have no size yet.** `fitView()` returned `false` — v11 refuses
+ *   when nothing has been measured — and nothing ever tried again, so the pane
+ *   sat at `scale(0.302913)` with three nodes on screen and was still at
+ *   `scale(0.302913)` after the cursor moved and forty-two arrived.
+ * - **The reading gate is still open.** The gate answers `OPEN_GATE` while it
+ *   loads, so at that instant the graph had all fifty characters and no
+ *   `minZoom`. A zoom floor conditioned on a gate that has not resolved is a
+ *   floor on nothing.
+ *
+ * So: wait for `useNodesInitialized`, and fit again if the floor itself
+ * changes — undefined to `LABEL_MIN_ZOOM` is the gate arriving. At most two
+ * fits, and the second only where reading mode is on.
+ *
+ * Not on every change: the layout is deliberately computed from *every*
+ * relationship rather than the visible ones, so that stepping through the story
+ * does not rearrange the graph under the reader. Refitting as the cast grew
+ * would undo that by moving the camera instead of the nodes.
+ *
+ * Must live inside `ReactFlow`, like `ZoomHint`, to reach its instance.
+ */
+function FitWhenNodesArrive({ count, minZoom }: { count: number; minZoom?: number }) {
+  const { fitView } = useReactFlow()
+  const initialized = useNodesInitialized()
+  const fittedWith = useRef<number | 'open' | null>(null)
+  useEffect(() => {
+    if (!initialized || count === 0) return
+    const key = minZoom ?? 'open'
+    if (fittedWith.current === key) return
+    fittedWith.current = key
+    fitView({ padding: 0.15, ...(minZoom !== undefined && { minZoom }) })
+  }, [initialized, count, minZoom, fitView])
+  return null
 }
 
 const nodeTypes: NodeTypes = { character: CharacterNode }
@@ -588,7 +631,21 @@ export default function RelationshipGraphView() {
           edgeTypes={edgeTypes}
           connectionMode={ConnectionMode.Loose}
           fitView
-          fitViewOptions={{ padding: 0.15 }}
+          /*
+            R13: fitting everything is the right arrival for a writer surveying
+            a cast, and the wrong one for a reader. At 14 nodes the fit landed
+            under `LABEL_MIN_ZOOM`, so the graph opened in its own degraded mode
+            — 7px names and a banner admitting it, *"Zoom in to read the
+            relationship labels"* — and the reader's question ("how is Arthur
+            connected to Lucy?") cost a zoom and a pan before it could even be
+            asked.
+
+            While reading, the fit is floored at the zoom the labels need, so
+            the graph opens legible and cropped rather than complete and
+            unreadable; panning is the cheaper of the two. Writing keeps the
+            survey, because there the whole shape *is* the answer.
+          */
+          fitViewOptions={{ padding: 0.15, ...(gate.active && { minZoom: LABEL_MIN_ZOOM }) }}
           minZoom={0.1}
           style={{ background: 'hsl(222,47%,9%)' }}
           onConnect={(c) => {
@@ -609,6 +666,7 @@ export default function RelationshipGraphView() {
             localStorage.setItem(posKey, JSON.stringify(posRef.current))
           }}
         >
+          <FitWhenNodesArrive count={nodes.length} minZoom={gate.active ? LABEL_MIN_ZOOM : undefined} />
           <Background color="#334155" gap={20} />
           <Panel position="top-left">
             <div className="flex flex-col items-start gap-2">
