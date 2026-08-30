@@ -482,6 +482,13 @@ references only: characters, chapters, scenes, places, relationships and lore.
 They are unofficial and fan-made, and are not affiliated with or endorsed by the
 authors or publishers.
 
+Chapters are named as the book names them, including where the book uses only
+numbers or its own divisions — *Chapter IV*, *Letter II*, *First Period — The
+Loss of the Diamond: Chapter 1*. Two books number their chapters without naming
+them and would be hard to navigate that way: *Jane Eyre* and *The Odyssey*.
+Those carry descriptive names written for the example, and each says so on its
+own **Lore** page, so you can tell an author's title from ours.
+
 ### Reading mode on your own world
 
 Reading mode is a per-world setting, so it works on anything — not just library

@@ -16,6 +16,7 @@ If a rule genuinely does not apply, record the reason in the generator, pull req
 - **EX-005 — Keep pacing values valid.** Dramatic tension must remain within 1–5 and reflect the actual beat. Every event must have non-negative elapsed time.
 - **EX-006 — Complete the calendar when used.** Every event must have a valid in-world date and time. When the source is vague, use a clearly identified editorial chronology and explain its assumptions in Lore.
 - **EX-007 — Use original summaries.** Do not copy the book’s prose. Titles, summaries, descriptions, and status notes must be original structural writing.
+- **EX-008 — Say so when a chapter name is yours.** Where the source numbers its chapters and does not name them, a descriptive chapter title is an editorial signpost, not the author’s words, and Lore must say so — the same rule EX-006 applies to a reconstructed calendar. Prefer the book’s own headings wherever it has them, including structural ones such as *First Period — The Loss of the Diamond: Chapter 1*, which are the real divisions and not a shortfall to be improved on.
 
 ## 2. Characters and event state
 
