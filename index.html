@@ -2,9 +2,43 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
+    <!--
+      The SVG, not the PNG. `favicon.png` is 3.98 MB — it is the source art for
+      the packaged desktop icon, and it was being downloaded and decoded by every
+      browser to draw a 16px tab icon and, through `TopBar`, a 28px logo. The SVG
+      is the same mark at 9.5 KB. `favicon.png` stays in `public/` because
+      `electron/main.cjs` needs a raster for the window icon.
+    -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PlotWeave</title>
+    <title>PlotWeave — a story bible that knows what time it is</title>
+
+    <!--
+      What a search result and a shared link look like.
+
+      There was none of this: no description, no preview card. PlotWeave is
+      passed around as a URL in writing communities, and every one of those
+      links rendered as bare text. The absolute URLs below sit in `content`
+      attributes, which no browser fetches — they are read by crawlers, off the
+      page — so they do not touch the first-paint rule the `<head>` comment
+      below is about. `href`/`src` remain same-origin only, and
+      `src/lib/__tests__/indexHtml.test.ts` holds both halves apart.
+    -->
+    <meta
+      name="description"
+      content="A local-first story bible for fiction writers. Track where every character is, what they carry and who they know, at any scene in your story. No account, no backend — your work stays on your device."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="PlotWeave" />
+    <meta property="og:title" content="PlotWeave — a story bible that knows what time it is" />
+    <meta
+      property="og:description"
+      content="Track where every character is, what they carry and who they know, at any scene in your story. Open one of thirty worlds built from published books and scrub through it — no account, nothing to install."
+    />
+    <meta property="og:url" content="https://plotweave.netlify.app/" />
+    <meta property="og:image" content="https://plotweave.netlify.app/og-card.png" />
+    <meta property="og:image:alt" content="The PlotWeave dashboard, showing a world's chapters, cast and continuity warnings" />
+    <meta name="twitter:card" content="summary_large_image" />
     <!--
       No external stylesheets, fonts or scripts here, deliberately.
 

@@ -12,6 +12,46 @@
   Track where every character is, what they carry, who they know, and what is true about your world at any moment in the story.
 </p>
 
+<p align="center">
+  <a href="https://plotweave.netlify.app/"><strong>Try it in your browser →</strong></a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/SirFoxworthTheThird/PlotWeave/releases"><strong>Download for desktop</strong></a>
+  &nbsp;·&nbsp;
+  <a href="docs/GUIDE.md"><strong>User guide</strong></a>
+</p>
+
+<p align="center">
+  <img alt="MIT licence" src="https://img.shields.io/github/license/SirFoxworthTheThird/PlotWeave" />
+  <img alt="Latest release" src="https://img.shields.io/github/v/release/SirFoxworthTheThird/PlotWeave" />
+  <img alt="No account required" src="https://img.shields.io/badge/account-not%20required-informational" />
+</p>
+
+---
+
+## Open a real novel and scrub through it
+
+The quickest way to understand PlotWeave is to use one. It ships a **library of
+thirty worlds built from published books** — *Dracula*, *Frankenstein*,
+*Pride and Prejudice*, *Treasure Island*, *The Odyssey* and others — with their
+chapters, cast, places, relationships and lore already mapped to individual
+scenes.
+
+Open one in the browser, move the time cursor to chapter seven, and the whole
+workspace answers as of that moment: who has been introduced, where they are,
+what they are carrying, who has met whom. Nothing to install, no account, and
+the download is a few hundred kilobytes.
+
+They double as a **reading companion**. A library world arrives in *reading
+mode*, so it will not tell you anything the book has not: characters, places,
+lore and subplots stay hidden until the story introduces them, and your place in
+the book is the cursor. You can read a novel with one open beside you and not be
+spoiled — and turn the same mode on over your own draft before handing it to a
+beta reader.
+
+*These are unofficial, fan-made structural references — no text from any book is
+included, and they are not affiliated with or endorsed by the authors or
+publishers.*
+
 ---
 
 ## Why PlotWeave?
@@ -126,6 +166,10 @@ scenes, with overlays for status, POV, goals, and factions.*
 - **Import or generate a starting point.** Turn Markdown/plain text into a
   manuscript, generate structured data with copy/paste AI prompts, or start a
   sequel that carries the relevant world state forward.
+- **Hand it to a reader.** Reading mode presents a world to someone who has not
+  finished the book: the cursor is their place, everything the story has not
+  reached is held back, and the writing tools are put away. It is a per-world
+  setting, so it works on your own draft as well as on a library world.
 
 ### Themes that match the genre
 
