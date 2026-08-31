@@ -1462,7 +1462,7 @@ const entry = {
   data: 'the-wonderful-wizard-of-oz.pwk',
   dataBytes: Buffer.byteLength(text),
   counts: { characters: characters.length, chapters: chapters.length, events: events.length, locations: locations.length },
-  notice: 'Unofficial reference for a public-domain novel. This example contains original structural summaries and an editorial calendar, not the novel’s prose. W. W. Denslow’s 1900 illustrations are public domain and ship with the book.',
+  notice: 'Unofficial reference for a public-domain novel. This example contains original structural summaries and an editorial calendar, not the novel’s prose. W. W. Denslow’s 1900 illustrations are public domain and ship with the book. The maps are the world author’s own work and are not public domain; SOURCES.md and the Lore say so.',
   worldId,
   cover: `${repo}/art/cover.jpg`,
 }
