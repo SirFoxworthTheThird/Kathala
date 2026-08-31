@@ -1,10 +1,11 @@
 /*
   Rasterises the Oz map sources to the PNGs the world references.
 
-  The seven layers under public/library/the-wonderful-wizard-of-oz/maps/ are
-  hand-drawn SVGs (see that folder's SOURCES.md). The `.pwk` points at the PNGs
-  because that is what every other shipped book uses and what the map canvas is
-  known to render; this script is how the PNGs are reproduced from the sources.
+  One layer under public/library/the-wonderful-wizard-of-oz/maps/ is a drawn SVG:
+  kansas.svg. The other six are supplied images and have no source to rasterise
+  (see that folder's SOURCES.md). The `.pwk` points at the rendered PNG because
+  that is what the map canvas is known to render; this script is how it is
+  reproduced from the source.
 
   Usage: node scripts/render-oz-maps.mjs
   Requires Playwright's Chromium. In the dev container Playwright is installed

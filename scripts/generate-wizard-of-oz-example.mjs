@@ -22,12 +22,16 @@
   assigned, then downscaled and committed under art/.
 
   The maps are not all of a piece, and SOURCES.md sets out why. Six of the seven
-  layers were drawn for this example from the text's own geography — see
-  maps/*.svg, which render to the shipped PNGs. The seventh, the Land of Oz, is a
-  painted map supplied by this repository's owner: its border figures follow the
-  1939 film rather than Denslow, and its country layout follows the later Oz
-  books, so its markers sit on the features that artwork actually draws even
-  where the 1900 route would put them elsewhere. The world's Lore says so too.
+  layers — the Land of Oz, the Emerald City, the Palace, the Yellow Castle, the
+  China Country and Glinda's Castle — are AI-generated maps supplied by this
+  repository's owner, who states they are their own work. None is public domain.
+  They carry names and country the 1900 book does not (Princess Ozma, the Book of
+  Records, a china capital called Porcelainia, four city gates where the book
+  gives one), and the Land of Oz layer's border figures follow the 1939 film
+  rather than Denslow. Markers sit on the features each artwork actually draws
+  and names, even where the 1900 route would put them elsewhere; the seventh
+  layer, Kansas, was drawn for this example (see maps/kansas.svg, which renders
+  to the shipped PNG). The world's Lore says all of this too.
 */
 import fs from 'node:fs'
 
@@ -67,11 +71,11 @@ const image = (slug, path, mimeType = 'image/jpeg') => {
 const mapRows = [
   ['oz', null, 'The Land of Oz', 'A country of four coloured lands around a green city, walled in on every side by a desert nobody crosses.', 1024, 559, 'land-of-oz.jpg', 'image/jpeg'],
   ['kansas', null, 'The Kansas Prairie', 'The gray farm Dorothy is carried away from, and the ground she is set down on when she comes back.', 1300, 900, 'kansas.png', 'image/png'],
-  ['emerald-city', 'oz', 'The Emerald City', 'The walled city at the exact centre of Oz, entered through one gate and seen entirely through green glass.', 1400, 1000, 'emerald-city.png', 'image/png'],
-  ['palace', 'emerald-city', 'The Palace of Oz', 'The Wizard’s own building: a waiting hall, a domed throne room, guest rooms, and the small chamber behind the throne.', 1300, 900, 'palace-of-oz.png', 'image/png'],
-  ['yellow-castle', 'oz', 'The Yellow Castle of the West', 'The Wicked Witch’s stronghold among the Winkies, with its kitchen, its barred yard, and its cupboard.', 1250, 900, 'yellow-castle.png', 'image/png'],
-  ['china-country', 'oz', 'The Dainty China Country', 'A brittle miniature land shut in behind two china walls, crossed only on foot and only carefully.', 1250, 850, 'china-country.png', 'image/png'],
-  ['glinda-castle', 'oz', 'Glinda’s Castle', 'The red castle at the southern rim of Oz, where the last of the four witches keeps her ruby throne.', 1150, 800, 'glinda-castle.png', 'image/png'],
+  ['emerald-city', 'oz', 'The Emerald City', 'The walled city at the exact centre of Oz, seen entirely through green glass. Dorothy comes in at the eastern gate, the one the road of yellow brick ends at.', 1024, 559, 'emerald-city.jpg', 'image/jpeg'],
+  ['palace', 'emerald-city', 'The Palace of Oz', 'The Wizard’s own building: a waiting hall, a domed throne room, guest rooms, and the small chamber behind the throne.', 1024, 559, 'palace-of-oz.jpg', 'image/jpeg'],
+  ['yellow-castle', 'oz', 'The Yellow Castle of the West', 'The Wicked Witch’s stronghold among the Winkies, with its kitchen, its barred yard, and its cupboard.', 2048, 1117, 'yellow-castle.jpg', 'image/jpeg'],
+  ['china-country', 'oz', 'The Dainty China Country', 'A brittle miniature land inside one long china wall, with its capital in the middle, set in the southern country between the Emerald City and the desert.', 1024, 559, 'china-country.jpg', 'image/jpeg'],
+  ['glinda-castle', 'oz', 'Glinda’s Castle', 'The red castle at the southern rim of Oz, where the last of the four witches keeps her ruby throne.', 1024, 559, 'glinda-castle.jpg', 'image/jpeg'],
 ]
 const maps = mapRows.map(([slug, parent, name, description, imageWidth, imageHeight, file, mimeType]) => ({
   ...base,
@@ -126,37 +130,37 @@ const locRows = [
   ['kansas-prairie', 'kansas', 'The Open Prairie', 'Gray, cracked, treeless ground running flat to the edge of the sky in every direction.', null, 1046, 740, 'region', null],
   ['kansas-new-house', 'kansas', 'The New Farmhouse', 'The house Uncle Henry builds where the old one stood, on the same bare stretch of prairie.', null, 430, 790, 'building', null],
   // The Emerald City
-  ['great-gate', 'emerald-city', 'The Great Gate', 'The one way in: a gate thick with emeralds, with a bell beside it and a green man behind it.', null, 1058, 510, 'landmark', 'great-gate'],
-  ['guardian-room', 'emerald-city', 'The Guardian’s Room', 'A high arched room inside the gate, holding a great green box of spectacles and the only key that unlocks them.', null, 940, 470, 'building', null],
-  ['green-streets', 'emerald-city', 'The Green Streets', 'Marble pavements, green shops and green sweets, and people who pay for them with green pennies.', null, 470, 470, 'region', null],
-  ['palace-of-oz', 'emerald-city', 'The Palace of Oz', 'The building in the middle of the city, guarded at its door by a soldier with a long green beard.', 'palace', 660, 510, 'building', 'palace-of-oz'],
-  ['launching-ground', 'emerald-city', 'The Launching Ground', 'The open ground before the palace, where the whole city can gather to watch something rise.', null, 660, 790, 'landmark', 'launching-ground'],
+  ['great-gate', 'emerald-city', 'The Great Gate', 'The one way in: a gate thick with emeralds, with a bell beside it and a green man behind it.', null, 902, 222, 'landmark', 'great-gate'],
+  ['guardian-room', 'emerald-city', 'The Guardian’s Room', 'A high arched room inside the gate, holding a great green box of spectacles and the only key that unlocks them.', null, 855, 250, 'building', null],
+  ['green-streets', 'emerald-city', 'The Green Streets', 'Marble pavements, green shops and green sweets, and people who pay for them with green pennies.', null, 255, 330, 'region', null],
+  ['palace-of-oz', 'emerald-city', 'The Palace of Oz', 'The building in the middle of the city, guarded at its door by a soldier with a long green beard.', 'palace', 517, 205, 'building', 'palace-of-oz'],
+  ['launching-ground', 'emerald-city', 'The Launching Ground', 'The open ground before the palace, where the whole city can gather to watch something rise.', null, 490, 420, 'landmark', 'launching-ground'],
   // The Palace
-  ['palace-gates', 'palace', 'The Palace Gates', 'The door the green-whiskered soldier keeps, and the mat every visitor is made to wipe their feet on.', null, 250, 675, 'building', null],
-  ['waiting-hall', 'palace', 'The Waiting Hall', 'A green-carpeted room where the court assembles each morning to wait on a ruler none of them has seen.', null, 525, 675, 'building', null],
-  ['throne-room', 'palace', 'The Throne Room', 'A great domed chamber of close-set emeralds, with one enormous light above and one green throne below.', null, 800, 470, 'building', 'throne-room'],
-  ['back-chamber', 'palace', 'The Little Back Chamber', 'A small room behind the throne room where certain large and awkward properties are kept out of sight.', null, 1105, 410, 'building', 'back-chamber'],
-  ['guest-corridor', 'palace', 'The Guest Corridor', 'Seven passages and three flights of stairs up, where guests of the palace are given rooms and left.', null, 385, 298, 'building', null],
-  ['dorothy-room', 'palace', 'Dorothy’s Green Room', 'A small bedroom with green silk sheets, a green fountain, a shelf of green books and a wardrobe that fits.', null, 280, 454, 'building', null],
+  ['palace-gates', 'palace', 'The Palace Gates', 'The door the green-whiskered soldier keeps, and the mat every visitor is made to wipe their feet on.', null, 135, 318, 'building', null],
+  ['waiting-hall', 'palace', 'The Waiting Hall', 'A green-carpeted room where the court assembles each morning to wait on a ruler none of them has seen.', null, 410, 275, 'building', null],
+  ['throne-room', 'palace', 'The Throne Room', 'A great domed chamber of close-set emeralds, with one enormous light above and one green throne below.', null, 505, 300, 'building', 'throne-room'],
+  ['back-chamber', 'palace', 'The Wizard’s Laboratory', 'The tower room off the throne room where the Head, the costume, the beast and the ball of fire are kept when they are not frightening anybody.', null, 845, 130, 'building', 'back-chamber'],
+  ['guest-corridor', 'palace', 'The Guest Corridor', 'Seven passages and three flights of stairs up, where guests of the palace are given rooms and left.', null, 700, 170, 'building', null],
+  ['dorothy-room', 'palace', 'Dorothy’s Green Room', 'A small bedroom with green silk sheets, a green fountain, a shelf of green books and a wardrobe that fits.', null, 608, 140, 'building', null],
   // The Yellow Castle
-  ['castle-doorstep', 'yellow-castle', 'The Front Doorstep', 'The step outside the castle door, where anything the Winged Monkeys are carrying is set down.', null, 231, 535, 'landmark', null],
-  ['great-kitchen', 'yellow-castle', 'The Great Kitchen', 'Pots, kettles, a swept floor and a wood fire, kept by whoever the Witch has most lately taken.', null, 515, 535, 'building', 'great-kitchen'],
-  ['iron-yard', 'yellow-castle', 'The Iron-Fenced Yard', 'A small yard behind a high iron fence, built to hold something that will not be harnessed.', null, 515, 255, 'landmark', null],
-  ['winkie-workshops', 'yellow-castle', 'The Winkie Workshops', 'Benches and tools where the yellow people of the West do the work their owner sets them.', null, 876, 250, 'building', 'winkie-workshops'],
-  ['cupboard-room', 'yellow-castle', 'The Cupboard Room', 'Where the Witch keeps what is left of her power, on a shelf, behind a door she does not often open.', null, 876, 540, 'building', null],
-  ['watching-door', 'yellow-castle', 'The Watching Door', 'The castle doorway the Witch sits in, where one eye does the work of a telescope over her whole country.', null, 231, 700, 'landmark', null],
+  ['castle-doorstep', 'yellow-castle', 'The Front Doorstep', 'The step outside the castle door, where anything the Winged Monkeys are carrying is set down.', null, 1132, 592, 'landmark', null],
+  ['great-kitchen', 'yellow-castle', 'The Great Kitchen', 'Pots, kettles, a swept floor and a wood fire, kept by whoever the Witch has most lately taken.', null, 205, 690, 'building', 'great-kitchen'],
+  ['iron-yard', 'yellow-castle', 'The Iron-Fenced Yard', 'A small yard behind a high iron fence, built to hold something that will not be harnessed.', null, 700, 450, 'landmark', null],
+  ['winkie-workshops', 'yellow-castle', 'The Winkie Workshops', 'The Winkies’ own quarter of the castle — their mess hall, their barracks rooms, and the benches where their tinsmiths do the work their owner sets them.', null, 420, 855, 'building', 'winkie-workshops'],
+  ['cupboard-room', 'yellow-castle', 'The Cupboard Room', 'Where the Witch keeps what is left of her power, on a shelf, behind a door she does not often open.', null, 1455, 668, 'building', null],
+  ['watching-door', 'yellow-castle', 'The Watching Door', 'The castle doorway the Witch sits in, where one eye does the work of a telescope over her whole country.', null, 1210, 786, 'landmark', null],
   // The China Country
-  ['high-wall', 'china-country', 'The High China Wall', 'A smooth white wall higher than a man, with no gate in it and nothing to climb but a made ladder.', null, 330, 170, 'landmark', null],
-  ['milkmaid-farm', 'china-country', 'The Milkmaid’s Farm', 'China barns and china fences, where a china cow is milked by a china girl until something startles it.', null, 330, 340, 'building', null],
-  ['princess-meadow', 'china-country', 'The Princess’s Meadow', 'Open china floor where the most beautifully dressed of the little people keeps a careful distance.', null, 700, 350, 'region', null],
-  ['joker-corner', 'china-country', 'Mr Joker’s Corner', 'The pitch of the country’s clown, who has been mended so often that the cracks show all over him.', null, 986, 300, 'landmark', null],
-  ['china-church', 'china-country', 'The China Church', 'A small painted church with a china steeple, standing near the low wall on the far side.', null, 430, 610, 'building', null],
-  ['low-wall', 'china-country', 'The Low China Wall', 'The shorter wall on the southern side, climbable from a lion’s back and easy to knock things off.', null, 846, 750, 'landmark', null],
+  ['high-wall', 'china-country', 'The High China Wall', 'A smooth white wall higher than a man, with no gate in it and nothing to climb but a made ladder.', null, 500, 176, 'landmark', null],
+  ['milkmaid-farm', 'china-country', 'The Milkmaid’s Farm', 'China barns and china fences, where a china cow is milked by a china girl until something startles it.', null, 400, 355, 'building', null],
+  ['princess-meadow', 'china-country', 'The Princess’s Meadow', 'Open china floor where the most beautifully dressed of the little people keeps a careful distance.', null, 648, 350, 'region', null],
+  ['joker-corner', 'china-country', 'Mr Joker’s Corner', 'The pitch of the country’s clown, who has been mended so often that the cracks show all over him.', null, 548, 292, 'landmark', null],
+  ['china-church', 'china-country', 'The China Church', 'A small painted church with a china steeple, standing near the low wall on the far side.', null, 490, 250, 'building', null],
+  ['low-wall', 'china-country', 'The Low China Wall', 'The shorter wall on the southern side, climbable from a lion’s back and easy to knock things off.', null, 445, 416, 'landmark', null],
   // Glinda's Castle
-  ['castle-gates', 'glinda-castle', 'The Castle Gates', 'Gates kept by three young soldiers in red uniforms trimmed with gold, who take a name before anyone goes in.', null, 210, 440, 'landmark', null],
-  ['outer-court', 'glinda-castle', 'The Outer Court', 'The court inside the gates, where visitors wait while their names are carried to the Witch of the South.', null, 415, 440, 'building', null],
-  ['tiring-room', 'glinda-castle', 'The Tiring Room', 'A room set aside for making oneself presentable: water, a comb, and space to be patted back into shape.', null, 415, 240, 'building', null],
-  ['ruby-throne-room', 'glinda-castle', 'The Ruby Throne Room', 'A great room in which a throne cut from rubies stands, and the last unspent power in Oz is asked for.', null, 800, 400, 'building', null],
+  ['castle-gates', 'glinda-castle', 'The Castle Gates', 'Gates kept by three young soldiers in red uniforms trimmed with gold, who take a name before anyone goes in.', null, 62, 284, 'landmark', null],
+  ['outer-court', 'glinda-castle', 'The Outer Court', 'The court inside the gates, where visitors wait while their names are carried to the Witch of the South.', null, 215, 280, 'building', null],
+  ['tiring-room', 'glinda-castle', 'The Tiring Room', 'A room set aside for making oneself presentable: water, a comb, and space to be patted back into shape.', null, 820, 430, 'building', null],
+  ['ruby-throne-room', 'glinda-castle', 'The Ruby Throne Room', 'A great room in which a throne cut from rubies stands, and the last unspent power in Oz is asked for.', null, 508, 288, 'building', null],
 ]
 
 const locations = locRows.map(([slug, mapSlug, name, description, linked, x, displayY, iconType, art]) => {
@@ -1184,7 +1188,7 @@ const loreRows = [
     'Every portrait, item and place picture is one of W. W. Denslow’s illustrations for the 1900 first edition, which are in the public domain. The files come from Wikimedia Commons, were checked one by one against the entity they are attached to, and are shipped with the book rather than linked to another site. A few entities are deliberately left without a picture where no illustration of them exists: the Wicked Witch of the East, who is dead before the story opens, is one.',
     'storm-warning', null],
   ['maps', 'sources', 'The Maps in This World',
-    'Baum published no map of Oz with the 1900 edition, so every layer here is an interpretation. The Land of Oz layer is a painted map supplied by this world’s author; its border figures follow the 1939 film’s character designs rather than Denslow’s, and its country layout follows the later Oz books, which is why a few places it names — the poppy field, the china country — sit where the sequels put them rather than where Dorothy meets them on the 1900 road. Markers are pinned to the feature the painting names, so the journey doubles back west of the Emerald City between the river and the poppies before it turns to the gate; the chapter order, not the line on the map, is the record of where the party went. The remaining six layers were drawn for this example from the geography the text itself gives. No layer carries a scale, so nothing here should be read as a distance.',
+    'Baum published no map of Oz with the 1900 edition, so every layer here is an interpretation. Six of the seven — the Land of Oz, the Emerald City, the Palace, the Yellow Castle, the China Country and Glinda’s Castle — are AI-generated maps supplied by this world’s author; the Kansas layer was drawn for this example from what the text states. The six carry names and country the 1900 book does not: the Land of Oz puts the poppy field and the china country where the sequels put them rather than where Dorothy meets them on the road, and its border figures follow the 1939 film’s designs; the palace plans name Princess Ozma and the Book of Records, which arrive in later books; the city is given four gates where the book gives it one; and the china country is given a capital, Porcelainia, that the text never mentions. Markers are pinned to the feature each painting names, so the journey doubles back west of the Emerald City between the river and the poppies; the chapter order, not the line on the map, is the record of where the party went. No layer carries a scale, so nothing here should be read as a distance.',
     'house-comes-down', null],
 ]
 const lorePages = loreRows.map(([slug, cat, title, body, visible, art]) => ({
