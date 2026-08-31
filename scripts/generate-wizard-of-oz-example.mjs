@@ -16,13 +16,18 @@
   1 August so the ripe corn and blooming poppies sit in a plausible season. The
   Lore page "How this chronology was reconstructed" says so in the app.
 
-  Artwork (EX-301/EX-306/EX-307): every picture is one of W. W. Denslow's
-  illustrations for the first edition, in the public domain, downloaded from
-  Wikimedia Commons, opened and visually checked before it was assigned, then
-  downscaled and committed under public/library/the-wonderful-wizard-of-oz/art/.
-  Provenance for each file is listed in that folder's SOURCES.md. The seven map
-  layers are interpretive maps drawn for this example from the text's own
-  geography — see maps/*.svg, which render to the shipped PNGs.
+  Artwork (EX-301/EX-306/EX-307): every portrait, item and place picture is one
+  of W. W. Denslow's illustrations for the first edition, in the public domain,
+  downloaded from Wikimedia Commons, opened and visually checked before it was
+  assigned, then downscaled and committed under art/.
+
+  The maps are not all of a piece, and SOURCES.md sets out why. Six of the seven
+  layers were drawn for this example from the text's own geography — see
+  maps/*.svg, which render to the shipped PNGs. The seventh, the Land of Oz, is a
+  painted map supplied by this repository's owner: its border figures follow the
+  1939 film rather than Denslow, and its country layout follows the later Oz
+  books, so its markers sit on the features that artwork actually draws even
+  where the 1900 route would put them elsewhere. The world's Lore says so too.
 */
 import fs from 'node:fs'
 
@@ -58,22 +63,23 @@ const image = (slug, path, mimeType = 'image/jpeg') => {
 
 /* ---------------------------------------------------------------- maps --- */
 
+/* [slug, parent, name, description, width, height, file, mimeType] */
 const mapRows = [
-  ['oz', null, 'The Land of Oz', 'A country of four coloured lands around a green city, walled in on every side by a desert nobody crosses.', 1700, 1300],
-  ['kansas', null, 'The Kansas Prairie', 'The gray farm Dorothy is carried away from, and the ground she is set down on when she comes back.', 1300, 900],
-  ['emerald-city', 'oz', 'The Emerald City', 'The walled city at the exact centre of Oz, entered through one gate and seen entirely through green glass.', 1400, 1000],
-  ['palace', 'emerald-city', 'The Palace of Oz', 'The Wizard’s own building: a waiting hall, a domed throne room, guest rooms, and the small chamber behind the throne.', 1300, 900],
-  ['yellow-castle', 'oz', 'The Yellow Castle of the West', 'The Wicked Witch’s stronghold among the Winkies, with its kitchen, its barred yard, and its cupboard.', 1250, 900],
-  ['china-country', 'oz', 'The Dainty China Country', 'A brittle miniature land shut in behind two china walls, crossed only on foot and only carefully.', 1250, 850],
-  ['glinda-castle', 'oz', 'Glinda’s Castle', 'The red castle at the southern rim of Oz, where the last of the four witches keeps her ruby throne.', 1150, 800],
+  ['oz', null, 'The Land of Oz', 'A country of four coloured lands around a green city, walled in on every side by a desert nobody crosses.', 1024, 559, 'land-of-oz.jpg', 'image/jpeg'],
+  ['kansas', null, 'The Kansas Prairie', 'The gray farm Dorothy is carried away from, and the ground she is set down on when she comes back.', 1300, 900, 'kansas.png', 'image/png'],
+  ['emerald-city', 'oz', 'The Emerald City', 'The walled city at the exact centre of Oz, entered through one gate and seen entirely through green glass.', 1400, 1000, 'emerald-city.png', 'image/png'],
+  ['palace', 'emerald-city', 'The Palace of Oz', 'The Wizard’s own building: a waiting hall, a domed throne room, guest rooms, and the small chamber behind the throne.', 1300, 900, 'palace-of-oz.png', 'image/png'],
+  ['yellow-castle', 'oz', 'The Yellow Castle of the West', 'The Wicked Witch’s stronghold among the Winkies, with its kitchen, its barred yard, and its cupboard.', 1250, 900, 'yellow-castle.png', 'image/png'],
+  ['china-country', 'oz', 'The Dainty China Country', 'A brittle miniature land shut in behind two china walls, crossed only on foot and only carefully.', 1250, 850, 'china-country.png', 'image/png'],
+  ['glinda-castle', 'oz', 'Glinda’s Castle', 'The red castle at the southern rim of Oz, where the last of the four witches keeps her ruby throne.', 1150, 800, 'glinda-castle.png', 'image/png'],
 ]
-const maps = mapRows.map(([slug, parent, name, description, imageWidth, imageHeight]) => ({
+const maps = mapRows.map(([slug, parent, name, description, imageWidth, imageHeight, file, mimeType]) => ({
   ...base,
   id: M(slug),
   parentMapId: parent ? M(parent) : null,
   name,
   description,
-  imageId: image(`map-${slug}`, `maps/${slug === 'oz' ? 'land-of-oz' : slug === 'palace' ? 'palace-of-oz' : slug === 'glinda-castle' ? 'glinda-castle' : slug}.png`, 'image/png'),
+  imageId: image(`map-${slug}`, `maps/${file}`, mimeType),
   imageWidth,
   imageHeight,
   /* No scale: these are interpretive maps, and a number nothing measures would
@@ -90,29 +96,29 @@ const maps = mapRows.map(([slug, parent, name, description, imageWidth, imageHei
 /* [slug, map, name, description, linkedMap, x, displayY, iconType, art] */
 const locRows = [
   // The Land of Oz
-  ['landing-site', 'oz', 'Where the House Came Down', 'A green Munchkin meadow of fruit trees and a brook, marked by the farmhouse that fell out of the sky onto it.', null, 1460, 700, 'landmark', 'landing-site'],
-  ['boq-house', 'oz', 'Boq’s House', 'The home of one of the richest Munchkins, whose lawn holds fiddlers, dancing and a loaded supper table.', null, 1330, 724, 'building', 'boq-house'],
-  ['cornfield', 'oz', 'The Munchkin Cornfield', 'A fenced field of ripe corn beside the road, with a pole in it holding a stuffed figure above the stalks.', null, 1240, 706, 'landmark', 'cornfield'],
-  ['forest-road', 'oz', 'The Road Through the Forest', 'Where the yellow bricks turn broken and uneven and the branches close overhead until the daylight goes.', null, 1150, 716, 'region', 'forest-road'],
-  ['woodman-cottage', 'oz', 'The Woodman’s Cottage', 'A small hut of logs and branches in the trees, with a spring nearby and an oil-can on its shelf.', null, 1120, 752, 'building', 'woodman-cottage'],
-  ['lion-road', 'oz', 'Where the Lion Bounded Out', 'A stretch of the road under thick branches where the growling of large animals carries out of the trees.', null, 1090, 758, 'landmark', 'lion-road'],
-  ['night-camp', 'oz', 'The Camp Under the Great Tree', 'A night stop in the forest, with a fire, a pile of chopped wood and a tree full of nuts nearby.', null, 1062, 748, 'landmark', 'night-camp'],
-  ['first-gulf', 'oz', 'The First Great Ditch', 'A wide, steep-sided gulf full of jagged rocks that cuts the road and the forest clean across.', null, 1036, 738, 'landmark', null],
-  ['kalidah-gulf', 'oz', 'The Second Ditch', 'A gulf too broad to jump, in the part of the forest where the fiercest beasts of Oz are said to live.', null, 1010, 726, 'landmark', 'kalidah-gulf'],
-  ['river-crossing', 'oz', 'The Broad River', 'A swift river between the dark forest and the bright country beyond it, crossed only by raft.', null, 990, 712, 'landmark', 'river-crossing'],
-  ['poppy-field', 'oz', 'The Deadly Poppy Field', 'A great meadow of scarlet poppies whose scent puts anything made of flesh to sleep where it stands.', null, 1004, 828, 'region', 'poppy-field'],
-  ['mice-field', 'oz', 'The Field-Mouse Meadow', 'Sweet grass and daisies past the poppies, thick with the burrows of a very numerous small people.', null, 950, 886, 'region', null],
-  ['green-farmhouse', 'oz', 'The Green Farmhouse', 'The first farm of the green country, where fences, clothes and skins have all taken the colour of the city ahead.', null, 940, 690, 'building', 'green-farmhouse'],
-  ['emerald-city', 'oz', 'The Emerald City', 'The city at the exact centre of Oz, where the road of yellow brick ends at a wall and a studded gate.', 'emerald-city', 850, 650, 'city', 'emerald-city'],
-  ['west-country', 'oz', 'The Country of the West', 'Rough, hilly, untilled ground with no road across it, watched from a long way off by its one-eyed owner.', null, 620, 616, 'region', 'west-country'],
-  ['yellow-castle', 'oz', 'The Yellow Castle', 'The Wicked Witch of the West’s castle, standing over the Winkie country that works for her.', 'yellow-castle', 400, 600, 'building', 'yellow-castle'],
-  ['fighting-trees', 'oz', 'The Wood of the Fighting Trees', 'The first rank of a southern wood, whose front trees take hold of anything that tries to walk in under them.', null, 822, 806, 'region', 'fighting-trees'],
-  ['china-country', 'oz', 'The Dainty China Country', 'A low white wall on the far side of the wood, with something very small and very brightly coloured behind it.', 'china-country', 858, 928, 'region', 'china-country'],
-  ['marshes', 'oz', 'The Bogs and Marshes', 'Rank grass tall enough to hide the mud holes under it, on the way south out of the china country.', null, 962, 1002, 'region', null],
-  ['great-forest', 'oz', 'The Great Forest', 'An old wood of enormous trees and deep moss, whose animals are holding a meeting about a monster.', null, 838, 1056, 'region', 'great-forest'],
-  ['hammerhead-hill', 'oz', 'The Hill of the Hammer-Heads', 'A steep hillside of loose rock, with an armless people behind every boulder who will not let anyone across.', null, 698, 1082, 'landmark', 'hammerhead-hill'],
-  ['quadling-farm', 'oz', 'The Quadling Farmhouse', 'A red-painted farm among ripening grain and strong little bridges, kept by a woman who feeds strangers well.', null, 770, 1128, 'building', null],
-  ['glinda-castle', 'oz', 'Glinda’s Castle', 'A beautiful castle at the southern edge of the country, guarded at its gates by three girl soldiers.', 'glinda-castle', 880, 1122, 'building', null],
+  ['landing-site', 'oz', 'Where the House Came Down', 'A green Munchkin meadow of fruit trees and a brook, marked by the farmhouse that fell out of the sky onto it.', null, 905, 258, 'landmark', 'landing-site'],
+  ['boq-house', 'oz', 'Boq’s House', 'The home of one of the richest Munchkins, whose lawn holds fiddlers, dancing and a loaded supper table.', null, 826, 280, 'building', 'boq-house'],
+  ['cornfield', 'oz', 'The Munchkin Cornfield', 'A fenced field of ripe corn beside the road, with a pole in it holding a stuffed figure above the stalks.', null, 780, 303, 'landmark', 'cornfield'],
+  ['forest-road', 'oz', 'The Road Through the Forest', 'Where the yellow bricks turn broken and uneven and the branches close overhead until the daylight goes.', null, 792, 232, 'region', 'forest-road'],
+  ['woodman-cottage', 'oz', 'The Woodman’s Cottage', 'A small hut of logs and branches in the trees, with a spring nearby and an oil-can on its shelf.', null, 766, 220, 'building', 'woodman-cottage'],
+  ['lion-road', 'oz', 'Where the Lion Bounded Out', 'A stretch of the road under thick branches where the growling of large animals carries out of the trees.', null, 740, 242, 'landmark', 'lion-road'],
+  ['night-camp', 'oz', 'The Camp Under the Great Tree', 'A night stop in the forest, with a fire, a pile of chopped wood and a tree full of nuts nearby.', null, 706, 278, 'landmark', 'night-camp'],
+  ['first-gulf', 'oz', 'The First Great Ditch', 'A wide, steep-sided gulf full of jagged rocks that cuts the road and the forest clean across.', null, 676, 296, 'landmark', null],
+  ['kalidah-gulf', 'oz', 'The Second Ditch', 'A gulf too broad to jump, in the part of the forest where the fiercest beasts of Oz are said to live.', null, 650, 300, 'landmark', 'kalidah-gulf'],
+  ['river-crossing', 'oz', 'The Broad River', 'A swift river between the dark forest and the bright country beyond it, crossed only by raft.', null, 395, 222, 'landmark', 'river-crossing'],
+  ['poppy-field', 'oz', 'The Deadly Poppy Field', 'A great meadow of scarlet poppies whose scent puts anything made of flesh to sleep where it stands.', null, 430, 178, 'region', 'poppy-field'],
+  ['mice-field', 'oz', 'The Field-Mouse Meadow', 'Sweet grass and daisies past the poppies, thick with the burrows of a very numerous small people.', null, 472, 192, 'region', null],
+  ['green-farmhouse', 'oz', 'The Green Farmhouse', 'The first farm of the green country, where fences, clothes and skins have all taken the colour of the city ahead.', null, 452, 262, 'building', 'green-farmhouse'],
+  ['emerald-city', 'oz', 'The Emerald City', 'The city at the exact centre of Oz, where the road of yellow brick ends at a wall and a studded gate.', 'emerald-city', 505, 262, 'city', 'emerald-city'],
+  ['west-country', 'oz', 'The Country of the West', 'Rough, hilly, untilled ground with no road across it, watched from a long way off by its one-eyed owner.', null, 280, 300, 'region', 'west-country'],
+  ['yellow-castle', 'oz', 'The Yellow Castle', 'The Wicked Witch of the West’s castle, standing over the Winkie country that works for her.', 'yellow-castle', 177, 256, 'building', 'yellow-castle'],
+  ['fighting-trees', 'oz', 'The Wood of the Fighting Trees', 'The first rank of a southern wood, whose front trees take hold of anything that tries to walk in under them.', null, 628, 138, 'region', 'fighting-trees'],
+  ['china-country', 'oz', 'The Dainty China Country', 'A low white wall on the far side of the wood, with something very small and very brightly coloured behind it.', 'china-country', 390, 428, 'region', 'china-country'],
+  ['marshes', 'oz', 'The Bogs and Marshes', 'Rank grass tall enough to hide the mud holes under it, on the way south out of the china country.', null, 455, 470, 'region', null],
+  ['great-forest', 'oz', 'The Great Forest', 'An old wood of enormous trees and deep moss, whose animals are holding a meeting about a monster.', null, 625, 442, 'region', 'great-forest'],
+  ['hammerhead-hill', 'oz', 'The Hill of the Hammer-Heads', 'A steep hillside of loose rock, with an armless people behind every boulder who will not let anyone across.', null, 668, 487, 'landmark', 'hammerhead-hill'],
+  ['quadling-farm', 'oz', 'The Quadling Farmhouse', 'A red-painted farm among ripening grain and strong little bridges, kept by a woman who feeds strangers well.', null, 545, 480, 'building', null],
+  ['glinda-castle', 'oz', 'Glinda’s Castle', 'A beautiful castle at the southern edge of the country, guarded at its gates by three girl soldiers.', 'glinda-castle', 500, 424, 'building', null],
   // Kansas
   ['kansas-farmhouse', 'kansas', 'The Gale Farmhouse', 'One small room, four walls and a roof, weathered gray by the same sun that has flattened the country around it.', null, 430, 500, 'building', 'kansas-farmhouse'],
   ['kansas-cellar', 'kansas', 'The Cyclone Cellar', 'A dark hole dug under the floor, reached by a trap door and a ladder, for the days the wind comes.', null, 614, 556, 'landmark', null],
@@ -1178,7 +1184,7 @@ const loreRows = [
     'Every portrait, item and place picture is one of W. W. Denslow’s illustrations for the 1900 first edition, which are in the public domain. The files come from Wikimedia Commons, were checked one by one against the entity they are attached to, and are shipped with the book rather than linked to another site. A few entities are deliberately left without a picture where no illustration of them exists: the Wicked Witch of the East, who is dead before the story opens, is one.',
     'storm-warning', null],
   ['maps', 'sources', 'The Maps in This World',
-    'Baum published no map of Oz with the 1900 edition. The seven map layers here were drawn for this example from the geography the text itself gives: four countries around a central city, a desert on every side, the road of yellow brick running in from the East, and the southern road out past the china country and the Hammer-Heads’ hill. They are interpretive and are not to scale — which is why no scale is recorded on any layer.',
+    'Baum published no map of Oz with the 1900 edition, so every layer here is an interpretation. The Land of Oz layer is a painted map supplied by this world’s author; its border figures follow the 1939 film’s character designs rather than Denslow’s, and its country layout follows the later Oz books, which is why a few places it names — the poppy field, the china country — sit where the sequels put them rather than where Dorothy meets them on the 1900 road. Markers are pinned to the feature the painting names, so the journey doubles back west of the Emerald City between the river and the poppies before it turns to the gate; the chapter order, not the line on the map, is the record of where the party went. The remaining six layers were drawn for this example from the geography the text itself gives. No layer carries a scale, so nothing here should be read as a distance.',
     'house-comes-down', null],
 ]
 const lorePages = loreRows.map(([slug, cat, title, body, visible, art]) => ({
