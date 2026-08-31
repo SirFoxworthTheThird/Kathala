@@ -132,3 +132,98 @@
 14.5 six-brigands | Six Thieves on the Road | six-brigands-road | tripitaka, wukong | The robbers name themselves Sight, Hearing, Smell, Taste, Mind and Body; he kills all six and strips them, and is scolded until he leaves in a temper.
 14.6 yi-bridge-painting | The Painting on the Dragon King's Wall | dragon-palace-throne | wukong, ao-guang | Over tea the dragon king shows him Zhang Liang fetching the slipper three times, and asks whether he means to end as a monster after all.
 14.7 the-fillet | The Cap and the Spell | six-brigands-road | tripitaka, wukong | An old woman gives Tripitaka a cotton robe and a gold-flowered cap and teaches him the spell; the cap's band takes root in the skin, and the cudgel is put away.
+
+## CH 15  蛇盤山諸神暗佑 鷹愁澗意馬收韁
+15.1 horse-swallowed | The Stream Takes the Horse | eagle-grief-stream | tripitaka, wukong | A dragon comes out of the gorge and swallows the white horse whole, saddle and all, then will not come up again.
+15.2 guardians-assigned | The Guardians Report | eagle-grief-stream | tripitaka, wukong | Voices in the air name themselves — the Six Ding and Six Jia, the Guardians of the Five Quarters, the Four Sentinels, the eighteen protectors of the faith — set to guard the pilgrim in turn.
+15.3 dragon-made-horse | The Third Prince Becomes the Horse | eagle-grief-stream | wukong, guanyin, white-dragon-horse | Guanyin calls him out by name, takes the pearl from his throat, and turns him into the very horse he ate; and gives Wukong three hairs at the back of his head against the day nobody comes.
+15.4 saddle-given | The Shrine That Was Not There | li-she-shrine | tripitaka, wukong | A shrine-keeper gives up the saddle and bridle he never sold, and a whip; then shrine and keeper are gone, and a voice says the mountain god was sent with them.
+
+## CH 16  觀音院僧謀寶貝 黑風山怪竊袈裟
+16.1 cassock-shown | Twelve Chests of Cassocks | guanyin-monastery | tripitaka, wukong | The abbot of two hundred and seventy years shows off seven hundred robes; Wukong opens their own against his master's warning, and the room fills with light.
+16.2 fire-plotted | Two Plans in the Back Room | guanyin-monastery | tripitaka, wukong | The old monk weeps that he cannot keep it; one disciple proposes knives, another proposes burning the meditation hall with them inside.
+16.3 wind-not-water | A Cover, and a Wind | guanyin-monastery | wukong | He borrows the fire-proof cover from the Broad-Eyed Heavenly King, roofs his master with it, and fans the monks' own fire until the monastery burns to the walls.
+16.4 cassock-stolen | What the Fire Brought | black-wind-cave | black-bear-spirit | Twenty li off, a bear spirit wakes to the glow, comes to help, finds the cassock in an unburnt room, and carries it home instead.
+16.5 abbot-dead | The Wall and the Search | guanyin-monastery | tripitaka, wukong | The abbot runs his head against a wall; two hundred and thirty monks are counted and searched, the spell is said over Wukong once, and the black bear is named.
+
+<!-- PACING NOTE. 16 chapters have produced 104 scenes (6.5/ch), which is far
+denser than the catalogue's long books: Monte Cristo runs 149 scenes over 117
+chapters and The Wise Man's Fear 154 over 154. The frame (ch 1-12, 82 scenes)
+is deliberately the densest part of the book and stays so, but from here the
+road is recorded at 1-2 scenes a chapter, and the frame gets consolidated when
+the generator is written. Target for the shipped world: 170-190 scenes.
+Recording at full fidelity first is deliberate — merging later is cheap,
+re-reading a hundred chapters is not. -->
+
+## CH 17  孫行者大鬧黑風山 觀世音收伏熊羆怪
+17.1 three-at-the-slope | Three Spirits and a Robe Party | black-wind-cave | wukong, black-bear-spirit | A bear, a Daoist and a white-robed scholar sit talking alchemy on the grass; the bear is planning a Buddha Robe Assembly for his birthday with the stolen cassock as the centrepiece. One blow kills the scholar, a white snake.
+17.2 jinchi-impersonated | Wearing the Dead Abbot's Face | black-wind-cave | wukong, black-bear-spirit | He kills the messenger, reads the invitation, takes the burnt abbot's shape and gets as far as a cup of tea before a patrol gives him away.
+17.3 pill-and-fillet | Guanyin as the Alchemist | black-wind-cave | wukong, guanyin, black-bear-spirit | She becomes the wolf immortal, he becomes the larger of two pills; the bear swallows him, a second fillet goes on the bear's head, and Guanyin keeps him alive to guard her own mountain.
+
+## CH 18  觀音院唐僧脫難 高老莊大聖除魔
+18.1 cassock-returned | The Cave Burnt, the Robe Back | guanyin-monastery | tripitaka, wukong | He fires the Black Wind Cave and brings the cassock back at dusk; the monastery empties its purse for a thanksgiving before they go.
+18.2 gao-village | The Squire's Third Daughter | gao-village | tripitaka, wukong, squire-gao | A servant sent for exorcists is caught on the road; the squire has had a pig for a son-in-law three years, and his daughter shut in the back court for half of one.
+18.3 pig-in-the-dark | Sitting in the Daughter's Place | gao-village | wukong, zhu-bajie | He takes her shape and lets the creature talk: a rake of nine teeth, thirty-six transformations, and a name — Zhu Ganglie of the Cloud Ladder Cave on Fuling Mountain. Then he shows his own face.
+
+## CH 19  雲棧洞悟空收八戒 浮屠山玄奘受心經
+19.1 rake-and-oath | The Rake and the Oath | cloud-ladder-cave | wukong, zhu-bajie | A night's fighting at the cave door; the rake is named as Laozi's own work, not a farm tool; at the word "scripture pilgrim" he throws it down, swears on his life, and fires his own cave.
+19.2 eight-prohibitions | Eight Prohibitions | gao-village | tripitaka, wukong, zhu-bajie | He kneels to Tripitaka, keeps the name Wuneng that Guanyin gave him, and is given the by-name Bajie for the five pungent roots and three forbidden meats he must leave alone.
+19.3 heart-sutra | The Crow's Nest and the Heart Sutra | pagoda-mountain | tripitaka, wukong, zhu-bajie | A master in a nest of twigs gives the fifty-four lines of the Heart Sutra against the demons of the road, and a verse of the way west that Wukong takes as an insult.
+
+## CH 20  黃風嶺唐僧有難 半山中八戒爭先
+20.1 old-wang | Eight Hundred Li of Yellow Wind | old-wang-farmstead | tripitaka, wukong, zhu-bajie | A farmer of sixty-one tells them the scriptures are not hard to fetch, only the road is; thirty li on lies a ridge eight hundred li long, full of demons.
+20.2 tiger-vanguard | The Skin on the Stone | yellow-wind-ridge | tripitaka, wukong, zhu-bajie | Wukong smells the wind and calls it wrong; a tiger stands up, tears off its own hide, and while they chase the empty skin the master is carried away.
+20.3 wind-stilling-post | Bound to the Wind-Stilling Post | yellow-wind-cave | tripitaka, yellow-wind-demon | The cave lord will not eat him for three or five days, in case the disciples come; Tripitaka is tied in the back garden while the Tiger Vanguard dies on Bajie's rake.
+
+## CH 21  護法設莊留大聖 須彌靈吉定風魔
+21.1 samadhi-wind | The Wind That Blinds | yellow-wind-cave | wukong, yellow-wind-demon | A hundred hair-doubles are spun like spindles by one breath of Samadhi Wind, and Wukong retreats with his fire eyes scoured shut.
+21.2 ointment | Three Flowers, Nine Seeds | yellow-wind-farmstead | wukong, zhu-bajie | An old farmer salves his eyes with an ointment out of an agate pot; at dawn there is no house, only trees and a verse — the guardians, keeping their word.
+21.3 lingji-fetched | Little Sumeru | little-sumeru-mountain | wukong, lingji-bodhisattva | Taibai as an old man on the road names the one being the demon fears; three thousand li south, Lingji takes down the Flying Dragon Staff the Buddha gave him.
+21.4 marten-taken | A Rat From Under the Buddha's Own Hill | yellow-wind-cave | tripitaka, wukong, zhu-bajie, lingji-bodhisattva, yellow-wind-demon | The staff becomes an eight-clawed dragon and shakes him into his true shape: a yellow marten who stole oil from a lamp on Vulture Peak. Lingji takes him up to be judged, and Tripitaka is untied.
+
+## CH 22  八戒大戰流沙河 木吒奉法收悟淨
+22.1 the-weak-water | Eight Hundred Li of Weak Water | flowing-sands-river | tripitaka, wukong, zhu-bajie | A tablet on the bank gives the river's width and the warning that a goose feather will not float on it; a monster comes straight out of the water at the monk.
+22.2 three-fights-in-water | Three Fights Under the Water | flowing-sands-river | wukong, zhu-bajie, sha-wujing | Bajie goes down twice and cannot win, and twice Wukong spoils the ambush by coming in too early; the third time the creature will not be drawn out at all.
+22.3 gourd-and-skulls | The Gourd and the Nine Skulls | flowing-sands-river | tripitaka, wukong, zhu-bajie, sha-wujing, moksa | One word — scripture pilgrim — ends the fight that two days of fighting could not. He is shaved, takes the name Sand Monk, and strings his nine skulls round Guanyin's red gourd to make the boat that carries them over.
+
+## CH 23  三藏不忘本 四聖試禪心
+23.1 four-saints | The Widow and Her Three Daughters | mo-family-manor | tripitaka, wukong, zhu-bajie, sha-wujing | A rich widow offers her house, her land and her three daughters to whichever of them will stay; three refuse flatly and one cannot sit still on his chair.
+23.2 bajie-bound | The Shirt of Pearls | mo-family-manor | tripitaka, wukong, zhu-bajie, sha-wujing | Blindfolded, he cannot catch a single daughter; the shirt he puts on to win one becomes ropes. At dawn there is no house, only pines, and a verse naming the four bodhisattvas who set the test.
+
+## CH 24  萬壽山大仙留故友 五莊觀行者竊人參
+24.1 zhenyuan-departs | Two Fruits for an Old Friend | wuzhuang-temple | zhenyuan | The Great Immortal goes up to a lecture, leaving two boys with orders to give the coming monk two manfruits — they met five hundred years ago, when the monk was the Buddha's second disciple and poured his tea.
+24.2 fruit-refused | He Will Not Eat a Baby | wuzhuang-temple | tripitaka | The fruit is shaped like a child three days old, with limbs and features; he backs three feet away and will not touch it, so the boys eat both themselves.
+24.3 three-stolen | The Golden Mallet | wuzhuang-temple | wukong, zhu-bajie, sha-wujing | Bajie hears them through the kitchen wall; Wukong takes the mallet, learns from the garden god that the fruit falls to gold and sinks into earth, and brings back three — one each. Bajie swallows his whole and wants another.
+24.4 the-count | Twenty-Two on the Tree | wuzhuang-temple | tripitaka, wukong, zhu-bajie, sha-wujing | The boys count the tree, come up four short, and stand in the hall calling the monk a thief to his face.
+
+## CH 25  鎮元仙趕捉取經僧 孫行者大鬧五莊觀
+25.1 tree-toppled | The Tree Comes Down | wuzhuang-temple | wukong | Rather than take the boys' abuse he leaves a hair-double standing in his place, goes back to the garden, and pushes the root out of the earth.
+25.2 sleeve-of-heaven | The Sleeve That Held Them All | wuzhuang-temple | tripitaka, wukong, zhu-bajie, sha-wujing, zhenyuan | The Great Immortal comes back as a wandering priest, then opens one sleeve to the wind and takes four monks, a horse and the baggage into it.
+25.3 dragon-hide-whip | Sixty Strokes for the Fruit | wuzhuang-temple | tripitaka, wukong, zhenyuan | Wukong takes his master's beating as well as his own, on legs turned to wrought iron; that night he unties them all and leaves four willow trunks tied to the pillars in their place.
+25.4 the-oil-cauldron | A Stone Lion in the Oil | wuzhuang-temple | wukong, zhenyuan | Caught a second time, wrapped in cloth and lacquer; he swaps a stone lion for himself and the cauldron's bottom drops out — then comes back of his own accord, to stop his master going in instead.
+
+## CH 26  孫悟空三島求方 觀世音甘泉活樹
+26.1 three-islands | Three Islands, No Cure | penglai-island | wukong | A bargain: an living tree for his master's freedom, and three days to find one. The Star of Longevity and his brothers at Penglai have no method for a tree; nor has the Lord of the East at Fangzhang; nor the Nine Elders of Yingzhou.
+26.2 sweet-dew | The Water in the Vase | wuzhuang-temple | tripitaka, wukong, guanyin, zhenyuan | Guanyin writes a reviving character in his palm, a spring comes up under the root, and the dew off her willow spray puts the leaves back on. The count comes to twenty-three — the fruit that sank into the earth is back on the branch.
+26.3 sworn-brothers | Not Beaten Into Friendship | wuzhuang-temple | tripitaka, wukong, zhenyuan | Ten fruits are knocked down for a feast; Tripitaka eats one at last, and the Great Immortal and the monkey who wrecked his garden swear brotherhood.
+
+## CH 27  屍魔三戲唐三藏 聖僧恨逐美猴王
+27.1 three-disguises | Girl, Mother, Father | white-tiger-ridge | tripitaka, wukong, zhu-bajie, sha-wujing, white-bone-demon | A corpse-spirit comes three times — a girl with a rice pot full of maggots, an old woman, an old man — and three times Wukong strikes; twice she sheds a body and escapes.
+27.2 the-dismissal | The Letter of Dismissal | white-tiger-ridge | tripitaka, wukong, zhu-bajie, sha-wujing | The third blow leaves a heap of bones lettered White Bone Lady, and Bajie still says it is a trick. Tripitaka writes the letter on a stone by the stream; Wukong makes three doubles so his master must take the bow, and goes.
+
+## CH 28  花果山群妖聚義 黑松林三藏逢魔
+28.1 the-burnt-mountain | What Erlang Left | ffm-water-curtain-cave | wukong | Of forty-seven thousand there are a thousand left; the rest burned in Erlang's fire or were taken by hunters for their skins and for street shows.
+28.2 new-banner | Rebuild the Mountain | ffm-main-peak | wukong | He kills a thousand hunters with a wind full of stones, dresses his people in their clothes, and hangs a new banner: rebuild Flower-Fruit Mountain, restore the Water-Curtain Cave, Great Sage Equal to Heaven.
+28.3 the-pagoda | The Light Was Not a Temple | bowyue-cave | tripitaka, yellow-robe-monster | Left alone while both disciples are out, he walks the wrong way toward a golden glitter, lifts a bamboo curtain, and finds a monster asleep on a stone bed. He is tied to the soul-fixing post.
+28.4 two-at-the-door | Two Monks at a Closed Door | bowyue-cave | zhu-bajie, sha-wujing, yellow-robe-monster | The stone over the door reads Bowyue Cave, Wanzi Mountain; the Yellow Robe Monster offers them man-flesh dumplings and they fight him in the air, undecided.
+
+## CH 29  脫難江流來國土 承恩八戒轉山林
+29.1 the-letter | Thirteen Years and a Letter | bowyue-cave | tripitaka, princess-baihuaxiu | The woman at the post is the third princess of the Precious Elephant Kingdom, carried off from a moon-viewing thirteen years ago; she unties him in exchange for carrying a letter home.
+29.2 the-court | The Letter Read Aloud | precious-elephant-kingdom | tripitaka, taizong-none, zhu-bajie, sha-wujing | The rescript is stamped; then the letter is read out in front of the whole court, and a king who has punished half his household for losing her weeps and asks who will go.
+29.3 sha-taken | Bajie in the Weeds | bowyue-cave | zhu-bajie, sha-wujing, yellow-robe-monster | The guardian spirits are back at the palace with Tripitaka, so this time the two of them are overmatched; Bajie crawls into the brambles to sleep and Sha Wujing is taken.
+
+## CH 30  邪魔侵正法 意馬憶心猿
+30.1 sha-lies-for-her | The Lie That Saves the Princess | bowyue-cave | sha-wujing, princess-baihuaxiu, yellow-robe-monster | Accused of sending the letter, she is thrown down with a sword over her; Sha Wujing, tied up, swears there was no letter, and takes the blame on the picture the king had drawn.
+30.2 tiger-in-the-hall | The Monk Made a Tiger | precious-elephant-kingdom | tripitaka, yellow-robe-monster | The monster comes to court as a handsome son-in-law, tells the king the monk is the tiger that carried the princess off, and spits water on him. Tripitaka is caged in iron in the palace guardroom.
+30.3 horse-fights | The Horse in a Maid's Clothes | precious-elephant-kingdom | white-dragon-horse, yellow-robe-monster | The white horse turns back into a dragon, comes in as a serving girl pouring impossible wine, and dances with a sword until the monster's iron candle-tree breaks his hind leg.
+30.4 fetching-wukong | Fetch Him With a Lie | ffm-main-peak | wukong, zhu-bajie, white-dragon-horse | The horse tells Bajie to say only that their master misses him. On the mountain Wukong hears the lie out, feeds him fruit, sends him off — and has him dragged back by the ears for what he says on the road down.
