@@ -72,15 +72,27 @@ const image = (slug, path, mimeType = 'image/jpeg') => {
 
 /* ---------------------------------------------------------------- maps --- */
 
-/* [slug, parent, name, description, width, height, file] */
+/*
+  [slug, parent, name, description, width, height, file]
+
+  The world map arrived after the other seven and reorganised them. It is a
+  Buddhist cosmological chart rather than a survey — Mount Sumeru at the
+  centre, four continents around it in four seas — and it names, in its own
+  captions, where five of the other six layers are: Flower-Fruit Mountain in
+  the eastern continent, the Tang land in the southern one, the thirty-three
+  heavens on Sumeru's summit, and a dragon palace under each sea. So they hang
+  under it, which makes the layer tree the book's own cosmology and puts
+  Chang'an and Vulture Peak three deep.
+*/
 const mapRows = [
-  ['route', null, 'The Road West', 'The whole pilgrimage on one sheet: the Tang border, the mountain the monkey was pinned under, the rivers, the Women’s Kingdom, the Flaming Mountains and, at the far western end, Vulture Peak.', 1024, 572, 'pilgrimage-route.jpg'],
+  ['world', null, 'The Four Continents', 'The whole cosmos on one sheet: Mount Sumeru in the middle with the sun and moon going round it, four continents in four seas, and a dragon palace under each. The eastern continent is where the monkey is born, the southern one is the Tang empire, and the western one is where the scriptures are.', 1254, 1254, 'four-continents.jpg'],
+  ['route', 'world', 'The Road West', 'The whole pilgrimage on one sheet: the Tang border, the mountain the monkey was pinned under, the rivers, the Women’s Kingdom, the Flaming Mountains and, at the far western end, Vulture Peak.', 1024, 572, 'pilgrimage-route.jpg'],
   ['changan', 'route', 'Chang’an', 'The Tang capital the journey is commissioned in and returns to: the walled wards, the two markets, the palace, and the temple where the assembly picks its pilgrim.', 1024, 572, 'changan.jpg'],
   ['vulture-peak', 'route', 'Vulture Peak', 'The end of the road — the mountain, the ferry below it, and the Thunderclap Monastery with the scripture hall at the top of the stairs.', 1024, 572, 'vulture-peak.jpg'],
-  ['ffm', null, 'Flower-Fruit Mountain', 'The monkey’s island in the Eastern Continent, with the waterfall, the iron bridge, the encampment below it, and a cut-away of the cave behind the water.', 1024, 572, 'flower-fruit-mountain.jpg'],
-  ['heaven', null, 'The Celestial Court', 'Heaven as an estate: the Southern Gate, the Hall of Miraculous Mist, the Queen Mother’s lake, the stables, and the furnace room the elixir is cooked in.', 1024, 559, 'celestial-court.jpg'],
-  ['dragon-palace', null, 'The Dragon Palace of the Eastern Sea', 'The undersea halls the cudgel is taken from: the crystal palace, the throne, the armoury, and the pillar that gauges the depth of the sea.', 1024, 559, 'dragon-palace.jpg'],
-  ['underworld', null, 'The Underworld Courts', 'The bureaucracy below: the Gate of Ghosts, the bridge, the river, the Hall of Judgment, the register — and the hells drawn along the bottom of the sheet.', 1024, 572, 'underworld.jpg'],
+  ['ffm', 'world', 'Flower-Fruit Mountain', 'The monkey’s island in the Eastern Continent, with the waterfall, the iron bridge, the encampment below it, and a cut-away of the cave behind the water.', 1024, 572, 'flower-fruit-mountain.jpg'],
+  ['heaven', 'world', 'The Celestial Court', 'Heaven as an estate: the Southern Gate, the Hall of Miraculous Mist, the Queen Mother’s lake, the stables, and the furnace room the elixir is cooked in.', 1024, 559, 'celestial-court.jpg'],
+  ['dragon-palace', 'world', 'The Dragon Palace of the Eastern Sea', 'The undersea halls the cudgel is taken from: the crystal palace, the throne, the armoury, and the pillar that gauges the depth of the sea.', 1024, 559, 'dragon-palace.jpg'],
+  ['underworld', 'world', 'The Underworld Courts', 'The bureaucracy below: the Gate of Ghosts, the bridge, the river, the Hall of Judgment, the register — and the hells drawn along the bottom of the sheet.', 1024, 572, 'underworld.jpg'],
 ]
 const maps = mapRows.map(([slug, parent, name, description, imageWidth, imageHeight, file]) => ({
   ...base,
@@ -115,12 +127,34 @@ const maps = mapRows.map(([slug, parent, name, description, imageWidth, imageHei
   bracket it in the text. The Lore says all of this in the app.
 */
 const locRows = [
+  // ---- The four continents, and the five layers that hang off them --------
+  /*
+    Each marker sits on the chart's own cartouche for that place. Five of them
+    are gateways, and four of those five are named by the chart itself: the
+    eastern continent's caption says Flower-Fruit Mountain is there, the
+    southern one's says the Tang land is, the note beside Sumeru says the
+    thirty-three heavens are on its summit, and each sea is captioned with its
+    dragon palace. The fifth, the way down to the courts of the dead, is the
+    one approximation — the chart does not draw the underworld, so it is pinned
+    below the southern continent, which is what it is under.
+  */
+  ['jambudvipa', 'world', 'Jambudvipa, the Southern Continent', 'The continent the chart captions “our Tang land is here”, and the one the Buddha weighs and finds full of greed, killing and lawsuits — which is the whole reason for the errand.', 'route', 628, 915, 'region', null],
+  ['purvavideha', 'world', 'Purvavideha, the Eastern Continent', 'The eastern continent, whose caption names Flower-Fruit Mountain and the isles of Penglai. A stone on a mountain here splits and lets out a monkey.', 'ffm', 1043, 610, 'region', null],
+  ['aparagodaniya', 'world', 'Aparagodaniya, the Western Continent', 'The western continent — “where the Buddhas are, past, present and to come”. Vulture Peak stands here, and so, somewhere in it, does the cave where the monkey was taught.', null, 200, 610, 'region', null],
+  ['uttarakuru', 'world', 'Uttarakuru, the Northern Continent', 'The northern continent: no cold and no heat, and lives long enough that nobody there needs anything. The book never goes near it.', null, 628, 255, 'region', null],
+  ['mount-sumeru', 'world', 'Mount Sumeru', 'The axis of the world, eighty-four thousand yojanas high, with the sun and the moon going round its waist and the thirty-three heavens on its summit.', 'heaven', 628, 590, 'landmark', null],
+  ['east-sea', 'world', 'The Eastern Sea', 'The Fragrant Sea, and the dragon palace under it — the one with an iron pillar in the floor that sets the depth of the water.', 'dragon-palace', 905, 275, 'region', null],
+  ['west-sea', 'world', 'The Western Sea', 'The Salt Sea and its dragon palace: the court a black-carp courier is intercepted on the way to, and the water three rhinoceroses open a road through.', null, 307, 825, 'region', null],
+  ['north-sea', 'world', 'The Northern Sea', 'The Brine Sea and its dragon palace, whose king is sent for twice — once to sit in a cauldron of oil as a cold wind, once to take a cold dragon out of one.', null, 310, 275, 'region', null],
+  ['south-sea', 'world', 'The Southern Sea', 'The Sour Sea and its dragon palace. Potalaka is in this quarter, which is why Guanyin is the one who keeps arriving.', null, 920, 825, 'region', null],
+  ['fengdu', 'world', 'The Way Down to the Courts of the Dead', 'Under the southern continent: the road two summoners drag a sleeping soul along, and the one an emperor is carried down with a letter in his sleeve.', 'underworld', 628, 1055, 'landmark', null],
+
   // ---- The road west, in the order the book walks it -------------------
   ['changan', 'route', 'Chang’an', 'The Tang capital: the city the commission is given in, and the city the scriptures are carried back to fourteen years later.', 'changan', 925, 285, 'city', null],
   ['famen-temple', 'route', 'Famen Temple', 'The monastery outside the walls where the pilgrim spends his first night and is asked how long he will be, and answers three years.', null, 972, 380, 'building', null],
   ['shuangcha-ridge', 'route', 'Twin Forks Ridge', 'The first mountain past the frontier, where a pit takes the whole party and two of three travellers are eaten before breakfast.', null, 790, 245, 'landmark', null],
   ['liu-farm', 'route', 'The Hunter’s Farm', 'Liu Boqin’s house under the Mountain of Two Frontiers, where a widow’s memorial meal is said over a man who was killed the year before.', null, 748, 332, 'building', null],
-  ['five-phases-mountain', 'route', 'The Mountain of Five Phases', 'The border between Tang land and everywhere else, and the mountain a monkey has been pinned under for five hundred years with a paper seal on the summit.', null, 612, 310, 'landmark', null],
+  ['five-phases-mountain', 'route', 'The Mountain of Five Phases', 'The border between Tang land and everywhere else, and the mountain a monkey has been pinned under for five hundred years with a paper seal on the summit.', null, 612, 310, 'landmark', 'five-phases-mountain'],
   ['eagle-grief-stream', 'route', 'Eagle Grief Stream', 'A gorge of fast dark water at the foot of Coiled Snake Mountain, where something in the river eats a horse whole.', null, 562, 292, 'landmark', 'eagle-grief-stream'],
   ['guanyin-monastery', 'route', 'The Guanyin Monastery', 'A rich house of two hundred and seventy monks whose abbot is two hundred and seventy years old and has seven hundred cassocks in his chests.', null, 534, 302, 'building', 'guanyin-monastery'],
   ['black-wind-mountain', 'route', 'Black Wind Mountain', 'The hill behind the burnt monastery, and the cave of a black bear who reads scripture, keeps a garden, and steals.', null, 514, 320, 'landmark', null],
@@ -151,7 +185,7 @@ const locRows = [
   ['pipa-cave', 'route', 'Pipa Cave', 'A cave in Poison Enemy Mountain with two trays of buns in it, and a sting that once went into the Buddha’s thumb.', null, 296, 424, 'landmark', null],
   ['seven-hundred-li-slope', 'route', 'The Long Slope', 'A stretch of road with thirty men across it, a tree to hang a monk from, and two graves by the end of the chapter.', null, 302, 410, 'landmark', null],
   ['yang-farm', 'route', 'The Yang Farm', 'An old man of seventy-four, his wife, his grandson, and the one son who is out on the road with the gang.', null, 308, 398, 'building', null],
-  ['flaming-mountains', 'route', 'The Flaming Mountains', 'Eight hundred li of fire with no grass on it, sixty li from farms of red brick that can only sow when somebody borrows a fan.', null, 374, 281, 'landmark', null],
+  ['flaming-mountains', 'route', 'The Flaming Mountains', 'Eight hundred li of fire with no grass on it, sixty li from farms of red brick that can only sow when somebody borrows a fan.', null, 374, 281, 'landmark', 'flaming-mountains'],
   ['plantain-cave', 'route', 'The Plantain Cave', 'Raksasi’s house on Emerald Cloud Mountain, and the only place in the world the fan that puts the fire out is kept.', null, 350, 264, 'landmark', null],
   ['thunder-heap-mountain', 'route', 'Thunder Heap Mountain', 'Where the Bull Demon King has been living for two years with a fox king’s daughter and a million in property.', null, 480, 230, 'landmark', null],
   ['jisai-kingdom', 'route', 'The Jisai Kingdom', 'A kingdom that four countries used to bring tribute to, until it rained blood on the pagoda and the light went out.', null, 330, 300, 'city', null],
@@ -166,12 +200,12 @@ const locRows = [
   ['pansi-cave', 'route', 'Pansi Cave', 'A farmstead with a kickball game in the yard, stone benches instead of rooms, and seven women who spin from the navel.', null, 266, 316, 'landmark', 'spider-web-cave'],
   ['yellow-flower-temple', 'route', 'The Yellow Flower Temple', 'A Daoist house with a couplet on the gate about elixirs, twelve dates on a tray, and a thousand eyes under the owner’s arms.', null, 258, 302, 'building', null],
   ['lion-camel-ridge', 'route', 'Lion Camel Ridge', 'Eight hundred li of mountain with forty-eight thousand demons on it under three kings, and a patroller with a flag and a bell.', null, 355, 306, 'landmark', null],
-  ['lion-camel-city', 'route', 'Lion Camel City', 'A walled capital whose king and people were eaten five hundred years ago, and whose walls have carried black air ever since.', null, 346, 318, 'city', null],
+  ['lion-camel-city', 'route', 'Lion Camel City', 'A walled capital whose king and people were eaten five hundred years ago, and whose walls have carried black air ever since.', null, 346, 318, 'city', 'lion-camel-city'],
   ['bhiksu-kingdom', 'route', 'The Bhiksu Kingdom', 'A capital the people have renamed Boy City, with a goose coop at every door and a child inside each one.', null, 248, 288, 'city', 'bhiksu-kingdom'],
   ['willow-slope', 'route', 'Willow Slope', 'A grove of willows with no farm in it, and a cave under the ninth-forked tree that opens when it is asked three times.', null, 240, 302, 'landmark', null],
   ['zhenhai-monastery', 'route', 'Zhenhai Monastery', 'Half a ruin and half new building, with the bandits’ half given away and a bell in the courtyard half sunk in moss.', null, 232, 316, 'building', null],
   ['black-pine-forest', 'route', 'The Black Pine Forest', 'A wood off the road with a woman roped to a tree in it, tied above the waist and buried below.', null, 224, 330, 'region', null],
-  ['bottomless-cave', 'route', 'The Bottomless Cave', 'A boulder on Empty-Trap Mountain with a jar-mouth hole worn smooth in it, and three hundred li of country underneath.', null, 216, 336, 'landmark', null],
+  ['bottomless-cave', 'route', 'The Bottomless Cave', 'A boulder on Empty-Trap Mountain with a jar-mouth hole worn smooth in it, and three hundred li of country underneath.', null, 216, 336, 'landmark', 'bottomless-cave'],
   ['dharma-kingdom', 'route', 'The Dharma-Respecting Kingdom', 'A kingdom four monks short of a vow to kill ten thousand of them, whose court all woke up bald on the same morning.', null, 208, 322, 'city', null],
   ['hidden-mist-mountain', 'route', 'Hidden Mist Mountain', 'A mountain with a wind and a fog on it and three ambushes in it, one for each disciple.', null, 200, 308, 'landmark', null],
   ['linked-ring-cave', 'route', 'The Linked Ring Cave', 'A cave in Broken Ridge with a flaying pavilion, a back garden with two men tied to trees, and a drain out to the stream.', null, 192, 294, 'landmark', null],
@@ -186,7 +220,7 @@ const locRows = [
   ['tongtai', 'route', 'Tongtai Prefecture', 'A prefecture with a tiger-seated gate in it, and a board over the gate saying no monk is ever turned away.', null, 120, 332, 'city', null],
   ['huaguang-shrine', 'route', 'The Huaguang Shrine', 'A collapsed archway fifty li past the city, with no caretaker, no roof worth the name, and rain all night.', null, 112, 320, 'building', null],
   ['jade-truth-temple', 'route', 'The Jade Truth Temple', 'The Daoist house at the foot of the mountain, whose immortal was told to expect them ten years ago and has watched the road since.', null, 110, 292, 'building', null],
-  ['cloud-reaching-ford', 'route', 'The Cloud-Reaching Ford', 'Eight or nine li of fast water with one round log laid across it, and a ferryman poling a boat that has no bottom.', null, 126, 282, 'landmark', null],
+  ['cloud-reaching-ford', 'route', 'The Cloud-Reaching Ford', 'Eight or nine li of fast water with one round log laid across it, and a ferryman poling a boat that has no bottom.', null, 126, 282, 'landmark', 'cloud-reaching-ford'],
   ['vulture-peak-gate', 'route', 'Vulture Peak', 'The end of the road: the mountain of the Buddha, with the Thunderclap Monastery on the top of it.', 'vulture-peak', 102, 310, 'landmark', null],
 
   // ---- Places off the painted road --------------------------------------
@@ -204,13 +238,13 @@ const locRows = [
   ['six-brigands-road', 'route', 'Where the Six Thieves Stopped Them', 'A stretch of road past the frontier where six robbers give their own names as Sight, Hearing, Smell, Taste, Mind and Body.', null, 590, 344, 'landmark', null],
   ['sanqing-abbey', 'route', 'The Abbey of the Three Pure Ones', 'The Daoists’ own house in the capital, with three statues on the high altar and offerings laid out in front of them overnight.', null, 336, 388, 'building', null],
   ['tongtian-river-palace', 'route', 'The Water Palace Under the River', 'The hall at the bottom of the Heaven-Reaching River, with a stone chest behind it that is the size and shape of a coffin.', null, 325, 404, 'landmark', null],
-  ['wooden-immortal-hermitage', 'route', 'The Wooden Immortals’ Hermitage', 'A stone hut past the brambles where four old gentlemen keep a brazier, a pot of tea and a night of linked verse ready for anyone who can answer them.', null, 300, 332, 'building', null],
+  ['wooden-immortal-hermitage', 'route', 'The Wooden Immortals’ Hermitage', 'A stone hut past the brambles where four old gentlemen keep a brazier, a pot of tea and a night of linked verse ready for anyone who can answer them.', null, 300, 332, 'building', 'wooden-immortal-hermitage'],
   ['zhuogou-spring', 'route', 'The Cleansing Spring', 'A natural hot spring in a stone basin with a three-room pavilion built over it, taken from the seven immortal maidens who used to bathe there.', null, 262, 322, 'landmark', null],
   ['lion-camel-cave', 'route', 'The Lion Camel Cave', 'The three kings’ own house: a steaming pit, a back pond for loosening bristles, and a two-foot vase that takes thirty-six demons to carry.', null, 350, 312, 'landmark', null],
   ['tiger-mouth-cave', 'route', 'Tiger Mouth Cave', 'The cave under Leopard Head Mountain where a stolen rake is set up on the middle table like an altar-piece and the guests are told they may look at it.', null, 162, 340, 'landmark', null],
   ['nine-fold-cave', 'route', 'The Nine-Fold Winding Cave', 'The grandsire’s hall inside Bamboo Node Mountain, where prisoners are beaten with willow switches until the switches break.', null, 154, 328, 'landmark', null],
   ['mysterious-yin-cave', 'route', 'The Mysterious Yin Cave', 'A cave in Green Dragon Mountain hung with three banners — Cold-Avoiding, Heat-Avoiding, Dust-Avoiding — and stacked with stolen lamp oil.', null, 148, 284, 'landmark', null],
-  ['golden-lamp-bridge', 'route', 'The Golden Lamp Bridge', 'The bridge the three great lamp-vats stand on, where the whole prefecture waits on the fifteenth night for the Buddhas to come down and drink the oil.', null, 156, 298, 'landmark', null],
+  ['golden-lamp-bridge', 'route', 'The Golden Lamp Bridge', 'The bridge the three great lamp-vats stand on, where the whole prefecture waits on the fifteenth night for the Buddhas to come down and drink the oil.', null, 156, 298, 'landmark', 'golden-lamp-bridge'],
   ['kou-mansion', 'route', 'The Kou Mansion', 'A rich house with a board on the gate saying no monk is turned away, a ledger of nine thousand nine hundred and ninety-six of them, and a send-off that tells the whole city which house to rob.', null, 114, 306, 'building', null],
 
   ['sun-drying-rock', 'route', 'The Scripture-Drying Rock', 'The boulder on the eastern bank the wet canon is laid out on, and where the last scroll of one sutra sticks and tears.', null, 336, 402, 'landmark', null],
@@ -236,7 +270,7 @@ const locRows = [
   ['ffm-main-peak', 'ffm', 'The Main Peak', 'The highest point of the island, where an immortal stone stood long enough to be worked on by heaven and earth.', null, 726, 60, 'landmark', null],
   ['ffm-waterfall', 'ffm', 'The Great Waterfall', 'The fall the troop follows the stream up to, and the curtain of water anybody who wants to be king has to go through.', null, 425, 200, 'landmark', null],
   ['ffm-iron-bridge', 'ffm', 'The Iron Bridge', 'The plank bridge behind the water, which is what the first monkey through finds instead of a drop.', null, 556, 380, 'landmark', null],
-  ['ffm-water-curtain-cave', 'ffm', 'The Water-Curtain Cave', 'The stone house behind the fall, with its tablet, its furniture, and room for a whole nation of monkeys.', null, 740, 388, 'building', null],
+  ['ffm-water-curtain-cave', 'ffm', 'The Water-Curtain Cave', 'The stone house behind the fall, with its tablet, its furniture, and room for a whole nation of monkeys.', null, 740, 388, 'building', 'water-curtain-cave'],
   ['ffm-dining-hall', 'ffm', 'The Cave’s Dining Hall', 'The stone tables the feasts are held at, including the one where a king of three hundred years starts crying.', null, 820, 425, 'building', null],
   ['ffm-meeting-hall', 'ffm', 'The Cave’s Meeting Hall', 'Where the troop is counted, the plans are made, and forty-seven thousand of them are drilled into an army.', null, 820, 518, 'building', null],
   ['ffm-training-ground', 'ffm', 'The Cave’s Training Floor', 'The stone yard the stolen armoury is issued from, and where the cudgel is first swung indoors.', null, 930, 520, 'building', null],
@@ -314,13 +348,13 @@ const charRows = [
   ['moksa', 'Moksa', ['Hui’an', 'The Second Prince'], 'Guanyin’s disciple and Li Jing’s second son, sent ahead on most of her errands and beaten by the monkey on one of them.', '#7e8a6a', 'moksa'],
   ['maitreya', 'Maitreya', ['The Laughing Buddha'], 'The Buddha of the age to come, who turns up in a melon field to collect a boy who stole his bag and his bell-hammer.', '#c19a5a', 'maitreya'],
   ['lingji', 'Lingji', [], 'A bodhisattva of Little Sumeru who keeps two things the Buddha left with him, and gives away both of them to the same monkey.', '#7f7fa0', 'lingji-bodhisattva'],
-  ['subhuti', 'Subhuti', ['The Patriarch'], 'The master on the Mountain of Mind and Heart who gives the monkey a name, the transformations and the cloud — and forbids him ever to say who taught him.', '#7a7060', null],
-  ['nezha', 'Nezha', ['The Third Prince'], 'A boy general with six arms and six weapons, who fights the monkey, loses, and turns up on the same side for the rest of the book.', '#b4585e', null],
-  ['li-jing', 'Li Jing', ['The Pagoda-Bearing Heavenly King'], 'Commander of the heavenly host and Nezha’s father, who carries a pagoda because he is afraid of his own son.', '#7d6a52', null],
-  ['erlang', 'Erlang', ['The True Lord of Guanjiangkou'], 'The Jade Emperor’s nephew, who answers summonses and not orders, and the only being who ever beats the monkey in a fair contest.', '#5f8a6f', null],
+  ['subhuti', 'Subhuti', ['The Patriarch'], 'The master on the Mountain of Mind and Heart who gives the monkey a name, the transformations and the cloud — and forbids him ever to say who taught him.', '#7a7060', 'subhuti'],
+  ['nezha', 'Nezha', ['The Third Prince'], 'A boy general with six arms and six weapons, who fights the monkey, loses, and turns up on the same side for the rest of the book.', '#b4585e', 'nezha'],
+  ['li-jing', 'Li Jing', ['The Pagoda-Bearing Heavenly King'], 'Commander of the heavenly host and Nezha’s father, who carries a pagoda because he is afraid of his own son.', '#7d6a52', 'li-jing'],
+  ['erlang', 'Erlang', ['The True Lord of Guanjiangkou'], 'The Jade Emperor’s nephew, who answers summonses and not orders, and the only being who ever beats the monkey in a fair contest.', '#5f8a6f', 'erlang-shen'],
   ['queen-mother', 'The Queen Mother of the West', [], 'The owner of the peach garden and the host of the banquet, whose invitation list is the reason Heaven is wrecked.', '#a06f8a', null],
-  ['manjusri', 'Manjusri', [], 'A bodhisattva whose blue lion causes two separate disasters, and who once spent three days at the bottom of a palace moat.', '#6a7fa8', null],
-  ['samantabhadra', 'Samantabhadra', [], 'A bodhisattva whose white elephant is the second of the three kings of Lion Camel Ridge.', '#8a9a7a', null],
+  ['manjusri', 'Manjusri', [], 'A bodhisattva whose blue lion causes two separate disasters, and who once spent three days at the bottom of a palace moat.', '#6a7fa8', 'manjusri'],
+  ['samantabhadra', 'Samantabhadra', [], 'A bodhisattva whose white elephant is the second of the three kings of Lion Camel Ridge.', '#8a9a7a', 'samantabhadra'],
   ['dizang', 'Ksitigarbha', [], 'The bodhisattva of the underworld, who keeps a beast that hears through every realm and a ledger of good deeds.', '#6b6458', null],
   ['pilanpo', 'Vairambha', [], 'An old woman who has not left her cave in three hundred years, whose only weapon is a needle forged in her son’s eye.', '#9a8f6a', null],
   ['shouxing', 'The Old Man of the South Pole', [], 'A star lord whose white deer goes missing during a game of chess and turns up ruling a kingdom by way of its medicine.', '#b0a37e', null],
@@ -352,8 +386,8 @@ const charRows = [
   ['yellow-wind-demon', 'The Yellow Wind Great King', [], 'A rat that heard sermons at Vulture Peak, stole the lamp oil and came down here, bringing a wind that blinds anything with eyes.', '#b39a52', 'yellow-wind-demon'],
   ['zhenyuan', 'The Great Immortal of Zhenyuan', [], 'The oldest Daoist in the book, who owns the one tree the world grew, and who ends a four-day argument by swearing brotherhood with the man who wrecked it.', '#7a8a6a', 'zhenyuan'],
   ['qingfeng', 'Clear Wind and Bright Moon', [], 'The two boys left in charge of the orchard, who count the fruit, hand out two, and are still counting when the tree comes down.', '#8f9a7a', null],
-  ['white-bone-demon', 'The White Bone Lady', [], 'A corpse-spirit who comes three times in three shapes, is killed three times, and gets the party broken up on her third try.', '#b0aca0', null],
-  ['yellow-robe-monster', 'The Yellow Robe Monster', ['Kui Wood Wolf'], 'A lodge of Heaven absent four roll-calls, living as a demon lord with a princess he carried off from a moon-viewing.', '#a58a4a', null],
+  ['white-bone-demon', 'The White Bone Lady', [], 'A corpse-spirit who comes three times in three shapes, is killed three times, and gets the party broken up on her third try.', '#b0aca0', 'white-bone-demon'],
+  ['yellow-robe-monster', 'The Yellow Robe Monster', ['Kui Wood Wolf'], 'A lodge of Heaven absent four roll-calls, living as a demon lord with a princess he carried off from a moon-viewing.', '#a58a4a', 'yellow-robe-monster'],
   ['baihuaxiu', 'Princess Baihuaxiu', [], 'A king’s third daughter, carried off thirteen years ago, who buys her way out with a letter and is nearly executed for it.', '#b08a9a', null],
   ['gold-and-silver-horn', 'Gold Horn and Silver Horn', [], 'Two furnace-boys from Tushita with five of Laozi’s treasures between them, lent out three times over to see whether the party means it.', '#c2a45a', 'gold-and-silver-horn'],
   ['wuji-king', 'The King of Wuji', [], 'A king pushed down his own well by a guest he had entertained for two years, and left there for three more.', '#8a7a6a', null],
@@ -366,20 +400,20 @@ const charRows = [
   ['jade-face-princess', 'The Jade-Face Princess', [], 'A fox king’s daughter with a million in property, who bought a husband two years ago and has kept him since.', '#c08a9a', null],
   ['ruyi-immortal', 'The As-You-Will Immortal', [], 'The Bull Demon King’s brother, who holds the only spring that undoes the Motherhood River and wants revenge instead of an offering.', '#7a8a72', null],
   ['tuolong', 'The Alligator Dragon', [], 'The ninth son of the beheaded Jing River dragon, given a river to grow up in and using it to steam a monk for his uncle’s birthday.', '#4f6a72', null],
-  ['aoguang', 'Ao Guang', ['Dragon King of the Eastern Sea'], 'The owner of the pillar that gauges the sea, who loses it, and who is called on for rain and errands for the rest of the book.', '#4f7a8a', null],
+  ['aoguang', 'Ao Guang', ['Dragon King of the Eastern Sea'], 'The owner of the pillar that gauges the sea, who loses it, and who is called on for rain and errands for the rest of the book.', '#4f7a8a', 'ao-guang'],
   ['aoshun', 'Ao Shun', ['Dragon King of the Western Sea'], 'The uncle who took in his sister’s ninth son, and who sends his own heir to arrest him.', '#5a7f8f', null],
   ['moang', 'Prince Moang', [], 'Ao Shun’s heir, who takes five hundred troops to bring in his own cousin and does it without killing him.', '#6a8a96', null],
-  ['three-daoist-immortals', 'Tiger Power, Deer Power and Goat Power', [], 'Three court preceptors who brought the rain twenty years ago and have owned the kingdom’s monks ever since.', '#8a7a5f', null],
-  ['great-king-of-miraculous-response', 'The Great King of Miraculous Response', [], 'A goldfish from a lotus pond that grew on sermons, and which takes a boy and a girl from the village every year for the rain.', '#b58a4a', null],
+  ['three-daoist-immortals', 'Tiger Power, Deer Power and Goat Power', [], 'Three court preceptors who brought the rain twenty years ago and have owned the kingdom’s monks ever since.', '#8a7a5f', 'three-daoist-immortals'],
+  ['great-king-of-miraculous-response', 'The Great King of Miraculous Response', [], 'A goldfish from a lotus pond that grew on sermons, and which takes a boy and a girl from the village every year for the rain.', '#b58a4a', 'miraculous-response'],
   ['mandarin-fish-crone', 'The Mandarin-Fish Crone', [], 'The one in the water palace who works out that the river can be frozen, and who is right about everything except the monkey.', '#7f8a7a', null],
   ['chen-cheng', 'Chen Cheng', [], 'The elder Chen brother, sixty-three, with one daughter got at fifty and weighed at thirty catties of gold.', '#8f7f62', null],
   ['chen-qing', 'Chen Qing', [], 'The younger, fifty-eight, with one son got at the shrine of Lord Guan and named for the debt.', '#89795e', null],
   ['old-turtle', 'The Old Turtle', [], 'A soft-shelled turtle who lost his house to a fish, got it back, and asks one question in payment that nobody remembers to put.', '#6f7a6a', null],
   ['single-horn-rhinoceros-king', 'The Single-Horned Rhinoceros King', [], 'Laozi’s green ox in a stolen bracelet, who takes every weapon in Heaven off everyone who brings one.', '#5f6a5a', null],
   ['scorpion-demon', 'The Scorpion Spirit', [], 'A scorpion of Pipa Cave with a sting that once went into the Buddha’s own thumb, and who wants a husband rather than a meal.', '#a06a72', null],
-  ['west-liang-queen', 'The Queen of West Liang', [], 'The sovereign of a country with no men in it, who offers a kingdom in good faith to a man who cannot take it.', '#b57f8a', null],
+  ['west-liang-queen', 'The Queen of West Liang', [], 'The sovereign of a country with no men in it, who offers a kingdom in good faith to a man who cannot take it.', '#b57f8a', 'west-liang-queen'],
   ['six-eared-macaque', 'The Six-Eared Macaque', [], 'One of four monkeys outside the ten kinds, who hears every word spoken within a thousand li — and who is, in every other way, indistinguishable.', '#c9803a', null],
-  ['sai-tai-sui', 'Sai Tai Sui', [], 'Guanyin’s golden-haired hou, off its chain, holding a queen it has not touched and three bells it should not have.', '#c2a052', null],
+  ['sai-tai-sui', 'Sai Tai Sui', [], 'Guanyin’s golden-haired hou, off its chain, holding a queen it has not touched and three bells it should not have.', '#c2a052', 'sai-tai-sui'],
   ['golden-queen', 'The Golden Queen', [], 'The senior consort of Purple Cinnabar, carried off at the Double Fifth and kept three years inside a coat of needles.', '#b58a9a', null],
   ['zhuzi-king', 'The King of Purple Cinnabar', [], 'A king who swallowed a rice dumpling in terror three years ago and has not been well since, and who kept the reason to himself.', '#9a7a5a', null],
   ['you-lai-you-qu', 'Come-and-Go', [], 'A courier with a gong, a flag and a declaration of war, who says out loud on an empty road that Heaven will not stand for what his king is doing.', '#7f7a62', null],
@@ -390,9 +424,9 @@ const charRows = [
   ['roc-demon', 'The Great Roc of Ten Thousand Li', [], 'The third king: gold-winged, faster than a somersault cloud, and the Buddha’s own kin, which is the only reason he is still alive.', '#8a7a52', null],
   ['xiao-zuanfeng', 'Little Drill-Wind', [], 'A patroller with a clapper and a bell, chanting a warning about a monkey who can turn into a fly, to a monkey who has.', '#7a7062', null],
   ['bhiksu-king', 'The King of Bhiksu', [], 'A king three years into a marriage he cannot survive, who has been told what will cure him and has ordered it.', '#8a7462', null],
-  ['national-preceptor', 'The State Preceptor', [], 'The old Daoist who supplied the girl and the prescription, and who is the Old Man of the South Pole’s white deer.', '#9a8a72', null],
-  ['fox-beauty', 'The Beauty of Bhiksu', [], 'Sixteen years old, given to a king three years ago by the man who calls himself her father, and a white-faced fox under it.', '#b08a92', null],
-  ['gold-nosed-mouse', 'Lady Earth-Gusher', ['The Gold-Nosed White-Haired Mouse Spirit', 'Half-Guanyin'], 'A mouse who stole the Buddha’s incense three hundred years ago, was spared, and set up tablets to the two who spared her.', '#a89a8a', null],
+  ['national-preceptor', 'The State Preceptor', [], 'The old Daoist who supplied the girl and the prescription, and who is the Old Man of the South Pole’s white deer.', '#9a8a72', 'national-preceptor'],
+  ['fox-beauty', 'The Beauty of Bhiksu', [], 'Sixteen years old, given to a king three years ago by the man who calls himself her father, and a white-faced fox under it.', '#b08a92', 'fox-beauty'],
+  ['gold-nosed-mouse', 'Lady Earth-Gusher', ['The Gold-Nosed White-Haired Mouse Spirit', 'Half-Guanyin'], 'A mouse who stole the Buddha’s incense three hundred years ago, was spared, and set up tablets to the two who spared her.', '#a89a8a', 'lady-earth-gusher'],
   ['dharma-destroying-king', 'The King of Dharma-Respecting', [], 'A king four monks short of a vow to kill ten thousand, who wakes one morning with no hair and changes his mind about everything.', '#8a7a6a', null],
   ['south-mountain-great-king', 'The Great King of the Southern Mountain', [], 'A leopard with a plan borrowed from a refugee of Lion Camel Ridge, who divides the party three ways and takes the man in the middle.', '#9a8262', null],
   ['woodcutter', 'The Woodcutter of Hidden Mist', [], 'A man tied to the tree opposite, three days without food, whose whole objection to dying is his mother.', '#7f7258', null],
@@ -415,7 +449,7 @@ const charRows = [
   ['yuan-shoucheng', 'Yuan Shoucheng', ['The Diviner of the West Market'], 'A fortune-teller whose castings never miss, who takes a dragon’s wager without knowing it is one and then names the man who will do the beheading.', '#7d6a86', null],
   ['apricot-fairy', 'The Apricot Fairy', ['Miss Apricot'], 'The one guest at the wooden immortals’ hermitage who is not there for the poetry, and the reason a night of perfect courtesy turns out to have been a trap.', '#c78a92', null],
   ['wooden-immortals', 'The Four Wooden Immortals', ['Firm-Node', 'Lonely-Straight', 'Cloud-Piercer', 'Cloud-Brusher'], 'A pine, a cypress, a juniper and a bamboo who have been discussing Chan and matching rhymes for centuries, and who want a real poet for one night.', '#5f7a56', null],
-  ['yellow-brow', 'The Yellow-Browed Elder', ['The Buddha of the Little Western Heaven'], 'A boy who took his master’s bag and cymbals, set up a monastery one character short of the real one, and had it bowed to by people who could not read.', '#b0973f', null],
+  ['yellow-brow', 'The Yellow-Browed Elder', ['The Buddha of the Little Western Heaven'], 'A boy who took his master’s bag and cymbals, set up a monastery one character short of the real one, and had it bowed to by people who could not read.', '#b0973f', 'yellow-brow'],
   ['kang-jin-long', 'The Gullet Dragon', ['Kang Jin Long'], 'One of the twenty-eight lodges, and the only one whose horn is thin enough to go through a seam that will not open.', '#4d6f8a', null],
   ['nine-headed-insect', 'The Nine-Headed Insect', ['The Nine-Headed Consort'], 'The Myriad-Sage Dragon King’s son-in-law: nine heads that watch every direction at once, and a tenth that comes out of the waist to bite.', '#5a5f4a', null],
   ['wan-sheng-dragon-king', 'The Myriad-Sage Dragon King', [], 'The owner of Green Wave Pool, who married his daughter to a bird and kept a stolen relic in a casket at the bottom of his own hall.', '#3f6a7d', null],
@@ -443,27 +477,28 @@ const characters = charRows.map(([slug, name, aliases, description, color, portr
 
 /* [slug, name, description, iconType, art] */
 const itemRows = [
-  ['cudgel', 'The Gold-Banded Cudgel', 'The iron rod that set the depth of the seas, thirteen thousand five hundred catties, which grows and shrinks to order and lives in an ear when it is not wanted.', 'weapon', null],
-  ['rake', 'The Nine-Toothed Rake', 'Five thousand and forty-eight catties of divine ice-iron, made in Heaven for a marshal of the reeds and used ever since on doors, demons and, once, eight hundred li of rotten fruit.', 'weapon', null],
-  ['staff', 'The Demon-Quelling Staff', 'A moon-laurel branch banded with gold, the same weight as the rake, carried by the quietest of the three.', 'weapon', null],
-  ['pilgrim-staff', 'The Nine-Ring Pilgrim Staff', 'One of the two things Guanyin sends ahead for the pilgrim: a ringed staff that is not a weapon and is never used as one.', 'tool', null],
+  ['cudgel', 'The Gold-Banded Cudgel', 'The iron rod that set the depth of the seas, thirteen thousand five hundred catties, which grows and shrinks to order and lives in an ear when it is not wanted.', 'weapon', 'gold-banded-cudgel'],
+  ['rake', 'The Nine-Toothed Rake', 'Five thousand and forty-eight catties of divine ice-iron, made in Heaven for a marshal of the reeds and used ever since on doors, demons and, once, eight hundred li of rotten fruit.', 'weapon', 'nine-toothed-rake'],
+  ['staff', 'The Demon-Quelling Staff', 'A moon-laurel branch banded with gold, the same weight as the rake, carried by the quietest of the three.', 'weapon', 'demon-quelling-staff'],
+  ['pilgrim-staff', 'The Nine-Ring Pilgrim Staff', 'One of the two things Guanyin sends ahead for the pilgrim: a ringed staff that is not a weapon and is never used as one.', 'tool', 'nine-ring-staff'],
   ['cassock', 'The Brocade Cassock', 'The other: a robe that keeps its wearer out of the three calamities, and which is coveted, stolen, burnt for and returned inside two chapters of its first outing.', 'clothing', 'brocade-cassock'],
   ['fillet', 'The Gold Fillet', 'One of three bands the Buddha gave Guanyin. It goes on under a lie about a nice hat, tightens on a spell, and is the only thing on the road the monkey cannot get off.', 'artifact', 'golden-fillet'],
   ['rescript', 'The Travel Rescript', 'The passport the emperor stamps, carried the whole way, sealed by every kingdom that lets them through, and read back at the end as the record of where they went.', 'document', 'travel-rescript'],
   ['scriptures', 'The Scriptures', 'Five thousand and forty-eight scrolls, one canon exactly, handed over twice — once blank, and once after the alms bowl.', 'artifact', 'scripture-scrolls'],
-  ['alms-bowl', 'The Purple-Gold Alms Bowl', 'Put into the pilgrim’s hands by the emperor at the gate of Chang’an, carried for fourteen years, and given up at the last loft as the price of a canon with words in it.', 'container', null],
+  ['alms-bowl', 'The Purple-Gold Alms Bowl', 'Put into the pilgrim’s hands by the emperor at the gate of Chang’an, carried for fourteen years, and given up at the last loft as the price of a canon with words in it.', 'container', 'purple-gold-bowl'],
   ['heart-sutra', 'The Heart Sutra', 'Fifty-four lines given away in a nest in a juniper, recited the whole way, and quoted back at the man who learned it whenever he is afraid of a noise.', 'document', null],
   ['ginseng-fruit', 'The Ginseng Fruit', 'Thirty fruit in ten thousand years from one tree, shaped like a newborn child, which dissolves in earth and cannot be caught in anything but a gold bowl.', 'consumable', 'ginseng-fruit'],
   ['plantain-fan', 'The Plantain Fan', 'A leaf of pure yin from behind Kunlun that puts the Flaming Mountains out — one wave for the fire, two for wind, three for rain, and forty-nine to end it.', 'artifact', 'banana-leaf-fan'],
   ['purple-gold-bells', 'The Three Purple-Gold Bells', 'Three hundred fathoms of fire, three hundred of smoke and three hundred of sand, stopped with cotton and carried on a cord at a demon’s belt.', 'artifact', 'purple-gold-bells'],
-  ['diamond-bracelet', 'The Diamond Jade Bracelet', 'Made at the Han Pass and never lost an argument: it swallows any weapon thrown at it, including every weapon in Heaven, and ends up through an ox’s nose.', 'artifact', null],
+  ['diamond-bracelet', 'The Diamond Jade Bracelet', 'Made at the Han Pass and never lost an argument: it swallows any weapon thrown at it, including every weapon in Heaven, and ends up through an ox’s nose.', 'artifact', 'diamond-bracelet'],
   ['gourd-and-vase', 'The Gourd and the Jade Vase', 'Two of Laozi’s five: they take anyone who answers to their own name, and turn them to liquid in an hour and three quarters.', 'artifact', null],
   ['yin-yang-vase', 'The Yin-Yang Vase', 'Two feet four inches high and thirty-six bearers to carry it, with fire, snakes and three fire-dragons inside — and, after one visit, a hole in the bottom.', 'artifact', null],
-  ['golden-cymbals', 'The Golden Cymbals', 'A pair that seal over a man with no seam, grow when he grows and shrink when he shrinks, and are opened only by a horn driven through the join.', 'artifact', null],
-  ['human-seed-bag', 'The Human-Seed Bag', 'An old white cloth wallet that holds however many people are thrown at it, including twenty-eight lodges of Heaven and five dragons.', 'container', null],
+  ['golden-cymbals', 'The Golden Cymbals', 'A pair that seal over a man with no seam, grow when he grows and shrink when he shrinks, and are opened only by a horn driven through the join.', 'artifact', 'golden-cymbals'],
+  ['human-seed-bag', 'The Human-Seed Bag', 'An old white cloth wallet that holds however many people are thrown at it, including twenty-eight lodges of Heaven and five dragons.', 'container', 'human-seed-bag'],
   ['wind-pill', 'The Wind-Securing Pill', 'The Buddha left it with Lingji and Lingji sewed it into a collar, and it is why the second fanning does not move him.', 'consumable', null],
   ['sleep-insects', 'The Sleep-Insects', 'Won off a heavenly king at a guessing game five hundred years ago and kept in a belt since, spent one nostril at a time.', 'consumable', null],
   ['gold-bracelets', 'The Golden Queen’s Bracelets', 'A pair taken off at the Double Fifth to tie the five-coloured threads, left in a dressing case, and worn up a monkey’s arm as proof.', 'clothing', null],
+  ['peaches', 'The Peaches of Immortality', 'Three thousand six hundred trees in three ranks, ripening at three thousand, six thousand and nine thousand years, and doing something different to whoever eats each rank.', 'artifact', 'peaches-of-immortality'],
   ['register', 'The Register of Life and Death', 'The book with everything alive written in it, from which one entry — stone monkey, three hundred and forty-two years — is struck out with a borrowed brush.', 'document', null],
 ]
 const items = itemRows.map(([slug, name, description, iconType, art]) => ({
@@ -724,16 +759,16 @@ const scenes = [
   /* ---- Chapter 5 ---- */
   { ch: 5, key: 'peach-garden-given', title: 'Overseer of the Peach Garden', loc: 'peach-garden', d: ce(124, 40), tension: 2, pov: 'wukong',
     desc: 'An idle Great Sage is a problem, so he is given the garden to look after. The local god walks him round it and counts out the stock: three thousand six hundred trees in three ranks, ripening at three thousand, six thousand and nine thousand years, and what each rank does to whoever eats it.',
-    items: [], threads: ['heaven-vs-monkey'], motifs: [],
+    items: ['peaches'], threads: ['heaven-vs-monkey'], motifs: [],
     cast: { wukong: 'Is handed the keys to the one orchard in the universe he should never have been shown, and is told exactly which trees matter.',
       'jade-emperor': 'Solves the problem of an official with no duties by inventing duties, and picks the worst possible ones.' } },
   { ch: 5, key: 'peaches-eaten', title: 'He Eats the Ripe Ones', loc: 'peach-garden', d: ce(137, 120), tension: 3, pov: 'wukong',
     desc: 'He sends the attendants out of the gate, hangs his cap and robe on a branch, and works through the oldest trees. Then he does it again every few days, and takes a nap in the branches afterwards at a size small enough not to be seen from the path.',
-    items: [], threads: ['heaven-vs-monkey'], motifs: ['hunger', 'transformation'],
+    items: ['peaches'], threads: ['heaven-vs-monkey'], motifs: ['hunger', 'transformation'],
     cast: { wukong: 'Eats his way through the nine-thousand-year rank in private and sleeps it off two inches tall in the leaves.' } },
   { ch: 5, key: 'seven-maidens', title: 'The Seven Maidens and the Guest List', loc: 'jasper-pool', d: ce(138, 60), tension: 3, pov: 'wukong',
     desc: 'Seven maidens come to pick for the Peach Banquet and find the best trees stripped. He wakes, asks who is invited, hears the whole list read out, and notices which four characters are not on it. He freezes all seven where they stand and goes to the party himself.',
-    items: [], threads: ['heaven-vs-monkey'], motifs: ['names'],
+    items: ['peaches'], threads: ['heaven-vs-monkey'], motifs: ['names'],
     cast: { wukong: 'Discovers what his title is worth a second time, and this time from a guest list rather than a salary table.',
       'queen-mother': 'Sends for peaches for the banquet and never learns from her own maidens why they did not come back.' } },
   { ch: 5, key: 'banquet-and-elixir', title: 'The Barefoot Immortal’s Face', loc: 'yaochi-palace', d: ce(138, 61), tension: 4, pov: 'wukong',
@@ -2493,23 +2528,33 @@ const relationshipSnapshots = [
 
 /* ----------------------------------------------------------- factions --- */
 
+/* [slug, name, description, colour, art] */
 const factionRows = [
   ['pilgrims', 'The Scripture Pilgrims', 'One monk, three convicted criminals working off sentences, and a dragon under commuted execution, walking west for fourteen years.', '#c2a14e'],
   ['heaven', 'The Celestial Court', 'The Jade Emperor’s administration: a throne hall, a roll-call of twenty-eight lodges, four departments of weather, and a standing habit of solving problems by appointment.', '#7d8fb0'],
   ['vulture-peak', 'The Buddha’s Establishment', 'Vulture Peak and its bodhisattvas — the power that commissions the journey, owns half the demons on it, and charges for the scriptures at the end.', '#c9a94a'],
   ['ffm-monkeys', 'The Monkeys of Flower-Fruit Mountain', 'Forty-seven thousand of them, armed out of a stolen armoury, burnt out by a heavenly army, and down to a thousand by the time their king comes home.', '#c9803a'],
   ['dragon-kings', 'The Four Dragon Kings', 'The seas and the rivers, run as a family firm: tea for guests, weapons handed over under protest, rain made strictly to written order.', '#4d6f8a'],
-  ['underworld', 'The Courts of the Underworld', 'Ten kings, a register, a judge who can be written to, and a bureaucracy that turns out to be negotiable in both directions.', '#6a5a7a'],
+  ['underworld', 'The Courts of the Underworld', 'Ten kings, a register, a judge who can be written to, and a bureaucracy that turns out to be negotiable in both directions.', '#6a5a7a', 'ten-kings'],
   ['bull-clan', 'The Bull Demon King’s House', 'A demon king, two wives, a son, a brother and a mountain of fire — the only family in the book with a foreign policy.', '#8a4a44'],
   ['daoist-usurpers', 'The Daoists of Cart-Slow', 'Three immortals who brought the rain when the monks could not, and made a kingdom’s monks into their servants for twenty years.', '#7a6244'],
+  /*
+    The three kings are an alliance rather than three separate problems: eight
+    hundred li of ridge, a walled city, forty-eight thousand troops under them,
+    and four chapters that need Vulture Peak, Manjusri and Samantabhadra
+    together to undo. The plate that shows all three is one composition rather
+    than three panels, so it is the faction's cover — cutting it into portraits
+    would have put the elephant's name-card on the lion.
+  */
+  ['lion-camel-kings', 'The Three Kings of Lion Camel Ridge', 'A blue lion who swallows a hundred thousand troops in a mouthful, a white elephant whose trunk crushes iron-backed men, and the Great Roc of Ten Thousand Li, who is the Buddha’s own kin and the only one of the three who will not go quietly.', '#6b5344', 'lion-camel-three-kings'],
 ]
-const factions = factionRows.map(([slug, name, description, color]) => ({
+const factions = factionRows.map(([slug, name, description, color, art]) => ({
   ...base,
   id: F(slug),
   name,
   description,
   color,
-  coverImageId: null,
+  coverImageId: art ? image(`faction-${art}`, `art/factions/${art}.jpg`) : null,
   tags: [],
 }))
 
@@ -2542,6 +2587,9 @@ const factionMemberships = [
   ['bull-clan', 'red-boy', 'Son', 'whose-son', 'boy-of-good-wealth'],
   ['bull-clan', 'ruyi-immortal', 'Brother, and holder of the Abortion Spring', 'the-bucket', null],
   ['daoist-usurpers', 'three-daoist-immortals', 'Preceptors of the realm', 'the-cart-pullers', 'head-belly-oil'],
+  ['lion-camel-kings', 'blue-lion-demon', 'Eldest of the three, and Manjusri’s mount', 'the-yin-yang-vase', 'the-peacocks-brother'],
+  ['lion-camel-kings', 'yellow-tusk-elephant', 'Second of the three, and Samantabhadra’s mount', 'the-yin-yang-vase', 'the-peacocks-brother'],
+  ['lion-camel-kings', 'roc-demon', 'Third of the three, and the one who settles rather than surrenders', 'the-yin-yang-vase', 'the-peacocks-brother'],
 ].map(([faction, character, role, start, end]) => ({
   ...base, id: id('membership', `${faction}-${character}`), factionId: F(faction), characterId: C(character), role, startEventId: EV(start), endEventId: end ? EV(end) : null, notes: '',
 }))
@@ -2551,6 +2599,7 @@ const factionRelationships = [
   { ...base, id: id('faction-relationship', 'heaven-vulture-peak'), factionAId: F('heaven'), factionBId: F('vulture-peak'), stance: 'allied', notes: 'Heaven sends for the Buddha when its own execution ground fails, and the Buddha lends four vajras when Heaven’s nets are not enough.' },
   { ...base, id: id('faction-relationship', 'pilgrims-vulture-peak'), factionAId: F('pilgrims'), factionBId: F('vulture-peak'), stance: 'allied', notes: 'The errand is Vulture Peak’s and so are most of the rescues, and the canon is still charged for at the end of it.' },
   { ...base, id: id('faction-relationship', 'pilgrims-bull-clan'), factionAId: F('pilgrims'), factionBId: F('bull-clan'), stance: 'hostile', notes: 'Three separate feuds — a son converted, a fan stolen twice, and a brother who wants revenge for a nephew who is not dead.' },
+  { ...base, id: id('faction-relationship', 'lion-camel-vulture-peak'), factionAId: F('lion-camel-kings'), factionBId: F('vulture-peak'), stance: 'complicated', notes: 'Two of the three are bodhisattvas’ mounts and the third is the Buddha’s own kin, so the alliance that nearly ends the journey is undone by its owners rather than beaten.' },
   { ...base, id: id('faction-relationship', 'dragon-kings-underworld'), factionAId: F('dragon-kings'), factionBId: F('underworld'), stance: 'neutral', notes: 'Both petitioned the throne about the same monkey on the same morning, and neither got an army out of it.' },
 ]
 
@@ -2581,6 +2630,9 @@ const loreRows = [
   ['ordeals', 'powers', 'Eighty-One Ordeals',
     'The guardians assigned at Eagle Grief Stream keep a written register of every disaster on the road, and hand it in at the end. Nine times nine is the number that completes a work, so when the count comes to eighty with the pilgrims already flying home, one more is ordered and a guardian is sent to catch the couriers up. It is the book at its most openly designed: the last ordeal exists because the arithmetic required it, and the book says so out loud.',
     'the-ledger-of-ordeals', null],
+  ['fish-basket', 'powers', 'Where the Fish-Basket Guanyin Comes From',
+    'Twice in this book Guanyin arrives in a hurry and out of costume. At the Heaven-Reaching River she comes out of her bamboo grove undressed, unpainted and with her hair unbraided, carrying a basket she has just split and woven herself, because the thing in the river is her own goldfish and the copper mace it fights with is a lotus bud from her pond. The whole village kneels in the mud to look at her, and a painter among them takes the likeness down before she goes. That is the origin the book gives for the Fish-Basket Guanyin, one of the standard forms she is painted in; she appears in it a second time, unremarked, to name the scorpion at Poison Enemy Mountain.',
+    'the-fish-basket', 'fish-basket-guanyin'],
   ['chronology', 'sources', 'How This Chronology Was Reconstructed',
     'Unusually for a book this size, the novel dates itself. The travel rescript is issued in the thirteenth year of Zhenguan and handed back in the twenty-seventh, and the road is stated over and over to have taken fourteen years. Day 0 in this world is the first day of Zhenguan 1, taken as 627 CE, so the pilgrimage runs 639–653. That is the book’s own count and not the historical one: the real Zhenguan era ended in its twenty-third year, and the historical Xuanzang left in 629 and returned in 645 without an imperial passport. The frame chapters run on a second timeline and on negative day numbers, reconstructed from the book’s own arithmetic — the underworld register gives the monkey’s age as 342, Heaven runs a day to the world’s year, and five hundred years pass under the mountain. Followed backwards from the year he is freed, that puts his birth in the third century BCE. Treat the frame dates as a reconstruction with the working shown, not as claims.',
     'stone-monkey-born', null],
@@ -2607,7 +2659,9 @@ const lorePages = loreRows.map(([slug, cat, title, body, visible, art]) => ({
   title,
   body,
   tags: [],
-  coverImageId: art ? I(`item-${art}`) : null,
+  /* Lore covers are their own pictures rather than an entity's, so this one
+     does not collide with anything under EX-304. */
+  coverImageId: art ? image(`lore-${art}`, `art/lore/${art}.jpg`) : null,
   linkedEntityIds: [],
   visibleFromEventId: EV(visible),
 }))
