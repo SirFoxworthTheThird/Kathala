@@ -369,9 +369,12 @@ too, but they move a scene at a time, so they are for nudging along rather than
 for jumping.
 
 **Your place in the book is yours to move.** While reading, only the controls
-that say they move it do: the previous/next moment steppers, and **Read to
+that say they move it do: the previous/next moment steppers, **Read to
 here** on a chapter row (a writer sees the same control as *View from here*,
-because for them it moves a viewfinder rather than a bookmark). Looking at something — a scene on the Calendar, a
+because for them it moves a viewfinder rather than a bookmark), and **play**,
+which is the same thing on a timer — it walks your place forward a scene at a
+time and reveals each one as it arrives, in every bar scope including a merged
+view of several timelines. Looking at something — a scene on the Calendar, a
 search result, a stop on a character's journey, a row in their history — shows
 it to you without quietly relocating your bookmark. Where a control's only job
 was moving the cursor, it becomes a label rather than a button, so nothing on
