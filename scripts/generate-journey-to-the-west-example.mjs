@@ -2015,7 +2015,7 @@ const scenes = [
       'sha-wujing': 'Points out that they are now in official custody in a kingdom that executes monks.' } },
   { ch: 84, key: 'the-night-of-razors', title: 'A Thousand Razors in One Night', loc: 'dharma-kingdom', d: ce(650, 25), tension: 4, pov: 'dharma-destroying-king',
     desc: 'Every hair on both arms becomes a small monkey or a sleep-insect, and the cudgel becomes a thousand razors. By dawn the king, the queens, the six palaces, the eunuchs and every ranked official in the capital have been shaved. The chest is opened before the court, and a king with no hair on his head comes down off the throne to ask them to take him as a disciple; and one character of the kingdom’s name is changed — not Destroying but Respecting.',
-    items: ['cudgel'], threads: ['kingdoms'], motifs: ['names', 'transformation'],
+    items: ['cudgel', 'sleep-insects'], threads: ['kingdoms'], motifs: ['names', 'transformation'],
     cast: { 'dharma-destroying-king': 'Wakes up bald with his whole court, weeps into his own scalp, and renames his country before breakfast.',
       wukong: 'Ends a two-year massacre without killing anybody, which is the only time he manages that.',
       tripitaka: 'Is let out of a box into a throne room where everyone is bald and nobody is angry.' } },
@@ -2594,7 +2594,7 @@ const loreRows = [
     'Chapters, chapter titles, characters, places and events follow the complete hundred-chapter Chinese text at Chinese Wikisource (西遊記), read chapter by chapter; the reading record is kept beside the generator in scripts/journey-to-the-west/scene-ledger.md. Every summary, description and status note in this world is original structural writing about the book — none of the novel’s prose is reproduced here, in Chinese or in translation. Names are given in the forms an English-language reader is most likely to meet: Tripitaka rather than Xuanzang for the pilgrim, Sun Wukong rather than the Monkey King where both are used.',
     'stone-monkey-born', null],
   ['pictures', 'sources', 'The Pictures in This World',
-    'Every map, portrait, place and item picture here is an AI-generated image supplied by this world’s author, who states they are their own work. None of it is public domain and none of it comes from an edition of the novel. Each picture was opened and checked against the entity it is attached to before it was assigned. A great many characters and places have no picture at all rather than a borrowed or approximate one, which is the honest state of the set: SOURCES.md lists what is missing.',
+    'Every map, portrait, place and item picture here is an AI-generated image supplied by this world’s author, who states they are their own work. None of it is public domain and none of it comes from an edition of the novel. Each picture was opened and checked against the entity it is attached to before it was assigned. A great many characters and places have no picture at all rather than a borrowed or approximate one, which is the honest state of the set: SOURCES.md lists what is missing. The one exception is the cover, which is a leaf of the 1592 Shidetang Hall imprint — the edition in which this novel was first printed with pictures — showing Sun Wukong with the cudgel outside the Plantain Cave. That one is genuinely public domain and genuinely from the book.',
     'stone-monkey-born', null],
   ['maps', 'sources', 'The Maps in This World',
     'There are seven layers: the road west, Chang’an, Vulture Peak, Flower-Fruit Mountain, the celestial court, the dragon palace and the underworld. All are paintings rather than surveys, none carries a scale, and nothing in them should be read as a distance — the book’s own figures are religious numbers rather than measurements. Where the road painting names a feature, the marker sits on that name even when the book’s order would put it elsewhere: that is why the road doubles back east once, between the Guanyin Monastery and Gao Village, because the painting puts the village inside the Tang frontier and the text puts it a long way past. The painting also carries some mangled English lettering, including a "Thunderbolt Temple" spelt with an O and a duplicated Tang border. Places the paintings do not draw at all — Subhuti’s cave, the Jing River, the ford where Chen Guangrui was killed and a dozen caves — are pinned along the drawn road between the features that bracket them in the text, and SOURCES.md lists every one of those as an approximation.',
@@ -2759,7 +2759,13 @@ const data = {
     id: worldId,
     name: 'Journey to the West',
     description: 'A stone monkey fights Heaven to a standstill and is pinned under a mountain for five hundred years. A Tang emperor comes back from the underworld owing more than he can pay and sends a monk west for scriptures that will settle it. The two stories meet on a road eighty-one disasters long, walked by a pilgrim who cannot tell a demon from a widow, a pig who wants to go home, a river monster nobody listens to, a dragon in the shape of a horse, and the monkey — who is right about almost everything and is punished for it with a hat.',
-    coverImageId: null,
+    /* The one picture in this world that is not the repository owner's own
+       work: a leaf of the 1592 Shidetang first edition, which is where this
+       novel was first printed with illustrations. Sun Wukong with the cudgel
+       planted in the ground, under the Plantain Cave's own sign-board — an
+       episode this world models at chapters 59 to 61. Public domain, and
+       SOURCES.md says where it came from. */
+    coverImageId: image('cover', 'art/cover.jpg'),
     theme: 'theme-fantasy',
     readingMode: true,
     createdAt: now,
@@ -2842,6 +2848,12 @@ for (const event of events) {
   for (const motifId of event.motifIds) {
     if (!motifs.some((m) => m.id === motifId)) fail(`${event.title}: unknown motif (EX-404)`)
   }
+}
+/* Every thread, motif and item has to be about something. An item nothing
+   names is padding (EX-403), and it is invisible in the app rather than wrong,
+   which is how one of these sat unnoticed until the missing-art audit. */
+for (const item of items) {
+  if (!events.some((e) => e.involvedItemIds.includes(item.id))) fail(`${item.name} is in no scene (EX-403)`)
 }
 /* Every thread and motif has to be about something. */
 for (const thread of plotThreads) {
@@ -2976,11 +2988,9 @@ const entry = {
   data: 'journey-to-the-west.pwk',
   dataBytes: Buffer.byteLength(text),
   counts: { characters: characters.length, chapters: chapters.length, events: events.length, locations: locations.length },
-  notice: 'Unofficial reference for a public-domain novel. This example contains original structural summaries and a reconstructed chronology, not the novel’s prose. The chapter titles are the book’s own couplets, rendered in English; the verbatim Chinese ships beside the generator script. Every map and picture is the world author’s own AI-generated work and is not public domain; SOURCES.md and the Lore say so.',
+  notice: 'Unofficial reference for a public-domain novel. This example contains original structural summaries and a reconstructed chronology, not the novel’s prose. The chapter titles are the book’s own couplets, rendered in English; the verbatim Chinese ships beside the generator script. Every map and picture except the cover is the world author’s own AI-generated work and is not public domain; the cover is a leaf of the 1592 Shidetang first edition. SOURCES.md and the Lore say so.',
   worldId,
-  /* No cover yet. The catalogue advertises a cover only where the world really
-     links one, and no cover plate has been drawn for this book; the request is
-     on the Tier 1 list in scripts/journey-to-the-west/ART-REQUESTS.md. */
+  cover: `${repo}/art/cover.jpg`,
 }
 const at = index.entries.findIndex((e) => e.id === entry.id)
 if (at >= 0) index.entries[at] = entry

@@ -102,12 +102,13 @@ Centre: a white elephant with long tusks (Samantabhadra's) whose trunk crushes
 iron-backed men. Right, largest: the Great Roc of Ten Thousand Li, gold-winged,
 the Buddha's own kin — with the yin-yang vase at his belt.
 
-**1.12 The cover plate, `art/cover.jpg`.** Every other world in the Library
-shows a cover on its catalogue card; this one currently shows none, because
-there is no plate to show. It wants the four pilgrims and the horse on the
-road, in the same house style as the character portraits, wide enough to crop
-to a card — the monk on the white horse with the three of them around him, a
-mountain road under them and a great deal of sky. Landscape, not portrait.
+**~~1.12 The cover plate~~ — done, and not by you.** The catalogue card now
+shows a leaf of the 1592 Shidetang first edition: Sun Wukong with the cudgel
+outside the Plantain Cave. It is public domain and it is from the book itself,
+which beats anything commissioned. If you would rather the card carried your
+own house style — the four pilgrims and the horse on a mountain road,
+portrait, croppable to 2:3 — say so and it can be swapped; otherwise this one
+is closed.
 
 ---
 
