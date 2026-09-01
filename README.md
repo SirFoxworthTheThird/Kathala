@@ -31,8 +31,9 @@
 ## Open a real novel and scrub through it
 
 The quickest way to understand PlotWeave is to use one. It ships a **library of
-thirty worlds built from published books** — *Dracula*, *Frankenstein*,
-*Pride and Prejudice*, *Treasure Island*, *The Odyssey* and others — with their
+thirty-two worlds built from published books** — *Dracula*, *Frankenstein*,
+*Pride and Prejudice*, *Treasure Island*, *The Odyssey*, *Journey to the West*
+and others — with their
 chapters, cast, places, relationships and lore already mapped to individual
 scenes.
 
