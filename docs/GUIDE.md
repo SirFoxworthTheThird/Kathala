@@ -47,7 +47,7 @@ what you are allowed to reuse.
 - **Library cover images**, when you open the Library and scroll to a card.
 - **Pictures inside the library worlds themselves.** These are linked rather
   than bundled: character portraits, location and item pictures, map images,
-  faction and world covers. Across the shipped library that is a little over
+  faction and world covers. Across the shipped library that is just under
   1,700 images from around sixty different sites — Wikimedia Commons and
   Project Gutenberg for well over half of them, and a long tail of others. So
   opening a downloaded book contacts those sites for as long as the pictures are
@@ -285,7 +285,7 @@ phone.
 
 Books whose cover is a linked image show it on the card. **These are the only
 pictures in PlotWeave that are not on your own machine.** The cover is fetched
-from wherever it is hosted — currently 23 of the 25 entries, from a mix of
+from wherever it is hosted — currently 26 of the 32 entries, from a mix of
 Wikimedia Commons, Project Gutenberg, and a few commercial sites — so opening
 the Library asks those hosts for an image, and they see your IP address and that
 you opened it. Nothing about your worlds is sent, and nothing is uploaded; it is
