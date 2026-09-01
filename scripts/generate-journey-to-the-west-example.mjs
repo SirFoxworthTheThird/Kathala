@@ -2325,6 +2325,62 @@ const eventsForChapterBefore = (index, chapter) => scenes.slice(0, index).filter
 const timelineFor = (ch) => (ch <= 8 ? ageTimelineId : roadTimelineId)
 
 /*
+  The sortKey every snapshot, placement and movement carries is not an
+  arbitrary monotonic number: `src/lib/sortKey.ts` defines it as
+  `chapter.number + event.sortOrder / 1_000_000`, and the app rewrites every
+  record attached to an event to exactly that whenever a scene is reordered.
+  A world that invents its own scheme is correct only until somebody drags a
+  scene, at which point half its keys are on one scale and half on the other.
+*/
+const sortKeyAt = (index) => scenes[index].ch + eventsForChapterBefore(index, scenes[index].ch) / 1_000_000
+
+/** The same key, addressed by scene key rather than index. */
+const sceneIndexOf = (key) => {
+  const at = scenes.findIndex((s) => s.key === key)
+  if (at < 0) throw new Error(`no scene called ${key}`)
+  return at
+}
+const sortKeyOfScene = (key) => sortKeyAt(sceneIndexOf(key))
+
+/*
+  Chapter 9 is told as backstory — the pilgrim's parents, eighteen years before
+  the Grand Mass — so it is flagged as a flashback even though its dates put it
+  in order on the road's clock. Every event here carries an explicit
+  inWorldTime, so the flag changes what the app says about the scene without
+  disturbing the derived clock.
+*/
+const flashbackChapters = new Set([9])
+
+/*
+  The beat sheet is an editorial reading, and the Structure screen is empty
+  without one. Ids come from the three-act template in `src/lib/storyBeats.ts`
+  and have to match it exactly — several shipped worlds carry beat names that
+  are in no template at all, which is why their act ruler shows nothing.
+
+  Three-act rather than the Hero's Journey, tempting as that is for this book
+  in particular: the twelve stages want a refusal of the call and a road back,
+  and this novel has neither. Inventing them to fill a template would be
+  putting structure into the book rather than finding it.
+
+  The act ruler measures from the beats, not from where a reader would put the
+  divisions: with this template Act 1 is everything before the midpoint, so it
+  reads 51 / 46 / 3 against the conventional 25 / 50 / 25. The three per cent
+  is the part worth looking at. The pilgrims reach Vulture Peak in chapter 98
+  of 100, and the whole third act — the crossing, the blank scriptures, the
+  price, the eighty-first ordeal and the five titles — happens in three
+  chapters.
+*/
+const beats = {
+  'stone-monkey-born': 'hook',
+  'three-baskets': 'inciting-incident',
+  'seal-peeled': 'plot-point-1',
+  'buddha-will-not-say': 'midpoint',
+  'the-peacocks-brother': 'plot-point-2',
+  'three-pecks-of-gold': 'climax',
+  'five-holy-ones': 'resolution',
+}
+
+/*
   Elapsed time is measured against the previous scene *on the same timeline*.
   The frame and the road share one day axis but not one clock, and a road scene
   in 640 CE does not follow a frame scene in 140 CE by five hundred years of
@@ -2351,12 +2407,12 @@ const events = scenes.map((s, i) => {
     travelDays: Math.max(0, s.d - prev),
     inWorldTime: s.d,
     tension: s.tension,
-    structureBeat: null,
+    structureBeat: beats[s.key] ?? null,
     threadIds: s.threads.map(T),
     motifIds: s.motifs.map(O),
     status: 'final',
     povCharacterId: C(s.pov),
-    isFlashback: false,
+    isFlashback: flashbackChapters.has(s.ch),
   }
 })
 
@@ -2390,6 +2446,50 @@ const diesAt = new Map(Object.entries({
   'kou-hong': 'the-widows-accusation',
 }))
 
+/*
+  Who is carrying what, and from when. "Where is everyone and what are they
+  holding at chapter seven" is the question this whole app is built around, and
+  a world that answers the first half and leaves the second blank has only done
+  half the work. Five objects travel the entire road on five specific people;
+  the rest are held briefly and given back, which is most of what happens in
+  this book.
+
+  [character, item, from this scene, until this scene (exclusive) or null]
+*/
+const carried = [
+  ['wukong', 'cudgel', 'cudgel-won', 'the-white-ring'],
+  ['wukong', 'cudgel', 'the-nose-ring', null],
+  ['wukong', 'fillet', 'the-fillet', 'five-holy-ones'],
+  ['wukong', 'gourd-and-vase', 'gourd-swapped', 'laozi-claims-them'],
+  ['wukong', 'purple-gold-bells', 'whose-bells-are-real', 'the-golden-haired-hou'],
+  ['wukong', 'plantain-fan', 'wearing-the-husband', 'wearing-bajie'],
+  ['zhu-bajie', 'rake', 'zhu-converted', null],
+  ['sha-wujing', 'staff', 'sha-converted', null],
+  ['tripitaka', 'cassock', 'great-vehicle', 'monastery-burnt'],
+  ['tripitaka', 'cassock', 'cassock-returned', null],
+  ['tripitaka', 'pilgrim-staff', 'great-vehicle', null],
+  ['tripitaka', 'rescript', 'pinch-of-dust', 'the-passport-returned'],
+  ['tripitaka', 'alms-bowl', 'pinch-of-dust', 'three-pecks-of-gold'],
+  ['tripitaka', 'heart-sutra', 'heart-sutra', null],
+  ['tripitaka', 'scriptures', 'three-pecks-of-gold', null],
+  ['guanyin', 'cassock', 'three-baskets', 'cassock-sold'],
+  ['guanyin', 'pilgrim-staff', 'three-baskets', 'cassock-sold'],
+  ['guanyin', 'fillet', 'three-baskets', 'the-fillet'],
+  ['raksasi', 'plantain-fan', 'the-false-fan', 'wearing-the-husband'],
+  ['yellow-brow', 'human-seed-bag', 'the-cloth-sack', 'the-melon-patch'],
+  ['yellow-brow', 'golden-cymbals', 'bowing-to-the-false-buddha', 'the-cloth-sack'],
+  ['single-horn-rhinoceros-king', 'diamond-bracelet', 'the-white-ring', 'the-nose-ring'],
+  ['laozi', 'diamond-bracelet', 'diamond-snare', 'unkillable'],
+  ['sai-tai-sui', 'purple-gold-bells', 'the-cotton-pulled', 'whose-bells-are-real'],
+].map(([who, what, from, until]) => ({
+  characterId: C(who),
+  itemId: Item(what),
+  from: sceneIndexOf(from),
+  until: until === null ? scenes.length : sceneIndexOf(until),
+}))
+const heldAt = (characterId, index) =>
+  carried.filter((h) => h.characterId === characterId && index >= h.from && index < h.until).map((h) => h.itemId)
+
 const characterSnapshots = scenes.flatMap((s, si) =>
   Object.entries(s.cast).map(([slug, statusNotes], ci) => {
     const location = locations.find((l) => l.id === L(s.loc))
@@ -2403,11 +2503,11 @@ const characterSnapshots = scenes.flatMap((s, si) =>
       id: id('snapshot', `${String(si + 1).padStart(3, '0')}-${slug}`),
       characterId: C(slug),
       eventId: EV(s.key),
-      sortKey: (si + 1) * 10000 + ci,
+      sortKey: sortKeyAt(si),
       isAlive: deathIndex < 0 || si < deathIndex || revived,
       currentLocationMarkerId: L(s.loc),
       currentMapLayerId: location.mapLayerId,
-      inventoryItemIds: [],
+      inventoryItemIds: heldAt(C(slug), si),
       inventoryNotes: '',
       statusNotes,
       travelModeId: null,
@@ -2446,10 +2546,67 @@ const itemPlacements = scenes.flatMap((s, si) =>
     locationMarkerId: L(s.loc),
     mapLayerId: locations.find((l) => l.id === L(s.loc)).mapLayerId,
     holderCharacterId: null,
-    sortKey: (si + 1) * 100 + ii,
+    sortKey: sortKeyAt(si),
     notes: `${items.find((it) => it.id === Item(slug)).name} is in play in this scene.`,
   })),
 )
+
+/*
+  What the objects are doing, at the scenes where that changes. An
+  ItemSnapshot is condition-and-notes per (item x scene), so it is for the
+  handful of things in this book whose state is a plot point: a cudgel lost to
+  a bracelet and got back, a robe stolen and burnt for, a fan that is the wrong
+  one, a canon issued blank, and a gold band that is simply not there at the
+  end and nobody can say when it went.
+
+  [item, scene, condition, note]
+*/
+const itemSnapshots = [
+  ['cudgel', 'cudgel-won', 'taken', 'Lifted out of the floor of the Eastern Sea, where it had been setting the depth of the water, and shrunk to the size of an embroidery needle.'],
+  ['cudgel', 'the-white-ring', 'lost', 'Swallowed by a bright white circle out of a sleeve, in the middle of an even fight — the first time it has left his hand since he took it.'],
+  ['cudgel', 'the-nose-ring', 'recovered', 'Handed back with every other weapon the cave had taken, once its owner arrived to collect the thing that took them.'],
+  ['cassock', 'three-baskets', 'issued', 'Given to Guanyin at Vulture Peak, along with the staff, to be carried east and put on whoever is chosen.'],
+  ['cassock', 'great-vehicle', 'worn', 'Put on in front of the Tang court and paraded through the city like a new top scholar’s.'],
+  ['cassock', 'monastery-burnt', 'stolen', 'Carried off through the smoke by a bear who came to help put the fire out and found an unburnt room with a light in it.'],
+  ['cassock', 'cassock-returned', 'recovered', 'Brought back at dusk with the cave burnt behind it, and packed away rather than shown to anyone again.'],
+  ['fillet', 'the-fillet', 'worn', 'Rooted into the skin the first time the rhyme is said. It cannot be pulled off, cut off or reasoned off.'],
+  ['fillet', 'nowhere-to-go', 'tightened', 'Recited at until it is an inch into the flesh, over a killing the disciple was right about and the master was not.'],
+  ['fillet', 'five-holy-ones', 'gone', 'The first thing the new Buddha asks for is to have it taken off, and it is already not there. Nobody says when it went.'],
+  ['rescript', 'pinch-of-dust', 'issued', 'Stamped with the imperial seal at the west gate, with two attendants and a horse, neither of which lasts a fortnight.'],
+  ['rescript', 'the-court', 'stamped', 'The first foreign seal on it — and the visit that was going to be a routine stamping turns into a commission.'],
+  ['rescript', 'reading-the-passport', 'stolen', 'Read aloud over and over on a stone terrace by something wearing the first disciple’s face, in front of its own copies of the party.'],
+  ['rescript', 'the-passport-returned', 'returned', 'Handed back with twelve foreign seals down the page, which is the whole road on one sheet of paper.'],
+  ['alms-bowl', 'pinch-of-dust', 'given', 'Purple gold, put into a monk’s hands by an emperor who has just dropped a pinch of road dust into the farewell cup.'],
+  ['alms-bowl', 'three-pecks-of-gold', 'traded', 'The only thing the party owns worth giving, handed to the treasure loft for a canon that has words in it.'],
+  ['scriptures', 'the-wordless-scriptures', 'blank', 'Every scroll white from end to end, and nobody opens a case until a wind scatters one on the road.'],
+  ['scriptures', 'three-pecks-of-gold', 'exchanged', 'Five thousand and forty-eight scrolls, every one opened and checked this time, on the horse and one carrying-pole.'],
+  ['scriptures', 'the-turtle-asks', 'soaked', 'Dropped in the Heaven-Reaching River by a turtle who waited eight years for an answer and did not get one.'],
+  ['scriptures', 'the-pine-branches', 'delivered', 'Dried on a rock, one page short where the last scroll stuck to the stone, and carried in through a gate the monks had already opened.'],
+  ['plantain-fan', 'the-false-fan', 'false', 'Handed over by a woman who hates him, and it makes the fire jump, then double, then stand a thousand feet high.'],
+  ['plantain-fan', 'wearing-the-husband', 'genuine', 'The real one is an apricot leaf kept in her mouth, and it comes out with the syllables that grow it.'],
+  ['plantain-fan', 'wearing-bajie', 'lost', 'Handed straight to a brother who has come out to meet him, and the brother is the ox.'],
+  ['plantain-fan', 'nets-on-four-sides', 'returned', 'Given up in mourning white, with the method that goes with it: forty-nine strokes and the fire never comes back.'],
+  ['diamond-bracelet', 'diamond-snare', 'thrown', 'Dropped on a monkey’s head from the Southern Gate by an old man leaning over the rail, which ends a war nothing else could.'],
+  ['diamond-bracelet', 'the-white-ring', 'stolen', 'On the arm of a green ox that got hold of it while the boy who watches the stall slept off a dropped pill.'],
+  ['diamond-bracelet', 'the-nose-ring', 'reclaimed', 'Breathed on, run through the ox’s nose, and ridden home — which is where nose-rings come from.'],
+  ['ginseng-fruit', 'tree-toppled', 'destroyed', 'Root pushed clean out of the earth, and every fruit on the branches gone into the ground on the way down.'],
+  ['ginseng-fruit', 'sweet-dew', 'restored', 'Leaves back on the branch, and the count one higher than before, because the fruit that sank into the earth came back with the tree.'],
+  ['golden-cymbals', 'bowing-to-the-false-buddha', 'closed', 'Come down out of the air over head and feet, and they grow and shrink with whatever is inside them.'],
+  ['golden-cymbals', 'the-cloth-sack', 'broken', 'Holed by a dragon’s horn filed to a needle, and then bored through from the inside by what was in them.'],
+  ['golden-cymbals', 'the-melon-patch', 'made whole', 'Swept up off the lotus dais in pieces, breathed on, and whole again — which is the first thing their owner asks about.'],
+  ['human-seed-bag', 'the-cloth-sack', 'in use', 'Off a belt in one throw it takes the Great Sage, the twenty-eight lodges and the five guardians together.'],
+  ['human-seed-bag', 'the-melon-patch', 'reclaimed', 'Back on Maitreya’s hip, with a word written on a palm keeping it shut until it was.'],
+  ['register', 'register-struck', 'altered', 'Every monkey name on the page struck through in ink with a borrowed brush, in front of the Ten Kings.'],
+  ['register', 'years-altered', 'altered again', 'Two strokes put on a thirteen while the book is in a judge’s hands and the man it is about is standing there.'],
+].map(([item, scene, condition, notes]) => ({
+  ...base,
+  id: id('item-snapshot', `${item}-${scene}`),
+  itemId: Item(item),
+  eventId: EV(scene),
+  sortKey: sortKeyOfScene(scene),
+  condition,
+  notes,
+}))
 
 /* ------------------------------------------------- threads and motifs --- */
 
@@ -2522,8 +2679,8 @@ const relationshipSnapshots = [
   ['buddha-wukong', 'five-phases-mountain', 'the hand and the signature on it', 'strong', 'negative', 'He wrote his name on what he thought was a pillar at the end of the world.'],
   ['buddha-wukong', 'five-holy-ones', 'the same hand, handing over a title', 'strong', 'positive', 'Sandalwood Merit Buddha, and the band on his head already gone.'],
   ['kou-hong-wife', 'three-hauntings', 'asked, in front of a prefect, which of them kicked him', 'moderate', 'negative', 'The accusation has to be withdrawn by the woman who made it, with the victim standing there.'],
-].map(([rel, event, label, strength, sentiment, description], i) => ({
-  ...base, id: id('relationship-snapshot', `${rel}-${event}`), relationshipId: R(rel), eventId: EV(event), sortKey: i, label, strength, sentiment, description, isActive: true,
+].map(([rel, event, label, strength, sentiment, description]) => ({
+  ...base, id: id('relationship-snapshot', `${rel}-${event}`), relationshipId: R(rel), eventId: EV(event), sortKey: sortKeyOfScene(event), label, strength, sentiment, description, isActive: true,
 }))
 
 /* ----------------------------------------------------------- factions --- */
@@ -2633,6 +2790,9 @@ const loreRows = [
   ['fish-basket', 'powers', 'Where the Fish-Basket Guanyin Comes From',
     'Twice in this book Guanyin arrives in a hurry and out of costume. At the Heaven-Reaching River she comes out of her bamboo grove undressed, unpainted and with her hair unbraided, carrying a basket she has just split and woven herself, because the thing in the river is her own goldfish and the copper mace it fights with is a lotus bud from her pond. The whole village kneels in the mud to look at her, and a painter among them takes the likeness down before she goes. That is the origin the book gives for the Fish-Basket Guanyin, one of the standard forms she is painted in; she appears in it a second time, unremarked, to name the scorpion at Poison Enemy Mountain.',
     'the-fish-basket', 'fish-basket-guanyin'],
+  ['beats', 'sources', 'The Beat Sheet Is a Reading, Not the Book',
+    'The seven beats marked on the Structure screen are an editorial reading and not something the novel labels. They use the three-act template rather than the Hero’s Journey, which fits this book suspiciously well until you look for the two stages it does not have: nobody refuses the call, and there is no road back — the pilgrims are carried home by eight vajras inside a day. The act ruler measures from the beats rather than from where a reader would draw the lines, so with this template Act 1 is everything before the midpoint and the ruler reads 51 / 46 / 3 against a conventional 25 / 50 / 25. The three per cent is the part worth looking at: the pilgrims reach Vulture Peak in chapter 98 of 100, and the whole of the third act — the crossing on a bottomless boat, the blank scriptures, the price, the eighty-first ordeal and the five titles — is three chapters long. Move the beats or clear them; they are marks on events, and nothing else in this world depends on them.',
+    'stone-monkey-born', null],
   ['chronology', 'sources', 'How This Chronology Was Reconstructed',
     'Unusually for a book this size, the novel dates itself. The travel rescript is issued in the thirteenth year of Zhenguan and handed back in the twenty-seventh, and the road is stated over and over to have taken fourteen years. Day 0 in this world is the first day of Zhenguan 1, taken as 627 CE, so the pilgrimage runs 639–653. That is the book’s own count and not the historical one: the real Zhenguan era ended in its twenty-third year, and the historical Xuanzang left in 629 and returned in 645 without an imperial passport. The frame chapters run on a second timeline and on negative day numbers, reconstructed from the book’s own arithmetic — the underworld register gives the monkey’s age as 342, Heaven runs a day to the world’s year, and five hundred years pass under the mountain. Followed backwards from the year he is freed, that puts his birth in the third century BCE. Treat the frame dates as a reconstruction with the working shown, not as claims.',
     'stone-monkey-born', null],
@@ -2773,8 +2933,8 @@ const locationSnapshots = [
   ['false-monastery-burnt', 'little-thunderclap', 'the-melon-patch', 'Burnt behind them', 'The counterfeit Thunderclap is on fire and the two pantheons that were in its cellar are walking out of the gate.'],
   ['city-renamed', 'dharma-kingdom', 'the-night-of-razors', 'Renamed Dharma-Respecting', 'A king who vowed to kill ten thousand monks has changed one character of his country’s name and asked four of them to take him as a disciple.'],
   ['lane-opened', 'seven-extremes-mountain', 'the-pig-plough', 'The old lane is open again', 'Eight hundred li of rotted persimmon rooted through by a hog over two days, with the village carrying food out behind him.'],
-].map(([slug, loc, event, status, notes], i) => ({
-  ...base, id: id('location-snapshot', slug), locationMarkerId: L(loc), eventId: EV(event), sortKey: i, status, notes,
+].map(([slug, loc, event, status, notes]) => ({
+  ...base, id: id('location-snapshot', slug), locationMarkerId: L(loc), eventId: EV(event), sortKey: sortKeyOfScene(event), status, notes,
 }))
 
 /* --------------------------------------------------------------- data --- */
@@ -2839,7 +2999,7 @@ const data = {
   characterSnapshots,
   characterMovements,
   itemPlacements,
-  itemSnapshots: [],
+  itemSnapshots,
   locationSnapshots,
   relationships: relRows,
   relationshipSnapshots,
@@ -2903,6 +3063,34 @@ for (const event of events) {
     if (!motifs.some((m) => m.id === motifId)) fail(`${event.title}: unknown motif (EX-404)`)
   }
 }
+/* The beats have to name real template ids, and run in order. EX-404 in
+   spirit: a beat the Structure screen cannot match is worse than no beat,
+   because the screen looks configured and shows nothing. */
+const THREE_ACT = ['hook', 'inciting-incident', 'plot-point-1', 'midpoint', 'plot-point-2', 'climax', 'resolution']
+const placed = events.filter((e) => e.structureBeat)
+for (const event of placed) {
+  if (!THREE_ACT.includes(event.structureBeat)) fail(`${event.title}: "${event.structureBeat}" is not a three-act beat`)
+}
+if (new Set(placed.map((e) => e.structureBeat)).size !== placed.length) fail('a beat is used twice')
+for (let i = 1; i < placed.length; i++) {
+  const before = THREE_ACT.indexOf(placed[i - 1].structureBeat)
+  const after = THREE_ACT.indexOf(placed[i].structureBeat)
+  if (after < before) fail(`${placed[i].title}: beats run backwards through the book`)
+}
+/* Inventories and item snapshots have to name things this world has, and a
+   character can only be holding something in a scene they are actually in. */
+for (const snapshot of characterSnapshots) {
+  for (const itemId of snapshot.inventoryItemIds) {
+    if (!items.some((it) => it.id === itemId)) fail(`${snapshot.id}: holds an item this world does not have (EX-404)`)
+  }
+}
+for (const snapshot of itemSnapshots) {
+  if (!items.some((it) => it.id === snapshot.itemId)) fail(`${snapshot.id}: unknown item (EX-404)`)
+  if (!events.some((e) => e.id === snapshot.eventId)) fail(`${snapshot.id}: unknown scene (EX-404)`)
+  if (!snapshot.condition.trim() || !snapshot.notes.trim()) fail(`${snapshot.id}: empty condition or note`)
+}
+if (new Set(itemSnapshots.map((s) => `${s.itemId}:${s.eventId}`)).size !== itemSnapshots.length) fail('two item snapshots for one item in one scene')
+
 /* Every thread, motif and item has to be about something. An item nothing
    names is padding (EX-403), and it is invisible in the app rather than wrong,
    which is how one of these sat unnoticed until the missing-art audit. */
