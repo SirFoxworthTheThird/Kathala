@@ -1,206 +1,87 @@
 # Journey to the West — remaining art
 
-Consolidated after reading all 100 chapters, and revised after the second
-batch landed. **88 supplied images are now in
-`public/library/journey-to-the-west/`**, plus a public-domain cover. This is
-what is still missing, ranked.
+Revised after the third batch. **119 supplied images are now in
+`public/library/journey-to-the-west/`**, plus a public-domain cover.
 
-House style: the second batch's painted, aged-paper look with a Chinese title
-cartouche and a block of explanatory text — the style of the cudgel, the
-White Bone Lady and the four-continents chart. Landscape 3:2 for maps and
-places, portrait 2:3 for figures, square-ish for items. Please avoid Roman
-lettering in frame.
+House style: the painted, aged-paper look with a Chinese title cartouche and a
+block of explanatory text — the style of the cudgel, the White Bone Lady, the
+register and the four-continents chart. Landscape 3:2 for maps and places,
+portrait 2:3 for figures, square-ish for items. Please avoid Roman lettering in
+frame.
 
 ---
 
-## 0. Fixes to images already supplied — all four are done
+## Cleared
 
-The fillet drawn as a lotus crown, the three bells drawn as one temple bell,
-the misspelt Purple Cinnabar banner and the Lotus Cave that read as a shrine
-have all been replaced by the second batch. Nothing outstanding here.
+**Every item in the world now has a picture** — all twenty-three. So do all
+four faulty plates from the first batch, the cover, and every request from the
+old Tier 1, 2 and 3. Nothing is outstanding on objects.
 
----
-
-## Everything from Tier 1 is now in
-
-All eleven Tier 1 requests were filled by the second batch — the five weapons
-(cudgel, rake, demon-quelling staff, nine-ring staff, alms bowl), the White
-Bone Lady, Subhuti, Erlang, Nezha, Li Jing and the three kings of Lion Camel
-Ridge — and so was the cover, from the 1592 first edition rather than a
-commission. The four-continents chart was not asked for and turned out to be
-the most useful single image in the set: it is now the parent of five of the
-eight map layers.
-
-So the list restarts here. **The new Tier 1 is the seven items below**, which
-are the last objects the book turns on that have no picture.
+The gourd and the jade vase came as one plate and stay as one, because this
+world models them as a single item — Laozi's pair — and the same is true of the
+peaches. Five other plates that drew two subjects were split down their seam,
+each half keeping its own name-card.
 
 ---
 
-## Tier 1 — the seven remaining objects
+## Tier 1 — the twelve places that carry three scenes or more
 
-**1.1 The Heart Sutra (多心經), item.** Chapters 19–85, four scenes. Not a
-weapon but the most-used object in the book: fifty-four lines given by a
-master in a nest of twigs, recited at every frightening noise for fourteen
-years, and quoted back at the master by his own disciple at the end. A scroll
-or a folded sutra-book, plain, with the opening column legible.
+- **Lion Camel Ridge** (ch 74–77, 5 scenes)
+- **The Monkey Encampment** (ch 4–28, 5 scenes)
+- **The Assembly Temple** (ch 8–12, 4 scenes)
+- **The Flowing-Sands River** (ch 8–22, 3 scenes)
+- **The Precious Elephant Kingdom** (ch 29–30, 3 scenes)
+- **The Wuji Kingdom** (ch 38–39, 3 scenes)
+- **Roaring Mountain** (ch 40–42, 3 scenes)
+- **Zhenhai Monastery** (ch 80–81, 3 scenes)
+- **Yuhua County** (ch 88–90, 3 scenes)
+- **The Hong River Ford** (ch 9, 3 scenes)
+- **The Kou Mansion** (ch 96–97, 3 scenes)
+- **The Potalaka Annexe** (ch 42–99, 3 scenes)
 
-**1.2 The gourd and the jade vase (紫金紅葫蘆・羊脂玉淨瓶), item.** Chapters
-33–35. Laozi's pair, which swallow anything that answers to a name. A red-gold
-gourd and a white jade vase together on one plate; both are stoppered, and
-both should look like they hold more than their size.
-
-**1.3 The yin-yang vase (陰陽二氣瓶), item.** Chapter 75. Two feet four inches
-high and it takes thirty-six demons to carry. Cool inside until the prisoner
-says so out loud, and then fire, forty snakes and three fire dragons. Show it
-being carried, so the scale reads.
-
-**1.4 The wind-securing pill (定風丹), item.** Chapters 59–61. The single pill
-Lingji sews into a collar, which is the only reason the monkey is still on the
-ground after the fan is turned on him. Tiny; the plate is really about the
-collar and the thread.
-
-**1.5 The sleep-insects (瞌睡蟲), item.** Chapters 77 and 84. Won off a
-Heavenly King at a guessing game five hundred years ago and kept in a belt
-since; ten go into ten pairs of nostrils and the eleventh into the man who
-keeps rubbing his nose.
-
-**1.6 The Golden Queen's bracelets (金鐲), item.** Chapter 70. A pair taken
-off at the Double Fifth to tie the five-coloured threads, and the only token
-that could prove who sent the rescuer. One worn high on a monkey's arm.
-
-**1.7 The Register of Life and Death (生死簿), item.** Chapters 3 and 11. The
-book with everything alive written in it, open, with a brush lying beside it —
-one line struck through, and a thirteen with two extra strokes on it. The
-underworld map already draws it once; this is the object on its own.
+Two are worth doing first for reasons beyond the count. **Lion Camel Ridge** is
+the ridge itself, which the city plate does not show — eight hundred li with
+forty-eight thousand demons on it. **The Monkey Encampment** spans chapters 4
+to 28 and is the only place in the book that is burnt out, rebuilt, and burnt
+out again.
 
 ---
 
-## Tier 2 and Tier 3 are cleared
+## Tier 2 — the nine characters with three scenes and no face
 
-Every one of the twenty-four requests in the old Tier 2 and Tier 3 was filled
-by the second batch: the Yellow Robe Monster, Sai Tai Sui, the Yellow Brow
-Great King, Lady Earth-Gusher, the three Cart-Slow Daoists, the State
-Preceptor and the Beauty, the Queen of West Liang, the Five Elements Mountain,
-the Flaming Mountains, the Lion Camel City, the Water-Curtain Cave, the
-Cloud-Reaching Ford, the four-continents chart, the Ten Kings, Ao Guang,
-Manjusri and Samantabhadra, the Fish-Basket Guanyin, the Bottomless Cave, the
-Golden Lamp Bridge, the Wooden Immortal Hermitage, the Diamond Jade Bracelet,
-the Human-Seed Bag with the cymbals, the peaches, and the Great King of
-Miraculous Response.
+- **The Single-Horned Rhinoceros King** (ch 50–52)
+- **The Scorpion Spirit** (ch 54–55)
+- **The Six-Eared Macaque** (ch 57–58)
+- **The Great Roc of Ten Thousand Li** (ch 75–77)
+- **The King of Bhiksu** (ch 78–79)
+- **The Great King of the Southern Mountain** (ch 85–86)
+- **The Prince of Yuhua** (ch 88–90)
+- **The Yellow Lion Spirit** (ch 88–89)
+- **The King of India** (ch 94–95)
 
----
-
-## Tier 2 — the characters with three or more scenes and no face
-
-Ranked by how much book they carry. The first three are the ones a reader is
-most likely to go looking for.
-
-**2.1 Wei Zheng (魏徵), character.** Chapters 10–12, three scenes. The minister
-who beheads a dragon in his sleep during a chess game his emperor is losing on
-purpose, and who writes a letter of introduction to a judge in hell. A Tang
-official at a chessboard, nodding off.
-
-**2.2 The Dragon King of the Jing River (涇河龍王), character.** Chapter 10.
-He takes a scholar's shape to bet a fortune-teller on tomorrow's rain, wins by
-falsifying an imperial edict, and his head falls out of the clouds into a
-Chang'an street.
-
-**2.3 Squire Kou and Mistress Kou (寇員外・寇夫人), character (two plates, or
-one).** Chapters 96–97, four scenes each. A man of sixty-four who vowed at
-forty to feed ten thousand monks and reached the number; and the woman who
-names four innocent men from under a bed and has to unsay it in front of him
-when he climbs out of his coffin.
-
-**2.4 Lady Yin (殷溫嬌), character.** Chapter 9, five scenes — more than any
-other character with no picture. She bites the toe off her own child to mark
-him, writes the account in blood and pushes him into a river.
-
-**2.5 Chen Guangrui (陳光蕊), character.** Chapter 9. The top scholar killed at
-a ford for his coat, his commission and his wife, who spends eighteen years as
-a guest in a water palace and stands up alive on the bank.
-
-**2.6 Judge Cui (崔判官), character.** Chapter 11, four scenes. The judge who
-forges twenty years onto a living man's entry in front of the Ten Kings, with
-the brush still in his hand.
-
-**2.7 The Golden Queen (金聖宮娘娘), character.** Chapters 70–71. Three years
-in a demon's cave untouched, because of a bridal gown that grew needles; she
-talks him out of his own weapons by asking for them as a wife.
-
-**2.8 The King of Purple Cinnabar (朱紫國王), character.** Chapters 68–71.
-Three years ill from one swallowed rice dumpling, diagnosed through a wall by
-three golden threads.
-
-**2.9 The Three Rhinoceros Kings (辟寒、辟暑、辟塵大王), character (one plate).**
-Chapters 91–92. A thousand years old, in love with lamp oil since they were
-young, with horns that open a road through the sea.
-
-**2.10 The Black Bear Spirit (黑熊精), character.** Chapters 16–17. A bear who
-reads scripture, keeps a garden, steals a cassock and plans a party around it,
-and ends up guarding Guanyin's own mountain.
-
-**2.11 The King of Wuji and the blue lion who wore his face (烏雞國王),
-character (one plate, two figures).** Chapters 37–39. Two identical kings in
-one hall, and a mirror.
-
-**2.12 Clear Wind and Bright Moon (清風、明月), character (one plate).**
-Chapters 24–25. Two Daoist boys who count a tree, come up four short, and call
-a monk a thief to his face.
+**The Six-Eared Macaque** is the interesting problem: he has to read as a
+second Sun Wukong that nobody can tell from the first, which is the whole point
+of him. A plate showing the two of them identical, with only the caption to
+separate them, would do more than a portrait.
 
 ---
 
-## Tier 3 — places that carry four or more scenes and have no picture
+## Tier 3 — twenty-four characters with two scenes
 
-**3.1 The Hall of Miraculous Mist (靈霄寶殿).** Seven scenes, chapters 3–87 —
-the most-used interior in the book. The throne hall of Heaven, where petitions
-are read and titles are invented, and where thirty-six thunder generals cannot
-close a circle around one prisoner.
-
-**3.2 Pingding Mountain and the Lotus Cave slope (平頂山).** Seven scenes,
-chapters 32–35. Six hundred li of mountain with three mountains dropped on one
-man in it.
-
-**3.3 The Great Hall at Vulture Peak (大雄寶殿).** Five scenes, chapters 8–98.
-Where the Buddha weighs the four continents at the start and prices the canon
-at the end.
-
-**3.4 The Cave of the Slanting Moon and Three Stars (斜月三星洞).** Five
-scenes, chapters 1–2. Subhuti's house, where the whole book is set up. The
-portrait of Subhuti draws the interior; this is the mountain and the door.
-
-**3.5 The Daming Palace (大明宮).** Five scenes, chapters 10–100. The Tang
-court: a dragon in a dream, a chess game, a haunting, and the scriptures
-handed over fourteen years later.
-
-**3.6 Yellow Wind Ridge and its cave (黃風嶺).** Four scenes, chapters 20–21.
-
-**3.7 Baolin Monastery (寶林寺).** Four scenes, chapters 36–37. Where a stone
-lion is broken to powder and a drowned king comes to the door.
-
-**3.8 Jindou Mountain (金兜山).** Four scenes, chapters 50–52. The circle drawn
-on the ground, and the cave whose owner takes every weapon Heaven owns.
-
-**3.9 Qilin Mountain (麒麟山).** Four scenes, chapters 70–71.
-
-**3.10 The Capital of India (天竺國).** Four scenes, chapters 93–95. A tower in
-the crossroads with a ball thrown from it.
+Ksitigarbha (ch 58–97) · The Old Man of the South Pole (ch 26–79) · The Old Dame of Mount Li (ch 23–73) · Ananda (ch 98) · Liu Hong (ch 9) · Liu Boqin (ch 13–14) · The Abbot of the Guanyin Monastery (ch 16) · Princess Baihuaxiu (ch 29–31) · The Prince of Wuji (ch 37–38) · The Jade-Face Princess (ch 60–61) · The Alligator Dragon (ch 43) · Prince Moang (ch 43–92) · Chen Cheng (ch 47) · The Old Turtle (ch 49–99) · The Hundred-Eyed Lord (ch 73) · The Blue-Haired Lion King (ch 75–76) · The Three Princes of Yuhua (ch 88) · The Abbot of the Gold-Spread Monastery (ch 93–95) · Liu Quan (ch 11–12) · Yuan Shoucheng (ch 10) · The Four Wooden Immortals (ch 64) · The Nine-Headed Insect (ch 63) · The Myriad-Sage Dragon King (ch 62–63) · The Eight Golden Vajras (ch 99–100)
 
 ---
 
-## Tier 4 — only if you are enjoying it
+## Tier 4 — places with two scenes, and the faction plates
 
-- The Scorpion Demon of Pipa Cave (ch 55) — she stung the Buddha's thumb.
-- Vairambha of the Thousand Flower Cave (ch 73) — an old woman whose only
-  weapon is an embroidery needle forged in her son's eye.
-- Zhenwu of Wudang with the turtle and snake (ch 66).
-- The Six-Eared Macaque (ch 57–58) — but only if it can be drawn as a second
-  Sun Wukong that a reader cannot tell from the first, which is the point of
-  him and may be more trouble than it is worth.
-- The Jetavana / Gold-Spread Monastery (ch 93) — the ground bought by covering
-  it in gold bricks, which still washes up gold after rain.
-- Gao Village (ch 18–19) — where Bajie was a son-in-law.
-- Faction plates: the Scripture Pilgrims, the Celestial Court, the Buddha's
-  establishment, the monkeys of Flower-Fruit Mountain, the four Dragon Kings,
-  the Bull Demon King's house, and the Daoists of Cart-Slow. Seven of the nine
-  factions have no cover; the Ten Kings and the three kings of Lion Camel
-  Ridge now do.
+Black Wind Mountain (ch 17) · The House of the Four Beauties (ch 23) · White Tiger Ridge (ch 27) · Bowyue Cave (ch 28–29) · The Black Water River (ch 43) · Chen Village (ch 47) · The Women’s Kingdom of West Liang (ch 54) · Pipa Cave (ch 55) · The Long Slope (ch 56) · The Plantain Cave (ch 59–60) · Thunder Heap Mountain (ch 60–61) · The Golden Light Monastery (ch 62) · Green Wave Pool (ch 63) · Seven Extremes Mountain (ch 67) · The Yellow Flower Temple (ch 73) · The Dharma-Respecting Kingdom (ch 84) · Hidden Mist Mountain (ch 85) · The Linked Ring Cave (ch 86) · The Gold-Spread Monastery (ch 93–95) · The Lion Camel Cave (ch 75) · The Mysterious Yin Cave (ch 92) · The East Market (ch 9–10) · The Main Peak (ch 1–31) · The Great Waterfall (ch 1–6) · The Peach Garden (ch 5) · The Palace of the Jasper Pool (ch 5–6) · The Hall of Judgment (ch 11)
+
+Seven of the nine factions still have no cover: the Scripture Pilgrims, the
+Celestial Court, the Buddha's establishment, the monkeys of Flower-Fruit
+Mountain, the four Dragon Kings, the Bull Demon King's house, and the Daoists
+of Cart-Slow.
+
+Below this there are thirty-three characters and forty-four places with a
+single scene each, and thirty-three places that are gateways or continents
+carrying no scene at all. Those do not need pictures, and the world is honest
+without them.
