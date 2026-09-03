@@ -1,0 +1,332 @@
+{
+  "generator": "built-in image_gen",
+  "status": "artwork-reviewed-application-validation-pending",
+  "style": "Late-Ming-inspired Chinese pictorial manuscript maps for the novel's Tang-era and mythological settings; modern generated interpretations, not historical maps.",
+  "styleSources": [
+    "https://blogs.loc.gov/international-collections/2019/06/the-illustrated-album-of-yangzhou-prefecture/",
+    "https://www.loc.gov/item/2001530431/"
+  ],
+  "coordinateConvention": "Marker anchors use PNG pixel x and y from top-left. Generator converts y to Leaflet bottom-origin. Unlisted route points retain rescaled editorial approximations pending application review.",
+  "assets": [
+    {
+      "slug": "route",
+      "file": "pilgrimage-route-manuscript.png",
+      "width": 1672,
+      "height": 941,
+      "prompt": "Use case: style-transfer. Image 1 is the map EDIT TARGET and fixed geographical layout. Image 2 is STYLE ONLY, never copy its creature or text. Redraw this entire map as a sophisticated period-inspired Chinese manuscript cartographic sheet: fine dark ink brushwork, delicate cross-hatching, muted olive/ochre mineral washes, warm aged tan paper, spare thin border. Evoke late-Ming pictorial gazetteer maps illustrating the novel's Tang-era and mythological settings, not a modern fantasy game infographic. Keep it a LEGIBLE NAVIGATIONAL MAP with distinct roads, watercourses, terrain and identifiable building footprints. Preserve the original aspect ratio, framing, all landmark CENTRES and geographical layout exactly: no cropping, zooming, mirroring or moving features. Remove cartoon people/creatures, compass roses, bright rainbows, modern English lettering, comic arrows, legends, explanatory boxes and large labels that obscure terrain. Retain only one small Chinese title in the existing title area. Use mature detailed architecture and terrain; no childish outlines, flat vector shapes, photographs, UI markers or fake text. Any exposed areas formerly under labels should reveal the corresponding actual landmark. Title 取經路圖. Keep the original long map strip within its generous blank top and bottom paper margins. Chang'an remains far right around89%/54%, Tang frontier80%/51%, Five Phases Mountain60%/54%, Flowing-Sand River around50%/62%, Flaming Mountains36%/38%, Women's Kingdom24%/63%, Vulture Peak10%/48%. Preserve drawn winding road and rivers faithfully so intermediate event markers can remain on the route. Replace character cartoons with tiny shrines/caves/villages at their positions. No giant people. Keep west on LEFT and east on RIGHT, not a survey of modern China. Keep the dense navigable road and varied individual mountains; no empty abstract landscape. Main five-peaked mountain must be distinct. English location names will be app overlays, so no English or pseudo-text on image.",
+      "review": "Opened the generated image and checked manuscript styling, navigable layout and distinct landmarks. Application marker, gateway and playback checks remain pending because no browser is available.",
+      "anchors": {
+        "changan": [
+          1520,
+          470
+        ],
+        "famen-temple": [
+          1450,
+          611
+        ],
+        "shuangcha-ridge": [
+          1345,
+          300
+        ],
+        "liu-farm": [
+          1260,
+          523
+        ],
+        "five-phases-mountain": [
+          982,
+          375
+        ],
+        "eagle-grief-stream": [
+          1062,
+          379
+        ],
+        "gao-village": [
+          1220,
+          529
+        ],
+        "flowing-sands-river": [
+          815,
+          526
+        ],
+        "west-liang": [
+          407,
+          535
+        ],
+        "flaming-mountains": [
+          600,
+          300
+        ],
+        "vulture-peak-gate": [
+          165,
+          400
+        ],
+        "cloud-reaching-ford": [
+          237,
+          405
+        ],
+        "jade-truth-temple": [
+          285,
+          441
+        ],
+        "subhuti-cave": [
+          80,
+          489
+        ]
+      }
+    },
+    {
+      "slug": "changan",
+      "file": "changan-manuscript.png",
+      "width": 1677,
+      "height": 938,
+      "prompt": "Use case: style-transfer. Image 1 is the map EDIT TARGET and fixed geographical layout. Image 2 is STYLE ONLY, never copy its creature or text. Redraw this entire map as a sophisticated period-inspired Chinese manuscript cartographic sheet: fine dark ink brushwork, delicate cross-hatching, muted olive/ochre mineral washes, warm aged tan paper, spare thin border. Evoke late-Ming pictorial gazetteer maps illustrating the novel's Tang-era and mythological settings, not a modern fantasy game infographic. Keep it a LEGIBLE NAVIGATIONAL MAP with distinct roads, watercourses, terrain and identifiable building footprints. Preserve the original aspect ratio, framing, all landmark CENTRES and geographical layout exactly: no cropping, zooming, mirroring or moving features. Remove cartoon people/creatures, compass roses, bright rainbows, modern English lettering, comic arrows, legends, explanatory boxes and large labels that obscure terrain. Retain only one small Chinese title in the existing title area. Use mature detailed architecture and terrain; no childish outlines, flat vector shapes, photographs, UI markers or fake text. Any exposed areas formerly under labels should reveal the corresponding actual landmark. Title 長安圖. Keep the walled city, orthogonal wards and roads, Wei River across top, Daming Palace at 72% x/21% y, east market at 42%/43%, west market 46%/66%, assembly temple 65%/66%, west gate 24%/79%, departure road outside west wall 13%/66%. Depict Hongfu Temple at 55%/52% and Wild Goose Pagoda at 81%/52% distinctly. Buildings rather than labels at marker targets. No rescaling.",
+      "review": "Opened the generated image and checked manuscript styling, navigable layout and distinct landmarks. Application marker, gateway and playback checks remain pending because no browser is available.",
+      "anchors": {
+        "changan-assembly-temple": [
+          1060,
+          445
+        ],
+        "changan-daming-palace": [
+          1200,
+          160
+        ],
+        "changan-east-market": [
+          695,
+          385
+        ],
+        "changan-west-market": [
+          745,
+          564
+        ],
+        "changan-west-gate": [
+          408,
+          620
+        ],
+        "changan-departure-point": [
+          313,
+          691
+        ],
+        "changan-hongfu": [
+          740,
+          426
+        ],
+        "changan-wild-goose-pagoda": [
+          1125,
+          465
+        ]
+      }
+    },
+    {
+      "slug": "vulture-peak",
+      "file": "vulture-peak-manuscript.png",
+      "width": 1677,
+      "height": 938,
+      "prompt": "Use case: style-transfer. Image 1 is the map EDIT TARGET and fixed geographical layout. Image 2 is STYLE ONLY, never copy its creature or text. Redraw this entire map as a sophisticated period-inspired Chinese manuscript cartographic sheet: fine dark ink brushwork, delicate cross-hatching, muted olive/ochre mineral washes, warm aged tan paper, spare thin border. Evoke late-Ming pictorial gazetteer maps illustrating the novel's Tang-era and mythological settings, not a modern fantasy game infographic. Keep it a LEGIBLE NAVIGATIONAL MAP with distinct roads, watercourses, terrain and identifiable building footprints. Preserve the original aspect ratio, framing, all landmark CENTRES and geographical layout exactly: no cropping, zooming, mirroring or moving features. Remove cartoon people/creatures, compass roses, bright rainbows, modern English lettering, comic arrows, legends, explanatory boxes and large labels that obscure terrain. Retain only one small Chinese title in the existing title area. Use mature detailed architecture and terrain; no childish outlines, flat vector shapes, photographs, UI markers or fake text. Any exposed areas formerly under labels should reveal the corresponding actual landmark. Title 靈山圖. Maintain mountain at 46%/31%, monastery at 62.5%/33%, scripture repository at 73%/26%, main hall at 60%/41%, ferry landing at 45%/65%. Mountain should be a natural crag suggesting a vulture, NOT a literal giant bird head. Bird's-eye pilgrimage map with visible stairways between each distinct hall and ferry. No horizon viewpoint.",
+      "review": "Opened the generated image and checked manuscript styling, navigable layout and distinct landmarks. Application marker, gateway and playback checks remain pending because no browser is available.",
+      "anchors": {
+        "lingjiu-mountain": [
+          800,
+          240
+        ],
+        "thunderclap-monastery": [
+          1070,
+          270
+        ],
+        "scripture-hall": [
+          1190,
+          327
+        ],
+        "great-hall": [
+          995,
+          405
+        ],
+        "cloud-ferry": [
+          840,
+          695
+        ]
+      }
+    },
+    {
+      "slug": "ffm",
+      "file": "flower-fruit-mountain-manuscript.png",
+      "width": 1677,
+      "height": 938,
+      "prompt": "Use case: style-transfer. Image 1 is the map EDIT TARGET and fixed geographical layout. Image 2 is STYLE ONLY, never copy its creature or text. Redraw this entire map as a sophisticated period-inspired Chinese manuscript cartographic sheet: fine dark ink brushwork, delicate cross-hatching, muted olive/ochre mineral washes, warm aged tan paper, spare thin border. Evoke late-Ming pictorial gazetteer maps illustrating the novel's Tang-era and mythological settings, not a modern fantasy game infographic. Keep it a LEGIBLE NAVIGATIONAL MAP with distinct roads, watercourses, terrain and identifiable building footprints. Preserve the original aspect ratio, framing, all landmark CENTRES and geographical layout exactly: no cropping, zooming, mirroring or moving features. Remove cartoon people/creatures, compass roses, bright rainbows, modern English lettering, comic arrows, legends, explanatory boxes and large labels that obscure terrain. Retain only one small Chinese title in the existing title area. Use mature detailed architecture and terrain; no childish outlines, flat vector shapes, photographs, UI markers or fake text. Any exposed areas formerly under labels should reveal the corresponding actual landmark. Title 花果山圖. Maintain island, main peak 71%/10%, waterfall 41.5%/35%, encampment 29%/66%, beach 17%/77%, iron bridge 54%/66%. Preserve cave plan in lower-right quadrant but draw as traditional architectural cutaway with rooms, not cartoon inset. Cave threshold at 72%/68%, dining hall 80%/74%, meeting hall 80%/90%, training floor 91%/91%. Water-Belly Cave entrance in northwest mountain at 12%/31%. Preserve all places and connections.",
+      "correctionPrompt": "Use case: precise-object-edit. This map is the edit target. Add a single small, clearly visible dark arched CAVE ENTRANCE on the northwest slope at image pixel approximately (250,350) in the 1677x938 image, with a short path. This is Water-Belly Cave, separate from the large Water-Curtain Cave detail at lower right. Change ONLY this small area; keep every other feature, title, colour, exact canvas dimensions and composition unchanged.",
+      "review": "Opened the generated image and checked manuscript styling, navigable layout and distinct landmarks. Application marker, gateway and playback checks remain pending because no browser is available.",
+      "anchors": {
+        "ffm-main-peak": [
+          1214,
+          65
+        ],
+        "ffm-waterfall": [
+          696,
+          336
+        ],
+        "ffm-iron-bridge": [
+          960,
+          530
+        ],
+        "ffm-water-curtain-cave": [
+          1230,
+          735
+        ],
+        "ffm-dining-hall": [
+          1340,
+          715
+        ],
+        "ffm-meeting-hall": [
+          1320,
+          800
+        ],
+        "ffm-training-ground": [
+          1525,
+          805
+        ],
+        "ffm-encampment": [
+          450,
+          573
+        ],
+        "water-belly-cave": [
+          315,
+          331
+        ],
+        "ffm-beach": [
+          310,
+          805
+        ]
+      }
+    },
+    {
+      "slug": "heaven",
+      "file": "celestial-court-manuscript.png",
+      "width": 1695,
+      "height": 928,
+      "prompt": "Use case: style-transfer. Image 1 is the map EDIT TARGET and fixed geographical layout. Image 2 is STYLE ONLY, never copy its creature or text. Redraw this entire map as a sophisticated period-inspired Chinese manuscript cartographic sheet: fine dark ink brushwork, delicate cross-hatching, muted olive/ochre mineral washes, warm aged tan paper, spare thin border. Evoke late-Ming pictorial gazetteer maps illustrating the novel's Tang-era and mythological settings, not a modern fantasy game infographic. Keep it a LEGIBLE NAVIGATIONAL MAP with distinct roads, watercourses, terrain and identifiable building footprints. Preserve the original aspect ratio, framing, all landmark CENTRES and geographical layout exactly: no cropping, zooming, mirroring or moving features. Remove cartoon people/creatures, compass roses, bright rainbows, modern English lettering, comic arrows, legends, explanatory boxes and large labels that obscure terrain. Retain only one small Chinese title in the existing title area. Use mature detailed architecture and terrain; no childish outlines, flat vector shapes, photographs, UI markers or fake text. Any exposed areas formerly under labels should reveal the corresponding actual landmark. Title 天庭圖. Preserve aerial estate map layout: Southern Gate at 50%/23%; throne hall 65%/36%; west pasture22%/61%; stables33%/72%; peach orchard42%/54%; Jasper palace88%/34%, pool88%/57%; Tushita palace62.5%/77%, separate furnace chamber65%/84%; Potalaka annexe12%/82%; Cloud Tower Palace90%/40%; execution yard32%/36%. All these must be actual drawn structures/grounds, not label boxes. Connect terraces by paths through cloud banks. No rainbow.",
+      "review": "Opened the generated image and checked manuscript styling, navigable layout and distinct landmarks. Application marker, gateway and playback checks remain pending because no browser is available.",
+      "anchors": {
+        "heaven-south-gate": [
+          850,
+          130
+        ],
+        "celestial-hall": [
+          1100,
+          214
+        ],
+        "celestial-stables": [
+          560,
+          663
+        ],
+        "celestial-pastures": [
+          274,
+          452
+        ],
+        "peach-garden": [
+          658,
+          457
+        ],
+        "yaochi-palace": [
+          1540,
+          300
+        ],
+        "jasper-pool": [
+          1455,
+          432
+        ],
+        "tushita-palace": [
+          1055,
+          710
+        ],
+        "tushita-furnace": [
+          1137,
+          574
+        ],
+        "heaven-potalaka-annexe": [
+          190,
+          612
+        ],
+        "cloud-tower-palace": [
+          1600,
+          405
+        ],
+        "celestial-execution-ground": [
+          520,
+          332
+        ]
+      }
+    },
+    {
+      "slug": "dragon-palace",
+      "file": "dragon-palace-manuscript.png",
+      "width": 1698,
+      "height": 926,
+      "prompt": "Use case: style-transfer. Image 1 is the map EDIT TARGET and fixed geographical layout. Image 2 is STYLE ONLY, never copy its creature or text. Redraw this entire map as a sophisticated period-inspired Chinese manuscript cartographic sheet: fine dark ink brushwork, delicate cross-hatching, muted olive/ochre mineral washes, warm aged tan paper, spare thin border. Evoke late-Ming pictorial gazetteer maps illustrating the novel's Tang-era and mythological settings, not a modern fantasy game infographic. Keep it a LEGIBLE NAVIGATIONAL MAP with distinct roads, watercourses, terrain and identifiable building footprints. Preserve the original aspect ratio, framing, all landmark CENTRES and geographical layout exactly: no cropping, zooming, mirroring or moving features. Remove cartoon people/creatures, compass roses, bright rainbows, modern English lettering, comic arrows, legends, explanatory boxes and large labels that obscure terrain. Retain only one small Chinese title in the existing title area. Use mature detailed architecture and terrain; no childish outlines, flat vector shapes, photographs, UI markers or fake text. Any exposed areas formerly under labels should reveal the corresponding actual landmark. Title 東海龍宮圖. Keep undersea palace as legible architectural cutaway estate plan. Crystal reception hall20%/38%, throne hall29%/27%, armoury61.5%/23%, central open ocean courtyard43%/61%, single standing sea-gauging pillar88%/77% with surrounding rock bed. Remove duplicate pillar detail diagrams and all cartoon monkeys/crabs and floating explanatory legends. Preserve rooms, passages, coral and seabed. Water rendered subtly as wash and ink current lines.",
+      "review": "Opened the generated image and checked manuscript styling, navigable layout and distinct landmarks. Application marker, gateway and playback checks remain pending because no browser is available.",
+      "anchors": {
+        "dragon-palace-crystal": [
+          365,
+          409
+        ],
+        "dragon-palace-throne": [
+          515,
+          280
+        ],
+        "dragon-palace-armoury": [
+          1035,
+          331
+        ],
+        "dragon-palace-pillar": [
+          1380,
+          650
+        ],
+        "dragon-palace-ocean-court": [
+          785,
+          482
+        ]
+      }
+    },
+    {
+      "slug": "underworld",
+      "file": "underworld-manuscript.png",
+      "width": 1677,
+      "height": 938,
+      "prompt": "Use case: style-transfer. Image 1 is the map EDIT TARGET and fixed geographical layout. Image 2 is STYLE ONLY, never copy its creature or text. Redraw this entire map as a sophisticated period-inspired Chinese manuscript cartographic sheet: fine dark ink brushwork, delicate cross-hatching, muted olive/ochre mineral washes, warm aged tan paper, spare thin border. Evoke late-Ming pictorial gazetteer maps illustrating the novel's Tang-era and mythological settings, not a modern fantasy game infographic. Keep it a LEGIBLE NAVIGATIONAL MAP with distinct roads, watercourses, terrain and identifiable building footprints. Preserve the original aspect ratio, framing, all landmark CENTRES and geographical layout exactly: no cropping, zooming, mirroring or moving features. Remove cartoon people/creatures, compass roses, bright rainbows, modern English lettering, comic arrows, legends, explanatory boxes and large labels that obscure terrain. Retain only one small Chinese title in the existing title area. Use mature detailed architecture and terrain; no childish outlines, flat vector shapes, photographs, UI markers or fake text. Any exposed areas formerly under labels should reveal the corresponding actual landmark. Title 地府圖. Legible Chinese underworld administrative estate map. Keep gates21%/28%, bridge34%/42%, river49%/33%, judgment hall51%/59%, archive room83%/23% (replace original character-and-ledger cartoon inset with an actual roof-cutaway archive hall containing shelves and desk), walled city of wronged36%/51%, eighteen-hell region29%/82% as symbolic compartments and rock terrain, no suffering people; Ksitigarbha hall12%/21%. Thin restrained Chinese border, no skull-and-chain border, no modern legends. Keep pale paper and readable dark ink; not dark muddy horror scene.",
+      "correctionPrompt": "Use case: precise-object-edit. This map is the edit target. Add a small clearly distinct WALLED SETTLEMENT with a gate and several tiled houses, the City of the Wrongly Dead, centered at pixel (450,500) in this 1677x938 image, on the land immediately LEFT of the judgment compound and BELOW the river. Do not cover the river, bridge, existing judgment walls, or hell terrains. Change ONLY this small blank bank area; preserve all other geography, title, paper, exact canvas dimensions and mature ink style. No people or new text.",
+      "review": "Opened the generated image and checked manuscript styling, navigable layout and distinct landmarks. Application marker, gateway and playback checks remain pending because no browser is available.",
+      "anchors": {
+        "underworld-gate": [
+          420,
+          225
+        ],
+        "underworld-bridge": [
+          675,
+          338
+        ],
+        "underworld-river": [
+          983,
+          258
+        ],
+        "underworld-hall-of-judgment": [
+          995,
+          473
+        ],
+        "underworld-register": [
+          1440,
+          257
+        ],
+        "underworld-city-of-the-wronged": [
+          450,
+          350
+        ],
+        "underworld-hells": [
+          640,
+          768
+        ],
+        "cuiyun-palace": [
+          143,
+          82
+        ]
+      }
+    }
+  ]
+}
