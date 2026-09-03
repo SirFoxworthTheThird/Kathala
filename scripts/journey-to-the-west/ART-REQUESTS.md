@@ -5,15 +5,15 @@ below the first heading.** Re-run it after every batch; a list of what is
 missing is a query, not an opinion, and the hand-written version of this file
 drifted three times before it was replaced by this one.
 
-120 images ship with the book: 55/121 characters,
-30/146 places, 23/23 items,
-2/9 factions, 8 maps, and a public-domain cover.
+309 images ship with the book: 121/121 characters,
+146/146 places, 23/23 items,
+9/9 factions, 8 maps, and a public-domain cover.
 
-House style: the painted, aged-paper look with a Chinese title cartouche and a
-block of explanatory text — the style of the cudgel, the White Bone Lady, the
+House style: the painted, aged-paper look of the cudgel, the White Bone Lady, the
 register and the four-continents chart. Landscape 3:2 for maps and places,
-portrait 2:3 for figures, square-ish for items. Please avoid Roman lettering in
-frame.
+portrait 2:3 for figures, square-ish for items. New images may omit lettering to
+keep captions in the application accessible and avoid invented text. Preserve
+the mature illustrated style, not photography, maps, cartoons or repeated art.
 
 ---
 
@@ -23,68 +23,10 @@ Nothing outstanding on objects.
 
 ---
 
-## Places with three scenes or more — 12 left
+## Less frequently visited entities
 
-- **Lion Camel Ridge** (ch 74–77, 5 scenes)
-- **The Monkey Encampment** (ch 4–28, 5 scenes)
-- **The Assembly Temple** (ch 8–12, 4 scenes)
-- **Roaring Mountain** (ch 40–42, 3 scenes)
-- **The Flowing-Sands River** (ch 8–22, 3 scenes)
-- **The Hong River Ford** (ch 9, 3 scenes)
-- **The Kou Mansion** (ch 96–97, 3 scenes)
-- **The Potalaka Annexe** (ch 42–99, 3 scenes)
-- **The Precious Elephant Kingdom** (ch 29–30, 3 scenes)
-- **The Wuji Kingdom** (ch 38–39, 3 scenes)
-- **Yuhua County** (ch 88–90, 3 scenes)
-- **Zhenhai Monastery** (ch 80–81, 3 scenes)
-
-These are the biggest gaps by usage, which is the only ranking that does not
-depend on what somebody found memorable.
-
----
-
-## Characters with three scenes or more — 9 left
-
-- **The Great King of the Southern Mountain** (ch 85–86, 3 scenes)
-- **The Great Roc of Ten Thousand Li** (ch 75–77, 3 scenes)
-- **The King of Bhiksu** (ch 78–79, 3 scenes)
-- **The King of India** (ch 94–95, 3 scenes)
-- **The Prince of Yuhua** (ch 88–90, 3 scenes)
-- **The Scorpion Spirit** (ch 54–55, 3 scenes)
-- **The Single-Horned Rhinoceros King** (ch 50–52, 3 scenes)
-- **The Six-Eared Macaque** (ch 57–58, 3 scenes)
-- **The Yellow Lion Spirit** (ch 88–89, 3 scenes)
-
----
-
-## Characters with two scenes — 24
-
-Ananda (ch 98) · Chen Cheng (ch 47) · Ksitigarbha (ch 58–97) · Liu Boqin (ch 13–14) · Liu Hong (ch 9) · Liu Quan (ch 11–12) · Prince Moang (ch 43–92) · Princess Baihuaxiu (ch 29–31) · The Abbot of the Gold-Spread Monastery (ch 93–95) · The Abbot of the Guanyin Monastery (ch 16) · The Alligator Dragon (ch 43) · The Blue-Haired Lion King (ch 75–76) · The Eight Golden Vajras (ch 99–100) · The Four Wooden Immortals (ch 64) · The Hundred-Eyed Lord (ch 73) · The Jade-Face Princess (ch 60–61) · The Myriad-Sage Dragon King (ch 62–63) · The Nine-Headed Insect (ch 63) · The Old Dame of Mount Li (ch 23–73) · The Old Man of the South Pole (ch 26–79) · The Old Turtle (ch 49–99) · The Prince of Wuji (ch 37–38) · The Three Princes of Yuhua (ch 88) · Yuan Shoucheng (ch 10)
-
----
-
-## Places with two scenes — 27
-
-Black Wind Mountain (ch 17) · Bowyue Cave (ch 28–29) · Chen Village (ch 47) · Green Wave Pool (ch 63) · Hidden Mist Mountain (ch 85) · Pipa Cave (ch 55) · Seven Extremes Mountain (ch 67) · The Black Water River (ch 43) · The Dharma-Respecting Kingdom (ch 84) · The East Market (ch 9–10) · The Gold-Spread Monastery (ch 93–95) · The Golden Light Monastery (ch 62) · The Great Waterfall (ch 1–6) · The Hall of Judgment (ch 11) · The House of the Four Beauties (ch 23) · The Linked Ring Cave (ch 86) · The Lion Camel Cave (ch 75) · The Long Slope (ch 56) · The Main Peak (ch 1–31) · The Mysterious Yin Cave (ch 92) · The Palace of the Jasper Pool (ch 5–6) · The Peach Garden (ch 5) · The Plantain Cave (ch 59–60) · The Women’s Kingdom of West Liang (ch 54) · The Yellow Flower Temple (ch 73) · Thunder Heap Mountain (ch 60–61) · White Tiger Ridge (ch 27)
-
----
-
-## Faction covers — 7 left
-
-- The Scripture Pilgrims
-- The Celestial Court
-- The Buddha’s Establishment
-- The Monkeys of Flower-Fruit Mountain
-- The Four Dragon Kings
-- The Bull Demon King’s House
-- The Daoists of Cart-Slow
-
----
-
-## The tail, which does not want pictures
-
-33 characters and 44 places appear in a single scene each, and
-33 more places are gateways, continents and seas that carry no scene of
-their own. Leaving those without a picture is the honest state of the set
-(`EX-302`), not a backlog: the world reads correctly without them, and a
-near-miss illustration would be worse than none.
+0 characters and 0 places appear in a single scene each, and
+0 more places are gateways, continents and seas that carry no scene of
+their own. The author has requested additional illustrations for the remaining
+entities. Each addition must be a distinct, reviewed depiction of its subject;
+a near-miss illustration is not an acceptable substitute (`EX-302`).
