@@ -64,11 +64,11 @@ ${w.blobs.length} images ship with the book: ${have(w.characters, 'portraitImage
 ${have(w.locationMarkers, 'imageId')} places, ${have(w.items, 'imageId')} items,
 ${have(w.factions, 'coverImageId')} factions, ${w.mapLayers.length} maps, and a public-domain cover.
 
-House style: the painted, aged-paper look with a Chinese title cartouche and a
-block of explanatory text — the style of the cudgel, the White Bone Lady, the
+House style: the painted, aged-paper look of the cudgel, the White Bone Lady, the
 register and the four-continents chart. Landscape 3:2 for maps and places,
-portrait 2:3 for figures, square-ish for items. Please avoid Roman lettering in
-frame.
+portrait 2:3 for figures, square-ish for items. New images may omit lettering to
+keep captions in the application accessible and avoid invented text. Preserve
+the mature illustrated style, not photography, maps, cartoons or repeated art.
 
 ---
 
@@ -85,14 +85,18 @@ ${items.length
       ? `## Characters with two scenes — ${characters.filter((c) => c.scenes === 2).length}\n\n${inline(characters.filter((c) => c.scenes === 2))}\n\n---\n\n`
       : ''}${places.filter((p) => p.scenes === 2).length
       ? `## Places with two scenes — ${places.filter((p) => p.scenes === 2).length}\n\n${inline(places.filter((p) => p.scenes === 2))}\n\n---\n\n`
-      : ''}${factions.length ? `## Faction covers — ${factions.length} left\n\n${factions.map((f) => `- ${f}`).join('\n')}\n\n---\n\n` : ''}## The tail, which does not want pictures
+      : ''}${factions.length ? `## Faction covers — ${factions.length} left\n\n${factions.map((f) => `- ${f}`).join('\n')}\n\n---\n\n` : ''}## Less frequently visited entities
 
 ${characters.filter((c) => c.scenes === 1).length} characters and ${places.filter((p) => p.scenes === 1).length} places appear in a single scene each, and
 ${places.filter((p) => p.scenes === 0).length} more places are gateways, continents and seas that carry no scene of
-their own. Leaving those without a picture is the honest state of the set
-(\`EX-302\`), not a backlog: the world reads correctly without them, and a
-near-miss illustration would be worse than none.
+their own. The author has requested additional illustrations for the remaining
+entities. Each addition must be a distinct, reviewed depiction of its subject;
+a near-miss illustration is not an acceptable substitute (\`EX-302\`).
+
+${bullets(characters.filter((c) => c.scenes <= 1))}
+
+${bullets(places.filter((p) => p.scenes <= 1))}
 `
 
-fs.writeFileSync(OUT, doc)
+fs.writeFileSync(OUT, `${doc.trimEnd()}\n`)
 console.log(`${OUT}: ${characters.length} characters, ${places.length} places, ${items.length} items, ${factions.length} factions`)
