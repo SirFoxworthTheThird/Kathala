@@ -96,13 +96,28 @@ const mapRows = [
   ['dragon-palace', 'world', 'The Dragon Palace of the Eastern Sea', 'The undersea halls the cudgel is taken from: the crystal palace, the throne, the armoury, and the pillar that gauges the depth of the sea.', 1024, 559, 'dragon-palace.jpg'],
   ['underworld', 'world', 'The Underworld Courts', 'The bureaucracy below: the Gate of Ghosts, the bridge, the river, the Hall of Judgment, the register — and the hells drawn along the bottom of the sheet.', 1024, 572, 'underworld.jpg'],
 ]
+const mapArt = JSON.parse(fs.readFileSync('scripts/journey-to-the-west/generated-map-manifest.json', 'utf8'))
+const originalMapSizes = new Map(mapRows.map(([slug, , , , w, h]) => [slug, [w, h]]))
+const mapArtBySlug = new Map(mapArt.assets.map((asset) => [asset.slug, asset]))
+for (const row of mapRows) {
+  const asset = mapArtBySlug.get(row[0])
+  if (!asset) continue
+  const bytes = fs.readFileSync(`public/${repo}/maps/${asset.file}`)
+  if (bytes.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a' ||
+      bytes.readUInt32BE(16) !== asset.width || bytes.readUInt32BE(20) !== asset.height) {
+    throw new Error(`Map PNG dimensions do not match manifest: ${asset.slug}`)
+  }
+  row[4] = asset.width
+  row[5] = asset.height
+  row[6] = asset.file
+}
 const maps = mapRows.map(([slug, parent, name, description, imageWidth, imageHeight, file]) => ({
   ...base,
   id: M(slug),
   parentMapId: parent ? M(parent) : null,
   name,
   description,
-  imageId: image(`map-${slug}`, `maps/${file}`),
+  imageId: image(`map-${slug}`, `maps/${file}`, file.endsWith('.png') ? 'image/png' : 'image/jpeg'),
   imageWidth,
   imageHeight,
   /* No scale. The road map is a pictorial strip, not a survey, and the book's
@@ -314,6 +329,15 @@ const locRows = [
 
 const locations = locRows.map(([slug, mapSlug, name, description, linked, x, displayY, iconType, art]) => {
   const layer = maps.find((m) => m.id === M(mapSlug))
+  const replacement = mapArtBySlug.get(mapSlug)
+  if (replacement) {
+    const [oldWidth, oldHeight] = originalMapSizes.get(mapSlug)
+    const anchor = replacement.anchors[slug]
+    if (!anchor && mapSlug !== 'route') throw new Error(`Missing manuscript map anchor: ${slug}`)
+    ;[x, displayY] = anchor ?? [x * layer.imageWidth / oldWidth, displayY * layer.imageHeight / oldHeight]
+    x = Math.round(x)
+    displayY = Math.round(displayY)
+  }
   return {
     ...base,
     id: L(slug),
@@ -2811,7 +2835,7 @@ const loreRows = [
     'The maps and original illustrated plates were supplied by this world’s author as their own AI-generated work. Additional entity illustrations were generated with OpenAI image generation at the author’s request, using the supplied artwork as style references, and visually reviewed before assignment. These are modern interpretations, not historical illustrations from an edition of the novel. The generation manifest records each additional subject and prompt; SOURCES.md distinguishes these additions from the original set. The cover is different: a leaf of the public-domain 1592 Shidetang Hall imprint, showing Sun Wukong with the cudgel outside the Plantain Cave.',
     'stone-monkey-born', null],
   ['maps', 'sources', 'The Maps in This World',
-    'There are seven layers: the road west, Chang’an, Vulture Peak, Flower-Fruit Mountain, the celestial court, the dragon palace and the underworld. All are paintings rather than surveys, none carries a scale, and nothing in them should be read as a distance — the book’s own figures are religious numbers rather than measurements. Where the road painting names a feature, the marker sits on that name even when the book’s order would put it elsewhere: that is why the road doubles back east once, between the Guanyin Monastery and Gao Village, because the painting puts the village inside the Tang frontier and the text puts it a long way past. The painting also carries some mangled English lettering, including a "Thunderbolt Temple" spelt with an O and a duplicated Tang border. Places the paintings do not draw at all — Subhuti’s cave, the Jing River, the ford where Chen Guangrui was killed and a dozen caves — are pinned along the drawn road between the features that bracket them in the text, and SOURCES.md lists every one of those as an approximation.',
+    'There are eight layers: the Four Continents cosmological chart and seven nested maps covering the road west, Chang’an, Vulture Peak, Flower-Fruit Mountain, the celestial court, the dragon palace and the underworld. The seven submaps are modern AI-generated, late-Ming-inspired Chinese pictorial map sheets, depicting the novel’s Tang-era and mythological settings. Their ink, mineral washes and paper treatment evoke traditional manuscript cartography; they are not historical documents or archaeological reconstructions. English place names are supplied by the application markers rather than printed on the sheets. The original Four Continents chart is retained. None of these maps is a survey or carries a distance scale. Smaller road locations remain editorial approximations within the schematic landscape, not geographically verified sites; spatial placement must not be used to infer historical distances. The map manifest records the replacement artwork, prompts and landmark anchors, and the review notes distinguish artwork inspection from pending application validation.',
     'famen-temple', null],
 ]
 const lorePages = loreRows.map(([slug, cat, title, body, visible, art]) => ({

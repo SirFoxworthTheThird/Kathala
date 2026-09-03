@@ -35,6 +35,15 @@ existing mature Chinese ink/mineral-wash style, not historical illustrations.
   are preserved; only missing image fields are populated. Lore changes concern
   image provenance.
 
+## Nine-Headed Insect correction
+
+The initial portrait incorrectly showed eight heads despite the prompt asking
+for nine. A targeted built-in image_gen edit added one head and neck above the
+breast, preserving the existing composition. The replacement was visually
+counted: one top head, two upper side heads, three middle heads, and three lower
+heads, for nine total. The full edit prompt is stored in the art manifest.
+The stable asset path is unchanged, so both PWKs use the corrected illustration.
+
 ## Remaining release gate
 
 The new full-resolution PNG masters total approximately 592.6 MiB. Web-delivery
