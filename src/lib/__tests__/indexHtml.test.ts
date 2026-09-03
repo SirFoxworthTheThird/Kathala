@@ -54,7 +54,25 @@ describe('index.html', () => {
   it('still loads the app from its own origin', () => {
     expect(markup).toContain('<div id="root">')
     expect(markup).toMatch(/<script type="module" src="\/src\/main\.tsx">/)
-    expect(markup).toContain('href="/favicon.svg"')
+    expect(markup).toContain('href="/favicon-32.png"')
+  })
+
+  /*
+    The tab icon is fetched by every browser on every first visit, so what it
+    points at is a page-weight decision, not a cosmetic one. `favicon.png` is the
+    right logo at the wrong size: a 1552×1570 master weighing 3.98 MB, which was
+    the icon and — through `TopBar` and `WorldSelectorView` — the 28px and 40px
+    logo as well.
+
+    Asserted as "not the master" rather than "is this exact filename", because
+    the rule is about weight. Any small cut of the real logo passes; pointing it
+    back at the master does not.
+  */
+  it('does not draw a sixteen-pixel icon from the four-megabyte master', () => {
+    const icon = /<link\s+rel="icon"[^>]*href="([^"]+)"/.exec(markup)?.[1]
+    expect(icon, 'the head must still declare an icon').toBeTruthy()
+    expect(icon).not.toBe('/favicon.png')
+    expect(icon, 'and it must be a file this app serves').toMatch(/^\//)
   })
 
   /*
