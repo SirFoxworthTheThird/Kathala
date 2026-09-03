@@ -1,0 +1,190 @@
+{
+  "generator": "built-in image_gen",
+  "status": "artwork-reviewed-application-validation-pending",
+  "styleReference": "https://i.imgur.com/uwkHDDr.jpeg",
+  "inputPolicy": "Six entirely new compositions using only the main map as a style reference; four shared newly generated Name of the Wind maps reused consistently. No old submaps supplied.",
+  "sources": [
+    "https://kingkiller.fandom.com/wiki/Severen",
+    "https://kingkiller.fandom.com/wiki/Haert",
+    "https://kingkiller.fandom.com/wiki/Latantha",
+    "https://kingkiller.fandom.com/wiki/The_Cthaeh",
+    "https://kingkiller.fandom.com/wiki/Penny",
+    "https://www.supersummary.com/the-wise-mans-fear/chapters-48-65-summary/",
+    "https://thenotpod.wordpress.com/places/"
+  ],
+  "sourceLimitations": "Secondary geographic checks and existing example content; no new full-book source audit. Disputed/unknown distances and bearings explicitly editorial.",
+  "coordinateConvention": "Anchors are pixels from PNG top-left; migration converts y once to Leaflet image coordinates.",
+  "greyManAnchor": [
+    1373,
+    575
+  ],
+  "provenance": "The local atlas maps are original AI-generated reader reconstructions, not official maps or surveyed geography. The Four Corners main map supplied only the aesthetic reference; no previous submap layout was traced. Tarbean, the University and Imre, Trebon, and Newarre share the newly drawn maps used in The Name of the Wind. Severen, the Maer's estate, the Eld, the local Fae surroundings, Haert and the Stormwal foothills, and the Levinshir road have six new compositions. Known broad geography guides them, but exact streets, building footprints, room arrangements, camp positions, distances and local bearings are editorial. The Grey Man's precise Imre address is an editorial placement. The estate's room views and the Underthing are schematic insets. Pennysworth is a separate inset near the Eld, not a confirmed neighbor of Levinshir or an assertion of one continuous short route. The Fae sheet depicts only local surroundings, not a measured map of the entire realm. Newarre's world position and the Fae's existing root-map gateway remain approximate navigation aids. The main map is unchanged. Sources, prompts and outstanding application-validation requirements are recorded in scripts/wise-mans-fear/map-manifest.json and MAP-REVIEW.md.",
+  "descriptionCorrections": {
+    "wmf-portal-severen": "A major Vintish city ruled by Maer Alveron. The wealthy plateau of Severen-High overlooks the crowded streets of Severen-Low across the cliff called the Sheer.",
+    "wmf-loc-severen": "Maer Alveron's city in Vintas, divided between the plateau of Severen-High and the crowded lower town beneath it.",
+    "wmf-loc-the-sheer": "The sheer cliff dividing Severen-High from Severen-Low, crossed by zigzag stairways and mechanical lifts.",
+    "wmf-loc-caudicus": "The Maer's arcanist keeps books, glassware and an apothecary's workbench in these rooms within the estate.",
+    "wmf-loc-pennysworth": "Penny's roadside inn near the Eld, with lodging, food and a lively common room for travelers.",
+    "wmf-portal-levinshir": "Rural Vintish countryside around Levinshir, with cultivated fields, farms and wooded stretches beside the road.",
+    "wmf-loc-levinshir": "A small Vintish farming settlement surrounded by fields and connected to the surrounding countryside by country roads.",
+    "wmf-loc-bredon": "Quiet private rooms used by Bredon during his visits to the Maer's court, with space for conversation and a game of tak.",
+    "wFPpk1jXB7IIap9Enx-Re": "An inn in the small town surrounding the University, on the University side of the Omethi, offering student lodgings and a common room for music.",
+    "-_pELDk4CEASELyh9eaf2": "Tarbean's prosperous upper district, with substantial houses, shops and cleaner streets above the crowded waterfront.",
+    "u1qVavY60d6NpnelWjUVJ": "An enclosed University courtyard watched from surrounding rooftops, where shifting air catches and carries falling leaves.",
+    "i4DiG-YzX03p18hEJV18g": "The roofless remains of an old house in the countryside outside Newarre, with stone walls around an exposed hearth."
+  },
+  "maps": [
+    {
+      "id": "wmf-map-severen",
+      "url": "library/the-wise-man-s-fear/maps/severen-atlas.png",
+      "width": 1536,
+      "height": 1024,
+      "prompt": "Use case: illustration-story. Create an original landscape 1536x1024 fantasy atlas map of SEVEREN from The Wise Man's Fear. Sole reference is STYLE ONLY: fine black ink engraving, ivory ground, olive vegetation, muted terracotta roofs, turquoise accents, delicate geometric border, elegant serif labels. Do not copy reference geography or logo. No old submap as basis. Bird's-eye navigable city map, no horizon, mature richly detailed hand-drawn cartography, not cartoon or abstract zones. A massive sheer cliff cuts across the city: Severen-High above on broad plateau, wealthy villas and the Maer's palace estate with gardens; crowded Severen-Low spreads below. Clearly depict TWO zigzag stairways cut into the cliff and mechanical rope lift platforms linking elevations. Roads and building footprints legible and generous spaces for markers. Exact labels only: \"Severen\", \"Severen-High\", \"Severen-Low\", \"The Sheer\", \"Maer's Estate\". Neutral intact city without story spoilers, no river invented across town, no scale bar. Small footer \"Reader's reconstruction\".",
+      "anchors": {
+        "wmf-loc-severen": [
+          925,
+          850
+        ],
+        "wmf-loc-severen-high": [
+          752,
+          300
+        ],
+        "wmf-loc-severen-low": [
+          674,
+          817
+        ],
+        "wmf-loc-the-sheer": [
+          852,
+          477
+        ],
+        "wmf-portal-maer-estate": [
+          1265,
+          170
+        ]
+      },
+      "review": "Final generated artwork displayed and inspected. Explicit anchors chosen on shown landmarks; GUI zoom, gateway and playback checks pending."
+    },
+    {
+      "id": "wmf-map-maer-estate",
+      "url": "library/the-wise-man-s-fear/maps/maer-estate-atlas.png",
+      "width": 1536,
+      "height": 1024,
+      "prompt": "Use case: illustration-story. Original fantasy atlas navigational plan, landscape1536x1024. Main map reference STYLE ONLY: delicate black ink, ivory parchment, sage olive gardens, terracotta roofs, pale turquoise fountains, elegant serif labels and fine geometric border. NOT a copy of any previous submap. Title \"Maer's Estate\". Reader reconstruction of Maer Alveron's palatial estate in Severen-High from The Wise Man's Fear: large connected stone palace wings around courtyards, extensive formal gardens with fountains, hedgerows, paths and gazebos, perimeter terrace on the edge of a cliff. Near-overhead architectural cartography without horizon. Distinguish guest chambers overlooking gardens, courtier's rooms, scholar's workrooms. Use SMALL tasteful three roof-cutaway room insets connected by fine callout lines to the palace wings, labeled exactly \"Kvothe's Rooms\", \"Bredon's Rooms\", \"Caudicus's Rooms\". Insets show respectful furnished rooms: bed and window; table and chairs for tak; book-lined study with glassware workbench. Mark the main courtyard \"Estate Court\" and grounds \"Gardens\". Readable navigable composition, no figures, no battle grid, no cartoon, no scenes of poisoning or future spoilers. Room arrangement schematic, not canonical floorplan. Small footer \"Schematic reader's reconstruction\".",
+      "anchors": {
+        "wmf-loc-maer-estate": [
+          813,
+          394
+        ],
+        "wmf-loc-caudicus": [
+          194,
+          815
+        ],
+        "wmf-loc-bredon": [
+          149,
+          542
+        ],
+        "wmf-loc-kvothe-maer-rooms": [
+          162,
+          290
+        ]
+      },
+      "review": "Final generated artwork displayed and inspected. Explicit anchors chosen on shown landmarks; GUI zoom, gateway and playback checks pending."
+    },
+    {
+      "id": "wmf-map-eld",
+      "url": "library/the-wise-man-s-fear/maps/eld-atlas.png",
+      "width": 1536,
+      "height": 1024,
+      "prompt": "Use case: illustration-story. Create original navigational forest atlas map \"The Eld\",1536x1024 landscape. Reference image STYLE ONLY: fine black ink tree glyphs/hatching, sage olive forest, ivory clearings, muted terracotta, turquoise water if necessary, elegant serif lettering, thin geometric atlas border. No existing submap layout. High bird's-eye cartography with no horizon, very extensive dense old-growth woodland, rough branching footpaths over low ridges, gullies. Three distinct readable places: small scout bivouac of five modest bedrolls/tarps in sheltered clearing labeled \"Mercenary Camp\"; much larger concealed encampment of numerous canvas tents inside rough wooden defensive works in a separate clearing labeled \"Forest Encampment\", next to one very tall intact oak; a winding narrow path threading unbroken forest labeled \"Forest Paths\". Camps separated by substantial dense forest, no direct highway joining their entrances. Show terrain and roads clearly, not just decorative shapes. No people, no combat, no lightning, no dead bodies, no blown-up tree, no treasure icons, no future story outcomes. Small footer \"Reader's reconstruction — local distances unknown\".",
+      "anchors": {
+        "wmf-loc-eld": [
+          677,
+          570
+        ],
+        "wmf-loc-bandit-camp": [
+          1194,
+          552
+        ],
+        "wmf-loc-eld-camp": [
+          250,
+          788
+        ]
+      },
+      "review": "Final generated artwork displayed and inspected. Explicit anchors chosen on shown landmarks; GUI zoom, gateway and playback checks pending."
+    },
+    {
+      "id": "wmf-map-fae",
+      "url": "library/the-wise-man-s-fear/maps/fae-atlas.png",
+      "width": 1536,
+      "height": 1024,
+      "prompt": "Use case: illustration-story. Original 1536x1024 landscape fantasy cartographic map entitled \"The Fae\". Sole reference main map STYLE ONLY: fine black ink engraving, detailed tree hatching, ivory open ground, sage greens, restrained turquoise and muted lavender twilight wash, serif lettering, delicate geometric border. New composition, no previous submap traced. Bird's-eye navigable forest map with no horizon, not a landscape illustration. An intimate local reconstruction of Felurian's surroundings, NOT a whole realm survey: a secluded twilight glade with small turquoise pool and an airy delicate cloth pavilion under enormous trees; visible winding woodland footpath leads away through dense woods into a broad flower meadow; in that meadow ONE great spreading flowering tree stands completely alone, separated from forest edges by wide grassland. Keep pavilion and tree very far apart across sheet, marker-safe open ground. Labels exactly \"Twilight Glade\", \"Felurian's Pavilion\", \"Flowering Tree\", \"Woodland Paths\". Do NOT label Cthaeh or reveal its nature on base image. No people, nudity, faeries, portals, monsters or battles. No numbered journey arrows, no compass or scale bar: Fae geography is not a normal measured country. Small footer \"Local reader's reconstruction — direction and distance uncertain\".",
+      "anchors": {
+        "wmf-loc-fae": [
+          469,
+          791
+        ],
+        "wmf-loc-cthaeh": [
+          1253,
+          266
+        ],
+        "wmf-loc-felurian-pavilion": [
+          251,
+          696
+        ]
+      },
+      "review": "Final generated artwork displayed and inspected. Explicit anchors chosen on shown landmarks; GUI zoom, gateway and playback checks pending."
+    },
+    {
+      "id": "wmf-map-ademre",
+      "url": "library/the-wise-man-s-fear/maps/ademre-atlas.png",
+      "width": 1536,
+      "height": 1024,
+      "prompt": "Use case: illustration-story. Create original detailed fantasy atlas map \"Haert & the Stormwal Foothills\",1536x1024 landscape. Main map reference STYLE ONLY: fine black pen engraving, ivory rocky ground, sage grass, sparse olive vegetation, subdued earth tones, thin geometric border and serif labels; no layout copied from old maps. Elevated cartographic bird's-eye plan with no horizon. Wind-scoured rocky Ademre landscape, high jagged Stormwal peaks across distant upper portion in map-glyph style and paths through their foothills leading to Haert: inconspicuous low stone dwellings built into hillsides and sheltering cliff bases, some partially earth-covered; NOT a walled European castle city, NOT East Asian temples. A distinct group of low stone school buildings off the road with an open stone practice court. A separate solitary mature tree with many long slender metallic-looking leaves on an exposed rocky knoll beyond the village, named \"Sword Tree\", NO literal swords hanging in branches. Exact labels: \"Haert\", \"Stormwal Mountains\", \"Training Grounds\", \"Sword Tree\". Enough distinct visible footprints to place markers. No people, combat, festival or future outcomes, no precise scale. Small footer \"Reader's reconstruction — local bearings approximate\".",
+      "anchors": {
+        "wmf-loc-stormwal": [
+          975,
+          192
+        ],
+        "wmf-loc-haert": [
+          513,
+          610
+        ],
+        "wmf-loc-sword-tree": [
+          1290,
+          771
+        ],
+        "wmf-loc-adem-training": [
+          1060,
+          614
+        ]
+      },
+      "review": "Final generated artwork displayed and inspected. Explicit anchors chosen on shown landmarks; GUI zoom, gateway and playback checks pending."
+    },
+    {
+      "id": "wmf-map-levinshir-road",
+      "url": "library/the-wise-man-s-fear/maps/levinshir-road-atlas.png",
+      "width": 1536,
+      "height": 1024,
+      "prompt": "Use case: illustration-story. Create original fantasy navigational atlas sheet,1536x1024 landscape, title \"The Road to Levinshir\". Reference main map STYLE ONLY: fine black pen engraving and terrain hatching, ivory land, sage olive trees, muted terracotta roofs, tasteful geometric border, elegant serif English labels. No older submaps used as basis. Bird's-eye map, no horizon. Main panel occupies right three-quarters: modest Vintish farming village Levinshir at right, Anwater Farm just outside village among field strips, farmhouse barn paddocks; winding rural road through hedgerows and woods leading from left toward village; secluded wagon stopping place off this road left/bottom with several covered wagons in clearing, label \"Roadside Camp\". Label main village \"Levinshir\", farm \"Anwater Farm\". Important: a SEPARATE FRAMED INSET in upper left occupies one-quarter width, NOT connected by a continuous road to main panel, depicts the sprawling timber roadside Pennysworth Inn with stable yard and surrounding forest-edge road, label \"Pennysworth Inn\", subtitle \"Near the Eld — separate locality\". Pennysworth is an earlier stop near the Eld, not a confirmed neighbor of Levinshir. Never draw it on the same short measured road as village. Map's layout is editorial, no mileage, no compass asserting direction, no arrow route sequence. Small footer \"Reader's reconstruction — local positions approximate\". No people, corpses, fire, weapons, abductions, impostor labels or plot spoilers. This should be useful detailed cartography, not abstract shapes or a decorative landscape scene.",
+      "anchors": {
+        "wmf-loc-pennysworth": [
+          266,
+          245
+        ],
+        "wmf-loc-false-ruh": [
+          312,
+          726
+        ],
+        "wmf-loc-levinshir": [
+          1213,
+          456
+        ],
+        "wmf-loc-anwater-farm": [
+          976,
+          710
+        ]
+      },
+      "review": "Final generated artwork displayed and inspected. Explicit anchors chosen on shown landmarks; GUI zoom, gateway and playback checks pending."
+    }
+  ]
+}
