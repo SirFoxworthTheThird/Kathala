@@ -94,6 +94,68 @@ jobs:
         env:
           NODE_ENV: production
 
+      # Every made artifact, flattened into one directory. The maker's own tree
+      # (`out/make/zip/darwin/arm64/…`, `out/make/squirrel.windows/x64/…`) is an
+      # implementation detail of electron-forge, and the release is a flat list
+      # of files; flattening here means the release job does not have to know
+      # that tree. The names do not collide across platforms.
+      - name: Collect the artifacts
+        shell: bash
+        run: |
+          mkdir -p upload
+          find out/make -type f -exec cp {} upload/ \;
+          ls -l upload
+
+      - name: Hand them to the release job
+        uses: actions/upload-artifact@v4
+        with:
+          name: made-${{ matrix.label }}
+          path: upload/*
+          if-no-files-found: error
+
+  # One job creates the release, after all three builds have finished.
+  #
+  # This was once done by each build job in turn, and both of the ways that
+  # went wrong were the same mistake: three jobs racing to manage one release.
+  # `action-gh-release` applies `body_path` only to a release it creates
+  # itself, so whichever job ran second and third adopted the first job's
+  # release and left its own notes unwritten — and when a draft already existed
+  # for the tag, all three adopted *that*, publishing new binaries under the
+  # previous run's notes. Nothing here can race now: the release is made once,
+  # from one commit, with every platform's files already in hand.
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    name: Release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve the version
+        id: version
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=$REF_NAME" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Collect every platform's artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List what will be released
+        shell: bash
+        run: ls -l artifacts
+
       # The notes for a version live at `docs/release-notes/<version>.md`, so
       # writing them is an ordinary reviewed change rather than something typed
       # into the Releases page once and never seen again. A version without a
@@ -122,46 +184,74 @@ jobs:
             echo "::warning::No $notes — releasing with the download table only."
           fi
 
-      - name: Upload to GitHub Release
+      - name: Create the GitHub Release
         id: release
         uses: softprops/action-gh-release@v2
         with:
           draft: true
           # Named explicitly rather than inferred from the ref: on a manual run
-          # the ref is a branch, and this is also what creates the tag — it is
-          # placed on the commit that was built, so the release and the tag
-          # cannot disagree about what shipped.
+          # the ref is a branch, not a tag.
           tag_name: ${{ steps.version.outputs.value }}
-          files: out/make/**/*
+          # A draft does not create the git tag; it records where the tag should
+          # go when someone publishes it. Left as a branch name — the default is
+          # the ref this ran on — that means "wherever main happens to be when
+          # the button is pressed", which is not necessarily where it was when
+          # these binaries were built. A draft left for a week while main moves
+          # on would tag code that was never in the download, and nothing about
+          # the tag would show it. Pinned to the commit instead, so the tag can
+          # only land on what was built.
+          target_commitish: ${{ github.sha }}
+          files: artifacts/*
           body_path: RELEASE_BODY.md
 
-      # `action-gh-release` applies `body_path` only to a release it creates
-      # itself. When a draft already exists for the tag it adopts that draft
-      # instead — the log says `Using release N for tag v… instead of duplicate
-      # draft M` — and keeps the adopted draft's body, so a second release run
-      # for the same version ships the new binaries under the *previous* run's
-      # notes. That is what happened to v1.1.0: the notes were rewritten, the
-      # build succeeded, and the draft still described the August release.
+      # A draft release keeps its tag as ordinary metadata — the git tag itself
+      # is only created when the draft is published — and that metadata is easy
+      # to lose without noticing. `PATCH /releases/:id` **clears `tag_name` when
+      # the field is omitted**, so a request meant only to correct the body
+      # silently untags the draft; the release page then still says v1.1.0 in
+      # its title while the tag is gone, and publishing it would tag nothing.
+      # That happened here, three times in one run.
       #
-      # So write the composed body onto whichever release the upload actually
-      # landed on. All three matrix jobs send the same bytes, built from the
-      # same commit, so they cannot race into disagreeing.
-      - name: Make the notes match the build
+      # Nothing above sends such a request any more, but the failure was
+      # invisible in a green run, so it is checked rather than assumed.
+      - name: Check the release is tagged and described
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_ID: ${{ steps.release.outputs.id }}
+          VERSION: ${{ steps.version.outputs.value }}
         run: |
           if [ -z "$RELEASE_ID" ]; then
-            echo "::error::The upload step reported no release id; notes not written."
+            echo "::error::The upload step reported no release id."
             exit 1
           fi
-          jq -Rs '{ body: . }' RELEASE_BODY.md > release-patch.json
-          curl --fail-with-body -sS -X PATCH \
+          curl --fail-with-body -sS \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            -H "Content-Type: application/json" \
-            --data-binary @release-patch.json \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" \
-            > /dev/null
-          echo "Notes written to release $RELEASE_ID"
+            > release.json
+          tag=$(jq -r '.tag_name' release.json)
+          if [ "$tag" != "$VERSION" ]; then
+            echo "::error::Release $RELEASE_ID is tagged '$tag', expected '$VERSION'."
+            exit 1
+          fi
+          # A branch name here rather than a commit would mean the tag lands
+          # wherever that branch has got to by the time the draft is published.
+          target=$(jq -r '.target_commitish' release.json)
+          if [ "$target" != "$GITHUB_SHA" ]; then
+            echo "::error::Release $RELEASE_ID would tag '$target', not the commit built ($GITHUB_SHA)."
+            exit 1
+          fi
+          # The body is what the composed file says, not the previous run's.
+          # Line endings are normalised on both sides before comparing, so this
+          # is a check on what the notes say rather than on how they are
+          # encoded. A release body composed by this workflow comes back as it
+          # was sent; a body that had been through the Releases page might not.
+          jq -r '.body' release.json | tr -d '\r' > release-body-got.md
+          tr -d '\r' < RELEASE_BODY.md > release-body-want.md
+          if ! diff -q release-body-got.md release-body-want.md > /dev/null; then
+            echo "::error::Release $RELEASE_ID does not carry the notes composed for $VERSION."
+            diff release-body-got.md release-body-want.md | head -40
+            exit 1
+          fi
+          echo "Release $RELEASE_ID tags $VERSION at $GITHUB_SHA and carries its notes."
