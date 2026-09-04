@@ -123,6 +123,7 @@ jobs:
           fi
 
       - name: Upload to GitHub Release
+        id: release
         uses: softprops/action-gh-release@v2
         with:
           draft: true
@@ -133,3 +134,34 @@ jobs:
           tag_name: ${{ steps.version.outputs.value }}
           files: out/make/**/*
           body_path: RELEASE_BODY.md
+
+      # `action-gh-release` applies `body_path` only to a release it creates
+      # itself. When a draft already exists for the tag it adopts that draft
+      # instead — the log says `Using release N for tag v… instead of duplicate
+      # draft M` — and keeps the adopted draft's body, so a second release run
+      # for the same version ships the new binaries under the *previous* run's
+      # notes. That is what happened to v1.1.0: the notes were rewritten, the
+      # build succeeded, and the draft still described the August release.
+      #
+      # So write the composed body onto whichever release the upload actually
+      # landed on. All three matrix jobs send the same bytes, built from the
+      # same commit, so they cannot race into disagreeing.
+      - name: Make the notes match the build
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ steps.release.outputs.id }}
+        run: |
+          if [ -z "$RELEASE_ID" ]; then
+            echo "::error::The upload step reported no release id; notes not written."
+            exit 1
+          fi
+          jq -Rs '{ body: . }' RELEASE_BODY.md > release-patch.json
+          curl --fail-with-body -sS -X PATCH \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Content-Type: application/json" \
+            --data-binary @release-patch.json \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" \
+            > /dev/null
+          echo "Notes written to release $RELEASE_ID"
