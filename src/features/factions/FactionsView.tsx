@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, type ChangeEvent } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, X, Trash2, Users, ChevronRight, Shield, Map as MapIcon, MapPin, Swords, Handshake, Minus, Sparkles } from 'lucide-react'
+import { Plus, X, Trash2, Users, ChevronRight, Shield, Map as MapIcon, MapPin, Swords, Handshake, Minus, Sparkles, Upload, Image as ImageIcon } from 'lucide-react'
 import { EmptyState } from '@/components/EmptyState'
 import { PageHeader } from '@/components/PageHeader'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -11,6 +11,8 @@ import { Field } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { PortraitImage } from '@/components/PortraitImage'
+import { LinkImageButton } from '@/components/LinkImageButton'
 import {
   useFactions, useFactionMemberships, useMembershipsForFaction, useFactionReveal,
   useFactionRelationships,
@@ -22,6 +24,7 @@ import { useCharacters } from '@/db/hooks/useCharacters'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { useEvents, useChapters, useTimelines } from '@/db/hooks/useTimeline'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
+import { storeBlob } from '@/db/hooks/useBlobs'
 import { GenerateFactionsDialog } from './GenerateFactionsDialog'
 import type { Faction, FactionMembership, FactionRelationship, FactionStance } from '@/types'
 import { plural } from '@/lib/plural'
@@ -329,6 +332,18 @@ function FactionDetailPanel({
     onClose()
   }
 
+  async function handleCoverUpload(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const blob = await storeBlob(worldId, file)
+    await updateFaction(faction.id, { coverImageId: blob.id })
+    e.target.value = '' // so the same file can be picked again
+  }
+
+  async function removeCover() {
+    await updateFaction(faction.id, { coverImageId: null })
+  }
+
   async function addRelation(otherFactionId: string) {
     await createFactionRelationship({
       worldId,
@@ -372,6 +387,82 @@ function FactionDetailPanel({
       </div>
 
       <div className="flex-1 overflow-auto p-4 flex flex-col gap-4">
+        {/*
+          ── Cover ──
+          `Faction.coverImageId` has been on the record since factions landed,
+          and until now nothing wrote it and nothing drew it: the create path
+          set it to null and that was the whole of its life. Two of the shipped
+          Library worlds carry one anyway, because the generator could set what
+          the app could not — the plate of the three kings of Lion Camel Ridge
+          is a single composition rather than three panels, so it belongs to the
+          faction rather than to any one of them.
+
+          Drawn the way a location's picture is, and for the same reason: a
+          banner, because these are wide plates rather than avatars, with the
+          controls tucked into the corner once there is something to tuck them
+          against — and a labelled invitation while the slot is empty, because
+          on a 128px box the corner pill is a speck nobody finds. That lesson
+          was learned on the location panel; there is no reason to learn it
+          again here.
+
+          A reader with no cover is shown nothing rather than a slot they
+          cannot fill.
+        */}
+        {faction.coverImageId ? (
+          <div className="relative">
+            <PortraitImage
+              imageId={faction.coverImageId}
+              alt={`${faction.name} cover`}
+              className="h-32 w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))] object-cover"
+              zoomable
+            />
+            {!gate.active && (
+              <div className="absolute bottom-1 right-1 flex items-center gap-1 rounded-full bg-black/60 px-1.5 py-1">
+                <label aria-label="Upload faction cover image" className="cursor-pointer text-white/90 hover:text-white">
+                  <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+                  <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
+                </label>
+                <LinkImageButton
+                  worldId={worldId}
+                  onLinked={(blobId) => updateFaction(faction.id, { coverImageId: blobId })}
+                  triggerClassName="text-white/90 hover:text-white"
+                  triggerAriaLabel="Link faction cover image by URL"
+                />
+                <button
+                  type="button"
+                  aria-label="Remove faction cover image"
+                  onClick={removeCover}
+                  className="text-white/90 hover:text-red-400"
+                >
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </div>
+            )}
+          </div>
+        ) : !gate.active && (
+          <div className="flex h-32 w-full flex-col items-center justify-center gap-2 rounded-md border border-dashed border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
+            <ImageIcon className="h-6 w-6 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">No cover image for this faction yet</p>
+            <div className="flex items-center gap-2">
+              <label
+                aria-label="Upload faction cover image"
+                className="pw-tap flex cursor-pointer items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
+              >
+                <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+                Upload
+                <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
+              </label>
+              <LinkImageButton
+                worldId={worldId}
+                onLinked={(blobId) => updateFaction(faction.id, { coverImageId: blobId })}
+                triggerClassName="pw-tap rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
+                triggerAriaLabel="Link faction cover image by URL"
+                triggerLabel="Link"
+              />
+            </div>
+          </div>
+        )}
+
         {/* Edit fields */}
         {gate.active ? (
           faction.description ? (
@@ -778,10 +869,36 @@ export default function FactionsView() {
                       dot sits with the first line when the name does wrap.
                     */}
                     <div className="flex items-start gap-2 mb-2">
-                      <div
-                        className="mt-0.5 h-4 w-4 rounded-full shrink-0 shadow-sm"
-                        style={{ background: faction.color }}
-                      />
+                      {/*
+                        The cover stands in for the colour dot when there is
+                        one, ringed in the faction's colour so the identity mark
+                        survives rather than being replaced by the picture.
+
+                        Only when there is one: most worlds set no faction
+                        covers, and a grid of identical grey placeholders would
+                        be a worse card than the dot it displaced. `alt=""`
+                        because the name is the next thing in this button — a
+                        repeat of it would be read out twice.
+                      */}
+                      {faction.coverImageId ? (
+                        <div
+                          className="mt-0.5 shrink-0 rounded-md border-2 p-px shadow-sm"
+                          style={{ borderColor: faction.color }}
+                        >
+                          <PortraitImage
+                            imageId={faction.coverImageId}
+                            alt=""
+                            className="h-8 w-8 rounded object-cover"
+                            fallbackClassName="h-8 w-8 rounded"
+                            fallbackIcon={Shield}
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          className="mt-0.5 h-4 w-4 rounded-full shrink-0 shadow-sm"
+                          style={{ background: faction.color }}
+                        />
+                      )}
                       <span data-faction-name className="font-semibold text-sm line-clamp-2">{faction.name}</span>
                     </div>
                     {faction.description && (

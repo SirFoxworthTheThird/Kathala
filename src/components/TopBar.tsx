@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Search, ScrollText, ShieldAlert, HelpCircle, Menu, X, Undo2, Redo2, History } from 'lucide-react'
-import faviconUrl from '/favicon.svg'
+import faviconUrl from '/logo-128.png'
 import { useActiveWorldId, useActiveMapLayerId, useAppStore } from '@/store'
 import { useWorld } from '@/db/hooks/useWorlds'
 import { useMapLayer } from '@/db/hooks/useMapLayers'

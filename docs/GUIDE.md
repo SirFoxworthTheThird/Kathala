@@ -1951,6 +1951,20 @@ factions it is **allied** with or **hostile** to — so the political shape of t
 world reads off the roster rather than out of each faction in turn. A search box
 sits in the header, as on every other roster.
 
+A faction can also carry a **cover image** — a banner, a crest, a plate of its
+leaders. Open the faction and use **Upload** or **Link** at the top of its
+panel, the same two ways a place or a character gets a picture; **Remove** takes
+it away again. Where a faction has one, the roster card shows it in place of the
+colour dot, ringed in that faction's colour so the identity mark survives. A
+faction without one keeps the dot, so a world that uses no cover images looks
+exactly as it did.
+
+This is the right home for artwork that belongs to a group rather than to any
+one member — the three kings of Lion Camel Ridge in *Journey to the West* are
+one painting, not three portraits, so the picture is the faction's. While
+[reading](#reading-alongside-a-book) the cover is shown and its controls are not, and a
+faction with no cover shows a reader nothing rather than an empty slot.
+
 
 ![Factions](images/13-factions.png)
 

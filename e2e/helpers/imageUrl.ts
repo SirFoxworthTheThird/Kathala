@@ -10,8 +10,8 @@
  * same import stays `/favicon.png` and never collides, which is why this only
  * broke on a build.
  *
- * The logo is `favicon.svg` now, so that particular collision is gone — but the
- * rule it taught is not: pick a file `src/` never imports, or the app's own
- * chrome answers a locator meant for the fixture.
+ * The logo is `logo-128.png` now, cut from `favicon.ico`, so that particular
+ * collision is gone — but the rule it taught is not: pick a file `src/` never
+ * imports, or the app's own chrome answers a locator meant for the fixture.
  */
 export const IMAGE_URL = `${process.env.E2E_DEV ? 'http://localhost:5173' : 'http://localhost:4173'}/favicon.jpg`

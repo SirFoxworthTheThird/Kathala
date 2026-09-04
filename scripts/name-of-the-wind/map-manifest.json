@@ -1,0 +1,188 @@
+{
+  "generator": "built-in image_gen",
+  "status": "artwork-reviewed-application-validation-pending",
+  "inputPolicy": "Four new compositions generated from geographic briefs. Only main map used as aesthetic reference; no existing submap supplied or traced.",
+  "styleReference": "https://i.imgur.com/uwkHDDr.jpeg",
+  "sources": [
+    "https://kingkiller.fandom.com/wiki/The_University",
+    "https://kingkiller.fandom.com/wiki/Anker%27s",
+    "https://kingkiller.fandom.com/wiki/The_Archives",
+    "https://kingkiller.fandom.com/wiki/Haven",
+    "https://kingkiller.fandom.com/wiki/Mauthen_Farm",
+    "https://kingkiller.fandom.com/wiki/Trebon",
+    "https://thatshelf.com/page-of-the-wind-on-cities/",
+    "https://ezekeal.gitbooks.io/kingkiller-encyclopedia/content/present.html"
+  ],
+  "coordinateConvention": "x,y from PNG top-left; generator flips y once for Leaflet.",
+  "maps": [
+    {
+      "id": "notw-map-tarbean",
+      "url": "library/the-name-of-the-wind/maps/tarbean-atlas.png",
+      "width": 1536,
+      "height": 1024,
+      "prompt": "Use case: illustration-story. Create ONE brand-new fantasy cartographic map from scratch, landscape 3:2, high detail. The sole reference image is STYLE ONLY: borrow the fine black pen-and-ink engraving, delicate terrain hatching, sage/olive wooded areas, warm ivory land, pale turquoise water, muted terracotta roofs, elegant serif/italic lettering and ornamental atlas border. Do NOT copy its geography, title, publisher logo, characters, or compositions. This is an original unofficial reader's reconstruction, not an official map or a precise survey. Actual navigable map: elevated cartographic bird's-eye plan with visible roads, building footprints and terrain, no horizon. Mature literary fantasy atlas, no cartoony figures, chibi people, videogame battle grid, modern icon legend, pastel zoning patches, random text, fake place names, or sepia Chinese manuscript style. Small tasteful title cartouche, border kept out of usable terrain, no scale bar because exact distances are uncertain. All labels must be exact requested English text. Keep map spacious enough for app markers. Subject: Tarbean, a LARGE coastal port city from The Name of the Wind, not a small village. New original layout: city on a broad headland with a sweeping natural harbor on the southeast/right and lower edge, hinterland roads entering from northwest/upper-left. Dense maze of hundreds of narrow streets and rooflines in lower Waterside, quays, warehouses and numerous sailing-ship docks along harbor. Higher inland Hillside district in upper-left/upper-center, larger stone merchant houses, courtyards and broad cleaner streets, topographic hatching separating higher and lower ground; both districts WITHIN the city. A central connecting avenue and several smaller lanes make navigation clear. Five marked-by-architecture places, clearly separated: Hillside upper-left, Waterside center-lower, a small dockside tavern by the southeast quays, a distinctive connected roof cluster in poor western Waterside, a modest old building with visible external cellar steps beside a cramped western Waterside alley for Trapis's Cellar. These five should have labels 'Hillside', 'Waterside', 'Dockside Tavern', 'Rooftops', \"Trapis's Cellar\". Sea label 'The Reft'. Title 'Tarbean'. No river bisecting the city, no invented Omphalos River, cathedral name, named bridge, or other towns. Never use earlier Tarbean maps: only this new geographic brief.",
+      "review": "Opened and inspected the final artwork for map purpose, subject, style, labels and distinct landmarks. Every local location has an explicit newly selected anchor. In-app zoom/gateway/playback review remains pending.",
+      "anchors": {
+        "loc-tarbean-hillside": [
+          535,
+          270
+        ],
+        "loc-tarbean-waterside": [
+          675,
+          630
+        ],
+        "loc-tarbean-rooftops": [
+          215,
+          489
+        ],
+        "loc-trapis-cellar": [
+          228,
+          609
+        ],
+        "loc-dockside-tavern": [
+          985,
+          550
+        ]
+      }
+    },
+    {
+      "id": "notw-map-university",
+      "url": "library/the-name-of-the-wind/maps/university-atlas.png",
+      "width": 1536,
+      "height": 1024,
+      "prompt": "Use case: illustration-story. Create ONE brand-new fantasy cartographic map from scratch, landscape 3:2, high detail. The sole reference image is STYLE ONLY: borrow the fine black pen-and-ink engraving, delicate terrain hatching, sage/olive wooded areas, warm ivory land, pale turquoise water, muted terracotta roofs, elegant serif/italic lettering and ornamental atlas border. Do NOT copy its geography, title, publisher logo, characters, or compositions. This is an original unofficial reader's reconstruction, not an official map or a precise survey. Actual navigable map: elevated cartographic bird's-eye plan with visible roads, building footprints and terrain, no horizon. Mature literary fantasy atlas, no cartoony figures, chibi people, videogame battle grid, modern icon legend, pastel zoning patches, random text, fake place names, or sepia Chinese manuscript style. Small tasteful title cartouche, border kept out of usable terrain, no scale bar because exact distances are uncertain. All labels must be exact requested English text. Keep map spacious enough for app markers. Subject: The University and Imre from The Name of the Wind. Entirely NEW spacious landscape layout. University and its small surrounding student town occupy WEST/left half; larger city Imre occupies EAST/right half, with countryside gap between settlements and broad Omethi River curving north-south through center. One monumental old stone arched Stonebridge links the two via a winding road. WEST: campus distinct stone academic buildings, Mains lecture complex, large unadorned WINDOWLESS cuboid stone Archives with one doorway (no tower, no decorative windows), Fishery glass/metal workshop with broad roof and chimney, Medica, Masters' Hall and open University Courtyard. Modest Anker's Inn clearly in the surrounding WEST-bank student town, NOT in Imre. Haven a separate substantial stone asylum on a hill on WEST side, connected by campus path. Small ruined roofless stone courtyard for House of the Wind at campus edge; Underthing Entrance a discreet cellar stair near campus. A small lower-left bordered inset labelled 'The Underthing' with 3-4 old underground chambers, pipes and tunnels, explicitly schematic rather than invented exhaustive floorplan. EAST: Imre's packed streets, Eolian as an elegant music hall/inn, Devi's Rooms above a modest shop near the city edge, small riverside docks. Label exact: 'The University', 'Imre', 'Omethi River', 'Stonebridge', 'Archives', 'Anker’s', 'Haven', 'Eolian', 'Fishery', 'Medica', 'Mains', 'Masters’ Hall', 'Courtyard', 'House of the Wind', 'Underthing Entrance', 'Devi’s Rooms', 'Docks'. Title 'The University & Imre'. Distinct clear footprint for each. NO Waystone Inn anywhere. Do not copy an existing campus plan; spatial arrangement of individual buildings is editorial.",
+      "review": "Opened and inspected the final artwork for map purpose, subject, style, labels and distinct landmarks. Every local location has an explicit newly selected anchor. In-app zoom/gateway/playback review remains pending.",
+      "anchors": {
+        "loc-ankers": [
+          405,
+          711
+        ],
+        "loc-archives": [
+          339,
+          273
+        ],
+        "loc-fishery": [
+          228,
+          330
+        ],
+        "loc-medica": [
+          172,
+          421
+        ],
+        "loc-mains": [
+          500,
+          286
+        ],
+        "loc-masters-hall": [
+          590,
+          387
+        ],
+        "loc-university-courtyard": [
+          438,
+          436
+        ],
+        "loc-rookery": [
+          177,
+          172
+        ],
+        "loc-house-of-wind": [
+          620,
+          478
+        ],
+        "loc-underthing-entrance": [
+          367,
+          549
+        ],
+        "loc-underthing": [
+          153,
+          894
+        ],
+        "loc-stonebridge": [
+          937,
+          496
+        ],
+        "loc-eolian": [
+          1184,
+          590
+        ],
+        "loc-devi": [
+          1154,
+          714
+        ],
+        "loc-imre": [
+          1340,
+          390
+        ],
+        "loc-imre-docks": [
+          1203,
+          830
+        ]
+      }
+    },
+    {
+      "id": "notw-map-trebon",
+      "url": "library/the-name-of-the-wind/maps/trebon-atlas.png",
+      "width": 1536,
+      "height": 1024,
+      "prompt": "Use case: illustration-story. Create ONE brand-new fantasy cartographic map from scratch, landscape 3:2, high detail. The sole reference image is STYLE ONLY: borrow the fine black pen-and-ink engraving, delicate terrain hatching, sage/olive wooded areas, warm ivory land, pale turquoise water, muted terracotta roofs, elegant serif/italic lettering and ornamental atlas border. Do NOT copy its geography, title, publisher logo, characters, or compositions. This is an original unofficial reader's reconstruction, not an official map or a precise survey. Actual navigable map: elevated cartographic bird's-eye plan with visible roads, building footprints and terrain, no horizon. Mature literary fantasy atlas, no cartoony figures, chibi people, videogame battle grid, modern icon legend, pastel zoning patches, random text, fake place names, or sepia Chinese manuscript style. Small tasteful title cartouche, border kept out of usable terrain, no scale bar because exact distances are uncertain. All labels must be exact requested English text. Keep map spacious enough for app markers. Subject: Trebon and the surrounding countryside from The Name of the Wind. New original layout, no reused geography. Rolling farmland with wheat fields, pastures, scattered pine/fir woods, upland rocky bluffs, all inland. Small provincial town Trebon at lower-left/center; close-packed houses around a square with modest civic hall and prominent stone church with an iron wheel emblem, no modern architecture. Road enters from bottom-left marked 'Road to Imre' and winds through town. Mauthen Farm in countryside above/right of town: substantial farmhouse, barn, WINDMILL and fields; show intact neutral buildings without attack scene, blue fire or corpses to avoid spoilers. Further upland woods on upper-right contain clear exposed rocky 'Denner Bluffs', a modest secluded grove and small camp clearing but no monster pictured. A hill between town and uplands has one prominent weathered gray standing stone; label 'Greystone Hill'. Distinct town center, town hall, countryside/fields, farmstead, bluffs, greystone hill and arriving road for seven location markers. Label only 'Trebon', 'Town Hall', 'Mauthen Farm', 'Denner Bluffs', 'Greystone Hill', 'Road to Imre', 'Countryside'. Title 'Trebon & the Uplands'. Schematic arrangement of farm and hill is editorial, no precise survey claim, no unexplained lake, named river, mine carts or industrial mine symbols. Rural detail and winding field boundaries, not colored abstract regions.",
+      "correctionPrompt": "Use case: precise-object-edit. Edit this newly generated Trebon map. Change ONLY the small civic building in the town square immediately below-left of the 'Town Hall' label (near pixel 280,680 in this 1536x1024 image). It should be a modest rectangular stone TOWN HALL with a FLAT ROOF and a clearly visible rooftop water cistern and access ladder, as used in The Name of the Wind. Keep the separate large Tehlin church with its wheel at (425,540) unchanged. Preserve every other landmark, road, label, field, hill, original 1536x1024 framing and the existing engraved atlas illustration style. No other edits.",
+      "review": "Opened and inspected the final artwork for map purpose, subject, style, labels and distinct landmarks. Every local location has an explicit newly selected anchor. In-app zoom/gateway/playback review remains pending.",
+      "anchors": {
+        "loc-trebon-town": [
+          405,
+          715
+        ],
+        "loc-trebon-hall": [
+          310,
+          680
+        ],
+        "loc-trebon-road": [
+          179,
+          912
+        ],
+        "loc-trebon-countryside": [
+          767,
+          425
+        ],
+        "loc-mauthen-farm": [
+          620,
+          282
+        ],
+        "loc-greystone-hill": [
+          1090,
+          570
+        ],
+        "loc-denner-bluffs": [
+          1220,
+          290
+        ]
+      }
+    },
+    {
+      "id": "notw-map-waystone",
+      "url": "library/the-name-of-the-wind/maps/waystone-atlas.png",
+      "width": 1536,
+      "height": 1024,
+      "prompt": "Use case: illustration-story. Create ONE brand-new fantasy cartographic map from scratch, landscape 3:2, high detail. The sole reference image is STYLE ONLY: borrow the fine black pen-and-ink engraving, delicate terrain hatching, sage/olive wooded areas, warm ivory land, pale turquoise water, muted terracotta roofs, elegant serif/italic lettering and ornamental atlas border. Do NOT copy its geography, title, publisher logo, characters, or compositions. This is an original unofficial reader's reconstruction, not an official map or a precise survey. Actual navigable map: elevated cartographic bird's-eye plan with visible roads, building footprints and terrain, no horizon. Mature literary fantasy atlas, no cartoony figures, chibi people, videogame battle grid, modern icon legend, pastel zoning patches, random text, fake place names, or sepia Chinese manuscript style. Small tasteful title cartouche, border kept out of usable terrain, no scale bar because exact distances are uncertain. All labels must be exact requested English text. Keep map spacious enough for app markers. Subject: Newarre and the Waystone Inn, frame story of The Name of the Wind. Entirely new geographically modest map: tiny rural village clustered around a simple road junction slightly right of center, farms with field strips, hedges, orchards and scattered barns around it. The Waystone Inn is a clearly identifiable generous TWO-STOREY timber-and-stone country inn with slate roof, rear kitchen wing and stable yard close to village center; not a castle, not remote miles outside town. Several modest houses, a smithy with small forge shed and a shop are atmospheric unnamed buildings, no invented named monuments or Grave of Ben. A narrow country road from left enters village and continues gently into distance at right, another small footpath turns north through fields toward woods. Upper-left wooded outskirts contain a DISTINCT ruined farmhouse: roofless stone walls around an old hearth, grassy enclosed clearing, small cold firepit, no creatures, battle or spoilery title. Mark this as 'Ruined House'. Title 'Newarre & the Waystone'. Exact other labels: 'Newarre', 'Waystone Inn', 'Country Road', 'Fields', 'Woodland'. No provincial name, no Atur/Vintas assertion, no invented river names, no huge mountains or major fortified city. Quiet intimate local atlas sheet, broad enough to show village-to-ruin travel along a continuous footpath; only known broad relationships, distances and exact orientation editorial.",
+      "review": "Opened and inspected the final artwork for map purpose, subject, style, labels and distinct landmarks. Every local location has an explicit newly selected anchor. In-app zoom/gateway/playback review remains pending.",
+      "anchors": {
+        "loc-waystone-inn": [
+          965,
+          529
+        ],
+        "loc-newarre-square": [
+          874,
+          618
+        ],
+        "loc-scrael-camp": [
+          205,
+          153
+        ],
+        "loc-newarre-road": [
+          286,
+          578
+        ]
+      }
+    }
+  ]
+}

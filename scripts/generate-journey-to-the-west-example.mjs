@@ -27,12 +27,14 @@
   through, that puts his birth somewhere around 400 BCE. The Lore shows the
   working and says plainly that it is a reconstruction.
 
-  Artwork (EX-301/EX-306/EX-307): the maps and every character, place and item
-  plate are AI-generated pictures supplied by this repository's owner, who
+  Artwork (EX-301/EX-306/EX-307): the original maps and entity
+  plates are AI-generated pictures supplied by this repository's owner, who
   states they are their own work. None is public domain, and SOURCES.md and
   the Lore say so. Each was opened and checked against the entity it is
   attached to before it was assigned; where a picture is captioned wrongly or
-  draws something the book does not, the Lore says which and why.
+  draws something the book does not, the Lore says which and why. Additional
+  entity illustrations generated at their request are recorded separately in
+  journey-to-the-west/generated-art-manifest.json and SOURCES.md.
 */
 import fs from 'node:fs'
 
@@ -94,13 +96,28 @@ const mapRows = [
   ['dragon-palace', 'world', 'The Dragon Palace of the Eastern Sea', 'The undersea halls the cudgel is taken from: the crystal palace, the throne, the armoury, and the pillar that gauges the depth of the sea.', 1024, 559, 'dragon-palace.jpg'],
   ['underworld', 'world', 'The Underworld Courts', 'The bureaucracy below: the Gate of Ghosts, the bridge, the river, the Hall of Judgment, the register — and the hells drawn along the bottom of the sheet.', 1024, 572, 'underworld.jpg'],
 ]
+const mapArt = JSON.parse(fs.readFileSync('scripts/journey-to-the-west/generated-map-manifest.json', 'utf8'))
+const originalMapSizes = new Map(mapRows.map(([slug, , , , w, h]) => [slug, [w, h]]))
+const mapArtBySlug = new Map(mapArt.assets.map((asset) => [asset.slug, asset]))
+for (const row of mapRows) {
+  const asset = mapArtBySlug.get(row[0])
+  if (!asset) continue
+  const bytes = fs.readFileSync(`public/${repo}/maps/${asset.file}`)
+  if (bytes.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a' ||
+      bytes.readUInt32BE(16) !== asset.width || bytes.readUInt32BE(20) !== asset.height) {
+    throw new Error(`Map PNG dimensions do not match manifest: ${asset.slug}`)
+  }
+  row[4] = asset.width
+  row[5] = asset.height
+  row[6] = asset.file
+}
 const maps = mapRows.map(([slug, parent, name, description, imageWidth, imageHeight, file]) => ({
   ...base,
   id: M(slug),
   parentMapId: parent ? M(parent) : null,
   name,
   description,
-  imageId: image(`map-${slug}`, `maps/${file}`),
+  imageId: image(`map-${slug}`, `maps/${file}`, file.endsWith('.png') ? 'image/png' : 'image/jpeg'),
   imageWidth,
   imageHeight,
   /* No scale. The road map is a pictorial strip, not a survey, and the book's
@@ -312,6 +329,15 @@ const locRows = [
 
 const locations = locRows.map(([slug, mapSlug, name, description, linked, x, displayY, iconType, art]) => {
   const layer = maps.find((m) => m.id === M(mapSlug))
+  const replacement = mapArtBySlug.get(mapSlug)
+  if (replacement) {
+    const [oldWidth, oldHeight] = originalMapSizes.get(mapSlug)
+    const anchor = replacement.anchors[slug]
+    if (!anchor && mapSlug !== 'route') throw new Error(`Missing manuscript map anchor: ${slug}`)
+    ;[x, displayY] = anchor ?? [x * layer.imageWidth / oldWidth, displayY * layer.imageHeight / oldHeight]
+    x = Math.round(x)
+    displayY = Math.round(displayY)
+  }
   return {
     ...base,
     id: L(slug),
@@ -2806,10 +2832,10 @@ const loreRows = [
     'Chapters, chapter titles, characters, places and events follow the complete hundred-chapter Chinese text at Chinese Wikisource (西遊記), read chapter by chapter; the reading record is kept beside the generator in scripts/journey-to-the-west/scene-ledger.md. Every summary, description and status note in this world is original structural writing about the book — none of the novel’s prose is reproduced here, in Chinese or in translation. Names are given in the forms an English-language reader is most likely to meet: Tripitaka rather than Xuanzang for the pilgrim, Sun Wukong rather than the Monkey King where both are used.',
     'stone-monkey-born', null],
   ['pictures', 'sources', 'The Pictures in This World',
-    'Every map, portrait, place and item picture here is an AI-generated image supplied by this world’s author, who states they are their own work. None of it is public domain and none of it comes from an edition of the novel. Each picture was opened and checked against the entity it is attached to before it was assigned. A great many characters and places have no picture at all rather than a borrowed or approximate one, which is the honest state of the set: SOURCES.md lists what is missing. The one exception is the cover, which is a leaf of the 1592 Shidetang Hall imprint — the edition in which this novel was first printed with pictures — showing Sun Wukong with the cudgel outside the Plantain Cave. That one is genuinely public domain and genuinely from the book.',
+    'The maps and original illustrated plates were supplied by this world’s author as their own AI-generated work. Additional entity illustrations were generated with OpenAI image generation at the author’s request, using the supplied artwork as style references, and visually reviewed before assignment. These are modern interpretations, not historical illustrations from an edition of the novel. The generation manifest records each additional subject and prompt; SOURCES.md distinguishes these additions from the original set. The cover is different: a leaf of the public-domain 1592 Shidetang Hall imprint, showing Sun Wukong with the cudgel outside the Plantain Cave.',
     'stone-monkey-born', null],
   ['maps', 'sources', 'The Maps in This World',
-    'There are seven layers: the road west, Chang’an, Vulture Peak, Flower-Fruit Mountain, the celestial court, the dragon palace and the underworld. All are paintings rather than surveys, none carries a scale, and nothing in them should be read as a distance — the book’s own figures are religious numbers rather than measurements. Where the road painting names a feature, the marker sits on that name even when the book’s order would put it elsewhere: that is why the road doubles back east once, between the Guanyin Monastery and Gao Village, because the painting puts the village inside the Tang frontier and the text puts it a long way past. The painting also carries some mangled English lettering, including a "Thunderbolt Temple" spelt with an O and a duplicated Tang border. Places the paintings do not draw at all — Subhuti’s cave, the Jing River, the ford where Chen Guangrui was killed and a dozen caves — are pinned along the drawn road between the features that bracket them in the text, and SOURCES.md lists every one of those as an approximation.',
+    'There are eight layers: the Four Continents cosmological chart and seven nested maps covering the road west, Chang’an, Vulture Peak, Flower-Fruit Mountain, the celestial court, the dragon palace and the underworld. The seven submaps are modern AI-generated, late-Ming-inspired Chinese pictorial map sheets, depicting the novel’s Tang-era and mythological settings. Their ink, mineral washes and paper treatment evoke traditional manuscript cartography; they are not historical documents or archaeological reconstructions. English place names are supplied by the application markers rather than printed on the sheets. The original Four Continents chart is retained. None of these maps is a survey or carries a distance scale. Smaller road locations remain editorial approximations within the schematic landscape, not geographically verified sites; spatial placement must not be used to infer historical distances. The map manifest records the replacement artwork, prompts and landmark anchors, and the review notes distinguish artwork inspection from pending application validation.',
     'famen-temple', null],
 ]
 const lorePages = loreRows.map(([slug, cat, title, body, visible, art]) => ({
@@ -2964,6 +2990,23 @@ const timelineRelationships = [
     description: 'The pilgrimage is the sentence handed down at the end of the frame. The disciple under the mountain, the fillet, the ownership of half the demons on the road and the Buddha who charges for the scriptures are all set up in chapters one to eight and settled in the ninety-two after them.',
   },
 ]
+
+// Additional plates are generated separately, reviewed, and retained in the
+// repository. Keep this assignment here so regeneration cannot lose their links.
+const generatedArtManifest = JSON.parse(fs.readFileSync(new URL('./journey-to-the-west/generated-art-manifest.json', import.meta.url), 'utf8'))
+const generatedTargets = new Set()
+for (const asset of generatedArtManifest.assets) {
+  const match = /^public\/library\/journey-to-the-west\/(art\/(characters|places|factions)\/([a-z0-9-]+)\.png)$/.exec(asset.file)
+  if (!match || !asset.review || !fs.existsSync(asset.file)) throw new Error(`Unreviewed or missing generated artwork: ${asset.file}`)
+  const [, path, kind, slug] = match
+  const [collection, entityId, field] = kind === 'characters'
+    ? [characters, C(slug), 'portraitImageId']
+    : kind === 'places' ? [locations, L(slug), 'imageId'] : [factions, F(slug), 'coverImageId']
+  const entity = collection.find((entry) => entry.id === entityId)
+  if (!entity || entity[field] || generatedTargets.has(entityId)) throw new Error(`Invalid generated artwork target: ${entityId}`)
+  generatedTargets.add(entityId)
+  entity[field] = image(`generated-${kind}-${slug}`, path, 'image/png')
+}
 
 const data = {
   version: 16,
@@ -3230,7 +3273,7 @@ const entry = {
   data: 'journey-to-the-west.pwk',
   dataBytes: Buffer.byteLength(text),
   counts: { characters: characters.length, chapters: chapters.length, events: events.length, locations: locations.length },
-  notice: 'Unofficial reference for a public-domain novel. This example contains original structural summaries and a reconstructed chronology, not the novel’s prose. The chapter titles are the book’s own couplets, rendered in English; the verbatim Chinese ships beside the generator script. Every map and picture except the cover is the world author’s own AI-generated work and is not public domain; the cover is a leaf of the 1592 Shidetang first edition. SOURCES.md and the Lore say so.',
+  notice: 'Unofficial reference for a public-domain novel. This example contains original structural summaries and a reconstructed chronology, not the novel’s prose. The chapter titles are the book’s own couplets, rendered in English; the verbatim Chinese ships beside the generator script. The maps and illustrations are modern AI-generated interpretations: original artwork supplied by the world author, with additional illustrations generated at their request. The cover is a public-domain leaf of the 1592 Shidetang first edition. SOURCES.md and the generation manifest record provenance.',
   worldId,
   cover: `${repo}/art/cover.jpg`,
 }
