@@ -3,11 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <!--
-      The SVG, not the PNG. `favicon.png` is 3.98 MB — it is the source art for
-      the packaged desktop icon, and it was being downloaded and decoded by every
-      browser to draw a 16px tab icon and, through `TopBar`, a 28px logo. The SVG
-      is the same mark at 9.5 KB. `favicon.png` stays in `public/` because
-      `electron/main.cjs` needs a raster for the window icon.
+      The SVG is the canonical browser and in-app mark. Raster variants remain
+      in `public/` for desktop packaging, operating-system shortcuts, and legacy
+      browser support.
     -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
