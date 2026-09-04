@@ -3,26 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <!--
-      The tab icon is a 32px PNG cut from `favicon.ico`, which is the app's real
-      logo — the PW monogram on a parchment map, at seven sizes from 16 to 256.
-
-      It used to point at `favicon.png`: the same logo, but a 1552×1570 master at
-      **3.98 MB**, downloaded and decoded by every browser to draw sixteen
-      pixels. `TopBar` and `WorldSelectorView` imported the same file for a 28px
-      and a 40px logo, so a first visit paid for it once and used it three times.
-      Together with `logo-128.png` that is 4,173,455 bytes down to 39,522.
-
-      A caution for anyone tidying `public/`: not every file named `favicon` is
-      this logo. `favicon.jpg` is a bronze compass, kept only as an e2e fixture.
-      A `favicon.svg` used to sit here too — an unrelated purple-and-blue design
-      — and this link was once pointed at it on the assumption that a shared
-      name meant shared artwork, which silently replaced the brand. It has been
-      removed; check what a file *is* before trusting what it is called.
-
-      `favicon.ico`, `favicon.icns` and `favicon.png` all stay in `public/`:
-      `forge.config.cjs` names them by extensionless path, so packaging picks the
-      right one per platform, and `electron/main.cjs` needs the PNG for the
-      window icon.
+      The tab uses a dedicated 32px rendering of the Story Gate mark, while the
+      top bar and world selector use `logo-128.png`. The larger PNG, ICO, and ICNS
+      variants remain for Electron and operating-system packaging.
     -->
     <link rel="icon" type="image/png" href="/favicon-32.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

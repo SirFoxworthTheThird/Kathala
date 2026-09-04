@@ -1,7 +1,7 @@
 # PlotWeave
 
 <p align="center">
-  <img src="icon/plotweave.png" alt="PlotWeave" width="180" />
+  <img src="public/logo-128.png" alt="PlotWeave" width="180" />
 </p>
 
 <p align="center">

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">PlotWeave Story Gate</title>
+  <desc id="desc">Two story paths weave into a gateway around a guiding ember.</desc>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="13">
+    <path stroke="#0e2748" d="M19 108C34 103 48 95 57 82C66 69 57 59 47 50C35 39 37 24 47 15C56 7 68 9 75 15"/>
+    <path stroke="#d8b36a" d="M109 108C94 103 80 95 71 82C62 69 71 59 81 50C93 39 91 24 81 15C72 7 60 9 53 15"/>
+  </g>
+  <path fill="#ff684d" d="M64 31c2 7 5.4 10.4 12.4 12.4C69.4 45.4 66 48.8 64 55.8c-2-7-5.4-10.4-12.4-12.4C58.6 41.4 62 38 64 31Z"/>
+</svg>
