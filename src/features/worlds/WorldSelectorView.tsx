@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo } from 'react'
-import faviconUrl from '/favicon.png'
+import faviconUrl from '/logo-128.png'
 import { Plus, Scroll, Upload, Sparkles, AlertCircle, FileText, BookOpen } from 'lucide-react'
 import { useWorlds } from '@/db/hooks/useWorlds'
 import { Button } from '@/components/ui/button'

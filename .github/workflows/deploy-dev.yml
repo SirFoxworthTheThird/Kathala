@@ -32,6 +32,18 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build # tsc -b && vite build → dist/
+
+      # This site and the released one at plotweave.netlify.app are the same
+      # app, so left alone they compete with each other in search results — and
+      # the one built from `development` is the one a stranger should never
+      # land on. Written into the artifact rather than into `public/`, which
+      # both builds share and which would take the released site out of search
+      # along with this one.
+      - name: Keep the test build out of search results
+        run: |
+          printf 'User-agent: *\nDisallow: /\n' > dist/robots.txt
+          cat dist/robots.txt
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

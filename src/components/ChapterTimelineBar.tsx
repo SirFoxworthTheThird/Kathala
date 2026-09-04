@@ -1,7 +1,7 @@
 import { useEffect, useRef, useMemo, useState } from 'react'
 import { useActiveWorldId, useActiveEventId, useAppStore } from '@/store'
 import {
-  useTimelines, useChapters, useTimelineEvents, useWorldChapters, useWorldEvents,
+  useTimelines, useChapters, useTimelineEvents, useWorldChapters, useWorldEvents, useAllWorldEvents,
 } from '@/db/hooks/useTimeline'
 import { useTimelineRelationships } from '@/db/hooks/useTimelineRelationships'
 import {
@@ -141,6 +141,24 @@ export function ChapterTimelineBar() {
 
   const worldChapters   = useWorldChapters(isCombined ? worldId : null)
   const worldEvents     = useWorldEvents(isCombined ? worldId : null)
+  /*
+    The same sequence twice: gated for what the bar draws, ungated for what
+    stepping through it may reach.
+
+    `useAllWorldEvents` says why in its own doc — "gating its own list would
+    strand the reader at the moment they had reached" — and the single-track
+    and frame tracks already obey it, because they feed playback from
+    `useTimelineEvents`, which is ungated. Merged mode did not: it handed the
+    gated list to `useTimelinePlayback`, so in reading mode the sequence ended
+    at the cursor, the very first tick found itself on the last event, and
+    playback switched itself off without moving. The button said "Playing…"
+    for one hold and then went back to "Play".
+
+    It only showed on a world with two or more timelines and no frame
+    relationship between them, which is the one shape that lands in merged
+    mode — so it sat here until a world of that shape shipped.
+  */
+  const allWorldEvents  = useAllWorldEvents(isCombined ? worldId : null)
 
   // ── Frame-track derived data ───────────────────────────────────────────────
   const frameChapters = activeDepthTimelineId === innerTimelineId ? innerChapters  : outerChapters
@@ -156,7 +174,17 @@ export function ChapterTimelineBar() {
     [isCombined, worldEvents, worldChapters, timelines, combinedOrder],
   )
   const runs          = useMemo(() => groupChapterRuns(combinedRows), [combinedRows])
-  const combinedOrdered = useMemo(() => combinedRows.map((r) => r.event), [combinedRows])
+  /*
+    Built from the ungated events and used only for stepping. What is drawn
+    still comes from `combinedRows`, so an unread chapter's title stays
+    withheld (R14) — this list is never rendered, only walked.
+  */
+  const combinedOrdered = useMemo(
+    () => (isCombined
+      ? buildCombinedSequence(allWorldEvents, worldChapters, timelines, combinedOrder).map((r) => r.event)
+      : []),
+    [isCombined, allWorldEvents, worldChapters, timelines, combinedOrder],
+  )
 
   /*
     Chapter numbers for the jump guard, over whichever sets this bar is holding.

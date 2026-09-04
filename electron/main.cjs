@@ -21,6 +21,18 @@ function createWindow() {
     backgroundColor: '#1a2535',
   })
 
+  /*
+    The HTML `<title>` is written for a search result and a shared link — "a
+    story bible that knows what time it is" — and a desktop window wants the
+    app's name. Electron lets the page title win the moment it loads, so
+    without this the title bar and the taskbar read the whole tagline. The
+    `title` option above is the one that should hold.
+
+    Kept honest by `src/lib/__tests__/indexHtml.test.ts`, which knows about
+    both halves.
+  */
+  win.on('page-title-updated', (event) => event.preventDefault())
+
   win.once('ready-to-show', () => win.show())
 
   // Open external links in the system browser, not inside the app

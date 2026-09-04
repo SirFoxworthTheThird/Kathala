@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Preservation wrapper for the approved PlotWeave Story Gate artwork.
+
+  The source artwork was produced as a transparent raster illustration. This
+  SVG intentionally references that exact master rather than approximating it
+  with different vector geometry. Keep plotweave.svg and plotweave.png together.
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="1208"
+     height="1302"
+     viewBox="0 0 1208 1302"
+     role="img"
+     aria-labelledby="title description">
+  <title id="title">PlotWeave Story Gate</title>
+  <desc id="description">Two story paths weave through a tall gateway around a guiding ember.</desc>
+  <image href="plotweave.png"
+         xlink:href="plotweave.png"
+         width="1208"
+         height="1302"
+         preserveAspectRatio="xMidYMid meet" />
+</svg>

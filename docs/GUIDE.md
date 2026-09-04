@@ -47,7 +47,7 @@ what you are allowed to reuse.
 - **Library cover images**, when you open the Library and scroll to a card.
 - **Pictures inside the library worlds themselves.** These are linked rather
   than bundled: character portraits, location and item pictures, map images,
-  faction and world covers. Across the shipped library that is a little over
+  faction and world covers. Across the shipped library that is just under
   1,700 images from around sixty different sites — Wikimedia Commons and
   Project Gutenberg for well over half of them, and a long tail of others. So
   opening a downloaded book contacts those sites for as long as the pictures are
@@ -285,7 +285,7 @@ phone.
 
 Books whose cover is a linked image show it on the card. **These are the only
 pictures in PlotWeave that are not on your own machine.** The cover is fetched
-from wherever it is hosted — currently 23 of the 25 entries, from a mix of
+from wherever it is hosted — currently 26 of the 32 entries, from a mix of
 Wikimedia Commons, Project Gutenberg, and a few commercial sites — so opening
 the Library asks those hosts for an image, and they see your IP address and that
 you opened it. Nothing about your worlds is sent, and nothing is uploaded; it is
@@ -369,9 +369,12 @@ too, but they move a scene at a time, so they are for nudging along rather than
 for jumping.
 
 **Your place in the book is yours to move.** While reading, only the controls
-that say they move it do: the previous/next moment steppers, and **Read to
+that say they move it do: the previous/next moment steppers, **Read to
 here** on a chapter row (a writer sees the same control as *View from here*,
-because for them it moves a viewfinder rather than a bookmark). Looking at something — a scene on the Calendar, a
+because for them it moves a viewfinder rather than a bookmark), and **play**,
+which is the same thing on a timer — it walks your place forward a scene at a
+time and reveals each one as it arrives, in every bar scope including a merged
+view of several timelines. Looking at something — a scene on the Calendar, a
 search result, a stop on a character's journey, a row in their history — shows
 it to you without quietly relocating your bookmark. Where a control's only job
 was moving the cursor, it becomes a label rather than a button, so nothing on
@@ -1947,6 +1950,20 @@ Each card shows the faction's colour, its member count, and how many other
 factions it is **allied** with or **hostile** to — so the political shape of the
 world reads off the roster rather than out of each faction in turn. A search box
 sits in the header, as on every other roster.
+
+A faction can also carry a **cover image** — a banner, a crest, a plate of its
+leaders. Open the faction and use **Upload** or **Link** at the top of its
+panel, the same two ways a place or a character gets a picture; **Remove** takes
+it away again. Where a faction has one, the roster card shows it in place of the
+colour dot, ringed in that faction's colour so the identity mark survives. A
+faction without one keeps the dot, so a world that uses no cover images looks
+exactly as it did.
+
+This is the right home for artwork that belongs to a group rather than to any
+one member — the three kings of Lion Camel Ridge in *Journey to the West* are
+one painting, not three portraits, so the picture is the faction's. While
+[reading](#reading-alongside-a-book) the cover is shown and its controls are not, and a
+faction with no cover shows a reader nothing rather than an empty slot.
 
 
 ![Factions](images/13-factions.png)
