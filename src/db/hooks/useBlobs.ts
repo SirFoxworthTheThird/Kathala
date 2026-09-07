@@ -47,16 +47,44 @@ function isBundledAsset(url: string): boolean {
   return !/^[a-z][a-z0-9+.-]*:/i.test(url) && !url.startsWith('/')
 }
 
+/**
+ * Where a bundled asset is actually served from.
+ *
+ * On the web this is the document's own base, and a stored `library/…` path
+ * resolves against the site that served the page — same origin, exactly as
+ * W23-7 intended.
+ *
+ * The desktop build sets `VITE_ASSET_BASE_URL` instead, because a packaged app
+ * loads over `file://` and "resolve against the document" then means "a file
+ * inside the installer". Shipping the artwork to satisfy that put **1,045 MB**
+ * of pictures into every download — and silently broke the Windows installer,
+ * whose 32-bit packager cannot embed a payload that size (v1.1.0 shipped a
+ * `Setup.exe` containing nothing at all). Pointing the desktop build at a CDN
+ * copy of the same files removes the weight rather than compressing it.
+ *
+ * The stored paths never change, so this is the only place that knows.
+ */
+function assetBaseUrl(): string {
+  return import.meta.env.VITE_ASSET_BASE_URL || import.meta.env.BASE_URL
+}
+
+/**
+ * Join an asset base to a stored path.
+ *
+ * The slash-collapsing leaves `https://` alone: `[^:]` cannot match the colon
+ * before it, and the character before *that* colon is not followed by a slash.
+ */
+export function resolveBundledAsset(url: string, base: string): string {
+  return `${base}${url}`.replace(/([^:]\/)\/+/g, '$1')
+}
+
 /** Resolve a blob entry to a usable image URL — a file this app ships, its
  *  external link, or an object URL for uploaded binary data. */
 export function blobEntryUrl(entry: BlobEntry | undefined): string | undefined {
   if (!entry) return undefined
   if (entry.url) {
     return isBundledAsset(entry.url)
-      // `BASE_URL` is `./` in this project, so this resolves against the
-      // document — correct at a domain root, under a Pages subpath, and in the
-      // Electron build, none of which the stored path has to know about.
-      ? `${import.meta.env.BASE_URL}${entry.url}`.replace(/([^:]\/)\/+/g, '$1')
+      ? resolveBundledAsset(entry.url, assetBaseUrl())
       : entry.url
   }
   if (entry.data) return URL.createObjectURL(entry.data)

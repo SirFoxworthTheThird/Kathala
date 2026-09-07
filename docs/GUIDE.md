@@ -21,7 +21,8 @@ which is also why exporting is worth doing.
 no stylesheets — so opening it offline behaves exactly as opening it online
 does, and it paints without waiting on anyone. (It used to fetch a webfont from
 Google Fonts on every page load, for a typeface it never actually used.) The
-desktop build and the browser build behave the same way.
+desktop build and the browser build behave the same way, with one exception
+noted below: the library's own artwork.
 
 **Pictures are the exception, and they are ordinary web requests that carry
 nothing about your work.** A picture in PlotWeave is either a file you uploaded
@@ -45,6 +46,13 @@ copying it into a file you then export are different acts, and only you know
 what you are allowed to reuse.
 
 - **Library cover images**, when you open the Library and scroll to a card.
+- **The library's own artwork, in the desktop app only.** The browser build
+  serves these from the same place it serves the app, so they are not a request
+  to anyone else. The desktop app cannot: it has no site to serve them from, and
+  carrying them inside the installer meant a download of well over a gigabyte
+  for 33 books you may never open. So it fetches them from jsDelivr, a public
+  mirror of this project's own files, pinned to the version you installed. The
+  pictures are the same files either way.
 - **Pictures inside the library worlds themselves.** These are linked rather
   than bundled: character portraits, location and item pictures, map images,
   faction and world covers. Across the shipped library that is just under
@@ -285,7 +293,7 @@ phone.
 
 Books whose cover is a linked image show it on the card. **These are the only
 pictures in PlotWeave that are not on your own machine.** The cover is fetched
-from wherever it is hosted — currently 26 of the 32 entries, from a mix of
+from wherever it is hosted — currently 26 of the 33 entries, from a mix of
 Wikimedia Commons, Project Gutenberg, and a few commercial sites — so opening
 the Library asks those hosts for an image, and they see your IP address and that
 you opened it. Nothing about your worlds is sent, and nothing is uploaded; it is

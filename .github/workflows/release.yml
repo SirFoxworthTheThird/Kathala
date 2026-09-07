@@ -156,6 +156,37 @@ jobs:
         shell: bash
         run: ls -l artifacts
 
+      # Squirrel builds the Windows installer by embedding the app package into
+      # a 223 KB stub, using a 32-bit tool that needs the payload in memory
+      # twice. Past about a gigabyte it runs out of address space, writes
+      # nothing, and **exits 0** — the maker prints a tick, the build is green,
+      # and the installer that ships is the empty stub. v1.1.0 was built,
+      # uploaded and nearly published that way; the only outward sign was a
+      # 223 KB file where 237 MB was expected.
+      #
+      # A working installer is the package plus that stub, so the two are within
+      # a rounding error of each other. Half is far below anything legitimate
+      # and far above a payload-free stub.
+      - name: Check the Windows installer carries its payload
+        shell: bash
+        run: |
+          shopt -s nullglob
+          setup=(artifacts/*Setup.exe)
+          nupkg=(artifacts/*-full.nupkg)
+          if [ ${#setup[@]} -eq 0 ] || [ ${#nupkg[@]} -eq 0 ]; then
+            echo "::error::No Windows installer or package in artifacts/ — the Windows build did not deliver."
+            exit 1
+          fi
+          setup_size=$(stat -c%s "${setup[0]}")
+          nupkg_size=$(stat -c%s "${nupkg[0]}")
+          echo "installer $(basename "${setup[0]}"): ${setup_size} bytes"
+          echo "package   $(basename "${nupkg[0]}"): ${nupkg_size} bytes"
+          if [ "$setup_size" -lt $((nupkg_size / 2)) ]; then
+            echo "::error::The installer is ${setup_size} bytes against a ${nupkg_size} byte package — it carries no payload and will not install."
+            exit 1
+          fi
+          echo "The installer carries its payload."
+
       # The notes for a version live at `docs/release-notes/<version>.md`, so
       # writing them is an ordinary reviewed change rather than something typed
       # into the Releases page once and never seen again. A version without a
@@ -243,15 +274,20 @@ jobs:
             exit 1
           fi
           # The body is what the composed file says, not the previous run's.
-          # Line endings are normalised on both sides before comparing, so this
-          # is a check on what the notes say rather than on how they are
-          # encoded. A release body composed by this workflow comes back as it
-          # was sent; a body that had been through the Releases page might not.
-          jq -r '.body' release.json | tr -d '\r' > release-body-got.md
-          tr -d '\r' < RELEASE_BODY.md > release-body-want.md
-          if ! diff -q release-body-got.md release-body-want.md > /dev/null; then
+          #
+          # Compared as shell strings rather than as files, because `$( )`
+          # strips trailing newlines from both sides and the two disagree about
+          # exactly one: `jq -r` prints a newline after a value that already
+          # ends in one. Comparing the files failed on that alone — `130d129`,
+          # one empty line — while the notes were identical. Carriage returns
+          # go too, so this asks what the notes say rather than how they are
+          # encoded; every other difference, including a single changed word,
+          # still fails the run.
+          got=$(jq -r '.body' release.json | tr -d '\r')
+          want=$(tr -d '\r' < RELEASE_BODY.md)
+          if [ "$got" != "$want" ]; then
             echo "::error::Release $RELEASE_ID does not carry the notes composed for $VERSION."
-            diff release-body-got.md release-body-want.md | head -40
+            diff <(printf '%s\n' "$got") <(printf '%s\n' "$want") | head -40
             exit 1
           fi
           echo "Release $RELEASE_ID tags $VERSION at $GITHUB_SHA and carries its notes."
