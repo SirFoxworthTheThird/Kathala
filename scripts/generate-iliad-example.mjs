@@ -37,8 +37,8 @@ const characterArt = {
   'scamander-god':'olympians',
 }
 const itemArt = {
-  'achilles-armour':'objects', 'new-armour':'objects', shield:'objects', 'agamemnon-sceptre':'objects',
-  'achilles-spear':'objects', 'hector-helmet':'objects', 'chryses-ransom':'objects', belt:'objects',
+  'achilles-armour':'achilles', 'new-armour':'objects', shield:'objects', 'agamemnon-sceptre':'objects',
+  'achilles-spear':'objects', 'hector-helmet':'hector-family', 'chryses-ransom':'objects', belt:'objects',
   'palladium-robe':'objects', 'patroclus-body':'patroclus-battle', 'hector-body':'cover', 'funeral-prizes':'objects',
 }
 const mapLayers = [{ ...base, id: mapId, parentMapId: null, name: 'Troy and the Achaean Shore', description: 'An interpretive theatre map for the plain of Troy, the city, the Achaean camp, Mount Ida, and the surrounding coast.', imageId: mapImageId, imageWidth: 1200, imageHeight: 686, scalePixelsPerUnit: null, scaleUnit: null, levelGroupId: null, levelIndex: 0, levelLabel: '' }]
