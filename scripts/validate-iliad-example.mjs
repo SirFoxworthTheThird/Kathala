@@ -89,6 +89,14 @@ assert.equal(entry.dataBytes, libraryBytes.length, 'Catalogue byte size')
 assert.equal(entry.worldId, data.world.id, 'Catalogue world id')
 assert.deepEqual(entry.counts, { characters: 52, chapters: 24, events: 75, locations: 17 }, 'Catalogue counts')
 
+const manifest = JSON.parse(fs.readFileSync('scripts/iliad/asset-manifest.json', 'utf8'))
+assert.equal(manifest.assets.length, data.blobs.length, 'Manifest asset count')
+assert.deepEqual(new Set(manifest.assets.map(asset => asset.id)), new Set(data.blobs.map(blob => blob.id)), 'Manifest image ids')
+for (const asset of manifest.assets) {
+  const exists = fs.existsSync(path.join('public', asset.path))
+  assert.equal(asset.reviewStatus === 'missing', !exists, `${asset.id} manifest existence status`)
+}
+
 if (missingAssets.length) {
   console.error(`Missing ${missingAssets.length} expected assets:`)
   for (const asset of missingAssets) console.error(`- ${asset}`)
