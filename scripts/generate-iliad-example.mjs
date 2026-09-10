@@ -13,6 +13,34 @@ const commons = (name, width = 1200) => `https://commons.wikimedia.org/wiki/Spec
 
 const mapImageId = id('image', 'map-troad')
 const coverImageId = id('image', 'cover')
+const artId = slug => id('image', `art-${slug}`)
+const artPath = slug => `library/the-iliad/art/${slug}.jpg`
+const locationArt = {
+  olympus:'olympians', ida:'troad', troy:'troad', 'scaean-gates':'hector-family', walls:'trojan-house',
+  'priam-palace':'trojan-house', 'athena-temple':'trojan-house', plain:'patroclus-battle', scamander:'troad',
+  'achaean-camp':'troad', assembly:'achaean-command', 'agamemnon-tent':'achaean-command',
+  'achilles-tent':'achilles', ships:'achilles', 'wall-ditch':'patroclus-battle',
+  'patroclus-pyre':'patroclus-battle', 'hector-tomb':'hector-family',
+}
+const characterArt = {
+  achilles:'achilles', patroclus:'patroclus-battle', automedon:'patroclus-battle', antilochus:'achaean-command',
+  phoenix:'achilles', briseis:'achilles', xanthus:'achilles', thetis:'olympians',
+  agamemnon:'achaean-command', menelaus:'achaean-command', odysseus:'achaean-command', diomedes:'achaean-command',
+  ajax:'achaean-command', 'ajax-lesser':'achaean-command', nestor:'achaean-command', iphigenia:'achaean-command',
+  chryses:'achaean-command', chryseis:'achaean-command', calchas:'achaean-command',
+  hector:'hector-family', andromache:'hector-family', astyanax:'hector-family',
+  priam:'trojan-house', hecuba:'trojan-house', paris:'trojan-house', helen:'trojan-house', deiphobus:'trojan-house',
+  sarpedon:'patroclus-battle', glaucus:'patroclus-battle', aeneas:'patroclus-battle', polydamas:'trojan-house',
+  dolon:'patroclus-battle', pandarus:'patroclus-battle', euphorbus:'patroclus-battle',
+  apollo:'olympians', athena:'olympians', zeus:'olympians', hera:'olympians', poseidon:'olympians',
+  aphrodite:'olympians', ares:'olympians', hephaestus:'olympians', hermes:'olympians', iris:'olympians',
+  'scamander-god':'olympians',
+}
+const itemArt = {
+  'achilles-armour':'objects', 'new-armour':'objects', shield:'objects', 'agamemnon-sceptre':'objects',
+  'achilles-spear':'objects', 'hector-helmet':'objects', 'chryses-ransom':'objects', belt:'objects',
+  'palladium-robe':'objects', 'patroclus-body':'patroclus-battle', 'hector-body':'cover', 'funeral-prizes':'objects',
+}
 const mapLayers = [{ ...base, id: mapId, parentMapId: null, name: 'Troy and the Achaean Shore', description: 'An interpretive theatre map for the plain of Troy, the city, the Achaean camp, Mount Ida, and the surrounding coast.', imageId: mapImageId, imageWidth: 1200, imageHeight: 686, scalePixelsPerUnit: null, scaleUnit: null, levelGroupId: null, levelIndex: 0, levelLabel: '' }]
 
 const locDefs = [
@@ -34,7 +62,7 @@ const locDefs = [
   ['patroclus-pyre', 'Patroclus’ Funeral Pyre', 'The ground where Achilles conducts the funeral and games for his companion.', 335, 415, 'landmark'],
   ['hector-tomb', 'Hector’s Tomb', 'The guarded grave raised by the Trojans after the ransom and funeral truce.', 1005, 400, 'landmark'],
 ]
-const locationMarkers = locDefs.map(([slug, name, description, x, y, iconType]) => ({ ...base, id: locId(slug), mapLayerId: mapId, linkedMapLayerId: null, name, description, x, y, imageId: null, iconType, tags: [], factionId: null }))
+const locationMarkers = locDefs.map(([slug, name, description, x, y, iconType]) => ({ ...base, id: locId(slug), mapLayerId: mapId, linkedMapLayerId: null, name, description, x, y, imageId: artId(locationArt[slug]), iconType, tags: [], factionId: null }))
 
 const characterDefs = [
   ['achilles', 'Achilles', 'The greatest Achaean fighter, whose injured honour turns withdrawal into catastrophe and grief into annihilating rage.'],
@@ -84,7 +112,7 @@ const characterDefs = [
   ['scamander-god', 'Scamander', 'River god who rises against Achilles when corpses obstruct his waters.'],
 ]
 const dead = new Set(['hector', 'patroclus', 'sarpedon', 'dolon', 'pandarus', 'euphorbus'])
-const characters = characterDefs.map(([slug, name, description]) => ({ ...base, id: charId(slug), name, aliases: [], description, portraitImageId: null, color: '#7c6652', tags: [], isAlive: !dead.has(slug), birthDate: null }))
+const characters = characterDefs.map(([slug, name, description]) => ({ ...base, id: charId(slug), name, aliases: [], description, portraitImageId: artId(characterArt[slug]), color: '#7c6652', tags: [], isAlive: !dead.has(slug), birthDate: null }))
 
 const itemDefs = [
   ['achilles-armour', 'First Armour of Achilles', 'Armour carried from Peleus, lent to Patroclus, taken by Hector, and destined to outlive each wearer.', 'shield'],
@@ -100,7 +128,7 @@ const itemDefs = [
   ['hector-body', 'Body of Hector', 'Hector’s corpse, abused beside Patroclus’ tomb and ultimately ransomed to Priam.', 'heart'],
   ['funeral-prizes', 'Funeral Games Prizes', 'Tripods, horses, armour, women, metal, and crafted goods distributed in Patroclus’ honour.', 'trophy'],
 ]
-const items = itemDefs.map(([slug, name, description, iconType]) => ({ ...base, id: itemId(slug), name, description, iconType, imageId: null, tags: [] }))
+const items = itemDefs.map(([slug, name, description, iconType]) => ({ ...base, id: itemId(slug), name, description, iconType, imageId: itemArt[slug] === 'cover' ? coverImageId : artId(itemArt[slug]), tags: [] }))
 
 const books = [
   ['The Quarrel', 'Apollo’s plague exposes the conflict between public command and heroic honour; Agamemnon takes Briseis, and Achilles withdraws.'],
@@ -225,7 +253,7 @@ const factions = [
   ['achaean-gods','Gods Favouring Achaea','#77709a','Hera, Athena, Poseidon, and allies committed to Troy’s defeat.'],
   ['trojan-gods','Gods Favouring Troy','#a57d45','Apollo, Aphrodite, Ares, and allies protecting Trojan lives and momentum.'],
   ['house-priam','House of Priam','#805b50','Troy’s royal household, where the public war becomes private bereavement.'],
-].map(([slug,name,color,description]) => ({ ...base, id:id('faction',slug), name,description,color,coverImageId:null,tags:[] }))
+].map(([slug,name,color,description]) => ({ ...base, id:id('faction',slug), name,description,color,coverImageId:artId({achaeans:'achaean-command',trojans:'trojan-house',myrmidons:'achilles','achaean-gods':'olympians','trojan-gods':'olympians','house-priam':'trojan-house'}[slug]),tags:[] }))
 const memberDefs = [
   ['achaeans','agamemnon','High king'],['achaeans','menelaus','Spartan king'],['achaeans','odysseus','Ithacan king'],['achaeans','diomedes','Argive king'],['achaeans','ajax','Salaminian king'],['achaeans','ajax-lesser','Locrian commander'],['achaeans','nestor','Pylian king and counsellor'],['achaeans','achilles','Myrmidon commander'],['achaeans','patroclus','Myrmidon captain'],
   ['trojans','hector','Supreme field commander'],['trojans','paris','Prince'],['trojans','aeneas','Dardanian commander'],['trojans','deiphobus','Prince'],['trojans','polydamas','Captain and counsellor'],['trojans','sarpedon','Lycian king'],['trojans','glaucus','Lycian captain'],['trojans','pandarus','Archer'],
@@ -251,7 +279,8 @@ const loreDefs = [
   ['sources','Textual Basis','This PlotWeave entry follows the twenty-four-book structure and broadly shared narrative of Homer’s Iliad. Every synopsis and description is newly written and contains no copied translation.'],
   ['sources','Chronology','Scene order follows the poem. Relative times are editorial navigation aids; the epic does not supply a complete modern calendar for every event.'],
 ]
-const lorePages = loreDefs.map(([cat,title,body],i)=>({...base,id:id('lore',i+1),categoryId:id('lore-category',cat),title,body,tags:[],coverImageId:null,linkedEntityIds:[],visibleFromEventId:null}))
+const loreArt = ['troad','achilles','objects','trojan-house','olympians','olympians','patroclus-battle','hector-family','objects','troad']
+const lorePages = loreDefs.map(([cat,title,body],i)=>({...base,id:id('lore',i+1),categoryId:id('lore-category',cat),title,body,tags:[],coverImageId:artId(loreArt[i]),linkedEntityIds:[],visibleFromEventId:null}))
 
 const factDefs = [
   ['plague-cause','Apollo sent the plague because Agamemnon dishonoured Chryses',1,'calchas'],
@@ -277,10 +306,14 @@ const characterGoals = goalDefs.map(([c,s,e,type,text],i)=>({...base,id:id('goal
 const blobs = [
   { id: mapImageId, worldId: W, mimeType: 'image/png', url: commons('Odyssey (Butler) Map.png', 1920), createdAt: now },
   { ...base, id: coverImageId, mimeType: 'image/jpeg', url: 'library/the-iliad/art/cover.jpg' },
+  ...['achilles','hector-family','achaean-command','trojan-house','olympians','patroclus-battle','troad','objects'].map(slug => ({ ...base, id: artId(slug), mimeType: 'image/jpeg', url: artPath(slug) })),
 ]
 const data = { version:16,type:'world-export',exportedAt:now,world:{id:W,name:'The Iliad',description:'Homer’s epic traces the wrath of Achilles through plague, quarrel, withdrawal, battlefield collapse, the death of Patroclus, vengeance against Hector, and a final encounter between two grieving enemies.',coverImageId,theme:'theme-mythic',readingMode:true,createdAt:now,updatedAt:now,continuityStaleThreshold:5,calendar:{startYear:10,yearSuffix:' of the War',months:Array.from({length:12},(_,i)=>({name:`War Moon ${i+1}`,days:30}))},wordTarget:null},mapLayers,locationMarkers,characters,items,characterSnapshots,itemPlacements,relationships,timelines,chapters,events,blobs,loreCategories,lorePages,factions,factionMemberships,factionRelationships,knowledgeFacts,knowledgeReveals,characterGoals,plotThreads,motifs,characterMovements:[],locationSnapshots:[],itemSnapshots:[],relationshipSnapshots:[],travelModes:[],timelineRelationships:[],crossTimelineArtifacts:[],mapRoutes:[],mapRegions:[],mapRegionSnapshots:[],mapAnnotations:[],sceneTexts:[],continuitySuppressions:[],writingLogs:[],sceneRevisions:[] }
 
 const characterSet = new Set(characters.map(c=>c.id)), locationSet = new Set(locationMarkers.map(l=>l.id)), itemSet = new Set(items.map(i=>i.id))
+if (characters.some(c=>!c.portraitImageId) || locationMarkers.some(l=>!l.imageId) || items.some(i=>!i.imageId)) throw Error('Every character, location, and item must have an image')
+const imageSet = new Set(blobs.map(b=>b.id))
+for (const imageId of [...characters.map(c=>c.portraitImageId),...locationMarkers.map(l=>l.imageId),...items.map(i=>i.imageId)]) if (!imageSet.has(imageId)) throw Error(`Missing image blob ${imageId}`)
 for (const event of events) {
   if (!locationSet.has(event.locationMarkerId)) throw Error(`Unknown location in ${event.title}`)
   for (const cid of [...event.involvedCharacterIds,...event.mentionedCharacterIds]) if (!characterSet.has(cid)) throw Error(`Unknown character ${cid} in ${event.title}`)
