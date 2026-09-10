@@ -47,7 +47,7 @@ const entry = {
   data: 'the-iliad.pwk',
   dataBytes: Buffer.byteLength(text, 'utf8'),
   counts: { characters: actual.characters, chapters: actual.chapters, events: actual.events, locations: actual.locations },
-  notice: 'Unofficial reference for a public-domain ancient epic. This example contains original structural summaries and editorial chronology, not the prose of any translation. The cover is an original AI-generated interpretation created for PlotWeave; map sourcing and editorial method are recorded in Lore.',
+  notice: 'Unofficial reference for a public-domain ancient epic. Structural summaries and editorial chronology are original PlotWeave material; scene drafts reproduce Samuel Butler’s public-domain translation. The cover is an original AI-generated interpretation created for PlotWeave; source, map sourcing, and editorial method are recorded in Lore.',
   worldId: data.world.id,
   cover: 'library/the-iliad/art/cover.jpg',
 }

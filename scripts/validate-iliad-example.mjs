@@ -31,6 +31,22 @@ for (const event of data.events) {
   assert(event.inWorldTime >= 0, `${event.id} inWorldTime`)
 }
 
+assert.equal(data.sceneTexts.length, data.events.length, 'Each event must have one scene draft')
+const sceneEvents = new Set()
+let sceneWordCount = 0
+for (const scene of data.sceneTexts) {
+  requireId(scene.eventId, scene.id)
+  assert.equal(scene.worldId, data.world.id, `${scene.id} world id`)
+  assert(!sceneEvents.has(scene.eventId), `Duplicate scene draft for ${scene.eventId}`)
+  sceneEvents.add(scene.eventId)
+  assert(scene.text.trim().length > 0, `${scene.id} is empty`)
+  const wordCount = scene.text.trim().split(/\s+/u).length
+  assert.equal(scene.wordCount, wordCount, `${scene.id} word count`)
+  sceneWordCount += wordCount
+}
+for (const event of data.events) assert(sceneEvents.has(event.id), `Missing scene draft for ${event.id}`)
+assert(sceneWordCount > 150_000, 'Scene drafts do not contain the complete Butler narrative')
+
 const snapshots = new Map()
 for (const snapshot of data.characterSnapshots) {
   requireId(snapshot.characterId, snapshot.id)

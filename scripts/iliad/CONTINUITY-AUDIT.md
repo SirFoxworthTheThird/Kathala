@@ -23,13 +23,23 @@ on the Achaean left in Book XIII; Sleep’s bargain with Hera in Book XIV; Baliu
 beside Xanthus in Books XVI and XIX; Artemis (Diana in Butler) in the divine
 battle of Book XXI; and Agenor’s stand and Apollo’s rescue in Book XXI.
 
+## Scene drafts
+
+All 75 modeled events have a scene draft containing the corresponding
+public-domain Butler narrative. The checked-in source is parsed reproducibly;
+Gutenberg front matter, the translator’s per-book prose summaries, and end
+matter are excluded. A range-coverage assertion ensures that every narrative
+paragraph in Books I–XXIV is assigned exactly once. Parallel passages in Books
+I and XVII–XVIII are attached to their matching event even where the poem
+intercuts those actions. Together the event drafts contain 151,966 words.
+
 ## Structure and chronology
 
 - 24 books appear in reading order, each with meaningful events.
 - 75 events use one continuous timeline and strictly increasing cumulative
   `inWorldTime` values from 0 through 74.
 - Tension values remain within 1–5 and elapsed-time values are non-negative.
-- The two PWK files are byte-identical at 427,845 UTF-8 bytes.
+- The two PWK files are byte-identical at 1,256,724 UTF-8 bytes.
 - Catalogue metadata matches 52 characters, 24 chapters, 75 events and 17
   locations, with world ID `iliad-world`.
 
