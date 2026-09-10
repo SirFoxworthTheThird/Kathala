@@ -12,6 +12,7 @@ const mapId = id('map', 'troad')
 const commons = (name, width = 1200) => `https://commons.wikimedia.org/wiki/Special:Redirect/file/${encodeURIComponent(name)}?width=${width}`
 
 const mapImageId = id('image', 'map-troad')
+const coverImageId = id('image', 'cover')
 const mapLayers = [{ ...base, id: mapId, parentMapId: null, name: 'Troy and the Achaean Shore', description: 'An interpretive theatre map for the plain of Troy, the city, the Achaean camp, Mount Ida, and the surrounding coast.', imageId: mapImageId, imageWidth: 1200, imageHeight: 686, scalePixelsPerUnit: null, scaleUnit: null, levelGroupId: null, levelIndex: 0, levelLabel: '' }]
 
 const locDefs = [
@@ -273,8 +274,11 @@ const goalDefs = [
 ]
 const characterGoals = goalDefs.map(([c,s,e,type,text],i)=>({...base,id:id('goal',i+1),characterId:charId(c),startEventId:chapterFirst(s),endEventId:chapterLast(e),type,text}))
 
-const blobs = [{ id: mapImageId, worldId: W, mimeType: 'image/png', url: commons('Odyssey (Butler) Map.png', 1920), createdAt: now }]
-const data = { version:16,type:'world-export',exportedAt:now,world:{id:W,name:'The Iliad',description:'Homer’s epic traces the wrath of Achilles through plague, quarrel, withdrawal, battlefield collapse, the death of Patroclus, vengeance against Hector, and a final encounter between two grieving enemies.',coverImageId:null,theme:'theme-mythic',readingMode:true,createdAt:now,updatedAt:now,continuityStaleThreshold:5,calendar:{startYear:10,yearSuffix:' of the War',months:Array.from({length:12},(_,i)=>({name:`War Moon ${i+1}`,days:30}))},wordTarget:null},mapLayers,locationMarkers,characters,items,characterSnapshots,itemPlacements,relationships,timelines,chapters,events,blobs,loreCategories,lorePages,factions,factionMemberships,factionRelationships,knowledgeFacts,knowledgeReveals,characterGoals,plotThreads,motifs,characterMovements:[],locationSnapshots:[],itemSnapshots:[],relationshipSnapshots:[],travelModes:[],timelineRelationships:[],crossTimelineArtifacts:[],mapRoutes:[],mapRegions:[],mapRegionSnapshots:[],mapAnnotations:[],sceneTexts:[],continuitySuppressions:[],writingLogs:[],sceneRevisions:[] }
+const blobs = [
+  { id: mapImageId, worldId: W, mimeType: 'image/png', url: commons('Odyssey (Butler) Map.png', 1920), createdAt: now },
+  { ...base, id: coverImageId, mimeType: 'image/jpeg', url: 'library/the-iliad/art/cover.jpg' },
+]
+const data = { version:16,type:'world-export',exportedAt:now,world:{id:W,name:'The Iliad',description:'Homer’s epic traces the wrath of Achilles through plague, quarrel, withdrawal, battlefield collapse, the death of Patroclus, vengeance against Hector, and a final encounter between two grieving enemies.',coverImageId,theme:'theme-mythic',readingMode:true,createdAt:now,updatedAt:now,continuityStaleThreshold:5,calendar:{startYear:10,yearSuffix:' of the War',months:Array.from({length:12},(_,i)=>({name:`War Moon ${i+1}`,days:30}))},wordTarget:null},mapLayers,locationMarkers,characters,items,characterSnapshots,itemPlacements,relationships,timelines,chapters,events,blobs,loreCategories,lorePages,factions,factionMemberships,factionRelationships,knowledgeFacts,knowledgeReveals,characterGoals,plotThreads,motifs,characterMovements:[],locationSnapshots:[],itemSnapshots:[],relationshipSnapshots:[],travelModes:[],timelineRelationships:[],crossTimelineArtifacts:[],mapRoutes:[],mapRegions:[],mapRegionSnapshots:[],mapAnnotations:[],sceneTexts:[],continuitySuppressions:[],writingLogs:[],sceneRevisions:[] }
 
 const characterSet = new Set(characters.map(c=>c.id)), locationSet = new Set(locationMarkers.map(l=>l.id)), itemSet = new Set(items.map(i=>i.id))
 for (const event of events) {
@@ -290,7 +294,7 @@ const text = `${JSON.stringify(data,null,2)}\n`
 fs.writeFileSync('example/The Iliad.pwk',text)
 fs.writeFileSync('public/library/the-iliad.pwk',text)
 const index = JSON.parse(fs.readFileSync('public/library/index.json','utf8'))
-const entry = {id:'the-iliad',title:'The Iliad',author:'Homer',blurb:'The wrath of Achilles withdraws the Achaeans’ greatest fighter, destroys Patroclus and Hector, and ends in a meeting between enemies joined by grief.',data:'the-iliad.pwk',dataBytes:Buffer.byteLength(text),counts:{characters:characters.length,chapters:chapters.length,events:events.length,locations:locationMarkers.length},notice:'Unofficial reference for a public-domain ancient epic. This example contains original structural summaries and editorial chronology, not the prose of any translation. Map sourcing and editorial method are recorded in Lore.',worldId:W}
+const entry = {id:'the-iliad',title:'The Iliad',author:'Homer',blurb:'The wrath of Achilles withdraws the Achaeans’ greatest fighter, destroys Patroclus and Hector, and ends in a meeting between enemies joined by grief.',data:'the-iliad.pwk',dataBytes:Buffer.byteLength(text),counts:{characters:characters.length,chapters:chapters.length,events:events.length,locations:locationMarkers.length},notice:'Unofficial reference for a public-domain ancient epic. This example contains original structural summaries and editorial chronology, not the prose of any translation. The cover is an original AI-generated interpretation created for PlotWeave; map sourcing and editorial method are recorded in Lore.',worldId:W,cover:'library/the-iliad/art/cover.jpg'}
 const at = index.entries.findIndex(e=>e.id===entry.id); if(at>=0) index.entries[at]=entry; else index.entries.push(entry)
 fs.writeFileSync('public/library/index.json',`${JSON.stringify(index,null,2)}\n`)
 console.log(JSON.stringify({bytes:Buffer.byteLength(text),characters:characters.length,chapters:chapters.length,events:events.length,locations:locationMarkers.length,items:items.length,snapshots:characterSnapshots.length,relationships:relationships.length,factions:factions.length,knowledge:knowledgeFacts.length},null,2))
