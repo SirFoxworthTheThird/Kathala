@@ -48,3 +48,8 @@ size. The application pass must then inspect the Troad, Troy and Achaean Camp
 layers, all markers, both gateways, cross-layer playback, reading mode and the
 unrestricted views listed in `docs/EXAMPLE_AUTHORING_CHECKLIST.md`. Until those
 checks pass, the checklist completion statement must not say `COMPLETE`.
+
+The production application build passed on 10 September 2026. The managed
+browser could not reach the container-local static server (`ERR_BLOCKED_BY_CLIENT`),
+so no Library import, page-by-page application inspection, gateway exercise or
+playback check is claimed by this recovery session.

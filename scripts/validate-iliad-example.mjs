@@ -96,11 +96,17 @@ for (const asset of manifest.assets) {
   const exists = fs.existsSync(path.join('public', asset.path))
   assert.equal(asset.reviewStatus === 'missing', !exists, `${asset.id} manifest existence status`)
 }
+const replacementAssets = manifest.assets.filter(asset => asset.reviewStatus === 'replacement-required')
 
 if (missingAssets.length) {
   console.error(`Missing ${missingAssets.length} expected assets:`)
   for (const asset of missingAssets) console.error(`- ${asset}`)
-  process.exitCode = 1
-} else {
+}
+if (replacementAssets.length) {
+  console.error(`Replacement required for ${replacementAssets.length} assets:`)
+  for (const asset of replacementAssets) console.error(`- ${asset.path}: ${asset.reviewNotes}`)
+}
+if (missingAssets.length || replacementAssets.length) process.exitCode = 1
+else {
   console.log(JSON.stringify({ counts: expected, assets: data.blobs.length, bytes: libraryBytes.length, sha256: crypto.createHash('sha256').update(libraryBytes).digest('hex') }, null, 2))
 }
