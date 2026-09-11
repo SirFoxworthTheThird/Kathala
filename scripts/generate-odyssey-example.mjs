@@ -7,6 +7,7 @@ const chId=n=>id('chapter',String(n).padStart(2,'0')), evId=n=>id('event',String
 const charId=s=>id('char',s), itemId=s=>id('item',s), locId=s=>id('loc',s), mapId=s=>id('map',s)
 const commons=(name,width=1200)=>`https://commons.wikimedia.org/wiki/Special:Redirect/file/${encodeURIComponent(name)}?width=${width}`
 const underworldMapUrl='https://i.redd.it/wm8capz1ymge1.jpeg'
+const bundledCoverUrl='library/the-odyssey/art/cover.png'
 
 // Every non-map image is assigned deliberately.  These are public-domain
 // paintings, drawings, engravings, or book illustrations depicting the named
@@ -354,7 +355,7 @@ const timelineRelationships=[{...base,id:id('timeline-rel','embedded'),fromTimel
 
 const blobs=[
  ...mapDefs.map(([s,,,,name])=>({id:id('image',`map-${s}`),worldId:W,mimeType:name.toLowerCase().endsWith('.png')?'image/png':name.toLowerCase().endsWith('.svg')?'image/svg+xml':'image/jpeg',url:s==='underworld'?underworldMapUrl:commons(name,s==='voyage'?1920:1200),createdAt:now})),
- ...Object.entries(artDefs).map(([key,name])=>({id:artId(key),worldId:W,mimeType:name.toLowerCase().endsWith('.png')?'image/png':'image/jpeg',url:commons(name),createdAt:now})),
+ ...Object.entries(artDefs).map(([key,name])=>({id:artId(key),worldId:W,mimeType:name.toLowerCase().endsWith('.png')?'image/png':'image/jpeg',url:key==='homecoming'?bundledCoverUrl:commons(name),createdAt:now})),
 ]
 
 if(sceneDrafts.length!==events.length)throw Error(`Expected ${events.length} scene drafts, found ${sceneDrafts.length}`)
@@ -382,5 +383,6 @@ if(!catalogueEntry)throw Error('Missing Odyssey catalogue entry')
 catalogueEntry.dataBytes=Buffer.byteLength(text,'utf8')
 catalogueEntry.counts={characters:characters.length,chapters:chapters.length,events:events.length,locations:locationMarkers.length}
 catalogueEntry.notice='Unofficial reference for a public-domain epic. This example contains original scene drafts, structural summaries, and editorial reconstruction rather than the poem’s prose.'
+catalogueEntry.cover=bundledCoverUrl
 fs.writeFileSync(cataloguePath,JSON.stringify(catalogue,null,2)+'\n')
 console.log(JSON.stringify({chapters:chapters.length,events:events.length,characters:characters.length,locations:locationMarkers.length,items:items.length,relationships:relationships.length,threads:plotThreads.length,snapshots:characterSnapshots.length,scenes:sceneTexts.length,words:sceneTexts.reduce((sum,scene)=>sum+scene.wordCount,0),bytes:Buffer.byteLength(text,'utf8')},null,2))

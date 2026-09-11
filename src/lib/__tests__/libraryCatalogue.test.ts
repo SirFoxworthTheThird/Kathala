@@ -9,6 +9,12 @@ const worldFiles = import.meta.glob('../../../public/library/*.pwk', {
   import: 'default',
 }) as Record<string, string>
 
+const bundledImages = import.meta.glob('../../../public/library/**/*.{jpg,jpeg,png,webp}', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+})
+
 function worldFor(data: string): Record<string, unknown> {
   const key = Object.keys(worldFiles).find((k) => k.endsWith(`/${data}`))
   if (!key) throw new Error(`No shipped file for ${data}`)
@@ -35,6 +41,12 @@ describe('the published library catalogue', () => {
     const worldIds = index.entries.map((e) => e.worldId)
     expect(new Set(ids).size).toBe(ids.length)
     expect(new Set(worldIds).size).toBe(worldIds.length)
+  })
+
+  it('keeps the Odyssey manuscript cover readable without a cross-origin request', () => {
+    const entry = index.entries.find((candidate) => candidate.id === 'the-odyssey')
+    expect(entry?.cover).toBe('library/the-odyssey/art/cover.png')
+    expect(Object.keys(bundledImages).some((path) => path.endsWith('/the-odyssey/art/cover.png'))).toBe(true)
   })
 
   for (const entry of index.entries) {
