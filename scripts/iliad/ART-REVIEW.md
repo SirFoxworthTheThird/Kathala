@@ -23,9 +23,15 @@ separate assets.
   imagery before acceptance. The accepted Agenor uses inland Late Bronze Age
   mudbrick ramparts and projecting gate towers; Thersites is anatomically
   coherent and avoids caricaturing the disability described in the poem.
-- Opened the seven recovered location illustrations and eight supporting story
-  illustrations. They depict separate locations or story subjects and are not
-  used as navigable maps.
+- Opened and visually reviewed eleven repository-hosted location illustrations
+  and eight supporting story illustrations. They depict separate locations or
+  story subjects and are not used as navigable maps. The Temple of Athena uses
+  a single cult image in a timber-and-mudbrick sanctuary with no pseudo-text,
+  people, or later marble order. The Troy Burial Ground uses blank marker stones,
+  coherent tumuli, and a cold pyre with inland Troy and Mount Ida beyond; it has
+  no corpse, named tomb, inscription, or modern cemetery form. The Walls of Troy
+  and Palace of Priam were accepted only after rejected crenellated/pseudo-text
+  drafts were replaced.
 - Opened both recovered navigable maps. The Achaean Camp map is a legible,
   purpose-specific schematic with distinct camp sectors. The Troad root map
   now isolates Mount Olympus inside a bordered `DISTANT INSET — NOT TO SCALE`
@@ -39,11 +45,8 @@ in `asset-manifest.json`.
 
 ## Outstanding image work
 
-- Eight location illustrations: Temple of Athena, Troy Burial Ground, Achaean
-  Assembly, Agamemnon’s Quarters, Achilles’ Camp, Achaean Ships, Achaean Wall
-  and Ditch and Myrmidon Open Ground. The Walls of Troy and Palace of Priam
-  illustrations passed review after medieval crenellations and pseudo-writing
-  were removed from rejected drafts.
+- Six location illustrations: Achaean Assembly, Agamemnon’s Quarters, Achilles’
+  Camp, Achaean Ships, Achaean Wall and Ditch and Myrmidon Open Ground.
 - Ten object illustrations, one for every modeled object.
 - The Troy navigable submap.
 - Replacement of the cover with a clearly painted Neoclassical treatment.
