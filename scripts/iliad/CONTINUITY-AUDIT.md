@@ -65,6 +65,16 @@ assignments follow this hierarchy. The root map now separates Mount Olympus
 from the Troad geography in a bordered distant inset explicitly marked not to
 scale; the main layer retains Troy, Mount Ida, Scamander, the plain and shore.
 
+## Artwork recovery state
+
+The Temple of Athena and Troy Burial Ground location illustrations are now
+present on the branch and have passed visual review. The temple uses one cult
+image in a timber-and-mudbrick sanctuary with no pseudo-text or later marble
+order. The burial ground uses blank markers, coherent tumuli, and a cold pyre,
+with inland Troy and Mount Ida beyond and no named tomb, corpse, inscription,
+or modern cemetery form. This reduces the expected missing-art count from 19
+to 17 while the rejected cover remains replacement-required.
+
 ## Automated evidence
 
 - `npm test -- --run libraryCatalogue exampleQuality exampleCompat`: 3 files
@@ -72,13 +82,12 @@ scale; the main layer retains Troy, Mount Ida, Scamander, the plain and shore.
 - `npm run build`: TypeScript and Vite production build passed.
 - `node scripts/generate-iliad-example.mjs`: passed and preserved both PWKs and
   exact catalogue metadata.
-- `node scripts/validate-iliad-example.mjs`: correctly fails the release gate
-  while 19 expected files are missing and the existing cover requires replacement.
+- `node scripts/validate-iliad-example.mjs`: release gate remains expected to
+  fail until the 17 still-missing assets and replacement cover are resolved.
 
 ## Open gates
 
-Eight location images, ten item images, final per-image review, the Troy map, the
-Neoclassical cover replacement, and the complete in-app
-reading/unrestricted pass remain incomplete. The managed browser could not
-reach the container-local application, so no page, gateway, marker or playback
-claim is made here.
+Six location images, ten item images, final per-image review, the Troy map, the
+Neoclassical cover replacement, and the complete in-app reading/unrestricted
+pass remain incomplete. The managed browser could not reach the container-local
+application, so no page, gateway, marker or playback claim is made here.
