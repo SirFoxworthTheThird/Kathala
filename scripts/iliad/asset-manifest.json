@@ -6,8 +6,8 @@
   "reviewedAt": "2026-09-10",
   "summary": {
     "total": 91,
-    "approved": 60,
-    "missing": 29,
+    "approved": 64,
+    "missing": 25,
     "replacementRequired": 2
   },
   "assets": [
@@ -521,8 +521,8 @@
       "entity": "Machaon",
       "path": "library/the-iliad/art/character-machaon.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Machaon. Achaean healer and warrior whose medical skill makes his safety strategically important. Keep the composition purpose-specific for a PlotWeave character asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-character-idomeneus",
@@ -530,8 +530,8 @@
       "entity": "Idomeneus",
       "path": "library/the-iliad/art/character-idomeneus.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Idomeneus. Veteran king of Crete and a steady Achaean commander in the battle beside the ships. Keep the composition purpose-specific for a PlotWeave character asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-character-sleep",
@@ -539,8 +539,8 @@
       "entity": "Sleep",
       "path": "library/the-iliad/art/character-sleep.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Sleep. Divine personification enlisted by Hera to keep Zeus unaware of intervention on the battlefield. Keep the composition purpose-specific for a PlotWeave character asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-character-balius",
@@ -548,8 +548,8 @@
       "entity": "Balius",
       "path": "library/the-iliad/art/character-balius.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Balius. One of Achilles’ immortal horses, yoked beside Xanthus to the chariot of the Myrmidons. Keep the composition purpose-specific for a PlotWeave character asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-character-meriones",
