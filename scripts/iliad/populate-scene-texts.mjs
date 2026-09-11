@@ -33,8 +33,9 @@ const assignments = {
 }
 
 const source = fs.readFileSync(sourcePath, 'utf8').replaceAll('\r', '')
-const startMarker = '*** START OF THE PROJECT GUTENBERG EBOOK THE ILIAD ***'
-const endMarker = '*** END OF THE PROJECT GUTENBERG EBOOK THE ILIAD ***'
+const startMarker = source.match(/\*\*\* START OF (?:THIS|THE) PROJECT GUTENBERG EBOOK THE ILIAD \*\*\*/)?.[0]
+const endMarker = source.match(/\*\*\* END OF (?:THIS|THE) PROJECT GUTENBERG EBOOK THE ILIAD \*\*\*/)?.[0]
+assert(startMarker && endMarker, 'The Butler source must contain Gutenberg start and end markers')
 const body = source.slice(source.indexOf(startMarker) + startMarker.length, source.indexOf(endMarker))
 const headings = [...body.matchAll(/^BOOK ([IVX]+)\.?$/gm)]
 assert.equal(headings.length, 24, 'The Butler source must contain Books I–XXIV')
@@ -48,6 +49,7 @@ const books = headings.map((heading, index) => {
     .replace(/\s+/g, ' ')
     .trim())
     .filter(Boolean)
+    .filter(paragraph => !/^End of the Project Gutenberg EBook/i.test(paragraph))
   return paragraphs.slice(1) // Butler's prose summary precedes each book's narrative.
 })
 
