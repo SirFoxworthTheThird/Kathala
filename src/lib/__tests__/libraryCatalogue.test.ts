@@ -48,12 +48,18 @@ describe('the published library catalogue', () => {
         expect(entry.notice).toMatch(/unofficial/i)
       })
 
-      it('contains no prose from the book', () => {
-        // The catalogue is structural reference only — characters, chapters,
-        // events, places. Shipping scene text would be republishing the novel,
-        // so this is asserted on the file rather than left to a convention.
+      it('ships scene prose only with declared public-domain provenance', () => {
+        // Copyrighted examples remain structural references. A public-domain
+        // source may include prose when the catalogue declares that basis and
+        // every draft resolves uniquely to a modeled event.
         const world = worldFor(entry.data)
-        expect(world.sceneTexts ?? [], 'sceneTexts').toEqual([])
+        const sceneTexts = (world.sceneTexts ?? []) as Array<{ eventId: string }>
+        const events = world.events as Array<{ id: string }>
+        if (sceneTexts.length > 0) {
+          expect(entry.notice).toMatch(/(?:original (?:scene drafts|prose)|public-domain translation)/i)
+          expect(sceneTexts).toHaveLength(events.length)
+          expect(new Set(sceneTexts.map((scene) => scene.eventId)).size).toBe(events.length)
+        }
         expect(world.sceneRevisions ?? [], 'sceneRevisions').toEqual([])
       })
 

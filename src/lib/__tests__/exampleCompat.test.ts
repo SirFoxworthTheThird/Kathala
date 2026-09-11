@@ -28,6 +28,7 @@ describe('bundled example worlds stay importable', () => {
 
   for (const [path, json] of entries) {
     it(`imports ${path} without error and backfills new fields`, async () => {
+      const source = JSON.parse(json) as { sceneTexts?: unknown[] }
       const worldId = await importWorldFromJson(json)
       expect(typeof worldId).toBe('string')
       expect(await db.worlds.get(worldId)).toBeDefined()
@@ -96,7 +97,7 @@ describe('bundled example worlds stay importable', () => {
       const knowledgeFactIds = new Set(knowledgeFacts.map((fact) => fact.id))
       const knowledgeReveals = await db.knowledgeReveals.where('worldId').equals(worldId).toArray()
       for (const reveal of knowledgeReveals) expect(knowledgeFactIds.has(reveal.factId)).toBe(true)
-      expect(await db.sceneTexts.where('worldId').equals(worldId).count()).toBe(0)
+      expect(await db.sceneTexts.where('worldId').equals(worldId).count()).toBe((source.sceneTexts ?? []).length)
       // Older examples may have no plot threads, while enriched examples can
       // include them. Every event assignment must resolve within its world.
       const plotThreads = await db.plotThreads.where('worldId').equals(worldId).toArray()

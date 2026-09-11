@@ -18,6 +18,13 @@ function xml(s: string): string {
 
 export interface BookExportOptions extends CompileOptions {
   author?: string
+  cover?: { data: Uint8Array; mimeType: string }
+}
+
+function coverExtension(mimeType: string): 'png' | 'jpg' | null {
+  if (mimeType === 'image/png') return 'png'
+  if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') return 'jpg'
+  return null
 }
 
 /** Chapters that have prose to include, with their kept scenes. */
@@ -50,11 +57,15 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
   const onlyWritten = opts.onlyWritten ?? true
   const sep = opts.sceneSeparator ?? '* * *'
   const title = opts.title?.trim() || 'Manuscript'
+  const coverExt = opts.cover ? coverExtension(opts.cover.mimeType) : null
 
   const blocks = includedChapters(m, onlyWritten)
   const body: string[] = []
 
   // Title page.
+  if (opts.cover && coverExt) {
+    body.push(`<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" distT="0" distB="0" distL="0" distR="0"><wp:extent cx="3429000" cy="5143500"/><wp:docPr id="1" name="Book cover"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="0" name="cover.${coverExt}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rIdCover"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="3429000" cy="5143500"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`)
+  }
   body.push(docPara(title, { bold: true, center: true, sizeHalfPt: 56 }))
   if (opts.author?.trim()) body.push(docPara(opts.author.trim(), { center: true, sizeHalfPt: 28 }))
 
@@ -80,6 +91,8 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
     `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
     `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
     `<Default Extension="xml" ContentType="application/xml"/>` +
+    (coverExt === 'png' ? `<Default Extension="png" ContentType="image/png"/>` : '') +
+    (coverExt === 'jpg' ? `<Default Extension="jpg" ContentType="image/jpeg"/>` : '') +
     `<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>` +
     `</Types>`
 
@@ -89,11 +102,19 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
     `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>` +
     `</Relationships>`
 
-  return zipStore([
+  const documentRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+    (coverExt ? `<Relationship Id="rIdCover" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/cover.${coverExt}"/>` : '') +
+    `</Relationships>`
+
+  const entries = [
     file('[Content_Types].xml', contentTypes),
     file('_rels/.rels', rels),
     file('word/document.xml', documentXml),
-  ])
+    ...(coverExt ? [file('word/_rels/document.xml.rels', documentRels)] : []),
+    ...(opts.cover && coverExt ? [{ name: `word/media/cover.${coverExt}`, data: opts.cover.data }] : []),
+  ]
+  return zipStore(entries)
 }
 
 // ── EPUB ──────────────────────────────────────────────────────────────────────
@@ -129,6 +150,7 @@ export function compileEpub(m: BuiltManuscript, opts: BookExportOptions = {}): U
   const author = opts.author?.trim() || 'Unknown'
   const bookId = `urn:uuid:${uuid()}`
   const modified = new Date().toISOString().replace(/\.\d+Z$/, 'Z')
+  const coverExt = opts.cover ? coverExtension(opts.cover.mimeType) : null
 
   const blocks = includedChapters(m, onlyWritten)
   const chapterFiles = blocks.map(({ ch, scenes }, idx) => {
@@ -147,7 +169,7 @@ export function compileEpub(m: BuiltManuscript, opts: BookExportOptions = {}): U
   const titleXhtml = `<?xml version="1.0" encoding="UTF-8"?>` +
     `<html xmlns="http://www.w3.org/1999/xhtml"><head><meta charset="utf-8"/><title>${xml(title)}</title>` +
     `<link rel="stylesheet" type="text/css" href="style.css"/></head>` +
-    `<body><h1>${xml(title)}</h1><p style="text-align:center" class="first">${xml(author)}</p></body></html>`
+    `<body>${coverExt ? `<img src="cover.${coverExt}" alt="${xml(title)} cover" style="display:block;max-width:100%;max-height:70vh;margin:0 auto 2em"/>` : ''}<h1>${xml(title)}</h1><p style="text-align:center" class="first">${xml(author)}</p></body></html>`
 
   const navItems = chapterFiles.map((c) => `<li><a href="${c.href}">${xml(c.label)}</a></li>`).join('')
   const navXhtml = `<?xml version="1.0" encoding="UTF-8"?>` +
@@ -158,6 +180,7 @@ export function compileEpub(m: BuiltManuscript, opts: BookExportOptions = {}): U
     `<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>`,
     `<item id="css" href="style.css" media-type="text/css"/>`,
     `<item id="title" href="title.xhtml" media-type="application/xhtml+xml"/>`,
+    ...(coverExt ? [`<item id="cover" href="cover.${coverExt}" media-type="${opts.cover!.mimeType}" properties="cover-image"/>`] : []),
     ...chapterFiles.map((c) => `<item id="${c.id}" href="${c.href}" media-type="application/xhtml+xml"/>`),
   ].join('')
   const spineItems = [`<itemref idref="title"/>`, ...chapterFiles.map((c) => `<itemref idref="${c.id}"/>`)].join('')
@@ -182,6 +205,7 @@ export function compileEpub(m: BuiltManuscript, opts: BookExportOptions = {}): U
     file('OEBPS/content.opf', opf),
     file('OEBPS/nav.xhtml', navXhtml),
     file('OEBPS/title.xhtml', titleXhtml),
+    ...(opts.cover && coverExt ? [{ name: `OEBPS/cover.${coverExt}`, data: opts.cover.data }] : []),
     ...chapterFiles.map((c) => file(`OEBPS/${c.href}`, c.content)),
   ])
 }

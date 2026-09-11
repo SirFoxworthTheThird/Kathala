@@ -3,6 +3,7 @@ import { compileDocx, compileEpub } from '@/lib/manuscriptExport'
 import type { BuiltManuscript } from '@/lib/manuscriptCompile'
 
 const dec = new TextDecoder('latin1')
+const cover = { data: new Uint8Array([137, 80, 78, 71, 1, 2, 3]), mimeType: 'image/png' }
 
 const manuscript: BuiltManuscript = {
   totalWords: 6, totalScenes: 3, writtenScenes: 2,
@@ -42,6 +43,13 @@ describe('compileDocx', () => {
     const keep = dec.decode(compileDocx(manuscript, { onlyWritten: false }))
     expect(keep.includes('[No prose yet]')).toBe(true)
   })
+
+  it('embeds the world cover on the Word title page', () => {
+    const s = dec.decode(compileDocx(manuscript, { cover }))
+    expect(s.includes('word/media/cover.png')).toBe(true)
+    expect(s.includes('relationships/image')).toBe(true)
+    expect(s.includes('rIdCover')).toBe(true)
+  })
 })
 
 describe('compileEpub', () => {
@@ -60,5 +68,12 @@ describe('compileEpub', () => {
     expect(s.includes('<dc:title>My Book</dc:title>')).toBe(true)
     expect(s.includes('They walked north.')).toBe(true)
     expect(s.includes('dcterms:modified')).toBe(true)
+  })
+
+  it('embeds and declares the world cover in EPUB', () => {
+    const s = dec.decode(compileEpub(manuscript, { title: 'My Book', cover }))
+    expect(s.includes('OEBPS/cover.png')).toBe(true)
+    expect(s.includes('properties="cover-image"')).toBe(true)
+    expect(s.includes('<img src="cover.png" alt="My Book cover"')).toBe(true)
   })
 })

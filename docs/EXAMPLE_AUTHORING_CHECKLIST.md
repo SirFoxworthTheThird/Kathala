@@ -11,7 +11,7 @@ Read and follow the [mandatory example-authoring rules](EXAMPLE_AUTHORING_RULES.
 - [ ] Every chapter has all necessary events, without compression or filler. (`EX-003`)
 - [ ] Timeline count and chronology are justified. (`EX-004`)
 - [ ] Tension, elapsed time, and calendar values are valid and editorial assumptions are documented. (`EX-005`–`EX-006`)
-- [ ] All summaries are original writing rather than copied prose. (`EX-007`)
+- [ ] Copyrighted prose is not reproduced. Any public-domain prose in scene drafts has a verified edition, translator where applicable, public-domain status, and source documented in Lore and the catalogue notice; its passage order and coverage were validated. Structural summaries and metadata remain original writing. (`EX-007`)
 
 ## Characters and continuity
 
