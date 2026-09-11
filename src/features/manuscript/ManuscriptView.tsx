@@ -13,6 +13,7 @@ import { ExportManuscriptDialog } from './ExportManuscriptDialog'
 import { FindReplaceDialog } from './FindReplaceDialog'
 import { plural } from '@/lib/plural'
 import { splitParagraphs as paragraphs } from '@/lib/manuscriptParagraphs'
+import { useBlobUrl } from '@/db/hooks/useBlobs'
 
 const nf = new Intl.NumberFormat()
 
@@ -63,6 +64,7 @@ export default function ManuscriptView() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
   const world = useWorld(worldId ?? null)
+  const coverUrl = useBlobUrl(world?.coverImageId ?? null)
   const timelines = useTimelines(worldId ?? null)
   const ordered = useMemo(() => [...timelines].sort((a, b) => a.createdAt - b.createdAt), [timelines])
   const [timelineId, setTimelineId] = useState<string | null>(null)
@@ -266,6 +268,7 @@ export default function ManuscriptView() {
         title={world?.name ?? 'Manuscript'}
         timelineName={ordered.find((t) => t.id === activeTimelineId)?.name}
         timelineCount={ordered.length}
+        coverUrl={coverUrl}
       />
       {worldId && <FindReplaceDialog open={findOpen} onOpenChange={setFindOpen} worldId={worldId} />}
     </div>

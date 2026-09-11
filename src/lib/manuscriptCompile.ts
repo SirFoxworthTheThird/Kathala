@@ -109,6 +109,8 @@ export interface CompileOptions {
   sceneSeparator?: string
   /** Document title (HTML <title> / leading heading). */
   title?: string
+  /** Embedded image data URL used as the book cover in text-based exports. */
+  coverDataUrl?: string
 }
 
 
@@ -129,6 +131,7 @@ export function compileManuscript(
   const onlyWritten = opts.onlyWritten ?? true
   const sep = opts.sceneSeparator ?? '* * *'
   const title = opts.title?.trim() || 'Manuscript'
+  const cover = opts.coverDataUrl
 
   const chapterBlocks = m.chapters.map((ch) => {
     const scenes = onlyWritten ? ch.scenes.filter((s) => s.written) : ch.scenes
@@ -154,8 +157,9 @@ export function compileManuscript(
       '<!doctype html>',
       '<html><head><meta charset="utf-8" />',
       `<title>${escapeHtml(title)}</title>`,
-      '<style>body{max-width:40rem;margin:2rem auto;padding:0 1rem;font:1rem/1.7 Georgia,serif}h2{margin:2.5rem 0 1rem;font-size:1.4rem}hr.scene-break{border:0;text-align:center;margin:1.5rem 0}hr.scene-break::before{content:"* * *";color:#888}p{margin:0 0 1rem;text-indent:1.5rem}</style>',
+      '<style>body{max-width:40rem;margin:2rem auto;padding:0 1rem;font:1rem/1.7 Georgia,serif}.book-cover{display:block;max-width:100%;max-height:80vh;margin:0 auto 2rem}h2{margin:2.5rem 0 1rem;font-size:1.4rem}hr.scene-break{border:0;text-align:center;margin:1.5rem 0}hr.scene-break::before{content:"* * *";color:#888}p{margin:0 0 1rem;text-indent:1.5rem}</style>',
       '</head><body>',
+      cover ? `<img class="book-cover" src="${escapeHtml(cover)}" alt="${escapeHtml(title)} cover" />` : '',
       `<h1>${escapeHtml(title)}</h1>`,
       body,
       '</body></html>',
@@ -166,7 +170,7 @@ export function compileManuscript(
   const heading = (ch: ManuscriptChapter) =>
     format === 'markdown' ? `# Ch. ${ch.number} — ${ch.title || 'Untitled'}` : `Ch. ${ch.number} — ${ch.title || 'Untitled'}`
 
-  return chapterBlocks
+  const manuscriptBody = chapterBlocks
     .filter((b) => b.scenes.length > 0)
     .map(({ ch, scenes }) => {
       const parts: string[] = []
@@ -178,4 +182,6 @@ export function compileManuscript(
       return parts.join('\n\n')
     })
     .join('\n\n\n')
+  if (format === 'markdown' && cover) return `![${title} cover](${cover})\n\n${manuscriptBody}`
+  return manuscriptBody
 }

@@ -9,6 +9,12 @@ const worldFiles = import.meta.glob('../../../public/library/*.pwk', {
   import: 'default',
 }) as Record<string, string>
 
+const bundledImages = import.meta.glob('../../../public/library/**/*.{jpg,jpeg,png,webp}', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+})
+
 function worldFor(data: string): Record<string, unknown> {
   const key = Object.keys(worldFiles).find((k) => k.endsWith(`/${data}`))
   if (!key) throw new Error(`No shipped file for ${data}`)
@@ -37,6 +43,12 @@ describe('the published library catalogue', () => {
     expect(new Set(worldIds).size).toBe(worldIds.length)
   })
 
+  it('keeps the Odyssey manuscript cover readable without a cross-origin request', () => {
+    const entry = index.entries.find((candidate) => candidate.id === 'the-odyssey')
+    expect(entry?.cover).toBe('library/the-odyssey/art/cover.png')
+    expect(Object.keys(bundledImages).some((path) => path.endsWith('/the-odyssey/art/cover.png'))).toBe(true)
+  })
+
   for (const entry of index.entries) {
     describe(entry.title, () => {
       it('ships the file the manifest points at', () => {
@@ -48,12 +60,18 @@ describe('the published library catalogue', () => {
         expect(entry.notice).toMatch(/unofficial/i)
       })
 
-      it('contains no prose from the book', () => {
-        // The catalogue is structural reference only — characters, chapters,
-        // events, places. Shipping scene text would be republishing the novel,
-        // so this is asserted on the file rather than left to a convention.
+      it('ships scene prose only with declared public-domain provenance', () => {
+        // Copyrighted examples remain structural references. A public-domain
+        // source may include prose when the catalogue declares that basis and
+        // every draft resolves uniquely to a modeled event.
         const world = worldFor(entry.data)
-        expect(world.sceneTexts ?? [], 'sceneTexts').toEqual([])
+        const sceneTexts = (world.sceneTexts ?? []) as Array<{ eventId: string }>
+        const events = world.events as Array<{ id: string }>
+        if (sceneTexts.length > 0) {
+          expect(entry.notice).toMatch(/(?:original (?:scene drafts|prose)|public-domain translation)/i)
+          expect(sceneTexts).toHaveLength(events.length)
+          expect(new Set(sceneTexts.map((scene) => scene.eventId)).size).toBe(events.length)
+        }
         expect(world.sceneRevisions ?? [], 'sceneRevisions').toEqual([])
       })
 
