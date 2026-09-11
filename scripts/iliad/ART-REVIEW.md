@@ -13,14 +13,16 @@ separate assets.
 
 ## Reviewed recovery
 
-- Opened and visually reviewed 50 repository-hosted character portraits,
+- Opened and visually reviewed all 52 repository-hosted character portraits,
   including the recovered Priam portrait and the newly generated Machaon,
   Idomeneus, Sleep, Balius, Meriones and Artemis portraits. They are distinct
   and match their assigned entities; no rejected portrait is linked. The new
   portraits were checked for anatomy, hands or hooves, limb ownership, weapon
   and object grips, occlusion, duplication, period suitability, chronology and
   geography. Idomeneus and Balius were corrected to remove coastal-fortress
-  imagery before acceptance.
+  imagery before acceptance. The accepted Agenor uses inland Late Bronze Age
+  mudbrick ramparts and projecting gate towers; Thersites is anatomically
+  coherent and avoids caricaturing the disability described in the poem.
 - Opened the seven recovered location illustrations and eight supporting story
   illustrations. They depict separate locations or story subjects and are not
   used as navigable maps.
@@ -37,9 +39,6 @@ in `asset-manifest.json`.
 
 ## Outstanding image work
 
-- Two character portraits: Agenor and Thersites. An Agenor draft was rejected
-  because its crenellated city resembled medieval fortification; it is not
-  present in the shipped assets.
 - Ten location illustrations: Walls of Troy, Palace of Priam, Temple of Athena,
   Troy Burial Ground, Achaean Assembly, Agamemnon’s Quarters, Achilles’ Camp,
   Achaean Ships, Achaean Wall and Ditch and Myrmidon Open Ground.
