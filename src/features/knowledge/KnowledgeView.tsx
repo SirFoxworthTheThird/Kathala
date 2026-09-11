@@ -216,7 +216,7 @@ export default function KnowledgeView() {
               <div className="flex flex-wrap gap-2">
                 {deathSuggestions.map((s) => (
                   <button
-                    key={s.originEventId}
+                    key={`${s.originEventId}:${s.title}`}
                     onClick={() => trackSuggestedFact(s)}
                     className="flex items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1.5 text-xs text-[hsl(var(--foreground))] transition-colors hover:border-[hsl(var(--ring)/0.4)]"
                     title="Track this as a fact (and mark everyone present as knowing it)"
