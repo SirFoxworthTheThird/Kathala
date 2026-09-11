@@ -6,8 +6,8 @@
   "reviewedAt": "2026-09-10",
   "summary": {
     "total": 91,
-    "approved": 64,
-    "missing": 25,
+    "approved": 66,
+    "missing": 23,
     "replacementRequired": 2
   },
   "assets": [
@@ -557,8 +557,8 @@
       "entity": "Meriones",
       "path": "library/the-iliad/art/character-meriones.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Meriones. Cretan lieutenant and resourceful fighter who helps defend and recover Achaean comrades. Keep the composition purpose-specific for a PlotWeave character asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-character-artemis",
@@ -566,8 +566,8 @@
       "entity": "Artemis",
       "path": "library/the-iliad/art/character-artemis.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Artemis. Divine archer aligned with Troy when the gods are permitted to enter the fighting openly. Keep the composition purpose-specific for a PlotWeave character asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-character-agenor",
