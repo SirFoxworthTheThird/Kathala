@@ -56,7 +56,7 @@ describe('the published library catalogue', () => {
         const sceneTexts = (world.sceneTexts ?? []) as Array<{ eventId: string }>
         const events = world.events as Array<{ id: string }>
         if (sceneTexts.length > 0) {
-          expect(entry.notice).toMatch(/public-domain translation/i)
+          expect(entry.notice).toMatch(/(?:original (?:scene drafts|prose)|public-domain translation)/i)
           expect(sceneTexts).toHaveLength(events.length)
           expect(new Set(sceneTexts.map((scene) => scene.eventId)).size).toBe(events.length)
         }

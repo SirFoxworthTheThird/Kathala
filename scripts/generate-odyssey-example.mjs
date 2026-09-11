@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import { sceneDrafts } from './odyssey/scene-drafts.mjs'
 
 const P='odyssey', W=`${P}-world`, now=1786291200000
 const id=(k,s)=>`${P}-${k}-${s}`, base={worldId:W,createdAt:now,updatedAt:now}
@@ -323,9 +324,10 @@ for(const e of events){const book=Number(e.chapterId.slice(-2));e.threadIds=Obje
 const loreCategories=[['epic','Epic World'],['gods','Gods and Fate'],['custom','Custom and Society'],['places','Places and Peoples'],['objects','Objects and Signs']].map(([s,name],i)=>({...base,id:id('lore-category',s),name,description:`Reference context for ${name.toLowerCase()}.`,sortOrder:i}))
 const loreDefs=[
  ['epic','The Poem’s Two Temporal Layers','Books 1–8 and 13–24 follow the final return; Books 9–12 are Odysseus’s retrospective account at Scheria.'],['epic','Nostos','Homecoming means more than arrival: identity, household authority, kinship, and civic order must all be restored.'],['gods','Athena and Poseidon','The poem balances Athena’s intelligent aid against Poseidon’s elemental obstruction.'],['gods','Zeus and Responsibility','Divine decisions frame events, yet the poem repeatedly insists that mortals worsen suffering through their own recklessness.'],['custom','Xenia','Guest-friendship requires welcome, food, inquiry, gifts, and safe departure; its observance or violation organizes the moral geography.'],['custom','The Ithacan Household','The palace is an economic, familial, and political institution, not merely a private residence.'],['places','Phaeacia','Scheria is a liminal ideal of navigation, song, craft, and hospitality that returns Odysseus to ordinary human society.'],['places','The Underworld','The dead offer prophecy and memory but also expose the poverty of heroic glory after life.'],['objects','The Bow and the Bed','The bow proves public mastery; the rooted bed proves private identity and marital knowledge.'],['objects','Signs of Recognition','The scar, brooch, dog, orchard trees, and bed each authenticate identity for a different relationship.'],
+ ['epic','Text, Translation, and Book Titles','Source basis: Homer, The Odyssey, translated into English prose by Samuel Butler, Project Gutenberg eBook 1727 (https://www.gutenberg.org/ebooks/1727), checked as a complete public-domain edition of Books I–XXIV. Homer’s poem numbers its books rather than naming them, so the descriptive book names and exact calendar values used here are editorial aids. All scene drafts, summaries, titles, descriptions, and notes are original PlotWeave writing grounded in the source rather than copied translation prose. Linked artwork and maps are public-domain images from Wikimedia Commons.'],
 ]
-const loreArt=['homecoming','bow','athena','zeus','phaeacia','suitors','alcinous','underworld','bow','eurycleia']
-const lorePages=loreDefs.map(([c,title,body],i)=>({...base,id:id('lore',i+1),categoryId:id('lore-category',c),title,body,tags:[],coverImageId:artId(loreArt[i]),linkedEntityIds:[],visibleFromEventId:null}))
+const loreArt=['homecoming','bow','athena','zeus','phaeacia','suitors','alcinous','underworld','bow','eurycleia',null]
+const lorePages=loreDefs.map(([c,title,body],i)=>({...base,id:id('lore',i+1),categoryId:id('lore-category',c),title,body,tags:[],coverImageId:loreArt[i]?artId(loreArt[i]):null,linkedEntityIds:[],visibleFromEventId:null}))
 
 const factions=[
  ['household','House of Odysseus','#54745f','The royal family and servants seeking restoration of the household.'],['suitors','The Suitors','#8b4a4a','Noblemen occupying the palace and competing to replace Odysseus.'],['crew','Odysseus’s Crew','#65758a','The diminishing company of Ithacan veterans returning from Troy.'],['phaeacians','Phaeacians','#4b7691','Seafaring hosts whose final gift is a safe passage home.'],['olympians','Olympian Gods','#9c8445','Divine powers debating, assisting, obstructing, and judging the return.'],['loyalists','Ithacan Loyalists','#6f8050','Servants who preserve loyalty despite twenty years of uncertainty.'],
@@ -355,7 +357,14 @@ const blobs=[
  ...Object.entries(artDefs).map(([key,name])=>({id:artId(key),worldId:W,mimeType:name.toLowerCase().endsWith('.png')?'image/png':'image/jpeg',url:commons(name),createdAt:now})),
 ]
 
-const data={version:16,type:'world-export',exportedAt:now,world:{id:W,name:'The Odyssey',description:'Homer’s epic of return follows Odysseus through memory, shipwreck, disguise, recognition, and the violent restoration of Ithaca, while Penelope and Telemachus preserve a household under siege.',coverImageId:artId('homecoming'),theme:'theme-mythic',readingMode:true,createdAt:now,updatedAt:now,continuityStaleThreshold:5,calendar:{startYear:1,yearSuffix:' of the Return',months:[['First Moon',30],['Second Moon',30],['Third Moon',30],['Fourth Moon',30],['Fifth Moon',30],['Sixth Moon',30],['Seventh Moon',30],['Eighth Moon',30],['Ninth Moon',30],['Tenth Moon',30],['Eleventh Moon',30],['Twelfth Moon',30]].map(([name,days])=>({name,days}))},wordTarget:null},mapLayers,locationMarkers,characters,items,characterSnapshots,itemPlacements,relationships,timelines,chapters,events,blobs,loreCategories,lorePages,factions,factionMemberships,factionRelationships,knowledgeFacts,knowledgeReveals,characterGoals,plotThreads,motifs,characterMovements:[],locationSnapshots:[],itemSnapshots:[],relationshipSnapshots:[],travelModes:[],timelineRelationships,crossTimelineArtifacts:[],mapRoutes,mapRegions:[],mapRegionSnapshots:[],mapAnnotations:[],sceneTexts:[],continuitySuppressions:[],writingLogs:[],sceneRevisions:[]}
+if(sceneDrafts.length!==events.length)throw Error(`Expected ${events.length} scene drafts, found ${sceneDrafts.length}`)
+const sceneTexts=events.map((event,i)=>{
+ const text=sceneDrafts[i].trim()
+ if(!text)throw Error(`Empty scene draft: ${event.title}`)
+ return {...base,id:id('scene',String(i+1).padStart(3,'0')),eventId:event.id,text,wordCount:text.split(/\s+/u).length}
+})
+
+const data={version:16,type:'world-export',exportedAt:now,world:{id:W,name:'The Odyssey',description:'Homer’s epic of return follows Odysseus through memory, shipwreck, disguise, recognition, and the violent restoration of Ithaca, while Penelope and Telemachus preserve a household under siege.',coverImageId:artId('homecoming'),theme:'theme-mythic',readingMode:true,createdAt:now,updatedAt:now,continuityStaleThreshold:5,calendar:{startYear:1,yearSuffix:' of the Return',months:[['First Moon',30],['Second Moon',30],['Third Moon',30],['Fourth Moon',30],['Fifth Moon',30],['Sixth Moon',30],['Seventh Moon',30],['Eighth Moon',30],['Ninth Moon',30],['Tenth Moon',30],['Eleventh Moon',30],['Twelfth Moon',30]].map(([name,days])=>({name,days}))},wordTarget:null},mapLayers,locationMarkers,characters,items,characterSnapshots,itemPlacements,relationships,timelines,chapters,events,blobs,loreCategories,lorePages,factions,factionMemberships,factionRelationships,knowledgeFacts,knowledgeReveals,characterGoals,plotThreads,motifs,characterMovements:[],locationSnapshots:[],itemSnapshots:[],relationshipSnapshots:[],travelModes:[],timelineRelationships,crossTimelineArtifacts:[],mapRoutes,mapRegions:[],mapRegionSnapshots:[],mapAnnotations:[],sceneTexts,continuitySuppressions:[],writingLogs:[],sceneRevisions:[]}
 
 const ids=new Set(locationMarkers.map(l=>l.id));for(const e of events)if(!ids.has(e.locationMarkerId))throw Error(`Bad event location: ${e.title}`)
 for(const m of mapLayers.filter(m=>m.parentMapId))if(!locationMarkers.some(l=>l.linkedMapLayerId===m.id))throw Error(`Submap lacks entrance: ${m.name}`)
@@ -366,4 +375,12 @@ if(new Set(characterSnapshots.map(s=>s.statusNotes)).size!==characterSnapshots.l
 const text=JSON.stringify(data,null,2)+'\n'
 fs.writeFileSync('example/The Odyssey.pwk',text)
 fs.writeFileSync('public/library/the-odyssey.pwk',text)
-console.log(JSON.stringify({chapters:chapters.length,events:events.length,characters:characters.length,locations:locationMarkers.length,items:items.length,relationships:relationships.length,threads:plotThreads.length,snapshots:characterSnapshots.length},null,2))
+const cataloguePath='public/library/index.json'
+const catalogue=JSON.parse(fs.readFileSync(cataloguePath,'utf8'))
+const catalogueEntry=catalogue.entries.find(entry=>entry.id==='the-odyssey')
+if(!catalogueEntry)throw Error('Missing Odyssey catalogue entry')
+catalogueEntry.dataBytes=Buffer.byteLength(text,'utf8')
+catalogueEntry.counts={characters:characters.length,chapters:chapters.length,events:events.length,locations:locationMarkers.length}
+catalogueEntry.notice='Unofficial reference for a public-domain epic. This example contains original scene drafts, structural summaries, and editorial reconstruction rather than the poem’s prose.'
+fs.writeFileSync(cataloguePath,JSON.stringify(catalogue,null,2)+'\n')
+console.log(JSON.stringify({chapters:chapters.length,events:events.length,characters:characters.length,locations:locationMarkers.length,items:items.length,relationships:relationships.length,threads:plotThreads.length,snapshots:characterSnapshots.length,scenes:sceneTexts.length,words:sceneTexts.reduce((sum,scene)=>sum+scene.wordCount,0),bytes:Buffer.byteLength(text,'utf8')},null,2))
