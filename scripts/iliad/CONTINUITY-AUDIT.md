@@ -1,6 +1,6 @@
 # The Iliad — source and continuity audit
 
-Audit date: 10 September 2026. Data audit complete; artwork and application
+Audit date: 11 September 2026. Data audit complete; artwork and application
 release gates remain open.
 
 ## Source
@@ -73,12 +73,13 @@ that geographical defect.
 - `node scripts/generate-iliad-example.mjs`: passed and preserved both PWKs and
   exact catalogue metadata.
 - `node scripts/validate-iliad-example.mjs`: correctly fails the release gate
-  while 29 expected files are missing and two existing files require replacement.
+  while 23 expected files are missing and two existing files require replacement.
 
 ## Open gates
 
-Image generation, final per-image review, a geographically corrected Troad map,
-the Troy map, the Neoclassical cover replacement, and the complete in-app
+The Agenor and Thersites portraits, ten location images, ten item images, final
+per-image review, a geographically corrected Troad map, the Troy map, the
+Neoclassical cover replacement, and the complete in-app
 reading/unrestricted pass remain incomplete. The managed browser could not
 reach the container-local application, so no page, gateway, marker or playback
 claim is made here.
