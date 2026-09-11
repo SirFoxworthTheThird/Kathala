@@ -6,8 +6,8 @@
   "reviewedAt": "2026-09-11",
   "summary": {
     "total": 91,
-    "approved": 69,
-    "missing": 21,
+    "approved": 71,
+    "missing": 19,
     "replacementRequired": 1
   },
   "assets": [
@@ -656,8 +656,8 @@
       "entity": "Walls of Troy",
       "path": "library/the-iliad/art/location-walls.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Walls of Troy. The massive western battlements from which the royal family and Trojan elders watch the fighting. Keep the composition purpose-specific for a PlotWeave location asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-location-priam-palace",
@@ -665,8 +665,8 @@
       "entity": "Palace of Priam",
       "path": "library/the-iliad/art/location-priam-palace.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Palace of Priam. The broad royal compound of courts and chambers occupied by Priam’s extended household. Keep the composition purpose-specific for a PlotWeave location asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-location-athena-temple",

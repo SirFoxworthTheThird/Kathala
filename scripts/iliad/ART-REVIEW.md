@@ -39,9 +39,11 @@ in `asset-manifest.json`.
 
 ## Outstanding image work
 
-- Ten location illustrations: Walls of Troy, Palace of Priam, Temple of Athena,
-  Troy Burial Ground, Achaean Assembly, Agamemnon’s Quarters, Achilles’ Camp,
-  Achaean Ships, Achaean Wall and Ditch and Myrmidon Open Ground.
+- Eight location illustrations: Temple of Athena, Troy Burial Ground, Achaean
+  Assembly, Agamemnon’s Quarters, Achilles’ Camp, Achaean Ships, Achaean Wall
+  and Ditch and Myrmidon Open Ground. The Walls of Troy and Palace of Priam
+  illustrations passed review after medieval crenellations and pseudo-writing
+  were removed from rejected drafts.
 - Ten object illustrations, one for every modeled object.
 - The Troy navigable submap.
 - Replacement of the cover with a clearly painted Neoclassical treatment.

@@ -73,11 +73,11 @@ scale; the main layer retains Troy, Mount Ida, Scamander, the plain and shore.
 - `node scripts/generate-iliad-example.mjs`: passed and preserved both PWKs and
   exact catalogue metadata.
 - `node scripts/validate-iliad-example.mjs`: correctly fails the release gate
-  while 21 expected files are missing and the existing cover requires replacement.
+  while 19 expected files are missing and the existing cover requires replacement.
 
 ## Open gates
 
-Ten location images, ten item images, final per-image review, the Troy map, the
+Eight location images, ten item images, final per-image review, the Troy map, the
 Neoclassical cover replacement, and the complete in-app
 reading/unrestricted pass remain incomplete. The managed browser could not
 reach the container-local application, so no page, gateway, marker or playback
