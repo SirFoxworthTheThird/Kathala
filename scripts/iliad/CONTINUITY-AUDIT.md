@@ -61,9 +61,9 @@ intercuts those actions. Together the event drafts contain 151,957 words.
 
 The hierarchy is Troad root → Troy and Troad root → Achaean Camp. Each submap
 has one parent gateway and contains its story-relevant locations. Snapshot map
-assignments follow this hierarchy. The root map image remains rejected because
-it depicts Mount Olympus beside Troy; data structure validity does not excuse
-that geographical defect.
+assignments follow this hierarchy. The root map now separates Mount Olympus
+from the Troad geography in a bordered distant inset explicitly marked not to
+scale; the main layer retains Troy, Mount Ida, Scamander, the plain and shore.
 
 ## Automated evidence
 
@@ -73,13 +73,12 @@ that geographical defect.
 - `node scripts/generate-iliad-example.mjs`: passed and preserved both PWKs and
   exact catalogue metadata.
 - `node scripts/validate-iliad-example.mjs`: correctly fails the release gate
-  while 23 expected files are missing and two existing files require replacement.
+  while 23 expected files are missing and the existing cover requires replacement.
 
 ## Open gates
 
 The Agenor and Thersites portraits, ten location images, ten item images, final
-per-image review, a geographically corrected Troad map, the Troy map, the
-Neoclassical cover replacement, and the complete in-app
+per-image review, the Troy map, the Neoclassical cover replacement, and the complete in-app
 reading/unrestricted pass remain incomplete. The managed browser could not
 reach the container-local application, so no page, gateway, marker or playback
 claim is made here.

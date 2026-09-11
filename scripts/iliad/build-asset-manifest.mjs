@@ -12,7 +12,6 @@ for (const item of data.items) entities.set(item.imageId, { category: 'item', na
 
 const replacementNotes = new Map([
   ['iliad-image-cover', 'Replacement required: visual review found a near-photographic finish inconsistent with the painted Neoclassical direction.'],
-  ['iliad-image-map-troad', 'Replacement required: Mount Olympus is depicted beside Troy, creating incorrect geography. Use a clearly separated inset or an expanded regional map.'],
 ])
 
 const direction = 'Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography.'
@@ -44,7 +43,7 @@ const manifest = {
   source: 'Homer, The Iliad, translated by Samuel Butler, Project Gutenberg eBook 2199',
   direction,
   generatedArtwork: true,
-  reviewedAt: '2026-09-10',
+  reviewedAt: '2026-09-11',
   summary: {
     total: assets.length,
     approved: assets.filter(asset => asset.reviewStatus === 'approved').length,

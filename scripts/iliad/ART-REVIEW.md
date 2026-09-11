@@ -25,8 +25,10 @@ separate assets.
   illustrations. They depict separate locations or story subjects and are not
   used as navigable maps.
 - Opened both recovered navigable maps. The Achaean Camp map is a legible,
-  purpose-specific schematic with distinct camp sectors. The Troad root map is
-  legible but fails geography because it places Mount Olympus beside Troy.
+  purpose-specific schematic with distinct camp sectors. The Troad root map
+  now isolates Mount Olympus inside a bordered `DISTANT INSET — NOT TO SCALE`
+  panel; Troy, Mount Ida, Scamander, the plain and the Achaean shore remain on
+  the main navigable geography. The corrected label is complete and legible.
 - Opened the cover. Its scene and chronology fit Book XXIV, but the finish is
   too close to photography for the required painted Neoclassical direction.
 
@@ -43,8 +45,6 @@ in `asset-manifest.json`.
   Achaean Ships, Achaean Wall and Ditch and Myrmidon Open Ground.
 - Ten object illustrations, one for every modeled object.
 - The Troy navigable submap.
-- Replacement of the root Troad map with geographically correct handling of
-  distant Mount Olympus.
 - Replacement of the cover with a clearly painted Neoclassical treatment.
 
 ## Validation still required

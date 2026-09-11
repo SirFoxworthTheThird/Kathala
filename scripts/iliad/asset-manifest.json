@@ -3,12 +3,12 @@
   "source": "Homer, The Iliad, translated by Samuel Butler, Project Gutenberg eBook 2199",
   "direction": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography.",
   "generatedArtwork": true,
-  "reviewedAt": "2026-09-10",
+  "reviewedAt": "2026-09-11",
   "summary": {
     "total": 91,
-    "approved": 66,
+    "approved": 67,
     "missing": 23,
-    "replacementRequired": 2
+    "replacementRequired": 1
   },
   "assets": [
     {
@@ -17,8 +17,8 @@
       "entity": "Troy and the Achaean Shore",
       "path": "library/the-iliad/maps/troad.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Troy and the Achaean Shore. The Troad from the beached Achaean fleet across the battlefield to walled Troy, with Mount Ida and the course of Scamander. Keep the composition purpose-specific for a PlotWeave map asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "replacement-required",
-      "reviewNotes": "Replacement required: Mount Olympus is depicted beside Troy, creating incorrect geography. Use a clearly separated inset or an expanded regional map."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-map-troy",
