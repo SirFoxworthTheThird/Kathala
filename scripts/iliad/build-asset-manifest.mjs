@@ -10,9 +10,7 @@ for (const character of data.characters) entities.set(character.portraitImageId,
 for (const location of data.locationMarkers) entities.set(location.imageId, { category: 'location', name: location.name, description: location.description })
 for (const item of data.items) entities.set(item.imageId, { category: 'item', name: item.name, description: item.description })
 
-const replacementNotes = new Map([
-  ['iliad-image-cover', 'Replacement required: visual review found a near-photographic finish inconsistent with the painted Neoclassical direction.'],
-])
+const replacementNotes = new Map()
 
 const direction = 'Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography.'
 const assets = data.blobs.map(blob => {

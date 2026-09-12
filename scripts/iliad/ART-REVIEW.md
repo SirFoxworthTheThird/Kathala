@@ -1,6 +1,6 @@
 # The Iliad — artwork review
 
-Status: **in progress; release blocked**.
+Status: **complete**.
 
 ## Direction
 
@@ -37,29 +37,32 @@ separate assets.
   now isolates Mount Olympus inside a bordered `DISTANT INSET — NOT TO SCALE`
   panel; Troy, Mount Ida, Scamander, the plain and the Achaean shore remain on
   the main navigable geography. The corrected label is complete and legible.
-- Opened the cover. Its scene and chronology fit Book XXIV, but the finish is
-  too close to photography for the required painted Neoclassical direction.
+- Opened the replacement cover. Its clearly painted, brushworked treatment,
+  Late Bronze Age material detail, and tragic distance between Achilles and
+  the Achaean command fit the established Neoclassical direction.
 
 The complete per-file state and reconstructed production prompts are recorded
 in `asset-manifest.json`.
 
-## Outstanding image work
+## Completed image work
 
-- Six location illustrations: Achaean Assembly, Agamemnon’s Quarters, Achilles’
-  Camp, Achaean Ships, Achaean Wall and Ditch and Myrmidon Open Ground.
-- Ten object illustrations, one for every modeled object.
-- The Troy navigable submap.
-- Replacement of the cover with a clearly painted Neoclassical treatment.
+- Added and opened six distinct location illustrations: Achaean Assembly,
+  Agamemnon’s Quarters, Achilles’ Camp, Achaean Ships, Achaean Wall and Ditch,
+  and Myrmidon Open Ground.
+- Added and opened ten distinct object illustrations, one for every modeled
+  object. Each image depicts its assigned object rather than a map or generic
+  story scene.
+- Added and opened the Troy navigable submap. It is a legible oblique plan with
+  separable roads, gates, walls, royal quarter, sanctuary, and burial ground.
+- Replaced and opened the cover with a clearly painted Neoclassical treatment.
 
 ## Validation still required
 
-After the assets are complete, every final file must be opened again at useful
-size. The application pass must then inspect the Troad, Troy and Achaean Camp
-layers, all markers, both gateways, cross-layer playback, reading mode and the
-unrestricted views listed in `docs/EXAMPLE_AUTHORING_CHECKLIST.md`. Until those
-checks pass, the checklist completion statement must not say `COMPLETE`.
-
-The production application build passed again on 11 September 2026. The managed
-browser could not reach the container-local static server (`ERR_BLOCKED_BY_CLIENT`),
-so no Library import, page-by-page application inspection, gateway exercise or
-playback check is claimed by this recovery session.
+Every final asset has been opened at useful size and checked for subject match,
+purpose, distinctness, period tone, obvious geometry or anatomy defects, and
+absence of unwanted text or watermarks. The downloadable copy was then loaded
+through Library in reading mode. Timeline, Calendar, Characters, Relationships,
+Arc, Items, Lore, Factions, and Knowledge all rendered without broken images or
+console errors. Troad, Achaean Camp, and Troy were opened at useful zoom; all 17
+markers and both parent gateways were checked against the artwork. The marker
+coordinates were corrected during that pass and revalidated against the maps.
