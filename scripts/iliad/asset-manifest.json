@@ -3,12 +3,12 @@
   "source": "Homer, The Iliad, translated by Samuel Butler, Project Gutenberg eBook 2199",
   "direction": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography.",
   "generatedArtwork": true,
-  "reviewedAt": "2026-09-10",
+  "reviewedAt": "2026-09-11",
   "summary": {
     "total": 91,
-    "approved": 60,
-    "missing": 29,
-    "replacementRequired": 2
+    "approved": 91,
+    "missing": 0,
+    "replacementRequired": 0
   },
   "assets": [
     {
@@ -17,8 +17,8 @@
       "entity": "Troy and the Achaean Shore",
       "path": "library/the-iliad/maps/troad.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Troy and the Achaean Shore. The Troad from the beached Achaean fleet across the battlefield to walled Troy, with Mount Ida and the course of Scamander. Keep the composition purpose-specific for a PlotWeave map asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "replacement-required",
-      "reviewNotes": "Replacement required: Mount Olympus is depicted beside Troy, creating incorrect geography. Use a clearly separated inset or an expanded regional map."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-map-troy",
@@ -26,8 +26,8 @@
       "entity": "Troy",
       "path": "library/the-iliad/maps/troy.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Troy. The fortified city inside the Scaean Gates, including the royal quarter, Athena’s sanctuary, and the western walls. Keep the composition purpose-specific for a PlotWeave map asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-map-achaean-camp",
@@ -44,8 +44,8 @@
       "entity": "The Iliad",
       "path": "library/the-iliad/art/cover.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: The Iliad. In the tenth year of the war at Troy, a dispute between Achilles and Agamemnon divides the Achaean army while Trojans, allies, and rival gods struggle over the battlefield between the city and the sea. Keep the composition purpose-specific for a PlotWeave cover asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "replacement-required",
-      "reviewNotes": "Replacement required: visual review found a near-photographic finish inconsistent with the painted Neoclassical direction."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-achilles",
@@ -521,8 +521,8 @@
       "entity": "Machaon",
       "path": "library/the-iliad/art/character-machaon.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Machaon. Achaean healer and warrior whose medical skill makes his safety strategically important. Keep the composition purpose-specific for a PlotWeave character asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-character-idomeneus",
@@ -530,8 +530,8 @@
       "entity": "Idomeneus",
       "path": "library/the-iliad/art/character-idomeneus.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Idomeneus. Veteran king of Crete and a steady Achaean commander in the battle beside the ships. Keep the composition purpose-specific for a PlotWeave character asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-character-sleep",
@@ -539,8 +539,8 @@
       "entity": "Sleep",
       "path": "library/the-iliad/art/character-sleep.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Sleep. Divine personification enlisted by Hera to keep Zeus unaware of intervention on the battlefield. Keep the composition purpose-specific for a PlotWeave character asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-character-balius",
@@ -548,8 +548,8 @@
       "entity": "Balius",
       "path": "library/the-iliad/art/character-balius.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Balius. One of Achilles’ immortal horses, yoked beside Xanthus to the chariot of the Myrmidons. Keep the composition purpose-specific for a PlotWeave character asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-character-meriones",
@@ -557,8 +557,8 @@
       "entity": "Meriones",
       "path": "library/the-iliad/art/character-meriones.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Meriones. Cretan lieutenant and resourceful fighter who helps defend and recover Achaean comrades. Keep the composition purpose-specific for a PlotWeave character asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-character-artemis",
@@ -566,8 +566,8 @@
       "entity": "Artemis",
       "path": "library/the-iliad/art/character-artemis.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Artemis. Divine archer aligned with Troy when the gods are permitted to enter the fighting openly. Keep the composition purpose-specific for a PlotWeave character asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-character-agenor",
@@ -575,8 +575,8 @@
       "entity": "Agenor",
       "path": "library/the-iliad/art/character-agenor.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Agenor. Trojan warrior who stands against Achilles near the gates while the army retreats into Troy. Keep the composition purpose-specific for a PlotWeave character asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-character-thersites",
@@ -584,8 +584,8 @@
       "entity": "Thersites",
       "path": "library/the-iliad/art/character-thersites.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Thersites. A sharp-tongued Achaean common soldier who publicly challenges Agamemnon during the failed departure. Keep the composition purpose-specific for a PlotWeave character asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-location-olympus",
@@ -656,8 +656,8 @@
       "entity": "Walls of Troy",
       "path": "library/the-iliad/art/location-walls.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Walls of Troy. The massive western battlements from which the royal family and Trojan elders watch the fighting. Keep the composition purpose-specific for a PlotWeave location asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-location-priam-palace",
@@ -665,8 +665,8 @@
       "entity": "Palace of Priam",
       "path": "library/the-iliad/art/location-priam-palace.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Palace of Priam. The broad royal compound of courts and chambers occupied by Priam’s extended household. Keep the composition purpose-specific for a PlotWeave location asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-location-athena-temple",
@@ -674,8 +674,8 @@
       "entity": "Temple of Athena",
       "path": "library/the-iliad/art/location-athena-temple.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Temple of Athena. The city sanctuary where Hecuba and the Trojan women carry their finest robe in supplication. Keep the composition purpose-specific for a PlotWeave location asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-location-hector-tomb",
@@ -683,8 +683,8 @@
       "entity": "Troy Burial Ground",
       "path": "library/the-iliad/art/location-hector-tomb.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Troy Burial Ground. A protected open ground within the walls where the city conducts formal burials and communal mourning. Keep the composition purpose-specific for a PlotWeave location asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-location-assembly",
@@ -692,8 +692,8 @@
       "entity": "Achaean Assembly",
       "path": "library/the-iliad/art/location-assembly.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Achaean Assembly. The open meeting ground where the gathered army hears disputes, counsel, and reconciliation. Keep the composition purpose-specific for a PlotWeave location asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-location-agamemnon-tent",
@@ -701,8 +701,8 @@
       "entity": "Agamemnon’s Quarters",
       "path": "library/the-iliad/art/location-agamemnon-tent.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Agamemnon’s Quarters. The high king’s large command enclosure near the centre of the allied contingents. Keep the composition purpose-specific for a PlotWeave location asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-location-achilles-tent",
@@ -710,8 +710,8 @@
       "entity": "Achilles’ Camp",
       "path": "library/the-iliad/art/location-achilles-tent.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Achilles’ Camp. The Myrmidon sector at the fleet’s edge, centred on Achilles’ shelter and ships. Keep the composition purpose-specific for a PlotWeave location asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-location-ships",
@@ -719,8 +719,8 @@
       "entity": "Achaean Ships",
       "path": "library/the-iliad/art/location-ships.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Achaean Ships. Rows of dark-hulled vessels drawn onto the beach and backed by the warriors’ shelters. Keep the composition purpose-specific for a PlotWeave location asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-location-wall-ditch",
@@ -728,8 +728,8 @@
       "entity": "Achaean Wall and Ditch",
       "path": "library/the-iliad/art/location-wall-ditch.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Achaean Wall and Ditch. The improvised landward fortification defending the tents and fleet from Trojan attack. Keep the composition purpose-specific for a PlotWeave location asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-location-patroclus-pyre",
@@ -737,8 +737,8 @@
       "entity": "Myrmidon Open Ground",
       "path": "library/the-iliad/art/location-patroclus-pyre.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Myrmidon Open Ground. A broad packed-earth tract beside the Myrmidon sector, suitable for mustering, ceremonies, and contests. Keep the composition purpose-specific for a PlotWeave location asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-item-achilles-armour",
@@ -746,8 +746,8 @@
       "entity": "First Armour of Achilles",
       "path": "library/the-iliad/art/item-achilles-armour.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: First Armour of Achilles. The bronze armour Achilles brought from the house of Peleus and keeps with the Myrmidon equipment. Keep the composition purpose-specific for a PlotWeave item asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-item-new-armour",
@@ -755,8 +755,8 @@
       "entity": "Armour Forged by Hephaestus",
       "path": "library/the-iliad/art/item-new-armour.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Armour Forged by Hephaestus. A complete divine panoply whose arrival and purpose are revealed in the later action. Keep the composition purpose-specific for a PlotWeave item asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-item-shield",
@@ -764,8 +764,8 @@
       "entity": "Shield of Achilles",
       "path": "library/the-iliad/art/item-shield.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Shield of Achilles. A richly worked round shield whose concentric imagery encompasses mortal communities and the natural world. Keep the composition purpose-specific for a PlotWeave item asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-item-agamemnon-sceptre",
@@ -773,8 +773,8 @@
       "entity": "Sceptre of Agamemnon",
       "path": "library/the-iliad/art/item-agamemnon-sceptre.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Sceptre of Agamemnon. An inherited emblem of command passed from Zeus through the royal line. Keep the composition purpose-specific for a PlotWeave item asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-item-achilles-spear",
@@ -782,8 +782,8 @@
       "entity": "Spear of Peleus",
       "path": "library/the-iliad/art/item-achilles-spear.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Spear of Peleus. An exceptionally heavy Pelian-ash spear inherited by Achilles from his father. Keep the composition purpose-specific for a PlotWeave item asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-item-hector-helmet",
@@ -791,8 +791,8 @@
       "entity": "Hector’s Horsehair-Crested Helmet",
       "path": "library/the-iliad/art/item-hector-helmet.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Hector’s Horsehair-Crested Helmet. A polished bronze helmet with cheek pieces and a tall horsehair crest, worn by Troy’s leading defender. Keep the composition purpose-specific for a PlotWeave item asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-item-chryses-ransom",
@@ -800,8 +800,8 @@
       "entity": "Ransom of Chryses",
       "path": "library/the-iliad/art/item-chryses-ransom.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Ransom of Chryses. Gold, woven goods, and other valuables brought by Chryses to recover his captive daughter. Keep the composition purpose-specific for a PlotWeave item asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-item-belt",
@@ -809,8 +809,8 @@
       "entity": "Ajax and Hector’s Gifts",
       "path": "library/the-iliad/art/item-belt.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Ajax and Hector’s Gifts. A decorated sword and a strong leather belt associated with an exchange between opposing champions. Keep the composition purpose-specific for a PlotWeave item asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-item-palladium-robe",
@@ -818,8 +818,8 @@
       "entity": "Hecuba’s Robe",
       "path": "library/the-iliad/art/item-palladium-robe.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Hecuba’s Robe. The richest woven robe stored in Priam’s household, chosen for a formal religious offering. Keep the composition purpose-specific for a PlotWeave item asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     },
     {
       "id": "iliad-image-art-item-funeral-prizes",
@@ -827,8 +827,8 @@
       "entity": "Funeral Games Prizes",
       "path": "library/the-iliad/art/item-funeral-prizes.jpg",
       "prompt": "Original painted Neoclassical oil illustration with Late Bronze Age Aegean and Anatolian details; mature historical-book finish and visible brushwork. Avoid photorealism, modern objects, malformed anatomy, unclear limb ownership, bad grips, duplicated objects, pseudo-text, chronological spoilers, and incorrect geography. Subject: Funeral Games Prizes. Tripods, horses, armour, metal, crafted vessels, and other valuables assembled for ceremonial contests. Keep the composition purpose-specific for a PlotWeave item asset. No text or watermark unless legible labels are explicitly required for a navigable map.",
-      "reviewStatus": "missing",
-      "reviewNotes": "Expected by the PWK but not yet generated or recovered."
+      "reviewStatus": "approved",
+      "reviewNotes": "Opened in the September 2026 recovery pass and checked for subject identity, style, historical suitability, anatomy or geometry, duplication, chronology, and obvious rendering defects."
     }
   ]
 }

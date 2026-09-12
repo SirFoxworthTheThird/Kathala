@@ -1,7 +1,7 @@
 # The Iliad — source and continuity audit
 
-Audit date: 10 September 2026. Data audit complete; artwork and application
-release gates remain open.
+Audit date: 11 September 2026. Data and artwork audits complete; application
+validation is recorded after the final export pass.
 
 ## Source
 
@@ -61,9 +61,19 @@ intercuts those actions. Together the event drafts contain 151,957 words.
 
 The hierarchy is Troad root → Troy and Troad root → Achaean Camp. Each submap
 has one parent gateway and contains its story-relevant locations. Snapshot map
-assignments follow this hierarchy. The root map image remains rejected because
-it depicts Mount Olympus beside Troy; data structure validity does not excuse
-that geographical defect.
+assignments follow this hierarchy. The root map now separates Mount Olympus
+from the Troad geography in a bordered distant inset explicitly marked not to
+scale; the main layer retains Troy, Mount Ida, Scamander, the plain and shore.
+
+## Artwork state
+
+All 84 repository-hosted assets are present and individually reviewed. The
+completed set includes 52 distinct character portraits, ten distinct item
+illustrations, 17 location illustrations, three navigable maps, a world cover,
+and one supporting illustration. Maps and ordinary entity artwork remain
+purpose-specific and separate. The replacement cover and all newly completed
+assets follow the mature painted Neoclassical direction documented in
+`ART-REVIEW.md`.
 
 ## Automated evidence
 
@@ -72,13 +82,16 @@ that geographical defect.
 - `npm run build`: TypeScript and Vite production build passed.
 - `node scripts/generate-iliad-example.mjs`: passed and preserved both PWKs and
   exact catalogue metadata.
-- `node scripts/validate-iliad-example.mjs`: correctly fails the release gate
-  while 29 expected files are missing and two existing files require replacement.
+- `node scripts/validate-iliad-example.mjs`: passes with all assets present,
+  distinct, repository-hosted, and above the minimum integrity threshold.
 
-## Open gates
+## Application validation
 
-Image generation, final per-image review, a geographically corrected Troad map,
-the Troy map, the Neoclassical cover replacement, and the complete in-app
-reading/unrestricted pass remain incomplete. The managed browser could not
-reach the container-local application, so no page, gateway, marker or playback
-claim is made here.
+The completed downloadable export was loaded through Library in reading mode
+and revealed through the whole book. Timeline, Calendar, Characters,
+Relationships, Arc, Items, Lore, Factions, and Knowledge rendered without a
+broken image, persistent loader, or console error. Troad, Troy, and Achaean Camp
+were inspected at useful zoom; all 17 markers and both gateways were checked
+against their artwork. Ten stale coordinates on the two submaps were corrected
+during the visual pass, followed by a second inspection. Cross-layer character
+placement was also present on all three layers through the map timeline.
