@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import { sceneDrafts } from './around-the-world/full-scene-drafts.mjs'
 
 const P = 'around-the-world-in-eighty-days'
 const worldId = `${P}-world`
@@ -700,6 +701,33 @@ const events = eventDefs.map((entry, index) => ({
   tags: [`chapter-${entry.chapter}`], threadIds: entry.threads.map(threadId), motifIds: entry.motifs.map(motifId), sortOrder: index,
   travelDays: index === 0 ? 0 : Math.max(0, entry.at - eventDefs[index - 1].at), inWorldTime: Math.floor(entry.at), tension: entry.tension, structureBeat: entry.beat, status: 'final', povCharacterId: entry.pov ? charId(entry.pov) : null, isFlashback: false,
 }))
+const placeEvent = (title, chapter, sortOrder) => {
+  const row = events.find(event => event.title === title)
+  if (!row) throw new Error(`Missing event: ${title}`)
+  row.chapterId = chId(chapter)
+  row.sortOrder = sortOrder
+  return row
+}
+placeEvent('Passepartout Settles In', 2, 0)
+placeEvent('The Household Timetable Is Studied', 2, 10)
+placeEvent('The Detective Decides to Use the Valet', 16, 0)
+placeEvent('Fix Tests Passepartout’s Suspicion', 16, 10)
+placeEvent('The Carnatic’s Departure Is Postponed', 18, 0)
+placeEvent('Aouda’s Relative Has Left Hong Kong', 18, 10)
+const bridgeEvent = placeEvent('The Duel Is Interrupted', 28, 10)
+bridgeEvent.title = 'The Train Leaps the Failing Bridge'
+bridgeEvent.description = 'Ignoring Passepartout’s safer proposal, the passengers back the train up and cross the failing Medicine Bow bridge at full speed before it collapses.'
+const haltedBridgeEvent = placeEvent('The Train Charges across the Failing Bridge', 28, 0)
+haltedBridgeEvent.title = 'The Failing Bridge Halts the Train'
+haltedBridgeEvent.description = 'A red signal stops the train before the unsafe Medicine Bow bridge, and the passengers debate how to cross without losing six hours.'
+placeEvent('Fogg Takes Command of the Henrietta', 33, 0)
+placeEvent('The Henrietta Burns Herself for Speed', 33, 10)
+placeEvent('Fix Arrests Fogg at Liverpool', 33, 20)
+placeEvent('The Error Is Corrected Too Late', 34, 0)
+placeEvent('London Waits for a Man It Thinks Defeated', 36, 0)
+placeEvent('Passepartout Discovers the True Date', 37, 0)
+placeEvent('Fogg Reaches the Reform Club', 37, 10)
+placeEvent('The Journey Ends in Marriage', 37, 20)
 const eventByTitle = new Map(events.map(row => [row.title, row]))
 const findEvent = title => {
   const found = eventByTitle.get(title)
@@ -823,6 +851,7 @@ const resolveEntity = token => {
   return worldId
 }
 const lorePages = loreDefs.map(([category, title, body, artwork, links, visible], index) => ({ ...base, id: id('lore-page', String(index + 1)), categoryId: id('lore-category', category), title, body, tags: [], coverImageId: imageId(artwork), linkedEntityIds: links.map(resolveEntity), visibleFromEventId: findEvent(visible) }))
+lorePages.push({ ...base, id: id('lore-page', 'complete-text'), categoryId: id('lore-category', 'context'), title: 'Complete Text Edition', body: 'The manuscript follows the complete public-domain English text of Jules Verne’s novel in Project Gutenberg eBook 103. Every narrative paragraph from Chapters I–XXXVII is assigned once in source order; Gutenberg contents, front matter, and end matter are excluded. Summaries, event divisions, chronology, maps, and state notes are editorial.', tags: [], coverImageId: imageId('cover'), linkedEntityIds: [worldId], visibleFromEventId: findEvent('Passepartout Is Interviewed') })
 
 const knowledgeDefs = [
   ['wager-deadline', 'The wager expires at 8:45 p.m. on 21 December', 'Fogg must appear at the Reform Club no later than the exact agreed second.', 'Fogg Makes the Wager'],
@@ -868,7 +897,7 @@ const goalDefs = [
   ['fix', 'Fix Watches the Mongolia Arrive', 'The Error Is Corrected Too Late', 'want', 'Keep the suspected robber in sight until a warrant can be executed in British territory.'],
   ['cromarty', 'The Procession Is Observed', 'Aouda Awakens at Allahabad', 'want', 'Help remove Aouda from the procession and reach Allahabad alive.'],
   ['bunsby', 'The Tankadere Is Hired', 'The Yokohama Steamer Is Signalled', 'want', 'Navigate the Tankadere through dangerous weather and earn Fogg’s promised reward.'],
-  ['proctor', 'San Francisco’s Election Meeting Erupts', 'The Duel Is Interrupted', 'want', 'Force Fogg to answer the San Francisco quarrel with a duel.'],
+  ['proctor', 'San Francisco’s Election Meeting Erupts', 'Sioux Warriors Board the Train', 'want', 'Force Fogg to answer the San Francisco quarrel with a duel.'],
   ['speedy', 'Fogg Searches New York Harbour', 'The Henrietta Burns Herself for Speed', 'want', 'Keep command of the Henrietta while profiting from Fogg’s urgent charter.'],
 ]
 const characterGoals = goalDefs.map(([character, start, end, type, text], index) => ({ ...base, id: id('goal', String(index + 1)), characterId: charId(character), startEventId: findEvent(start), endEventId: findEvent(end), type, text }))
@@ -886,6 +915,15 @@ const months = [
   ['July', 31], ['August', 31], ['September', 30], ['October', 31], ['November', 30], ['December', 31],
 ].map(([name, days]) => ({ name, days }))
 
+const orderedEvents = chapters.flatMap(chapter => events
+  .filter(event => event.chapterId === chapter.id)
+  .sort((a, b) => a.sortOrder - b.sortOrder))
+if (orderedEvents.length !== sceneDrafts.length) throw new Error('Scene draft coverage does not match ordered events')
+const sceneTexts = orderedEvents.map((event, index) => {
+  const text = sceneDrafts[index]
+  return { ...base, id: id('scene', String(index + 1).padStart(3, '0')), eventId: event.id, text, wordCount: text.trim().split(/\s+/u).length }
+})
+
 const data = {
   version: 16, type: 'worldbreaker-export', exportedAt: now,
   world: { id: worldId, name: 'Around the World in Eighty Days', description: 'Phileas Fogg wagers that the new railways and steamship lines can carry him around the globe in eighty days. Travelling east with Passepartout, pursued by a mistaken detective, and joined by Aouda, he discovers that precision can master a timetable but not the loyalty, danger, and affection encountered along the route.', coverImageId: imageId('cover'), theme: 'theme-action', readingMode: true, createdAt: now, updatedAt: now, continuityStaleThreshold: 5, calendar: { startYear: 1872, yearSuffix: '', months }, wordTarget: null },
@@ -894,6 +932,7 @@ const data = {
   chapters, events, blobs, travelModes: [], timelineRelationships: [], crossTimelineArtifacts: [], mapRoutes, mapRegions: [], mapRegionSnapshots: [], mapAnnotations: [],
   loreCategories, lorePages, factions, factionMemberships, factionRelationships, knowledgeFacts, knowledgeReveals, characterGoals, sceneTexts: [], plotThreads, motifs, continuitySuppressions: [], writingLogs: [], sceneRevisions: [],
 }
+data.sceneTexts = sceneTexts
 
 const collectionIds = new Map()
 for (const [key, value] of Object.entries(data)) {
@@ -944,4 +983,10 @@ items.forEach(row => assertRef(row.imageId, blobs, `${row.id}.image`))
 const text = `${JSON.stringify(data, null, 2)}\n`
 fs.writeFileSync('example/Around the World in Eighty Days.pwk', text)
 fs.writeFileSync('public/library/around-the-world-in-eighty-days.pwk', text)
+const libraryIndex = JSON.parse(fs.readFileSync('public/library/index.json', 'utf8'))
+const libraryEntry = libraryIndex.entries.find(entry => entry.id === 'around-the-world-in-eighty-days')
+if (!libraryEntry) throw new Error('Around the World in Eighty Days library entry is missing')
+libraryEntry.dataBytes = Buffer.byteLength(text)
+libraryEntry.notice = 'Unofficial reading-mode reference for a public-domain novel. It includes the complete English novel text from Project Gutenberg eBook 103; Gutenberg packaging is excluded. Editorial scene divisions, chronology, maps, and illustration provenance are documented in Lore.'
+fs.writeFileSync('public/library/index.json', `${JSON.stringify(libraryIndex, null, 2)}\n`)
 console.log(JSON.stringify({ chapters: chapters.length, events: events.length, characters: characters.length, snapshots: characterSnapshots.length, locations: locationMarkers.length, maps: mapLayers.length, items: items.length, relationships: relationships.length, lore: lorePages.length, factions: factions.length, facts: knowledgeFacts.length, bytes: Buffer.byteLength(text) }, null, 2))
