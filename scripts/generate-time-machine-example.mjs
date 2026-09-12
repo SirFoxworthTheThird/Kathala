@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import { sceneDrafts } from './time-machine/full-scene-drafts.mjs'
 
 const P = 'time-machine'
 const worldId = `${P}-world`
@@ -224,6 +225,31 @@ event(16,'The Final Departure','A gust and broken-glass sound mark the machine�
 event(17,'Three Years Without Return','The narrator reflects that the traveller may be anywhere in time, beyond every attempt at rescue or confirmation.','garden',{narrator:'Keeping faith with uncertainty after three years have produced neither traveller nor message.'},[],2,1103,{threads:['disappearance','proof'],motifs:['scale','flowers'],pov:'narrator'})
 event(17,'The Flowers Remain','The two withered flowers survive as evidence that gratitude and tenderness endured in humanity’s remote future.','garden',{narrator:'Preserving Weena’s flowers as modest evidence and as a moral answer to the traveller’s darkest conclusions.'},['flowers'],2,1103,{threads:['proof','weena'],motifs:['flowers'],pov:'narrator'})
 
+// Correct chapter placement against the source text. Earlier structural data
+// anticipated several discoveries before Wells actually narrates them.
+const placeEvent = (title, chapter, sortOrder) => {
+  const row = events.find(event => event.title === title)
+  if (!row) throw new Error(`Missing event: ${title}`)
+  row.chapterId = chId(chapter)
+  row.timelineId = chapters[chapter - 1].timelineId
+  row.sortOrder = sortOrder
+}
+placeEvent('The Future Valley', 6, 0)
+placeEvent('The Machine Is Gone', 7, 0)
+placeEvent('Tracks to the Pedestal', 7, 10)
+placeEvent('The Locked Bronze Panels', 7, 20)
+placeEvent('Air from the Wells', 8, 0)
+placeEvent('Weena in the River', 8, 10)
+placeEvent('A Bond of Flowers', 8, 20)
+placeEvent('Weena Fears the Dark', 8, 30)
+placeEvent('Pale Creatures at Dusk', 8, 40)
+placeEvent('Two Human Species', 8, 50)
+placeEvent('Back to the Laboratory', 15, 0)
+placeEvent('The Account Reaches the Dinner', 16, 0)
+placeEvent('The Guests Reject the Tale', 16, 10)
+placeEvent('The Machine Stands in Daylight', 16, 20)
+placeEvent('The Final Departure', 16, 30)
+
 const locById = new Map(locationMarkers.map(l => [l.id, l]))
 const characterSnapshots = []
 for (const [eventIndex, ev] of events.entries()) {
@@ -264,7 +290,7 @@ const loreDefs = [
   ['future','The Further Vision','Millions of years later, the traveller sees a red sun, altered sea, giant shore creatures, cold, and darkness. The sequence expands the novel beyond human history into planetary mortality.','finlay-4'],
   ['society','Eloi and Morlocks','The traveller interprets the two peoples through Victorian class division, but revises his theory as evidence of machinery, fear, dependence, and predation accumulates. His account remains an inference, not an omniscient history.','finlay-3'],
   ['society','The Palace of Green Porcelain','The palace resembles a museum whose collections have decayed into fragments. It represents knowledge preserved physically after its systems of meaning and use have failed.','finlay-4'],
-  ['sources','Text Source','Chapter order and factual checking follow the public-domain Project Gutenberg edition of The Time Machine, ebook 35. All summaries and notes here are newly written.','title-page'],
+  ['sources','Text Source','The manuscript follows the complete public-domain text of H. G. Wells’s novel in Project Gutenberg eBook 35. Every narrative passage from Chapters I–XVI and the Epilogue is assigned once in source order; Gutenberg contents, front matter, and end matter are excluded. Summaries, event divisions, chronology, and notes are editorial.','title-page'],
   ['sources','Illustration Sources','The cover and future-world scenes use public-domain illustrations by Norman Saunders and Virgil Finlay. Because Wells leaves most Richmond guests physically undescribed, their distinct portraits are clearly editorial public-domain period artworks rather than canonical likenesses. Every story item likewise uses its own period object, botanical, or mechanical illustration. Images are linked from Wikimedia Commons.','cover'],
   ['sources','Map Sources','The Richmond map is a 1915 environs map; the house uses a period Cambridge Cottage plan from Kew. Future markers are an editorial reconstruction based on relative movement in the novel, not canonical coordinates.','map-richmond'],
 ]
@@ -328,6 +354,15 @@ const mapRoutes = [
   { ...base, id: id('route','future'), mapLayerId: mapId('future'), name: 'The Eight-Day Expedition', routeType: 'foot', waypoints: [locId('sphinx-lawn'),locId('great-hall'),locId('river-bank'),locId('well'),locId('green-palace'),locId('wood'),locId('sphinx-chamber')], color: '#8b6f55', notes: 'An editorial route based on the traveller’s relative movements; the novel supplies no measured bearings.' },
 ]
 
+const orderedEvents = chapters.flatMap(chapter => events
+  .filter(event => event.chapterId === chapter.id)
+  .sort((a, b) => a.sortOrder - b.sortOrder))
+if (orderedEvents.length !== sceneDrafts.length) throw new Error('Scene draft coverage does not match ordered events')
+const sceneTexts = orderedEvents.map((event, index) => {
+  const text = sceneDrafts[index]
+  return { ...base, id: id('scene', String(index + 1).padStart(3, '0')), eventId: event.id, text, wordCount: text.trim().split(/\s+/u).length }
+})
+
 const data = {
   version: 16, type: 'worldbreaker-export', exportedAt: now,
   world: { id: worldId, name: 'The Time Machine', description: 'H. G. Wells’s novel follows an unnamed Victorian inventor from a sceptical Richmond dinner into the year 802,701, where the Eloi, Morlocks, ruined institutions, and a still more distant dying Earth turn technological triumph into an inquiry about class, evolution, mortality, and human tenderness.', coverImageId: imageId('cover'), theme: 'theme-scifi', readingMode: true, createdAt: now, updatedAt: now, continuityStaleThreshold: 5, calendar: { startYear: 1895, yearSuffix: '', months }, wordTarget: null },
@@ -341,6 +376,7 @@ const data = {
   ], crossTimelineArtifacts: [], mapRoutes, mapRegions: [], mapRegionSnapshots: [], mapAnnotations: [],
   loreCategories, lorePages, factions, factionMemberships, factionRelationships, knowledgeFacts, knowledgeReveals: reveals, characterGoals, sceneTexts: [], plotThreads, motifs, continuitySuppressions: [], writingLogs: [], sceneRevisions: [],
 }
+data.sceneTexts = sceneTexts
 
 const allIds = new Map()
 for (const [collectionName, rows] of Object.entries(data)) if (Array.isArray(rows)) for (const row of rows) if (row.id) {
@@ -361,4 +397,10 @@ for (const ev of events) { const snapIds = characterSnapshots.filter(s => s.even
 const text = JSON.stringify(data, null, 2) + '\n'
 fs.writeFileSync('example/The Time Machine.pwk', text)
 fs.writeFileSync('public/library/the-time-machine.pwk', text)
+const libraryIndex = JSON.parse(fs.readFileSync('public/library/index.json', 'utf8'))
+const libraryEntry = libraryIndex.entries.find(entry => entry.id === 'the-time-machine')
+if (!libraryEntry) throw new Error('The Time Machine library entry is missing')
+libraryEntry.dataBytes = Buffer.byteLength(text)
+libraryEntry.notice = 'Unofficial reading-mode reference for a public-domain novel. It includes the complete novel text from Project Gutenberg eBook 35; Gutenberg packaging is excluded. Editorial scene divisions, chronology, maps, and illustration provenance are documented in Lore.'
+fs.writeFileSync('public/library/index.json', JSON.stringify(libraryIndex, null, 2) + '\n')
 console.log(JSON.stringify({ chapters: chapters.length, events: events.length, characters: characters.length, maps: mapLayers.length, locations: locationMarkers.length, items: items.length, snapshots: characterSnapshots.length, facts: knowledgeFacts.length }, null, 2))
