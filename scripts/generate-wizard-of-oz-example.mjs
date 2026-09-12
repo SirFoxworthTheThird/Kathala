@@ -34,6 +34,7 @@
   to the shipped PNG). The world's Lore says all of this too.
 */
 import fs from 'node:fs'
+import { sceneDrafts } from './wizard-of-oz/full-scene-drafts.mjs'
 
 const P = 'oz'
 const worldId = 'wizard-of-oz-world'
@@ -949,10 +950,6 @@ const scenes = [
       'tin-woodman': 'Says he would have rusted in the forest until the end of the world.',
       lion: 'Says he would have lived a coward and no beast would have had a good word for him.',
       toto: 'Is taken up solemnly in her arms for the last step of the journey.' } },
-  { ch: 23, key: 'barnyard-again', title: 'Uncle Henry in the Barnyard', loc: 'kansas-barnyard', d: 62, tension: 1, pov: 'uncle-henry',
-    desc: 'On the Kansas end of three steps, an ordinary morning is going on: the cows are being milked.',
-    items: [], threads: ['home'], motifs: ['home'],
-    cast: { 'uncle-henry': 'Is milking the cows in the barnyard of a farm he has rebuilt, and does not yet know who is on the prairie behind him.' } },
   { ch: 23, key: 'landed-on-the-prairie', title: 'Sitting on the Prairie', loc: 'kansas-prairie', d: 62, tension: 2, pov: 'dorothy',
     desc: 'She rolls over on the grass in her stocking feet: the shoes came off somewhere over the desert and are gone for good.',
     items: [], threads: ['way-home', 'home'], motifs: ['home'],
@@ -1182,7 +1179,7 @@ const loreRows = [
     'The novel dates nothing and names no season, so the calendar in this world is editorial. Day one is fixed at 1 August only so that ripe corn and blooming poppies sit in a plausible month; the year is arbitrary. Every interval between scenes, however, is the book’s own: the nights on the road, the three days and four nights the tinsmiths work, the three days of waiting after the Witch dies, the three days of sewing silk, and the several days lost in the yellow fields are all counted from the text. Read the day numbers as elapsed time, not as dates.',
     'storm-warning', null],
   ['text-source', 'sources', 'The Text Behind This World',
-    'Chapters, chapter titles, characters, places and events follow the complete 1900 first edition, read from Project Gutenberg eBook #55. All twenty-four chapter titles are Baum’s own headings. Every summary, description and status note in this world is original writing about the book — none of the novel’s prose is reproduced here.',
+    'The manuscript follows the complete public-domain text of L. Frank Baum’s novel in Project Gutenberg eBook #55, including Baum’s own Introduction. Every narrative paragraph from Chapters I–XXIV is assigned once in source order; Gutenberg packaging and illustration placeholders are excluded. Summaries, event divisions, chronology, maps and state notes are editorial.',
     'storm-warning', null],
   ['pictures', 'sources', 'The Pictures in This World',
     'Every portrait, item and place picture is one of W. W. Denslow’s illustrations for the 1900 first edition, which are in the public domain. The files come from Wikimedia Commons, were checked one by one against the entity they are attached to, and are shipped with the book rather than linked to another site. A few entities are deliberately left without a picture where no illustration of them exists: the Wicked Witch of the East, who is dead before the story opens, is one.',
@@ -1304,6 +1301,21 @@ const locationSnapshots = [
 
 /* --------------------------------------------------------------- data --- */
 
+const orderedEvents = chapters.flatMap((chapter) => events
+  .filter((event) => event.chapterId === chapter.id)
+  .sort((a, b) => a.sortOrder - b.sortOrder))
+if (orderedEvents.length !== sceneDrafts.length) throw new Error('Scene draft coverage does not match ordered events')
+const sceneTexts = orderedEvents.map((event, index) => {
+  const text = sceneDrafts[index]
+  return {
+    ...base,
+    id: id('scene', String(index + 1).padStart(3, '0')),
+    eventId: event.id,
+    text,
+    wordCount: text.trim().split(/\s+/u).length,
+  }
+})
+
 const data = {
   version: 16,
   type: 'worldbreaker-export',
@@ -1355,7 +1367,7 @@ const data = {
   knowledgeFacts,
   knowledgeReveals,
   characterGoals: goalRows,
-  sceneTexts: [],
+  sceneTexts,
   plotThreads,
   motifs,
   continuitySuppressions: [],
@@ -1462,7 +1474,7 @@ const entry = {
   data: 'the-wonderful-wizard-of-oz.pwk',
   dataBytes: Buffer.byteLength(text),
   counts: { characters: characters.length, chapters: chapters.length, events: events.length, locations: locations.length },
-  notice: 'Unofficial reference for a public-domain novel. This example contains original structural summaries and an editorial calendar, not the novel’s prose. W. W. Denslow’s 1900 illustrations are public domain and ship with the book. The maps are the world author’s own work and are not public domain; SOURCES.md and the Lore say so.',
+  notice: 'Unofficial reading-mode edition of a public-domain novel. The manuscript contains the complete Project Gutenberg eBook #55 text, including Baum’s Introduction; Gutenberg packaging and illustration placeholders are excluded. Structural summaries, event divisions and the calendar are editorial. W. W. Denslow’s 1900 illustrations are public domain and ship with the book. The maps are the world author’s own work and are not public domain; SOURCES.md and the Lore say so.',
   worldId,
   cover: `${repo}/art/cover.jpg`,
 }
