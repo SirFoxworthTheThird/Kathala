@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import { sceneDrafts } from './scarlet-pimpernel/full-scene-drafts.mjs'
 
 const P = 'scarlet-pimpernel'
 const worldId = `${P}-world`
@@ -150,12 +151,12 @@ const scenes = [
   { key: 'inn-evening', chapter: 2, title: 'An Evening at the Fisherman’s Rest', description: 'Sally and Mr Jellyband manage the busy Dover inn while talk of France, refugees, and English safety fills the coffee-room.', loc: 'fishermans-rest', cast: { sally: 'Serves the crowded coffee-room while keeping its travellers and local regulars in order.', jellyband: 'Hosts the political conversation with patriotic confidence and practical hospitality.' }, threads: [], motifs: ['channel'], time: 269.68, tension: 1, pov: 'sally' },
   { key: 'refugees-arrive', chapter: 3, title: 'The de Tournays Reach Dover', description: 'Lord Tony and Sir Andrew escort the rescued Comtesse, Suzanne, and the Vicomte into the Fisherman’s Rest after their Channel crossing.', loc: 'fishermans-rest', cast: { tony: 'Presents the rescued family with exuberant pride in the League’s success.', andrew: 'Keeps the rescue details discreet while ensuring the refugees are safe.', comtesse: 'Arrives exhausted but fiercely grateful to the unknown rescuer.', suzanne: 'Reaches English safety and begins to trust Sir Andrew.', vicomte: 'Enters the inn safely after the escape from Paris.', sally: 'Receives the new arrivals and helps settle them after the crossing.', jellyband: 'Extends his inn’s hospitality to the French refugees.' }, threads: ['rescue'], motifs: ['channel'], time: 269.73, tension: 2, pov: 'suzanne' },
   { key: 'league-explained', chapter: 4, title: 'The League and Its Hidden Leader', description: 'Tony and Andrew explain that twenty Englishmen serve a leader whose identity is protected by oath, and whose emblem is the scarlet flower.', loc: 'fishermans-rest', cast: { tony: 'Describes the League’s work while protecting the leader’s name.', andrew: 'Speaks with devotion about the Pimpernel and his oath of secrecy.', comtesse: 'Tries to learn whom she must thank for her family’s rescue.', suzanne: 'Listens with growing admiration for both the League and Sir Andrew.', vicomte: 'Learns how the English rescue network operates.' }, items: ['flower'], threads: ['identity', 'rescue'], motifs: ['flower', 'trust'], time: 269.76, tension: 2, pov: 'andrew' },
-  { key: 'papers-stolen', chapter: 4, title: 'Chauvelin Takes the League’s Papers', description: 'Chauvelin’s agents overpower the League men and seize plans for the next rescue, giving the French agent a route to the fugitives but not the leader’s name.', loc: 'fishermans-rest', cast: { chauvelin: 'Secures the League’s operational papers and gains the first concrete advantage in his pursuit.', tony: 'Is caught off guard and loses papers meant to remain secret.', andrew: 'Survives the attack but recognizes that the Calais operation is compromised.' }, items: ['league-papers'], threads: ['pursuit', 'identity', 'rescue'], motifs: ['trust'], time: 269.82, tension: 4, pov: 'chauvelin' },
+  { key: 'papers-stolen', chapter: 9, title: 'Chauvelin Takes the League’s Papers', description: 'Chauvelin’s agents overpower Tony and Andrew at the deserted inn and seize the League’s instructions for the next rescue.', loc: 'fishermans-rest', cast: { chauvelin: 'Directs the masked assault and searches the captured papers for a route to the League.', tony: 'Is struck and bound before he can protect the instructions.', andrew: 'Is overpowered beside Tony and loses the papers entrusted to him.' }, items: ['league-papers'], threads: ['pursuit', 'identity', 'rescue'], motifs: ['trust'], time: 269.96, tension: 4, pov: 'chauvelin' },
   { key: 'marguerite-arrives', chapter: 5, title: 'Lady Blakeney Meets the Refugees', description: 'Marguerite and Percy arrive at the inn, where the Comtesse’s hostility recalls Marguerite’s role in the fall of the St. Cyr family.', loc: 'fishermans-rest', cast: { marguerite: 'Meets the rescued family with social brilliance while absorbing the Comtesse’s public condemnation.', percy: 'Uses languid humour to deflect the room’s tension and shield Marguerite from humiliation.', comtesse: 'Refuses to conceal her contempt for Marguerite’s past denunciation.', suzanne: 'Balances affection for Marguerite against loyalty to her mother.', prince: 'Moves within the fashionable party surrounding the Blakeneys.' }, threads: ['marriage', 'rescue'], motifs: ['trust', 'disguise'], time: 269.86, tension: 3, pov: 'marguerite' },
   { key: 'exquisite', chapter: 6, title: 'Percy Performs the Exquisite', description: 'Percy’s clothes, drawl, and apparently empty wit convince the company that he is incapable of serious political action.', loc: 'fishermans-rest', cast: { percy: 'Deepens the foppish performance that protects his secret identity.', marguerite: 'Treats Percy’s public foolishness with practiced amusement and private frustration.', prince: 'Accepts Percy as a fashionable companion rather than a political actor.' }, threads: ['identity', 'marriage'], motifs: ['disguise'], time: 269.89, tension: 1, pov: 'marguerite' },
   { key: 'orchard-farewell', chapter: 7, title: 'Marguerite and Armand Say Farewell', description: 'In the orchard, Marguerite and Armand reaffirm their devotion before he returns to France to assist the rescue of the Comte.', loc: 'fishermans-rest', cast: { marguerite: 'Lets her confident social mask fall and confides her loneliness to Armand.', armand: 'Promises loyalty to his sister while preparing to accept the risks of France.' }, threads: ['marriage', 'rescue'], motifs: ['trust'], time: 269.93, tension: 2, pov: 'marguerite' },
   { key: 'accredited-agent', chapter: 8, title: 'Chauvelin Demands Marguerite’s Help', description: 'Chauvelin invokes their revolutionary past and asks Marguerite to discover the identity of the Scarlet Pimpernel.', loc: 'fishermans-rest', cast: { marguerite: 'Rejects Chauvelin’s politics and tries to keep the conversation light.', chauvelin: 'Tests old acquaintance and patriotic language as tools for recruiting Marguerite.' }, threads: ['identity', 'pursuit'], motifs: ['trust'], time: 269.95, tension: 3, pov: 'marguerite' },
-  { key: 'armand-leverage', chapter: 9, title: 'Armand’s Letter Becomes Leverage', description: 'Chauvelin reveals the intercepted letter linking Armand to the League and makes the brother’s safety conditional on Marguerite’s cooperation.', loc: 'fishermans-rest', cast: { marguerite: 'Realizes that refusing Chauvelin may condemn the brother she loves.', chauvelin: 'Turns the letter into a calculated threat and fixes the terms of the bargain.' }, items: ['armand-letter', 'league-papers'], threads: ['identity', 'pursuit', 'marriage'], motifs: ['trust'], time: 269.97, tension: 4, pov: 'marguerite' },
+  { key: 'armand-leverage', chapter: 9, title: 'Chauvelin Discovers Armand’s Letter', description: 'Among Andrew’s stolen papers, Chauvelin finds Armand’s incriminating letter and recognizes that Marguerite’s devotion to her brother can be used against her.', loc: 'fishermans-rest', cast: { chauvelin: 'Reads the intercepted letter and immediately identifies the pressure it gives him over Marguerite.' }, mentioned: ['armand', 'marguerite'], items: ['armand-letter', 'league-papers'], threads: ['identity', 'pursuit', 'marriage'], motifs: ['trust'], time: 269.97, tension: 4, pov: 'chauvelin' },
   { key: 'opera-box', chapter: 10, title: 'The Bargain in the Opera Box', description: 'At the opera, Chauvelin tightens his bargain: Marguerite must watch the League at Lord Grenville’s ball if Armand is to be spared.', loc: 'opera', cast: { marguerite: 'Conceals panic behind wit while searching for a way to protect Armand without betraying an innocent man.', chauvelin: 'Uses the public setting and the letter to keep Marguerite under control.' }, items: ['armand-letter'], threads: ['identity', 'pursuit'], motifs: ['trust', 'disguise'], time: 270.78, tension: 4, pov: 'marguerite' },
   { key: 'ball-gathers', chapter: 11, title: 'The League Gathers at Grenville’s Ball', description: 'Diplomats, the Prince, the Blakeneys, and League members converge while Chauvelin watches for the unknown leader.', loc: 'grenville-ball', cast: { marguerite: 'Moves through the ball alert to every League conversation and ashamed of the task imposed on her.', percy: 'Sustains his social mask in the centre of the very search meant to expose him.', chauvelin: 'Studies Tony and Andrew for any contact that might reveal their leader.', andrew: 'Keeps League business hidden despite the surveillance around him.', tony: 'Maintains outward ease while the stolen plans endanger the mission.', prince: 'Moves through the diplomatic and fashionable gathering as its highest-ranking guest.', suzanne: 'Attends with hope that the League will soon rescue her father.' }, threads: ['identity', 'pursuit', 'marriage'], motifs: ['disguise', 'trust'], time: 270.86, tension: 3, pov: 'marguerite' },
   { key: 'scrap-found', chapter: 12, title: 'Marguerite Finds the Scrap of Paper', description: 'A discarded message marked with the flower gives Marguerite the time and place of the League leader’s meeting.', loc: 'grenville-ball', cast: { marguerite: 'Recognizes that the scrap can save Armand but may deliver the Pimpernel to Chauvelin.', andrew: 'Has unknowingly left behind the clue that compromises the meeting.' }, mentioned: ['chauvelin'], items: ['flower'], threads: ['identity', 'pursuit'], motifs: ['flower', 'trust'], time: 270.9, tension: 4, pov: 'marguerite' },
@@ -308,7 +309,7 @@ const lorePages = [
   ['league-oath', 'league', 'One to Command, Nineteen to Obey', 'The League consists of twenty Englishmen. Its members protect the leader’s identity by oath and rely on preparation, disguise, speed, and disciplined trust rather than open battle.', ['league', 'andrew', 'tony'], 'league-explained', 'league'],
   ['disguises', 'league', 'Percy’s Operational Disguises', 'Percy’s disguises exploit expectation: guards dismiss the sick, political agents ignore servants, and fashionable society mistakes performed foolishness for incapacity.', ['percy', 'identity'], 'identity-revealed', 'percy-rescue'],
   ['chronology', 'history', 'Editorial Chronology', 'The novel explicitly places the coastal rendezvous on 2 October 1792 and the opening in September. Earlier dates in the calendar are an editorial reconstruction of the narrated intervals, marked as such rather than presented as exact documentary dates.', ['channel'], 'barrier', 'channel-map'],
-  ['sources', 'sources', 'Text, Maps, and Illustrations', 'Structure and factual sequence follow Baroness Orczy’s public-domain novel. Linked stage images come from a circa-1903 Scarlet Pimpernel production reproduced by Project Gutenberg Australia; maps are historical editorial aids and entity art is reviewed separately from navigable maps.', [], 'barrier', 'cover'],
+  ['sources', 'sources', 'Text, Maps, and Illustrations', 'Structure and manuscript prose follow Baroness Orczy’s complete public-domain novel in Project Gutenberg eBook 60. Every narrative paragraph from Chapters I–XXXI is assigned once in source order; Gutenberg front and end matter are excluded. Linked stage images come from a circa-1903 Scarlet Pimpernel production reproduced by Project Gutenberg Australia; maps are historical editorial aids and entity art is reviewed separately from navigable maps.', [], 'barrier', 'cover'],
 ].map(([slug, category, title, body, links, visible, art]) => ({ ...base, id: id('lore', slug), categoryId: id('lore-category', category), title, body, tags: [], coverImageId: I(art), linkedEntityIds: links.map(link => link === 'channel' ? M('channel') : link === 'identity' ? T('identity') : ['league', 'republic', 'tournay'].includes(link) ? F(link) : C(link)), visibleFromEventId: EV(visible) }))
 
 const knowledgeFacts = [
@@ -325,7 +326,7 @@ const knowledgeReveals = [
   ['league-exists', 'suzanne', 'league-explained', 'Suzanne learns the oath and structure of the League.'],
   ['papers-stolen', 'chauvelin', 'papers-stolen', 'Chauvelin reads the stolen plans.'],
   ['papers-stolen', 'andrew', 'papers-stolen', 'Andrew knows the operation has been compromised.'],
-  ['armand-compromised', 'marguerite', 'armand-leverage', 'Chauvelin shows Marguerite the danger created by the letter.'],
+  ['armand-compromised', 'marguerite', 'opera-box', 'Chauvelin shows Marguerite the danger created by the letter.'],
   ['ball-meeting', 'marguerite', 'scrap-found', 'Marguerite decodes the flower-marked scrap.'],
   ['ball-meeting', 'chauvelin', 'either-or', 'Marguerite gives Chauvelin the meeting information.'],
   ['percy-identity', 'marguerite', 'identity-revealed', 'Suzanne’s news completes Marguerite’s deduction.'],
@@ -338,7 +339,7 @@ const knowledgeReveals = [
 const characterGoals = [
   ['percy-rescue', 'percy', 'want', 'Rescue the de Tournay family without sacrificing the League or its secret.', 'barrier', 'day-dream-escape'],
   ['percy-mask', 'percy', 'need', 'Keep public performance subordinate to genuine trust with Marguerite.', 'marguerite-arrives', 'marguerite-found'],
-  ['marguerite-armand', 'marguerite', 'want', 'Protect Armand from the consequences of his intercepted letter.', 'armand-leverage', 'day-dream-escape'],
+  ['marguerite-armand', 'marguerite', 'want', 'Protect Armand from the consequences of his intercepted letter.', 'opera-box', 'day-dream-escape'],
   ['marguerite-percy', 'marguerite', 'want', 'Reach Percy in time to warn him and repair the betrayal.', 'identity-revealed', 'marguerite-found'],
   ['marguerite-trust', 'marguerite', 'need', 'Replace pride and secrecy with honest trust in her marriage.', 'richmond-confrontation', 'marguerite-found'],
   ['chauvelin-capture', 'chauvelin', 'want', 'Identify and capture the Scarlet Pimpernel with the fugitives he intends to rescue.', 'accredited-agent', 'boat-whistle'],
@@ -357,6 +358,15 @@ const mapRoutes = [
   { ...base, id: id('route', 'channel'), mapLayerId: M('channel'), name: 'Dover to Calais', routeType: 'sea_route', waypoints: [L('dover'), L('calais-gate')], color: '#557b8d', notes: 'The storm-delayed Channel crossing.' },
   { ...base, id: id('route', 'calais-pursuit'), mapLayerId: M('calais-coast'), name: 'Chat Gris to the Creek', routeType: 'road', waypoints: [L('chat-gris'), L('gris-nez-road'), L('blanchard-hut'), L('cliff-creek')], color: '#9f3f46', notes: 'The pursuit route and the final concealed descent to the boat.' },
 ]
+
+const orderedEvents = chapters.flatMap(chapter => events
+  .filter(event => event.chapterId === chapter.id)
+  .sort((a, b) => a.sortOrder - b.sortOrder))
+if (orderedEvents.length !== sceneDrafts.length) throw new Error('Scene draft coverage does not match ordered events')
+const sceneTexts = orderedEvents.map((event, index) => {
+  const text = sceneDrafts[index]
+  return { ...base, id: id('scene', String(index + 1).padStart(3, '0')), eventId: event.id, text, wordCount: text.trim().split(/\s+/u).length }
+})
 
 const data = {
   version: 16,
@@ -393,7 +403,7 @@ const data = {
   knowledgeFacts,
   knowledgeReveals,
   characterGoals,
-  sceneTexts: [],
+  sceneTexts,
   plotThreads,
   motifs,
   continuitySuppressions: [],
@@ -437,4 +447,11 @@ for (const event of events) {
 const text = `${JSON.stringify(data, null, 2)}\n`
 fs.writeFileSync('example/The Scarlet Pimpernel.pwk', text)
 fs.writeFileSync('public/library/the-scarlet-pimpernel.pwk', text)
+const indexPath = 'public/library/index.json'
+const index = JSON.parse(fs.readFileSync(indexPath, 'utf8'))
+const entry = index.entries.find(book => book.id === 'the-scarlet-pimpernel')
+if (!entry) throw new Error('The Scarlet Pimpernel is missing from the Library catalogue')
+entry.dataBytes = Buffer.byteLength(text)
+entry.notice = 'Unofficial reference for a public-domain novel. Manuscript scenes reproduce the complete narrative from Project Gutenberg eBook 60; Gutenberg front and end matter are excluded. Period cartography and public-domain illustration sources are linked in the file.'
+fs.writeFileSync(indexPath, `${JSON.stringify(index, null, 2)}\n`)
 console.log(JSON.stringify({ chapters: chapters.length, events: events.length, characters: characterRows.length, relationships: relationshipRows.length, locations: locations.length, maps: maps.length, items: items.length, threads: plotThreads.length, lore: lorePages.length, factions: factions.length, facts: knowledgeFacts.length, goals: characterGoals.length, bytes: Buffer.byteLength(text) }, null, 2))
