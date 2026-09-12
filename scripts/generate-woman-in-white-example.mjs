@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import { createHash } from 'node:crypto'
+import { sceneDrafts } from './woman-in-white/full-scene-drafts.mjs'
 
 const P = 'woman-in-white'
 const worldId = `${P}-world`
@@ -311,7 +312,7 @@ const lorePages = [
   ['asylum-law','law','Private Confinement and Identity','The asylum plot depends on institutional records and the credibility granted to male relatives over a distressed woman’s own account.',['asylum','identity'],'walter-5',22],
   ['limmeridge','setting','Limmeridge and Family Memory','Limmeridge joins house, village, school, and churchyard into a landscape shaped by Mrs Fairlie’s memory and the unequal childhoods of Laura and Anne.',['cumberland-gate','laura','anne'],'walter-8',29],
   ['blackwater','setting','Blackwater Park','The neglected Hampshire estate reflects financial pressure and domestic control: rooms are closed, servants dismissed, and routes managed as the conspiracy advances.',['hampshire-gate','percival'],'blackwater-1',38],
-  ['sources','sources','Text, Maps, and Illustrations','Structure and chronology follow Wilkie Collins’s public-domain novel and a scholarly chronology. Linked illustrations come from the 1875 Polo edition and Thomas Eyre Macklin; map layers are historical editorial aids, not exact plans of fictional estates.',[],'walter-1',46],
+  ['sources','sources','Text, Maps, and Illustrations','The manuscript contains the complete narrative text of Wilkie Collins’s public-domain novel from Project Gutenberg eBook #583, arranged across its successive witnesses and documentary sections. Gutenberg packaging and the contents list are excluded. Structure and chronology follow the novel and a scholarly chronology. Linked illustrations come from the 1875 Polo edition and Thomas Eyre Macklin; map layers are historical editorial aids, not exact plans of fictional estates.',[],'walter-1',46],
 ].map(([slug,category,title,body,links,visible,artNo])=>{const art=review(`polo-${String(artNo).padStart(2,'0')}`,`a period book engraving selected for the lore page ${title}`);return{...base,id:id('lore',slug),categoryId:id('lore-category',category),title,body,tags:[],coverImageId:I(art),linkedEntityIds:links.map(link=>['inheritance','identity'].includes(link)?T(link):['asylum','cumberland-gate','hampshire-gate'].includes(link)?L(link):C(link)),visibleFromEventId:EV(visible)}})
 
 const knowledgeFacts = [
@@ -353,11 +354,20 @@ const mapRoutes = [
   {...base,id:id('route','investigation'),mapLayerId:M('england'),name:'Walter’s Investigation',routeType:'rail',waypoints:[L('london-gate'),L('hampshire-gate'),L('cumberland-gate')],color:'#8b754b',notes:'The later inquiry connects London testimony, Hampshire evidence, and Limmeridge’s public record.'},
 ]
 
+const orderedEvents = chapters.flatMap(chapter => events
+  .filter(event => event.chapterId === chapter.id)
+  .sort((a, b) => a.sortOrder - b.sortOrder))
+if (orderedEvents.length !== sceneDrafts.length) throw new Error('Scene draft coverage does not match ordered events')
+const sceneTexts = orderedEvents.map((event, index) => {
+  const text = sceneDrafts[index]
+  return {...base,id:id('scene',String(index+1).padStart(3,'0')),eventId:event.id,text,wordCount:text.trim().split(/\s+/u).length}
+})
+
 const data = {
   version:16,type:'worldbreaker-export',exportedAt:now,
   world:{id:worldId,name:'The Woman in White',description:'Wilkie Collins’s mystery follows drawing master Walter Hartright, sisters Laura Fairlie and Marian Halcombe, and the haunting figure of Anne Catherick through a struggle over identity, marriage, confinement, inheritance, and the authority of written evidence.',coverImageId:I('cover'),theme:'theme-noir',readingMode:true,createdAt:now,updatedAt:now,continuityStaleThreshold:5,calendar:{startYear:1849,yearSuffix:' (editorial chronology)',months:[['January',31],['February',28],['March',31],['April',30],['May',31],['June',30],['July',31],['August',31],['September',30],['October',31],['November',30],['December',31]].map(([name,days])=>({name,days}))},wordTarget:null},
   mapLayers:maps,locationMarkers:locations,characters,items,characterSnapshots,characterMovements,itemPlacements,locationSnapshots,itemSnapshots,relationships:relationshipRows,relationshipSnapshots,
-  timelines:[{id:timelineId,worldId,name:'The Case, 1849–1852',description:'One chronology assembled from successive narrators and documentary witnesses.',color:'#65727a',dayOffset:0,createdAt:now}],chapters,events,blobs,travelModes,timelineRelationships:[],crossTimelineArtifacts:[],mapRoutes,mapRegions:[],mapRegionSnapshots:[],mapAnnotations:[],loreCategories,lorePages,factions,factionMemberships,factionRelationships,knowledgeFacts,knowledgeReveals,characterGoals,sceneTexts:[],plotThreads,motifs,continuitySuppressions:[],writingLogs:[],sceneRevisions:[],
+  timelines:[{id:timelineId,worldId,name:'The Case, 1849–1852',description:'One chronology assembled from successive narrators and documentary witnesses.',color:'#65727a',dayOffset:0,createdAt:now}],chapters,events,blobs,travelModes,timelineRelationships:[],crossTimelineArtifacts:[],mapRoutes,mapRegions:[],mapRegionSnapshots:[],mapAnnotations:[],loreCategories,lorePages,factions,factionMemberships,factionRelationships,knowledgeFacts,knowledgeReveals,characterGoals,sceneTexts,plotThreads,motifs,continuitySuppressions:[],writingLogs:[],sceneRevisions:[],
 }
 
 for(const child of maps.filter(map=>map.parentMapId)) if(locations.filter(location=>location.linkedMapLayerId===child.id).length!==1) throw new Error(`Expected exactly one gateway for ${child.name}`)
@@ -379,7 +389,7 @@ const text=`${JSON.stringify(data,null,2)}\n`
 fs.writeFileSync('example/The Woman in White.pwk',text)
 fs.writeFileSync('public/library/the-woman-in-white.pwk',text)
 const index=JSON.parse(fs.readFileSync('public/library/index.json','utf8'))
-const entry={id:'the-woman-in-white',title:'The Woman in White',author:'Wilkie Collins',blurb:'A drawing master, two half-sisters, and a woman escaped from confinement assemble the evidence behind a conspiracy of identity, inheritance, and law.',data:'the-woman-in-white.pwk',dataBytes:Buffer.byteLength(text),counts:{characters:characters.length,chapters:chapters.length,events:events.length,locations:locations.length},notice:'Unofficial reference for a public-domain novel. This example contains original structural summaries and editorial chronology, not the novel’s prose. Historical maps and public-domain book illustrations are linked in the file.',worldId,cover:commons('The woman in white Cover 1890.jpg')}
+const entry={id:'the-woman-in-white',title:'The Woman in White',author:'Wilkie Collins',blurb:'A drawing master, two half-sisters, and a woman escaped from confinement assemble the evidence behind a conspiracy of identity, inheritance, and law.',data:'the-woman-in-white.pwk',dataBytes:Buffer.byteLength(text),counts:{characters:characters.length,chapters:chapters.length,events:events.length,locations:locations.length},notice:'Unofficial reading-mode edition of a public-domain novel. The manuscript contains the complete narrative text from Project Gutenberg eBook #583, divided among all 62 modeled documentary sections; Gutenberg packaging and the contents list are excluded. Structural summaries, event divisions and chronology are editorial. Historical maps and public-domain book illustrations are linked in the file.',worldId,cover:commons('The woman in white Cover 1890.jpg')}
 const at=index.entries.findIndex(book=>book.id===entry.id);if(at>=0)index.entries[at]=entry;else index.entries.push(entry)
 fs.writeFileSync('public/library/index.json',`${JSON.stringify(index,null,2)}\n`)
 console.log(JSON.stringify({chapters:chapters.length,events:events.length,characters:characters.length,relationships:relationshipRows.length,locations:locations.length,maps:maps.length,items:items.length,threads:plotThreads.length,lore:lorePages.length,factions:factions.length,facts:knowledgeFacts.length,goals:characterGoals.length,bytes:Buffer.byteLength(text)},null,2))
