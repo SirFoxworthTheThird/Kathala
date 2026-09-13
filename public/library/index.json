@@ -616,6 +616,23 @@
       "notice": "Unofficial reference for a public-domain novel. Manuscript scenes reproduce the complete original prose of Project Gutenberg eBook 521; Gutenberg front matter, licence wrapper, contents, and end matter are excluded. The cover uses public-domain Walter Paget artwork; characters, locations, items, and maps use original generated period illustrations. Sources and editorial method are recorded in Lore.",
       "worldId": "robinson-crusoe-world",
       "cover": "library/robinson-crusoe/art/paget-015.jpg"
+    },
+    {
+      "id": "wuthering-heights",
+      "title": "Wuthering Heights",
+      "author": "Emily Brontë",
+      "blurb": "On the Yorkshire moors, the histories of the Earnshaw and Linton households are consumed by Heathcliff’s bond with Catherine and the revenge he carries into their children’s lives.",
+      "data": "wuthering-heights.pwk",
+      "dataBytes": 915745,
+      "counts": {
+        "characters": 16,
+        "chapters": 34,
+        "events": 34,
+        "locations": 15
+      },
+      "notice": "Unofficial reference for a public-domain novel. The original prose is public domain; manuscript scenes reproduce the complete narrative of all 34 chapters from Project Gutenberg eBook #768 (plain text, updated 6 May 2026; credits: David Price). Gutenberg front and end matter are excluded. Chapter titles, event descriptions, and the reconstructed calendar are editorial. All maps and entity artwork are original generated illustrations documented in Lore.",
+      "worldId": "wuthering-heights-world",
+      "cover": "library/wuthering-heights/art/world-cover.jpg"
     }
   ]
 }
