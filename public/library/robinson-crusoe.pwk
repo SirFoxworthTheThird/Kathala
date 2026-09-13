@@ -8530,7 +8530,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-crusoe",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-141.jpg"
+      "url": "library/robinson-crusoe/art/character-crusoe.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8538,7 +8538,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-father",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-032.jpg"
+      "url": "library/robinson-crusoe/art/character-father.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8546,7 +8546,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-mother",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-092.jpg"
+      "url": "library/robinson-crusoe/art/character-mother.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8554,7 +8554,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-friend",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-026.jpg"
+      "url": "library/robinson-crusoe/art/character-friend.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8562,7 +8562,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-guinea-captain",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-025.jpg"
+      "url": "library/robinson-crusoe/art/character-guinea-captain.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8570,7 +8570,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-sallee-master",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-115.jpg"
+      "url": "library/robinson-crusoe/art/character-sallee-master.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8578,7 +8578,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-xury",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-031.jpg"
+      "url": "library/robinson-crusoe/art/character-xury.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8586,7 +8586,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-moor",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-030.jpg"
+      "url": "library/robinson-crusoe/art/character-moor.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8594,7 +8594,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-portuguese-captain",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-128.jpg"
+      "url": "library/robinson-crusoe/art/character-portuguese-captain.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8602,7 +8602,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-wells",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-043.jpg"
+      "url": "library/robinson-crusoe/art/character-wells.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8610,7 +8610,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-planters",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-112.jpg"
+      "url": "library/robinson-crusoe/art/character-planters.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8618,7 +8618,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-ship-crew",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-033.jpg"
+      "url": "library/robinson-crusoe/art/character-ship-crew.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8626,7 +8626,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-carib-raiders",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-108.jpg"
+      "url": "library/robinson-crusoe/art/character-carib-raiders.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8634,7 +8634,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-friday",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-117.jpg"
+      "url": "library/robinson-crusoe/art/character-friday.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8642,7 +8642,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-spaniard",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-113.jpg"
+      "url": "library/robinson-crusoe/art/character-spaniard.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8650,7 +8650,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-friday-father",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-119.jpg"
+      "url": "library/robinson-crusoe/art/character-friday-father.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8658,7 +8658,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-english-captain",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-120.jpg"
+      "url": "library/robinson-crusoe/art/character-english-captain.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8666,7 +8666,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-mate",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-100.jpg"
+      "url": "library/robinson-crusoe/art/character-mate.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8674,7 +8674,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-passenger",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-116.jpg"
+      "url": "library/robinson-crusoe/art/character-passenger.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8682,7 +8682,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-mutineers",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-101.jpg"
+      "url": "library/robinson-crusoe/art/character-mutineers.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8690,7 +8690,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-boatswain",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-096.jpg"
+      "url": "library/robinson-crusoe/art/character-boatswain.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8698,7 +8698,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-will-atkins",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-103.jpg"
+      "url": "library/robinson-crusoe/art/character-will-atkins.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8706,7 +8706,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-guide",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-137.jpg"
+      "url": "library/robinson-crusoe/art/character-guide.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8714,7 +8714,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-character-widow",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-121.jpg"
+      "url": "library/robinson-crusoe/art/character-widow.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8818,7 +8818,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-york-home",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-105.jpg"
+      "url": "library/robinson-crusoe/art/location-york-home.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8826,7 +8826,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-north-sea",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-027.jpg"
+      "url": "library/robinson-crusoe/art/location-north-sea.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8834,7 +8834,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-yarmouth-roads",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-123.jpg"
+      "url": "library/robinson-crusoe/art/location-yarmouth-roads.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8842,7 +8842,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-london",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-129.jpg"
+      "url": "library/robinson-crusoe/art/location-london.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8850,7 +8850,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-guinea-coast",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-020.jpg"
+      "url": "library/robinson-crusoe/art/location-guinea-coast.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8858,7 +8858,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-sallee",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-111.jpg"
+      "url": "library/robinson-crusoe/art/location-sallee.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8866,7 +8866,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-sallee-harbor",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-124.jpg"
+      "url": "library/robinson-crusoe/art/location-sallee-harbor.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8874,7 +8874,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-african-coast",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-004.jpg"
+      "url": "library/robinson-crusoe/art/location-african-coast.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8882,7 +8882,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-atlantic-passage",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-130.jpg"
+      "url": "library/robinson-crusoe/art/location-atlantic-passage.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8890,7 +8890,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-brazil-plantation",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-126.jpg"
+      "url": "library/robinson-crusoe/art/location-brazil-plantation.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8898,7 +8898,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-island-gateway",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-035.jpg"
+      "url": "library/robinson-crusoe/art/location-island-gateway.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8906,7 +8906,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-wreck-site",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-036.jpg"
+      "url": "library/robinson-crusoe/art/location-wreck-site.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8914,7 +8914,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-island-shore",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-037.jpg"
+      "url": "library/robinson-crusoe/art/location-island-shore.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8922,7 +8922,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-island-castle",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-075.jpg"
+      "url": "library/robinson-crusoe/art/location-island-castle.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8930,7 +8930,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-country-bower",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-050.jpg"
+      "url": "library/robinson-crusoe/art/location-country-bower.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8938,7 +8938,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-island-interior",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-048.jpg"
+      "url": "library/robinson-crusoe/art/location-island-interior.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8946,7 +8946,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-cornfields",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-104.jpg"
+      "url": "library/robinson-crusoe/art/location-cornfields.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8954,7 +8954,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-great-canoe",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-045.jpg"
+      "url": "library/robinson-crusoe/art/location-great-canoe.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8962,7 +8962,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-island-coast",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-052.jpg"
+      "url": "library/robinson-crusoe/art/location-island-coast.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8970,7 +8970,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-goat-pasture",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-063.jpg"
+      "url": "library/robinson-crusoe/art/location-goat-pasture.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8978,7 +8978,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-boat-harbor",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-059.jpg"
+      "url": "library/robinson-crusoe/art/location-boat-harbor.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8986,7 +8986,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-footprint-beach",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-061.jpg"
+      "url": "library/robinson-crusoe/art/location-footprint-beach.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -8994,7 +8994,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-hidden-pasture",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-062.jpg"
+      "url": "library/robinson-crusoe/art/location-hidden-pasture.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -9002,7 +9002,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-cannibal-shore",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-068.jpg"
+      "url": "library/robinson-crusoe/art/location-cannibal-shore.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -9010,7 +9010,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-lookout-hill",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-065.jpg"
+      "url": "library/robinson-crusoe/art/location-lookout-hill.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -9018,7 +9018,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-hidden-cave",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-066.jpg"
+      "url": "library/robinson-crusoe/art/location-hidden-cave.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -9026,7 +9026,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-spanish-wreck",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-084.jpg"
+      "url": "library/robinson-crusoe/art/location-spanish-wreck.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -9034,7 +9034,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-friday-rescue-shore",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-072.jpg"
+      "url": "library/robinson-crusoe/art/location-friday-rescue-shore.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -9042,7 +9042,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-boat-yard",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-058.jpg"
+      "url": "library/robinson-crusoe/art/location-boat-yard.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -9050,7 +9050,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-mutineer-landing",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-086.jpg"
+      "url": "library/robinson-crusoe/art/location-mutineer-landing.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -9058,7 +9058,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-english-ship",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-122.jpg"
+      "url": "library/robinson-crusoe/art/location-english-ship.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -9066,7 +9066,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-lisbon",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-118.jpg"
+      "url": "library/robinson-crusoe/art/location-lisbon.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -9074,7 +9074,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-iberian-road",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-135.jpg"
+      "url": "library/robinson-crusoe/art/location-iberian-road.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -9082,7 +9082,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-pyrenees",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-090.jpg"
+      "url": "library/robinson-crusoe/art/location-pyrenees.jpg"
     },
     {
       "worldId": "robinson-crusoe-world",
@@ -9090,7 +9090,7 @@
       "updatedAt": 1799798400000,
       "id": "robinson-crusoe-image-location-england",
       "mimeType": "image/jpeg",
-      "url": "library/robinson-crusoe/art/paget-097.jpg"
+      "url": "library/robinson-crusoe/art/location-england.jpg"
     }
   ],
   "travelModes": [],
@@ -9291,7 +9291,7 @@
       "id": "robinson-crusoe-lore-page-illustrations",
       "categoryId": "robinson-crusoe-lore-category-sources",
       "title": "Illustration Provenance",
-      "body": "Character, location, and cover artwork comes from Walter Paget’s illustrations for the 1891 Cassell fine-art edition of Robinson Crusoe, digitized by the British Library and made available through Wikimedia Commons. The twelve item illustrations and two navigational maps are newly generated period-style artwork based on the objects and locations named in Defoe’s narrative; the maps are interpretive rather than historical surveys.",
+      "body": "The cover artwork comes from Walter Paget’s illustrations for the 1891 Cassell fine-art edition of Robinson Crusoe, digitized by the British Library and made available through Wikimedia Commons. All character, location, and item illustrations and both navigational maps are newly generated, mature period-style artwork based on the people, objects, and places described in Defoe’s narrative; the maps are interpretive rather than historical surveys.",
       "tags": [
         "images",
         "provenance"

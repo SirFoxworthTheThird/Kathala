@@ -606,14 +606,14 @@
       "author": "Daniel Defoe",
       "blurb": "A restless voyager survives shipwreck and makes a life on an isolated island, where labour, faith, fear, encounter, and the hope of return transform twenty-eight years of exile.",
       "data": "robinson-crusoe.pwk",
-      "dataBytes": 1038434,
+      "dataBytes": 1039096,
       "counts": {
         "characters": 24,
         "chapters": 20,
         "events": 99,
         "locations": 35
       },
-      "notice": "Unofficial reference for a public-domain novel. Manuscript scenes reproduce the complete original prose of Project Gutenberg eBook 521; Gutenberg front matter, licence wrapper, contents, and end matter are excluded. Walter Paget’s public-domain illustrations are used for entity artwork; source and editorial method are recorded in Lore.",
+      "notice": "Unofficial reference for a public-domain novel. Manuscript scenes reproduce the complete original prose of Project Gutenberg eBook 521; Gutenberg front matter, licence wrapper, contents, and end matter are excluded. The cover uses public-domain Walter Paget artwork; characters, locations, items, and maps use original generated period illustrations. Sources and editorial method are recorded in Lore.",
       "worldId": "robinson-crusoe-world",
       "cover": "library/robinson-crusoe/art/paget-015.jpg"
     }
