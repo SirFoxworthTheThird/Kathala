@@ -1,27 +1,6 @@
-export const assetNumber = {
-  world: 15,
-  characters: {
-    crusoe: 141, father: 32, mother: 92, friend: 26, "guinea-captain": 25,
-    "sallee-master": 115, xury: 31, moor: 30, "portuguese-captain": 128,
-    wells: 43, planters: 112, "ship-crew": 33, "carib-raiders": 108,
-    friday: 117, spaniard: 113, "friday-father": 119, "english-captain": 120,
-    mate: 100, passenger: 116, mutineers: 101, boatswain: 96,
-    "will-atkins": 103, guide: 137, widow: 121,
-  },
-  locations: {
-    "york-home": 105, "north-sea": 27, "yarmouth-roads": 123, london: 129,
-    "guinea-coast": 20, sallee: 111, "sallee-harbor": 124, "african-coast": 4,
-    "atlantic-passage": 130, "brazil-plantation": 126, "island-gateway": 35,
-    "wreck-site": 36, "island-shore": 37, "island-castle": 75,
-    "country-bower": 50, "island-interior": 48, cornfields: 104,
-    "great-canoe": 45, "island-coast": 52, "goat-pasture": 63,
-    "boat-harbor": 59, "footprint-beach": 61, "hidden-pasture": 62,
-    "cannibal-shore": 68, "lookout-hill": 65, "hidden-cave": 66,
-    "spanish-wreck": 84, "friday-rescue-shore": 72, "boat-yard": 58,
-    "mutineer-landing": 86, "english-ship": 122, lisbon: 118,
-    "iberian-road": 135, pyrenees: 90, england: 97,
-  },
-};
+import { characterDefs, locationDefs } from "./world-data.mjs";
+
+export const assetNumber = { world: 15 };
 
 export const markerCoordinates = {
   world: {
@@ -58,7 +37,12 @@ export const itemImageFile = {
   "plantation-accounts": "item-plantation-accounts.png",
 };
 
-const values = [assetNumber.world, ...Object.values(assetNumber.characters), ...Object.values(assetNumber.locations)];
-if (new Set(values).size !== values.length) throw new Error("Every non-map entity must use a distinct illustration");
+export const characterImageFile = Object.fromEntries(
+  characterDefs.map(([slug]) => [slug, `character-${slug}.jpg`]),
+);
+
+export const locationImageFile = Object.fromEntries(
+  locationDefs.map(([slug]) => [slug, `location-${slug}.jpg`]),
+);
 
 export const pagetFile = (number) => `paget-${String(number).padStart(3, "0")}.jpg`;
