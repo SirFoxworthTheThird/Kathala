@@ -41,11 +41,13 @@ for (const marker of d.locationMarkers) {
   assert(marker.x >= 0 && marker.x <= map.imageWidth && marker.y >= 0 && marker.y <= map.imageHeight, `${marker.name} is outside ${map.name}`);
   const blob = blobById.get(marker.imageId);
   assert(blob && fs.existsSync(path.join("public", blob.url)), `${marker.name} illustration is missing`);
+  assert(blob.mimeType === "image/jpeg" && /\/location-[^/]+\.jpg$/.test(blob.url), `${marker.name} must use a generated location illustration`);
   if (marker.linkedMapLayerId) assert(mapById.has(marker.linkedMapLayerId));
 }
 for (const character of d.characters) {
   const blob = blobById.get(character.portraitImageId);
   assert(blob && fs.existsSync(path.join("public", blob.url)), `${character.name} portrait is missing`);
+  assert(blob.mimeType === "image/jpeg" && /\/character-[^/]+\.jpg$/.test(blob.url), `${character.name} must use a generated character illustration`);
 }
 for (const item of d.items) {
   const blob = blobById.get(item.imageId);
