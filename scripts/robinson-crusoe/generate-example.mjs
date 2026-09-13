@@ -22,7 +22,14 @@ import {
   revealDefs,
   routeDefs,
 } from "./supporting-data.mjs";
-import { assetNumber, itemImageFile, markerCoordinates, pagetFile } from "./asset-data.mjs";
+import {
+  assetNumber,
+  characterImageFile,
+  itemImageFile,
+  locationImageFile,
+  markerCoordinates,
+  pagetFile,
+} from "./asset-data.mjs";
 
 const P = "robinson-crusoe",
   worldId = `${P}-world`,
@@ -323,9 +330,9 @@ d.blobs = [
   { ...base, id: id("image", "world"), mimeType: "image/jpeg", url: `library/robinson-crusoe/art/${pagetFile(assetNumber.world)}` },
   { ...base, id: id("image", "map-world"), mimeType: "image/png", url: "library/robinson-crusoe/maps/atlantic-world.png" },
   { ...base, id: id("image", "map-island"), mimeType: "image/png", url: "library/robinson-crusoe/maps/crusoes-island.png" },
-  ...Object.entries(assetNumber.characters).map(([slug, number]) => ({ ...base, id: id("image", `character-${slug}`), mimeType: "image/jpeg", url: `library/robinson-crusoe/art/${pagetFile(number)}` })),
+  ...Object.entries(characterImageFile).map(([slug, filename]) => ({ ...base, id: id("image", `character-${slug}`), mimeType: "image/jpeg", url: `library/robinson-crusoe/art/${filename}` })),
   ...Object.entries(itemImageFile).map(([slug, filename]) => ({ ...base, id: id("image", `item-${slug}`), mimeType: "image/png", url: `library/robinson-crusoe/art/${filename}` })),
-  ...Object.entries(assetNumber.locations).map(([slug, number]) => ({ ...base, id: id("image", `location-${slug}`), mimeType: "image/jpeg", url: `library/robinson-crusoe/art/${pagetFile(number)}` })),
+  ...Object.entries(locationImageFile).map(([slug, filename]) => ({ ...base, id: id("image", `location-${slug}`), mimeType: "image/jpeg", url: `library/robinson-crusoe/art/${filename}` })),
 ];
 const eventByTitle = (title) => {
   const event = d.events.find((candidate) => candidate.title === title);
@@ -445,7 +452,7 @@ d.lorePages = [
   {
     ...base,
     id: id("lore-page", "illustrations"), categoryId: id("lore-category", "sources"),
-    title: "Illustration Provenance", body: "Character, location, and cover artwork comes from Walter Paget’s illustrations for the 1891 Cassell fine-art edition of Robinson Crusoe, digitized by the British Library and made available through Wikimedia Commons. The twelve item illustrations and two navigational maps are newly generated period-style artwork based on the objects and locations named in Defoe’s narrative; the maps are interpretive rather than historical surveys.",
+    title: "Illustration Provenance", body: "The cover artwork comes from Walter Paget’s illustrations for the 1891 Cassell fine-art edition of Robinson Crusoe, digitized by the British Library and made available through Wikimedia Commons. All character, location, and item illustrations and both navigational maps are newly generated, mature period-style artwork based on the people, objects, and places described in Defoe’s narrative; the maps are interpretive rather than historical surveys.",
     tags: ["images", "provenance"], coverImageId: id("image", "world"), linkedEntityIds: [worldId], visibleFromEventId: d.events[0].id,
   },
 ];
