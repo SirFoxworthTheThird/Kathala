@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { FileText, Download, BookOpen, PencilLine, Target, Replace } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
@@ -7,12 +7,17 @@ import { Button } from '@/components/ui/button'
 import { useTimelines, useChapters, useTimelineEvents, updateChapter } from '@/db/hooks/useTimeline'
 import { useWorld } from '@/db/hooks/useWorlds'
 import { useSceneTextsByEvent } from '@/db/hooks/useManuscript'
+import { useReadingMode } from '@/db/hooks/useReading'
+import { useAppStore, useActiveEventId } from '@/store'
+import { computeSortKeySync } from '@/lib/sortKey'
+import { cursorForScene } from '@/lib/readingPosition'
 import { buildManuscript } from '@/lib/manuscriptCompile'
 import { cn } from '@/lib/utils'
 import { ExportManuscriptDialog } from './ExportManuscriptDialog'
 import { FindReplaceDialog } from './FindReplaceDialog'
 import { plural } from '@/lib/plural'
 import { splitParagraphs as paragraphs } from '@/lib/manuscriptParagraphs'
+import { useBlobUrl } from '@/db/hooks/useBlobs'
 
 const nf = new Intl.NumberFormat()
 
@@ -63,6 +68,7 @@ export default function ManuscriptView() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
   const world = useWorld(worldId ?? null)
+  const coverUrl = useBlobUrl(world?.coverImageId ?? null)
   const timelines = useTimelines(worldId ?? null)
   const ordered = useMemo(() => [...timelines].sort((a, b) => a.createdAt - b.createdAt), [timelines])
   const [timelineId, setTimelineId] = useState<string | null>(null)
@@ -77,7 +83,114 @@ export default function ManuscriptView() {
     [chapters, events, sceneByEvent]
   )
 
-  const [mode, setMode] = useState<'draft' | 'reading'>('draft')
+  const activeEventId = useActiveEventId()
+  const chapterNumberById = useMemo(() => new Map(chapters.map((c) => [c.id, c.number])), [chapters])
+  const eventById = useMemo(
+    () => new Map(events.map((e) => [e.id, { chapterId: e.chapterId, sortOrder: e.sortOrder }])),
+    [events],
+  )
+
+  /*
+    In reading mode this screen *is* the book, so the presentation is not a
+    choice the reader makes — the draft view shows synopses, scene numbers and
+    unwritten placeholders, which is the author's scaffolding and none of a
+    reader's business. The toggle below is hidden to match.
+  */
+  const readingMode = useReadingMode(worldId ?? null)
+  const [draftMode, setDraftMode] = useState<'draft' | 'reading'>('draft')
+  const mode = readingMode ? 'reading' : draftMode
+
+  /*
+    Reading moves the reader's place in the book.
+
+    Reading mode's whole premise is that the story bible is read relative to how
+    far the reader has got, and until the book itself was here they had to keep
+    telling it — pick a scene from the time cursor, then go and read somewhere
+    else. With the prose on screen the position is simply *known*, so the gate
+    can follow the reader's eye instead of their bookkeeping.
+
+    `cursorForScene` holds the two rules that keep this from taking anything
+    away — never move a null cursor, never go backwards. They live in
+    `src/lib/readingPosition.ts` where they can be tested; what is here is only
+    the business of noticing which scene is on screen, which needs a browser and
+    is covered by `e2e/readingFollows.spec.ts`.
+
+    The scene counts as reached when its top passes the upper quarter of the
+    view, not when it first peeks in from the bottom: a scene visible at the
+    edge has not been read, and revealing its contents early is the exact
+    spoiler this mode exists to prevent.
+  */
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const setActiveEventId = useAppStore((st) => st.setActiveEventId)
+  const cursorKey = useMemo(() => {
+    if (!activeEventId) return null
+    return computeSortKeySync(activeEventId, eventById, chapterNumberById)
+  }, [activeEventId, eventById, chapterNumberById])
+
+  /*
+    Open the book where the reader left it.
+
+    The cursor survives leaving the screen and closing the tab — it is stored
+    per world — but the prose does not: the page came back scrolled to the top,
+    so a reader 400 pages into *The Count of Monte Cristo* was returned to
+    chapter one and had to find their place by hand. The gate was right and the
+    book was wrong, which is the half nobody notices in a test that only checks
+    what is revealed.
+
+    Once per visit, not on every cursor change: the scene is scrolled to on
+    arrival and the reader is then left alone, or reading on would yank the page
+    back with every scene they reached. The observer below cannot fight it
+    either — it sees the scene just scrolled to, and `cursorForScene` answers
+    "stay" for the scene the cursor is already on.
+  */
+  const restoredRef = useRef(false)
+  useEffect(() => { restoredRef.current = false }, [worldId])
+  useEffect(() => {
+    if (!readingMode || restoredRef.current) return
+    // Not until the prose itself is in the DOM. The chapters arrive before the
+    // scene texts do, and scrolling against a page that is still two hundred
+    // words long lands nowhere near the right place — then the flag says it is
+    // done and the reader is left at the top. A reload did exactly that.
+    if (manuscript.writtenScenes === 0) return
+    const root = scrollRef.current
+    if (!root || !activeEventId) return
+    const target = root.querySelector<HTMLElement>(`[data-scene-event-id="${CSS.escape(activeEventId)}"]`)
+    if (!target) return
+    restoredRef.current = true
+    // After layout, and instant rather than smooth: this is where the book
+    // already was, not a movement the reader made.
+    requestAnimationFrame(() => {
+      target.scrollIntoView({ block: 'start', behavior: 'auto' })
+    })
+  }, [readingMode, activeEventId, manuscript, worldId])
+
+  useEffect(() => {
+    if (!readingMode) return
+    const root = scrollRef.current
+    if (!root) return
+    const nodes = Array.from(root.querySelectorAll<HTMLElement>('[data-scene-event-id]'))
+    if (nodes.length === 0) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        let furthest: { id: string; sortKey: number } | null = null
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue
+          const id = entry.target.getAttribute('data-scene-event-id')
+          if (!id) continue
+          const sortKey = computeSortKeySync(id, eventById, chapterNumberById)
+          if (sortKey < 0) continue
+          if (!furthest || sortKey > furthest.sortKey) furthest = { id, sortKey }
+        }
+        if (!furthest) return
+        const next = cursorForScene({ cursor: cursorKey, scene: furthest })
+        if (next) setActiveEventId(next)
+      },
+      { root, rootMargin: '-25% 0px -60% 0px', threshold: 0 },
+    )
+    for (const node of nodes) observer.observe(node)
+    return () => observer.disconnect()
+  }, [readingMode, manuscript, eventById, chapterNumberById, cursorKey, setActiveEventId])
   const [exportOpen, setExportOpen] = useState(false)
   const [findOpen, setFindOpen] = useState(false)
 
@@ -107,9 +220,14 @@ export default function ManuscriptView() {
       */}
       <PageHeader
         icon={FileText}
-        title="Manuscript"
-        description={`${nf.format(manuscript.writtenScenes)} of ${nf.format(manuscript.totalScenes)} scenes written · ${plural(manuscript.totalWords, 'word')}`}
-        actions={
+        title={readingMode ? 'Read' : 'Manuscript'}
+        // A reader is told how far *they* have got, by the chapter bar and the
+        // time cursor. How much of the book is "written" is a fact about an
+        // author's progress, and there is no author here.
+        description={readingMode
+          ? undefined
+          : `${nf.format(manuscript.writtenScenes)} of ${nf.format(manuscript.totalScenes)} scenes written · ${plural(manuscript.totalWords, 'word')}`}
+        actions={readingMode ? undefined : (
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" onClick={() => setFindOpen(true)} disabled={!hasProse}>
               <Replace className="h-4 w-4" /> Find &amp; replace
@@ -118,7 +236,7 @@ export default function ManuscriptView() {
               <Download className="h-4 w-4" /> Export
             </Button>
           </div>
-        }
+        )}
       >
         {/* Toolbar row: timeline picker, reading/draft toggle, word goal */}
         {ordered.length > 1 && (
@@ -133,22 +251,25 @@ export default function ManuscriptView() {
             ))}
           </select>
         )}
+        {!readingMode && (
         <div className="flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-xs" role="group" aria-label="View mode">
           <button
-            onClick={() => setMode('draft')}
+            onClick={() => setDraftMode('draft')}
             aria-pressed={mode === 'draft'}
             className={cn('flex items-center gap-1 px-2 py-1 transition-colors', mode === 'draft' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
           >
             <PencilLine className="h-3.5 w-3.5" /> Draft
           </button>
           <button
-            onClick={() => setMode('reading')}
+            onClick={() => setDraftMode('reading')}
             aria-pressed={mode === 'reading'}
             className={cn('flex items-center gap-1 border-l border-[hsl(var(--border))] px-2 py-1 transition-colors', mode === 'reading' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
           >
             <BookOpen className="h-3.5 w-3.5" /> Reading
           </button>
         </div>
+        )}
+        {!readingMode && (
         <label className="flex items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))]">
           <Target className="h-3.5 w-3.5" />
           <span>Goal</span>
@@ -165,7 +286,8 @@ export default function ManuscriptView() {
             className="h-8 w-24 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 text-xs tabular-nums text-[hsl(var(--foreground))]"
           />
         </label>
-        {goal > 0 && (
+        )}
+        {!readingMode && goal > 0 && (
           <div className="flex min-w-[120px] flex-1 items-center gap-2">
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[hsl(var(--muted))]">
               <div className="h-full rounded-full bg-[hsl(var(--ring))] transition-all" style={{ width: `${pct}%` }} />
@@ -175,16 +297,23 @@ export default function ManuscriptView() {
         )}
       </PageHeader>
 
-      <div className="flex-1 overflow-auto">
+      <div ref={scrollRef} className="flex-1 overflow-auto">
         {!hasProse ? (
           /*
             MS-4 asked for a second version of this sentence, for a reader on a
             Library world who cannot write the prose it tells them to write.
-            That reader never gets here: Manuscript is `writingOnly`, so the
-            router redirects a reading-mode world to its dashboard rather than
-            serving the screen. The only person who sees this is one who can act
-            on it. Adding the branch would have been unreachable code, which is
-            what the Items section in EventCard turned out to be under X-4.
+
+            That reader still never gets here, but no longer for the reason
+            first written down. Reading mode used to close this route outright;
+            it now opens it for a world that *has* prose, so the redirect turns
+            on the prose rather than on the mode (`READABLE_WITH_PROSE` in the
+            router). A world with none sends a reader to the dashboard exactly
+            as before, and a world with some never reaches this branch, because
+            this branch is the no-prose case.
+
+            So the sentence still only reaches someone who can act on it, and
+            the second version is still unreachable code — which is what the
+            Items section in EventCard turned out to be under X-4.
           */
           <EmptyState
             icon={FileText}
@@ -203,9 +332,11 @@ export default function ManuscriptView() {
                     <h2 className="text-lg font-semibold text-[hsl(var(--foreground))]">
                       Ch. {ch.number} — {ch.title || 'Untitled'}
                     </h2>
-                    <p className="mt-0.5 text-xs text-[hsl(var(--muted-foreground))]">
-                      {plural(ch.wordCount, 'word')} · {ch.writtenScenes}/{ch.scenes.length} scenes
-                    </p>
+                    {!readingMode && (
+                      <p className="mt-0.5 text-xs text-[hsl(var(--muted-foreground))]">
+                        {plural(ch.wordCount, 'word')} · {ch.writtenScenes}/{ch.scenes.length} scenes
+                      </p>
+                    )}
                     {mode === 'draft' && ch.synopsis && (
                       <p className="mt-1 text-xs italic text-[hsl(var(--muted-foreground))]">{ch.synopsis}</p>
                     )}
@@ -215,7 +346,7 @@ export default function ManuscriptView() {
                   </div>
 
                   {scenes.map((s, i) => (
-                    <div key={s.eventId}>
+                    <div key={s.eventId} data-scene-event-id={s.eventId}>
                       {i > 0 && (
                         <div className="my-6 text-center text-sm text-[hsl(var(--muted-foreground))]" aria-hidden="true">* * *</div>
                       )}
@@ -266,6 +397,7 @@ export default function ManuscriptView() {
         title={world?.name ?? 'Manuscript'}
         timelineName={ordered.find((t) => t.id === activeTimelineId)?.name}
         timelineCount={ordered.length}
+        coverUrl={coverUrl}
       />
       {worldId && <FindReplaceDialog open={findOpen} onOpenChange={setFindOpen} worldId={worldId} />}
     </div>

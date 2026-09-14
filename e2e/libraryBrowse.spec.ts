@@ -69,9 +69,11 @@ test.describe('Browsing the Library', () => {
     expect(byAuthor).toContain('The Three Musketeers')
     expect(byAuthor).toContain('The Count of Monte Cristo')
 
-    // Accents folded, so a reader typing on a plain keyboard still finds her.
+    // Accents folded, so a reader typing on a plain keyboard still finds them.
+    // Both sisters, since Wuthering Heights joined the catalogue — which makes
+    // this a better test of the folding than one book did.
     await search.fill('bronte')
-    await expect.poll(() => listed(page)).toEqual(['Jane Eyre'])
+    await expect.poll(() => listed(page)).toEqual(['Jane Eyre', 'Wuthering Heights'])
 
     // Nothing matching says so, and offers the way back.
     await search.fill('zzzzz')
