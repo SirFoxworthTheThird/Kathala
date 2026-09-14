@@ -362,7 +362,9 @@ no word counts, no "scenes written" tally — just the prose.
 
 **Your place moves as you read.** Reach a new scene and the cursor follows you,
 so the cast, the places, the lore and the maps unlock exactly as far as you have
-got, without your having to tell it. Two things it will not do:
+got, without your having to tell it. Leave the book for another screen, or close
+the tab entirely, and **Read** opens again on the page you were on. Two things
+it will not do:
 
 - **It never goes backwards.** Turn back to re-read a chapter and nothing you
   have already learned is hidden again. Moving your place back is something you
