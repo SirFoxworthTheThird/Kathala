@@ -6,7 +6,8 @@ import {
   type LibraryEntry,
 } from '@/lib/library'
 import { browseLibrary } from '@/lib/libraryBrowse'
-import { libraryCatalogueUrl } from '@/lib/librarySite'
+import { libraryCatalogueUrl, bundledCatalogueUrl } from '@/lib/librarySite'
+import { withBundledFallback } from '@/lib/libraryFallback'
 import { needsNewerApp } from '@/lib/appVersion'
 import { Input } from '@/components/ui/input'
 
@@ -62,6 +63,16 @@ export function LibraryDialog({
   const [query, setQuery] = useState('')
 
   const baseUrl = libraryCatalogueUrl()
+  /*
+    A packaged app asks the library site first and uses the copy it shipped with
+    when that cannot be reached, so a reader with no connection can still browse
+    and import. A browser build passes no fallback: it has nothing bundled, and
+    it was served over a network anyway.
+  */
+  const fetcher = useMemo(
+    () => withBundledFallback({ remote: baseUrl, bundled: bundledCatalogueUrl() }),
+    [baseUrl],
+  )
 
   /*
     Escape backs out of whatever is in front of you: the replace confirm if it
@@ -91,13 +102,13 @@ export function LibraryDialog({
   useEffect(() => {
     if (!open || entries) return
     let cancelled = false
-    fetchLibraryIndex(baseUrl)
+    fetchLibraryIndex(baseUrl, fetcher)
       .then((index) => { if (!cancelled) setEntries(index.entries) })
       .catch((e: unknown) => {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Could not load the library')
       })
     return () => { cancelled = true }
-  }, [open, entries, baseUrl])
+  }, [open, entries, baseUrl, fetcher])
 
   /*
     Alphabetical, filed past a leading article, and narrowed by the search box.
@@ -127,6 +138,7 @@ export function LibraryDialog({
     setImagesWarning(null)
     try {
       const result = await downloadLibraryWorld(baseUrl, entry, {
+        fetcher,
         withImages,
         onStage: (s) => setStage(s === 'images' ? 'Fetching images…' : 'Downloading…'),
       })

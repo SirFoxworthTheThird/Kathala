@@ -85,6 +85,29 @@ jobs:
           node-version: 20
           cache: npm
 
+      # The books live in their own repository now. A packaged app carries the
+      # catalogue and the worlds so a reader with no connection can still open
+      # the Library and import a book — artwork stays remote, as it is in a
+      # browser. `npm run electron:make` stages them from here.
+      #
+      # Sparse: the 1.7 GB of artwork is not bundled and would make every
+      # platform's checkout several minutes longer for nothing.
+      - name: Check out the Library
+        uses: actions/checkout@v4
+        with:
+          repository: SirFoxworthTheThird/PlotWeave-Library
+          path: plotweave-library
+          # The worlds and the catalogue only — the top level of `library/`,
+          # not the per-book art directories beneath it. Cone mode off, so
+          # these are gitignore-style patterns rather than directory prefixes;
+          # `library` alone would match the artwork too and add 1.7 GB to every
+          # platform's checkout for files a packaged app never carries.
+          sparse-checkout: |
+            /library/index.json
+            /library/*.pwk
+            /library/*.pwb
+          sparse-checkout-cone-mode: false
+
       - name: Install dependencies
         run: npm install
 
@@ -93,6 +116,10 @@ jobs:
         run: npm run electron:make
         env:
           NODE_ENV: production
+          # Where the previous step put it. The script defaults to a sibling of
+          # this repository, which is how a developer's machine is laid out; a
+          # runner checks it out inside the workspace instead.
+          PLOTWEAVE_LIBRARY: plotweave-library
 
       # Every made artifact, flattened into one directory. The maker's own tree
       # (`out/make/zip/darwin/arm64/…`, `out/make/squirrel.windows/x64/…`) is an

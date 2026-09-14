@@ -13,7 +13,7 @@ import path from 'path'
   script has to work on Windows too — the release matrix builds the installer
   there, and `VAR=value command` is not a thing in cmd.exe.
 */
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react(), tailwindcss()],
   base: './',
   /*
@@ -25,9 +25,21 @@ export default defineConfig({
 
     A relative base, so the same build works on whatever port preview picks.
   */
-  define: process.env.VITE_E2E
-    ? { 'import.meta.env.VITE_LIBRARY_BASE_URL': JSON.stringify('./') }
-    : {},
+  define: {
+    ...(process.env.VITE_E2E
+      ? { 'import.meta.env.VITE_LIBRARY_BASE_URL': JSON.stringify('./') }
+      : {}),
+    /*
+      The desktop build carries the catalogue and the worlds, so it can open the
+      Library with no connection. It still asks the site first — a packaged app
+      should see books published after it was built — and falls back to what it
+      shipped with. `--mode electron` rather than an environment variable
+      because the release matrix builds the Windows installer.
+    */
+    ...(mode === 'electron'
+      ? { 'import.meta.env.VITE_LIBRARY_BUNDLED': JSON.stringify('1') }
+      : {}),
+  },
   server: {
     port: 5173,
     strictPort: true,
@@ -49,4 +61,4 @@ export default defineConfig({
       exclude: ['src/db/hooks/useBlobs.ts', 'src/db/hooks/useMapLayers.ts'],
     },
   },
-})
+}))

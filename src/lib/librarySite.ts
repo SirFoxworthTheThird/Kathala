@@ -15,7 +15,7 @@
  * **The end-to-end suite overrides it.** A build made with `VITE_E2E=1` stages
  * the real books into `dist/library` and points this at the preview server, so
  * the suite keeps testing against the actual catalogue with no route to the
- * internet. See `scripts/stage-e2e-library.mjs`.
+ * internet. See `scripts/stage-library.mjs`.
  */
 const DEFAULT_SITE = 'https://plotweave-library.netlify.app/'
 
@@ -40,4 +40,31 @@ export function librarySiteUrl(): string {
  */
 export function libraryCatalogueUrl(): string {
   return `${librarySiteUrl()}library/`
+}
+
+/**
+ * Where a packaged app can find the books without a network.
+ *
+ * The desktop build stages the catalogue and the worlds into its own files, so
+ * a reader with no connection can still open the Library and import a book.
+ * Artwork is not staged — pictures come from the site, as they do in a browser.
+ *
+ * `undefined` for a web build, which has nothing bundled and needs no fallback:
+ * it was served from a network, so it has one.
+ */
+export function bundledLibraryBase(): string | undefined {
+  return import.meta.env.VITE_LIBRARY_BUNDLED ? './' : undefined
+}
+
+/**
+ * The bundled counterpart of `libraryCatalogueUrl()`.
+ *
+ * It has to sit at the same depth as the URL it stands in for: a fallback
+ * rewrites `https://site/library/index.json` by swapping the base, so pairing
+ * the catalogue URL with the *site* root would ask for `./index.json` and miss
+ * the file, which lives at `./library/index.json`.
+ */
+export function bundledCatalogueUrl(): string | undefined {
+  const base = bundledLibraryBase()
+  return base === undefined ? undefined : `${base}library/`
 }

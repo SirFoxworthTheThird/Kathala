@@ -51,6 +51,12 @@ what you are allowed to reuse.
   the Library without waiting for a new version of the app. Opening the Library,
   downloading a book, and showing a book's pictures all ask that site for files;
   it is run by this project and is told nothing about your worlds.
+
+  **The desktop app still works without a connection.** It carries the
+  catalogue and the books it was built with, and asks the site first so you see
+  anything published since. With no connection you get the shelf it shipped
+  with, and can download and read any book on it; only the pictures inside a
+  book need the network, and **World settings → Pictures** keeps those too.
 - **Pictures inside the library worlds themselves.** These are linked rather
   than bundled: character portraits, location and item pictures, map images,
   faction and world covers. Across the shipped library that is just under
