@@ -650,6 +650,23 @@
       "notice": "Unofficial reference for a public-domain novel. Manuscript scenes reproduce the complete original prose of all 22 chapters from Project Gutenberg eBook #95 (UTF-8 plain text, updated 21 December 2022; credits: Judith Boss); Gutenberg front and end matter are excluded. Scene divisions, summaries, calendar dates, fictional map geography, and all original generated illustrations are editorial.",
       "worldId": "prisoner-of-zenda-world",
       "cover": "library/prisoner-of-zenda/art/world-cover.jpg"
+    },
+    {
+      "id": "os-maias",
+      "title": "Os Maias",
+      "author": "Eça de Queirós",
+      "blurb": "Três gerações, uma paixão impossível e o retrato mordaz da Lisboa oitocentista.",
+      "data": "os-maias.pwk",
+      "dataBytes": 1652688,
+      "counts": {
+        "characters": 30,
+        "chapters": 18,
+        "events": 72,
+        "locations": 35
+      },
+      "notice": "Unofficial reference / referência não oficial de um romance em domínio público. As cenas reproduzem a original prose / prosa original integral dos 18 capítulos de Os Maias: episodios da vida romantica, edição Ernesto Chardron de 1888, transcrição Project Gutenberg n.º 40409; o aparato Gutenberg foi excluído. Títulos, resumos, calendário, estrutura e ilustrações originais geradas são editoriais.",
+      "worldId": "os-maias-world",
+      "cover": "library/os-maias/art/world-cover.jpg"
     }
   ]
 }
