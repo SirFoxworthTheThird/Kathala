@@ -11,6 +11,8 @@ interface EventSlice {
   setActiveEventId: (id: string | null) => void
   /** Place a world at its first scene, unless it already has a position. */
   seedReadingPosition: (worldId: string, eventId: string) => void
+  /** Where each seeded world opened, so "unread" stays tellable from "read a bit". */
+  openingByWorld: Record<string, string>
   /**
    * Where the cursor was left in each world, so reopening one resumes rather
    * than restarts.
@@ -176,6 +178,7 @@ export const useAppStore = create<AppStore>()(
       // Event (the global time cursor — replaces activeChapterId)
       activeEventId: null,
       eventByWorld: {},
+      openingByWorld: {},
       setActiveEventId: (id) => set((state) => {
         const worldId = state.activeWorldId
         if (!worldId) return { activeEventId: id }
@@ -203,6 +206,10 @@ export const useAppStore = create<AppStore>()(
         if (worldId in state.eventByWorld) return {}
         return {
           eventByWorld: { ...state.eventByWorld, [worldId]: eventId },
+          // Kept so "where the book opens" stays distinguishable from "where
+          // the reader got to". They are the same value on day one, and the
+          // shelf order depends on telling them apart — see `readingLeads`.
+          openingByWorld: { ...state.openingByWorld, [worldId]: eventId },
           ...(state.activeWorldId === worldId ? { activeEventId: eventId } : {}),
         }
       }),
@@ -317,6 +324,7 @@ export const useAppStore = create<AppStore>()(
         activeWorldId: state.activeWorldId,
         activeEventId: state.activeEventId,
         eventByWorld: state.eventByWorld,
+        openingByWorld: state.openingByWorld,
         sidebarOpen: state.sidebarOpen,
         navPinned: state.navPinned,
         barScope: state.barScope,

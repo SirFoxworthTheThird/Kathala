@@ -37,9 +37,10 @@ export default function WorldSelectorView() {
   const worlds = useWorlds()
   const { drafts, reading } = useMemo(() => partitionWorlds(worlds), [worlds])
   const positionByWorld = useAppStore((st) => st.eventByWorld)
+  const openingByWorld = useAppStore((st) => st.openingByWorld)
   const readingFirst = useMemo(
-    () => readingLeads(reading, positionByWorld),
-    [reading, positionByWorld],
+    () => readingLeads(reading, positionByWorld, openingByWorld),
+    [reading, positionByWorld, openingByWorld],
   )
 
   /*
