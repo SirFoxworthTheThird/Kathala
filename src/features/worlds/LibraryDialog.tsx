@@ -2,10 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { BookOpen, Download, Check, X, AlertTriangle, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
-  downloadBytes, downloadLibraryWorld, fetchLibraryIndex, formatBytes, libraryBaseUrl,
+  downloadBytes, downloadLibraryWorld, fetchLibraryIndex, formatBytes,
   type LibraryEntry,
 } from '@/lib/library'
 import { browseLibrary } from '@/lib/libraryBrowse'
+import { libraryCatalogueUrl, bundledCatalogueUrl, libraryCoverUrl } from '@/lib/librarySite'
+import { withBundledFallback } from '@/lib/libraryFallback'
+import { needsNewerApp } from '@/lib/appVersion'
 import { Input } from '@/components/ui/input'
 
 /**
@@ -20,7 +23,7 @@ function LibraryCover({ src, title }: { src: string; title: string }) {
   if (failed) return null
   return (
     <img
-      src={src}
+      src={libraryCoverUrl(src)}
       alt={`${title} cover`}
       loading="lazy"
       onError={() => setFailed(true)}
@@ -59,7 +62,17 @@ export function LibraryDialog({
   const [confirming, setConfirming] = useState<{ entry: LibraryEntry; withImages: boolean } | null>(null)
   const [query, setQuery] = useState('')
 
-  const baseUrl = libraryBaseUrl(import.meta.env.BASE_URL)
+  const baseUrl = libraryCatalogueUrl()
+  /*
+    A packaged app asks the library site first and uses the copy it shipped with
+    when that cannot be reached, so a reader with no connection can still browse
+    and import. A browser build passes no fallback: it has nothing bundled, and
+    it was served over a network anyway.
+  */
+  const fetcher = useMemo(
+    () => withBundledFallback({ remote: baseUrl, bundled: bundledCatalogueUrl() }),
+    [baseUrl],
+  )
 
   /*
     Escape backs out of whatever is in front of you: the replace confirm if it
@@ -89,13 +102,13 @@ export function LibraryDialog({
   useEffect(() => {
     if (!open || entries) return
     let cancelled = false
-    fetchLibraryIndex(baseUrl)
+    fetchLibraryIndex(baseUrl, fetcher)
       .then((index) => { if (!cancelled) setEntries(index.entries) })
       .catch((e: unknown) => {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Could not load the library')
       })
     return () => { cancelled = true }
-  }, [open, entries, baseUrl])
+  }, [open, entries, baseUrl, fetcher])
 
   /*
     Alphabetical, filed past a leading article, and narrowed by the search box.
@@ -125,6 +138,7 @@ export function LibraryDialog({
     setImagesWarning(null)
     try {
       const result = await downloadLibraryWorld(baseUrl, entry, {
+        fetcher,
         withImages,
         onStage: (s) => setStage(s === 'images' ? 'Fetching images…' : 'Downloading…'),
       })
@@ -276,14 +290,28 @@ export function LibraryDialog({
                           likely to press was the one that quietly left the maps
                           blank.
                         */}
-                        <Button size="sm" disabled={busy} onClick={() => start(entry, !!entry.images)}>
-                          {busy ? stage || 'Downloading…' : (
-                            <>
-                              <Download className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-                              Download ({formatBytes(downloadBytes(entry))})
-                            </>
-                          )}
-                        </Button>
+                        {needsNewerApp(entry.minAppVersion) ? (
+                          /*
+                            Said here rather than discovered halfway through an
+                            import. The books are published separately from the
+                            app now, so a copy of PlotWeave installed a year ago
+                            can meet a book written for something newer; the
+                            book names what it needs and this is where a reader
+                            finds out. Nearly no book sets it.
+                          */
+                          <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                            Needs PlotWeave {entry.minAppVersion} or newer
+                          </span>
+                        ) : (
+                          <Button size="sm" disabled={busy} onClick={() => start(entry, !!entry.images)}>
+                            {busy ? stage || 'Downloading…' : (
+                              <>
+                                <Download className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                                Download ({formatBytes(downloadBytes(entry))})
+                              </>
+                            )}
+                          </Button>
+                        )}
                         {/*
                           Said before the download rather than discovered after
                           it. Most shipped worlds keep their maps and covers as
