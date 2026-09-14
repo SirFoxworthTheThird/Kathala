@@ -352,15 +352,39 @@ make, not the default — and while reading, PlotWeave asks before doing it, sin
 the control is a small ✕ beside the cursor and one stray click would hand you
 the whole book. Stepping the cursor back never asks: it only ever un-reveals.
 
+### Reading the book itself
+
+Most of the Library's books carry their own text — 31 of the 38 are complete
+public-domain novels, and each one's catalogue entry names the Project Gutenberg
+edition it came from. On those, reading mode adds a **Read** screen: the book,
+chapter by chapter, with none of the writing furniture. No draft/reading switch,
+no word counts, no "scenes written" tally — just the prose.
+
+**Your place moves as you read.** Reach a new scene and the cursor follows you,
+so the cast, the places, the lore and the maps unlock exactly as far as you have
+got, without your having to tell it. Two things it will not do:
+
+- **It never goes backwards.** Turn back to re-read a chapter and nothing you
+  have already learned is hidden again. Moving your place back is something you
+  do deliberately, with the cursor at the top of the screen.
+- **It never overrides *All chapters*.** If you have chosen to see the whole
+  book, reading does not quietly close that again.
+
+The seven worlds without text — the in-copyright ones, which carry structural
+notes only, and *Journey to the West* — have no **Read** screen, because there
+would be nothing on it.
+
 ### What reading mode puts away
 
 Reading mode also clears out everything that only makes sense to the person
 writing the book, so what is left reads as a companion rather than a workspace
 you have wandered into.
 
-The writing screens — Manuscript, Structure and the Corkboard — step aside, and
-their addresses close with them: typing one in takes you back to the dashboard
-rather than into a screen the book is not yours to edit from. Undo, redo, Recent
+The writing screens — Structure and the Corkboard — step aside, and their
+addresses close with them: typing one in takes you back to the dashboard rather
+than into a screen the book is not yours to edit from. The Manuscript steps
+aside too, but on a book that carries its own text it comes back as **Read**
+(see below). Undo, redo, Recent
 changes, the Writer's Brief and the Continuity Checker leave the top bar (and
 Ctrl+Z along with them), and the dashboard drops its continuity card and its
 snapshot-coverage figure. No

@@ -3,7 +3,8 @@ import { NavLink, useParams } from 'react-router-dom'
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
-import { navItems, type NavItem } from './navItems'
+import { visibleNavItems, type NavItem } from './navItems'
+import { useHasProse } from '@/db/hooks/useManuscript'
 import { useReadingMode } from '@/db/hooks/useReading'
 
 function RailLink({ item, worldId, expanded, dim }: {
@@ -53,11 +54,14 @@ export function NavRail() {
   const setNavPinned = useAppStore((s) => s.setNavPinned)
   const [hovered, setHovered] = useState(false)
   const readingMode = useReadingMode(worldId ?? null)
+  const hasProse = useHasProse(worldId ?? null)
 
   if (!worldId) return null
   const expanded = navPinned || hovered
 
-  const visible = navItems.filter((n) => !(readingMode && n.writingOnly))
+  // `hasProse` is undefined until Dexie answers; treated as "no book yet"
+  // so the Read link appears when it arrives rather than flickering away.
+  const visible = visibleNavItems({ readingMode, hasProse: hasProse === true })
   const core = visible.filter((n) => n.tier === 'core')
   const extended = visible.filter((n) => n.tier === 'extended')
 

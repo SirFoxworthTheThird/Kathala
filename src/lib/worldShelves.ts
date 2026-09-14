@@ -51,13 +51,30 @@ export function partitionWorlds<T extends ShelvedWorld>(worlds: readonly T[]): S
  * start — so a reader who is part-way through a book gets their shelf first,
  * and everyone who has not started one keeps the writing tool they opened.
  *
- * A reading world with no position is not a book in progress: it is one that
- * was downloaded and never opened, or one whose reader asked to see the whole
- * book, which is not a place. Neither should demote a novelist's own drafts.
+ * A reading world with no position is not a book in progress: it is one whose
+ * reader asked to see the whole book, which is not a place. Nor is a book
+ * sitting exactly where it opened — downloaded and not yet read.
+ *
+ * That second case used to be the same as the first, because a downloaded world
+ * had no position at all. It has one now: a book is placed at its first scene
+ * when it arrives, so that its cast and lore are not on display before it is
+ * read. The absence that meant "never opened" is therefore gone, and this asks
+ * the question directly instead — has the reader moved from where the book was
+ * put? `openingByWorld` records that, written once at the same moment.
+ *
+ * A world with no recorded opening keeps the older meaning, any position
+ * counting as progress: a reader's own draft in reading mode was never seeded,
+ * and neither was a book downloaded before this existed.
  */
 export function readingLeads(
   reading: readonly { id: string }[],
   positionByWorld: Readonly<Record<string, string | null>>,
+  openingByWorld: Readonly<Record<string, string>> = {},
 ): boolean {
-  return reading.some((w) => !!positionByWorld[w.id])
+  return reading.some((w) => {
+    const at = positionByWorld[w.id]
+    if (!at) return false
+    const opening = openingByWorld[w.id]
+    return opening === undefined || at !== opening
+  })
 }

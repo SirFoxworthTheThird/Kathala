@@ -8,7 +8,8 @@ import { useNavigate, NavLink, useMatch } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { TimeCursor } from './TimeCursor'
 import { FolderSyncIndicator } from './FolderSyncIndicator'
-import { navItems } from './navItems'
+import { visibleNavItems } from './navItems'
+import { useHasProse } from '@/db/hooks/useManuscript'
 import { useUndoNext } from '@/features/history/useUndo'
 
 /**
@@ -20,6 +21,7 @@ import { useUndoNext } from '@/features/history/useUndo'
 function MobileNavDrawer({ worldId, open, onClose }: { worldId: string; open: boolean; onClose: () => void }) {
   const world = useWorld(worldId)
   const readingMode = !!world?.readingMode
+  const hasProse = useHasProse(worldId)
   const { setBriefOpen, setCheckerOpen, setHelpOpen, setHistoryOpen } = useAppStore()
 
   // Close on Escape, and lock body scroll while open.
@@ -71,7 +73,7 @@ function MobileNavDrawer({ worldId, open, onClose }: { worldId: string; open: bo
         </div>
 
         <div className="flex-1 overflow-y-auto py-1">
-          {navItems.filter((n) => !(readingMode && n.writingOnly)).map(({ to, label, icon: Icon, end }) => (
+          {visibleNavItems({ readingMode, hasProse: hasProse === true }).map(({ to, label, icon: Icon, end }) => (
             <NavLink key={to} to={`/worlds/${worldId}/${to}`} end={end} onClick={onClose} className={itemClass}>
               <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
               {label}

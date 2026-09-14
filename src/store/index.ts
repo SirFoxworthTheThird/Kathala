@@ -9,6 +9,10 @@ interface WorldSlice {
 interface EventSlice {
   activeEventId: string | null
   setActiveEventId: (id: string | null) => void
+  /** Place a world at its first scene, unless it already has a position. */
+  seedReadingPosition: (worldId: string, eventId: string) => void
+  /** Where each seeded world opened, so "unread" stays tellable from "read a bit". */
+  openingByWorld: Record<string, string>
   /**
    * Where the cursor was left in each world, so reopening one resumes rather
    * than restarts.
@@ -174,6 +178,7 @@ export const useAppStore = create<AppStore>()(
       // Event (the global time cursor — replaces activeChapterId)
       activeEventId: null,
       eventByWorld: {},
+      openingByWorld: {},
       setActiveEventId: (id) => set((state) => {
         const worldId = state.activeWorldId
         if (!worldId) return { activeEventId: id }
@@ -181,6 +186,32 @@ export const useAppStore = create<AppStore>()(
         // decision, and the next visit should honour it rather than quietly
         // putting the reader back at the start.
         return { activeEventId: id, eventByWorld: { ...state.eventByWorld, [worldId]: id } }
+      }),
+      /*
+        Start a newly imported world at its opening scene, unless it already has
+        a position of its own.
+
+        A downloaded book has no remembered position, and no position means a
+        null cursor, which means *all chapters* — so opening a freshly
+        downloaded Dracula showed its entire cast, every place and all of its
+        lore before a word was read.
+
+        The guard is the *absence* of the key, not a null value, because those
+        mean different things here: choosing "all chapters" records `null`
+        against the world deliberately, so that world is left exactly as the
+        reader set it. Only a world nobody has positioned is seeded, which also
+        makes this safe to call more than once.
+      */
+      seedReadingPosition: (worldId, eventId) => set((state) => {
+        if (worldId in state.eventByWorld) return {}
+        return {
+          eventByWorld: { ...state.eventByWorld, [worldId]: eventId },
+          // Kept so "where the book opens" stays distinguishable from "where
+          // the reader got to". They are the same value on day one, and the
+          // shelf order depends on telling them apart — see `readingLeads`.
+          openingByWorld: { ...state.openingByWorld, [worldId]: eventId },
+          ...(state.activeWorldId === worldId ? { activeEventId: eventId } : {}),
+        }
       }),
 
       // Map
@@ -293,6 +324,7 @@ export const useAppStore = create<AppStore>()(
         activeWorldId: state.activeWorldId,
         activeEventId: state.activeEventId,
         eventByWorld: state.eventByWorld,
+        openingByWorld: state.openingByWorld,
         sidebarOpen: state.sidebarOpen,
         navPinned: state.navPinned,
         barScope: state.barScope,
