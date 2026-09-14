@@ -76,3 +76,69 @@ test('the book reads as a book, not as a draft', async ({ page }) => {
   await expect(main.getByRole('button', { name: /Find & replace/ })).toHaveCount(0)
   await expect(main.getByRole('button', { name: /^Export$/ })).toHaveCount(0)
 })
+
+/**
+ * The reader's place, which is two things and was only ever one.
+ *
+ * The cursor — how far the story bible is unlocked — survived leaving the book
+ * and closing the tab from the start, because it is stored per world. The page
+ * did not: the prose came back scrolled to the top, so a reader four hundred
+ * pages into *The Count of Monte Cristo* was returned to chapter one and had to
+ * find their place by hand. The gate was right and the book was wrong, which is
+ * the half a test about what is *revealed* never notices.
+ */
+const scroller = (page: import('@playwright/test').Page) =>
+  page.locator('div.flex-1.overflow-auto').first()
+
+async function openBook(page: import('@playwright/test').Page) {
+  await page.getByRole('navigation', { name: 'Main navigation' })
+    .getByRole('link', { name: 'Read', exact: true }).click()
+  await settle(page)
+}
+
+const cursor = (page: import('@playwright/test').Page) => page.evaluate(() => {
+  const raw = localStorage.getItem('plotweave-ui')
+  return raw ? (JSON.parse(raw) as { state: { activeEventId: string | null } }).state.activeEventId : null
+})
+
+test('reading on carries the reader\u2019s place with it, and turning back does not', async ({ page }) => {
+  await downloadLibraryBook(page, 'Dracula')
+  await settle(page)
+  await openBook(page)
+
+  const opened = await cursor(page)
+  expect(opened).toBeTruthy()
+
+  // Read a good way in: the cursor follows.
+  await scroller(page).evaluate((el) => { el.scrollTop = 12000 })
+  await expect.poll(() => cursor(page), { timeout: 15_000 }).not.toBe(opened)
+  const readTo = await cursor(page)
+
+  // Turn back to re-read an earlier chapter: what has been learned stays.
+  await scroller(page).evaluate((el) => { el.scrollTop = 0 })
+  await page.waitForTimeout(1500)
+  expect(await cursor(page)).toBe(readTo)
+})
+
+test('the book reopens where it was left, after leaving it and after a reload', async ({ page }) => {
+  await downloadLibraryBook(page, 'Dracula')
+  await settle(page)
+  await openBook(page)
+
+  await scroller(page).evaluate((el) => { el.scrollTop = 12000 })
+  await expect.poll(() => cursor(page), { timeout: 15_000 }).not.toBe('dracula-event-1')
+
+  // Leave the book for another screen, then come back.
+  await page.getByRole('navigation', { name: 'Main navigation' })
+    .getByRole('link', { name: 'Characters' }).click()
+  await settle(page)
+  await openBook(page)
+  await expect.poll(() => scroller(page).evaluate((el) => el.scrollTop), { timeout: 15_000 })
+    .toBeGreaterThan(6000)
+
+  // And close the tab on it.
+  await page.reload({ waitUntil: 'load' })
+  await settle(page)
+  await expect.poll(() => scroller(page).evaluate((el) => el.scrollTop).catch(() => 0), { timeout: 30_000 })
+    .toBeGreaterThan(6000)
+})
