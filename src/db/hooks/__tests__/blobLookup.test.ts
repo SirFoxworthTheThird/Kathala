@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { blobLookupState, blobEntryUrl } from '@/db/hooks/useBlobs'
 import type { BlobEntry } from '@/types'
+import { librarySiteUrl } from '@/lib/librarySite'
 
 const entry = (over: Partial<BlobEntry> = {}): BlobEntry => ({
   id: 'b1', worldId: 'w', mimeType: 'image/png', createdAt: 0, ...over,
@@ -40,16 +41,15 @@ describe('blobLookupState', () => {
  *
  * Four books named their own artwork with absolute `raw.githubusercontent.com`
  * URLs, so 146 MB already in `dist/` was fetched from a branch of a public
- * repository and failed offline. They name the served path now, resolved here
- * against `import.meta.env.BASE_URL`, which is what makes one stored value
- * correct at a domain root, under a GitHub Pages subpath, and in Electron.
+ * repository and failed offline. They name a path now, and the path is joined
+ * to wherever the Library is served from — which since the split is the library
+ * site rather than this document. One stored value, correct on the web, in
+ * Electron, and against the suite's own preview server.
  */
 describe('blobEntryUrl', () => {
-  const BASE = import.meta.env.BASE_URL
-
-  it('resolves a shipped file against the app base', () => {
+  it('resolves a shipped file against the library site', () => {
     expect(blobEntryUrl(entry({ url: 'library/neuromancer/maps/world.svg' })))
-      .toBe(`${BASE}library/neuromancer/maps/world.svg`.replace(/([^:]\/)\/+/g, '$1'))
+      .toBe(`${librarySiteUrl()}library/neuromancer/maps/world.svg`)
   })
 
   it('leaves an absolute link alone, whatever the base is', () => {

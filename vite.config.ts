@@ -3,13 +3,6 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
-import { createRequire } from 'module'
-import { desktopAssetBaseUrl } from './src/lib/desktopAssets'
-
-const pkg = createRequire(import.meta.url)('./package.json') as {
-  repository: { url: string }
-  version: string
-}
 
 /*
   `--mode electron` is what the desktop build passes, and it is the only thing
@@ -23,13 +16,30 @@ const pkg = createRequire(import.meta.url)('./package.json') as {
 export default defineConfig(({ mode }) => ({
   plugins: [react(), tailwindcss()],
   base: './',
-  define: mode === 'electron'
-    ? {
-        'import.meta.env.VITE_ASSET_BASE_URL': JSON.stringify(
-          desktopAssetBaseUrl(pkg.repository.url, pkg.version),
-        ),
-      }
-    : {},
+  /*
+    The end-to-end suite serves the Library from its own preview server, with
+    the real books staged into `dist/library` by `scripts/stage-e2e-library.mjs`.
+    Without this it would try to reach the library site, which the suite has no
+    route to — sixteen specs need real catalogue data and would all fail on a
+    network error rather than on anything about the app.
+
+    A relative base, so the same build works on whatever port preview picks.
+  */
+  define: {
+    ...(process.env.VITE_E2E
+      ? { 'import.meta.env.VITE_LIBRARY_BASE_URL': JSON.stringify('./') }
+      : {}),
+    /*
+      The desktop build carries the catalogue and the worlds, so it can open the
+      Library with no connection. It still asks the site first — a packaged app
+      should see books published after it was built — and falls back to what it
+      shipped with. `--mode electron` rather than an environment variable
+      because the release matrix builds the Windows installer.
+    */
+    ...(mode === 'electron'
+      ? { 'import.meta.env.VITE_LIBRARY_BUNDLED': JSON.stringify('1') }
+      : {}),
+  },
   server: {
     port: 5173,
     strictPort: true,
