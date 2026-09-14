@@ -68,3 +68,29 @@ export function bundledCatalogueUrl(): string | undefined {
   const base = bundledLibraryBase()
   return base === undefined ? undefined : `${base}library/`
 }
+
+/**
+ * A catalogue cover, resolved to something an `<img>` can load.
+ *
+ * Covers come in two shapes and only one of them needs help. An absolute
+ * `http(s)` URL is somebody else's host — Wikimedia, Gutenberg — and is used as
+ * it stands. A path under `library/` is a file the Library serves, and since
+ * the books moved out of this repository that is no longer anywhere near the
+ * document: resolving it against the page asks the *app's* origin for a
+ * directory that does not exist there.
+ *
+ * Twelve of the thirty-nine books carry a cover of the second kind, and all
+ * twelve quietly lost it — quietly because `LibraryCover` hides an image that
+ * fails rather than leaving a broken frame, so the card simply appeared without
+ * one.
+ *
+ * The end-to-end suite could not catch this. It stages the books into the
+ * preview server's own `dist/library`, so a relative cover resolves there and
+ * works; the staging that lets the suite test against the real catalogue is
+ * exactly what made it blind here. Hence the unit test, which asks the question
+ * without a server in the way.
+ */
+export function libraryCoverUrl(cover: string): string {
+  if (/^https?:\/\//i.test(cover)) return cover
+  return `${librarySiteUrl()}${cover}`.replace(/([^:]\/)\/+/g, '$1')
+}
