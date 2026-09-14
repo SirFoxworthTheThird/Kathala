@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900">
- <rect width="1400" height="900" fill="#e8ddbd"/><g fill="#c7b185" stroke="#493c2d" stroke-width="9">
- <rect x="90" y="120" width="1220" height="660"/><path d="M520 120v660M930 120v660M90 430h1220"/>
- <path d="M250 120v310M730 430v350M1110 430v350"/>
- </g><g font-family="Georgia,serif" fill="#32281f" text-anchor="middle"><text x="700" y="65" font-size="43">THE COACH AND HORSES — GROUND PLAN</text>
- <text x="300" y="285" font-size="28">Public Bar</text><text x="720" y="285" font-size="28">Guest Parlour</text><text x="1120" y="285" font-size="28">Kitchen</text>
- <text x="305" y="620" font-size="28">Yard &amp; Stables</text><text x="725" y="620" font-size="28">Stair &amp; Passage</text><text x="1120" y="620" font-size="28">Griffin’s Room</text></g>
- <g stroke="#735c3d" stroke-width="8"><path d="M610 780v-55h80v55"/><path d="M1240 430h70"/><path d="M930 225h55"/><path d="M520 555h55"/></g><text x="112" y="835" font-family="Georgia" font-size="18">Original interpretive plan — proportions are editorial, not architectural evidence.</text>
-</svg>

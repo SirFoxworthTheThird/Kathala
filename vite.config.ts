@@ -3,13 +3,6 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
-import { createRequire } from 'module'
-import { desktopAssetBaseUrl } from './src/lib/desktopAssets'
-
-const pkg = createRequire(import.meta.url)('./package.json') as {
-  repository: { url: string }
-  version: string
-}
 
 /*
   `--mode electron` is what the desktop build passes, and it is the only thing
@@ -20,15 +13,20 @@ const pkg = createRequire(import.meta.url)('./package.json') as {
   script has to work on Windows too — the release matrix builds the installer
   there, and `VAR=value command` is not a thing in cmd.exe.
 */
-export default defineConfig(({ mode }) => ({
+export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: './',
-  define: mode === 'electron'
-    ? {
-        'import.meta.env.VITE_ASSET_BASE_URL': JSON.stringify(
-          desktopAssetBaseUrl(pkg.repository.url, pkg.version),
-        ),
-      }
+  /*
+    The end-to-end suite serves the Library from its own preview server, with
+    the real books staged into `dist/library` by `scripts/stage-e2e-library.mjs`.
+    Without this it would try to reach the library site, which the suite has no
+    route to — sixteen specs need real catalogue data and would all fail on a
+    network error rather than on anything about the app.
+
+    A relative base, so the same build works on whatever port preview picks.
+  */
+  define: process.env.VITE_E2E
+    ? { 'import.meta.env.VITE_LIBRARY_BASE_URL': JSON.stringify('./') }
     : {},
   server: {
     port: 5173,
@@ -51,4 +49,4 @@ export default defineConfig(({ mode }) => ({
       exclude: ['src/db/hooks/useBlobs.ts', 'src/db/hooks/useMapLayers.ts'],
     },
   },
-}))
+})

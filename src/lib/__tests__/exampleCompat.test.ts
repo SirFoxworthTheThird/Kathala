@@ -4,11 +4,22 @@ import { db } from '@/db/database'
 import { importWorldFromJson } from '@/lib/exportImport'
 import { GOAL_TYPE_CONFIG, summariseGoals } from '@/lib/characterGoals'
 
-// The shipped example worlds (in /example) must keep importing as the schema
-// and export format evolve. These are older exports (v7), so this also
-// exercises the backfill of every field/array added since. Loaded via Vite's
-// raw glob import so the test needs no Node fs types.
-const examples = import.meta.glob('/example/*.pwk', {
+/*
+  Worlds exported by older versions of the app must keep importing as the schema
+  moves on, and every field added since must be backfilled rather than left
+  undefined.
+
+  These are frozen fixtures, not the live Library. The Library moved to its own
+  repository, but more to the point it is *regenerated*: the worlds there are
+  re-exported when their books are revised, so they drift towards the current
+  format and stop exercising the backfill at all. A file pinned at v7 keeps
+  testing v7 forever.
+
+  One of each export format in the wild — 7, 11, 16 and 18 — so the whole
+  backfill chain is covered rather than whichever versions happened to be
+  sitting in the old `example/` directory.
+*/
+const examples = import.meta.glob('../../test/fixtures/worlds/*.pwk', {
   query: '?raw',
   import: 'default',
   eager: true,
@@ -19,11 +30,11 @@ beforeEach(async () => {
   await db.open()
 })
 
-describe('bundled example worlds stay importable', () => {
+describe('worlds from older app versions stay importable', () => {
   const entries = Object.entries(examples)
 
-  it('finds the bundled example files', () => {
-    expect(entries.length).toBeGreaterThanOrEqual(2)
+  it('finds the compatibility fixtures, one per export format', () => {
+    expect(entries.length).toBe(4)
   })
 
   for (const [path, json] of entries) {

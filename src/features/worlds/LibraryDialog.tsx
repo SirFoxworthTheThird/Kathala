@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { BookOpen, Download, Check, X, AlertTriangle, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
-  downloadBytes, downloadLibraryWorld, fetchLibraryIndex, formatBytes, libraryBaseUrl,
+  downloadBytes, downloadLibraryWorld, fetchLibraryIndex, formatBytes,
   type LibraryEntry,
 } from '@/lib/library'
 import { browseLibrary } from '@/lib/libraryBrowse'
+import { libraryCatalogueUrl } from '@/lib/librarySite'
 import { Input } from '@/components/ui/input'
 
 /**
@@ -59,7 +60,7 @@ export function LibraryDialog({
   const [confirming, setConfirming] = useState<{ entry: LibraryEntry; withImages: boolean } | null>(null)
   const [query, setQuery] = useState('')
 
-  const baseUrl = libraryBaseUrl(import.meta.env.BASE_URL)
+  const baseUrl = libraryCatalogueUrl()
 
   /*
     Escape backs out of whatever is in front of you: the replace confirm if it
