@@ -6,7 +6,7 @@ import {
   type LibraryEntry,
 } from '@/lib/library'
 import { browseLibrary } from '@/lib/libraryBrowse'
-import { libraryCatalogueUrl, bundledCatalogueUrl } from '@/lib/librarySite'
+import { libraryCatalogueUrl, bundledCatalogueUrl, libraryCoverUrl } from '@/lib/librarySite'
 import { withBundledFallback } from '@/lib/libraryFallback'
 import { needsNewerApp } from '@/lib/appVersion'
 import { Input } from '@/components/ui/input'
@@ -23,7 +23,7 @@ function LibraryCover({ src, title }: { src: string; title: string }) {
   if (failed) return null
   return (
     <img
-      src={src}
+      src={libraryCoverUrl(src)}
       alt={`${title} cover`}
       loading="lazy"
       onError={() => setFailed(true)}
