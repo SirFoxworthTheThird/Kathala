@@ -43,6 +43,26 @@ export interface LibraryEntry {
    */
   notice: string
   /**
+   * The oldest PlotWeave that can open this book, as `major.minor.patch`.
+   *
+   * The books no longer ship with the app, so the two versions drift apart on
+   * purpose: someone's desktop install from a year ago fetches a catalogue
+   * written today. Most changes survive that — an older app ignores a field it
+   * does not know, which is exactly what `readingMode` would have done — but a
+   * book relying on something genuinely new would import into a world that
+   * silently lacks it.
+   *
+   * So a book may say what it needs, and an app too old to give it says so on
+   * the card instead of failing halfway through an import.
+   *
+   * **Optional, and absence means "any version".** Almost no book needs this;
+   * making it required would mean writing a number into 39 entries that have no
+   * opinion. Note that an app released before this field existed ignores it
+   * entirely, which is why it ships now rather than when the first book needs
+   * it — it can only protect the versions that already know to look.
+   */
+  minAppVersion?: string
+  /**
    * Cover art for the card: an absolute URL, or a path to a file this app ships.
    *
    * Only entries whose cover is a *linked* image can have one. Where the cover

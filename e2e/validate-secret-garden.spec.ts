@@ -6,7 +6,13 @@ import { shot } from './helpers/shot'
 import { settle } from './helpers/settle'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const PWK_PATH = path.resolve(__dirname, '../public/library/the-secret-garden.pwk')
+/*
+  The staged copy, not `public/library/` — the books moved to their own
+  repository and the app no longer ships them. An end-to-end build stages the
+  real worlds into `dist/library` (see `scripts/stage-e2e-library.mjs`), which
+  is the same file a reader would download.
+*/
+const PWK_PATH = path.resolve(__dirname, '../dist/library/the-secret-garden.pwk')
 
 test.describe('Secret Garden Visual Validation', () => {
   test.beforeEach(async ({ page }) => {

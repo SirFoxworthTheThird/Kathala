@@ -7,6 +7,7 @@ import {
 } from '@/lib/library'
 import { browseLibrary } from '@/lib/libraryBrowse'
 import { libraryCatalogueUrl } from '@/lib/librarySite'
+import { needsNewerApp } from '@/lib/appVersion'
 import { Input } from '@/components/ui/input'
 
 /**
@@ -277,14 +278,28 @@ export function LibraryDialog({
                           likely to press was the one that quietly left the maps
                           blank.
                         */}
-                        <Button size="sm" disabled={busy} onClick={() => start(entry, !!entry.images)}>
-                          {busy ? stage || 'Downloading…' : (
-                            <>
-                              <Download className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-                              Download ({formatBytes(downloadBytes(entry))})
-                            </>
-                          )}
-                        </Button>
+                        {needsNewerApp(entry.minAppVersion) ? (
+                          /*
+                            Said here rather than discovered halfway through an
+                            import. The books are published separately from the
+                            app now, so a copy of PlotWeave installed a year ago
+                            can meet a book written for something newer; the
+                            book names what it needs and this is where a reader
+                            finds out. Nearly no book sets it.
+                          */
+                          <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                            Needs PlotWeave {entry.minAppVersion} or newer
+                          </span>
+                        ) : (
+                          <Button size="sm" disabled={busy} onClick={() => start(entry, !!entry.images)}>
+                            {busy ? stage || 'Downloading…' : (
+                              <>
+                                <Download className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                                Download ({formatBytes(downloadBytes(entry))})
+                              </>
+                            )}
+                          </Button>
+                        )}
                         {/*
                           Said before the download rather than discovered after
                           it. Most shipped worlds keep their maps and covers as
