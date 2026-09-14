@@ -1,4 +1,5 @@
-import { downloadLibraryWorld, fetchLibraryIndex, libraryBaseUrl } from './library'
+import { downloadLibraryWorld, fetchLibraryIndex } from './library'
+import { libraryCatalogueUrl } from './librarySite'
 
 /**
  * Seam so e2e tests can install a library world without driving the catalogue.
@@ -25,7 +26,7 @@ export interface E2ELibrarySeam {
 if (import.meta.env.DEV || import.meta.env.VITE_E2E) {
   ;(window as unknown as { __pwlibrary?: E2ELibrarySeam }).__pwlibrary = {
     async install(title: string) {
-      const baseUrl = libraryBaseUrl(window.location.origin)
+      const baseUrl = libraryCatalogueUrl()
       const index = await fetchLibraryIndex(baseUrl)
       const entry = index.entries.find((e) => e.title === title)
       // Named rather than positional, and loudly absent: a helper that silently

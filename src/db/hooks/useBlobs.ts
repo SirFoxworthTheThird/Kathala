@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import type { BlobEntry } from '@/types'
+import { librarySiteUrl } from '@/lib/librarySite'
 import { generateId } from '@/lib/id'
 import { hostOf } from '@/lib/localiseImages'
 
@@ -65,7 +66,7 @@ function isBundledAsset(url: string): boolean {
  * The stored paths never change, so this is the only place that knows.
  */
 function assetBaseUrl(): string {
-  return import.meta.env.VITE_ASSET_BASE_URL || import.meta.env.BASE_URL
+  return librarySiteUrl()
 }
 
 /**

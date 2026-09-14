@@ -21,8 +21,8 @@ which is also why exporting is worth doing.
 no stylesheets — so opening it offline behaves exactly as opening it online
 does, and it paints without waiting on anyone. (It used to fetch a webfont from
 Google Fonts on every page load, for a typeface it never actually used.) The
-desktop build and the browser build behave the same way, with one exception
-noted below: the library's own artwork.
+desktop build and the browser build behave the same way. The one thing neither
+carries inside itself is the Library, noted below.
 
 **Pictures are the exception, and they are ordinary web requests that carry
 nothing about your work.** A picture in PlotWeave is either a file you uploaded
@@ -46,13 +46,17 @@ copying it into a file you then export are different acts, and only you know
 what you are allowed to reuse.
 
 - **Library cover images**, when you open the Library and scroll to a card.
-- **The library's own artwork, in the desktop app only.** The browser build
-  serves these from the same place it serves the app, so they are not a request
-  to anyone else. The desktop app cannot: it has no site to serve them from, and
-  carrying them inside the installer meant a download of well over a gigabyte
-  for 33 books you may never open. So it fetches them from jsDelivr, a public
-  mirror of this project's own files, pinned to the version you installed. The
-  pictures are the same files either way.
+- **The Library itself.** The books no longer travel inside PlotWeave. They live
+  in their own place — `plotweave-library.netlify.app` — so a new one appears in
+  the Library without waiting for a new version of the app. Opening the Library,
+  downloading a book, and showing a book's pictures all ask that site for files;
+  it is run by this project and is told nothing about your worlds.
+
+  **The desktop app still works without a connection.** It carries the
+  catalogue and the books it was built with, and asks the site first so you see
+  anything published since. With no connection you get the shelf it shipped
+  with, and can download and read any book on it; only the pictures inside a
+  book need the network, and **World settings → Pictures** keeps those too.
 - **Pictures inside the library worlds themselves.** These are linked rather
   than bundled: character portraits, location and item pictures, map images,
   faction and world covers. Across the shipped library that is just under

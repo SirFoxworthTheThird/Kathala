@@ -6,7 +6,13 @@ import { shot } from './helpers/shot'
 import { settle } from './helpers/settle'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const PWK_PATH = path.resolve(__dirname, '../public/library/neuromancer.pwk')
+/*
+  The staged copy, not `public/library/` — the books moved to their own
+  repository and the app no longer ships them. An end-to-end build stages the
+  real worlds into `dist/library` (see `scripts/stage-e2e-library.mjs`), which
+  is the same file a reader would download.
+*/
+const PWK_PATH = path.resolve(__dirname, '../dist/library/neuromancer.pwk')
 
 test.describe('Neuromancer Visual Validation', () => {
   test.beforeEach(async ({ page }) => {
