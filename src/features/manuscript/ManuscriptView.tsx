@@ -127,6 +127,43 @@ export default function ManuscriptView() {
     return computeSortKeySync(activeEventId, eventById, chapterNumberById)
   }, [activeEventId, eventById, chapterNumberById])
 
+  /*
+    Open the book where the reader left it.
+
+    The cursor survives leaving the screen and closing the tab — it is stored
+    per world — but the prose does not: the page came back scrolled to the top,
+    so a reader 400 pages into *The Count of Monte Cristo* was returned to
+    chapter one and had to find their place by hand. The gate was right and the
+    book was wrong, which is the half nobody notices in a test that only checks
+    what is revealed.
+
+    Once per visit, not on every cursor change: the scene is scrolled to on
+    arrival and the reader is then left alone, or reading on would yank the page
+    back with every scene they reached. The observer below cannot fight it
+    either — it sees the scene just scrolled to, and `cursorForScene` answers
+    "stay" for the scene the cursor is already on.
+  */
+  const restoredRef = useRef(false)
+  useEffect(() => { restoredRef.current = false }, [worldId])
+  useEffect(() => {
+    if (!readingMode || restoredRef.current) return
+    // Not until the prose itself is in the DOM. The chapters arrive before the
+    // scene texts do, and scrolling against a page that is still two hundred
+    // words long lands nowhere near the right place — then the flag says it is
+    // done and the reader is left at the top. A reload did exactly that.
+    if (manuscript.writtenScenes === 0) return
+    const root = scrollRef.current
+    if (!root || !activeEventId) return
+    const target = root.querySelector<HTMLElement>(`[data-scene-event-id="${CSS.escape(activeEventId)}"]`)
+    if (!target) return
+    restoredRef.current = true
+    // After layout, and instant rather than smooth: this is where the book
+    // already was, not a movement the reader made.
+    requestAnimationFrame(() => {
+      target.scrollIntoView({ block: 'start', behavior: 'auto' })
+    })
+  }, [readingMode, activeEventId, manuscript, worldId])
+
   useEffect(() => {
     if (!readingMode) return
     const root = scrollRef.current
