@@ -63,6 +63,30 @@ export function useWorldSceneTexts(worldId: string | null) {
   )
 }
 
+/**
+ * Whether this world has any prose at all — `undefined` until Dexie answers.
+ *
+ * Reading mode offers the book itself only when there is a book to offer: seven
+ * of the shipped worlds are structural notes with no text, and their catalogue
+ * entries say so. The nav and the router both ask this, and both have to wait
+ * for the real answer rather than assume one. Answering "no" early takes the
+ * Read screen away from a reader who does have a book, and bounces them to the
+ * dashboard if they were already on it; answering "yes" early opens a screen
+ * with nothing in it.
+ *
+ * So the loading state is deliberately not defaulted away, unlike
+ * `useWorldSceneTexts` above: `useLiveQuery` returns `undefined` before its
+ * first result, and that third state is the point. A gate that answers
+ * confidently while it is still loading is the bug that hid the relationship
+ * graph's labels (R13); this is the same shape, so it is left visible.
+ */
+export function useHasProse(worldId: string | null): boolean | undefined {
+  return useLiveQuery(
+    async () => (worldId ? (await db.sceneTexts.where('worldId').equals(worldId).count()) > 0 : false),
+    [worldId],
+  )
+}
+
 /** All scene texts for a timeline's events, keyed by eventId for quick lookup. */
 export function useSceneTextsByEvent(worldId: string | null) {
   const texts = useWorldSceneTexts(worldId)

@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { createHashRouter, Navigate, useParams } from 'react-router-dom'
 import { AppShell } from '@/components/AppShell'
 import { useWorld } from '@/db/hooks/useWorlds'
+import { useHasProse } from '@/db/hooks/useManuscript'
 import { navItems } from '@/components/navItems'
 
 const WorldSelectorView = lazy(() => import('@/features/worlds/WorldSelectorView'))
@@ -43,14 +44,32 @@ function Loading() {
  */
 const WRITING_ONLY = new Set(navItems.filter((n) => n.writingOnly).map((n) => n.to))
 
+/**
+ * Writing-only routes a reader is given back when the world holds prose, keyed
+ * by path. Only the Manuscript: reading a published book is the reason most of
+ * these worlds exist, and the screen that shows it was closed on the assumption
+ * that a library world has none. See `readingLabel` in `navItems`.
+ */
+const READABLE_WITH_PROSE = new Set(
+  navItems.filter((n) => n.writingOnly && n.readingLabel !== undefined).map((n) => n.to),
+)
+
 /** Send a reader back to the dashboard rather than into a writing screen. */
-function WritersOnly({ children }: { children: React.ReactNode }) {
+function WritersOnly({ children, path }: { children: React.ReactNode; path: string }) {
   const { worldId } = useParams<{ worldId: string }>()
   const world = useWorld(worldId ?? null)
+  const hasProse = useHasProse(worldId ?? null)
+  const readable = READABLE_WITH_PROSE.has(path)
   // Undefined while Dexie is still opening. Deciding now would either flash the
-  // screen at a reader or bounce a writer out of their own draft, so wait.
+  // screen at a reader or bounce a writer out of their own draft, so wait. The
+  // prose count is waited on for the same reason and only when it can change
+  // the answer: guessing "no prose" would throw a reader off the book they are
+  // in the middle of, and the bounce is a navigation, not a repaint.
   if (world === undefined) return <Loading />
-  if (world.readingMode) return <Navigate to={`/worlds/${worldId}`} replace />
+  if (!world.readingMode) return <>{children}</>
+  if (!readable) return <Navigate to={`/worlds/${worldId}`} replace />
+  if (hasProse === undefined) return <Loading />
+  if (!hasProse) return <Navigate to={`/worlds/${worldId}`} replace />
   return <>{children}</>
 }
 
@@ -58,7 +77,7 @@ function Wrap({ children, path }: { children: React.ReactNode; path?: string }) 
   const guarded = path !== undefined && WRITING_ONLY.has(path)
   return (
     <Suspense fallback={<Loading />}>
-      {guarded ? <WritersOnly>{children}</WritersOnly> : children}
+      {guarded && path !== undefined ? <WritersOnly path={path}>{children}</WritersOnly> : children}
     </Suspense>
   )
 }

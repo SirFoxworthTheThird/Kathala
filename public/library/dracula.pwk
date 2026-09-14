@@ -3,6 +3,7 @@
   "type": "full",
   "exportedAt": 1785499200000,
   "world": {
+    "readingMode": true,
     "id": "dracula-1897-world",
     "name": "Dracula",
     "description": "Count Dracula leaves his Transylvanian castle and carries his predation into England. As Lucy Westenra falls under his influence and Mina Harker becomes his next target, a group of friends unites its knowledge, faith, and courage to hunt him back across Europe.",

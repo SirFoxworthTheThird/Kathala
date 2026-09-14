@@ -69,6 +69,27 @@ describe('readingLeads', () => {
     expect(readingLeads([], { dracula: 'ev-42' })).toBe(false)
   })
 
+  /*
+    A downloaded book is now placed at its first scene on arrival, so that its
+    cast and lore are not on display before it is read. "No position" therefore
+    stopped meaning "never opened", and this shelf briefly started putting an
+    unread demo world ahead of a novelist's drafts — which is the exact thing
+    the pair above exists to prevent.
+  */
+  it('does not count a book sitting exactly where it opened', () => {
+    expect(readingLeads([{ id: 'dracula' }], { dracula: 'ev-1' }, { dracula: 'ev-1' })).toBe(false)
+  })
+
+  it('counts a book the reader has moved on from', () => {
+    expect(readingLeads([{ id: 'dracula' }], { dracula: 'ev-42' }, { dracula: 'ev-1' })).toBe(true)
+  })
+
+  it('still counts a world that was never seeded, so older shelves keep working', () => {
+    // A reader's own draft in reading mode, or a book downloaded before books
+    // were placed on arrival: no recorded opening, so any position is progress.
+    expect(readingLeads([{ id: 'mine' }], { mine: 'ev-9' }, { dracula: 'ev-1' })).toBe(true)
+  })
+
   it('needs only one book in progress among several', () => {
     expect(readingLeads(
       [{ id: 'dracula' }, { id: 'alice' }],
