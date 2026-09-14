@@ -11,6 +11,7 @@ import { LibraryDialog } from './LibraryDialog'
 import { LLMPromptDialog } from './LLMPromptDialog'
 import { useNavigate } from 'react-router-dom'
 import { importWorld, importWorldImages } from '@/lib/exportImport'
+import { startReadingAtOpening } from '@/db/hooks/useReadingStart'
 import { partitionWorlds, readingLeads } from '@/lib/worldShelves'
 import { importCollision, type ImportCollision } from '@/lib/importCollision'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -117,6 +118,10 @@ export default function WorldSelectorView() {
   async function runImport(files: File[], dataIdx: number, imagesIdx: number) {
     const worldId = await importWorld(files[dataIdx])
     if (imagesIdx !== -1) await importWorldImages(files[imagesIdx])
+    // An imported world can be in reading mode too — someone handing a draft to
+    // a beta reader, or a `.pwk` of a Library book passed on. Same treatment as
+    // a download: open it at the first scene rather than at "all chapters".
+    await startReadingAtOpening(worldId)
     navigate(`/worlds/${worldId}`)
   }
 

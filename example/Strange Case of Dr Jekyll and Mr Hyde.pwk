@@ -3,6 +3,7 @@
   "type": "world-export",
   "exportedAt": 1785528000000,
   "world": {
+    "readingMode": true,
     "id": "jekyll-hyde-world",
     "name": "Strange Case of Dr Jekyll and Mr Hyde",
     "description": "A London lawyer investigates the disturbing connection between his respected friend Dr Henry Jekyll and the violent Edward Hyde. Wills, locked doors, handwriting, chemical experiments, and delayed confessions reveal that the hunted criminal and the endangered doctor are two identities struggling within one body.",

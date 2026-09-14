@@ -96,7 +96,7 @@
       "author": "Bram Stoker",
       "blurb": "Journals, letters, logs, and telegrams converge as Dracula moves from Transylvania to England and the hunters follow him home.",
       "data": "dracula.pwk",
-      "dataBytes": 1344857,
+      "dataBytes": 1344882,
       "counts": {
         "characters": 25,
         "chapters": 27,
@@ -113,7 +113,7 @@
       "author": "Mary Shelley",
       "blurb": "Walton’s polar letters frame Victor Frankenstein’s confession and the Creature’s own history of creation, rejection, and revenge.",
       "data": "frankenstein.pwk",
-      "dataBytes": 859382,
+      "dataBytes": 859407,
       "counts": {
         "characters": 24,
         "chapters": 28,
@@ -130,7 +130,7 @@
       "author": "Robert Louis Stevenson",
       "blurb": "Utterson follows Hyde through doors, wills, murder evidence, chemical secrets, and sealed testimony toward Jekyll’s divided identity.",
       "data": "strange-case-of-dr-jekyll-and-mr-hyde.pwk",
-      "dataBytes": 376626,
+      "dataBytes": 376651,
       "counts": {
         "characters": 15,
         "chapters": 10,
@@ -147,7 +147,7 @@
       "author": "Oscar Wilde",
       "blurb": "A portrait bears the age and corruption hidden behind Dorian Gray’s unchanging beauty.",
       "data": "the-picture-of-dorian-gray.pwk",
-      "dataBytes": 838651,
+      "dataBytes": 838676,
       "counts": {
         "characters": 26,
         "chapters": 20,

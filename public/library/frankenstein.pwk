@@ -3,6 +3,7 @@
   "type": "full",
   "exportedAt": 1785528000000,
   "world": {
+    "readingMode": true,
     "id": "frankenstein-world",
     "name": "Frankenstein; or, The Modern Prometheus",
     "description": "An ambitious young scientist gives life to a being assembled from the dead, then abandons his creation. Rejected by every human community, the Creature turns his longing for companionship into vengeance, binding creator and creation in a pursuit from Geneva to the Arctic.",

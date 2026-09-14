@@ -3,6 +3,7 @@
   "type": "world-export",
   "exportedAt": 1785528000000,
   "world": {
+    "readingMode": true,
     "id": "dorian-gray-world",
     "name": "The Picture of Dorian Gray",
     "description": "A beautiful young man wishes that Basil Hallward’s portrait will age in his place. Under Lord Henry Wotton’s influence, Dorian pursues sensation while the hidden canvas records cruelty, scandal, murder, and time, until his attempt to destroy the evidence makes the truth visible.",

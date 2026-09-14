@@ -1,4 +1,5 @@
 import { importWorld, importWorldImages } from '@/lib/exportImport'
+import { startReadingAtOpening } from '@/db/hooks/useReadingStart'
 
 /**
  * The library: worlds published alongside the app that anyone can pull
@@ -167,6 +168,16 @@ export async function downloadLibraryWorld(
   if (!dataRes.ok) throw new Error(`Could not download “${entry.title}” (${dataRes.status})`)
   const worldFile = new File([await dataRes.blob()], entry.data, { type: 'application/json' })
   const worldId = await importWorld(worldFile)
+  /*
+    Open the book at its first scene before anyone sees it.
+
+    Here rather than in `LibraryDialog`, because this is the call every library
+    install goes through — the dialog, and the dev/e2e seam that skips it. A
+    downloaded world with no remembered position has a null cursor, and null
+    means "all chapters": the entire cast, every place and all the lore, on a
+    book nobody has read a word of.
+  */
+  await startReadingAtOpening(worldId)
 
   if (!options.withImages || !entry.images) return { worldId, imagesFailed: false }
 
