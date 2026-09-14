@@ -633,6 +633,23 @@
       "notice": "Unofficial reference for a public-domain novel. The original prose is public domain; manuscript scenes reproduce the complete narrative of all 34 chapters from Project Gutenberg eBook #768 (plain text, updated 6 May 2026; credits: David Price). Gutenberg front and end matter are excluded. Chapter titles, event descriptions, and the reconstructed calendar are editorial. All maps and entity artwork are original generated illustrations documented in Lore.",
       "worldId": "wuthering-heights-world",
       "cover": "library/wuthering-heights/art/world-cover.jpg"
+    },
+    {
+      "id": "the-prisoner-of-zenda",
+      "title": "The Prisoner of Zenda",
+      "author": "Anthony Hope",
+      "blurb": "An English traveller with a king's face must wear the crown, rescue his captive double, and surrender the princess he loves.",
+      "data": "the-prisoner-of-zenda.pwk",
+      "dataBytes": 602122,
+      "counts": {
+        "characters": 18,
+        "chapters": 22,
+        "events": 55,
+        "locations": 31
+      },
+      "notice": "Unofficial reference for a public-domain novel. Manuscript scenes reproduce the complete original prose of all 22 chapters from Project Gutenberg eBook #95 (UTF-8 plain text, updated 21 December 2022; credits: Judith Boss); Gutenberg front and end matter are excluded. Scene divisions, summaries, calendar dates, fictional map geography, and all original generated illustrations are editorial.",
+      "worldId": "prisoner-of-zenda-world",
+      "cover": "library/prisoner-of-zenda/art/world-cover.jpg"
     }
   ]
 }
