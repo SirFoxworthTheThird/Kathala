@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type RefObject } from 'react'
 import { Link } from 'react-router-dom'
-import { PanelRightClose, PanelRightOpen, MapPin, Package, User, Users, X, Eye } from 'lucide-react'
+import { PanelRightClose, MapPin, Package, User, Users, X, Eye } from 'lucide-react'
 import { PortraitImage } from '@/components/PortraitImage'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useItems } from '@/db/hooks/useItems'
@@ -208,31 +208,48 @@ export function SceneXRay({
         that was margin.
       */}
       <aside
-        className={cn(
-          'hidden shrink-0 flex-col border-l border-[hsl(var(--border))] lg:flex',
-          open ? 'w-64' : 'w-10',
-        )}
+        className={cn('hidden shrink-0 py-3 pr-3 lg:block', open ? 'w-72' : 'w-16')}
         aria-label="In this scene"
       >
-        <div className={cn('flex items-center gap-1 p-1.5', open && 'justify-between')}>
+        {/*
+          A card, not a rail. This was a full-height column flush to the window
+          with a hard border down its left edge, which is the shape of a tool
+          panel — wrong beside a page someone is reading. The app's own card is
+          `rounded-lg` with a border and `--card` behind it, and this is that,
+          floated in the margin the centred reading column already leaves.
+
+          `max-h-full` with the list scrolling inside it, because a scene can
+          name seventeen things and the card must not outgrow the window.
+        */}
+        <div className="flex max-h-full flex-col overflow-hidden rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm">
+          <div className={cn('flex items-center gap-1 p-2', open ? 'justify-between' : 'justify-center')}>
+            {open && (
+              <span className="pl-1 text-[11px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+                In this scene
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={toggle}
+              aria-expanded={open}
+              aria-label={open ? 'Hide who is in this scene' : 'Show who is in this scene'}
+              className="rounded-md p-1 text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]"
+            >
+              {/*
+                Collapsed, the card is one icon, so it says what is behind it
+                rather than only which way it opens.
+              */}
+              {open
+                ? <PanelRightClose className="h-4 w-4" aria-hidden="true" />
+                : <Users className="h-4 w-4" aria-hidden="true" />}
+            </button>
+          </div>
           {open && (
-            <span className="pl-1.5 text-[11px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
-              In this scene
-            </span>
+            <div className="min-h-0 overflow-y-auto border-t border-[hsl(var(--border))] p-1.5">
+              {list}
+            </div>
           )}
-          <button
-            type="button"
-            onClick={toggle}
-            aria-expanded={open}
-            aria-label={open ? 'Hide who is in this scene' : 'Show who is in this scene'}
-            className="rounded-md p-1 text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent)/0.5)] hover:text-[hsl(var(--foreground))]"
-          >
-            {open
-              ? <PanelRightClose className="h-4 w-4" aria-hidden="true" />
-              : <PanelRightOpen className="h-4 w-4" aria-hidden="true" />}
-          </button>
         </div>
-        {open && <div className="min-h-0 flex-1 overflow-y-auto px-1.5 pb-4">{list}</div>}
       </aside>
 
       {/*

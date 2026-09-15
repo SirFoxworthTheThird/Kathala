@@ -1142,7 +1142,8 @@ through a five-line window.
   pictures. It follows the page as you scroll — scroll back and it shows that
   scene's cast again. **Here** is who is present; **Spoken of** is someone named
   by them. It sits beside the text on a wide screen and behind a button on a
-  phone, and the ⇥ control puts it away: PlotWeave remembers which you chose.
+  phone, and it folds down to a single button when you want the page to
+  yourself: PlotWeave remembers which you chose.
   Someone named in the scene whom you have not met yet is not listed — the same
   rule the rest of reading mode follows.
 
