@@ -257,6 +257,45 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     }
   }, [pendingFocusMarkerId, allMarkers]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  /*
+    Arriving at the map puts you where the story is.
+
+    A reader changes chapter as they read and then opens the map to see where
+    everyone is — and landed on whichever layer the map was left on, which for
+    *Moby-Dick* means the Atlantic while the scene is on the Pequod's deck.
+    Every scene in all 41 shipped books carries a location, and every one of
+    those books spreads them across more than one layer, so this is a layer
+    switch more often than a pan. `focusOnLocation` already does both, and its
+    own comment was written for exactly this case: a scene set inside a sub-map.
+
+    Reading only. A writer arranging markers has a reason for the layer they
+    left the map on, and moving it under them is the same rudeness in reverse;
+    a reader has nothing in progress to lose.
+
+    Once per visit, and guarded by a ref rather than by the layer: `MapView` is
+    not keyed on `layerId`, so it survives the very switch this causes, and a
+    reader who then drills into a sub-map is not dragged back out of it.
+  */
+  const arrivedRef = useRef(false)
+  useEffect(() => {
+    if (arrivedRef.current || !gate.active) return
+    if (!activeEventId || allMarkers.length === 0) return
+    const markerId = orderedEvents.find((e) => e.id === activeEventId)?.locationMarkerId
+    if (!markerId) return
+    /*
+      A marker the gate is still holding back cannot arrive here — `allMarkers`
+      is filtered — and a scene the reader has reached has had its own location
+      revealed with it. Not found means a world whose markers have not loaded,
+      so this waits for the next run rather than claiming a place it cannot find.
+    */
+    const marker = allMarkers.find((m) => m.id === markerId)
+    if (!marker) return
+    arrivedRef.current = true
+    // Centred, not selected: selecting opens the location panel across the map,
+    // and what was asked for was the map.
+    focusOnLocation(marker, { select: false })
+  }, [gate.active, activeEventId, allMarkers, orderedEvents]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Focus helpers ─────────────────────────────────────────────────────────
   /**
    * Bring a location into view. `select` also opens its detail panel, which is
@@ -342,9 +381,19 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     }
   }
 
-  // Listen for map-focus requests dispatched from the chapter timeline bar.
-  // Moving the time cursor pans to where the scene happens; it does not count
-  // as picking that location, so the detail panel stays shut.
+  /*
+    Listen for map-focus requests dispatched from the chapter timeline bar.
+    Moving the time cursor pans to where the scene happens; it does not count
+    as picking that location, so the detail panel stays shut.
+
+    `layerId` is a dependency because the handler decides between panning and
+    changing map by comparing against it, and `allMarkers` alone does not
+    change when the map does — it is a live query on the world. So after any
+    layer change the registered handler went on believing the old map was open,
+    and a request for a place on *that* map panned the new one to coordinates
+    belonging to the old. It took the arrival focus below, which switches layers
+    without touching the marker table, to make that reliably reachable.
+  */
   useEffect(() => {
     function handler(e: Event) {
       const markerId = (e as CustomEvent<{ markerId: string }>).detail.markerId
@@ -353,7 +402,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     }
     window.addEventListener('wb:map:focusMarker', handler)
     return () => window.removeEventListener('wb:map:focusMarker', handler)
-  }, [allMarkers]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [allMarkers, layerId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Map export ────────────────────────────────────────────────────────────
   async function handleExportMap() {

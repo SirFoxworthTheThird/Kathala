@@ -1765,7 +1765,17 @@ could not see.
 
 If you are reading rather than writing, **stop** ends playback and leaves your
 place where the story carried you; for a writer it clears the time cursor back
-to *all chapters*, which is the reset a viewfinder wants when you put it down. The story-notes overlay
+to *all chapters*, which is the reset a viewfinder wants when you put it down.
+
+**While reading, opening Maps takes you to the scene you are on.** Books keep
+their places across several maps — *Alice* has the riverbank on *Wonderland* and
+the Pool of Tears on *The Rabbit-Hole and Long Hall* — so arriving on whichever
+map you last had open usually means arriving in the wrong place. The map you are
+shown is the one your current scene happens on, centred on it, and the layer
+picker still works normally once you are there: drill into a sub-map and it
+stays where you put it for the rest of the visit. A writer's map is left exactly
+where they left it, since arranging markers is work you would not want moved
+under you. The story-notes overlay
 shows the current chapter, synopsis, and relevant character status notes. For a
 frame narrative, the map can display outer-timeline characters as **ghost pins**;
 a historical-echo relationship marks shared places with echo rings.
