@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { DEFAULT_READING_TYPE, coerceReadingType, type ReadingType } from '@/lib/readingType'
 
 interface WorldSlice {
   activeWorldId: string | null
@@ -10,6 +11,9 @@ interface EventSlice {
   activeEventId: string | null
   setActiveEventId: (id: string | null) => void
   /** Place a world at its first scene, unless it already has a position. */
+  /** How the reader wants a book set. Theirs, not any book's. */
+  readingType: ReadingType
+  setReadingType: (next: Partial<ReadingType>) => void
   seedReadingPosition: (worldId: string, eventId: string) => void
   /** Where each seeded world opened, so "unread" stays tellable from "read a bit". */
   openingByWorld: Record<string, string>
@@ -216,6 +220,17 @@ export const useAppStore = create<AppStore>()(
         opening a world already in hand. A reveal-all on the copy being read is
         untouched, which `readingReseed.spec.ts` checks in the same run.
       */
+      /*
+        Coerced on the way out of storage rather than trusted: this is persisted,
+        so a build that changes the size ladder or renames a leading will meet
+        readers still holding the old one, and `line-height: undefined` collapses
+        a column rather than failing loudly.
+      */
+      readingType: DEFAULT_READING_TYPE,
+      setReadingType: (next) => set((state) => ({
+        readingType: coerceReadingType({ ...state.readingType, ...next }),
+      })),
+
       seedReadingPosition: (worldId, eventId) => set((state) => {
         if (state.eventByWorld[worldId] != null) return {}
         return {
@@ -334,6 +349,12 @@ export const useAppStore = create<AppStore>()(
     }),
     {
       name: 'plotweave-ui',
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<typeof current>
+        // Anything else is taken as stored; the type preference is repaired,
+        // because it is the one persisted value that reaches CSS directly.
+        return { ...current, ...p, readingType: coerceReadingType(p.readingType) }
+      },
       partialize: (state) => ({
         activeWorldId: state.activeWorldId,
         activeEventId: state.activeEventId,
@@ -345,6 +366,7 @@ export const useAppStore = create<AppStore>()(
         barCollapsed: state.barCollapsed,
         searchWholeWord: state.searchWholeWord,
         theme: state.theme,
+        readingType: state.readingType,
       }),
     }
   )

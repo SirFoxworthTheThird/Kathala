@@ -23,16 +23,41 @@ import { downloadLibraryBook } from './helpers/library'
  */
 
 /** Put the reader at a scene, the way returning to a part-read book does. */
+/**
+ * Put the reader at a scene, and make sure they arrived.
+ *
+ * The store hydrates from localStorage at load and writes it back on every
+ * change, so a write into a page that is still running can be overwritten
+ * before the reload picks it up. When that happened the cursor stayed at
+ * chapter one, `Castle Dracula` was correctly hidden as a chapter-two page, and
+ * the test failed looking like a gate bug — the saved snapshot showed the pill
+ * still reading "Ch.1 · Eastward by Rail".
+ *
+ * That was diagnosed once as a render-timing asymmetry and "fixed" by raising a
+ * timeout, which changed nothing: the page was never going to appear, because
+ * the reader was never moved. So the write is verified, and repeated if it was
+ * lost.
+ */
 async function readAt(page: Page, eventId: string) {
-  await page.evaluate((eid: string) => {
-    const raw = localStorage.getItem('plotweave-ui')
-    const st = raw ? JSON.parse(raw) : { state: {}, version: 0 }
-    st.state.activeEventId = eid
-    if (st.state.eventByWorld) for (const k of Object.keys(st.state.eventByWorld)) st.state.eventByWorld[k] = eid
-    localStorage.setItem('plotweave-ui', JSON.stringify(st))
-  }, eventId)
-  await page.reload({ waitUntil: 'load' })
-  await settle(page)
+  const write = async () => {
+    await page.evaluate((eid: string) => {
+      const raw = localStorage.getItem('plotweave-ui')
+      const st = raw ? JSON.parse(raw) : { state: {}, version: 0 }
+      st.state.activeEventId = eid
+      if (st.state.eventByWorld) for (const k of Object.keys(st.state.eventByWorld)) st.state.eventByWorld[k] = eid
+      localStorage.setItem('plotweave-ui', JSON.stringify(st))
+    }, eventId)
+    await page.reload({ waitUntil: 'load' })
+    await settle(page)
+    return page.evaluate(() => {
+      const raw = localStorage.getItem('plotweave-ui')
+      return raw ? (JSON.parse(raw) as { state: { activeEventId: string | null } }).state.activeEventId : null
+    })
+  }
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (await write() === eventId) return
+  }
+  throw new Error(`could not put the reader at ${eventId}: the store kept overwriting it`)
 }
 
 /** The four pages the reader named, with the chapter each belongs to. */
@@ -62,13 +87,9 @@ test.describe("Dracula's lore at the reader's own cursor", () => {
       the other direction and buried the lot.
     */
     await expect(main.getByText('The Epistolary Method')).toBeVisible({ timeout: 30_000 })
-    // The same wait as its sibling, and for the same reason. Both are waiting on
-    // one live query delivering Dracula's fourteen lore pages; giving the first
-    // thirty seconds and the second the default five only asks whether the two
-    // happened to land in the same render pass. Under four workers they
-    // sometimes do not, and this failed once in a full run while passing three
-    // times in isolation — a flake manufactured by the asymmetry, not by the
-    // gate under test.
+    // The same wait as its sibling, for symmetry rather than for a reason: the
+    // flake this was once blamed on never had anything to do with timing. See
+    // `readAt` above.
     await expect(main.getByText('Castle Dracula')).toBeVisible({ timeout: 30_000 })
 
     for (const title of SPOILERS) {

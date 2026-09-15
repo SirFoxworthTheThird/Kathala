@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import type { SceneText } from '@/types'
@@ -87,10 +88,27 @@ export function useHasProse(worldId: string | null): boolean | undefined {
   )
 }
 
-/** All scene texts for a timeline's events, keyed by eventId for quick lookup. */
+/**
+ * All scene texts for a timeline's events, keyed by eventId for quick lookup.
+ *
+ * Memoised on the array `useLiveQuery` hands back, which is stable between
+ * emissions. Without it this returns a new Map on every render, and that
+ * reference is a dependency of `buildManuscript`'s `useMemo` in ManuscriptView
+ * and, through the manuscript it produces, of the reading cursor's
+ * IntersectionObserver effect — so both were redone on every render, the
+ * observer being torn down and rebuilt among them.
+ *
+ * Correctness of intent rather than speed: a memo that never hits is not a
+ * memo. The reading screen was measured either way on *The Count of Monte
+ * Cristo*, 459,375 words, and sixty wheel-scrolls took 2,876ms with it against
+ * 2,910ms without, with no long tasks recorded in either. Compiling the
+ * manuscript is cheap — word counts come precomputed from the row and the
+ * paragraph splitting happens at render — so do not expect this to make
+ * anything faster.
+ */
 export function useSceneTextsByEvent(worldId: string | null) {
   const texts = useWorldSceneTexts(worldId)
-  return new Map(texts.map((t) => [t.eventId, t]))
+  return useMemo(() => new Map(texts.map((t) => [t.eventId, t])), [texts])
 }
 
 /**
