@@ -365,11 +365,25 @@ chapters into leaves you forty chapters in.
 
 ### Reading the book itself
 
-Most of the Library's books carry their own text — 31 of the 38 are complete
+Most of the Library's books carry their own text — 34 of the 41 are complete
 public-domain novels, and each one's catalogue entry names the Project Gutenberg
 edition it came from. On those, reading mode adds a **Read** screen: the book,
 chapter by chapter, with none of the writing furniture. No draft/reading switch,
 no word counts, no "scenes written" tally — just the prose.
+
+A long book takes a moment to open — *The Count of Monte Cristo* is 459,375
+words — and while it does you get the shape of a page and **Opening the book…**,
+rather than a screen that looks finished and empty.
+
+**You can see where you are.** Under the title, a slim bar fills as you read,
+beside the two things a paperback tells you by being thick on one side: how far
+through the whole book you are, and how much of this chapter is left — *42% of
+the book · Chapter 47 of 117 · about 18 min left in it*. The minutes are an
+estimate at an ordinary reading pace, not a promise.
+
+That readout answers *where you are looking*, which is not always where your
+place is. Scroll back to re-read an earlier chapter and it follows you back,
+while the cursor — and everything it has unlocked — stays where you had got to.
 
 **Your place moves as you read.** Reach a new scene and the cursor follows you,
 so the cast, the places, the lore and the maps unlock exactly as far as you have
