@@ -42,13 +42,20 @@ const sources = import.meta.glob('../../**/*.{ts,tsx}', {
  * reach.
  *
  * `useRevealAll` **is** the guard. The others clear a cursor that has stopped
- * meaning anything — the scene was deleted, the world was closed, playback
- * ended — which is bookkeeping, not a reveal a reader chose.
+ * meaning anything — the scene was deleted, the world was closed — which is
+ * bookkeeping, not a reveal a reader chose.
+ *
+ * Playback is the exception that had to be earned rather than argued. Its clear
+ * is in `handleStop`, which is somebody pressing Stop, not the timer running
+ * out; this list said "playback reaching the end" and that was never what the
+ * code did. It is allowed now because the Stop button — and the Play button
+ * that is the only way to make Stop appear — are withheld from readers in
+ * `TimelineControls`, which `e2e/readingNoPlayback.spec.ts` holds in place.
  */
 const ALLOWED: { file: string; why: string }[] = [
   { file: 'components/useRevealAll.tsx', why: 'the guard itself' },
   { file: 'components/AppShell.tsx', why: 'the cursor names a scene that no longer exists' },
-  { file: 'features/timeline/useTimelinePlayback.ts', why: 'playback reaching the end' },
+  { file: 'features/timeline/useTimelinePlayback.ts', why: 'Stop, whose button a reader is not offered' },
   { file: 'features/timeline/BulkActionToolbar.tsx', why: 'the active scene was just deleted' },
 ]
 

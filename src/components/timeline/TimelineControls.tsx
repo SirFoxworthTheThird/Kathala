@@ -37,6 +37,19 @@ export function Controls({ isPlaying, speed, showStop, showDiff, showClear, colo
   // read ahead by accident. Gating it here rather than at each of the four
   // tracks that render these controls keeps a fifth one right by default.
   const gate = useGate()
+
+  /*
+    Playback is the writer's, for the same reason and more so. It walks the time
+    cursor from scene to scene on a timer, which to someone reading is a spoiler
+    engine with a start button — and before it starts it moves the cursor to
+    scene one and navigates off the book to the Map. Stop is worse again:
+    `setActiveEventId(null)` is the full-reveal state, and it arrives from a
+    9-pixel square with no confirmation, which is the fault the chapter rows had.
+
+    This cluster consulted the gate already and spent it entirely on **Compare
+    chapters**, so the player sat beside it on every screen a reader can open.
+  */
+  const player = !gate.active
   // MT-3: rolling the bar up is read from the store here rather than passed
   // down, for the same reason the gate is — all four tracks render this cluster,
   // and the control should not have to be wired through each of them.
@@ -52,18 +65,28 @@ export function Controls({ isPlaying, speed, showStop, showDiff, showClear, colo
       padding: '0 0.4rem', height: '100%', flexShrink: 0,
       borderRight: '1px solid var(--tl-border)',
     }}>
-      {showPlay && (
+      {showPlay && player && (
       <button onClick={onPlayPause} title={isPlaying ? 'Pause' : playLabel} style={btn(color)}>
         {isPlaying ? <Pause size={12} /> : <Play size={12} />}
       </button>
       )}
-      {showStop && (
+      {showStop && player && (
         <button onClick={onStop} title="Stop" style={btn('var(--tl-text-muted)')}>
           <Square size={9} />
         </button>
       )}
-      {showPlay && (
-      <button onClick={onSpeedChange} title="Playback speed" style={{
+      {/*
+        The speed button is named by both its purpose and its value, because its
+        content *is* the answer: an `aria-label` of "Playback speed" alone would
+        replace the visible "1×" with text that does not contain it, which is a
+        WCAG 2.5.3 failure and leaves voice control unable to ask for what is on
+        screen. The `title` alone was no better — a button with content does not
+        fall back to it, so this control's only name was "1×", and nothing could
+        find it by purpose. A spec looking for "Playback speed" matched nothing
+        in either mode and passed as an absence.
+      */}
+      {showPlay && player && (
+      <button onClick={onSpeedChange} title="Playback speed" aria-label={`Playback speed: ${SPEED_LABEL[speed]}`} style={{
         background: 'none', border: 'none', cursor: 'pointer', borderRadius: '3px', flexShrink: 0,
         color: isPlaying ? color : 'var(--tl-text-muted)',
         fontSize: '0.55rem', fontWeight: 700, fontFamily: 'var(--font-body)',

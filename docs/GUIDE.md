@@ -448,7 +448,10 @@ layers, and no **…** menu on a chapter row or a scene card — so there is no
 **Rename chapter**, **Delete chapter**, **Move to chapter** or **Delete scene**
 to hit by accident in a book you are only reading. The Calendar stops inviting
 you to drag a scene onto a different day, and the map's character panel shows
-what is recorded rather than offering to change it.
+what is recorded rather than offering to change it. The chapter bar keeps its
+scene steppers but loses the **story player** — play, stop and the speed control
+— which walks your place forward through scene after scene on a timer and would
+run you through the ending while you watched.
 
 **Telling it how far you have got** is two taps: open the Timeline and press
 **Read to here** on the chapter you have reached. The reading notice on the
