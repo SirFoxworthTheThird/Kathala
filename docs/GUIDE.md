@@ -1139,11 +1139,13 @@ through a five-line window.
   Per-chapter goals are saved with the chapter.
 - **In this scene** — while reading, a panel beside the page shows who is in the
   scene you are looking at, where it happens and what is in it, with their
-  pictures. It follows the page as you scroll — scroll back and it shows that
-  scene's cast again. **Here** is who is present; **Spoken of** is someone named
-  by them. It sits beside the text on a wide screen and behind a button on a
-  phone, and it folds down to a single button when you want the page to
-  yourself: PlotWeave remembers which you chose.
+  pictures. The card names the scene it is describing — *Ch. 3 · Dinah Empties
+  the Shore* — and follows the page as you scroll, so you can see it keeping up;
+  scroll back and it shows that scene's cast again. **Here** is who is present,
+  and **Spoken of** is someone named by them, drawn a little further back so
+  which is which reads at a glance. It sits beside the text on a wide screen and
+  rises from the bottom of a phone, and it folds down to a single button when
+  you want the page to yourself: PlotWeave remembers which you chose.
   Someone named in the scene whom you have not met yet is not listed — the same
   rule the rest of reading mode follows.
 

@@ -258,3 +258,60 @@ test('a writer drafting the same book is not given the panel', async ({ page }) 
 
   await expect(panel(page)).toHaveCount(0)
 })
+
+test('the card says which scene it is describing, and keeps up', async ({ page }) => {
+  /*
+    "In this scene" had no antecedent: the card never named one, so after a few
+    minutes of scrolling there was no way to tell whether it had kept up.
+  */
+  const worldId = await downloadLibraryBook(page, 'Alice’s Adventures in Wonderland')
+  await settle(page)
+  await openBook(page, worldId)
+
+  const label = async (nth: number) => page.evaluate(async (n: number) => {
+    const db = (window as unknown as { __pwdb?: Record<string, {
+      toArray: () => Promise<Record<string, string | number | null>[]>
+    }> }).__pwdb!
+    const [events, chapters] = await Promise.all([db.events.toArray(), db.chapters.toArray()])
+    const no = new Map(chapters.map((c) => [c.id as string, c.number as number]))
+    const ordered = events
+      .map((e) => ({ e, key: (no.get(e.chapterId as string) ?? 0) * 10_000 + (e.sortOrder as number) }))
+      .sort((a, b) => a.key - b.key)
+      .map((x) => x.e)
+    const ev = n < 0 ? ordered[ordered.length + n] : ordered[n]
+    return `Ch. ${no.get(ev.chapterId as string)} · ${ev.title}`
+  }, nth)
+
+  const shown = () => panel(page).locator('[title]').first().innerText()
+
+  await expect.poll(shown, { timeout: 20_000 }).toBe(await label(0))
+
+  const scenes = page.locator('[data-scene-event-id]')
+  await scenes.nth((await scenes.count()) - 1).scrollIntoViewIfNeeded()
+  await expect.poll(shown, { timeout: 20_000 }).toBe(await label(-1))
+})
+
+test('on a phone every row of the sheet can actually be pressed', async ({ page }) => {
+  /*
+    The sheet rises from the bottom edge and the chapter bar is fixed there at
+    `z-1000`, so at `z-40` it came up *behind* the bar: at 390px the Place group
+    was cut in half and its eye could not be reached. `toBeVisible` would not
+    have caught it — Playwright does not test occlusion — but a click does,
+    because actionability does.
+  */
+  await page.setViewportSize({ width: 390, height: 780 })
+  const worldId = await downloadLibraryBook(page, 'Alice’s Adventures in Wonderland')
+  await settle(page)
+  await openBook(page, worldId)
+
+  await page.getByRole('button', { name: 'Show who is in this scene' }).last().click()
+  const sheet = page.getByRole('dialog', { name: 'In this scene' })
+  await expect(sheet).toBeVisible()
+
+  const eyes = sheet.getByRole('link')
+  const count = await eyes.count()
+  expect(count, 'the sheet has rows').toBeGreaterThan(1)
+  // The last one, which is the one the bar was covering.
+  await eyes.nth(count - 1).click({ timeout: 10_000 })
+  await expect(page).toHaveURL(/#\/worlds\/[^/]+\/(characters|items|maps)/)
+})
