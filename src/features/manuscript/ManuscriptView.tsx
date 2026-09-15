@@ -23,6 +23,7 @@ import { FindReplaceDialog } from './FindReplaceDialog'
 import { plural } from '@/lib/plural'
 import { splitParagraphs as paragraphs } from '@/lib/manuscriptParagraphs'
 import { openingState } from '@/lib/manuscriptOpening'
+import { spotFor, scrollFor, readSpot, spotStillApplies, type SceneExtent, type ReadingSpot, type SpotAt } from '@/lib/readingSpot'
 import { emphasisSpans, type ProseSpan } from '@/lib/proseEmphasis'
 import { useBlobUrl } from '@/db/hooks/useBlobs'
 
@@ -69,6 +70,22 @@ function ChapterGoal({ chapterId, words, goal }: { chapterId: string; words: num
       )}
     </div>
   )
+}
+
+/** Where a world's reading spot is kept. Per world: books are read in parallel. */
+const spotKey = (worldId: string | undefined) => `plotweave-reading-spot-${worldId ?? ''}`
+
+const readStored = (key: string): string | null => {
+  try { return localStorage.getItem(key) } catch { return null }
+}
+
+/** Every scene's box, measured once — `offsetTop` forces layout. */
+function measureScenes(root: HTMLElement): SceneExtent[] {
+  return Array.from(root.querySelectorAll<HTMLElement>('[data-scene-event-id]')).map((el) => ({
+    id: el.dataset.sceneEventId ?? '',
+    top: el.offsetTop,
+    height: el.offsetHeight,
+  }))
 }
 
 export default function ManuscriptView() {
@@ -171,6 +188,15 @@ export default function ManuscriptView() {
     either — it sees the scene just scrolled to, and `cursorForScene` answers
     "stay" for the scene the cursor is already on.
   */
+  /*
+    The cursor as the saver sees it. The save runs in a cleanup whose effect is
+    keyed on the world, so reading `activeEventId` from that closure would store
+    whatever it was when the reader arrived — which is exactly the value the
+    comparison exists to detect a change in.
+  */
+  const cursorRef = useRef(activeEventId)
+  useEffect(() => { cursorRef.current = activeEventId }, [activeEventId])
+
   const restoredRef = useRef(false)
   useEffect(() => { restoredRef.current = false }, [worldId])
   useEffect(() => {
@@ -181,7 +207,28 @@ export default function ManuscriptView() {
     // done and the reader is left at the top. A reload did exactly that.
     if (manuscript.writtenScenes === 0) return
     const root = scrollRef.current
-    if (!root || !activeEventId) return
+    if (!root) return
+
+    /*
+      The exact spot first, the cursor second.
+
+      Tapping a name in the scene panel leaves this screen and comes back to it,
+      and the cursor alone answered that badly twice: it is a high-water mark,
+      so a reader who had scrolled back to chapter two returned to chapter
+      forty, and it names a scene rather than a place inside one, so a long
+      scene restarted from its first line. See `readingSpot.ts`.
+    */
+    const saved = readSpot(readStored(spotKey(worldId)))
+    if (spotStillApplies(saved, activeEventId)) {
+      const to = scrollFor(saved, measureScenes(root))
+      if (to !== null) {
+        restoredRef.current = true
+        requestAnimationFrame(() => { root.scrollTop = to })
+        return
+      }
+    }
+
+    if (!activeEventId) return
     const target = root.querySelector<HTMLElement>(`[data-scene-event-id="${CSS.escape(activeEventId)}"]`)
     if (!target) return
     restoredRef.current = true
@@ -191,6 +238,66 @@ export default function ManuscriptView() {
       target.scrollIntoView({ block: 'start', behavior: 'auto' })
     })
   }, [readingMode, activeEventId, manuscript, worldId])
+
+  /*
+    Remember the spot while the reader moves, and write it on the way out.
+
+    The first version measured at teardown instead, and that is worthless: by
+    the time the cleanup runs the scroller is detached, so `scrollTop` reads 0
+    and every `offsetTop` reads 0 with it. `spotFor` then sees every scene
+    beginning at the same place and answers with the last one — a reader who
+    tapped a name in chapter 2 came back a million pixels down, at the end of
+    the book. The saved spot said scene 149, offset 0.
+
+    So the spot is kept current in a ref and the cleanup only writes what is
+    already there. Scene extents are cached like `ReadingProgress` caches its
+    chapters, because reading `offsetTop` for 149 scenes on every scroll frame
+    is the jank this screen cannot afford; only `scrollTop` is read while
+    scrolling, which is free.
+  */
+  const spotRef = useRef<SpotAt | null>(null)
+  useEffect(() => {
+    if (!readingMode) return
+    const root = scrollRef.current
+    if (!root) return
+
+    let extents: SceneExtent[] = []
+    const measure = () => { extents = measureScenes(root) }
+
+    let frame = 0
+    const read = () => {
+      frame = 0
+      if (extents.length === 0) measure()
+      spotRef.current = spotFor(root.scrollTop, extents)
+    }
+    const onScroll = () => { if (!frame) frame = requestAnimationFrame(read) }
+
+    /*
+      The cursor is stamped here, on the way out, not alongside `scrollTop`.
+      It follows the page by an observer that fires after the scroll, so a stamp
+      taken while scrolling is a scene stale — and every ordinary scroll then
+      looked like a deliberate jump and threw the spot away.
+    */
+    const write = () => {
+      const spot = spotRef.current
+      if (!spot) return
+      const stamped: ReadingSpot = { ...spot, cursorAt: cursorRef.current }
+      try { localStorage.setItem(spotKey(worldId), JSON.stringify(stamped)) } catch { /* private window */ }
+    }
+
+    const first = requestAnimationFrame(() => { measure(); read() })
+    root.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', measure)
+    window.addEventListener('pagehide', write)
+    return () => {
+      cancelAnimationFrame(first)
+      if (frame) cancelAnimationFrame(frame)
+      root.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', measure)
+      window.removeEventListener('pagehide', write)
+      write()
+    }
+  }, [readingMode, worldId, manuscript])
 
   useEffect(() => {
     if (!readingMode) return

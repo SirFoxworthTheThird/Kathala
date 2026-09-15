@@ -1140,13 +1140,18 @@ through a five-line window.
 - **In this scene** — while reading, a panel beside the page shows who is in the
   scene you are looking at, where it happens and what is in it, with their
   pictures. It follows the page as you scroll — scroll back and it shows that
-  scene's cast again — and any entry opens that character's, item's or place's
-  own page, so *who is this again* is one tap from the prose rather than a trip
-  through Characters. **Here** is who is present; **Spoken of** is someone named
+  scene's cast again. **Here** is who is present; **Spoken of** is someone named
   by them. It sits beside the text on a wide screen and behind a button on a
   phone, and the ⇥ control puts it away: PlotWeave remembers which you chose.
   Someone named in the scene whom you have not met yet is not listed — the same
   rule the rest of reading mode follows.
+
+  **Click a picture** to see it full size; many of these are the book's own
+  illustrations, and they are held far larger than the panel shows them.
+  **Click the eye** beside a name to open that character's, item's or place's
+  page — so *who is this again* is one tap from the prose rather than a trip
+  through Characters. Coming back puts you exactly where you were, not at the
+  top of the scene and not at the furthest point you had read to.
 - **Italics** — prose written with underscores around it, `_like this_`, is
   shown as *italics* rather than as underscores. That is how Project Gutenberg
   marks emphasis, so every book in the Library uses it, and so can you: type the
