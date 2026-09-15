@@ -94,7 +94,21 @@ export default function CharacterDetailView() {
     lore: lorePages.length,
     factions: memberships.length,
   }
-  const hasTab = (name: string) => !gate.active || (tabCounts[name] ?? 0) > 0
+  /*
+    Named, rather than left to a lookup that answers 0 for anything it has not
+    heard of. `state` was never a key in `tabCounts`, so `hasTab('state')` was
+    `(undefined ?? 0) > 0` — false for every reader — and `activeTab` snapped
+    back to overview. The tab rendered and did nothing: a blind reader run
+    clicked Current State on Mercédès four times and stayed on Overview.
+
+    That is the exact opposite of what the note above promises, and the promise
+    was the older of the two. A set that says which tabs are unconditional keeps
+    them unconditional; a missing count still hides a tab a reader cannot use,
+    which is the safe direction for the rest.
+  */
+  const ALWAYS_OFFERED = new Set(['overview', 'state'])
+  const hasTab = (name: string) =>
+    ALWAYS_OFFERED.has(name) || !gate.active || (tabCounts[name] ?? 0) > 0
   /*
     A tab can be addressed by URL, and a reader arriving at `?tab=goals` on a
     character with none would otherwise land on a panel with no way back to it.
