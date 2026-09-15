@@ -1,4 +1,5 @@
 import { type CSSProperties } from 'react'
+import { useMatch } from 'react-router-dom'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { ChevronLeft, ChevronRight, ChevronDown, Play, Pause, Square, GitCompareArrows, X } from 'lucide-react'
 import { useAppStore, type PlaybackSpeed } from '@/store'
@@ -39,17 +40,21 @@ export function Controls({ isPlaying, speed, showStop, showDiff, showClear, colo
   const gate = useGate()
 
   /*
-    Playback is the writer's, for the same reason and more so. It walks the time
-    cursor from scene to scene on a timer, which to someone reading is a spoiler
-    engine with a start button — and before it starts it moves the cursor to
-    scene one and navigates off the book to the Map. Stop is worse again:
-    `setActiveEventId(null)` is the full-reveal state, and it arrives from a
-    9-pixel square with no confirmation, which is the fault the chapter rows had.
+    The story player belongs to the map, because the map is what it drives: it
+    walks the time cursor from scene to scene so the cast moves across the
+    picture. On the Timeline, on a character page, on the Read screen it was a
+    transport control for something not on screen — and pressing it navigated
+    you to the map to find out what it had done.
 
-    This cluster consulted the gate already and spent it entirely on **Compare
-    chapters**, so the player sat beside it on every screen a reader can open.
+    That last part is why it was filed as a reading fault before it was
+    understood as a placement one: a blind reader run met play and a speed
+    control in the bar while reading, on a screen where the only thing they
+    could do was take the reader out of the book.
+
+    Route rather than gate: this is the wrong place for the control whoever is
+    looking at it.
   */
-  const player = !gate.active
+  const player = !!useMatch('/worlds/:worldId/maps')
   // MT-3: rolling the bar up is read from the store here rather than passed
   // down, for the same reason the gate is — all four tracks render this cluster,
   // and the control should not have to be wired through each of them.

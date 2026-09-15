@@ -261,13 +261,11 @@ test('no writing-mode overlay is reachable while reading', async ({ page }) => {
   /*
     The anchor that keeps the absences below from being vacuous: if the bar were
     collapsed or unrendered, every `toHaveCount(0)` would pass for the wrong
-    reason. It used to be the play button, which sat in this cluster ungated —
-    the story player is withheld from readers now, so the anchor is the collapse
-    control, which is in the same cluster and is still offered.
+    reason. It used to be the play button, which sat in this cluster on every
+    screen; the transport controls live on the map now, so the anchor is the
+    collapse control — same cluster, offered on every route and to everyone.
   */
   await expect(page.getByTitle('Hide the chapter bar')).toHaveCount(1)
-  await expect(page.getByTitle('Play story on the map'),
-    'and the player itself is gone').toHaveCount(0)
 
   for (const label of ['Compare chapters', "Writer's Brief", 'Continuity Checker', 'Recent changes']) {
     await expect(page.getByTitle(label, { exact: true }), `${label} is reachable`).toHaveCount(0)

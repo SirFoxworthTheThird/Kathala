@@ -449,9 +449,10 @@ layers, and no **…** menu on a chapter row or a scene card — so there is no
 to hit by accident in a book you are only reading. The Calendar stops inviting
 you to drag a scene onto a different day, and the map's character panel shows
 what is recorded rather than offering to change it. The chapter bar keeps its
-scene steppers but loses the **story player** — play, stop and the speed control
-— which walks your place forward through scene after scene on a timer and would
-run you through the ending while you watched.
+scene steppers. Its **story player** is on the Map and only there (see
+[Maps](#maps)) — so it is not sitting on the Read screen offering to walk you
+through the ending on a timer — and if you do play the story on the map, pressing
+**stop** leaves your place where it carried you rather than clearing it.
 
 **Telling it how far you have got** is two taps: open the Timeline and press
 **Read to here** on the chapter you have reached. The reading notice on the
@@ -1756,7 +1757,15 @@ another floor, it switches to that floor and lands their pin at the right spot.
 
 Press **play** in the chapter bar and the map becomes a playback stage: as the
 story advances scene by scene, character pins glide between locations along their
-routes, so you can watch your cast move through the world. The story-notes overlay
+routes, so you can watch your cast move through the world. The player — play,
+stop and the speed control — appears **on the Map screen only**. The bar itself
+is on every screen, but playing the story is a thing the map does, and a
+transport control on the Timeline or the Read screen was driving a stage you
+could not see.
+
+If you are reading rather than writing, **stop** ends playback and leaves your
+place where the story carried you; for a writer it clears the time cursor back
+to *all chapters*, which is the reset a viewfinder wants when you put it down. The story-notes overlay
 shows the current chapter, synopsis, and relevant character status notes. For a
 frame narrative, the map can display outer-timeline characters as **ghost pins**;
 a historical-echo relationship marks shared places with echo rings.
