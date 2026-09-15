@@ -496,3 +496,38 @@ describe('theme persistence', () => {
     expect(persisted.state?.theme).toBe('parchment')
   })
 })
+
+describe('seedReadingPosition — what a newly arrived world may overrule', () => {
+  /*
+    Only arrival reaches this: a Library download and a `.pwk` import, never
+    opening a world already in hand. The three cases below are the whole rule,
+    and the middle one is the bug a reader found — Alice's Adventures in
+    Wonderland and The Turn of the Screw arriving permanently unreadable,
+    because the catalogue gives each Library world a fixed id and a reveal-all
+    recorded against that id outlives the world it was chosen on.
+  */
+  beforeEach(() => {
+    useAppStore.setState({ eventByWorld: {}, openingByWorld: {}, activeWorldId: null } as never)
+  })
+
+  it('seeds a world nobody has positioned', () => {
+    useAppStore.getState().seedReadingPosition('w1', 'ev-1')
+    expect(useAppStore.getState().eventByWorld.w1).toBe('ev-1')
+    expect(useAppStore.getState().openingByWorld.w1).toBe('ev-1')
+  })
+
+  it('overrules a stored null, which is a reveal-all left by a copy now gone', () => {
+    useAppStore.setState({ eventByWorld: { w1: null } } as never)
+    useAppStore.getState().seedReadingPosition('w1', 'ev-1')
+    expect(useAppStore.getState().eventByWorld.w1).toBe('ev-1')
+  })
+
+  it('never overrules a stored place, so a re-import leaves the reader where they were', () => {
+    // The presence beside the absence: if seeding simply always wrote, the test
+    // above would pass while a reader midway through a book was sent back to
+    // chapter one by re-importing it.
+    useAppStore.setState({ eventByWorld: { w1: 'ev-40' } } as never)
+    useAppStore.getState().seedReadingPosition('w1', 'ev-1')
+    expect(useAppStore.getState().eventByWorld.w1).toBe('ev-40')
+  })
+})
