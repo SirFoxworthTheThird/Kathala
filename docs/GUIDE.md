@@ -352,9 +352,15 @@ that would give the game away — the alive/dead split on the dashboard, for
 instance — are simply not shown while reading.
 
 Selecting **All chapters** reveals everything. That is a deliberate choice you
-make, not the default — and while reading, PlotWeave asks before doing it, since
-the control is a small ✕ beside the cursor and one stray click would hand you
-the whole book. Stepping the cursor back never asks: it only ever un-reveals.
+make, not the default — and while reading, PlotWeave asks before doing it,
+wherever you do it: the small ✕ beside the cursor, **Reading here** on a
+chapter row, or **Clear filter** on the Arc. One stray click on any of them
+would otherwise hand you the whole book. Stepping the cursor back never asks:
+it only ever un-reveals.
+
+Moving your place *forward* by more than one chapter asks too, on the chapter
+bar and on the chapter rows alike — the next chapter is ordinary reading and is
+never interrupted.
 
 The choice belongs to the copy you made it on. Download a book again, or import
 a fresh `.pwk` of it, and the new copy opens at its first scene the way any

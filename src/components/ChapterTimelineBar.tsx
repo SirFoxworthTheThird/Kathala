@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useState } from 'react'
+import { useEffect, useRef, useMemo } from 'react'
 import { useActiveWorldId, useActiveEventId, useAppStore } from '@/store'
 import {
   useTimelines, useChapters, useTimelineEvents, useWorldChapters, useWorldEvents, useAllWorldEvents,
@@ -16,9 +16,7 @@ import { CollapsedBar } from './timeline/CollapsedBar'
 import { TimelineScopeSelect } from './timeline/TimelineScopeSelect'
 import { selectFirstEvent, activateEvent } from './timeline/TimelineControls'
 import { useRevealAll } from './useRevealAll'
-import { useGate } from '@/db/hooks/ReadingGateContext'
-import { asksBeforeJumping } from '@/lib/readingAhead'
-import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { useReadAhead } from '@/components/useReadAhead'
 
 /** Narrative order within a single timeline: chapter number, then sortOrder. */
 function orderByChapter(events: WorldEvent[], chapters: Chapter[]): WorldEvent[] {
@@ -62,8 +60,9 @@ export function ChapterTimelineBar() {
     block reading "9 · Mina Murray's Journal". A confirm arriving after that
     would have been asking about something already read.
   */
-  const gate = useGate()
-  const [pendingJump, setPendingJump] = useState<{ to: number; go: () => void } | null>(null)
+  // Shared with the Timeline's chapter rows, which had no guard at all. See
+  // `useReadAhead`.
+  const { guardJump, readAheadDialog } = useReadAhead()
   function handleClearCursor() {
     // Stopping playback is not the destructive half and needs no confirming;
     // discarding the reading position is, and does.
@@ -256,14 +255,7 @@ export function ChapterTimelineBar() {
   }
 
   // ── Shared handlers ────────────────────────────────────────────────────────
-  /** Ask before a move that reads ahead; otherwise just go. */
-  function guarded(toChapter: number | undefined, go: () => void) {
-    if (toChapter === undefined || !gate.active || !asksBeforeJumping(gate.chapterNumber, toChapter)) {
-      go()
-      return
-    }
-    setPendingJump({ to: toChapter, go })
-  }
+  const guarded = guardJump
 
   const handleEventSelect = (id: string, locId?: string | null) => {
     const chId = eventChapterId.get(id)
@@ -279,26 +271,10 @@ export function ChapterTimelineBar() {
 
   /*
     Rendered beside `revealAllDialog` at each of the four track returns below,
-    so it is one element wherever the bar is drawn.
-
-    The wording says what actually happens rather than warning of damage: the
-    reveals are computed from the cursor, so moving back hides them again. What
-    it cannot give back is not having seen them.
+    so it is one element wherever the bar is drawn. Both now come from hooks,
+    so a fifth place that moves the cursor cannot forget one.
   */
-  const jumpDialog = (
-    <ConfirmDialog
-      open={!!pendingJump}
-      onOpenChange={(v) => { if (!v) setPendingJump(null) }}
-      title={pendingJump ? `Read ahead to chapter ${pendingJump.to}?` : ''}
-      description={
-        gate.chapterNumber !== null && pendingJump
-          ? `You are on chapter ${gate.chapterNumber}. Moving there shows everything the story introduces in between — people, places and connections you have not met yet. Coming back hides them again.`
-          : undefined
-      }
-      confirmLabel="Read ahead"
-      onConfirm={() => { pendingJump?.go(); setPendingJump(null) }}
-    />
-  )
+  const jumpDialog = readAheadDialog
   const handleActivateDepth = (timelineId: string) => {
     setIsPlayingStory(false)
     setActiveDepthTimelineId(timelineId)

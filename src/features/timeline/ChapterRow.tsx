@@ -15,6 +15,8 @@ import { eventStatusConfig } from '@/lib/eventStatus'
 import { EventRow } from './EventRow'
 import { AddEventDialog } from './AddEventDialog'
 import { EmptyState } from '@/components/EmptyState'
+import { useRevealAll } from '@/components/useRevealAll'
+import { useReadAhead } from '@/components/useReadAhead'
 
 interface ChapterRowProps {
   chapter: Chapter
@@ -45,6 +47,8 @@ export function ChapterRow({
   prevChapterId = null, nextChapterId = null,
 }: ChapterRowProps) {
   const { worldId } = useParams<{ worldId: string }>()
+  const { requestClear, revealAllDialog } = useRevealAll(worldId ?? null)
+  const { guardJump, readAheadDialog } = useReadAhead()
   const navigate = useNavigate()
   const { activeEventId, setActiveEventId, selectedEventIds, selectEventRange, clearSelection } = useAppStore()
   const [expanded, setExpanded] = useState(false)
@@ -322,7 +326,31 @@ export function ChapterRow({
           size="sm"
           variant={isActive ? 'secondary' : 'ghost'}
           className="h-7 px-2 text-xs shrink-0 ml-auto"
-          onClick={() => setActiveEventId(isActive ? null : (sortedEvents[0]?.id ?? null))}
+          /*
+            Both halves of this are guarded while reading, and neither was.
+
+            Pressing it on the chapter you are *on* clears the cursor, and a
+            null cursor is "all chapters" — the whole book, in one tap, on the
+            control labelled as the reader's own bookmark. A blind reader run
+            took Monte Cristo from 6 characters met to all 41 that way, with no
+            dialog. The ✕ beside the cursor had already been fixed for exactly
+            this (X-15) and the guide says PlotWeave asks; this was a second
+            door that did not.
+
+            Pressing it on a chapter far ahead jumps there, and there are 117 of
+            these rows on the screen the dashboard's "Set where you have read
+            to" points at — while the identical action on the bar below asks
+            first. Same reveal, two answers, thirty rows apart.
+
+            Both guards are hooks rather than rules to remember, so a third
+            caller cannot quietly reintroduce either.
+          */
+          onClick={() => {
+            if (isActive) { requestClear(); return }
+            const target = sortedEvents[0]?.id ?? null
+            if (!target) return
+            guardJump(chapter.number, () => setActiveEventId(target))
+          }}
           /*
             Named for the act the person is performing, which is not the same
             act in both modes. A writer moves a viewfinder; a reader records how
@@ -384,6 +412,9 @@ export function ChapterRow({
             onClick={() => setConfirmOpen(true)}
           />
         </Menu>
+        {/* Both guards' dialogs, rendered where the control that needs them is. */}
+        {revealAllDialog}
+        {readAheadDialog}
         <ConfirmDialog
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
