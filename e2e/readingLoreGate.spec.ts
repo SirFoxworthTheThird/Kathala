@@ -62,7 +62,14 @@ test.describe("Dracula's lore at the reader's own cursor", () => {
       the other direction and buried the lot.
     */
     await expect(main.getByText('The Epistolary Method')).toBeVisible({ timeout: 30_000 })
-    await expect(main.getByText('Castle Dracula')).toBeVisible()
+    // The same wait as its sibling, and for the same reason. Both are waiting on
+    // one live query delivering Dracula's fourteen lore pages; giving the first
+    // thirty seconds and the second the default five only asks whether the two
+    // happened to land in the same render pass. Under four workers they
+    // sometimes do not, and this failed once in a full run while passing three
+    // times in isolation — a flake manufactured by the asymmetry, not by the
+    // gate under test.
+    await expect(main.getByText('Castle Dracula')).toBeVisible({ timeout: 30_000 })
 
     for (const title of SPOILERS) {
       await expect(main.getByText(title), `${title} is later than chapter 7`).toHaveCount(0)
