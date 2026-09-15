@@ -83,11 +83,19 @@ test.describe('The frame-narrative bar says what its parts are', () => {
 
     // ── MT-2 ────────────────────────────────────────────────────────────────
     // Each track's play button names its own track, so they are two different
-    // controls rather than the same one twice.
-    await expect(bar.getByTitle(/^Play The Attic —/)).toHaveCount(1)
-    await expect(bar.getByTitle(/^Play The Tale —/)).toHaveCount(1)
+    // controls rather than the same one twice. Read on the map, because that is
+    // where the transport controls are now — the bar is the same component on
+    // both routes, so this is the same two buttons it always was.
+    const worldId = new URL(page.url()).hash.split('/')[2]
+    await page.goto(`/#/worlds/${worldId}/maps`, { waitUntil: 'load' })
+    await settle(page)
+    const mapBar = page.locator('[data-chapter-bar]')
+    await expect(mapBar.getByTitle(/^Play The Attic —/)).toHaveCount(1)
+    await expect(mapBar.getByTitle(/^Play The Tale —/)).toHaveCount(1)
     // And the label they shared is gone.
-    await expect(bar.getByTitle('Play story on the map')).toHaveCount(0)
+    await expect(mapBar.getByTitle('Play story on the map')).toHaveCount(0)
+    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await settle(page)
 
     // ── MT-7 ────────────────────────────────────────────────────────────────
     // One sync point, so exactly two moments are paired — one on each track —

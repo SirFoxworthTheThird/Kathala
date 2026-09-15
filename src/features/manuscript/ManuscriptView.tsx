@@ -9,6 +9,7 @@ import { useWorld } from '@/db/hooks/useWorlds'
 import { useSceneTextsByEvent, useHasProse } from '@/db/hooks/useManuscript'
 import { ReadingProgress } from './ReadingProgress'
 import { ReadingTypeControls } from './ReadingTypeControls'
+import { SceneXRay, XRAY_GUTTER } from './SceneXRay'
 import { ReadingContents } from './ReadingContents'
 import { typeStyle } from '@/lib/readingType'
 import { useReadingMode } from '@/db/hooks/useReading'
@@ -21,6 +22,9 @@ import { ExportManuscriptDialog } from './ExportManuscriptDialog'
 import { FindReplaceDialog } from './FindReplaceDialog'
 import { plural } from '@/lib/plural'
 import { splitParagraphs as paragraphs } from '@/lib/manuscriptParagraphs'
+import { openingState } from '@/lib/manuscriptOpening'
+import { spotFor, scrollFor, readSpot, spotStillApplies, type SceneExtent, type ReadingSpot, type SpotAt } from '@/lib/readingSpot'
+import { emphasisSpans, type ProseSpan } from '@/lib/proseEmphasis'
 import { useBlobUrl } from '@/db/hooks/useBlobs'
 
 const nf = new Intl.NumberFormat()
@@ -68,6 +72,22 @@ function ChapterGoal({ chapterId, words, goal }: { chapterId: string; words: num
   )
 }
 
+/** Where a world's reading spot is kept. Per world: books are read in parallel. */
+const spotKey = (worldId: string | undefined) => `plotweave-reading-spot-${worldId ?? ''}`
+
+const readStored = (key: string): string | null => {
+  try { return localStorage.getItem(key) } catch { return null }
+}
+
+/** Every scene's box, measured once — `offsetTop` forces layout. */
+function measureScenes(root: HTMLElement): SceneExtent[] {
+  return Array.from(root.querySelectorAll<HTMLElement>('[data-scene-event-id]')).map((el) => ({
+    id: el.dataset.sceneEventId ?? '',
+    top: el.offsetTop,
+    height: el.offsetHeight,
+  }))
+}
+
 export default function ManuscriptView() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
@@ -86,6 +106,27 @@ export default function ManuscriptView() {
     () => buildManuscript({ chapters, events, sceneTextByEvent: sceneByEvent }),
     [chapters, events, sceneByEvent]
   )
+
+  /*
+    The book's paragraphs, already split and with their emphasis read.
+
+    Gutenberg writes italics as `_like this_` and every book in the Library
+    does, so this runs over the whole text. On *The Count of Monte Cristo* —
+    2,613,043 characters, 14,416 paragraphs — the split alone is 2.7ms and the
+    split with emphasis is 43.1ms, measured over three passes. That is once per
+    load either way; what this memo buys is that a reader pressing **Larger
+    text** does not pay it again, since `manuscript` does not change when the
+    type does.
+  */
+  const proseByScene = useMemo(() => {
+    const out = new Map<string, ProseSpan[][]>()
+    for (const ch of manuscript.chapters) {
+      for (const s of ch.scenes) {
+        if (s.written) out.set(s.eventId, paragraphs(s.text).map(emphasisSpans))
+      }
+    }
+    return out
+  }, [manuscript])
 
   const activeEventId = useActiveEventId()
   const chapterNumberById = useMemo(() => new Map(chapters.map((c) => [c.id, c.number])), [chapters])
@@ -157,7 +198,28 @@ export default function ManuscriptView() {
     // done and the reader is left at the top. A reload did exactly that.
     if (manuscript.writtenScenes === 0) return
     const root = scrollRef.current
-    if (!root || !activeEventId) return
+    if (!root) return
+
+    /*
+      The exact spot first, the cursor second.
+
+      Tapping a name in the scene panel leaves this screen and comes back to it,
+      and the cursor alone answered that badly twice: it is a high-water mark,
+      so a reader who had scrolled back to chapter two returned to chapter
+      forty, and it names a scene rather than a place inside one, so a long
+      scene restarted from its first line. See `readingSpot.ts`.
+    */
+    const saved = readSpot(readStored(spotKey(worldId)))
+    if (spotStillApplies(saved, activeEventId)) {
+      const to = scrollFor(saved, measureScenes(root))
+      if (to !== null) {
+        restoredRef.current = true
+        requestAnimationFrame(() => { root.scrollTop = to })
+        return
+      }
+    }
+
+    if (!activeEventId) return
     const target = root.querySelector<HTMLElement>(`[data-scene-event-id="${CSS.escape(activeEventId)}"]`)
     if (!target) return
     restoredRef.current = true
@@ -167,6 +229,73 @@ export default function ManuscriptView() {
       target.scrollIntoView({ block: 'start', behavior: 'auto' })
     })
   }, [readingMode, activeEventId, manuscript, worldId])
+
+  /*
+    Remember the spot while the reader moves, and write it on the way out.
+
+    The first version measured at teardown instead, and that is worthless: by
+    the time the cleanup runs the scroller is detached, so `scrollTop` reads 0
+    and every `offsetTop` reads 0 with it. `spotFor` then sees every scene
+    beginning at the same place and answers with the last one — a reader who
+    tapped a name in chapter 2 came back a million pixels down, at the end of
+    the book. The saved spot said scene 149, offset 0.
+
+    So the spot is kept current in a ref and the cleanup only writes what is
+    already there. Scene extents are cached like `ReadingProgress` caches its
+    chapters, because reading `offsetTop` for 149 scenes on every scroll frame
+    is the jank this screen cannot afford; only `scrollTop` is read while
+    scrolling, which is free.
+  */
+  const spotRef = useRef<SpotAt | null>(null)
+  useEffect(() => {
+    if (!readingMode) return
+    const root = scrollRef.current
+    if (!root) return
+
+    let extents: SceneExtent[] = []
+    const measure = () => { extents = measureScenes(root) }
+
+    let frame = 0
+    const read = () => {
+      frame = 0
+      if (extents.length === 0) measure()
+      spotRef.current = spotFor(root.scrollTop, extents)
+    }
+    const onScroll = () => { if (!frame) frame = requestAnimationFrame(read) }
+
+    /*
+      The cursor is stamped here, on the way out, not alongside `scrollTop`: it
+      follows the page by an observer that fires after the scroll, so a stamp
+      taken while scrolling is a scene stale, and every ordinary scroll then
+      looked like a deliberate jump and threw the spot away.
+
+      Read straight from the store rather than through a ref kept in step by an
+      effect. That ref could be one commit behind when the cleanup ran — the
+      cursor and the navigation landing in the same commit — and the stamp was
+      then wrong, `spotStillApplies` said no, and the reader was dropped at the
+      top of the book. Intermittently, which is how it showed up: one run red,
+      the retry green.
+    */
+    const write = () => {
+      const spot = spotRef.current
+      if (!spot) return
+      const stamped: ReadingSpot = { ...spot, cursorAt: useAppStore.getState().activeEventId }
+      try { localStorage.setItem(spotKey(worldId), JSON.stringify(stamped)) } catch { /* private window */ }
+    }
+
+    const first = requestAnimationFrame(() => { measure(); read() })
+    root.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', measure)
+    window.addEventListener('pagehide', write)
+    return () => {
+      cancelAnimationFrame(first)
+      if (frame) cancelAnimationFrame(frame)
+      root.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', measure)
+      window.removeEventListener('pagehide', write)
+      write()
+    }
+  }, [readingMode, worldId, manuscript])
 
   useEffect(() => {
     if (!readingMode) return
@@ -244,7 +373,15 @@ export default function ManuscriptView() {
     return number ?? 0
   }, [activeEventId, eventById, chapterNumberById])
   const worldHasProse = useHasProse(worldId ?? null)
-  const openingTheBook = !hasProse && worldHasProse === true
+  /*
+    See `openingState`. This required `worldHasProse === true`, so every moment
+    the live query had not answered — before its first result, and again
+    whenever it re-subscribed — fell through to the empty state and told a
+    reader their book had no text. The rule is now that "no prose yet" needs a
+    definite no.
+  */
+  const opening = openingState({ compiled: hasProse, worldHasProse })
+  const openingTheBook = opening === 'opening'
 
   return (
     <div className="flex h-full flex-col">
@@ -355,7 +492,19 @@ export default function ManuscriptView() {
         )}
       </PageHeader>
 
-      <div ref={scrollRef} className="flex-1 overflow-auto">
+      {/*
+        The page, and floating over it, who is in it.
+
+        `relative` because the panel is positioned against this box: a sibling of
+        the scroller rather than inside it, so it stays put while the prose moves
+        under it, and taken out of the flow so that showing it cannot move the
+        prose sideways.
+      */}
+      <div className="relative flex min-h-0 flex-1">
+      <div
+        ref={scrollRef}
+        className={cn('flex-1 overflow-auto', mode === 'reading' && hasProse && XRAY_GUTTER)}
+      >
         {openingTheBook ? (
           /*
             A shape the prose is about to fill, rather than a spinner: the page
@@ -453,8 +602,10 @@ export default function ManuscriptView() {
                             ? typeStyle(readingType)
                             : { fontFamily: 'var(--font-prose)' }}
                         >
-                          {paragraphs(s.text).map((p, j) => (
-                            <p key={j} className="mb-4 [text-indent:1.5rem] first:[text-indent:0]">{p}</p>
+                          {(proseByScene.get(s.eventId) ?? []).map((spans, j) => (
+                            <p key={j} className="mb-4 [text-indent:1.5rem] first:[text-indent:0]">
+                              {spans.map((sp, k) => (sp.em ? <em key={k}>{sp.text}</em> : sp.text))}
+                            </p>
                           ))}
                         </div>
                       ) : (
@@ -474,6 +625,15 @@ export default function ManuscriptView() {
             })}
           </div>
         )}
+      </div>
+      {mode === 'reading' && hasProse && (
+        <SceneXRay
+          worldId={worldId!}
+          timelineId={activeTimelineId}
+          scrollRef={scrollRef}
+          sceneCount={manuscript.totalScenes}
+        />
+      )}
       </div>
 
       <ExportManuscriptDialog

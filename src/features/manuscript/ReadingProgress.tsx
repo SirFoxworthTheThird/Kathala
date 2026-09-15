@@ -99,13 +99,18 @@ export function ReadingProgress({
           <span>
             Chapter {chapter.number} of {chapterCount}
           </span>
+          {/*
+            Separator and text hide together. They were two siblings with the
+            `hidden sm:inline` on the text alone, so a phone read "5% of the
+            book · Chapter 6 of 117 ·" with a dot pointing at nothing — and at
+            320px the row wrapped and stranded a second one alone at the right
+            edge. A blind reader run found it on the work that introduced it.
+          */}
           {chapter.wordsLeft > 0 && (
-            <>
-              <span aria-hidden="true">·</span>
-              <span className="hidden sm:inline">
-                about {minutesLeft(chapter.wordsLeft)} min left in it
-              </span>
-            </>
+            <span className="hidden sm:inline">
+              <span aria-hidden="true">· </span>
+              about {minutesLeft(chapter.wordsLeft)} min left in it
+            </span>
           )}
         </>
       )}

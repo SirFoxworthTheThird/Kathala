@@ -96,7 +96,19 @@ async function startReading(page: Page, worldId: string) {
   await page.goto(`/#/worlds/${worldId}/settings`, { waitUntil: 'load' })
   await page.getByRole('button', { name: 'Turn on reading mode' }).click()
   await expect(page.getByRole('button', { name: 'Turn off reading mode' })).toBeVisible()
-  await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+  await goToMap(page, worldId)
+}
+
+/**
+ * The map, because that is where the transport controls are.
+ *
+ * They used to render in the bar on every world screen, and this pressed play
+ * from the Timeline. Playback drives the map, so the controls went to the map
+ * and this came with them; the bar itself is unchanged and app-wide, so every
+ * assertion below about blocks and tooltips reads the same here.
+ */
+async function goToMap(page: Page, worldId: string) {
+  await page.goto(`/#/worlds/${worldId}/maps`, { waitUntil: 'load' })
   await settle(page)
 }
 
@@ -128,7 +140,8 @@ test.describe('Playback in a merged bar', () => {
   test('and does the same with reading mode off', async ({ page }) => {
     // The control. Without it, the test above is satisfied by playback being
     // broken everywhere rather than fixed in reading mode.
-    await twoTimelineWorld(page)
+    const worldId = await twoTimelineWorld(page)
+    await goToMap(page, worldId)
     await expect(bar(page).locator('[title="Ch. 2 — Two"]')).toHaveCount(1)
 
     await playAndWait(page)

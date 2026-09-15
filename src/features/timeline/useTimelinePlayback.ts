@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { useActiveWorldId, useActiveEventId, useAppStore, type PlaybackSpeed } from '@/store'
+import { useGate } from '@/db/hooks/ReadingGateContext'
+import { useActiveEventId, useAppStore, type PlaybackSpeed } from '@/store'
 import { readingHoldMs } from '@/lib/playbackTiming'
 import { outerEventAt } from '@/lib/syncPoints'
 import type { WorldEvent, TimelineRelationship } from '@/types'
@@ -17,7 +17,6 @@ export function useTimelinePlayback(
   activeDepthTimelineId: string | null,
   innerTimelineId: string | null,
 ) {
-  const worldId = useActiveWorldId()
   const activeEventId = useActiveEventId()
   const {
     isPlayingStory, setIsPlayingStory,
@@ -26,8 +25,7 @@ export function useTimelinePlayback(
     setActiveEventId,
     setActiveOuterEventId,
   } = useAppStore()
-  const navigate = useNavigate()
-  const location = useLocation()
+  const gate = useGate()
 
   // Advance to the next event on a timer while playing
   useEffect(() => {
@@ -81,13 +79,24 @@ export function useTimelinePlayback(
         setActiveEventId(orderedEvents[0]?.id ?? null)
       }
       setIsPlayingStory(true)
-      if (worldId && !location.pathname.includes('/maps')) navigate(`/worlds/${worldId}/maps`)
+      // The jump to the map that used to be here is gone with the reason for
+      // it: the play button only exists on the map now, so by the time it can
+      // be pressed you are already there.
     }
   }
 
   function handleStop() {
     setIsPlayingStory(false)
-    setActiveEventId(null)
+    /*
+      Clearing the cursor is the writer's reset — back to "all chapters", which
+      is where a viewfinder belongs when you put it down. To a reader that same
+      null is the full-reveal state, and it arrived from a nine-pixel square
+      with no confirmation: the fault the chapter rows had, in a smaller target.
+
+      So stopping leaves a reader's place where playback carried it, which is
+      also the truthful answer — they watched those scenes go by.
+    */
+    if (!gate.active) setActiveEventId(null)
   }
 
   function cycleSpeed() {

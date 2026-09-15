@@ -121,3 +121,42 @@ describe('compileManuscript', () => {
     expect(out).not.toContain('# Ch. 2 — Blank')
   })
 })
+
+/**
+ * Gutenberg's `_italics_` reach the compiled formats.
+ *
+ * Every book in the Library writes its italics that way, and all three of these
+ * printed the underscores. Markdown is the exception on purpose: `_like this_`
+ * *is* markdown, so converting it would be translating a language into itself.
+ */
+describe('underscored emphasis', () => {
+  const emphatic = [
+    event('x1', 'x', 0, 'Only scene'),
+  ]
+  const emphaticChapters = [chapter('x', 1, 'Italics')]
+  const emphaticTexts = new Map<string, Pick<SceneText, 'text' | 'wordCount'>>([
+    ['x1', scene('She read the _Times_ & wept over <it>.')],
+  ])
+  const built = () => buildManuscript({
+    chapters: emphaticChapters, events: emphatic, sceneTextByEvent: emphaticTexts,
+  })
+
+  it('becomes <em> in HTML, with the surrounding prose still escaped', () => {
+    const html = compileManuscript(built(), 'html')
+    expect(html).toContain('<em>Times</em>')
+    expect(html).not.toContain('_Times_')
+    // The escaper still ran on everything around it.
+    expect(html).toContain('&amp;')
+    expect(html).toContain('&lt;it&gt;')
+  })
+
+  it('stays underscored in Markdown, which is the form it is already in', () => {
+    const md = compileManuscript(built(), 'markdown')
+    expect(md).toContain('_Times_')
+    expect(md).not.toContain('<em>')
+  })
+
+  it('stays underscored in plain text, which has no other way to say it', () => {
+    expect(compileManuscript(built(), 'text')).toContain('_Times_')
+  })
+})

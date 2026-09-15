@@ -17,9 +17,18 @@ import { revealAllAction } from '@/lib/revealAll'
  * removed "Chapter 7 of 27" from their shelf. No dialog, and no way back —
  * nothing tracks how far they had read.
  *
- * So the guard is a hook rather than a rule to remember. A caller cannot reach
- * the unguarded path any more, because there is no longer an unguarded path to
- * reach: `requestClear` decides, and the dialog it needs comes back with it.
+ * So the guard is a hook rather than a rule to remember: `requestClear`
+ * decides, and the dialog it needs comes back with it.
+ *
+ * This used to claim there was no unguarded path left to reach. That was not
+ * true when it was written — `ChapterRow` called `setActiveEventId(null)`
+ * directly from a button labelled **Reading here**, on the Timeline, and a
+ * second blind reader run found it: one tap on their own bookmark took a reader
+ * of *Monte Cristo* from 6 characters met to all 41, silently. Two controls had
+ * drifted apart; there were three. The claim is removed rather than restated,
+ * because a comment cannot make it so — what keeps callers honest is
+ * `readingGateGuards.test.ts`, which fails on a direct `setActiveEventId(null)`
+ * anywhere outside this hook.
  *
  * `revealAllAction` keeps the three-way decision — including `wait`, which
  * exists because the gate reports itself inactive while Dexie is opening and a

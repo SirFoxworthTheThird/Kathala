@@ -200,7 +200,26 @@ test.describe('A scene inside a sub-map opens that sub-map', () => {
     await readAt(page, worldId, CURSOR.insideTheInn)
 
     await expect.poll(() => layerNames(page)).toContain('Bree')
-    // The revealed sub-map must also have a visible way in from its parent.
+
+    /*
+      Arriving at the map has already gone there, without anything being asked
+      of it: the scene is set in the Prancing Pony and the Pony is on Bree.
+      That is the whole point of the auto-focus, and it is asserted here rather
+      than only in `mapArrivesAtTheScene.spec.ts` because it changes what the
+      rest of this test can mean.
+    */
+    await expect.poll(() => openMap(page)).toBe('Bree')
+
+    /*
+      Back out to the parent by asking for a place on it. Two things need the
+      map to be on Eriador and would otherwise be checking a screen that is no
+      longer there: the way *in* to Bree is a pin drawn on Eriador, and an
+      explicit focus request only proves it crosses layers if it starts on the
+      other side. Before the auto-focus this test began on Eriador for free, and
+      `toBe('Bree')` after the request would now pass without the request.
+    */
+    await focusMarker(page, 'mk-weathertop')
+    await expect.poll(() => openMap(page)).toBe('Eriador')
     await expect(page.locator('.leaflet-marker-icon').filter({ hasText: 'Bree' })).toHaveCount(1)
 
     await focusMarker(page, 'mk-pony')

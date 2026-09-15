@@ -352,9 +352,15 @@ that would give the game away — the alive/dead split on the dashboard, for
 instance — are simply not shown while reading.
 
 Selecting **All chapters** reveals everything. That is a deliberate choice you
-make, not the default — and while reading, PlotWeave asks before doing it, since
-the control is a small ✕ beside the cursor and one stray click would hand you
-the whole book. Stepping the cursor back never asks: it only ever un-reveals.
+make, not the default — and while reading, PlotWeave asks before doing it,
+wherever you do it: the small ✕ beside the cursor, **Reading here** on a
+chapter row, or **Clear filter** on the Arc. One stray click on any of them
+would otherwise hand you the whole book. Stepping the cursor back never asks:
+it only ever un-reveals.
+
+Moving your place *forward* by more than one chapter asks too, on the chapter
+bar and on the chapter rows alike — the next chapter is ordinary reading and is
+never interrupted.
 
 The choice belongs to the copy you made it on. Download a book again, or import
 a fresh `.pwk` of it, and the new copy opens at its first scene the way any
@@ -398,7 +404,9 @@ is done by reading.
 
 **You can set the type.** On the right of that same row: **−** and **+** step
 the text through five sizes, **Sans** swaps the world's own face for a plain
-one, and **Snug / Relaxed / Airy** set the line spacing. It is your preference
+one, and **Snug / Relaxed / Airy** set the line spacing — on a phone that last
+one becomes a single button naming the current spacing, which cycles as you
+press it. It is your preference
 rather than the book's — every book you open is set the way you left it — and it
 starts at exactly what the screen always used, so nothing changes until you ask.
 The draft screen keeps the fixed setting, since that is where line lengths are
@@ -436,9 +444,15 @@ Ctrl+Z along with them), and the dashboard drops its continuity card and its
 snapshot-coverage figure. No
 screen offers to add, generate or delete anything: no **Add Character**, no
 **New Page**, no **Generate with AI**, no delete buttons on cards, rows or map
-layers. The Calendar stops inviting you to drag a scene onto a different day,
-and the map's character panel shows what is recorded rather than offering to
-change it.
+layers, and no **…** menu on a chapter row or a scene card — so there is no
+**Rename chapter**, **Delete chapter**, **Move to chapter** or **Delete scene**
+to hit by accident in a book you are only reading. The Calendar stops inviting
+you to drag a scene onto a different day, and the map's character panel shows
+what is recorded rather than offering to change it. The chapter bar keeps its
+scene steppers. Its **story player** is on the Map and only there (see
+[Maps](#maps)) — so it is not sitting on the Read screen offering to walk you
+through the ending on a timer — and if you do play the story on the map, pressing
+**stop** leaves your place where it carried you rather than clearing it.
 
 **Telling it how far you have got** is two taps: open the Timeline and press
 **Read to here** on the chapter you have reached. The reading notice on the
@@ -1123,6 +1137,33 @@ through a five-line window.
   goal you haven't set reads **none**, and the bar only appears once there is a
   target to measure against.
   Per-chapter goals are saved with the chapter.
+- **In this scene** — while reading, a panel beside the page shows who is in the
+  scene you are looking at, where it happens and what is in it, with their
+  pictures. The card names the scene it is describing — *Ch. 3 · Dinah Empties
+  the Shore* — and follows the page as you scroll, so you can see it keeping up;
+  scroll back and it shows that scene's cast again. **Here** is who is present,
+  and **Spoken of** is someone named by them, drawn a little further back so
+  which is which reads at a glance. On a wide screen it floats over the page in
+  the margin the book keeps for it, so showing and hiding it never moves a line
+  of the text you are reading; on anything narrower it rises from the bottom
+  when you press the button in the corner. Either way it folds away when you
+  want the page to yourself, and PlotWeave remembers which you chose.
+  Someone named in the scene whom you have not met yet is not listed — the same
+  rule the rest of reading mode follows.
+
+  **Click a picture** to see it full size; many of these are the book's own
+  illustrations, and they are held far larger than the panel shows them.
+  **Click the eye** beside a name to open that character's, item's or place's
+  page — so *who is this again* is one tap from the prose rather than a trip
+  through Characters. Coming back puts you exactly where you were, not at the
+  top of the scene and not at the furthest point you had read to.
+- **Italics** — prose written with underscores around it, `_like this_`, is
+  shown as *italics* rather than as underscores. That is how Project Gutenberg
+  marks emphasis, so every book in the Library uses it, and so can you: type the
+  underscores while drafting a scene and the Manuscript, the HTML export, the
+  Word file and the EPUB all set the words in italics. Markdown and plain-text
+  exports keep the underscores, because that is already how those formats say
+  it. An underscore inside a word — `snake_case`, `H_2O` — is left alone.
 - **Export** — download or copy the manuscript as Markdown, HTML, or plain text,
   or **compile a finished book file**: **Word (.docx)** or **EPUB**. The book
   formats build a title page (with an optional author), start each chapter on its
@@ -1736,7 +1777,25 @@ another floor, it switches to that floor and lands their pin at the right spot.
 
 Press **play** in the chapter bar and the map becomes a playback stage: as the
 story advances scene by scene, character pins glide between locations along their
-routes, so you can watch your cast move through the world. The story-notes overlay
+routes, so you can watch your cast move through the world. The player — play,
+stop and the speed control — appears **on the Map screen only**. The bar itself
+is on every screen, but playing the story is a thing the map does, and a
+transport control on the Timeline or the Read screen was driving a stage you
+could not see.
+
+If you are reading rather than writing, **stop** ends playback and leaves your
+place where the story carried you; for a writer it clears the time cursor back
+to *all chapters*, which is the reset a viewfinder wants when you put it down.
+
+**While reading, opening Maps takes you to the scene you are on.** Books keep
+their places across several maps — *Alice* has the riverbank on *Wonderland* and
+the Pool of Tears on *The Rabbit-Hole and Long Hall* — so arriving on whichever
+map you last had open usually means arriving in the wrong place. The map you are
+shown is the one your current scene happens on, centred on it, and the layer
+picker still works normally once you are there: drill into a sub-map and it
+stays where you put it for the rest of the visit. A writer's map is left exactly
+where they left it, since arranging markers is work you would not want moved
+under you. The story-notes overlay
 shows the current chapter, synopsis, and relevant character status notes. For a
 frame narrative, the map can display outer-timeline characters as **ghost pins**;
 a historical-echo relationship marks shared places with echo rings.
