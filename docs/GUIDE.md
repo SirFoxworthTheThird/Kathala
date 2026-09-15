@@ -1137,6 +1137,16 @@ through a five-line window.
   goal you haven't set reads **none**, and the bar only appears once there is a
   target to measure against.
   Per-chapter goals are saved with the chapter.
+- **In this scene** — while reading, a panel beside the page shows who is in the
+  scene you are looking at, where it happens and what is in it, with their
+  pictures. It follows the page as you scroll — scroll back and it shows that
+  scene's cast again — and any entry opens that character's, item's or place's
+  own page, so *who is this again* is one tap from the prose rather than a trip
+  through Characters. **Here** is who is present; **Spoken of** is someone named
+  by them. It sits beside the text on a wide screen and behind a button on a
+  phone, and the ⇥ control puts it away: PlotWeave remembers which you chose.
+  Someone named in the scene whom you have not met yet is not listed — the same
+  rule the rest of reading mode follows.
 - **Italics** — prose written with underscores around it, `_like this_`, is
   shown as *italics* rather than as underscores. That is how Project Gutenberg
   marks emphasis, so every book in the Library uses it, and so can you: type the
@@ -1765,7 +1775,17 @@ could not see.
 
 If you are reading rather than writing, **stop** ends playback and leaves your
 place where the story carried you; for a writer it clears the time cursor back
-to *all chapters*, which is the reset a viewfinder wants when you put it down. The story-notes overlay
+to *all chapters*, which is the reset a viewfinder wants when you put it down.
+
+**While reading, opening Maps takes you to the scene you are on.** Books keep
+their places across several maps — *Alice* has the riverbank on *Wonderland* and
+the Pool of Tears on *The Rabbit-Hole and Long Hall* — so arriving on whichever
+map you last had open usually means arriving in the wrong place. The map you are
+shown is the one your current scene happens on, centred on it, and the layer
+picker still works normally once you are there: drill into a sub-map and it
+stays where you put it for the rest of the visit. A writer's map is left exactly
+where they left it, since arranging markers is work you would not want moved
+under you. The story-notes overlay
 shows the current chapter, synopsis, and relevant character status notes. For a
 frame narrative, the map can display outer-timeline characters as **ghost pins**;
 a historical-echo relationship marks shared places with echo rings.

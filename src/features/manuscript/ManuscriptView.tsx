@@ -9,6 +9,7 @@ import { useWorld } from '@/db/hooks/useWorlds'
 import { useSceneTextsByEvent, useHasProse } from '@/db/hooks/useManuscript'
 import { ReadingProgress } from './ReadingProgress'
 import { ReadingTypeControls } from './ReadingTypeControls'
+import { SceneXRay } from './SceneXRay'
 import { ReadingContents } from './ReadingContents'
 import { typeStyle } from '@/lib/readingType'
 import { useReadingMode } from '@/db/hooks/useReading'
@@ -21,6 +22,7 @@ import { ExportManuscriptDialog } from './ExportManuscriptDialog'
 import { FindReplaceDialog } from './FindReplaceDialog'
 import { plural } from '@/lib/plural'
 import { splitParagraphs as paragraphs } from '@/lib/manuscriptParagraphs'
+import { openingState } from '@/lib/manuscriptOpening'
 import { emphasisSpans, type ProseSpan } from '@/lib/proseEmphasis'
 import { useBlobUrl } from '@/db/hooks/useBlobs'
 
@@ -266,7 +268,15 @@ export default function ManuscriptView() {
     return number ?? 0
   }, [activeEventId, eventById, chapterNumberById])
   const worldHasProse = useHasProse(worldId ?? null)
-  const openingTheBook = !hasProse && worldHasProse === true
+  /*
+    See `openingState`. This required `worldHasProse === true`, so every moment
+    the live query had not answered — before its first result, and again
+    whenever it re-subscribed — fell through to the empty state and told a
+    reader their book had no text. The rule is now that "no prose yet" needs a
+    definite no.
+  */
+  const opening = openingState({ compiled: hasProse, worldHasProse })
+  const openingTheBook = opening === 'opening'
 
   return (
     <div className="flex h-full flex-col">
@@ -377,6 +387,14 @@ export default function ManuscriptView() {
         )}
       </PageHeader>
 
+      {/*
+        The page and, beside it, who is in it.
+
+        A flex row so the panel is a sibling of the scroller rather than inside
+        it: in the scroller it would slide away with the prose, and it is meant
+        to stay put while the scene under it changes.
+      */}
+      <div className="flex min-h-0 flex-1">
       <div ref={scrollRef} className="flex-1 overflow-auto">
         {openingTheBook ? (
           /*
@@ -498,6 +516,15 @@ export default function ManuscriptView() {
             })}
           </div>
         )}
+      </div>
+      {mode === 'reading' && hasProse && (
+        <SceneXRay
+          worldId={worldId!}
+          timelineId={activeTimelineId}
+          scrollRef={scrollRef}
+          sceneCount={manuscript.totalScenes}
+        />
+      )}
       </div>
 
       <ExportManuscriptDialog
