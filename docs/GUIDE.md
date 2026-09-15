@@ -444,9 +444,11 @@ Ctrl+Z along with them), and the dashboard drops its continuity card and its
 snapshot-coverage figure. No
 screen offers to add, generate or delete anything: no **Add Character**, no
 **New Page**, no **Generate with AI**, no delete buttons on cards, rows or map
-layers. The Calendar stops inviting you to drag a scene onto a different day,
-and the map's character panel shows what is recorded rather than offering to
-change it.
+layers, and no **…** menu on a chapter row or a scene card — so there is no
+**Rename chapter**, **Delete chapter**, **Move to chapter** or **Delete scene**
+to hit by accident in a book you are only reading. The Calendar stops inviting
+you to drag a scene onto a different day, and the map's character panel shows
+what is recorded rather than offering to change it.
 
 **Telling it how far you have got** is two taps: open the Timeline and press
 **Read to here** on the chapter you have reached. The reading notice on the

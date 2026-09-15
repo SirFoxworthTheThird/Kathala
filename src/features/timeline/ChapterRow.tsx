@@ -399,6 +399,15 @@ export function ChapterRow({
 
         {/* TL-3: delete used to be a bare trash icon here, on all 22 rows,
             immediately beside open-detail. See `src/components/ui/menu.tsx`. */}
+        {/*
+          Renaming and deleting a chapter are the author's, and this row gates
+          six other things on `!gate.active` without gating the menu holding
+          those two. A blind reader run renamed chapter 2 of Monte Cristo from
+          the reading view and read the new title back out of IndexedDB, where it
+          survived into later sessions — against the guide's promise of "no
+          delete buttons on cards, rows or map layers".
+        */}
+        {!gate.active && (
         <Menu label={`More actions for chapter ${chapter.number}`}>
           <MenuItem
             icon={Pencil}
@@ -412,6 +421,7 @@ export function ChapterRow({
             onClick={() => setConfirmOpen(true)}
           />
         </Menu>
+        )}
         {/* Both guards' dialogs, rendered where the control that needs them is. */}
         {revealAllDialog}
         {readAheadDialog}

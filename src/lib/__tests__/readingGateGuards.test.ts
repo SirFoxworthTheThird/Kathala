@@ -94,3 +94,40 @@ describe('clearing the time cursor', () => {
     expect(found.map((f) => f.file)).toEqual(ALLOWED.map((a) => a.file))
   })
 })
+
+/**
+ * No screen offers a reader the author's row menus.
+ *
+ * `docs/GUIDE.md` promises "no delete buttons on cards, rows or map layers", and
+ * two files broke it at once: `ChapterRow` gated six things and not the menu
+ * holding Rename and Delete, and `EventCard` carried no reference to the gate at
+ * all. A blind reader run found the first by renaming a chapter of *Monte
+ * Cristo* from the reading view; the second it never opened, and a grep did.
+ *
+ * Every `<Menu>` in the app is a row or card menu of author actions, so the rule
+ * is simply that the file holding one knows about the gate. That is coarse — it
+ * cannot tell a guarded menu from a mentioned gate — which is why the browser
+ * spec `readingNoEditing.spec.ts` checks the DOM. This catches the file that
+ * never thought about it at all, which is the shape both of these had.
+ */
+describe('row and card menus', () => {
+  /*
+    By the import rather than by the tag. `<Menu` also matches lucide's
+    hamburger *icon*, which is what `TopBar` renders — the first version of this
+    flagged it and would have had me guard a picture.
+  */
+  const menuFiles = Object.entries(sources).filter(
+    ([p, t]) => !p.includes('__tests__') && /from '@\/components\/ui\/menu'/.test(t),
+  )
+
+  it('are rendered in files that know about the reading gate', () => {
+    expect(menuFiles.length, 'there are menus to check').toBeGreaterThan(1)
+    const unaware = menuFiles
+      .filter(([, t]) => !/gate\.active/.test(t))
+      .map(([p]) => p)
+    expect(
+      unaware,
+      'these render a menu without consulting the reading gate:\n' + unaware.join('\n'),
+    ).toEqual([])
+  })
+})
