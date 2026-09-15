@@ -22,6 +22,7 @@ import { ExportManuscriptDialog } from './ExportManuscriptDialog'
 import { FindReplaceDialog } from './FindReplaceDialog'
 import { plural } from '@/lib/plural'
 import { splitParagraphs as paragraphs } from '@/lib/manuscriptParagraphs'
+import { openingState } from '@/lib/manuscriptOpening'
 import { emphasisSpans, type ProseSpan } from '@/lib/proseEmphasis'
 import { useBlobUrl } from '@/db/hooks/useBlobs'
 
@@ -267,7 +268,15 @@ export default function ManuscriptView() {
     return number ?? 0
   }, [activeEventId, eventById, chapterNumberById])
   const worldHasProse = useHasProse(worldId ?? null)
-  const openingTheBook = !hasProse && worldHasProse === true
+  /*
+    See `openingState`. This required `worldHasProse === true`, so every moment
+    the live query had not answered — before its first result, and again
+    whenever it re-subscribed — fell through to the empty state and told a
+    reader their book had no text. The rule is now that "no prose yet" needs a
+    definite no.
+  */
+  const opening = openingState({ compiled: hasProse, worldHasProse })
+  const openingTheBook = opening === 'opening'
 
   return (
     <div className="flex h-full flex-col">

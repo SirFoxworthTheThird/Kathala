@@ -104,6 +104,15 @@ test('the panel follows the scene as the reader moves through the book', async (
   const names = async () => (await panel(page).getByRole('link').allInnerTexts())
     .map((t) => t.trim()).filter(Boolean)
 
+  /*
+    Wait for the panel to fill before reading it. The prose being on screen does
+    not mean this has anything in it yet: its observer fires in its own effect
+    and the three entity hooks are live queries that resolve after. Reading
+    straight after `openBook` caught it empty about one run in five — a flake I
+    introduced and then saw go green on retry, which is the shape of thing that
+    gets left alone and should not be.
+  */
+  await expect(panel(page).getByRole('link').first()).toBeVisible({ timeout: 20_000 })
   const atTheStart = await names()
   expect(atTheStart.length, 'the first scene has a cast').toBeGreaterThan(0)
 
