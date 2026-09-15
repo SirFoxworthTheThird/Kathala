@@ -8,6 +8,8 @@ import { useTimelines, useChapters, useTimelineEvents, updateChapter } from '@/d
 import { useWorld } from '@/db/hooks/useWorlds'
 import { useSceneTextsByEvent, useHasProse } from '@/db/hooks/useManuscript'
 import { ReadingProgress } from './ReadingProgress'
+import { ReadingTypeControls } from './ReadingTypeControls'
+import { typeStyle } from '@/lib/readingType'
 import { useReadingMode } from '@/db/hooks/useReading'
 import { useAppStore, useActiveEventId } from '@/store'
 import { computeSortKeySync } from '@/lib/sortKey'
@@ -222,6 +224,7 @@ export default function ManuscriptView() {
     prose on The Count of Monte Cristo. A branch is not unreachable because one
     run did not reach it.
   */
+  const readingType = useAppStore((st) => st.readingType)
   const worldHasProse = useHasProse(worldId ?? null)
   const openingTheBook = !hasProse && worldHasProse === true
 
@@ -312,7 +315,17 @@ export default function ManuscriptView() {
           </div>
         )}
         {readingMode && hasProse && (
-          <ReadingProgress scrollRef={scrollRef} chapterCount={manuscript.chapters.length} />
+          /*
+            The reader's row. Not the header's `actions` slot, which PageHeader
+            withholds from a reader on purpose — those are authoring controls
+            without exception, and the blanket rule is what keeps a screen added
+            later right by default. Reading controls are a different thing that
+            happens to sit nearby.
+          */
+          <div className="flex w-full flex-wrap items-center justify-between gap-2">
+            <ReadingProgress scrollRef={scrollRef} chapterCount={manuscript.chapters.length} />
+            <ReadingTypeControls />
+          </div>
         )}
       </PageHeader>
 
@@ -402,7 +415,18 @@ export default function ManuscriptView() {
                         </div>
                       )}
                       {s.written ? (
-                        <div className="text-[15px] leading-relaxed text-[hsl(var(--foreground))]" style={{ fontFamily: 'var(--font-prose)' }}>
+                        <div
+                          className={cn(
+                            'text-[hsl(var(--foreground))]',
+                            // The draft keeps its fixed setting: the reader's
+                            // preference is about reading, and an author
+                            // checking line lengths wants them to stay put.
+                            mode === 'reading' ? undefined : 'text-[15px] leading-relaxed',
+                          )}
+                          style={mode === 'reading'
+                            ? typeStyle(readingType)
+                            : { fontFamily: 'var(--font-prose)' }}
+                        >
                           {paragraphs(s.text).map((p, j) => (
                             <p key={j} className="mb-4 [text-indent:1.5rem] first:[text-indent:0]">{p}</p>
                           ))}

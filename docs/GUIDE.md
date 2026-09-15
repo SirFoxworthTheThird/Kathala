@@ -385,6 +385,14 @@ That readout answers *where you are looking*, which is not always where your
 place is. Scroll back to re-read an earlier chapter and it follows you back,
 while the cursor — and everything it has unlocked — stays where you had got to.
 
+**You can set the type.** On the right of that same row: **−** and **+** step
+the text through five sizes, **Sans** swaps the world's own face for a plain
+one, and **Snug / Relaxed / Airy** set the line spacing. It is your preference
+rather than the book's — every book you open is set the way you left it — and it
+starts at exactly what the screen always used, so nothing changes until you ask.
+The draft screen keeps the fixed setting, since that is where line lengths are
+judged.
+
 **Your place moves as you read.** Reach a new scene and the cursor follows you,
 so the cast, the places, the lore and the maps unlock exactly as far as you have
 got, without your having to tell it. Leave the book for another screen, or close
