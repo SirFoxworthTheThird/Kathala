@@ -196,14 +196,28 @@ export const useAppStore = create<AppStore>()(
         downloaded Dracula showed its entire cast, every place and all of its
         lore before a word was read.
 
-        The guard is the *absence* of the key, not a null value, because those
-        mean different things here: choosing "all chapters" records `null`
-        against the world deliberately, so that world is left exactly as the
-        reader set it. Only a world nobody has positioned is seeded, which also
-        makes this safe to call more than once.
+        A *stored event id* is the reader's place and is never overwritten:
+        re-importing a `.pwk` of a book someone is midway through leaves them
+        midway through it.
+
+        A stored `null` is not treated the same way, and that is the whole of
+        this guard's subtlety. Null means "all chapters" — a deliberate full
+        reveal — but it belongs to the copy the reader chose it on, and the
+        catalogue gives every Library world a fixed id, so the key outlives the
+        world itself. Reveal all on Alice, delete it, download it again, and the
+        new copy inherited the old copy's null: the cursor could not move
+        (`cursorForScene` refuses to advance a null), the bar named no chapter
+        (it is guarded on finding the active event), and re-downloading — the
+        one thing a reader would try — could not clear it. Reading mode was
+        silently dead for that book, for good.
+
+        So an arriving world may overrule a null. That is safe because *only*
+        arrival reaches here: a Library download and a `.pwk` import, never
+        opening a world already in hand. A reveal-all on the copy being read is
+        untouched, which `readingReseed.spec.ts` checks in the same run.
       */
       seedReadingPosition: (worldId, eventId) => set((state) => {
-        if (worldId in state.eventByWorld) return {}
+        if (state.eventByWorld[worldId] != null) return {}
         return {
           eventByWorld: { ...state.eventByWorld, [worldId]: eventId },
           // Kept so "where the book opens" stays distinguishable from "where

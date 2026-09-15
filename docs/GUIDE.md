@@ -356,6 +356,13 @@ make, not the default — and while reading, PlotWeave asks before doing it, sin
 the control is a small ✕ beside the cursor and one stray click would hand you
 the whole book. Stepping the cursor back never asks: it only ever un-reveals.
 
+The choice belongs to the copy you made it on. Download a book again, or import
+a fresh `.pwk` of it, and the new copy opens at its first scene the way any
+newly arrived book does — so a book you once revealed in full is readable again
+without having to remember what you did to it. A reading position you are in
+the middle of is never overwritten this way: re-importing a book you are forty
+chapters into leaves you forty chapters in.
+
 ### Reading the book itself
 
 Most of the Library's books carry their own text — 31 of the 38 are complete
