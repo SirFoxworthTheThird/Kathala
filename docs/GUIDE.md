@@ -448,7 +448,11 @@ layers, and no **…** menu on a chapter row or a scene card — so there is no
 **Rename chapter**, **Delete chapter**, **Move to chapter** or **Delete scene**
 to hit by accident in a book you are only reading. The Calendar stops inviting
 you to drag a scene onto a different day, and the map's character panel shows
-what is recorded rather than offering to change it.
+what is recorded rather than offering to change it. The chapter bar keeps its
+scene steppers. Its **story player** is on the Map and only there (see
+[Maps](#maps)) — so it is not sitting on the Read screen offering to walk you
+through the ending on a timer — and if you do play the story on the map, pressing
+**stop** leaves your place where it carried you rather than clearing it.
 
 **Telling it how far you have got** is two taps: open the Timeline and press
 **Read to here** on the chapter you have reached. The reading notice on the
@@ -1133,6 +1137,13 @@ through a five-line window.
   goal you haven't set reads **none**, and the bar only appears once there is a
   target to measure against.
   Per-chapter goals are saved with the chapter.
+- **Italics** — prose written with underscores around it, `_like this_`, is
+  shown as *italics* rather than as underscores. That is how Project Gutenberg
+  marks emphasis, so every book in the Library uses it, and so can you: type the
+  underscores while drafting a scene and the Manuscript, the HTML export, the
+  Word file and the EPUB all set the words in italics. Markdown and plain-text
+  exports keep the underscores, because that is already how those formats say
+  it. An underscore inside a word — `snake_case`, `H_2O` — is left alone.
 - **Export** — download or copy the manuscript as Markdown, HTML, or plain text,
   or **compile a finished book file**: **Word (.docx)** or **EPUB**. The book
   formats build a title page (with an optional author), start each chapter on its
@@ -1746,7 +1757,15 @@ another floor, it switches to that floor and lands their pin at the right spot.
 
 Press **play** in the chapter bar and the map becomes a playback stage: as the
 story advances scene by scene, character pins glide between locations along their
-routes, so you can watch your cast move through the world. The story-notes overlay
+routes, so you can watch your cast move through the world. The player — play,
+stop and the speed control — appears **on the Map screen only**. The bar itself
+is on every screen, but playing the story is a thing the map does, and a
+transport control on the Timeline or the Read screen was driving a stage you
+could not see.
+
+If you are reading rather than writing, **stop** ends playback and leaves your
+place where the story carried you; for a writer it clears the time cursor back
+to *all chapters*, which is the reset a viewfinder wants when you put it down. The story-notes overlay
 shows the current chapter, synopsis, and relevant character status notes. For a
 frame narrative, the map can display outer-timeline characters as **ghost pins**;
 a historical-echo relationship marks shared places with echo rings.

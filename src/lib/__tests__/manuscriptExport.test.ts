@@ -77,3 +77,62 @@ describe('compileEpub', () => {
     expect(s.includes('<img src="cover.png" alt="My Book cover"')).toBe(true)
   })
 })
+
+/**
+ * Gutenberg's `_italics_` reach Word and the e-reader.
+ *
+ * A reader who exports a Library book was getting the underscores on the page
+ * of their e-reader too, which is the one place the app cannot come back and
+ * fix afterwards.
+ */
+describe('underscored emphasis in the binary formats', () => {
+  const italic: BuiltManuscript = {
+    totalWords: 5, totalScenes: 2, writtenScenes: 2,
+    chapters: [{
+      id: 'c1', number: 1, title: 'The Gate', synopsis: '', wordCount: 5, wordGoal: null, writtenScenes: 2,
+      scenes: [
+        { eventId: 'e1', title: 'One', text: 'She read the _Times_ & wept.', wordCount: 6, written: true },
+        { eventId: 'e2', title: 'Two', text: 'Nothing emphatic here.', wordCount: 3, written: true },
+      ],
+    }],
+  }
+
+  it('becomes an italic run in Word, and the underscores are gone', () => {
+    const xml = dec.decode(compileDocx(italic, { title: 'Book' }))
+    expect(xml).toContain('<w:i/>')
+    expect(xml).toContain('<w:t xml:space="preserve">Times</w:t>')
+    expect(xml).not.toContain('_Times_')
+    expect(xml).toContain('&amp;')
+  })
+
+  it('leaves Word\'s own text unitalicised, including the scene separator', () => {
+    /*
+      The absence beside the presence. `* * *` is emitted by this file, not by
+      the author, and a parser let loose on everything would be reaching into
+      the app's own furniture. Two scenes above, so a separator is emitted.
+
+      The title and author carry underscores here because that is the only input
+      that tells the two apart: with a plain title, parsing everything and
+      parsing only the prose produce identical documents, and the `emphasis`
+      flag would be a claim no test could check. A writer may well call their
+      book *The _Times_ Chronicle*, and the title page should say so.
+    */
+    const xml = dec.decode(compileDocx(italic, { title: 'The _Times_ Chronicle', author: 'A. _Writer_' }))
+    expect(xml, 'the title is printed as typed').toContain('The _Times_ Chronicle')
+    expect(xml, 'and so is the author').toContain('A. _Writer_')
+    // The separator's own <w:p>, not a fixed window back — a 200-character
+    // slice reached into the previous paragraph, which is italic and rightly so.
+    const at = xml.indexOf('* * *')
+    const sep = xml.slice(xml.lastIndexOf('<w:p>', at), at)
+    expect(sep, 'the separator paragraph carries no italic run').not.toContain('<w:i/>')
+    // And exactly one italic run in the whole document — the one in the prose.
+    expect(xml.split('<w:i/>').length - 1).toBe(1)
+  })
+
+  it('becomes <em> in EPUB', () => {
+    const zip = dec.decode(compileEpub(italic, { title: 'Book' }))
+    expect(zip).toContain('<em>Times</em>')
+    expect(zip).not.toContain('_Times_')
+    expect(zip).toContain('&amp;')
+  })
+})

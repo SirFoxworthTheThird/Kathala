@@ -52,10 +52,14 @@ test('the bottom bar scope selector switches between one timeline and all', asyn
   await expect(page.getByTitle('A stolen glance', { exact: true })).toBeVisible()
   await expect(page.getByTitle('Ash writes home', { exact: true })).toBeVisible()
 
-  // Focus one timeline → the map play control returns and the other timeline's
-  // scene drops out of the bar.
+  // Focus one timeline → the other timeline's scene drops out of the bar.
+  //
+  // This used to check the play button's title here as a proxy for "the single
+  // track is in use", since merged mode labels it "Play all timelines on the
+  // map". The transport controls live on the map now, so the proxy is gone from
+  // this screen; the label distinction it stood for is checked on the map in
+  // `playerOnMapOnly.spec.ts`, and the scene set below is the direct evidence.
   await scope.selectOption('Main Timeline')
-  await expect(page.getByTitle('Play story on the map')).toBeVisible()
   await expect(page.getByTitle('A stolen glance', { exact: true })).toBeVisible()
   await expect(page.getByTitle('Ash writes home', { exact: true })).toHaveCount(0)
 
@@ -71,11 +75,21 @@ test('the merged view plays every timeline on the map, following each event', as
 
   await expect(page.getByLabel('Timeline bar scope')).toHaveValue('all-chapter')
 
-  // The merged Play runs on the map like any playback…
-  await page.getByTitle('Play all timelines on the map').click()
-  await expect(page).toHaveURL(/#\/worlds\/[^/]+\/maps/)
+  /*
+    On the map, where the transport controls are.
 
-  // …advancing the cursor from the first timeline's scene ("A stolen glance")
+    This used to press play on the Timeline and assert the URL turned into the
+    map — playback carried you there to show you what it was doing. The controls
+    live on the map now, so that jump has nothing left to do and is gone with
+    it. What the test is actually for survives unchanged: merged playback walks
+    the cursor across *both* timelines.
+  */
+  const worldId = new URL(page.url()).hash.split('/')[2]
+  await page.goto(`/#/worlds/${worldId}/maps`, { waitUntil: 'load' })
+  await expect(page.getByLabel('Timeline bar scope')).toHaveValue('all-chapter')
+  await page.getByTitle('Play all timelines on the map').click()
+
+  // Advancing the cursor from the first timeline's scene ("A stolen glance")
   // into the second timeline's ("Ash writes home"); the bar stays visible.
   await expect(page.getByText('Ash writes home', { exact: true })).toBeVisible({ timeout: 15000 })
 })

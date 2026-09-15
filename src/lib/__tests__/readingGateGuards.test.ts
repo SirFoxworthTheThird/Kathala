@@ -42,13 +42,23 @@ const sources = import.meta.glob('../../**/*.{ts,tsx}', {
  * reach.
  *
  * `useRevealAll` **is** the guard. The others clear a cursor that has stopped
- * meaning anything — the scene was deleted, the world was closed, playback
- * ended — which is bookkeeping, not a reveal a reader chose.
+ * meaning anything — the scene was deleted, the world was closed — which is
+ * bookkeeping, not a reveal a reader chose.
+ *
+ * Playback is the exception that had to be earned rather than argued. Its clear
+ * is in `handleStop`, which is somebody pressing Stop, not the timer running
+ * out; this list said "playback reaching the end" and that was never what the
+ * code did — it was the full-reveal state from a nine-pixel square, with no
+ * confirmation, offered to readers on every screen.
+ *
+ * It is allowed now because the call sits behind `if (!gate.active)`: stopping
+ * leaves a reader's place where playback carried them, and only a writer gets
+ * the reset to "all chapters". `e2e/playerOnMapOnly.spec.ts` holds both halves.
  */
 const ALLOWED: { file: string; why: string }[] = [
   { file: 'components/useRevealAll.tsx', why: 'the guard itself' },
   { file: 'components/AppShell.tsx', why: 'the cursor names a scene that no longer exists' },
-  { file: 'features/timeline/useTimelinePlayback.ts', why: 'playback reaching the end' },
+  { file: 'features/timeline/useTimelinePlayback.ts', why: "Stop, and only for a writer — the call is behind !gate.active" },
   { file: 'features/timeline/BulkActionToolbar.tsx', why: 'the active scene was just deleted' },
 ]
 

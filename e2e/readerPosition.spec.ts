@@ -57,9 +57,20 @@ test.describe('A reader can say how far they have got', () => {
     // The writer's wording is not what a reader is shown.
     await expect(page.getByRole('button', { name: 'View from here' })).toHaveCount(0)
 
-    // Two taps from the dashboard, and it does move the position.
+    /*
+      Two taps from the dashboard, and it does move the position.
+
+      The last row is a long way ahead of where this reader is, so pressing it
+      asks first — the guard that stops a browse through the chapter list from
+      revealing the cast. Confirming is the third tap and only for a jump like
+      this one: reading on into the next chapter is never interrupted, which
+      `readingTimelineGuards.spec.ts` holds.
+    */
     const before = await storedCursor(page)
     await readToHere.last().click()
+    const confirm = page.getByRole('button', { name: 'Read ahead' })
+    await expect(confirm, 'a jump this far asks first').toBeVisible()
+    await confirm.click()
     await expect.poll(() => storedCursor(page), { timeout: 15_000 }).not.toBe(before)
     // Having read to there, the row says so.
     await expect(page.getByRole('button', { name: 'Reading here' }).first()).toBeVisible()
