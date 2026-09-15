@@ -1133,6 +1133,13 @@ through a five-line window.
   goal you haven't set reads **none**, and the bar only appears once there is a
   target to measure against.
   Per-chapter goals are saved with the chapter.
+- **Italics** — prose written with underscores around it, `_like this_`, is
+  shown as *italics* rather than as underscores. That is how Project Gutenberg
+  marks emphasis, so every book in the Library uses it, and so can you: type the
+  underscores while drafting a scene and the Manuscript, the HTML export, the
+  Word file and the EPUB all set the words in italics. Markdown and plain-text
+  exports keep the underscores, because that is already how those formats say
+  it. An underscore inside a word — `snake_case`, `H_2O` — is left alone.
 - **Export** — download or copy the manuscript as Markdown, HTML, or plain text,
   or **compile a finished book file**: **Word (.docx)** or **EPUB**. The book
   formats build a title page (with an optional author), start each chapter on its

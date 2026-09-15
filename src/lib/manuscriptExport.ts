@@ -1,6 +1,7 @@
 import type { BuiltManuscript, CompileOptions } from './manuscriptCompile'
 import { zipStore, type ZipEntry } from './zip'
 import { splitParagraphs as paragraphs } from '@/lib/manuscriptParagraphs'
+import { emphasisMarkup, emphasisSpans } from '@/lib/proseEmphasis'
 
 /**
  * Compile a built manuscript to a binary book file — Word (`.docx`) or EPUB —
@@ -40,7 +41,15 @@ function chapterHeading(number: number, title: string): string {
 
 // ── DOCX ──────────────────────────────────────────────────────────────────────
 
-function docPara(text: string, o: { bold?: boolean; center?: boolean; sizeHalfPt?: number; pageBreakBefore?: boolean } = {}): string {
+/**
+ * One Word paragraph.
+ *
+ * `emphasis` splits the text into runs so `_like this_` arrives in Word as
+ * italics rather than as underscores. Only prose asks for it: the title page,
+ * the chapter headings and the scene separator are the app's own text, and
+ * `* * *` in particular has no business being parsed for markup.
+ */
+function docPara(text: string, o: { bold?: boolean; center?: boolean; sizeHalfPt?: number; pageBreakBefore?: boolean; emphasis?: boolean } = {}): string {
   const pPr: string[] = []
   if (o.pageBreakBefore) pPr.push('<w:pageBreakBefore/>')
   if (o.center) pPr.push('<w:jc w:val="center"/>')
@@ -48,8 +57,19 @@ function docPara(text: string, o: { bold?: boolean; center?: boolean; sizeHalfPt
   if (o.bold) rPr.push('<w:b/>')
   if (o.sizeHalfPt) rPr.push(`<w:sz w:val="${o.sizeHalfPt}"/>`)
   const pPrXml = pPr.length ? `<w:pPr>${pPr.join('')}</w:pPr>` : ''
-  const rPrXml = rPr.length ? `<w:rPr>${rPr.join('')}</w:rPr>` : ''
-  return `<w:p>${pPrXml}<w:r>${rPrXml}<w:t xml:space="preserve">${xml(text)}</w:t></w:r></w:p>`
+
+  // An empty paragraph still needs its run, or Word sees no paragraph at all.
+  const parsed = o.emphasis ? emphasisSpans(text) : []
+  const spans = parsed.length ? parsed : [{ text, em: false }]
+
+  const runs = spans
+    .map((s) => {
+      const props = s.em ? [...rPr, '<w:i/>'] : rPr
+      const rPrXml = props.length ? `<w:rPr>${props.join('')}</w:rPr>` : ''
+      return `<w:r>${rPrXml}<w:t xml:space="preserve">${xml(s.text)}</w:t></w:r>`
+    })
+    .join('')
+  return `<w:p>${pPrXml}${runs}</w:p>`
 }
 
 export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): Uint8Array {
@@ -76,7 +96,7 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
     scenes.forEach((s, i) => {
       if (i > 0) body.push(docPara(sep, { center: true }))
       const paras = s.written ? paragraphs(s.text) : ['[No prose yet]']
-      for (const p of paras) body.push(docPara(p))
+      for (const p of paras) body.push(docPara(p, { emphasis: true }))
     })
   })
 
@@ -156,7 +176,7 @@ export function compileEpub(m: BuiltManuscript, opts: BookExportOptions = {}): U
   const chapterFiles = blocks.map(({ ch, scenes }, idx) => {
     const scenesHtml = scenes
       .map((s) => (s.written ? paragraphs(s.text) : ['[No prose yet]'])
-        .map((p, i) => `<p${i === 0 ? ' class="first"' : ''}>${xml(p)}</p>`).join(''))
+        .map((p, i) => `<p${i === 0 ? ' class="first"' : ''}>${emphasisMarkup(p, xml)}</p>`).join(''))
       .join('<hr class="sep"/>')
     return {
       id: `ch${idx + 1}`,

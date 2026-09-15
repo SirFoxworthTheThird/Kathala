@@ -1,5 +1,6 @@
 import type { Chapter, WorldEvent, SceneText } from '@/types'
 import { splitParagraphs as paragraphs } from '@/lib/manuscriptParagraphs'
+import { emphasisMarkup } from '@/lib/proseEmphasis'
 
 /**
  * Manuscript assembly: stitch per-scene prose (one SceneText per event) into a
@@ -146,7 +147,9 @@ export function compileManuscript(
         const sceneHtml = scenes
           .map((s) =>
             (s.written ? paragraphs(s.text) : ['<em>[No prose yet]</em>'])
-              .map((p) => (s.written ? `<p>${escapeHtml(p)}</p>` : `<p>${p}</p>`))
+              // `emphasisMarkup` escapes the text and leaves the `<em>` alone;
+              // the placeholder is already markup and is passed through.
+              .map((p) => (s.written ? `<p>${emphasisMarkup(p, escapeHtml)}</p>` : `<p>${p}</p>`))
               .join('\n')
           )
           .join('\n<hr class="scene-break" />\n')
