@@ -6,12 +6,17 @@
 
 <!-- List the tests and manual checks performed. -->
 
-## Book example gate
+## Books
 
-If this pull request adds or substantially revises a book example, the following declaration is required. Delete this section only when the pull request does not affect an example.
+The shipped books no longer live in this repository. They are in
+[SirFoxworthTheThird/PlotWeave-Library](https://github.com/SirFoxworthTheThird/PlotWeave-Library),
+published to their own site, so adding or revising one is a pull request there
+and does not need a release of this app.
 
-- [ ] I followed the [mandatory example-authoring rules](../docs/EXAMPLE_AUTHORING_RULES.md).
-- [ ] I completed the [book example release checklist](../docs/EXAMPLE_AUTHORING_CHECKLIST.md).
-- [ ] I included the required completion statement and validation evidence in this pull request.
+The authoring rules and the release checklist moved with them, to
+[`docs/AUTHORING.md`](https://github.com/SirFoxworthTheThird/PlotWeave-Library/blob/main/docs/AUTHORING.md)
+and [`docs/CHECKLIST.md`](https://github.com/SirFoxworthTheThird/PlotWeave-Library/blob/main/docs/CHECKLIST.md).
 
-An example must not be merged while an applicable box is unchecked.
+What still belongs here is anything that changes how the app *reads* a book —
+the catalogue's shape, the gate, the Library dialog. When a change does, say so
+above and note which books you checked it against.
