@@ -5,7 +5,7 @@ import { PortraitImage } from '@/components/PortraitImage'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
-import { useTimelineEvents } from '@/db/hooks/useTimeline'
+import { useTimelineEvents, useChapters } from '@/db/hooks/useTimeline'
 import { sceneCast, type CastMember, type CastThing } from '@/lib/sceneCast'
 import { cn } from '@/lib/utils'
 
@@ -93,20 +93,29 @@ function useSceneInView(scrollRef: RefObject<HTMLDivElement | null>, sceneCount:
  * lookup for the character also matched *The White Rabbit's House* and *White
  * Rabbit's Pocket Watch*.
  */
-function Row({ to, name, imageId, icon }: {
+function Row({ to, name, imageId, icon, quiet }: {
   to: string; name: string; imageId: string | null; icon: typeof User
+  /** Named by someone on stage rather than present. */
+  quiet?: boolean
 }) {
   return (
     <li className="flex items-center gap-2.5 rounded-md p-1.5 transition-colors hover:bg-[hsl(var(--accent)/0.4)]">
+      {/*
+        Someone spoken of is drawn back a little, so being present reads at a
+        glance rather than by finding which heading a row sits under.
+      */}
       <PortraitImage
         imageId={imageId}
         alt=""
         zoomable
         fallbackIcon={icon}
-        className="h-10 w-10 shrink-0 rounded-md object-cover"
+        className={cn('h-10 w-10 shrink-0 rounded-md object-cover', quiet && 'opacity-60 saturate-50')}
         fallbackClassName="h-10 w-10 shrink-0 rounded-md"
       />
-      <span className="min-w-0 flex-1 truncate text-sm text-[hsl(var(--foreground))]">{name}</span>
+      <span className={cn(
+        'min-w-0 flex-1 truncate text-sm',
+        quiet ? 'italic text-[hsl(var(--muted-foreground))]' : 'text-[hsl(var(--foreground))]',
+      )}>{name}</span>
       {/*
         An icon with no text of its own, so `aria-label` is the name rather than
         a replacement for one. It says where it goes: "Open" alone, repeated
@@ -151,11 +160,25 @@ export function SceneXRay({
   const eventId = useSceneInView(scrollRef, sceneCount)
 
   const events = useTimelineEvents(timelineId)
+  const chapters = useChapters(timelineId)
   const characters = useCharacters(worldId)
   const items = useItems(worldId)
   const markers = useAllLocationMarkers(worldId)
 
   const event = useMemo(() => events.find((e) => e.id === eventId) ?? null, [events, eventId])
+
+  /*
+    The scene's own name, as the chapter bar writes it. A scene need not have a
+    title — the chapter alone is still an answer, and no chapter at all leaves
+    the card with just its heading rather than a stray separator.
+  */
+  const where = useMemo(() => {
+    if (!event) return null
+    const number = chapters.find((c) => c.id === event.chapterId)?.number
+    const parts = [number !== undefined ? `Ch. ${number}` : null, event.title?.trim() || null]
+    return parts.filter(Boolean).join(' · ') || null
+  }, [event, chapters])
+
   const cast = useMemo(
     () => sceneCast({ event, characters, items, markers }),
     [event, characters, items, markers],
@@ -171,7 +194,7 @@ export function SceneXRay({
   const named = cast.characters.filter((c) => !c.onStage)
   const person = (c: CastMember) => (
     <Row key={c.id} to={`/worlds/${worldId}/characters/${c.id}`} name={c.name}
-      imageId={c.imageId} icon={User} />
+      imageId={c.imageId} icon={User} quiet={!c.onStage} />
   )
   const thing = (t: CastThing, to: string, icon: typeof User) => (
     <Row key={t.id} to={to} name={t.name} imageId={t.imageId} icon={icon} />
@@ -207,8 +230,23 @@ export function SceneXRay({
         centred and capped at `max-w-2xl`, so on a wide screen this takes space
         that was margin.
       */}
+      {/*
+        The width is animated because changing it moves the page.
+
+        The reading column is centred in whatever is left over, so opening the
+        card slides the prose about 112px to the left — measured at 1440px — and
+        an instant jump of that size under someone's eyes is the wrong way to
+        find out the panel opened. Floating it over the margin instead would
+        avoid the move, but the nav rail is 208px when pinned and at 1280px the
+        card would then be sitting on top of the text; reserving the space
+        permanently would mean collapsing the card gives no page back, which is
+        the only reason to collapse it. So it glides.
+      */}
       <aside
-        className={cn('hidden shrink-0 py-3 pr-3 lg:block', open ? 'w-72' : 'w-16')}
+        className={cn(
+          'hidden shrink-0 py-3 pr-3 transition-[width] duration-200 ease-out motion-reduce:transition-none lg:block',
+          open ? 'w-72' : 'w-16',
+        )}
         aria-label="In this scene"
       >
         {/*
@@ -222,10 +260,22 @@ export function SceneXRay({
           name seventeen things and the card must not outgrow the window.
         */}
         <div className="flex max-h-full flex-col overflow-hidden rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm">
-          <div className={cn('flex items-center gap-1 p-2', open ? 'justify-between' : 'justify-center')}>
+          <div className={cn('flex items-start gap-1 p-2', open ? 'justify-between' : 'justify-center')}>
             {open && (
-              <span className="pl-1 text-[11px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
-                In this scene
+              <span className="min-w-0 pl-1">
+                <span className="block text-[11px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+                  In this scene
+                </span>
+                {/*
+                  Which scene. "In this scene" had no antecedent on a card that
+                  never named one, and after a few minutes of scrolling that is
+                  the first thing you want to know it is keeping up with.
+                */}
+                {where && (
+                  <span className="mt-0.5 block truncate text-xs text-[hsl(var(--foreground))]" title={where}>
+                    {where}
+                  </span>
+                )}
               </span>
             )}
             <button
@@ -263,27 +313,54 @@ export function SceneXRay({
         type="button"
         onClick={() => setDrawer(true)}
         aria-label="Show who is in this scene"
-        className="fixed bottom-24 right-3 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-[hsl(var(--muted-foreground))] shadow-md transition-colors hover:text-[hsl(var(--foreground))] lg:hidden"
+        /*
+          Above the chapter bar, which is fixed to the bottom at `z-1000`. The
+          button clears it by height today, but a shorter viewport would put it
+          underneath — and a control you cannot press is worse than one that is
+          not there.
+        */
+        className="fixed bottom-24 right-3 z-[1001] flex h-10 w-10 items-center justify-center rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-[hsl(var(--muted-foreground))] shadow-md transition-colors hover:text-[hsl(var(--foreground))] lg:hidden"
       >
         <Users className="h-4 w-4" aria-hidden="true" />
       </button>
 
       {drawer && (
-        <div className="fixed inset-0 z-40 lg:hidden">
+        /*
+          The app's dialog layer, not `z-40`. The chapter bar is fixed to the
+          bottom at `z-1000`, so a sheet rising from the bottom edge came up
+          *behind* it and had its last rows covered — the Place group was cut in
+          half at 390px. Same layer as the Library dialog, which is the other
+          thing that covers the whole screen.
+        */
+        <div className="fixed inset-0 z-[2000] lg:hidden">
           <button
             type="button"
             aria-label="Close"
             className="absolute inset-0 bg-black/40"
             onClick={() => setDrawer(false)}
           />
+          {/*
+            A sheet from the bottom, not a drawer from the side.
+
+            The button that opens it is already in the bottom corner, within a
+            thumb's reach, and a panel that rises to meet the thumb is the phone
+            gesture; a side drawer asks the same hand to cross the screen. It is
+            capped at 70vh so the page it is about stays visible above it, and
+            the safe-area inset keeps the last row clear of the home indicator.
+          */}
           <div
             role="dialog"
             aria-label="In this scene"
-            className="absolute inset-y-0 right-0 flex w-72 max-w-[85vw] flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--background))]"
+            className="absolute inset-x-0 bottom-0 flex max-h-[70vh] flex-col rounded-t-xl border-t border-[hsl(var(--border))] bg-[hsl(var(--card))] pb-[env(safe-area-inset-bottom,0px)] shadow-lg"
           >
-            <div className="flex items-center justify-between p-1.5">
-              <span className="pl-1.5 text-[11px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
-                In this scene
+            <div className="flex items-start justify-between p-2">
+              <span className="min-w-0 pl-1">
+                <span className="block text-[11px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+                  In this scene
+                </span>
+                {where && (
+                  <span className="mt-0.5 block truncate text-xs text-[hsl(var(--foreground))]">{where}</span>
+                )}
               </span>
               <button
                 type="button"
@@ -294,7 +371,7 @@ export function SceneXRay({
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-1.5 pb-4">{list}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto border-t border-[hsl(var(--border))] p-1.5">{list}</div>
           </div>
         </div>
       )}

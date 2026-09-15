@@ -188,15 +188,6 @@ export default function ManuscriptView() {
     either — it sees the scene just scrolled to, and `cursorForScene` answers
     "stay" for the scene the cursor is already on.
   */
-  /*
-    The cursor as the saver sees it. The save runs in a cleanup whose effect is
-    keyed on the world, so reading `activeEventId` from that closure would store
-    whatever it was when the reader arrived — which is exactly the value the
-    comparison exists to detect a change in.
-  */
-  const cursorRef = useRef(activeEventId)
-  useEffect(() => { cursorRef.current = activeEventId }, [activeEventId])
-
   const restoredRef = useRef(false)
   useEffect(() => { restoredRef.current = false }, [worldId])
   useEffect(() => {
@@ -273,15 +264,22 @@ export default function ManuscriptView() {
     const onScroll = () => { if (!frame) frame = requestAnimationFrame(read) }
 
     /*
-      The cursor is stamped here, on the way out, not alongside `scrollTop`.
-      It follows the page by an observer that fires after the scroll, so a stamp
-      taken while scrolling is a scene stale — and every ordinary scroll then
+      The cursor is stamped here, on the way out, not alongside `scrollTop`: it
+      follows the page by an observer that fires after the scroll, so a stamp
+      taken while scrolling is a scene stale, and every ordinary scroll then
       looked like a deliberate jump and threw the spot away.
+
+      Read straight from the store rather than through a ref kept in step by an
+      effect. That ref could be one commit behind when the cleanup ran — the
+      cursor and the navigation landing in the same commit — and the stamp was
+      then wrong, `spotStillApplies` said no, and the reader was dropped at the
+      top of the book. Intermittently, which is how it showed up: one run red,
+      the retry green.
     */
     const write = () => {
       const spot = spotRef.current
       if (!spot) return
-      const stamped: ReadingSpot = { ...spot, cursorAt: cursorRef.current }
+      const stamped: ReadingSpot = { ...spot, cursorAt: useAppStore.getState().activeEventId }
       try { localStorage.setItem(spotKey(worldId), JSON.stringify(stamped)) } catch { /* private window */ }
     }
 
