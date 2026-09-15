@@ -34,6 +34,20 @@ import { cn } from '@/lib/utils'
 
 const OPEN_KEY = 'plotweave-xray-open'
 
+/**
+ * The room the page leaves down its right-hand side for the card.
+ *
+ * `w-72` plus the 12px of padding on each side of it. Constant whether the card
+ * is open or shut, which is the point: the reading column is centred in what is
+ * left, so a gutter that changed size would move the prose sideways every time
+ * the card was toggled.
+ *
+ * Only from `xl`. At 1280px with the nav rail pinned this leaves 772px for a
+ * 672px column and its padding; at `lg` it would squeeze the measure to 516px,
+ * so below `xl` the sheet takes over instead.
+ */
+export const XRAY_GUTTER = 'xl:pr-[19.5rem]'
+
 function readOpen(): boolean {
   try {
     const raw = localStorage.getItem(OPEN_KEY)
@@ -231,22 +245,34 @@ export function SceneXRay({
         that was margin.
       */}
       {/*
-        The width is animated because changing it moves the page.
+        Floating over the page, not beside it.
 
-        The reading column is centred in whatever is left over, so opening the
-        card slides the prose about 112px to the left — measured at 1440px — and
-        an instant jump of that size under someone's eyes is the wrong way to
-        find out the panel opened. Floating it over the margin instead would
-        avoid the move, but the nav rail is 208px when pinned and at 1280px the
-        card would then be sitting on top of the text; reserving the space
-        permanently would mean collapsing the card gives no page back, which is
-        the only reason to collapse it. So it glides.
+        As a column in the flex row this took layout width, so showing it slid
+        the reading column about 112px to the left — measured at 1440px — and
+        hiding it slid the text back. Animating that only made the jump a glide;
+        the text still moved, which is the wrong thing to do to someone in the
+        middle of a sentence.
+
+        Out of the flow, the prose never moves at all. The cost is that on a
+        narrow desktop the card overlaps the text rather than sitting in the
+        margin — at 1280px with the nav rail pinned there are only 200px of
+        margin against a 288px card — which is what the shadow and the collapse
+        control are for. It behaves like a panel laid on the page, and the page
+        underneath is exactly where it was.
+
+        The page keeps a gutter for it either way — see `XRAY_GUTTER` — so the
+        card never lies across the text. Floating *and* reserving sounds like
+        one too many, but they answer different questions: out of the flow means
+        the prose cannot move, and the reserved gutter means it cannot be
+        covered. Measured with the nav rail pinned at 1280px, a card with no
+        gutter behind it sat 76px over the end of every line.
+
+        `pointer-events-none` on the container and `auto` on the card itself, or
+        the empty space below the card would swallow clicks and text selection
+        down the whole right-hand side of the book.
       */}
       <aside
-        className={cn(
-          'hidden shrink-0 py-3 pr-3 transition-[width] duration-200 ease-out motion-reduce:transition-none lg:block',
-          open ? 'w-72' : 'w-16',
-        )}
+        className="pointer-events-none absolute inset-y-0 right-0 z-20 hidden p-3 xl:block"
         aria-label="In this scene"
       >
         {/*
@@ -259,7 +285,12 @@ export function SceneXRay({
           `max-h-full` with the list scrolling inside it, because a scene can
           name seventeen things and the card must not outgrow the window.
         */}
-        <div className="flex max-h-full flex-col overflow-hidden rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm">
+        <div className={cn(
+          'pointer-events-auto flex max-h-full flex-col overflow-hidden rounded-lg',
+          'border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-lg',
+          'transition-[width] duration-200 ease-out motion-reduce:transition-none',
+          open ? 'w-72' : 'w-12',
+        )}>
           <div className={cn('flex items-start gap-1 p-2', open ? 'justify-between' : 'justify-center')}>
             {open && (
               <span className="min-w-0 pl-1">
@@ -319,7 +350,7 @@ export function SceneXRay({
           underneath — and a control you cannot press is worse than one that is
           not there.
         */
-        className="fixed bottom-24 right-3 z-[1001] flex h-10 w-10 items-center justify-center rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-[hsl(var(--muted-foreground))] shadow-md transition-colors hover:text-[hsl(var(--foreground))] lg:hidden"
+        className="fixed bottom-24 right-3 z-[1001] flex h-10 w-10 items-center justify-center rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-[hsl(var(--muted-foreground))] shadow-md transition-colors hover:text-[hsl(var(--foreground))] xl:hidden"
       >
         <Users className="h-4 w-4" aria-hidden="true" />
       </button>
@@ -332,7 +363,7 @@ export function SceneXRay({
           half at 390px. Same layer as the Library dialog, which is the other
           thing that covers the whole screen.
         */
-        <div className="fixed inset-0 z-[2000] lg:hidden">
+        <div className="fixed inset-0 z-[2000] xl:hidden">
           <button
             type="button"
             aria-label="Close"
