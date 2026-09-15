@@ -9,6 +9,7 @@ import { useWorld } from '@/db/hooks/useWorlds'
 import { useSceneTextsByEvent, useHasProse } from '@/db/hooks/useManuscript'
 import { ReadingProgress } from './ReadingProgress'
 import { ReadingTypeControls } from './ReadingTypeControls'
+import { ReadingContents } from './ReadingContents'
 import { typeStyle } from '@/lib/readingType'
 import { useReadingMode } from '@/db/hooks/useReading'
 import { useAppStore, useActiveEventId } from '@/store'
@@ -225,6 +226,23 @@ export default function ManuscriptView() {
     run did not reach it.
   */
   const readingType = useAppStore((st) => st.readingType)
+  /*
+    Which chapter the spoiler gate has reached. Null when the reader chose "all
+    chapters" — a deliberate full reveal, so nothing is withheld from the
+    contents list either.
+  */
+  const gateChapterNumber = useMemo(() => {
+    if (!activeEventId) return null
+    const chapterId = eventById.get(activeEventId)?.chapterId
+    const number = chapterId === undefined ? undefined : chapterNumberById.get(chapterId)
+    /*
+      0, not null, when the cursor names a scene whose chapter cannot be found —
+      mid-load, or a world mended by hand. Null here means "all chapters", so
+      falling back to it would answer an unanswerable question by revealing the
+      whole book. 0 offers nothing instead, which is recoverable by reading on.
+    */
+    return number ?? 0
+  }, [activeEventId, eventById, chapterNumberById])
   const worldHasProse = useHasProse(worldId ?? null)
   const openingTheBook = !hasProse && worldHasProse === true
 
@@ -324,7 +342,15 @@ export default function ManuscriptView() {
           */
           <div className="flex w-full flex-wrap items-center justify-between gap-2">
             <ReadingProgress scrollRef={scrollRef} chapterCount={manuscript.chapters.length} />
-            <ReadingTypeControls />
+            <div className="flex items-center gap-2">
+              <ReadingContents
+                scrollRef={scrollRef}
+                chapters={manuscript.chapters}
+                gateChapterNumber={gateChapterNumber}
+                placeEventId={activeEventId}
+              />
+              <ReadingTypeControls />
+            </div>
           </div>
         )}
       </PageHeader>

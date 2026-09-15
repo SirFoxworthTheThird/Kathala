@@ -385,6 +385,17 @@ That readout answers *where you are looking*, which is not always where your
 place is. Scroll back to re-read an earlier chapter and it follows you back,
 while the cursor — and everything it has unlocked — stays where you had got to.
 
+**You can turn back without losing your place.** **Contents** lists the
+chapters you have read — click one and the page goes there, while everything you
+have unlocked stays unlocked. Once you have wandered off, **Back to your place**
+appears to return you, and stands down again when you are back.
+
+Chapters you have not reached are deliberately not in that list. The whole
+book's text is on the page, so you can always *read* on — but a click that
+landed ten chapters ahead would unlock ten chapters of cast, places and lore in
+one movement, which is the thing reading mode exists to prevent. Going forward
+is done by reading.
+
 **You can set the type.** On the right of that same row: **−** and **+** step
 the text through five sizes, **Sans** swaps the world's own face for a plain
 one, and **Snug / Relaxed / Airy** set the line spacing. It is your preference
