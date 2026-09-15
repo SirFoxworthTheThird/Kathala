@@ -6,7 +6,11 @@ import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
 import { useTimelines, useChapters, useTimelineEvents, updateChapter } from '@/db/hooks/useTimeline'
 import { useWorld } from '@/db/hooks/useWorlds'
-import { useSceneTextsByEvent } from '@/db/hooks/useManuscript'
+import { useSceneTextsByEvent, useHasProse } from '@/db/hooks/useManuscript'
+import { ReadingProgress } from './ReadingProgress'
+import { ReadingTypeControls } from './ReadingTypeControls'
+import { ReadingContents } from './ReadingContents'
+import { typeStyle } from '@/lib/readingType'
 import { useReadingMode } from '@/db/hooks/useReading'
 import { useAppStore, useActiveEventId } from '@/store'
 import { computeSortKeySync } from '@/lib/sortKey'
@@ -208,6 +212,39 @@ export default function ManuscriptView() {
 
   const pct = goal > 0 ? Math.min(100, Math.round((manuscript.totalWords / goal) * 100)) : 0
   const hasProse = manuscript.writtenScenes > 0
+  /*
+    Two different questions. `hasProse` is "has the manuscript been compiled",
+    which is false while the prose is still coming out of IndexedDB;
+    `worldHasProse` asks the database directly.
+
+    The gap between them is short but real, and on a long book it is long
+    enough to render the empty state — telling a reader their book has no text
+    at the one moment it has the most. It was measured at one worker, found to
+    commit in a single pass, and written off as unreachable; under four workers
+    `readingOpening.spec.ts` recorded the sequence waiting -> no-prose-yet ->
+    prose on The Count of Monte Cristo. A branch is not unreachable because one
+    run did not reach it.
+  */
+  const readingType = useAppStore((st) => st.readingType)
+  /*
+    Which chapter the spoiler gate has reached. Null when the reader chose "all
+    chapters" — a deliberate full reveal, so nothing is withheld from the
+    contents list either.
+  */
+  const gateChapterNumber = useMemo(() => {
+    if (!activeEventId) return null
+    const chapterId = eventById.get(activeEventId)?.chapterId
+    const number = chapterId === undefined ? undefined : chapterNumberById.get(chapterId)
+    /*
+      0, not null, when the cursor names a scene whose chapter cannot be found —
+      mid-load, or a world mended by hand. Null here means "all chapters", so
+      falling back to it would answer an unanswerable question by revealing the
+      whole book. 0 offers nothing instead, which is recoverable by reading on.
+    */
+    return number ?? 0
+  }, [activeEventId, eventById, chapterNumberById])
+  const worldHasProse = useHasProse(worldId ?? null)
+  const openingTheBook = !hasProse && worldHasProse === true
 
   return (
     <div className="flex h-full flex-col">
@@ -295,10 +332,45 @@ export default function ManuscriptView() {
             <span className="shrink-0 text-[11px] tabular-nums text-[hsl(var(--muted-foreground))]">{pct}%</span>
           </div>
         )}
+        {readingMode && hasProse && (
+          /*
+            The reader's row. Not the header's `actions` slot, which PageHeader
+            withholds from a reader on purpose — those are authoring controls
+            without exception, and the blanket rule is what keeps a screen added
+            later right by default. Reading controls are a different thing that
+            happens to sit nearby.
+          */
+          <div className="flex w-full flex-wrap items-center justify-between gap-2">
+            <ReadingProgress scrollRef={scrollRef} chapterCount={manuscript.chapters.length} />
+            <div className="flex items-center gap-2">
+              <ReadingContents
+                scrollRef={scrollRef}
+                chapters={manuscript.chapters}
+                gateChapterNumber={gateChapterNumber}
+                placeEventId={activeEventId}
+              />
+              <ReadingTypeControls />
+            </div>
+          </div>
+        )}
       </PageHeader>
 
       <div ref={scrollRef} className="flex-1 overflow-auto">
-        {!hasProse ? (
+        {openingTheBook ? (
+          /*
+            A shape the prose is about to fill, rather than a spinner: the page
+            keeps the measure it is going to use, so the first paragraph does
+            not arrive into a jump.
+          */
+          <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6" aria-live="polite" aria-busy="true">
+            <p className="text-sm text-[hsl(var(--muted-foreground))]">Opening the book…</p>
+            <div className="mt-6 space-y-3" aria-hidden="true">
+              {[97, 93, 99, 88, 96, 72, 95, 98, 90, 99, 86, 61].map((w, i) => (
+                <div key={i} className="h-3 rounded bg-[hsl(var(--muted))] opacity-60" style={{ width: `${w}%` }} />
+              ))}
+            </div>
+          </div>
+        ) : !hasProse ? (
           /*
             MS-4 asked for a second version of this sentence, for a reader on a
             Library world who cannot write the prose it tells them to write.
@@ -327,7 +399,12 @@ export default function ManuscriptView() {
               const scenes = mode === 'reading' ? ch.scenes.filter((s) => s.written) : ch.scenes
               if (mode === 'reading' && scenes.length === 0) return null
               return (
-                <section key={ch.id} className="mb-12">
+                <section
+                  key={ch.id}
+                  className="mb-12"
+                  data-chapter-number={ch.number}
+                  data-chapter-words={ch.wordCount}
+                >
                   <div className="mb-4 border-b border-[hsl(var(--border))] pb-2">
                     <h2 className="text-lg font-semibold text-[hsl(var(--foreground))]">
                       Ch. {ch.number} — {ch.title || 'Untitled'}
@@ -364,7 +441,18 @@ export default function ManuscriptView() {
                         </div>
                       )}
                       {s.written ? (
-                        <div className="text-[15px] leading-relaxed text-[hsl(var(--foreground))]" style={{ fontFamily: 'var(--font-prose)' }}>
+                        <div
+                          className={cn(
+                            'text-[hsl(var(--foreground))]',
+                            // The draft keeps its fixed setting: the reader's
+                            // preference is about reading, and an author
+                            // checking line lengths wants them to stay put.
+                            mode === 'reading' ? undefined : 'text-[15px] leading-relaxed',
+                          )}
+                          style={mode === 'reading'
+                            ? typeStyle(readingType)
+                            : { fontFamily: 'var(--font-prose)' }}
+                        >
                           {paragraphs(s.text).map((p, j) => (
                             <p key={j} className="mb-4 [text-indent:1.5rem] first:[text-indent:0]">{p}</p>
                           ))}
