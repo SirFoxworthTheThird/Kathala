@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { PortraitImage } from '@/components/PortraitImage'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Menu, MenuItem } from '@/components/ui/menu'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 
 interface EventCardProps {
   event: WorldEvent
@@ -44,6 +45,7 @@ interface EventCardProps {
 export function EventCard({
   event, isFirst, isLast, onMoveUp, onMoveDown, moveUpHint, moveDownHint, inWorldDay, calendar,
 }: EventCardProps) {
+  const gate = useGate()
   /** Names the card's icon buttons, which are otherwise identical across scenes. */
   const eventName = event.title ? `“${event.title}”` : 'this untitled scene'
   const [expanded, setExpanded] = useState(false)
@@ -464,10 +466,19 @@ export function EventCard({
             {/* N13: this menu held one item and that item was Delete. Moving a
                 scene to another chapter existed on the Corkboard and in the
                 bulk toolbar, but not where a writer opens first. */}
-            <Menu label={`More actions for ${eventName}`} triggerClassName="h-6 w-6">
-              <MenuItem icon={FolderInput} label="Move to chapter…" onClick={() => setMoveOpen(true)} />
-              <MenuItem icon={Trash2} label="Delete scene" danger onClick={() => setConfirmOpen(true)} />
-            </Menu>
+            {/*
+              Moving and deleting a scene are the author's. This file carried no
+              reference to the gate at all, so both were offered to a reader on
+              every scene of every chapter — four of them on Alice's first
+              chapter. The reader run that found the same fault on the chapter
+              rows never opened this screen; a grep for ungated menus did.
+            */}
+            {!gate.active && (
+              <Menu label={`More actions for ${eventName}`} triggerClassName="h-6 w-6">
+                <MenuItem icon={FolderInput} label="Move to chapter…" onClick={() => setMoveOpen(true)} />
+                <MenuItem icon={Trash2} label="Delete scene" danger onClick={() => setConfirmOpen(true)} />
+              </Menu>
+            )}
             <MoveSceneDialog
               open={moveOpen}
               onOpenChange={setMoveOpen}

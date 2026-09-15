@@ -25,6 +25,10 @@ export function ReadingTypeControls() {
   const type = useAppStore((s) => s.readingType)
   const setType = useAppStore((s) => s.setReadingType)
 
+  const leadingIndex = Math.max(0, LEADING_LABELS.findIndex((l) => l.value === type.leading))
+  const currentLeading = LEADING_LABELS[leadingIndex]
+  const nextLeading = LEADING_LABELS[(leadingIndex + 1) % LEADING_LABELS.length].value
+
   const atSmallest = type.size <= TEXT_SIZES[0]
   const atLargest = type.size >= TEXT_SIZES[TEXT_SIZES.length - 1]
 
@@ -75,6 +79,18 @@ export function ReadingTypeControls() {
         Sans
       </button>
 
+      {/*
+        Three buttons where there is room, one that cycles where there is not.
+
+        These were `sm:flex` and simply absent on a phone — and line spacing is
+        the setting that matters most in a narrow column, withheld from exactly
+        the readers most likely to want it. A blind reader run found them gone at
+        390, 360 and 320px.
+
+        The narrow form says the current spacing and moves to the next on press,
+        so the state is legible rather than implied; three toggles at that width
+        would have pushed the row into a third line.
+      */}
       <div className="hidden items-center gap-1 sm:flex" role="group" aria-label="Line spacing">
         {LEADING_LABELS.map(({ value, label }) => (
           <button
@@ -88,6 +104,14 @@ export function ReadingTypeControls() {
           </button>
         ))}
       </div>
+      <button
+        type="button"
+        className={cn(btn, 'sm:hidden')}
+        aria-label={`Line spacing: ${currentLeading.label}. Press to change.`}
+        onClick={() => setType({ leading: nextLeading })}
+      >
+        {currentLeading.label}
+      </button>
     </div>
   )
 }

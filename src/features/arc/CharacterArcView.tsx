@@ -21,6 +21,7 @@ import type { EventStatus, WorldEvent } from '@/types'
 import { EVENT_STATUSES, eventStatusConfig } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
 import { arcRoster, countAppearances, countRecorded, type ArcOrder } from '@/lib/arcRoster'
+import { useRevealAll } from '@/components/useRevealAll'
 
 /** Cells are the tab stop, so focus has to be visible on them. */
 const FOCUS_RING = 'focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[hsl(var(--ring))]'
@@ -55,6 +56,7 @@ function InventorySparkline({ counts }: { counts: number[] }) {
 
 export default function CharacterArcView() {
   const { worldId } = useParams<{ worldId: string }>()
+  const { requestClear, revealAllDialog } = useRevealAll(worldId ?? null)
   const navigate = useNavigate()
   const { activeEventId, setActiveEventId } = useAppStore()
   const gate = useGate()
@@ -908,11 +910,20 @@ export default function CharacterArcView() {
           </button>
         )}
 
+        {revealAllDialog}
         <div className="ml-auto flex items-center gap-2">
           {activeEventId && (
             <button
               className="text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] underline"
-              onClick={() => setActiveEventId(null)}
+              /*
+                "Clear filter" is the writer's name for it. To a reader the same
+                click is the whole book — a null cursor is "all chapters" — so it
+                goes through the same guard as the ✕ and the Timeline's row
+                button, which confirms while reading and clears silently while
+                writing. Found by grep rather than by the reader run: it is the
+                third control that reached `setActiveEventId(null)` directly.
+              */
+              onClick={requestClear}
             >
               Clear filter
             </button>
@@ -1030,7 +1041,11 @@ export default function CharacterArcView() {
                   was filed for; `cellProps` already accepts no activator.
                 */
                 const activate = gate.active ? undefined : () => {
-                  if (isActive) { setActiveEventId(null); return }
+                  // Through the guard like every other clear, though a reader
+                  // cannot reach this one: while writing it clears silently, so
+                  // the behaviour is unchanged, and the rule in
+                  // `readingGateGuards.test.ts` stays a rule without exceptions.
+                  if (isActive) { requestClear(); return }
                   const firstEv = firstEventByChapter.get(ch.id)
                   if (firstEv) setActiveEventId(firstEv)
                 }
