@@ -65,7 +65,7 @@ test('the panel names the people in the scene on screen', async ({ page }) => {
   */
   for (const name of expected) {
     await expect(
-      panel(page).getByRole('link', { name, exact: true }),
+      panel(page).getByRole('link', { name: `Open ${name}`, exact: true }),
       `${name} is in the panel`,
     ).toBeVisible()
   }
@@ -101,8 +101,13 @@ test('the panel follows the scene as the reader moves through the book', async (
   await settle(page)
   await openBook(page, worldId)
 
-  const names = async () => (await panel(page).getByRole('link').allInnerTexts())
-    .map((t) => t.trim()).filter(Boolean)
+  /*
+    The rows, not the links. The only link in a row is the eye, which is an icon
+    with no text of its own — reading link text here returned a list of empty
+    strings and this test compared nothing against nothing.
+  */
+  const names = async () => (await panel(page).getByRole('listitem').allInnerTexts())
+    .map((t) => t.replace(/\s+/g, ' ').trim()).filter(Boolean)
 
   /*
     Wait for the panel to fill before reading it. The prose being on screen does
@@ -131,18 +136,90 @@ test('the panel follows the scene as the reader moves through the book', async (
   expect(await names(), 'the opening cast is back').toEqual(atTheStart)
 })
 
-test('an entry opens that character\'s page', async ({ page }) => {
+test('the eye opens that character\'s page, and the name alone does not', async ({ page }) => {
   const worldId = await downloadLibraryBook(page, 'Alice’s Adventures in Wonderland')
   await settle(page)
   await openBook(page, worldId)
 
-  const first = panel(page).getByRole('link').first()
-  const name = (await first.innerText()).trim()
-  await first.click()
+  const eye = panel(page).getByRole('link').first()
+  const name = (await eye.getAttribute('aria-label') ?? '').replace(/^Open /, '')
+  expect(name, 'the eye says where it goes').not.toBe('')
+
+  /*
+    The name is text now, not a control. The whole row used to be a link, which
+    is what made the picture unclickable — and the picture is the subject here,
+    so it opens full size instead.
+  */
+  await panel(page).getByText(name, { exact: true }).click()
+  await expect(page, 'reading the name does not leave the book')
+    .toHaveURL(/#\/worlds\/[^/]+\/manuscript$/)
+
+  await eye.click()
   await expect(page).toHaveURL(/#\/worlds\/[^/]+\/characters\/[^/]+$/)
   await expect(page.getByRole('main').getByText(name, { exact: true }).first()).toBeVisible()
 })
 
+test('and coming back puts the reader where they were, not where they had read to', async ({ page }) => {
+  /*
+    The trip this panel makes constantly: tap a name, read who they are, come
+    back. The cursor alone answered it badly twice — it is a high-water mark, so
+    scrolling back and returning jumped forward again, and it names a scene
+    rather than a place inside one, so a long scene restarted from its top.
+  */
+  const worldId = await downloadLibraryBook(page, 'The Count of Monte Cristo')
+  await settle(page)
+  await openBook(page, worldId)
+
+  const scroller = page.locator('div.flex-1.overflow-auto').first()
+
+  /*
+    Deep inside one long scene, not at an arbitrary pixel.
+
+    The distance between the two possible answers *is* the offset into the
+    scene: restoring by cursor lands on the scene's first line, restoring by
+    spot lands where the reader was. Scrolling to a round number left those two
+    close enough that disabling the spot still passed — a mutation run caught
+    this test asserting nothing.
+  */
+  const target = await scroller.evaluate((el) => {
+    const scenes = Array.from(el.querySelectorAll<HTMLElement>('[data-scene-event-id]'))
+    const long = scenes.find((s) => s.offsetHeight > 4000) ?? scenes[scenes.length - 1]
+    return { top: long.offsetTop, into: 2500 }
+  })
+  expect(target.top, 'a scene well into the book').toBeGreaterThan(0)
+
+  const want = target.top + target.into
+  await scroller.evaluate((el, to) => { el.scrollTop = to }, want)
+  await expect.poll(() => scroller.evaluate((el) => el.scrollTop), { timeout: 10_000 })
+    .toBeGreaterThan(want - 50)
+
+  await panel(page).getByRole('link').first().click()
+  await expect(page).toHaveURL(/#\/worlds\/[^/]+\/characters\/[^/]+$/)
+
+  /*
+    Back through the app, not through history.
+
+    `page.goBack()` proves nothing here: Chromium restores a scroller's offset
+    itself across a history navigation, and this test passed identically with
+    the restore disabled — `back` came out exactly equal to `want` either way. A
+    reader returning to the book taps **Read**, which is a forward navigation
+    with no restoration behind it, and that is the trip that was losing them
+    their page.
+  */
+  await page.getByRole('navigation', { name: 'Main navigation' })
+    .getByRole('link', { name: 'Read', exact: true }).click()
+  await expect(page.locator('[data-scene-event-id]').first()).toBeVisible({ timeout: 60_000 })
+
+  /*
+    Within a few hundred pixels of where they were — and, the half that makes it
+    a test, nowhere near the top of that scene, which is where restoring by
+    cursor alone would land them, 2,500px above.
+  */
+  await expect.poll(() => scroller.evaluate((el) => el.scrollTop), { timeout: 20_000 })
+    .toBeGreaterThan(target.top + 1_000)
+  const back = await scroller.evaluate((el) => el.scrollTop)
+  expect(Math.abs(back - want), `came back to ${back}, wanted ${want}`).toBeLessThan(500)
+})
 test('the panel can be put away, and stays away', async ({ page }) => {
   const worldId = await downloadLibraryBook(page, 'Alice’s Adventures in Wonderland')
   await settle(page)

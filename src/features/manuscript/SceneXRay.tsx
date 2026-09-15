@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type RefObject } from 'react'
 import { Link } from 'react-router-dom'
-import { PanelRightClose, PanelRightOpen, MapPin, Package, User, Users, X } from 'lucide-react'
+import { PanelRightClose, PanelRightOpen, MapPin, Package, User, Users, X, Eye } from 'lucide-react'
 import { PortraitImage } from '@/components/PortraitImage'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useItems } from '@/db/hooks/useItems'
@@ -79,42 +79,45 @@ function useSceneInView(scrollRef: RefObject<HTMLDivElement | null>, sceneCount:
 }
 
 /**
- * The picture, decorative on purpose.
+ * One entry: the picture, the name, and a way to go there.
  *
- * `alt=""` because the name is the next element in the same link. An `alt` of
- * the name makes the link announce "White Rabbit White Rabbit", the image and
- * the label each supplying it once — and a Playwright lookup for the character
- * then also matched *The White Rabbit's House* and *White Rabbit's Pocket
- * Watch*, which is how this was noticed.
+ * The picture is the subject here, not a label for a control — these are
+ * Tenniel's engravings and Doré's plates at 40px — so it opens full size, which
+ * is what `zoomable` does everywhere else the image is the point. That is only
+ * safe because going to the entity is now its own button: the whole row used to
+ * be a link, and a zoomable image inside it would have stolen the click, which
+ * `imageLightbox.spec.ts` exists to prevent.
+ *
+ * `alt=""` on the picture, because the name is right beside it. Naming the
+ * image as well made the old link announce "White Rabbit White Rabbit", and a
+ * lookup for the character also matched *The White Rabbit's House* and *White
+ * Rabbit's Pocket Watch*.
  */
-function Face({ imageId, icon }: { imageId: string | null; icon: typeof User }) {
-  return (
-    <PortraitImage
-      imageId={imageId}
-      alt=""
-      fallbackIcon={icon}
-      className="h-10 w-10 shrink-0 rounded-md object-cover"
-      fallbackClassName="h-10 w-10 shrink-0 rounded-md"
-    />
-  )
-}
-
-function Row({ to, name, note, children }: {
-  to: string; name: string; note?: string; children: React.ReactNode
+function Row({ to, name, imageId, icon }: {
+  to: string; name: string; imageId: string | null; icon: typeof User
 }) {
   return (
-    <li>
+    <li className="flex items-center gap-2.5 rounded-md p-1.5 transition-colors hover:bg-[hsl(var(--accent)/0.4)]">
+      <PortraitImage
+        imageId={imageId}
+        alt=""
+        zoomable
+        fallbackIcon={icon}
+        className="h-10 w-10 shrink-0 rounded-md object-cover"
+        fallbackClassName="h-10 w-10 shrink-0 rounded-md"
+      />
+      <span className="min-w-0 flex-1 truncate text-sm text-[hsl(var(--foreground))]">{name}</span>
+      {/*
+        An icon with no text of its own, so `aria-label` is the name rather than
+        a replacement for one. It says where it goes: "Open" alone, repeated
+        down a panel of five, tells a screen reader nothing about which.
+      */}
       <Link
         to={to}
-        className="flex items-center gap-2.5 rounded-md p-1.5 transition-colors hover:bg-[hsl(var(--accent)/0.5)]"
+        aria-label={`Open ${name}`}
+        className="shrink-0 rounded-md p-1 text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]"
       >
-        {children}
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm text-[hsl(var(--foreground))]">{name}</span>
-          {note && (
-            <span className="block truncate text-[11px] text-[hsl(var(--muted-foreground))]">{note}</span>
-          )}
-        </span>
+        <Eye className="h-3.5 w-3.5" aria-hidden="true" />
       </Link>
     </li>
   )
@@ -167,14 +170,11 @@ export function SceneXRay({
   const onStage = cast.characters.filter((c) => c.onStage)
   const named = cast.characters.filter((c) => !c.onStage)
   const person = (c: CastMember) => (
-    <Row key={c.id} to={`/worlds/${worldId}/characters/${c.id}`} name={c.name}>
-      <Face imageId={c.imageId} icon={User} />
-    </Row>
+    <Row key={c.id} to={`/worlds/${worldId}/characters/${c.id}`} name={c.name}
+      imageId={c.imageId} icon={User} />
   )
   const thing = (t: CastThing, to: string, icon: typeof User) => (
-    <Row key={t.id} to={to} name={t.name}>
-      <Face imageId={t.imageId} icon={icon} />
-    </Row>
+    <Row key={t.id} to={to} name={t.name} imageId={t.imageId} icon={icon} />
   )
 
   const list = cast.empty ? (
