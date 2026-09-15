@@ -9,7 +9,7 @@ import { useWorld } from '@/db/hooks/useWorlds'
 import { useSceneTextsByEvent, useHasProse } from '@/db/hooks/useManuscript'
 import { ReadingProgress } from './ReadingProgress'
 import { ReadingTypeControls } from './ReadingTypeControls'
-import { SceneXRay } from './SceneXRay'
+import { SceneXRay, XRAY_GUTTER } from './SceneXRay'
 import { ReadingContents } from './ReadingContents'
 import { typeStyle } from '@/lib/readingType'
 import { useReadingMode } from '@/db/hooks/useReading'
@@ -493,14 +493,18 @@ export default function ManuscriptView() {
       </PageHeader>
 
       {/*
-        The page and, beside it, who is in it.
+        The page, and floating over it, who is in it.
 
-        A flex row so the panel is a sibling of the scroller rather than inside
-        it: in the scroller it would slide away with the prose, and it is meant
-        to stay put while the scene under it changes.
+        `relative` because the panel is positioned against this box: a sibling of
+        the scroller rather than inside it, so it stays put while the prose moves
+        under it, and taken out of the flow so that showing it cannot move the
+        prose sideways.
       */}
-      <div className="flex min-h-0 flex-1">
-      <div ref={scrollRef} className="flex-1 overflow-auto">
+      <div className="relative flex min-h-0 flex-1">
+      <div
+        ref={scrollRef}
+        className={cn('flex-1 overflow-auto', mode === 'reading' && hasProse && XRAY_GUTTER)}
+      >
         {openingTheBook ? (
           /*
             A shape the prose is about to fill, rather than a spinner: the page

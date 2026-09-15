@@ -315,3 +315,36 @@ test('on a phone every row of the sheet can actually be pressed', async ({ page 
   await eyes.nth(count - 1).click({ timeout: 10_000 })
   await expect(page).toHaveURL(/#\/worlds\/[^/]+\/(characters|items|maps)/)
 })
+
+test('showing the card neither moves the prose nor lies across it', async ({ page }) => {
+  /*
+    The card floats over the page instead of taking a column in it, so toggling
+    it cannot reflow the text — and the page keeps a gutter for it either way, so
+    it cannot cover the text either. The two are separate failures and this
+    checks both: as a flex column it moved the prose 112px at 1440px, and
+    floating with no gutter it sat 76px over the end of every line at 1280px
+    with the nav rail pinned.
+
+    Pinned, because that is the narrowest the reading area gets on a desktop.
+  */
+  await page.setViewportSize({ width: 1280, height: 860 })
+  const worldId = await downloadLibraryBook(page, 'Alice’s Adventures in Wonderland')
+  await settle(page)
+  await openBook(page, worldId)
+  await page.getByRole('button', { name: /pin/i }).first().click().catch(() => {})
+  await page.waitForTimeout(400)
+  await expect(panel(page).getByRole('listitem').first()).toBeVisible({ timeout: 20_000 })
+
+  const para = page.locator('[data-scene-event-id] p').first()
+  const open = (await para.boundingBox())!
+  const card = (await panel(page).locator('div').first().boundingBox())!
+
+  expect(Math.round(open.x + open.width), `text ends at ${Math.round(open.x + open.width)}, card starts at ${Math.round(card.x)}`)
+    .toBeLessThanOrEqual(Math.round(card.x))
+
+  await page.getByRole('button', { name: 'Hide who is in this scene' }).click()
+  await expect(page.getByRole('button', { name: 'Show who is in this scene' }).first()).toBeVisible()
+  const shut = (await para.boundingBox())!
+  expect(Math.round(shut.x), 'the prose did not move').toBe(Math.round(open.x))
+  expect(Math.round(shut.width), 'nor did the measure change').toBe(Math.round(open.width))
+})

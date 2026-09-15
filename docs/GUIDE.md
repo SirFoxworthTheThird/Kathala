@@ -1143,9 +1143,11 @@ through a five-line window.
   the Shore* — and follows the page as you scroll, so you can see it keeping up;
   scroll back and it shows that scene's cast again. **Here** is who is present,
   and **Spoken of** is someone named by them, drawn a little further back so
-  which is which reads at a glance. It sits beside the text on a wide screen and
-  rises from the bottom of a phone, and it folds down to a single button when
-  you want the page to yourself: PlotWeave remembers which you chose.
+  which is which reads at a glance. On a wide screen it floats over the page in
+  the margin the book keeps for it, so showing and hiding it never moves a line
+  of the text you are reading; on anything narrower it rises from the bottom
+  when you press the button in the corner. Either way it folds away when you
+  want the page to yourself, and PlotWeave remembers which you chose.
   Someone named in the scene whom you have not met yet is not listed — the same
   rule the rest of reading mode follows.
 
