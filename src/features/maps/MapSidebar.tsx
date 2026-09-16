@@ -7,7 +7,7 @@ import {
 import { useAppStore, useMapLayerHistory } from '@/store'
 import { useMapLayers, deleteMapLayer, updateMapLayer } from '@/db/hooks/useMapLayers'
 import { canReparentLayer } from '@/lib/mapTree'
-import { isTreeVisible } from '@/lib/mapLevels'
+import { isTreeVisible, treeVisibleLayers } from '@/lib/mapLevels'
 import { useEventMovements, clearMovement, removeLastWaypoint } from '@/db/hooks/useMovements'
 import { useItems } from '@/db/hooks/useItems'
 import { useEventItemPlacements } from '@/db/hooks/useItemPlacements'
@@ -416,7 +416,15 @@ export function LayersSection({ worldId }: { worldId: string }) {
   const canDropToRoot = !!draggingId && canReparentLayer(allLayers, draggingId, null)
 
   return (
-    <SidebarSection title="Map Layers" icon={Layers} count={roots.length}>
+    /*
+      The count is what the tree lists, not how many roots it has.
+
+      A blind reader run read "MAP LAYERS 1" above five names they could open,
+      because the number was `roots.length` while the tree renders every
+      reachable layer under them. `treeVisibleLayers` is the same filter the
+      rows go through, so the two cannot drift apart again.
+    */
+    <SidebarSection title="Map Layers" icon={Layers} count={treeVisibleLayers(allLayers).length}>
       <div className="py-1">
         {roots.length === 0 ? (
           <p className="px-3 py-2 text-xs italic text-[hsl(var(--muted-foreground))]">No maps yet.</p>

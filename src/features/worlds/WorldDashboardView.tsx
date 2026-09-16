@@ -13,7 +13,8 @@ import { useWorld, updateWorld } from '@/db/hooks/useWorlds'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useReadingGate } from '@/db/hooks/useReading'
 import { describeReadingPosition } from '@/lib/readingNotice'
-import { useRootMapLayers } from '@/db/hooks/useMapLayers'
+import { useMapLayers, useRootMapLayers } from '@/db/hooks/useMapLayers'
+import { treeVisibleLayers } from '@/lib/mapLevels'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { useTimelineRelationships } from '@/db/hooks/useTimelineRelationships'
@@ -79,6 +80,16 @@ export default function WorldDashboardView() {
   const world               = useWorld(worldId ?? null)
   const allCharacters       = useCharacters(worldId ?? null)
   const maps                = useRootMapLayers(worldId ?? null)
+  /*
+    A reader's "maps" is not a root map layer.
+
+    The card said **1 — maps you have reached** for a world whose Maps screen
+    offers six openable layers, because the number counted roots. A reader
+    glances at it and concludes there is one map and does not open it. The
+    label is true for a writer, who is being told about roots on purpose, so
+    only the reader's number changes — to the count the tree actually lists.
+  */
+  const reachedMaps         = treeVisibleLayers(useMapLayers(worldId ?? null))
   const timelines           = useTimelines(worldId ?? null)
   const chapters            = useWorldChapters(worldId ?? null)
   const allEvents           = useWorldEvents(worldId ?? null)
@@ -273,7 +284,7 @@ export default function WorldDashboardView() {
     {
       label: 'Maps',
       icon: MapIcon,
-      count: maps.length,
+      count: gate.active ? reachedMaps.length : maps.length,
       onClick: () => navigate('maps'),
       pills: locationMarkers.length > 0 ? [{ label: 'markers', value: locationMarkers.length }] : [],
       description: gate.active ? 'maps you have reached' : 'root map layers',

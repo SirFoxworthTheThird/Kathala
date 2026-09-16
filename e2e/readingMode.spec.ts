@@ -200,7 +200,8 @@ test('showing the whole book asks first, but only while reading', async ({ page 
 /*
   The other ✕, which is the one a thumb finds.
 
-  A blind reader run measured this: the bottom bar's "Clear selection" is 16×16
+  A blind reader run measured this: the bottom bar's clear — then labelled
+  "Clear selection", now named for what it costs — is 16×16
   CSS px, sits between the speed toggle and a collapse chevron — so it reads as
   "close this bar" — and on a 390px phone it lands 40px from the bottom of the
   screen. One tap took a reader at chapter 7 of *Dracula* from 14 characters to
@@ -222,7 +223,7 @@ test('the bottom bar\'s clear asks first too, and is reachable on a phone', asyn
 
   // Present, and on the phone — an absence asserted on a control that never
   // renders at this width would pass for the wrong reason.
-  const clear = page.getByRole('button', { name: 'Clear selection' })
+  const clear = page.getByRole('button', { name: 'Clear where you have read to' })
   await expect(clear).toBeVisible({ timeout: 15_000 })
 
   await clear.click()
@@ -251,10 +252,12 @@ test('the bottom bar\'s clear stays one click while writing', async ({ page }) =
   await page.getByRole('button', { name: 'Next moment' }).click()
   await settle(page)
 
-  await page.getByRole('button', { name: 'Clear selection' }).click()
+  // The writer's wording. The control is named for what it costs, and what it
+  // costs a writer is a selected moment rather than a place in a book.
+  await page.getByRole('button', { name: 'Clear the selected moment' }).click()
   await expect(page.getByRole('heading', { name: 'Show the whole book?' })).toHaveCount(0)
   // It really cleared, rather than the control having quietly stopped working.
-  await expect(page.getByRole('button', { name: 'Clear selection' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Clear the selected moment' })).toHaveCount(0)
 })
 
 /*
