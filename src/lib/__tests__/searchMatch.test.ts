@@ -74,3 +74,54 @@ describe('searchIndex', () => {
     expect(searchIndex(PROSE, 'silver', true)).toBe(-1)
   })
 })
+
+/**
+ * A reader typing a name without its accents.
+ *
+ * `Dantes`, `Mercedes`, `Gerard`, `Renee` — five of twelve ordinary queries in a
+ * blind reader run returned **No results**, the protagonist among them, for
+ * characters already on screen. In reading mode that answer is indistinguishable
+ * from "hidden because you have not met them".
+ */
+describe('accents', () => {
+  it('finds the name whether or not the reader typed the accents', () => {
+    expect(searchMatches('Edmond Dantès', 'Dantes', false)).toBe(true)
+    expect(searchMatches('Edmond Dantes', 'Dantès', false)).toBe(true)
+    expect(searchMatches('Mercédès de Morcerf', 'mercedes', false)).toBe(true)
+    expect(searchMatches('Gérard de Villefort', 'Gerard', false)).toBe(true)
+    expect(searchMatches('Renée de Saint-Méran', 'Saint-Meran', false)).toBe(true)
+  })
+
+  it('does the same for whole-word searches', () => {
+    expect(searchMatches('Edmond Dantès spoke', 'Dantes', true)).toBe(true)
+    expect(searchMatches('Dantesque', 'Dantes', true), 'and still means whole words').toBe(false)
+  })
+
+  /*
+    The half that makes the rest safe. `searchIndex` hands back a position into
+    the *original* string and both the snippet and the highlight slice with it,
+    so folding must not move anything: `'è'.normalize('NFD')` is two characters,
+    and decomposing the haystack would put every later index out by one per
+    accent.
+  */
+  it('points at the match in the original text, accents and all', () => {
+    const text = 'Mercédès de Morcerf'
+    const at = searchIndex(text, 'Mercedes', false)
+    expect(at).toBe(0)
+    expect(text.slice(at, at + 'Mercedes'.length)).toBe('Mercédès')
+
+    const later = 'The Château d’If held Edmond Dantès'
+    const i = searchIndex(later, 'Dantes', false)
+    expect(later.slice(i, i + 6), 'six characters on from an accented prefix').toBe('Dantès')
+  })
+
+  it('leaves a character it cannot fold to one exactly where it was', () => {
+    // No decomposition for these, so the index must still land.
+    const text = 'Æthelred and ß drank'
+    expect(searchIndex(text, 'drank', false)).toBe(text.indexOf('drank'))
+  })
+
+  it('still refuses what does not match', () => {
+    expect(searchMatches('Edmond Dantès', 'Villefort', false)).toBe(false)
+  })
+})

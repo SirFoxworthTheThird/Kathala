@@ -23,8 +23,24 @@ export function useRelationships(worldId: string | null) {
   )
 }
 
+/**
+ * One character's relationships, held to the same gate as the world's.
+ *
+ * This was a raw query. `useRelationships` above it is gated and says why in
+ * its own comment, which is most of how the omission survived: the file reads
+ * as though relationships were handled. A blind reader run found the result on
+ * a character page at chapter 7 of *The Count of Monte Cristo* — rows whose
+ * counterpart was redacted to "Unknown", because the person had not been met,
+ * sitting beside a description that named them.
+ *
+ * Gating here rather than at the three call sites — the Relationships tab, the
+ * character page's tab counts, and the map's character panel — because a fourth
+ * would otherwise start ungated, and because the counts and the rows have to
+ * agree about what exists.
+ */
 export function useCharacterRelationships(characterId: string | null) {
-  return useLiveQuery(
+  const gate = useGate()
+  const all = useLiveQuery(
     () =>
       characterId
         ? db.relationships
@@ -33,6 +49,10 @@ export function useCharacterRelationships(characterId: string | null) {
         : [],
     [characterId],
     []
+  )
+  return useMemo(
+    () => all.filter((r) => gate.linksRevealed([r.characterAId, r.characterBId]) && gate.hasReached(r.startEventId)),
+    [all, gate],
   )
 }
 
