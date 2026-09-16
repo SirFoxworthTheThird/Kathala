@@ -16,6 +16,18 @@ import { downloadLibraryBook, DEFAULT_BOOK } from './helpers/library'
  * **Measuring page overflow cannot see this.** `documentElement.scrollWidth`
  * equalled `clientWidth` at every width in both states — the page was never too
  * wide, one column inside it was too narrow. So this spec measures the column.
+ *
+ * **A-7 is the mirror image, and the fix above caused it.** Giving the sentence
+ * a 13rem floor stopped it being squeezed and pushed the cost onto the links
+ * instead, which carried `shrink-0` — max-content, so the group's own
+ * `flex-wrap` could never fire. The pair sat side by side on a line too narrow
+ * for them and *Turn it off in settings* ran off the screen: the reader run
+ * measured 56 / 86 / 126px past the viewport at 390 / 360 / 320, and at 320 the
+ * primary link was clipped too. Putting `shrink-0` back today still leaves it
+ * 5px over at 320, which is what reddens this test.
+ * `scrollWidth === clientWidth` throughout, again — so
+ * the second test here measures the links the way the first measures the
+ * column, because neither is visible from the page's own width.
  */
 
 const WIDTHS = [320, 360, 390, 414, 430, 640] as const
@@ -82,6 +94,43 @@ test.describe('The reading notice on a narrow screen', () => {
       const overflow = await page.evaluate(() =>
         document.documentElement.scrollWidth - document.documentElement.clientWidth)
       expect(overflow, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(0)
+    }
+  })
+
+  test('keeps its links inside the screen at every phone width', async ({ page }) => {
+    await readerOnTheDashboard(page)
+
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width, height: 780 })
+      await page.waitForTimeout(400)
+
+      const m = await page.evaluate(() => {
+        const aside = document.querySelector('aside[aria-label="Reading mode"]') as HTMLElement | null
+        if (!aside) return null
+        const vw = document.documentElement.clientWidth
+        return [...aside.querySelectorAll('a')].map((a) => ({
+          text: (a.textContent ?? '').trim(),
+          over: Math.round(a.getBoundingClientRect().right - vw),
+          left: Math.round(a.getBoundingClientRect().left),
+        }))
+      })
+
+      /*
+        Both links, asserted before anything is measured about them. Without
+        this the rule below is satisfied by a notice that has no links at all,
+        which is the state the component renders when `worldId` is missing —
+        reachable, and exactly the shape that would make this vacuous.
+      */
+      expect(m, `the notice should be on the dashboard at ${width}px`).not.toBeNull()
+      expect(m!.map((l) => l.text), `both links at ${width}px`)
+        .toEqual(['Set where you have read to', 'Turn it off in settings'])
+
+      for (const link of m!) {
+        expect(link.over, `"${link.text}" runs ${link.over}px past the right edge at ${width}px`)
+          .toBeLessThanOrEqual(0)
+        expect(link.left, `"${link.text}" starts off the left edge at ${width}px`)
+          .toBeGreaterThanOrEqual(0)
+      }
     }
   })
 })

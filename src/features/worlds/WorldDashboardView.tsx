@@ -470,10 +470,19 @@ export default function WorldDashboardView() {
             by chapter.
 
             They wrap as a group so that adding one does not squeeze the
-            sentence beside them.
+            sentence beside them — but the group must be allowed to shrink for
+            that to mean anything. It carried `shrink-0`, which pins it at
+            max-content, so its own `flex-wrap` could never fire: the pair sat
+            side by side on a line too narrow for them, and *Turn it off in
+            settings* ran off the edge. A blind reader run measured it at
+            56 / 86 / 126px past the viewport at 390 / 360 / 320, with
+            `scrollWidth === clientWidth` — unreachable rather than
+            scrollable-to, and at 320 the primary link clipped as well.
+            Restoring `shrink-0` here still puts it 5px over at 320, which is
+            what `readingNoticeWidth.spec.ts` catches.
           */}
           {worldId && (
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Link
                 to={`/worlds/${worldId}/timeline`}
                 className="rounded-md border border-[hsl(var(--ring)/0.4)] bg-[hsl(var(--accent))] px-2.5 py-1 text-xs text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--accent)/0.7)]"
