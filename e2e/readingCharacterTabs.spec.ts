@@ -94,3 +94,76 @@ test('reading offers fewer tabs than writing, but never fewer than the two that 
     expect.arrayContaining(['Overview', 'Current State']),
   )
 })
+
+test('the Goals tab hides what the reader has not reached, and counts what it shows', async ({ page }) => {
+  /*
+    A-5. A blind reader run met **Goals 2** on the tab above a panel reading
+    *No goals yet*. `GoalsTab` filtered by `hasReached`; the badge was built
+    from the unfiltered hook. The gate was right in both places and only the
+    count disagreed.
+
+    The fix moves the gate into `useGoalsForCharacter`, so both readers of the
+    list get the same list — and that is exactly why this test must assert the
+    *gating* rather than the agreement. The first version checked only that the
+    badge matched the panel, and a mutant that ungated the hook passed it: with
+    one source, both go wrong together and still agree. Asserting a hidden goal
+    stays hidden is what kills that.
+  */
+  const worldId = await downloadLibraryBook(page, 'The Count of Monte Cristo')
+  await settle(page)
+
+  // A character with a goal the reader has reached and one they have not, so
+  // both halves have something to be true about.
+  const pick = await page.evaluate(`(() => new Promise((resolve, reject) => {
+    const req = indexedDB.open('PlotWeaveDB')
+    req.onsuccess = () => {
+      const db = req.result
+      const read = (s) => new Promise((r) => {
+        const q = db.transaction(s, 'readonly').objectStore(s).getAll()
+        q.onsuccess = () => r(q.result)
+      })
+      Promise.all([read('events'), read('chapters'), read('characterGoals')])
+        .then(([events, chapters, goals]) => {
+          const num = new Map(chapters.map((c) => [c.id, c.number]))
+          const key = new Map(events.map((e) => [e.id, (num.get(e.chapterId) ?? 0) + e.sortOrder / 1e6]))
+          const cursorId = JSON.parse(localStorage.getItem('plotweave-ui') || '{}')?.state?.activeEventId
+          const cursor = key.get(cursorId)
+          if (cursor === undefined) return reject(new Error('the book did not open at a scene'))
+          const byCharacter = new Map()
+          for (const g of goals) {
+            if (!byCharacter.has(g.characterId)) byCharacter.set(g.characterId, [])
+            byCharacter.get(g.characterId).push(g)
+          }
+          for (const [characterId, list] of byCharacter) {
+            const shown = list.filter((g) => !g.startEventId || (key.get(g.startEventId) ?? -Infinity) <= cursor)
+            const hidden = list.filter((g) => g.startEventId && (key.get(g.startEventId) ?? -Infinity) > cursor)
+            if (shown.length && hidden.length) {
+              return resolve({ characterId, shownCount: shown.length, shown: shown[0].text, hidden: hidden[0].text })
+            }
+          }
+          reject(new Error('no character has both a reached goal and an unreached one'))
+        })
+    }
+  }))()`) as { characterId: string; shownCount: number; shown: string; hidden: string }
+
+  await page.goto(`/#/worlds/${worldId}/characters/${pick.characterId}?tab=goals`, { waitUntil: 'load' })
+  await settle(page)
+
+  const panel = page.getByRole('tabpanel')
+  await expect(panel.getByText(pick.shown, { exact: false }),
+    'the goal the reader has reached is shown').toBeVisible()
+  await expect(panel.getByText(pick.hidden, { exact: false }),
+    'the goal they have not reached is not').toHaveCount(0)
+  await expect(panel.getByText('No goals yet'),
+    'and the panel is not empty behind a badge with a number on it').toHaveCount(0)
+
+  /*
+    `textContent`, not `innerText`: the count sits in an element `innerText`
+    does not report — the tab's accessible name is "Goals 1" while its rendered
+    text is "Goals" — so parsing `innerText` read every badge as zero and an
+    earlier version of this failed against a working fix.
+  */
+  const tab = page.getByRole('tab', { name: /^Goals/ })
+  const badge = Number((await tab.evaluate((el) => el.textContent ?? '')).replace(/[^0-9]/g, '') || '0')
+  expect(badge, 'the badge counts the goals the panel shows, not all of them').toBe(pick.shownCount)
+})

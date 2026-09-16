@@ -113,7 +113,16 @@ function Row({ to, name, imageId, icon, quiet }: {
   quiet?: boolean
 }) {
   return (
-    <li className="flex items-center gap-2.5 rounded-md p-1.5 transition-colors hover:bg-[hsl(var(--accent)/0.4)]">
+    /*
+      No hover highlight on the row.
+
+      It had one, and the row is not a target: the picture opens full size, the
+      name is text, and only the eye navigates. A blind reader run clicked the
+      name twice expecting the highlight to mean something. A cue that promises
+      a click the row does not have is worse than no cue, so the affordance sits
+      on the one thing that does navigate.
+    */
+    <li className="flex items-center gap-2.5 rounded-md p-1.5">
       {/*
         Someone spoken of is drawn back a little, so being present reads at a
         glance rather than by finding which heading a row sits under.
@@ -138,7 +147,10 @@ function Row({ to, name, imageId, icon, quiet }: {
       <Link
         to={to}
         aria-label={`Open ${name}`}
-        className="shrink-0 rounded-md p-1 text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]"
+        // p-1.5 rather than p-1: 14px of icon inside 4px of padding is a 22px
+        // target, and WCAG 2.5.8 asks for 24. Six gives 26 and costs nothing,
+        // since the row is 40px tall for the portrait either way.
+        className="shrink-0 rounded-md p-1.5 text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]"
       >
         <Eye className="h-3.5 w-3.5" aria-hidden="true" />
       </Link>
