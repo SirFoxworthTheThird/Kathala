@@ -448,7 +448,16 @@ layers, and no **…** menu on a chapter row or a scene card — so there is no
 **Rename chapter**, **Delete chapter**, **Move to chapter** or **Delete scene**
 to hit by accident in a book you are only reading. The Calendar stops inviting
 you to drag a scene onto a different day, and the map's character panel shows
-what is recorded rather than offering to change it. The chapter bar keeps its
+what is recorded rather than offering to change it. The map sidebar stops
+offering sections with nothing behind them — **Routes 0** and **Regions 0** were
+two things to open and find empty on every visit — while a section that does
+hold something stays where it is. The **carried forward** badge leaves the
+character cards: it marks state nobody recorded at this exact scene, which is a
+question about where to go and edit rather than anything about the story. The
+prompts explaining how to author something go with it, so a book with no drafts
+to type into no longer suggests typing **@** into one. And on the shelf, a
+book's card still gives its length but not the size of its cast, because a count
+of everyone in the book gives away as much as a list of them. The chapter bar keeps its
 scene steppers. Its **story player** is on the Map and only there (see
 [Maps](#maps)) — so it is not sitting on the Read screen offering to walk you
 through the ending on a timer — and if you do play the story on the map, pressing
