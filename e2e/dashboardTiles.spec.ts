@@ -1,5 +1,8 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { settle } from './helpers/settle'
+import { downloadLibraryBook } from './helpers/library'
+import { waitForMapReady } from './helpers/map'
 
 /**
  * DASH-2 and DASH-3 — two tiles that named one thing and showed another.
@@ -104,3 +107,44 @@ test.describe('The world dashboard', () => {
     expect(ages, 'every recent row should carry its age').toBeGreaterThanOrEqual(2)
   })
 })
+
+test('the Maps tile counts the maps a reader can open, not the roots', async ({ page }) => {
+  /*
+    A-8. The tile read **1 — maps you have reached** for a world whose Maps
+    screen offered six layers to open, because the number was root layers while
+    the sidebar tree lists every reachable one. A reader glances at the tile,
+    concludes there is one map, and does not open it. The sidebar header had the
+    same fault: `MAP LAYERS 1` above five names.
+
+    Both now count what the tree lists, so this compares the two screens rather
+    than either against a constant — and asserts the number is above one, which
+    is what a regression to roots would produce on this book.
+  */
+  await resetDB(page)
+  const worldId = await downloadLibraryBook(page, 'Dracula')
+  await settle(page)
+
+  await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+  await settle(page)
+  await page.goto(`/#/worlds/${worldId}/`, { waitUntil: 'load' })
+  await expect(page.locator('aside[aria-label="Reading mode"]'),
+    'the dashboard has rendered').toBeVisible({ timeout: 20_000 })
+  await settle(page)
+
+  const onTile = Number(await page.evaluate(() => {
+    const text = document.body.innerText.replace(/\s+/g, ' ')
+    const m = text.match(/Maps\s+maps you have reached\s+(\d+)|(\d+)\s+Maps\s+maps you have reached/)
+    if (m) return m[1] ?? m[2]
+    const i = text.indexOf('maps you have reached')
+    const before = text.slice(Math.max(0, i - 40), i)
+    return (before.match(/(\d+)\s+Maps\s*$/) ?? [])[1] ?? '0'
+  }))
+
+  await page.goto(`/#/worlds/${worldId}/maps`, { waitUntil: 'load' })
+  await waitForMapReady(page)
+  const listed = await page.locator('[data-map-layer]').count()
+
+  expect(listed, 'this book offers a reader more than one map').toBeGreaterThan(1)
+  expect(onTile, 'the tile counts what the Maps screen lists').toBe(listed)
+})
+

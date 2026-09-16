@@ -513,8 +513,9 @@ what is being held back — and leaves out the sections describing screens readi
 mode has taken away.
 
 **Showing the whole book asks first.** The ✕ beside your place — in the top bar,
-and in the chapter bar along the bottom — drops back to the full world, every
-character, place and subplot the story has not introduced yet. While reading
+and in the chapter bar along the bottom, where it is labelled **Clear where you
+have read to** — drops back to the full world, every character, place and
+subplot the story has not introduced yet. While reading
 that undoes the thing reading mode is for, so both of them ask before doing it,
 and both offer to step the cursor instead. While writing, where "all chapters"
 is just the default view, it stays a single click.

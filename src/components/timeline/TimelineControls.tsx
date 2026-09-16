@@ -59,9 +59,22 @@ export function Controls({ isPlaying, speed, showStop, showDiff, showClear, colo
   // down, for the same reason the gate is — all four tracks render this cluster,
   // and the control should not have to be wired through each of them.
   const setBarCollapsed = useAppStore((s) => s.setBarCollapsed)
+  /*
+    24px minimum, in px rather than rem.
+
+    Every control in this bar was an icon of 10 or 11px in 0.2rem of padding —
+    16 and 17px square, measured by a blind reader run, which put two of them
+    18px apart at the bottom-left of every screen. One of the two drops the
+    reader's place in the book. WCAG 2.5.8 asks for 24.
+
+    px because that is the unit the rule is written in, and because the reading
+    type controls move the root font size: a target specified in rem would
+    shrink below the minimum for a reader who picked the smallest type.
+  */
   const btn = (clr: string): CSSProperties => ({
     background: 'none', border: 'none', cursor: 'pointer', color: clr,
-    padding: '0.2rem', display: 'flex', alignItems: 'center',
+    padding: '0.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    minWidth: '24px', minHeight: '24px',
     borderRadius: '3px', flexShrink: 0,
   })
   return (
@@ -95,7 +108,7 @@ export function Controls({ isPlaying, speed, showStop, showDiff, showClear, colo
         background: 'none', border: 'none', cursor: 'pointer', borderRadius: '3px', flexShrink: 0,
         color: isPlaying ? color : 'var(--tl-text-muted)',
         fontSize: '0.55rem', fontWeight: 700, fontFamily: 'var(--font-body)',
-        minWidth: '1.75rem', padding: '0.2rem 0', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        minWidth: '1.75rem', minHeight: '24px', padding: '0.2rem 0', display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         {SPEED_LABEL[speed]}
       </button>
@@ -105,8 +118,18 @@ export function Controls({ isPlaying, speed, showStop, showDiff, showClear, colo
           <GitCompareArrows size={11} />
         </button>
       )}
+      {/*
+        Named for what it costs, not for what it does to a variable. "Clear
+        selection" says nothing to somebody whose selection *is* how far they
+        have read — and clearing it means all chapters, which is the full
+        reveal the confirm behind this warns about.
+      */}
       {showClear && (
-        <button onClick={onClear} title="Clear selection" style={btn('var(--tl-text-muted)')}>
+        <button
+          onClick={onClear}
+          title={gate.active ? 'Clear where you have read to' : 'Clear the selected moment'}
+          style={btn('var(--tl-text-muted)')}
+        >
           <X size={10} />
         </button>
       )}
@@ -140,10 +163,26 @@ export interface EventPanelProps {
 }
 
 export function EventPanel({ chapterNum, chapterTitle, eventTitle, hasPrev, hasNext, color, onPrev, onNext, timelineLabel }: EventPanelProps) {
+  /*
+    24px here too, and these were the smaller pair.
+
+    The reader run reported the 16px buttons at the other end of the bar; these
+    steppers measured **14×14**, and they are the control a reader uses most —
+    the one thing in this bar that moves you through the book a scene at a time.
+    Found by measuring every button on the screen rather than only the two that
+    were reported.
+
+    The moment pips beside them stay at 22px wide. They are a scrubber, adjacent
+    segments in a strip, and widening them would change how much of a chapter
+    fits on screen; WCAG 2.5.8 allows an undersized target where an equivalent
+    control meets the minimum, and these steppers are that control.
+  */
   const navBtn = (enabled: boolean): CSSProperties => ({
     background: 'none', border: 'none', cursor: enabled ? 'pointer' : 'default',
     color: enabled ? 'var(--tl-accent)' : 'var(--tl-border)', padding: '0.1rem',
-    display: 'flex', alignItems: 'center', opacity: enabled ? 1 : 0.25,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    minWidth: '24px', minHeight: '24px',
+    opacity: enabled ? 1 : 0.25,
     transition: 'opacity 0.15s', flexShrink: 0,
   })
   return (
