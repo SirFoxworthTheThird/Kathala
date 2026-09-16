@@ -348,3 +348,37 @@ test('showing the card neither moves the prose nor lies across it', async ({ pag
   expect(Math.round(shut.x), 'the prose did not move').toBe(Math.round(open.x))
   expect(Math.round(shut.width), 'nor did the measure change').toBe(Math.round(open.width))
 })
+
+test('the eye is a large enough target, and the row does not pretend to be one', async ({ page }) => {
+  /*
+    A-6. The row carried a hover highlight and was not a target: the picture
+    opens full size, the name is text, and only the eye navigates. A blind
+    reader run clicked the name twice because the highlight promised something.
+    The highlight is gone and the eye is 26px rather than 22, which is what
+    WCAG 2.5.8 asks for.
+
+    Measured rather than asserted about classes, because a class name says
+    nothing about what a finger can hit.
+  */
+  const worldId = await downloadLibraryBook(page, 'Alice’s Adventures in Wonderland')
+  await settle(page)
+  await openBook(page, worldId)
+
+  const eye = panel(page).getByRole('link').first()
+  await expect(eye, 'there is a row with an eye in it').toBeVisible()
+
+  const box = await eye.boundingBox()
+  expect(box, 'the eye has a box to measure').not.toBeNull()
+  expect(Math.round(box!.width), 'WCAG 2.5.8 asks for 24').toBeGreaterThanOrEqual(24)
+  expect(Math.round(box!.height), 'WCAG 2.5.8 asks for 24').toBeGreaterThanOrEqual(24)
+
+  /*
+    And the presence half, so this cannot pass on a panel that lost its rows:
+    the eye still goes where it says, which is the behaviour the size is for.
+  */
+  const name = (await eye.getAttribute('aria-label') ?? '').replace(/^Open /, '')
+  expect(name, 'the eye says where it goes').not.toBe('')
+  await eye.click()
+  await expect(page).toHaveURL(/#\/worlds\/[^/]+\/characters\/[^/]+$/)
+})
+

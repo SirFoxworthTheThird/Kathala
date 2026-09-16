@@ -175,7 +175,10 @@ export function GoalsTab({ character }: { character: Character }) {
   const activeEventId = useAppStore((s) => s.activeEventId)
   const gate = useGate()
   const positions = eventPositions(options.events, options.chapters)
-  const visibleGoals = goals.filter((g) => gate.hasReached(g.startEventId))
+  // `useGoalsForCharacter` gates these now, so the tab and the tab's own badge
+  // cannot disagree about how many there are. `gate` is still read below, for
+  // the controls a reader is not offered.
+  const visibleGoals = goals
 
   const [adding, setAdding] = useState(false)
   const [newType, setNewType] = useState<CharacterGoalType>('want')
