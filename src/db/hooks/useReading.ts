@@ -155,6 +155,21 @@ export function useReadingGate(worldId: string | null): ReadingGate {
       data.markers,
     )
 
+    /*
+      Every id this gate can say something about.
+
+      The rosters it loads — characters, items, places — plus everything that
+      has actually appeared, which is how threads, motifs and regions get here.
+      `linksRevealed` uses it to tell "not met yet" from "not a kind I model":
+      the first should hold a record back and the second must not.
+    */
+    const modelled = new Set<string>([
+      ...data.characters.map((c) => c.id),
+      ...data.items.map((i) => i.id),
+      ...data.markers.map((m) => m.id),
+      ...firstSeen.keys(),
+    ])
+
     return {
       active: true,
       cursor,
@@ -170,13 +185,38 @@ export function useReadingGate(worldId: string | null): ReadingGate {
       hasReached: (eventId) => {
         if (cursor === null || !eventId) return true
         const at = sortKeyByEvent.get(eventId)
-        // An unplaceable event cannot be compared, so it does not hold
-        // anything back — the same choice made for entities that never appear.
+        /*
+          An unplaceable event cannot be compared, so it does not hold anything
+          back. This is the *opposite* of the choice `isRevealed` makes, and the
+          comment here used to claim they were the same. They never were.
+
+          Both are right for what they gate. An entity with no appearances is
+          one the reader has not met. An event that cannot be placed is a broken
+          reference, and hiding the record pointing at it takes something away
+          for a reason that has nothing to do with the story.
+        */
         return at === undefined || at <= cursor
       },
       linksRevealed: (entityIds) => {
         if (cursor === null || !entityIds || entityIds.length === 0) return true
-        return entityIds.every((id) => isRevealed(id, firstSeen, cursor))
+        /*
+          Only ids this gate has a model for hold a record back.
+
+          `isRevealed` answers false for anything it has not seen appear, which
+          is right for a character: the roster proves they exist, so silence
+          means "not met yet". It is wrong for a faction, a map layer or the
+          world itself, because no appearances are recorded for those kinds at
+          all — silence there is absence of a model, not absence of a meeting.
+
+          A lore page linked to one was unreachable at every cursor. Measured
+          across the shipped Library: 51 pages in 12 books, linked to 18 worlds,
+          22 map layers, 14 factions and 3 ids belonging to nothing — including
+          the edition and provenance page each book's Library card points at.
+
+          A character, item or place that never appears is still in a roster, so
+          it stays hidden and the fault that rule exists for stays fixed.
+        */
+        return entityIds.every((id) => !modelled.has(id) || isRevealed(id, firstSeen, cursor))
       },
     }
   }, [readingMode, data, activeEventId])
