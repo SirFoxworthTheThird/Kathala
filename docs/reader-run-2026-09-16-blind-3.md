@@ -13,6 +13,37 @@ Dracula, because I staged `library/dracula/art` locally.
 
 ---
 
+## Correction, added 16 September 2026 after review
+
+**A-1, A-2 and A-4 were rejected. The report's headline and its "A-1 first"
+recommendation do not stand, and the verdict that rests on them does not either.**
+
+All three say the app should hide chapter titles from a reader. It should not. A
+chapter title is printed on the contents page of the reader's own book, which is
+the premise `SearchPalette.tsx` already states, and hiding it would give a reader
+*less* than the paperback beside them. Checking the shipped data settles it:
+*Alice* has Carroll's own titles, *Dracula* has Stoker's document headings,
+*The Moonstone* has Collins's structural divisions, *Pride and Prejudice* has
+numbers. For all four, gating the title takes something away and returns nothing.
+
+What the run actually found is **B-1, and only B-1**: *The Woman in White*'s
+titles are invented, and they are written as summaries. Collins numbered his
+chapters. The report reasoned correctly from the one book it read and then
+generalised a property of that book onto the application.
+
+That is a violation of **EX-008**, which already required a supplied chapter
+title to be declared in Lore, and of the new **EX-009**, which now requires such
+a title to name its chapter rather than summarise it. Both live in
+PlotWeave-Library. The rules added in response to this run are in that
+repository's `docs/AUTHORING.md`; the enforcement gap — `libraryChapterTitles`'
+hand-kept list, which has *The Woman in White* nowhere on it — is recorded there
+too.
+
+Everything else in this report stands, including the whole of **What worked**,
+and A-5 through A-10 are unaffected.
+
+---
+
 ## What I set out to read
 
 **The Woman in White**, Wilkie Collins. I picked it deliberately: 62 chapters,
@@ -52,6 +83,8 @@ harmless. In The Woman in White they end the book.
 ## A — the application got in my way
 
 ### A-1 · The search palette hands out chapter titles from the whole book
+
+> **REJECTED — see the correction at the top.** A chapter title is on the reader's own contents page. The fault is B-1: *The Woman in White*'s titles are invented summaries.
 
 **Cost: highest. This is the one that would have made me close the app.**
 
@@ -103,6 +136,8 @@ harmless. In The Woman in White they end the book.
   makes the fix narrow.
 
 ### A-2 · The Timeline lists every chapter title in the book — and it is the screen the app sends you to
+
+> **REJECTED — see the correction at the top.** Same premise as A-1.
 
 **Cost: very high, and unavoidable, because it is the position-setting screen.**
 
@@ -187,6 +222,8 @@ precise about which half.**
   along the road in white"*) were one tab further on.
 
 ### A-4 · The Character Arc opens onto the whole book
+
+> **REJECTED — see the correction at the top.** Same premise as A-1.
 
 - **Screen:** dashboard → **Character Arc** card (one click).
 - **Cursor:** chapter 7, The Woman in White.
@@ -457,6 +494,8 @@ flicking back through the paperback, which is the entire point.
 ---
 
 ## Verdict
+
+> **The "no" below rests on A-1, which was rejected.** With that removed the answer is the one this section gives for a clean book: yes.
 
 **Is this a good application to read a book with?**
 
