@@ -10,6 +10,7 @@ import { deleteWorld } from '@/db/hooks/useWorlds'
 import { useReadingProgress } from '@/db/hooks/useReading'
 import { useWorldSummary } from '@/db/hooks/useWorldSummary'
 import { worldActivity } from '@/lib/worldActivity'
+import { shelfCounts, hasShelfCounts } from '@/lib/shelfCounts'
 import { exportWorld, exportWorldSplit } from '@/lib/exportImport'
 
 /** A date a reader cannot misread: the month is named, not numbered (X-6). */
@@ -34,6 +35,11 @@ export function WorldCard({ world }: WorldCardProps) {
   const progress = useReadingProgress(world.id)
   const summary = useWorldSummary(world.id)
   const activity = worldActivity(world, summary.lastOperationAt)
+  const counts = shelfCounts({
+    readingMode: !!world.readingMode,
+    chapters: summary.chapters,
+    characters: summary.characters,
+  })
 
   // Close the export dropdown when clicking outside
   useEffect(() => {
@@ -201,16 +207,21 @@ export function WorldCard({ world }: WorldCardProps) {
         </p>
       )}
 
-      {(summary.chapters > 0 || summary.characters > 0) && (
+      {/* See `shelfCounts`: a reader is not told how large the cast is. */}
+      {hasShelfCounts(counts) && (
         <p className="flex items-center gap-3 text-xs text-[hsl(var(--muted-foreground))]">
-          <span className="flex items-center gap-1">
-            <BookCopy className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            {summary.chapters} {summary.chapters === 1 ? 'chapter' : 'chapters'}
-          </span>
-          <span className="flex items-center gap-1">
-            <Users className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            {summary.characters} {summary.characters === 1 ? 'character' : 'characters'}
-          </span>
+          {counts.chapters !== null && (
+            <span className="flex items-center gap-1">
+              <BookCopy className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              {counts.chapters} {counts.chapters === 1 ? 'chapter' : 'chapters'}
+            </span>
+          )}
+          {counts.characters !== null && (
+            <span className="flex items-center gap-1">
+              <Users className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              {counts.characters} {counts.characters === 1 ? 'character' : 'characters'}
+            </span>
+          )}
         </p>
       )}
 

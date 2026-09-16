@@ -906,12 +906,24 @@ export function RoutesSection({
   onCancelDraw: () => void
 }) {
   const routes = useMapRoutes(mapLayerId)
+  const gate = useGate()
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const confirmRoute = confirmId ? routes.find((r) => r.id === confirmId) : null
 
+  /*
+    An empty section is an offer to a writer and a dead end to a reader.
+
+    "ROUTES 0" and "REGIONS 0" with a chevron each were two things to open and
+    find nothing in, on every visit to the map, in a book where the reader
+    cannot draw either. Most shipped worlds have no routes at all. A writer
+    keeps the empty section, because opening it is how the "New route" button is
+    found.
+  */
+  if (gate.active && routes.length === 0) return null
+
   return (
     <SidebarSection title="Routes" icon={Route} count={routes.length} defaultOpen={false}>
-      <div className="px-2 pb-1.5 pt-0.5">
+      {!gate.active && <div className="px-2 pb-1.5 pt-0.5">
         {drawingRoute ? (
           <button
             onClick={onCancelDraw}
@@ -927,7 +939,7 @@ export function RoutesSection({
             <Plus className="h-3 w-3" /> New route
           </button>
         )}
-      </div>
+      </div>}
       <div className="flex flex-col py-1">
         {routes.length === 0 ? (
           <p className="px-3 py-2 text-xs italic text-[hsl(var(--muted-foreground))]">No routes yet. Click 'New route' above, or right-click the map to start drawing.</p>
@@ -1019,6 +1031,7 @@ export function RegionsSection({
   onCancelDraw: () => void
 }) {
   const regions = useMapRegions(mapLayerId)
+  const gate = useGate()
   const regionSnaps = useBestRegionSnapshots(worldId, activeEventId)
   const snapByRegionId = useMemo(() => new Map(regionSnaps.map((s) => [s.regionId, s])), [regionSnaps])
   const [confirmId, setConfirmId] = useState<string | null>(null)
@@ -1033,9 +1046,12 @@ export function RegionsSection({
     for.
   */
 
+  // See RoutesSection: an empty section is a dead end to a reader.
+  if (gate.active && regions.length === 0) return null
+
   return (
     <SidebarSection title="Regions" icon={Hexagon} count={regions.length} defaultOpen={false}>
-      <div className="px-2 pb-1.5 pt-0.5">
+      {!gate.active && <div className="px-2 pb-1.5 pt-0.5">
         {drawingRegion ? (
           <button
             onClick={onCancelDraw}
@@ -1051,7 +1067,7 @@ export function RegionsSection({
             <Plus className="h-3 w-3" /> New region
           </button>
         )}
-      </div>
+      </div>}
       <div className="flex flex-col py-1">
         {regions.length === 0 ? (
           <p className="px-3 py-2 text-xs italic text-[hsl(var(--muted-foreground))]">No regions yet. Click 'New region' above, or right-click the map to start drawing.</p>
