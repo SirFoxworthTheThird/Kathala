@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { FileText, Download, BookOpen, PencilLine, Target, Replace } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
@@ -23,6 +23,7 @@ import { FindReplaceDialog } from './FindReplaceDialog'
 import { plural } from '@/lib/plural'
 import { splitParagraphs as paragraphs } from '@/lib/manuscriptParagraphs'
 import { openingState } from '@/lib/manuscriptOpening'
+import { asksBeforeJumping } from '@/lib/readingAhead'
 import { spotFor, scrollFor, readSpot, spotStillApplies, type SceneExtent, type ReadingSpot, type SpotAt } from '@/lib/readingSpot'
 import { emphasisSpans, type ProseSpan } from '@/lib/proseEmphasis'
 import { useBlobUrl } from '@/db/hooks/useBlobs'
@@ -167,6 +168,7 @@ export default function ManuscriptView() {
   */
   const scrollRef = useRef<HTMLDivElement>(null)
   const setActiveEventId = useAppStore((st) => st.setActiveEventId)
+  const pushToast = useAppStore((st) => st.pushToast)
   const cursorKey = useMemo(() => {
     if (!activeEventId) return null
     return computeSortKeySync(activeEventId, eventById, chapterNumberById)
@@ -246,6 +248,25 @@ export default function ManuscriptView() {
     is the jank this screen cannot afford; only `scrollTop` is read while
     scrolling, which is free.
   */
+  /*
+    Put the reader back where the scroll took them from.
+
+    The scroll happens first and the cursor second, which is not fussiness: the
+    reader is still scrolled to chapter 11 when they press Undo, so restoring
+    the cursor alone would leave the observer looking at a later scene and it
+    would advance again immediately — undoing the undo. Scrolling first means
+    the only scene in view when the cursor moves is the one being restored.
+
+    Instant rather than smooth, so the scenes in between are never observed on
+    the way past. This is a correction, not a journey.
+  */
+  const undoDrift = useCallback((backTo: string) => {
+    const root = scrollRef.current
+    const target = root?.querySelector<HTMLElement>(`[data-scene-event-id="${CSS.escape(backTo)}"]`)
+    target?.scrollIntoView({ block: 'start', behavior: 'auto' })
+    requestAnimationFrame(() => setActiveEventId(backTo))
+  }, [setActiveEventId])
+
   const spotRef = useRef<SpotAt | null>(null)
   useEffect(() => {
     if (!readingMode) return
@@ -317,13 +338,48 @@ export default function ManuscriptView() {
         }
         if (!furthest) return
         const next = cursorForScene({ cursor: cursorKey, scene: furthest })
-        if (next) setActiveEventId(next)
+        if (!next) return
+
+        /*
+          A scroll that skips chapters says so, and offers the way back.
+
+          Reading on moves your place a scene at a time and must never be
+          interrupted, so this cannot be the confirm the chapter rows use — a
+          modal in front of someone mid-sentence is worse than the fault. But a
+          drag of the scrollbar, or a fling long enough that the scenes between
+          never intersect, moved a reader from chapter 7 to chapter 11 in one
+          step, silently, and scrolling back did not bring it back: the cursor
+          is a high-water mark by design.
+
+          `asksBeforeJumping` decides what counts as a skip, so the Timeline and
+          this agree about it — two or more chapters forward, never backwards.
+          What differs is the remedy, and deliberately: its comment argues
+          against undo, on the grounds that not having seen a thing cannot be
+          restored. That is right for a move the reader *chose*, where there is
+          a moment to ask them beforehand. There is no such moment here, and for
+          a move that merely happened to them an undo is the only remedy that
+          does not interrupt the thing they are doing.
+        */
+        const before = useAppStore.getState().activeEventId
+        const chapterOf = (id: string | null) =>
+          id ? chapterNumberById.get(eventById.get(id)?.chapterId ?? '') ?? null : null
+        const from = chapterOf(before)
+        const to = chapterOf(next)
+        if (before && from !== null && to !== null && asksBeforeJumping(from, to)) {
+          pushToast({
+            id: 'reading-drift',
+            message: `Moved on to chapter ${to}`,
+            actionLabel: 'Undo',
+            onAction: () => undoDrift(before),
+          })
+        }
+        setActiveEventId(next)
       },
       { root, rootMargin: '-25% 0px -60% 0px', threshold: 0 },
     )
     for (const node of nodes) observer.observe(node)
     return () => observer.disconnect()
-  }, [readingMode, manuscript, eventById, chapterNumberById, cursorKey, setActiveEventId])
+  }, [readingMode, manuscript, eventById, chapterNumberById, cursorKey, setActiveEventId, pushToast, undoDrift])
   const [exportOpen, setExportOpen] = useState(false)
   const [findOpen, setFindOpen] = useState(false)
 

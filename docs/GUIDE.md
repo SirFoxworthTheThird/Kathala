@@ -454,6 +454,13 @@ scene steppers. Its **story player** is on the Map and only there (see
 through the ending on a timer — and if you do play the story on the map, pressing
 **stop** leaves your place where it carried you rather than clearing it.
 
+**If a scroll skips ahead**, PlotWeave says so — *"Moved on to chapter 11"* —
+with an **Undo** that puts you back where you were, page and place both. Reading
+on a scene at a time is never interrupted; this appears only when a drag of the
+scrollbar, or a long fling, carries you two or more chapters in one step. It is
+a notice rather than the question the chapter rows ask, because there is no
+moment to ask you in the middle of reading.
+
 **Telling it how far you have got** is two taps: open the Timeline and press
 **Read to here** on the chapter you have reached. The reading notice on the
 dashboard links straight to it. The previous/next steppers in the top bar work
