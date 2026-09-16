@@ -1255,8 +1255,8 @@ its own array now.
 `.claude/agents/reader-review.md` drove the app as somebody reading a novel with
 the paperback beside them, on *The Woman in White* — §22's own *Still not
 reviewed* asked for a second book, and every reading-mode measurement before
-this came from *Philosopher's Stone*. The report is
-`docs/reader-run-2026-08-17.md`; its ids are **F-1..F-7** and are kept here.
+this came from *Philosopher's Stone*. Its ids are **F-1..F-7** and are kept
+here; the report itself is no longer in the tree, and is in git history.
 
 Its verdict on the feature as a whole is worth quoting, because it is not what
 the findings suggest on their own: *"the failures above are not the gate hiding
