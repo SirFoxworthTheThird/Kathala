@@ -1,5 +1,6 @@
 import { History } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 
 /**
  * Marks state that was *carried forward* from an earlier scene rather than
@@ -9,8 +10,19 @@ import { cn } from '@/lib/utils'
  * Echoes the dashed-edge convention the relationship graph already uses for
  * inherited relationships, so "this is assumed, not authored here" reads
  * consistently across the app.
+ *
+ * **Not shown while reading.** "No change recorded in the active scene" is a
+ * fact about where to go and edit, which is a question a reader does not have.
+ * It is also on nearly every card they see, because nothing is copied forward
+ * when a scene is created and a snapshot exists only where somebody wrote one —
+ * so a blind reader run met it everywhere and reported not knowing what it
+ * meant. The decision is here rather than at the three call sites so that none
+ * of them can forget it; outside a world the gate is open, so a badge drawn
+ * somewhere without a provider behaves as it always did.
  */
 export function InheritedBadge({ className, label = 'carried forward' }: { className?: string; label?: string }) {
+  const gate = useGate()
+  if (gate.active) return null
   return (
     <span
       title="Carried forward from an earlier scene — no change recorded in the active scene."

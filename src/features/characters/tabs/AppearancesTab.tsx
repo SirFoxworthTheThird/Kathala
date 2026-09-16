@@ -5,6 +5,7 @@ import type { Character } from '@/types'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import { useCharacterSnapshots } from '@/db/hooks/useSnapshots'
 import { useAppStore } from '@/store'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { useShowMoment } from '@/db/hooks/useShowMoment'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/EmptyState'
@@ -59,6 +60,7 @@ export function AppearancesTab({ character }: AppearancesTabProps) {
   const { activeEventId } = useAppStore()
   const showMoment = useShowMoment()
   const navigate = useNavigate()
+  const gate = useGate()
 
   const { present, mentioned } = useMemo(
     () => computeCharacterAppearances({ characterId: character.id, events, chapters }),
@@ -129,19 +131,25 @@ export function AppearancesTab({ character }: AppearancesTabProps) {
           </div>
         ) : (
           /* X-4 rule 2: a character joins a scene from the scene, not from
-             here, so this names the screen that does it and goes there. */
+             here, so this names the screen that does it and goes there — for a
+             writer. The same reasoning as the "Mentioned in" branch below
+             applies: a reader has no cast to add anyone to. The reachable case
+             is a character mentioned somewhere and on stage nowhere, which is
+             common enough in a long book. */
           <div className="flex flex-col items-start gap-1.5">
             <p className="text-xs text-[hsl(var(--muted-foreground))]">
-              Not on stage in any scene yet. Add {character.name} to a scene's cast
-              and it will show here.
+              Not on stage in any scene yet.
+              {!gate.active && <> Add {character.name} to a scene's cast and it will show here.</>}
             </p>
-            <button
-              onClick={() => navigate(`/worlds/${character.worldId}/timeline`)}
-              className="pw-tap inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
-            >
-              <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
-              Open Timeline
-            </button>
+            {!gate.active && (
+              <button
+                onClick={() => navigate(`/worlds/${character.worldId}/timeline`)}
+                className="pw-tap inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
+              >
+                <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
+                Open Timeline
+              </button>
+            )}
           </div>
         )}
       </section>
@@ -160,10 +168,20 @@ export function AppearancesTab({ character }: AppearancesTabProps) {
           </div>
         ) : (
           /* "Referenced but not present in no scenes yet" — the old copy read
-             as a mistake because it was one sentence doing two jobs. */
+             as a mistake because it was one sentence doing two jobs.
+
+             The second job is an authoring instruction, and a reader has no
+             scene drafts to type into. Hiding tabs with nothing behind them was
+             supposed to have dealt with this, and does not: a character present
+             in forty scenes and mentioned in none has a populated tab and an
+             empty section inside it, which is exactly where a blind reader run
+             found it. */
           <p className="text-xs text-[hsl(var(--muted-foreground))]">
-            Not mentioned in any scene yet. Type <span className="font-medium">@</span> in
-            a scene's draft to refer to {character.name} without putting them in the room.
+            Not mentioned in any scene yet.
+            {!gate.active && (
+              <> Type <span className="font-medium">@</span> in a scene's draft to
+              refer to {character.name} without putting them in the room.</>
+            )}
           </p>
         )}
       </section>
