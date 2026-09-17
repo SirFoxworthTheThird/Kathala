@@ -309,11 +309,26 @@ function WorldSettingsBody() {
             </span>
           )}
         </div>
+        {/*
+          Say what turning it off costs, rather than asking.
+
+          A blind reader run noted that this is one click with no dialog while
+          stepping the cursor a chapter forward raises one — "the app guards
+            the small doors and leaves the big one unlatched" — and that the
+          dashboard fills with end-of-book thread summaries the moment it
+          opens. A confirm is the wrong answer: this is the deliberate escape
+          hatch, on a settings screen, under a button that says exactly what
+          it does, and it is the one path that should not be taxed. What it
+          was missing is the consequence, which this paragraph described in
+          terms of editing and re-download and never in terms of the reveal.
+        */}
         {world.readingMode && (
           <p className="text-xs text-[hsl(var(--muted-foreground))]">
-            Turn it off whenever you want to edit. If this world came from the library,
-            note that downloading it again restores the original and discards your changes —
-            export it first if you want to keep them.
+            Turning it off shows the whole world at once — every character, place and
+            subplot, including the ones you have not read yet. Your place in the book is
+            kept, so turning it back on resumes where you were. If this world came from
+            the library, note that downloading it again restores the original and discards
+            your changes — export it first if you want to keep them.
           </p>
         )}
       </SettingsSection>
