@@ -502,8 +502,17 @@ export default function ChapterDetailView() {
               </div>
             )}
 
-            {/* Relationship snapshots (end of chapter state) */}
-            {relationships.length > 0 && (
+            {/*
+              Relationship snapshots (end of chapter state).
+
+              A section with nothing in it is a finding for a writer — nobody
+              has recorded a state here yet — and a dead end for a reader, who
+              cannot record one. Two blind reader runs met this and the empty
+              Writer's Notes beside it as "two empty sections addressed to
+              somebody who is not here". Same rule as the map sidebar's Routes
+              and Regions.
+            */}
+            {relationships.length > 0 && (!gate.active || relSnapshots.length > 0) && (
               <div className="mt-1 border-t border-[hsl(var(--border))] pt-3">
                 <div className="flex items-center gap-2 mb-2">
                   <Network className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" />
@@ -538,7 +547,8 @@ export default function ChapterDetailView() {
           </div>
         </div>
 
-        {/* Writer's Notes */}
+        {/* Writer's Notes — see the note on Relationship States above. */}
+        {(!gate.active || notes.trim()) && (
         <div className="flex flex-col lg:w-72 lg:shrink-0 lg:overflow-hidden lg:border-l lg:border-[hsl(var(--border))]">
           <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] px-4 py-2">
             <StickyNote className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
@@ -575,6 +585,7 @@ export default function ChapterDetailView() {
             )}
           </div>
         </div>
+        )}
       </div>
 
       {chapterId && worldId && (

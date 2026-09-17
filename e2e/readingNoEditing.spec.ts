@@ -87,3 +87,75 @@ test('a writer keeps both menus on the same screens', async ({ page }) => {
 
   await expect(chapterMenu(page).first(), 'the writer still has the chapter menu').toBeVisible()
 })
+
+test('a chapter offers a reader no empty section addressed to somebody else', async ({ page }) => {
+  /*
+    Two blind reader runs met the chapter screen ending in "Writer's Notes — No
+    notes on this chapter" and "Relationship States — No relationship states
+    recorded": two empty sections addressed to somebody who is not here, on a
+    book the reader cannot write in. Same rule as the map sidebar's Routes and
+    Regions — an empty section is an answer to a writer and a dead end to a
+    reader — and the same shape as the notes box itself, which was made
+    read-only rather than removed, because notes that exist are worth reading.
+
+    Alice rather than Dracula: every Dracula chapter carries notes, so the empty
+    state is unreachable there and an earlier version of this passed without
+    testing anything. 1038 of the library's 1634 chapters have none.
+  */
+  const worldId = await downloadLibraryBook(page, 'Alice’s Adventures in Wonderland')
+  await settle(page)
+
+  const chapterId = await page.evaluate(async () => {
+    const db = (window as unknown as { __pwdb?: {
+      chapters: { toArray: () => Promise<{ id: string; number: number; notes?: string }[]> }
+    } }).__pwdb
+    const all = await db!.chapters.toArray()
+    const empty = all.filter((c) => !(c.notes ?? '').trim()).sort((a, b) => a.number - b.number)
+    if (!empty.length) throw new Error('every chapter in this book has notes')
+    return empty[0].id
+  })
+
+  const openChapter = async () => {
+    await page.goto(`/#/worlds/${worldId}/timeline/${chapterId}`, { waitUntil: 'load' })
+    await settle(page)
+  }
+
+  await openChapter()
+  await expect(page.getByText("Writer's Notes"), 'no empty notes panel while reading').toHaveCount(0)
+  await expect(page.getByText('Relationship States'), 'no empty relationship section').toHaveCount(0)
+
+  // The presence half, on the same chapter of the same book: both come back for
+  // the person they are addressed to.
+  await page.goto(`/#/worlds/${worldId}/settings`, { waitUntil: 'load' })
+  await page.getByRole('button', { name: 'Turn off reading mode' }).click()
+  await expect(page.getByRole('button', { name: 'Turn on reading mode' })).toBeVisible()
+  await settle(page)
+
+  await openChapter()
+  await expect(page.getByText("Writer's Notes").first(), 'a writer keeps the notes box').toBeVisible()
+  await expect(page.getByText('Relationship States').first(), 'and the relationship section').toBeVisible()
+})
+
+test('settings says what turning reading mode off will show', async ({ page }) => {
+  /*
+    A reader run called this "the app guards the small doors and leaves the big
+    one unlatched": stepping the cursor two chapters forward raises a confirm,
+    and turning the whole mode off is one unguarded click. A confirm is still
+    the wrong answer — this is the deliberate escape hatch, on a settings
+    screen, under a button that says exactly what it does — but the paragraph
+    beside it talked about editing and re-downloading and never about the
+    reveal, which is the thing that cannot be undone.
+  */
+  const worldId = await downloadLibraryBook(page, 'Alice’s Adventures in Wonderland')
+  await settle(page)
+  await page.goto(`/#/worlds/${worldId}/settings`, { waitUntil: 'load' })
+  await settle(page)
+
+  await expect(page.getByText(/shows the whole world at once/),
+    'it says what comes back').toBeVisible()
+  await expect(page.getByText(/including the ones you have not read yet/),
+    'and that it includes what has not been read').toBeVisible()
+  await expect(page.getByText(/place in the book is\s+kept/),
+    'and that the place is not lost, so the warning is not a scare').toBeVisible()
+})
+

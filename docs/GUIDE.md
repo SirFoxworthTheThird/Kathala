@@ -448,7 +448,11 @@ layers, and no **…** menu on a chapter row or a scene card — so there is no
 **Rename chapter**, **Delete chapter**, **Move to chapter** or **Delete scene**
 to hit by accident in a book you are only reading. The Calendar stops inviting
 you to drag a scene onto a different day, and the map's character panel shows
-what is recorded rather than offering to change it. The map sidebar stops
+what is recorded rather than offering to change it. A chapter screen drops its
+**Writer's Notes** and **Relationship States** panels when there is nothing in
+them — notes that *have* been written are still shown, because they are worth
+reading — so a reader is not left opening two empty boxes addressed to somebody
+else. The map sidebar stops
 offering sections with nothing behind them — **Routes 0** and **Regions 0** were
 two things to open and find empty on every visit — while a section that does
 hold something stays where it is. The **carried forward** badge leaves the
@@ -586,7 +590,10 @@ all describe the draft rather than the story, so they wait. (The HTML export
 would write out the whole world regardless of your chapter cursor, so offering
 it here would hand you the ending in a file.)
 
-To edit a world anyway, turn reading mode off in **Settings**. Everything comes
+To edit a world anyway, turn reading mode off in **Settings**. It says what that
+will do before you press it: the whole world comes back at once, including the
+characters, places and subplots you have not read yet, though your place in the
+book is kept so turning it back on resumes where you were. Everything comes
 back exactly as it was.
 
 The library worlds carry **no text from the books**. They are structural
