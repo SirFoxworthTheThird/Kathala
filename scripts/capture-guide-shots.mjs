@@ -218,6 +218,102 @@ const shots = [
     ready: (page) => page.getByRole('heading', { name: 'The Iliad' }),
   },
 
+  // ── Controls that need a click, not just a route ──────────────────────────
+  // Every name below was read off the live app rather than guessed; a button
+  // named from memory is how the first pass photographed the wrong screens.
+  {
+    name: '36-find-replace', book: ILIAD, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' })
+      await page.getByRole('heading', { name: /^Ch\. 1 —/ }).waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByRole('button', { name: 'Find & replace' }).click()
+    },
+    ready: (page) => page.getByRole('dialog'),
+  },
+  {
+    name: '62-bar-rolled-up', book: ILIAD, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByRole('button', { name: 'Hide the chapter bar' }).click()
+    },
+    ready: (page) => page.getByRole('button', { name: /Show the chapter bar/i }),
+  },
+  {
+    name: '48-thread-filter', book: ILIAD, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByRole('button', { name: 'All threads' }).click()
+    },
+    ready: (page) => page.getByRole('button', { name: 'Honour and Command' }),
+  },
+  {
+    name: '64-settings-collapsed', book: ILIAD, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/settings`, { waitUntil: 'load' })
+      await page.getByRole('heading', { name: 'WORLD' }).waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByRole('button', { name: 'Collapse all' }).click()
+    },
+    ready: (page) => page.getByRole('button', { name: /Expand all/i }),
+  },
+  {
+    name: '16-search', book: ILIAD, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByRole('button', { name: 'Search (Ctrl+K)' }).click()
+      await page.keyboard.type('Achilles')
+    },
+    ready: (page) => page.getByRole('dialog'),
+    settle: 2000,
+  },
+  {
+    name: '19-help', book: ILIAD, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
+      await page.locator('button[aria-label="Help"]').click()
+    },
+    ready: (page) => page.getByRole('heading', { name: 'Help' }),
+  },
+  {
+    name: '53-recent-changes', book: ILIAD, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByRole('button', { name: 'Recent changes' }).click()
+    },
+    ready: (page) => page.getByRole('dialog'),
+  },
+  {
+    name: '17-writers-brief', book: ILIAD, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByRole('button', { name: "Writer's Brief" }).click()
+    },
+    ready: (page) => page.getByRole('dialog'),
+  },
+  {
+    name: '18-continuity', book: ILIAD, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByRole('button', { name: 'Continuity Checker' }).click()
+    },
+    ready: (page) => page.getByRole('dialog'),
+    settle: 3000,
+  },
+  {
+    name: '51-character-goals', book: ILIAD, reading: false,
+    go: async (page, id) => {
+      const c = await firstCharacter(page, id)
+      await page.goto(`${BASE}/#/worlds/${id}/characters/${c}?tab=goals`, { waitUntil: 'load' })
+    },
+    ready: (page) => page.getByRole('heading', { name: 'Achilles' }),
+  },
+
   // ── Maps, on Alice ────────────────────────────────────────────────────────
   // Six layers and thirty-seven markers, and its artwork is the Library's own
   // rather than a Wikimedia link, so it is one of the few that photograph whole.
@@ -263,6 +359,16 @@ const skipped = []
 for (const shot of wanted) {
   const id = worlds.get(shot.book)
   try {
+    /*
+      Shut whatever the last shot opened. A dialog survives a hash navigation,
+      and its backdrop then intercepts every click: one open search palette cost
+      four later shots, each failing as "the screen never finished rendering"
+      while the screen underneath was fine.
+    */
+    for (let i = 0; i < 3 && await page.getByRole('dialog').count(); i += 1) {
+      await page.keyboard.press('Escape')
+      await page.waitForTimeout(300)
+    }
     await setReadingMode(page, id, shot.reading)
     await shot.go(page, id)
     await ready(page, shot.ready(page), shot.name)
