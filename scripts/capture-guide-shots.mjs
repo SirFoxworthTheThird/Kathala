@@ -29,6 +29,9 @@ const VIEWPORT = { width: 1440, height: 900 }
 
 const ILIAD = 'The Iliad'
 const ALICE = 'Alice’s Adventures in Wonderland'
+// Two timelines and a frame-narrative link between them — the only shipped book
+// that can photograph the multi-timeline screens at all.
+const JOURNEY = 'Journey to the West'
 
 /** Install a Library book through the dev seam and return its world id. */
 async function install(page, title) {
@@ -106,6 +109,12 @@ async function ready(page, locator, name) {
   one context, so an unscoped `characters.toArray()[0]` returned *Alice* and the
   Iliad's character page was photographed showing somebody from another book.
 */
+async function nthCharacter(page, worldId, n) {
+  return page.evaluate(async ([id, index]) => {
+    const all = await window.__pwdb.characters.where('worldId').equals(id).toArray()
+    return all[index % all.length].id
+  }, [worldId, n])
+}
 async function firstCharacter(page, worldId) {
   return page.evaluate(async (id) => {
     const all = await window.__pwdb.characters.where('worldId').equals(id).toArray()
@@ -314,6 +323,165 @@ const shots = [
     ready: (page) => page.getByRole('heading', { name: 'Achilles' }),
   },
 
+  // ── The shelf, and screens that need a second state ───────────────────────
+  {
+    name: '01-home-empty', book: ILIAD, reading: false, fresh: true,
+    ready: (page) => page.getByRole('button', { name: 'New World' }),
+  },
+  {
+    name: '02-home-worlds', book: ILIAD, reading: false,
+    go: (page) => page.goto(`${BASE}/#/`, { waitUntil: 'load' }),
+    ready: (page) => page.getByRole('button', { name: 'Start from scratch' }),
+  },
+  {
+    name: '07-character-detail', book: ILIAD, reading: false,
+    go: async (page, id) => {
+      const c = await nthCharacter(page, id, 1)
+      await page.goto(`${BASE}/#/worlds/${id}/characters/${c}`, { waitUntil: 'load' })
+    },
+    ready: (page) => page.getByRole('main').getByRole('heading').first(),
+  },
+  {
+    name: '37-navigation', book: ILIAD, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByRole('button', { name: 'Pin navigation open' }).click()
+    },
+    ready: (page) => page.getByRole('link', { name: 'Knowledge' }),
+  },
+  {
+    name: '44-writing-goals', book: ILIAD, reading: false,
+    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/`, { waitUntil: 'load' }),
+    ready: (page) => page.getByText('words today'),
+  },
+  {
+    name: '49-timeline-bar-scope', book: ILIAD, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByRole('button', { name: 'View all chapters' }).click()
+    },
+    ready: (page) => page.getByRole('button', { name: /Ch\. 24|The Ransom/ }).first(),
+  },
+  {
+    name: '60-settings-index', book: ILIAD, reading: false,
+    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/settings`, { waitUntil: 'load' }),
+    ready: (page) => page.getByRole('button', { name: 'Collapse all' }),
+  },
+  {
+    name: '43-settings-sync', book: ILIAD, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/settings`, { waitUntil: 'load' })
+      await page.getByRole('heading', { name: 'WORLD' }).waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByText(/sync/i).first().scrollIntoViewIfNeeded()
+    },
+    ready: (page) => page.getByText(/sync/i).first(),
+  },
+  {
+    name: '50-arc-thread-lane', book: ILIAD, reading: false,
+    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/arc`, { waitUntil: 'load' }),
+    ready: (page) => page.locator('[role="grid"]'),
+    settle: 2500,
+  },
+  {
+    name: '40-map-tools', book: ALICE, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/maps`, { waitUntil: 'load' })
+      await page.locator('.leaflet-container').waitFor({ state: 'visible', timeout: 30_000 })
+      await page.waitForTimeout(2500)
+      await page.getByRole('button', { name: 'Play story on the map' }).click()
+    },
+    ready: (page) => page.locator('.leaflet-container'),
+    settle: 3000,
+  },
+  {
+    name: '29-map-levels', book: ALICE, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/maps`, { waitUntil: 'load' })
+      await page.locator('.leaflet-container').waitFor({ state: 'visible', timeout: 30_000 })
+      await page.waitForTimeout(2500)
+      await page.getByRole('button', { name: 'The Queen of Hearts’ Grounds' }).click()
+    },
+    ready: (page) => page.locator('.leaflet-container'),
+    settle: 3500,
+  },
+
+  // ── Controls behind a mode, a menu or a second world ──────────────────────
+  {
+    name: '58-row-menu', book: ILIAD, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByRole('button', { name: 'More actions for chapter 1', exact: true }).click()
+    },
+    ready: (page) => page.getByRole('menu').or(page.getByRole('menuitem').first()),
+  },
+  {
+    name: '65-scene-standing', book: ILIAD, reading: false,
+    // The X-ray gutter renders only in Reading mode, and only with prose.
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' })
+      await page.getByRole('heading', { name: /^Ch\. 1 —/ }).waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByRole('button', { name: 'Reading' }).click()
+    },
+    ready: (page) => page.getByRole('heading', { name: /^Ch\. 1 —/ }),
+    settle: 2500,
+  },
+  {
+    name: '46-focus-mode', book: ILIAD, reading: false,
+    go: async (page, id) => {
+      const chapter = await firstChapter(page, id)
+      await page.goto(`${BASE}/#/worlds/${id}/timeline/${chapter}`, { waitUntil: 'load' })
+      await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByRole('main').getByText('The Priest Is Rejected').first().click()
+      await page.waitForTimeout(1200)
+      await page.getByRole('button', { name: /Focus/i }).first().click()
+    },
+    ready: (page) => page.getByRole('button', { name: /Exit focus|Leave focus|Close/i }).first(),
+    settle: 2000,
+  },
+  {
+    name: '34-scene-history', book: ILIAD, reading: false,
+    go: async (page, id) => {
+      const chapter = await firstChapter(page, id)
+      await page.goto(`${BASE}/#/worlds/${id}/timeline/${chapter}`, { waitUntil: 'load' })
+      await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByRole('button', { name: /histor|revision/i }).first().click()
+    },
+    ready: (page) => page.getByText(/revision|version/i).first(),
+  },
+  {
+    name: '47-all-timelines', book: JOURNEY, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.getByRole('button', { name: 'All timelines' }).waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByRole('button', { name: 'All timelines' }).click()
+    },
+    ready: (page) => page.getByRole('main').getByRole('button').first(),
+    settle: 3000,
+  },
+  {
+    name: '39-timeline-relationships', book: JOURNEY, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.getByRole('button', { name: 'Link Timelines' }).waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByRole('button', { name: 'Link Timelines' }).click()
+    },
+    ready: (page) => page.getByRole('dialog'),
+    settle: 2000,
+  },
+  {
+    name: '52-map-tools-menu', book: ALICE, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/maps`, { waitUntil: 'load' })
+      await page.locator('.leaflet-container').waitFor({ state: 'visible', timeout: 30_000 })
+      await page.waitForTimeout(2500)
+      await page.getByRole('button', { name: 'Map tools' }).click()
+    },
+    ready: (page) => page.getByRole('menu').or(page.getByRole('menuitem').first()),
+  },
+
   // ── Maps, on Alice ────────────────────────────────────────────────────────
   // Six layers and thirty-seven markers, and its artwork is the Library's own
   // rather than a Wikimedia link, so it is one of the few that photograph whole.
@@ -341,11 +509,31 @@ const browser = await chromium.launch({ executablePath: process.env.SHOT_CHROMIU
 */
 const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 2 })
 const page = await context.newPage()
+
+/*
+  A shot marked `fresh` gets its own empty context, because the empty-shelf
+  screen cannot be reached from a context that has books in it and deleting them
+  is not the same picture — a world that has been removed is not a world that
+  was never there.
+*/
+async function inFreshContext(shot) {
+  const ctx = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 2 })
+  const fresh = await ctx.newPage()
+  try {
+    await fresh.goto(`${BASE}/#/`, { waitUntil: 'load' })
+    await settle(fresh, 1500)
+    await ready(fresh, shot.ready(fresh), shot.name)
+    await settle(fresh, shot.settle ?? 1500)
+    await fresh.screenshot({ path: `${OUT}/${shot.name}.png` })
+  } finally {
+    await ctx.close()
+  }
+}
 await page.goto(`${BASE}/#/`, { waitUntil: 'load' })
 await settle(page, 800)
 
 const worlds = new Map()
-for (const book of new Set(wanted.map((s) => s.book))) {
+for (const book of new Set(wanted.filter((s) => !s.fresh).map((s) => s.book))) {
   worlds.set(book, await install(page, book))
 }
 
@@ -357,6 +545,17 @@ for (const book of new Set(wanted.map((s) => s.book))) {
 */
 const skipped = []
 for (const shot of wanted) {
+  try {
+    if (shot.fresh) {
+      await inFreshContext(shot)
+      console.log(`  ${shot.name}`)
+      continue
+    }
+  } catch (err) {
+    console.log(`  ${shot.name} — SKIPPED: ${err.message}`)
+    skipped.push(shot.name)
+    continue
+  }
   const id = worlds.get(shot.book)
   try {
     /*
