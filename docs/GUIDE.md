@@ -604,10 +604,11 @@ authors or publishers.
 
 Chapters are named as the book names them, including where the book uses only
 numbers or its own divisions — *Chapter IV*, *Letter II*, *First Period — The
-Loss of the Diamond: Chapter 1*. Two books number their chapters without naming
-them and would be hard to navigate that way: *Jane Eyre* and *The Odyssey*.
-Those carry descriptive names written for the example, and each says so on its
-own **Lore** page, so you can tell an author's title from ours.
+Loss of the Diamond: Chapter 1*. Five books number or letter their chapters
+without naming them and would be hard to navigate that way: *Jane Eyre*, *The
+Iliad*, *The Odyssey*, *The Woman in White* and *Wuthering Heights*. Those carry
+descriptive names written for the world, and each says so on its own **Lore**
+page, so you can tell an author's title from ours.
 
 ### Reading mode on your own world
 
