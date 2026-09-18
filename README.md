@@ -282,10 +282,9 @@ src/
 docs/          # user guide and maintained screenshots
 e2e/           # Playwright end-to-end tests
 electron/      # desktop entry point and packaging integration
-example/       # importable example worlds
 ```
 
-Book examples must follow the [mandatory example-authoring rules](docs/EXAMPLE_AUTHORING_RULES.md) and pass the companion [release checklist](docs/EXAMPLE_AUTHORING_CHECKLIST.md). These are release requirements, not recommendations. Automated guardrails run as part of the Vitest suite; visual and editorial requirements must also be verified in PlotWeave before an example is merged.
+The shipped books no longer live here. They are built, held to their authoring rules and published from [PlotWeave-Library](https://github.com/SirFoxworthTheThird/PlotWeave-Library), which the app fetches the Library from at runtime; the rules and the tests that enforce them are in that repository's [`docs/AUTHORING.md`](https://github.com/SirFoxworthTheThird/PlotWeave-Library/blob/main/docs/AUTHORING.md).
 
 ---
 

@@ -7,9 +7,10 @@ world from a draft or an AI assistant, and can carry a series forward into a
 sequel — all stored privately in your browser (IndexedDB), with no account and
 no backend. You can run it in the browser or as a desktop app.
 
-This guide walks through every part of the app. All screenshots use the bundled
-example world, *Middle Earth* (a Lord of the Rings sample you can import to
-explore).
+This guide walks through every part of the app. The screenshots are taken from
+books in the **Library** — the shelf of worlds built from published novels,
+opened from the world selector — so you can download the same book and follow
+along on the same screen.
 
 ### What leaves your device
 
