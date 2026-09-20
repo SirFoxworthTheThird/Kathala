@@ -53,7 +53,9 @@ A shelf of downloaded books therefore never buries your own work. Turning readin
 
 ## What library worlds contain
 
-They carry **no text from the books**. They are structural references only: characters, chapters, events, places, relationships, and lore.
+**Most of them carry the book itself.** 34 of the 41 are complete public-domain novels, and each one's catalogue entry names the Project Gutenberg edition its text came from. On those, reading mode adds a **Read** screen — see [Reading Mode](Reading-Mode).
+
+The other seven carry **no text**, and are structural references only: characters, chapters, events, places, relationships and lore. Those are the books still in copyright, plus *Journey to the West*. Every world carries the structural layer either way, and all of it — summaries, descriptions, status notes — is original editorial writing rather than the author's words.
 
 They are unofficial and fan-made, and are not affiliated with or endorsed by the authors or publishers.
 

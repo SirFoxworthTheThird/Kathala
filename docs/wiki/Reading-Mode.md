@@ -27,6 +27,45 @@ Summary figures that would give the game away — the alive/dead split on the da
 
 ---
 
+## Reading the book
+
+Most Library books carry their own text — **34 of the 41** are complete public-domain novels. On those, reading mode turns **Manuscript** into **Read**: the book, chapter by chapter, with none of the writing furniture. No draft/reading switch, no word counts, no *scenes written* tally — just the prose.
+
+A long book takes a moment to open — *The Count of Monte Cristo* is 459,375 words — and while it does you get the shape of a page and **Opening the book…**, rather than a screen that looks finished and empty.
+
+### Where you are
+
+Under the title a slim bar fills as you read, beside the two things a paperback tells you by being thick on one side: how far through the book you are, and how much of this chapter is left — *42% of the book · Chapter 47 of 117 · about 18 min left in it*. The minutes are an estimate at an ordinary pace, not a promise.
+
+That readout answers *where you are looking*, which is not always where your place is. Scroll back to re-read an earlier chapter and it follows you back, while the cursor — and everything it has unlocked — stays where you had got to.
+
+### Turning back without losing your place
+
+**Contents** lists the chapters you have read. Click one and the page goes there; everything you have unlocked stays unlocked. Once you have wandered off, **Back to your place** appears to return you, and stands down again when you are back.
+
+Chapters you have not reached are deliberately not in that list. The whole book's text is on the page, so you can always read on — but a click that landed ten chapters ahead would unlock ten chapters of cast, places and lore in one movement, which is the thing reading mode exists to prevent. **Going forward is done by reading.**
+
+### Setting the type
+
+On the right of that same row: **−** and **+** step the text through five sizes, **Sans** swaps the world's own face for a plain one, and **Snug / Relaxed / Airy** set the line spacing. On a phone the last becomes a single button naming the current spacing, which cycles as you press it.
+
+It is your preference rather than the book's — every book opens the way you left it — and it starts at exactly what the screen always used, so nothing changes until you ask. The draft screen keeps the fixed setting, since that is where line lengths are judged.
+
+### Your place moves as you read
+
+Reach a new scene and the cursor follows, so the cast, places, lore and maps unlock exactly as far as you have got without your having to tell it. Leave for another screen or close the tab, and **Read** opens again on the page you were on.
+
+Two things it will not do:
+
+- **It never goes backwards.** Turn back to re-read a chapter and nothing you have already learned is hidden again. Moving your place back is deliberate, with the cursor at the top of the screen.
+- **It never overrides *All chapters*.** If you have chosen to see the whole book, reading does not quietly close that again.
+
+### In this scene
+
+Beside the prose, **In this scene** names who is **here**, who is **spoken of**, the **place**, and the **things** that matter in the scene you are reading — with portraits, and an eye beside each to open its page. It follows you down the book.
+
+---
+
 ## Remembering your place
 
 PlotWeave remembers your place in each book. Close one, read another, come back a week later — the cursor is where you left it, and the world card says *"Chapter 5 of 17"* with a progress bar.
@@ -49,7 +88,9 @@ Reading mode also clears out everything that only makes sense to the person writ
 
 ### Screens
 
-The writing screens — **Manuscript**, **Structure**, and the **Corkboard** — step aside, and their addresses close with them: typing one in takes you back to the dashboard.
+The writing screens — **Structure** and the **Corkboard** — step aside, and their addresses close with them: typing one in takes you back to the dashboard.
+
+**Manuscript** is the exception. On a book that carries its own text it stays, renamed **Read**, and becomes the book itself — see *Reading the book* below. On the seven Library worlds with no prose it closes like the others, because there would be nothing on it.
 
 ### Top bar
 
@@ -87,7 +128,7 @@ Travel speeds, the continuity threshold, word target and deadline, the calendar'
 
 ## Turning it off
 
-To edit a world anyway, turn reading mode off in **Settings**. Everything comes back exactly as it was.
+To edit a world anyway, turn reading mode off in **Settings**. It says what that will do before you press it: the whole world comes back at once, including the characters, places and subplots you have not read yet — though your place in the book is kept, so turning it back on resumes where you were.
 
 ---
 
