@@ -62,6 +62,35 @@ describe('the shipped docs', () => {
     expect(repoFiles.size).toBeGreaterThan(200)
   })
 
+  it('never points at a heading that is not there', () => {
+    /*
+      The other half of the same question. `docs/GUIDE.md` carries 72 in-page
+      links and 62 headings, and a stale one lands the reader at the top of a
+      2,800-line document with no clue why.
+
+      **The slug rule is the trap.** GitHub lowercases, drops everything but word
+      characters, spaces and hyphens, then maps each *remaining space* to a
+      hyphen — without collapsing runs. So "Timeline & scenes" anchors as
+      `timeline--scenes`, with two hyphens, because the ampersand left two
+      spaces behind. A first version of this check collapsed whitespace and
+      reported fourteen broken links that all work.
+    */
+    const slug = (heading: string) =>
+      heading.toLowerCase().replace(/[^\w\s-]/g, '').trim().replace(/ /g, '-')
+
+    for (const [path, text] of Object.entries(docs)) {
+      const headings = new Set(
+        [...text.matchAll(/^#{2,4}\s+(.*)$/gm)].map(([, h]) => slug(h.trim())),
+      )
+      const targets = [...text.matchAll(/\]\(#([^)\s]+)\)/g)].map(([, t]) => t)
+      if (path.endsWith('README.md') && targets.length === 0) continue
+      expect(headings.size, `${path} has no headings`).toBeGreaterThan(10)
+      expect(targets.length, `${path} has no in-page links`).toBeGreaterThan(10)
+      const dead = targets.filter((t) => !headings.has(t))
+      expect(dead, `${path} links to headings it does not have:\n${dead.join('\n')}`).toEqual([])
+    }
+  })
+
   it('never points at a file that is not here', () => {
     const dead: string[] = []
     let checked = 0
