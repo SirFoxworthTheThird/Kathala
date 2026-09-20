@@ -463,23 +463,63 @@ const shots = [
   },
   {
     name: '39-timeline-relationships', book: JOURNEY, reading: false,
+    /*
+      Journey to the West is the only shipped book with two timelines — and at a
+      hundred chapters it is also the slowest to lay out, so this waits far
+      longer than the usual budget. "Link Timelines" opens a panel, not a dialog;
+      waiting for `role="dialog"` timed out on a panel that had opened.
+    */
     go: async (page, id) => {
       await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
-      await page.getByRole('button', { name: 'Link Timelines' }).waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByRole('button', { name: 'Link Timelines' }).waitFor({ state: 'visible', timeout: 90_000 })
       await page.getByRole('button', { name: 'Link Timelines' }).click()
     },
-    ready: (page) => page.getByRole('dialog'),
-    settle: 2000,
+    ready: (page) => page.getByText('Timeline Relationships'),
+    settle: 2500,
+  },
+
+  // ── Behind a menu, or in a world nobody has built yet ─────────────────────
+  {
+    name: '38-onboarding', book: ILIAD, reading: false, fresh: true,
+    /*
+      The first-run guide exists only in an empty world, so this makes one
+      rather than opening a book. Its steps are labelled "1 Begin your story",
+      not "Step 1 of 4" — the heading is what identifies the screen.
+    */
+    go: async (page) => {
+      await page.getByRole('button', { name: 'New World' }).click()
+      await page.getByRole('heading', { name: 'Create New World' }).waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByRole('textbox').first().fill('The Salt Road')
+      await page.getByRole('button', { name: 'Create World' }).click()
+    },
+    ready: (page) => page.getByRole('heading', { name: 'Your story begins with a moment' }),
+    settle: 2500,
   },
   {
     name: '52-map-tools-menu', book: ALICE, reading: false,
+    // The menu is a popover of plain items, not `role="menuitem"`, which is why
+    // waiting for a menu role timed out on a menu that had opened.
     go: async (page, id) => {
       await page.goto(`${BASE}/#/worlds/${id}/maps`, { waitUntil: 'load' })
-      await page.locator('.leaflet-container').waitFor({ state: 'visible', timeout: 30_000 })
-      await page.waitForTimeout(2500)
+      await page.locator('.leaflet-container').waitFor({ state: 'visible', timeout: 40_000 })
+      await page.waitForTimeout(3000)
       await page.getByRole('button', { name: 'Map tools' }).click()
     },
-    ready: (page) => page.getByRole('menu').or(page.getByRole('menuitem').first()),
+    ready: (page) => page.getByText('Measure distance'),
+    settle: 1500,
+  },
+  {
+    name: '28-replace-map-image', book: ALICE, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/maps`, { waitUntil: 'load' })
+      await page.locator('.leaflet-container').waitFor({ state: 'visible', timeout: 40_000 })
+      await page.waitForTimeout(3000)
+      await page.getByRole('button', { name: 'Map tools' }).click()
+      await page.getByText('Replace image').waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByText('Replace image').click()
+    },
+    ready: (page) => page.getByRole('dialog'),
+    settle: 1500,
   },
 
   // ── Maps, on Alice ────────────────────────────────────────────────────────
@@ -522,6 +562,7 @@ async function inFreshContext(shot) {
   try {
     await fresh.goto(`${BASE}/#/`, { waitUntil: 'load' })
     await settle(fresh, 1500)
+    if (shot.go) await shot.go(fresh)
     await ready(fresh, shot.ready(fresh), shot.name)
     await settle(fresh, shot.settle ?? 1500)
     await fresh.screenshot({ path: `${OUT}/${shot.name}.png` })
