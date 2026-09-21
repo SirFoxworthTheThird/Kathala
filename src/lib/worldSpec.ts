@@ -10,7 +10,7 @@ import type {
 /**
  * Compact "story spec" — a much smaller JSON shape for AI-assisted world import.
  *
- * The full PlotWeave export is verbose (UUIDs everywhere, a snapshot per
+ * The full Kathala export is verbose (UUIDs everywhere, a snapshot per
  * character × event, a dozen null fields per record), which makes a large story
  * overflow an LLM's output limit and truncate. The spec fixes that: entities are
  * referenced by **name** (no UUIDs), and character state is given as **deltas**

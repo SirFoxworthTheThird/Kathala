@@ -25,7 +25,7 @@ const scroller = (page: Page) => page.locator('div.flex-1.overflow-auto').first(
 
 async function cursorChapter(page: Page): Promise<number | null> {
   const id = await page.evaluate(() => {
-    const raw = localStorage.getItem('plotweave-ui')
+    const raw = localStorage.getItem('kathala-ui')
     return raw ? (JSON.parse(raw) as { state: { activeEventId: string | null } }).state.activeEventId : null
   })
   if (!id) return null

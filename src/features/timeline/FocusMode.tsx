@@ -37,7 +37,7 @@ export function FocusMode({ worldId, eventId, title, initialText, onExit }: Focu
   const latest = useRef(initialText)
   latest.current = text
 
-  const sessionGoal = Number(localStorage.getItem(`plotweave-session-goal-${worldId}`)) || 0
+  const sessionGoal = Number(localStorage.getItem(`kathala-session-goal-${worldId}`)) || 0
 
   // Debounced autosave; flush on unmount.
   function scheduleSave(next: string) {

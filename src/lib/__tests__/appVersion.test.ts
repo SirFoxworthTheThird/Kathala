@@ -3,7 +3,7 @@ import { compareVersions, needsNewerApp, APP_VERSION } from '../appVersion'
 
 /**
  * The books are published separately from the app, so their versions drift
- * apart on purpose. A catalogue entry may name the oldest PlotWeave that can
+ * apart on purpose. A catalogue entry may name the oldest Kathala that can
  * open it, and a reader running something older is told on the card rather
  * than halfway through an import.
  */

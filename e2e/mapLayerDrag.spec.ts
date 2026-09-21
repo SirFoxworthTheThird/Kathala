@@ -7,7 +7,7 @@ function layerParents(page: Page): Promise<Record<string, string | null>> {
   return page.evaluate(
     () =>
       new Promise((resolve, reject) => {
-        const req = indexedDB.open('PlotWeaveDB')
+        const req = indexedDB.open('KathalaDB')
         req.onerror = () => reject(req.error)
         req.onsuccess = () => {
           const db = req.result

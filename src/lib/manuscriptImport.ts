@@ -1,6 +1,6 @@
 /**
  * Parse a plain-text or Markdown manuscript into an ordered structure of
- * chapters and scenes that mirrors PlotWeave's model (Chapter → scenes/events →
+ * chapters and scenes that mirrors Kathala's model (Chapter → scenes/events →
  * prose). Pure and side-effect free so it can be unit-tested and previewed
  * before anything is written to the database.
  *

@@ -70,7 +70,7 @@ async function worldWithADeath(page: Page) {
  * Open Gandalf's Current State with the time cursor on a given scene.
  *
  * The cursor is set by clicking the scene in the chapter bar rather than by
- * writing `plotweave-ui` directly. Two separate things defeat the direct route:
+ * writing `kathala-ui` directly. Two separate things defeat the direct route:
  * a hash change is not a document load, so the store never re-hydrates, and
  * opening a world calls `setActiveWorldId`, which deliberately *resumes* that
  * world's own last scene and overwrites whatever was planted.

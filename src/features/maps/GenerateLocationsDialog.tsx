@@ -13,11 +13,11 @@ ${existingTree}
 `
     : ''
 
-  return `You are helping me populate my story in PlotWeave, a story-tracking app. Output ONLY a compact JSON list of the PLACES in your world (each place may nest others via "children") — no explanation, no markdown fences.
+  return `You are helping me populate my story in Kathala, a story-tracking app. Output ONLY a compact JSON list of the PLACES in your world (each place may nest others via "children") — no explanation, no markdown fences.
 ${existingBlock}
 SHAPE:
 {
-  "format": "plotweave-locations",
+  "format": "kathala-locations",
   "locations": [
     {
       "name": "<place>",

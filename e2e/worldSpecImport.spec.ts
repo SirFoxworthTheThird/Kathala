@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 
 const SPEC = JSON.stringify({
-  format: 'plotweave-spec',
+  format: 'kathala-spec',
   version: 1,
   world: { name: 'Aethelgard', description: 'A storm-wracked archipelago.' },
   characters: [

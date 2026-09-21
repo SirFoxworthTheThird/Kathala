@@ -67,7 +67,7 @@ test('the chapter follows the reader backwards, where the spoiler gate does not'
   await scrollFraction(page, 0.8)
   await expect(page.getByText(/Chapter (9|10|11|12) of 12/)).toBeVisible()
   const cursorAfterReading = await page.evaluate(() => {
-    const raw = localStorage.getItem('plotweave-ui')
+    const raw = localStorage.getItem('kathala-ui')
     return raw ? (JSON.parse(raw) as { state: { activeEventId: string | null } }).state.activeEventId : null
   })
 
@@ -76,7 +76,7 @@ test('the chapter follows the reader backwards, where the spoiler gate does not'
 
   // And the gate did not close behind them.
   expect(await page.evaluate(() => {
-    const raw = localStorage.getItem('plotweave-ui')
+    const raw = localStorage.getItem('kathala-ui')
     return raw ? (JSON.parse(raw) as { state: { activeEventId: string | null } }).state.activeEventId : null
   })).toBe(cursorAfterReading)
 })

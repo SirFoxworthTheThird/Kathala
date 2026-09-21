@@ -489,7 +489,7 @@ test('relationship counts do not betray the size of the cast', async ({ page }) 
   // otherwise "61 connections" between three people gives the game away.
   const unmet = await unmetNames(page)
   const stray = await page.evaluate(`(() => new Promise((resolve) => {
-    const req = indexedDB.open('PlotWeaveDB')
+    const req = indexedDB.open('KathalaDB')
     req.onsuccess = () => {
       const db = req.result
       const read = (s) => new Promise((r) => {
@@ -575,7 +575,7 @@ test('undo and redo shortcuts are inert while reading', async ({ page }) => {
   // Nothing must reach the store. Watching the journal is the direct check:
   // an undo of its own writes an operation, so a changed count means it ran.
   const ops = async () => page.evaluate(`(() => new Promise((resolve) => {
-    const req = indexedDB.open('PlotWeaveDB')
+    const req = indexedDB.open('KathalaDB')
     req.onsuccess = () => {
       const q = req.result.transaction('operations', 'readonly').objectStore('operations').count()
       q.onsuccess = () => resolve(q.result)
@@ -599,7 +599,7 @@ test('the map list keeps back places the reader has not been', async ({ page }) 
   // marker the reader has not met, and hold the sidebar to it.
   const unmet = await unmetNames(page)
   const behindUnmetMarkers = await page.evaluate(`(() => new Promise((resolve) => {
-    const req = indexedDB.open('PlotWeaveDB')
+    const req = indexedDB.open('KathalaDB')
     req.onsuccess = () => {
       const db = req.result
       const read = (s) => new Promise((r) => {
@@ -658,7 +658,7 @@ test('map territories wait for the story to reach them', async ({ page }) => {
   // in the book. The first should be on the map; the second gives away that the
   // story goes somewhere the reader has not been.
   const seeded = await page.evaluate(`(() => new Promise((resolve) => {
-    const req = indexedDB.open('PlotWeaveDB')
+    const req = indexedDB.open('KathalaDB')
     req.onsuccess = () => {
       const db = req.result
       const read = (s) => new Promise((r) => {

@@ -2,11 +2,11 @@ import { GenerateSectionDialog } from '@/features/ai'
 import { parseCharactersSpec, addCharactersToWorld } from '@/lib/sectionImport'
 import type { SpecCharacter } from '@/lib/worldSpec'
 
-const PROMPT = `You are helping me populate my story in PlotWeave, a story-tracking app. Output ONLY a compact JSON list of CHARACTERS — no explanation, no markdown fences.
+const PROMPT = `You are helping me populate my story in Kathala, a story-tracking app. Output ONLY a compact JSON list of CHARACTERS — no explanation, no markdown fences.
 
 SHAPE:
 {
-  "format": "plotweave-characters",
+  "format": "kathala-characters",
   "characters": [
     { "name": "<full name>", "aliases": ["<nickname>"], "description": "<role & key traits>", "tags": ["protagonist"], "alive": true }
   ]

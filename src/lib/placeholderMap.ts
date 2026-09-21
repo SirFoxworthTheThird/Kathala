@@ -1,7 +1,7 @@
 /**
  * The blank map a world gets when it has no image of its own.
  *
- * A place in PlotWeave is a pin, and a pin needs a map — locations may only be
+ * A place in Kathala is a pin, and a pin needs a map — locations may only be
  * added to maps and sub-maps that already exist. That rule is deliberate, but it
  * left a writer with no picture of their world unable to record a setting at
  * all: the Maps screen offered an image upload and a button labelled AI, and the

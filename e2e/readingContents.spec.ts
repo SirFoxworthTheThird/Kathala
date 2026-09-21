@@ -17,7 +17,7 @@ const contents = (page: Page) => page.getByRole('button', { name: 'Contents' })
 const chapterList = (page: Page) => page.getByRole('group', { name: 'Chapters you have read' })
 
 const cursor = (page: Page) => page.evaluate(() => {
-  const raw = localStorage.getItem('plotweave-ui')
+  const raw = localStorage.getItem('kathala-ui')
   return raw ? (JSON.parse(raw) as { state: { activeEventId: string | null } }).state.activeEventId : null
 })
 

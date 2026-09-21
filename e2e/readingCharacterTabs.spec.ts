@@ -115,7 +115,7 @@ test('the Goals tab hides what the reader has not reached, and counts what it sh
   // A character with a goal the reader has reached and one they have not, so
   // both halves have something to be true about.
   const pick = await page.evaluate(`(() => new Promise((resolve, reject) => {
-    const req = indexedDB.open('PlotWeaveDB')
+    const req = indexedDB.open('KathalaDB')
     req.onsuccess = () => {
       const db = req.result
       const read = (s) => new Promise((r) => {
@@ -126,7 +126,7 @@ test('the Goals tab hides what the reader has not reached, and counts what it sh
         .then(([events, chapters, goals]) => {
           const num = new Map(chapters.map((c) => [c.id, c.number]))
           const key = new Map(events.map((e) => [e.id, (num.get(e.chapterId) ?? 0) + e.sortOrder / 1e6]))
-          const cursorId = JSON.parse(localStorage.getItem('plotweave-ui') || '{}')?.state?.activeEventId
+          const cursorId = JSON.parse(localStorage.getItem('kathala-ui') || '{}')?.state?.activeEventId
           const cursor = key.get(cursorId)
           if (cursor === undefined) return reject(new Error('the book did not open at a scene'))
           const byCharacter = new Map()

@@ -1434,7 +1434,7 @@ export default function MapExplorerView() {
         {/*
           Three doors, and the middle one is new.
 
-          A place in PlotWeave is a pin and a pin needs a map, which is
+          A place in Kathala is a pin and a pin needs a map, which is
           deliberate. But a writer who has no picture of their world had only two
           ways in: upload an image, whose button stays disabled until you supply
           one, or a button labelled AI. Nothing said that a setting needs a map,
@@ -1445,7 +1445,7 @@ export default function MapExplorerView() {
         <EmptyState
           icon={MapIcon}
           title="No maps yet"
-          description="Places in PlotWeave are pins on a map, so a scene can only be given a setting once the world has one. Upload a picture of your world, start a blank map and drop pins on it, or describe your locations to an AI assistant and have them laid out for you."
+          description="Places in Kathala are pins on a map, so a scene can only be given a setting once the world has one. Upload a picture of your world, start a blank map and drop pins on it, or describe your locations to an AI assistant and have them laid out for you."
           action={
             <div className="flex flex-wrap items-center justify-center gap-2">
               <Button onClick={() => setUploadOpen(true)}>

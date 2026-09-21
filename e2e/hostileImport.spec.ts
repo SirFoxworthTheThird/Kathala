@@ -5,7 +5,7 @@ import * as os from 'os'
 import { resetDB } from './helpers/reset'
 
 /**
- * Opening a world PlotWeave did not write.
+ * Opening a world Kathala did not write.
  *
  * `validateImport` checks structure — arrays are arrays, the world has an id —
  * and never inspects an enum value. So every `status`, `type` and `sentiment`

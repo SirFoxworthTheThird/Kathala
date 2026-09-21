@@ -7,7 +7,7 @@ import { settle } from './helpers/settle'
  *
  * > *"Its action opened the chapter but did not take the writer to a state
  * > form or offer a one-click initial snapshot… A writer must already
- * > understand PlotWeave's delta model, move the time cursor, leave the scene,
+ * > understand Kathala's delta model, move the time cursor, leave the scene,
  * > open each character, find Current State, and save a record. For a group
  * > scene, this becomes repetitive and easy to miss."*
  *

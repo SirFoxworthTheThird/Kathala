@@ -55,7 +55,7 @@ export function WritingProgress({ worldId, wordTarget, targetDate }: WritingProg
   const scenes = useWorldSceneTexts(worldId)
   const logs = useWritingLogs(worldId)
 
-  const goalKey = `plotweave-session-goal-${worldId}`
+  const goalKey = `kathala-session-goal-${worldId}`
   const [sessionGoal, setSessionGoal] = useState<number>(() => Number(localStorage.getItem(goalKey)) || 0)
   function updateSessionGoal(v: number) {
     const g = Math.max(0, Math.floor(v) || 0)

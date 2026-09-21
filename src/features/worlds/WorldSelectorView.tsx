@@ -181,9 +181,9 @@ export default function WorldSelectorView() {
       <header className="border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-4 sm:px-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <img src={faviconUrl} alt="PlotWeave" className="h-10 w-10 rounded object-cover" />
+            <img src={faviconUrl} alt="Kathala" className="h-10 w-10 rounded object-cover" />
             <div>
-              <h1 className="text-xl font-bold text-[hsl(var(--foreground))]">PlotWeave</h1>
+              <h1 className="text-xl font-bold text-[hsl(var(--foreground))]">Kathala</h1>
               <p className="text-sm text-[hsl(var(--muted-foreground))]">A story bible for fiction writers</p>
             </div>
           </div>

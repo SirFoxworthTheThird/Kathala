@@ -4,7 +4,7 @@ import type { WorldEvent } from '@/types'
  * How a character stands to one scene — the *cast* ledger, which is not the
  * state ledger.
  *
- * PlotWeave keeps two separate records of "who is in this scene", and they
+ * Kathala keeps two separate records of "who is in this scene", and they
  * answer different questions. A `CharacterSnapshot` says **where someone is** at
  * a moment; a scene's cast says **they are in it**. Recording that Corvin is at
  * the harbour during Chapter 9 is a statement about the harbour, not an entrance

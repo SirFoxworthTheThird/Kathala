@@ -43,7 +43,7 @@ export interface LibraryEntry {
    */
   notice: string
   /**
-   * The oldest PlotWeave that can open this book, as `major.minor.patch`.
+   * The oldest Kathala that can open this book, as `major.minor.patch`.
    *
    * The books no longer ship with the app, so the two versions drift apart on
    * purpose: someone's desktop install from a year ago fetches a catalogue

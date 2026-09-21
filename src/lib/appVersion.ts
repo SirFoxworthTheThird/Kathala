@@ -25,7 +25,7 @@ export function compareVersions(a: string, b: string): number {
 /**
  * Whether this app is too old to open a book.
  *
- * A catalogue entry may name the oldest PlotWeave that can read it. Since the
+ * A catalogue entry may name the oldest Kathala that can read it. Since the
  * books moved to their own repository they are published independently of the
  * app, so a desktop install from a year ago will one day fetch a catalogue
  * written for something newer. This is what lets that book say so on the card

@@ -18,7 +18,7 @@
  * is gone would start passing because it was merely shut. *Collapse all* is one
  * press away for anyone who wants the menu.
  */
-export const SETTINGS_COLLAPSED_KEY = 'plotweave-settings-collapsed'
+export const SETTINGS_COLLAPSED_KEY = 'kathala-settings-collapsed'
 
 /** Reads whatever is in storage, tolerating anything that is not our shape. */
 export function parseCollapsed(raw: string | null): string[] {

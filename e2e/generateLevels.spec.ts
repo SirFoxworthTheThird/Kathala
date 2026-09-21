@@ -6,7 +6,7 @@ function levelSnapshot(page: Page) {
   return page.evaluate(
     () =>
       new Promise<{ layers: { id: string; name: string; levelGroupId: string | null; levelIndex: number; levelLabel: string }[]; markers: { name: string; mapLayerId: string }[] }>((resolve, reject) => {
-        const req = indexedDB.open('PlotWeaveDB')
+        const req = indexedDB.open('KathalaDB')
         req.onerror = () => reject(req.error)
         req.onsuccess = () => {
           const db = req.result

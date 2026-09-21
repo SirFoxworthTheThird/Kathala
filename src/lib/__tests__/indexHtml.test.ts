@@ -111,14 +111,14 @@ describe('index.html', () => {
       same file, and Electron lets a page title replace the window title the
       moment it loads — so a `<title>` written to be a search result would put
       the whole tagline in the desktop title bar and the taskbar. The window
-      sets `title: 'PlotWeave'` and must also refuse the update.
+      sets `title: 'Kathala'` and must also refuse the update.
     */
     it('does not let the marketing title reach the desktop title bar', () => {
       const title = /<title>([^<]*)<\/title>/.exec(markup)?.[1] ?? ''
-      if (title.trim() === 'PlotWeave') return // nothing to protect against
+      if (title.trim() === 'Kathala') return // nothing to protect against
       expect(main, 'index.html has a long title, so main.cjs must pin the window one')
         .toContain('page-title-updated')
-      expect(main).toContain("title: 'PlotWeave'")
+      expect(main).toContain("title: 'Kathala'")
     })
   })
 })

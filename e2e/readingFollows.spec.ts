@@ -24,7 +24,7 @@ test('a downloaded book opens at its first scene, not at "all chapters"', async 
   // A null cursor means every chapter, which on a book nobody has read is the
   // whole plot. The position is recorded against the world, so read it back.
   const position = await page.evaluate(() => {
-    const raw = localStorage.getItem('plotweave-ui')
+    const raw = localStorage.getItem('kathala-ui')
     const st = raw ? JSON.parse(raw) : null
     const byWorld = st?.state?.eventByWorld ?? {}
     const ids = Object.values(byWorld)
@@ -97,7 +97,7 @@ async function openBook(page: import('@playwright/test').Page) {
 }
 
 const cursor = (page: import('@playwright/test').Page) => page.evaluate(() => {
-  const raw = localStorage.getItem('plotweave-ui')
+  const raw = localStorage.getItem('kathala-ui')
   return raw ? (JSON.parse(raw) as { state: { activeEventId: string | null } }).state.activeEventId : null
 })
 

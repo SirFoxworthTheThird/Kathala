@@ -40,7 +40,7 @@ describe('the preferences store', () => {
 
     // Stand up an old database by hand: v1's shape, with a row in the store
     // that is about to be removed and a world that must survive.
-    const old = new Dexie('PlotWeaveDB')
+    const old = new Dexie('KathalaDB')
     old.version(1).stores({ worlds: 'id, name, createdAt', preferences: 'id' })
     await old.open()
     await old.table('preferences').put({ id: 1, theme: 'dark', activeWorldId: null })
