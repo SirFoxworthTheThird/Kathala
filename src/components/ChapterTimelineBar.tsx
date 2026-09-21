@@ -318,8 +318,8 @@ export function ChapterTimelineBar() {
           onStop={handleStop}
           onSpeedChange={cycleSpeed}
           onDiffOpen={() => setDiffOpen(true)}
-          onPrev={() => prevEvent && setActiveEventId(prevEvent.id)}
-          onNext={() => nextEvent && setActiveEventId(nextEvent.id)}
+          onPrev={() => prevEvent && activateEvent(prevEvent.id, prevEvent.locationMarkerId, setActiveEventId)}
+          onNext={() => nextEvent && activateEvent(nextEvent.id, nextEvent.locationMarkerId, setActiveEventId)}
           onEventSelect={handleEventSelect}
           onChapterSelect={handleChapterSelect}
           onActivateDepth={handleActivateDepth}
@@ -364,8 +364,8 @@ export function ChapterTimelineBar() {
           onSpeedChange={cycleSpeed}
           onDiffOpen={() => setDiffOpen(true)}
           onClear={handleClearCursor}
-          onPrev={() => prevEvent && setActiveEventId(prevEvent.id)}
-          onNext={() => nextEvent && setActiveEventId(nextEvent.id)}
+          onPrev={() => prevEvent && activateEvent(prevEvent.id, prevEvent.locationMarkerId, setActiveEventId)}
+          onNext={() => nextEvent && activateEvent(nextEvent.id, nextEvent.locationMarkerId, setActiveEventId)}
           onEventSelect={handleEventSelect}
         />
       {revealAllDialog}
@@ -405,8 +405,8 @@ export function ChapterTimelineBar() {
         onSpeedChange={cycleSpeed}
         onDiffOpen={() => setDiffOpen(true)}
         onClear={handleClearCursor}
-        onPrev={() => prevEvent && setActiveEventId(prevEvent.id)}
-        onNext={() => nextEvent && setActiveEventId(nextEvent.id)}
+        onPrev={() => prevEvent && activateEvent(prevEvent.id, prevEvent.locationMarkerId, setActiveEventId)}
+        onNext={() => nextEvent && activateEvent(nextEvent.id, nextEvent.locationMarkerId, setActiveEventId)}
         onEventSelect={handleEventSelect}
         onChapterSelect={(chId) => handleChapterSelect(chId, singleRawEvents)}
         scopeSelector={multi ? <TimelineScopeSelect timelines={timelines} value={scope} onChange={setBarScope} /> : undefined}
