@@ -1,11 +1,14 @@
 # Kathala — User Guide
 
-**Kathala** is a local-first story bible for fiction writers. It tracks your
-characters, timeline, maps, items, relationships, lore, and continuity as your
-story evolves, stitches your scene prose into a manuscript, can build a whole
-world from a draft or an AI assistant, and can carry a series forward into a
-sequel — all stored privately in your browser (IndexedDB), with no account and
-no backend. You can run it in the browser or as a desktop app.
+**Kathala** is a local-first story bible — *where stories take shape across
+time and worlds*. It tracks your characters, timeline, maps, items,
+relationships, lore, and continuity as your story evolves, stitches your scene
+prose into a manuscript, can build a whole world from a draft or an AI
+assistant, and can carry a series forward into a sequel. It also reads: open a
+book from the Library and the bible unlocks a chapter at a time, so nothing on
+screen is ahead of where you are. All of it is stored privately in your browser
+(IndexedDB), with no account and no backend. You can run it in the browser or
+as a desktop app.
 
 This guide walks through every part of the app. The screenshots are taken from
 books in the **Library** — the shelf of worlds built from published novels,
