@@ -8,7 +8,7 @@ Turn it on or off under **Settings** for that world.
 
 ## How it works
 
-Set the chapter cursor to where you have read up to. PlotWeave then hides everything the story has not introduced yet — **everywhere, not just on one screen**.
+Set the chapter cursor to where you have read up to. Kathala then hides everything the story has not introduced yet — **everywhere, not just on one screen**.
 
 - The **Characters** page in chapter one shows the handful of people you have actually met, with a note saying how many are still to come, so a short list reads as deliberate rather than broken.
 - The **timeline** stops at your place and keeps later chapter summaries back.
@@ -68,7 +68,7 @@ Beside the prose, **In this scene** names who is **here**, who is **spoken of**,
 
 ## Remembering your place
 
-PlotWeave remembers your place in each book. Close one, read another, come back a week later — the cursor is where you left it, and the world card says *"Chapter 5 of 17"* with a progress bar.
+Kathala remembers your place in each book. Close one, read another, come back a week later — the cursor is where you left it, and the world card says *"Chapter 5 of 17"* with a progress bar.
 
 If you deliberately choose **All chapters**, that is remembered too: coming back shows you the whole book again rather than quietly re-hiding it, and the progress bar disappears, because seeing everything is not a place in the story.
 
@@ -76,7 +76,7 @@ If you deliberately choose **All chapters**, that is remembered too: coming back
 
 ## Revealing everything
 
-Selecting **All chapters** reveals the whole world. That is a deliberate choice, not the default — and while reading, **PlotWeave asks before doing it**, since the control is a small ✕ beside the cursor and one stray click would hand you the ending.
+Selecting **All chapters** reveals the whole world. That is a deliberate choice, not the default — and while reading, **Kathala asks before doing it**, since the control is a small ✕ beside the cursor and one stray click would hand you the ending.
 
 Stepping the cursor *back* never asks. It only ever un-reveals.
 

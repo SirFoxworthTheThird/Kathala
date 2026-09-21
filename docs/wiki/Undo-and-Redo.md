@@ -1,6 +1,6 @@
 # Undo, Redo & Recent Changes
 
-PlotWeave records every edit as you make it, so a mistake is a step backwards rather than a rebuild.
+Kathala records every edit as you make it, so a mistake is a step backwards rather than a rebuild.
 
 ---
 
@@ -8,7 +8,7 @@ PlotWeave records every edit as you make it, so a mistake is a step backwards ra
 
 **Undo** is the left arrow in the top bar, and **Ctrl/⌘+Z** anywhere outside a text box.
 
-> Inside a text box, Ctrl/⌘+Z is your **browser's own undo**, working letter by letter. PlotWeave deliberately stays out of the way there.
+> Inside a text box, Ctrl/⌘+Z is your **browser's own undo**, working letter by letter. Kathala deliberately stays out of the way there.
 
 ---
 

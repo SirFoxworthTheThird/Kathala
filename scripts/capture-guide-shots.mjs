@@ -67,10 +67,10 @@ async function setCursor(page, worldId, chapterNumber) {
     const events = await window.__pwdb.events.where('chapterId').equals(chapter.id).toArray()
     if (!events.length) return false
     const eventId = events.sort((a, b) => a.sortOrder - b.sortOrder)[0].id
-    const raw = JSON.parse(localStorage.getItem('plotweave-ui') || '{}')
+    const raw = JSON.parse(localStorage.getItem('kathala-ui') || '{}')
     const state = raw.state || {}
     raw.state = { ...state, activeEventId: eventId, eventByWorld: { ...(state.eventByWorld || {}), [id]: eventId } }
-    localStorage.setItem('plotweave-ui', JSON.stringify(raw))
+    localStorage.setItem('kathala-ui', JSON.stringify(raw))
     return true
   }, [worldId, chapterNumber])
   if (!ok) throw new Error(`no scene in chapter ${chapterNumber}`)

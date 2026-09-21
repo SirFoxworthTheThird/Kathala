@@ -1,6 +1,6 @@
-# PlotWeave Wiki
+# Kathala Wiki
 
-PlotWeave is a **local-first story bible for fiction writers**. It tracks your characters, timeline, maps, items, relationships, lore, and continuity as your story evolves, stitches your scene prose into a manuscript, can build a whole world from a draft or an AI assistant, and can carry a series forward into a sequel.
+Kathala is a **local-first story bible for fiction writers**. It tracks your characters, timeline, maps, items, relationships, lore, and continuity as your story evolves, stitches your scene prose into a manuscript, can build a whole world from a draft or an AI assistant, and can carry a series forward into a sequel.
 
 Everything is stored privately in your browser (IndexedDB). No account, no backend, no internet connection required. Run it in a browser or as a desktop app.
 
@@ -12,7 +12,7 @@ Everything is stored privately in your browser (IndexedDB). No account, no backe
 
 | Page | Description |
 |---|---|
-| [Installation](Installation) | Run PlotWeave in a browser or as a desktop app |
+| [Installation](Installation) | Run Kathala in a browser or as a desktop app |
 | [Getting Started](Getting-Started) | Create your first world, timeline, event, and character |
 | [Core Concepts](Core-Concepts) | The time cursor, snapshots, and inheritance — read this first |
 
@@ -90,6 +90,6 @@ You don't have to start from an empty world.
 
 ## The one thing to know
 
-**Everything in PlotWeave is read relative to an event.** The pill next to the world name and the event bar along the bottom are two views of the same **time cursor**. Move it, and every screen answers *"what is true at this exact moment?"* — where each character is, what they carry, who is alive, which places are ruined, how relationships stand.
+**Everything in Kathala is read relative to an event.** The pill next to the world name and the event bar along the bottom are two views of the same **time cursor**. Move it, and every screen answers *"what is true at this exact moment?"* — where each character is, what they carry, who is alive, which places are ruined, how relationships stand.
 
 Changing the cursor never edits your story. See [Core Concepts](Core-Concepts).

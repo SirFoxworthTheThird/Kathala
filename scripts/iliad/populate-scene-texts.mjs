@@ -96,7 +96,7 @@ data.sceneTexts = data.events.map((event, index) => {
 
 const textualBasis = data.lorePages.find(page => page.title === 'Textual Basis')
 assert(textualBasis, 'Missing Textual Basis lore page')
-textualBasis.body = 'Primary source: Homer, The Iliad, translated by Samuel Butler, Project Gutenberg eBook 2199 (https://www.gutenberg.org/ebooks/2199), a complete public-domain English edition divided into Books I–XXIV. The scene drafts reproduce Butler’s narrative prose, divided among the modeled events without rewriting, omission, or duplication; Gutenberg’s front matter, per-book prose summaries, and end matter are excluded. The Internet Classics Archive table of contents (https://classics.mit.edu/Homer/iliad.html) was used as a second structural check. Every PlotWeave synopsis, title, description, and status note remains original editorial writing.'
+textualBasis.body = 'Primary source: Homer, The Iliad, translated by Samuel Butler, Project Gutenberg eBook 2199 (https://www.gutenberg.org/ebooks/2199), a complete public-domain English edition divided into Books I–XXIV. The scene drafts reproduce Butler’s narrative prose, divided among the modeled events without rewriting, omission, or duplication; Gutenberg’s front matter, per-book prose summaries, and end matter are excluded. The Internet Classics Archive table of contents (https://classics.mit.edu/Homer/iliad.html) was used as a second structural check. Every Kathala synopsis, title, description, and status note remains original editorial writing.'
 textualBasis.updatedAt = timestamp
 
 const output = `${JSON.stringify(data, null, 2)}\n`

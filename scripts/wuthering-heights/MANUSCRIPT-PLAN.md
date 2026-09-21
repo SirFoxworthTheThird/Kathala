@@ -5,7 +5,7 @@
 - Emily Brontë, *Wuthering Heights*.
 - Project Gutenberg eBook #768, plain-text edition, updated 6 May 2026.
 - Source: <https://www.gutenberg.org/ebooks/768>
-- The edition contains 34 numbered, untitled chapters. Any descriptive chapter or scene labels in PlotWeave are editorial signposts and will be disclosed as such in Lore.
+- The edition contains 34 numbered, untitled chapters. Any descriptive chapter or scene labels in Kathala are editorial signposts and will be disclosed as such in Lore.
 
 ## Lossless scene policy
 
@@ -24,4 +24,4 @@ The minimum useful hierarchy is:
   - Thrushcross Grange grounds and house
   - Gimmerton and its churchyard
 
-Every child layer requires one accurately placed parent gateway and book-specific locations. Deep nesting and playback transitions must be checked in PlotWeave after generation.
+Every child layer requires one accurately placed parent gateway and book-specific locations. Deep nesting and playback transitions must be checked in Kathala after generation.

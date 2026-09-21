@@ -1,6 +1,6 @@
 # Calendar & Character Ages
 
-By default PlotWeave measures story time in **in-world days** — day 0 is the start of a timeline, and each event's *travel days* push the clock forward.
+By default Kathala measures story time in **in-world days** — day 0 is the start of a timeline, and each event's *travel days* push the clock forward.
 
 Turn those day numbers into real dates by giving your world a **calendar**.
 
@@ -26,7 +26,7 @@ With a calendar set, in-world dates appear wherever the day clock is shown — m
 
 Give a character an optional **birth date** on the **Overview** tab of their profile. The month/day/year pickers use your calendar's months.
 
-PlotWeave then computes and shows the character's **age at the event under the time cursor** in the Writer's Brief — counting birthdays passed, so it stays correct even with irregular month lengths.
+Kathala then computes and shows the character's **age at the event under the time cursor** in the Writer's Brief — counting birthdays passed, so it stays correct even with irregular month lengths.
 
 A character born *after* the current moment simply shows no age.
 

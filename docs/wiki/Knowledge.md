@@ -25,7 +25,7 @@ The Knowledge tracker manages **who knows what, and when they learn it** — the
 
 ## Suggestions
 
-**PlotWeave suggests facts from your story.** For example, from a character's death snapshot it will offer *"Gandalf the Grey is dead · Ch. 17"* as a fact worth tracking.
+**Kathala suggests facts from your story.** For example, from a character's death snapshot it will offer *"Gandalf the Grey is dead · Ch. 17"* as a fact worth tracking.
 
 ### Might also know
 

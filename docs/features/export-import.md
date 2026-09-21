@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `.pwk` (PlotWeave world kit) format lets users back up a world to a single JSON file and restore it on any device. All entity data and images are included; the file is fully self-contained. The current format version is **v3**.
+The `.pwk` (Kathala world kit) format lets users back up a world to a single JSON file and restore it on any device. All entity data and images are included; the file is fully self-contained. The current format version is **v3**.
 
 ---
 

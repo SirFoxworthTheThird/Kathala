@@ -60,7 +60,7 @@ Each final generated image is opened for direct artwork inspection. Anchors
 are selected on the new images, not rescaled from old submaps. This is NOT an
 in-app marker review. `cua.getState()` returned no apps or browsers.
 
-Pending release checks: open all five layers in PlotWeave, inspect all markers
+Pending release checks: open all five layers in Kathala, inspect all markers
 at useful zoom, follow all gateways and test event playback and image loading.
 Do not mark EX-206–EX-208 or EX-506–EX-508 complete without that application pass.
 Generation errors on initial University/Newarre attempts were retried rather

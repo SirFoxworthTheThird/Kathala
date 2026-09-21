@@ -20,7 +20,7 @@ Validated on 13 September 2026 against the generated `example/Wuthering Heights.
 
 ## Maps and pictures
 
-- Visually inspected the Yorkshire Moors main map and the Wuthering Heights, Thrushcross Grange, and Gimmerton sub-maps in PlotWeave.
+- Visually inspected the Yorkshire Moors main map and the Wuthering Heights, Thrushcross Grange, and Gimmerton sub-maps in Kathala.
 - Visually checked every marker after accounting for Leaflet's vertical image-coordinate direction. Gateways and interior markers align with the illustrated geography.
 - Played chapter 1 into chapter 2 in the Maps view; playback changed from the moor overview to the Wuthering Heights sub-map and updated the visible cast and their independent state text.
 - 42 distinct repo-hosted generated illustrations: 4 maps, 16 character portraits, 15 location views, 6 item still lifes, and 1 world cover.

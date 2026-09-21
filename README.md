@@ -1,7 +1,7 @@
-# PlotWeave
+# Kathala
 
 <p align="center">
-  <img src="public/logo-128.png" alt="PlotWeave" width="180" />
+  <img src="public/logo-128.png" alt="Kathala" width="180" />
 </p>
 
 <p align="center">
@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="https://plotweave.netlify.app/"><strong>Try it in your browser →</strong></a>
+  <a href="https://kathala.netlify.app/"><strong>Try it in your browser →</strong></a>
   &nbsp;·&nbsp;
   <a href="https://github.com/SirFoxworthTheThird/PlotWeave/releases"><strong>Download for desktop</strong></a>
   &nbsp;·&nbsp;
@@ -21,8 +21,8 @@
 </p>
 
 <p align="center">
-  <img alt="MIT licence" src="https://img.shields.io/github/license/SirFoxworthTheThird/PlotWeave" />
-  <img alt="Latest release" src="https://img.shields.io/github/v/release/SirFoxworthTheThird/PlotWeave" />
+  <img alt="MIT licence" src="https://img.shields.io/github/license/SirFoxworthTheThird/Kathala" />
+  <img alt="Latest release" src="https://img.shields.io/github/v/release/SirFoxworthTheThird/Kathala" />
   <img alt="No account required" src="https://img.shields.io/badge/account-not%20required-informational" />
 </p>
 
@@ -30,7 +30,7 @@
 
 ## Open a real novel and scrub through it
 
-The quickest way to understand PlotWeave is to use one. It ships a **library of
+The quickest way to understand Kathala is to use one. It ships a **library of
 thirty-two worlds built from published books** — *Dracula*, *Frankenstein*,
 *Pride and Prejudice*, *Treasure Island*, *The Odyssey*, *Journey to the West*
 and others — with their
@@ -55,14 +55,14 @@ publishers.*
 
 ---
 
-## Why PlotWeave?
+## Why Kathala?
 
 Continuity becomes a memory tax as a story grows. Where was she when the letter
 arrived? Who had the dagger during the ambush? Had these two characters become
 enemies yet? Most tools make you answer those questions by searching or
 re-reading your manuscript.
 
-PlotWeave records story state against exact **scenes**. Select a scene with the
+Kathala records story state against exact **scenes**. Select a scene with the
 time cursor and the entire workspace resolves to that moment: characters move
 to their last-known locations, inventories change hands, relationships evolve,
 knowledge is revealed, and maps show the relevant world state.
@@ -72,7 +72,7 @@ for Word, Scrivener, or your preferred writing environment.
 
 ## Local-first and standalone
 
-PlotWeave works without an account or hosted backend. Worlds are stored locally
+Kathala works without an account or hosted backend. Worlds are stored locally
 in IndexedDB and remain usable offline in the browser or desktop app.
 
 - Export a complete world as a portable `.pwk` backup.
@@ -83,7 +83,7 @@ in IndexedDB and remain usable offline in the browser or desktop app.
 
 World data stays on your device unless you explicitly export it, save it to a
 selected folder, link an external image, or copy content into another service.
-AI-assisted workflows use copy-and-paste prompts; PlotWeave does not send your
+AI-assisted workflows use copy-and-paste prompts; Kathala does not send your
 manuscript to an AI provider itself.
 
 ---
@@ -174,7 +174,7 @@ scenes, with overlays for status, POV, goals, and factions.*
 
 ### Themes that match the genre
 
-PlotWeave includes nine visual profiles—Dark Slate, Fantasy, Sci-Fi, Cyberpunk,
+Kathala includes nine visual profiles—Dark Slate, Fantasy, Sci-Fi, Cyberpunk,
 Horror, Western, Action, Noir, and Romance. A world can override the global
 theme so each project keeps its own atmosphere.
 
@@ -182,8 +182,8 @@ theme so each project keeps its own atmosphere.
 
 ## Try or download
 
-Use PlotWeave in the browser at
-**[plotweave.netlify.app](https://plotweave.netlify.app/)**
+Use Kathala in the browser at
+**[kathala.netlify.app](https://kathala.netlify.app/)**
 or download the latest desktop build from the
 **[Releases page](https://github.com/SirFoxworthTheThird/PlotWeave/releases)**.
 
@@ -191,9 +191,9 @@ Current release asset patterns:
 
 | Platform | File |
 |---|---|
-| Windows | `PlotWeave-*.Setup.exe` |
-| macOS (Apple silicon) | `PlotWeave-darwin-arm64-*.zip` |
-| Linux (AMD64 Debian/Ubuntu) | `plotweave_*_amd64.deb` |
+| Windows | `Kathala-*.Setup.exe` |
+| macOS (Apple silicon) | `Kathala-darwin-arm64-*.zip` |
+| Linux (AMD64 Debian/Ubuntu) | `kathala_*_amd64.deb` |
 
 The browser and desktop versions use the same local-first data model. Browser
 storage belongs to that browser profile, so export regularly or configure a
@@ -206,10 +206,10 @@ sync folder for additional backups.
 1. **Create a blank world**, import a manuscript, generate a world from a
    synopsis, or import an existing `.pwk` backup.
 2. **Create a timeline, chapter, and scene.** Scenes are the moments against
-   which PlotWeave records state.
+   which Kathala records state.
 3. **Add characters and locations**, then save character state at the selected
    scene.
-4. **Add later scenes** and record only what changes. PlotWeave carries earlier
+4. **Add later scenes** and record only what changes. Kathala carries earlier
    snapshots forward automatically.
 5. **Write scene prose**, connect plot threads, add world knowledge, and use the
    Continuity Checker as the story grows.

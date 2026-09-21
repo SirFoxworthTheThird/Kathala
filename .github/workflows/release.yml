@@ -95,7 +95,7 @@ jobs:
       - name: Check out the Library
         uses: actions/checkout@v4
         with:
-          repository: SirFoxworthTheThird/PlotWeave-Library
+          repository: SirFoxworthTheThird/Kathala-Library
           path: plotweave-library
           # The worlds and the catalogue only — the top level of `library/`,
           # not the per-book art directories beneath it. Cone mode off, so
@@ -229,7 +229,7 @@ jobs:
         run: |
           notes="docs/release-notes/${VERSION}.md"
           {
-            printf '## PlotWeave %s\n\n' "$VERSION"
+            printf '## Kathala %s\n\n' "$VERSION"
             if [ -f "$notes" ]; then
               cat "$notes"
               printf '\n---\n\n'

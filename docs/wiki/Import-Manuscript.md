@@ -18,7 +18,7 @@ It is the mirror image of the [manuscript export](Manuscript): bring a draft in,
 
 ## How your text is parsed
 
-PlotWeave uses a few predictable rules.
+Kathala uses a few predictable rules.
 
 | Rule | What counts |
 |---|---|

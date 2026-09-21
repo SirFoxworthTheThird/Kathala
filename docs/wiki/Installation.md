@@ -1,6 +1,6 @@
 # Installation
 
-PlotWeave runs as a web application and as a standalone desktop app. Choose whichever suits you — the data format is the same, so you can move between them.
+Kathala runs as a web application and as a standalone desktop app. Choose whichever suits you — the data format is the same, so you can move between them.
 
 ---
 
@@ -16,7 +16,7 @@ No account, server, or internet connection is required after the page loads. Eve
 
 ## Option 1: The web app
 
-1. Open the PlotWeave URL for your instance.
+1. Open the Kathala URL for your instance.
 2. It loads entirely in the browser — there is no installation step.
 3. Bookmark it, or add it to your home screen.
 
@@ -26,21 +26,21 @@ No account, server, or internet connection is required after the page loads. Eve
 
 ## Option 2: The desktop app
 
-The desktop app runs PlotWeave in a native window and avoids the browser data-clearing risk.
+The desktop app runs Kathala in a native window and avoids the browser data-clearing risk.
 
 Download an installer from the repository's [Releases](https://github.com/SirFoxworthTheThird/PlotWeave/releases) page:
 
 | Platform | File |
 |---|---|
-| Windows | `PlotWeave-*-Setup.exe` |
-| macOS | `PlotWeave-*.zip` — unzip and drag to Applications. On first run, right-click → Open if macOS warns about the developer |
-| Linux | `plotweave_*.deb` — `sudo dpkg -i plotweave_*.deb` |
+| Windows | `Kathala-*-Setup.exe` |
+| macOS | `Kathala-*.zip` — unzip and drag to Applications. On first run, right-click → Open if macOS warns about the developer |
+| Linux | `kathala_*.deb` — `sudo dpkg -i kathala_*.deb` |
 
 ### Building from source
 
 ```
 git clone https://github.com/SirFoxworthTheThird/PlotWeave.git
-cd PlotWeave
+cd Kathala
 npm install
 npm run electron:dev      # run in development
 npm run electron:make     # build installers into out/
