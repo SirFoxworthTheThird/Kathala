@@ -40,7 +40,7 @@ if (!wanted) {
 if (!existsSync(from)) {
   console.error(
     `stage-library: no library at ${from}\n` +
-    '  The suite needs the books. Clone SirFoxworthTheThird/PlotWeave-Library\n' +
+    '  The suite needs the books. Clone SirFoxworthTheThird/Kathala-Library\n' +
     '  beside this repository, or set PLOTWEAVE_LIBRARY to where it lives.',
   )
   process.exit(1)

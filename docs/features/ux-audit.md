@@ -1,4 +1,4 @@
-# UX Audit — PlotWeave (April 2026)
+# UX Audit — Kathala (April 2026)
 
 UX/UI Expert review. Covers navigation, every major view, shared components, and cross-cutting accessibility. Issues are grouped by severity: **Critical** (broken or inaccessible), **High** (significant friction), **Medium** (polish / consistency), **Low** (minor copy or visual).
 
@@ -51,7 +51,7 @@ Long world names are silently truncated. There is no tooltip showing the full na
 **Fix:** Add a `title` attribute (or proper tooltip) showing the full world name on hover/focus.
 
 ### MEDIUM — Brand button has no `aria-label`
-The `<button onClick={() => navigate('/')}` containing the logo and "PlotWeave" text has no ARIA role label. Screen readers announce it as "PlotWeave" (from the text content) which is acceptable, but the `<img alt="PlotWeave">` inside is redundant — the `img` should be `alt=""` since the button text already conveys the label.
+The `<button onClick={() => navigate('/')}` containing the logo and "Kathala" text has no ARIA role label. Screen readers announce it as "Kathala" (from the text content) which is acceptable, but the `<img alt="Kathala">` inside is redundant — the `img` should be `alt=""` since the button text already conveys the label.
 
 ### LOW — Active nav item does not announce its state to screen readers
 The active item gets visual styling (`bg-[hsl(var(--accent))]`) but there is no `aria-current="page"` on the active `NavLink`. React Router's `NavLink` supports this via its `aria-current` prop — it's not being set.

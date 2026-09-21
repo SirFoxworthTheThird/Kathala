@@ -7,7 +7,7 @@ import { dismissFirstRunGuide } from './helpers/nav'
  * Taking a copy of a linked picture, so a world stops depending on somebody
  * else's server.
  *
- * PlotWeave's first promise is that a story never leaves the device, and
+ * Kathala's first promise is that a story never leaves the device, and
  * pictures are the documented exception: a picture is either bytes in this
  * browser or a link to one elsewhere. That is why *Alice in Wonderland*
  * downloads as a 347,498-byte `.pwk` when its pictures are 28 MB, and also why

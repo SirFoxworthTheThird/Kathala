@@ -294,7 +294,7 @@ interface WorldSummaryData {
 #### Persistence — LocalStorage Schema
 
 ```
-Key:   plotweave-dismissed-suggestions-${worldId}
+Key:   kathala-dismissed-suggestions-${worldId}
 Value: JSON.stringify(string[])   // array of SuggestionId
 ```
 
@@ -349,7 +349,7 @@ IndexedDB (Dexie)
             └─ OnboardingWizard steps: write records on completion
 
 localStorage
-    └─ plotweave-dismissed-suggestions-${worldId}
+    └─ kathala-dismissed-suggestions-${worldId}
             └─ WorldDashboard: filters suggestion rule output
 ```
 
@@ -360,7 +360,7 @@ When the wizard is showing (trigger condition true), the Dashboard suggestion se
 ### 4.3 No New DB Tables
 
 All four pillars operate on existing Dexie tables. The only persistence additions are:
-- `plotweave-dismissed-suggestions-${worldId}` in localStorage (Pillar 4)
+- `kathala-dismissed-suggestions-${worldId}` in localStorage (Pillar 4)
 
 No schema migrations required.
 

@@ -25,7 +25,7 @@ const rowButton = (page: Page, name: RegExp | string) =>
   page.getByRole('main').getByRole('button', { name })
 
 const cursor = (page: Page) => page.evaluate(() => {
-  const raw = localStorage.getItem('plotweave-ui')
+  const raw = localStorage.getItem('kathala-ui')
   return raw ? (JSON.parse(raw) as { state: { activeEventId: string | null } }).state.activeEventId : null
 })
 

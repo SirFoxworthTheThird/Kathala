@@ -163,7 +163,7 @@ export function OverviewTab({ character }: OverviewTabProps) {
              and leaving the reader to find it (LP-3). */
           <div className="flex flex-col items-start gap-1.5">
             <p className="text-xs text-[hsl(var(--muted-foreground))]">
-              A birth date needs an in-world calendar, so PlotWeave knows what a
+              A birth date needs an in-world calendar, so Kathala knows what a
               date means and can work out an age.
             </p>
             <Link

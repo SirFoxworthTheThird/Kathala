@@ -1,4 +1,4 @@
-# PlotWeave Roadmap
+# Kathala Roadmap
 
 Post Option-A refactor, all items in NEXT_STEPS.md are complete.
 The ChapterDetailView critical bug (character/relationship state panels always empty) was also fixed — `useEventSnapshots(lastEventId)` and `useEventRelationshipSnapshots(lastEventId)` now correctly drive those panels.
@@ -372,7 +372,7 @@ Track how a character looks over time — injuries, aging, haircuts, distinctive
 ## Product Feature Ideas — 2026-07 review
 
 A whole-app review turned up these candidates, ranked by fit + value. The first
-two lean on PlotWeave's differentiators (scaled maps + the structured
+two lean on Kathala's differentiators (scaled maps + the structured
 per-event snapshot model); the rest are broadly useful writer tooling. Nothing
 here is started yet.
 
@@ -541,7 +541,7 @@ What genuinely remains, ranked by value per effort:
     canvas underneath stays reachable — with **Escape** added as the way out of
     every canvas-click mode.
   - The map name and scale then moved into the **TopBar breadcrumb**
-    (*PlotWeave / world / layer · 1 km = 2 px*), so the canvas gives up no
+    (*Kathala / world / layer · 1 km = 2 px*), so the canvas gives up no
     corner at all; on phones the floating chip is just the panels-drawer
     handle. A suspected mobile limitation — an 85vw detail panel hiding the
     film strip — was measured and does not occur: the strip draws above the

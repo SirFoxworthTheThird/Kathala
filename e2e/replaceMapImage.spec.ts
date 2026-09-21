@@ -7,7 +7,7 @@ function dbSnapshot(page: Page) {
   return page.evaluate(
     () =>
       new Promise<{ layers: Record<string, { imageId: string; imageWidth: number; parentMapId: string | null }>; markers: { id: string; mapLayerId: string; x: number; y: number }[] }>((resolve, reject) => {
-        const req = indexedDB.open('PlotWeaveDB')
+        const req = indexedDB.open('KathalaDB')
         req.onerror = () => reject(req.error)
         req.onsuccess = () => {
           const db = req.result

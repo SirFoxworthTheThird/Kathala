@@ -24,11 +24,11 @@ function res(body: unknown, ok = true, status = 200): Response {
 
 describe('libraryBaseUrl', () => {
   it('sits under the app base, so it works on a project Pages path', () => {
-    expect(libraryBaseUrl('/PlotWeave/')).toBe('/PlotWeave/library/')
+    expect(libraryBaseUrl('/Kathala/')).toBe('/Kathala/library/')
   })
 
   it('copes with a base that has no trailing slash', () => {
-    expect(libraryBaseUrl('/PlotWeave')).toBe('/PlotWeave/library/')
+    expect(libraryBaseUrl('/Kathala')).toBe('/Kathala/library/')
   })
 
   it('handles the root base used in development', () => {
@@ -110,8 +110,8 @@ describe('parseLibraryIndex', () => {
 describe('fetchLibraryIndex', () => {
   it('reads index.json from the library folder', async () => {
     const fetcher = vi.fn(async () => res({ version: 1, entries: [entry()] }))
-    const index = await fetchLibraryIndex('/PlotWeave/library/', fetcher)
-    expect(fetcher).toHaveBeenCalledWith('/PlotWeave/library/index.json')
+    const index = await fetchLibraryIndex('/Kathala/library/', fetcher)
+    expect(fetcher).toHaveBeenCalledWith('/Kathala/library/index.json')
     expect(index.entries).toHaveLength(1)
   })
 

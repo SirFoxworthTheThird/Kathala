@@ -23,14 +23,14 @@ npx vitest run src/db/hooks/__tests__/timeline.test.ts
 
 ## Architecture
 
-**PlotWeave** (package name: `plotweave`) is a local-first story-tracking app. All data lives in IndexedDB via Dexie — no backend.
+**Kathala** (package name: `kathala`) is a local-first story-tracking app. All data lives in IndexedDB via Dexie — no backend.
 
 ### The time-cursor pattern
 The global event selector in `TopBar` drives everything. `activeEventId` (Zustand, persisted) acts as a "time cursor" — all character/item/location state is read relative to it. Never auto-compute state across events; always use explicit snapshot records.
 
 ### Data layer (`src/db/`)
-- `database.ts` — single `PlotWeaveDB` (Dexie) instance, versioned schema with migrations. Add new tables or fields as new `.version(N)` blocks with upgrade functions.
-- **Never remove old `.version(N)` blocks** from `PlotWeaveDB`. Dexie requires the full migration chain to remain present so that databases at any prior version can upgrade through each step.
+- `database.ts` — single `KathalaDB` (Dexie) instance, versioned schema with migrations. Add new tables or fields as new `.version(N)` blocks with upgrade functions.
+- **Never remove old `.version(N)` blocks** from `KathalaDB`. Dexie requires the full migration chain to remain present so that databases at any prior version can upgrade through each step.
 - `db/hooks/` — one file per entity group. Each exports `useFoo(id)` hooks (built on `useLiveQuery`) and standalone async CRUD functions (`createFoo`, `updateFoo`, `deleteFoo`). Hooks are the only way components read data.
 - Images are stored as Blobs in a separate `blobs` table (`BlobStore`) — never inline in entity records.
 
@@ -83,7 +83,7 @@ dangerous case cannot hide inside. Drop the identity fields (`id`, `sortKey`,
 after the spread, but a stray one is still a lie about which row you mean.
 
 ### State (`src/store/index.ts`)
-Single Zustand store (`useAppStore`) with slices for: active world/event/map, map drill-down history stack, playback, and UI panel open/close state. Only `activeWorldId`, `activeEventId`, `sidebarOpen`, `navPinned`, `barScope`, and `theme` are persisted (localStorage key: `plotweave-ui`).
+Single Zustand store (`useAppStore`) with slices for: active world/event/map, map drill-down history stack, playback, and UI panel open/close state. Only `activeWorldId`, `activeEventId`, `sidebarOpen`, `navPinned`, `barScope`, and `theme` are persisted (localStorage key: `kathala-ui`).
 
 ### Snapshot model
 State is stored as explicit snapshot records — not computed. **Every snapshot keys on `eventId`, i.e. per scene, not per chapter** (check the interfaces in `src/types/`; this file said chapter for a long time and the code never did):

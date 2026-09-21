@@ -153,7 +153,7 @@ export default function WorldDashboardView() {
   }
 
   // ── Dashboard suggestions ─────────────────────────────────────────────────
-  const dismissedKey = worldId ? `plotweave-dismissed-suggestions-${worldId}` : null
+  const dismissedKey = worldId ? `kathala-dismissed-suggestions-${worldId}` : null
   const [dismissedIds, setDismissedIds] = useState<string[]>(() => {
     if (!dismissedKey) return []
     try { return JSON.parse(localStorage.getItem(dismissedKey) ?? '[]') } catch { return [] }

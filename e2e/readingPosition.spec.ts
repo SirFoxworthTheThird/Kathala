@@ -19,7 +19,7 @@ import { downloadLibraryBook, DEFAULT_BOOK } from './helpers/library'
  */
 
 const storedCursor = (page: Page) => page.evaluate(() => {
-  const raw = localStorage.getItem('plotweave-ui')
+  const raw = localStorage.getItem('kathala-ui')
   return raw ? (JSON.parse(raw) as { state?: { activeEventId?: string | null } }).state?.activeEventId ?? null : null
 })
 

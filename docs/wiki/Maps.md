@@ -1,6 +1,6 @@
 # Maps
 
-PlotWeave renders **custom, hand-drawn fantasy maps** — pixel-coordinate images, not geographic tiles.
+Kathala renders **custom, hand-drawn fantasy maps** — pixel-coordinate images, not geographic tiles.
 
 Upload a map image or link one by URL, place **location markers**, group them into **layers** and **sub-maps**, stack **floors**, draw **regions** and **routes**, and set a **map scale** to unlock distance measurement.
 
@@ -27,7 +27,7 @@ The map's controls **float over the canvas** rather than sitting in header rows,
 
 | Position | Contents |
 |---|---|
-| **Breadcrumb** (top of window) | Which layer is open, and its scale — *PlotWeave / your world / Middle Earth · 1 km = 2 px* |
+| **Breadcrumb** (top of window) | Which layer is open, and its scale — *Kathala / your world / Middle Earth · 1 km = 2 px* |
 | **Top-left** | **Show** chips — characters, trails, labels, journeys, locations. The chevrons narrow those to particular characters or location types |
 | **Top-right** | **+ Location** and **Label**, plus a **⋯** menu |
 | **⋯ menu** | Map scale, add level, replace image, export as PNG, and the AI tools |

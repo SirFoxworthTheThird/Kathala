@@ -2,11 +2,11 @@ import { GenerateSectionDialog } from '@/features/ai'
 import { parseFactionsSpec, addFactionsToWorld } from '@/lib/sectionImport'
 import type { SpecFaction } from '@/lib/worldSpec'
 
-const PROMPT = `You are helping me populate my story in PlotWeave, a story-tracking app. Output ONLY a compact JSON list of FACTIONS — organizations characters belong to, like kingdoms, guilds, or cults — no explanation, no markdown fences.
+const PROMPT = `You are helping me populate my story in Kathala, a story-tracking app. Output ONLY a compact JSON list of FACTIONS — organizations characters belong to, like kingdoms, guilds, or cults — no explanation, no markdown fences.
 
 SHAPE:
 {
-  "format": "plotweave-factions",
+  "format": "kathala-factions",
   "factions": [
     {
       "name": "<group>",

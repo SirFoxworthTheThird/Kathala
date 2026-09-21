@@ -49,7 +49,7 @@ function buildPrompt(
       }).join('\n')
     : '  (none)'
 
-  return `You are helping me extract character location moves from narrative prose in PlotWeave (worldId: "${worldId}").
+  return `You are helping me extract character location moves from narrative prose in Kathala (worldId: "${worldId}").
 
 I will paste travel narrative text below this prompt. Read it carefully and extract which character is at which location at each event.
 

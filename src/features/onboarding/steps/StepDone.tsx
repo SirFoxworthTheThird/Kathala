@@ -30,7 +30,7 @@ export function StepDone({ onNavigate, onBack }: StepDoneProps) {
         </p>
         <p className="text-sm text-[hsl(var(--muted-foreground))] max-w-md">
           That&apos;s the <span className="font-semibold text-[hsl(var(--foreground))]">time cursor</span>.
-          It&apos;s the heart of how PlotWeave works.
+          It&apos;s the heart of how Kathala works.
         </p>
       </div>
 

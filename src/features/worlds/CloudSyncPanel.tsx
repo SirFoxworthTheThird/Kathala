@@ -133,7 +133,7 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
   return (
     <SettingsSection id="settings-cloud-sync" label="Cloud Sync"
       blurb={<>Save this world to a folder on your computer — your Google Drive, OneDrive, Dropbox, or any synced folder.
-          PlotWeave only reads or writes when you tell it to.</>}
+          Kathala only reads or writes when you tell it to.</>}
     >
       {!supported && (
         <p className="text-xs text-[hsl(var(--muted-foreground))]">

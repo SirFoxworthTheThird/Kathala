@@ -9,7 +9,7 @@ import { describeLinked, describeLocaliseResult } from '@/lib/localiseImages'
 /**
  * Take a copy of every picture this world links to.
  *
- * PlotWeave's first promise is that a story never leaves the device, and
+ * Kathala's first promise is that a story never leaves the device, and
  * pictures are the documented exception: a picture is either bytes you uploaded
  * or a **link** to somewhere else. That is why *Alice in Wonderland* downloads
  * as a 347,498-byte `.pwk` when its pictures are 28 MB, and it is also why a

@@ -35,7 +35,7 @@ The main map is retained unchanged as requested by the style-matching task. Its 
 The browser tool returned no available browsers or applications during this task. Therefore no GUI validation is claimed and this revision must not be described as release-complete (EX-206–208, EX-506–508). On 2026-09-03, after being explicitly informed of this merge gate, the user approved a one-time exception to merge the map updates into development with visual validation pending. The exception does not mark these checks complete or weaken the authoring rules for future work.
 
 - [ ] Download/import the updated Library PWK (no PWB needed for this book now).
-- [ ] Inspect all 11 layers in PlotWeave at useful zoom, including every marker.
+- [ ] Inspect all 11 layers in Kathala at useful zoom, including every marker.
 - [ ] Exercise all gateways, especially Temerant → Severen → Maer's Estate.
 - [ ] Check reading mode and editing mode, image loading and console health.
 - [ ] Exercise playback across map transitions and first-arrival zoom.

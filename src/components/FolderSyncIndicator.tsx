@@ -86,7 +86,7 @@ export function FolderSyncIndicator({ worldId }: { worldId: string }) {
   const Icon = ICONS[display]
   const detail =
     display === 'no-permission'
-      ? 'PlotWeave has lost access to the sync folder. Open World Settings to reconnect it.'
+      ? 'Kathala has lost access to the sync folder. Open World Settings to reconnect it.'
       : FOLDER_SYNC_LABELS[display].detail
 
   return (

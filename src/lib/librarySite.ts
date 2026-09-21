@@ -3,7 +3,7 @@
  *
  * The books used to live in this repository, under `public/library/`, and every
  * path resolved against the document. They live in their own repository now —
- * SirFoxworthTheThird/PlotWeave-Library — published to its own site, so a new
+ * SirFoxworthTheThird/Kathala-Library — published to its own site, so a new
  * book reaches readers the minute it is written instead of waiting for a
  * release of this app.
  *

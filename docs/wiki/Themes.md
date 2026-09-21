@@ -1,6 +1,6 @@
 # Themes
 
-PlotWeave ships **nine visual themes** that change the colour palette, typography, and visual effects of the whole app.
+Kathala ships **nine visual themes** that change the colour palette, typography, and visual effects of the whole app.
 
 ---
 

@@ -1,6 +1,6 @@
 # Manuscript
 
-The **Manuscript** view stitches every scene's prose into one continuous document, in reading order, so you can read and export your book without leaving PlotWeave.
+The **Manuscript** view stitches every scene's prose into one continuous document, in reading order, so you can read and export your book without leaving Kathala.
 
 Write a scene's prose on its event and it appears here automatically.
 
@@ -47,7 +47,7 @@ Type a phrase to see every scene that contains it, with a match count and a high
 
 - **Case sensitive** and **whole word** toggles refine the match.
 - **Replace** one scene at a time, or **Replace all** across the manuscript.
-- **Character-rename aware** — when your search exactly matches a character's name, PlotWeave offers to rename that character too, its **name *and* aliases**, so the cast list stays in sync with the prose.
+- **Character-rename aware** — when your search exactly matches a character's name, Kathala offers to rename that character too, its **name *and* aliases**, so the cast list stays in sync with the prose.
 
 Every scene changed by a replace is saved as a new version, so you can undo it from that scene's [history](#scene-history).
 
@@ -55,7 +55,7 @@ Every scene changed by a replace is saved as a new version, so you can undo it f
 
 ## Scene history
 
-Every scene keeps a **revision history**. As you revise, PlotWeave automatically saves earlier drafts — grouped so a burst of edits becomes one snapshot, and capped to the most recent **20**. A **History** link appears above the scene draft once there are saved versions.
+Every scene keeps a **revision history**. As you revise, Kathala automatically saves earlier drafts — grouped so a burst of edits becomes one snapshot, and capped to the most recent **20**. A **History** link appears above the scene draft once there are saved versions.
 
 Open it to:
 

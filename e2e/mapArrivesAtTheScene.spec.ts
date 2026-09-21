@@ -65,18 +65,18 @@ async function sceneInTheSubMap(page: Page) {
 /** Park the cursor on a scene, the way a reader who has read this far would. */
 async function readAt(page: Page, eventId: string) {
   await page.evaluate((eid: string) => {
-    const raw = localStorage.getItem('plotweave-ui')
+    const raw = localStorage.getItem('kathala-ui')
     const st = raw ? JSON.parse(raw) : { state: {}, version: 0 }
     st.state.activeEventId = eid
     if (st.state.eventByWorld) for (const k of Object.keys(st.state.eventByWorld)) st.state.eventByWorld[k] = eid
-    localStorage.setItem('plotweave-ui', JSON.stringify(st))
+    localStorage.setItem('kathala-ui', JSON.stringify(st))
   }, eventId)
   await page.reload({ waitUntil: 'load' })
   await settle(page)
   // Verified, not assumed: the store rehydrates on load and writes itself back,
   // so a value written into a running page is clobbered rather than kept.
   const landed = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem('plotweave-ui') ?? '{}').state?.activeEventId ?? null)
+    JSON.parse(localStorage.getItem('kathala-ui') ?? '{}').state?.activeEventId ?? null)
   expect(landed, 'the cursor was actually parked').toBe(eventId)
 }
 

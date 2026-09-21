@@ -61,7 +61,7 @@ async function worldWithAGap(page: Page): Promise<string> {
 
 const cursorEventId = (page: Page) => page.evaluate(() => {
   try {
-    return JSON.parse(localStorage.getItem('plotweave-ui') ?? '{}')?.state?.activeEventId ?? null
+    return JSON.parse(localStorage.getItem('kathala-ui') ?? '{}')?.state?.activeEventId ?? null
   } catch { return null }
 })
 

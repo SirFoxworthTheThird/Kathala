@@ -74,7 +74,7 @@ function ChapterGoal({ chapterId, words, goal }: { chapterId: string; words: num
 }
 
 /** Where a world's reading spot is kept. Per world: books are read in parallel. */
-const spotKey = (worldId: string | undefined) => `plotweave-reading-spot-${worldId ?? ''}`
+const spotKey = (worldId: string | undefined) => `kathala-reading-spot-${worldId ?? ''}`
 
 const readStored = (key: string): string | null => {
   try { return localStorage.getItem(key) } catch { return null }
@@ -383,7 +383,7 @@ export default function ManuscriptView() {
   const [exportOpen, setExportOpen] = useState(false)
   const [findOpen, setFindOpen] = useState(false)
 
-  const goalKey = `plotweave-ms-goal-${worldId}`
+  const goalKey = `kathala-ms-goal-${worldId}`
   const [goal, setGoal] = useState<number>(() => {
     const raw = localStorage.getItem(goalKey)
     return raw ? Number(raw) || 0 : 0

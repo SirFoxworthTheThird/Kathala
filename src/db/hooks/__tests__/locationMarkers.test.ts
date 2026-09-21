@@ -147,7 +147,7 @@ describe('a location picture', () => {
     await db.delete()
 
     await new Promise<void>((resolve, reject) => {
-      const req = indexedDB.open('PlotWeaveDB', 52)
+      const req = indexedDB.open('KathalaDB', 52)
       req.onupgradeneeded = () => {
         if (!req.result.objectStoreNames.contains('locationMarkers')) {
           req.result.createObjectStore('locationMarkers', { keyPath: 'id' })

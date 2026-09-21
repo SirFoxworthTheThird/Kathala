@@ -2,11 +2,11 @@ import { GenerateSectionDialog } from '@/features/ai'
 import { parseKnowledgeSpec, addKnowledgeToWorld } from '@/lib/sectionImport'
 import type { SpecKnowledge } from '@/lib/worldSpec'
 
-const PROMPT = `You are helping me populate my story in PlotWeave, a story-tracking app. Output ONLY a compact JSON list of KNOWLEDGE facts — secrets and key information, tracking who knows what and when — no explanation, no markdown fences.
+const PROMPT = `You are helping me populate my story in Kathala, a story-tracking app. Output ONLY a compact JSON list of KNOWLEDGE facts — secrets and key information, tracking who knows what and when — no explanation, no markdown fences.
 
 SHAPE:
 {
-  "format": "plotweave-knowledge",
+  "format": "kathala-knowledge",
   "knowledge": [
     {
       "title": "<the secret, e.g. 'The king is dead'>",

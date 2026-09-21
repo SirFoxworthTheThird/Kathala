@@ -13,7 +13,7 @@ import { resetDB } from './helpers/reset'
 async function firstRun(page: Page) {
   await resetDB(page)
   // resetDB pre-dismisses the tutorial; the wizard is the thing under test.
-  await page.evaluate(() => localStorage.removeItem('plotweave-tutorial'))
+  await page.evaluate(() => localStorage.removeItem('kathala-tutorial'))
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('First')
   await page.getByRole('button', { name: 'Create World' }).last().click()

@@ -334,7 +334,7 @@ export function ChapterRow({
             control labelled as the reader's own bookmark. A blind reader run
             took Monte Cristo from 6 characters met to all 41 that way, with no
             dialog. The ✕ beside the cursor had already been fixed for exactly
-            this (X-15) and the guide says PlotWeave asks; this was a second
+            this (X-15) and the guide says Kathala asks; this was a second
             door that did not.
 
             Pressing it on a chapter far ahead jumps there, and there are 117 of

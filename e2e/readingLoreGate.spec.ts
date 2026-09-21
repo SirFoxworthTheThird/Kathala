@@ -41,16 +41,16 @@ import { downloadLibraryBook } from './helpers/library'
 async function readAt(page: Page, eventId: string) {
   const write = async () => {
     await page.evaluate((eid: string) => {
-      const raw = localStorage.getItem('plotweave-ui')
+      const raw = localStorage.getItem('kathala-ui')
       const st = raw ? JSON.parse(raw) : { state: {}, version: 0 }
       st.state.activeEventId = eid
       if (st.state.eventByWorld) for (const k of Object.keys(st.state.eventByWorld)) st.state.eventByWorld[k] = eid
-      localStorage.setItem('plotweave-ui', JSON.stringify(st))
+      localStorage.setItem('kathala-ui', JSON.stringify(st))
     }, eventId)
     await page.reload({ waitUntil: 'load' })
     await settle(page)
     return page.evaluate(() => {
-      const raw = localStorage.getItem('plotweave-ui')
+      const raw = localStorage.getItem('kathala-ui')
       return raw ? (JSON.parse(raw) as { state: { activeEventId: string | null } }).state.activeEventId : null
     })
   }

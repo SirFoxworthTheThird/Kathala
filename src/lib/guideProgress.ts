@@ -33,7 +33,7 @@ export interface GuideProgress {
 export type StoredGuide = GuideProgress | 'done'
 
 export function guideKey(worldId: string): string {
-  return `plotweave-guide-${worldId}`
+  return `kathala-guide-${worldId}`
 }
 
 function isStep(v: unknown): v is GuideStep {

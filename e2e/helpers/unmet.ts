@@ -20,7 +20,7 @@ export interface Unmet {
 /** Names the reader has not met, read from the store rather than assumed. */
 export async function unmetNames(page: Page): Promise<Unmet> {
   return page.evaluate(`(() => new Promise((resolve) => {
-    const req = indexedDB.open('PlotWeaveDB')
+    const req = indexedDB.open('KathalaDB')
     req.onsuccess = () => {
       const db = req.result
       const read = (s) => new Promise((r) => {
@@ -34,7 +34,7 @@ export async function unmetNames(page: Page): Promise<Unmet> {
       ]).then(([events, chapters, characters, items, markers, cs, ip, isn, ls, threads, motifs]) => {
         const chapNum = new Map(chapters.map(c => [c.id, c.number]))
         const key = new Map(events.map(e => [e.id, (chapNum.get(e.chapterId) ?? 0) + e.sortOrder / 1e6]))
-        const cursorId = JSON.parse(localStorage.getItem('plotweave-ui') || '{}')?.state?.activeEventId
+        const cursorId = JSON.parse(localStorage.getItem('kathala-ui') || '{}')?.state?.activeEventId
         const cursor = key.get(cursorId)
         const first = new Map()
         const add = (id, evId) => {
@@ -76,12 +76,12 @@ export async function unmetNames(page: Page): Promise<Unmet> {
 /**
  * Text that names things regardless of reading mode, and legitimately so: the
  * book's own title and description, and its chapter titles, which are printed
- * on the contents page of the physical copy. PlotWeave showing them gives away
+ * on the contents page of the physical copy. Kathala showing them gives away
  * nothing the reader's own book does not.
  */
 export async function benignText(page: Page): Promise<string> {
   const parts = await page.evaluate(`(() => new Promise((resolve) => {
-    const req = indexedDB.open('PlotWeaveDB')
+    const req = indexedDB.open('KathalaDB')
     req.onsuccess = () => {
       const db = req.result
       const read = (s) => new Promise((r) => {

@@ -27,7 +27,7 @@ describe('resolveBundledAsset', () => {
 
   it('leaves the // in https:// alone while still collapsing a doubled slash', () => {
     // The reason the expression is written the way it is: a naive collapse
-    // turns the site base into `https:/plotweave…` and every picture 404s.
+    // turns the site base into `https:/kathala…` and every picture 404s.
     expect(resolveBundledAsset('library/a.png', 'https://books.example/'))
       .toBe('https://books.example/library/a.png')
     expect(resolveBundledAsset('/library/a.png', 'https://books.example/'))

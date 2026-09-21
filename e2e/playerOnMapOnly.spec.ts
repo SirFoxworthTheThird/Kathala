@@ -74,7 +74,7 @@ test('stopping playback does not throw away a reader\'s place', async ({ page })
   await go(page, worldId, 'maps')
 
   const cursor = () => page.evaluate(() => {
-    const raw = localStorage.getItem('plotweave-ui')
+    const raw = localStorage.getItem('kathala-ui')
     return raw ? (JSON.parse(raw).state?.activeEventId ?? null) : null
   })
 

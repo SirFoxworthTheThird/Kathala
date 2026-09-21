@@ -32,7 +32,7 @@ import { cn } from '@/lib/utils'
  * carries the name through only when the person is already known.
  */
 
-const OPEN_KEY = 'plotweave-xray-open'
+const OPEN_KEY = 'kathala-xray-open'
 
 /**
  * The room the page leaves down its right-hand side for the card.

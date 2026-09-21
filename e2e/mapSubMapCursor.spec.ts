@@ -101,11 +101,11 @@ async function readAt(page: Page, worldId: string, eventId: string) {
   // Set the cursor *after* the mode is on: opening a world in reading mode
   // moves it, so a value written beforehand does not survive.
   await page.evaluate((eid: string) => {
-    const raw = localStorage.getItem('plotweave-ui')
+    const raw = localStorage.getItem('kathala-ui')
     const st = raw ? JSON.parse(raw) : { state: {}, version: 0 }
     st.state.activeEventId = eid
     if (st.state.eventByWorld) for (const k of Object.keys(st.state.eventByWorld)) st.state.eventByWorld[k] = eid
-    localStorage.setItem('plotweave-ui', JSON.stringify(st))
+    localStorage.setItem('kathala-ui', JSON.stringify(st))
   }, eventId)
   await page.reload({ waitUntil: 'load' })
   await waitForMapReady(page)

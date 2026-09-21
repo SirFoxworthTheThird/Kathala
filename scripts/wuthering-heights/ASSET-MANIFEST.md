@@ -1,6 +1,6 @@
 # Wuthering Heights generated-asset manifest
 
-All 42 JPEG assets in `public/library/wuthering-heights/` are original illustrations generated for PlotWeave with OpenAI ImageGen. They are repository-hosted and are not photographs, film/television likenesses, scans, or reused map images. Each asset was generated separately and visually reviewed before inclusion.
+All 42 JPEG assets in `public/library/wuthering-heights/` are original illustrations generated for Kathala with OpenAI ImageGen. They are repository-hosted and are not photographs, film/television likenesses, scans, or reused map images. Each asset was generated separately and visually reviewed before inclusion.
 
 ## Shared art direction
 

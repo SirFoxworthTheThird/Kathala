@@ -2,11 +2,11 @@ import { GenerateSectionDialog } from '@/features/ai'
 import { parseItemsSpec, addItemsToWorld } from '@/lib/sectionImport'
 import type { SpecItem } from '@/lib/worldSpec'
 
-const PROMPT = `You are helping me populate my story in PlotWeave, a story-tracking app. Output ONLY a compact JSON list of ITEMS — objects characters carry, use, or lose — no explanation, no markdown fences.
+const PROMPT = `You are helping me populate my story in Kathala, a story-tracking app. Output ONLY a compact JSON list of ITEMS — objects characters carry, use, or lose — no explanation, no markdown fences.
 
 SHAPE:
 {
-  "format": "plotweave-items",
+  "format": "kathala-items",
   "items": [
     { "name": "<item>", "description": "<why it matters>", "icon": "weapon", "tags": ["cursed"] }
   ]

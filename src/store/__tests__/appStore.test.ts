@@ -484,7 +484,7 @@ describe('barScope', () => {
 
   it('is persisted so the chosen scope survives a reload', () => {
     useAppStore.getState().setBarScope('all-chrono')
-    const persisted = JSON.parse(localStorage.getItem('plotweave-ui') ?? '{}')
+    const persisted = JSON.parse(localStorage.getItem('kathala-ui') ?? '{}')
     expect(persisted.state?.barScope).toBe('all-chrono')
   })
 })
@@ -492,7 +492,7 @@ describe('barScope', () => {
 describe('theme persistence', () => {
   it('persists the app theme so it survives a reload', () => {
     useAppStore.getState().setTheme('parchment' as never)
-    const persisted = JSON.parse(localStorage.getItem('plotweave-ui') ?? '{}')
+    const persisted = JSON.parse(localStorage.getItem('kathala-ui') ?? '{}')
     expect(persisted.state?.theme).toBe('parchment')
   })
 })

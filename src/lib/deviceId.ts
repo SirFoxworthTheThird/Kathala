@@ -1,6 +1,6 @@
 import { generateId } from './id'
 
-const KEY = 'plotweave-device-id'
+const KEY = 'kathala-device-id'
 
 let cached: string | null = null
 

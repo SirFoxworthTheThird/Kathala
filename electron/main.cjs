@@ -16,7 +16,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
     },
     icon: path.join(__dirname, isDev ? '../public/favicon.png' : '../dist/favicon.png'),
-    title: 'PlotWeave',
+    title: 'Kathala',
     show: false,
     backgroundColor: '#1a2535',
   })
@@ -52,7 +52,7 @@ ipcMain.handle('dialog:open-files', async () => {
   const result = await dialog.showOpenDialog({
     properties: ['openFile', 'multiSelections'],
     filters: [
-      { name: 'PlotWeave Files', extensions: ['pwk', 'pwb'] },
+      { name: 'Kathala Files', extensions: ['pwk', 'pwb'] },
       { name: 'All Files', extensions: ['*'] },
     ],
   })

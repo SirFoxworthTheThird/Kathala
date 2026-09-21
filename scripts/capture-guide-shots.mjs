@@ -67,10 +67,10 @@ async function setCursor(page, worldId, chapterNumber) {
     const events = await window.__pwdb.events.where('chapterId').equals(chapter.id).toArray()
     if (!events.length) return false
     const eventId = events.sort((a, b) => a.sortOrder - b.sortOrder)[0].id
-    const raw = JSON.parse(localStorage.getItem('plotweave-ui') || '{}')
+    const raw = JSON.parse(localStorage.getItem('kathala-ui') || '{}')
     const state = raw.state || {}
     raw.state = { ...state, activeEventId: eventId, eventByWorld: { ...(state.eventByWorld || {}), [id]: eventId } }
-    localStorage.setItem('plotweave-ui', JSON.stringify(raw))
+    localStorage.setItem('kathala-ui', JSON.stringify(raw))
     return true
   }, [worldId, chapterNumber])
   if (!ok) throw new Error(`no scene in chapter ${chapterNumber}`)
@@ -126,6 +126,38 @@ async function firstChapter(page, worldId) {
     const all = await window.__pwdb.chapters.where('worldId').equals(id).toArray()
     return all.sort((a, b) => a.number - b.number)[0].id
   }, worldId)
+}
+
+/*
+  Two controls in SceneDraftSection carry a `title` that is not their accessible
+  name. `title="Write this scene distraction-free"` sits on a button whose text
+  is "Focus"; `title="View earlier drafts of this scene"` sits on one reading
+  "History (2)". Text content wins, so `getByRole('button', { name: <title> })`
+  matched nothing — `count` was 0, not merely hidden.
+
+  This is why a probe and a run disagreed for three sittings: the probe read the
+  `title` attribute off the element, and the run asked for the accessible name.
+  Both were right about different strings.
+*/
+/*
+  Open a scene card on the chapter screen, and leave it open.
+
+  Two traps met here. The row is a **button**, and a bare `getByText(title)`
+  also matches the chapter bar along the bottom, which carries every scene's
+  title — `.first()` was picking a copy that never becomes visible. And clicking
+  the title *toggles*, so on a card already open it closed the very draft the
+  next step was waiting for.
+*/
+async function openScene(page, title, control) {
+  const row = page.getByRole('main').getByRole('button', { name: title }).first()
+  await row.waitFor({ state: 'visible', timeout: 30_000 })
+  await page.waitForTimeout(1500)
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (await page.getByRole('button', { name: control }).first().isVisible().catch(() => false)) return
+    await row.click()
+    await page.waitForTimeout(1500)
+  }
+  throw new Error(`"${title}" never offered its draft controls`)
 }
 
 const shots = [
@@ -366,7 +398,18 @@ const shots = [
   },
   {
     name: '60-settings-index', book: ILIAD, reading: false,
-    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/settings`, { waitUntil: 'load' }),
+    /*
+      Expanded, whatever the last shot left behind. `64-settings-collapsed`
+      clicks "Collapse all", and that choice persists in localStorage — so this
+      shot found "Expand all" instead and reported the screen as never having
+      rendered, on a screen that had.
+    */
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/settings`, { waitUntil: 'load' })
+      await page.getByRole('heading', { name: 'WORLD' }).waitFor({ state: 'visible', timeout: 30_000 })
+      const expand = page.getByRole('button', { name: /Expand all/i })
+      if (await expand.isVisible().catch(() => false)) await expand.click()
+    },
     ready: (page) => page.getByRole('button', { name: 'Collapse all' }),
   },
   {
@@ -430,35 +473,68 @@ const shots = [
   },
   {
     name: '46-focus-mode', book: ILIAD, reading: false,
+    // The button reads "Focus"; its title is "Write this scene
+    // distraction-free", which is not its accessible name because text content
+    // wins over `title`.
     go: async (page, id) => {
       const chapter = await firstChapter(page, id)
       await page.goto(`${BASE}/#/worlds/${id}/timeline/${chapter}`, { waitUntil: 'load' })
-      await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
-      await page.getByRole('main').getByText('The Priest Is Rejected').first().click()
-      await page.waitForTimeout(1200)
-      await page.getByRole('button', { name: /Focus/i }).first().click()
+      await openScene(page, 'The Priest Is Rejected', 'Focus')
+      await page.getByRole('button', { name: 'Focus', exact: true }).first().click()
     },
-    ready: (page) => page.getByRole('button', { name: /Exit focus|Leave focus|Close/i }).first(),
-    settle: 2000,
+    ready: (page) => page.getByRole('textbox').first(),
+    settle: 2500,
   },
   {
     name: '34-scene-history', book: ILIAD, reading: false,
+    /*
+      Seeded: the History button renders only when `sceneRevisions.length > 0`,
+      and not one of the 41 Library books carries a single revision — a book
+      that arrived whole has never been edited and paused.
+    */
+    seed: (page, id) => page.evaluate(async (worldId) => {
+      const chapters = await window.__pwdb.chapters.where('worldId').equals(worldId).toArray()
+      const chapter = chapters.sort((a, b) => a.number - b.number)[0]
+      const events = await window.__pwdb.events.where('chapterId').equals(chapter.id).toArray()
+      const event = events.sort((a, b) => a.sortOrder - b.sortOrder)[0]
+      const day = 86_400_000
+      for (const [ago, text] of [
+        [3, 'Sing, O goddess, the wrath of Achilles.'],
+        [1, 'Sing, O goddess, the anger of Achilles son of Peleus, that brought countless ills upon the Achaeans.'],
+      ]) {
+        await window.__pwdb.sceneRevisions.put({
+          id: `guide-revision-${ago}`, worldId, eventId: event.id, text,
+          wordCount: text.split(/\s+/).length, createdAt: Date.now() - ago * day,
+        })
+      }
+    }, id),
     go: async (page, id) => {
       const chapter = await firstChapter(page, id)
       await page.goto(`${BASE}/#/worlds/${id}/timeline/${chapter}`, { waitUntil: 'load' })
-      await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
-      await page.getByRole('button', { name: /histor|revision/i }).first().click()
+      await openScene(page, 'The Priest Is Rejected', /^History/)
+      await page.getByRole('button', { name: /^History/ }).first().click()
     },
-    ready: (page) => page.getByText(/revision|version/i).first(),
+    ready: (page) => page.getByRole('dialog').or(page.getByRole('button', { name: /^History/ }).first()),
+    settle: 2000,
   },
   {
     name: '47-all-timelines', book: JOURNEY, reading: false,
+    /*
+      "All timelines" is an <optgroup> label inside the chapter bar's scope
+      <select>, not a button — which is why every button-shaped attempt reported
+      `count = 0`. It was correct: there is no such button. The option under it
+      is "All · Chapter order".
+
+      Journey to the West is the only shipped book with two timelines, and at a
+      hundred chapters it is the slowest screen in the app to settle.
+    */
     go: async (page, id) => {
       await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
-      await page.getByRole('button', { name: 'All timelines' }).waitFor({ state: 'visible', timeout: 30_000 })
-      await page.getByRole('button', { name: 'All timelines' }).click()
+      const scope = page.locator('select[aria-label="Timeline bar scope"]')
+      await scope.waitFor({ state: 'visible', timeout: 90_000 })
+      await scope.selectOption({ label: 'All · Chapter order' })
     },
-    ready: (page) => page.getByRole('main').getByRole('button').first(),
+    ready: (page) => page.locator('select[aria-label="Timeline bar scope"]'),
     settle: 3000,
   },
   {
@@ -520,6 +596,205 @@ const shots = [
     },
     ready: (page) => page.getByRole('dialog'),
     settle: 1500,
+  },
+
+  // ── Dialogs on the shelf ──────────────────────────────────────────────────
+  {
+    name: '22-import-manuscript', book: ILIAD, reading: false,
+    go: async (page) => {
+      await page.goto(`${BASE}/#/`, { waitUntil: 'load' })
+      await page.getByRole('button', { name: 'Import Manuscript' }).click()
+    },
+    ready: (page) => page.getByRole('dialog'),
+  },
+  {
+    name: '23-generate-ai', book: ILIAD, reading: false,
+    go: async (page) => {
+      await page.goto(`${BASE}/#/`, { waitUntil: 'load' })
+      await page.getByRole('button', { name: 'Generate World from AI' }).click()
+    },
+    ready: (page) => page.getByRole('dialog'),
+  },
+
+  // ── Generation dialogs inside a world ─────────────────────────────────────
+  {
+    name: '26-generate-characters', book: ILIAD, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/characters`, { waitUntil: 'load' })
+      await page.getByRole('heading', { name: 'Characters' }).waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByRole('button', { name: 'Generate with AI' }).click()
+    },
+    ready: (page) => page.getByRole('dialog'),
+  },
+
+  // ── Dashboard panels, which sit below the tiles ───────────────────────────
+  {
+    name: '20-cast-balance', book: ILIAD, reading: false,
+    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/`, { waitUntil: 'load' }),
+    ready: (page) => page.getByRole('heading', { name: 'The Iliad' }),
+    scrollTo: 'Cast Balance',
+  },
+  {
+    name: '21-plot-threads', book: ILIAD, reading: false,
+    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/`, { waitUntil: 'load' }),
+    ready: (page) => page.getByRole('heading', { name: 'The Iliad' }),
+    scrollTo: 'Plot Threads',
+  },
+  {
+    name: '33-motifs', book: ILIAD, reading: false,
+    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/`, { waitUntil: 'load' }),
+    ready: (page) => page.getByRole('heading', { name: 'The Iliad' }),
+    scrollTo: 'Motifs',
+  },
+
+  // ── Screens with a control that opens something ───────────────────────────
+  {
+    name: '30-calendar', book: ILIAD, reading: false,
+    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/calendar`, { waitUntil: 'load' }),
+    ready: (page) => page.getByRole('heading', { name: 'Calendar' }),
+    settle: 2500,
+  },
+  {
+    name: '42-lore-editor', book: ILIAD, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/lore`, { waitUntil: 'load' })
+      await page.getByRole('heading', { name: 'Textual Basis' }).waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByRole('heading', { name: 'Textual Basis' }).click()
+    },
+    ready: (page) => page.getByRole('heading', { name: 'Textual Basis' }),
+    settle: 2000,
+  },
+  {
+    name: '55-structure-proportion', book: ILIAD, reading: false,
+    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/structure`, { waitUntil: 'load' }),
+    ready: (page) => page.getByRole('heading', { name: 'Structure' }),
+    scrollTo: 'Hook',
+    settle: 2000,
+  },
+
+  {
+    name: '27-generate-locations', book: ALICE, reading: false,
+    // Location generation is inside the map's own tools menu, not on a toolbar.
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/maps`, { waitUntil: 'load' })
+      await page.locator('.leaflet-container').waitFor({ state: 'visible', timeout: 40_000 })
+      await page.waitForTimeout(3000)
+      await page.getByRole('button', { name: 'Map tools' }).click()
+      await page.getByText('AI Locations').waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByText('AI Locations').click()
+    },
+    ready: (page) => page.getByRole('dialog'),
+    settle: 2000,
+  },
+  {
+    name: '54-image-lightbox', book: ILIAD, reading: false,
+    // A portrait opens full size; the character page is where one is.
+    go: async (page, id) => {
+      const c = await firstCharacter(page, id)
+      await page.goto(`${BASE}/#/worlds/${id}/characters/${c}`, { waitUntil: 'load' })
+      await page.getByRole('heading', { name: 'Achilles' }).waitFor({ state: 'visible', timeout: 30_000 })
+      await page.waitForTimeout(1500)
+      await page.getByRole('main').locator('img').first().click()
+    },
+    ready: (page) => page.getByRole('dialog').or(page.locator('[data-lightbox]')),
+    settle: 2000,
+  },
+  {
+    name: '57-brief-scene-picker', book: ILIAD, reading: false,
+    /*
+      The brief with no scene chosen, which is the state the section is about.
+      Clearing the cursor is what produces it.
+    */
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
+      const clear = page.getByRole('button', { name: /Clear the selected moment/i }).first()
+      if (await clear.isVisible().catch(() => false)) await clear.click()
+      await page.waitForTimeout(1200)
+      await page.locator('button[aria-label="Writer\'s Brief"]').click()
+    },
+    ready: (page) => page.getByRole('dialog'),
+    settle: 2000,
+  },
+
+  {
+    name: '25-start-sequel', book: ILIAD, reading: false,
+    // Starting a sequel is in a world card's own menu on the shelf, not in
+    // settings — the menu is titled "More actions" rather than named for export.
+    go: async (page) => {
+      await page.goto(`${BASE}/#/`, { waitUntil: 'load' })
+      await page.getByRole('heading', { name: 'The Iliad' }).waitFor({ state: 'visible', timeout: 30_000 })
+      await page.locator('button[title="More actions"]').first().click()
+      await page.getByText('Start a sequel').waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByText('Start a sequel').click()
+    },
+    ready: (page) => page.getByRole('dialog'),
+    settle: 2000,
+  },
+  {
+    name: '56-relationship-focus', book: ILIAD, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/relationships`, { waitUntil: 'load' })
+      await page.locator('.react-flow__node').first().waitFor({ state: 'visible', timeout: 40_000 })
+      await page.waitForTimeout(2500)
+      /*
+        A <select>, not a button — which is why clicking a
+        `button[aria-label=...]` timed out on a control that was on screen.
+        Choosing somebody is also the point of the shot: the section is about
+        keeping a large cast readable by drawing less of it.
+      */
+      await page.selectOption('select[aria-label="Focus on one character"]', { label: 'Achilles' })
+    },
+    ready: (page) => page.locator('.react-flow__node').first(),
+    settle: 2000,
+  },
+  {
+    name: '63-calendar-presets', book: ILIAD, reading: false,
+    /*
+      The presets are in the CalendarEditor, which lives in World Settings —
+      not on the Calendar screen, which is where a probe looked for them.
+    */
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/settings`, { waitUntil: 'load' })
+      await page.getByRole('heading', { name: 'WORLD' }).waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByRole('heading', { name: /CALENDAR/i }).first().scrollIntoViewIfNeeded()
+    },
+    ready: (page) => page.getByRole('heading', { name: /CALENDAR/i }).first(),
+    settle: 2000,
+  },
+
+  {
+    name: '41-item-cross-timeline', book: JOURNEY, reading: false,
+    /*
+      Seeded, and it has to be. **No shipped book has a single
+      crossTimelineArtifact** — measured across all 41 — so this screen cannot
+      be photographed from the Library at all, the same problem scene revisions
+      had. It also needs two timelines to be meaningful, which only Journey to
+      the West has: an artifact is an item that exists on one timeline and is
+      encountered on another.
+    */
+    seed: (page, id) => page.evaluate(async (worldId) => {
+      const timelines = await window.__pwdb.timelines.where('worldId').equals(worldId).toArray()
+      const items = await window.__pwdb.items.where('worldId').equals(worldId).toArray()
+      if (timelines.length < 2 || !items.length) throw new Error('needs two timelines and an item')
+      const now = Date.now()
+      await window.__pwdb.crossTimelineArtifacts.put({
+        id: 'guide-artifact', worldId, itemId: items[0].id,
+        originTimelineId: timelines[0].id, encounterTimelineId: timelines[1].id,
+        encounterNotes: 'Carried out of the age of the monkey and met again on the road west.',
+        createdAt: now, updatedAt: now,
+      })
+      return items[0].id
+    }, id),
+    go: async (page, id) => {
+      const itemId = await page.evaluate(async (worldId) => {
+        const items = await window.__pwdb.items.where('worldId').equals(worldId).toArray()
+        return items[0].id
+      }, id)
+      await page.goto(`${BASE}/#/worlds/${id}/items/${itemId}`, { waitUntil: 'load' })
+    },
+    ready: (page) => page.getByText(/Carried out of the age of the monkey/),
+    settle: 2500,
   },
 
   // ── Maps, on Alice ────────────────────────────────────────────────────────
@@ -600,18 +875,34 @@ for (const shot of wanted) {
   const id = worlds.get(shot.book)
   try {
     /*
-      Shut whatever the last shot opened. A dialog survives a hash navigation,
-      and its backdrop then intercepts every click: one open search palette cost
-      four later shots, each failing as "the screen never finished rendering"
-      while the screen underneath was fine.
+      Shut whatever the last shot opened, unconditionally.
+
+      This used to press Escape only while a `role="dialog"` was present, which
+      is exactly the assumption that broke it: the Help panel is a panel, not a
+      dialog, so the guard could not see it, and it stayed open over eleven
+      later shots. Every one reported `headings: ["Help"]` and a click timeout —
+      including two that failed as strict-mode violations, because the open
+      panel contributed a second "Writer's Brief" and "Continuity Checker" to
+      the page.
+
+      Pressing Escape on an already-clean screen costs nothing, since every shot
+      navigates afterwards anyway. Not knowing what kind of thing is open costs
+      a whole run.
     */
-    for (let i = 0; i < 3 && await page.getByRole('dialog').count(); i += 1) {
+    for (let i = 0; i < 3; i += 1) {
       await page.keyboard.press('Escape')
-      await page.waitForTimeout(300)
+      await page.waitForTimeout(250)
     }
     await setReadingMode(page, id, shot.reading)
+    // A shot may need state no shipped book is in — see 34-scene-history, where
+    // the control renders only when the scene has revisions and no Library book
+    // has one. Defined but never called is how that shot failed twice.
+    if (shot.seed) await shot.seed(page, id)
     await shot.go(page, id)
     await ready(page, shot.ready(page), shot.name)
+    // Panels below the fold: a viewport screenshot of a dashboard shows the
+    // tiles, not the Cast Balance chart eight hundred pixels further down.
+    if (shot.scrollTo) await page.getByText(shot.scrollTo).first().scrollIntoViewIfNeeded()
     await settle(page, shot.settle ?? 1500)
     await page.screenshot({ path: `${OUT}/${shot.name}.png` })
     console.log(`  ${shot.name}`)

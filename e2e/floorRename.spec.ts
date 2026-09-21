@@ -6,7 +6,7 @@ function labels(page: Page) {
   return page.evaluate(
     () =>
       new Promise<string[]>((resolve, reject) => {
-        const req = indexedDB.open('PlotWeaveDB')
+        const req = indexedDB.open('KathalaDB')
         req.onerror = () => reject(req.error)
         req.onsuccess = () => {
           const all = req.result.transaction('mapLayers', 'readonly').objectStore('mapLayers').getAll()
