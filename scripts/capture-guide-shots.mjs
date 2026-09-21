@@ -545,6 +545,125 @@ const shots = [
     settle: 1500,
   },
 
+  // ── Dialogs on the shelf ──────────────────────────────────────────────────
+  {
+    name: '22-import-manuscript', book: ILIAD, reading: false,
+    go: async (page) => {
+      await page.goto(`${BASE}/#/`, { waitUntil: 'load' })
+      await page.getByRole('button', { name: 'Import Manuscript' }).click()
+    },
+    ready: (page) => page.getByRole('dialog'),
+  },
+  {
+    name: '23-generate-ai', book: ILIAD, reading: false,
+    go: async (page) => {
+      await page.goto(`${BASE}/#/`, { waitUntil: 'load' })
+      await page.getByRole('button', { name: 'Generate World from AI' }).click()
+    },
+    ready: (page) => page.getByRole('dialog'),
+  },
+
+  // ── Generation dialogs inside a world ─────────────────────────────────────
+  {
+    name: '26-generate-characters', book: ILIAD, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/characters`, { waitUntil: 'load' })
+      await page.getByRole('heading', { name: 'Characters' }).waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByRole('button', { name: 'Generate with AI' }).click()
+    },
+    ready: (page) => page.getByRole('dialog'),
+  },
+
+  // ── Dashboard panels, which sit below the tiles ───────────────────────────
+  {
+    name: '20-cast-balance', book: ILIAD, reading: false,
+    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/`, { waitUntil: 'load' }),
+    ready: (page) => page.getByRole('heading', { name: 'The Iliad' }),
+    scrollTo: 'Cast Balance',
+  },
+  {
+    name: '21-plot-threads', book: ILIAD, reading: false,
+    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/`, { waitUntil: 'load' }),
+    ready: (page) => page.getByRole('heading', { name: 'The Iliad' }),
+    scrollTo: 'Plot Threads',
+  },
+  {
+    name: '33-motifs', book: ILIAD, reading: false,
+    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/`, { waitUntil: 'load' }),
+    ready: (page) => page.getByRole('heading', { name: 'The Iliad' }),
+    scrollTo: 'Motifs',
+  },
+
+  // ── Screens with a control that opens something ───────────────────────────
+  {
+    name: '30-calendar', book: ILIAD, reading: false,
+    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/calendar`, { waitUntil: 'load' }),
+    ready: (page) => page.getByRole('heading', { name: 'Calendar' }),
+    settle: 2500,
+  },
+  {
+    name: '42-lore-editor', book: ILIAD, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/lore`, { waitUntil: 'load' })
+      await page.getByRole('heading', { name: 'Textual Basis' }).waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByRole('heading', { name: 'Textual Basis' }).click()
+    },
+    ready: (page) => page.getByRole('heading', { name: 'Textual Basis' }),
+    settle: 2000,
+  },
+  {
+    name: '55-structure-proportion', book: ILIAD, reading: false,
+    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/structure`, { waitUntil: 'load' }),
+    ready: (page) => page.getByRole('heading', { name: 'Structure' }),
+    scrollTo: 'Hook',
+    settle: 2000,
+  },
+
+  {
+    name: '27-generate-locations', book: ALICE, reading: false,
+    // Location generation is inside the map's own tools menu, not on a toolbar.
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/maps`, { waitUntil: 'load' })
+      await page.locator('.leaflet-container').waitFor({ state: 'visible', timeout: 40_000 })
+      await page.waitForTimeout(3000)
+      await page.getByRole('button', { name: 'Map tools' }).click()
+      await page.getByText('AI Locations').waitFor({ state: 'visible', timeout: 30_000 })
+      await page.getByText('AI Locations').click()
+    },
+    ready: (page) => page.getByRole('dialog'),
+    settle: 2000,
+  },
+  {
+    name: '54-image-lightbox', book: ILIAD, reading: false,
+    // A portrait opens full size; the character page is where one is.
+    go: async (page, id) => {
+      const c = await firstCharacter(page, id)
+      await page.goto(`${BASE}/#/worlds/${id}/characters/${c}`, { waitUntil: 'load' })
+      await page.getByRole('heading', { name: 'Achilles' }).waitFor({ state: 'visible', timeout: 30_000 })
+      await page.waitForTimeout(1500)
+      await page.getByRole('main').locator('img').first().click()
+    },
+    ready: (page) => page.getByRole('dialog').or(page.locator('[data-lightbox]')),
+    settle: 2000,
+  },
+  {
+    name: '57-brief-scene-picker', book: ILIAD, reading: false,
+    /*
+      The brief with no scene chosen, which is the state the section is about.
+      Clearing the cursor is what produces it.
+    */
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
+      const clear = page.getByRole('button', { name: /Clear the selected moment/i }).first()
+      if (await clear.isVisible().catch(() => false)) await clear.click()
+      await page.waitForTimeout(1200)
+      await page.locator('button[aria-label="Writer\'s Brief"]').click()
+    },
+    ready: (page) => page.getByRole('dialog'),
+    settle: 2000,
+  },
+
   // ── Maps, on Alice ────────────────────────────────────────────────────────
   // Six layers and thirty-seven markers, and its artwork is the Library's own
   // rather than a Wikimedia link, so it is one of the few that photograph whole.
@@ -644,6 +763,9 @@ for (const shot of wanted) {
     await setReadingMode(page, id, shot.reading)
     await shot.go(page, id)
     await ready(page, shot.ready(page), shot.name)
+    // Panels below the fold: a viewport screenshot of a dashboard shows the
+    // tiles, not the Cast Balance chart eight hundred pixels further down.
+    if (shot.scrollTo) await page.getByText(shot.scrollTo).first().scrollIntoViewIfNeeded()
     await settle(page, shot.settle ?? 1500)
     await page.screenshot({ path: `${OUT}/${shot.name}.png` })
     console.log(`  ${shot.name}`)

@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="https://kathala.netlify.app/"><strong>Try it in your browser →</strong></a>
+  <a href="https://plotweave.netlify.app/"><strong>Try it in your browser →</strong></a>
   &nbsp;·&nbsp;
   <a href="https://github.com/SirFoxworthTheThird/PlotWeave/releases"><strong>Download for desktop</strong></a>
   &nbsp;·&nbsp;
@@ -183,7 +183,7 @@ theme so each project keeps its own atmosphere.
 ## Try or download
 
 Use Kathala in the browser at
-**[kathala.netlify.app](https://kathala.netlify.app/)**
+**[plotweave.netlify.app](https://plotweave.netlify.app/)**
 or download the latest desktop build from the
 **[Releases page](https://github.com/SirFoxworthTheThird/PlotWeave/releases)**.
 

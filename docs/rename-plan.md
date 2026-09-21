@@ -112,6 +112,7 @@ is not recoverable later.
 | 9 | `plotweave-session-goal-${worldId}` | `FocusMode.tsx`, `WritingProgress.tsx` | Session goals lost | **Rename.** |
 | 10 | `plotweave-structure-template-${worldId}` | `StructureView.tsx` | Structure template choice lost | **Rename.** |
 | 11 | `https://plotweave-library.netlify.app/` | `librarySite.ts:20` | The Library stops loading until the new host serves the same paths | **Rename, last.** Keep the old host alive through the switch. |
+| 12 | `https://plotweave.netlify.app/` | `index.html` og:url and og:image, README, `deploy-dev.yml` | Every shared link shows a broken preview card, because og:image 404s | **Rename, last**, with 11. Missed in the source pass and reverted. |
 
 **Good news on the file format:** the `.pwk` envelope declares
 `"type": "world-export"`, not a branded string. The format is already
