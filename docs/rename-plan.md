@@ -6,6 +6,16 @@
 This is a plan to argue with, not a script to run. Every number in it was
 measured on 2026-09-21 against `development`; none is an estimate.
 
+> **Revised 2026-09-21, and the revision matters more than the plan.**
+> The first draft assumed an installed base. There isn't one — the author is
+> currently the only user. That does not make the rename smaller, but it moves
+> every decision in §3 from *dangerous* to merely *tedious*, and it flips the
+> recommendation from **keep the old identifiers forever** to **rename them now
+> or accept them forever**. A rename of the data layer gets strictly more
+> expensive with every user, and is close to free today. The sections below are
+> written in their corrected form; §3.1 records what the reasoning was before,
+> because it becomes true again the moment somebody else installs this.
+
 ---
 
 ## 1. The shape of the problem
@@ -16,16 +26,17 @@ A rename looks like one job and is two, with opposite risk profiles.
 repositories. All of it is reversible, none of it can hurt a user, and most of
 it is mechanical.
 
-**The persistence layer** is eleven identifiers. Get one wrong and existing
-users lose their work, or their exports stop opening. The counter-intuitive
-part, and the main argument of this plan: **most of the persistence layer should
-keep the old name forever.** A database name nobody sees is not worth a
-migration that can eat a novel.
+**The persistence layer** is eleven identifiers. With an installed base, getting
+one wrong loses somebody's work. With one user who can export first, the same
+eleven are a morning's work and a re-import.
 
-There is precedent in this codebase for exactly that choice. `src/lib/exportImport.ts`
-still writes `wb-rel-pos-${worldId}` — `wb` for an earlier name of this project.
-It survived a previous rename, it has cost nothing in the years since, and
-nobody has ever noticed. That is the model.
+So the real question is not *is this safe* — today it is — but **is it worth
+doing at all, and if so it has to be now.** Every one of these decisions is
+cheap exactly once. `src/lib/exportImport.ts` still writes
+`wb-rel-pos-${worldId}` — `wb` for an earlier name of this project — because
+the last rename declined to pay this cost while it was still small. It has
+cost nothing since, which is the argument for leaving well alone; it is also
+the reason a third name would inherit two layers of residue rather than one.
 
 ---
 
@@ -64,34 +75,53 @@ contain the string "plotweave":
 | `PW_CHROMIUM_PATH` | 3 | env var |
 | `.pwk` / `.pwb` | 160 | **file extensions** — see §3 |
 
-**Recommendation: rename none of these except by deliberate decision.** They are
-invisible to users, and `__pwdb` alone is 427 edit sites for no benefit. List
+**These are effort, not risk** — nothing here is persisted, so a miss fails a
+test rather than losing data. `__pwdb` is 427 mechanical edit sites; the CSS
+classes are a stylesheet-wide replace. Worth doing in the same pass as the rest,
+because a half-renamed codebase is the state that confuses everyone later. List
 them here so the choice is made rather than missed.
 
 ---
 
-## 3. The irreversible set — decide before touching code
+## 3. The persisted set — decide before touching code
 
-Eleven identifiers where the wrong move is destructive. Each needs an explicit
-decision, and the recommendation is *keep* for most.
+Eleven identifiers that outlive a deploy. **With one user these are cheap to
+change and will never be cheaper.** The "if renamed carelessly" column describes
+what happens with no migration and no export — which is recoverable today and
+is not recoverable later.
 
 | # | Identifier | Where | If renamed carelessly | Recommend |
 |---|---|---|---|---|
-| 1 | `PlotWeaveDB` | `src/db/database.ts:86` | **Every existing user's world becomes invisible.** Dexie opens a new, empty database. | **Keep.** Invisible to users. |
-| 2 | `.pwk` | 123 refs + every export ever made + all 41 Library books | Existing exports stop opening; the whole Library 404s | **Keep.** |
-| 3 | `.pwb` | 37 refs + 3 Library bundles | As above | **Keep.** |
-| 4 | `plotweave-ui` | Zustand persist key | Reading position, theme, sidebar state all reset | Keep, or migrate-on-read (§6) |
-| 5 | `plotweave-device-id` | `deviceId.ts` | Device identity resets; folder-sync conflict naming affected | Keep |
-| 6 | `plotweave-settings-collapsed` | `settingsSections.ts` | Cosmetic reset | Either |
-| 7 | `plotweave-xray-open` | `SceneXRay.tsx` | Cosmetic reset | Either |
-| 8 | `plotweave-ms-goal-${worldId}` | `ManuscriptView.tsx` | Word goals lost | Keep or migrate |
-| 9 | `plotweave-session-goal-${worldId}` | `FocusMode.tsx`, `WritingProgress.tsx` | Session goals lost | Keep or migrate |
-| 10 | `plotweave-structure-template-${worldId}` | `StructureView.tsx` | Structure template choice lost | Keep or migrate |
-| 11 | `https://plotweave-library.netlify.app/` | `librarySite.ts:20` | **The Library stops loading for every user** until DNS and the new site exist | Change only after the new host serves the same paths |
+| 1 | `KathalaDB` | `src/db/database.ts:86` | Dexie opens a new, empty database and the old worlds are still on disk, unreferenced. | **Rename now.** Export first, re-import after. Never cheaper. |
+| 2 | `.pwk` | 123 refs + all 41 Library books + the catalogue | The Library 404s until both repos ship together | **Your call.** Safe, but needs the two repos released in step. |
+| 3 | `.pwb` | 37 refs + 3 Library bundles | As above | Follows whatever 2 does |
+| 4 | `plotweave-ui` | Zustand persist key | Reading position, theme, sidebar state reset once | **Rename.** One reset, yours. |
+| 5 | `plotweave-device-id` | `deviceId.ts` | Device identity resets; folder-sync conflict naming affected | **Rename.** Check folder sync after. |
+| 6 | `plotweave-settings-collapsed` | `settingsSections.ts` | Cosmetic reset | **Rename.** |
+| 7 | `plotweave-xray-open` | `SceneXRay.tsx` | Cosmetic reset | **Rename.** |
+| 8 | `plotweave-ms-goal-${worldId}` | `ManuscriptView.tsx` | Word goals lost | **Rename.** |
+| 9 | `plotweave-session-goal-${worldId}` | `FocusMode.tsx`, `WritingProgress.tsx` | Session goals lost | **Rename.** |
+| 10 | `plotweave-structure-template-${worldId}` | `StructureView.tsx` | Structure template choice lost | **Rename.** |
+| 11 | `https://plotweave-library.netlify.app/` | `librarySite.ts:20` | The Library stops loading until the new host serves the same paths | **Rename, last.** Keep the old host alive through the switch. |
 
 **Good news on the file format:** the `.pwk` envelope declares
 `"type": "world-export"`, not a branded string. The format is already
 name-neutral inside; only the extension carries the brand.
+
+### 3.1 What this said before, and when it becomes true again
+
+The first draft of this table recommended **keep** for nine of the eleven, on
+the reasoning that a database name nobody sees is not worth a migration that can
+eat a novel. That reasoning was sound and the premise was wrong: it assumed
+people other than the author had worlds in their browsers.
+
+It is worth keeping on the page because it is not wrong forever — it is wrong
+*today*. The moment a second person installs this, every row above reverts to
+**keep**, and the window closes without an announcement. If the rename is going
+to touch the data layer at all, that is an argument for doing it before the
+first release under the new name, not after.
+
+---
 
 ---
 
@@ -99,10 +129,14 @@ name-neutral inside; only the extension carries the brand.
 
 These cannot be derived from the codebase.
 
-1. **Does the data layer get renamed at all?** Recommendation: no. If yes, it
-   needs a written migration and a tested rollback, and that is its own project.
-2. **Do `.pwk`/`.pwb` stay?** Recommendation: yes. A new extension would need
-   dual-read support forever anyway, so it buys nothing.
+1. **Does the data layer get renamed at all?** Recommendation: **yes, and only
+   now.** With one user it is an export, a rename and a re-import. With ten it
+   needs a written migration and a tested rollback, and becomes its own project.
+   The cost of this decision only ever goes up.
+2. **Do `.pwk`/`.pwb` stay?** Genuinely open. Renaming them is safe but means
+   releasing both repositories in step, and the extension is the one piece of
+   the brand a user types. Keeping them is defensible — the format already
+   calls itself `world-export` inside — and costs nothing but a little residue.
 3. **Is the GitHub repo renamed?** GitHub redirects old URLs indefinitely, so
    this is low-risk — but it breaks any unredirected deep links and every
    hard-coded clone URL in docs (`forge.config.cjs:47`, README, the wiki).
