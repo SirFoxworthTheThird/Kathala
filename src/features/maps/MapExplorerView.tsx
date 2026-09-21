@@ -177,6 +177,26 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     }
   }
 
+  /*
+    Browsers do not guarantee a transitionend event when a transitioning tree
+    is replaced. Cross-layer playback replaces LeafletMapCanvas between the
+    fade-out and fade-in, so a missed event used to leave the new map at
+    opacity zero and keep playback paused forever. The event remains the fast
+    path; these timers are a bounded fallback that restores the same states.
+  */
+  useEffect(() => {
+    if (transitionPhase !== 'zooming-out' && transitionPhase !== 'zooming-in') return
+    const timer = window.setTimeout(() => {
+      if (transitionPhase === 'zooming-out') {
+        setTransitionPhase('zoomed-out')
+      } else {
+        setTransitionPhase('idle')
+        setIsAnimating(false)
+      }
+    }, transitionPhase === 'zooming-out' ? 450 : 500)
+    return () => window.clearTimeout(timer)
+  }, [transitionPhase, setIsAnimating])
+
   const canvasTransitionStyle: React.CSSProperties = (() => {
     switch (transitionPhase) {
       case 'zooming-out':
