@@ -184,7 +184,7 @@ export default function WorldSelectorView() {
             <img src={faviconUrl} alt="Kathala" className="h-10 w-10 rounded object-cover" />
             <div>
               <h1 className="text-xl font-bold text-[hsl(var(--foreground))]">Kathala</h1>
-              <p className="text-sm text-[hsl(var(--muted-foreground))]">A story bible for fiction writers</p>
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">Where stories take shape across time and worlds</p>
             </div>
           </div>
           {/*

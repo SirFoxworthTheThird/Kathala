@@ -1,7 +1,13 @@
 # Renaming PlotWeave to Kathala — a working plan
 
-**Status:** proposed, nothing executed.
-**Tagline under consideration:** *Kathala — where stories take shape across time and worlds.*
+**Status:** executed and merged, except the four items a person owns —
+trademark clearance, the two repository renames, the two host moves, and the
+wiki publish.
+**Tagline:** *Kathala — where stories take shape across time and worlds.*
+Adopted, and now the single line the product uses to describe itself: the world
+selector, the page and `og:title`, and the README all carry it. It replaced *a
+story bible for fiction writers*, which was accurate until reading mode gave
+the app a second audience — the reason this wording was chosen over the others.
 
 This is a plan to argue with, not a script to run. Every number in it was
 measured on 2026-09-21 against `development`; none is an estimate.
