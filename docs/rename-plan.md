@@ -159,11 +159,31 @@ These cannot be derived from the codebase.
 4. **Does the Library repo and its site rename too?** They are separate: repo
    `PlotWeave-Library`, site `plotweave-library.netlify.app`. The app depends on
    the site's URL at runtime.
-5. **Name clearance.** Not done. Kathala appears free in software, but this needs
-   a real USPTO/UKIPO search in classes 9 and 42, plus an Indian-market check —
-   and a native-speaker check on the reported Marathi sense of *kaṭhalā*
-   ("itch of cattle, scab"), which I could not verify because the source is
-   blocked by this session's egress proxy.
+5. **Name clearance.** Split in two, and half of it is now done.
+
+   **Linguistic check: DONE, and the name passes.** A lexicon aggregator had
+   reported a Marathi sense of *kaṭhalā* meaning "the itch of cattle, or scab".
+   It was relayed here as unverified — the source is blocked by this session's
+   egress proxy — and it does not survive a proper check. The real neighbours
+   are:
+
+   - **कठला** *kaṭhalā* — a beaded necklace, choker or torque, the heavy collar
+     seen on deity idols in Maharashtra. The closest genuine match, and a benign
+     one: a made object, worn, traditional.
+   - **खटला** *khaṭalā* — a lawsuit or court case. Further away than Latin script
+     suggests: aspirated **kha-** with a retroflex **ṭ**, against our **ka-**.
+   - **कटहल** *kathal* — jackfruit, and Hindi rather than Marathi, where the word
+     is *phanas*.
+
+   Nothing embarrassing, nothing that blocks. Worth knowing: the name derives
+   from **कथा**, with the *dental* थ, while the necklace is **कठला** with the
+   *retroflex* ठ — different words in Devanagari, identical in Latin. Set in
+   Devanagari for a logo or an Indian market, the story reading is unambiguous.
+
+   **Trademark clearance: NOT done.** Still needs a real USPTO/UKIPO search in
+   classes 9 and 42, and a look at the Indian market specifically, since that is
+   where a collision would most likely sit. Usage searches found nothing in
+   software; usage is not registrability.
 6. **Assets.** The logo, `favicon.*`, `og-card.png` and `logo-128.png` are
    design work, not find-and-replace. The PW monogram is in all of them.
 
