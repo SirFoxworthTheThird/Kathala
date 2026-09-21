@@ -366,7 +366,18 @@ const shots = [
   },
   {
     name: '60-settings-index', book: ILIAD, reading: false,
-    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/settings`, { waitUntil: 'load' }),
+    /*
+      Expanded, whatever the last shot left behind. `64-settings-collapsed`
+      clicks "Collapse all", and that choice persists in localStorage — so this
+      shot found "Expand all" instead and reported the screen as never having
+      rendered, on a screen that had.
+    */
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/settings`, { waitUntil: 'load' })
+      await page.getByRole('heading', { name: 'WORLD' }).waitFor({ state: 'visible', timeout: 30_000 })
+      const expand = page.getByRole('button', { name: /Expand all/i })
+      if (await expand.isVisible().catch(() => false)) await expand.click()
+    },
     ready: (page) => page.getByRole('button', { name: 'Collapse all' }),
   },
   {
@@ -455,8 +466,20 @@ const shots = [
     name: '47-all-timelines', book: JOURNEY, reading: false,
     go: async (page, id) => {
       await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
-      await page.getByRole('button', { name: 'All timelines' }).waitFor({ state: 'visible', timeout: 30_000 })
-      await page.getByRole('button', { name: 'All timelines' }).click()
+      /*
+        Wait on "Link Timelines", not on "All timelines".
+
+        Both sit in the same toolbar on the same screen, and waiting ninety
+        seconds for the second one timed out twice while the first was found
+        reliably — so the screen was there and the wait was looking at the wrong
+        thing. Journey to the West is a hundred chapters and slow either way.
+      */
+      await page.getByRole('button', { name: 'Link Timelines' }).waitFor({ state: 'visible', timeout: 90_000 })
+      // Present but not actionable: the timeline toolbar scrolls, and with two
+      // timeline tabs and their delete buttons this one sits off the viewport.
+      const all = page.getByRole('button', { name: 'All timelines' })
+      await all.scrollIntoViewIfNeeded()
+      await all.click()
     },
     ready: (page) => page.getByRole('main').getByRole('button').first(),
     settle: 3000,
@@ -600,14 +623,23 @@ for (const shot of wanted) {
   const id = worlds.get(shot.book)
   try {
     /*
-      Shut whatever the last shot opened. A dialog survives a hash navigation,
-      and its backdrop then intercepts every click: one open search palette cost
-      four later shots, each failing as "the screen never finished rendering"
-      while the screen underneath was fine.
+      Shut whatever the last shot opened, unconditionally.
+
+      This used to press Escape only while a `role="dialog"` was present, which
+      is exactly the assumption that broke it: the Help panel is a panel, not a
+      dialog, so the guard could not see it, and it stayed open over eleven
+      later shots. Every one reported `headings: ["Help"]` and a click timeout —
+      including two that failed as strict-mode violations, because the open
+      panel contributed a second "Writer's Brief" and "Continuity Checker" to
+      the page.
+
+      Pressing Escape on an already-clean screen costs nothing, since every shot
+      navigates afterwards anyway. Not knowing what kind of thing is open costs
+      a whole run.
     */
-    for (let i = 0; i < 3 && await page.getByRole('dialog').count(); i += 1) {
+    for (let i = 0; i < 3; i += 1) {
       await page.keyboard.press('Escape')
-      await page.waitForTimeout(300)
+      await page.waitForTimeout(250)
     }
     await setReadingMode(page, id, shot.reading)
     await shot.go(page, id)
