@@ -6,6 +6,16 @@
 This is a plan to argue with, not a script to run. Every number in it was
 measured on 2026-09-21 against `development`; none is an estimate.
 
+> **Revised 2026-09-21, and the revision matters more than the plan.**
+> The first draft assumed an installed base. There isn't one — the author is
+> currently the only user. That does not make the rename smaller, but it moves
+> every decision in §3 from *dangerous* to merely *tedious*, and it flips the
+> recommendation from **keep the old identifiers forever** to **rename them now
+> or accept them forever**. A rename of the data layer gets strictly more
+> expensive with every user, and is close to free today. The sections below are
+> written in their corrected form; §3.1 records what the reasoning was before,
+> because it becomes true again the moment somebody else installs this.
+
 ---
 
 ## 1. The shape of the problem
@@ -16,16 +26,17 @@ A rename looks like one job and is two, with opposite risk profiles.
 repositories. All of it is reversible, none of it can hurt a user, and most of
 it is mechanical.
 
-**The persistence layer** is eleven identifiers. Get one wrong and existing
-users lose their work, or their exports stop opening. The counter-intuitive
-part, and the main argument of this plan: **most of the persistence layer should
-keep the old name forever.** A database name nobody sees is not worth a
-migration that can eat a novel.
+**The persistence layer** is eleven identifiers. With an installed base, getting
+one wrong loses somebody's work. With one user who can export first, the same
+eleven are a morning's work and a re-import.
 
-There is precedent in this codebase for exactly that choice. `src/lib/exportImport.ts`
-still writes `wb-rel-pos-${worldId}` — `wb` for an earlier name of this project.
-It survived a previous rename, it has cost nothing in the years since, and
-nobody has ever noticed. That is the model.
+So the real question is not *is this safe* — today it is — but **is it worth
+doing at all, and if so it has to be now.** Every one of these decisions is
+cheap exactly once. `src/lib/exportImport.ts` still writes
+`wb-rel-pos-${worldId}` — `wb` for an earlier name of this project — because
+the last rename declined to pay this cost while it was still small. It has
+cost nothing since, which is the argument for leaving well alone; it is also
+the reason a third name would inherit two layers of residue rather than one.
 
 ---
 
@@ -64,34 +75,62 @@ contain the string "plotweave":
 | `PW_CHROMIUM_PATH` | 3 | env var |
 | `.pwk` / `.pwb` | 160 | **file extensions** — see §3 |
 
-**Recommendation: rename none of these except by deliberate decision.** They are
-invisible to users, and `__pwdb` alone is 427 edit sites for no benefit. List
-them here so the choice is made rather than missed.
+**DECIDED: keep all of them**, and the reason is a consequence of keeping
+`.pwk`. Once the extension stays, `pw` is no longer residue to be swept out —
+it is the project's permanent internal prefix, and it is used consistently.
+Renaming `__pwdb` to `__kdb` while a user is still saving `.pwk` files would
+replace one convention with two, which is worse than either.
+
+This is the largest saving in the whole rename: **427 edit sites for `__pwdb`
+alone**, plus the CSS classes and custom properties, all left alone with a
+reason rather than by oversight. None of it is persisted, none of it is visible,
+and all of it now matches the file a user types.
+
+The one to watch is `PW_CHROMIUM_PATH` — an env var in the capture tooling. It
+is fine to keep, but it is the only one that a person reads while debugging, so
+it is the only one where the old initials might puzzle somebody.
 
 ---
 
-## 3. The irreversible set — decide before touching code
+## 3. The persisted set — decide before touching code
 
-Eleven identifiers where the wrong move is destructive. Each needs an explicit
-decision, and the recommendation is *keep* for most.
+Eleven identifiers that outlive a deploy. **With one user these are cheap to
+change and will never be cheaper.** The "if renamed carelessly" column describes
+what happens with no migration and no export — which is recoverable today and
+is not recoverable later.
 
 | # | Identifier | Where | If renamed carelessly | Recommend |
 |---|---|---|---|---|
-| 1 | `PlotWeaveDB` | `src/db/database.ts:86` | **Every existing user's world becomes invisible.** Dexie opens a new, empty database. | **Keep.** Invisible to users. |
-| 2 | `.pwk` | 123 refs + every export ever made + all 41 Library books | Existing exports stop opening; the whole Library 404s | **Keep.** |
-| 3 | `.pwb` | 37 refs + 3 Library bundles | As above | **Keep.** |
-| 4 | `plotweave-ui` | Zustand persist key | Reading position, theme, sidebar state all reset | Keep, or migrate-on-read (§6) |
-| 5 | `plotweave-device-id` | `deviceId.ts` | Device identity resets; folder-sync conflict naming affected | Keep |
-| 6 | `plotweave-settings-collapsed` | `settingsSections.ts` | Cosmetic reset | Either |
-| 7 | `plotweave-xray-open` | `SceneXRay.tsx` | Cosmetic reset | Either |
-| 8 | `plotweave-ms-goal-${worldId}` | `ManuscriptView.tsx` | Word goals lost | Keep or migrate |
-| 9 | `plotweave-session-goal-${worldId}` | `FocusMode.tsx`, `WritingProgress.tsx` | Session goals lost | Keep or migrate |
-| 10 | `plotweave-structure-template-${worldId}` | `StructureView.tsx` | Structure template choice lost | Keep or migrate |
-| 11 | `https://plotweave-library.netlify.app/` | `librarySite.ts:20` | **The Library stops loading for every user** until DNS and the new site exist | Change only after the new host serves the same paths |
+| 1 | `KathalaDB` | `src/db/database.ts:86` | Dexie opens a new, empty database and the old worlds are still on disk, unreferenced. | **Rename now.** Export first, re-import after. Never cheaper. |
+| 2 | `.pwk` | 123 refs + all 41 Library books + the catalogue | — | **DECIDED: keep.** |
+| 3 | `.pwb` | 37 refs + 3 Library bundles | — | **DECIDED: keep.** |
+| 4 | `plotweave-ui` | Zustand persist key | Reading position, theme, sidebar state reset once | **Rename.** One reset, yours. |
+| 5 | `plotweave-device-id` | `deviceId.ts` | Device identity resets; folder-sync conflict naming affected | **Rename.** Check folder sync after. |
+| 6 | `plotweave-settings-collapsed` | `settingsSections.ts` | Cosmetic reset | **Rename.** |
+| 7 | `plotweave-xray-open` | `SceneXRay.tsx` | Cosmetic reset | **Rename.** |
+| 8 | `plotweave-ms-goal-${worldId}` | `ManuscriptView.tsx` | Word goals lost | **Rename.** |
+| 9 | `plotweave-session-goal-${worldId}` | `FocusMode.tsx`, `WritingProgress.tsx` | Session goals lost | **Rename.** |
+| 10 | `plotweave-structure-template-${worldId}` | `StructureView.tsx` | Structure template choice lost | **Rename.** |
+| 11 | `https://plotweave-library.netlify.app/` | `librarySite.ts:20` | The Library stops loading until the new host serves the same paths | **Rename, last.** Keep the old host alive through the switch. |
 
 **Good news on the file format:** the `.pwk` envelope declares
 `"type": "world-export"`, not a branded string. The format is already
 name-neutral inside; only the extension carries the brand.
+
+### 3.1 What this said before, and when it becomes true again
+
+The first draft of this table recommended **keep** for nine of the eleven, on
+the reasoning that a database name nobody sees is not worth a migration that can
+eat a novel. That reasoning was sound and the premise was wrong: it assumed
+people other than the author had worlds in their browsers.
+
+It is worth keeping on the page because it is not wrong forever — it is wrong
+*today*. The moment a second person installs this, every row above reverts to
+**keep**, and the window closes without an announcement. If the rename is going
+to touch the data layer at all, that is an argument for doing it before the
+first release under the new name, not after.
+
+---
 
 ---
 
@@ -99,10 +138,21 @@ name-neutral inside; only the extension carries the brand.
 
 These cannot be derived from the codebase.
 
-1. **Does the data layer get renamed at all?** Recommendation: no. If yes, it
-   needs a written migration and a tested rollback, and that is its own project.
-2. **Do `.pwk`/`.pwb` stay?** Recommendation: yes. A new extension would need
-   dual-read support forever anyway, so it buys nothing.
+1. **Does the data layer get renamed at all?** Recommendation: **yes, and only
+   now.** With one user it is an export, a rename and a re-import. With ten it
+   needs a written migration and a tested rollback, and becomes its own project.
+   The cost of this decision only ever goes up.
+2. **Do `.pwk`/`.pwb` stay?** **DECIDED: yes, they stay.** The format already
+   calls itself `world-export` inside, the 41 Library books keep working, and
+   the two repositories no longer have to ship in step. Nothing in the guide
+   glosses what the letters stand for, so no prose reads oddly afterwards.
+
+   **Three labels around the extension still change**, because they name the
+   application rather than the file: `HelpPanel.tsx:134` (*"a PlotWeave `.pwk`
+   backup"*), `exportImport.ts:357` (`description: 'PlotWeave Export'`, the
+   browser file picker) and `electron/main.cjs:55` (`name: 'PlotWeave Files'`,
+   the OS dialog). Miss these and the file chooser still says the old name
+   while the extension is silent about it.
 3. **Is the GitHub repo renamed?** GitHub redirects old URLs indefinitely, so
    this is low-risk — but it breaks any unredirected deep links and every
    hard-coded clone URL in docs (`forge.config.cjs:47`, README, the wiki).
@@ -223,9 +273,14 @@ finish line should be a test rather than a feeling.
 
 ## 9. Rough shape of the effort
 
+Two decisions are now made, and together they take the largest mechanical chunk
+off the table: **`.pwk`/`.pwb` stay**, and therefore **every `pw-` identifier
+stays too** — 520 occurrences, 427 of them `__pwdb`. What is left is text, and
+pictures.
+
 | | |
 |---|---|
-| Decisions (§3, §4) | a conversation, not code |
+| Remaining decisions (§4: 1, 3, 4, 5, 6) | a conversation, not code |
 | Assets | design work, external |
 | App repo cosmetic rename + tests | one PR, large diff, mechanical |
 | Library repo | one small PR |
