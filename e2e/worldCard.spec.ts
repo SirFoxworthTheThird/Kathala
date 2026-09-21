@@ -96,9 +96,18 @@ test.describe('The world list', () => {
     await expect(same.getByText(/^Created /)).toHaveCount(0)
   })
 
+  /*
+    The line under the app's name is the only place it says what it is, so it
+    is asserted as text rather than left to a screenshot. Both absences are
+    live: "Story Tracker" was the original filing (SEL-4), and "fiction
+    writers" was the fix for it — accurate until reading mode gave the app a
+    second audience, which is the whole reason the tagline replaced it.
+  */
   test('SEL-4: the product describes itself', async ({ page }) => {
     await resetDB(page)
-    await expect(page.getByText('A story bible for fiction writers')).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByText('Where stories take shape across time and worlds'))
+      .toBeVisible({ timeout: 30_000 })
     await expect(page.getByText('Story Tracker')).toHaveCount(0)
+    await expect(page.getByText(/fiction writers/)).toHaveCount(0)
   })
 })

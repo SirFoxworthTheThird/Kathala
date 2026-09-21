@@ -22,8 +22,8 @@ function createWindow() {
   })
 
   /*
-    The HTML `<title>` is written for a search result and a shared link — "a
-    story bible that knows what time it is" — and a desktop window wants the
+    The HTML `<title>` is written for a search result and a shared link — "where
+    stories take shape across time and worlds" — and a desktop window wants the
     app's name. Electron lets the page title win the moment it loads, so
     without this the title bar and the taskbar read the whole tagline. The
     `title` option above is the one that should hold.

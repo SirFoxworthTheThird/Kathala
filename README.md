@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>A story bible that knows what time it is.</strong>
+  <strong>Where stories take shape across time and worlds.</strong>
 </p>
 
 <p align="center">
