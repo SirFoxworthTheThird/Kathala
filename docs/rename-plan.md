@@ -185,8 +185,23 @@ These cannot be derived from the codebase.
    classes 9 and 42, and a look at the Indian market specifically, since that is
    where a collision would most likely sit. Usage searches found nothing in
    software; usage is not registrability.
-6. **Assets.** The logo, `favicon.*`, `og-card.png` and `logo-128.png` are
-   design work, not find-and-replace. The PW monogram is in all of them.
+6. **Assets. RESOLVED, and there is nothing to do.** An earlier draft of this
+   plan said the logo, favicons and `og-card.png` were design work carrying a
+   "PW monogram". That was written without opening a single one of them, and it
+   is wrong.
+
+   The mark is **abstract** — a ribbon weaving through an archway with a
+   four-pointed star at its centre, called the *Story Gate mark* in
+   `index.html`'s own comment. There are **no letters in it**, and `strings`
+   finds no name in `favicon.ico`, `favicon.icns`, `favicon-32.png` or
+   `logo-128.png`. A mark that never said the old name does not need to stop
+   saying it, and an arch you pass through suits Kathala as well as it suited
+   what came before.
+
+   The one asset that *did* carry the name was `og-card.png`, because it is a
+   **screenshot of the dashboard** rather than artwork — the picture shown when
+   a link is pasted into Slack, Discord or a tweet. Regenerated from the
+   recaptured dashboard shot. Nothing else in `public/` needs a designer.
 
 ---
 
@@ -198,8 +213,8 @@ Order matters; steps 1–2 gate everything else.
 |---|---|---|---|
 | 1 | Clear the name (trademark, domains, npm, GitHub org) | — | n/a |
 | 2 | Decide §3 and §4 | 1 | n/a |
-| 3 | New assets: logo, favicons, og-card | 1 | yes |
-| 4 | **App repo cosmetic rename**, one PR | 2, 3 | yes |
+| 3 | ~~New assets~~ — nothing to do; see §4.6 | — | n/a |
+| 4 | **App repo cosmetic rename**, one PR | 2 | yes |
 | 5 | **Library repo cosmetic rename**, one PR | 2 | yes |
 | 6 | New Library host serving the same paths; switch `librarySite.ts` | 5 | yes, keep old host alive |
 | 7 | Rename GitHub repos | 4, 5 merged | yes (GitHub redirects) |
@@ -302,7 +317,7 @@ pictures.
 | | |
 |---|---|
 | Remaining decisions (§4: 1, 3, 4, 5, 6) | a conversation, not code |
-| Assets | design work, external |
+| Assets | none — the mark carries no name |
 | App repo cosmetic rename + tests | one PR, large diff, mechanical |
 | Library repo | one small PR |
 | **Screenshot recapture** | **65 images** — the hidden bulk |
