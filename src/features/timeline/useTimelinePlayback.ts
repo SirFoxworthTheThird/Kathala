@@ -8,6 +8,14 @@ import type { WorldEvent, TimelineRelationship } from '@/types'
 export const SPEED_NEXT: Record<PlaybackSpeed, PlaybackSpeed> = { slow: 'normal', normal: 'fast', fast: 'slow' }
 export const SPEED_LABEL: Record<PlaybackSpeed, string> = { slow: '0.5×', normal: '1×', fast: '2×' }
 
+/** Keep map playback on the scene's own location, matching a scrubber click. */
+function activatePlaybackEvent(event: WorldEvent, setActiveEventId: (id: string) => void) {
+  setActiveEventId(event.id)
+  if (event.locationMarkerId) {
+    window.dispatchEvent(new CustomEvent('wb:map:focusMarker', { detail: { markerId: event.locationMarkerId } }))
+  }
+}
+
 /** Manages the playback timer and exposes play/pause/stop/speed handlers.
  *  Call this once at the top of ChapterTimelineBar so the effect lifecycle is
  *  tied to the bar's mount rather than each render branch. */
@@ -30,7 +38,7 @@ export function useTimelinePlayback(
   // Advance to the next event on a timer while playing
   useEffect(() => {
     if (!isPlayingStory || !orderedEvents.length || isAnimating) return
-    if (!activeEventId) { setActiveEventId(orderedEvents[0].id); return }
+    if (!activeEventId) { activatePlaybackEvent(orderedEvents[0], setActiveEventId); return }
     const idx = orderedEvents.findIndex((e) => e.id === activeEventId)
     if (idx === -1) return
     const ev = orderedEvents[idx]
@@ -40,7 +48,7 @@ export function useTimelinePlayback(
       // The sync used to be applied here, so it only ever fired when the timer
       // moved the cursor (MT-6). It follows the cursor now — see the effect
       // below — which covers this move and every scrub as one rule.
-      setActiveEventId(orderedEvents[idx + 1].id)
+      activatePlaybackEvent(orderedEvents[idx + 1], setActiveEventId)
     }, holdMs)
     return () => clearTimeout(t)
   }, [
@@ -76,7 +84,8 @@ export function useTimelinePlayback(
       setIsPlayingStory(false)
     } else {
       if (!activeEventId || orderedEvents.findIndex((e) => e.id === activeEventId) >= orderedEvents.length - 1) {
-        setActiveEventId(orderedEvents[0]?.id ?? null)
+        const first = orderedEvents[0]
+        if (first) activatePlaybackEvent(first, setActiveEventId)
       }
       setIsPlayingStory(true)
       // The jump to the map that used to be here is gone with the reason for

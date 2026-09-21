@@ -404,6 +404,22 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     return () => window.removeEventListener('wb:map:focusMarker', handler)
   }, [allMarkers, layerId]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  /*
+    A cursor move can reveal its own location. The focus event is dispatched in
+    the same tick as the cursor update, while `allMarkers` still contains the
+    previous reading gate; at a first visit to a new map the handler above
+    therefore cannot find the marker and silently drops the move. Re-run the
+    same focus once the gated marker list catches up. This also covers cursor
+    changes from any future control without giving each one its own map code.
+  */
+  useEffect(() => {
+    if (!activeEventId) return
+    const markerId = orderedEvents.find((event) => event.id === activeEventId)?.locationMarkerId
+    if (!markerId) return
+    const marker = allMarkers.find((candidate) => candidate.id === markerId)
+    if (marker) focusOnLocation(marker, { select: false })
+  }, [activeEventId, allMarkers]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Map export ────────────────────────────────────────────────────────────
   async function handleExportMap() {
     const mapEl = document.querySelector('.leaflet-container') as HTMLElement | null
