@@ -51,7 +51,7 @@ async function download(page: Page, title: string) {
  */
 async function useCursor(page: Page, finder: string) {
   const chosen = await page.evaluate(`(() => new Promise((resolve, reject) => {
-    const req = indexedDB.open('PlotWeaveDB')
+    const req = indexedDB.open('KathalaDB')
     req.onsuccess = () => {
       const db = req.result
       const read = (s) => new Promise((r) => {
@@ -75,14 +75,14 @@ async function useCursor(page: Page, finder: string) {
             (No backticks in here: this whole function is a template literal.)
           */
           const worldId = location.hash.split('/')[2]
-          const raw = JSON.parse(localStorage.getItem('plotweave-ui') || '{}')
+          const raw = JSON.parse(localStorage.getItem('kathala-ui') || '{}')
           const state = raw.state || {}
           raw.state = {
             ...state,
             activeEventId: chosen,
             eventByWorld: { ...(state.eventByWorld || {}), [worldId]: chosen },
           }
-          localStorage.setItem('plotweave-ui', JSON.stringify(raw))
+          localStorage.setItem('kathala-ui', JSON.stringify(raw))
           resolve(chosen)
         })
     }

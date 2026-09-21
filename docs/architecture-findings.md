@@ -95,7 +95,7 @@ where it only has to be monotonic.
 - [src/store/index.ts](../src/store/index.ts) (lines 76–79, 174–192, 207–210)  
 - [src/features/continuity/ContinuityChecker.tsx](../src/features/continuity/ContinuityChecker.tsx)
 
-`suppressedIssueIds` and `suppressedNotes` are stored in the Zustand persist slice (localStorage key `plotweave-ui`), not in IndexedDB. They are keyed by `worldId` inside a single flat object.
+`suppressedIssueIds` and `suppressedNotes` are stored in the Zustand persist slice (localStorage key `kathala-ui`), not in IndexedDB. They are keyed by `worldId` inside a single flat object.
 
 **Impact**:
 - When a world is exported and re-imported (or opened on another device), all suppression decisions are silently lost.
@@ -197,10 +197,10 @@ that matches nothing looks identical to one that works.
 
 Dexie requires all prior `version()` blocks to remain in the constructor indefinitely so existing databases can upgrade through the full migration chain. There is no comment or CLAUDE.md note documenting this, which means a future cleanup pass could accidentally break upgrades for any database below the removed version.
 
-**Fix**: Add a comment at the top of the `PlotWeaveDB` constructor and a line to [CLAUDE.md](../CLAUDE.md) under the Data Layer section:
-> Never remove old `.version(N)` blocks from `PlotWeaveDB`. Dexie requires the full migration chain to be present to upgrade databases from any prior version.
+**Fix**: Add a comment at the top of the `KathalaDB` constructor and a line to [CLAUDE.md](../CLAUDE.md) under the Data Layer section:
+> Never remove old `.version(N)` blocks from `KathalaDB`. Dexie requires the full migration chain to be present to upgrade databases from any prior version.
 
-**Closed** — both. The comment sits in the `PlotWeaveDB` constructor above the
+**Closed** — both. The comment sits in the `KathalaDB` constructor above the
 version chain, and `CLAUDE.md` carries the line in its Data layer section. The
 chain now runs to `.version(54)`, so the note guards considerably more than it
 did when this was filed.

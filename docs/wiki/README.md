@@ -13,7 +13,7 @@ forgot.** A second session tried again on 2026-09-20: the wiki repository
 is not in this session's authorized repository set"* — and it cannot be added to
 that set, because GitHub does not expose a wiki as a repository the GitHub App
 can be granted access to. `add_repo` answers *"you don't have access to
-sirfoxworththethird/plotweave.wiki"*. So this is a human's five-minute job with
+sirfoxworththethird/kathala.wiki"*. So this is a human's five-minute job with
 the commands below, not something the next agent should spend an hour
 rediscovering.
 

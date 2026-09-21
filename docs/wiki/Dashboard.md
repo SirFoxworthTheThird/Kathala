@@ -30,7 +30,7 @@ On a phone the rail is replaced by a **☰ menu** in the top bar. The top bar it
 
 ## Writing Progress
 
-As you write scene prose in the [Manuscript](Manuscript) view, PlotWeave keeps a lightweight per-day log of the words you add or cut. The **Writing Progress** panel turns that into an at-a-glance readout:
+As you write scene prose in the [Manuscript](Manuscript) view, Kathala keeps a lightweight per-day log of the words you add or cut. The **Writing Progress** panel turns that into an at-a-glance readout:
 
 | Readout | What it shows |
 |---|---|

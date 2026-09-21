@@ -6,7 +6,7 @@ This page walks through building a world from nothing. If you already have a dra
 
 ## Prerequisites
 
-PlotWeave is open and you can see the **world selector**. See [Installation](Installation) if not.
+Kathala is open and you can see the **world selector**. See [Installation](Installation) if not.
 
 ---
 
@@ -18,7 +18,7 @@ A **world** is the top-level container for one story or universe.
 2. Enter a name, and optionally a description.
 3. Click **Create World**.
 
-The world opens immediately, and PlotWeave offers a **four-step setup guide**: create the first timeline and event, add a main character, place that character at the opening moment, then continue to the Timeline. Every optional step has **Skip**, so you can leave the guide and build in any order.
+The world opens immediately, and Kathala offers a **four-step setup guide**: create the first timeline and event, add a main character, place that character at the opening moment, then continue to the Timeline. Every optional step has **Skip**, so you can leave the guide and build in any order.
 
 ---
 
@@ -90,7 +90,7 @@ No map image? **Generate locations with AI** builds a whole tree of places as pi
 |---|---|
 | A finished or partial draft (`.md`, `.txt`) | [Import a Manuscript](Import-Manuscript) — one step, chapters and scenes included |
 | A synopsis, outline, or the story in your head | [Generating with AI](AI-Generation) — builds cast, factions, chapters and events |
-| Book one already in PlotWeave | [Sequels](Sequels) — carries the cast and setting into book two |
+| Book one already in Kathala | [Sequels](Sequels) — carries the cast and setting into book two |
 | Curiosity, and no story yet | [The Library](Library) — download a worked example built from a published book |
 
 ---

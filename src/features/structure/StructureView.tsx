@@ -87,7 +87,7 @@ export default function StructureView() {
   const events = useWorldEvents(worldId ?? null)
   const chapters = useWorldChapters(worldId ?? null)
 
-  const tplKey = `plotweave-structure-template-${worldId}`
+  const tplKey = `kathala-structure-template-${worldId}`
   const [templateId, setTemplateId] = useState<string>(() => localStorage.getItem(tplKey) || 'three-act')
   function chooseTemplate(id: string) {
     setTemplateId(id)

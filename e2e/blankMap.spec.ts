@@ -4,7 +4,7 @@ import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
- * A place in PlotWeave is a pin and a pin needs a map — locations may only be
+ * A place in Kathala is a pin and a pin needs a map — locations may only be
  * added to maps and sub-maps that already exist. That rule is deliberate and
  * stays. What did not work was everything around it: a writer with no picture of
  * their world had two doors, an image upload whose button stays disabled until

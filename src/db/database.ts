@@ -41,7 +41,7 @@ import type {
 } from '@/types'
 import type { Operation, Tombstone } from '@/types/operation'
 
-class PlotWeaveDB extends Dexie {
+class KathalaDB extends Dexie {
   worlds!: EntityTable<World, 'id'>
   mapLayers!: EntityTable<MapLayer, 'id'>
   locationMarkers!: EntityTable<LocationMarker, 'id'>
@@ -83,7 +83,7 @@ class PlotWeaveDB extends Dexie {
   sceneRevisions!: EntityTable<SceneRevision, 'id'>
 
   constructor() {
-    super('PlotWeaveDB')
+    super('KathalaDB')
 
     // IMPORTANT: Never remove old .version(N) blocks. Dexie requires the full
     // migration chain to be present so databases at any prior version can upgrade.
@@ -689,7 +689,7 @@ class PlotWeaveDB extends Dexie {
   }
 }
 
-export const db = new PlotWeaveDB()
+export const db = new KathalaDB()
 
 db.on('blocked', () => {
   db.close()

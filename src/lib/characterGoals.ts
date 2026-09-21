@@ -9,7 +9,7 @@ export const GOAL_TYPE_CONFIG: Record<CharacterGoalType, { label: string; color:
   flaw: { label: 'Flaw', color: '#fbbf24', hint: 'The trait that keeps getting in their way.' },
 }
 
-/** The goal types PlotWeave knows, in the order it presents them. */
+/** The goal types Kathala knows, in the order it presents them. */
 export const GOAL_TYPES: CharacterGoalType[] = ['want', 'need', 'fear', 'flaw']
 
 /**
@@ -30,7 +30,7 @@ export function goalTypeConfig(type: unknown): { label: string; color: string; h
     return GOAL_TYPE_CONFIG[type as CharacterGoalType]
   }
   const label = typeof type === 'string' && type.trim() ? type.trim() : 'Goal'
-  return { label, color: '#94a3b8', hint: 'This goal has a type PlotWeave does not recognise.' }
+  return { label, color: '#94a3b8', hint: 'This goal has a type Kathala does not recognise.' }
 }
 
 /**

@@ -128,7 +128,7 @@ export function buildPrompt(
       }).join('\n')
     : '  (none)'
 
-  return `You are helping me ${isUpdate ? 'rewrite an existing chapter' : 'add a new chapter'} in PlotWeave, a story-tracking app.
+  return `You are helping me ${isUpdate ? 'rewrite an existing chapter' : 'add a new chapter'} in Kathala, a story-tracking app.
 Read the ${isUpdate ? 'rewritten chapter content' : 'chapter content'} I provide, then output a single JSON object I can import directly.
 Output ONLY the raw JSON — no explanation, no markdown fences.
 

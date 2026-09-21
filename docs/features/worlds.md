@@ -2,7 +2,7 @@
 
 ## Overview
 
-Worlds are the top-level container in PlotWeave. Each world is completely self-contained — its own characters, maps, timelines, items, relationships, travel modes, and settings. The world selector screen is the app's home page; the dashboard provides a per-world overview and settings.
+Worlds are the top-level container in Kathala. Each world is completely self-contained — its own characters, maps, timelines, items, relationships, travel modes, and settings. The world selector screen is the app's home page; the dashboard provides a per-world overview and settings.
 
 ---
 

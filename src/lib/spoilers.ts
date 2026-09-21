@@ -1,7 +1,7 @@
 /**
  * Spoiler gating for reading mode.
  *
- * PlotWeave already answers "what is true at this moment?" for anything that
+ * Kathala already answers "what is true at this moment?" for anything that
  * carries a snapshot — where a character stands, what they hold, whether they
  * are alive. What it does not do by default is hide the *existence* of things
  * the reader has not met yet. A roster listing all fifty characters in chapter

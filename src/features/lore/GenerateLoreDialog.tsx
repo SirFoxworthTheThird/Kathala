@@ -2,11 +2,11 @@ import { GenerateSectionDialog } from '@/features/ai'
 import { parseLoreSpec, addLoreToWorld } from '@/lib/sectionImport'
 import type { SpecLore } from '@/lib/worldSpec'
 
-const PROMPT = `You are helping me populate my story in PlotWeave, a story-tracking app. Output ONLY a compact JSON list of LORE pages — your world's history, rules, and mythology — no explanation, no markdown fences.
+const PROMPT = `You are helping me populate my story in Kathala, a story-tracking app. Output ONLY a compact JSON list of LORE pages — your world's history, rules, and mythology — no explanation, no markdown fences.
 
 SHAPE:
 {
-  "format": "plotweave-lore",
+  "format": "kathala-lore",
   "lore": [
     { "category": "Magic", "title": "<page title>", "body": "<markdown>", "tags": ["system"] }
   ]

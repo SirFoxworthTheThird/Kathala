@@ -53,7 +53,7 @@ test.describe('Operation journal', () => {
     expect(afterReload).toBe(1)
 
     // The device id is stable across reloads.
-    const deviceId = await page.evaluate(() => localStorage.getItem('plotweave-device-id'))
+    const deviceId = await page.evaluate(() => localStorage.getItem('kathala-device-id'))
     expect(deviceId).toBeTruthy()
   })
 
@@ -66,13 +66,13 @@ test.describe('Operation journal', () => {
       const anyWin = window as { __pwdb?: any }
       await anyWin.__pwdb.close()
       await new Promise<void>((resolve, reject) => {
-        const del = indexedDB.deleteDatabase('PlotWeaveDB')
+        const del = indexedDB.deleteDatabase('KathalaDB')
         del.onsuccess = () => resolve()
         del.onerror = () => reject(del.error)
         del.onblocked = () => resolve()
       })
       return new Promise<string>((resolve, reject) => {
-        const req = indexedDB.open('PlotWeaveDB', 51)
+        const req = indexedDB.open('KathalaDB', 51)
         req.onupgradeneeded = () => {
           const idb = req.result
           idb.createObjectStore('worlds', { keyPath: 'id' })

@@ -1,4 +1,4 @@
-### [PlotWeave Wiki](Home)
+### [Kathala Wiki](Home)
 
 **Start here**
 - [Installation](Installation)

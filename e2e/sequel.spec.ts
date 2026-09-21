@@ -18,7 +18,7 @@ test.describe('Start a sequel', () => {
     await expect(page.getByText('Aria')).toBeVisible()
 
     // Back to the world list.
-    await page.getByText('PlotWeave').first().click()
+    await page.getByText('Kathala').first().click()
     await expect(page).toHaveURL('/#/')
   })
 

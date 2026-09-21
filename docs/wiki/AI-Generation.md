@@ -1,8 +1,8 @@
 # Generating with AI
 
-PlotWeave can build a whole world, or fill in one section of an existing one, using **any** AI assistant — ChatGPT, Claude, Gemini, or another.
+Kathala can build a whole world, or fill in one section of an existing one, using **any** AI assistant — ChatGPT, Claude, Gemini, or another.
 
-There is **no API key and no network call**. Every AI feature works by copy-paste: PlotWeave gives you a prompt, you paste it into your assistant along with your story, and you paste the JSON it returns back into PlotWeave. Your story never leaves your machine except where you choose to paste it.
+There is **no API key and no network call**. Every AI feature works by copy-paste: Kathala gives you a prompt, you paste it into your assistant along with your story, and you paste the JSON it returns back into Kathala. Your story never leaves your machine except where you choose to paste it.
 
 ---
 
@@ -23,7 +23,7 @@ Every one of these dialogs works the same way:
 
 **Generate World from AI** on the world selector builds the entire structure — characters, factions, relationships, chapters, events, and who-knows-what — from a story document.
 
-The prompt deliberately asks for a **compact spec**: entities are referenced **by name** rather than long ids, and a character's state is recorded only when it **changes** (they appear, move, gain or lose an item, or die). That keeps the output small, so even a full novel fits in one response without being cut off. PlotWeave expands the compact spec back into the full model on import, so nothing is lost.
+The prompt deliberately asks for a **compact spec**: entities are referenced **by name** rather than long ids, and a character's state is recorded only when it **changes** (they appear, move, gain or lose an item, or die). That keeps the output small, so even a full novel fits in one response without being cut off. Kathala expands the compact spec back into the full model on import, so nothing is lost.
 
 > **Tip:** you don't need a polished manuscript. A detailed synopsis, an outline, or a wiki-style summary all work. The more detail you give, the richer the generated world.
 
@@ -64,9 +64,9 @@ A fact's `origin`, `readerLearnsAt`, and each reveal reference **existing events
 
 **Generate with AI** on the empty Maps screen (and **AI Locations** in the map toolbar's **⋯** menu) builds a **tree of places** — no map image required.
 
-Paste back a nested JSON tree (continent → kingdom → city → district). PlotWeave creates a blank **Locations** map and drops each place on it as a pin. A place with children becomes a pin that **drills into a sub-map** holding them, as deep as your tree goes.
+Paste back a nested JSON tree (continent → kingdom → city → district). Kathala creates a blank **Locations** map and drops each place on it as a pin. A place with children becomes a pin that **drills into a sub-map** holding them, as deep as your tree goes.
 
-A multi-storey place — a castle, tower, or keep — can use **`levels`** instead of `children`. The AI lists its floors, each with its own locations, and PlotWeave builds them as a [level group](Maps) with a floor switcher, so *Great Hall* on the ground floor and *Library* on the first floor land on the right floors automatically.
+A multi-storey place — a castle, tower, or keep — can use **`levels`** instead of `children`. The AI lists its floors, each with its own locations, and Kathala builds them as a [level group](Maps) with a floor switcher, so *Great Hall* on the ground floor and *Library* on the first floor land on the right floors automatically.
 
 **Building out in passes.** Re-running extends the same Locations map. New places are added, and existing ones are **matched by name across the whole world** — updated in place and never duplicated, even if the AI puts a place under a different parent than before. A place's position in the tree is fixed the first time it is created; new children still attach under it.
 

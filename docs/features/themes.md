@@ -2,7 +2,7 @@
 
 ## Overview
 
-PlotWeave has nine visual themes that instantly transform the entire app — backgrounds, borders, fonts, glow effects, animations, and overlay textures all update together. Themes are implemented as CSS custom property sets injected by `ThemeProvider` onto the document root. The active theme is persisted in Zustand (localStorage).
+Kathala has nine visual themes that instantly transform the entire app — backgrounds, borders, fonts, glow effects, animations, and overlay textures all update together. Themes are implemented as CSS custom property sets injected by `ThemeProvider` onto the document root. The active theme is persisted in Zustand (localStorage).
 
 ---
 
@@ -18,7 +18,7 @@ PlotWeave has nine visual themes that instantly transform the entire app — bac
 - **Per-theme font** — body font and heading font set per theme; loaded via `@import` in the theme CSS block or via system fonts
 - **Overlay textures** — Sci-Fi (scanlines), Cyberpunk, Action (diagonal crosshatch), Horror, Noir (corner vignette) have optional pseudo-element overlays
 - **Pulse animations** — timeline bar marker pulse speed, glow intensity, and animation easing all vary by theme
-- **Persistence** — `theme` field in Zustand store persisted via `localStorage` key `plotweave-ui`
+- **Persistence** — `theme` field in Zustand store persisted via `localStorage` key `kathala-ui`
 
 ---
 

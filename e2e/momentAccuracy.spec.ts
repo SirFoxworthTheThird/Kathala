@@ -93,12 +93,12 @@ const stepTo = async (page: Page, title: string) => {
  */
 async function cursorAt(page: Page, worldId: string, eventId: string) {
   await page.evaluate(({ eid, wid }: { eid: string; wid: string }) => {
-    const raw = localStorage.getItem('plotweave-ui')
+    const raw = localStorage.getItem('kathala-ui')
     const st = raw ? JSON.parse(raw) : { state: {}, version: 0 }
     st.state.activeEventId = eid
     st.state.activeWorldId = wid
     st.state.eventByWorld = { ...(st.state.eventByWorld ?? {}), [wid]: eid }
-    localStorage.setItem('plotweave-ui', JSON.stringify(st))
+    localStorage.setItem('kathala-ui', JSON.stringify(st))
   }, { eid: eventId, wid: worldId })
   await page.reload({ waitUntil: 'load' })
   await settle(page)

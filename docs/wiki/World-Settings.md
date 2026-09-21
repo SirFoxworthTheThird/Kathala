@@ -91,7 +91,7 @@ On **Chrome, Edge, and the desktop app**, choose a **sync folder** to bind the w
 
 **Reordering survives.** Moving a card writes only that card's position, so two people rearranging different scenes both get their way, and both devices end up with the same sequence.
 
-**Single values cannot be combined** — a name, a description, a status. The file records what each copy *says*, not what each person *changed*. Where both copies changed one, PlotWeave shows you the two versions side by side before anything is applied, and you choose: **Most recent**, **Keep mine**, or **Use theirs**.
+**Single values cannot be combined** — a name, a description, a status. The file records what each copy *says*, not what each person *changed*. Where both copies changed one, Kathala shows you the two versions side by side before anything is applied, and you choose: **Most recent**, **Keep mine**, or **Use theirs**.
 
 **Deletions travel.** Anything you deleted stays deleted rather than reappearing because the other copy still had it. If you deleted something on one device and then *edited* it on the other, the edit wins and the record is kept — keeping is recoverable, discarding later work is not.
 
@@ -105,13 +105,13 @@ On **Chrome, Edge, and the desktop app**, choose a **sync folder** to bind the w
 | **Unsaved changes** | You have edits the folder hasn't received yet |
 | **Newer copy in folder** | Another device saved to this folder — **Load** to catch up |
 | **Both changed** | You edited here *and* another device saved — see below |
-| **Reconnect folder** | PlotWeave lost permission (browsers drop it between sessions); auto-save does nothing until you re-grant access |
+| **Reconnect folder** | Kathala lost permission (browsers drop it between sessions); auto-save does nothing until you re-grant access |
 
 The same status appears **next to the world name in the top bar**, so you can tell at a glance whether your work is reaching the folder without opening Settings.
 
 ### Conflict copies
 
-Because the bound folder is usually shared between your machines, **PlotWeave never overwrites the folder's copy behind your back.**
+Because the bound folder is usually shared between your machines, **Kathala never overwrites the folder's copy behind your back.**
 
 When another device has saved since you last did *and* you have your own unsaved changes, auto-save writes to a **conflict copy** beside it — `My World (conflict copy 2026-07-29 0315).pwk` — rather than either destroying their version or leaving yours unsaved.
 

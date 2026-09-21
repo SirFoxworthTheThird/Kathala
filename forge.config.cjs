@@ -1,7 +1,7 @@
 module.exports = {
   packagerConfig: {
-    name: 'PlotWeave',
-    executableName: process.platform === 'linux' ? 'plotweave' : 'PlotWeave',
+    name: 'Kathala',
+    executableName: process.platform === 'linux' ? 'kathala' : 'Kathala',
     icon: './public/favicon',
     asar: true,
     // Only include what the app needs to run — exclude source, tests, dev config
@@ -28,8 +28,8 @@ module.exports = {
       // Windows — produces a Setup.exe installer
       name: '@electron-forge/maker-squirrel',
       config: {
-        name: 'PlotWeave',
-        authors: 'PlotWeave',
+        name: 'Kathala',
+        authors: 'Kathala',
         description: 'A local story and world-building tracker',
       },
     },
@@ -43,8 +43,8 @@ module.exports = {
       name: '@electron-forge/maker-deb',
       config: {
         options: {
-          maintainer: 'PlotWeave',
-          homepage: 'https://github.com/SirFoxworthTheThird/PlotWeave',
+          maintainer: 'Kathala',
+          homepage: 'https://github.com/SirFoxworthTheThird/Kathala',
           description: 'A local story and world-building tracker',
         },
       },

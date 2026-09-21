@@ -1,6 +1,6 @@
 # Core Concepts
 
-Three ideas explain almost everything about how PlotWeave behaves. Read this page before the feature pages.
+Three ideas explain almost everything about how Kathala behaves. Read this page before the feature pages.
 
 ---
 
@@ -27,7 +27,7 @@ You move the cursor from either of two places, which are two views of the same t
 
 ## Snapshots — a delta model
 
-PlotWeave stores state as **explicit snapshot records**, not computed values. Setting a character's location at Event 5 writes a `CharacterSnapshot` for that character at that event.
+Kathala stores state as **explicit snapshot records**, not computed values. Setting a character's location at Event 5 writes a `CharacterSnapshot` for that character at that event.
 
 This matters because state never drifts: you see exactly what you recorded.
 
@@ -44,7 +44,7 @@ This matters because state never drifts: you see exactly what you recorded.
 
 ## Inheritance — record only what changes
 
-You do not create a snapshot at every event. When PlotWeave looks up state at an event and finds no snapshot, it **carries forward the most recent earlier one in that timeline**.
+You do not create a snapshot at every event. When Kathala looks up state at an event and finds no snapshot, it **carries forward the most recent earlier one in that timeline**.
 
 1. You record a snapshot at Event 1 — the character is in City A, alive.
 2. You record nothing at Events 2, 3, or 4.

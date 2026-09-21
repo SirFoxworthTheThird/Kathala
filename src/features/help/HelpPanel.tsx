@@ -131,7 +131,7 @@ export function HelpPanel() {
           </Section>
 
           <Section title="Getting started">
-            <P>The world selector is your library. Create a blank world, <B>Import Manuscript</B> from Markdown or plain text, <B>Generate World from AI</B> from a synopsis, or import a PlotWeave <code>.pwk</code> backup (plus its optional <code>.pwb</code> images file).</P>
+            <P>The world selector is your library. Create a blank world, <B>Import Manuscript</B> from Markdown or plain text, <B>Generate World from AI</B> from a synopsis, or import a Kathala <code>.pwk</code> backup (plus its optional <code>.pwb</code> images file).</P>
             <P>A blank world opens a short setup guide for creating a timeline and opening scene, adding a main character, and placing them at the story's starting point. Every optional step can be skipped.</P>
             <P>Use a world's menu to export it or <B>Start a sequel</B>. A sequel can carry selected characters, factions, items, maps, relationships, and lore into a new independent world.</P>
           </Section>
@@ -143,7 +143,7 @@ export function HelpPanel() {
           </Section>
 
           <Section title="Core concept: the time cursor">
-            <P>PlotWeave is built around one idea: <B>every entity has a state that changes over time</B>. Time is measured in scenes, grouped into chapters.</P>
+            <P>Kathala is built around one idea: <B>every entity has a state that changes over time</B>. Time is measured in scenes, grouped into chapters.</P>
             <P>The scene selector beside the world name and the <B>timeline bar</B> at the bottom are two views of the same time cursor. Choose a scene in either one and the app shows character locations, item placements, relationship states, and other time-aware data at exactly that moment.</P>
             <P>Changing the active scene never modifies your data. It only changes what you're looking at.</P>
             <Tip>Set the time cursor before opening a character or the map to see their state at that moment in the story.</Tip>
@@ -151,7 +151,7 @@ export function HelpPanel() {
 
           <Section title="Snapshots" writerOnly>
             <P>State changes are stored as <B>snapshot records</B> — explicit saves for a character, item, location, or relationship at a specific scene.</P>
-            <P>When no snapshot exists yet for an entity at the current scene, PlotWeave looks back and shows the <B>last known state</B> — the most recent snapshot before the cursor. This is the delta model: you only record what changes.</P>
+            <P>When no snapshot exists yet for an entity at the current scene, Kathala looks back and shows the <B>last known state</B> — the most recent snapshot before the cursor. This is the delta model: you only record what changes.</P>
             <P>Use <B>Save State</B> while a scene is active to create or update a snapshot. Character and item History views show the saved record across story time.</P>
             <Tip>A new chapter starts from the ending state of the preceding chapter on the same timeline, so you only need to record later changes.</Tip>
           </Section>

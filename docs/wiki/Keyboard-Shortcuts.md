@@ -13,7 +13,7 @@ The **Help** panel (the **?** icon, top-right) lists these in the app too, along
 | **Ctrl/⌘+Shift+Z** or **Ctrl+Y** | Redo |
 | **Esc** | Close any panel, modal, or lightbox; cancel an inline edit |
 
-> Inside a text box, **Ctrl/⌘+Z is your browser's own undo**, working letter by letter. PlotWeave deliberately stays out of the way there.
+> Inside a text box, **Ctrl/⌘+Z is your browser's own undo**, working letter by letter. Kathala deliberately stays out of the way there.
 
 [Reading mode](Reading-Mode) unbinds undo and redo along with removing their buttons.
 

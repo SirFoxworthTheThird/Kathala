@@ -10,7 +10,7 @@ import { parseWorldSpec, worldSpecStats, createWorldFromSpec } from '@/lib/world
 // model's output limit and truncate.
 // ---------------------------------------------------------------------------
 
-const PROMPT = `You are helping me import my story into PlotWeave, a story-tracking app. Read the story I provide and output a compact "story spec" as JSON that PlotWeave expands on import.
+const PROMPT = `You are helping me import my story into Kathala, a story-tracking app. Read the story I provide and output a compact "story spec" as JSON that Kathala expands on import.
 
 Output ONLY the raw JSON — no explanation, no markdown fences.
 
@@ -20,7 +20,7 @@ TWO RULES THAT KEEP THE OUTPUT SMALL (so long stories don't get cut off):
 
 SHAPE:
 {
-  "format": "plotweave-spec",
+  "format": "kathala-spec",
   "version": 1,
   "world": { "name": "<title>", "description": "<1-2 sentences>" },
   "characters": [
@@ -140,7 +140,7 @@ export function LLMPromptDialog({ open, onOpenChange, onImported }: LLMPromptDia
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="flex flex-col gap-3 border-b border-[hsl(var(--border))] px-6 py-4">
             <p className="text-sm text-[hsl(var(--foreground))]">
-              Turn a story document into a PlotWeave world using any AI assistant (ChatGPT, Claude, Gemini…).
+              Turn a story document into a Kathala world using any AI assistant (ChatGPT, Claude, Gemini…).
               The prompt asks for a <span className="font-medium">compact spec</span> — names instead of ids, and only
               state <span className="font-medium">changes</span> — so even long books fit without getting cut off.
             </p>

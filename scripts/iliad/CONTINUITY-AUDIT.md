@@ -12,7 +12,7 @@ https://www.gutenberg.org/ebooks/2199
 The previously supplied eBook number 6130 was checked and belongs to Alexander
 Pope’s translation, not Butler’s. The shipped Lore already records the corrected
 Butler identifier. Gutenberg’s Butler text contains Books I–XXIV and identifies
-Samuel Butler as translator. The source numbers the books; PlotWeave’s
+Samuel Butler as translator. The source numbers the books; Kathala’s
 descriptive book titles and exact calendar/time values are documented editorial
 aids rather than source headings or historical claims.
 

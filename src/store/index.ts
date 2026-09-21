@@ -348,7 +348,7 @@ export const useAppStore = create<AppStore>()(
       dismissToast: (id) => set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
     }),
     {
-      name: 'plotweave-ui',
+      name: 'kathala-ui',
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<typeof current>
         // Anything else is taken as stored; the type preference is repaired,

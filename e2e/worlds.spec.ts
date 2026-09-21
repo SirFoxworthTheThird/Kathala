@@ -7,7 +7,7 @@ test.describe('World management', () => {
   })
 
   test('shows the empty state and the ways in', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'PlotWeave' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Kathala' })).toBeVisible()
     await expect(page.getByRole('main')).toContainText('No worlds yet')
     // The empty state no longer carries its own copy of the entry points — they
     // live in the header's two groups, one control each.
@@ -47,7 +47,7 @@ test.describe('World management', () => {
     await page.getByRole('button', { name: 'Create World' }).last().click()
     await expect(page).toHaveURL(/#\/worlds\//)
 
-    await page.getByText('PlotWeave').click()
+    await page.getByText('Kathala').click()
     await expect(page).toHaveURL('/#/')
     await expect(page.getByText('Westeros')).toBeVisible()
   })

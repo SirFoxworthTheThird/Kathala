@@ -46,9 +46,9 @@ export async function resetDB(page: Page): Promise<void> {
       // A document with no storage access is not one we need to reset.
       return
     }
-    localStorage.removeItem('plotweave-ui')
-    localStorage.setItem('plotweave-tutorial', JSON.stringify({ step: 0, done: true }))
-    indexedDB.deleteDatabase('PlotWeaveDB')
+    localStorage.removeItem('kathala-ui')
+    localStorage.setItem('kathala-tutorial', JSON.stringify({ step: 0, done: true }))
+    indexedDB.deleteDatabase('KathalaDB')
   }, nonce)
 
   /*

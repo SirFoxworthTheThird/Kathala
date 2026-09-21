@@ -111,7 +111,7 @@ const items = itemDefs.map(([key, name, description]) => rec({ id: item(key), na
 const chapters = chapterLedger.map(({ number, title, synopsis }) => rec({
   id: chapter(number), timelineId, number, title, synopsis, notes: "Source chapter title retained from Anthony Hope's text.", wordGoal: null,
 }));
-// PlotWeave stores calendar positions as whole in-world days. sortOrder keeps
+// Kathala stores calendar positions as whole in-world days. sortOrder keeps
 // the ledger's clock-time sequence for scenes that occur on the same day.
 const date = (day) => day;
 const events = eventLedger.map((entry, index) => {

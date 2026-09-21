@@ -2,7 +2,7 @@ name: Deploy dev build to GitHub Pages
 
 # Publishes the latest `development` build to GitHub Pages on every push
 # (i.e. every merge into development), so it can be tested in a browser
-# without cloning. PlotWeave is a static, local-first app: the site is just
+# without cloning. Kathala is a static, local-first app: the site is just
 # the app shell — each visitor's story data stays in their own browser.
 
 on:

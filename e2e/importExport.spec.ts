@@ -12,7 +12,7 @@ const V1_FIXTURE = path.resolve(__dirname, 'fixtures/v1_world.pwk')
 
 /** Navigate home (world selector). */
 async function goHome(page: Parameters<typeof resetDB>[0]) {
-  await page.getByText('PlotWeave').click()
+  await page.getByText('Kathala').click()
   await expect(page).toHaveURL('/#/')
 }
 
@@ -46,7 +46,7 @@ test.describe('Import / Export', () => {
 
     // Read IndexedDB to confirm no chapterId remains on characterSnapshots
     const hasChapterId = await page.evaluate(async () => {
-      const request = indexedDB.open('PlotWeaveDB')
+      const request = indexedDB.open('KathalaDB')
       return new Promise<boolean>((resolve, reject) => {
         request.onsuccess = () => {
           const db = request.result
@@ -71,7 +71,7 @@ test.describe('Import / Export', () => {
     await expect(page.getByRole('heading', { name: 'V1 Migration World' })).toBeVisible()
 
     const hasStartChapterId = await page.evaluate(async () => {
-      const request = indexedDB.open('PlotWeaveDB')
+      const request = indexedDB.open('KathalaDB')
       return new Promise<boolean>((resolve, reject) => {
         request.onsuccess = () => {
           const db = request.result

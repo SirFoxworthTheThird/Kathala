@@ -1,6 +1,6 @@
-# PlotWeave — User Guide
+# Kathala — User Guide
 
-**PlotWeave** is a local-first story bible for fiction writers. It tracks your
+**Kathala** is a local-first story bible for fiction writers. It tracks your
 characters, timeline, maps, items, relationships, lore, and continuity as your
 story evolves, stitches your scene prose into a manuscript, can build a whole
 world from a draft or an AI assistant, and can carry a series forward into a
@@ -26,7 +26,7 @@ desktop build and the browser build behave the same way. The one thing neither
 carries inside itself is the Library, noted below.
 
 **Pictures are the exception, and they are ordinary web requests that carry
-nothing about your work.** A picture in PlotWeave is either a file you uploaded
+nothing about your work.** A picture in Kathala is either a file you uploaded
 — which lives in your browser's storage like everything else — or a **link** to
 one somewhere on the web. A linked picture is fetched from wherever it lives,
 each time it is shown, by your browser. Two things are linked:
@@ -47,7 +47,7 @@ copying it into a file you then export are different acts, and only you know
 what you are allowed to reuse.
 
 - **Library cover images**, when you open the Library and scroll to a card.
-- **The Library itself.** The books no longer travel inside PlotWeave. They live
+- **The Library itself.** The books no longer travel inside Kathala. They live
   in their own place — `plotweave-library.netlify.app` — so a new one appears in
   the Library without waiting for a new version of the app. Opening the Library,
   downloading a book, and showing a book's pictures all ask that site for files;
@@ -70,7 +70,7 @@ what you are allowed to reuse.
 
 **Anything you link yourself is your own responsibility.** Wherever the app
 offers **link by URL** — a map image, a location or item picture, a portrait, a
-cover — PlotWeave stores the address you gave it and fetches it when the picture
+cover — Kathala stores the address you gave it and fetches it when the picture
 is shown. It does not check, host, cache or vouch for what is at the other end.
 Whether you may use that image, whether the site is happy to serve it to you,
 and what that site sees when your browser asks for it are between you and them.
@@ -117,7 +117,7 @@ of linking it — an uploaded picture is stored locally and is never fetched.
 
 ## Core concept: the time cursor
 
-Everything in PlotWeave is read *relative to a scene*. Scenes are the true units
+Everything in Kathala is read *relative to a scene*. Scenes are the true units
 of story time; chapters group those scenes for structure and reading order. The
 pill next to the world name — labelled **All chapters** until you choose a moment
 — and the scene bar along the bottom are two views of the same **time cursor**.
@@ -126,7 +126,7 @@ at this exact moment?"*: where each character is, what they're carrying, who's
 alive, which locations are destroyed, and how relationships stand.
 
 State changes are stored as explicit **snapshots** tied to scenes. When an entity
-has no snapshot at the selected scene, PlotWeave carries forward its most recent
+has no snapshot at the selected scene, Kathala carries forward its most recent
 state from earlier in that timeline. This is a delta model: record only what
 changes rather than entering every character, item, location, and relationship
 again at every scene. New chapters are seeded from the end of the preceding
@@ -218,7 +218,7 @@ it — chapters and cast — so you can tell two drafts apart without opening ei
 
 **The date says which kind it is.** A world you have worked in reads *Edited 26
 Aug 2026*; one nothing has happened to since you made it reads *Created*. That
-is not a guess: PlotWeave keeps a journal of every edit you make (the same one
+is not a guess: Kathala keeps a journal of every edit you make (the same one
 [undo](#undo-redo--recent-changes) reads), so "last worked on" is a fact it
 holds rather than something inferred. Where the journal has nothing to say — an
 imported world, or a library book, both of which start a fresh history — the
@@ -235,7 +235,7 @@ anything you have actually written in leads.
 
 ### Set up a blank world
 
-When you create a blank world, PlotWeave opens a four-step setup guide. It helps
+When you create a blank world, Kathala opens a four-step setup guide. It helps
 you create the first timeline and scene, add a main character, place that
 character at the opening moment, and then continue to the Timeline. Each optional
 step has **Skip** so you can leave the guide and build the world in any order.
@@ -256,7 +256,7 @@ story runs over, and the **first scene**, the moment it opens on — and says wh
 it will build from them: the timeline, a *Chapter 1* inside it, and that scene
 inside the chapter. All three can be renamed later — the scene from its own
 card, the chapter from **Rename chapter** in its ⋯ menu on the Timeline, and the
-timeline from its tab (which appears once a world has more than one). PlotWeave then moves the
+timeline from its tab (which appears once a world has more than one). Kathala then moves the
 [time cursor](#core-concept-the-time-cursor) to that scene, so when the guide
 hands the app back, everything that answers "what is true right now?" already has
 an answer.
@@ -297,7 +297,7 @@ their own button rather than coming along by default — useful if you're on a
 phone.
 
 Books whose cover is a linked image show it on the card. **These are the only
-pictures in PlotWeave that are not on your own machine.** The cover is fetched
+pictures in Kathala that are not on your own machine.** The cover is fetched
 from wherever it is hosted — currently 26 of the 33 entries, from a mix of
 Wikimedia Commons, Project Gutenberg, and a few commercial sites — so opening
 the Library asks those hosts for an image, and they see your IP address and that
@@ -316,7 +316,7 @@ while you are still part-way through the book. A book you have just downloaded
 opens at its first moment rather than fully revealed, so nothing is given away
 before you have read a word.
 
-**PlotWeave remembers your place in each book.** Close one, read another, come
+**Kathala remembers your place in each book.** Close one, read another, come
 back a week later — the cursor is where you left it, and the world card on the
 shelf says *"Chapter 5 of 17"* with a progress bar so you can see at a glance
 how far into each you are. If you deliberately choose **All chapters**, that is
@@ -324,7 +324,7 @@ remembered too: coming back shows you the whole book again rather than quietly
 re-hiding it, and the progress bar disappears, because seeing everything is not
 a place in the story.
 
-Set the chapter cursor to where you have read up to, and PlotWeave hides
+Set the chapter cursor to where you have read up to, and Kathala hides
 characters, items and places the story has not introduced yet — everywhere, not
 just on one screen. The Characters page in chapter one shows the handful of
 people you have actually met, with a note saying how many are still to come, so
@@ -346,14 +346,14 @@ contents page, so hiding them would gain nothing. One thing the cut-off cannot
 do is edit prose: if a place you *have* reached is described in a sentence that
 names one you have not, that sentence is shown as written.
 
-The rest follows the same rule PlotWeave always follows: everything is shown
+The rest follows the same rule Kathala always follows: everything is shown
 relative to the cursor, so you can ask *where is everyone, who knows what, who
 has met whom* without being told anything that happens later. Summary figures
 that would give the game away — the alive/dead split on the dashboard, for
 instance — are simply not shown while reading.
 
 Selecting **All chapters** reveals everything. That is a deliberate choice you
-make, not the default — and while reading, PlotWeave asks before doing it,
+make, not the default — and while reading, Kathala asks before doing it,
 wherever you do it: the small ✕ beside the cursor, **Reading here** on a
 chapter row, or **Clear filter** on the Arc. One stray click on any of them
 would otherwise hand you the whole book. Stepping the cursor back never asks:
@@ -468,7 +468,7 @@ scene steppers. Its **story player** is on the Map and only there (see
 through the ending on a timer — and if you do play the story on the map, pressing
 **stop** leaves your place where it carried you rather than clearing it.
 
-**If a scroll skips ahead**, PlotWeave says so — *"Moved on to chapter 11"* —
+**If a scroll skips ahead**, Kathala says so — *"Moved on to chapter 11"* —
 with an **Undo** that puts you back where you were, page and place both. Reading
 on a scene at a time is never interrupted; this appears only when a drag of the
 scrollbar, or a long fling, carries you two or more chapters in one step. It is
@@ -507,7 +507,7 @@ under the title rather than dropped for want of room. It is the answer to "what
 happened in chapter 3 again?", which is the question the screen exists for.
 
 **The words change with you.** A character page leads with the description
-rather than with the colour PlotWeave draws them in, and the search box offers
+rather than with the colour Kathala draws them in, and the search box offers
 to search *this book, as far as you have read* rather than "your world and the
 prose you wrote" — which matters, because a word from three chapters ahead
 really does return nothing, and the honest reason is not "no results".
@@ -617,7 +617,7 @@ worlds. Turn it on in **Settings** before handing a world to a beta reader and
 they can follow along without the ending being spoiled by the cast list.
 
 > **Note:** downloading a world you already have **replaces** your copy and
-> discards any changes you made in it, so PlotWeave asks first. Use it
+> discards any changes you made in it, so Kathala asks first. Use it
 > deliberately when you want the original back.
 
 ---
@@ -629,7 +629,7 @@ new world in one step, so you don't have to re-enter every chapter by hand. It's
 the mirror image of the manuscript *export* — bring a draft in, and everything
 else (word counts, continuity, pacing, the reading view) works on it immediately.
 
-Choose a `.md` or `.txt` file, or just paste your text. PlotWeave parses it with
+Choose a `.md` or `.txt` file, or just paste your text. Kathala parses it with
 a few predictable rules:
 
 - **Chapters** — a Markdown `#`/`##` heading, or a line that starts with
@@ -675,7 +675,7 @@ The prompt deliberately asks for a *compact* spec — entities are referenced by
 **name** rather than long ids, and a character's state is recorded only when it
 **changes** (they appear, move, gain or lose an item, or die). That keeps the
 AI's output small, so even a full novel fits in one response without getting cut
-off — PlotWeave expands the compact spec back into the full model on import, so
+off — Kathala expands the compact spec back into the full model on import, so
 nothing is lost.
 
 > **Tip:** you don't need a polished manuscript. A detailed synopsis, an outline,
@@ -719,7 +719,7 @@ copied — book two is a fresh narrative that begins where the last one left off
 Opening a world lands you on its dashboard — a bird's-eye view of the whole
 project. Stat tiles summarise the timeline, cast, maps, relationships, items,
 snapshot coverage, and continuity status. The cast tile's **alive and dead
-split is as of the moment you are on**, like everything else in PlotWeave — move
+split is as of the moment you are on**, like everything else in Kathala — move
 the cursor back before a death and the count moves with you. Below them are recent scenes, scene
 status, writing progress, and analytics panels (Cast Balance, Plot Threads, and
 Motifs & Themes, covered later). Worlds with linked timelines also show a
@@ -769,7 +769,7 @@ standing text you have to read twice.
 
 ### Writing progress
 
-As you write scene prose (in the Manuscript view), PlotWeave keeps a lightweight
+As you write scene prose (in the Manuscript view), Kathala keeps a lightweight
 per-day log of the words you add or cut. The **Writing Progress** panel on the
 dashboard turns that into an at-a-glance readout:
 
@@ -900,7 +900,7 @@ track is the story; the outer one frames it.
 
 **Sync points** keep the frame in step with the tale. Whenever the cursor lands
 on an inner moment that is paired with one in the outer story — by playing, by
-clicking the scrubber, or with the previous/next arrows — PlotWeave moves the
+clicking the scrubber, or with the previous/next arrows — Kathala moves the
 outer moment to match, so the [map](#maps) can show the outer timeline's cast as
 **ghost pins** beside the inner one. Between pairings the frame moment *holds*:
 the teller stays where they were until the story reaches the next moment that
@@ -1034,7 +1034,7 @@ tab on a paused sentence without losing it. Saving repeatedly does not fill
 **History** with near-identical versions; those are grouped into one entry per
 writing session.
 
-PlotWeave also reads the draft for **names you have written but not recorded**.
+Kathala also reads the draft for **names you have written but not recorded**.
 Anyone in the cast whose name appears in the prose, and who is not already on
 the scene, is offered as a chip under the box — click it to add them. The match
 is on the name as written: the full name, and the first word of it, as whole
@@ -1149,7 +1149,7 @@ and both stay in sync.
 
 The **Manuscript** view stitches every scene's prose into one continuous
 document, in reading order, so you can read and export your book without leaving
-PlotWeave. Write a scene's prose on its scene, and it appears here automatically —
+Kathala. Write a scene's prose on its scene, and it appears here automatically —
 the box on the scene grows to fit what you write, so a long scene isn't read
 through a five-line window.
 
@@ -1173,7 +1173,7 @@ through a five-line window.
   the margin the book keeps for it, so showing and hiding it never moves a line
   of the text you are reading; on anything narrower it rises from the bottom
   when you press the button in the corner. Either way it folds away when you
-  want the page to yourself, and PlotWeave remembers which you chose.
+  want the page to yourself, and Kathala remembers which you chose.
   Someone named in the scene whom you have not met yet is not listed — the same
   rule the rest of reading mode follows.
 
@@ -1214,7 +1214,7 @@ match count and a highlighted preview.
 - **Case sensitive** and **whole word** toggles refine the match.
 - **Replace** one scene at a time, or **Replace all** across the manuscript.
 - **Character-rename aware** — when your search exactly matches a character's
-  name, PlotWeave offers to rename that character too (its name *and* aliases),
+  name, Kathala offers to rename that character too (its name *and* aliases),
   so the cast list stays in sync with the prose.
 
 Every scene changed by a replace is saved as a new version, so you can undo it
@@ -1223,7 +1223,7 @@ from that scene's [history](#scene-history).
 ### Scene history
 
 Every scene keeps a **revision history**. As you revise a scene's prose,
-PlotWeave automatically saves earlier drafts (grouped so a burst of edits becomes
+Kathala automatically saves earlier drafts (grouped so a burst of edits becomes
 one snapshot, and capped to the most recent 20). A **History** link appears above
 the scene draft once there are saved versions.
 
@@ -1358,7 +1358,7 @@ had this since chapter one"* reaches forward only as far as the next scene with
 its own record — which is usually what you want, because that record is your own
 earlier decision about that scene.
 
-When it stops somewhere, PlotWeave says so rather than letting you assume it went
+When it stops somewhere, Kathala says so rather than letting you assume it went
 all the way: after saving you'll see a line like *"Corvin Ashe's inventory is
 recorded again at Ch. 2 · The seal breaks, without this change"*, with **Carry it
 forward**. Taking it applies the change to the later scenes that were only
@@ -1449,7 +1449,7 @@ across your chapters and flags trouble:
 
 **Say where a subplot lands.** A thread that stops advancing before the end
 isn't necessarily a mistake — plenty of subplots resolve in the middle of a
-book. Tell PlotWeave where one lands and it stops calling it dangling: the row
+book. Tell Kathala where one lands and it stops calling it dangling: the row
 reads **resolves Ch. N**, and **reopen** beside it takes that back if you change
 your mind. This is a fact about your book, not a way of hiding the warning —
 which is why a resolved thread that still goes quiet for ten chapters in the
@@ -1585,7 +1585,7 @@ Timeline.)
 
 ## Maps
 
-PlotWeave renders custom, hand-drawn fantasy maps (pixel-coordinate images, not
+Kathala renders custom, hand-drawn fantasy maps (pixel-coordinate images, not
 geographic tiles). Upload a map image or **link one by URL** in the upload
 dialog, place **location markers**, group them into **layers** and **sub-maps**
 (drill into a city from the world map), draw **regions** and **routes**, and set
@@ -1607,7 +1607,7 @@ three appear.
 The map's own controls **float over the canvas** rather than sitting in header
 rows above it, so the map itself runs from the top of the view to the chapter
 bar. Which layer is open — and its scale — reads from the breadcrumb at the top
-of the window (*PlotWeave / your world / Middle Earth · 1 km = 2 px*), leaving
+of the window (*Kathala / your world / Middle Earth · 1 km = 2 px*), leaving
 the canvas corners free. Top-left holds the **Show** chips —
 toggles for characters, trails, labels, journeys, and locations (the chevrons
 narrow those to particular characters or location types). Top-right holds the
@@ -1828,7 +1828,7 @@ a historical-echo relationship marks shared places with echo rings.
 
 ### Starting a map without a picture
 
-A place in PlotWeave is a **pin on a map**, so a scene can only be given a
+A place in Kathala is a **pin on a map**, so a scene can only be given a
 setting once the world has one — and a location is only ever added to a map or
 sub-map that already exists. If you have no picture of your world, **Start a
 blank map** on the empty Maps screen makes one anyway: a plain grid you can drop
@@ -1847,12 +1847,12 @@ empty Maps screen, and as **AI Locations** in the map toolbar’s **⋯** menu)
 builds a whole **tree of places** for you — where a blank map gives you somewhere
 to put pins, this fills it.
 Copy the prompt, describe your world, and paste back a nested JSON tree
-(continent → kingdom → city → district). PlotWeave creates a blank **Locations**
+(continent → kingdom → city → district). Kathala creates a blank **Locations**
 map and drops each place on it as a pin; a place with children becomes a pin that
 **drills into a sub-map** holding them, as deep as your tree goes — no map image
 required. A multi-storey place (a castle, tower or keep) can use **`levels`**
 instead of `children`: the AI lists its floors, each with its own locations, and
-PlotWeave builds them as a [level group](#maps) with a floor switcher — so *Great
+Kathala builds them as a [level group](#maps) with a floor switcher — so *Great
 Hall* on the ground floor and *Library* on the first floor land on the right
 floors automatically.
 
@@ -2150,7 +2150,7 @@ their active membership at the selected scene.
 The Knowledge tracker manages **who knows what, and when they learn it** — the
 backbone of mysteries and dramatic irony. Record a **fact** (a secret or key
 piece of information), mark when the **reader** learns it, and log **reveals** to
-individual characters at specific scenes. PlotWeave even **suggests facts from
+individual characters at specific scenes. Kathala even **suggests facts from
 your story** (for example, "Gandalf the Grey is dead · Ch. 17").
 
 After one character learns a fact, **Might also know** looks for other characters
@@ -2208,7 +2208,7 @@ which is what you want when you are hunting a half-remembered line. On, it finds
 only the word itself, which is what you want when your names are short and
 invented. It behaves exactly like the switch of the same name in
 [Find & replace](#find--replace), and the preview and the highlight follow it,
-so a result always shows you the match it was found by. PlotWeave remembers the
+so a result always shows you the match it was found by. Kathala remembers the
 setting. To change what you find rather
 than just go to it, use **Find & replace** on the Manuscript screen, which
 works across every scene at once.
@@ -2223,12 +2223,12 @@ what, and when — are not searched at all.
 
 ## Undo, redo & recent changes
 
-PlotWeave records every edit you make as you make it, so a mistake is a step
+Kathala records every edit you make as you make it, so a mistake is a step
 backwards rather than a rebuild.
 
 **Undo** is the left arrow in the top bar, and **Ctrl/⌘+Z** anywhere outside a
 text box. Inside a text box, Ctrl/⌘+Z is your browser's own undo, working letter
-by letter — PlotWeave deliberately stays out of the way there.
+by letter — Kathala deliberately stays out of the way there.
 
 **Redo** is the right arrow, **Ctrl/⌘+Shift+Z**, or **Ctrl+Y**. It puts back
 whatever you just undid, and you can walk forward through several undos in turn.
@@ -2331,7 +2331,7 @@ It's designed to sit open beside your manuscript while you draft.
 
 ## Calendar & character ages
 
-By default PlotWeave measures story time in **in-world days** — day 0 is the
+By default Kathala measures story time in **in-world days** — day 0 is the
 start of a timeline, and each scene's *travel days* push the clock forward. Turn
 those day numbers into real dates by giving your world a **calendar** in World
 settings.
@@ -2381,7 +2381,7 @@ from — days since the story's first scene.
 
 **Character ages.** Give a character an optional **birth date** on the Overview
 tab of their profile (the month/day/year pickers use your calendar's months).
-PlotWeave then computes and shows the character's **age** at the scene under the
+Kathala then computes and shows the character's **age** at the scene under the
 time cursor in the Writer's Brief — counting birthdays passed, so it stays
 correct even with irregular month lengths. A character born after the current
 moment simply shows no age.
@@ -2554,7 +2554,7 @@ happens and the Continuity Checker has nothing left to report, because you have
 said what happened rather than told it to be quiet.
 
 That matters beyond the checker. A suppressed warning is invisible — nothing
-anywhere in PlotWeave says a character was revived. A state is part of the
+anywhere in Kathala says a character was revived. A state is part of the
 world: it travels in your export, it shows on the map and in the Writer's Brief,
 and it survives edits that would orphan a suppression. Suppression is still
 there for the genuinely one-off finding you want to keep and ignore.
@@ -2631,7 +2631,7 @@ they actually fall. A scene's pinned in-world day stays relative to its own
 timeline's clock.
 
 **Theme** is two settings in one section, because there are two things to
-decide. **App theme** is the one PlotWeave itself wears — on the world list, and
+decide. **App theme** is the one Kathala itself wears — on the world list, and
 in every world that has not asked for something else. Below it, the seventeen cards
 set *this* world's theme, and the first of them, **Inherit app theme**, hands the
 decision back to the setting above. So a Gothic novel can be Horror and a space
@@ -2654,7 +2654,7 @@ theme: cream, ink and daylight, with the pacing curve, the status pills and your
 cast darkened to read on a pale page rather than a dark one. Set it as the app
 theme and everything wears it, or set it on a single world and leave the rest as
 they are. The other sixteen are dark by design — Paper is a light *theme*, not a
-switch that turns the other sixteen inside out, and PlotWeave does not follow
+switch that turns the other sixteen inside out, and Kathala does not follow
 your system's light/dark setting on its own.
 
 Each theme also has a **tempo**: the dot marking your place on the timeline bar
@@ -2716,7 +2716,7 @@ world; **Load** previews the file before applying it.
 
   Single values — a name, a description, a status — cannot be combined, because
   the file records what each copy *says*, not what each person *changed*. Where
-  both copies changed one, PlotWeave shows you the two versions side by side
+  both copies changed one, Kathala shows you the two versions side by side
   before anything is applied, and you choose: **Most recent**, **Keep mine**, or
   **Use theirs**.
 
@@ -2741,7 +2741,7 @@ The same status appears **next to the world name in the top bar**, so you can
 tell at a glance whether your work is reaching the folder without opening
 Settings.
 
-Because the bound folder is usually shared between your machines, PlotWeave
+Because the bound folder is usually shared between your machines, Kathala
 never overwrites the folder's copy behind your back. When another device has
 saved since you last did, and you have your own unsaved changes, auto-save
 writes to a **conflict copy** beside it — `My World (conflict copy 2026-07-29
@@ -2750,7 +2750,7 @@ unsaved. Both versions survive, and you can sort it out whenever you like:
 **Load** compares the folder's copy against yours, and **Save over** replaces it
 with this device's.
 
-If PlotWeave has lost permission to the folder (browsers drop it between
+If Kathala has lost permission to the folder (browsers drop it between
 sessions), the indicator says **Reconnect folder** — auto-save does nothing
 until you re-grant access from World Settings.
 
@@ -2804,5 +2804,5 @@ the margin beside its scene, not only to the small box itself.
 
 ---
 
-*PlotWeave keeps all your data on your own device. Export regularly to back up or
+*Kathala keeps all your data on your own device. Export regularly to back up or
 move between machines.*

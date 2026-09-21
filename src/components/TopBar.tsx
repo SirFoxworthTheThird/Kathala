@@ -60,7 +60,7 @@ function MobileNavDrawer({ worldId, open, onClose }: { worldId: string; open: bo
         <div className="flex h-14 shrink-0 items-center gap-2 border-b border-[hsl(var(--border))] px-4">
           <img src={faviconUrl} alt="" className="h-7 w-7 rounded object-cover" />
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-bold tracking-wide text-[hsl(var(--foreground))]">PlotWeave</div>
+            <div className="text-sm font-bold tracking-wide text-[hsl(var(--foreground))]">Kathala</div>
             {world && <div className="truncate text-xs text-[hsl(var(--muted-foreground))]" title={world.name}>{world.name}</div>}
           </div>
           <button
@@ -153,7 +153,7 @@ export function TopBar() {
         >
           <img src={faviconUrl} alt="" className="h-7 w-7 rounded object-cover" />
           <span className="hidden text-sm font-bold tracking-wide text-[hsl(var(--foreground))] lg:inline">
-            PlotWeave
+            Kathala
           </span>
         </button>
         {world && (

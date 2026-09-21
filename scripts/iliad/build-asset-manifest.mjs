@@ -24,7 +24,7 @@ const assets = data.blobs.map(blob => {
     category: entity.category,
     entity: entity.name,
     path: blob.url,
-    prompt: `${direction} Subject: ${entity.name}. ${entity.description} Keep the composition purpose-specific for a PlotWeave ${entity.category} asset. No text or watermark unless legible labels are explicitly required for a navigable map.`,
+    prompt: `${direction} Subject: ${entity.name}. ${entity.description} Keep the composition purpose-specific for a Kathala ${entity.category} asset. No text or watermark unless legible labels are explicitly required for a navigable map.`,
     reviewStatus,
     reviewNotes: !exists
       ? 'Expected by the PWK but not yet generated or recovered.'

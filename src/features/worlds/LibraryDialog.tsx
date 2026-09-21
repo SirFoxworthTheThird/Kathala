@@ -171,7 +171,7 @@ export function LibraryDialog({
 
         <div className="px-4 py-3">
           <p className="text-sm text-[hsl(var(--muted-foreground))]">
-            Worlds built from published books, to explore how PlotWeave fits together — and to
+            Worlds built from published books, to explore how Kathala fits together — and to
             read alongside. Set the chapter cursor to where you are and the app will only tell
             you what is true by then.
           </p>
@@ -294,13 +294,13 @@ export function LibraryDialog({
                           /*
                             Said here rather than discovered halfway through an
                             import. The books are published separately from the
-                            app now, so a copy of PlotWeave installed a year ago
+                            app now, so a copy of Kathala installed a year ago
                             can meet a book written for something newer; the
                             book names what it needs and this is where a reader
                             finds out. Nearly no book sets it.
                           */
                           <span className="text-xs text-[hsl(var(--muted-foreground))]">
-                            Needs PlotWeave {entry.minAppVersion} or newer
+                            Needs Kathala {entry.minAppVersion} or newer
                           </span>
                         ) : (
                           <Button size="sm" disabled={busy} onClick={() => start(entry, !!entry.images)}>

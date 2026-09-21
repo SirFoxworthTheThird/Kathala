@@ -6,7 +6,7 @@
 
 ### My world has disappeared
 
-PlotWeave keeps everything in the browser's IndexedDB. Data is lost if you:
+Kathala keeps everything in the browser's IndexedDB. Data is lost if you:
 
 - Cleared your browser's site data or cache.
 - Used a private/incognito window (data goes when the window closes).
@@ -25,7 +25,7 @@ Large worlds with many events and high-resolution map images take longer.
 
 ### An import fails immediately
 
-1. Confirm the file is a genuine PlotWeave export, not something renamed to `.pwk`.
+1. Confirm the file is a genuine Kathala export, not something renamed to `.pwk`.
 2. If the export was **split**, select the `.pwk` **and** the `.pwb` together.
 3. Check the browser console (`F12 → Console`) for the specific error.
 
@@ -128,7 +128,7 @@ History is a stack — only the newest edit can be undone. Taking one from the m
 
 ### The app looks broken after switching themes
 
-Hard-refresh (`Ctrl+Shift+R`, or `⌘+Shift+R`). If it persists, clear the `plotweave-ui` key from local storage and reload.
+Hard-refresh (`Ctrl+Shift+R`, or `⌘+Shift+R`). If it persists, clear the `kathala-ui` key from local storage and reload.
 
 ---
 

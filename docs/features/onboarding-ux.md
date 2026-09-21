@@ -2,7 +2,7 @@
 
 ## Overview
 
-PlotWeave is powerful but dense — a first-time user opening a new world sees 10 nav tabs, an empty dashboard, and no signal about where to start. This feature makes the app intuitive from the first click without removing any functionality. The strategy is **progressive disclosure**: show what matters now, reveal complexity when the user is ready for it.
+Kathala is powerful but dense — a first-time user opening a new world sees 10 nav tabs, an empty dashboard, and no signal about where to start. This feature makes the app intuitive from the first click without removing any functionality. The strategy is **progressive disclosure**: show what matters now, reveal complexity when the user is ready for it.
 
 The work breaks into four independent pillars that can ship in any order.
 
@@ -64,7 +64,7 @@ Step 3 — Set their starting point
 Step 4 — Your story is now trackable ✓
          “Your story is alive. As you add more moments to your timeline, move between them —
           everything you see updates: where your characters are, what they carry, what’s changed.
-          That’s the time cursor. It’s the heart of how PlotWeave works.”
+          That’s the time cursor. It’s the heart of how Kathala works.”
          → CTA: “Go to Timeline”  →  normal Dashboard
 ```
 
@@ -167,7 +167,7 @@ src/features/worlds/DashboardSuggestion.tsx — reusable suggestion card compone
 
 #### Persistence
 
-Dismissed card IDs stored in `localStorage` under key `plotweave-dismissed-suggestions-${worldId}` as a `string[]`.
+Dismissed card IDs stored in `localStorage` under key `kathala-dismissed-suggestions-${worldId}` as a `string[]`.
 
 ---
 
@@ -183,7 +183,7 @@ The old tutorial also covered one concept the new wizard initially lacked — th
 
 Retire `TutorialWizard` and `tutorialState.ts` entirely when Pillar 2 ships. World creation — the one step the old tutorial handled that Pillar 2 does not — is already handled by the existing `CreateWorldDialog`. No functionality is lost.
 
-The old tutorial's localStorage key (`plotweave-tutorial`) is abandoned in place. No migration is required: users who completed the old tutorial have already set up their worlds, and the key is never read again.
+The old tutorial's localStorage key (`kathala-tutorial`) is abandoned in place. No migration is required: users who completed the old tutorial have already set up their worlds, and the key is never read again.
 
 ---
 
@@ -214,7 +214,7 @@ The old tutorial's localStorage key (`plotweave-tutorial`) is abandoned in place
 
 **User Story**
 
-As a new user opening PlotWeave for the first time, I want the navigation bar to visually communicate which sections are essential and which are optional, so that I can confidently start without feeling paralysed by ten equally weighted choices.
+As a new user opening Kathala for the first time, I want the navigation bar to visually communicate which sections are essential and which are optional, so that I can confidently start without feeling paralysed by ten equally weighted choices.
 
 **Acceptance Criteria**
 
@@ -409,7 +409,7 @@ As a user actively building my world, I want the Dashboard to surface contextual
 
 **User Story**
 
-As a new user opening PlotWeave for the first time, I want a single, coherent first-run experience that sets up my world and teaches me the app's core concept, so that I am not walked through overlapping or conflicting setup flows.
+As a new user opening Kathala for the first time, I want a single, coherent first-run experience that sets up my world and teaches me the app's core concept, so that I am not walked through overlapping or conflicting setup flows.
 
 **Acceptance Criteria**
 
@@ -429,12 +429,12 @@ As a new user opening PlotWeave for the first time, I want a single, coherent fi
 *When* the old tutorial is removed,  
 *Then* world creation still works via the existing Create World dialog — no regression in that flow.
 
-*Given* the old tutorial stored its state under the localStorage key `plotweave-tutorial`,  
+*Given* the old tutorial stored its state under the localStorage key `kathala-tutorial`,  
 *When* the tutorial is retired,  
 *Then* that key is abandoned in place and never read — no migration or cleanup is required of users.
 
 **Out of Scope**
 
 - Providing a way to replay or opt back in to the old tutorial.
-- Migrating or deleting the `plotweave-tutorial` localStorage key from existing users' browsers.
+- Migrating or deleting the `kathala-tutorial` localStorage key from existing users' browsers.
 - Any UI affordance referencing the retired tutorial.

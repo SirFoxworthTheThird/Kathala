@@ -2,11 +2,11 @@ import { GenerateSectionDialog } from '@/features/ai'
 import { parseRelationshipsSpec, addRelationshipsToWorld } from '@/lib/sectionImport'
 import type { SpecRelationship } from '@/lib/sectionImport'
 
-const PROMPT = `You are helping me populate my story in PlotWeave, a story-tracking app. Output ONLY a compact JSON list of RELATIONSHIPS between characters — no explanation, no markdown fences.
+const PROMPT = `You are helping me populate my story in Kathala, a story-tracking app. Output ONLY a compact JSON list of RELATIONSHIPS between characters — no explanation, no markdown fences.
 
 SHAPE:
 {
-  "format": "plotweave-relationships",
+  "format": "kathala-relationships",
   "relationships": [
     {
       "a": "<character name>", "b": "<character name>",

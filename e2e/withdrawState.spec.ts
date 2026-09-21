@@ -90,10 +90,10 @@ async function openStateAt(page: Page, worldId: string, eventId: string) {
   await page.goto(`/#/worlds/${worldId}/characters/ossian?tab=state`, { waitUntil: 'load' })
   await settle(page)
   await page.evaluate(([world, event]) => {
-    const raw = localStorage.getItem('plotweave-ui')
+    const raw = localStorage.getItem('kathala-ui')
     const stored = raw ? JSON.parse(raw) : { state: {}, version: 0 }
     stored.state = { ...stored.state, activeWorldId: world, activeEventId: event, eventByWorld: { [world]: event } }
-    localStorage.setItem('plotweave-ui', JSON.stringify(stored))
+    localStorage.setItem('kathala-ui', JSON.stringify(stored))
   }, [worldId, eventId] as const)
   /*
     A reload, not another `goto`: the URL only differs in its hash, so the

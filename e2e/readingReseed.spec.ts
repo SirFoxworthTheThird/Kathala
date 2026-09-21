@@ -41,11 +41,11 @@ async function openBook(page: Page) {
 /** Record a reveal-all against a world id, as the confirm does. */
 async function revealAllFor(page: Page, worldId: string) {
   await page.evaluate((id) => {
-    const raw = localStorage.getItem('plotweave-ui')
+    const raw = localStorage.getItem('kathala-ui')
     const st = raw ? JSON.parse(raw) : { state: {}, version: 0 }
     st.state = st.state ?? {}
     st.state.eventByWorld = { ...(st.state.eventByWorld ?? {}), [id]: null }
-    localStorage.setItem('plotweave-ui', JSON.stringify(st))
+    localStorage.setItem('kathala-ui', JSON.stringify(st))
   }, worldId)
 }
 
@@ -79,7 +79,7 @@ for (const [title, worldId] of BOOKS) {
     await expect(barReadout(page), 'the bar names the chapter being read').toBeVisible()
 
     const cursor = await page.evaluate(() => {
-      const raw = localStorage.getItem('plotweave-ui')
+      const raw = localStorage.getItem('kathala-ui')
       return raw ? (JSON.parse(raw) as { state: { activeEventId: string | null } }).state.activeEventId : null
     })
     expect(cursor, 'the cursor is somewhere in the book rather than "all chapters"').not.toBeNull()
@@ -104,7 +104,7 @@ test('a reader who chose all chapters on the book they are holding keeps it', as
   await page.waitForTimeout(800)
 
   const cursor = await page.evaluate(() => {
-    const raw = localStorage.getItem('plotweave-ui')
+    const raw = localStorage.getItem('kathala-ui')
     return raw ? (JSON.parse(raw) as { state: { activeEventId: string | null } }).state.activeEventId : null
   })
   expect(cursor, 'all chapters is still all chapters').toBeNull()

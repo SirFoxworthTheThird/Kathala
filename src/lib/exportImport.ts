@@ -354,7 +354,7 @@ async function writeJsonWithBlobs(
     try {
       const handle = await picker({
         suggestedName: filename,
-        types: [{ description: 'PlotWeave Export', accept: { 'application/json': ['.pwk', '.pwb'] } }],
+        types: [{ description: 'Kathala Export', accept: { 'application/json': ['.pwk', '.pwb'] } }],
       })
       writable = await handle.createWritable()
       await writable.write(prefix)

@@ -88,7 +88,7 @@ Covers all four pillars from `docs/features/onboarding-ux.md`:
 1. **Mutually exclusive rules not enforced** — `add-character` (chars=0) and `add-first-event` (chars>0) cannot both fire at once by definition. But `add-first-event` and `place-character` CAN co-fire (chars>0, events=0 → place-character condition is `events>0`, so they can't). Verify.
 2. **`document-lore` boundary** — fires at `events >= 5`, not `> 4`. Test exactly 4 (false) and 5 (true).
 3. **`add-factions` boundary** — fires at `chars >= 3`. Test 2 (false) and 3 (true).
-4. **Dismissal scoped per world** — key `plotweave-dismissed-suggestions-${worldId}` must differ across worlds. Verified at the key construction level; dismissal from world A must not affect world B.
+4. **Dismissal scoped per world** — key `kathala-dismissed-suggestions-${worldId}` must differ across worlds. Verified at the key construction level; dismissal from world A must not affect world B.
 5. **Corrupted localStorage** — if `localStorage.getItem(dismissedKey)` returns non-JSON, the `try/catch` in `useState` initializer falls back to `[]`. Verified in implementation.
 6. **`dismissedIds` XSS surface** — suggestion IDs are static constants (`SuggestionRule.id`), not user-controlled, so no injection risk.
 7. **Cap is AFTER dismiss filter** — 3 dismissible rules dismissed → remaining undismissed rules fill up to 3. Test: dismiss 2 of top 3, verify 3rd is still shown.

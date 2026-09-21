@@ -22,7 +22,7 @@ describe('parseCharactersSpec', () => {
 
   it('accepts an object with a "characters" array and keeps optional fields', () => {
     const json = JSON.stringify({
-      format: 'plotweave-characters',
+      format: 'kathala-characters',
       characters: [{ name: 'Aria', aliases: ['The Fox'], description: 'A thief', tags: ['protagonist'], alive: false }],
     })
     const { characters } = parseCharactersSpec(json)
@@ -758,7 +758,7 @@ describe('addLocationsToWorld', () => {
  */
 describe('pasted JSON wrapped in a markdown fence', () => {
   const body = JSON.stringify({
-    format: 'plotweave-characters',
+    format: 'kathala-characters',
     characters: [{ name: 'Sera Aldwyn', description: 'A salt-trader.' }],
   })
 
