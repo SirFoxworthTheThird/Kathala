@@ -6,6 +6,7 @@ import { useWorldChapters, useAllWorldEvents } from '@/db/hooks/useTimeline'
 import { useWorld } from '@/db/hooks/useWorlds'
 import { cn } from '@/lib/utils'
 import { useRevealAll } from '@/components/useRevealAll'
+import { activateEvent } from '@/components/timeline/TimelineControls'
 
 /**
  * Always-visible readout + stepper for the global time cursor (`activeEventId`).
@@ -86,7 +87,7 @@ export function TimeCursor({ worldId }: { worldId: string }) {
     // top bar's right-hand buttons instead of truncating.
     <div className="flex min-w-0 items-center gap-0.5">
       <button
-        onClick={() => prevEvent && setActiveEventId(prevEvent.id)}
+        onClick={() => prevEvent && activateEvent(prevEvent.id, prevEvent.locationMarkerId, setActiveEventId)}
         disabled={!prevEvent || isPlayingStory}
         aria-label="Previous moment"
         title="Previous moment"
@@ -149,7 +150,7 @@ export function TimeCursor({ worldId }: { worldId: string }) {
       </button>
 
       <button
-        onClick={() => nextEvent && setActiveEventId(nextEvent.id)}
+        onClick={() => nextEvent && activateEvent(nextEvent.id, nextEvent.locationMarkerId, setActiveEventId)}
         disabled={!nextEvent || isPlayingStory}
         aria-label="Next moment"
         title="Next moment"

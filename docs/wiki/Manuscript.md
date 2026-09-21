@@ -81,7 +81,7 @@ It autosaves as you write, so scene history and the writing log keep working. Pr
 
 ## Not available while reading
 
-Manuscript is a writing screen, so [reading mode](Reading-Mode) removes it and closes its address.
+Manuscript is a writing screen, but [reading mode](Reading-Mode) does not remove it. On a world that carries scene prose it stays, renamed **Read**, and becomes the book itself — the prose alone, with the word counts, status chips and draft controls put away. On a world with no prose it closes like the other writing screens, because there would be nothing on it.
 
 ---
 
