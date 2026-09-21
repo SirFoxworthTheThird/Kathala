@@ -75,11 +75,20 @@ contain the string "plotweave":
 | `PW_CHROMIUM_PATH` | 3 | env var |
 | `.pwk` / `.pwb` | 160 | **file extensions** — see §3 |
 
-**These are effort, not risk** — nothing here is persisted, so a miss fails a
-test rather than losing data. `__pwdb` is 427 mechanical edit sites; the CSS
-classes are a stylesheet-wide replace. Worth doing in the same pass as the rest,
-because a half-renamed codebase is the state that confuses everyone later. List
-them here so the choice is made rather than missed.
+**DECIDED: keep all of them**, and the reason is a consequence of keeping
+`.pwk`. Once the extension stays, `pw` is no longer residue to be swept out —
+it is the project's permanent internal prefix, and it is used consistently.
+Renaming `__pwdb` to `__kdb` while a user is still saving `.pwk` files would
+replace one convention with two, which is worse than either.
+
+This is the largest saving in the whole rename: **427 edit sites for `__pwdb`
+alone**, plus the CSS classes and custom properties, all left alone with a
+reason rather than by oversight. None of it is persisted, none of it is visible,
+and all of it now matches the file a user types.
+
+The one to watch is `PW_CHROMIUM_PATH` — an env var in the capture tooling. It
+is fine to keep, but it is the only one that a person reads while debugging, so
+it is the only one where the old initials might puzzle somebody.
 
 ---
 
@@ -93,8 +102,8 @@ is not recoverable later.
 | # | Identifier | Where | If renamed carelessly | Recommend |
 |---|---|---|---|---|
 | 1 | `KathalaDB` | `src/db/database.ts:86` | Dexie opens a new, empty database and the old worlds are still on disk, unreferenced. | **Rename now.** Export first, re-import after. Never cheaper. |
-| 2 | `.pwk` | 123 refs + all 41 Library books + the catalogue | The Library 404s until both repos ship together | **Your call.** Safe, but needs the two repos released in step. |
-| 3 | `.pwb` | 37 refs + 3 Library bundles | As above | Follows whatever 2 does |
+| 2 | `.pwk` | 123 refs + all 41 Library books + the catalogue | — | **DECIDED: keep.** |
+| 3 | `.pwb` | 37 refs + 3 Library bundles | — | **DECIDED: keep.** |
 | 4 | `plotweave-ui` | Zustand persist key | Reading position, theme, sidebar state reset once | **Rename.** One reset, yours. |
 | 5 | `plotweave-device-id` | `deviceId.ts` | Device identity resets; folder-sync conflict naming affected | **Rename.** Check folder sync after. |
 | 6 | `plotweave-settings-collapsed` | `settingsSections.ts` | Cosmetic reset | **Rename.** |
@@ -133,10 +142,17 @@ These cannot be derived from the codebase.
    now.** With one user it is an export, a rename and a re-import. With ten it
    needs a written migration and a tested rollback, and becomes its own project.
    The cost of this decision only ever goes up.
-2. **Do `.pwk`/`.pwb` stay?** Genuinely open. Renaming them is safe but means
-   releasing both repositories in step, and the extension is the one piece of
-   the brand a user types. Keeping them is defensible — the format already
-   calls itself `world-export` inside — and costs nothing but a little residue.
+2. **Do `.pwk`/`.pwb` stay?** **DECIDED: yes, they stay.** The format already
+   calls itself `world-export` inside, the 41 Library books keep working, and
+   the two repositories no longer have to ship in step. Nothing in the guide
+   glosses what the letters stand for, so no prose reads oddly afterwards.
+
+   **Three labels around the extension still change**, because they name the
+   application rather than the file: `HelpPanel.tsx:134` (*"a PlotWeave `.pwk`
+   backup"*), `exportImport.ts:357` (`description: 'PlotWeave Export'`, the
+   browser file picker) and `electron/main.cjs:55` (`name: 'PlotWeave Files'`,
+   the OS dialog). Miss these and the file chooser still says the old name
+   while the extension is silent about it.
 3. **Is the GitHub repo renamed?** GitHub redirects old URLs indefinitely, so
    this is low-risk — but it breaks any unredirected deep links and every
    hard-coded clone URL in docs (`forge.config.cjs:47`, README, the wiki).
@@ -257,9 +273,14 @@ finish line should be a test rather than a feeling.
 
 ## 9. Rough shape of the effort
 
+Two decisions are now made, and together they take the largest mechanical chunk
+off the table: **`.pwk`/`.pwb` stay**, and therefore **every `pw-` identifier
+stays too** — 520 occurrences, 427 of them `__pwdb`. What is left is text, and
+pictures.
+
 | | |
 |---|---|
-| Decisions (§3, §4) | a conversation, not code |
+| Remaining decisions (§4: 1, 3, 4, 5, 6) | a conversation, not code |
 | Assets | design work, external |
 | App repo cosmetic rename + tests | one PR, large diff, mechanical |
 | Library repo | one small PR |
