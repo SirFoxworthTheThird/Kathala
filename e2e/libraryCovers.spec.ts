@@ -49,6 +49,12 @@ test('shows cover art for the books that link one', async ({ page }) => {
     doing its job late rather than a regression. Only two entries genuinely have
     no cover, both Tolkien, whose artwork lives inside the image bundle.
   */
+  /*
+    One tab across: the catalogue is split into what can be read and what
+    cannot, and the two coverless worlds are both Tolkien — structure only, and
+    not mounted until their shelf is open.
+  */
+  await page.getByRole('tab', { name: /Structure only/ }).click()
   const noCover = page.locator('li', { hasText: 'The Fellowship of the Ring' }).first()
   await expect(noCover).toContainText('J.R.R. Tolkien')
   await noCover.scrollIntoViewIfNeeded()

@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { BookOpen, Download, Check, X, AlertTriangle, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -10,6 +10,7 @@ import { libraryCatalogueUrl, bundledCatalogueUrl, libraryCoverUrl } from '@/lib
 import { withBundledFallback } from '@/lib/libraryFallback'
 import { needsNewerApp } from '@/lib/appVersion'
 import { Input } from '@/components/ui/input'
+import { Tabs, TabsContent, TabsList, TabsTrigger, TabCount } from '@/components/ui/tabs'
 
 /**
  * Cover art on a catalogue card.
@@ -33,31 +34,59 @@ function LibraryCover({ src, title }: { src: string; title: string }) {
 }
 
 /**
- * One shelf of the catalogue, under a heading that says what it is.
+ * One tab's worth of the catalogue.
  *
- * A `<section>` with its own heading rather than a styled `<div>`: the two
- * shelves are the answer to "which of these can I actually read", and a screen
- * reader that cannot hear the split cannot answer it. Renders nothing at all
- * when a search has emptied it, so a heading never stands over no books.
+ * The note above the list is not decoration: the tab label says which shelf
+ * this is, and the line under it says what that means — *Structure only* is
+ * meaningless to a reader who has not been told there is text in the other
+ * books.
  */
 function Shelf<T extends { id: string }>({
-  heading, note, entries, render,
+  note, entries, render, empty,
 }: {
-  heading: string
   note: string
   entries: readonly T[]
   render: (entry: T) => ReactNode
+  empty: ReactNode
 }) {
-  const id = useId()
-  if (entries.length === 0) return null
   return (
-    <section aria-labelledby={id} className="mt-4 first:mt-3">
-      <h3 id={id} className="text-xs font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
-        {heading} ({entries.length})
-      </h3>
-      <p className="mt-0.5 text-[11px] text-[hsl(var(--muted-foreground))]">{note}</p>
-      <ul className="mt-2 flex flex-col gap-2">{entries.map(render)}</ul>
-    </section>
+    <>
+      <p className="text-[11px] text-[hsl(var(--muted-foreground))]">{note}</p>
+      {entries.length === 0 ? empty : (
+        <ul className="mt-2 flex flex-col gap-2">{entries.map(render)}</ul>
+      )}
+    </>
+  )
+}
+
+/**
+ * What a tab says when a search has emptied it and the other tab has the books.
+ *
+ * Tabs hide half the catalogue, which is the point of them and also their one
+ * hazard: a search for *neuromancer* on the reading shelf finds nothing, and a
+ * bare "no matches" would be a lie about the catalogue — the book is there, one
+ * tab across. So the count comes with a way to go to it.
+ *
+ * When the other tab is empty too, the dialog has already said that nothing
+ * matches anywhere, and this renders nothing rather than repeating it.
+ */
+function Elsewhere({
+  count, query, other, onSwitch,
+}: {
+  count: number
+  query: string
+  other: string
+  onSwitch: () => void
+}) {
+  if (count === 0) return null
+  return (
+    <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-[hsl(var(--muted-foreground))]">
+      <span>
+        Nothing here matches “{query.trim()}”, but {count === 1 ? 'one book does' : `${count} books do`} under
+        {' '}<strong className="font-medium text-[hsl(var(--foreground))]">{other}</strong>.
+      </span>
+      <Button variant="outline" size="sm" onClick={onSwitch}>Show {other}</Button>
+    </div>
   )
 }
 
@@ -145,6 +174,11 @@ export function LibraryDialog({
   */
   const shown = useMemo(() => browseLibrary(entries ?? [], query), [entries, query])
   const groups = useMemo(() => groupByProse(shown), [shown])
+  /*
+    Which tab is showing. Not reset when the dialog closes: a reader who came
+    for the structure-only worlds is likely to come back for them.
+  */
+  const [shelf, setShelf] = useState<'readable' | 'structure'>('readable')
 
   if (!open) return null
 
@@ -198,7 +232,7 @@ export function LibraryDialog({
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-baseline gap-x-2">
-              <h4 className="text-sm font-semibold text-[hsl(var(--foreground))]">{entry.title}</h4>
+              <h3 className="text-sm font-semibold text-[hsl(var(--foreground))]">{entry.title}</h3>
               <span className="text-xs text-[hsl(var(--muted-foreground))]">{entry.author}</span>
             </div>
             <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">{entry.blurb}</p>
@@ -370,20 +404,46 @@ export function LibraryDialog({
             only" under a search for "bronte" would read as a broken filter.
           */}
           {groups.grouped ? (
-            <>
-              <Shelf
-                heading="Books you can read"
-                note="The whole text is in the book. Reading mode unlocks the world beside it, a chapter at a time."
-                entries={groups.readable}
-                render={renderEntry}
-              />
-              <Shelf
-                heading="Structure only"
-                note="Characters, places, chronology and continuity — no text from the book."
-                entries={groups.structureOnly}
-                render={renderEntry}
-              />
-            </>
+            <Tabs value={shelf} onValueChange={(v) => setShelf(v as 'readable' | 'structure')} className="mt-3">
+              <TabsList>
+                <TabsTrigger value="readable">
+                  Books you can read<TabCount n={groups.readable.length} />
+                </TabsTrigger>
+                <TabsTrigger value="structure">
+                  Structure only<TabCount n={groups.structureOnly.length} />
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="readable">
+                <Shelf
+                  note="The whole text is in the book. Reading mode unlocks the world beside it, a chapter at a time."
+                  entries={groups.readable}
+                  render={renderEntry}
+                  empty={
+                    <Elsewhere
+                      count={groups.structureOnly.length}
+                      query={query}
+                      other="Structure only"
+                      onSwitch={() => setShelf('structure')}
+                    />
+                  }
+                />
+              </TabsContent>
+              <TabsContent value="structure">
+                <Shelf
+                  note="Characters, places, chronology and continuity — no text from the book."
+                  entries={groups.structureOnly}
+                  render={renderEntry}
+                  empty={
+                    <Elsewhere
+                      count={groups.readable.length}
+                      query={query}
+                      other="Books you can read"
+                      onSwitch={() => setShelf('readable')}
+                    />
+                  }
+                />
+              </TabsContent>
+            </Tabs>
           ) : (
             <ul className="mt-3 flex flex-col gap-2">
               {shown.map(renderEntry)}
