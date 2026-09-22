@@ -17,7 +17,7 @@
  * the suite keeps testing against the actual catalogue with no route to the
  * internet. See `scripts/stage-library.mjs`.
  */
-const DEFAULT_SITE = 'https://plotweave-library.netlify.app/'
+const DEFAULT_SITE = 'https://kathala-library.netlify.app/'
 
 /**
  * The library site, with exactly one trailing slash.

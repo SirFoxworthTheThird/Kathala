@@ -44,14 +44,15 @@ const isRecord = (path: string) => RECORDS.some((r) => path.startsWith(r))
 /**
  * Old-name strings that are still correct, stripped before the scan.
  *
- * The two hosts serve the app and the Library today and are read at runtime;
- * they move with the sites, not with the repositories. `plotweave-world` is the
- * `type` field the book generators write into an export — never read on import,
- * and changing it would rewrite every shipped world to no effect.
+ * Both hosts have moved and are gone from this list — which is the whole point
+ * of keeping it as data: the sites moved after the repositories did, and the
+ * only edit that required was deleting two lines and watching what failed.
+ *
+ * `plotweave-world` is the `type` field the book generators write into an
+ * export. Nothing reads it — import ignores it entirely — so changing it would
+ * rewrite every shipped world to no effect.
  */
 const STILL_CORRECT = [
-  'plotweave.netlify.app',
-  'plotweave-library.netlify.app',
   'plotweave-world',
   'PLOTWEAVE_WORLD_ID',
 ]
