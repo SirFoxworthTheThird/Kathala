@@ -25,24 +25,24 @@ async function openLibrary(page: Page) {
 /**
  * The book titles on screen, in the order they are listed.
  *
- * `h4`, not `h3`: the catalogue is split into two shelves under headings of
- * their own, so a book's title sits a level below the shelf it is on.
+ * The catalogue is behind two tabs, and only the open one is mounted, so this
+ * is the shelf currently showing rather than the whole catalogue.
  */
 const listed = (page: Page) => page.evaluate(() =>
-  Array.from(document.querySelectorAll('h4'))
+  Array.from(document.querySelectorAll('h3'))
     .map((h) => (h.textContent ?? '').trim())
     .filter(Boolean))
 
-/** The book titles on one shelf, by the heading that names it. */
-async function shelf(page: Page, name: RegExp): Promise<string[]> {
-  const region = page.getByRole('region', { name })
-  if (await region.count() === 0) return []
-  const titles = await region.locator('h4').allTextContents()
-  return titles.map((t) => t.trim()).filter(Boolean)
-}
-
 const READABLE = /Books you can read/
 const STRUCTURE = /Structure only/
+
+/** Open one of the two shelves and wait for it to be the one showing. */
+async function openShelf(page: Page, name: RegExp): Promise<string[]> {
+  const tab = page.getByRole('tab', { name })
+  await tab.click()
+  await expect(tab).toHaveAttribute('aria-selected', 'true')
+  return listed(page)
+}
 
 test.describe('Browsing the Library', () => {
   test.describe.configure({ timeout: 180_000 })
@@ -52,11 +52,10 @@ test.describe('Browsing the Library', () => {
     expect((await listed(page)).length, 'the whole catalogue should be listed').toBeGreaterThan(20)
 
     /*
-      Per shelf, since the catalogue is split into two: across the whole dialog
-      the sequence restarts at the second heading, and asserting on the
-      concatenation would fail for the one reason that is not a fault.
+      Per shelf, since the catalogue is split across two tabs: each files from A
+      again, and only the open tab is on screen at all.
       */
-    const shelves = [await shelf(page, READABLE), await shelf(page, STRUCTURE)]
+    const shelves = [await openShelf(page, READABLE), await openShelf(page, STRUCTURE)]
     expect(shelves[0].length, 'nothing on the readable shelf').toBeGreaterThan(20)
     expect(shelves[1].length, 'nothing on the structure-only shelf').toBeGreaterThan(3)
 
@@ -91,27 +90,44 @@ test.describe('Browsing the Library', () => {
   test('the shelf separates what can be read from what can only be explored', async ({ page }) => {
     await openLibrary(page)
 
-    const readable = await shelf(page, READABLE)
-    const structureOnly = await shelf(page, STRUCTURE)
+    // The reading shelf is the one a reader lands on.
+    await expect(page.getByRole('tab', { name: READABLE })).toHaveAttribute('aria-selected', 'true')
 
     // A book whose whole text ships, and one whose notice says it never will.
+    // Each assertion is paired across the two tabs, so a tab that showed the
+    // whole catalogue would fail as loudly as one that showed nothing.
+    const readable = await listed(page)
     expect(readable).toContain('Dracula')
-    expect(structureOnly).not.toContain('Dracula')
-    expect(structureOnly).toContain('Neuromancer')
     expect(readable).not.toContain('Neuromancer')
 
-    // Every book is on exactly one shelf.
-    expect([...readable, ...structureOnly].sort()).toEqual((await listed(page)).sort())
+    const structureOnly = await openShelf(page, STRUCTURE)
+    expect(structureOnly).toContain('Neuromancer')
+    expect(structureOnly).not.toContain('Dracula')
+
+    // The tabs carry their counts, and the two add up to the whole catalogue.
+    const count = async (name: RegExp) =>
+      Number((await page.getByRole('tab', { name }).innerText()).match(/\d+/)?.[0])
+    expect(await count(READABLE)).toBe(readable.length)
+    expect(await count(STRUCTURE)).toBe(structureOnly.length)
+    expect(readable.length + structureOnly.length).toBeGreaterThan(40)
 
     /*
-      A shelf emptied by a search takes its heading with it, rather than leaving
-      "Books you can read (0)" over nothing. Both halves are driven here: the
-      same search that removes one heading must leave the other standing, or an
-      assertion that the heading is gone would pass on a dialog that had closed.
+      The hazard tabs bring with them: half the catalogue is hidden, so a search
+      that finds nothing on the open shelf must not read as a search that found
+      nothing. The book is there, one tab across, and the tab says so and offers
+      to go.
     */
+    await openShelf(page, READABLE)
     await page.getByLabel('Search the library by title or author').fill('neuromancer')
-    await expect(page.getByRole('heading', { name: STRUCTURE })).toBeVisible()
-    await expect(page.getByRole('heading', { name: READABLE })).toHaveCount(0)
+    await expect(page.getByText(/Nothing here matches/)).toBeVisible()
+    await page.getByRole('button', { name: 'Show Structure only' }).click()
+    await expect.poll(() => listed(page)).toEqual(['Neuromancer'])
+
+    // And a search that really matches nothing says so once, without sending
+    // the reader to an empty shelf.
+    await page.getByLabel('Search the library by title or author').fill('zzzzz')
+    await expect(page.getByText(/No book here matches/)).toBeVisible()
+    await expect(page.getByText(/Nothing here matches/)).toHaveCount(0)
   })
 
   test('search narrows by title and by author, and can be cleared', async ({ page }) => {
@@ -163,6 +179,12 @@ test.describe('Browsing the Library', () => {
       four of the thirty worlds *do* ship an image bundle, and must say the
       opposite rather than being labelled as loading from the web.
     */
+    /*
+      Every world that ships a bundle is structure only — the three fan-made
+      references, whose artwork cannot be linked from anywhere — so the pair
+      lives one tab across.
+    */
+    await openShelf(page, STRUCTURE)
     const bundled = page.getByText('Embedded images').first()
     await expect(bundled).toBeVisible()
     const card = bundled.locator('xpath=ancestor::li[1]')
@@ -214,6 +236,7 @@ test.describe('Browsing the Library', () => {
       })
     })
 
+    await openShelf(page, STRUCTURE)
     const card = page.getByText('Embedded images').first().locator('xpath=ancestor::li[1]')
     await card.getByRole('button', { name: /^Download \(/ }).click()
     await expect(page.getByRole('heading', { name: 'Library' })).toHaveCount(0, { timeout: 120_000 })

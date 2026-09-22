@@ -287,13 +287,15 @@ books and downloads them straight into your browser. Nothing is uploaded and no
 account is needed — a downloaded world is an ordinary world you own outright,
 which you can edit, export, or delete like any other.
 
-The shelf is in two parts, because the books are two different offers.
+The shelf is behind two tabs, because the books are two different offers. Each
+tab carries its count, so you can see the shape of the catalogue before opening
+either.
 
 ![The Library](images/64-library.png)
 
 **Books you can read** carry the novel's whole text. Download one and reading
 mode gives you the book itself, chapter by chapter, with the world unlocking
-beside it as you go.
+beside it as you go. This is the tab the Library opens on.
 
 **Structure only** are worlds without the prose — characters, places,
 chronology, relationships and continuity, and no text from the book. Some are
@@ -302,16 +304,18 @@ novels still in copyright, where reproducing the text would not be ours to do;
 an edition. They are worth opening to see how a large world is put together,
 and the notice on each card says plainly what it does not contain.
 
-![Where the shelf changes over](images/65-library-structure-only.png)
+![The structure-only tab](images/65-library-structure-only.png)
 
-Within each part the catalogue is **listed alphabetically**, filed past a
-leading *The* or *A* as a shelf would — most of these titles begin with one, so
-*The Woman in White* sits under W rather than in a run of fifteen books under T.
-**Search** narrows both parts at once by title or by author, so "dumas" finds
-both his, and accents are ignored: "bronte" finds Brontë. A part left with
-nothing in it takes its heading away rather than standing over an empty space.
-**Escape** closes the Library, and closes the replace confirm first if that is
-showing.
+Within each tab the catalogue is **listed alphabetically**, filed past a leading
+*The* or *A* as a shelf would — most of these titles begin with one, so *The
+Woman in White* sits under W rather than in a run of fifteen books under T.
+
+**Search** narrows both tabs at once by title or by author, so "dumas" finds
+both his, and accents are ignored: "bronte" finds Brontë. Because a tab hides
+half the catalogue, a search that empties the tab you are on will tell you how
+many books it found on the other one and offer to take you there — so a book is
+never simply missing. **Escape** closes the Library, and closes the replace
+confirm first if that is showing.
 
 Each entry shows its cast, chapter and scene counts, and the download size. Map
 images and portraits are a separate, much larger download, so they sit behind
