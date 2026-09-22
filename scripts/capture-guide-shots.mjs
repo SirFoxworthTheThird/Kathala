@@ -361,6 +361,30 @@ const shots = [
     ready: (page) => page.getByRole('button', { name: 'New World' }),
   },
   {
+    /*
+      The catalogue, in a context with nothing installed, so every card offers
+      Download rather than Open — which is what a reader meets first.
+    */
+    name: '64-library', book: ILIAD, reading: false, fresh: true,
+    go: async (page) => {
+      await page.getByRole('button', { name: 'Library', exact: true }).click()
+    },
+    ready: (page) => page.getByRole('heading', { name: /Books you can read/ }),
+  },
+  {
+    /*
+      Where the shelf changes over. The two headings are thirty-nine cards
+      apart, so the split cannot be photographed from the top of the dialog —
+      and the split is the thing the section is about.
+    */
+    name: '65-library-structure-only', book: ILIAD, reading: false, fresh: true,
+    go: async (page) => {
+      await page.getByRole('button', { name: 'Library', exact: true }).click()
+    },
+    ready: (page) => page.getByRole('heading', { name: /Structure only/ }),
+    scrollTo: 'Structure only',
+  },
+  {
     name: '02-home-worlds', book: ILIAD, reading: false,
     go: (page) => page.goto(`${BASE}/#/`, { waitUntil: 'load' }),
     ready: (page) => page.getByRole('button', { name: 'Start from scratch' }),
@@ -839,6 +863,7 @@ async function inFreshContext(shot) {
     await settle(fresh, 1500)
     if (shot.go) await shot.go(fresh)
     await ready(fresh, shot.ready(fresh), shot.name)
+    if (shot.scrollTo) await fresh.getByText(shot.scrollTo).first().scrollIntoViewIfNeeded()
     await settle(fresh, shot.settle ?? 1500)
     await fresh.screenshot({ path: `${OUT}/${shot.name}.png` })
   } finally {

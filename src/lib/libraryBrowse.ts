@@ -71,3 +71,39 @@ export function browseLibrary<T extends BrowsableEntry>(entries: readonly T[], q
   const needle = query.trim()
   return entries.filter((e) => matches(e, needle)).sort(byTitle)
 }
+
+/** An entry that may say whether its world carries the book's text. */
+interface ProseAware {
+  hasProse?: boolean
+}
+
+/**
+ * The shelf split into what can be read and what can only be explored.
+ *
+ * These are two different offers. Thirty-nine of the shipped worlds hold the
+ * complete public-domain text and can be read in the app, a chapter at a time,
+ * with the companion unlocking beside you. Seven hold structure only — the
+ * novel is still in copyright, or the world was built as a reference rather
+ * than an edition. A reader who came for something to read and a writer who
+ * came to see how a world is assembled want opposite halves of that list, and
+ * before the catalogue said which was which, the only way to find out was to
+ * download one and look.
+ *
+ * **Grouped only when every entry has an opinion.** `hasProse` is optional: a
+ * catalogue published before the field existed has none, and a desktop app can
+ * be pointed at one. Splitting on a missing field would file all forty-six
+ * books under "structure only" and tell a reader that none of them can be read
+ * — a confident answer that is exactly wrong. So an incomplete catalogue is
+ * shown as one list, the way it was before this existed.
+ */
+export function groupByProse<T extends BrowsableEntry & ProseAware>(
+  entries: readonly T[],
+): { grouped: boolean; readable: T[]; structureOnly: T[] } {
+  const known = entries.every((e) => typeof e.hasProse === 'boolean')
+  if (!known) return { grouped: false, readable: [...entries], structureOnly: [] }
+  return {
+    grouped: true,
+    readable: entries.filter((e) => e.hasProse),
+    structureOnly: entries.filter((e) => !e.hasProse),
+  }
+}

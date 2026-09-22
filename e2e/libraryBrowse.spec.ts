@@ -22,35 +22,96 @@ async function openLibrary(page: Page) {
     .toBeVisible({ timeout: 60_000 })
 }
 
-/** The titles on screen, in the order they are listed. */
+/**
+ * The book titles on screen, in the order they are listed.
+ *
+ * `h4`, not `h3`: the catalogue is split into two shelves under headings of
+ * their own, so a book's title sits a level below the shelf it is on.
+ */
 const listed = (page: Page) => page.evaluate(() =>
-  Array.from(document.querySelectorAll('h3'))
+  Array.from(document.querySelectorAll('h4'))
     .map((h) => (h.textContent ?? '').trim())
     .filter(Boolean))
+
+/** The book titles on one shelf, by the heading that names it. */
+async function shelf(page: Page, name: RegExp): Promise<string[]> {
+  const region = page.getByRole('region', { name })
+  if (await region.count() === 0) return []
+  const titles = await region.locator('h4').allTextContents()
+  return titles.map((t) => t.trim()).filter(Boolean)
+}
+
+const READABLE = /Books you can read/
+const STRUCTURE = /Structure only/
 
 test.describe('Browsing the Library', () => {
   test.describe.configure({ timeout: 180_000 })
 
   test('the catalogue is filed alphabetically, past a leading article', async ({ page }) => {
     await openLibrary(page)
-    const titles = await listed(page)
-    expect(titles.length, 'the whole catalogue should be listed').toBeGreaterThan(20)
+    expect((await listed(page)).length, 'the whole catalogue should be listed').toBeGreaterThan(20)
 
     /*
-      Asserted as a property rather than as a fixed list, so adding a book to
-      the catalogue does not fail this test for the wrong reason. The filing key
-      is the title minus a leading article — which is the whole point at this
-      size, since most of these begin with "The".
+      Per shelf, since the catalogue is split into two: across the whole dialog
+      the sequence restarts at the second heading, and asserting on the
+      concatenation would fail for the one reason that is not a fault.
       */
-    const fileAs = (t: string) => t.replace(/^(the|a|an)\s+/i, '')
-    const keys = titles.map(fileAs)
-    const sorted = [...keys].sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }))
-    expect(keys).toEqual(sorted)
+    const shelves = [await shelf(page, READABLE), await shelf(page, STRUCTURE)]
+    expect(shelves[0].length, 'nothing on the readable shelf').toBeGreaterThan(20)
+    expect(shelves[1].length, 'nothing on the structure-only shelf').toBeGreaterThan(3)
+
+    for (const titles of shelves) {
+      /*
+        Asserted as a property rather than as a fixed list, so adding a book to
+        the catalogue does not fail this test for the wrong reason. The filing
+        key is the title minus a leading article — which is the whole point at
+        this size, since most of these begin with "The".
+      */
+      const fileAs = (t: string) => t.replace(/^(the|a|an)\s+/i, '')
+      const keys = titles.map(fileAs)
+      const sorted = [...keys].sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }))
+      expect(keys).toEqual(sorted)
+    }
 
     // And it is genuinely not the raw alphabetical order — otherwise the rule
     // above would be indistinguishable from a plain sort.
-    const naive = [...titles].sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }))
-    expect(titles, 'most of these titles start with "The"').not.toEqual(naive)
+    const naive = [...shelves[0]].sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }))
+    expect(shelves[0], 'most of these titles start with "The"').not.toEqual(naive)
+  })
+
+  /**
+   * Which of these can I actually read?
+   *
+   * Thirty-nine of the shipped worlds carry the whole public-domain text and
+   * can be read in the app; seven carry structure only, because the novel is in
+   * copyright or the world was built as a reference. The catalogue now says
+   * which is which, and the shelf is split on it — before that, the only way to
+   * find out was to download one and look.
+   */
+  test('the shelf separates what can be read from what can only be explored', async ({ page }) => {
+    await openLibrary(page)
+
+    const readable = await shelf(page, READABLE)
+    const structureOnly = await shelf(page, STRUCTURE)
+
+    // A book whose whole text ships, and one whose notice says it never will.
+    expect(readable).toContain('Dracula')
+    expect(structureOnly).not.toContain('Dracula')
+    expect(structureOnly).toContain('Neuromancer')
+    expect(readable).not.toContain('Neuromancer')
+
+    // Every book is on exactly one shelf.
+    expect([...readable, ...structureOnly].sort()).toEqual((await listed(page)).sort())
+
+    /*
+      A shelf emptied by a search takes its heading with it, rather than leaving
+      "Books you can read (0)" over nothing. Both halves are driven here: the
+      same search that removes one heading must leave the other standing, or an
+      assertion that the heading is gone would pass on a dialog that had closed.
+    */
+    await page.getByLabel('Search the library by title or author').fill('neuromancer')
+    await expect(page.getByRole('heading', { name: STRUCTURE })).toBeVisible()
+    await expect(page.getByRole('heading', { name: READABLE })).toHaveCount(0)
   })
 
   test('search narrows by title and by author, and can be cleared', async ({ page }) => {
