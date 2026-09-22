@@ -369,7 +369,7 @@ const shots = [
     go: async (page) => {
       await page.getByRole('button', { name: 'Library', exact: true }).click()
     },
-    ready: (page) => page.getByRole('heading', { name: /Books you can read/ }),
+    ready: (page) => page.getByRole('tab', { name: /Books you can read/ }),
   },
   {
     /*
@@ -380,9 +380,9 @@ const shots = [
     name: '65-library-structure-only', book: ILIAD, reading: false, fresh: true,
     go: async (page) => {
       await page.getByRole('button', { name: 'Library', exact: true }).click()
+      await page.getByRole('tab', { name: /Structure only/ }).click()
     },
-    ready: (page) => page.getByRole('heading', { name: /Structure only/ }),
-    scrollTo: 'Structure only',
+    ready: (page) => page.getByText('no text from the book'),
   },
   {
     name: '02-home-worlds', book: ILIAD, reading: false,
