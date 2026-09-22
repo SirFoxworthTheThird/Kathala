@@ -15,7 +15,7 @@
 <p align="center">
   <a href="https://plotweave.netlify.app/"><strong>Try it in your browser →</strong></a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/SirFoxworthTheThird/PlotWeave/releases"><strong>Download for desktop</strong></a>
+  <a href="https://github.com/SirFoxworthTheThird/Kathala/releases"><strong>Download for desktop</strong></a>
   &nbsp;·&nbsp;
   <a href="docs/GUIDE.md"><strong>User guide</strong></a>
 </p>
@@ -185,7 +185,7 @@ theme so each project keeps its own atmosphere.
 Use Kathala in the browser at
 **[plotweave.netlify.app](https://plotweave.netlify.app/)**
 or download the latest desktop build from the
-**[Releases page](https://github.com/SirFoxworthTheThird/PlotWeave/releases)**.
+**[Releases page](https://github.com/SirFoxworthTheThird/Kathala/releases)**.
 
 Current release asset patterns:
 
@@ -284,7 +284,7 @@ e2e/           # Playwright end-to-end tests
 electron/      # desktop entry point and packaging integration
 ```
 
-The shipped books no longer live here. They are built, held to their authoring rules and published from [PlotWeave-Library](https://github.com/SirFoxworthTheThird/PlotWeave-Library), which the app fetches the Library from at runtime; the rules and the tests that enforce them are in that repository's [`docs/AUTHORING.md`](https://github.com/SirFoxworthTheThird/PlotWeave-Library/blob/main/docs/AUTHORING.md).
+The shipped books no longer live here. They are built, held to their authoring rules and published from [Kathala-Library](https://github.com/SirFoxworthTheThird/Kathala-Library), which the app fetches the Library from at runtime; the rules and the tests that enforce them are in that repository's [`docs/AUTHORING.md`](https://github.com/SirFoxworthTheThird/Kathala-Library/blob/main/docs/AUTHORING.md).
 
 ---
 
