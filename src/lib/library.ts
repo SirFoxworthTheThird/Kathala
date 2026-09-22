@@ -63,6 +63,20 @@ export interface LibraryEntry {
    */
   minAppVersion?: string
   /**
+   * Whether the world carries the book's text.
+   *
+   * Derived in the Library repository from the same rows `useHasProse` counts
+   * once a world is imported, so the shelf and the opened world cannot disagree
+   * about what can be read. It is what the catalogue is grouped by — see
+   * `groupByProse` in `lib/libraryBrowse`.
+   *
+   * **Optional, and absence is not `false`.** A catalogue published before the
+   * field existed says nothing, and a desktop install can be pointed at one;
+   * reading silence as "no prose" would tell a reader that none of these books
+   * can be read.
+   */
+  hasProse?: boolean
+  /**
    * Cover art for the card: an absolute URL, or a path to a file this app ships.
    *
    * Only entries whose cover is a *linked* image can have one. Where the cover
@@ -127,6 +141,14 @@ export function parseLibraryIndex(raw: unknown): LibraryIndex {
       }
     }
     if (typeof e.dataBytes !== 'number') throw new Error(`Library entry ${i} is missing dataBytes`)
+    /*
+      Dropped rather than rejected when it is not a boolean: an entry that says
+      something unreadable about its prose is an entry whose prose is unknown,
+      which `groupByProse` already handles by not splitting the shelf. Refusing
+      the whole catalogue over it would take forty-six books off the screen to
+      punish one bad field.
+    */
+    if (e.hasProse !== undefined && typeof e.hasProse !== 'boolean') delete e.hasProse
     /*
       A cover is optional, and a malformed one is dropped rather than rendered:
       a `javascript:` string, or a path that could climb out of the library, is

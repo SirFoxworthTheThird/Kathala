@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { browseLibrary, sortableTitle } from '@/lib/libraryBrowse'
+import { browseLibrary, groupByProse, sortableTitle } from '@/lib/libraryBrowse'
 
 /**
  * The catalogue shipped in the order it was curated — modern fantasy, then
@@ -131,5 +131,63 @@ describe('browseLibrary', () => {
   it('breaks a title tie on the author', () => {
     const twins = [entry('The Return', 'Zola'), entry('The Return', 'Andrić')]
     expect(browseLibrary(twins, '').map((e) => e.author)).toEqual(['Andrić', 'Zola'])
+  })
+})
+
+/**
+ * The shelf splits into what can be read and what can only be explored.
+ *
+ * Thirty-nine of the shipped worlds carry the book's whole text; seven carry
+ * structure only, because the novel is in copyright or the world was built as a
+ * reference. Before the catalogue said which was which, the only way to find
+ * out was to download one and look.
+ */
+describe('groupByProse', () => {
+  const book = (title: string, hasProse?: boolean) => ({ title, author: 'Somebody', hasProse })
+
+  it('splits a catalogue that says which is which', () => {
+    const group = groupByProse([
+      book('Dracula', true),
+      book('Neuromancer', false),
+      book('Jane Eyre', true),
+    ])
+    expect(group.grouped).toBe(true)
+    expect(titles(group.readable)).toEqual(['Dracula', 'Jane Eyre'])
+    expect(titles(group.structureOnly)).toEqual(['Neuromancer'])
+  })
+
+  /*
+    The half that matters more than the split itself. `hasProse` is optional, so
+    an older catalogue — or a desktop app pointed at one — has nothing to split
+    on. Filing every book under "structure only" would tell a reader that none
+    of forty-six books can be read: a confident answer, and exactly wrong.
+
+    Paired with the case above deliberately: a `grouped` that is always false
+    passes one of these and a `grouped` that is always true passes the other.
+  */
+  it('does not split a catalogue where a single entry is silent', () => {
+    const group = groupByProse([
+      book('Dracula', true),
+      book('Neuromancer', false),
+      book('An Older Book'),
+    ])
+    expect(group.grouped).toBe(false)
+    expect(titles(group.readable)).toEqual(['Dracula', 'Neuromancer', 'An Older Book'])
+    expect(group.structureOnly).toEqual([])
+  })
+
+  it('keeps the order it was given, and does not touch the input', () => {
+    const shelf = [book('Treasure Island', true), book('Dracula', true)]
+    const frozen = titles(shelf)
+    const group = groupByProse(shelf)
+    expect(titles(group.readable)).toEqual(['Treasure Island', 'Dracula'])
+    expect(titles(shelf)).toEqual(frozen)
+  })
+
+  it('answers a shelf with nothing to read without pretending it cannot tell', () => {
+    const group = groupByProse([book('Neuromancer', false), book('The Two Towers', false)])
+    expect(group.grouped).toBe(true)
+    expect(group.readable).toEqual([])
+    expect(titles(group.structureOnly)).toEqual(['Neuromancer', 'The Two Towers'])
   })
 })

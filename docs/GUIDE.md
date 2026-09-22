@@ -287,12 +287,31 @@ books and downloads them straight into your browser. Nothing is uploaded and no
 account is needed — a downloaded world is an ordinary world you own outright,
 which you can edit, export, or delete like any other.
 
-The catalogue is **listed alphabetically**, filed past a leading *The* or *A* as
-a shelf would — most of these titles begin with one, so *The Woman in White*
-sits under W rather than in a run of fifteen books under T. **Search** narrows it
-by title or by author, so "dumas" finds both his, and accents are ignored:
-"bronte" finds Brontë. **Escape** closes the Library, and closes the replace
-confirm first if that is showing.
+The shelf is in two parts, because the books are two different offers.
+
+![The Library](images/64-library.png)
+
+**Books you can read** carry the novel's whole text. Download one and reading
+mode gives you the book itself, chapter by chapter, with the world unlocking
+beside it as you go.
+
+**Structure only** are worlds without the prose — characters, places,
+chronology, relationships and continuity, and no text from the book. Some are
+novels still in copyright, where reproducing the text would not be ours to do;
+*Journey to the West* is there because it was built as a reference rather than
+an edition. They are worth opening to see how a large world is put together,
+and the notice on each card says plainly what it does not contain.
+
+![Where the shelf changes over](images/65-library-structure-only.png)
+
+Within each part the catalogue is **listed alphabetically**, filed past a
+leading *The* or *A* as a shelf would — most of these titles begin with one, so
+*The Woman in White* sits under W rather than in a run of fifteen books under T.
+**Search** narrows both parts at once by title or by author, so "dumas" finds
+both his, and accents are ignored: "bronte" finds Brontë. A part left with
+nothing in it takes its heading away rather than standing over an empty space.
+**Escape** closes the Library, and closes the replace confirm first if that is
+showing.
 
 Each entry shows its cast, chapter and scene counts, and the download size. Map
 images and portraits are a separate, much larger download, so they sit behind
@@ -375,9 +394,10 @@ chapters into leaves you forty chapters in.
 
 ### Reading the book itself
 
-Most of the Library's books carry their own text — 34 of the 41 are complete
-public-domain novels, and each one's catalogue entry names the Project Gutenberg
-edition it came from. On those, reading mode adds a **Read** screen: the book,
+Most of the Library's books carry their own text — 39 of the 46 on the shelf
+today are complete public-domain novels, and each one's catalogue entry names
+the Project Gutenberg edition it came from. Those are the ones filed under
+**Books you can read**. On those, reading mode adds a **Read** screen: the book,
 chapter by chapter, with none of the writing furniture. No draft/reading switch,
 no word counts, no "scenes written" tally — just the prose.
 
