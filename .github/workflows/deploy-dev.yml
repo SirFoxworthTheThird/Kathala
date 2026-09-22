@@ -33,7 +33,7 @@ jobs:
       - run: npm ci
       - run: npm run build # tsc -b && vite build → dist/
 
-      # This site and the released one at plotweave.netlify.app are the same
+      # This site and the released one at kathala.netlify.app are the same
       # app, so left alone they compete with each other in search results — and
       # the one built from `development` is the one a stranger should never
       # land on. Written into the artifact rather than into `public/`, which

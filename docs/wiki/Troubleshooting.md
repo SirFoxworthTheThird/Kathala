@@ -144,4 +144,4 @@ With a very large cast, use the character page's **Relationships** tab to browse
 
 1. Note any error from the browser console (`F12 → Console`).
 2. [Export](Export-and-Import) the world so the problem can be reproduced.
-3. Open an issue at **https://github.com/SirFoxworthTheThird/PlotWeave/issues** with the steps to reproduce and the error text.
+3. Open an issue at **https://github.com/SirFoxworthTheThird/Kathala/issues** with the steps to reproduce and the error text.

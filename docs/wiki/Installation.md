@@ -28,7 +28,7 @@ No account, server, or internet connection is required after the page loads. Eve
 
 The desktop app runs Kathala in a native window and avoids the browser data-clearing risk.
 
-Download an installer from the repository's [Releases](https://github.com/SirFoxworthTheThird/PlotWeave/releases) page:
+Download an installer from the repository's [Releases](https://github.com/SirFoxworthTheThird/Kathala/releases) page:
 
 | Platform | File |
 |---|---|
@@ -39,7 +39,7 @@ Download an installer from the repository's [Releases](https://github.com/SirFox
 ### Building from source
 
 ```
-git clone https://github.com/SirFoxworthTheThird/PlotWeave.git
+git clone https://github.com/SirFoxworthTheThird/Kathala.git
 cd Kathala
 npm install
 npm run electron:dev      # run in development
