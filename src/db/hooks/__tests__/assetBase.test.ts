@@ -40,7 +40,7 @@ describe('blobEntryUrl and the library site', () => {
 
   it('resolves a shipped path against the library site', () => {
     expect(blobEntryUrl(linked('library/oz/art/cover.jpg')))
-      .toBe('https://plotweave-library.netlify.app/library/oz/art/cover.jpg')
+      .toBe('https://kathala-library.netlify.app/library/oz/art/cover.jpg')
   })
 
   it('follows the base it is given, which is how the suite serves books locally', () => {

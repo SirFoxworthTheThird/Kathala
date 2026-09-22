@@ -16,7 +16,7 @@
 
   Run against a staged preview:
     VITE_E2E=1 npm run build
-    cp -r ../plotweave-library/library/{the-iliad,alice-in-wonderland} dist/library/
+    cp -r ../Kathala-Library/library/{the-iliad,alice-in-wonderland} dist/library/
     npx vite preview --port 4173 --strictPort &
     node scripts/capture-guide-shots.mjs [name ...]
 */

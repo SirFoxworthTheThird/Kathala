@@ -51,7 +51,7 @@ what you are allowed to reuse.
 
 - **Library cover images**, when you open the Library and scroll to a card.
 - **The Library itself.** The books no longer travel inside Kathala. They live
-  in their own place — `plotweave-library.netlify.app` — so a new one appears in
+  in their own place — `kathala-library.netlify.app` — so a new one appears in
   the Library without waiting for a new version of the app. Opening the Library,
   downloading a book, and showing a book's pictures all ask that site for files;
   it is run by this project and is told nothing about your worlds.

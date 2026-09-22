@@ -2,14 +2,14 @@
 
 **This directory is temporary. Delete it once the wiki is published.**
 
-These are the pages of the project's [GitHub wiki](https://github.com/SirFoxworthTheThird/PlotWeave/wiki),
+These are the pages of the project's [GitHub wiki](https://github.com/SirFoxworthTheThird/Kathala/wiki),
 rewritten against `docs/GUIDE.md`. They live here only because the wiki is a
-separate git repository (`PlotWeave.wiki.git`) that an agent session cannot push
+separate git repository (`Kathala.wiki.git`) that an agent session cannot push
 to, and the work would otherwise have been lost.
 
 **The publish is still blocked, and it is not a permissions setting somebody
 forgot.** A second session tried again on 2026-09-20: the wiki repository
-*clones* fine anonymously, but pushing is refused by the proxy — *"PlotWeave.wiki
+*clones* fine anonymously, but pushing is refused by the proxy — *"Kathala.wiki
 is not in this session's authorized repository set"* — and it cannot be added to
 that set, because GitHub does not expose a wiki as a repository the GitHub App
 can be granted access to. `add_repo` answers *"you don't have access to
@@ -25,10 +25,10 @@ outlive the publish.
 ## Publishing
 
 ```bash
-git clone https://github.com/SirFoxworthTheThird/PlotWeave.wiki.git
-cp docs/wiki/*.md PlotWeave.wiki/          # not this README
-rm PlotWeave.wiki/README.md
-cd PlotWeave.wiki
+git clone https://github.com/SirFoxworthTheThird/Kathala.wiki.git
+cp docs/wiki/*.md Kathala.wiki/          # not this README
+rm Kathala.wiki/README.md
+cd Kathala.wiki
 git add -A && git commit -m "Rewrite the wiki against the current user guide"
 git push
 ```

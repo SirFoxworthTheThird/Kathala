@@ -4,7 +4,7 @@ Kathala is a **local-first story bible** — *where stories take shape across ti
 
 Everything is stored privately in your browser (IndexedDB). No account, no backend, no internet connection required. Run it in a browser or as a desktop app.
 
-> This wiki mirrors the illustrated [User Guide](https://github.com/SirFoxworthTheThird/PlotWeave/blob/main/docs/GUIDE.md) in the repository. The guide has screenshots; the wiki is organised for looking one thing up.
+> This wiki mirrors the illustrated [User Guide](https://github.com/SirFoxworthTheThird/Kathala/blob/main/docs/GUIDE.md) in the repository. The guide has screenshots; the wiki is organised for looking one thing up.
 
 ---
 

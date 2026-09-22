@@ -24,7 +24,7 @@
 import { cpSync, existsSync, mkdirSync, readdirSync } from 'fs'
 import { join } from 'path'
 
-const source = process.env.PLOTWEAVE_LIBRARY ?? '../plotweave-library'
+const source = process.env.KATHALA_LIBRARY ?? '../Kathala-Library'
 const from = join(source, 'library')
 const to = 'dist/library'
 
@@ -41,7 +41,7 @@ if (!existsSync(from)) {
   console.error(
     `stage-library: no library at ${from}\n` +
     '  The suite needs the books. Clone SirFoxworthTheThird/Kathala-Library\n' +
-    '  beside this repository, or set PLOTWEAVE_LIBRARY to where it lives.',
+    '  beside this repository, or set KATHALA_LIBRARY to where it lives.',
   )
   process.exit(1)
 }
