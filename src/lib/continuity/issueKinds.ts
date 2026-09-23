@@ -28,9 +28,9 @@ export type IssueKind =
   // faction
   | 'faction-gap' | 'hostile-loc' | 'faction-conflict'
   // pov
-  | 'pov-unknown' | 'pov-not-involved' | 'dead-pov' | 'pov-consecutive' | 'pov-missing'
+  | 'pov-unknown' | 'pov-not-involved' | 'dead-pov' | 'pov-missing'
   // prose
-  | 'prose-dead' | 'prose-untagged' | 'prose-leak' | 'knowledge-unrevealed'
+  | 'prose-untagged' | 'prose-leak' | 'knowledge-unrevealed'
   // thread
   | 'thread-dangling' | 'thread-dormant' | 'thread-unstarted'
   // world — the places and the clock, rather than anybody in particular
@@ -108,9 +108,7 @@ export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
   'pov-unknown':           'POV names no character',
   'pov-not-involved':      'POV character not in the scene',
   'dead-pov':              'Dead POV character',
-  'pov-consecutive':       'Long run of one POV',
   'pov-missing':           'Scene with no point of view',
-  'prose-dead':            'Dead character named in the prose',
   'prose-untagged':        'Named in the prose but not in the cast',
   'prose-leak':            'Possible early reveal in the prose',
   'knowledge-unrevealed':  'The reader never learns it',

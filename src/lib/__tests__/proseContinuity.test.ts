@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { computeProseMentionIssues, computeKnowledgeLeaks } from '@/lib/proseContinuity'
-import type { WorldEvent, Chapter, Character, CharacterSnapshot, KnowledgeFact } from '@/types'
+import type { WorldEvent, Chapter, Character, KnowledgeFact } from '@/types'
 
 function chapter(id: string, number: number): Chapter {
   return { id, worldId: 'w', timelineId: 't1', number, title: '', synopsis: '', notes: '', wordGoal: null, createdAt: 0, updatedAt: 0 }
@@ -16,9 +16,6 @@ function event(id: string, chapterId: string, sortOrder: number, extra: Partial<
 function char(id: string, name: string): Character {
   return { id, worldId: 'w', name } as unknown as Character
 }
-function snap(characterId: string, eventId: string, isAlive: boolean): CharacterSnapshot {
-  return { id: `s-${characterId}-${eventId}`, worldId: 'w', characterId, eventId, isAlive } as unknown as CharacterSnapshot
-}
 function fact(id: string, title: string, tags: string[], readerLearnsAtEventId: string | null): KnowledgeFact {
   return { id, worldId: 'w', title, description: '', tags, readerLearnsAtEventId, originEventId: null, createdAt: 0, updatedAt: 0 }
 }
@@ -27,56 +24,70 @@ const chapters = [chapter('c1', 1), chapter('c2', 2), chapter('c3', 3)]
 const cast = [char('kael', 'Kael'), char('mira', 'Mira')]
 
 describe('computeProseMentionIssues', () => {
-  it('flags a character named in the prose but not in the cast', () => {
+  it('flags a name in the prose that the cast does not account for', () => {
     const events = [event('e1', 'c1', 0, { involvedCharacterIds: ['kael'] })]
-    const sceneTextByEvent = new Map([['e1', 'Kael turned to Mira and spoke.']])
-    const issues = computeProseMentionIssues({ events, chapters, characters: cast, snapshots: [], sceneTextByEvent })
+    const sceneTextByEvent = new Map([['e1', 'Kael turned to Mira. Mira did not look up.']])
+    const issues = computeProseMentionIssues({ events, characters: cast, sceneTextByEvent })
     expect(issues).toHaveLength(1)
-    expect(issues[0]).toMatchObject({ kind: 'untagged', characterId: 'mira', eventId: 'e1' })
+    expect(issues[0].eventId).toBe('e1')
+    expect(issues[0].characters).toEqual([{ characterId: 'mira', characterName: 'Mira', count: 2 }])
+  })
+
+  /*
+    The bound that matters. Per name, this check produced 4,894 warnings across
+    the forty-six shipped books — three quarters of everything the continuity
+    checker had to say, because in a novel people are talked about far more
+    often than they are present. One scene is one question.
+  */
+  it('asks once per scene, however many names are unaccounted for', () => {
+    const events = [event('e1', 'c1', 0, { involvedCharacterIds: [] })]
+    const sceneTextByEvent = new Map([['e1', 'Kael and Mira. Kael again, and Mira again.']])
+    const issues = computeProseMentionIssues({ events, characters: cast, sceneTextByEvent })
+    expect(issues).toHaveLength(1)
+    expect(issues[0].characters.map((c) => c.characterName).sort()).toEqual(['Kael', 'Mira'])
+  })
+
+  it('ignores a name that appears only once, and keeps one that recurs', () => {
+    const events = [event('e1', 'c1', 0), event('e2', 'c2', 0)]
+    const once = new Map([['e1', 'A letter came from Mira.']])
+    expect(computeProseMentionIssues({ events, characters: cast, sceneTextByEvent: once })).toEqual([])
+
+    const twice = new Map([['e2', 'A letter came from Mira. Mira had written it herself.']])
+    const issues = computeProseMentionIssues({ events, characters: cast, sceneTextByEvent: twice })
+    expect(issues).toHaveLength(1)
+    expect(issues[0].characters[0]).toMatchObject({ characterName: 'Mira', count: 2 })
   })
 
   it('does not flag characters already in the cast or POV', () => {
     const events = [event('e1', 'c1', 0, { involvedCharacterIds: ['kael'], povCharacterId: 'mira' })]
-    const sceneTextByEvent = new Map([['e1', 'Kael and Mira faced the storm.']])
-    const issues = computeProseMentionIssues({ events, chapters, characters: cast, snapshots: [], sceneTextByEvent })
-    expect(issues).toHaveLength(0)
+    const sceneTextByEvent = new Map([['e1', 'Kael and Mira faced the storm. Kael spoke, Mira did not.']])
+    expect(computeProseMentionIssues({ events, characters: cast, sceneTextByEvent })).toHaveLength(0)
   })
 
   it('does not flag a character who is an explicit @-mention on the event', () => {
     const events = [event('e1', 'c1', 0, { involvedCharacterIds: ['kael'], mentionedCharacterIds: ['mira'] })]
-    const sceneTextByEvent = new Map([['e1', 'Kael spoke of Mira, far away.']])
-    const issues = computeProseMentionIssues({ events, chapters, characters: cast, snapshots: [], sceneTextByEvent })
-    expect(issues).toHaveLength(0)
+    const sceneTextByEvent = new Map([['e1', 'Kael spoke of Mira, far away. Mira, always Mira.']])
+    expect(computeProseMentionIssues({ events, characters: cast, sceneTextByEvent })).toHaveLength(0)
   })
 
-  it('flags a dead character named in a later scene', () => {
-    const events = [
-      event('e1', 'c1', 0, { involvedCharacterIds: ['mira'] }),
-      event('e3', 'c3', 0, { involvedCharacterIds: ['mira'] }),
-    ]
-    // Kael dies at e1; his name then appears in e3's prose (not in that cast).
-    const snapshots = [snap('kael', 'e1', false)]
-    const sceneTextByEvent = new Map([['e3', 'Mira remembered how Kael had fallen.']])
-    const issues = computeProseMentionIssues({ events, chapters, characters: cast, snapshots, sceneTextByEvent })
+  /*
+    The dead are not a separate finding here, deliberately. The check that made
+    them one reported Billy Bones thirty-eight times on *Treasure Island*: he
+    dies in chapter three and the whole plot is his map and his chest. Naming
+    the dead is what novels do. `dead-in-event` asks the answerable version —
+    is a dead character in the scene's *cast*.
+  */
+  it('treats a dead character named in the prose as an ordinary unaccounted name', () => {
+    const events = [event('e3', 'c3', 0, { involvedCharacterIds: ['mira'] })]
+    const sceneTextByEvent = new Map([['e3', 'Mira remembered Kael. Kael had fallen at the gate.']])
+    const issues = computeProseMentionIssues({ events, characters: cast, sceneTextByEvent })
     expect(issues).toHaveLength(1)
-    expect(issues[0]).toMatchObject({ kind: 'dead', characterId: 'kael', eventId: 'e3' })
-  })
-
-  it('treats a dead mention in a flashback as ordinary drift, not a death error', () => {
-    const events = [
-      event('e1', 'c1', 0),
-      event('e3', 'c3', 0, { isFlashback: true }),
-    ]
-    const snapshots = [snap('kael', 'e1', false)]
-    const sceneTextByEvent = new Map([['e3', 'Kael laughed in the sunlit yard.']])
-    const issues = computeProseMentionIssues({ events, chapters, characters: cast, snapshots, sceneTextByEvent })
-    expect(issues[0].kind).toBe('untagged')
+    expect(issues[0].characters[0].characterName).toBe('Kael')
   })
 
   it('ignores events without prose', () => {
     const events = [event('e1', 'c1', 0)]
-    const issues = computeProseMentionIssues({ events, chapters, characters: cast, snapshots: [], sceneTextByEvent: new Map() })
-    expect(issues).toEqual([])
+    expect(computeProseMentionIssues({ events, characters: cast, sceneTextByEvent: new Map() })).toEqual([])
   })
 })
 

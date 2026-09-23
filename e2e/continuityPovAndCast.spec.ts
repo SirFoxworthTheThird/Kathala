@@ -107,7 +107,12 @@ test.describe('The continuity warnings that knew their own fix', () => {
     clears the warning and cannot put somebody in a room they are not in.
   */
   test('a character named in the prose can be recorded as mentioned from the panel', async ({ page }) => {
-    await checkerFor(page, { pov: null, prose: 'Maren Vale found the letter and did not open it.' })
+    // Twice: one mention is a reference, and the check asks only about names
+    // that recur.
+    await checkerFor(page, {
+      pov: null,
+      prose: 'Maren Vale found the letter and did not open it. Maren Vale never did.',
+    })
 
     const dialog = page.getByRole('dialog').first()
     await expect(dialog.getByText(/named in the prose but not in the cast/)).toBeVisible()
