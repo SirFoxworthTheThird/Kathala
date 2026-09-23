@@ -8,7 +8,7 @@ Four things live here, and they are not the same kind of thing.
 | **`images/`** | The guide's screenshots, numbered in the order they appear. Captured at 2880×1800 by `scripts/capture-guide-shots.mjs`. | **Yes** — a change to what a screen looks like recaptures its shot. |
 | **`wiki/`** | The GitHub wiki, mirrored so it can be reviewed in a pull request. Same material as the guide, organised for looking one thing up. [`wiki/README.md`](wiki/README.md) says how to publish it. | **Yes** |
 | **`release-notes/`** | What shipped in a release. | Written once, per release. |
-| **`records/`** | What someone saw, on a day, in a version of the app that no longer exists. Writer and reader runs, UX reviews, the [closed architecture findings](records/architecture-findings.md), the [rename plan](records/rename-plan.md). | **No, deliberately.** |
+| **`records/`** | What someone saw, on a day, in a version of the app that no longer exists. Writer and reader runs, UX reviews, the [closed architecture findings](records/architecture-findings.md), the [rename plan](records/rename-plan.md), and the [roadmap as it stood when its 184 completed items were archived](records/roadmap-2026-09-23.md). | **No, deliberately.** |
 
 ## Why `records/` is never updated
 
