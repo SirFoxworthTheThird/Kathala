@@ -34,11 +34,12 @@ const live = Object.fromEntries(
  * Documents that record what someone saw, on a day, in an application that was
  * called something else at the time. Rewriting these would make an observation
  * say what was never observed, so they keep the old name on purpose.
+ *
+ * One folder rather than six filename prefixes, since the records were gathered
+ * into `docs/records/`. A prefix list is a rule nobody can see from the file
+ * tree; a folder is one anybody can.
  */
-const RECORDS = [
-  'docs/writer-run-', 'docs/reader-run-', 'docs/writer-journey-',
-  'docs/ux-review.md', 'docs/release-notes/', 'docs/rename-plan.md',
-]
+const RECORDS = ['docs/records/', 'docs/release-notes/']
 const isRecord = (path: string) => RECORDS.some((r) => path.startsWith(r))
 
 /**

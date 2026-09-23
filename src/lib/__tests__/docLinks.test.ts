@@ -20,7 +20,14 @@ import { describe, it, expect } from 'vitest'
  * then fails `tsc -b` for want of node types.
  */
 
-const docs = import.meta.glob('../../../{README.md,docs/GUIDE.md}', {
+/*
+  Four documents, not two. `ROADMAP.md` linked to twenty-one files in
+  `docs/features/` and went on doing so after that folder was deleted — every
+  link dead, and nothing failed, because this walk did not read it. A rule that
+  covers the documents somebody remembered is a rule with the same hole in it as
+  the docs.
+*/
+const docs = import.meta.glob('../../../{README.md,ROADMAP.md,docs/GUIDE.md,docs/README.md}', {
   eager: true, query: '?raw', import: 'default',
 }) as Record<string, string>
 
@@ -54,7 +61,7 @@ function resolve(fromDoc: string, target: string): string {
 describe('the shipped docs', () => {
   it('has both docs, with links in them', () => {
     // Without this every rule below passes on an empty glob.
-    expect(Object.keys(docs).sort()).toHaveLength(2)
+    expect(Object.keys(docs).sort()).toHaveLength(4)
     for (const [path, text] of Object.entries(docs)) {
       expect(text.length, `${path} is empty`).toBeGreaterThan(1000)
       expect(text.match(LINK)?.length ?? 0, `${path} has no links`).toBeGreaterThan(0)
@@ -83,7 +90,7 @@ describe('the shipped docs', () => {
         [...text.matchAll(/^#{2,4}\s+(.*)$/gm)].map(([, h]) => slug(h.trim())),
       )
       const targets = [...text.matchAll(/\]\(#([^)\s]+)\)/g)].map(([, t]) => t)
-      if (path.endsWith('README.md') && targets.length === 0) continue
+      if (targets.length === 0) continue
       expect(headings.size, `${path} has no headings`).toBeGreaterThan(10)
       expect(targets.length, `${path} has no in-page links`).toBeGreaterThan(10)
       const dead = targets.filter((t) => !headings.has(t))
@@ -106,5 +113,35 @@ describe('the shipped docs', () => {
     // The guide is illustrated; if this drops to nothing the walk has broken.
     expect(checked).toBeGreaterThan(40)
     expect(dead, `these name a file the repository does not have:\n${dead.join('\n')}`).toEqual([])
+  })
+
+  /*
+    And the other direction: a picture nobody shows.
+
+    `docs/images/reader-run-2026-08-26/` held eighteen screenshots, 4.3 MB, for
+    a report deleted eight months earlier. Deleting a document does not delete
+    what it pointed at, and nothing was looking — a dead link is at least
+    visible to a reader, while an orphan is visible to nobody and grows the
+    repository forever.
+
+    Scoped to the guide's own folder. The records keep their screenshots beside
+    them and are never edited again, so holding them to a rule about current
+    references would be asking the past to stay tidy.
+  */
+  it('ships no screenshot that nothing shows', () => {
+    const shots = Object.keys(
+      import.meta.glob('../../../docs/images/*.png', { eager: false }),
+    ).map((p) => (p.startsWith(REPO) ? p.slice(REPO.length) : p))
+    expect(shots.length, 'the guide has screenshots').toBeGreaterThan(50)
+
+    const shown = new Set<string>()
+    for (const [path, text] of Object.entries(docs)) {
+      for (const [, target] of text.matchAll(LINK)) {
+        if (/^(https?:|mailto:|#)/.test(target)) continue
+        shown.add(resolve(path, target.split('#')[0]))
+      }
+    }
+    const orphans = shots.filter((s) => !shown.has(s))
+    expect(orphans, `nothing in the docs shows these:\n${orphans.join('\n')}`).toEqual([])
   })
 })
