@@ -54,7 +54,7 @@ from that.
 
 The fourth one has bitten before: the map's character panel let a reader retype
 the author's notes, and the sidebar offered to move characters around the map.
-Both are fixed (`docs/ux-review.md` §29). Look for the same shape elsewhere, and
+Both are fixed (`docs/records/ux-review.md` §29). Look for the same shape elsewhere, and
 for its opposite — controls that are visible but inert, which read as broken.
 
 ## Why the proving matters
@@ -136,7 +136,7 @@ tell *confusing* from *unfamiliar* — only one of those is worth fixing.
    through it, which is what makes gating hold on screens nobody thought about.
    If you cannot find the code that produces what you are describing, you may be
    describing something else.
-4. **Check it is not already known.** `docs/ux-review.md` §22 is the reading-mode
+4. **Check it is not already known.** `docs/records/ux-review.md` §22 is the reading-mode
    pass and §29 is the map one; `docs/GUIDE.md` has *What reading mode puts
    away*. Do not re-file something closed — and if you think a closed finding
    was closed wrongly, say so and show why, because that is the most valuable
@@ -145,7 +145,7 @@ tell *confusing* from *unfamiliar* — only one of those is worth fixing.
 ## What to hand back
 
 Write a report to the path the user asked for, or
-`docs/reader-run-<date>.md` if they did not say. Structure it as:
+`docs/records/reader-run-<date>.md` if they did not say. Structure it as:
 
 - **What I set out to read**, and how far I got.
 - **What interrupted me** — findings, most costly first. For each: what I did,

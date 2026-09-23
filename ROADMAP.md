@@ -24,26 +24,28 @@ The ChapterDetailView critical bug (character/relationship state panels always e
 
 ## Feature Work
 
-Detailed specs live in `docs/features/`:
+These shipped. The per-feature design notes that used to sit in
+`docs/features/` were removed — they had drifted from the code and the
+guide documents all of this as it actually is. They remain in git history.
 
-- [x] **[Worlds](docs/features/worlds.md)** — multi-world support, dashboard, travel mode management
-- [x] **[Maps](docs/features/maps.md)** — waypoint editing, movement annotations, travel mode per movement, distance measurement tool
-- [x] **[Characters](docs/features/characters.md)** — roster, snapshot tabs, portrait images, per-character colour
-- [x] **[Relationships](docs/features/relationships.md)** — ReactFlow graph, sentiment/strength, event-scoped, per-event overrides
-- [x] **[Timeline](docs/features/timeline.md)** — chapters, events, snapshot cards, writer's notes, AI dialog
-- [x] **[Items](docs/features/items.md)** — catalogue, per-event inventory and placement, item images
-- [x] **[Arc visualization](docs/features/arc-visualization.md)** — per-character color, inventory sparkline, cell expand, character filter, export to image
-- [x] **[Continuity checker expansion](docs/features/continuity-checker.md)** — issue suppression, location-destroyed check, item-before-acquired check, keyboard navigation
-- [x] **[Playback — character movement](docs/features/playback.md)** — animated movement along trails, simultaneous movement for shared steps, sub-map transitions with portal fallback, bounds-locked map, timeline horizontal scrolling
-- [x] **[Chapter Timeline Bar](docs/features/chapter-timeline-bar.md)** — chapter/event dots, callout, playback controls, horizontal scrolling, diff trigger
-- [x] **[Search](docs/features/search.md)** — Ctrl+K palette, 7 entity types, grouped results, keyboard navigation
-- [x] **[Writer's Brief](docs/features/writers-brief.md)** — slide-in panel, chapter summary, live updates
-- [x] **[Chapter Diff](docs/features/chapter-diff.md)** — compare any two chapters, character/relationship/item diffs
-- [x] **[Export / Import](docs/features/export-import.md)** — .pwk v4 format, backward compat, sortKey backfill
-- [x] **[Themes](docs/features/themes.md)** — nine themes, CSS variable injection, per-theme fonts and overlays
-- [x] **[Timeline multi-select](docs/features/timeline-multi-select.md)** — checkboxes, shift-click range, bulk delete/move/tag, drag-to-reorder chapters
+- [x] **Worlds** — multi-world support, dashboard, travel mode management
+- [x] **Maps** — waypoint editing, movement annotations, travel mode per movement, distance measurement tool
+- [x] **Characters** — roster, snapshot tabs, portrait images, per-character colour
+- [x] **Relationships** — ReactFlow graph, sentiment/strength, event-scoped, per-event overrides
+- [x] **Timeline** — chapters, events, snapshot cards, writer's notes, AI dialog
+- [x] **Items** — catalogue, per-event inventory and placement, item images
+- [x] **Arc visualization** — per-character color, inventory sparkline, cell expand, character filter, export to image
+- [x] **Continuity checker expansion** — issue suppression, location-destroyed check, item-before-acquired check, keyboard navigation
+- [x] **Playback — character movement** — animated movement along trails, simultaneous movement for shared steps, sub-map transitions with portal fallback, bounds-locked map, timeline horizontal scrolling
+- [x] **Chapter Timeline Bar** — chapter/event dots, callout, playback controls, horizontal scrolling, diff trigger
+- [x] **Search** — Ctrl+K palette, 7 entity types, grouped results, keyboard navigation
+- [x] **Writer's Brief** — slide-in panel, chapter summary, live updates
+- [x] **Chapter Diff** — compare any two chapters, character/relationship/item diffs
+- [x] **Export / Import** — .pwk v4 format, backward compat, sortKey backfill
+- [x] **Themes** — nine themes, CSS variable injection, per-theme fonts and overlays
+- [x] **Timeline multi-select** — checkboxes, shift-click range, bulk delete/move/tag, drag-to-reorder chapters
 
-- [x] **[Timeline Relationships](docs/features/timeline-relationships.md)** — typed links between timelines (frame narrative, historical echo, embedded fiction, alternate); ghost pins on map for frame anchors; palimpsest echo rings for shared geography; cross-timeline artifacts; depth-scoped playback
+- [x] **Timeline Relationships** — typed links between timelines (frame narrative, historical echo, embedded fiction, alternate); ghost pins on map for frame anchors; palimpsest echo rings for shared geography; cross-timeline artifacts; depth-scoped playback
   - [x] Phase 1: data model + plumbing (types, DB v14, CRUD hooks, store fields, export v4)
   - [x] Phase 2: relationship management UI (panel, "Link Timelines" button, dashboard tile)
   - [x] Phase 3: playback scoping
@@ -91,7 +93,7 @@ Technical debt and structural improvements identified in architectural review. T
 
 ## Map Enhancements
 
-New capabilities identified in the maps UX review. Detailed specs in `docs/features/maps.md`.
+New capabilities identified in the maps UX review.
 
 - [x] **Location sidebar search** — filter input at the top of the Locations section in the map sidebar; filters the visible list by name in real time. Very low effort.
 
@@ -136,9 +138,9 @@ New capabilities identified in the maps UX review. Detailed specs in `docs/featu
 
 ## New Major Features
 
-- [x] **[Lore](docs/features/lore.md)** — wiki-like pages for world-building information that isn't time-varying (magic systems, history, religions, terminology, etc.). Free-form markdown editor, user-defined categories, full-text search, links from characters/locations/items, included in `.pwk` export and HTML export. New DB tables: `lorePages`, `loreCategories` (v19). Also added: timeline visibility filter ("Revealed at" event), entity backlinks (characters, items, locations), Writer's Brief integration, Related Lore tabs on character/item/location panels.
+- [x] **Lore** — wiki-like pages for world-building information that isn't time-varying (magic systems, history, religions, terminology, etc.). Free-form markdown editor, user-defined categories, full-text search, links from characters/locations/items, included in `.pwk` export and HTML export. New DB tables: `lorePages`, `loreCategories` (v19). Also added: timeline visibility filter ("Revealed at" event), entity backlinks (characters, items, locations), Writer's Brief integration, Related Lore tabs on character/item/location panels.
 
-- [x] **[Factions](docs/features/factions.md)** — named groups with event-scoped character membership (allegiances change over time). DB v21 (factions, factionMemberships) + v22 (MapRegion factionId backfill) + v23 (factionId index on mapRegions) + v24 (factionId on locationMarkers). Factions view with roster and member management; character Factions tab (membership CRUD, role/start/end event per membership); owning-faction picker on both map regions and location markers; Territories section in faction panel lists owned regions and locations; Arc View faction overlay toggle (colored cell borders + footer legend); relationship graph faction overlay toggle (colored node borders + faction badge on nodes + legend); faction badges on character cards in Writer's Brief; "Factions in scene" section in Writer's Brief; factions included in Ctrl+K search; .pwk export v6 and HTML export factions section (including location marker faction labels).
+- [x] **Factions** — named groups with event-scoped character membership (allegiances change over time). DB v21 (factions, factionMemberships) + v22 (MapRegion factionId backfill) + v23 (factionId index on mapRegions) + v24 (factionId on locationMarkers). Factions view with roster and member management; character Factions tab (membership CRUD, role/start/end event per membership); owning-faction picker on both map regions and location markers; Territories section in faction panel lists owned regions and locations; Arc View faction overlay toggle (colored cell borders + footer legend); relationship graph faction overlay toggle (colored node borders + faction badge on nodes + legend); faction badges on character cards in Writer's Brief; "Factions in scene" section in Writer's Brief; factions included in Ctrl+K search; .pwk export v6 and HTML export factions section (including location marker faction labels).
 
 ### Inter-faction Relationships
 
@@ -192,7 +194,7 @@ Findings from the UX audit (April 2026).
 ## Polish
 
 - [x] **End-to-end UX review** — walk through the app with events as the primary unit; identify rough edges introduced by the Option-A refactor
-- [x] **[Empty-state improvements](docs/features/empty-states.md)** — migrate inline empties to `EmptyState` component; context-aware messaging; zero-data vs. filtered-to-zero distinction
+- [x] **Empty-state improvements** — migrate inline empties to `EmptyState` component; context-aware messaging; zero-data vs. filtered-to-zero distinction
 
 ---
 
@@ -249,7 +251,7 @@ Findings from the end-to-end review. Bugs first, then copy/polish.
 
 ## High Priority — UX
 
-### [Onboarding & Progressive Disclosure](docs/features/onboarding-ux.md)
+### Onboarding & Progressive Disclosure
 
 Make the app intuitive from the first click without removing any functionality. Four independent pillars — implement in order:
 
@@ -265,7 +267,7 @@ Make the app intuitive from the first click without removing any functionality. 
 
 ## UX Audit Fixes (April 2026)
 
-Full audit findings in `docs/features/ux-audit.md`.
+Full audit findings in [`docs/records/ux-audit.md`](docs/records/ux-audit.md).
 
 ### Critical
 
