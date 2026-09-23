@@ -16,7 +16,7 @@ Write down where it stopped you. Then prove it.
 
 ## Why the proving matters
 
-This project has a review backlog (`docs/ux-review.md`) with over 130 closed
+This project has a review backlog (`docs/records/ux-review.md`) with over 130 closed
 findings. A large minority of them were **wrong** — not "fixed", but withdrawn
 because the thing they described was not happening. The doc records them as
 *withdrawn on measurement*, *premise measured false*, *both halves measured
@@ -85,7 +85,7 @@ only one of them is worth fixing.
    hover-revealed controls on touch, an upstream filter that never passes the
    value the finding assumed. If you cannot find the code that produces the
    behaviour you are describing, you may be describing something else.
-4. **Check it is not already known.** Search `docs/ux-review.md` for the screen
+4. **Check it is not already known.** Search `docs/records/ux-review.md` for the screen
    and the symptom. Do not re-file something closed — and if you think a closed
    finding was closed wrongly, say so explicitly and show why, because that is
    the most valuable thing you can find.
@@ -93,7 +93,7 @@ only one of them is worth fixing.
 ## What to hand back
 
 Write a report to the path the user asked for, or
-`docs/writer-run-<date>.md` if they did not say. Structure it as:
+`docs/records/writer-run-<date>.md` if they did not say. Structure it as:
 
 - **What I set out to do**, and how far I got.
 - **What stopped me** — findings, most costly first. For each: what I did, what
