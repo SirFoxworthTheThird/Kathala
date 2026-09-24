@@ -198,3 +198,111 @@ describe('learning something after dying', () => {
     expect(kinds(world('e2'))).not.toContain('dead-knower')
   })
 })
+
+/*
+  ── The three checks added after the shelf-wide census ─────────────────────
+
+  Each was measured against all forty-six books before it was written, and one
+  candidate was dropped on the measurement: *a character in two places on the
+  same in-world day* fires 2,496 times, because a day is long enough to walk
+  across, and `travel-dist` already asks the question that matters.
+*/
+
+describe('joining a faction before the story has met you', () => {
+  const world = (startEventId: string) => base({
+    characters: [person('a', 'Ayla')],
+    allEvents: [ev('e1', 'c1', 0), ev('e2', 'c2', 0, { involvedCharacterIds: ['a'] })],
+    allFactions: [{ id: 'f1', worldId: 'w', name: 'The Guild', description: '', color: null, createdAt: 0, updatedAt: 0 } as never],
+    allMemberships: [{ id: 'fm1', worldId: 'w', factionId: 'f1', characterId: 'a', role: null, startEventId, endEventId: null, createdAt: 0, updatedAt: 0 } as never],
+  })
+
+  it('is reported when the membership starts before they appear', () => {
+    expect(kinds(world('e1'))).toContain('faction-before-intro')
+  })
+
+  it('is not reported when it starts as they appear', () => {
+    expect(kinds(world('e2'))).not.toContain('faction-before-intro')
+  })
+
+  /*
+    A starting state written before the character walks on is ordinary — the
+    first appearance is the earlier of the two, so this must stay quiet.
+  */
+  it('counts a snapshot as an appearance', () => {
+    const w = world('e1')
+    w.snapshots = [snap('a', 'e1')]
+    expect(kinds(w)).not.toContain('faction-before-intro')
+  })
+})
+
+describe('learning something while recorded somewhere else', () => {
+  const world = (over: { charAt?: string; sceneAt?: string; inCast?: boolean } = {}) => base({
+    characters: [person('a', 'Ayla')],
+    allMarkers: [marker('m1'), marker('m2')],
+    allEvents: [
+      ev('e1', 'c1', 0),
+      ev('e2', 'c2', 0, {
+        locationMarkerId: over.sceneAt ?? 'm1',
+        involvedCharacterIds: over.inCast ? ['a'] : [],
+      }),
+    ],
+    snapshots: over.charAt ? [snap('a', 'e1', { currentLocationMarkerId: over.charAt })] : [],
+    knowledgeFacts: [{ id: 'f1', worldId: 'w', title: 'The heir lives', description: '', tags: [], readerLearnsAtEventId: null, originEventId: 'e1', createdAt: 0, updatedAt: 0 } as never],
+    knowledgeReveals: [{ id: 'kr1', worldId: 'w', factId: 'f1', characterId: 'a', eventId: 'e2', notes: '', createdAt: 0, updatedAt: 0 } as never],
+  })
+
+  it('is reported when the record puts them at another place', () => {
+    expect(kinds(world({ charAt: 'm2' }))).toContain('reveal-elsewhere')
+  })
+
+  it('is not reported when they are where the reveal happens', () => {
+    expect(kinds(world({ charAt: 'm1' }))).not.toContain('reveal-elsewhere')
+  })
+
+  /*
+    The two halves that keep this from becoming the naive version, which fires
+    130 times across the shelf and is usually right: news travels. Silence is
+    the correct answer when the record does not contradict the reveal.
+  */
+  it('says nothing when the character is in the scene', () => {
+    expect(kinds(world({ charAt: 'm2', inCast: true }))).not.toContain('reveal-elsewhere')
+  })
+
+  it('says nothing when nothing places the character anywhere', () => {
+    expect(kinds(world({}))).not.toContain('reveal-elsewhere')
+  })
+})
+
+describe('a scene marked done with no draft', () => {
+  const world = (status: string, drafted: boolean) => base({
+    allEvents: [ev('e1', 'c1', 0, { status }), ev('e2', 'c2', 0, { status: 'final' })],
+    sceneTexts: [
+      ...(drafted ? [{ id: 'st1', worldId: 'w', eventId: 'e1', text: 'The gate opened.', wordCount: 3, createdAt: 0, updatedAt: 0 } as never] : []),
+      // The world has prose somewhere, which is what turns this check on.
+      { id: 'st2', worldId: 'w', eventId: 'e2', text: 'Rain on the roof.', wordCount: 4, createdAt: 0, updatedAt: 0 } as never,
+    ],
+  })
+
+  it('is reported for a final scene with nothing written', () => {
+    expect(kinds(world('final', false))).toContain('scene-undrafted')
+  })
+
+  it('is not reported once the scene has text', () => {
+    expect(kinds(world('final', true))).not.toContain('scene-undrafted')
+  })
+
+  it('is not reported for a scene still in progress', () => {
+    expect(kinds(world('draft', false))).not.toContain('scene-undrafted')
+  })
+
+  /*
+    The guard that matters most. A world that is purely structure — a reference
+    built from a published book, which is most of the shipped Library — marks
+    its scenes final and has no drafts by design. Without this, the check fires
+    793 times across the shelf.
+  */
+  it('says nothing at all in a world with no prose anywhere', () => {
+    const structureOnly = base({ allEvents: [ev('e1', 'c1', 0, { status: 'final' })], sceneTexts: [] })
+    expect(kinds(structureOnly)).not.toContain('scene-undrafted')
+  })
+})
