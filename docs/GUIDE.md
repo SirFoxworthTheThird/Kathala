@@ -26,8 +26,9 @@ data deletes your book.** So Kathala tells you where the only copy stands. Besid
 the world's name in the top bar is a small backup chip — *Not backed up* until
 you have chosen somewhere to keep a copy, and *Backed up 4m ago* once you have.
 Clicking it opens [Folder and cloud sync](#folder-and-cloud-sync), where you
-choose the folder. Once a world has its first scene, the dashboard offers the
-same thing once, and you can dismiss it for good if you keep your own backups.
+choose the folder — or, in a browser without the folder picker, export a copy
+instead. Once a world has its first scene, the dashboard offers the same thing
+once, and you can dismiss it for good if you keep your own backups.
 
 **The app itself loads nothing from anywhere but itself.** No fonts, no scripts,
 no stylesheets — so opening it offline behaves exactly as opening it online
@@ -2765,10 +2766,19 @@ only the records whose parent no longer exists.
 
 ### Folder and cloud sync
 
-On Chrome, Edge, and the desktop app, choose a **sync folder** to bind the world
-to a `.pwk` file in any local folder—including one managed by Google Drive,
-OneDrive, Dropbox, or another file-sync service. **Save** writes the current
-world; **Load** previews the file before applying it.
+Choose a **sync folder** to bind the world to a `.pwk` file in any local
+folder—including one managed by Google Drive, OneDrive, Dropbox, or another
+file-sync service. **Save** writes the current world; **Load** previews the file
+before applying it.
+
+This depends on one browser feature, the folder picker, and not every browser
+has it. Chrome, Edge, Opera, Vivaldi and the desktop app do; Firefox and Safari
+do not, **Brave blocks it deliberately and offers no way to switch it back on**,
+and no browser on a phone or tablet has it. Being Chromium-based is not enough
+on its own. Where it is missing, the panel says so and offers a **.pwk export**
+instead — that works everywhere, and it is the same file the folder copy would
+have held, pictures included. You just choose where it goes each time rather
+than Kathala keeping it up to date for you.
 
 - **Smart merge** combines the two copies field by field, which is useful when
   the same world was edited on two devices. Lists are combined rather than

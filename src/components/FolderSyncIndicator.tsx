@@ -20,8 +20,15 @@ import { cn } from '@/lib/utils'
  * all. Silence there is indistinguishable from *you are safe*.
  *
  * So an unbacked world says so, quietly and in muted grey, and the chip is one
- * click from the panel that fixes it. Only a browser that cannot do this at all
- * gets nothing, because there would be nothing to offer.
+ * click from the panel that fixes it.
+ *
+ * **Nor does a browser without the folder picker get nothing.** That was the
+ * first version of this fix and it repeated the mistake one group along: Brave
+ * blocks the File System Access API with no flag to re-enable it, and no
+ * Chromium on Android exposes it, so the writers with the *fewest* routes to a
+ * second copy were the ones told least about it. They are not out of options —
+ * a `.pwk` export works everywhere — so they get the same sentence and a
+ * different remedy.
  */
 
 const POLL_MS = 20_000
@@ -30,6 +37,7 @@ type Display = BackupState
 
 const ICONS: Record<Display, typeof Check> = {
   unbacked: CloudOff,
+  unsupported: CloudOff,
   'never-synced': FolderSync,
   'in-sync': Check,
   'local-ahead': RefreshCw,
@@ -55,8 +63,9 @@ export function FolderSyncIndicator({ worldId }: { worldId: string }) {
       const b = await loadFolderBinding(worldId)
       if (cancelled) return
       setBinding(b)
-      // No folder yet: say so, unless the browser could not offer one anyway.
-      if (!b) { setDisplay(isFolderSyncSupported() ? 'unbacked' : null); return }
+      // No folder yet — and whether one can be chosen at all changes only the
+      // advice, not the standing.
+      if (!b) { setDisplay(isFolderSyncSupported() ? 'unbacked' : 'unsupported'); return }
       // Permission can lapse between sessions; auto-save is silently a no-op
       // until it is re-granted, so that has to be visible too.
       if (!(await checkPermission(b.handle))) {

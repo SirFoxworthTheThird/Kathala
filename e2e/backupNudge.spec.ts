@@ -98,3 +98,75 @@ test.describe('a world with nowhere else to live', () => {
     await expect(page.getByText('Keep a copy of this world in a folder')).toHaveCount(0)
   })
 })
+
+/**
+ * The same silence, one group along.
+ *
+ * The first version of this fix excluded browsers without the folder picker,
+ * reasoning that there would be nothing to offer them. Brave blocks the File
+ * System Access API with no flag to re-enable it, and no Chromium on Android
+ * exposes it — so the writers with the *fewest* routes to a second copy were
+ * the ones told least about it. There is something to offer: a `.pwk` export
+ * falls back to a download link and works everywhere.
+ *
+ * Chromium has the picker, so the browser is made to look like Brave by
+ * removing it before any app code runs.
+ */
+test.describe('a browser that cannot be given a folder', () => {
+  test.describe.configure({ timeout: 240_000 })
+
+  async function withoutTheFolderPicker(page: Page) {
+    await page.addInitScript(() => {
+      // It is an IDL attribute of Window, so it lives on the prototype; deleting
+      // the own property alone would leave `'showDirectoryPicker' in window` true.
+      delete (Window.prototype as unknown as Record<string, unknown>).showDirectoryPicker
+      delete (window as unknown as Record<string, unknown>).showDirectoryPicker
+    })
+  }
+
+  test('is told the same standing and a different remedy', async ({ page }) => {
+    await withoutTheFolderPicker(page)
+    const worldId = await worldWithAScene(page)
+    await addACharacterAndScene(page, worldId)
+    await page.goto(`/#/worlds/${worldId}/`, { waitUntil: 'load' })
+    await settle(page)
+
+    /*
+      Without this the test is vacuous in the worst way: Chromium *does* have
+      the picker, so a stub that silently failed to remove it would leave every
+      assertion below testing the supported path instead.
+    */
+    expect(await page.evaluate(() => 'showDirectoryPicker' in window)).toBe(false)
+
+    // The standing is the same sentence — this world is not backed up.
+    await expect(page.getByRole('button', { name: /^Backup:/ }))
+      .toHaveAccessibleName('Backup: Not backed up', { timeout: 20_000 })
+
+    // The offer is the one it can act on, and not the one it cannot.
+    await expect(page.getByText('Keep a copy of this world somewhere safe')).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText('Keep a copy of this world in a folder')).toHaveCount(0)
+
+    await page.goto(`/#/worlds/${worldId}/settings`, { waitUntil: 'load' })
+    await settle(page)
+    const main = page.getByRole('main')
+
+    // Not "requires Chrome or Edge", which named the wrong thing and offered
+    // nothing — a reader on Brave is on Chromium and was told otherwise.
+    await expect(main.getByText(/does not offer the folder picker/)).toBeVisible({ timeout: 20_000 })
+    await expect(main.getByRole('button', { name: /Export a .pwk copy/ })).toBeVisible()
+    await expect(main.getByRole('button', { name: 'Choose sync folder…' })).toHaveCount(0)
+  })
+
+  // The presence half of the pair above: with the picker in place, the same
+  // screen offers the folder and says nothing about exporting instead.
+  test('while a browser that can be is still offered the folder', async ({ page }) => {
+    const worldId = await worldWithAScene(page)
+    await addACharacterAndScene(page, worldId)
+    await page.goto(`/#/worlds/${worldId}/settings`, { waitUntil: 'load' })
+    await settle(page)
+    const main = page.getByRole('main')
+
+    await expect(main.getByRole('button', { name: 'Choose sync folder…' })).toBeVisible({ timeout: 20_000 })
+    await expect(main.getByText(/does not offer the folder picker/)).toHaveCount(0)
+  })
+})

@@ -31,6 +31,30 @@ describe('backupSummary', () => {
    * it: a backup that stopped three days ago says the same word as one written
    * a minute ago.
    */
+  /*
+    The first version of this module rendered *nothing* for a browser without
+    the folder picker, on the reasoning that there was nothing to offer. Brave
+    blocks the API with no flag to re-enable it and no Chromium on Android has
+    it, so that put the writers with the fewest routes to a second copy in the
+    group told least about it — the very mistake the `unbacked` case exists to
+    undo, repeated one group along.
+  */
+  it('gives a browser that cannot keep a folder the same standing', () => {
+    const noFolder = backupSummary({ state: 'unsupported', now: AT })
+    expect(noFolder.short).toBe(backupSummary({ state: 'unbacked', now: AT }).short)
+    expect(noFolder.tone).toBe('muted')
+  })
+
+  it('and a remedy it can actually follow', () => {
+    // The pair: the same sentence, different advice. A browser that *can*
+    // choose a folder is told to; one that cannot is told to export instead,
+    // rather than to go and find a feature it will never be offered.
+    expect(backupSummary({ state: 'unbacked', now: AT }).detail).toContain('Choose a folder')
+    const noFolder = backupSummary({ state: 'unsupported', now: AT }).detail
+    expect(noFolder).not.toContain('Choose a folder')
+    expect(noFolder).toContain('Export a .pwk')
+  })
+
   it('says when the last copy was written', () => {
     expect(backupSummary({ state: 'in-sync', lastSyncedAt: AT - 4 * 60_000, now: AT }).short)
       .toBe('Backed up 4m ago')
@@ -61,7 +85,7 @@ describe('backupSummary', () => {
   })
 
   it('warns about the three states a writer has to resolve, and about nothing else', () => {
-    const warns = (['unbacked', 'in-sync', 'local-ahead', 'never-synced', 'remote-ahead', 'conflict', 'no-permission'] as const)
+    const warns = (['unbacked', 'unsupported', 'in-sync', 'local-ahead', 'never-synced', 'remote-ahead', 'conflict', 'no-permission'] as const)
       .filter((state) => backupSummary({ state, lastSyncedAt: AT, now: AT }).tone === 'warn')
     expect(warns.sort()).toEqual(['conflict', 'no-permission', 'remote-ahead'])
   })

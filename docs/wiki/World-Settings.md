@@ -76,7 +76,9 @@ Deleting a parent record can occasionally leave an old snapshot, membership, or 
 
 ## Folder and cloud sync
 
-On **Chrome, Edge, and the desktop app**, choose a **sync folder** to bind the world to a `.pwk` file in any local folder — including one managed by Google Drive, OneDrive, Dropbox, or another file-sync service.
+Choose a **sync folder** to bind the world to a `.pwk` file in any local folder — including one managed by Google Drive, OneDrive, Dropbox, or another file-sync service.
+
+**Not every browser can do this.** It rests on one browser feature — the folder picker — and Chrome, Edge, Opera, Vivaldi and the desktop app have it while Firefox and Safari do not. Being Chromium-based is not enough: [Brave blocks it deliberately](https://github.com/brave/brave-browser/issues/18979) and offers no flag to switch it back on, and no browser on a phone or tablet exposes it. Where it is missing the panel says which feature is absent and offers a **.pwk export** in its place — the same file the folder copy would have held, pictures included, except that you choose where it goes each time instead of Kathala keeping it current.
 
 - **Save** writes the current world.
 - **Load** previews the file before applying it.
@@ -109,7 +111,7 @@ On **Chrome, Edge, and the desktop app**, choose a **sync folder** to bind the w
 
 The same status appears **next to the world name in the top bar**, so you can tell at a glance whether your work is reaching the folder without opening Settings. It carries the time of the last successful write — *Backed up 4m ago*, *Saving — last 1m ago* — because "saved" on its own is a claim with no date on it: a backup that quietly stopped three days ago would say the same word as one written a minute ago.
 
-**A world with no folder at all says *Not backed up*.** In grey rather than amber, because it is the ordinary state and not an emergency — but it is said, rather than left blank, since a blank chip is indistinguishable from *you are safe*. Clicking it brings you here. Once a world has its first scene, the dashboard offers the same thing once, and you can dismiss it for good if you keep your own backups.
+**A world with no folder at all says *Not backed up*.** In grey rather than amber, because it is the ordinary state and not an emergency — but it is said, rather than left blank, since a blank chip is indistinguishable from *you are safe*. Clicking it brings you here. Once a world has its first scene, the dashboard offers the same thing once — a folder, or an export where no folder is possible — and you can dismiss it for good if you keep your own backups.
 
 ### Conflict copies
 

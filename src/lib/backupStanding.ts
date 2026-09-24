@@ -25,6 +25,8 @@ export type BackupState =
   | 'no-permission'
   /** No folder has ever been chosen for this world. */
   | 'unbacked'
+  /** This browser does not expose the folder picker, so there is no folder to choose. */
+  | 'unsupported'
 
 export interface BackupSummary {
   short: string
@@ -52,6 +54,22 @@ export function backupSummary(input: {
       return {
         short: 'Not backed up',
         detail: 'This world exists only in this browser. Choose a folder and Kathala will keep a copy there as you write.',
+        tone: 'muted',
+      }
+    case 'unsupported':
+      /*
+        Brave blocks the File System Access API outright, with no flag to
+        re-enable it, and no Chromium on Android exposes the directory picker
+        at all. This used to render *nothing* — the reasoning being that there
+        was nothing to offer — which put the writers with the **fewest** routes
+        to a second copy in the group told least about it. There is something
+        to offer: `exportWorld` falls back to a plain download link and works
+        in every browser. So the standing is the same sentence, and only the
+        remedy differs.
+      */
+      return {
+        short: 'Not backed up',
+        detail: 'This world exists only in this browser, and this browser cannot keep a folder copy — Brave blocks it, and no mobile browser offers it. Export a .pwk file from World Settings to keep one yourself.',
         tone: 'muted',
       }
     case 'no-permission':

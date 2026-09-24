@@ -277,7 +277,7 @@ describe('SUGG-12 — priority order preserved', () => {
     const ruleOrder = SUGGESTION_RULES.map((r) => r.id)
     expect(ruleOrder).toEqual([
       'add-character', 'add-first-event', 'place-character',
-      'back-up', 'add-relationships', 'add-map', 'document-lore', 'add-factions',
+      'back-up', 'export-copy', 'add-relationships', 'add-map', 'document-lore', 'add-factions',
     ])
   })
 
@@ -430,15 +430,59 @@ describe('the backup suggestion', () => {
   })
 
   /*
-    Safari and Firefox cannot hold a folder handle at all, and a banner offering
-    something the browser will not do is worse than silence — it is the "warning
-    with no reply except compliance" shape this file's docblock already names.
+    A browser that cannot hold a folder handle is not offered a folder — a
+    banner proposing something the browser will not do is the "warning with no
+    reply except compliance" shape this file's docblock already names.
+
+    But it is not offered *nothing*, which is where this landed first. Brave
+    blocks the File System Access API with no flag to re-enable it, and no
+    Chromium on Android exposes it, so gating on `canBackUp` alone left the
+    writers with the fewest routes to a second copy the only ones never asked
+    about it. A `.pwk` export works everywhere, so they are asked about that.
   */
   it('is not offered where the browser cannot do it', () => {
-    expect(ids(evaluateSuggestions(world({
+    const cannot = world({
       characterCount: 2, eventCount: 1, hasCharacterAtAnyEvent: true,
       hasBackupFolder: false, canBackUp: false,
-    }), []))).not.toContain('back-up')
+    })
+    expect(ids(evaluateSuggestions(cannot, []))).not.toContain('back-up')
+    // The presence half, in the same test: something is offered instead.
+    expect(ids(evaluateSuggestions(cannot, []))).toContain('export-copy')
+  })
+
+  it('and the export offer stays out of the way where a folder is possible', () => {
+    expect(ids(evaluateSuggestions(world({
+      characterCount: 2, eventCount: 1, hasCharacterAtAnyEvent: true,
+      hasBackupFolder: false, canBackUp: true,
+    }), []))).not.toContain('export-copy')
+  })
+
+  it('never offers both, whatever the world looks like', () => {
+    /*
+      The two conditions are each other's negation, so this cannot fail while
+      that stays true — which is the point of asserting it. A later edit that
+      loosens either one turns a pair of alternatives into two banners saying
+      almost the same thing.
+    */
+    for (const canBackUp of [true, false]) {
+      for (const hasBackupFolder of [true, false]) {
+        for (const eventCount of [0, 1, 9]) {
+          const got = ids(evaluateSuggestions(world({
+            characterCount: 2, hasCharacterAtAnyEvent: true, eventCount, canBackUp, hasBackupFolder,
+          }), []))
+          expect(got.filter((id) => id === 'back-up' || id === 'export-copy').length)
+            .toBeLessThanOrEqual(1)
+        }
+      }
+    }
+  })
+
+  it('does not ask an empty world to export either', () => {
+    expect(ids(evaluateSuggestions(world({ canBackUp: false }), []))).not.toContain('export-copy')
+  })
+
+  it('can also be answered with no', () => {
+    expect(SUGGESTION_RULES.find((r) => r.id === 'export-copy')!.dismissible).toBe(true)
   })
 
   it('can be answered with no, like the other optional ones', () => {
