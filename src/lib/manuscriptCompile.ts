@@ -1,4 +1,5 @@
-import type { Chapter, WorldEvent, SceneText } from '@/types'
+import type { Chapter, WorldEvent, SceneText, EventStatus } from '@/types'
+import { atLeastStatus } from '@/lib/eventStatus'
 import { splitParagraphs as paragraphs } from '@/lib/manuscriptParagraphs'
 import { emphasisMarkup } from '@/lib/proseEmphasis'
 
@@ -19,6 +20,8 @@ export interface ManuscriptScene {
   wordCount: number
   /** True when the scene has any prose written. */
   written: boolean
+  /** How far along the scene is — `idea` … `final`. See `minStatus`. */
+  status: EventStatus
 }
 
 export interface ManuscriptChapter {
@@ -80,7 +83,7 @@ export function buildManuscript({
         chapterWritten += 1
         writtenScenes += 1
       }
-      return { eventId: e.id, title: e.title || 'Untitled scene', text, wordCount: wc, written }
+      return { eventId: e.id, title: e.title || 'Untitled scene', text, wordCount: wc, written, status: e.status }
     })
 
     totalWords += chapterWords
@@ -106,6 +109,16 @@ export interface CompileOptions {
   chapterTitles?: boolean
   /** Skip scenes that have no prose yet. Default true. */
   onlyWritten?: boolean
+  /**
+   * Take only scenes that have reached this stage, or none when absent.
+   *
+   * A draft goes out without the scenes that are not ready — *revised and
+   * final*, or *final only* — and because the five statuses are a progression
+   * this is a threshold rather than a set of tick-boxes. It composes with
+   * `onlyWritten` rather than replacing it: an unwritten scene marked final is
+   * still unwritten.
+   */
+  minStatus?: EventStatus | null
   /** Marker printed between scenes within a chapter. Default "* * *". */
   sceneSeparator?: string
   /** Document title (HTML <title> / leading heading). */
@@ -122,6 +135,52 @@ function escapeHtml(s: string): string {
     .replace(/>/g, '&gt;')
 }
 
+/**
+ * The scenes an export should carry, given its options.
+ *
+ * Shared because there are two compilers — this file for markdown, HTML and
+ * plain text, and `manuscriptExport.ts` for DOCX and EPUB — and a filter
+ * written twice is a filter that disagrees with itself the first time one side
+ * gains an option. Chapters left with nothing are dropped by the callers, which
+ * already do that for `onlyWritten`.
+ */
+export function scenesForExport(
+  scenes: readonly ManuscriptScene[],
+  opts: Pick<CompileOptions, 'onlyWritten' | 'minStatus'> = {},
+): ManuscriptScene[] {
+  const onlyWritten = opts.onlyWritten ?? true
+  return scenes.filter((s) =>
+    (!onlyWritten || s.written) &&
+    (!opts.minStatus || atLeastStatus(s.status, opts.minStatus)))
+}
+
+/**
+ * How much of the book a given set of export options actually carries.
+ *
+ * The dialog showed the *whole* manuscript's word and scene counts beside its
+ * options, which was true while the only option was "only written scenes" and
+ * became a lie the moment a status threshold could drop written ones: the
+ * figure beside the button would have described a different document from the
+ * one the button produced. The same fault as a continuity headline counting
+ * issues it is not showing, and worth not shipping twice.
+ */
+export function exportExtent(
+  m: BuiltManuscript,
+  opts: Pick<CompileOptions, 'onlyWritten' | 'minStatus'> = {},
+): { words: number; scenes: number; chapters: number } {
+  let words = 0
+  let scenes = 0
+  let chapters = 0
+  for (const ch of m.chapters) {
+    const included = scenesForExport(ch.scenes, opts)
+    if (included.length === 0) continue
+    chapters += 1
+    scenes += included.length
+    for (const s of included) words += s.wordCount
+  }
+  return { words, scenes, chapters }
+}
+
 /** Compile a built manuscript to a shareable string in the given format. */
 export function compileManuscript(
   m: BuiltManuscript,
@@ -134,10 +193,10 @@ export function compileManuscript(
   const title = opts.title?.trim() || 'Manuscript'
   const cover = opts.coverDataUrl
 
-  const chapterBlocks = m.chapters.map((ch) => {
-    const scenes = onlyWritten ? ch.scenes.filter((s) => s.written) : ch.scenes
-    return { ch, scenes }
-  })
+  const chapterBlocks = m.chapters.map((ch) => ({
+    ch,
+    scenes: scenesForExport(ch.scenes, { onlyWritten, minStatus: opts.minStatus }),
+  }))
 
   if (format === 'html') {
     const body = chapterBlocks

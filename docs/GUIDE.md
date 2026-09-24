@@ -1253,6 +1253,17 @@ through a five-line window.
   gives you `the-ninth-bell.md`. If the world has more than one timeline, the
   timeline's name is added, so the exports don't overwrite each other.
 
+  **Scenes to include** decides how much of the draft goes out. *Every scene* is
+  the default and behaves as it always has. *Revised and final* and *Final only*
+  send a partial draft without the scenes that aren't ready — for a submission,
+  a beta reader, or an agent — using the status you already set on each scene.
+  Because the five statuses are a progression, this is one threshold rather than
+  a row of tick-boxes, and it applies to all five formats.
+
+  The word and scene counts above the buttons describe **the export**, not the
+  book: narrow the selection and they fall with it, so the figure you read is
+  the one you are about to download.
+
 Empty scenes are flagged with a "write this scene" link, so the manuscript
 doubles as a checklist of what's left to draft.
 

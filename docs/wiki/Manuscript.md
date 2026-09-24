@@ -37,6 +37,22 @@ Download or copy the manuscript as **Markdown**, **HTML**, or **plain text** —
 
 Both are generated **right in the browser**, so nothing leaves your device.
 
+### Sending out a partial draft
+
+**Scenes to include** decides how much of the book goes out:
+
+| Choice | What it sends |
+|---|---|
+| **Every scene** | The whole written draft. The default, and what every export did before this existed |
+| **Revised and final** | Only scenes you have taken past *draft* |
+| **Final only** | Only the scenes you have declared finished |
+
+It reads the status already set on each scene, and because the five statuses are a progression — idea, outline, draft, revised, final — this is one threshold rather than a row of tick-boxes. It applies to all five formats, and composes with **Only written scenes** rather than replacing it: a scene marked *final* with nothing written in it is still unwritten.
+
+Chapters left with nothing in them are dropped entirely, so a partial draft has no bare headings in it.
+
+**The word and scene counts above the buttons describe the export, not the book.** Narrow the selection and they fall with it, so the figure you read is the one you are about to download.
+
 ---
 
 ## Find & replace
