@@ -37,6 +37,7 @@ import { MotifCadence } from './MotifCadence'
 import { WritingProgress } from './WritingProgress'
 import { evaluateSuggestions, type WorldSummaryData } from './suggestionRules'
 import { relativeTime } from '@/lib/relativeTime'
+import { loadFolderBinding, isFolderSyncSupported } from '@/lib/folderSync'
 import { plural } from '@/lib/plural'
 
 /** localStorage throws outright in some private-browsing modes. */
@@ -229,6 +230,19 @@ export default function WorldDashboardView() {
     return counts
   }, [allEvents])
 
+  /*
+    Whether this world has a folder to copy itself into. The binding lives in
+    its own IndexedDB rather than in Dexie, so it is loaded here rather than
+    arriving with the rest of the world.
+  */
+  const [backupFolder, setBackupFolder] = useState<'none' | 'bound' | 'unknown'>('unknown')
+  useEffect(() => {
+    if (!worldId) return
+    let cancelled = false
+    void loadFolderBinding(worldId).then((b) => { if (!cancelled) setBackupFolder(b ? 'bound' : 'none') })
+    return () => { cancelled = true }
+  }, [worldId])
+
   // ── Suggestion evaluation ─────────────────────────────────────────────────
   const summaryData: WorldSummaryData = {
     characterCount:        characters.length,
@@ -238,6 +252,12 @@ export default function WorldDashboardView() {
     mapLayerCount:         maps.length,
     lorePageCount:         lorePages.length,
     factionCount:          factions.length,
+    canBackUp:             isFolderSyncSupported(),
+    /*
+      Unknown reads as "backed up" until the binding has loaded, so the nudge
+      cannot flash on screen for a world that already has a folder.
+    */
+    hasBackupFolder:       backupFolder !== 'none',
   }
   const activeSuggestions = evaluateSuggestions(summaryData, dismissedIds)
 

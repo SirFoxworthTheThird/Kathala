@@ -7,6 +7,7 @@ import {
   ensurePermission, isFolderSyncSupported,
 } from '@/lib/folderSync'
 import type { FolderBinding } from '@/lib/folderSync'
+import { exportWorld } from '@/lib/exportImport'
 import { previewWorldMerge, applyWorldImport } from './cloudSyncHelpers'
 import { pushWorldToFolder, markPulled, readFolderSyncState } from './folderSyncRunner'
 import { FOLDER_SYNC_LABELS, needsAttention, type FolderSyncState } from '@/lib/folderSyncState'
@@ -18,6 +19,7 @@ type SyncState = 'idle' | 'saving' | 'loading' | 'error'
 
 export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldName: string }) {
   const [binding, setBinding]     = useState<FolderBinding | null>(null)
+  const [exportingFallback, setExportingFallback] = useState(false)
   const [syncState, setSyncState] = useState<SyncState>('idle')
   const [statusMsg, setStatusMsg] = useState<string | null>(null)
   const [confirmDisconnect, setConfirmDisconnect] = useState(false)
@@ -135,10 +137,41 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
       blurb={<>Save this world to a folder on your computer — your Google Drive, OneDrive, Dropbox, or any synced folder.
           Kathala only reads or writes when you tell it to.</>}
     >
+      {/*
+        Not a browser check — `isFolderSyncSupported` asks whether
+        `showDirectoryPicker` exists. Naming Chrome and Edge, as this used to,
+        was wrong in both directions: Opera, Vivaldi and the desktop app have
+        the API, while Brave blocks it with no flag to re-enable it and no
+        Chromium on Android exposes it at all. So a reader on Brave was told
+        Kathala required a browser they were arguably already using, and given
+        nothing to do about it.
+
+        The export below is that something: `exportWorld` falls back to a plain
+        download link when the picker is missing, so it works everywhere.
+      */}
       {!supported && (
-        <p className="text-xs text-[hsl(var(--muted-foreground))]">
-          Folder sync requires Chrome or Edge. Your current browser does not support it.
-        </p>
+        <div className="space-y-3">
+          <p className="text-xs text-[hsl(var(--muted-foreground))]">
+            This browser does not offer the folder picker, so Kathala cannot keep a copy
+            in a folder for you. Brave blocks it, and no mobile browser has it;
+            Chrome, Edge, Opera, Vivaldi and the desktop app all do.
+          </p>
+          <p className="text-xs text-[hsl(var(--muted-foreground))]">
+            You can still keep a copy yourself — this saves the whole world, pictures
+            included, as a file you can put anywhere.
+          </p>
+          <Button
+            variant="outline" size="sm" className="w-full gap-2 justify-start"
+            disabled={exportingFallback}
+            onClick={async () => {
+              setExportingFallback(true)
+              try { await exportWorld(worldId) } finally { setExportingFallback(false) }
+            }}
+          >
+            <Download className="h-4 w-4" />
+            {exportingFallback ? 'Exporting…' : 'Export a .pwk copy…'}
+          </Button>
+        </div>
       )}
 
       {supported && !binding && (
