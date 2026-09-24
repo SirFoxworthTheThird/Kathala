@@ -51,3 +51,21 @@ export function eventStatusConfig(status: unknown): { label: string; color: stri
   // Off the ramp on purpose: an unrecognised status is not a stage of one.
   return { label, color: 'hsl(var(--muted))', textColor: 'hsl(var(--muted-foreground))' }
 }
+
+/**
+ * Whether a scene has reached at least a given stage.
+ *
+ * The five statuses are a progression, so "only the finished scenes" is a
+ * threshold rather than a set of tick-boxes: *revised and final* is one choice,
+ * not two, and it keeps meaning the same thing if a sixth stage is ever added
+ * between them.
+ *
+ * An unrecognised status is **below everything**. It is the safe reading for an
+ * export: a scene whose status the app does not understand is not one anybody
+ * has declared finished, and leaving it out of a submission draft is
+ * recoverable in a way that including it is not.
+ */
+export function atLeastStatus(status: unknown, min: EventStatus): boolean {
+  const rank = EVENT_STATUSES.indexOf(status as EventStatus)
+  return rank >= 0 && rank >= EVENT_STATUSES.indexOf(min)
+}
