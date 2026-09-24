@@ -1959,6 +1959,16 @@ than forty, and putting it down shows as *left at* somewhere. It reads the same
 records you already keep — a character's inventory, and any explicit placement —
 so nothing extra needs filling in. While reading, the list stops where you have.
 
+**A row marked *gap* is not something you wrote.** If the person carrying an
+item records their state at a later scene and that state simply doesn't mention
+the item, all Kathala knows is that the record stopped listing it — nobody said
+it was handed over or put down. That reads as *no longer in Mira's inventory*,
+on a dashed row with no fill and the word **gap** in front of it, so it cannot
+be mistaken for the rows above and below it, which are yours. It happens most
+often in the ordinary order of work — draft the scenes, record where everyone
+is, hand out the props afterwards — and it is worth seeing rather than hiding,
+because it usually means an inventory is waiting to be filled in.
+
 **Things there is more than one of.** An item is normally one particular object,
 and the [Continuity Checker](#continuity-checker) treats it that way — if two
 characters hold it at the same moment, that is a contradiction worth flagging.
@@ -2803,6 +2813,11 @@ than Kathala keeping it up to date for you.
 - **Replace all** overwrites the local world with the selected file.
 - **Change folder** moves the binding. **Disconnect** removes the binding without
   deleting the file already stored in that folder.
+- **Export a .pwk copy…** takes a copy by hand, on any browser, whether or not a
+  folder is bound. It is the whole world in one file, pictures included, and
+  unlike *Export as HTML* it can be imported again. A bound folder is still the
+  better answer because it keeps itself current; this is the one that always
+  works.
 
 The panel shows where the folder stands relative to this device:
 

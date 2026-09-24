@@ -44,6 +44,23 @@ export function toggleSection(collapsed: readonly string[], id: string): string[
   return collapsed.includes(id) ? collapsed.filter((c) => c !== id) : [...collapsed, id]
 }
 
+/**
+ * Open one section, and hand back the *same list* when it is open already.
+ *
+ * `collapsed.filter(...)` always allocates, so revealing an already-open
+ * section counted as a state change and re-rendered the whole settings screen
+ * for nothing. That is not only waste: the provider rebuilds `reveal` from
+ * `collapsed`, so any effect depending on `reveal` re-ran, revealed again, and
+ * looped. A jump link that scrolled on a timer never fired — each render
+ * cleared the timer the one before it had set.
+ *
+ * Identity is the contract here, which is why this is a function with a test
+ * rather than an inline `filter`.
+ */
+export function revealSection(collapsed: readonly string[], id: string): readonly string[] {
+  return collapsed.includes(id) ? collapsed.filter((c) => c !== id) : collapsed
+}
+
 /** Fold every section currently on the page, keeping any others already shut. */
 export function collapseAll(collapsed: readonly string[], ids: readonly string[]): string[] {
   return [...new Set([...collapsed, ...ids])]

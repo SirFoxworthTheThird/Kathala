@@ -99,6 +99,8 @@ Choose a **sync folder** to bind the world to a `.pwk` file in any local folder 
 
 **Replace all** overwrites the local world with the selected file instead.
 
+**Export a .pwk copy…** takes a copy by hand, on any browser and whether or not a folder is bound — the whole world in one file, pictures included, and unlike *Export as HTML* it can be imported again. A bound folder is still the better answer because it keeps itself current; this is the one that always works. The backup chip and the dashboard's backup nudge both land on this panel.
+
 ### Sync status
 
 | State | Meaning |

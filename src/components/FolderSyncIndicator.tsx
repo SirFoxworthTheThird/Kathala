@@ -92,7 +92,10 @@ export function FolderSyncIndicator({ worldId }: { worldId: string }) {
 
   return (
     <button
-      onClick={() => navigate(`/worlds/${worldId}/settings`)}
+      // Pointed at Cloud Sync, not at the top of Settings: it is the eleventh
+      // of eleven sections, and landing on the world's name and cover image is
+      // not an answer to "your only copy is in this browser".
+      onClick={() => navigate(`/worlds/${worldId}/settings`, { state: { section: 'settings-cloud-sync' } })}
       aria-label={`Backup: ${short}`}
       title={detail}
       className={cn(

@@ -151,3 +151,60 @@ describe('upsertSnapshot — deduplication', () => {
     expect(await db.characterSnapshots.count()).toBe(2)
   })
 })
+
+/**
+ * The one write the dedupe must not swallow.
+ *
+ * A writer walked down a chapter's cast, saw *no state recorded*, opened the
+ * quick form, found it prefilled with the room the character was already in,
+ * and pressed **Record state**. Nothing happened — no row, no toast, no error,
+ * and the panel went on inviting them to record it. Nine of sixty-two cast rows
+ * in a twelve-chapter draft, and three chapters of recording appeared to work
+ * and did not land.
+ *
+ * The dedupe above is right for the writes nobody asked for. This is the one
+ * somebody asked for, and it is the case the form exists to serve — the guide
+ * promises it by name: *"makes confirming that somebody hasn't moved a single
+ * click."*
+ */
+describe('upsertSnapshot — confirming a state that has not changed', () => {
+  it('writes a record at this scene when the writer asks for one', async () => {
+    const { ev1, ev2 } = await setup()
+
+    await upsertSnapshot({ ...BASE, eventId: ev1.id, currentLocationMarkerId: 'office' })
+    const result = await upsertSnapshot(
+      { ...BASE, eventId: ev2.id, currentLocationMarkerId: 'office' },
+      { confirmUnchanged: true },
+    )
+
+    expect(await db.characterSnapshots.count()).toBe(2)
+    // At *this* scene — a record that landed on the earlier one would leave the
+    // panel saying exactly what the writer pressed the button to change.
+    expect(result.eventId).toBe(ev2.id)
+  })
+
+  it('still skips the write when nobody asked for it', async () => {
+    // The pair. The same two calls without the flag, so the difference measured
+    // is the flag and not the data.
+    const { ev1, ev2 } = await setup()
+
+    await upsertSnapshot({ ...BASE, eventId: ev1.id, currentLocationMarkerId: 'office' })
+    const result = await upsertSnapshot({ ...BASE, eventId: ev2.id, currentLocationMarkerId: 'office' })
+
+    expect(await db.characterSnapshots.count()).toBe(1)
+    expect(result.eventId).toBe(ev1.id)
+  })
+
+  it('does not duplicate a record that already exists at this scene', async () => {
+    // Confirming twice is not two assertions about one moment. The in-place
+    // branch runs before the dedupe, so the flag must not reach past it.
+    const { ev1, ev2 } = await setup()
+
+    await upsertSnapshot({ ...BASE, eventId: ev1.id, currentLocationMarkerId: 'office' })
+    await upsertSnapshot({ ...BASE, eventId: ev2.id, currentLocationMarkerId: 'office' }, { confirmUnchanged: true })
+    await upsertSnapshot({ ...BASE, eventId: ev2.id, currentLocationMarkerId: 'office' }, { confirmUnchanged: true })
+
+    expect(await db.characterSnapshots.count()).toBe(2)
+    expect(await db.characterSnapshots.where('eventId').equals(ev2.id).count()).toBe(1)
+  })
+})

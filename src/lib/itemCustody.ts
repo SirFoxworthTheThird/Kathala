@@ -17,6 +17,26 @@ export interface CustodyStep {
    * this scene and that state does not mention it. That is a gap in the record,
    * not a hand-off, and the difference is the whole of W-1 — see the third
    * branch below.
+   *
+   * **Saying it in the sentence was not enough.** A second writer's run found
+   * the same four-of-six items carrying the same invented history at the tip
+   * where the wording had been fixed, because `ItemDetailView` rendered every
+   * step through an identical row: same border, same fill, same colour. The
+   * row's *presence* in a list of events is itself a claim, whatever it says.
+   * `kind` now reaches the screen as well as the sentence — see the
+   * Whereabouts list, where a gap is dashed, unfilled and labelled.
+   *
+   * Not suppressed, and this was considered: an absence is only meaningless
+   * when the record could not have mentioned the item, which needs to know
+   * whether the state predates the item — and `Item` carries no timestamp at
+   * all. Adding one would be null for every world that already exists, so the
+   * rule would never fire on the books this was reported against. Telling the
+   * two apart on screen is the fix that works on the data there is.
+   *
+   * It is also worth keeping. A writer who means *she put it down* has two
+   * ways to say so — place it, or give it to somebody — and both produce an
+   * asserted step. An inventory that simply stops listing something is a gap
+   * every time, which is a thing worth surfacing rather than hiding.
    */
   kind: 'placed' | 'carried' | 'unlisted'
   /** For `unlisted`: whose inventory stopped listing it. */
