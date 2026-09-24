@@ -1,50 +1,31 @@
 # Kathala Roadmap
 
-Five things worth doing, in the order I would do them. Everything shipped up to
-23 September 2026 is in
+What is left, in the order I would do it. Everything shipped up to 23 September
+2026 is in
 [`docs/records/roadmap-2026-09-23.md`](docs/records/roadmap-2026-09-23.md),
-archived whole — 184 completed items, with the reasoning written at the
-time. When one of these five ships it moves there too, so this file only ever
-shows what is left.
+archived whole — 184 completed items, with the reasoning written at the time.
+
+**A shipped item is removed from this file rather than moved into that one.**
+`docs/records/` is never edited, deliberately — see
+[`docs/README.md`](docs/README.md) — so appending to it would break the one rule
+that makes a record worth keeping. The short list below is where a finished item
+goes instead: one line and the pull request that carries the reasoning, which
+keeps this file about what is left without pretending the work never happened.
+
+## Shipped since the split
+
+- **Automatic local backup** — #465. The folder copy already worked; it was
+  silent. The chip beside a world's name now says whether it is backed up and
+  when the last copy was written, the dashboard offers a folder once there is a
+  scene to lose, and browsers without the folder picker are told what they *can*
+  do instead of being told they need a different browser.
+- **Finish testing the continuity checks** — #467. The seven rules with no
+  issue-level coverage have it: travel distance, region traversal, characters
+  inside a region, cross-timeline artifacts, and the three thread cadence rules.
 
 ---
 
-## 1. Automatic local backup
-
-**The largest risk in the product, and it is not a feature — it is a duty.**
-
-Every world lives in one browser's IndexedDB. Clearing site data, a corrupted
-profile, or a reinstalled machine loses a novel, and the only backup today is
-remembering to press Export. A writer who loses a book to a cleared cache does
-not file a bug; they leave, and they are right to.
-
-`useAutoFolderSync` already writes to a user-supplied folder, which is most of
-the mechanism — what is missing is that it is opt-in and silent. Enough would
-be: offer the folder on first world creation, write after N changes or on a
-timer, and say plainly in the UI when the last backup was taken.
-
-No account, no server, no change to the local-first property.
-
-## 2. Finish testing the continuity checks
-
-Most of this shipped. Running the checker across all forty-six Library books
-(`npm run census`) found that three checks produced **89% of everything it
-said** and that all three were wrong, and that several others had never fired on
-any book at all — which from outside is indistinguishable from a check that
-cannot fire. Those are fixed, and eight rules that had no test now have one
-each, driven twice: it speaks when the world is wrong, and stays quiet when the
-world is right.
-
-**Still untested at the issue level**: travel distance, region traversal,
-characters inside a region, cross-timeline artifacts, and the three thread
-cadence rules. Each has coverage of its underlying pure function; what is
-missing is the wiring into `computeContinuityIssues`.
-
-The Continuity Checker is a promise that the app is watching the story. A check
-that quietly stops firing breaks that promise *silently* — the screen still says
-"no issues", which is exactly what it says when everything is fine.
-
-## 3. Global undo
+## 1. Global undo
 
 The operation journal (#115) was built for this: every journalled mutation
 already records enough to invert itself, and `invertOperation` exists. Today the
@@ -54,7 +35,7 @@ Characters screen or a wrong bulk tag is unrecoverable.
 The infrastructure is paid for. Not exposing it is leaving the value of #115 on
 the floor.
 
-## 4. Full-text search across prose
+## 2. Full-text search across prose
 
 `Ctrl+K` finds entities; find-and-replace works inside one scene. Neither
 answers *where does this phrase appear in the book* — for a writer chasing a
@@ -65,7 +46,7 @@ can run to hundreds of thousands of words, so this is a real gap rather than a
 convenience. Reading mode makes it delicate: results must respect the spoiler
 cursor, or search becomes the hole in the gate.
 
-## 5. Export by scene status
+## 3. Export by scene status
 
 The DOCX/EPUB compile filters written against unwritten. It should also be able
 to take only `final` or `revised` scenes, so a draft can be sent out without the
