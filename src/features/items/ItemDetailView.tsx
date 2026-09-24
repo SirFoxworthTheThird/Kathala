@@ -3,6 +3,7 @@ import { BlockingReason } from '@/components/BlockingReason'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Upload, Trash2, Check, X, Plus, Layers, History, MapPin } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { useItem, updateItem, deleteItem } from '@/db/hooks/useItems'
 import { storeBlob } from '@/db/hooks/useBlobs'
 import { LinkImageButton } from '@/components/LinkImageButton'
@@ -344,16 +345,43 @@ export default function ItemDetailView() {
               </span>
             </div>
             <ol className="flex flex-col gap-1.5">
+              {/*
+                An inferred row does not look like an asserted one.
+
+                `kind` used to reach the screen only through the sentence, and
+                every step rendered through this identical `<li>` — same border,
+                same background, same colour. A writer measured them and filed
+                it again: four of six items showed a row that reads as an event
+                and is only an absence in the record. The wording alone was not
+                enough, because the row's *presence* in a list of events is
+                itself a claim.
+
+                So the two are told apart without reading: a dashed border, no
+                card fill, and the word "gap" in front of the sentence.
+              */}
               {custody.map((step) => (
                 <li
                   key={step.eventId}
-                  className="flex items-baseline gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-2 text-xs"
+                  className={cn(
+                    'flex items-baseline gap-2 rounded border px-3 py-2 text-xs',
+                    step.kind === 'unlisted'
+                      ? 'border-dashed border-[hsl(var(--border))] bg-transparent text-[hsl(var(--muted-foreground))]'
+                      : 'border-[hsl(var(--border))] bg-[hsl(var(--card))]',
+                  )}
                 >
                   <span className="shrink-0 tabular-nums text-[hsl(var(--muted-foreground))]">
                     Ch. {step.chapterNumber}
                   </span>
                   <span className="min-w-0 flex-1 truncate">{step.sceneTitle || 'Untitled scene'}</span>
                   <span className="shrink-0 text-[hsl(var(--muted-foreground))]">
+                    {step.kind === 'unlisted' && (
+                      <span
+                        className="mr-1.5 rounded-sm border border-[hsl(var(--border))] px-1 py-px text-[10px] uppercase tracking-wide"
+                        title="Nobody recorded a hand-off here — the state written at this scene simply does not mention the item."
+                      >
+                        gap
+                      </span>
+                    )}
                     {describeCustodyStep(step)}
                   </span>
                 </li>

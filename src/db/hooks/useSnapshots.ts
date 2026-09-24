@@ -166,8 +166,35 @@ function charSnapContentEqual(
   )
 }
 
+/**
+ * How to treat a write that says exactly what the last record already said.
+ *
+ * `confirmUnchanged` is what a writer pressing **Record state** means. The
+ * dedupe below is right for the writes nobody asked for — an item cascade, a
+ * bulk field set, an AI import — where a duplicate row is noise. It is wrong
+ * for the one interaction the quick form exists for.
+ *
+ * A writer walked down a chapter's cast, saw *no state recorded*, opened the
+ * form, found it prefilled with the room the character was already in, and
+ * pressed the button. Nothing happened: no row, no toast, no error, and the
+ * panel went on inviting them to record it. It fired on nine of sixty-two cast
+ * rows — every scene set in the same room as the one before it — and three
+ * chapters of recording appeared to work and did not land. The guide promises
+ * this exact case by name: *"makes confirming that somebody hasn't moved a
+ * single click."*
+ *
+ * The confirmation is not redundant, either. A resolved state is *last known*;
+ * a record at this scene is an assertion **about this scene**, which is what
+ * the writer was asked for and what `stale-snapshot` counts.
+ */
+export interface UpsertSnapshotOptions {
+  /** Write a record even when it matches the last known state. */
+  confirmUnchanged?: boolean
+}
+
 export async function upsertSnapshot(
-  data: Omit<CharacterSnapshot, 'id' | 'sortKey' | 'createdAt' | 'updatedAt'>
+  data: Omit<CharacterSnapshot, 'id' | 'sortKey' | 'createdAt' | 'updatedAt'>,
+  options: UpsertSnapshotOptions = {},
 ): Promise<CharacterSnapshot> {
   const now = Date.now()
   const sortKey = await computeSortKey(data.eventId)
@@ -191,8 +218,8 @@ export async function upsertSnapshot(
     .filter((s) => (s.sortKey ?? 0) < sortKey)
     .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
 
-  if (prevBest && charSnapContentEqual(data, prevBest)) {
-    return prevBest // unchanged — no new record needed
+  if (prevBest && charSnapContentEqual(data, prevBest) && !options.confirmUnchanged) {
+    return prevBest // unchanged, and nobody asked for it — no new record needed
   }
 
   const snapshot: CharacterSnapshot = {

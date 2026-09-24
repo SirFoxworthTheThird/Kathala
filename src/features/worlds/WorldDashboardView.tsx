@@ -542,7 +542,7 @@ export default function WorldDashboardView() {
                 title={rule.title}
                 navLabel={rule.navLabel}
                 dismissible={rule.dismissible}
-                onNavigate={() => navigate(rule.navigateTo)}
+                onNavigate={() => navigate(rule.navigateTo, rule.navigateSection ? { state: { section: rule.navigateSection } } : undefined)}
                 onDismiss={rule.dismissible ? () => dismissSuggestion(rule.id) : undefined}
               />
             ))}

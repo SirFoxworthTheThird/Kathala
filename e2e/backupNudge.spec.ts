@@ -170,3 +170,57 @@ test.describe('a browser that cannot be given a folder', () => {
     await expect(main.getByText(/does not offer the folder picker/)).toHaveCount(0)
   })
 })
+
+/**
+ * The chip lands on the backup, not three screens above it.
+ *
+ * Both entry points added with the chip — the chip itself and the dashboard
+ * nudge — navigated to bare `/settings`, and Cloud Sync is the eleventh of
+ * eleven sections, measured by a writer at 2,849px down. Somebody with eleven
+ * thousand words in one browser profile clicked the control that says *your
+ * only copy is here* and arrived at the world's name and cover image.
+ *
+ * The app is on a hash router, so the jump travels as router state rather than
+ * a URL fragment; that makes this only checkable in a browser.
+ */
+test.describe('the backup chip arrives where the backup is', () => {
+  test.describe.configure({ timeout: 240_000 })
+
+  test('scrolls to Cloud Sync, which can now make a file', async ({ page }) => {
+    const worldId = await worldWithAScene(page)
+    await addACharacterAndScene(page, worldId)
+    await page.goto(`/#/worlds/${worldId}/`, { waitUntil: 'load' })
+    await settle(page)
+
+    // Scoped to the section, because the index chip across the top of Settings
+    // carries the same name and a page-wide lookup matches both.
+    const heading = page.locator('#settings-cloud-sync h2')
+
+    await page.getByRole('button', { name: /^Backup:/ }).click()
+    await expect(page).toHaveURL(/\/settings/)
+    await expect(heading).toBeInViewport({ timeout: 20_000 })
+
+    /*
+      And the screen it lands on can answer the warning. Until this button
+      existed the only export here was *Export as HTML*, which cannot be
+      imported — the writer left believing the app had no world export at all.
+    */
+    await expect(page.getByRole('main').getByRole('button', { name: /Export a .pwk copy/ })).toBeVisible()
+  })
+
+  test('while arriving at Settings any other way leaves it where it was', async ({ page }) => {
+    /*
+      The pair, and it is the half that matters: Cloud Sync is far enough down
+      that it is out of view on arrival, so the assertion above is about the
+      jump and not about a short page where everything is visible anyway.
+    */
+    const worldId = await worldWithAScene(page)
+    await addACharacterAndScene(page, worldId)
+    await page.goto(`/#/worlds/${worldId}/settings`, { waitUntil: 'load' })
+    await settle(page)
+
+    const heading = page.locator('#settings-cloud-sync h2')
+    await expect(heading).toBeAttached({ timeout: 20_000 })
+    await expect(heading).not.toBeInViewport()
+  })
+})

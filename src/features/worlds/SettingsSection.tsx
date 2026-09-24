@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { ChevronRight } from 'lucide-react'
 import {
   SETTINGS_COLLAPSED_KEY, parseCollapsed, serialiseCollapsed,
-  isSectionOpen, toggleSection,
+  isSectionOpen, toggleSection, revealSection,
 } from '@/lib/settingsSections'
 
 interface SettingsFoldState {
@@ -41,7 +41,8 @@ export function SettingsFoldProvider({ children }: { children: ReactNode }) {
     collapsed,
     setCollapsed: setCollapsedState,
     toggle: (id) => setCollapsedState((c) => toggleSection(c, id)),
-    reveal: (id) => setCollapsedState((c) => c.filter((x) => x !== id)),
+    // Same array back when the section is open already — see `revealSection`.
+    reveal: (id) => setCollapsedState((c) => revealSection(c, id) as string[]),
   }), [collapsed])
 
   return <FoldContext.Provider value={value}>{children}</FoldContext.Provider>
