@@ -1,7 +1,12 @@
 import { test, expect } from '@playwright/test'
+import { fileURLToPath } from 'url'
+import * as path from 'path'
 import { resetDB } from './helpers/reset'
-import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
+import { waitForMapReady } from './helpers/map'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const MAIN_MAP = path.resolve(__dirname, 'map_example/main_map.jpg')
 
 /**
  * **Custom** is an escape hatch, not a seventh label.
@@ -25,28 +30,42 @@ test.describe('a custom location type carries the writer\'s own word', () => {
     await expect(page).toHaveURL(/#\/worlds\//)
     const worldId = page.url().split('/worlds/')[1].split('/')[0]
     await dismissFirstRunGuide(page)
-    await page.evaluate(async (id: string) => {
-      const db = (window as { __pwdb?: never }).__pwdb as unknown as
-        Record<string, { add: (v: unknown) => Promise<unknown> }>
-      const now = Date.now()
-      await db.mapLayers.add({
-        id: 'l1', worldId: id, parentMapId: null, name: 'Vantage', description: '',
-        imageId: null, imageWidth: 1000, imageHeight: 1000, scalePixelsPerUnit: null,
-        scaleUnit: null, levelGroupId: null, levelIndex: null, levelLabel: null,
-        createdAt: now, updatedAt: now,
-      })
-    }, worldId)
-    await page.goto(`/#/worlds/${worldId}/maps/l1`, { waitUntil: 'load' })
-    await settle(page)
+
+    /*
+      A real uploaded image, not a seeded blank layer. The floating toolbar —
+      which is the only way to reach Add location — mounts on an active layer,
+      and a layer seeded through `__pwdb` with `imageId: null` never becomes
+      one. Seeding it looked like the cheap route and cost an hour.
+    */
+    await page.getByRole('link', { name: /maps/i }).first().click()
+    await page.mouse.move(700, 400)
+    await page.getByRole('button', { name: 'Upload Map' }).first().click()
+    await expect(page.getByRole('heading', { name: /Upload Map/ })).toBeVisible()
+    await page.locator('form input[type="file"][accept="image/*"]').setInputFiles(MAIN_MAP)
+    await page.getByLabel('Map Name').clear()
+    await page.getByLabel('Map Name').fill('Vantage')
+    await page.getByRole('button', { name: 'Upload', exact: true }).click()
+    await waitForMapReady(page)
     return worldId
+  }
+
+  /**
+   * The dialog has no button of its own. **Location** on the floating toolbar
+   * puts the map into add-marker mode, and the dialog opens where you then
+   * click the canvas — so placing a pin is two steps, not one.
+   */
+  async function openAddLocation(page: import('@playwright/test').Page) {
+    await page.getByRole('button', { name: 'Location', exact: true }).click()
+    await page.locator('.leaflet-container').click({ position: { x: 300, y: 220 } })
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible({ timeout: 20_000 })
+    return dialog
   }
 
   test('offers a word to call it, and only for Custom', async ({ page }) => {
     await mapWithADialog(page)
 
-    await page.getByRole('button', { name: /Add location|\+ Location/i }).first().click()
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toBeVisible({ timeout: 20_000 })
+    const dialog = await openAddLocation(page)
 
     /*
       The absence half first, on the type the dialog opens with. Without it a
@@ -67,9 +86,7 @@ test.describe('a custom location type carries the writer\'s own word', () => {
   test('and stores it against the marker, not the enum', async ({ page }) => {
     const worldId = await mapWithADialog(page)
 
-    await page.getByRole('button', { name: /Add location|\+ Location/i }).first().click()
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toBeVisible({ timeout: 20_000 })
+    const dialog = await openAddLocation(page)
     await dialog.getByLabel('Name').fill('Bay Nineteen')
     await dialog.getByRole('button', { name: /^Type / }).click()
     await page.getByRole('option', { name: 'Custom' }).click()

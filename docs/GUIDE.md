@@ -1139,6 +1139,14 @@ they travelled, whether they came back from the dead — lives on **Current
 State**, which the form links to as **Full editor**. What the short form doesn't
 ask about, it leaves exactly as it was.
 
+**And it takes corrections, not only first answers.** A card for somebody whose
+state *is* recorded carries a pencil, which opens the same short form on what is
+already written there — including the note, which is kept rather than blanked,
+because a note on this scene's own record is something you wrote about this
+scene. Putting a character in the wrong room used to mean leaving the chapter
+for their page and coming back; it is now the same click as recording them in
+the first place.
+
 ![Chapter detail](images/05-chapter-detail.png)
 
 **A scene card shows what it holds.** A scene can carry a dozen things —
@@ -1657,9 +1665,18 @@ of the window (*Kathala / your world / Middle Earth · 1 km = 2 px*), leaving
 the canvas corners free. Top-left holds the **Show** chips —
 toggles for characters, trails, labels, journeys, and locations (the chevrons
 narrow those to particular characters or location types). Top-right holds the
-two commands you reach for while working a map, **+ Location** and **Label**,
+two commands you reach for while working a map, **Location** and **Label**,
 plus a **⋯** menu for everything you set up once or use occasionally: map
-scale, add level, replace image, export as PNG, and the AI tools. Zoom sits in
+scale, add level, replace image, export as PNG, and the AI tools.
+
+**A place's type can be your own word.** The six named types — city, town,
+dungeon, landmark, building, region — suit a map of a country better than a map
+of a ship, a station or an office block. Choosing **Custom** asks what to call
+it instead (*docking bay*, *chantry*, *server floor*), and that word is what the
+pin and the location panel show. Leave it empty and the place simply shows no
+type at all, which is better than showing the word "Custom". The type only
+labels; the pin's colour still comes from the six.
+ Zoom sits in
 the bottom-right corner of the canvas.
 
 ![Map tools menu](images/52-map-tools-menu.png)
