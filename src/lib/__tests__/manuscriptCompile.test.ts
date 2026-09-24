@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildManuscript, compileManuscript } from '@/lib/manuscriptCompile'
+import { buildManuscript, compileManuscript, scenesForExport } from '@/lib/manuscriptCompile'
 import type { Chapter, WorldEvent, SceneText } from '@/types'
 
 function chapter(id: string, number: number, title: string, synopsis = ''): Chapter {
@@ -158,5 +158,83 @@ describe('underscored emphasis', () => {
 
   it('stays underscored in plain text, which has no other way to say it', () => {
     expect(compileManuscript(built(), 'text')).toContain('_Times_')
+  })
+})
+
+/**
+ * Sending out a draft without the scenes that are not ready.
+ *
+ * The filter is shared with `manuscriptExport.ts` — DOCX and EPUB compile
+ * separately — because a rule written twice disagrees with itself the first
+ * time one side gains an option.
+ */
+describe('scenesForExport', () => {
+  const scene = (id: string, status: string, written = true) =>
+    ({ eventId: id, title: id, text: written ? 'Words.' : '', wordCount: written ? 1 : 0, written, status }) as never
+
+  const all = [
+    scene('idea', 'idea'),
+    scene('draft', 'draft'),
+    scene('revised', 'revised'),
+    scene('final', 'final'),
+  ]
+  const ids = (s: readonly { eventId: string }[]) => s.map((x) => x.eventId)
+
+  it('takes everything when no stage is asked for', () => {
+    // The default, and what every export did before this option existed.
+    expect(ids(scenesForExport(all, {}))).toEqual(['idea', 'draft', 'revised', 'final'])
+  })
+
+  it('takes the stage asked for and everything past it', () => {
+    expect(ids(scenesForExport(all, { minStatus: 'revised' }))).toEqual(['revised', 'final'])
+    expect(ids(scenesForExport(all, { minStatus: 'final' }))).toEqual(['final'])
+  })
+
+  it('composes with onlyWritten rather than replacing it', () => {
+    /*
+      An unwritten scene marked final is still unwritten, and a submission
+      draft must not carry "[No prose yet]" under a heading. Both halves
+      asserted: the unwritten final is dropped by one rule, the written draft
+      by the other.
+    */
+    const mixed = [scene('unwritten-final', 'final', false), scene('written-draft', 'draft')]
+    expect(ids(scenesForExport(mixed, { onlyWritten: true, minStatus: 'final' }))).toEqual([])
+    expect(ids(scenesForExport(mixed, { onlyWritten: false, minStatus: 'final' }))).toEqual(['unwritten-final'])
+    expect(ids(scenesForExport(mixed, { onlyWritten: true }))).toEqual(['written-draft'])
+  })
+})
+
+describe('compiling with a status threshold', () => {
+  it('leaves out the scenes that are not ready, and the chapters left empty', () => {
+    const m = {
+      chapters: [
+        {
+          id: 'c1', number: 1, title: 'Ready', synopsis: '', wordCount: 2, wordGoal: null, writtenScenes: 2,
+          scenes: [
+            { eventId: 'e1', title: 'Done', text: 'Polished prose.', wordCount: 2, written: true, status: 'final' },
+            { eventId: 'e2', title: 'Rough', text: 'Rough prose.', wordCount: 2, written: true, status: 'draft' },
+          ],
+        },
+        {
+          id: 'c2', number: 2, title: 'All rough', synopsis: '', wordCount: 2, wordGoal: null, writtenScenes: 1,
+          scenes: [
+            { eventId: 'e3', title: 'Also rough', text: 'More rough prose.', wordCount: 3, written: true, status: 'draft' },
+          ],
+        },
+      ],
+      totalWords: 7, totalScenes: 3, writtenScenes: 3,
+    } as never
+
+    const finalOnly = compileManuscript(m, 'markdown', { minStatus: 'final' })
+    expect(finalOnly).toContain('Polished prose.')
+    expect(finalOnly).not.toContain('Rough prose.')
+    // A chapter with nothing left in it does not print a bare heading.
+    expect(finalOnly).not.toContain('All rough')
+
+    // The pair: without the threshold, the same manuscript carries all three.
+    const everything = compileManuscript(m, 'markdown', {})
+    expect(everything).toContain('Polished prose.')
+    expect(everything).toContain('Rough prose.')
+    expect(everything).toContain('All rough')
   })
 })

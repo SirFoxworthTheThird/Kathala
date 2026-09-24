@@ -1,4 +1,6 @@
+import type { EventStatus } from '@/types'
 import type { BuiltManuscript, CompileOptions } from './manuscriptCompile'
+import { scenesForExport } from './manuscriptCompile'
 import { zipStore, type ZipEntry } from './zip'
 import { splitParagraphs as paragraphs } from '@/lib/manuscriptParagraphs'
 import { emphasisMarkup, emphasisSpans } from '@/lib/proseEmphasis'
@@ -29,9 +31,9 @@ function coverExtension(mimeType: string): 'png' | 'jpg' | null {
 }
 
 /** Chapters that have prose to include, with their kept scenes. */
-function includedChapters(m: BuiltManuscript, onlyWritten: boolean) {
+function includedChapters(m: BuiltManuscript, onlyWritten: boolean, minStatus?: EventStatus | null) {
   return m.chapters
-    .map((ch) => ({ ch, scenes: onlyWritten ? ch.scenes.filter((s) => s.written) : ch.scenes }))
+    .map((ch) => ({ ch, scenes: scenesForExport(ch.scenes, { onlyWritten, minStatus }) }))
     .filter((b) => b.scenes.length > 0)
 }
 
@@ -79,7 +81,7 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
   const title = opts.title?.trim() || 'Manuscript'
   const coverExt = opts.cover ? coverExtension(opts.cover.mimeType) : null
 
-  const blocks = includedChapters(m, onlyWritten)
+  const blocks = includedChapters(m, onlyWritten, opts.minStatus)
   const body: string[] = []
 
   // Title page.
@@ -172,7 +174,7 @@ export function compileEpub(m: BuiltManuscript, opts: BookExportOptions = {}): U
   const modified = new Date().toISOString().replace(/\.\d+Z$/, 'Z')
   const coverExt = opts.cover ? coverExtension(opts.cover.mimeType) : null
 
-  const blocks = includedChapters(m, onlyWritten)
+  const blocks = includedChapters(m, onlyWritten, opts.minStatus)
   const chapterFiles = blocks.map(({ ch, scenes }, idx) => {
     const scenesHtml = scenes
       .map((s) => (s.written ? paragraphs(s.text) : ['[No prose yet]'])

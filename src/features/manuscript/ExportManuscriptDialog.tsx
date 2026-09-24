@@ -3,9 +3,12 @@ import { Copy, Check, Download } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { compileManuscript, type BuiltManuscript, type CompileFormat } from '@/lib/manuscriptCompile'
+import { compileManuscript, exportExtent, type BuiltManuscript, type CompileFormat } from '@/lib/manuscriptCompile'
 import { compileDocx, compileEpub } from '@/lib/manuscriptExport'
 import { Input } from '@/components/ui/input'
+import { Field } from '@/components/ui/field'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import type { EventStatus } from '@/types'
 import { plural } from '@/lib/plural'
 import { manuscriptFileName } from '@/lib/manuscriptFileName'
 
@@ -42,6 +45,16 @@ export function ExportManuscriptDialog({
   const [format, setFormat] = useState<ExportFormat>('markdown')
   const [chapterTitles, setChapterTitles] = useState(true)
   const [onlyWritten, setOnlyWritten] = useState(true)
+  /*
+    Which scenes are finished enough to send.
+
+    A threshold rather than tick-boxes, because the five statuses are a
+    progression: "revised and final" is one choice, not two, and it keeps
+    meaning the same thing if a stage is ever added between them. `none` is the
+    default, so an export that nobody configured is the whole written draft, as
+    it has always been.
+  */
+  const [minStatus, setMinStatus] = useState<'none' | EventStatus>('none')
   const [author, setAuthor] = useState('')
   const [copied, setCopied] = useState(false)
   const [includeCover, setIncludeCover] = useState(true)
@@ -49,7 +62,8 @@ export function ExportManuscriptDialog({
   const [downloading, setDownloading] = useState(false)
 
   const fmt = FORMATS.find((f) => f.id === format)!
-  const opts = { chapterTitles, onlyWritten, title, author }
+  const opts = { chapterTitles, onlyWritten, title, author, minStatus: minStatus === 'none' ? null : minStatus }
+  const extent = exportExtent(manuscript, opts)
   async function loadCover() {
     if (!includeCover || !coverUrl || format === 'text') return undefined
     const response = await fetch(coverUrl)
@@ -148,6 +162,24 @@ export function ExportManuscriptDialog({
               <input type="checkbox" checked={onlyWritten} onChange={(e) => setOnlyWritten(e.target.checked)} className="accent-[hsl(var(--ring))]" />
               Only written scenes
             </label>
+            <Field label="Scenes to include" className="gap-1 pt-1">
+              <Select value={minStatus} onValueChange={(v) => setMinStatus(v as 'none' | EventStatus)}>
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Every scene</SelectItem>
+                  {/*
+                    Not "Revised and final only": that contains "Final only"
+                    whole, so every lookup by name matches both and the app's
+                    own rule is to grep before naming a control.
+                  */}
+                  <SelectItem value="revised">Revised and final</SelectItem>
+                  <SelectItem value="final">Final only</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+
             <label className="flex items-center gap-2 text-[hsl(var(--foreground))]">
               <input type="checkbox" checked={includeCover} disabled={!coverUrl || format === 'text'} onChange={(e) => setIncludeCover(e.target.checked)} className="accent-[hsl(var(--ring))]" />
               Include world cover{format === 'text' ? ' (not supported by plain text)' : ''}
@@ -163,9 +195,19 @@ export function ExportManuscriptDialog({
             </div>
           )}
 
-          <div className="flex items-center justify-between rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.4)] px-3 py-2 text-xs text-[hsl(var(--muted-foreground))]">
-            <span>{plural(manuscript.totalWords, 'word')}</span>
-            <span>{plural(manuscript.writtenScenes, 'scene')}</span>
+          {/*
+            What this export contains, not what the book contains.
+
+            These were the whole manuscript's totals, which was true while the
+            only option was "only written scenes" and would have become a lie
+            the moment a status threshold could drop written ones — the figure
+            beside the button describing a different document from the one the
+            button produces.
+          */}
+          <div data-export-extent
+            className="flex items-center justify-between rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.4)] px-3 py-2 text-xs text-[hsl(var(--muted-foreground))]">
+            <span>{plural(extent.words, 'word')}</span>
+            <span>{plural(extent.scenes, 'scene')}</span>
           </div>
 
           <div className="flex gap-2">

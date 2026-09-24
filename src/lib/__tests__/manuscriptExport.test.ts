@@ -11,13 +11,13 @@ const manuscript: BuiltManuscript = {
     {
       id: 'c1', number: 1, title: 'The Gate', synopsis: '', wordCount: 4, wordGoal: null, writtenScenes: 2,
       scenes: [
-        { eventId: 'e1', title: 'Arrival', text: 'The gate stood open.\n\nNo one waited.', wordCount: 6, written: true },
-        { eventId: 'e2', title: 'Empty', text: '', wordCount: 0, written: false },
+        { eventId: 'e1', title: 'Arrival', text: 'The gate stood open.\n\nNo one waited.', wordCount: 6, written: true, status: 'draft' },
+        { eventId: 'e2', title: 'Empty', text: '', wordCount: 0, written: false, status: 'draft' },
       ],
     },
     {
       id: 'c2', number: 2, title: 'The Road', synopsis: '', wordCount: 2, wordGoal: null, writtenScenes: 1,
-      scenes: [{ eventId: 'e3', title: 'Onward', text: 'They walked north.', wordCount: 3, written: true }],
+      scenes: [{ eventId: 'e3', title: 'Onward', text: 'They walked north.', wordCount: 3, written: true, status: 'draft' }],
     },
   ],
 }
@@ -91,8 +91,8 @@ describe('underscored emphasis in the binary formats', () => {
     chapters: [{
       id: 'c1', number: 1, title: 'The Gate', synopsis: '', wordCount: 5, wordGoal: null, writtenScenes: 2,
       scenes: [
-        { eventId: 'e1', title: 'One', text: 'She read the _Times_ & wept.', wordCount: 6, written: true },
-        { eventId: 'e2', title: 'Two', text: 'Nothing emphatic here.', wordCount: 3, written: true },
+        { eventId: 'e1', title: 'One', text: 'She read the _Times_ & wept.', wordCount: 6, written: true, status: 'draft' },
+        { eventId: 'e2', title: 'Two', text: 'Nothing emphatic here.', wordCount: 3, written: true, status: 'draft' },
       ],
     }],
   }
@@ -134,5 +134,46 @@ describe('underscored emphasis in the binary formats', () => {
     expect(zip).toContain('<em>Times</em>')
     expect(zip).not.toContain('_Times_')
     expect(zip).toContain('&amp;')
+  })
+})
+
+/**
+ * DOCX and EPUB compile separately from markdown, so the status threshold has
+ * to be proven on *their* path too. `includedChapters` used to hold its own
+ * copy of the filter; it now calls the shared `scenesForExport`, and this is
+ * what stops that wiring being dropped.
+ */
+describe('exporting only the scenes that are ready', () => {
+  const m = {
+    chapters: [{
+      id: 'c1', number: 1, title: 'One', synopsis: '', wordCount: 4, wordGoal: null, writtenScenes: 2,
+      scenes: [
+        { eventId: 'e1', title: 'Done', text: 'Polished prose.', wordCount: 2, written: true, status: 'final' },
+        { eventId: 'e2', title: 'Rough', text: 'Unready prose.', wordCount: 2, written: true, status: 'draft' },
+      ],
+    }],
+    totalWords: 4, totalScenes: 2, writtenScenes: 2,
+  } as never
+
+  const text = (bytes: Uint8Array) => new TextDecoder().decode(bytes)
+
+  it('leaves the unready scene out of a DOCX', () => {
+    const out = text(compileDocx(m, { minStatus: 'final' }))
+    expect(out).toContain('Polished prose.')
+    expect(out).not.toContain('Unready prose.')
+  })
+
+  it('and keeps it when no stage is asked for', () => {
+    // The pair, on the same document — otherwise "not present" could be true
+    // because the DOCX writer never carried the text at all.
+    const out = text(compileDocx(m, {}))
+    expect(out).toContain('Polished prose.')
+    expect(out).toContain('Unready prose.')
+  })
+
+  it('leaves the unready scene out of an EPUB too', () => {
+    const out = text(compileEpub(m, { minStatus: 'final' }))
+    expect(out).toContain('Polished prose.')
+    expect(out).not.toContain('Unready prose.')
   })
 })

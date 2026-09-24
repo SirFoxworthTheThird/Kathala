@@ -22,37 +22,48 @@ keeps this file about what is left without pretending the work never happened.
 - **Finish testing the continuity checks** — #467. The seven rules with no
   issue-level coverage have it: travel distance, region traversal, characters
   inside a region, cross-timeline artifacts, and the three thread cadence rules.
+- **Export by scene status** — #473. *Scenes to include* sends a partial draft
+  without the scenes that are not ready, on all five formats, and the word and
+  scene counts beside the button now describe the export rather than the book.
 
 ---
 
-## 1. Global undo
+## What is left
 
-The operation journal (#115) was built for this: every journalled mutation
-already records enough to invert itself, and `invertOperation` exists. Today the
-only history a writer can reach is per-scene revisions, so a mis-click on the
-Characters screen or a wrong bulk tag is unrecoverable.
+**Nothing.** Every item this file was split to track has shipped, and the two
+that were never open are recorded below.
 
-The infrastructure is paid for. Not exposing it is leaving the value of #115 on
-the floor.
+That is a statement about this list, not about the app. The section at the foot
+of this file makes the case that a list written from the code and the guide is
+the weakest kind of evidence there is — and the two writer runs since bore that
+out, finding thirteen things between them that no amount of reading the source
+would have surfaced. The next entries here should come from somebody using the
+app, not from somebody reading it.
 
-## 2. Full-text search across prose
+---
 
-`Ctrl+K` finds entities; find-and-replace works inside one scene. Neither
-answers *where does this phrase appear in the book* — for a writer chasing a
-repeated image, or a reader who remembers a line and not the chapter.
+## Already shipped, and listed here by mistake
 
-Thirty-nine Library books carry complete novels and a writer's own manuscript
-can run to hundreds of thousands of words, so this is a real gap rather than a
-convenience. Reading mode makes it delicate: results must respect the spoiler
-cursor, or search becomes the hole in the gate.
+Two items were carried into this file when the roadmap was split on 23
+September, from unchecked boxes at lines 610–612 of the archive. Neither box had
+ever been ticked; both features had been in the app for weeks. The split trusted
+the checkbox instead of the code, which is the whole of the error, and it is
+recorded rather than quietly deleted so the next reader of that archive treats
+its `[ ]` marks as claims rather than facts.
 
-## 3. Export by scene status
-
-The DOCX/EPUB compile filters written against unwritten. It should also be able
-to take only `final` or `revised` scenes, so a draft can be sent out without the
-scenes that are not ready.
-
-Small, self-contained, and the status field it needs already exists.
+- **Global undo** — shipped 29 July 2026 as #137, *Local undo, built on the
+  operation journal*. Undo and redo in the top bar, each labelled with what it
+  will take back; `Ctrl+Z` and `Ctrl+Shift+Z`, which leave text fields to the
+  browser; undo on the delete toast; a Recent Changes panel listing the stack;
+  and a phone path, where there is no keyboard. Bulk edits route through
+  journalled singles sharing a `groupId` and `undoableBatch` returns the whole
+  group, so the roadmap entry's own example — a wrong bulk tag — was covered
+  too. Eight e2e tests in `e2e/undo.spec.ts`.
+- **Full-text search across prose** — `e2e/searchProse.spec.ts` finds a scene by
+  a word that appears only in its draft, previews the line that matched rather
+  than the opening of the scene, and does not search prose the reader has not
+  reached. The entry's stated worry — that results must respect the spoiler
+  cursor — is the thing that spec's last test exists to check.
 
 ---
 
