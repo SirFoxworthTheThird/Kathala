@@ -107,7 +107,9 @@ On **Chrome, Edge, and the desktop app**, choose a **sync folder** to bind the w
 | **Both changed** | You edited here *and* another device saved — see below |
 | **Reconnect folder** | Kathala lost permission (browsers drop it between sessions); auto-save does nothing until you re-grant access |
 
-The same status appears **next to the world name in the top bar**, so you can tell at a glance whether your work is reaching the folder without opening Settings.
+The same status appears **next to the world name in the top bar**, so you can tell at a glance whether your work is reaching the folder without opening Settings. It carries the time of the last successful write — *Backed up 4m ago*, *Saving — last 1m ago* — because "saved" on its own is a claim with no date on it: a backup that quietly stopped three days ago would say the same word as one written a minute ago.
+
+**A world with no folder at all says *Not backed up*.** In grey rather than amber, because it is the ordinary state and not an emergency — but it is said, rather than left blank, since a blank chip is indistinguishable from *you are safe*. Clicking it brings you here. Once a world has its first scene, the dashboard offers the same thing once, and you can dismiss it for good if you keep your own backups.
 
 ### Conflict copies
 

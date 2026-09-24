@@ -21,6 +21,14 @@ Your story never does. Worlds, scenes, images and every edit live in your
 browser's own storage, and nothing is uploaded, synced or backed up anywhere —
 which is also why exporting is worth doing.
 
+That has one consequence worth saying plainly: **clearing your browser's site
+data deletes your book.** So Kathala tells you where the only copy stands. Beside
+the world's name in the top bar is a small backup chip — *Not backed up* until
+you have chosen somewhere to keep a copy, and *Backed up 4m ago* once you have.
+Clicking it opens [Folder and cloud sync](#folder-and-cloud-sync), where you
+choose the folder. Once a world has its first scene, the dashboard offers the
+same thing once, and you can dismiss it for good if you keep your own backups.
+
 **The app itself loads nothing from anywhere but itself.** No fonts, no scripts,
 no stylesheets — so opening it offline behaves exactly as opening it online
 does, and it paints without waiting on anyone. (It used to fetch a webfont from
@@ -2797,7 +2805,12 @@ The panel shows where the folder stands relative to this device:
 
 The same status appears **next to the world name in the top bar**, so you can
 tell at a glance whether your work is reaching the folder without opening
-Settings.
+Settings. It carries the time of the last successful write — *Backed up 4m ago*,
+*Saving — last 1m ago* — because "saved" on its own is a claim with no date on
+it, and a backup that quietly stopped three days ago would say the same word as
+one written a minute ago. A world with no folder at all says **Not backed up**,
+in grey rather than amber: it is the ordinary state, not an emergency, but it is
+not something the app will let you believe you have solved when you haven't.
 
 Because the bound folder is usually shared between your machines, Kathala
 never overwrites the folder's copy behind your back. When another device has
