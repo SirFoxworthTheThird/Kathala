@@ -2501,6 +2501,11 @@ Typical catches:
   way). The finding offers a one-click **"Allow N more days"** that lengthens the
   scene so the journey becomes possible.
 - A character who **travels through a destroyed or abandoned region**.
+- A character who **joins a faction before they appear** — the membership
+  starts at a scene earlier than their own first one, which is usually a start
+  event picked from the wrong end of the timeline. A starting state written
+  before they walk on is not this: your first appearance is the earlier of the
+  two.
 - A character who belongs to **two hostile factions at the same time** —
   memberships carry a start and an end, so "at the same time" is an overlap and
   not a guess. Reported once per pair of sides rather than once per scene. A
@@ -2524,6 +2529,15 @@ Typical catches:
   scene card instead; that is the larger claim, and the rest of the app reads
   it — the map places them, the Brief lists them, and the Character States panel
   will ask you what state they are in.
+- A character who **learns something while the record places them somewhere
+  else**. Not simply learning it off-stage — news travels, and a letter arriving
+  is not a fault. This is the narrower case: the reveal is set at a scene with a
+  place, the character is not in that scene, and their own last recorded
+  position is somewhere different.
+- A scene **marked revised or final with nothing written in it** — the status
+  field and the manuscript disagreeing about whether the scene exists. Only in a
+  world that has prose somewhere, so a world you are using purely for structure
+  is never nagged about drafts it was never going to have.
 - A scene with **no point of view**, but only in a book that otherwise names
   one. The check asks what your own habit is — enough scenes with a POV to be a
   pattern, and few enough without to read as omissions — and stays silent

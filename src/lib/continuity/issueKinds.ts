@@ -17,6 +17,7 @@ export type IssueKind =
   // character
   | 'dead-then-alive' | 'orphan-snap' | 'dead-in-event' | 'char-before-intro'
   | 'stale-snapshot' | 'loc-destroyed' | 'char-in-region' | 'region-traversal'
+  | 'reveal-elsewhere'
   | 'travel-dist' | 'knowledge-anachronism' | 'dead-knower'
   | 'scene-cast-elsewhere' | 'age-unborn'
   // item
@@ -26,11 +27,11 @@ export type IssueKind =
   // relationship
   | 'rel-before-start' | 'rel-after-end' | 'dead-char-in-rel-snap'
   // faction
-  | 'faction-gap' | 'hostile-loc' | 'faction-conflict'
+  | 'faction-gap' | 'hostile-loc' | 'faction-conflict' | 'faction-before-intro'
   // pov
   | 'pov-unknown' | 'pov-not-involved' | 'dead-pov' | 'pov-missing'
   // prose
-  | 'prose-untagged' | 'prose-leak' | 'knowledge-unrevealed'
+  | 'prose-untagged' | 'prose-leak' | 'knowledge-unrevealed' | 'scene-undrafted'
   // thread
   | 'thread-dangling' | 'thread-dormant' | 'thread-unstarted'
   // world — the places and the clock, rather than anybody in particular
@@ -105,6 +106,7 @@ export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
   'faction-gap':           'Leaves a faction with no replacement',
   'hostile-loc':           'In hostile territory',
   'faction-conflict':      'In two hostile factions at once',
+  'faction-before-intro':  'Joins a faction before they appear',
   'pov-unknown':           'POV names no character',
   'pov-not-involved':      'POV character not in the scene',
   'dead-pov':              'Dead POV character',
@@ -112,6 +114,8 @@ export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
   'prose-untagged':        'Named in the prose but not in the cast',
   'prose-leak':            'Possible early reveal in the prose',
   'knowledge-unrevealed':  'The reader never learns it',
+  'reveal-elsewhere':      'Learns it while recorded somewhere else',
+  'scene-undrafted':       'Marked done with no draft',
   'thread-dangling':       'Subplot raised and never resolved',
   'thread-dormant':        'Subplot goes quiet',
   'thread-unstarted':      'Subplot with no scenes',

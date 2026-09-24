@@ -28,6 +28,8 @@ The finding offers a one-click **"Allow N more days"** that lengthens the event 
 - An **item used before it was acquired**, or an impossible handoff.
 - An **object in two places at once** — in two people's hands in one scene, or placed somewhere its holder is not. An item recorded both in a hand and at the place that hand is standing in is *not* a contradiction and is not reported. A thing there is more than one of — lembas, a cloak every member of the company has — is marked as a **kind of thing** on the item, and then several people carrying one is what it means.
 - A **relationship or faction membership starting at an invalid moment**, or a relationship snapshot naming somebody who is dead by that scene.
+- A character who **joins a faction before they appear** — the membership starts earlier than their own first scene.
+- A character who **learns something while the record places them somewhere else** — not learning it off-stage, which is ordinary, but a reveal set in one place while the character's last recorded position is another.
 - A **POV character** who should not be available at that event.
 
 ### Observations
@@ -37,6 +39,7 @@ Ranked below the faults, and counted separately, because "yes, I meant that" is 
 - **Names in the prose that the scene's cast does not account for** — one observation per scene, listing them, and only for names that appear more than once. It offers **Record as mentioned**, which claims only what the check saw: the name is in the text.
 - A **point of view who is not in the scene's cast** — right for a narrator reporting a scene from outside it, and worth a look if the POV is a leftover from an edit.
 - A **subplot that goes quiet or is never resolved**, and a **character who leaves a faction with nothing following it**.
+- A scene **marked revised or final with nothing written in it**, in a world that has prose somewhere.
 
 ### Plot threads
 
