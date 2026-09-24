@@ -110,7 +110,50 @@ describe('itemCustodyChain', () => {
     ])
     expect(steps).toHaveLength(2)
     expect(steps[1].carrier).toBeNull()
+  })
+
+  /**
+   * **W-1.** The step above is an *absence* — Mira recorded a state at e3 and it
+   * did not mention the letter. It is not a hand-off, and the chain used to say
+   * it was: it borrowed her position and the row read *"left at Ferrow
+   * Crossing"*, an active sentence about something nobody wrote.
+   *
+   * A writer's run on a twelve-chapter draft found four of six items carrying
+   * history of this kind, and the order that produces it is the natural one —
+   * put everybody in their places first, hand out the props later, and every
+   * position recorded before the prop existed claims the prop was left there.
+   */
+  it('names no place when an inventory merely stops listing the item', () => {
+    const steps = chain([
+      snap('mira', 'e1', [LETTER], 'mk1'),
+      snap('mira', 'e3', [], 'mk2'),
+    ])
+    expect(steps[1]).toMatchObject({ kind: 'unlisted', location: null, locationId: null })
+    expect(describeCustodyStep(steps[1])).toBe("no longer in Mira Vasse's inventory")
+  })
+
+  /*
+    The pair. A place the writer *did* name still reads as one, in the active
+    voice, because a placement is a sentence they wrote.
+  */
+  it('still says where it lies when the writer put it down there', () => {
+    const steps = chain([snap('mira', 'e1', [LETTER], 'mk1')], [placement('e3', 'mk2')])
+    expect(steps[1]).toMatchObject({ kind: 'placed', location: 'Ferrow Crossing' })
     expect(describeCustodyStep(steps[1])).toBe('left at Ferrow Crossing')
+  })
+
+  /*
+    And the silence is reported once. Every later scene where the same
+    character records a state without the item is the same absence, not a run of
+    new ones — which is what turned four items into a column of invented rows.
+  */
+  it('reports the absence once, however many later records repeat it', () => {
+    const steps = chain([
+      snap('mira', 'e1', [LETTER], 'mk1'),
+      snap('mira', 'e3', [], 'mk2'),
+      snap('mira', 'e4', [], 'mk2'),
+    ])
+    expect(steps.filter((st) => st.kind === 'unlisted')).toHaveLength(1)
   })
 
   it('lets an explicit placement win over an inventory that still lists it', () => {
@@ -136,15 +179,26 @@ describe('itemCustodyChain', () => {
 })
 
 describe('describeCustodyStep', () => {
-  const base = { eventId: 'e', chapterNumber: 1, sceneTitle: 's', carrierId: null, locationId: null }
+  const base = { eventId: 'e', chapterNumber: 1, sceneTitle: 's', carrierId: null, locationId: null, kind: 'carried' as const }
   it('names both when both are known', () => {
     expect(describeCustodyStep({ ...base, carrier: 'Mira', location: 'The Lock' })).toBe('carried by Mira · The Lock')
   })
   it('names the carrier alone when there is no place', () => {
     expect(describeCustodyStep({ ...base, carrier: 'Mira', location: null })).toBe('carried by Mira')
   })
-  it('says where it lies when nobody has it', () => {
-    expect(describeCustodyStep({ ...base, carrier: null, location: 'The Lock' })).toBe('left at The Lock')
+  it('says where it lies when the writer put it down there', () => {
+    expect(describeCustodyStep({ ...base, kind: 'placed', carrier: null, location: 'The Lock' }))
+      .toBe('left at The Lock')
+  })
+
+  /*
+    W-1. The same row used to read "left at The Lock" for a scene where nobody
+    put anything anywhere — the holder simply recorded a state that did not
+    mention the item, and the step borrowed *their* position for it.
+  */
+  it('describes the record, not a hand-off, when an inventory stops listing it', () => {
+    expect(describeCustodyStep({ ...base, kind: 'unlisted', formerCarrier: 'Mira', carrier: null, location: null }))
+      .toBe("no longer in Mira's inventory")
   })
   it('says so when it is neither held nor placed', () => {
     expect(describeCustodyStep({ ...base, carrier: null, location: null })).toBe('no longer carried')
