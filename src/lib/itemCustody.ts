@@ -9,6 +9,18 @@ export interface CustodyStep {
   carrier: string | null
   locationId: string | null
   location: string | null
+  /**
+   * What the record actually says happened here.
+   *
+   * `placed` and `carried` are assertions the writer made. **`unlisted` is
+   * not**: it means the person who was carrying the item recorded a state at
+   * this scene and that state does not mention it. That is a gap in the record,
+   * not a hand-off, and the difference is the whole of W-1 — see the third
+   * branch below.
+   */
+  kind: 'placed' | 'carried' | 'unlisted'
+  /** For `unlisted`: whose inventory stopped listing it. */
+  formerCarrier?: string | null
 }
 
 /**
@@ -29,7 +41,8 @@ export interface CustodyStep {
  *  2. **An inventory that lists it** puts it in someone's hands.
  *  3. **The holder's own inventory no longer listing it** ends their custody.
  *     Without this the chain would say a character carried something for the
- *     rest of the book because nobody else ever picked it up.
+ *     rest of the book because nobody else ever picked it up. This step says
+ *     only that, and deliberately names no place — see `kind: 'unlisted'`.
  *
  * Only *changes* are returned: a run of scenes where nothing about the item
  * moved is one step, because that is one decision holding rather than forty.
@@ -79,26 +92,48 @@ export function itemCustodyChain(args: {
 
     let nextCarrier: string | null = carrierId
     let nextLocation: string | null = locationId
+    let nextKind: CustodyStep['kind'] = 'carried'
+    let nextFormer: string | null = null
     let changed = false
 
     if (placement) {
       // Put down somewhere: nobody is carrying it any more.
       nextCarrier = null
       nextLocation = placement.locationMarkerId
+      nextKind = 'placed'
       changed = true
     } else if (holder) {
       nextCarrier = holder.characterId
       nextLocation = holder.currentLocationMarkerId
+      nextKind = 'carried'
       changed = true
     } else if (carrierId && here.some((s) => s.characterId === carrierId)) {
-      // The holder recorded a state here and it no longer lists the item.
+      /*
+        The holder recorded a state here and it no longer lists the item.
+
+        **This is an absence, and it used to be read as a decision.** The step
+        took the holder's own position and the row then read *"left at Ferrow
+        Crossing"* — an active sentence about a hand-off nobody made. A writer's
+        run on a twelve-chapter draft found four of six items carrying invented
+        history, and the order that produces it is the natural one: record where
+        everybody is first, give out the props later, and every position written
+        before the prop existed now claims the prop was put down there.
+
+        Nothing about the *item's* place is known here. What is known is that
+        the record stopped listing it, and that is all this step now says.
+      */
       nextCarrier = null
-      nextLocation = here.find((s) => s.characterId === carrierId)?.currentLocationMarkerId ?? locationId
+      nextLocation = null
+      nextKind = 'unlisted'
+      nextFormer = characterName(carrierId)
       changed = true
     }
 
     if (!changed) continue
     if (started && nextCarrier === carrierId && nextLocation === locationId) continue
+    // An item already out of everybody's hands cannot go missing from them
+    // again: a second empty inventory is the same silence, not a second event.
+    if (nextKind === 'unlisted' && started && carrierId === null) continue
 
     carrierId = nextCarrier
     locationId = nextLocation
@@ -111,14 +146,28 @@ export function itemCustodyChain(args: {
       carrier: characterName(carrierId),
       locationId,
       location: markerName(locationId),
+      kind: nextKind,
+      ...(nextKind === 'unlisted' ? { formerCarrier: nextFormer } : {}),
     })
   }
 
   return steps
 }
 
-/** One line for a row: "carried by Mira Vasse · Ferrow Crossing", or where it lies. */
+/**
+ * One line for a row: "carried by Mira Vasse · Ferrow Crossing", or where it lies.
+ *
+ * The wording follows the `kind`, because the three are different claims. A
+ * placement is a writer's sentence and gets an active one back — *left at the
+ * Lock*. An inventory that has stopped mentioning the item is a silence, and
+ * gets a sentence about the record rather than about the world.
+ */
 export function describeCustodyStep(step: CustodyStep): string {
+  if (step.kind === 'unlisted') {
+    return step.formerCarrier
+      ? `no longer in ${step.formerCarrier}'s inventory`
+      : 'no longer carried'
+  }
   if (step.carrier && step.location) return `carried by ${step.carrier} · ${step.location}`
   if (step.carrier) return `carried by ${step.carrier}`
   if (step.location) return `left at ${step.location}`

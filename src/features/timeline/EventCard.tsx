@@ -547,7 +547,6 @@ export function EventCard({
             characters={characters}
             involvedIds={involvedIds}
             mentionedIds={mentionedIds}
-            onAddCharacter={addCharacter}
             onAddMention={addMention}
             onWordsChange={setSceneWords}
           />

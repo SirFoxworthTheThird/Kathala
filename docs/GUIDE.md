@@ -1063,10 +1063,16 @@ writing session.
 
 Kathala also reads the draft for **names you have written but not recorded**.
 Anyone in the cast whose name appears in the prose, and who is not already on
-the scene, is offered as a chip under the box — click it to add them. The match
-is on the name as written: the full name, and the first word of it, as whole
-words and case-sensitively, so the verb *will* never stands in for a character
-called *Will*.
+the scene, is offered as a chip under the box. Clicking it **records them as
+mentioned** — which is all the chip observed: the name is in your text. If they
+are actually in the room, add them to the cast instead, on the scene card; that
+is the larger claim, and the rest of the app acts on it — the map places them,
+the Brief lists them, and the Character States panel asks what state they are
+in.
+
+The match is on the name as written: the whole name and **each of its words**,
+as whole words and case-sensitively — so *Saba Rhee* is found by either name,
+and the verb *will* never stands in for a character called *Will*.
 
 Three rules shape what counts as a match.
 
