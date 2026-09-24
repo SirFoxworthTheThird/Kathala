@@ -1214,6 +1214,53 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
 
     // ── Faction membership gap check ────────────────────────────────────────
     const factionById = new Map(allFactions.map((f) => [f.id, f]))
+
+    /*
+      ── Joining a faction before the story has met you ──────────────────────
+
+      The same question `rel-before-start` asks of relationships, asked of
+      memberships, which carry the same `startEventId` and had no check at all.
+      A membership beginning at a scene earlier than the character's own first
+      appearance is a record about somebody the book has not introduced —
+      usually a start event picked from the wrong end of the timeline.
+
+      Measured across the forty-six shipped books: 66, spread thinly rather
+      than piled into one — *The Name of the Wind* 12, *Jane Eyre* 8,
+      *Carmilla* 6. That is the rate of a real fault.
+
+      First appearance is the earlier of the cast and the snapshots: a
+      character can be given a starting state before they walk on, and that is
+      not what this is about.
+    */
+    for (const m of allMemberships ?? []) {
+      if (!m.startEventId || !eventById.has(m.startEventId)) continue
+      const char = charById.get(m.characterId)
+      if (!char) continue
+      const castOrder = charFirstAppearance.get(m.characterId)?.evOrder
+      const snapOrder = snapsByCharSorted.get(m.characterId)?.[0]?.order
+      const firstOrder = Math.min(castOrder ?? Infinity, snapOrder ?? Infinity)
+      if (!Number.isFinite(firstOrder)) continue
+      const startOrder = eventOrder(m.startEventId)
+      if (startOrder >= firstOrder) continue
+
+      const startEv = eventById.get(m.startEventId)
+      const startCh = startEv ? chapById.get(startEv.chapterId) : undefined
+      const firstEv = (castOrder ?? Infinity) <= (snapOrder ?? Infinity)
+        ? charFirstAppearance.get(m.characterId)?.ev
+        : eventById.get(snapsByCharSorted.get(m.characterId)![0].eventId)
+      const firstCh = firstEv ? chapById.get(firstEv.chapterId) : undefined
+      out.push({
+        id: `faction-before-intro-${m.id}`,
+        kind: 'faction-before-intro',
+        severity: 'warning',
+        category: 'faction',
+        message: `${char.name} joins "${factionById.get(m.factionId)?.name ?? '?'}" before they appear`,
+        detail: `Membership starts at "${startEv?.title || 'a scene'}" (Ch. ${startCh?.number ?? '?'}), but ${char.name} is not in the story until Ch. ${firstCh?.number ?? '?'}. Move the start, or bring them on earlier.`,
+        navigatePath: startEv ? `/worlds/${worldId}/timeline/${startEv.chapterId}` : undefined,
+        eventId: m.startEventId,
+      })
+    }
+
     const membershipsByChar = new Map<string, typeof allMemberships>()
     for (const m of allMemberships) {
       if (!membershipsByChar.has(m.characterId)) membershipsByChar.set(m.characterId, [])
@@ -1468,6 +1515,47 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       })
     }
 
+    /*
+      ── Learning something while recorded somewhere else ────────────────────
+
+      **Not "learns it in a scene they are not in".** That fires 130 times
+      across the shipped books and is usually right: news travels. *Dracula* is
+      told in letters and trips the naive version 22 times, legitimately.
+
+      The contradiction is narrower. The reveal names a scene with a place; the
+      character is not in that scene; and their own last snapshot puts them at a
+      different place. Then the record says they were elsewhere when they found
+      out, which is a fact about the world rather than a guess about how news
+      moves. 74 across the shelf, concentrated where you would expect a world
+      built quickly — *Dracula* 19, *Harry Potter* 16.
+
+      A reveal with no place, or to a character with no recorded position, says
+      nothing and is left alone.
+    */
+    for (const rev of knowledgeReveals) {
+      const ev = eventById.get(rev.eventId)
+      if (!ev?.locationMarkerId) continue
+      if (ev.involvedCharacterIds.includes(rev.characterId)) continue
+      if (ev.povCharacterId === rev.characterId) continue
+      const at = bestLocationAtOrder(rev.characterId, eventOrder(ev.id))
+      if (!at || at === ev.locationMarkerId) continue
+
+      const char = charById.get(rev.characterId)
+      const fact = knowledgeFacts.find((f) => f.id === rev.factId)
+      if (!char || !fact) continue
+      const ch = chapById.get(ev.chapterId)
+      out.push({
+        id: `reveal-elsewhere-${rev.id}`,
+        kind: 'reveal-elsewhere',
+        severity: 'warning',
+        category: 'character',
+        message: `${char.name} learns "${fact.title}" while recorded somewhere else`,
+        detail: `The reveal is at "${ev.title || 'a scene'}" in ${markerById.get(ev.locationMarkerId)?.name ?? 'one place'} (Ch. ${ch?.number ?? '?'}), but ${char.name} is at ${markerById.get(at)?.name ?? 'another'}. Move the reveal to where they are, or to the scene where word reaches them.`,
+        navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+        eventId: rev.eventId,
+      })
+    }
+
     // ── Prose ↔ metadata drift (scene text vs. the event's cast) ─────────────
     const sceneTextByEvent = new Map(sceneTexts.map((s) => [s.eventId, s.text]))
 
@@ -1499,6 +1587,41 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           ? { kind: 'addMention', label: p.characters.length === 1 ? 'Record as mentioned' : `Record all ${p.characters.length} as mentioned`, eventId: p.eventId, characterIds: p.characters.map((c) => c.characterId) }
           : undefined,
       })
+    }
+
+    /*
+      ── Marked done, with nothing written ───────────────────────────────────
+
+      The status field and the manuscript disagreeing about whether a scene
+      exists. `revised` and `final` are claims about a draft; a scene carrying
+      one with no text is a claim about nothing.
+
+      **Only in a world that has prose at all**, because a world that is purely
+      structure — a reference built from a published book, which is most of the
+      shipped Library — marks its scenes final and has no drafts by design. The
+      guard is what keeps this from firing 793 times on the shelf.
+
+      **This one is reasoned rather than measured.** Restricted as above it
+      fires zero times across the forty-six books, since none of them is
+      half-written. The corpus cannot show it is useful, only that it is quiet
+      where it should be quiet; the case it is for is a writer's own draft.
+    */
+    if (sceneTexts.some((t) => t.text.trim())) {
+      for (const ev of allEvents) {
+        if (ev.status !== 'final' && ev.status !== 'revised') continue
+        if (sceneTextByEvent.get(ev.id)?.trim()) continue
+        const ch = chapById.get(ev.chapterId)
+        out.push({
+          id: `scene-undrafted-${ev.id}`,
+          kind: 'scene-undrafted',
+          severity: 'note',
+          category: 'prose',
+          message: `"${ev.title || 'untitled'}" is marked ${ev.status} and has no draft`,
+          detail: `Ch. ${ch?.number ?? '?'} — the status says the writing is done and there is no text in the scene. Write it, or set the status back.`,
+          navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+          eventId: ev.id,
+        })
+      }
     }
 
     // ── Reader knowledge leaks (fact referenced in prose before its reveal) ──
