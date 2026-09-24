@@ -396,7 +396,7 @@ export default function KnowledgeView() {
 
               {/* Co-presence suggestions: who shared a scene with a knower */}
               {!gate.active && (() => {
-                const suggestions = suggestReveals({ fact: selected, reveals, events, chapters })
+                const suggestions = suggestReveals({ fact: selected, reveals, events, chapters, snapshots })
                   .filter((s) => !revealedCharIds.has(s.characterId))
                 if (suggestions.length === 0) return null
                 return (

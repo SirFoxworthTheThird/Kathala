@@ -24,7 +24,6 @@ interface SceneDraftSectionProps {
   involvedIds: string[]
   mentionedIds: string[]
   /** Add an in-text name to the on-stage cast. */
-  onAddCharacter: (characterId: string) => void
   /** Add an in-text name to the referenced-but-absent list. */
   onAddMention: (characterId: string) => void
   /** Reports the current word count so the card header chip can stay live. */
@@ -41,7 +40,7 @@ const AUTOSAVE_MS = 1000
  * EventCard so the card's metadata editing and the prose editing stay separate.
  */
 export function SceneDraftSection({
-  event, characters, involvedIds, mentionedIds, onAddCharacter, onAddMention, onWordsChange,
+  event, characters, involvedIds, mentionedIds, onAddMention, onWordsChange,
 }: SceneDraftSectionProps) {
   const { worldId, id: eventId } = event
   const sceneText = useSceneText(event.id)
@@ -273,15 +272,35 @@ export function SceneDraftSection({
           <> · {paragraphCount} {paragraphCount === 1 ? 'paragraph' : 'paragraphs'}</>
         )}
       </p>
+      {/*
+        W-2: these chips used to put the character **in the scene**.
+
+        The observation is "this name is in the text", and the cast is a larger
+        claim — the map places those people, the Brief lists them, and the
+        Character States panel asks what state each of them is in. The
+        Continuity Checker makes exactly the same observation and answers it
+        with `addMention`, after a writer's run took its old cast button
+        seventeen times on a 1,489-word draft and gave a two-hander a cast of
+        four, including a woman across the city and a dead man.
+
+        A later run found the two disagreeing: the panel recorded a mention and
+        the chip, six inches away on the same prose, recorded a presence. They
+        make the same claim now, and the label says which.
+
+        Being in the room stays a deliberate act on the scene card, which is
+        where the cast picker already is.
+      */}
       {untaggedMentions.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[10px] text-[hsl(var(--muted-foreground))]">In the text but not on this scene:</span>
+          <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
+            Named in the text — click to record as mentioned:
+          </span>
           {untaggedMentions.map((m) => (
             <button
               key={m.characterId}
-              onClick={() => onAddCharacter(m.characterId)}
+              onClick={() => onAddMention(m.characterId)}
               className="flex items-center gap-1 rounded-full border border-dashed border-[hsl(var(--border))] px-2 py-0.5 text-[10px] text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--ring))] hover:text-[hsl(var(--foreground))] transition-colors"
-              title={`${m.name} appears ${m.count}× — click to add to this scene`}
+              title={`${m.name} appears ${m.count}× in this draft — record as mentioned. If they are in the room, add them to the cast instead.`}
             >
               <Plus className="h-2.5 w-2.5" /> {m.name}
             </button>

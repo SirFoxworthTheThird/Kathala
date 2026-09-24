@@ -53,6 +53,41 @@ async function letterChangingHands(page: Page): Promise<string> {
   return worldId
 }
 
+/**
+ * Park the time cursor on a scene, through the app.
+ *
+ * Not through `localStorage`: `eventByWorld` is in-memory and opening a world
+ * sets the cursor from it, so a value written into storage is gone by the time
+ * the page has finished loading. The Timeline's own **View from here** is the
+ * act a writer performs, and it is the one control that does this per scene.
+ */
+async function viewFromScene(page: Page, worldId: string, sceneTitle: string, eventId: string) {
+  await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+  await settle(page)
+  const main = page.getByRole('main')
+  /*
+    Chapters arrive collapsed, so the scene rows are not on screen yet — and the
+    scene may be in any of them, so every collapsed chapter is opened rather
+    than the first one guessed at. Only chapter rows carry `aria-expanded`.
+  */
+  const collapsed = main.getByRole('button', { expanded: false })
+  for (let i = await collapsed.count(); i > 0; i = await collapsed.count()) {
+    await collapsed.first().click()
+    if (await collapsed.count() === i) break
+  }
+  const scene = main.getByRole('button', { name: sceneTitle, exact: true })
+  await scene.click()
+  // The scene's own View from here, not a chapter's: the chapter rows carry one
+  // too, and theirs goes to the chapter's first moment.
+  await scene.locator('xpath=ancestor::div[2]').getByRole('button', { name: 'View from here' }).click()
+
+  // Asserted on the stored cursor rather than on chrome, because which element
+  // shows it differs by screen and by width.
+  await expect.poll(() => page.evaluate(() =>
+    JSON.parse(localStorage.getItem('kathala-ui') ?? '{}').state?.activeEventId ?? null,
+  ), { timeout: 15_000 }).toBe(eventId)
+}
+
 test.describe("an item's own page tells its story", () => {
   test.describe.configure({ timeout: 240_000 })
 
@@ -98,5 +133,58 @@ test.describe("an item's own page tells its story", () => {
     await expect(main.locator('ol > li')).toHaveCount(1)
     await expect(main.getByText('The seal breaks')).toHaveCount(0)
     await expect(main.getByText(/Ferrow Crossing/)).toHaveCount(0)
+  })
+})
+
+/**
+ * **W-3.** The Items section could not say where an item was.
+ *
+ * A writer with six props went Maps → the pin → its Location panel, or
+ * Characters → Current State, every time they put something down — neither of
+ * which is where you are when you are thinking about the object. The roster had
+ * three controls and the item's own page four, and none of them touched a
+ * placement.
+ */
+test.describe('putting an item down from its own page', () => {
+  test.describe.configure({ timeout: 240_000 })
+
+  test('records it at the scene the cursor is on, and the chain shows it', async ({ page }) => {
+    const worldId = await letterChangingHands(page)
+
+    await viewFromScene(page, worldId, 'The seal breaks', 'ev2')
+    await page.goto(`/#/worlds/${worldId}/items/letter`, { waitUntil: 'load' })
+    await settle(page)
+
+    const main = page.getByRole('main')
+    await main.getByRole('button', { name: /^Where it is/ }).click()
+    await page.getByRole('option', { name: 'The Reed House' }).click()
+
+    // Written where the cursor is — not at the scene the resolved state came from.
+    await expect.poll(async () => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as
+        { itemPlacements: { toArray: () => Promise<Array<{ eventId: string; locationMarkerId: string }>> } }
+      return (await db.itemPlacements.toArray()).map((p) => `${p.eventId}:${p.locationMarkerId}`)
+    }), { timeout: 15_000 }).toEqual(['ev2:mk1'])
+
+    // And the chain says it in the active voice, because the writer did place it.
+    await expect(main.getByText('left at The Reed House')).toBeVisible({ timeout: 15_000 })
+  })
+
+  /*
+    The pair. A reader has no business placing anything, and the section is the
+    kind of edit control reading mode exists to take away.
+  */
+  test('is not offered to a reader', async ({ page }) => {
+    const worldId = await letterChangingHands(page)
+    await page.evaluate(async (id: string) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as
+        { worlds: { update: (id: string, changes: object) => Promise<unknown> } }
+      await db.worlds.update(id, { readingMode: true })
+    }, worldId)
+    await page.goto(`/#/worlds/${worldId}/items/letter`, { waitUntil: 'load' })
+    await settle(page)
+
+    await expect(page.getByRole('main').getByText('Whereabouts')).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Where it is/ })).toHaveCount(0)
   })
 })

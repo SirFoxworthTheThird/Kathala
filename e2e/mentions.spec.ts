@@ -68,4 +68,43 @@ test.describe('@-mentions in the scene draft', () => {
     await page.getByRole('button', { name: 'Remove mention of Kael' }).click()
     await expect(page.getByRole('button', { name: 'Remove mention of Kael' })).toHaveCount(0)
   })
+
+  /**
+   * **W-2.** The chip under the draft used to put the character *in the scene*.
+   *
+   * It makes one observation — this name is in your text — and the cast is a
+   * larger claim: the map places those people, the Brief lists them, and the
+   * Character States panel asks what state each of them is in. The Continuity
+   * Checker answers the identical observation with a mention, after its own
+   * cast button gave a two-hander a cast of four including a dead man; a
+   * writer's run then found the two disagreeing about the same prose.
+   *
+   * Driven here rather than in a unit test because the chip only exists once
+   * the draft has been typed into and the scene card has re-read it.
+   */
+  test('a name found in the prose is recorded as mentioned, not added to the cast', async ({ page }) => {
+    const draft = await openSceneDraft(page)
+    await draft.fill('Kael was not here. Nobody had seen Kael for a week.')
+    await draft.blur()
+
+    const chip = page.getByRole('button', { name: 'Kael' })
+      .filter({ has: page.locator('svg') }).last()
+    await expect(page.getByText(/Named in the text/)).toBeVisible({ timeout: 15_000 })
+    await chip.click()
+
+    // Recorded as a mention…
+    await expect(page.getByRole('button', { name: 'Remove mention of Kael' })).toBeVisible()
+
+    /*
+      …and the cast is untouched, which is the whole of the finding. The cast
+      picker offers everyone not already in the scene, so Kael still being on
+      offer there is the readable form of "not in the cast".
+    */
+    const stored = await page.evaluate(async () => {
+      const db = (window as unknown as { __pwdb?: { events: { toArray: () => Promise<Array<{ involvedCharacterIds: string[] }>> } } }).__pwdb
+      const events = await db!.events.toArray()
+      return events[0]?.involvedCharacterIds ?? null
+    })
+    expect(stored).toEqual([])
+  })
 })
