@@ -25,20 +25,24 @@ timer, and say plainly in the UI when the last backup was taken.
 
 No account, no server, no change to the local-first property.
 
-## 2. Test the continuity checks
+## 2. Finish testing the continuity checks
 
-**Fifteen checks, three tested.** Extracting `computeIssues.ts` made them all
-directly testable and the rest were never backfilled: items used before they
-are acquired or after they are destroyed, item hand-off, travel time, region
-traversal, stale snapshots, faction membership gaps, hostile-faction locations,
-cross-timeline artifacts, prose drift.
+Most of this shipped. Running the checker across all forty-six Library books
+(`npm run census`) found that three checks produced **89% of everything it
+said** and that all three were wrong, and that several others had never fired on
+any book at all — which from outside is indistinguishable from a check that
+cannot fire. Those are fixed, and eight rules that had no test now have one
+each, driven twice: it speaks when the world is wrong, and stays quiet when the
+world is right.
+
+**Still untested at the issue level**: travel distance, region traversal,
+characters inside a region, cross-timeline artifacts, and the three thread
+cadence rules. Each has coverage of its underlying pure function; what is
+missing is the wiring into `computeContinuityIssues`.
 
 The Continuity Checker is a promise that the app is watching the story. A check
 that quietly stops firing breaks that promise *silently* — the screen still says
-"no issues", which is exactly what it says when everything is fine. This is the
-one place where an untested path is worse than a missing feature.
-
-Pure `src/lib` units, no browser needed.
+"no issues", which is exactly what it says when everything is fine.
 
 ## 3. Global undo
 

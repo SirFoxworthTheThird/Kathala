@@ -308,8 +308,9 @@ describe('a character named in the prose but not in the cast', () => {
     input.allEvents = [event('e1', 'c1', 0)]
     input.sceneTexts = [{
       id: 'st1', worldId: 'w', eventId: 'e1',
-      text: 'Maren Vale found the letter and did not open it.',
-      wordCount: 9, createdAt: 0, updatedAt: 0,
+      // Twice: a name that appears once is a reference, and the check says so.
+      text: 'Maren Vale found the letter and did not open it. Maren Vale never did.',
+      wordCount: 14, createdAt: 0, updatedAt: 0,
     }]
     return input
   }
@@ -325,7 +326,7 @@ describe('a character named in the prose but not in the cast', () => {
     const [issue] = computeContinuityIssues(untaggedInput()).filter((i) => i.kind === 'prose-untagged')
     expect(issue).toBeDefined()
     expect(issue.fix).toEqual({
-      kind: 'addMention', label: 'Record as mentioned', eventId: 'e1', characterId: 'maren',
+      kind: 'addMention', label: 'Record as mentioned', eventId: 'e1', characterIds: ['maren'],
     })
   })
 
@@ -355,23 +356,20 @@ describe('a character named in the prose but not in the cast', () => {
   Cristo, thirty-five of which were this, is what trains a writer to skim.
 */
 describe('craft observations are not filed as warnings', () => {
-  it('reports a long POV run as an observation', () => {
+  it('reports a dangling subplot as an observation', () => {
     const input = emptyInput()
-    input.chapters = [chapter('c1', 1)]
-    input.characters = [character('mira', 'Mira'), character('rell', 'Rell')]
+    // Raised in chapter 1 and never touched again — TRAILING_CHAPTERS is 3.
+    input.chapters = [chapter('c1', 1), chapter('c2', 2), chapter('c3', 3), chapter('c4', 4), chapter('c5', 5)]
+    input.characters = [character('mira', 'Mira')]
     input.allEvents = [
-      // A book whose habit is to switch every scene, then does not. Five in a
-      // row, which is the floor: four is a moment, not a stretch.
-      event('e1', 'c1', 0, { povCharacterId: 'rell' }),
-      event('e2', 'c1', 1, { povCharacterId: 'mira' }),
-      event('e3', 'c1', 2, { povCharacterId: 'rell' }),
-      event('e4', 'c1', 3, { povCharacterId: 'mira' }),
-      event('e5', 'c1', 4, { povCharacterId: 'mira' }),
-      event('e6', 'c1', 5, { povCharacterId: 'mira' }),
-      event('e7', 'c1', 6, { povCharacterId: 'mira' }),
-      event('e8', 'c1', 7, { povCharacterId: 'mira' }),
+      event('e1', 'c1', 0, { threadIds: ['t1'] }),
+      event('e2', 'c2', 0), event('e3', 'c3', 0), event('e4', 'c4', 0), event('e5', 'c5', 0),
     ]
-    const found = computeContinuityIssues(input).filter((i) => i.kind === 'pov-consecutive')
+    input.plotThreads = [{
+      id: 't1', worldId: 'w1', name: 'The letter', description: '', colour: '#888',
+      status: 'open', resolvedAtEventId: null, sortOrder: 0, createdAt: 0, updatedAt: 0,
+    } as unknown as typeof input.plotThreads[number]]
+    const found = computeContinuityIssues(input).filter((i) => i.kind === 'thread-dangling')
     expect(found).toHaveLength(1)
     expect(found[0].severity).toBe('note')
   })
@@ -1047,84 +1045,6 @@ describe('a scene with no point of view', () => {
 
 // ── A long run in one head (W23-9) ───────────────────────────────────────────
 
-describe('a long run of one point of view', () => {
-  /** `runs` describes alternating POV runs: [3, 1, 3] = A A A, B, A A A. */
-  const withRuns = (runs: number[]) => {
-    const input = emptyInput()
-    input.chapters = [chapter('c1', 1)]
-    input.characters = [character('a', 'Ayla'), character('b', 'Bran')]
-    const evs: ReturnType<typeof event>[] = []
-    let n = 0
-    runs.forEach((len, i) => {
-      for (let k = 0; k < len; k++) {
-        evs.push(event(`e${n}`, 'c1', n, { povCharacterId: i % 2 ? 'b' : 'a', involvedCharacterIds: [i % 2 ? 'b' : 'a'] }))
-        n++
-      }
-    })
-    input.allEvents = evs
-    return input
-  }
-  const runsFound = (runs: number[]) =>
-    computeContinuityIssues(withRuns(runs)).filter((i) => i.kind === 'pov-consecutive')
-
-  it('says nothing about a single-viewpoint novel, however long', () => {
-    /*
-      The finding. A hard `runLen >= 3` fired on every book with one viewpoint
-      character — Alice 51 consecutive, The Secret Garden 50, Neuromancer 29 —
-      which is not a fault but the most common form the novel takes.
-    */
-    expect(runsFound([51])).toHaveLength(0)
-  })
-
-  it('says nothing when every run is about as long as the others', () => {
-    expect(runsFound([3, 4, 3, 4])).toHaveLength(0)
-  })
-
-  it('names a run much longer than the book is used to', () => {
-    // The presence half: the same check, on a book that does alternate.
-    const found = runsFound([3, 4, 3, 15])
-    expect(found).toHaveLength(1)
-    expect(found[0].message).toContain('15 scenes running')
-    expect(found[0].detail).toContain("this book's usual")
-  })
-
-  it('still needs three scenes, however short the book is used to', () => {
-    // Two in a row is not a run worth naming, even in a book that alternates
-    // every single scene.
-    expect(runsFound([1, 1, 1, 1, 2])).toHaveLength(0)
-  })
-
-  /**
-   * And needs five, which is the measured half of the rule.
-   *
-   * On the shipped Monte Cristo the median run is 1, so twice it is 2 and the
-   * smallest reportable run already cleared the bar — twelve findings, eight of
-   * them runs of three or four. Three scenes in one head is a paragraph of a
-   * book that changes viewpoint constantly. With the floor the same book
-   * reports three: the run of ten, and the two of five.
-   */
-  it('does not name three or four scenes in a book that alternates every one', () => {
-    expect(runsFound([1, 1, 1, 1, 3])).toHaveLength(0)
-    expect(runsFound([1, 1, 1, 1, 4])).toHaveLength(0)
-  })
-
-  it('but does name five — the pair, so the floor is a floor and not a wall', () => {
-    const found = runsFound([1, 1, 1, 1, 5])
-    expect(found).toHaveLength(1)
-    expect(found[0].message).toContain('5 scenes running')
-  })
-})
-
-/**
- * A departure a writer cannot answer.
- *
- * "X leaves 'Y' with no replacement faction" was 13 of the 50 findings measured
- * on the shipped Monte Cristo, and not one could be acted on. Mercédès leaves
- * the House of Morcerf for a cottage and poverty: the finding is right that
- * nothing follows, and wrong that it is a loose end. Half the rest were the
- * Villefort household leaving the family in the scene that destroys it — which
- * is what death means, not a gap in the record.
- */
 describe('a faction departure with nothing after it', () => {
   function world(over: { leavesForGood?: boolean; dies?: boolean } = {}) {
     const input = emptyInput()
@@ -1216,17 +1136,6 @@ describe('books the POV checks must stay quiet about', () => {
 
   it('says nothing about a narrator — no POV character anywhere', () => {
     expect(povIssues(book(() => null))).toEqual([])
-  })
-
-  it('still says something about a book that has a habit and breaks it', () => {
-    /*
-      The presence half: without it both absences above would be satisfied by a
-      check that never fires at all. This book alternates every scene — so its
-      median run is 1 — and then holds one POV for six.
-    */
-    const mixed = book((i) => (i < 6 ? (i % 2 ? 'rell' : 'corvin') : 'rell'))
-    const kinds = povIssues(mixed).map((i) => i.kind)
-    expect(kinds).toContain('pov-consecutive')
   })
 
   it('and about a scene that forgets the POV the rest of the book keeps', () => {

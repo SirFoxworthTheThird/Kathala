@@ -3,7 +3,7 @@
   "productName": "Kathala",
   "private": true,
   "version": "1.1.0",
-  "description": "A local-first story bible — track characters, locations, items, relationships, and lore across every chapter of your story.",
+  "description": "A local-first story bible \u2014 track characters, locations, items, relationships, and lore across every chapter of your story.",
   "keywords": [
     "story-bible",
     "worldbuilding",
@@ -48,7 +48,8 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "E2E_DEV=1 playwright test --ui",
-    "test:e2e:dev": "E2E_DEV=1 playwright test"
+    "test:e2e:dev": "E2E_DEV=1 playwright test",
+    "census": "vitest run --config vitest.census.config.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

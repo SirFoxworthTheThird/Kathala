@@ -6,7 +6,6 @@ import {
   deleteEvent, deleteChapter, deleteTimeline,
 } from '@/db/hooks/useTimeline'
 import { createCharacter } from '@/db/hooks/useCharacters'
-import { upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { createKnowledgeFact } from '@/db/hooks/useKnowledge'
 import { setSceneText } from '@/db/hooks/useManuscript'
 import { serializeWorldForSync, importWorldFromJson } from '@/lib/exportImport'
@@ -141,29 +140,23 @@ describe('character appearances (present vs mentioned)', () => {
 // ── Prose-aware continuity over the real store ────────────────────────────────
 
 describe('prose continuity from stored scene text', () => {
-  it('flags a dead character named in a later scene, then silences it once mentioned', async () => {
-    const { e1, e3, kael } = await seedWorld('w1')
-    // Kael dies at e1; his name appears in e3's prose (e3 cast is Mira only).
-    await upsertSnapshot({
-      worldId: 'w1', characterId: kael.id, eventId: e1.id, isAlive: false,
-      currentLocationMarkerId: null, currentMapLayerId: null,
-      inventoryItemIds: [], inventoryNotes: '', statusNotes: '', travelModeId: null,
-    })
-    await setSceneText('w1', e3.id, 'Mira wept, remembering Kael.')
+  it('flags a name the cast does not account for, then silences it once mentioned', async () => {
+    const { e3, kael } = await seedWorld('w1')
+    // Kael's name appears twice in e3's prose; e3's cast is Mira only.
+    await setSceneText('w1', e3.id, 'Mira wept, remembering Kael. Kael had gone on ahead.')
 
-    const events = await db.events.where('worldId').equals('w1').toArray()
-    const chapters = await db.chapters.where('worldId').equals('w1').toArray()
     const characters = await db.characters.where('worldId').equals('w1').toArray()
-    const snapshots = await db.characterSnapshots.where('worldId').equals('w1').toArray()
+    const events = await db.events.where('worldId').equals('w1').toArray()
 
-    const before = computeProseMentionIssues({ events, chapters, characters, snapshots, sceneTextByEvent: await sceneTextMap('w1') })
-    expect(before.some((i) => i.kind === 'dead' && i.characterId === kael.id && i.eventId === e3.id)).toBe(true)
+    const before = computeProseMentionIssues({ events, characters, sceneTextByEvent: await sceneTextMap('w1') })
+    const scene = before.find((i) => i.eventId === e3.id)
+    expect(scene?.characters.map((c) => c.characterId)).toEqual([kael.id])
 
     // Explicitly acknowledging the mention resolves the nudge.
     await updateEvent(e3.id, { mentionedCharacterIds: [kael.id] })
     const eventsAfter = await db.events.where('worldId').equals('w1').toArray()
-    const after = computeProseMentionIssues({ events: eventsAfter, chapters, characters, snapshots, sceneTextByEvent: await sceneTextMap('w1') })
-    expect(after.some((i) => i.characterId === kael.id && i.eventId === e3.id)).toBe(false)
+    const after = computeProseMentionIssues({ events: eventsAfter, characters, sceneTextByEvent: await sceneTextMap('w1') })
+    expect(after.some((i) => i.eventId === e3.id)).toBe(false)
   })
 
   it('flags a reader knowledge leak when a fact tag appears before its reveal', async () => {

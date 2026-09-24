@@ -2458,9 +2458,9 @@ warnings and observations.
 **Errors and warnings are contradictions in your record. Observations are
 opinions about craft**, and they are ranked below both, drawn without the
 warning triangle, and counted separately — because they are the ones where "yes,
-I meant that" is the usual answer. A long run of one point of view, a subplot
-that goes quiet, a character who leaves a faction with nobody replacing them:
-all of these are ordinary things a novel does. They are still reported, because
+I meant that" is the usual answer. A subplot that goes quiet, a character who
+leaves a faction with nobody replacing them, a narrator telling a scene they are
+not in: all of these are ordinary things a novel does. They are still reported, because
 on your book one of them may be exactly what you wanted to know — but they never
 sit above *"this object is in two places at once"*.
 
@@ -2481,12 +2481,6 @@ Typical catches:
   their status to Alive on the **Current State** tab and tick **"They came back
   in this scene"**. The finding goes, and the revival is recorded in the world
   rather than dismissed.
-- A **long run of one point of view** — five scenes or more in one head, in a
-  book that usually changes viewpoint more often than that. Both halves matter:
-  a novel told entirely from one character is never reported, because its runs
-  *are* its habit, and neither is a stretch of three or four in a book that
-  alternates every scene. A book with no point-of-view characters at all — a
-  narrator — is left alone entirely.
 - A character who **leaves a faction with nothing following it**. Often that is
   the point — they walk away from the family and join nobody — so the finding
   offers *"X leaves for good"*, which records it on the membership. You can also
@@ -2511,15 +2505,22 @@ Typical catches:
   memberships carry a start and an end, so "at the same time" is an overlap and
   not a guess. Reported once per pair of sides rather than once per scene. A
   double agent is a real thing, so it is a warning.
+- An **object in two places at once** — in two people's hands in one scene, or
+  placed somewhere its holder is not. Recording an item both in a hand and at
+  the place that hand is standing in is not a contradiction and is not reported:
+  the sword is at the inn, in her belt. A thing there is more than one of —
+  lembas, a cloak every member of the company has — is marked as a *kind of
+  thing* on the item, and then several people carrying one is what it means.
 - An **item carried by a character who is dead**. The scene where the death is
   recorded is not one of these — dying with your sword in your hand is not a
   continuity error.
-- A character **named in the prose but not in the cast** of that scene. This is
-  the one you meet most while drafting, and it offers **Record as mentioned** —
-  which says only what the check observed: the name is in the text. That clears
-  the warning without claiming the character is in the room, and there is a
-  **Record every name as mentioned** button to clear a drafting session's worth
-  at once. If they really are in the scene, add them to the **cast** on the
+- **Names in the prose that the scene's cast does not account for** — one
+  observation per scene, listing them, and only for names that appear more than
+  once, since a name mentioned in passing is usually a letter or a memory. It
+  offers **Record as mentioned**, which says only what the check observed: the
+  name is in the text. That clears the finding without claiming the character is
+  in the room, and there is a **Record every name as mentioned** button to clear
+  a drafting session's worth at once. If they really are in the scene, add them to the **cast** on the
   scene card instead; that is the larger claim, and the rest of the app reads
   it — the map places them, the Brief lists them, and the Character States panel
   will ask you what state they are in.

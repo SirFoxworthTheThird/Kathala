@@ -101,7 +101,7 @@ export interface Issue {
     | { kind: 'travelDays'; label: string; eventId: string; setTravelDays: number }
     | { kind: 'initialSnapshot'; label: string; eventId: string; characterId: string }
     | { kind: 'clearPov'; label: string; eventId: string }
-    | { kind: 'addMention'; label: string; eventId: string; characterId: string }
+    | { kind: 'addMention'; label: string; eventId: string; characterIds: string[] }
     | { kind: 'moveHere'; label: string; eventId: string; characterId: string; markerId: string }
     /*
       Says where a subplot lands. Not a dismissal: the scene is named in the
@@ -696,43 +696,80 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       const ch = ev ? chapById.get(ev.chapterId) : undefined
       if (!ch) continue
 
-      // Build a count of each item across all inventories in this event
-      const itemOwnerCount = new Map<string, string[]>()
+      /*
+        Two ways one object can be in two places, and only two.
+
+        **Two people holding it.** A contradiction on its face, unless the item
+        is a kind of thing rather than an object — several people each carrying
+        a cloak is what a cloak is, which `isCollective` says.
+
+        **A placement that disagrees with its holder.** An item is *at* a place
+        and *in* a hand, and those are the same fact stated twice: the cudgel is
+        at the mountain, in Sun Wukong's grip. Recording both is redundant, not
+        false, so only a disagreement counts — the item placed at one marker
+        while whoever is holding it stands at another.
+
+        That distinction is the whole of this check's history. It used to treat
+        any second record as duplication, and across the forty-six shipped books
+        that produced **552 errors, every one of them of the shape "Held by:
+        <someone>, a location"** — 156 in *The Two Towers* alone. Not one was
+        two people holding the same thing. The rule was calling the Library's
+        ordinary way of putting an item on the map a contradiction, at the
+        highest severity it has.
+      */
+      const holdersByItem = new Map<string, CharacterSnapshot[]>()
       for (const snap of evSnaps) {
         for (const itemId of snap.inventoryItemIds) {
-          if (!itemOwnerCount.has(itemId)) itemOwnerCount.set(itemId, [])
-          itemOwnerCount.get(itemId)!.push(snap.characterId)
+          if (!holdersByItem.has(itemId)) holdersByItem.set(itemId, [])
+          holdersByItem.get(itemId)!.push(snap)
         }
       }
 
-      // Also count items placed at locations
-      const evPlacements = placementsByEvent.get(evId) ?? []
-      for (const p of evPlacements) {
-        if (!itemOwnerCount.has(p.itemId)) itemOwnerCount.set(p.itemId, [])
-        itemOwnerCount.get(p.itemId)!.push(`location:${p.locationMarkerId}`)
-      }
+      const placedAt = new Map<string, string>()
+      for (const p of placementsByEvent.get(evId) ?? []) placedAt.set(p.itemId, p.locationMarkerId)
 
-      for (const [itemId, owners] of itemOwnerCount) {
-        // A kind of thing rather than one object — several people carrying a
-        // cloak each is not a contradiction, it is what a cloak is.
+      const scene = ev?.title ? `"${ev.title}"` : `a scene in Ch. ${ch.number}`
+      for (const [itemId, holders] of holdersByItem) {
         if (itemById.get(itemId)?.isCollective) continue
-        if (owners.length > 1) {
-          const item = itemById.get(itemId)
-          const ownerNames = owners.map((o) => {
-            if (o.startsWith('location:')) return 'a location'
-            return charById.get(o)?.name ?? 'unknown'
-          })
+        const item = itemById.get(itemId)
+        const name = item?.name ?? itemId
+
+        if (holders.length > 1) {
           out.push({
             id: `dup-item-${itemId}-${evId}`,
             kind: 'dup-item',
             severity: 'error',
             category: 'item',
-            message: `"${item?.name ?? itemId}" appears in multiple places in Ch. ${ch.number}`,
-            detail: `Held by: ${ownerNames.join(', ')}`,
+            message: `"${name}" is held by ${holders.length} people at once in ${scene}`,
+            detail: `Ch. ${ch.number} — ${holders.map((h) => charById.get(h.characterId)?.name ?? 'unknown').join(', ')} each carry it. Take it out of all but one inventory, or mark the item as a kind of thing rather than one object.`,
             navigatePath: `/worlds/${worldId}/timeline/${ch.id}`,
             eventId: evId,
           })
+          continue
         }
+
+        const marker = placedAt.get(itemId)
+        const holder = holders[0]
+        if (!marker || !holder.currentLocationMarkerId) continue
+        if (marker === holder.currentLocationMarkerId) continue
+        /*
+          Two markers on different layers are not comparable here. A room is a
+          marker on a sub-map of the house it is in, so "placed in the Breakfast
+          Room, carried at Gateshead" is a containment this check cannot see and
+          would report as a contradiction — at the highest severity, on a record
+          that is right. Same layer, two markers, is the case it can judge.
+        */
+        if (markerById.get(marker)?.mapLayerId !== markerById.get(holder.currentLocationMarkerId)?.mapLayerId) continue
+        out.push({
+          id: `dup-item-${itemId}-${evId}`,
+          kind: 'dup-item',
+          severity: 'error',
+          category: 'item',
+          message: `"${name}" is in two places at once in ${scene}`,
+          detail: `Ch. ${ch.number} — placed at ${markerById.get(marker)?.name ?? 'a location'}, but ${charById.get(holder.characterId)?.name ?? 'its holder'} is carrying it at ${markerById.get(holder.currentLocationMarkerId)?.name ?? 'another location'}. Move the placement, or take it out of the inventory.`,
+          navigatePath: `/worlds/${worldId}/timeline/${ch.id}`,
+          eventId: evId,
+        })
       }
     }
 
@@ -980,18 +1017,29 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
     // ── Dead character in relationship snapshot ──────────────────────────────
 
     // Map: characterId → eventId → isAlive
-    const charAliveAtEvent = new Map<string, Map<string, boolean>>()
-    for (const snap of snapshots) {
-      if (!charAliveAtEvent.has(snap.characterId)) charAliveAtEvent.set(snap.characterId, new Map())
-      charAliveAtEvent.get(snap.characterId)!.set(snap.eventId, snap.isAlive)
-    }
 
     for (const rs of allRelSnaps ?? []) {
       const rel = rels.find((r) => r.id === rs.relationshipId)
       if (!rel) continue
 
-      const charAAlive = charAliveAtEvent.get(rel.characterAId)?.get(rs.eventId)
-      const charBAlive = charAliveAtEvent.get(rel.characterBId)?.get(rs.eventId)
+      /*
+        Resolved by last known, not by an exact key.
+
+        This asked `charAliveAtEvent.get(id).get(rs.eventId)` — a map keyed by
+        the *event a snapshot was written at* — so it only ever saw a death
+        recorded in the very scene the relationship snapshot sits in. Someone
+        killed in chapter 3 with a relationship snapshot in chapter 9 was
+        invisible to it, which is the common shape and the one worth catching.
+        Thirteen findings across the forty-six shipped books came from the
+        coincidences.
+
+        `isDeadAtOrder` is how every other check in this file asks the question,
+        and it is what the snapshot model means: state at a point is the most
+        recent record at or before it.
+      */
+      const rsOrder = eventOrder(rs.eventId)
+      const charAAlive = isDeadAtOrder(rel.characterAId, rsOrder) ? false : undefined
+      const charBAlive = isDeadAtOrder(rel.characterBId, rsOrder) ? false : undefined
 
       if (charAAlive === false || charBAlive === false) {
         const deadCharId = charAAlive === false ? rel.characterAId : rel.characterBId
@@ -1305,7 +1353,20 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       })
     }
 
-    // Check 3: POV character not listed in involvedCharacterIds
+    /*
+      ── Check 3: the POV is not in the scene's cast ─────────────────────────
+
+      **An observation, not a warning.** It reads as a mistake and is often a
+      novel: on the shipped *Moby-Dick* it fires 47 times, every one of them
+      Ishmael — who narrates the whole book and is not on stage for *The Pipe*
+      or *Queen Mab*, where Ahab and Stubb are. A first-person narrator
+      reporting a scene he did not witness is a form, not a fault.
+
+      What it is worth saying is the other case: a POV left behind by an edit,
+      pointing at somebody the scene has nothing to do with. The row cannot tell
+      those apart, so it says both plainly and ranks itself below the faults
+      that are certain.
+    */
     for (const ev of allEvents) {
       if (!ev.povCharacterId || povIsUnknown(ev)) continue
       if (!ev.involvedCharacterIds.includes(ev.povCharacterId)) {
@@ -1314,10 +1375,10 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         out.push({
           id: `pov-not-involved-${ev.id}`,
           kind: 'pov-not-involved',
-          severity: 'warning',
+          severity: 'note',
           category: 'pov',
           message: `POV "${char?.name ?? '?'}" is not in the cast of "${ev.title || 'untitled'}"`,
-          detail: `Ch. ${ch?.number ?? '?'} — add them to Characters or clear the POV`,
+          detail: `Ch. ${ch?.number ?? '?'} — right for a narrator reporting a scene from outside it. If the POV is a leftover, clear it; if they are in the room, add them to the cast.`,
           navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
           eventId: ev.id,
         })
@@ -1344,84 +1405,23 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
     }
 
     /*
-      ── A long run in one head, measured against this book's own rhythm ──────
+      ── No check on how long one point of view runs ─────────────────────────
 
-      W23-9: this was a hard `runLen >= 3` with the advice *"consider
-      alternating perspectives"*, which fires on **every single-POV novel** —
-      the most common form the novel takes. Measured on the shipped books:
-      *Alice* 51 consecutive (1 of its 4 total warnings), *The Secret Garden*
-      50, *Neuromancer* 29, *The Invisible Man* three separate runs. None of
-      those is a continuity fault; they are close third with one viewpoint.
+      There was one, twice. The first fired on every single-POV novel — *Alice*,
+      *The Secret Garden*, *Neuromancer* — so it was retuned (W23-9) to compare
+      each run against the book's own median and require at least five scenes.
 
-      `pov-missing`, added next door, carries the argument against it in its own
-      docblock: *"it asks what this book's own habit is, and only speaks when a
-      scene departs from it."* This asked nothing.
+      Measured across the forty-six shipped books, the tuned version still fired
+      **59 times, and every one was deliberate**. That is the argument against
+      the whole idea rather than against a threshold: a novel told from one head
+      is a form, and the median the rule compares against is dragged down by the
+      very structure it is trying to measure. The note's own wording ended
+      "Fine if it is deliberate" — a check that cannot be satisfied by a correct
+      book teaches a writer to ignore the panel it lives in.
 
-      **A run is notable when it is more than twice the book's median run, and
-      at least five scenes long.**
-
-      The median yardstick handles the single-POV case without a special rule
-      for it: one run means the median *is* that run, so it can never exceed
-      twice itself and the check stays quiet. In a book that alternates every
-      three or four scenes, a run of fifteen clears it and is worth saying.
-
-      The floor of five is the other half, and it was measured. On the shipped
-      Monte Cristo — 149 scenes, all with a POV, 93 runs — the run lengths are
-      65×1, 16×2, 4×3, 5×4, 2×5, 1×10. The median is therefore **1**, twice it
-      is 2, and the smallest run that can possibly be reported already cleared
-      the bar: the rule had no resistance at the low end and produced twelve
-      findings, eight of them runs of three or four. Three scenes in one head is
-      a paragraph of a book that changes viewpoint constantly, not a structural
-      feature. With the floor it reports three — the run of ten across Ch. 20 to
-      Ch. 26, and the two of five — which is what a writer would want pointed
-      out.
+      `pov-missing` next door is the version of this question worth asking: it
+      learns the book's habit and speaks only when one scene departs from it.
     */
-    /** Shorter than this is a moment, not a stretch — see above. */
-    const MIN_NOTABLE_POV_RUN = 5
-
-    const povEvents = allEvents
-      .filter((ev) => !!ev.povCharacterId)
-      .sort((a, b) => eventOrder(a.id) - eventOrder(b.id))
-
-    /** Every unbroken run of one POV, in story order. */
-    const povRuns: Array<{ charId: string; start: number; len: number }> = []
-    for (let i = 0; i < povEvents.length;) {
-      const charId = povEvents[i].povCharacterId!
-      let j = i + 1
-      while (j < povEvents.length && povEvents[j].povCharacterId === charId) j++
-      povRuns.push({ charId, start: i, len: j - i })
-      i = j
-    }
-    const lengths = povRuns.map((r) => r.len).sort((a, b) => a - b)
-    const median = lengths.length === 0
-      ? 0
-      : lengths.length % 2
-        ? lengths[(lengths.length - 1) / 2]
-        : (lengths[lengths.length / 2 - 1] + lengths[lengths.length / 2]) / 2
-
-    for (const run of povRuns) {
-      const runStart = run.start
-      const runEnd = run.start + run.len
-      const charId = run.charId
-      const runLen = run.len
-      if (runLen >= MIN_NOTABLE_POV_RUN && runLen > median * 2) {
-        const char = charById.get(charId)
-        const firstEv = povEvents[runStart]
-        const lastEv  = povEvents[runEnd - 1]
-        const firstCh = chapById.get(firstEv.chapterId)
-        const lastCh  = chapById.get(lastEv.chapterId)
-        out.push({
-          id: `pov-consecutive-${charId}-${firstEv.id}`,
-          kind: 'pov-consecutive',
-          severity: 'note',
-          category: 'pov',
-          message: `${char?.name ?? '?'} is the point of view for ${runLen} scenes running`,
-          detail: `Ch. ${firstCh?.number ?? '?'} → Ch. ${lastCh?.number ?? '?'} — longer than this book's usual ${median === Math.round(median) ? median : median.toFixed(1)}. Fine if it is deliberate.`,
-          navigatePath: `/worlds/${worldId}/timeline/${firstEv.chapterId}`,
-          eventId: firstEv.id,
-        })
-      }
-    }
 
     // ── Anachronistic knowledge: knowing a fact before it becomes true ────────
     for (const a of computeKnowledgeAnachronisms({ facts: knowledgeFacts, reveals: knowledgeReveals, events: allEvents, chapters })) {
@@ -1471,40 +1471,34 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
     // ── Prose ↔ metadata drift (scene text vs. the event's cast) ─────────────
     const sceneTextByEvent = new Map(sceneTexts.map((s) => [s.eventId, s.text]))
 
-    for (const p of computeProseMentionIssues({ events: allEvents, chapters, characters, snapshots, sceneTextByEvent })) {
+    for (const p of computeProseMentionIssues({ events: allEvents, characters, sceneTextByEvent })) {
       const ev = eventById.get(p.eventId)
       const ch = ev ? chapById.get(ev.chapterId) : undefined
-      if (p.kind === 'dead') {
-        out.push({
-          id: `prose-dead-${p.characterId}-${p.eventId}`,
-          kind: 'prose-dead',
-          severity: 'warning',
-          category: 'prose',
-          message: `Dead character ${p.characterName} is named in the prose of "${ev?.title || 'untitled'}"`,
-          detail: `Ch. ${ch?.number ?? '?'} — ${p.characterName} is dead at this point. Mark the scene as a flashback or update their status if intentional.`,
-          navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
-          eventId: p.eventId,
-        })
-      } else {
-        out.push({
-          id: `prose-untagged-${p.characterId}-${p.eventId}`,
-          kind: 'prose-untagged',
-          severity: 'warning',
-          category: 'prose',
-          message: `${p.characterName} is named in the prose but not in the cast of "${ev?.title || 'untitled'}"`,
-          detail: `Ch. ${ch?.number ?? '?'} — appears ${p.count}× in the scene text. Recording it as a mention says only that: the name is in the prose. If they are actually in the room, add them to the cast on the scene card instead.`,
-          navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
-          eventId: p.eventId,
-          /*
-            W19-7: the warning already knew the character and the scene, and
-            still sent the writer to the chapter with every scene collapsed —
-            four clicks to do what the scene editor's own chip does in one. It
-            is the check a drafting writer meets most often: 143 words of prose
-            produced five of them. The chip and the row now agree.
-          */
-          fix: ev ? { kind: 'addMention', label: 'Record as mentioned', eventId: p.eventId, characterId: p.characterId } : undefined,
-        })
-      }
+      const names = p.characters.map((c) => `${c.characterName} (${c.count}×)`)
+      const shown = names.slice(0, 4).join(', ') + (names.length > 4 ? `, and ${names.length - 4} more` : '')
+      out.push({
+        id: `prose-untagged-${p.eventId}`,
+        kind: 'prose-untagged',
+        severity: 'note',
+        category: 'prose',
+        message: p.characters.length === 1
+          ? `${p.characters[0].characterName} is named in the prose but not in the cast of "${ev?.title || 'untitled'}"`
+          : `${p.characters.length} names in the prose of "${ev?.title || 'untitled'}" are not in its cast`,
+        detail: `Ch. ${ch?.number ?? '?'} — ${shown}. Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.`,
+        navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+        eventId: p.eventId,
+        /*
+          W19-7: the warning already knew the character and the scene, and still
+          sent the writer to the chapter with every scene collapsed — four
+          clicks to do what the scene editor's own chip does in one.
+
+          The fix now carries the whole scene rather than one name, because the
+          row does: `addMention` takes the list.
+        */
+        fix: ev
+          ? { kind: 'addMention', label: p.characters.length === 1 ? 'Record as mentioned' : `Record all ${p.characters.length} as mentioned`, eventId: p.eventId, characterIds: p.characters.map((c) => c.characterId) }
+          : undefined,
+      })
     }
 
     // ── Reader knowledge leaks (fact referenced in prose before its reveal) ──
