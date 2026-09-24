@@ -11,6 +11,7 @@ import { useAppStore } from '@/store'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { useReadAhead } from '@/components/useReadAhead'
 import { Button } from '@/components/ui/button'
+import { Menu, MenuItem } from '@/components/ui/menu'
 import { PortraitImage } from '@/components/PortraitImage'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { cn } from '@/lib/utils'
@@ -188,11 +189,29 @@ export function EventRow({
             title="Open in chapter detail">
             <ExternalLink className="h-3 w-3" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0 hover:text-red-400"
-            aria-label={`Delete ${sceneName}`} title={`Delete ${sceneName}`}
-            onClick={(e) => { e.stopPropagation(); setConfirmOpen(true) }}>
-            <Trash2 className="h-3 w-3" />
-          </Button>
+          {/*
+            **TL-3's fifth site.** That review moved delete behind a menu on the
+            chapter row, the scene card, the character header and the lore card,
+            and missed this one — the Timeline's own scene row, where the bin
+            sat at x=1378 with *open the chapter* at x=1354, both 20x20. Two
+            writer runs filed the same sentence, because the guide says flatly
+            that "nothing destructive sits in the row beside the everyday
+            controls, so there is no trash icon to catch a stray click on the
+            way to *open* or *move earlier*".
+
+            Gated like the chapter row's: deleting a scene is the author's, and
+            a reader borrowing the book has no business being offered it.
+          */}
+          {!gate.active && (
+            <Menu label={`More actions for ${sceneName}`} triggerClassName="h-5 w-5">
+              <MenuItem
+                icon={Trash2}
+                label="Delete scene"
+                danger
+                onClick={() => setConfirmOpen(true)}
+              />
+            </Menu>
+          )}
           <ConfirmDialog
             open={confirmOpen}
             onOpenChange={setConfirmOpen}

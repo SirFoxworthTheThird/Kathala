@@ -29,12 +29,18 @@ The map's controls **float over the canvas** rather than sitting in header rows,
 |---|---|
 | **Breadcrumb** (top of window) | Which layer is open, and its scale — *Kathala / your world / Middle Earth · 1 km = 2 px* |
 | **Top-left** | **Show** chips — characters, trails, labels, journeys, locations. The chevrons narrow those to particular characters or location types |
-| **Top-right** | **+ Location** and **Label**, plus a **⋯** menu |
+| **Top-right** | **Location** and **Label**, plus a **⋯** menu |
 | **⋯ menu** | Map scale, add level, replace image, export as PNG, and the AI tools |
 | **Bottom-right** | Zoom |
 | **Right edge** | The floor switcher, on a levelled map |
 
 While you're placing or drawing — a location, a label, a route or region's vertices, a scale calibration — **the floating controls fade and stop taking clicks**, so the whole canvas underneath stays reachable. Press **Escape** to back out of any of these modes.
+
+### A place's type can be your own word
+
+The six named types — city, town, dungeon, landmark, building, region — suit a map of a country better than a map of a ship, a station or an office block, where everything is a "building".
+
+Choosing **Custom** asks what to call it instead — *docking bay*, *chantry*, *server floor* — and that word is what the pin and the location panel show. Leave it empty and the place shows **no type at all**, rather than the word "Custom" printed as though it were a kind of place. The word only labels; the pin's colour still comes from the six.
 
 ---
 

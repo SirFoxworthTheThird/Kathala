@@ -49,7 +49,11 @@ function EventSnapshotSection({
   onRecordState?: (characterId: string, eventId: string) => void
 }) {
   const [open, setOpen] = useState(true)
-  /** Which gap row has the quick form open, if any — one at a time. */
+  /**
+   * Which character's quick form is open, if any — one at a time, and the same
+   * state for both halves of the panel: a gap row recording a state, and a
+   * recorded card correcting one.
+   */
   const [recording, setRecording] = useState<string | null>(null)
   const eventSnapshots = snapshots.filter((s) => s.eventId === event.id)
   const uncast = castWithoutState(event, snapshots, characters)
@@ -73,9 +77,36 @@ function EventSnapshotSection({
       </button>
       {open && (
         <div className="flex flex-col gap-2 border-t border-[hsl(var(--border))] p-2">
-          {eventSnapshots.map((s) => (
-            <SnapshotCard key={s.id} snapshot={s} />
-          ))}
+          {eventSnapshots.map((s) => {
+            /*
+              The same form the row below uses to *record* a state, reused to
+              correct one. It prefills from this scene's own record — including
+              the status note, which `draftFromSnapshot` keeps when the record
+              is at this scene rather than carried forward — and saving updates
+              that row in place.
+            */
+            if (onRecordState && recording === s.characterId) {
+              const who = characters.find((c) => c.id === s.characterId)
+              return (
+                <RecordStateInline
+                  key={s.id}
+                  worldId={worldId}
+                  characterId={s.characterId}
+                  characterName={who?.name ?? '?'}
+                  eventId={event.id}
+                  onDone={() => setRecording(null)}
+                  onOpenFullEditor={() => { setRecording(null); onRecordState(s.characterId, event.id) }}
+                />
+              )
+            }
+            return (
+              <SnapshotCard
+                key={s.id}
+                snapshot={s}
+                onEdit={onRecordState ? () => setRecording(s.characterId) : undefined}
+              />
+            )
+          })}
           {uncast.map((c) => {
             /*
               F15's other half: the row told you a state was missing and gave

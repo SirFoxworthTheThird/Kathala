@@ -47,9 +47,19 @@ describe('the preferences store', () => {
     await old.table('worlds').put({ id: 'w1', name: 'Kept', createdAt: 1 })
     old.close()
 
-    // Opening the real database walks 1 → 54, which includes the delete.
+    /*
+      Opening the real database walks the whole chain from 1, which includes
+      the delete at v54.
+
+      Not pinned to an exact number any more. It was `toBe(54)`, which made
+      every later field addition fail *this* test — a test about dropping
+      `preferences` — with a message about a version, sending the reader
+      somewhere unrelated to look. What it is actually guarding is that a v1
+      database walks all the way up rather than stopping partway, so it asks
+      that: at least as far as the version that did the dropping.
+    */
     await db.open()
-    expect(db.verno).toBe(54)
+    expect(db.verno).toBeGreaterThanOrEqual(54)
     expect(db.tables.map((t) => t.name)).not.toContain('preferences')
 
     // The upgrade is a deletion of one store, not a reset of the database.

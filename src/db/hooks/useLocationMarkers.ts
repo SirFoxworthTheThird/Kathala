@@ -55,6 +55,8 @@ export async function createLocationMarker(data: {
   x: number
   y: number
   iconType: LocationIconType
+  /** The writer's own word, when `iconType` is `custom` — see `locationType.ts`. */
+  customType?: string
   linkedMapLayerId?: string | null
   tags?: string[]
   imageId?: string | null
@@ -71,6 +73,9 @@ export async function createLocationMarker(data: {
     y: data.y,
     imageId: data.imageId ?? null,
     iconType: data.iconType,
+    // Written only when it labels something, so an empty string never has to be
+    // told apart from an absent field — `locationTypeLabel` reads both as none.
+    ...(data.customType?.trim() ? { customType: data.customType.trim() } : {}),
     tags: data.tags ?? [],
     factionId: null,
     createdAt: now,
