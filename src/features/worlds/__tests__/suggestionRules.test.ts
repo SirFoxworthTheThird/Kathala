@@ -17,6 +17,10 @@ function world(overrides: Partial<WorldSummaryData> = {}): WorldSummaryData {
     mapLayerCount:          0,
     lorePageCount:          0,
     factionCount:           0,
+    // The default world is already backed up, so every existing case keeps
+    // asking about the thing it was written to ask about.
+    canBackUp:              true,
+    hasBackupFolder:        true,
     ...overrides,
   }
 }
@@ -265,14 +269,16 @@ describe('SUGG-10/11 — dismissal', () => {
 
 describe('SUGG-12 — priority order preserved', () => {
   it('rules appear in array-definition order', () => {
+    /*
+      `back-up` sits fourth deliberately: after the three a world cannot work
+      without, and ahead of the ones that make it richer. Keeping a copy of the
+      book matters more than a relationship graph does.
+    */
     const ruleOrder = SUGGESTION_RULES.map((r) => r.id)
-    expect(ruleOrder[0]).toBe('add-character')
-    expect(ruleOrder[1]).toBe('add-first-event')
-    expect(ruleOrder[2]).toBe('place-character')
-    expect(ruleOrder[3]).toBe('add-relationships')
-    expect(ruleOrder[4]).toBe('add-map')
-    expect(ruleOrder[5]).toBe('document-lore')
-    expect(ruleOrder[6]).toBe('add-factions')
+    expect(ruleOrder).toEqual([
+      'add-character', 'add-first-event', 'place-character',
+      'back-up', 'export-copy', 'add-relationships', 'add-map', 'document-lore', 'add-factions',
+    ])
   })
 
   it('add-character appears before add-first-event when both could apply (impossible, but order contract holds)', () => {
@@ -393,5 +399,97 @@ describe('cap-after-dismiss behaviour', () => {
     expect(ids(results)).not.toContain('place-character')
     expect(ids(results)).toContain('add-relationships')
     expect(ids(results)).toContain('add-map')
+  })
+})
+
+/**
+ * The nudge that is not about making the world richer.
+ *
+ * A world lives in one browser's IndexedDB and clearing site data takes it. The
+ * folder-copy machinery had existed for a long while with nothing anywhere
+ * mentioning it, so the only writers using it were the ones who had gone
+ * looking through World Settings.
+ */
+describe('the backup suggestion', () => {
+  it('is offered once there is a scene to lose', () => {
+    expect(ids(evaluateSuggestions(world({
+      characterCount: 2, eventCount: 1, hasCharacterAtAnyEvent: true, hasBackupFolder: false,
+    }), []))).toContain('back-up')
+  })
+
+  it('is not offered for an empty world', () => {
+    // Nothing to protect yet, and the first three nudges are the ones that
+    // matter while a world has no scenes in it.
+    expect(ids(evaluateSuggestions(world({ hasBackupFolder: false }), []))).not.toContain('back-up')
+  })
+
+  it('stops once a folder is chosen', () => {
+    expect(ids(evaluateSuggestions(world({
+      characterCount: 2, eventCount: 1, hasCharacterAtAnyEvent: true, hasBackupFolder: true,
+    }), []))).not.toContain('back-up')
+  })
+
+  /*
+    A browser that cannot hold a folder handle is not offered a folder — a
+    banner proposing something the browser will not do is the "warning with no
+    reply except compliance" shape this file's docblock already names.
+
+    But it is not offered *nothing*, which is where this landed first. Brave
+    blocks the File System Access API with no flag to re-enable it, and no
+    Chromium on Android exposes it, so gating on `canBackUp` alone left the
+    writers with the fewest routes to a second copy the only ones never asked
+    about it. A `.pwk` export works everywhere, so they are asked about that.
+  */
+  it('is not offered where the browser cannot do it', () => {
+    const cannot = world({
+      characterCount: 2, eventCount: 1, hasCharacterAtAnyEvent: true,
+      hasBackupFolder: false, canBackUp: false,
+    })
+    expect(ids(evaluateSuggestions(cannot, []))).not.toContain('back-up')
+    // The presence half, in the same test: something is offered instead.
+    expect(ids(evaluateSuggestions(cannot, []))).toContain('export-copy')
+  })
+
+  it('and the export offer stays out of the way where a folder is possible', () => {
+    expect(ids(evaluateSuggestions(world({
+      characterCount: 2, eventCount: 1, hasCharacterAtAnyEvent: true,
+      hasBackupFolder: false, canBackUp: true,
+    }), []))).not.toContain('export-copy')
+  })
+
+  it('never offers both, whatever the world looks like', () => {
+    /*
+      The two conditions are each other's negation, so this cannot fail while
+      that stays true — which is the point of asserting it. A later edit that
+      loosens either one turns a pair of alternatives into two banners saying
+      almost the same thing.
+    */
+    for (const canBackUp of [true, false]) {
+      for (const hasBackupFolder of [true, false]) {
+        for (const eventCount of [0, 1, 9]) {
+          const got = ids(evaluateSuggestions(world({
+            characterCount: 2, hasCharacterAtAnyEvent: true, eventCount, canBackUp, hasBackupFolder,
+          }), []))
+          expect(got.filter((id) => id === 'back-up' || id === 'export-copy').length)
+            .toBeLessThanOrEqual(1)
+        }
+      }
+    }
+  })
+
+  it('does not ask an empty world to export either', () => {
+    expect(ids(evaluateSuggestions(world({ canBackUp: false }), []))).not.toContain('export-copy')
+  })
+
+  it('can also be answered with no', () => {
+    expect(SUGGESTION_RULES.find((r) => r.id === 'export-copy')!.dismissible).toBe(true)
+  })
+
+  it('can be answered with no, like the other optional ones', () => {
+    const rule = SUGGESTION_RULES.find((r) => r.id === 'back-up')
+    expect(rule?.dismissible).toBe(true)
+    expect(ids(evaluateSuggestions(world({
+      characterCount: 2, eventCount: 1, hasCharacterAtAnyEvent: true, hasBackupFolder: false,
+    }), ['back-up']))).not.toContain('back-up')
   })
 })
