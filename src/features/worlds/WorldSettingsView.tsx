@@ -1,6 +1,6 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { BlockingReason } from '@/components/BlockingReason'
-import { useParams } from 'react-router-dom'
+import { useParams, useLocation } from 'react-router-dom'
 import { Footprints, Plus, Pencil, Check, X, Trash2, FileCode2, Upload, Image as ImageIcon, BookOpen } from 'lucide-react'
 import { useWorld, updateWorld } from '@/db/hooks/useWorlds'
 import { useTimelines, updateTimeline } from '@/db/hooks/useTimeline'
@@ -20,7 +20,7 @@ import { CalendarEditor } from './CalendarEditor'
 import { SettingsIndex, useSettingsSections } from './SettingsIndex'
 import { APP_THEMES, themeClass } from '@/lib/themes'
 import { useAppStore, type AppTheme } from '@/store'
-import { SettingsSection, SettingsFoldProvider } from './SettingsSection'
+import { SettingsSection, SettingsFoldProvider, useSettingsFold } from './SettingsSection'
 import { LocalPicturesSection } from './LocalPicturesSection'
 
 // ── Travel mode row ───────────────────────────────────────────────────────────
@@ -103,6 +103,63 @@ function WorldSettingsBody() {
   // conditional — see SettingsIndex.
   const rootRef = useRef<HTMLDivElement>(null)
   const sections = useSettingsSections(rootRef)
+
+  /*
+    Arriving pointed at one section.
+
+    The backup chip and the dashboard's backup nudge both sent the writer here
+    and left them at the top — and Cloud Sync is the eleventh of eleven
+    sections, measured at 2,849px down. A writer with eleven thousand words in
+    one browser profile clicked the thing that says *your only copy is here* and
+    landed on the world's name and cover image.
+
+    Router state rather than a URL fragment, because the app is on a hash router
+    and a bare `#settings-cloud-sync` would be read as a route. `reveal` first,
+    since a scroll to a folded heading looks like nothing happening. The wait is
+    for the section to exist: half of them are conditional and the index reads
+    them from the DOM in an effect, so on the first paint the target is not
+    there yet.
+  */
+  const jumpTo = (useLocation().state as { section?: string } | null)?.section
+  const { reveal } = useSettingsFold()
+  // Held in a ref so that folding any section — which mints a new `reveal` —
+  // cannot restart the scroll below and drag a reading writer back up.
+  const revealRef = useRef(reveal)
+  revealRef.current = reveal
+  useEffect(() => {
+    if (!jumpTo) return
+    revealRef.current(jumpTo)
+
+    /*
+      Scrolled more than once, because one scroll lands in the wrong place.
+
+      Measured: a single `scrollIntoView` on arrival leaves the scroll container
+      at 1,350px with the target still 1,459px down the viewport. The scroll
+      itself is fine — the page is simply shorter when it runs than it is a
+      moment later, as the live queries settle and the sections below fill in,
+      and the container has not got that far to scroll yet.
+
+      So it is re-applied while the page is still growing, and stops either when
+      the target has arrived or after two seconds, so that a writer who scrolls
+      away in the meantime is not dragged back. `auto` rather than `smooth`: a
+      smooth scroll restarted three times reads as a stutter.
+    */
+    const started = Date.now()
+    const timer = setInterval(() => {
+      const target = document.getElementById(jumpTo)
+      /*
+        "On screen", not "at the top" — Cloud Sync is the last section, so the
+        container runs out of scroll before its heading reaches the top and an
+        at-the-top test would retry for the whole two seconds, dragging back a
+        writer who had started scrolling.
+      */
+      const top = target?.getBoundingClientRect().top
+      const settled = top != null && top >= 0 && top < window.innerHeight
+      if (settled || Date.now() - started > 2_000) { clearInterval(timer); return }
+      target?.scrollIntoView({ block: 'start' })
+    }, 100)
+    return () => clearInterval(timer)
+  }, [jumpTo])
 
   // World name / description
   const [name, setName] = useState('')

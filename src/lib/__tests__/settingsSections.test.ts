@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   parseCollapsed, serialiseCollapsed, isSectionOpen, toggleSection,
-  collapseAll, expandAll, allCollapsed,
+  collapseAll, expandAll, allCollapsed, revealSection,
 } from '@/lib/settingsSections'
 
 /**
@@ -105,5 +105,31 @@ describe('allCollapsed', () => {
     // reading mode is not even rendering.
     expect(allCollapsed(['settings-elsewhere'], PAGE)).toBe(false)
     expect(allCollapsed([...PAGE, 'settings-elsewhere'], PAGE)).toBe(true)
+  })
+})
+
+/**
+ * Identity, not contents — which is the whole reason this is a function.
+ *
+ * `filter` always allocates, so revealing an already-open section looked like a
+ * state change: the settings screen re-rendered, the provider handed out a new
+ * `reveal`, and any effect depending on it re-ran and revealed again. The jump
+ * link added for the backup chip scrolled on a timer and never fired, because
+ * each render cleared the timer the one before it had set.
+ */
+describe('revealSection', () => {
+  it('hands back the same list when the section is already open', () => {
+    const collapsed = ['settings-theme']
+    // `toBe`, deliberately: an equal-but-new array is the bug.
+    expect(revealSection(collapsed, 'settings-cloud-sync')).toBe(collapsed)
+  })
+
+  it('and a new one, without it, when the section is shut', () => {
+    // The pair — a rule that returned the input unconditionally would satisfy
+    // the half above and do nothing at all.
+    const collapsed = ['settings-theme', 'settings-cloud-sync']
+    const next = revealSection(collapsed, 'settings-cloud-sync')
+    expect(next).not.toBe(collapsed)
+    expect(next).toEqual(['settings-theme'])
   })
 })

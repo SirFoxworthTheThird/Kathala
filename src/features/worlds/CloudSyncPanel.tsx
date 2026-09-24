@@ -146,32 +146,17 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
         Kathala required a browser they were arguably already using, and given
         nothing to do about it.
 
-        The export below is that something: `exportWorld` falls back to a plain
-        download link when the picker is missing, so it works everywhere.
+        The one-off export at the foot of this panel is that something:
+        `exportWorld` falls back to a plain download link when the picker is
+        missing, so it works everywhere.
       */}
       {!supported && (
-        <div className="space-y-3">
-          <p className="text-xs text-[hsl(var(--muted-foreground))]">
-            This browser does not offer the folder picker, so Kathala cannot keep a copy
-            in a folder for you. Brave blocks it, and no mobile browser has it;
-            Chrome, Edge, Opera, Vivaldi and the desktop app all do.
-          </p>
-          <p className="text-xs text-[hsl(var(--muted-foreground))]">
-            You can still keep a copy yourself — this saves the whole world, pictures
-            included, as a file you can put anywhere.
-          </p>
-          <Button
-            variant="outline" size="sm" className="w-full gap-2 justify-start"
-            disabled={exportingFallback}
-            onClick={async () => {
-              setExportingFallback(true)
-              try { await exportWorld(worldId) } finally { setExportingFallback(false) }
-            }}
-          >
-            <Download className="h-4 w-4" />
-            {exportingFallback ? 'Exporting…' : 'Export a .pwk copy…'}
-          </Button>
-        </div>
+        <p className="text-xs text-[hsl(var(--muted-foreground))]">
+          This browser does not offer the folder picker, so Kathala cannot keep a copy
+          in a folder for you. Brave blocks it, and no mobile browser has it;
+          Chrome, Edge, Opera, Vivaldi and the desktop app all do. You can still keep
+          a copy yourself, below.
+        </p>
       )}
 
       {supported && !binding && (
@@ -268,6 +253,38 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
           </div>
         </div>
       )}
+
+      {/*
+        A copy you keep yourself, on every browser.
+
+        This panel is where the backup chip and the dashboard nudge now land,
+        and until this button existed the only export here was *Export as HTML*
+        — a read-only snapshot that cannot be imported. A writer with eleven
+        thousand words followed the warning about their only copy, arrived here,
+        and left believing the app had no world export at all; the `.pwk` was on
+        the world card's menu, two screens back.
+
+        A bound folder is still the better answer, because it keeps itself up to
+        date. This is the one that always works.
+      */}
+      <div className="space-y-2 border-t border-[hsl(var(--border))] pt-3">
+        <p className="text-xs text-[hsl(var(--muted-foreground))]">
+          {binding
+            ? 'Or take a copy by hand — the whole world, pictures included, as one file you can put anywhere.'
+            : 'Or take a copy now — the whole world, pictures included, as one file you can put anywhere. Unlike Export as HTML, this one can be imported again.'}
+        </p>
+        <Button
+          variant="outline" size="sm" className="w-full gap-2 justify-start"
+          disabled={exportingFallback}
+          onClick={async () => {
+            setExportingFallback(true)
+            try { await exportWorld(worldId) } finally { setExportingFallback(false) }
+          }}
+        >
+          <Download className="h-4 w-4" />
+          {exportingFallback ? 'Exporting…' : 'Export a .pwk copy…'}
+        </Button>
+      </div>
 
       {loadPreview && (
         <LoadPreviewDialog

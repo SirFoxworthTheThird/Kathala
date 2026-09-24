@@ -18,6 +18,12 @@ export interface SuggestionRule {
   dismissible: boolean
   condition: (d: WorldSummaryData) => boolean
   navigateTo: string
+  /**
+   * A section within `navigateTo` to arrive pointed at, where the screen is
+   * long enough that the top of it is not an answer. World settings has eleven
+   * sections and the backup panel is the last of them.
+   */
+  navigateSection?: string
   navLabel: string
 }
 
@@ -49,7 +55,7 @@ export const SUGGESTION_RULES: SuggestionRule[] = [
     asking somebody to protect an empty world — and it is dismissible, because
     a writer who keeps their own backups has already answered it.
   */
-  { id: 'back-up',           title: 'Keep a copy of this world in a folder',  dismissible: true,  condition: (d) => d.canBackUp && !d.hasBackupFolder && d.eventCount > 0,          navigateTo: 'settings',      navLabel: 'Choose a folder'  },
+  { id: 'back-up',           title: 'Keep a copy of this world in a folder',  dismissible: true,  condition: (d) => d.canBackUp && !d.hasBackupFolder && d.eventCount > 0,          navigateTo: 'settings',      navLabel: 'Choose a folder', navigateSection: 'settings-cloud-sync' },
   /*
     And its twin, for the browsers that have no folder to offer. Brave blocks
     the File System Access API with no flag to re-enable it, and no Chromium on
@@ -59,7 +65,7 @@ export const SUGGESTION_RULES: SuggestionRule[] = [
 
     The two conditions are each other's negation, so exactly one can ever fire.
   */
-  { id: 'export-copy',       title: 'Keep a copy of this world somewhere safe', dismissible: true, condition: (d) => !d.canBackUp && d.eventCount > 0,                              navigateTo: 'settings',      navLabel: 'Export a copy'    },
+  { id: 'export-copy',       title: 'Keep a copy of this world somewhere safe', dismissible: true, condition: (d) => !d.canBackUp && d.eventCount > 0,                              navigateTo: 'settings',      navLabel: 'Export a copy',   navigateSection: 'settings-cloud-sync' },
   { id: 'add-relationships', title: 'Define how your characters relate',      dismissible: true,  condition: (d) => d.characterCount >= 2 && d.relationshipCount === 0,            navigateTo: 'relationships', navLabel: 'Go to Relations'  },
   { id: 'add-map',           title: 'Add a map to track where things happen', dismissible: true,  condition: (d) => d.eventCount > 0 && d.mapLayerCount === 0,                    navigateTo: 'maps',          navLabel: 'Go to Maps'       },
   { id: 'document-lore',     title: "Document your world's lore",             dismissible: true,  condition: (d) => d.eventCount >= 5 && d.lorePageCount === 0,                   navigateTo: 'lore',          navLabel: 'Go to Lore'       },

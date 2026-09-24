@@ -54,9 +54,13 @@ export function RecordStateInline({
   async function save() {
     setSaving(true)
     try {
-      await upsertSnapshot(quickStateWrite({
-        draft: current, prev, worldId, characterId, eventId, markers: options,
-      }))
+      await upsertSnapshot(
+        quickStateWrite({ draft: current, prev, worldId, characterId, eventId, markers: options }),
+        // Pressing this button *is* the assertion, even when it repeats the last
+        // known state — confirming somebody has not moved is the case the form
+        // was built for, and it used to be the one case it silently refused.
+        { confirmUnchanged: true },
+      )
       onDone()
     } finally {
       setSaving(false)

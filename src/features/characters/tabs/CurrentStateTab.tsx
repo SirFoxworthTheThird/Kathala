@@ -339,7 +339,11 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
       inventoryNotes,
       statusNotes,
       travelModeId: travelModeId || null,
-    })
+    },
+    // The same rule as the quick form: Save is the writer stating that this is
+    // how things stand *here*, and it has to land even when nothing about it
+    // differs from the last time they said so.
+    { confirmUnchanged: true })
     setDirty(false)
     noticeWhereThisStops(before)
   }
