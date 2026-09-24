@@ -306,3 +306,258 @@ describe('a scene marked done with no draft', () => {
     expect(kinds(structureOnly)).not.toContain('scene-undrafted')
   })
 })
+
+/*
+  ── The map and the clock ──────────────────────────────────────────────────
+
+  The four checks below all read the same two things the rest of the checker
+  never touches: where a marker sits in pixels, and how many in-world days
+  passed between two scenes. Their pure halves — `pointInPolygon`,
+  `pathCrossesPolygon`, `assessTravel`, `computeInWorldDays` — each have their
+  own tests. What none of them can tell you is whether `computeContinuityIssues`
+  still calls them, with the right arguments, on data in the shape the database
+  actually stores. That wiring is what these drive.
+*/
+
+const layer = (id: string, over: Record<string, unknown> = {}) =>
+  ({
+    id, worldId: 'w', parentMapId: null, name: id, description: '', imageId: null,
+    imageWidth: 1000, imageHeight: 1000, scalePixelsPerUnit: null, scaleUnit: null,
+    levelGroupId: null, levelIndex: null, levelLabel: null, createdAt: 0, updatedAt: 0, ...over,
+  }) as never
+
+/** A square, given its corners — the shape every polygon test here needs. */
+const box = (x1: number, y1: number, x2: number, y2: number) =>
+  [{ x: x1, y: y1 }, { x: x2, y: y1 }, { x: x2, y: y2 }, { x: x1, y: y2 }]
+
+const region = (id: string, vertices: Array<{ x: number; y: number }>, over: Record<string, unknown> = {}) =>
+  ({
+    id, worldId: 'w', mapLayerId: 'l1', name: id, vertices, fillColor: '#f00', opacity: 0.3,
+    linkedMapLayerId: null, factionId: null, createdAt: 0, updatedAt: 0, ...over,
+  }) as never
+
+const regionSnap = (regionId: string, eventId: string, status: string) =>
+  ({ id: `rs-${regionId}-${eventId}`, worldId: 'w', regionId, eventId, status, updatedAt: 0 }) as never
+
+describe('a character standing inside a region that has fallen', () => {
+  const world = (status: string) => base({
+    characters: [person('a', 'Ayla')],
+    allEvents: [ev('e1', 'c1', 0), ev('e2', 'c2', 0)],
+    allLayers: [layer('l1')],
+    // Inside the square, so the finding is about the region rather than the pin.
+    allMarkers: [marker('m1', { x: 50, y: 50 })],
+    allMapRegions: [region('r1', box(0, 0, 100, 100))],
+    allRegionSnapshots: [regionSnap('r1', 'e1', status)],
+    snapshots: [snap('a', 'e2', { currentLocationMarkerId: 'm1', currentMapLayerId: 'l1' })],
+  })
+
+  it('is reported once the region is destroyed', () => {
+    expect(kinds(world('destroyed'))).toContain('char-in-region')
+  })
+
+  it('is not reported while the region is intact', () => {
+    // `active` is the ordinary state; only `destroyed` and `occupied` are faults,
+    // so a region that has a recorded history but a healthy one stays quiet.
+    expect(kinds(world('active'))).not.toContain('char-in-region')
+  })
+})
+
+describe('a journey that goes straight through a ruined region', () => {
+  /*
+    Both markers sit *outside* the region, so a finding here can only have come
+    from the path between them. Otherwise `char-in-region` would fire on the
+    same data and this test would pass without the traversal rule existing.
+  */
+  const world = (status: string) => base({
+    characters: [person('a', 'Ayla')],
+    allEvents: [ev('e1', 'c1', 0), ev('e2', 'c2', 0)],
+    allLayers: [layer('l1')],
+    allMarkers: [marker('m1', { x: 0, y: 50 }), marker('m2', { x: 200, y: 50 })],
+    allMapRegions: [region('r1', box(80, 0, 120, 100))],
+    allRegionSnapshots: [regionSnap('r1', 'e1', status)],
+    snapshots: [
+      snap('a', 'e1', { currentLocationMarkerId: 'm1', currentMapLayerId: 'l1' }),
+      snap('a', 'e2', { currentLocationMarkerId: 'm2', currentMapLayerId: 'l1' }),
+    ],
+  })
+
+  it('is reported when the region between them is destroyed', () => {
+    const issues = computeContinuityIssues(world('destroyed'))
+    expect(issues.map((i) => i.kind)).toContain('region-traversal')
+    // And the pin checks stay silent, which is what proves the path was walked.
+    expect(issues.map((i) => i.kind)).not.toContain('char-in-region')
+  })
+
+  it('is not reported when the region between them is fine', () => {
+    expect(kinds(world('active'))).not.toContain('region-traversal')
+  })
+})
+
+describe('a journey longer than the days available for it', () => {
+  /*
+    A thousand pixels at one pixel per km, on foot at ten km a day: a hundred
+    days of walking. The scene's own `travelDays` is the clock — one day is not
+    enough and two hundred is plenty — so the same distance is read twice and
+    only the time between the scenes changes.
+  */
+  const world = (travelDays: number) => base({
+    characters: [person('a', 'Ayla')],
+    allEvents: [ev('e1', 'c1', 0), ev('e2', 'c2', 0, { travelDays })],
+    allLayers: [layer('l1', { scalePixelsPerUnit: 1, scaleUnit: 'km' })],
+    allMarkers: [marker('m1', { x: 0, y: 0 }), marker('m2', { x: 1000, y: 0 })],
+    travelModes: [{ id: 'tm', worldId: 'w', name: 'On foot', speedPerDay: 10, createdAt: 0, updatedAt: 0 } as never],
+    snapshots: [
+      snap('a', 'e1', { currentLocationMarkerId: 'm1', currentMapLayerId: 'l1', travelModeId: 'tm' }),
+      snap('a', 'e2', { currentLocationMarkerId: 'm2', currentMapLayerId: 'l1', travelModeId: 'tm' }),
+    ],
+  })
+
+  it('is reported when there is nowhere near enough time', () => {
+    expect(kinds(world(1))).toContain('travel-dist')
+  })
+
+  it('is not reported once the story allows the days it needs', () => {
+    expect(kinds(world(200))).not.toContain('travel-dist')
+  })
+
+  it('offers the days it is short by, rather than only naming the problem', () => {
+    /*
+      The fix is the half a writer can act on, and it is computed from the
+      shortfall rather than from a constant: 100 days needed, 1 available, so
+      99 more. Asserting the number keeps the arithmetic honest — a fix that
+      offered a token extra day would look identical from the kind alone.
+    */
+    const issue = computeContinuityIssues(world(1)).find((i) => i.kind === 'travel-dist')
+    expect(issue?.fix).toMatchObject({ kind: 'travelDays', eventId: 'e2', setTravelDays: 100 })
+  })
+})
+
+describe('an item carried outside the timelines it belongs to', () => {
+  const chIn = (id: string, number: number, timelineId: string) =>
+    ({ id, worldId: 'w', timelineId, number, title: `Ch ${number}`, synopsis: '', notes: '', wordGoal: null, createdAt: 0, updatedAt: 0 }) as never
+
+  const world = (encounterTimelineId: string) => base({
+    // Two chapters on two different clocks — a frame narrative's shape.
+    chapters: [chIn('c1', 1, 't1'), chIn('c2', 2, 't2')],
+    characters: [person('a', 'Ayla')],
+    items: [{ id: 'i1', worldId: 'w', name: 'The letters', description: '', tags: [], imageId: null, isCollective: false, createdAt: 0, updatedAt: 0 } as never],
+    allEvents: [ev('e1', 'c1', 0, { timelineId: 't1' }), ev('e2', 'c2', 0, { timelineId: 't2' })],
+    artifacts: [{ id: 'art1', worldId: 'w', itemId: 'i1', originTimelineId: 't1', encounterTimelineId, encounterNotes: '', createdAt: 0, updatedAt: 0 } as never],
+    snapshots: [snap('a', 'e2', { inventoryItemIds: ['i1'] })],
+  })
+
+  it('is reported when it turns up on a third clock', () => {
+    // Declared to exist and be found in t1, but held in a t2 chapter.
+    expect(kinds(world('t1'))).toContain('artifact-wrong-timeline')
+  })
+
+  it('is not reported where the writer said it would be encountered', () => {
+    expect(kinds(world('t2'))).not.toContain('artifact-wrong-timeline')
+  })
+})
+
+/*
+  ── Subplot cadence ────────────────────────────────────────────────────────
+
+  `computeThreadIssues` is tested on its own, and the checker maps its three
+  kinds onto issues by string concatenation — `thread-${ti.kind}`. That is
+  exactly the sort of seam a rename slips through silently: the ids would keep
+  building, the panel would group them under a label that no longer exists, and
+  nothing would throw.
+*/
+
+const thread = (id: string, name: string, over: Record<string, unknown> = {}) =>
+  ({ id, worldId: 'w', name, color: '#6366f1', description: '', resolvedEventId: null, createdAt: 0, updatedAt: 0, ...over }) as never
+
+const chapterRun = (n: number) => Array.from({ length: n }, (_, i) => ch(`c${i + 1}`, i + 1))
+
+/** One scene per chapter, tagged with the thread in the chapters named. */
+const taggedIn = (chapterCount: number, tagged: number[]) =>
+  Array.from({ length: chapterCount }, (_, i) =>
+    ev(`e${i + 1}`, `c${i + 1}`, 0, tagged.includes(i + 1) ? { threadIds: ['t1'] } : {}))
+
+describe('a subplot that is raised and then dropped', () => {
+  const world = (resolvedEventId: string | null) => base({
+    chapters: chapterRun(5),
+    plotThreads: [thread('t1', 'The missing ledger', { resolvedEventId })],
+    // A beat in the first chapter and nothing after it: four chapters of silence
+    // at the end, past the three that read as dangling.
+    allEvents: taggedIn(5, [1]),
+  })
+
+  it('is reported when nothing says where it lands', () => {
+    expect(kinds(world(null))).toContain('thread-dangling')
+  })
+
+  it('is not reported once the writer says where it lands', () => {
+    // Not a "hide this" flag — `resolvedEventId` states the scene it resolves
+    // in, so there is nothing left to report rather than a silenced report.
+    expect(kinds(world('e1'))).not.toContain('thread-dangling')
+  })
+})
+
+describe('a subplot that disappears for a third of its own life', () => {
+  const world = (tagged: number[]) => base({
+    chapters: chapterRun(12),
+    plotThreads: [thread('t1', 'The truth of Yanina')],
+    allEvents: taggedIn(12, tagged),
+  })
+
+  it('is reported when the gap runs most of the way through', () => {
+    // Ten quiet chapters out of the twelve it spans.
+    expect(kinds(world([1, 12]))).toContain('thread-dormant')
+  })
+
+  it('is not reported when the thread keeps a steady beat', () => {
+    // The same twelve chapters, a beat in every one of them.
+    expect(kinds(world([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]))).not.toContain('thread-dormant')
+  })
+
+  /*
+    **The two negatives below are the rule.** It asks for a gap of five chapters
+    *and* more than a third of the thread's own life, "both, because either
+    alone is wrong" — and the steady-beat world above does not prove that,
+    because a gap of zero fails each half on its own. A mutant that destroyed
+    either threshold left it green.
+
+    So each of these trips one half and not the other, and they are drawn from
+    the measurements in `threadContinuity.ts`: Benedetto's 12-chapter silence
+    across 68 chapters of Monte Cristo is ordinary rhythm, and a three-chapter
+    hole in a six-chapter subplot is a pause, not a disappearance.
+  */
+  it('is not reported for a long silence that is a small part of a long thread', () => {
+    // Ten quiet chapters — past the five — but ten of sixty is not a third.
+    const quiet = new Set([21, 22, 23, 24, 25, 26, 27, 28, 29, 30])
+    const tagged = Array.from({ length: 60 }, (_, i) => i + 1).filter((n) => !quiet.has(n))
+    expect(kinds(base({
+      chapters: chapterRun(60),
+      plotThreads: [thread('t1', 'The Benedetto affair')],
+      allEvents: taggedIn(60, tagged),
+    }))).not.toContain('thread-dormant')
+  })
+
+  it('is not reported for a big share of a thread too short to lose', () => {
+    // Three quiet chapters of six is half its life, but three chapters is not
+    // long enough for a reader to lose the thread at all.
+    expect(kinds(base({
+      chapters: chapterRun(6),
+      plotThreads: [thread('t1', 'The locked drawer')],
+      allEvents: taggedIn(6, [1, 5, 6]),
+    }))).not.toContain('thread-dormant')
+  })
+})
+
+describe('a subplot nobody ever tagged a scene with', () => {
+  const world = (threadIds: string[]) => base({
+    plotThreads: [thread('t1', 'The inheritance')],
+    allEvents: [ev('e1', 'c1', 0, { threadIds }), ev('e2', 'c2', 0)],
+  })
+
+  it('is reported while it exists on paper only', () => {
+    expect(kinds(world([]))).toContain('thread-unstarted')
+  })
+
+  it('is not reported once a scene carries it', () => {
+    expect(kinds(world(['t1']))).not.toContain('thread-unstarted')
+  })
+})
