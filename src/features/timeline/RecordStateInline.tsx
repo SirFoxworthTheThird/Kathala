@@ -43,7 +43,7 @@ export function RecordStateInline({
     otherwise it opens blank and the prefill, which is the whole point, never
     lands. `draft` stays null until the writer touches something.
   */
-  const current = draft ?? draftFromSnapshot(prev)
+  const current = draft ?? draftFromSnapshot(prev, eventId)
   const carried = isCarriedForward(prev, eventId)
   const options = useMemo(() => markers, [markers])
 

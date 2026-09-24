@@ -35,6 +35,7 @@ export function AddLocationDialog({
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [iconType, setIconType] = useState<LocationIconType>('city')
+  const [customType, setCustomType] = useState('')
   const [saving, setSaving] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
@@ -49,11 +50,15 @@ export function AddLocationDialog({
       x: position.x,
       y: position.y,
       iconType,
+      // Only ever stored against the type it labels, so switching away from
+      // Custom cannot leave a stale word behind on the record.
+      customType: iconType === 'custom' ? customType.trim() || undefined : undefined,
     })
     setSaving(false)
     setName('')
     setDescription('')
     setIconType('city')
+    setCustomType('')
     onOpenChange(false)
     onCreated?.(marker)
   }
@@ -89,6 +94,23 @@ export function AddLocationDialog({
               </SelectContent>
             </Select>
           </Field>
+          {/*
+            What makes Custom an escape hatch rather than a seventh label.
+
+            The six named types are a fantasy vocabulary; a writer mapping a
+            space station had four "Building"s and one pin reading *Marn's
+            Office · Custom*. Leaving this empty is fine — the place then shows
+            no type at all, which is better than showing the word "Custom".
+          */}
+          {iconType === 'custom' && (
+            <Field label="Call it" className="flex flex-col gap-1.5">
+              <Input
+                placeholder="Docking bay, chantry, server floor…"
+                value={customType}
+                onChange={(e) => setCustomType(e.target.value)}
+              />
+            </Field>
+          )}
           <Field label="Description" className="flex flex-col gap-1.5">
             <Textarea
               placeholder="Optional description..."

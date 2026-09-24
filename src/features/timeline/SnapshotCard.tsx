@@ -1,4 +1,4 @@
-import { MapPin, Package, Heart, Skull } from 'lucide-react'
+import { MapPin, Package, Heart, Skull, Pencil } from 'lucide-react'
 import type { CharacterSnapshot } from '@/types'
 import { useCharacter } from '@/db/hooks/useCharacters'
 import { useLocationMarker } from '@/db/hooks/useLocationMarkers'
@@ -7,9 +7,21 @@ import { PortraitImage } from '@/components/PortraitImage'
 
 interface SnapshotCardProps {
   snapshot: CharacterSnapshot
+  /**
+   * Correct this record from here. Absent for a reader, and absent wherever
+   * the card is only being shown.
+   *
+   * The panel took the answer and would not take a correction: a row *with* a
+   * state was an inert `<div>` — no role, no tabindex, no handler, nothing in
+   * the panel to press. A writer who had put somebody in the wrong place paid
+   * seven interactions across three screens to move them, which is the exact
+   * cost `quickState.ts` was built to remove. It removed it for recording and
+   * left it for fixing, and fixing is the thing you do more of.
+   */
+  onEdit?: () => void
 }
 
-export function SnapshotCard({ snapshot }: SnapshotCardProps) {
+export function SnapshotCard({ snapshot, onEdit }: SnapshotCardProps) {
   const character = useCharacter(snapshot.characterId)
   const location = useLocationMarker(snapshot.currentLocationMarkerId)
   const items = useItems(snapshot.worldId)
@@ -39,6 +51,21 @@ export function SnapshotCard({ snapshot }: SnapshotCardProps) {
             )}
           </div>
         </div>
+        {/*
+          Named after the person, not "Edit": there is one of these per cast
+          member, and a column of controls all called "Edit" tells a screen
+          reader — and a spec — nothing about which one it reached.
+        */}
+        {onEdit && (
+          <button
+            onClick={onEdit}
+            aria-label={`Change ${character.name}'s state in this scene`}
+            title={`Change ${character.name}'s state in this scene`}
+            className="pw-tap shrink-0 rounded p-1 text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]"
+          >
+            <Pencil className="h-3 w-3" aria-hidden="true" />
+          </button>
+        )}
       </div>
 
       {location && (
