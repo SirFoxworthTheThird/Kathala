@@ -82,16 +82,46 @@ export function suggestDeathFacts({
  * For one fact, proposes reveals for characters who shared a scene with someone
  * who already knew it (at or before that scene) but who have no reveal yet.
  * One suggestion per character — the earliest such co-presence.
+ *
+ * **The dead are in neither half.** A writer's run on a murder story opened the
+ * fact *"Teodor Ilm did not fall — he was struck with his own rain gauge"* and
+ * found Teodor Ilm himself at the top of *Might also know*: he has a snapshot
+ * marking him dead in chapter 1, and he is in chapter 2's cast because the scene
+ * is his autopsy. He was the first row on every fact, and had to be skipped
+ * seven times.
+ *
+ * A list whose first row is obviously wrong is a list a writer stops reading,
+ * which costs more than the seven clicks did. `suggestDeathFacts`, twenty lines
+ * above, reads `isAlive` to *find* deaths — the data was in the module and this
+ * function simply was not given it.
+ *
+ * Neither side of the co-presence counts: a corpse does not learn a secret, and
+ * it does not pass one on either.
  */
 export function suggestReveals({
-  fact, reveals, events, chapters,
+  fact, reveals, events, chapters, snapshots,
 }: {
   fact: KnowledgeFact
   reveals: KnowledgeReveal[]
   events: WorldEvent[]
   chapters: Chapter[]
+  snapshots: CharacterSnapshot[]
 }): RevealSuggestion[] {
   const { ordered, order, chapterNumber } = orderMap(events, chapters)
+
+  /** characterId → the order they are first recorded dead at, if ever. */
+  const deathOrder = new Map<string, number>()
+  for (const s of snapshots) {
+    if (s.isAlive) continue
+    const o = order.get(s.eventId)
+    if (o === undefined) continue
+    const prev = deathOrder.get(s.characterId)
+    if (prev === undefined || o < prev) deathOrder.set(s.characterId, o)
+  }
+  const deadBy = (characterId: string, at: number) => {
+    const d = deathOrder.get(characterId)
+    return d !== undefined && d <= at
+  }
 
   const learnedOrder = new Map<string, number>()
   for (const r of reveals) {
@@ -110,12 +140,13 @@ export function suggestReveals({
     const present = presentAt(ev)
     const knowerHere = present.find((id) => {
       const l = learnedOrder.get(id)
-      return l !== undefined && l <= evOrder
+      return l !== undefined && l <= evOrder && !deadBy(id, evOrder)
     })
     if (!knowerHere) continue
     for (const id of present) {
       if (id === knowerHere) continue
       if (learnedOrder.has(id) || suggested.has(id)) continue
+      if (deadBy(id, evOrder)) continue
       suggested.add(id)
       out.push({ characterId: id, eventId: ev.id, viaCharacterId: knowerHere, chapterNumber: chapterNumber.get(ev.chapterId) ?? null })
     }

@@ -9,6 +9,7 @@ import { useCharacters } from '@/db/hooks/useCharacters'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useAppStore } from '@/store'
 import { useGate } from '@/db/hooks/ReadingGateContext'
+import { useReadAhead } from '@/components/useReadAhead'
 import { Button } from '@/components/ui/button'
 import { PortraitImage } from '@/components/PortraitImage'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -28,10 +29,13 @@ interface EventRowProps {
   moveDownHint?: string
   /** All event IDs in this chapter in order, for shift-click range selection */
   chapterEventIds: string[]
+  /** This scene's chapter number, for the read-ahead guard on the cursor. */
+  chapterNumber: number
 }
 
 export function EventRow({
   event, isFirst, isLast, onMoveUp, onMoveDown, moveUpHint, moveDownHint, chapterEventIds,
+  chapterNumber,
 }: EventRowProps) {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
@@ -39,7 +43,9 @@ export function EventRow({
   const gate = useGate()
   const [confirmOpen, setConfirmOpen] = useState(false)
 
-  const { selectedEventIds, toggleEventSelected, selectEventRange, setLastSelectedEventId, lastSelectedEventId } = useAppStore()
+  const { selectedEventIds, toggleEventSelected, selectEventRange, setLastSelectedEventId, lastSelectedEventId, activeEventId, setActiveEventId } = useAppStore()
+  const { guardJump, readAheadDialog } = useReadAhead()
+  const isHere = activeEventId === event.id
   const isSelected = selectedEventIds.has(event.id)
   const anySelected = selectedEventIds.size > 0
 
@@ -230,14 +236,52 @@ export function EventRow({
               </div>
             )}
 
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5 text-xs self-start mt-0.5"
-              onClick={() => navigate(`/worlds/${worldId}/timeline/${event.chapterId}`)}
-            >
-              <ExternalLink className="h-3 w-3" /> Edit in chapter detail
-            </Button>
+            <div className="flex flex-wrap items-center gap-1.5 self-start mt-0.5">
+              {/*
+                W-4: the Timeline could not put the cursor on a scene.
+
+                The guide said *"click a scene to move the time cursor to that
+                exact moment"*, and a click expands the row — a writer lost
+                twenty minutes assuming they were clicking the wrong pixel,
+                because the time cursor is what the whole app is built around
+                and its main screen would not set it. The only per-scene control
+                anywhere was a 22×24px tick in the bottom bar, 24 of them across
+                1,100px.
+
+                The click still expands, deliberately: browsing the timeline
+                must not drag a global cursor around as a side effect. This is
+                the explicit act, named as the chapter row above already names
+                it, and it carries the same read-ahead guard — the chapter row's
+                own comment records a jump that skipped the question and took
+                *Monte Cristo* from 6 characters met to 41.
+              */}
+              <Button
+                size="sm"
+                variant={isHere ? 'secondary' : 'outline'}
+                className="gap-1.5 text-xs"
+                disabled={isHere}
+                onClick={() => guardJump(chapterNumber, () => setActiveEventId(event.id))}
+                title={isHere
+                  ? 'The time cursor is on this scene'
+                  : gate.active
+                    ? `Mark ${sceneName} as where you have read up to`
+                    : `Move the time cursor to ${sceneName}`}
+              >
+                <Eye className="h-3 w-3" />
+                {isHere
+                  ? (gate.active ? 'Reading here' : 'Viewing')
+                  : (gate.active ? 'Read to here' : 'View from here')}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 text-xs"
+                onClick={() => navigate(`/worlds/${worldId}/timeline/${event.chapterId}`)}
+              >
+                <ExternalLink className="h-3 w-3" /> Edit in chapter detail
+              </Button>
+            </div>
+            {readAheadDialog}
           </div>
         )}
       </div>

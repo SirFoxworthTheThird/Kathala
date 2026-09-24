@@ -529,12 +529,25 @@ export function ContinuityChecker() {
 
   if (!checkerOpen) return null
 
-  const errors   = issues.filter((i) => i.severity === 'error')
-  const warnings = issues.filter((i) => i.severity === 'warning')
+  /*
+    The headline counts what the panel is showing.
+
+    W-6: these three read `issues` and the list below reads `issues` minus the
+    suppressions, so a writer who suppressed two findings met a header saying
+    "3 warnings" over a list of one. It survived a reload, which is what told
+    the run it was not a stale render.
+
+    Suppressing a finding is the writer saying *yes, I meant that*, and the
+    whole point of saying it is to get the number down. `activeCount`, four
+    lines below, had the right filter all along.
+  */
+  const active   = issues.filter((i) => !suppressedSet.has(i.id))
+  const errors   = active.filter((i) => i.severity === 'error')
+  const warnings = active.filter((i) => i.severity === 'warning')
   // Counted apart, so "50 warnings" on a finished novel stops being the headline
   // when 35 of them were observations about how the book is written.
-  const notes    = issues.filter((i) => i.severity === 'note')
-  const activeCount = issues.filter((i) => !suppressedSet.has(i.id)).length
+  const notes    = active.filter((i) => i.severity === 'note')
+  const activeCount = active.length
   const suppressedCount = suppressedIds.size
 
   // Per-category visible issues (respects showSuppressed)

@@ -845,9 +845,13 @@ inside it.
   in-world order (useful when you use flashbacks or in-world dates).
 - **Add Chapter**, **New Timeline** (for alternate/parallel timelines), and
   **Generate with AI** all live in the header.
-- Click a scene to move the time cursor to that exact moment. Each chapter row
-  also has an **open** button for its detail page, and chapters can be dragged to
-  reorder the narrative.
+- Click a scene to open it out — its description, who is in it, where it is set.
+  **View from here** inside puts the time cursor on that exact moment, and the
+  same button on a chapter row puts it on the chapter's first. A click alone
+  does not move the cursor: reading down the timeline would otherwise keep
+  changing what every other screen is showing you.
+- Each chapter row also has an **open** button for its detail page, and chapters
+  can be dragged to reorder the narrative.
 - **The ↑ ↓ arrows on a scene move it, including out of its chapter.** At the
   top of a chapter, ↑ moves the scene to the end of the one before; at the
   bottom, ↓ moves it to the start of the one after, and the button says so
@@ -1925,7 +1929,13 @@ per-scene states, and also takes it out of every character's inventory and every
 scene's item list — so nothing is left pointing at a record that is gone. Undo
 brings the whole lot back.
 
-**Putting one down.** Placing an item at a location takes it out of whoever is
+**Putting one down.** Open the item and use **Where it is** — pick a place, and
+that is recorded at the scene the cursor is on. There are two other doors to the
+same act, and both are useful when you are already there: a location's panel on
+the **Maps** screen lists what is lying there, and a character's **Current
+State** holds what they are carrying.
+
+Placing an item at a location takes it out of whoever is
 carrying it at that moment — including a character whose last inventory record
 is chapters back, which is the ordinary case. Their earlier record stands
 untouched; what is written is a new record at the scene you are on, so the

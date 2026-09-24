@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { BlockingReason } from '@/components/BlockingReason'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Upload, Trash2, Check, X, Plus, Layers, History } from 'lucide-react'
+import { ArrowLeft, Upload, Trash2, Check, X, Plus, Layers, History, MapPin } from 'lucide-react'
 import { useItem, updateItem, deleteItem } from '@/db/hooks/useItems'
 import { storeBlob } from '@/db/hooks/useBlobs'
 import { LinkImageButton } from '@/components/LinkImageButton'
@@ -11,11 +11,12 @@ import { NotReachedYet } from '@/components/NotReachedYet'
 import { useCrossTimelineArtifactsForItem, createCrossTimelineArtifact, deleteCrossTimelineArtifact } from '@/db/hooks/useTimelineRelationships'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
-import { useWorldItemPlacements } from '@/db/hooks/useItemPlacements'
+import { useWorldItemPlacements, useItemPlacement, placeItemAtLocation, removeItemPlacement } from '@/db/hooks/useItemPlacements'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { itemCustodyChain, describeCustodyStep } from '@/lib/itemCustody'
 import { PortraitImage } from '@/components/PortraitImage'
+import { useAppStore } from '@/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Field } from '@/components/ui/field'
@@ -44,6 +45,8 @@ export default function ItemDetailView() {
   const snapshots = useWorldSnapshots(worldId ?? null)
   const placements = useWorldItemPlacements(worldId ?? null)
   const markers = useAllLocationMarkers(worldId ?? null)
+  const activeEventId = useAppStore((st) => st.activeEventId)
+  const placedHere = useItemPlacement(itemId ?? null, activeEventId)
   const characters = useCharacters(worldId ?? null)
 
   /*
@@ -259,6 +262,75 @@ export default function ItemDetailView() {
                 <X className="h-3.5 w-3.5" /> Cancel
               </Button>
             </div>
+          </div>
+        )}
+
+        {/*
+          W-3: the Items section could not say where an item was.
+
+          The roster had three controls and this page four, and none of them
+          touched a placement. A writer with six props spent the run going
+          Maps → the pin → its Location panel, or Characters → Current State, to
+          put something down — and neither of those is where you are when you
+          are thinking about the object.
+
+          It writes at the **time cursor**, like every other state edit in the
+          app: putting the lighter on the table is a fact about a scene, not
+          about the item for all time, and the row below then shows it as one
+          more step in the chain.
+        */}
+        {!gate.active && markers.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-3.5 w-3.5 text-amber-500" />
+              <span className="text-xs font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+                Where it is
+              </span>
+            </div>
+            {activeEventId ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {/*
+                  A `Field`, not a bare `aria-label`: the trigger shows the
+                  place once one is chosen, and a label that does not contain
+                  the visible text would replace the answer with the question.
+                  `SelectTrigger` splices its own content back in, so this reads
+                  "Where it is · Ferrow Crossing".
+                */}
+                <Field label="Where it is" className="contents" labelClassName="sr-only">
+                <Select
+                  value={placedHere?.locationMarkerId ?? ''}
+                  onValueChange={(v) => { void placeItemAtLocation(worldId ?? '', item.id, activeEventId, v) }}
+                >
+                  <SelectTrigger className="h-8 w-[16rem] text-xs">
+                    <SelectValue placeholder="Put it somewhere…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {markers.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                </Field>
+                {placedHere && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs"
+                    onClick={() => { void removeItemPlacement(item.id, activeEventId) }}
+                  >
+                    <X className="h-3 w-3" /> Not here after all
+                  </Button>
+                )}
+                <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
+                  Recorded at the scene the cursor is on.
+                </span>
+              </div>
+            ) : (
+              <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                Choose a scene on the chapter bar first — where a thing is, is something
+                that is true at a moment.
+              </p>
+            )}
           </div>
         )}
 

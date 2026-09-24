@@ -452,6 +452,7 @@ export function ChapterRow({
                   onMoveUp={() => moveEvent(e.id, 'up')}
                   onMoveDown={() => moveEvent(e.id, 'down')}
                   chapterEventIds={chapterEventIds}
+                  chapterNumber={chapter.number}
                 />
               ))}
             </div>
