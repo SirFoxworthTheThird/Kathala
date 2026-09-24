@@ -451,9 +451,14 @@ export function ContinuityChecker() {
         const ev = await db.events.get(fix.eventId)
         if (!ev) return
         const mentioned = ev.mentionedCharacterIds ?? []
-        if (mentioned.includes(fix.characterId) || ev.involvedCharacterIds.includes(fix.characterId)) return
+        // One row is one scene now, so this takes the scene's whole list — and
+        // still adds nobody already accounted for either way.
+        const adding = fix.characterIds.filter(
+          (id) => !mentioned.includes(id) && !ev.involvedCharacterIds.includes(id),
+        )
+        if (adding.length === 0) return
         await updateEvent(fix.eventId, {
-          mentionedCharacterIds: [...mentioned, fix.characterId],
+          mentionedCharacterIds: [...mentioned, ...adding],
         })
         return
       }

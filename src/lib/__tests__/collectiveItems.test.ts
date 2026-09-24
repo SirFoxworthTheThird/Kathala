@@ -42,16 +42,23 @@ describe('collective items', () => {
     iconType: 'armor', imageId: null, tags: [], ...over,
   })
 
+  /*
+    Matched on `kind`, not on the wording. These asserted on the phrase
+    "multiple places" and went red when the message was rewritten — which is the
+    thing `IssueKind` exists to prevent, in its own words: "a kind is read off
+    the issue rather than inferred from the wording of its message".
+  */
+  const dupsIn = (input: ContinuityInput) =>
+    computeContinuityIssues(input).filter((i) => i.kind === 'dup-item')
+
   it('does not report a kind of thing as being in two places', () => {
-    const issues = computeContinuityIssues(heldByBoth(item({ isCollective: true })))
-    expect(issues.filter((i) => i.message.includes('multiple places'))).toEqual([])
+    expect(dupsIn(heldByBoth(item({ isCollective: true })))).toEqual([])
   })
 
   it('still reports a unique object in two places', () => {
     // The pairing: without this the check could be switched off entirely and
     // the test above would still pass.
-    const issues = computeContinuityIssues(heldByBoth(item({ name: 'The One Ring' })))
-    const dup = issues.filter((i) => i.message.includes('multiple places'))
+    const dup = dupsIn(heldByBoth(item({ name: 'The One Ring' })))
     expect(dup).toHaveLength(1)
     expect(dup[0].severity).toBe('error')
     expect(dup[0].message).toContain('The One Ring')
@@ -60,7 +67,6 @@ describe('collective items', () => {
   it('treats an item with the flag absent as unique, so old records keep their checks', () => {
     const legacy = item({ name: 'Sting' })
     delete (legacy as { isCollective?: boolean }).isCollective
-    const issues = computeContinuityIssues(heldByBoth(legacy))
-    expect(issues.filter((i) => i.message.includes('multiple places'))).toHaveLength(1)
+    expect(dupsIn(heldByBoth(legacy))).toHaveLength(1)
   })
 })

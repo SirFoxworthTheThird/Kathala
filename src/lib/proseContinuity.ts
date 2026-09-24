@@ -1,4 +1,4 @@
-import type { WorldEvent, Chapter, Character, CharacterSnapshot, KnowledgeFact } from '@/types'
+import type { WorldEvent, Chapter, Character, KnowledgeFact } from '@/types'
 import { detectMentions } from '@/lib/manuscript'
 
 // Global narrative order shared with the continuity checker: chapter.number is
@@ -13,57 +13,57 @@ function makeEventOrder(events: WorldEvent[], chapters: Chapter[]) {
   }
 }
 
-/** Resolves whether a character is dead as of a given narrative order, from the
- *  most recent alive-status snapshot at or before that point. */
-function makeIsDeadAtOrder(snapshots: CharacterSnapshot[], eventOrder: (id: string) => number) {
-  const byChar = new Map<string, Array<{ order: number; isAlive: boolean }>>()
-  for (const s of snapshots) {
-    if (!byChar.has(s.characterId)) byChar.set(s.characterId, [])
-    byChar.get(s.characterId)!.push({ order: eventOrder(s.eventId), isAlive: s.isAlive })
-  }
-  for (const arr of byChar.values()) arr.sort((a, b) => a.order - b.order)
-  return (charId: string, order: number): boolean => {
-    const hist = byChar.get(charId)
-    if (!hist) return false
-    let lastAlive: boolean | null = null
-    for (const entry of hist) {
-      if (entry.order > order) break
-      lastAlive = entry.isAlive
-    }
-    return lastAlive === false
-  }
-}
+/**
+ * How many times a name must appear before the scene is worth asking about.
+ *
+ * One is the common case and the least informative: a letter, a memory, someone
+ * addressed in their absence. Two is where a name starts to behave like a
+ * person in the room.
+ */
+const MIN_MENTIONS = 2
 
 // ── Prose ↔ cast drift ────────────────────────────────────────────────────────
 
 export interface ProseMentionIssue {
-  /** 'dead' = named while dead; 'untagged' = named but not in the event cast. */
-  kind: 'dead' | 'untagged'
   eventId: string
-  characterId: string
-  characterName: string
-  /** How many times the name appears in the scene. */
-  count: number
+  /** Everyone named in the prose of this scene who is not in its cast. */
+  characters: Array<{ characterId: string; characterName: string; count: number }>
 }
 
 /**
- * Reconciles each scene's prose against the scene's structured cast:
- *  - a character named in the text who is dead at that point ('dead'), or
- *  - a character named in the text but not listed on the event ('untagged').
- * Characters already in the cast are left to the metadata-based checks, so this
- * only surfaces genuine drift between the words and the record. Pure.
+ * Names in a scene's prose that its cast does not account for — **one issue per
+ * scene, not one per name.**
+ *
+ * Run across the forty-six shipped books this check produced **4,894 warnings,
+ * three quarters of everything the continuity checker had to say**: 426 in *The
+ * Count of Monte Cristo*, 368 in the *Iliad*, where Homer names gods in
+ * epithets. That is what per-name means in a finished novel, because characters
+ * are talked about far more often than they are present.
+ *
+ * Two bounds, both measured rather than guessed:
+ *
+ * - **Once per scene.** The writer's question is *does this scene's cast match
+ *   what I wrote*, which is asked once and answered once. Twelve rows for
+ *   twelve names is the same question twelve times.
+ * - **Twice in the text.** A name that appears once is usually a reference —
+ *   someone remembered, addressed in absence, named in a letter. A name that
+ *   recurs is likelier to be someone in the room.
+ *
+ * It does not flag the dead. A separate check used to, and on *Treasure Island*
+ * it reported Billy Bones thirty-eight times: he dies in chapter three and the
+ * entire plot is his map and his chest. `dead-in-event` asks the precise
+ * version — is a dead character in the scene's *cast* — and fires 45 times
+ * across all forty-six books.
+ *
+ * Pure.
  */
 export function computeProseMentionIssues({
-  events, chapters, characters, snapshots, sceneTextByEvent,
+  events, characters, sceneTextByEvent,
 }: {
   events: WorldEvent[]
-  chapters: Chapter[]
   characters: Character[]
-  snapshots: CharacterSnapshot[]
   sceneTextByEvent: Map<string, string>
 }): ProseMentionIssue[] {
-  const eventOrder = makeEventOrder(events, chapters)
-  const isDeadAtOrder = makeIsDeadAtOrder(snapshots, eventOrder)
   const out: ProseMentionIssue[] = []
 
   for (const ev of events) {
@@ -78,18 +78,13 @@ export function computeProseMentionIssues({
       ...(ev.mentionedCharacterIds ?? []),
     ])
 
-    for (const m of detectMentions(text, characters)) {
+    const unaccounted = detectMentions(text, characters)
       // Characters the writer already accounts for are covered elsewhere.
-      if (acknowledged.has(m.characterId)) continue
+      .filter((m) => !acknowledged.has(m.characterId))
+      .filter((m) => m.count >= MIN_MENTIONS)
+      .map((m) => ({ characterId: m.characterId, characterName: m.name, count: m.count }))
 
-      // A dead mention is the stronger, more specific signal. Flashbacks may name
-      // the dead deliberately, so only flag 'dead' outside flashbacks.
-      if (!ev.isFlashback && isDeadAtOrder(m.characterId, eventOrder(ev.id))) {
-        out.push({ kind: 'dead', eventId: ev.id, characterId: m.characterId, characterName: m.name, count: m.count })
-      } else {
-        out.push({ kind: 'untagged', eventId: ev.id, characterId: m.characterId, characterName: m.name, count: m.count })
-      }
-    }
+    if (unaccounted.length > 0) out.push({ eventId: ev.id, characters: unaccounted })
   }
 
   return out
