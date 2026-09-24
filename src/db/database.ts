@@ -686,6 +686,20 @@ class KathalaDB extends Dexie {
       the whole chain. Nothing is lost: nothing ever wrote a row.
     */
     this.version(54).stores({ preferences: null })
+
+    /*
+      v55: a writer's own word for a `custom` location type.
+
+      Not indexed and not backfilled — unlike v53's `imageId`, which was given a
+      null everywhere so the field would exist on every record. There is nothing
+      to backfill *to* here: absent and empty mean the same thing, and
+      `locationTypeLabel` reads both as "no label", so writing a value onto
+      every marker in every world would be churn that changes nothing.
+
+      Declared as a version anyway. The store list is unchanged, but the chain
+      has to record that this is where the field arrives.
+    */
+    this.version(55).stores({})
   }
 }
 

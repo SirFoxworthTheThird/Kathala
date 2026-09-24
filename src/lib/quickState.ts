@@ -37,12 +37,23 @@ export interface QuickStateDraft {
  * something changes them; a note like "bleeding from the shoulder" is about the
  * moment it was written, and copying it forward would put words in the writer's
  * mouth at every later scene.
+ *
+ * **Unless the note is already about this scene.** Once this form also *edits*
+ * a record — the panel that takes the answer taking a correction too — `prev`
+ * can be the row being changed rather than an earlier one, and blanking there
+ * is not restraint, it is deleting a sentence the writer wrote. So `eventId`
+ * decides: carried forward, blank; written here, keep it and let them edit it.
+ * Without this the correction path quietly erases the note every time.
  */
-export function draftFromSnapshot(prev: CharacterSnapshot | undefined): QuickStateDraft {
+export function draftFromSnapshot(
+  prev: CharacterSnapshot | undefined,
+  eventId?: string,
+): QuickStateDraft {
+  const atThisScene = !!prev && !!eventId && prev.eventId === eventId
   return {
     isAlive: prev?.isAlive ?? true,
     locationMarkerId: prev?.currentLocationMarkerId ?? null,
-    statusNotes: '',
+    statusNotes: atThisScene ? prev.statusNotes : '',
   }
 }
 

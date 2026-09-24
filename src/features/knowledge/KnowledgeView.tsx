@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { Plus, X, Trash2, Eye, EyeOff, KeyRound, UserPlus, History, Sparkles } from 'lucide-react'
 import {
@@ -133,12 +133,25 @@ export default function KnowledgeView() {
     return reveals.filter((r) => r.factId === factId && knownAtCursor(r.eventId)).length
   }
 
+  /*
+    Serial entry, like Characters and Items.
+
+    This closed the field after every fact, so a writer with seven secrets paid
+    seven round trips through **New Fact**. Both of the other rosters already
+    answer this — their dialogs offer *Add another character* / *Add another
+    item* — and a field in a header can do better still by simply staying open.
+
+    The new fact is still selected, so the panel beside it follows along, and
+    Escape or the X closes the composer when the writer is done.
+  */
+  const newFactRef = useRef<HTMLInputElement>(null)
+
   async function handleCreate() {
     if (!newTitle.trim() || !worldId) return
     const f = await createKnowledgeFact({ worldId, title: newTitle.trim(), description: '', tags: [] })
     setNewTitle('')
-    setCreating(false)
     setSelectedId(f.id)
+    newFactRef.current?.focus()
   }
 
   const gate = useGate()
@@ -157,6 +170,7 @@ export default function KnowledgeView() {
             creating ? (
               <div className="flex items-center gap-2">
                 <Input
+                  ref={newFactRef}
                   className="h-8 w-56 text-sm"
                   placeholder="What is the fact or secret?"
                   value={newTitle}
@@ -168,9 +182,13 @@ export default function KnowledgeView() {
                   autoFocus
                 />
                 <Button size="sm" onClick={handleCreate} disabled={!newTitle.trim()}>Create</Button>
-                <Button size="sm" variant="ghost" onClick={() => { setCreating(false); setNewTitle('') }}>
+                <Button size="sm" variant="ghost" aria-label="Stop adding facts"
+                  onClick={() => { setCreating(false); setNewTitle('') }}>
                   <X className="h-3.5 w-3.5" />
                 </Button>
+                <span className="hidden text-[11px] text-[hsl(var(--muted-foreground))] sm:inline">
+                  Keeps going — Esc when you're done
+                </span>
               </div>
             ) : (
               <div className="flex items-center gap-2">

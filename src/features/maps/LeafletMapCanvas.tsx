@@ -7,6 +7,7 @@ import { useAppStore } from '@/store'
 import { type GhostPin, makeGhostIcon } from '@/lib/ghostMarkerIcon'
 import { playbackFocusTarget, playbackFocusZoom } from './mapUtils'
 import { labelledMarkers, PILL_HEIGHT } from './labelDeclutter'
+import { locationTypeLabel } from '@/lib/locationType'
 
 export type { GhostPin }
 
@@ -72,6 +73,13 @@ const STATUS_COLORS: Record<string, string> = {
 
 function makeLocationIcon(
   iconType: string,
+  /*
+    What the pin *says* its type is, which is not always `iconType`: a custom
+    place carries the writer's own word, and an unlabelled custom place says
+    nothing rather than printing the word "Custom". `iconType` still picks the
+    colour, because that is what the enum is for.
+  */
+  typeLabel: string | null,
   isLinked: boolean,
   name: string | undefined,
   highlighted = false,
@@ -126,7 +134,7 @@ function makeLocationIcon(
   const label    = `<div style="display:flex;flex-direction:column;justify-content:center;padding:0 8px;min-width:${labelW}px;height:${pillH}px;overflow:hidden;">
     <div style="color:${V.fg};font-size:11px;font-family:${V.font};line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(safeName)}</div>
     <div style="display:flex;align-items:center;gap:0;font-size:9px;font-family:${V.font};line-height:1.3;white-space:nowrap;">
-      <span style="color:${V.muted};text-transform:capitalize;">${escapeHtml(iconType)}</span>${statusBadge}
+      <span style="color:${V.muted};text-transform:capitalize;">${typeLabel ? escapeHtml(typeLabel) : ''}</span>${statusBadge}
     </div>
   </div>`
 
@@ -1248,7 +1256,7 @@ export function LeafletMapCanvas({
           <Marker
             key={marker.id}
             position={[marker.y, marker.x]}
-            icon={makeLocationIcon(marker.iconType, !!marker.linkedMapLayerId && showSubMapLinks, marker.name, markersAreTargets, locationStatuses[marker.id] ?? 'active', showLocationLabels && labelledIds.has(marker.id))}
+            icon={makeLocationIcon(marker.iconType, locationTypeLabel(marker), !!marker.linkedMapLayerId && showSubMapLinks, marker.name, markersAreTargets, locationStatuses[marker.id] ?? 'active', showLocationLabels && labelledIds.has(marker.id))}
             zIndexOffset={markersAreTargets ? 2000 : -100}
             // A marker under the measuring point must not take the click or be
             // shoved aside by the drag that places it.
@@ -1268,7 +1276,9 @@ export function LeafletMapCanvas({
             <Popup>
               <div className="min-w-32">
                 <p className="font-semibold">{marker.name}</p>
-                <p className="text-xs opacity-70 capitalize mb-1">{marker.iconType}</p>
+                {locationTypeLabel(marker) && (
+                  <p className="text-xs opacity-70 capitalize mb-1">{locationTypeLabel(marker)}</p>
+                )}
                 {marker.description && <p className="text-xs mb-2">{marker.description}</p>}
                 {marker.linkedMapLayerId && (
                   <button onClick={() => onDrillDown(marker.linkedMapLayerId!)} className="text-xs text-blue-400 hover:underline">

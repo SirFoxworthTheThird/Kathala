@@ -51,6 +51,16 @@ export interface LocationMarker {
    */
   imageId: string | null
   iconType: LocationIconType
+  /**
+   * The writer's own word for the kind of place, when `iconType` is `custom`.
+   *
+   * The seven types are a fantasy vocabulary and `custom` was a member of it
+   * rather than an escape hatch: a station map read *Marn's Office · Custom*,
+   * with the word printed on the pin as though it were a kind of place. This
+   * is the label; `iconType` still decides what the pin looks like. Absent on
+   * records predating v55, and on every marker that is not custom.
+   */
+  customType?: string
   tags: string[]
   factionId: string | null
   createdAt: number
