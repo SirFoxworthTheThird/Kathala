@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { PenLine, History, Maximize2, Plus } from 'lucide-react'
 import { wordCount, detectMentions } from '@/lib/manuscript'
+import { formatSceneHeader, parseSceneHeader, splitSceneHeader } from '@/lib/sceneHeader'
 import { splitParagraphs } from '@/lib/manuscriptParagraphs'
 import { useSceneText, setSceneText } from '@/db/hooks/useManuscript'
 import { useSceneRevisions } from '@/db/hooks/useSceneRevisions'
@@ -56,8 +57,32 @@ export function SceneDraftSection({
     scheduled it.
   */
   const latestDraft = useRef<string | null>(null)
+  // `draft` is the *prose*, never the header — see `headerDraft`.
   useEffect(() => { latestDraft.current = draft }, [draft])
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /*
+    Names in the header that nothing in the world answers.
+
+    Silence here would be the same fault `@@` had until this morning: the
+    header is typed blind, with no picker to correct a spelling, so a typo
+    would simply drop a character out of the scene with nothing said.
+  */
+  const [headerUnknown, setHeaderUnknown] = useState<string[]>([])
+  /**
+   * The header line *while the writer is editing it*, and null the rest of the
+   * time — meaning "show the one drawn from the records".
+   *
+   * Two states rather than one because the box has to serve both directions at
+   * once. Holding the whole textarea in `draft` meant that the moment somebody
+   * typed a word of prose, a cast change made in the panel could no longer
+   * reach the line: the stale draft won every render. Holding only the prose
+   * meant their half-typed `@@Sal` snapped back to the rendered line on the
+   * next keystroke.
+   *
+   * So the prose is `draft`, the header is this, and a record change reaches
+   * the line whenever nobody is in the middle of typing over it.
+   */
+  const [headerDraft, setHeaderDraft] = useState<string | null>(null)
 
   /*
     Everything "@" can name. The picker began as a character list; a writer
@@ -181,18 +206,103 @@ export function SceneDraftSection({
     if (!event.locationMarkerId) await updateEvent(eventId, { locationMarkerId: suggestion.id })
   }
 
-  const sceneValue = draft ?? sceneText?.text ?? ''
-  const sceneWords = draft === null ? (sceneText?.wordCount ?? 0) : wordCount(sceneValue)
+  /*
+    ── The scene header ──────────────────────────────────────────────────────
+
+    `[#The Kitchen @@Wren @@Sal'ka]` sits at the top of the box, and is
+    **rendered from this scene's own records rather than stored**. A change
+    made anywhere — the cast panel, the Setting chip, `@@` in the prose —
+    shows up here on the next paint, with no sync to drift, because there is
+    only ever one copy of the fact.
+
+    The prose in `sceneTexts` never contains it, so the five exports, the
+    manuscript, search, find-and-replace, reading mode, the continuity checker
+    and the word count that feeds the pacing curve all need to know nothing
+    about it. A header cannot leak into a book it was never in.
+  */
+  const headerLine = formatSceneHeader({
+    place: markers.find((m) => m.id === event.locationMarkerId)?.name ?? null,
+    characters: involvedIds
+      .map((id) => characters.find((c) => c.id === id)?.name)
+      .filter((n): n is string => !!n),
+  })
+  const storedProse = sceneText?.text ?? ''
+  const shownHeader = headerDraft ?? headerLine
+  const sceneProseValue = draft ?? storedProse
+  const sceneValue = shownHeader ? `${shownHeader}\n\n${sceneProseValue}` : sceneProseValue
+  /*
+    Everything below counts the *prose*, never the header.
+
+    `[#The Kitchen @@Wren @@Sal'ka]` is five words by any split, and counting
+    it would inflate the scene, the chapter, the pacing curve, the daily goal
+    and the manuscript total — and would have the continuity checker reading
+    the cast list as prose that names people.
+  */
+  const sceneProse = sceneProseValue
+  const sceneWords = draft === null ? (sceneText?.wordCount ?? 0) : wordCount(sceneProse)
   /** What the Manuscript and every export will make of this text — one split,
    *  shared, so the number here cannot drift from the pages it describes. */
-  const paragraphCount = splitParagraphs(sceneValue).length
-  const mentions = detectMentions(sceneValue, characters)
+  const paragraphCount = splitParagraphs(sceneProse).length
+  const mentions = detectMentions(sceneProse, characters)
   // Nudge only for names that aren't accounted for as present OR mentioned.
   const untaggedMentions = mentions.filter(
     (m) => !involvedIds.includes(m.characterId) && !mentionedIds.includes(m.characterId),
   )
 
   useEffect(() => { onWordsChange?.(sceneWords) }, [sceneWords, onWordsChange])
+
+  /**
+   * Read the header back and make the records say what it says.
+   *
+   * **On blur, not on every keystroke.** A header is read as a declaration —
+   * a name that has left it has left the scene — and applying that mid-word
+   * would remove Wren the moment somebody typed `@@Wr`. Blur is the writer
+   * saying they are done with the box.
+   *
+   * No header means the records are left exactly alone, rather than read as
+   * an empty declaration: deleting the line is how somebody clears their
+   * screen, not how they empty their cast. It reappears on the next paint.
+   *
+   * A name nothing answers is reported and otherwise ignored — it cannot
+   * create a character, for the same reason `@@` cannot.
+   */
+  async function applyHeader(text: string) {
+    const { header } = splitSceneHeader(text)
+    if (!header) return
+    const parsed = parseSceneHeader(header)
+
+    const matches = (name: string, against: string, aliases?: string[]) =>
+      against.toLowerCase() === name.toLowerCase()
+      || !!aliases?.some((a) => a.toLowerCase() === name.toLowerCase())
+
+    const found = parsed.characters.map((n) => ({
+      name: n, record: characters.find((c) => matches(n, c.name, c.aliases)),
+    }))
+    const nextCast = found.flatMap((f) => (f.record ? [f.record.id] : []))
+    const place = parsed.place
+      ? markers.find((m) => matches(parsed.place!, m.name))
+      : undefined
+    const unknown = [
+      ...found.filter((f) => !f.record).map((f) => f.name),
+      ...(parsed.place && !place ? [parsed.place] : []),
+    ]
+    setHeaderUnknown(unknown)
+
+    /*
+      A place the header names but the world does not have keeps the setting
+      it had: the writer meant to put the scene somewhere, and clearing it
+      would answer a typo by throwing away the answer.
+    */
+    const nextPlace = parsed.place ? (place?.id ?? event.locationMarkerId) : null
+    const castUnchanged = nextCast.length === involvedIds.length
+      && nextCast.every((id, i) => involvedIds[i] === id)
+    if (castUnchanged && nextPlace === event.locationMarkerId) return
+
+    await updateEvent(eventId, {
+      involvedCharacterIds: nextCast,
+      locationMarkerId: nextPlace,
+    })
+  }
 
   async function saveScene() {
     if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
@@ -219,8 +329,12 @@ export function SceneDraftSection({
     burst of autosaves is still one entry in History.
   */
   function handleChange(next: string) {
-    setDraft(next)
-    latestDraft.current = next
+    const { header, body } = splitSceneHeader(next)
+    // An empty string rather than null when the line has been deleted: null
+    // means "render it from the records", which would put it straight back.
+    setHeaderDraft(header ?? '')
+    setDraft(body)
+    latestDraft.current = body
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => { saveTimer.current = null; void saveScene() }, AUTOSAVE_MS)
   }
@@ -271,7 +385,12 @@ export function SceneDraftSection({
       <SceneDraftEditor
         value={sceneValue}
         onChange={handleChange}
-        onBlur={saveScene}
+        onBlur={() => {
+          // Apply, then hand the line back to the records so it re-renders
+          // from what was actually stored rather than from what was typed.
+          void applyHeader(sceneValue).then(() => setHeaderDraft(null))
+          void saveScene()
+        }}
         candidates={candidates}
         canCreateLocation={canCreateLocation}
         onPick={(s, intent) => { void handlePick(s, intent) }}
@@ -320,6 +439,23 @@ export function SceneDraftSection({
           <> · {paragraphCount} {paragraphCount === 1 ? 'paragraph' : 'paragraphs'}</>
         )}
       </p>
+
+      {/*
+        What the header named and the world does not have.
+
+        The header is typed blind — there is no picker inside the brackets to
+        correct a spelling — so without this a typo would simply drop somebody
+        out of the scene and say nothing, which is exactly the fault `@@` had
+        until this morning. It does not offer to create them: asserting that
+        somebody is in the room is a claim about a person who exists.
+      */}
+      {headerUnknown.length > 0 && (
+        <p role="status" className="text-[11px] text-amber-400">
+          Nothing in this world is called {headerUnknown.map((n) => `“${n}”`).join(' or ')}
+          {' '}— the rest of the line was recorded.
+        </p>
+      )}
+
       {/*
         W-2: these chips used to put the character **in the scene**.
 

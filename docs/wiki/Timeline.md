@@ -57,6 +57,16 @@ Expand a chapter's detail page and click **Add Event**. Expanding an event card 
 
 Scene prose is written on the event too, and flows into the [Manuscript](Manuscript).
 
+### The scene header
+
+    [#The Kitchen @@Wren Halloway @@Sal'ka]
+
+The first line of a scene can say where it happens and who is there, all at once. It is the only way to record that a character is present **without their name appearing in the prose**.
+
+**It is never part of the book.** The line is rendered from the scene's own records rather than stored, so it costs no words, reaches no export, and appears in no search result. Change the cast in the panel, the Setting chip, or with `@@` while writing, and the line already says so — one copy of the fact, and this is a view of it.
+
+Editing the line edits the records: remove a name and that character leaves the scene. **Deleting the whole line changes nothing** — clearing your screen is not emptying your cast, and it reappears where it was. A name your world does not have is reported rather than acted on, and cannot create anybody.
+
 ### Naming records while you write
 
 | You type | What it records |
