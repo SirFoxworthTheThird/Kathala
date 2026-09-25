@@ -677,7 +677,7 @@ function FactionDetailPanel({
                 )
               })}
               {territoryLocations.map((m) => {
-                const layer = layerById.get(m.mapLayerId)
+                const layer = m.mapLayerId ? layerById.get(m.mapLayerId) : undefined
                 return (
                   <div key={m.id} className="flex items-center gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2">
                     <MapPin className="h-3 w-3 shrink-0 text-[hsl(var(--muted-foreground))]" />

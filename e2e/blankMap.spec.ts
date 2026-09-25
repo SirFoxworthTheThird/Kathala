@@ -44,38 +44,51 @@ async function worldWithAScene(page: Page): Promise<string> {
 }
 
 /**
- * Can a place be made from inside the prose?
+ * Name a place from inside the prose, and report which map it landed on.
  *
  * This, rather than the card's `+ Setting` chip: that one is gated on there
- * being a marker to pick, so a map alone does not bring it back. Naming a place
- * in the draft is the thing a map makes possible, and it is where a writer meets
- * the rule.
+ * being a marker to pick, so it cannot answer the question. Naming a place in
+ * the draft is where a writer meets the rule.
+ *
+ * **The rule used to be whether a place could be made at all.** A place was a
+ * pin, so a world with no map could hold none, and this helper returned a
+ * boolean. A place may now exist before it is drawn anywhere — so the question
+ * is no longer *whether* but *where*, and a blank map is the difference
+ * between "nowhere yet" and "on that one".
  */
-async function canNamePlaceInProse(page: Page, worldId: string): Promise<boolean> {
+async function namePlaceInProse(page: Page, worldId: string, name: string): Promise<string | null | undefined> {
   await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
   await settle(page)
   await page.getByRole('button', { name: /^Expand/ }).first().click()
   await settle(page)
   await page.getByRole('textbox', { name: 'Scene prose' }).click()
-  await page.keyboard.type(' @Ferrow Crossing')
+  await page.keyboard.type(` @${name}`)
   await page.waitForTimeout(600)
-  const offered = (await page.getByRole('button', { name: /new place/ }).count()) > 0
-  await page.keyboard.press('Escape')
-  return offered
+  await page.getByRole('button', { name: new RegExp(`${name}\\s+new place`) }).click()
+  await expect.poll(async () => page.evaluate(async (n: string) => {
+    const db = (window as { __pwdb?: never }).__pwdb as unknown as
+      { locationMarkers: { toArray: () => Promise<Array<{ name: string }>> } }
+    return (await db.locationMarkers.toArray()).some((m) => m.name === n)
+  }, name), { timeout: 20_000 }).toBe(true)
+  return page.evaluate(async (n: string) => {
+    const db = (window as { __pwdb?: never }).__pwdb as unknown as
+      { locationMarkers: { toArray: () => Promise<Array<{ name: string; mapLayerId: string | null }>> } }
+    return (await db.locationMarkers.toArray()).find((m) => m.name === n)?.mapLayerId
+  }, name)
 }
 
 test.describe('a writer with no map image can still place a scene', () => {
   test.describe.configure({ timeout: 240_000 })
 
-  test('the blank map is a door, and it opens the setting', async ({ page }) => {
+  test('the blank map is a door, and a place waits at it until one opens', async ({ page }) => {
     const worldId = await worldWithAScene(page)
 
-    // Absence: no map, so no place can be named — the rule, working.
-    expect(await canNamePlaceInProse(page, worldId)).toBe(false)
+    // With no map, a place is still a place — it is simply on none.
+    expect(await namePlaceInProse(page, worldId, 'Ferrow Crossing')).toBeNull()
 
     await page.goto(`/#/worlds/${worldId}/maps`, { waitUntil: 'load' })
     await settle(page)
-    // The empty state says why a map is needed at all, which is what was missing.
+    // The empty state says why a map is worth having at all.
     await expect(page.getByText(/pins on a map/i)).toBeVisible()
 
     await page.getByRole('button', { name: 'Start a blank map' }).click()
@@ -85,7 +98,12 @@ test.describe('a writer with no map image can still place a scene', () => {
       return (await db.mapLayers.toArray()).length
     }), { timeout: 20_000 }).toBe(1)
 
-    // Presence: the same box now offers it, from the same typing.
-    expect(await canNamePlaceInProse(page, worldId)).toBe(true)
+    /*
+      The pair: the same typing, in the same box, now lands the pin on that
+      map. A place named after a map exists goes onto it rather than waiting —
+      which is what makes the first half an assertion about the map's absence
+      rather than about places never being placed.
+    */
+    expect(await namePlaceInProse(page, worldId, 'Wenlock Edge')).toEqual(expect.any(String))
   })
 })

@@ -93,7 +93,15 @@ export function SceneDraftSection({
     list and gave no reason. One flag now decides both, which is what stops the
     text and the behaviour drifting apart again.
   */
-  const canCreateLocation = mapLayers.length > 0
+  /*
+    A place can always be made now, map or no map.
+
+    This used to be `mapLayers.length > 0`, because a place *was* a pin and
+    there was nowhere to put one. A place may now exist in the story before it
+    exists on a map — so the writer of a book set in a kitchen and an office
+    is no longer told, by silence, that their book has no places in it.
+  */
+  const canCreateLocation = true
 
   /**
    * Record what the writer just asserted by typing.
@@ -141,17 +149,25 @@ export function SceneDraftSection({
         await updateEvent(eventId, { involvedItemIds: [...new Set([...event.involvedItemIds, created.id])] })
         return
       }
-      // A place is a pin, so it needs a map and a position. It goes at the
-      // centre of the scene's own map where there is one, and of the world's
-      // first map otherwise — somewhere findable, to be dragged where it
-      // belongs. The row is not offered at all when there is no map.
+      /*
+        A place goes on a map when there is one to put it on, at the centre —
+        somewhere findable, to be dragged where it belongs. It prefers the
+        scene's own map over the world's first, so a room named while writing a
+        scene set indoors lands on the floor plan rather than the continent.
+
+        **And when there is no map, it is simply made without one.** A place
+        used to be a pin, so this row was withheld entirely from a mapless
+        world and a book set in a kitchen and an office could record neither.
+        An unmapped place is a place all the same: scenes can happen there,
+        characters can be there, and it can be put on a map the day one is
+        drawn.
+      */
       const home = markers.find((m) => m.id === event.locationMarkerId)
       const layer = mapLayers.find((l) => l.id === home?.mapLayerId) ?? mapLayers[0]
-      if (!layer) return
       const created = await createLocationMarker({
-        worldId, mapLayerId: layer.id, name: suggestion.name, description: '',
-        x: Math.round(layer.imageWidth / 2), y: Math.round(layer.imageHeight / 2),
-        iconType: 'landmark',
+        worldId, name: suggestion.name, description: '', iconType: 'landmark',
+        mapLayerId: layer?.id ?? null,
+        ...(layer ? { x: Math.round(layer.imageWidth / 2), y: Math.round(layer.imageHeight / 2) } : {}),
       })
       if (!event.locationMarkerId) await updateEvent(eventId, { locationMarkerId: created.id })
       return

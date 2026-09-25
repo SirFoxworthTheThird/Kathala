@@ -1025,6 +1025,9 @@ export function formatLocationTree(
   type M = Pick<LocationMarker, 'name' | 'mapLayerId' | 'linkedMapLayerId'>
   const byLayer = new Map<string, M[]>()
   for (const m of markers) {
+    // Grouped by map to describe the world to an assistant; a place not on a
+    // map has no group and is described without one.
+    if (!m.mapLayerId) continue
     if (!byLayer.has(m.mapLayerId)) byLayer.set(m.mapLayerId, [])
     byLayer.get(m.mapLayerId)!.push(m)
   }
@@ -1169,7 +1172,11 @@ export async function addLocationsToWorld(
   const markerByName = new Map<string, LocationMarker>()
   for (const m of allMarkers) if (!markerByName.has(key(m.name))) markerByName.set(key(m.name), m)
   const countByLayer = new Map<string, number>()
-  for (const m of allMarkers) countByLayer.set(m.mapLayerId, (countByLayer.get(m.mapLayerId) ?? 0) + 1)
+  // How full each map is, for laying new pins out. Unmapped places occupy no map.
+  for (const m of allMarkers) {
+    if (!m.mapLayerId) continue
+    countByLayer.set(m.mapLayerId, (countByLayer.get(m.mapLayerId) ?? 0) + 1)
+  }
 
   // Reuse an existing root "Locations" map if one is already there.
   const rootLayers = await db.mapLayers.where('worldId').equals(worldId).toArray()

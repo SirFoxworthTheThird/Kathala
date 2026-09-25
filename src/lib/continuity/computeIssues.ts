@@ -1092,6 +1092,16 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         const fromMarker = prev.currentLocationMarkerId ? markerById.get(prev.currentLocationMarkerId) : undefined
         const toMarker   = curr.currentLocationMarkerId ? markerById.get(curr.currentLocationMarkerId) : undefined
         if (!fromMarker || !toMarker || fromMarker.mapLayerId !== toMarker.mapLayerId) continue
+        /*
+          **A place that is not on a map has no coordinates to measure.**
+
+          The comparison above is not enough on its own: two unmapped places
+          both have `mapLayerId === null`, so `null !== null` is false and the
+          pair would sail through to be measured by `x` and `y` that mean
+          nothing. The distance and the region path below are the only checks
+          that read those, and both belong to a drawn map.
+        */
+        if (!fromMarker.mapLayerId) continue
 
         const currEvent = eventById.get(curr.eventId)
         const currOrder = eventOrder(curr.eventId)
