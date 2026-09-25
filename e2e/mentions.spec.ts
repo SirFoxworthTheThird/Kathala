@@ -107,4 +107,55 @@ test.describe('@-mentions in the scene draft', () => {
     })
     expect(stored).toEqual([])
   })
+
+  /**
+   * `@@Kael` says he is in the room.
+   *
+   * The one thing a writer most wants to state mid-sentence was the one thing
+   * the picker could not say: `@` always recorded a *mention*. Two sigils
+   * assert presence, and nothing reads the prose to infer it — fiction is full
+   * of *"Vey was not there"* and *"he imagined Marn in the Ossuary"*, so the
+   * keystroke is the assertion.
+   */
+  test('typing @@ puts the character in the scene instead', async ({ page }) => {
+    const draft = await openSceneDraft(page)
+
+    await draft.fill('The door opened. @@Kae')
+    await page.getByRole('button', { name: 'Kael' }).click()
+
+    // Both sigils go — `lastIndexOf('@')` lands on the second, and splicing
+    // from there would leave a stray "@" in the manuscript.
+    await expect(draft).toHaveValue('The door opened. Kael ')
+
+    const stored = await page.evaluate(async () => {
+      const db = (window as unknown as { __pwdb?: { events: { toArray: () => Promise<Array<{ involvedCharacterIds: string[]; mentionedCharacterIds: string[] }>> } } }).__pwdb
+      const events = await db!.events.toArray()
+      return { cast: events[0]?.involvedCharacterIds ?? [], mentioned: events[0]?.mentionedCharacterIds ?? [] }
+    })
+    expect(stored.cast).toHaveLength(1)
+    /*
+      And *not* also mentioned. The two lists are separate claims and a
+      character in both is the record contradicting itself; present is the
+      stronger one, so it replaces rather than joins.
+    */
+    expect(stored.mentioned).toEqual([])
+  })
+
+  test('and will not invent somebody to say is present', async ({ page }) => {
+    /*
+      The pair for the rule above, and the guard that matters: `@` offers to
+      create a record for a name nothing answers — which is how a cast list
+      grew a phantom once already. Asserting that a person is in the room is a
+      claim about a person who exists.
+    */
+    const draft = await openSceneDraft(page)
+
+    // Named exactly: a single "@" offers a create row per kind, so a loose
+    // /Wenmere/ matches character, item and place at once.
+    await draft.fill('Somebody spoke. @Wenmere')
+    await expect(page.getByRole('button', { name: 'Wenmere new character' })).toBeVisible()
+
+    await draft.fill('Somebody spoke. @@Wenmere')
+    await expect(page.getByRole('button', { name: /Wenmere/ })).toHaveCount(0)
+  })
 })
