@@ -1047,6 +1047,29 @@ lands in the middle of it, ready to be dragged where it belongs; if the scene
 already has a place, the new pin goes on that place's map rather than the
 world's first.
 
+**The line at the top of a scene says where it happens and who is there.**
+
+    [#The Kitchen @@Wren Halloway @@Sal'ka]
+
+Type it as the first line of a scene and Kathala records all of it at once: the
+setting, and everyone present. It is the one way to say a character is in the
+room **without their name appearing in the prose** — someone on the stairs,
+deliberately unmentioned — which no amount of writing around it could express.
+
+**It is never part of your book.** The line is drawn from the scene's own
+records rather than stored in the prose, so it costs you nothing: not a word of
+the count, not a line of the manuscript, not a result in search. Change the cast
+in the panel beside it, or the Setting chip, or with `@@` while writing, and the
+line already says so — there is only one copy of the fact, and this is a view of
+it.
+
+Edit the line and the records follow. Remove a name and that character leaves
+the scene; delete the whole line and nothing changes, because clearing your
+screen is not the same as emptying your cast — it reappears where it was. A name
+nothing in your world answers is reported rather than acted on, and cannot
+create anybody: there is no picker inside the brackets to catch a typo, so it
+says so instead of quietly dropping somebody.
+
 **Type `@@` to say somebody is *in the room*.** A single `@` records a mention
 — the name occurs in this scene. Two say the character is present, and they
 join the scene's cast: the map places them, the Writer's Brief lists them, and
