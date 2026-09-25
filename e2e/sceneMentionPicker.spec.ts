@@ -26,7 +26,7 @@ const storedEvent = (page: Page) => page.evaluate(async () => {
     events: { toArray: () => Promise<Array<{ involvedItemIds: string[]; mentionedCharacterIds: string[]; locationMarkerId: string | null }>> }
     characters: { toArray: () => Promise<Array<{ id: string; name: string }>> }
     items: { toArray: () => Promise<Array<{ id: string; name: string }>> }
-    locationMarkers: { toArray: () => Promise<Array<{ id: string; name: string; mapLayerId: string }>> }
+    locationMarkers: { toArray: () => Promise<Array<{ id: string; name: string; mapLayerId: string | null }>> }
   }
   const [events, characters, items, locationMarkers] = await Promise.all([
     db.events.toArray(), db.characters.toArray(), db.items.toArray(), db.locationMarkers.toArray(),
@@ -393,33 +393,44 @@ test.describe('Naming things from the scene prose', () => {
   })
 
   /**
-   * A place is a pin, so it needs a map to be on: **locations may only be added
-   * to maps and sub-maps that already exist**. With no map in the world the row
-   * is withheld rather than inventing coordinates — and the other two kinds are
-   * still offered, which is what stops this passing on a picker that has simply
-   * stopped working.
+   * **A place can be made in a world with no map.**
+   *
+   * This test asserted the opposite for a long time, and the rule it guarded
+   * was real while it lasted: a place *was* a pin, so one could not exist
+   * without a map to be on, and the row was withheld rather than inventing
+   * coordinates.
+   *
+   * The model changed underneath it. A place may now exist in the story before
+   * it exists on a map — otherwise a novel set in a kitchen, an office and her
+   * mother's house can record none of its settings, while forty screens
+   * outside Maps consume places and almost all of them need only which place
+   * it is. The pin is now something a place *gains*, not something it is.
    */
-  test('a place cannot be created in a world with no map', async ({ page }) => {
+  test('a place can be created in a world with no map, and waits to be put on one', async ({ page }) => {
     await sceneWithProse(page)
     await mention(page, 'Thornfield')
 
     await expect(page.getByRole('button', { name: /Thornfield\s+new character/ })).toBeVisible()
     await expect(page.getByRole('button', { name: /Thornfield\s+new item/ })).toBeVisible()
-    await expect(page.getByRole('button', { name: /new place/ })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /Thornfield\s+new place/ })).toBeVisible()
+
+    await page.getByRole('button', { name: /Thornfield\s+new place/ }).click()
 
     const { locationMarkers } = await storedEvent(page)
-    expect(locationMarkers).toHaveLength(0)
+    expect(locationMarkers).toHaveLength(1)
+    // On no map, which is the whole of the change — not on an invented one.
+    expect(locationMarkers[0].mapLayerId).toBeNull()
   })
 
   /**
    * W19-9: the prompt above the box named "place" unconditionally, so a
-   * brand-new world advertised a third option the rule above forbids and the
-   * picker never offered. The prompt and the picker are the same flag now.
+   * brand-new world advertised a third option the picker never offered. The
+   * prompt and the picker have to agree — and now they agree that a place can
+   * always be made.
    */
-  test('and the prompt above the box does not offer one either', async ({ page }) => {
+  test('and the prompt above the box offers one too', async ({ page }) => {
     await sceneWithProse(page)
-    await expect(prose(page)).toHaveAttribute('placeholder', /names a character or item;/)
-    await expect(prose(page)).not.toHaveAttribute('placeholder', /place/)
+    await expect(prose(page)).toHaveAttribute('placeholder', /names a character, item or place;/)
   })
 
   /**

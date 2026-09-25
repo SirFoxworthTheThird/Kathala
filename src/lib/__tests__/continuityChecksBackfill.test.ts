@@ -561,3 +561,58 @@ describe('a subplot nobody ever tagged a scene with', () => {
     expect(kinds(world(['t1']))).not.toContain('thread-unstarted')
   })
 })
+
+/*
+  ── A place that is not on a map ──────────────────────────────────────────
+
+  Places may now exist before they are drawn anywhere, which the distance and
+  region checks are the only ones that care about: they are the only two that
+  read a marker's `x` and `y`.
+
+  The trap is that they are guarded by *"are these two on the same layer"*, and
+  two unmapped places both have `mapLayerId === null` — so `null !== null` is
+  false and the pair sails through to be measured by coordinates that mean
+  nothing. The guard has to say what it means.
+*/
+describe('a journey between two places that are on no map', () => {
+  /*
+    The reachable shape, which took two attempts to construct.
+
+    A snapshot only reaches the distance check if it has a `currentMapLayerId`,
+    so a place that was *never* mapped is already excluded upstream and proves
+    nothing. The case that gets here is a place that **was** on a map when the
+    state was recorded and has since been taken off one — which the new "Not on
+    a map yet" control makes an ordinary thing to do.
+
+    Then the marker's own `mapLayerId` is null while the snapshot still names a
+    layer, and the guard is what stops a thousand pixels of nothing being read
+    as a hundred days on foot. My first version of this test put null on the
+    snapshots too, passed, and was vacuous: a mutant that defaulted the missing
+    layer instead of skipping survived it.
+  */
+  const world = (mapLayerId: string | null) => base({
+    characters: [person('a', 'Ayla')],
+    allEvents: [ev('e1', 'c1', 0), ev('e2', 'c2', 0, { travelDays: 1 })],
+    allLayers: [layer('l1', { scalePixelsPerUnit: 1, scaleUnit: 'km' })],
+    // A thousand units apart, which on a real map is a hundred days on foot.
+    allMarkers: [
+      marker('m1', { x: 0, y: 0, mapLayerId }),
+      marker('m2', { x: 1000, y: 0, mapLayerId }),
+    ],
+    travelModes: [{ id: 'tm', worldId: 'w', name: 'On foot', speedPerDay: 10, createdAt: 0, updatedAt: 0 } as never],
+    snapshots: [
+      snap('a', 'e1', { currentLocationMarkerId: 'm1', currentMapLayerId: 'l1', travelModeId: 'tm' }),
+      snap('a', 'e2', { currentLocationMarkerId: 'm2', currentMapLayerId: 'l1', travelModeId: 'tm' }),
+    ],
+  })
+
+  it('is not measured, because there is no distance to measure', () => {
+    expect(kinds(world(null))).not.toContain('travel-dist')
+  })
+
+  it('while the same journey on a map still is', () => {
+    // The pair, and the half that makes the absence mean something: identical
+    // coordinates, speed and days — only the places' map differs.
+    expect(kinds(world('l1'))).toContain('travel-dist')
+  })
+})

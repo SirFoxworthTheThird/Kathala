@@ -182,7 +182,8 @@ export function hiddenCount<T extends { id: string }>(
 /** Just enough of a location marker to decide which maps it reveals. */
 export interface RevealingMarker {
   id: string
-  mapLayerId: string
+  /** Null for a place not yet on a map — it reveals no layer, so it is skipped. */
+  mapLayerId: string | null
   linkedMapLayerId?: string | null
 }
 
@@ -215,7 +216,8 @@ export function mapGatewayFirstAppearances(
 
   for (const marker of markers) {
     const key = out.get(marker.id)
-    if (key !== undefined) recordLayer(marker.mapLayerId, key)
+    // A place with no map reveals no map. It is still gated as a place.
+    if (key !== undefined && marker.mapLayerId) recordLayer(marker.mapLayerId, key)
   }
 
   let changed = true
@@ -231,7 +233,7 @@ export function mapGatewayFirstAppearances(
         out.set(gateway.id, key)
         changed = true
       }
-      if (recordLayer(gateway.mapLayerId, key)) changed = true
+      if (gateway.mapLayerId && recordLayer(gateway.mapLayerId, key)) changed = true
     }
   }
 
@@ -274,10 +276,12 @@ export function mapLayerRevealer(
   const standingOn = new Set<string>()
   const linkedFrom = new Set<string>()
   for (const m of markers) {
-    populated.add(m.mapLayerId)
+    // Which maps have anything on them, and which the reader has reached. A
+    // place on no map populates none and stands on none.
+    if (m.mapLayerId) populated.add(m.mapLayerId)
     if (m.linkedMapLayerId) linked.add(m.linkedMapLayerId)
     if (!markerRevealed(m.id)) continue
-    standingOn.add(m.mapLayerId)
+    if (m.mapLayerId) standingOn.add(m.mapLayerId)
     if (m.linkedMapLayerId) linkedFrom.add(m.linkedMapLayerId)
   }
   const parentById = new Map(layers.map((layer) => [layer.id, layer.parentMapId ?? null]))

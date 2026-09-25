@@ -109,7 +109,7 @@ export function buildPrompt(
   const layerById = new Map(mapLayers.map((l) => [l.id, l]))
   const locationList = locationMarkers.length > 0
     ? locationMarkers.map((m) => {
-        const layer = layerById.get(m.mapLayerId)
+        const layer = m.mapLayerId ? layerById.get(m.mapLayerId) : undefined
         const layerHint = layer ? ` [map: "${layer.name}", mapLayerId: "${m.mapLayerId}"]` : ''
         return `  - "${m.name}" (markerId: "${m.id}")${layerHint}${m.description ? ` — ${m.description.slice(0, 80)}` : ''}`
       }).join('\n')

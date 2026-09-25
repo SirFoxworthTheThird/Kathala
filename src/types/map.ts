@@ -37,7 +37,27 @@ export type LocationIconType =
 export interface LocationMarker {
   id: string
   worldId: string
-  mapLayerId: string
+  /**
+   * The map this place is pinned to, or **null when it is not on one yet**.
+   *
+   * A place used to be a pin, which meant a world with no map could hold no
+   * places at all: a scene had no Setting to offer, a character's Current
+   * Location had nothing in it, and the `@` picker would not make one. A
+   * novel set in a kitchen, an office and her mother's house could record
+   * none of it — and forty screens outside Maps consume places, most of them
+   * needing only which place it is.
+   *
+   * So a place may exist in the story before it exists on a map, and be put
+   * on one (or on a sub-map) whenever the writer draws it.
+   *
+   * **`x` and `y` mean nothing while this is null.** They are kept as plain
+   * numbers rather than made nullable because the three things that read them
+   * — travel distance, region traversal, inside-a-region — reach them only
+   * through a layer, and each already gives up quietly when a layer has no
+   * scale. Making the coordinates nullable would have put a guard in every
+   * caller to say what this one field already says.
+   */
+  mapLayerId: string | null
   linkedMapLayerId: string | null
   name: string
   description: string
