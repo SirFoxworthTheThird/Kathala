@@ -1022,11 +1022,18 @@ puts the one-line **Description** below it. An empty description is a control
 rather than a note: click it and the card opens for editing with the field ready.
 
 **Type `@` while writing** to name a character, an item or a place. Pick one and
-its plain name goes into the prose — no `@tokens` in your manuscript — and it is
+the name goes into the prose — no `@tokens` in your manuscript — and it is
 recorded against the scene: a character joins the scene's *mentions*, an item
 joins its items, and a place becomes the scene's location if it hasn't got one
 already. Every row says which kind of thing it is, since a world can hold a
 person and a place of the same name.
+
+**It writes the name you were typing, not the one on the record.** If a
+character is filed as *Wren Halloway* and you have given her the alias *Wren*,
+typing `@Wren` puts **Wren** in the sentence — because an alias is you saying
+what you call her, and a book that never mentions her surname should not have
+it pasted in twice a page. Type toward the full name instead and you get the
+full name. Whichever you were writing is what you keep.
 
 If nothing answers what you've typed, the last rows offer to **make it**:
 *new character*, *new item*, *new place*. The record is created and attached in
@@ -1055,7 +1062,9 @@ Two deliberate limits. **`@@` offers people only**, because presence is about
 people; an item or a place "being present" is what the single `@` already
 means. And **`@@` never offers to create anybody**: asserting that somebody is
 in the room is a claim about a person who exists, and a new character is still
-one `@` away. Kathala never reads your prose to decide any of this — fiction is
+one `@` away — and if you type `@@` for somebody who doesn't exist yet, it
+says so rather than going quiet, and points you at the single `@` that would
+make them. Kathala never reads your prose to decide any of this — fiction is
 full of *"she was not there"* and *"he imagined her at the gate"*, so it is the
 keystroke that asserts, never the sentence.
 

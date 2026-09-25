@@ -252,3 +252,65 @@ describe('the doubled sigil', () => {
     expect(noCreate).toEqual([])
   })
 })
+
+/**
+ * The prose gets the words the writer was typing, not the record's filing name.
+ *
+ * `rank` has always searched aliases; only `select` ignored them. A writer
+ * whose book never says a character's surname gave her the alias *Wren*, typed
+ * `@@Wren`, and got *"Wren Halloway"* — then deleted nine characters by hand
+ * every time. They named it the single thing that most made writing the
+ * bookkeeping feel like filing.
+ */
+describe('what the picker puts in the sentence', () => {
+  const wren: MentionCandidate = {
+    id: 'w', kind: 'character', name: 'Wren Halloway', aliases: ['Wren', 'the surveyor'],
+  }
+  const insertFor = (query: string) => {
+    const [first] = mentionSuggestions(query, [wren], { canCreateLocation: false })
+    return first?.type === 'existing' ? first.insert : null
+  }
+
+  it('uses the alias the query is heading for', () => {
+    expect(insertFor('Wren')).toBe('Wren')
+    expect(insertFor('the sur')).toBe('the surveyor')
+  })
+
+  it('and the record\'s own name when the query is heading for that', () => {
+    /*
+      The pair, and the ordering that makes it work: a fully typed "Wren
+      Halloway" is not a prefix of the alias "Wren", so it falls through. The
+      writer gets whichever they were already writing.
+    */
+    expect(insertFor('Wren Hall')).toBe('Wren Halloway')
+    expect(insertFor('Halloway')).toBe('Wren Halloway')
+  })
+
+  it('leaves a record with no aliases alone', () => {
+    const plain: MentionCandidate = { id: 'p', kind: 'item', name: 'Ash Ledger' }
+    const [first] = mentionSuggestions('Ash', [plain], { canCreateLocation: false })
+    expect(first?.type === 'existing' && first.insert).toBe('Ash Ledger')
+  })
+})
+
+/*
+  The reachability the editor's "nobody called that" notice depends on.
+
+  It shows whenever the picker comes up empty, without testing which sigil was
+  typed — because a single `@` cannot come up empty: a query nothing matches
+  still gets create rows, and a query that matches exactly is, by definition,
+  matched. Written as a test rather than a comment so that making `@` able to
+  return nothing fails here, next to the reasoning, instead of quietly
+  changing what the notice means.
+*/
+describe('a single @ always has something to offer', () => {
+  const cast: MentionCandidate[] = [{ id: 'a', kind: 'character', name: 'Isko Marn' }]
+
+  it('offers create rows for a name nothing answers', () => {
+    expect(mentionSuggestions('Wenmere', cast, { canCreateLocation: false }).length).toBeGreaterThan(0)
+  })
+
+  it('and the record itself for a name that is already taken', () => {
+    expect(mentionSuggestions('Isko Marn', cast, { canCreateLocation: false }).length).toBeGreaterThan(0)
+  })
+})
