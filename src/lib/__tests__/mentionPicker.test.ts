@@ -103,7 +103,7 @@ describe('findMentionToken', () => {
   const q = (text: string, candidates: MentionCandidate[] = CAST) => at(text, candidates)?.query ?? null
 
   it('opens on a bare "@" with everything still to type', () => {
-    expect(at('She wrote @')).toEqual({ start: 10, end: 11, query: '' })
+    expect(at('She wrote @')).toEqual({ start: 10, end: 11, query: '', intent: 'mention' })
   })
 
   it('reads a one-word name, as it always did', () => {
@@ -180,5 +180,75 @@ describe('findMentionToken', () => {
     expect(mentionSuggestions(token.query, CAST, opts)).toContainEqual(
       { type: 'create', kind: 'character', name: 'Ysolde Vane' },
     )
+  })
+})
+
+/**
+ * The doubled sigil: `@@Marn` asserts that he is in the room.
+ *
+ * Writing is the gesture a writer is already making, so the one thing they
+ * most want to state mid-sentence — *she is here* — should not cost a trip to
+ * another panel. What makes it safe is that the keystroke is an assertion and
+ * nothing reads the prose to infer one: fiction is full of *"Vey was not
+ * there"* and *"he imagined Marn in the Ossuary"*, and a rule that read those
+ * as records would be wrong exactly where the writing is most interesting.
+ */
+describe('the doubled sigil', () => {
+  const cast: MentionCandidate[] = [
+    { id: 'marn', kind: 'character', name: 'Isko Marn' },
+    { id: 'key', kind: 'item', name: 'Ossuary Key' },
+    { id: 'bay', kind: 'location', name: 'Bay Nineteen' },
+  ]
+
+  it('reads one "@" as a mention and two as presence', () => {
+    expect(findMentionToken('He saw @Isko', 12, cast)?.intent).toBe('mention')
+    expect(findMentionToken('He saw @@Isko', 13, cast)?.intent).toBe('present')
+  })
+
+  it('starts the token at the first sigil, so neither is left in the prose', () => {
+    /*
+      `lastIndexOf('@')` lands on the *second* one. Splicing from there would
+      leave a stray "@" in the manuscript — which is the whole class of bug
+      this picker exists to prevent.
+    */
+    const token = findMentionToken('He saw @@Isko', 13, cast)
+    expect(token?.start).toBe(7)
+    expect(token?.query).toBe('Isko')
+  })
+
+  it('refuses a run of three or more', () => {
+    // Punctuation, emphasis or a typo. Guessing which would be the app
+    // deciding what the writer meant.
+    expect(findMentionToken('He saw @@@Isko', 14, cast)).toBeNull()
+  })
+
+  it('still ignores an address', () => {
+    // The pair for the rule above: the guard has to look back past the whole
+    // run, not just one character.
+    expect(findMentionToken('write to me@@home', 17, cast)).toBeNull()
+  })
+
+  it('offers only characters for presence, and everyone for a mention', () => {
+    const everyone = mentionSuggestions('', cast, { canCreateLocation: true })
+    expect(everyone.map((s) => s.kind)).toEqual(['character', 'item', 'location'])
+
+    const people = mentionSuggestions('', cast, { canCreateLocation: true, kinds: ['character'] })
+    expect(people.map((s) => s.kind)).toEqual(['character'])
+  })
+
+  it('never offers to invent somebody to assert is present', () => {
+    /*
+      Asserting that a person is in the room is a claim about a person who
+      exists. Conjuring one from a half-typed word is how a cast list grows a
+      phantom — which Enter-on-a-create-row did once already. A new character
+      is still one `@` away.
+    */
+    const withCreate = mentionSuggestions('Wenmere', cast, { canCreateLocation: true })
+    expect(withCreate.some((s) => s.type === 'create')).toBe(true)
+
+    const noCreate = mentionSuggestions('Wenmere', cast, {
+      canCreateLocation: true, kinds: ['character'], allowCreate: false,
+    })
+    expect(noCreate).toEqual([])
   })
 })

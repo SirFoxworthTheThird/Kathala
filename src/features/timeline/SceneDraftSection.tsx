@@ -13,7 +13,7 @@ import { createCharacter } from '@/db/hooks/useCharacters'
 import { useAllLocationMarkers, createLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { updateEvent } from '@/db/hooks/useTimeline'
-import type { MentionCandidate, MentionSuggestion } from '@/lib/mentionPicker'
+import type { MentionCandidate, MentionSuggestion, MentionIntent } from '@/lib/mentionPicker'
 import { draftAfterSave } from '@/lib/draftHandoff'
 import { Button } from '@/components/ui/button'
 import { plural } from '@/lib/plural'
@@ -95,7 +95,32 @@ export function SceneDraftSection({
   */
   const canCreateLocation = mapLayers.length > 0
 
-  async function handlePick(suggestion: MentionSuggestion) {
+  /**
+   * Record what the writer just asserted by typing.
+   *
+   * Two sigils, two claims. `@Marn` says the name occurs here; `@@Marn` says
+   * he is in the room. Nothing reads the sentence to work that out — the
+   * keystroke is the assertion, which is what keeps this safe in prose full of
+   * negation, hearsay and flashback.
+   */
+  async function handlePick(suggestion: MentionSuggestion, intent: MentionIntent) {
+    if (intent === 'present' && suggestion.type === 'existing' && suggestion.kind === 'character') {
+      /*
+        Present, so no longer merely mentioned. The two lists are separate and
+        a character in both is the record contradicting itself — and *mentioned*
+        is the weaker claim, so the stronger one replaces it rather than sitting
+        beside it.
+
+        One `updateEvent`, so one journal operation: a mistyped `@@` is a single
+        Ctrl+Z, not two.
+      */
+      await updateEvent(eventId, {
+        involvedCharacterIds: [...new Set([...event.involvedCharacterIds, suggestion.id])],
+        mentionedCharacterIds: (event.mentionedCharacterIds ?? []).filter((id) => id !== suggestion.id),
+      })
+      return
+    }
+
     if (suggestion.type === 'create') {
       if (suggestion.kind === 'character') {
         const created = await createCharacter({ worldId, name: suggestion.name, description: '' })
@@ -226,8 +251,8 @@ export function SceneDraftSection({
         onBlur={saveScene}
         candidates={candidates}
         canCreateLocation={canCreateLocation}
-        onPick={(s) => { void handlePick(s) }}
-        placeholder={`Write or paste this scene's prose… (type @ to name a character${canCreateLocation ? ', item or place' : ' or item'}; word count feeds the pacing curve)`}
+        onPick={(s, intent) => { void handlePick(s, intent) }}
+        placeholder={`Write or paste this scene's prose… (@ names a character${canCreateLocation ? ', item or place' : ' or item'}; @@ says who is here)`}
         ariaLabel="Scene prose"
         rows={5}
       />

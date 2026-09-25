@@ -418,7 +418,7 @@ test.describe('Naming things from the scene prose', () => {
    */
   test('and the prompt above the box does not offer one either', async ({ page }) => {
     await sceneWithProse(page)
-    await expect(prose(page)).toHaveAttribute('placeholder', /name a character or item;/)
+    await expect(prose(page)).toHaveAttribute('placeholder', /names a character or item;/)
     await expect(prose(page)).not.toHaveAttribute('placeholder', /place/)
   })
 
