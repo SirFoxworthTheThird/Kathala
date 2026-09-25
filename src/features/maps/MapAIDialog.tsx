@@ -28,7 +28,7 @@ function buildPrompt(
 
   const locationList = markers.length > 0
     ? markers.map((m) => {
-        const layer = layerById.get(m.mapLayerId)
+        const layer = m.mapLayerId ? layerById.get(m.mapLayerId) : undefined
         const layerHint = layer ? ` [map: "${layer.name}", mapLayerId: "${m.mapLayerId}"]` : ''
         return `  - "${m.name}" (markerId: "${m.id}"${layerHint})`
       }).join('\n')

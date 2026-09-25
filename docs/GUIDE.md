@@ -1689,14 +1689,30 @@ images to a canvas — uploaded maps always export.)
 
 ![Maps](images/08-maps.png)
 
-**A location lives on a map.** Places are pins, so you can add them to maps and
-sub-maps that already exist and nowhere else — there is no separate list of
-places kept apart from the geography. That is why, in a world with no map yet,
-a scene has no **Setting** to fill in, a character's **Current
-Location** has nothing to offer, and the scene editor's `@` picker offers a new
-character or a new item but not a new place. Add a map first (or generate a tree
-of locations with AI, which builds one for you and lays them out on it), and all
-three appear.
+**A place does not need a map.** It used to: places were pins, so a world with
+no map could hold none — a scene had no **Setting** to fill in, a character's
+**Current Location** had nothing to offer, and the `@` picker would not make
+one. A novel set in a kitchen, an office and her mother's house could record
+none of its settings.
+
+So a place can now exist in the story before it exists anywhere on paper. Name
+one with `@` while writing and it is simply made; scenes happen there,
+characters are there, the Writer's Brief and the Continuity Checker know it.
+The pin is something a place **gains**, not something it is.
+
+**Putting one on a map, later or never.** Open a place and **On the map**
+chooses which map it belongs to — or *Not on a map yet*, which is where it
+starts. Pins land at the centre of the map they join, to be dragged where they
+belong. Places waiting for a map are listed on the map screen under **Not on a
+map yet**, beside the ones already placed, so they are never lost.
+
+This is also the only way to move a place from one map to another — useful when
+the inn went on the continent and you meant the village.
+
+Only two things actually need the geography: **travel distance** and the
+**region** checks, which measure and cannot measure what is nowhere. Both stay
+quiet about an unmapped place rather than guessing, the same way they do about
+a map with no scale set.
 
 The map's own controls **float over the canvas** rather than sitting in header
 rows above it, so the map itself runs from the top of the view to the chapter

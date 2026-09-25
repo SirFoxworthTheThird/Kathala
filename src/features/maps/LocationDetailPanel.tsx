@@ -242,6 +242,33 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
     onClose()
   }
 
+  /**
+   * Put a place onto a map, or take it off one.
+   *
+   * The missing half of unmapped places, and it did not exist for mapped ones
+   * either: nothing anywhere wrote `mapLayerId` after a place was created, so
+   * a pin dropped on the wrong map stayed there. "Make it now, draw the map
+   * later" needs this to be true, and so does every writer who put the inn on
+   * the continent when they meant the village.
+   *
+   * The pin lands at the centre of the map it arrives on — findable, to be
+   * dragged where it belongs — which is the same rule as naming a place from
+   * the scene prose.
+   */
+  async function handlePlaceOnMap(layerId: string) {
+    if (layerId === 'none') {
+      await updateLocationMarker(markerId, { mapLayerId: null })
+      return
+    }
+    const layer = allLayers.find((l) => l.id === layerId)
+    if (!layer) return
+    await updateLocationMarker(markerId, {
+      mapLayerId: layerId,
+      x: Math.round(layer.imageWidth / 2),
+      y: Math.round(layer.imageHeight / 2),
+    })
+  }
+
   async function handleLinkSubMap(layerId: string) {
     await updateLocationMarker(markerId, { linkedMapLayerId: layerId === 'none' ? null : layerId })
   }
@@ -627,6 +654,38 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
 
         {/* ── Related Lore ── */}
         <RelatedLoreSection worldId={worldId} entityId={markerId} entityName={marker.name} />
+
+        {/*
+          ── On a map, or not yet ──
+
+          A place may exist in the story before it exists on a map. This is
+          where it joins one, and the only place in the app that can move a pin
+          between maps at all.
+        */}
+        {!gate.active && (
+          <Field
+            label={<><MapPin className="h-3.5 w-3.5" /> On the map</>}
+            className="flex flex-col gap-1.5"
+            labelClassName="flex items-center gap-1.5"
+          >
+            <Select value={marker.mapLayerId ?? 'none'} onValueChange={handlePlaceOnMap}>
+              <SelectTrigger className="text-xs">
+                <SelectValue placeholder="Not on a map yet" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Not on a map yet</SelectItem>
+                {allLayers.filter((l) => isTreeVisible(allLayers, l)).map((l) => (
+                  <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!marker.mapLayerId && (
+              <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                Scenes can happen here and characters can be here without it being drawn anywhere.
+              </p>
+            )}
+          </Field>
+        )}
 
         {/* ── Sub-map ── */}
         {(!gate.active || marker.linkedMapLayerId) && (

@@ -661,27 +661,31 @@ export function CharactersSection({
 
 export function LocationsSection({
   markers,
+  unmapped,
   selectedId,
   onSelect,
   onFocus,
 }: {
   markers: LocationMarker[]
+  /** Places that exist in the story but are on no map at all. */
+  unmapped?: LocationMarker[]
   selectedId: string | null
   onSelect: (id: string) => void
   onFocus: (marker: LocationMarker) => void
 }) {
   const [search, setSearch] = useState('')
-  const filtered = search.trim()
-    ? markers.filter((m) => m.name.toLowerCase().includes(search.toLowerCase()))
-    : markers
+  const match = (m: LocationMarker) => m.name.toLowerCase().includes(search.toLowerCase())
+  const filtered = search.trim() ? markers.filter(match) : markers
+  const waiting = unmapped ?? []
+  const filteredWaiting = search.trim() ? waiting.filter(match) : waiting
 
   return (
-    <SidebarSection title="Locations" icon={MapPin} count={markers.length} defaultOpen={false}>
+    <SidebarSection title="Locations" icon={MapPin} count={markers.length + waiting.length} defaultOpen={false}>
       {markers.length > 0 && <SidebarSearch value={search} onChange={setSearch} />}
       <div className="flex flex-col py-1">
-        {markers.length === 0 ? (
+        {markers.length === 0 && waiting.length === 0 ? (
           <p className="px-3 py-2 text-xs italic text-[hsl(var(--muted-foreground))]">No locations on this map.</p>
-        ) : filtered.length === 0 ? (
+        ) : markers.length > 0 && filtered.length === 0 && filteredWaiting.length === 0 ? (
           <p className="px-3 py-2 text-xs italic text-[hsl(var(--muted-foreground))]">No matches.</p>
         ) : (
           filtered.map((m) => (
@@ -704,6 +708,36 @@ export function LocationsSection({
               )}
             </button>
           ))
+        )}
+
+        {/*
+          Places that exist in the story and are on no map.
+
+          Headed rather than mixed in, because "where is it" has a different
+          answer for these: nowhere yet. Selecting one opens its panel, which
+          is where it can be put on a map — the list is the only route to that
+          control, so it renders whichever map is open.
+        */}
+        {filteredWaiting.length > 0 && (
+          <>
+            <p className="px-3 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+              Not on a map yet
+            </p>
+            {filteredWaiting.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => onSelect(m.id)}
+                className={`flex items-center gap-2 px-3 py-1.5 text-left transition-colors rounded-sm mx-1 ${
+                  selectedId === m.id
+                    ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                    : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]'
+                }`}
+              >
+                <span className="h-2 w-2 shrink-0 rounded-full border border-dashed border-[hsl(var(--muted-foreground))]" />
+                <span className="flex-1 truncate text-xs" title={m.name}>{m.name}</span>
+              </button>
+            ))}
+          </>
         )}
       </div>
     </SidebarSection>

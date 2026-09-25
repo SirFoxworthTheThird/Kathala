@@ -226,12 +226,19 @@ export function planSequel(source: SequelSource, selection: SequelSelection, opt
 
   const locationMarkers: LocationMarker[] = []
   for (const m of source.locationMarkers) {
-    if (!carryLayer.has(m.mapLayerId)) continue
+    /*
+      A place with no map comes across regardless: `carryLayer` decides which
+      *maps* the sequel inherits, and a place that is on none of them is not
+      excluded by any of them. It is part of the world's vocabulary, which is
+      exactly what a sequel is carrying forward.
+    */
+    if (m.mapLayerId && !carryLayer.has(m.mapLayerId)) continue
     const id = generateId()
     markerMap.set(m.id, id)
     locationMarkers.push({
       ...m, id, worldId,
-      mapLayerId: layerMap.get(m.mapLayerId)!,
+      // Stays unmapped if it was, and keeps its map if that map came too.
+      mapLayerId: m.mapLayerId ? layerMap.get(m.mapLayerId)! : null,
       linkedMapLayerId: m.linkedMapLayerId && layerMap.has(m.linkedMapLayerId) ? layerMap.get(m.linkedMapLayerId)! : null,
       factionId: m.factionId && factionMap.has(m.factionId) ? factionMap.get(m.factionId)! : null,
       createdAt: now, updatedAt: now,

@@ -700,6 +700,22 @@ class KathalaDB extends Dexie {
       has to record that this is where the field arrives.
     */
     this.version(55).stores({})
+
+    /*
+      v56: a place may exist before it is on a map.
+
+      `mapLayerId` becomes nullable. Nothing is backfilled and nothing needs to
+      be — every record written before now has a layer, and that is still
+      exactly what it means. The version exists so the chain records where the
+      field changed shape.
+
+      A place was a pin, which meant a world with no map could hold no places
+      at all: no Setting on a scene, nothing in a character's Current Location,
+      and no way to make one. A novel set in a kitchen and an office could
+      record none of it, while forty screens outside Maps consume places and
+      almost all of them need only which place it is.
+    */
+    this.version(56).stores({})
   }
 }
 

@@ -339,6 +339,9 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       marker in `allMarkers`, which the gate filters, so a marker the reader has
       not met never arrives. A revealed marker's own map is revealed with it.
     */
+    // A place that is not on a map has nowhere to be jumped to. It is listed
+    // under "Not on a map yet", where the control is *put it on one* instead.
+    if (!marker.mapLayerId) return
     if (marker.mapLayerId !== layerId) {
       crossLayerPanTargetRef.current = [marker.y, marker.x]
       pushMapLayer(marker.mapLayerId)
@@ -782,8 +785,18 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             setSidebarOpen(false)
           }}
         />
+        {/*
+          Places with no map, listed beside the ones on this map.
+
+          They have to be reachable from somewhere or the control that puts
+          them on a map can never be opened — a place created while writing
+          would exist, be usable as a setting, and be permanently unmappable.
+          The map screen is where a writer goes to think about where things
+          are, so this is where they wait.
+        */}
         <LocationsSection
           markers={markers}
+          unmapped={allMarkers.filter((m) => !m.mapLayerId)}
           selectedId={selectedLocationMarkerId}
           onSelect={setSelectedLocationMarkerId}
           onFocus={focusOnLocation}

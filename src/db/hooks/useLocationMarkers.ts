@@ -49,11 +49,13 @@ export function useAllLocationMarkers(worldId: string | null) {
 
 export async function createLocationMarker(data: {
   worldId: string
-  mapLayerId: string
+  /** Null for a place that exists in the story but is not on a map yet. */
+  mapLayerId: string | null
   name: string
   description: string
-  x: number
-  y: number
+  /** Where on the map, and meaningless — so optional — without one. */
+  x?: number
+  y?: number
   iconType: LocationIconType
   /** The writer's own word, when `iconType` is `custom` — see `locationType.ts`. */
   customType?: string
@@ -69,8 +71,8 @@ export async function createLocationMarker(data: {
     linkedMapLayerId: data.linkedMapLayerId ?? null,
     name: data.name,
     description: data.description,
-    x: data.x,
-    y: data.y,
+    x: data.x ?? 0,
+    y: data.y ?? 0,
     imageId: data.imageId ?? null,
     iconType: data.iconType,
     // Written only when it labels something, so an empty string never has to be
