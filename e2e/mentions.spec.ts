@@ -127,6 +127,13 @@ test.describe('@-mentions in the scene draft', () => {
     // from there would leave a stray "@" in the manuscript.
     await expect(draft).toHaveValue('The door opened. Kael ')
 
+    /*
+      Wait for the record to reach the screen before reading the store: the
+      prose lands before `updateEvent` resolves, so asserting on the text is
+      not evidence the write has happened.
+    */
+    await expect(page.getByRole('main').getByRole('button', { name: 'Remove Kael from this scene' })).toBeVisible()
+
     const stored = await page.evaluate(async () => {
       const db = (window as unknown as { __pwdb?: { events: { toArray: () => Promise<Array<{ involvedCharacterIds: string[]; mentionedCharacterIds: string[] }>> } } }).__pwdb
       const events = await db!.events.toArray()
@@ -239,5 +246,54 @@ test.describe('@-mentions in the scene draft', () => {
       return (await db.events.toArray())[0]?.mentionedCharacterIds ?? []
     })
     expect(stored).toEqual([])
+  })
+
+  /**
+   * `@@` on somebody who does not exist says so.
+   *
+   * It deliberately offers people only and will not invent one, so an unknown
+   * name produces no rows — and the picker used to render nothing at all. That
+   * is the single moment a writer most wants `@@`: the first time somebody
+   * walks into the book. A run measured five operations to recover, with no
+   * way to tell "nothing to offer" from "the app stopped listening".
+   */
+  test('says why @@ found nobody, and points at the sigil that would', async ({ page }) => {
+    const draft = await openSceneDraft(page)
+
+    await draft.fill('The door opened. @@Bell-Anselm')
+    await expect(page.getByText(/Nobody called .Bell-Anselm. yet/)).toBeVisible()
+
+    /*
+      The pair: a single `@` on the same unknown name *does* have something to
+      offer, so the notice must not appear there. Without this half, a notice
+      rendered unconditionally would pass.
+    */
+    await draft.fill('The door opened. @Bell-Anselm')
+    await expect(page.getByText(/Nobody called/)).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Bell-Anselm new character' })).toBeVisible()
+  })
+
+  /**
+   * The prose gets the name the writer uses, not the record's filing name.
+   */
+  test('inserts the alias that was being typed', async ({ page }) => {
+    const draft = await openSceneDraft(page)
+
+    // Kael exists; give him an alias the book actually uses.
+    await page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as
+        Record<string, { toArray: () => Promise<Array<{ id: string; name: string }>>; update: (id: string, v: unknown) => Promise<unknown> }>
+      const all = await db.characters.toArray()
+      const kael = all.find((c) => c.name === 'Kael')!
+      await db.characters.update(kael.id, { name: 'Kael Ardeth', aliases: ['Kael'] })
+    })
+
+    await draft.fill('The door opened. @@Kael')
+    // Named exactly: the nudge chip under the draft carries the same name, and
+    // the picker row is the one with its kind appended.
+    await page.getByRole('button', { name: 'Kael Ardeth character' }).click()
+
+    // "Kael ", not "Kael Ardeth " — the surname the book never says.
+    await expect(draft).toHaveValue('The door opened. Kael ')
   })
 })

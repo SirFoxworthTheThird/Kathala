@@ -66,7 +66,9 @@ Scene prose is written on the event too, and flows into the [Manuscript](Manuscr
 | `@Item` | The item is in this scene |
 | `@Place` | The scene's location, if it hasn't got one |
 
-The sigils never reach your manuscript: pick a row and the plain name goes into the prose. `@@` replaces a mention rather than joining it — a character cannot be both present and merely referenced.
+The sigils never reach your manuscript: pick a row and the name goes into the prose — **the name you were typing, not the one on the record**. A character filed as *Wren Halloway* with the alias *Wren* gives you **Wren** when you type `@Wren`, because an alias is you saying what you call her. Type toward the full name and you get the full name.
+
+Typing `@@` for somebody who does not exist yet **says so** rather than going quiet, and points at the single `@` that would create them — that being the moment you most want `@@`, and the moment it cannot help. `@@` replaces a mention rather than joining it — a character cannot be both present and merely referenced.
 
 Two deliberate limits on `@@`. It **offers people only**, because presence is about people and an item or place "being present" is what a single `@` already means. And it **never offers to create anybody**: asserting that somebody is in the room is a claim about a person who exists, and a new character is still one `@` away.
 
