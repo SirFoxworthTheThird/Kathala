@@ -53,8 +53,35 @@ export function EventCard({
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [title, setTitle] = useState(event.title)
   const [description, setDescription] = useState(event.description)
-  const [involvedIds, setInvolvedIds] = useState<string[]>(event.involvedCharacterIds)
-  const [mentionedIds, setMentionedIds] = useState<string[]>(event.mentionedCharacterIds ?? [])
+  /*
+    **The cast is read from the event, not copied from it.**
+
+    These were plain `useState` seeded from the prop and re-synced only when
+    the edit form opened, closed or saved — which was safe for exactly as long
+    as this card was the *only* thing that wrote them. It stopped being true
+    the moment `@@` in the scene prose began writing presence through
+    `updateEvent`: the card went on showing the cast it had mounted with, and
+    its own **+ Add character** then wrote that stale array back, silently
+    destroying every assertion the writer had typed since opening the card.
+
+    A writer's run lost two characters that way in four scenes, and could only
+    tell because they read IndexedDB — on screen, nothing happened but a name
+    appearing. The same staleness let somebody be present *and* mentioned at
+    once, which the guide says outright cannot happen.
+
+    So the draft copies exist only while the edit form is open, and everywhere
+    else the live record is the answer. A second writer cannot desynchronise
+    something that was never duplicated.
+  */
+  const [draftInvolvedIds, setDraftInvolvedIds] = useState<string[]>(event.involvedCharacterIds)
+  const involvedIds = editing ? draftInvolvedIds : event.involvedCharacterIds
+  /*
+    Always live, with no draft twin: `saveEdit` has never written
+    `mentionedCharacterIds`, because the mention chips write straight through
+    whether the edit form is open or not. Giving this one a draft copy would
+    have made the edit form the one place mentions are silently discarded.
+  */
+  const mentionedIds = event.mentionedCharacterIds ?? []
   const [threadIds, setThreadIds] = useState<string[]>(event.threadIds ?? [])
   const [motifIds, setMotifIds] = useState<string[]>(event.motifIds ?? [])
   const [involvedItemIds, setInvolvedItemIds] = useState<string[]>(event.involvedItemIds)
@@ -179,7 +206,7 @@ export function EventCard({
   function cancelEdit() {
     setTitle(event.title)
     setDescription(event.description)
-    setInvolvedIds(event.involvedCharacterIds)
+    setDraftInvolvedIds(event.involvedCharacterIds)
     setInvolvedItemIds(event.involvedItemIds)
     setLocationMarkerId(event.locationMarkerId)
     setTags(event.tags)
@@ -234,7 +261,7 @@ export function EventCard({
   function startEdit() {
     setTitle(event.title)
     setDescription(event.description)
-    setInvolvedIds(event.involvedCharacterIds)
+    setDraftInvolvedIds(event.involvedCharacterIds)
     setInvolvedItemIds(event.involvedItemIds)
     setLocationMarkerId(event.locationMarkerId)
     setTags(event.tags)
@@ -246,28 +273,31 @@ export function EventCard({
   async function addCharacter(characterId: string) {
     if (involvedIds.includes(characterId)) return
     const newIds = [...involvedIds, characterId]
-    setInvolvedIds(newIds)
-    if (!editing) await updateEvent(event.id, { involvedCharacterIds: newIds })
+    if (editing) { setDraftInvolvedIds(newIds); return }
+    await updateEvent(event.id, { involvedCharacterIds: newIds })
   }
 
   async function removeCharacter(characterId: string) {
     const newIds = involvedIds.filter((id) => id !== characterId)
-    setInvolvedIds(newIds)
-    if (!editing) await updateEvent(event.id, { involvedCharacterIds: newIds })
+    if (editing) { setDraftInvolvedIds(newIds); return }
+    await updateEvent(event.id, { involvedCharacterIds: newIds })
   }
 
   // ── Mention helpers (referenced but not present) ─────────────────────────────
   async function addMention(characterId: string) {
-    // Present characters are on-stage, not merely mentioned.
+    /*
+      Present characters are on-stage, not merely mentioned — and this guard is
+      only as good as what it reads. Against a stale copy it let a character
+      typed as present with `@@` be added to *mentioned* by one friendly click
+      on the "Named in the text" chip, putting them in both lists at once.
+    */
     if (involvedIds.includes(characterId) || mentionedIds.includes(characterId)) return
     const newIds = [...mentionedIds, characterId]
-    setMentionedIds(newIds)
     await updateEvent(event.id, { mentionedCharacterIds: newIds })
   }
 
   async function removeMention(characterId: string) {
     const newIds = mentionedIds.filter((id) => id !== characterId)
-    setMentionedIds(newIds)
     await updateEvent(event.id, { mentionedCharacterIds: newIds })
   }
 

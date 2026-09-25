@@ -111,8 +111,15 @@ export function SceneDraftSection({
         is the weaker claim, so the stronger one replaces it rather than sitting
         beside it.
 
-        One `updateEvent`, so one journal operation: a mistyped `@@` is a single
-        Ctrl+Z, not two.
+        One `updateEvent`, so one journal operation — a mistyped `@@` is a
+        single undo rather than two.
+
+        **From the toolbar, though, not from Ctrl+Z.** `AppShell` hands the
+        shortcut back to the browser inside an `INPUT` or `TEXTAREA`, on the
+        reasoning that native undo is the one a writer means while typing — and
+        native undo does nothing to a journalled record, so in the prose box
+        the keystroke is inert. This comment claimed the keystroke until a
+        writer measured it.
       */
       await updateEvent(eventId, {
         involvedCharacterIds: [...new Set([...event.involvedCharacterIds, suggestion.id])],

@@ -21,7 +21,26 @@ export interface MentionCandidate {
 }
 
 export type MentionSuggestion =
-  | { type: 'existing'; kind: MentionKind; id: string; name: string }
+  | {
+      type: 'existing'
+      kind: MentionKind
+      id: string
+      name: string
+      /**
+       * The words to put in the prose, which are not always the record's name.
+       *
+       * A writer whose book never says a character's surname gave her the
+       * alias *Wren*, typed `@@Wren`, and got *"Wren Halloway"* — then deleted
+       * nine characters by hand, every time. They named this the single thing
+       * that most made writing the bookkeeping feel like filing instead, and
+       * the cheapest to fix.
+       *
+       * `rank` has always searched aliases; only `select` ignored them. An
+       * alias is the writer saying *this is what I call her*, so when the
+       * query is heading for one, that is what the sentence gets.
+       */
+      insert: string
+    }
   | { type: 'create'; kind: MentionKind; name: string }
 
 /**
@@ -143,6 +162,20 @@ function startsWith(haystack: string, needle: string): boolean {
   return haystack.toLowerCase().startsWith(needle)
 }
 
+/**
+ * Which of a record's names the prose should get.
+ *
+ * The first alias the query is heading for, and the record's own name
+ * otherwise. Order matters: a fully typed *"Wren Halloway"* is not a prefix of
+ * the alias *Wren*, so it falls through and the sentence keeps the full name —
+ * the writer gets whichever they were already typing.
+ */
+function insertionFor(candidate: MentionCandidate, query: string): string {
+  if (!query) return candidate.name
+  const alias = candidate.aliases?.find((a) => startsWith(a, query))
+  return alias ?? candidate.name
+}
+
 /** How well a candidate answers the query: lower is better, null is no match. */
 function rank(candidate: MentionCandidate, query: string): number | null {
   if (!query) return 1
@@ -192,7 +225,9 @@ export function mentionSuggestions(
     .map((c) => ({ c, r: rank(c, q) }))
     .filter((x): x is { c: MentionCandidate; r: number } => x.r !== null)
     .sort((a, b) => a.r - b.r || KIND_ORDER[a.c.kind] - KIND_ORDER[b.c.kind] || a.c.name.localeCompare(b.c.name))
-    .map(({ c }): MentionSuggestion => ({ type: 'existing', kind: c.kind, id: c.id, name: c.name }))
+    .map(({ c }): MentionSuggestion => ({
+      type: 'existing', kind: c.kind, id: c.id, name: c.name, insert: insertionFor(c, q),
+    }))
 
   if (!q || !allowCreate) return existing.slice(0, limit)
 

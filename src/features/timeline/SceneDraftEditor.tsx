@@ -87,6 +87,12 @@ export function SceneDraftEditor({
     }
   })
 
+  /*
+    `@@` on somebody who does not exist yet: no rows, and until now no panel
+    either. The notice below is placed by the same measurement as the list, so
+    it needs the same ref and the same effect — hence one flag rather than two
+    conditions that could drift apart.
+  */
   const matches = mention
     ? mentionSuggestions(mention.query, candidates, {
         canCreateLocation,
@@ -95,6 +101,21 @@ export function SceneDraftEditor({
         ...(mention.intent === 'present' ? { kinds: ['character'] as const, allowCreate: false } : {}),
       })
     : []
+
+  /**
+   * The picker found nothing and the writer deserves to know why.
+   *
+   * **In practice this is always `@@`**, and the condition does not say so on
+   * purpose. A single `@` with something typed always has at least a create
+   * row — asserted in `mentionPicker.test.ts` — so testing the intent here
+   * would be a branch that cannot be taken, which reads to a reviewer as
+   * behaviour that exists. If `@` ever *could* come up empty, the writer would
+   * want telling then too, and this already does.
+   *
+   * A bare sigil with nothing typed is a picker waiting, not a picker failing,
+   * so that stays silent.
+   */
+  const showsNotice = !!mention && matches.length === 0 && mention.query.trim() !== ''
 
   /*
     F4: the list used to be `absolute top-full` — below the whole textarea. The
@@ -112,7 +133,7 @@ export function SceneDraftEditor({
   useLayoutEffect(() => {
     const ta = taRef.current
     const list = listRef.current
-    if (!mention || matches.length === 0 || !ta || !list) {
+    if (!mention || (matches.length === 0 && !showsNotice) || !ta || !list) {
       setListPos(null)
       return
     }
@@ -134,7 +155,7 @@ export function SceneDraftEditor({
       window.removeEventListener('resize', place)
       window.removeEventListener('scroll', place, true)
     }
-  }, [mention, matches.length, value])
+  }, [mention, matches.length, showsNotice, value])
 
   function refresh(text: string, caret: number) {
     // The candidates go in because the token's own bounds depend on them: a
@@ -155,7 +176,9 @@ export function SceneDraftEditor({
     // The plain name goes into the prose either way — a manuscript should not
     // carry "@tokens", and a name the writer has just invented reads the same
     // as one they picked.
-    const insert = suggestion.name + ' '
+    // The words the writer was typing toward, which for an aliased record is
+    // not the record's name — see `insertionFor`.
+    const insert = (suggestion.type === 'existing' ? suggestion.insert : suggestion.name) + ' '
     const next = value.slice(0, mention.start) + insert + value.slice(mention.end)
     pendingCaret.current = mention.start + insert.length
     onChange(next)
@@ -219,6 +242,34 @@ export function SceneDraftEditor({
         className="resize-none overflow-hidden text-sm leading-relaxed"
         style={{ fontFamily: 'var(--font-prose)' }}
       />
+      {/*
+        **Silence is the wrong answer when a sigil finds nothing.**
+
+        `@@` deliberately offers people only and will not invent one, so a
+        character who does not exist yet produces no rows — and the picker
+        rendered nothing at all. That is the single moment a writer most wants
+        `@@`: the first time somebody walks into the book. A run measured five
+        operations to recover, and no way to tell "nothing to offer" from
+        "the app stopped listening".
+
+        So it says which it is, and where to go: a single `@` creates. The row
+        is inert — it is an explanation, not an option.
+      */}
+      {showsNotice && (
+        <div
+          ref={listRef}
+          style={{
+            position: 'fixed',
+            top: listPos?.top ?? 0,
+            left: listPos?.left ?? 0,
+            visibility: listPos ? 'visible' : 'hidden',
+          }}
+          className="z-[3000] w-64 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--popover))] px-2 py-1.5 text-xs text-[hsl(var(--muted-foreground))] shadow-lg"
+          role="status"
+        >
+          Nobody called “{mention!.query.trim()}” yet — type a single <b>@</b> to create them.
+        </div>
+      )}
       {mention && matches.length > 0 && (
         <div
           ref={listRef}
