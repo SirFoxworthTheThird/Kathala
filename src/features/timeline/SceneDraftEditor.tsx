@@ -4,6 +4,7 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   findMentionToken, mentionSuggestions,
   type MentionCandidate, type MentionKind, type MentionSuggestion, type MentionToken,
+  type MentionIntent,
 } from '@/lib/mentionPicker'
 import { caretPoint, placePanel } from '@/lib/caretPoint'
 
@@ -20,7 +21,12 @@ interface SceneDraftEditorProps {
    * this records it against the scene, and creates the record first when the
    * row was a *create*.
    */
-  onPick: (suggestion: MentionSuggestion) => void
+  /**
+   * `intent` says which sigil was typed: one "@" mentions a name, two assert
+   * that the character is in the room. The editor does not act on it — it
+   * only reports what the writer pressed.
+   */
+  onPick: (suggestion: MentionSuggestion, intent: MentionIntent) => void
   placeholder?: string
   /** Accessible name. A placeholder is not one — it is the last-resort source
    *  in HTML-AAM and it disappears the moment the field has prose in it. */
@@ -82,7 +88,12 @@ export function SceneDraftEditor({
   })
 
   const matches = mention
-    ? mentionSuggestions(mention.query, candidates, { canCreateLocation })
+    ? mentionSuggestions(mention.query, candidates, {
+        canCreateLocation,
+        // Presence is about people, and it may not invent one — see
+        // `MentionPickerOptions`.
+        ...(mention.intent === 'present' ? { kinds: ['character'] as const, allowCreate: false } : {}),
+      })
     : []
 
   /*
@@ -148,7 +159,7 @@ export function SceneDraftEditor({
     const next = value.slice(0, mention.start) + insert + value.slice(mention.end)
     pendingCaret.current = mention.start + insert.length
     onChange(next)
-    onPick(suggestion)
+    onPick(suggestion, mention.intent)
     setMention(null)
   }
 

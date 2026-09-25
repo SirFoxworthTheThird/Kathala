@@ -57,6 +57,21 @@ Expand a chapter's detail page and click **Add Event**. Expanding an event card 
 
 Scene prose is written on the event too, and flows into the [Manuscript](Manuscript).
 
+### Naming records while you write
+
+| You type | What it records |
+|---|---|
+| `@Name` | The character is **mentioned** — the name occurs in this scene |
+| `@@Name` | The character is **present** — they join the scene's cast |
+| `@Item` | The item is in this scene |
+| `@Place` | The scene's location, if it hasn't got one |
+
+The sigils never reach your manuscript: pick a row and the plain name goes into the prose. `@@` replaces a mention rather than joining it — a character cannot be both present and merely referenced.
+
+Two deliberate limits on `@@`. It **offers people only**, because presence is about people and an item or place "being present" is what a single `@` already means. And it **never offers to create anybody**: asserting that somebody is in the room is a claim about a person who exists, and a new character is still one `@` away.
+
+**Nothing reads your prose to decide any of this.** Fiction is full of *"she was not there"* and *"he imagined her at the gate"* — the keystroke is the assertion, never the sentence. The [Continuity Checker](Continuity-Checker) separately notices names in the prose that aren't accounted for, and offers to record them, which is an observation you answer rather than a decision it makes.
+
 Drag event cards to reorder them within a chapter.
 
 ---

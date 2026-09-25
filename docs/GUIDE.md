@@ -1034,10 +1034,30 @@ one step, so a name you invent mid-sentence doesn't cost you the sentence. A new
 place needs somewhere to be a pin, so that row appears only once your world has
 a map — [places go on maps and sub-maps that already exist](#maps), and nowhere
 else. The prompt inside the empty box says which kinds are on offer, so it never
-names a place in a world that cannot hold one. Where there is a map, the pin
+names a place in a world that cannot hold one, and it names `@@` too, since a sigil
+nobody can see is a sigil nobody finds. Where there is a map, the pin
 lands in the middle of it, ready to be dragged where it belongs; if the scene
 already has a place, the new pin goes on that place's map rather than the
 world's first.
+
+**Type `@@` to say somebody is *in the room*.** A single `@` records a mention
+— the name occurs in this scene. Two say the character is present, and they
+join the scene's cast: the map places them, the Writer's Brief lists them, and
+the Character States panel starts asking what state they are in. It is the one
+thing you most often want to state mid-sentence, and it used to cost a trip to
+another panel.
+
+Both sigils disappear, the same as one, so your manuscript never carries them.
+If the character was recorded as merely mentioned, saying they are present
+replaces that rather than sitting beside it — they cannot be both.
+
+Two deliberate limits. **`@@` offers people only**, because presence is about
+people; an item or a place "being present" is what the single `@` already
+means. And **`@@` never offers to create anybody**: asserting that somebody is
+in the room is a claim about a person who exists, and a new character is still
+one `@` away. Kathala never reads your prose to decide any of this — fiction is
+full of *"she was not there"* and *"he imagined her at the gate"*, so it is the
+keystroke that asserts, never the sentence.
 
 **Enter completes a name; it never invents one.** With the picker open, Enter
 takes a row for something that **already exists** — that only types the name you

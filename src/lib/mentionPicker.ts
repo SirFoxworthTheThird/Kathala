@@ -24,14 +24,33 @@ export type MentionSuggestion =
   | { type: 'existing'; kind: MentionKind; id: string; name: string }
   | { type: 'create'; kind: MentionKind; name: string }
 
+/**
+ * What the writer is asserting by typing the sigil.
+ *
+ * `@Marn` says the name occurs in this scene. `@@Marn` says **he is in the
+ * room** — the one thing a writer most wants to state while writing, and the
+ * one thing the picker could not say.
+ *
+ * The distinction is the whole safety of the feature. Prose narrates rather
+ * than asserts: *"Vey was not there"*, *"he imagined Marn in the Ossuary"*,
+ * *"she still had the key — or thought she did"*. Nothing here reads a
+ * sentence and decides what it means. The doubled sigil is a deliberate
+ * keystroke that says *I am telling you he is here*, which is the same
+ * principle as Tab-not-Enter for creating a record: changing the world needs
+ * an unambiguous gesture.
+ */
+export type MentionIntent = 'mention' | 'present'
+
 /** Where an in-progress "@name" sits in the prose. It always ends at the caret. */
 export interface MentionToken {
-  /** Index of the "@" itself. */
+  /** Index of the first "@" — both of them, when the sigil is doubled. */
   start: number
   /** Caret position — the end of the token. */
   end: number
-  /** What has been typed after the "@", without a trailing space. */
+  /** What has been typed after the sigil, without a trailing space. */
   query: string
+  /** Which sigil was typed: one "@" mentions, two assert presence. */
+  intent: MentionIntent
 }
 
 /** Letters, digits, and the two marks that live *inside* names. */
@@ -71,8 +90,25 @@ export function findMentionToken(
   const before = text.slice(0, caret)
   const at = before.lastIndexOf('@')
   if (at < 0) return null
+
+  /*
+    Walk back over the whole run of "@", because the last one is not
+    necessarily the first. `lastIndexOf` on "@@Marn" lands on the second
+    sigil, and splicing from there would leave a stray "@" in the manuscript —
+    the bug this picker exists to prevent, in miniature.
+
+    One sigil mentions, two assert presence, and **three or more is not a
+    token at all**. A run that long is punctuation or emphasis or a typo, and
+    guessing which would be the app deciding what the writer meant.
+  */
+  let runStart = at
+  while (runStart > 0 && before[runStart - 1] === '@') runStart -= 1
+  const sigils = at - runStart + 1
+  if (sigils > 2) return null
+  const intent: MentionIntent = sigils === 2 ? 'present' : 'mention'
+
   // An "@" inside a word is an address, not a mention.
-  if (at > 0 && /[\p{L}\p{N}]/u.test(before[at - 1])) return null
+  if (runStart > 0 && /[\p{L}\p{N}]/u.test(before[runStart - 1])) return null
 
   const raw = before.slice(at + 1)
   if (raw.length > MAX_CHARS || /[\n\r]/.test(raw)) return null
@@ -81,7 +117,7 @@ export function findMentionToken(
   // surname, and the picker blinking out there is the bug in miniature.
   const trailing = raw.endsWith(' ')
   const body = trailing ? raw.slice(0, -1) : raw
-  if (body === '') return trailing ? null : { start: at, end: caret, query: '' }
+  if (body === '') return trailing ? null : { start: runStart, end: caret, query: '', intent }
   if (body.endsWith(' ')) return null
 
   const words = body.split(' ')
@@ -96,7 +132,7 @@ export function findMentionToken(
     return null
   }
 
-  return { start: at, end: caret, query: body }
+  return { start: runStart, end: caret, query: body, intent }
 }
 
 /** Characters first: they are what most "@" typing is for, and the picker was
@@ -127,22 +163,38 @@ export interface MentionPickerOptions {
    */
   canCreateLocation: boolean
   limit?: number
+  /**
+   * Which kinds the picker may offer. `@@` restricts this to characters:
+   * presence is about people, and an item or a place "being present" is what
+   * the single sigil already means.
+   */
+  kinds?: readonly MentionKind[]
+  /**
+   * Whether the picker may offer to invent a record.
+   *
+   * `@@` sets this false. Asserting that somebody is in the room is a claim
+   * about a person who exists; conjuring one from a half-typed word is how a
+   * cast list grows a phantom, which Enter-on-a-create-row already did once.
+   * A new character is still one `@` away.
+   */
+  allowCreate?: boolean
 }
 
 export function mentionSuggestions(
   query: string,
   candidates: readonly MentionCandidate[],
-  { canCreateLocation, limit = 6 }: MentionPickerOptions,
+  { canCreateLocation, limit = 6, kinds, allowCreate = true }: MentionPickerOptions,
 ): MentionSuggestion[] {
   const q = query.trim().toLowerCase()
+  const offerable = kinds ? candidates.filter((c) => kinds.includes(c.kind)) : candidates
 
-  const existing = candidates
+  const existing = offerable
     .map((c) => ({ c, r: rank(c, q) }))
     .filter((x): x is { c: MentionCandidate; r: number } => x.r !== null)
     .sort((a, b) => a.r - b.r || KIND_ORDER[a.c.kind] - KIND_ORDER[b.c.kind] || a.c.name.localeCompare(b.c.name))
     .map(({ c }): MentionSuggestion => ({ type: 'existing', kind: c.kind, id: c.id, name: c.name }))
 
-  if (!q) return existing.slice(0, limit)
+  if (!q || !allowCreate) return existing.slice(0, limit)
 
   // Nothing to create until the writer has typed a name, and nothing to create
   // if that name is already taken — offering "create Marren" under an existing
