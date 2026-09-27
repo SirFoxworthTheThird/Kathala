@@ -253,6 +253,37 @@ test.describe('the binder', () => {
     expect(numbers).toEqual([1, 2, 4, 5])
   })
 
+  test('New chapter takes a number, and says what a taken one moves', async ({ page }) => {
+    const worldId = await book(page)
+    const tree = await open(page, worldId)
+
+    await page.getByRole('button', { name: 'New chapter', exact: true }).click()
+    const number = page.getByRole('textbox', { name: 'New chapter number' })
+    await expect(number).toHaveValue('5')
+    await number.fill('1')
+    await expect(page.locator('#binder-chapter-note')).toHaveText('Chapters 1–2 become 2–3.')
+
+    // Moving between the two fields is not finishing: nothing is made yet.
+    const title = page.getByRole('textbox', { name: 'New chapter title' })
+    await title.fill('Before the Tide')
+    await number.focus()
+    await expect(title).toBeVisible()
+    const count = () => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as { chapters: { count: () => Promise<number> } }
+      return db.chapters.count()
+    })
+    expect(await count()).toBe(3)
+
+    await page.keyboard.press('Enter')
+    await expect(tree.getByRole('treeitem', { name: /^Ch\. 1 · Before the Tide/ })).toBeFocused({ timeout: 15_000 })
+    const numbers = await page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as
+        { chapters: { toArray: () => Promise<Array<{ number: number; title: string }>> } }
+      return (await db.chapters.toArray()).sort((a, b) => a.number - b.number).map((c) => `${c.number}:${c.title}`)
+    })
+    expect(numbers).toEqual(['1:Before the Tide', '2:Low Water', '3:The Stair', '4:The Verdict Waits'])
+  })
+
   test('folds away, and stays folded', async ({ page }) => {
     const worldId = await book(page)
     const tree = await open(page, worldId)

@@ -11,6 +11,7 @@ import {
   recomputeSnapshotSortKeysForChapter,
 } from '@/lib/sortKey'
 import { moveTo } from '@/lib/fractionalOrder'
+import { planChapterInsert } from '@/lib/chapterNumbering'
 
 // ─── Timelines ─────────────────────────────────────────────────────────────
 
@@ -110,6 +111,34 @@ export async function createChapter(
     updatedAt: now,
   }
   return journalCreate('chapter', db.chapters, chapter)
+}
+
+/**
+ * Create a chapter at the number the writer chose.
+ *
+ * A free number is simply taken. A taken one means *put it there*: the chapter
+ * holding it moves up one, and so does each one after it until a gap — see
+ * `planChapterInsert`. Nothing ever ends up sharing a number, because a chapter
+ * number is a position, and two chapters in one position interleave their
+ * scenes in the order state is read along.
+ *
+ * Every chapter that moves is renumbered through `updateChapter`, which rekeys
+ * the snapshots in it. Highest first, so no two chapters hold a number at once
+ * even between writes. And all of it is one journal group, so the undo that
+ * takes the chapter away puts the others back too — rekeyed, since undo now
+ * rekeys whatever it touches.
+ */
+export async function createChapterAt(
+  data: Pick<Chapter, 'worldId' | 'timelineId' | 'number' | 'title' | 'synopsis'>,
+): Promise<Chapter> {
+  return journalGroup(async () => {
+    const siblings = await db.chapters.where('timelineId').equals(data.timelineId).toArray()
+    const shifts = planChapterInsert(siblings, data.number)
+    for (const { id, to } of [...shifts].sort((a, b) => b.from - a.from)) {
+      await updateChapter(id, { number: to })
+    }
+    return createChapter(data)
+  })
 }
 
 export async function updateChapter(

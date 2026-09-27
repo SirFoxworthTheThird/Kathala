@@ -21,7 +21,7 @@ A **pacing curve** across the top plots dramatic tension chapter by chapter once
 - **Narrative vs. Chronological** — toggle between reading order and in-world order (useful with flashbacks or in-world dates).
 - **Add Chapter**, **New Timeline**, and **Generate with AI** live in the header.
 - **Click an event** to move the time cursor to that exact moment.
-- Each chapter row has an **open** button for its detail page, and chapters can be **dragged to reorder** the narrative.
+- Each chapter row has an **open** button for its detail page.
 - **Select events** with their checkboxes; **Shift+click** selects a range. The bulk toolbar moves the selection to another chapter, adds a tag, or deletes it.
 - Once you have [plot threads](Plot-Threads), a **filter row of thread pills** appears above the chapters in Narrative view.
 
@@ -29,9 +29,9 @@ A **pacing curve** across the top plots dramatic tension chapter by chapter once
 
 ## Chapters
 
-Create one with **Add Chapter**; give it a number, title, and optional synopsis.
+Create one with **Add Chapter**: a number, a title and an optional synopsis. The number is suggested — the next free one — and can be anything: 0 makes a prologue, and a number already taken puts the new chapter there and moves the chapters from it up by one, until a gap. The dialog says which before you add it, and one Undo takes it all back. Chapters already made cannot be dragged into a new order.
 
-**Chapters inherit all snapshots** from the immediately preceding chapter in the same timeline when they are created, so a chapter starts wherever the last one left off.
+**A new chapter starts wherever the last one left off.** Nothing is copied into it: the state of every character, item and place is read back from the most recent scene before it, so a change you record earlier in the book reaches every chapter after it without anything to keep in step.
 
 ---
 
@@ -116,7 +116,7 @@ The left side holds the **binder**: every chapter in this timeline, with the one
 | Enter | **A new scene on the line below** — the first in a chapter, or the next after a scene. Type the title in place and press Enter; Escape throws it away |
 | Delete | Remove the scene, with Undo — the notice names what went |
 
-**New scene** and **New chapter** under the list do the same with a mouse; a new chapter goes at the end. A title started and then clicked away from is kept. A new scene is only a title — say where it happens and who is in it with [the scene header](#the-scene-header).
+**New scene** and **New chapter** under the list do the same with a mouse; a new chapter's number is filled in with the next free one and can be changed, with the same rule as *Add Chapter*. A title started and then clicked away from is kept. A new scene is only a title — say where it happens and who is in it with [the scene header](#the-scene-header).
 
 Chapters are not deleted from the binder, since a chapter takes every scene in it; that stays on its Timeline row. The **binder** button beside *Back* hides and shows it and remembers the choice. It appears on wide screens only, where there is room beside the writing.
 

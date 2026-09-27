@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button'
 import { binderKey, binderRows, focusAfterDelete, type BinderRow } from '@/lib/binder'
 import { chapterWithheld } from '@/lib/chapterReached'
 import { useGate } from '@/db/hooks/ReadingGateContext'
-import { createChapter, createEventAt, deleteEvent } from '@/db/hooks/useTimeline'
+import { createChapterAt, createEventAt, deleteEvent } from '@/db/hooks/useTimeline'
+import { describeShift, nextChapterNumber, parseChapterNumber, planChapterInsert } from '@/lib/chapterNumbering'
 import type { Chapter, WorldEvent } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -174,15 +175,11 @@ export function Binder({
     onGoScene(created)
   }
 
-  async function commitChapter(title: string, byKey: boolean) {
+  async function commitChapter(title: string, number: number, byKey: boolean) {
     setAdding(null)
-    /*
-      One past the highest number, not one past the count: after a chapter has
-      been deleted those are different, and the count would hand out a number
-      that is still in use.
-    */
-    const number = chapters.reduce((max, c) => Math.max(max, c.number), 0) + 1
-    const created = await createChapter({ worldId, timelineId, number, title, synopsis: '' })
+    // A taken number puts the chapter there and moves the rest up — see
+    // `createChapterAt`. The suggestion is one past the highest.
+    const created = await createChapterAt({ worldId, timelineId, number, title, synopsis: '' })
     openChapter(created.id)
     if (!byKey) return
     focusRow(created.id)
@@ -274,11 +271,9 @@ export function Binder({
             </Fragment>
           ))}
           {adding?.kind === 'chapter' && (
-            <NewTitle
-              label="New chapter title"
-              placeholder="Chapter title"
-              indent="pl-2"
-              onCommit={(title, byKey) => { void commitChapter(title, byKey) }}
+            <NewChapter
+              chapters={chapters}
+              onCommit={(title, number, byKey) => { void commitChapter(title, number, byKey) }}
               onCancel={(byKey) => cancel(adding.returnTo, byKey)}
             />
           )}
@@ -354,6 +349,85 @@ function NewTitle({
         onBlur={() => finish(true, false)}
         className="h-6 w-full rounded-sm border border-[hsl(var(--ring))] bg-[hsl(var(--background))] px-1.5 text-sm outline-none"
       />
+    </div>
+  )
+}
+
+/**
+ * A new chapter's number and title, typed in place.
+ *
+ * The number holds the suggestion — one past the highest — and can be changed:
+ * a taken number puts the chapter there and moves the rest up, and the line
+ * under the row says which before anything happens. The title takes focus,
+ * since that is what is being written; the number sits before it, one Shift+Tab away.
+ *
+ * Two fields, so leaving one for the other is not finishing. Only focus leaving
+ * the row keeps what was typed, the same as a scene's title.
+ */
+function NewChapter({
+  chapters, onCommit, onCancel,
+}: {
+  chapters: readonly Chapter[]
+  onCommit: (title: string, number: number, byKey: boolean) => void
+  onCancel: (byKey: boolean) => void
+}) {
+  const suggested = nextChapterNumber(chapters)
+  const [title, setTitle] = useState('')
+  const [numberText, setNumberText] = useState(String(suggested))
+  const number = parseChapterNumber(numberText)
+  const moves = number === null ? '' : describeShift(planChapterInsert(chapters, number))
+  const row = useRef<HTMLDivElement>(null)
+  const done = useRef(false)
+
+  function finish(commit: boolean, byKey: boolean) {
+    if (done.current) return
+    // A number that is not one keeps the row open rather than guessing — the
+    // note under it says why.
+    if (commit && title.trim() && number === null) return
+    done.current = true
+    if (commit && title.trim() && number !== null) onCommit(title.trim(), number, byKey)
+    else onCancel(byKey)
+  }
+  function keys(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') { e.preventDefault(); finish(true, true) }
+    else if (e.key === 'Escape') { e.preventDefault(); finish(false, true) }
+  }
+
+  return (
+    <div
+      ref={row}
+      className="flex flex-col gap-0.5 py-0.5 pl-2 pr-2"
+      onBlur={(e) => {
+        if (row.current?.contains(e.relatedTarget as Node | null)) return
+        finish(true, false)
+      }}
+    >
+      <div className="flex h-7 items-center gap-1">
+        <span className="shrink-0 text-xs text-[hsl(var(--muted-foreground))]" aria-hidden="true">Ch.</span>
+        <input
+          aria-label="New chapter number"
+          aria-describedby="binder-chapter-note"
+          aria-invalid={number === null}
+          inputMode="numeric"
+          value={numberText}
+          onChange={(e) => setNumberText(e.target.value)}
+          onKeyDown={keys}
+          className="h-6 w-10 shrink-0 rounded-sm border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-1 text-center text-sm outline-none focus:border-[hsl(var(--ring))]"
+        />
+        <input
+          autoFocus
+          aria-label="New chapter title"
+          aria-describedby="binder-chapter-note"
+          placeholder="Chapter title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onKeyDown={keys}
+          className="h-6 min-w-0 flex-1 rounded-sm border border-[hsl(var(--ring))] bg-[hsl(var(--background))] px-1.5 text-sm outline-none"
+        />
+      </div>
+      <p id="binder-chapter-note" className="pl-6 text-[10px] leading-snug text-[hsl(var(--muted-foreground))]">
+        {number === null ? 'A whole number — 0 for a prologue.' : moves ? `${moves}.` : ''}
+      </p>
     </div>
   )
 }
