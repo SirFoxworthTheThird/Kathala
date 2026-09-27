@@ -99,7 +99,15 @@ export function FolderSyncIndicator({ worldId }: { worldId: string }) {
       aria-label={`Backup: ${short}`}
       title={detail}
       className={cn(
-        'flex shrink-0 items-center gap-1.5 rounded-md px-1.5 py-1 text-[11px] transition-colors hover:bg-[hsl(var(--accent))]',
+        /*
+          Gone below `sm`, where the header cannot afford it. It already drops
+          its words below `xl`, so on a phone it was a wordless amber icon
+          costing 30px — and the thing it was costing is the time cursor, which
+          had been squeezed to 3px of the 30 "Ch.4" needs. A standing indicator
+          is not worth the one control that says where in the book you are, and
+          the same state is a section of Settings, which is where this points.
+        */
+        'hidden shrink-0 items-center gap-1.5 rounded-md px-1.5 py-1 text-[11px] transition-colors hover:bg-[hsl(var(--accent))] sm:flex',
         tone === 'warn' ? 'text-amber-400' : 'text-[hsl(var(--muted-foreground))]',
       )}
     >

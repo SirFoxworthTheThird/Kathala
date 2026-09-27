@@ -68,9 +68,15 @@ async function viewFromScene(page: Page, worldId: string, sceneTitle: string, ev
   /*
     Chapters arrive collapsed, so the scene rows are not on screen yet — and the
     scene may be in any of them, so every collapsed chapter is opened rather
-    than the first one guessed at. Only chapter rows carry `aria-expanded`.
+    than the first one guessed at.
+
+    Not every collapsed *button* is a chapter, though, which this used to
+    assume. A menu trigger reports `aria-expanded="false"` too, and the chapter
+    row and the scene row both carry one — so the loop spent its clicks opening
+    and closing menus and never reached the chapter, and the failure landed on
+    the scene lookup four lines down, which was not at fault.
   */
-  const collapsed = main.getByRole('button', { expanded: false })
+  const collapsed = main.locator('button[aria-expanded="false"]:not([aria-haspopup="menu"])')
   for (let i = await collapsed.count(); i > 0; i = await collapsed.count()) {
     await collapsed.first().click()
     if (await collapsed.count() === i) break

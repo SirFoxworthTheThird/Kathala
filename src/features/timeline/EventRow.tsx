@@ -203,7 +203,7 @@ export function EventRow({
             a reader borrowing the book has no business being offered it.
           */}
           {!gate.active && (
-            <Menu label={`More actions for ${sceneName}`} triggerClassName="h-5 w-5">
+            <Menu label={`More actions for ${sceneName}`} triggerClassName="h-5 w-5" dense>
               <MenuItem
                 icon={Trash2}
                 label="Delete scene"
