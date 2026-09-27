@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Users, Network, StickyNote, ChevronDown, ChevronRight, Scroll, BookLock } from 'lucide-react'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { ArrowLeft, Plus, Users, Network, StickyNote, ChevronDown, ChevronRight, Scroll, BookLock, PanelLeft } from 'lucide-react'
 import { useChapter, useEvents, useWorldEvents, useWorldChapters, useTimelines, updateChapter, updateEvent, moveEventOnBoard } from '@/db/hooks/useTimeline'
 import { useWorld } from '@/db/hooks/useWorlds'
 import { journalGroup } from '@/db/hooks/useOperations'
@@ -13,11 +13,13 @@ import { useGate } from '@/db/hooks/ReadingGateContext'
 import { chapterWithheld } from '@/lib/chapterReached'
 import { Button } from '@/components/ui/button'
 import { EventCard } from './EventCard'
+import { Binder } from './Binder'
+import { activateEvent } from '@/components/timeline/TimelineControls'
 import { RecordStateInline } from './RecordStateInline'
 import { SnapshotCard } from './SnapshotCard'
 import { AddEventDialog } from './AddEventDialog'
 import { EmptyState } from '@/components/EmptyState'
-import type { Character, WorldEvent } from '@/types'
+import type { Chapter, Character, WorldEvent } from '@/types'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { cursorForChapter } from '@/lib/chapterCursor'
@@ -271,6 +273,51 @@ export default function ChapterDetailView() {
       updateEvent(b.id, { sortOrder: a.sortOrder }),
     ]))
   }
+  /*
+    The binder's side of the page: going to a scene opens its card and brings it
+    to the top of this column, in this chapter or after navigating to another.
+    A counter rather than the id alone, so going to the same scene twice still
+    arrives.
+  */
+  const location = useLocation()
+  const binderOpen = useAppStore((st) => st.binderOpen)
+  const setBinderOpen = useAppStore((st) => st.setBinderOpen)
+  const [reveal, setReveal] = useState<{ id: string; nonce: number } | null>(null)
+  const revealCount = useRef(0)
+  function requestReveal(id: string) {
+    revealCount.current += 1
+    setReveal({ id, nonce: revealCount.current })
+  }
+  useEffect(() => {
+    const want = (location.state as { reveal?: string } | null)?.reveal
+    if (want) requestReveal(want)
+  }, [location.key])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  /*
+    Going to a scene moves the time cursor there — the binder's first default:
+    the Character States column then shows the scene being written rather than
+    wherever the cursor was left. Never while reading, where the cursor is the
+    reader's bookmark and visiting an earlier scene must not lose their place.
+
+    It also has to move for a scene in another chapter, not just this one:
+    arriving at a chapter keeps a cursor that is already inside it and otherwise
+    falls back to the first scene, so without this the binder would send you to
+    "Juno on the eleventh step" and leave you at "What the stair kept". The order
+    of the two calls below does not matter — both land before the next render.
+  */
+  function goScene(scene: WorldEvent) {
+    if (!gate.active) activateEvent(scene.id, scene.locationMarkerId, setActiveEventId)
+    if (scene.chapterId === chapterId) requestReveal(scene.id)
+    else navigate(`/worlds/${worldId}/timeline/${scene.chapterId}`, { state: { reveal: scene.id } })
+  }
+  function goChapter(target: Chapter) {
+    if (target.id !== chapterId) navigate(`/worlds/${worldId}/timeline/${target.id}`)
+  }
+  const binderScenes = useMemo(() => {
+    const here = new Set(chapterOrder.map((c) => c.id))
+    return worldEvents.filter((e) => here.has(e.chapterId))
+  }, [worldEvents, chapterOrder])
+
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const synopsisTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const titleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -401,6 +448,23 @@ export default function ChapterDetailView() {
         <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="Back" title="Back" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
+        {/*
+          Wide screens only, where there is a column to give it. Below `lg` the
+          chapter's columns stack, and a tree stacked above the prose would push
+          the writing a screen further down.
+        */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="hidden h-8 w-8 shrink-0 lg:inline-flex"
+          aria-label="Binder"
+          aria-expanded={binderOpen}
+          aria-controls="chapter-binder"
+          title={binderOpen ? 'Hide the chapters and scenes' : 'Show the chapters and scenes'}
+          onClick={() => setBinderOpen(!binderOpen)}
+        >
+          <PanelLeft className="h-4 w-4" />
+        </Button>
         <div className="min-w-0 flex-1">
           {gate.active ? (
             <h2 className="text-base font-semibold">Ch. {chapter.number} — {chapter.title}</h2>
@@ -433,8 +497,25 @@ export default function ChapterDetailView() {
         </div>
       </div>
 
-      {/* Three-column layout */}
+      {/* Three-column layout, and the binder beside it */}
       <div className="flex flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
+        {binderOpen && chapter && worldId && (
+          <div
+            id="chapter-binder"
+            className="hidden border-[hsl(var(--border))] lg:flex lg:w-56 lg:shrink-0 lg:flex-col lg:overflow-hidden lg:border-r"
+          >
+            <Binder
+              worldId={worldId}
+              timelineId={chapter.timelineId}
+              currentChapterId={chapter.id}
+              chapters={chapterOrder}
+              scenes={binderScenes}
+              activeEventId={activeEventId}
+              onGoScene={goScene}
+              onGoChapter={goChapter}
+            />
+          </div>
+        )}
         {/* Events */}
         <div className="flex flex-col border-b border-[hsl(var(--border))] lg:flex-1 lg:border-b-0 lg:border-r">
           <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-2">
@@ -466,6 +547,7 @@ export default function ChapterDetailView() {
                   onMoveDown={() => moveEvent(e.id, 'down')}
                   inWorldDay={inWorldDays.get(e.id)}
                   calendar={world?.calendar ?? null}
+                  revealNonce={reveal?.id === e.id ? reveal.nonce : undefined}
                 />
               ))
             )}

@@ -74,9 +74,16 @@ test.describe('Character Arc view', () => {
     await page.getByRole('link', { name: 'Arc' }).click()
     await expect(page).toHaveURL(/#\/worlds\/.+\/arc/)
 
-    // Chapter columns are headed "Ch. N — Title"
-    await expect(page.getByText(/Ch\. 1/)).toBeVisible()
-    await expect(page.getByText(/Ch\. 2/)).toBeVisible()
+    /*
+      The Arc grid's own column headers, and nothing else. This used to be a
+      page-wide `getByText(/Ch\. 1/)` — and setup ends on a chapter screen, whose
+      header says "Ch. 1 —" too. Straight after clicking Arc the outgoing screen is
+      still mounted, so the assertion could be met by the page being *left* rather
+      than the one arrived at. The binder, which repeats the chapter title, turned
+      that into a strict-mode flake and so into something anyone could see.
+    */
+    await expect(page.getByRole('columnheader', { name: 'Chapter 1, The Shire' })).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: 'Chapter 2, Rivendell' })).toBeVisible()
   })
 
   test('arc view shows character rows', async ({ page }) => {

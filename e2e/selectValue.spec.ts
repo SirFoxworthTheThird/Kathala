@@ -28,7 +28,7 @@ test('a multi-child dropdown shows its selected value in the trigger', async ({ 
   await page.getByRole('button', { name: 'Add Scene' }).last().click()
 
   const main = page.getByRole('main')
-  await main.getByText('The gate', { exact: true }).click()
+  await main.getByRole('button', { name: 'The gate', exact: true }).click()
 
   // A scene with no beat does not draw the Story Beat section any more — it is
   // offered as a chip instead, so open it first.
@@ -49,8 +49,8 @@ test('a multi-child dropdown shows its selected value in the trigger', async ({ 
 
   // Collapse and re-open the card: the persisted value still resolves to its
   // label rather than a blank trigger (the "when editing something" case).
-  await main.getByText('The gate', { exact: true }).click()
+  await main.getByRole('button', { name: 'The gate', exact: true }).click()
   await expect(main.getByRole('button', { name: /No beat/ })).toHaveCount(0)
-  await main.getByText('The gate', { exact: true }).click()
+  await main.getByRole('button', { name: 'The gate', exact: true }).click()
   await expect(main.getByRole('button', { name: 'Inciting Incident', exact: true })).toBeVisible()
 })

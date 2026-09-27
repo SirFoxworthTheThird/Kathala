@@ -8,12 +8,12 @@ import { settleNav } from './helpers/nav'
  * second half of a book.
  *
  * The finding blamed numbering running globally across timelines. It does not:
- * `nextNumber` is `chapters.length + 1` for the current timeline, so chapters
- * added through the UI restart at one — this test tried it and got Ch. 1 and
- * Ch. 2. The state is real all the same, since the shipped examples are
- * authored with the book's own numbering and an import carries whatever it was
- * given, so the numbers here are seeded the way such a world actually acquires
- * them. The formatting is unit-tested in `src/lib/__tests__/chapterSpan.test.ts`.
+ * a new chapter is suggested one past the highest in its own timeline, so a new
+ * timeline starts at one. The state is real all the same — a writer can type
+ * any number, the shipped examples are authored with the book's own numbering,
+ * and an import carries whatever it was given — so the numbers here are seeded
+ * the way such a world acquires them. The formatting is unit-tested in
+ * `src/lib/__tests__/chapterSpan.test.ts`.
  */
 test('a timeline that starts late says where it starts', async ({ page }) => {
   test.setTimeout(120_000)

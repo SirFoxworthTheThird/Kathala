@@ -35,10 +35,10 @@ A **timeline** is an ordered sequence of chapters. Every world needs at least on
 ## Step 3: Add a chapter
 
 1. In the timeline view, click **Add Chapter**.
-2. Enter a title. The number is filled in for you.
+2. Enter a title. The number is filled in with the next free one — change it to put the chapter somewhere else.
 3. Optionally add a synopsis.
 
-Chapters inherit all snapshots from the immediately preceding chapter in the same timeline, so a chapter starts where the last one ended.
+A chapter starts where the last one ended: each character's state is read back from the most recent scene before it, rather than copied in when the chapter is made.
 
 ---
 

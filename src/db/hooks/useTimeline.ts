@@ -11,6 +11,7 @@ import {
   recomputeSnapshotSortKeysForChapter,
 } from '@/lib/sortKey'
 import { moveTo } from '@/lib/fractionalOrder'
+import { planChapterInsert } from '@/lib/chapterNumbering'
 
 // ─── Timelines ─────────────────────────────────────────────────────────────
 
@@ -110,6 +111,34 @@ export async function createChapter(
     updatedAt: now,
   }
   return journalCreate('chapter', db.chapters, chapter)
+}
+
+/**
+ * Create a chapter at the number the writer chose.
+ *
+ * A free number is simply taken. A taken one means *put it there*: the chapter
+ * holding it moves up one, and so does each one after it until a gap — see
+ * `planChapterInsert`. Nothing ever ends up sharing a number, because a chapter
+ * number is a position, and two chapters in one position interleave their
+ * scenes in the order state is read along.
+ *
+ * Every chapter that moves is renumbered through `updateChapter`, which rekeys
+ * the snapshots in it. Highest first, so no two chapters hold a number at once
+ * even between writes. And all of it is one journal group, so the undo that
+ * takes the chapter away puts the others back too — rekeyed, since undo now
+ * rekeys whatever it touches.
+ */
+export async function createChapterAt(
+  data: Pick<Chapter, 'worldId' | 'timelineId' | 'number' | 'title' | 'synopsis'>,
+): Promise<Chapter> {
+  return journalGroup(async () => {
+    const siblings = await db.chapters.where('timelineId').equals(data.timelineId).toArray()
+    const shifts = planChapterInsert(siblings, data.number)
+    for (const { id, to } of [...shifts].sort((a, b) => b.from - a.from)) {
+      await updateChapter(id, { number: to })
+    }
+    return createChapter(data)
+  })
 }
 
 export async function updateChapter(
@@ -246,6 +275,60 @@ export async function createEvent(
   return journalCreate('event', db.events, event)
 }
 
+/**
+ * Create a scene at `index` in a chapter — the binder's "a new scene on the line
+ * below".
+ *
+ * Positioned the way the Corkboard moves a card: *between* its neighbours, so
+ * the ordinary insert writes exactly one row, the new one, and nothing that
+ * already existed is touched. Only when the gap between the two neighbours has
+ * been halved down to nothing does the chapter get renumbered — and then its
+ * snapshot sort keys with it, because a stored sortKey is computed from the
+ * event's position and would otherwise go on claiming the old one.
+ *
+ * One journal group, so a mistaken Enter is one undo — including the
+ * renumbering, when there was one.
+ */
+export async function createEventAt(
+  chapterId: string,
+  index: number,
+  title: string,
+): Promise<WorldEvent | undefined> {
+  const chapter = await db.chapters.get(chapterId)
+  if (!chapter) return undefined
+  return journalGroup(async () => {
+    const siblings = await db.events.where('chapterId').equals(chapterId).toArray()
+    // A stand-in for the scene that does not exist yet: `moveTo` answers "where
+    // does this go", and asking it about a newcomer is the same question.
+    const NEWCOMER = '\u0000newcomer'
+    const writes = moveTo(
+      [...siblings.map(({ id, sortOrder }) => ({ id, sortOrder })), { id: NEWCOMER, sortOrder: 0 }],
+      NEWCOMER,
+      index,
+    )
+    const position = writes.find((w) => w.id === NEWCOMER)!.sortOrder
+    const current = new Map(siblings.map((e) => [e.id, e.sortOrder]))
+    const renumbered = writes.filter((w) => w.id !== NEWCOMER && current.get(w.id) !== w.sortOrder)
+    for (const { id, sortOrder } of renumbered) {
+      await journalUpdate('event', db.events, id, { sortOrder, updatedAt: Date.now() })
+    }
+    const created = await createEvent({
+      worldId: chapter.worldId,
+      chapterId,
+      timelineId: chapter.timelineId,
+      title,
+      description: '',
+      locationMarkerId: null,
+      involvedCharacterIds: [],
+      involvedItemIds: [],
+      tags: [],
+      sortOrder: position,
+    })
+    if (renumbered.length > 0) await recomputeSnapshotSortKeysForChapter(chapterId)
+    return created
+  })
+}
+
 export async function updateEvent(id: string, data: Partial<Omit<WorldEvent, 'id' | 'createdAt'>>) {
   await journalUpdate('event', db.events, id, { ...data, updatedAt: Date.now() })
   // If sortOrder changed, recompute sortKeys on all snapshots for this event
@@ -338,7 +421,13 @@ export async function moveEventOnBoard(
   const fromChapterId = moved.chapterId
   const crossesChapter = fromChapterId !== toChapterId
 
-  await db.transaction('rw', [db.events, db.operations, db.tombstones], async () => {
+  /*
+    One act, so one undo. A move into another chapter writes two operations —
+    the chapter, then the position — and ungrouped they took two Ctrl+Zs to put
+    back: the first restored the position and left the scene in the wrong
+    chapter.
+  */
+  await journalGroup(() => db.transaction('rw', [db.events, db.operations, db.tombstones], async () => {
     // Target column: current order (moved card excluded when arriving from
     // elsewhere), then insert the moved card at the requested index.
     const targetEvents = (await db.events.where('chapterId').equals(toChapterId).toArray())
@@ -360,7 +449,7 @@ export async function moveEventOnBoard(
       await journalUpdate('event', db.events, id, { sortOrder, updatedAt: Date.now() })
     }
 
-  })
+  }))
 
   // Renumbering shifts snapshot sortKeys for every card whose sortOrder moved,
   // and a cross-chapter move changes the moved card's chapter number too.
