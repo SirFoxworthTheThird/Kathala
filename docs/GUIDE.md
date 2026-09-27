@@ -837,8 +837,16 @@ your streak and history survive a backup or a move to another device.
 
 ## Timeline & scenes
 
-The Timeline is the spine of your story: a list of chapters, each holding an
-ordered set of **scenes** (scenes/beats). A **pacing curve** across the top plots
+The Timeline is the spine of your story: chapters, each holding an ordered set
+of **scenes** (scenes/beats).
+
+**It is one screen.** Down the left is the **binder** — every chapter in the
+timeline, opened to show its scenes — and it stays there while the right-hand
+side changes. Opening the Timeline shows the **whole book** on the right: every
+chapter at once, with the orders, filters and actions described below. Click a
+chapter or a scene in the binder and the right side becomes that chapter, where
+you write; **Whole book** at the top of the binder brings the whole book back.
+The binder is described under [Chapter detail](#chapter-detail). A **pacing curve** across the top plots
 dramatic tension chapter by chapter once you rate scenes, so you can see the
 shape of your story at a glance. Until you have rated something there is no
 curve to draw, so the panel is a single line telling you where the ratings live
@@ -1012,9 +1020,12 @@ already on a scene inside that chapter, it stays where you put it; and while
 [reading](#reading-alongside-a-book) nothing moves at all, since there the cursor
 is your own place in the book.
 
-**The binder lists the book beside the writing.** On a wide screen the chapter's
-left edge holds every chapter in this timeline, with the one you are in opened to
-show its scenes. Click a scene to go there: its card opens and comes to the top,
+**The binder lists the book beside the writing.** It is the Timeline screen's
+left edge — the same list whether the right side is the whole book or a chapter —
+holding every chapter in this timeline, with the one you are in opened to show
+its scenes. With more than one timeline it says which one it is listing: the one
+the chapter belongs to, or on the whole book, the one whose tab you picked, and
+that tab is still picked when you come back from a chapter. Click a scene to go there: its card opens and comes to the top,
 and the time cursor moves to it, so the Character States and the Writer's Brief
 follow the scene you are writing rather than wherever the cursor was left. Click a
 chapter to go to that chapter.
@@ -1045,10 +1056,13 @@ A chapter is not deleted from the binder: it takes every scene in it, which is
 too much to lose to a key. Its row on the Timeline still does that, with Undo
 behind it.
 
-The **binder** button beside *Back* hides it and shows it again, and remembers
-which you chose. It is there on screens wide enough to hold it beside the
-writing; on a narrower one the chapter's columns stack, and a list above the
-prose would push the writing a screen further down.
+The **binder** button — beside *Back* on a chapter, at the start of the header
+on the whole book — hides it and shows it again, and remembers which you chose.
+
+**On a phone** there is no room for a column. On the whole book you need none,
+since the list is itself the way round. On a chapter the same button opens the
+binder as a drawer instead; pick a scene or a chapter and it takes you there and
+closes.
 
 While [reading](#reading-alongside-a-book), the binder lists only the chapters
 and scenes you have reached, and going to one does not move your place in the

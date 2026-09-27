@@ -148,6 +148,41 @@ test.describe('the binder', () => {
     await expect.poll(() => cursor(page)).toBe(created)
   })
 
+  test('Enter straight after clicking the scene you are on still opens the title', async ({ page }) => {
+    /*
+      Clicking a row asked for it to be focused once the binder next rendered.
+      The mousedown has already focused it, and on the scene the cursor is
+      already on nothing else changes either — so no render came, and the
+      request waited. The next render was Enter's: the title box took focus,
+      the stale request took it back, and the blur cancelled the empty title.
+      It showed as the test above failing about one run in four, whenever the
+      navigation happened not to render in between.
+
+      So here the click and the Enter are separated only by microtasks — as
+      between two real events, where React flushes its urgent work — and not
+      by a task, which is where the navigation renders.
+    */
+    const worldId = await book(page)
+    const tree = await open(page, worldId)
+    const row = tree.getByRole('treeitem', { name: 'The assize rises' })
+    await row.click()
+    await expect.poll(() => cursor(page)).toBe('e1')
+    await expect(row).toBeFocused()
+
+    await row.evaluate(async (el: HTMLElement) => {
+      el.click()
+      for (let i = 0; i < 5; i++) await Promise.resolve()
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+    })
+
+    const title = page.getByRole('textbox', { name: 'New scene title' })
+    await expect(title).toBeFocused()
+    await title.fill('The clerk’s ledger')
+    await page.keyboard.press('Enter')
+    await expect.poll(() => order(page, 'c1'), { timeout: 15_000 })
+      .toEqual(['The assize rises', 'The clerk’s ledger', 'Teodora at the table', 'The tide-table'])
+  })
+
   test('Escape throws the title away, and gives focus back', async ({ page }) => {
     const worldId = await book(page)
     const tree = await open(page, worldId)
