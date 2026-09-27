@@ -192,8 +192,10 @@ test.describe('the one page on a phone', () => {
     ])
     expect(p1!.y).toBeGreaterThan(r1!.y + r1!.height - 1)
     expect(r2!.y).toBeGreaterThan(p1!.y + p1!.height - 1)
-    // One copy of it, not a second one hidden for the wide layout.
-    await expect(page.getByRole('region', { name: 'Chapter 1' })).toHaveCount(1)
+    // One copy of it in the page, not a second one hidden for the wide layout.
+    // Counted in the DOM: a role lookup skips a display:none copy, and would
+    // pass with one there — which is exactly the copy a text lookup trips on.
+    await expect(page.locator('section[aria-label="Chapter 1"]')).toHaveCount(1)
 
     // No column and no drawer: the list is the way round.
     await expect(tree(page)).toHaveCount(0)
