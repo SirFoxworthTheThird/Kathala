@@ -19,9 +19,9 @@ import { useGate } from '@/db/hooks/ReadingGateContext'
  * tooltip reads "Move the time cursor to this chapter's first moment".
  * Everything else navigates and leaves the bookmark alone.
  *
- * `ChapterDetailView` already made exactly this decision for its own arrival
- * effect — *"there the cursor is the reader's own place in the book"* — and this
- * is that rule everywhere else.
+ * Opening a chapter on the Timeline (`TimelineView`) already made exactly this
+ * decision — *"there the cursor is the reader's own place in the book"* — and
+ * this is that rule everywhere else.
  */
 export function useShowMoment() {
   const gate = useGate()

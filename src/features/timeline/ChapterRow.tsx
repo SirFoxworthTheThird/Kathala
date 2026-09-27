@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ChevronDown, ChevronRight, Trash2, BookOpen, BookLock, Plus, ExternalLink, Scroll, Pencil, Check, X } from 'lucide-react'
-import type { Chapter } from '@/types'
+import type { Chapter, WorldCalendar } from '@/types'
 import { deleteChapter, useEvents, updateEvent, updateChapter, moveEventOnBoard } from '@/db/hooks/useTimeline'
+import { journalGroup } from '@/db/hooks/useOperations'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
@@ -38,20 +39,31 @@ interface ChapterRowProps {
    */
   prevChapterId?: string | null
   nextChapterId?: string | null
+  /**
+   * The chapter the page is open at. It opens out, and the page scrolls it to
+   * the top — it is still an ordinary row, so it can be folded again.
+   */
+  open?: boolean
+  /** The binder's latest "go to this scene", for the card to open and come to. */
+  reveal?: { id: string; nonce: number } | null
+  /** Derived in-world day per scene, and the calendar that makes it a date. */
+  inWorldDays?: Map<string, number>
+  calendar?: WorldCalendar | null
 }
 
 const NO_WORDS: Map<string, number> = new Map()
 
 export function ChapterRow({
   chapter, threadFilter = null, wordsByEvent = NO_WORDS,
-  prevChapterId = null, nextChapterId = null,
+  prevChapterId = null, nextChapterId = null, open = false, reveal = null, inWorldDays, calendar = null,
 }: ChapterRowProps) {
   const { worldId } = useParams<{ worldId: string }>()
   const { requestClear, revealAllDialog } = useRevealAll(worldId ?? null)
   const { guardJump, readAheadDialog } = useReadAhead()
   const navigate = useNavigate()
   const { activeEventId, setActiveEventId, selectedEventIds, selectEventRange, clearSelection } = useAppStore()
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(open)
+  useEffect(() => { if (open) setExpanded(true) }, [open])
   const [addEventOpen, setAddEventOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [renaming, setRenaming] = useState(false)
@@ -141,10 +153,13 @@ export function ChapterRow({
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1
     const a = allSorted[idx]
     const b = allSorted[swapIdx]
-    await Promise.all([
+    // Two records, one act: undo has to swap them back together. The chapter
+    // screen grouped these and this row did not, so the same arrow took one
+    // undo there and two here — the row is the only one now.
+    await journalGroup(() => Promise.all([
       updateEvent(a.id, { sortOrder: b.sortOrder }),
       updateEvent(b.id, { sortOrder: a.sortOrder }),
-    ])
+    ]))
   }
 
   async function handleDelete() {
@@ -152,10 +167,14 @@ export function ChapterRow({
   }
 
   return (
-    <div className={cn(
-      'rounded-lg border transition-colors group',
-      isActive ? 'border-[hsl(var(--ring))] bg-[hsl(var(--card))]' : 'border-[hsl(var(--border))] bg-[hsl(var(--card))]'
-    )}>
+    <div
+      id={`chapter-row-${chapter.id}`}
+      aria-current={open ? 'page' : undefined}
+      className={cn(
+        'scroll-mt-3 rounded-lg border transition-colors group',
+        isActive || open ? 'border-[hsl(var(--ring))] bg-[hsl(var(--card))]' : 'border-[hsl(var(--border))] bg-[hsl(var(--card))]'
+      )}
+    >
       {/* Chapter header */}
       {/*
         Wraps below `sm`: at 390px the title, which is the only thing telling
@@ -453,7 +472,12 @@ export function ChapterRow({
                   onMoveDown={() => moveEvent(e.id, 'down')}
                   selection={{ chapterEventIds }}
                   chapterNumber={chapter.number}
-                  onOpenChapter={() => navigate(`/worlds/${worldId}/timeline/${e.chapterId}`)}
+                  // Not in the chapter the page is already open at, where it would
+                  // go nowhere and cost a phone's scene title the room.
+                  onOpenChapter={open ? undefined : () => navigate(`/worlds/${worldId}/timeline/${e.chapterId}`)}
+                  revealNonce={reveal?.id === e.id ? reveal.nonce : undefined}
+                  inWorldDay={inWorldDays?.get(e.id)}
+                  calendar={calendar}
                 />
               ))}
             </div>

@@ -14,7 +14,6 @@ const ItemRosterView = lazy(() => import('@/features/items/ItemRosterView'))
 const ItemDetailView = lazy(() => import('@/features/items/ItemDetailView'))
 const RelationshipGraphView = lazy(() => import('@/features/relationships/RelationshipGraphView'))
 const TimelineView = lazy(() => import('@/features/timeline/TimelineView'))
-const ChapterDetailView = lazy(() => import('@/features/timeline/ChapterDetailView'))
 const TimelineScreen = lazy(() => import('@/features/timeline/TimelineScreen'))
 const CharacterArcView = lazy(() => import('@/features/arc/CharacterArcView'))
 const WorldSettingsView = lazy(() => import('@/features/worlds/WorldSettingsView'))
@@ -100,17 +99,17 @@ export const router = createHashRouter([
       { path: 'items/:itemId', element: <Wrap><ItemDetailView /></Wrap> },
       { path: 'relationships', element: <Wrap path="relationships"><RelationshipGraphView /></Wrap> },
       /*
-        One screen. The binder is the frame, and the right-hand side is either
-        the whole book or one chapter — see `TimelineScreen`. They were two
-        screens that looked nothing alike, one of them with a second list of the
-        same chapters down its side.
+        One page. The binder is the frame and the book is the page; a chapter in
+        the address is the chapter the page is open at — see `TimelineView`. It
+        was two screens that looked nothing alike, and then one frame around
+        those two, and one route keeps it from becoming two again: the page is
+        not remounted when a chapter is opened or closed.
       */
       {
         path: 'timeline',
         element: <Wrap path="timeline"><TimelineScreen /></Wrap>,
         children: [
-          { index: true, element: <Wrap><TimelineView /></Wrap> },
-          { path: ':chapterId', element: <Wrap><ChapterDetailView /></Wrap> },
+          { path: ':chapterId?', element: <Wrap><TimelineView /></Wrap> },
         ],
       },
       { path: 'corkboard', element: <Wrap path="corkboard"><CorkboardView /></Wrap> },

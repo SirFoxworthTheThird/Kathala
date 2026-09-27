@@ -6,32 +6,28 @@ export const ALL_TIMELINES = '__all__'
 /**
  * What the Timeline screen's frame shares with the page inside it.
  *
- * The Timeline is one screen: the binder down the left, and on the right either
- * the whole book or one chapter. The frame outlives the page — going from the
- * whole book to a chapter and back swaps only the right-hand side — so state
- * that must survive the swap lives here rather than in either page.
+ * The frame is the binder down the left; the page is the book, open at a
+ * chapter or not. The binder lists one timeline and the page shows one, so the
+ * tab choosing it lives here, where both can read it.
  */
 export interface TimelineScreenContext {
   /**
-   * The whole book's timeline tab: a timeline id, `ALL_TIMELINES`, or null for
-   * the first timeline. Kept in the frame so it is still selected on coming
-   * back from a chapter, and so the binder lists the same timeline.
+   * The timeline tab: a timeline id, `ALL_TIMELINES`, or null for the first
+   * timeline. Opening a chapter switches it to that chapter's timeline, so the
+   * binder and the list agree on which one you are in.
    */
   timelineTab: string | null
   setTimelineTab: (id: string | null) => void
-  /** Open the binder as a drawer — the way round a chapter on a narrow screen. */
-  openBinderDrawer: () => void
 }
 
 const STANDALONE: TimelineScreenContext = {
   timelineTab: null,
   setTimelineTab: () => {},
-  openBinderDrawer: () => {},
 }
 
 /**
  * The frame's context, or inert defaults for a page rendered without it — so
- * neither page has to know whether it is inside the frame to render at all.
+ * the page does not have to know whether it is inside the frame to render at all.
  */
 export function useTimelineScreen(): TimelineScreenContext {
   return useOutletContext<TimelineScreenContext | undefined>() ?? STANDALONE

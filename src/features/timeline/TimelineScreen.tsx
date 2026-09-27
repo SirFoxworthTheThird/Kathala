@@ -1,8 +1,7 @@
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { Outlet, useNavigate, useParams } from 'react-router-dom'
 import { PanelLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useAppStore } from '@/store'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { useChapter, useChapters, useTimelines, useWorldEvents } from '@/db/hooks/useTimeline'
@@ -10,7 +9,7 @@ import { activateEvent } from '@/components/timeline/TimelineControls'
 import type { Chapter, WorldEvent } from '@/types'
 import { Binder } from './Binder'
 import { useMediaQuery, WIDE } from '@/lib/useMediaQuery'
-import { ALL_TIMELINES, useTimelineScreen, type TimelineScreenContext } from './timelineScreenContext'
+import { ALL_TIMELINES, type TimelineScreenContext } from './timelineScreenContext'
 
 /**
  * The Timeline, as one screen.
@@ -19,13 +18,12 @@ import { ALL_TIMELINES, useTimelineScreen, type TimelineScreenContext } from './
  * which gained a second list — the binder — beside the writing. The same
  * chapters in two places, on two screens that looked nothing alike.
  *
- * So the binder is the frame. It stays down the left while the right-hand side
- * shows either the **whole book** — the list, with its orders, filters and
- * bulk actions — or **one chapter**. Going between them swaps the right side
- * only, which is why the state that has to survive the swap lives here.
+ * So the binder is the frame, and the book is the page inside it: open at a
+ * chapter or not, it is the same list, and a chapter is where it is open rather
+ * than somewhere else to go. See `TimelineView`.
  *
- * On a narrow screen there is no room for a column: the whole book is its own
- * way round, and on a chapter the binder opens as a drawer instead.
+ * On a narrow screen there is no room for a column, and no need of one: the
+ * list the page is made of is its own way round.
  */
 export default function TimelineScreen() {
   const { worldId, chapterId } = useParams<{ worldId: string; chapterId?: string }>()
@@ -38,14 +36,12 @@ export default function TimelineScreen() {
   const timelines = useTimelines(worldId ?? null)
   const chapter = useChapter(chapterId ?? null)
   const [timelineTab, setTimelineTab] = useState<string | null>(null)
-  const [drawerOpen, setDrawerOpen] = useState(false)
   /*
-    The column and the drawer are each rendered only where they are used,
-    rather than both being in the page with one hidden. A hidden copy of the
-    binder is invisible to a person and still found by everything else.
+    The column is rendered only where it is shown, rather than being in the page
+    and hidden. A hidden copy of the binder is invisible to a person and still
+    found by everything else.
   */
   const wide = useMediaQuery(WIDE)
-  useEffect(() => { if (wide) setDrawerOpen(false) }, [wide])
 
   /*
     Visiting a chapter makes its timeline the whole book's tab, so coming back
@@ -90,21 +86,19 @@ export default function TimelineScreen() {
       state: { reveal: scene.id },
       replace: scene.chapterId === chapterId,
     })
-    setDrawerOpen(false)
   }
   function goChapter(target: Chapter) {
-    if (target.id !== chapterId) navigate(`/worlds/${worldId}/timeline/${target.id}`)
-    setDrawerOpen(false)
+    // Even to the chapter already open: the page scrolls to it on arrival, and
+    // the writer who clicks it has usually scrolled away.
+    navigate(`/worlds/${worldId}/timeline/${target.id}`, { replace: target.id === chapterId })
   }
   function goBook() {
     if (chapterId) navigate(`/worlds/${worldId}/timeline`)
-    setDrawerOpen(false)
   }
 
-  const openBinderDrawer = useCallback(() => setDrawerOpen(true), [])
   const context: TimelineScreenContext = useMemo(
-    () => ({ timelineTab, setTimelineTab, openBinderDrawer }),
-    [timelineTab, openBinderDrawer],
+    () => ({ timelineTab, setTimelineTab }),
+    [timelineTab],
   )
 
   // No timeline, nothing to list: the whole book's own empty state says what to do.
@@ -138,60 +132,29 @@ export default function TimelineScreen() {
           <Outlet context={context} />
         </Suspense>
       </div>
-      {binder && !wide && (
-        <Dialog open={drawerOpen} onOpenChange={setDrawerOpen}>
-          <DialogContent className="flex max-h-[85dvh] flex-col p-0">
-            <DialogHeader className="mb-0 border-b border-[hsl(var(--border))] px-4 py-3">
-              <DialogTitle>Chapters and scenes</DialogTitle>
-            </DialogHeader>
-            <div className="flex min-h-0 flex-1 flex-col">{binder}</div>
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   )
 }
 
 /**
- * The binder's own button, in whichever page is on the right.
- *
- * One button, doing what the width allows. On a wide screen
- * it shows and hides the column, and remembers. On a narrow one there is no
- * column, and — on a chapter, where the binder is the only way round — it opens
- * the binder as a drawer instead. The whole book is its own way round, so there
- * it has no narrow-screen button at all.
+ * The binder's own button, at the head of the page: it shows and hides the
+ * column, and remembers. Only on a wide screen, where there is a column.
  */
-export function BinderToggle({ drawer = false }: { drawer?: boolean }) {
+export function BinderToggle() {
   const binderOpen = useAppStore((st) => st.binderOpen)
   const setBinderOpen = useAppStore((st) => st.setBinderOpen)
-  const { openBinderDrawer } = useTimelineScreen()
   const wide = useMediaQuery(WIDE)
-  if (wide) {
-    return (
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 shrink-0"
-        aria-label="Binder"
-        aria-expanded={binderOpen}
-        aria-controls="timeline-binder"
-        title={binderOpen ? 'Hide the chapters and scenes' : 'Show the chapters and scenes'}
-        onClick={() => setBinderOpen(!binderOpen)}
-      >
-        <PanelLeft className="h-4 w-4" />
-      </Button>
-    )
-  }
-  if (!drawer) return null
+  if (!wide) return null
   return (
     <Button
       variant="ghost"
       size="icon"
       className="h-8 w-8 shrink-0"
       aria-label="Binder"
-      aria-haspopup="dialog"
-      title="Chapters and scenes"
-      onClick={openBinderDrawer}
+      aria-expanded={binderOpen}
+      aria-controls="timeline-binder"
+      title={binderOpen ? 'Hide the chapters and scenes' : 'Show the chapters and scenes'}
+      onClick={() => setBinderOpen(!binderOpen)}
     >
       <PanelLeft className="h-4 w-4" />
     </Button>

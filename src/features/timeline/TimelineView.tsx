@@ -1,8 +1,8 @@
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useEffect } from 'react'
 import { BlockingReason } from '@/components/BlockingReason'
-import { useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter } from 'lucide-react'
-import { useTimelines, useChapters, useTimelineEvents, useWorldChapters, useWorldEvents, createTimeline, updateTimeline, deleteTimeline } from '@/db/hooks/useTimeline'
+import { useTimelines, useChapters, useChapter, useEvents, useTimelineEvents, useWorldChapters, useWorldEvents, createTimeline, updateTimeline, deleteTimeline } from '@/db/hooks/useTimeline'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
 import { buildCombinedSequence, type CombinedOrder, type CombinedRow } from '@/lib/combinedTimeline'
@@ -16,6 +16,9 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/EmptyState'
 import { ChapterRow } from './ChapterRow'
+import { ChapterPanel } from './ChapterPanel'
+import { cursorForChapter } from '@/lib/chapterCursor'
+import { useMediaQuery, WIDE } from '@/lib/useMediaQuery'
 import { BulkActionToolbar } from './BulkActionToolbar'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { AddChapterDialog } from './AddChapterDialog'
@@ -166,7 +169,10 @@ function CombinedList({ rows, activeEventId, onSelect }: {
 
 export default function TimelineView() {
   const gate = useGate()
-  const { worldId } = useParams<{ worldId: string }>()
+  const { worldId, chapterId } = useParams<{ worldId: string; chapterId?: string }>()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const wide = useMediaQuery(WIDE)
   const timelines = useTimelines(worldId ?? null)
   /*
     The tab lives in the Timeline screen's frame, not here: this page is swapped
@@ -182,7 +188,7 @@ export default function TimelineView() {
     : (activeTimelineId && activeTimelineId !== ALL_TIMELINES ? activeTimelineId : timelines[0]?.id ?? null)
   const chapters = useChapters(isAll ? null : currentTimelineId)
   const timelineEvents = useTimelineEvents(isAll ? null : currentTimelineId)
-  const worldChapters = useWorldChapters(isAll ? worldId ?? null : null)
+  const worldChapters = useWorldChapters(worldId ?? null)
   /**
    * The curve stops where the reader has got to.
    *
@@ -197,7 +203,7 @@ export default function TimelineView() {
     () => (gate.active ? timelineEvents.filter((e) => gate.hasReached(e.id)) : timelineEvents),
     [timelineEvents, gate],
   )
-  const worldEvents = useWorldEvents(isAll ? worldId ?? null : null)
+  const worldEvents = useWorldEvents(worldId ?? null)
   // TL-4: resolved once here rather than per chapter row — see `ChapterRow`.
   const sceneTexts = useWorldSceneTexts(worldId ?? null)
   const wordsByEvent = useMemo(
@@ -219,6 +225,97 @@ export default function TimelineView() {
   const world = useWorld(worldId ?? null)
   const currentTimeline = timelines.find((t) => t.id === currentTimelineId)
   const combinedRows = isAll ? buildCombinedSequence(worldEvents, worldChapters, timelines, combinedOrder) : []
+  const inWorldDays = useMemo(
+    () => computeInWorldDays(worldEvents, worldChapters, timelines),
+    [worldEvents, worldChapters, timelines],
+  )
+
+  /*
+    ── The open chapter ────────────────────────────────────────────────────────
+
+    The chapter screen was a page of its own; it is this page now, open at a
+    chapter. `/timeline/:chapterId` opens that chapter's row in the list,
+    scrolls it to the top, and puts the chapter's own panel — title, synopsis,
+    Character States, notes — beside the list, or under the row where there is
+    no room beside it. `/timeline` is the same page with no chapter open.
+  */
+  const openChapter = useChapter(chapterId ?? null)
+  const openEvents = useEvents(chapterId ?? null)
+  const setCursor = useAppStore((st) => st.setActiveEventId)
+
+  /**
+   * Opening a chapter puts you in it.
+   *
+   * The time cursor moves to the chapter's first scene, so the Writer's Brief
+   * and every other per-moment tool has something to answer about — unless it
+   * is already inside the chapter, where it stays. Keyed on the chapter so it
+   * fires once per arrival rather than fighting a cursor moved afterwards.
+   *
+   * Never while reading: there the cursor is the reader's own place in the
+   * book, and moving it to wherever they opened would hand them a chapter they
+   * had not reached.
+   */
+  const settledChapterRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!chapterId) { settledChapterRef.current = null; return }
+    if (gate.active) return
+    if (settledChapterRef.current === chapterId) return
+    // The live query still holds the previous chapter's rows for a render after
+    // the route changes; settling on those would mark this chapter done and
+    // then find the old cursor among the old events, one chapter late.
+    const mine = openEvents.filter((e) => e.chapterId === chapterId)
+    if (mine.length === 0) return
+    settledChapterRef.current = chapterId
+    const target = cursorForChapter(mine, activeEventId)
+    if (target) setCursor(target)
+  }, [gate.active, chapterId, openEvents, activeEventId, setCursor])
+
+  /*
+    The binder's side of the page: going to a scene is a navigation carrying the
+    scene to open (see `TimelineScreen`), so this only has to read it and hand
+    it to the scene's card, which opens and comes to the top. A counter rather
+    than the id alone, so going to the same scene twice still arrives.
+  */
+  const [reveal, setReveal] = useState<{ id: string; nonce: number } | null>(null)
+  const revealCount = useRef(0)
+  /*
+    And going to a chapter scrolls its row to the top, once per arrival, as
+    soon as the row exists — the list may still be loading. Not when a scene is
+    being revealed: the card scrolls itself, and the row would undo it.
+  */
+  const pendingScroll = useRef<string | null>(null)
+  useEffect(() => {
+    const want = (location.state as { reveal?: string } | null)?.reveal
+    if (want) {
+      revealCount.current += 1
+      setReveal({ id: want, nonce: revealCount.current })
+      pendingScroll.current = null
+    } else {
+      // Spent, so a card that remounts later — its chapter folded and opened
+      // again — does not take it for a fresh request and jump.
+      setReveal(null)
+      pendingScroll.current = chapterId ?? null
+    }
+  }, [location.key])  // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const id = pendingScroll.current
+    if (!id) return
+    const row = document.getElementById(`chapter-row-${id}`)
+    if (!row) return
+    pendingScroll.current = null
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    row.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' })
+  })
+
+  const closeChapter = () => navigate(`/worlds/${worldId}/timeline`)
+  const panel = openChapter && openChapter.worldId === worldId
+    ? <ChapterPanel key={openChapter.id} chapter={openChapter} onClose={closeChapter} />
+    : null
+  /** Under the row, where there is no room beside the list. */
+  const panelInline = panel && !wide
+    ? <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">{panel}</div>
+    : null
+
   const [addChapterOpen, setAddChapterOpen] = useState(false)
   const [aiChapterOpen, setAiChapterOpen] = useState(false)
   const [relPanelOpen, setRelPanelOpen] = useState(false)
@@ -450,8 +547,12 @@ export default function TimelineView() {
         </div>
       </div>
 
-      <div id="timeline-panel" role="tabpanel" className="flex flex-col flex-1 min-h-0">
+      <div className="flex min-h-0 flex-1">
+      <div id="timeline-panel" role="tabpanel" className="flex min-w-0 flex-1 flex-col">
       <div className="flex-1 overflow-auto p-4">
+        {/* Chronological and merged orders are not by chapter, so there is no
+            row to put the panel under; it leads the list instead. */}
+        {panelInline && (isAll || viewMode !== 'narrative') && <div className="mb-3">{panelInline}</div>}
         {isAll ? (
           <div className="flex flex-col gap-3">
             <p className="text-xs text-[hsl(var(--muted-foreground))]">
@@ -564,15 +665,22 @@ export default function TimelineView() {
                   const order = [...chapters].sort((a, b) => a.number - b.number)
                   return shown.map((ch) => {
                     const at = order.findIndex((c) => c.id === ch.id)
+                    const isOpen = ch.id === chapterId
                     return (
-                      <ChapterRow
-                        key={ch.id}
-                        chapter={ch}
-                        threadFilter={threadFilter}
-                        wordsByEvent={wordsByEvent}
-                        prevChapterId={at > 0 ? order[at - 1].id : null}
-                        nextChapterId={at >= 0 && at < order.length - 1 ? order[at + 1].id : null}
-                      />
+                      <div key={ch.id} className="flex flex-col gap-3">
+                        <ChapterRow
+                          chapter={ch}
+                          threadFilter={threadFilter}
+                          wordsByEvent={wordsByEvent}
+                          prevChapterId={at > 0 ? order[at - 1].id : null}
+                          nextChapterId={at >= 0 && at < order.length - 1 ? order[at + 1].id : null}
+                          open={isOpen}
+                          reveal={isOpen ? reveal : null}
+                          inWorldDays={inWorldDays}
+                          calendar={world?.calendar ?? null}
+                        />
+                        {isOpen && panelInline}
+                      </div>
                     )
                   })
                 })()}
@@ -590,6 +698,14 @@ export default function TimelineView() {
         )}
       </div>
       {!gate.active && currentTimelineId && !isAll && viewMode === 'narrative' && <BulkActionToolbar timelineId={currentTimelineId} />}
+      </div>
+      {/* Rendered only where it is shown, like the binder: a hidden copy would
+          still be the first match for everything that looks it up. */}
+      {panel && wide && (
+        <aside aria-label="The open chapter" className="w-80 shrink-0 overflow-auto border-l border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+          {panel}
+        </aside>
+      )}
       </div>
 
       {worldId && currentTimelineId && !isAll && (
