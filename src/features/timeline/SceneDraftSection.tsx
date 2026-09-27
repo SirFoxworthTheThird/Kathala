@@ -75,7 +75,16 @@ export function SceneDraftSection({
     header is typed blind, with no picker to correct a spelling, so a typo
     would simply drop a character out of the scene with nothing said.
   */
-  const [headerUnknown, setHeaderUnknown] = useState<string[]>([])
+  /*
+    Split into people and place because they are answered differently, and the
+    message used to claim otherwise: it said "the rest of the line was
+    recorded" while an unmatched name was quietly taking somebody out of the
+    scene. Nothing is recorded now when a name misses, so the sentence has to
+    say which half was left alone.
+  */
+  const [headerUnknown, setHeaderUnknown] = useState<{ names: string[]; place: string | null }>(
+    { names: [], place: null },
+  )
   /**
    * The header line *while the writer is editing it*, and null the rest of the
    * time — meaning "show the one drawn from the records".
@@ -286,14 +295,15 @@ export function SceneDraftSection({
    * A name nothing answers is reported and otherwise ignored — it cannot
    * create a character, for the same reason `@@` cannot.
    */
-  async function applyHeader(header: string | null) {
+  /** Whether the line was fully understood — false leaves it on screen as typed. */
+  async function applyHeader(header: string | null): Promise<boolean> {
     /*
       No header clears the warning as well as changing nothing. Returning
       before this left the last accusation on screen describing an edit that
       had since been deleted — and deleting the line is the gesture the guide
       recommends for clearing your screen.
     */
-    if (!header) { setHeaderUnknown([]); return }
+    if (!header) { setHeaderUnknown({ names: [], place: null }); return true }
     const parsed = parseSceneHeader(header)
 
     const matches = (name: string, against: string, aliases?: string[]) =>
@@ -307,8 +317,9 @@ export function SceneDraftSection({
       ? markers.find((m) => matches(parsed.place!, m.name))
       : undefined
     const unmatched = found.filter((f) => !f.record).map((f) => f.name)
-    const unknown = [...unmatched, ...(parsed.place && !place ? [parsed.place] : [])]
-    setHeaderUnknown(unknown)
+    const unknownPlace = parsed.place && !place ? parsed.place : null
+    setHeaderUnknown({ names: unmatched, place: unknownPlace })
+    const clean = unmatched.length === 0 && unknownPlace === null
 
     /*
       A place the header names but the world does not have keeps the setting
@@ -328,7 +339,7 @@ export function SceneDraftSection({
     const nextPlace = parsed.place ? (place?.id ?? event.locationMarkerId) : null
     const castUnchanged = nextCast.length === involvedIds.length
       && nextCast.every((id, i) => involvedIds[i] === id)
-    if (castUnchanged && nextPlace === event.locationMarkerId) return
+    if (castUnchanged && nextPlace === event.locationMarkerId) return clean
 
     await updateEvent(eventId, {
       involvedCharacterIds: nextCast,
@@ -342,6 +353,7 @@ export function SceneDraftSection({
       mentionedCharacterIds: mentionedIds.filter((id) => !nextCast.includes(id)),
       locationMarkerId: nextPlace,
     })
+    return clean
   }
 
   async function saveScene() {
@@ -448,7 +460,16 @@ export function SceneDraftSection({
           // Apply, then hand the line back to the records so it re-renders
           // from what was actually stored rather than from what was typed.
           caretInHeader.current = false
-          void applyHeader(shownHeader).then(() => setHeaderDraft(null))
+          /*
+            Handing the line back to the records is what makes it a view of
+            them — but only once they can answer for all of it. A name this
+            world does not have stays on screen as typed, because the repair is
+            "fix one letter", and re-rendering erased the letter along with the
+            name: the amber line named somebody who was no longer anywhere on
+            screen, and the writer had to work out who was missing and retype
+            them in full.
+          */
+          void applyHeader(shownHeader).then((clean) => { if (clean) setHeaderDraft(null) })
           void saveScene()
         }}
         candidates={candidates}
@@ -510,10 +531,17 @@ export function SceneDraftSection({
         until this morning. It does not offer to create them: asserting that
         somebody is in the room is a claim about a person who exists.
       */}
-      {headerUnknown.length > 0 && (
+      {(headerUnknown.names.length > 0 || headerUnknown.place !== null) && (
         <p role="status" className="text-[11px] text-amber-400">
-          Nothing in this world is called {headerUnknown.map((n) => `“${n}”`).join(' or ')}
-          {' '}— the rest of the line was recorded.
+          Nothing in this world is called{' '}
+          {[...headerUnknown.names, ...(headerUnknown.place ? [headerUnknown.place] : [])]
+            .map((n) => `“${n}”`).join(' or ')}
+          {' '}— {headerUnknown.names.length > 0 && headerUnknown.place !== null
+            ? 'the scene was left as it was'
+            : headerUnknown.names.length > 0
+              ? 'the cast was left as it was'
+              : 'the setting was left as it was'}, so the spelling can be
+          fixed on the line.
         </p>
       )}
 

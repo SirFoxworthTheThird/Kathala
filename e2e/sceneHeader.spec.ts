@@ -125,20 +125,216 @@ test.describe('the scene header', () => {
     await expect(draft).toHaveValue(/@@Wren Halloway @@Sal'ka/, { timeout: 20_000 })
   })
 
-  test('says so when the line names somebody the world does not have', async ({ page }) => {
-    // Typed blind, with no picker inside the brackets to correct a spelling —
-    // so silence would drop a character out of the scene saying nothing.
+  test('says so when the line names somebody the world does not have, and changes nothing', async ({ page }) => {
+    /*
+      A typo is not a declaration. This used to record "the rest of the line" —
+      which meant one mistyped letter took a character out of the scene, and
+      the comma a writer puts between names by habit did it too. The function
+      already kept an unmatched *place* on exactly this reasoning; people were
+      the case that dropped.
+    */
     const worldId = await sceneWithCast(page)
     await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
     await settle(page)
     await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
 
     const draft = page.getByRole('textbox', { name: 'Scene prose' })
-    await draft.fill('[@@Wren Halloway @@Yevet du Marr]\n\nShe put the kettle on.')
+    // A cast to lose, recorded first, so the absence below is a real absence.
+    await draft.fill("[@@Wren Halloway @@Sal'ka]\n\nShe put the kettle on.")
+    await draft.blur()
+    await expect.poll(async () => (await stored(page)).cast, { timeout: 20_000 }).toEqual(['wren', 'salka'])
+
+    // One letter wrong in the second name.
+    await draft.fill("[@@Wren Halloway @@Sal'k]\n\nShe put the kettle on.")
+    await draft.blur()
+    await expect(page.getByText(/Nothing in this world is called/)).toBeVisible({ timeout: 20_000 })
+    // Nobody left the room, and the misspelling is still on the line to fix.
+    await expect.poll(async () => (await stored(page)).cast, { timeout: 20_000 }).toEqual(['wren', 'salka'])
+    await expect(draft).toHaveValue(/@@Sal'k\]/)
+
+    // The presence half: spelled right, it applies, and the line goes back to
+    // being a view of the records.
+    await draft.fill("[@@Sal'ka]\n\nShe put the kettle on.")
+    await draft.blur()
+    await expect.poll(async () => (await stored(page)).cast, { timeout: 20_000 }).toEqual(['salka'])
+    await expect(page.getByText(/Nothing in this world is called/)).toBeHidden()
+  })
+
+  test('a comma between names does not empty the cast either', async ({ page }) => {
+    // The one a writer hits first: the rendered line separates names with
+    // spaces, and nobody typing a list from scratch knows that yet.
+    const worldId = await sceneWithCast(page)
+    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
+
+    const draft = page.getByRole('textbox', { name: 'Scene prose' })
+    await draft.fill("[@@Wren Halloway @@Sal'ka]\n\nShe put the kettle on.")
+    await draft.blur()
+    await expect.poll(async () => (await stored(page)).cast, { timeout: 20_000 }).toEqual(['wren', 'salka'])
+
+    await draft.fill("[@@Wren Halloway, @@Sal'ka]\n\nShe put the kettle on.")
+    await draft.blur()
+    await expect(page.getByText(/“Wren Halloway,”/)).toBeVisible({ timeout: 20_000 })
+    await expect.poll(async () => (await stored(page)).cast, { timeout: 20_000 }).toEqual(['wren', 'salka'])
+  })
+
+  test('a bracketed note at the top of a scene stays a note', async ({ page }) => {
+    /*
+      H-1, the whole of it. A writer scribbled `[check: …]` at the top of a
+      draft in the only punctuation margin notes use. The note was consumed and
+      never stored, the cast and setting were cleared because the note named
+      nobody, and the real line — one row down by then — was saved as a
+      paragraph of the book and exported as one. The box looked identical
+      before and after.
+    */
+    const worldId = await sceneWithCast(page)
+    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
+
+    const draft = page.getByRole('textbox', { name: 'Scene prose' })
+    await draft.fill("[#The Kitchen @@Wren Halloway @@Sal'ka]\n\nShe put the kettle on.")
+    await draft.blur()
+    await expect.poll(async () => (await stored(page)).cast, { timeout: 20_000 }).toEqual(['wren', 'salka'])
+
+    // The note goes in above the line, which is where a note goes.
+    await draft.fill(
+      "[check: does she say it out loud?]\n[#The Kitchen @@Wren Halloway @@Sal'ka]\n\nShe put the kettle on.",
+    )
     await draft.blur()
 
-    await expect(page.getByText(/Nothing in this world is called/)).toBeVisible({ timeout: 20_000 })
-    // The rest of the line still landed, which is the other half of the claim.
+    await expect.poll(stored.bind(null, page), { timeout: 20_000 }).toEqual({
+      // Nobody left the room and the setting held.
+      cast: ['wren', 'salka'],
+      place: 'kitchen',
+      // The note is kept, as the prose it is — and the header is not in it.
+      prose: '[check: does she say it out loud?]\n\nShe put the kettle on.',
+      words: 12,
+    })
+    const after = await stored(page)
+    expect(after.prose).not.toContain('@@')
+    expect(after.prose).not.toContain('#The Kitchen')
+  })
+
+  test('a header typed and left unblurred survives a reload', async ({ page }) => {
+    /*
+      H-2: the prose autosaved and the declaration above it did not, while the
+      box said "Draft auto-saved" about the half it had kept. A writer who
+      typed the header, wrote the scene under it and closed the tab kept every
+      word and lost the cast and the setting — which looks exactly like a scene
+      that never had a header.
+    */
+    const worldId = await sceneWithCast(page)
+    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
+
+    const draft = page.getByRole('textbox', { name: 'Scene prose' })
+    await draft.click()
+    // Typed, never blurred — the caret ends up down in the prose, which is the
+    // writer saying they are done with the line.
+    await draft.pressSequentially('[@@Wren Halloway]\n\nShe put the kettle on.', { delay: 5 })
+    await expect(page.getByText('Draft auto-saved')).toBeVisible({ timeout: 20_000 })
+
     await expect.poll(async () => (await stored(page)).cast, { timeout: 20_000 }).toEqual(['wren'])
+
+    await page.reload({ waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: 'Scene prose' }))
+      .toHaveValue(/^\[@@Wren Halloway\]/, { timeout: 20_000 })
+  })
+
+  test('deleting the line clears the warning it left behind', async ({ page }) => {
+    // The guide's own gesture for clearing your screen. It used to leave the
+    // accusation on it, describing an edit that no longer existed.
+    const worldId = await sceneWithCast(page)
+    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
+
+    const draft = page.getByRole('textbox', { name: 'Scene prose' })
+    await draft.fill('[@@Nobody At All]\n\nShe put the kettle on.')
+    await draft.blur()
+    await expect(page.getByText(/Nothing in this world is called/)).toBeVisible({ timeout: 20_000 })
+
+    await draft.fill('She put the kettle on.')
+    await draft.blur()
+    await expect(page.getByText(/Nothing in this world is called/)).toBeHidden({ timeout: 20_000 })
+  })
+
+  test('the picker inside the brackets keeps its sigil', async ({ page }) => {
+    /*
+      H-3. The picker does fire in there — it runs on the whole box and has no
+      idea the line exists — and it is the only spell-check the line has, so it
+      stays. What it did was strip the sigil it was triggered by: the plain name
+      glued itself to the name before it, the line then named one person nobody
+      answered, and the cast emptied. The app's own notice recommended it.
+    */
+    const worldId = await sceneWithCast(page)
+    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
+
+    const draft = page.getByRole('textbox', { name: 'Scene prose' })
+    await draft.fill('[@@Wren Halloway]\n\nShe put the kettle on.')
+    await draft.blur()
+    await expect.poll(async () => (await stored(page)).cast, { timeout: 20_000 }).toEqual(['wren'])
+
+    // Type a second name inside the brackets and take the picker's row.
+    // Control+Home reaches the top of the box; End then stops at the close
+    // bracket of the first line, and one step back is inside it. Plain Home/End
+    // work on whichever line the caret is already on, which after a click is
+    // the last one.
+    await draft.click()
+    await draft.press('Control+Home')
+    await draft.press('End')
+    await draft.press('ArrowLeft')
+    await draft.pressSequentially(' @@Sal', { delay: 10 })
+    await page.getByRole('button', { name: /Sal'ka/ }).first().click()
+
+    // The sigil survived, so the line still names two people rather than one
+    // run-together stranger.
+    await expect(draft).toHaveValue(/@@Wren Halloway @@Sal'ka/, { timeout: 20_000 })
+    await draft.blur()
+    await expect.poll(async () => (await stored(page)).cast, { timeout: 20_000 }).toEqual(['wren', 'salka'])
+  })
+
+  test('presence asserted by the line replaces a mention', async ({ page }) => {
+    /*
+      H-6. `@@` in the prose strips the mention, with a comment saying why; the
+      header never touched the list, so a character sat in both — two mutually
+      exclusive claims in one record, which nothing reported and which travelled
+      in the export.
+    */
+    const worldId = await sceneWithCast(page)
+    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await settle(page)
+    await page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as {
+        events: { update: (id: string, c: Record<string, unknown>) => Promise<unknown> }
+      }
+      await db.events.update('ev1', { mentionedCharacterIds: ['salka'] })
+    })
+    await page.reload({ waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
+
+    const mentioned = () => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as {
+        events: { get: (id: string) => Promise<{ mentionedCharacterIds?: string[] }> }
+      }
+      return (await db.events.get('ev1')).mentionedCharacterIds ?? []
+    })
+    // The absence half, before the change: she really is in the mentioned list.
+    expect(await mentioned()).toEqual(['salka'])
+
+    const draft = page.getByRole('textbox', { name: 'Scene prose' })
+    await draft.fill("[@@Sal'ka]\n\nShe put the kettle on.")
+    await draft.blur()
+
+    await expect.poll(async () => (await stored(page)).cast, { timeout: 20_000 }).toEqual(['salka'])
+    await expect.poll(mentioned, { timeout: 20_000 }).toEqual([])
   })
 })
