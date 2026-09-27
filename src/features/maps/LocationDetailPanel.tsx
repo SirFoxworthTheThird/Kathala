@@ -13,7 +13,8 @@ import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { isTreeVisible } from '@/lib/mapLevels'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useBestSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
-import { useTimelines, useChapters, createTimeline, createChapter } from '@/db/hooks/useTimeline'
+import { useTimelines, useChapters, createTimeline, createChapterAt } from '@/db/hooks/useTimeline'
+import { nextChapterNumber } from '@/lib/chapterNumbering'
 import { useItems } from '@/db/hooks/useItems'
 import { useLocationItemPlacements, useWorldItemPlacements, placeItemAtLocation, removeItemPlacement } from '@/db/hooks/useItemPlacements'
 import { useLocationSnapshot, upsertLocationSnapshot } from '@/db/hooks/useLocationSnapshots'
@@ -213,10 +214,13 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
       const tl = await createTimeline({ worldId, name: 'Main Timeline', description: '', color: '#60a5fa' })
       timelineId = tl.id
     }
-    const ch = await createChapter({
+    // One past the highest, not one past the count — which after a deletion
+    // is a number still in use. A quick add from the map goes at the end; the
+    // Timeline's dialog and the binder are where a number is chosen.
+    const ch = await createChapterAt({
       worldId,
       timelineId,
-      number: chapters.length + 1,
+      number: nextChapterNumber(chapters),
       title: newChapterTitle.trim(),
       synopsis: '',
     })

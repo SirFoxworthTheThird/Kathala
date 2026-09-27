@@ -103,7 +103,8 @@ test.describe('Dialog accessibility', () => {
     await main.getByRole('button', { name: 'Add Scene' }).first().click()
     await page.getByPlaceholder('Scene title').fill('Scene')
     await page.getByRole('button', { name: 'Add Scene' }).last().click()
-    await main.getByText('Scene', { exact: true }).click()
+    // The card's title button — the binder repeats the title as a row, ahead of it.
+    await main.getByRole('button', { name: 'Scene', exact: true }).click()
     const editor = main.getByPlaceholder(/Write or paste this scene/)
     await editor.fill('First version of the prose.')
     await editor.blur()

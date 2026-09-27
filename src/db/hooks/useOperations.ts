@@ -15,6 +15,7 @@ import {
   redoableBatch,
 } from '@/lib/operations'
 import { ENTITY_TABLE } from '@/lib/entityTables'
+import { recomputeSnapshotSortKeysForChapter, recomputeSnapshotSortKeysForEvent } from '@/lib/sortKey'
 import { SUBJECT_JOIN, SUBJECT_OWNER, needsSubjectLookup, recordName } from '@/lib/operationSubject'
 import type { PruneLimits } from '@/lib/operations'
 import type { Operation, OperationEntity, OperationType, Tombstone } from '@/types/operation'
@@ -752,6 +753,26 @@ async function reverseBatch(
       )
     }
   })
+
+  /*
+    A snapshot stores its position — chapter number plus the scene's place in
+    it — and every write that moves a scene rekeys the snapshots on it. Undo
+    writes the restored fields straight onto the record, so it has to rekey as
+    well: otherwise a scene moved and then put back leaves every snapshot on it
+    claiming the position it had been moved *to*, and "last known state" is read
+    in the wrong order.
+
+    Everything the batch touched is rekeyed, rather than trying to tell which
+    fields moved it. Batches are small, and a case missed here would be silent.
+  */
+  const chapterIds = new Set<string>()
+  const eventIds = new Set<string>()
+  for (const op of batch) {
+    if (op.entityType === 'chapter') chapterIds.add(op.entityId)
+    else if (op.entityType === 'event') eventIds.add(op.entityId)
+  }
+  for (const id of chapterIds) await recomputeSnapshotSortKeysForChapter(id)
+  for (const id of eventIds) await recomputeSnapshotSortKeysForEvent(id)
 
   return batch
 }

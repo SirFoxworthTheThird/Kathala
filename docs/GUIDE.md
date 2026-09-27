@@ -859,8 +859,15 @@ inside it.
   same button on a chapter row puts it on the chapter's first. A click alone
   does not move the cursor: reading down the timeline would otherwise keep
   changing what every other screen is showing you.
-- Each chapter row also has an **open** button for its detail page, and chapters
-  can be dragged to reorder the narrative.
+- Each chapter row also has an **open** button for its detail page.
+- **Add Chapter asks for a number**, and suggests the next free one. Type any
+  number you like: a free one is simply used, and 0 makes a prologue. A number
+  that is already taken puts the new chapter *there* — the chapter holding it
+  moves up one, and so does each after it until a gap. The dialog says which
+  ("Chapters 3–7 become 4–8") before you add anything, and one Undo takes all of
+  it back. Chapters already made cannot be dragged into a new order.
+
+  ![Add Chapter says what a taken number moves](images/68-add-chapter-number.png)
 - **The ↑ ↓ arrows on a scene move it, including out of its chapter.** At the
   top of a chapter, ↑ moves the scene to the end of the one before; at the
   bottom, ↓ moves it to the start of the one after, and the button says so
@@ -1004,6 +1011,48 @@ per-moment have something to answer about straight away. If your cursor is
 already on a scene inside that chapter, it stays where you put it; and while
 [reading](#reading-alongside-a-book) nothing moves at all, since there the cursor
 is your own place in the book.
+
+**The binder lists the book beside the writing.** On a wide screen the chapter's
+left edge holds every chapter in this timeline, with the one you are in opened to
+show its scenes. Click a scene to go there: its card opens and comes to the top,
+and the time cursor moves to it, so the Character States and the Writer's Brief
+follow the scene you are writing rather than wherever the cursor was left. Click a
+chapter to go to that chapter.
+
+![The binder beside a chapter](images/67-binder.png)
+
+It is built for the keyboard, since that is where your hands are while you write:
+
+| Key | In the binder |
+|---|---|
+| ↑ ↓ | Move between rows |
+| → ← | Open or close a chapter — ← from a scene steps up to its chapter |
+| Space | Go to that scene or chapter |
+| Enter | **A new scene on the line below** — the first in a chapter, or the next one after a scene. Type its title where it will sit and press Enter; Escape throws it away |
+| Delete | Remove the scene. Undo brings it back, and the notice names what went |
+
+**New scene** and **New chapter** under the list do the same with a mouse. A new
+chapter's number is filled in with the next free one and can be changed, with the
+same rule as *Add Chapter*: a taken number puts it there and moves the rest up,
+and the line under it says which. A title you have started and then clicked
+away from is kept rather than lost, and the click is left to do what you meant.
+
+A new scene is only its title. Say where it happens and who is in it with the
+line at the top of its draft, described below — the binder deliberately asks for
+nothing else, so making a scene costs a title and nothing more.
+
+A chapter is not deleted from the binder: it takes every scene in it, which is
+too much to lose to a key. Its row on the Timeline still does that, with Undo
+behind it.
+
+The **binder** button beside *Back* hides it and shows it again, and remembers
+which you chose. It is there on screens wide enough to hold it beside the
+writing; on a narrower one the chapter's columns stack, and a list above the
+prose would push the writing a screen further down.
+
+While [reading](#reading-alongside-a-book), the binder lists only the chapters
+and scenes you have reached, and going to one does not move your place in the
+book.
 
 **The chapter's title and synopsis are both edited in place**, at the top of the
 screen — click either line and type. Renaming used to live only on the chapter's

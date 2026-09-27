@@ -83,7 +83,7 @@ dangerous case cannot hide inside. Drop the identity fields (`id`, `sortKey`,
 after the spread, but a stray one is still a lie about which row you mean.
 
 ### State (`src/store/index.ts`)
-Single Zustand store (`useAppStore`) with slices for: active world/event/map, map drill-down history stack, playback, and UI panel open/close state. Only `activeWorldId`, `activeEventId`, `sidebarOpen`, `navPinned`, `barScope`, and `theme` are persisted (localStorage key: `kathala-ui`).
+Single Zustand store (`useAppStore`) with slices for: active world/event/map, map drill-down history stack, playback, and UI panel open/close state. What is persisted (localStorage key: `kathala-ui`) is exactly what `partialize` in `src/store/index.ts` returns — read it there rather than from a list here, which went stale: at last count `activeWorldId`, `activeEventId`, `eventByWorld`, `openingByWorld`, `sidebarOpen`, `navPinned`, `binderOpen`, `barScope`, `barCollapsed`, `searchWholeWord`, `theme` and `readingType`.
 
 ### Snapshot model
 State is stored as explicit snapshot records — not computed. **Every snapshot keys on `eventId`, i.e. per scene, not per chapter** (check the interfaces in `src/types/`; this file said chapter for a long time and the code never did):
@@ -218,6 +218,13 @@ nothing else happened to match yet. A failure that appears under one ordering
 and not another is this, not a flake. Reach through `page.getByRole('main')`,
 through the dialog, through the row — or pass `exact: true` where the name
 really is the whole name.
+
+On a chapter screen `main` is not narrow enough on its own. The binder sits
+inside it and repeats every chapter and scene title as a `treeitem`, *ahead of*
+the scene cards — so `main.getByText(title)` finds two, and a `.first()` quietly
+takes the binder's row rather than the card. Seven specs broke on it the day the
+binder landed. Reach a scene card through its title button:
+`main.getByRole('button', { name, exact: true })`.
 
 The same trap works in reverse, from the app side: **giving a control a name
 another screen already uses** makes every unscoped lookup ambiguous *across a

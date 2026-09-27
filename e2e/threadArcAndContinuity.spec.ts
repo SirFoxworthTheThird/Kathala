@@ -59,7 +59,7 @@ async function setupDanglingThread(page: Page) {
   // Tag only the chapter-1 scene.
   await gotoTimeline()
   await page.getByTitle('Open chapter detail').first().click()
-  await main.getByText('Casing the vault', { exact: true }).click()
+  await main.getByRole('button', { name: 'Casing the vault', exact: true }).click()
   // A scene with no threads on it does not draw the Plot Threads section any
   // more — it is offered as a chip instead, so open it first.
   await main.getByRole('button', { name: '+ Plot Threads' }).click()

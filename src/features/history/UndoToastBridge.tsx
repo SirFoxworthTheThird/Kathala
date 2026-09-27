@@ -22,7 +22,13 @@ export function UndoToastBridge({ worldId }: { worldId: string | null }) {
   useEffect(() => {
     return onDeletion((notice) => {
       if (notice.worldId !== worldId) return
-      const name = typeof notice.payload.name === 'string' ? notice.payload.name.trim() : ''
+      /*
+        Scenes and chapters carry a `title`, not a `name`, so deleting one
+        said only "Deleted scene" — which is the least useful sentence to show
+        when the delete was one stray keypress in the binder.
+      */
+      const named = notice.payload.name ?? notice.payload.title
+      const name = typeof named === 'string' ? named.trim() : ''
       const label = ENTITY_LABEL[notice.entityType] ?? 'record'
       const message = notice.count > 1
         ? `Deleted ${notice.count} ${label}s`

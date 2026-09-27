@@ -166,7 +166,7 @@ test.describe('Calendar view', () => {
 
     await page.goto(`/#/worlds/${worldId}/timeline/ch`, { waitUntil: 'load' })
     const main = page.getByRole('main')
-    await expect(main.getByText('Thirty days on')).toBeVisible({ timeout: 30000 })
+    await expect(main.getByRole('button', { name: 'Thirty days on', exact: true })).toBeVisible({ timeout: 30000 })
     // Day 30 is the 31st day: the last day of January.
     await expect(main.getByText('31 January, 1')).toBeVisible()
     // Day 31 is the named day, and it carries no number.

@@ -40,15 +40,28 @@ interface EventCardProps {
   inWorldDay?: number
   /** The world's calendar, when it has one (CD-3) — the day chip becomes a date. */
   calendar?: WorldCalendar | null
+  /**
+   * Changes each time the binder sends the writer to this scene: the card opens
+   * and scrolls to the top of its column. A counter rather than a flag, so going
+   * to the same scene twice still arrives.
+   */
+  revealNonce?: number
 }
 
 export function EventCard({
-  event, isFirst, isLast, onMoveUp, onMoveDown, moveUpHint, moveDownHint, inWorldDay, calendar,
+  event, isFirst, isLast, onMoveUp, onMoveDown, moveUpHint, moveDownHint, inWorldDay, calendar, revealNonce,
 }: EventCardProps) {
   const gate = useGate()
   /** Names the card's icon buttons, which are otherwise identical across scenes. */
   const eventName = event.title ? `“${event.title}”` : 'this untitled scene'
   const [expanded, setExpanded] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!revealNonce) return
+    setExpanded(true)
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    cardRef.current?.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' })
+  }, [revealNonce])
   const [editing, setEditing] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [title, setTitle] = useState(event.title)
@@ -380,7 +393,7 @@ export function EventCard({
   const hasSummary = involvedChars.length > 0 || currentLocation !== null || tags.length > 0
 
   return (
-    <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+    <div ref={cardRef} className="scroll-mt-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
       {/* Header row */}
       <div className="flex items-center gap-1 px-3 py-2">
         {/*

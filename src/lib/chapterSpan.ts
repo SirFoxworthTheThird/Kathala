@@ -6,11 +6,12 @@
  * book.
  *
  * The finding blamed global numbering across timelines. That is not what the
- * app does: `nextNumber` is `chapters.length + 1` for the *current* timeline,
- * so chapters added through the UI restart at one per timeline. A world can
- * still hold any numbering at all — the shipped examples are authored with the
- * book's own, and an import carries whatever it was given — so the header has
- * to describe what is there rather than assume where it came from.
+ * app does: a new chapter is suggested one past the highest in its *own*
+ * timeline, so a new timeline starts at one. But the writer can type any
+ * number — a second volume starting at chapter twelve is a thing to be able to
+ * say — the shipped examples are authored with the book's own numbering, and an
+ * import carries whatever it was given. So the header has to describe what is
+ * there rather than assume where it came from.
  *
  * The span is only spelled out when the timeline does not start at chapter one,
  * because "10 chapters · Ch. 1–10" tells you nothing you did not already have.

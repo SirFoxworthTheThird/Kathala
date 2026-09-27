@@ -19,6 +19,7 @@ import { ChapterRow } from './ChapterRow'
 import { BulkActionToolbar } from './BulkActionToolbar'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { AddChapterDialog } from './AddChapterDialog'
+import { nextChapterNumber } from '@/lib/chapterNumbering'
 import { ChapterAIDialog } from './ChapterAIDialog'
 import { PacingCurve } from './PacingCurve'
 import { TimelineRelationshipPanel } from './TimelineRelationshipPanel'
@@ -590,7 +591,7 @@ export default function TimelineView() {
           onOpenChange={setAddChapterOpen}
           worldId={worldId}
           timelineId={currentTimelineId}
-          nextNumber={chapters.length + 1}
+          chapters={chapters}
         />
       )}
       {worldId && currentTimelineId && !isAll && currentTimeline && (
@@ -601,7 +602,7 @@ export default function TimelineView() {
           worldName={world?.name ?? worldId}
           timelineId={currentTimelineId}
           timelineName={currentTimeline.name}
-          nextNumber={chapters.length + 1}
+          nextNumber={nextChapterNumber(chapters)}
           existingChapters={chapters}
         />
       )}

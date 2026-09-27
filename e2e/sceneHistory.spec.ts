@@ -28,7 +28,7 @@ test.describe('Scene revision history', () => {
 
     // Expand the event card and write the first draft.
     const main = page.getByRole('main')
-    await main.getByText('Scene A', { exact: true }).click()
+    await main.getByRole('button', { name: 'Scene A', exact: true }).click()
     const editor = main.getByPlaceholder(/Write or paste this scene/)
     await editor.fill('The quick brown fox.')
     await editor.blur()
@@ -84,7 +84,7 @@ test.describe('Scene revision history', () => {
     await page.getByRole('button', { name: 'Add Scene' }).last().click()
 
     const main = page.getByRole('main')
-    await main.getByText('Scene A', { exact: true }).click()
+    await main.getByRole('button', { name: 'Scene A', exact: true }).click()
     const editor = main.getByPlaceholder(/Write or paste this scene/)
     // The first draft must be committed before the second replaces it, or the
     // two writes race, both read "nothing stored yet", and neither captures a
