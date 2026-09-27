@@ -392,7 +392,13 @@ export async function moveEventOnBoard(
   const fromChapterId = moved.chapterId
   const crossesChapter = fromChapterId !== toChapterId
 
-  await db.transaction('rw', [db.events, db.operations, db.tombstones], async () => {
+  /*
+    One act, so one undo. A move into another chapter writes two operations —
+    the chapter, then the position — and ungrouped they took two Ctrl+Zs to put
+    back: the first restored the position and left the scene in the wrong
+    chapter.
+  */
+  await journalGroup(() => db.transaction('rw', [db.events, db.operations, db.tombstones], async () => {
     // Target column: current order (moved card excluded when arriving from
     // elsewhere), then insert the moved card at the requested index.
     const targetEvents = (await db.events.where('chapterId').equals(toChapterId).toArray())
@@ -414,7 +420,7 @@ export async function moveEventOnBoard(
       await journalUpdate('event', db.events, id, { sortOrder, updatedAt: Date.now() })
     }
 
-  })
+  }))
 
   // Renumbering shifts snapshot sortKeys for every card whose sortOrder moved,
   // and a cross-chapter move changes the moved card's chapter number too.
