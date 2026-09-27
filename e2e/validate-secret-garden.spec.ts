@@ -52,7 +52,8 @@ test.describe('Secret Garden Visual Validation', () => {
     await settle(page)
     await shot(page, testInfo, '03-timeline.png')
     // Verify Ch.7 title fix
-    await expect(main.getByText('The Key in the Garden')).toBeVisible()
+    // The whole book's chapter row — the binder beside it names the chapter too.
+    await expect(main.getByRole('button', { name: /The Key in the Garden/ })).toBeVisible()
     console.log('Ch.7 title verified')
 
     // Maps

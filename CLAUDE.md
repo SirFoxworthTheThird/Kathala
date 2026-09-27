@@ -219,12 +219,20 @@ and not another is this, not a flake. Reach through `page.getByRole('main')`,
 through the dialog, through the row — or pass `exact: true` where the name
 really is the whole name.
 
-On a chapter screen `main` is not narrow enough on its own. The binder sits
-inside it and repeats every chapter and scene title as a `treeitem`, *ahead of*
-the scene cards — so `main.getByText(title)` finds two, and a `.first()` quietly
-takes the binder's row rather than the card. Seven specs broke on it the day the
-binder landed. Reach a scene card through its title button:
+On the Timeline `main` is not narrow enough on its own — the whole book and a
+chapter alike, since the binder is the screen's frame. It sits inside `main` and
+repeats chapter titles, and the scene titles of every chapter opened in it, as
+`treeitem`s *ahead of* the list and the cards — so `main.getByText(title)` finds
+two, and a `.first()` quietly takes the binder's row. It also keeps what was
+opened while you move between the whole book and chapters, so a scene title
+visited earlier in a spec is still there on the whole book. Eleven specs broke on
+it across two changes. Reach a scene card or a list row through its button:
 `main.getByRole('button', { name, exact: true })`.
+
+On a narrow screen the binder column is not in the page at all — it is rendered
+only where it is shown, with `useMediaQuery`, rather than hidden with CSS. A
+hidden copy is invisible to a person and still the first match for a lookup,
+which then finds it hidden.
 
 The same trap works in reverse, from the app side: **giving a control a name
 another screen already uses** makes every unscoped lookup ambiguous *across a

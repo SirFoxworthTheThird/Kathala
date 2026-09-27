@@ -19,6 +19,8 @@ import { ChapterRow } from './ChapterRow'
 import { BulkActionToolbar } from './BulkActionToolbar'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { AddChapterDialog } from './AddChapterDialog'
+import { BinderToggle } from './TimelineScreen'
+import { ALL_TIMELINES, useTimelineScreen } from './timelineScreenContext'
 import { nextChapterNumber } from '@/lib/chapterNumbering'
 import { ChapterAIDialog } from './ChapterAIDialog'
 import { PacingCurve } from './PacingCurve'
@@ -102,7 +104,6 @@ function ChronologicalList({ events, chapters, timelines, activeEventId, onSelec
 // Every timeline's events merged into one chronological sequence, each row
 // tagged with the timeline it belongs to, so the real order across storylines
 // is visible in one place. Ordering is computed by buildCombinedSequence.
-const ALL_TIMELINES = '__all__'
 
 function CombinedList({ rows, activeEventId, onSelect }: {
   rows: CombinedRow[]
@@ -167,7 +168,12 @@ export default function TimelineView() {
   const gate = useGate()
   const { worldId } = useParams<{ worldId: string }>()
   const timelines = useTimelines(worldId ?? null)
-  const [activeTimelineId, setActiveTimelineId] = useState<string | null>(null)
+  /*
+    The tab lives in the Timeline screen's frame, not here: this page is swapped
+    out for a chapter and back, and the tab — and the binder, which lists the
+    same timeline — has to still be on the timeline you were in.
+  */
+  const { timelineTab: activeTimelineId, setTimelineTab: setActiveTimelineId } = useTimelineScreen()
   // The combined "All timelines" scope only makes sense with 2+ timelines; if
   // the count drops to one (e.g. after a delete), fall back to that timeline.
   const isAll = activeTimelineId === ALL_TIMELINES && timelines.length > 1
@@ -345,6 +351,7 @@ export default function TimelineView() {
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
         <div className="flex flex-wrap items-center gap-2">
+          <BinderToggle />
           <Layers className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
           {isAll ? (
             <>

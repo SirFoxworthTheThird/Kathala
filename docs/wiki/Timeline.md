@@ -18,9 +18,11 @@ A **pacing curve** across the top plots dramatic tension chapter by chapter once
 
 ## The timeline page
 
+**The Timeline is one screen.** The [binder](#the-binder) runs down the left and stays there; the right-hand side is either the **whole book** — what this section describes, and what the Timeline opens on — or **one chapter**, where you write. Click a chapter or a scene in the binder to go to it, and **Whole book** at the top of the binder to come back.
+
 - **Narrative vs. Chronological** — toggle between reading order and in-world order (useful with flashbacks or in-world dates).
 - **Add Chapter**, **New Timeline**, and **Generate with AI** live in the header.
-- **Click an event** to move the time cursor to that exact moment.
+- **Click an event** to open it out; **View from here** inside it moves the time cursor to that exact moment. A click alone leaves the cursor where it is, so reading down the list does not keep changing every other screen.
 - Each chapter row has an **open** button for its detail page.
 - **Select events** with their checkboxes; **Shift+click** selects a range. The bulk toolbar moves the selection to another chapter, adds a tag, or deletes it.
 - Once you have [plot threads](Plot-Threads), a **filter row of thread pills** appears above the chapters in Narrative view.
@@ -106,7 +108,7 @@ The right side holds:
 
 ### The binder
 
-The left side holds the **binder**: every chapter in this timeline, with the one you are in opened to show its scenes. Click a scene to go there — its card opens and comes to the top, and the time cursor moves to it, so the Character States follow the scene you are writing. Click a chapter to go to that chapter.
+The **binder** is the left edge of the whole Timeline screen: every chapter in this timeline, with the one you are in opened to show its scenes. Click a scene to go there — its card opens and comes to the top, and the time cursor moves to it, so the Character States follow the scene you are writing. Click a chapter to go to that chapter.
 
 | Key | In the binder |
 |---|---|
@@ -118,7 +120,9 @@ The left side holds the **binder**: every chapter in this timeline, with the one
 
 **New scene** and **New chapter** under the list do the same with a mouse; a new chapter's number is filled in with the next free one and can be changed, with the same rule as *Add Chapter*. A title started and then clicked away from is kept. A new scene is only a title — say where it happens and who is in it with [the scene header](#the-scene-header).
 
-Chapters are not deleted from the binder, since a chapter takes every scene in it; that stays on its Timeline row. The **binder** button beside *Back* hides and shows it and remembers the choice. It appears on wide screens only, where there is room beside the writing.
+Chapters are not deleted from the binder, since a chapter takes every scene in it; that stays on its row in the whole book. With more than one timeline the binder says which it is listing, and the whole book's timeline tab is still picked when you come back from a chapter.
+
+The **binder** button hides and shows it and remembers the choice. On a phone there is no room for a column: the whole book needs none, and on a chapter the same button opens the binder as a drawer, which closes once it has taken you somewhere.
 
 While reading, the binder lists only what you have reached, and going to a scene does not move your place in the book.
 
