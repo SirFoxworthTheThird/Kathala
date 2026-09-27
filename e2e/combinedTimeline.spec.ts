@@ -48,8 +48,10 @@ test('All timelines tab shows events from every timeline in one sequence', async
   // the reading-order merge, matching the bottom bar's default scope.
   const main = page.getByRole('main')
   await expect(main.getByText('Every timeline merged in reading order', { exact: false })).toBeVisible()
-  await expect(main.getByText('Alpha scene', { exact: true })).toBeVisible()
-  await expect(main.getByText('Beta scene', { exact: true })).toBeVisible()
+  // The merged list's rows, by role: the binder beside it keeps the chapter this
+  // test opened, and so shows "Alpha scene" too.
+  await expect(main.getByRole('button', { name: /Alpha scene/ })).toBeVisible()
+  await expect(main.getByRole('button', { name: /Beta scene/ })).toBeVisible()
   await expect(main.getByText(/2 timelines · 2 chapters/)).toBeVisible()
 
   // Each row is tagged with the timeline it belongs to.

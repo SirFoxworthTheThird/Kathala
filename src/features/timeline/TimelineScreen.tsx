@@ -9,6 +9,7 @@ import { useChapter, useChapters, useTimelines, useWorldEvents } from '@/db/hook
 import { activateEvent } from '@/components/timeline/TimelineControls'
 import type { Chapter, WorldEvent } from '@/types'
 import { Binder } from './Binder'
+import { useMediaQuery, WIDE } from '@/lib/useMediaQuery'
 import { ALL_TIMELINES, useTimelineScreen, type TimelineScreenContext } from './timelineScreenContext'
 
 /**
@@ -38,6 +39,13 @@ export default function TimelineScreen() {
   const chapter = useChapter(chapterId ?? null)
   const [timelineTab, setTimelineTab] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  /*
+    The column and the drawer are each rendered only where they are used,
+    rather than both being in the page with one hidden. A hidden copy of the
+    binder is invisible to a person and still found by everything else.
+  */
+  const wide = useMediaQuery(WIDE)
+  useEffect(() => { if (wide) setDrawerOpen(false) }, [wide])
 
   /*
     Visiting a chapter makes its timeline the whole book's tab, so coming back
@@ -117,10 +125,10 @@ export default function TimelineScreen() {
 
   return (
     <div className="flex h-full min-h-0 flex-col lg:flex-row">
-      {binder && binderOpen && (
+      {binder && binderOpen && wide && (
         <div
           id="timeline-binder"
-          className="hidden border-[hsl(var(--border))] lg:flex lg:w-56 lg:shrink-0 lg:flex-col lg:overflow-hidden lg:border-r"
+          className="flex w-56 shrink-0 flex-col overflow-hidden border-r border-[hsl(var(--border))]"
         >
           {binder}
         </div>
@@ -130,9 +138,9 @@ export default function TimelineScreen() {
           <Outlet context={context} />
         </Suspense>
       </div>
-      {binder && (
+      {binder && !wide && (
         <Dialog open={drawerOpen} onOpenChange={setDrawerOpen}>
-          <DialogContent className="flex max-h-[85dvh] flex-col p-0 lg:hidden">
+          <DialogContent className="flex max-h-[85dvh] flex-col p-0">
             <DialogHeader className="mb-0 border-b border-[hsl(var(--border))] px-4 py-3">
               <DialogTitle>Chapters and scenes</DialogTitle>
             </DialogHeader>
@@ -147,7 +155,7 @@ export default function TimelineScreen() {
 /**
  * The binder's own button, in whichever page is on the right.
  *
- * Two buttons with one name, only one of them ever displayed. On a wide screen
+ * One button, doing what the width allows. On a wide screen
  * it shows and hides the column, and remembers. On a narrow one there is no
  * column, and — on a chapter, where the binder is the only way round — it opens
  * the binder as a drawer instead. The whole book is its own way round, so there
@@ -157,12 +165,13 @@ export function BinderToggle({ drawer = false }: { drawer?: boolean }) {
   const binderOpen = useAppStore((st) => st.binderOpen)
   const setBinderOpen = useAppStore((st) => st.setBinderOpen)
   const { openBinderDrawer } = useTimelineScreen()
-  return (
-    <>
+  const wide = useMediaQuery(WIDE)
+  if (wide) {
+    return (
       <Button
         variant="ghost"
         size="icon"
-        className="hidden h-8 w-8 shrink-0 lg:inline-flex"
+        className="h-8 w-8 shrink-0"
         aria-label="Binder"
         aria-expanded={binderOpen}
         aria-controls="timeline-binder"
@@ -171,19 +180,20 @@ export function BinderToggle({ drawer = false }: { drawer?: boolean }) {
       >
         <PanelLeft className="h-4 w-4" />
       </Button>
-      {drawer && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 shrink-0 lg:hidden"
-          aria-label="Binder"
-          aria-haspopup="dialog"
-          title="Chapters and scenes"
-          onClick={openBinderDrawer}
-        >
-          <PanelLeft className="h-4 w-4" />
-        </Button>
-      )}
-    </>
+    )
+  }
+  if (!drawer) return null
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-8 w-8 shrink-0"
+      aria-label="Binder"
+      aria-haspopup="dialog"
+      title="Chapters and scenes"
+      onClick={openBinderDrawer}
+    >
+      <PanelLeft className="h-4 w-4" />
+    </Button>
   )
 }
