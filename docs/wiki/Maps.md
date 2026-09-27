@@ -76,7 +76,7 @@ A location's panel stores its description, event-based **condition and notes**, 
 
 It used to. Places were pins, so a world with no map could hold none — a scene had no **Setting**, a character's **Current Location** had nothing in it, and the `@` picker would not make one. A novel set in a kitchen and an office could record neither.
 
-A place can now exist in the story before it exists anywhere on paper. Name one with `@` while writing and it is simply made; scenes happen there, characters are there, the Writer's Brief and the [Continuity Checker](Continuity-Checker) know it. **The pin is something a place gains, not something it is.**
+A place can now exist in the story before it exists anywhere on paper. Name one with `@` while writing and it is simply made, or use **Add a place** on the map screen when there is no map yet at all; scenes happen there, characters are there, the Writer's Brief and the [Continuity Checker](Continuity-Checker) know it. **The pin is something a place gains, not something it is.**
 
 **On the map** in a place's panel chooses which map it belongs to, or *Not on a map yet*. Pins land at the centre of the map they join, to be dragged where they belong, and places still waiting appear on the map screen under **Not on a map yet** beside the ones already placed.
 

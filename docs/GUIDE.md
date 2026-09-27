@@ -1038,18 +1038,18 @@ full name. Whichever you were writing is what you keep.
 If nothing answers what you've typed, the last rows offer to **make it**:
 *new character*, *new item*, *new place*. The record is created and attached in
 one step, so a name you invent mid-sentence doesn't cost you the sentence. A new
-place needs somewhere to be a pin, so that row appears only once your world has
-a map — [places go on maps and sub-maps that already exist](#maps), and nowhere
-else. The prompt inside the empty box says which kinds are on offer, so it never
-names a place in a world that cannot hold one, and it names `@@` too, since a sigil
-nobody can see is a sigil nobody finds. Where there is a map, the pin
-lands in the middle of it, ready to be dragged where it belongs; if the scene
-already has a place, the new pin goes on that place's map rather than the
-world's first.
+place is offered whether or not your world has a map: where there is one the pin
+lands in the middle of it, ready to be dragged where it belongs — and if the
+scene already has a place, on that place's map rather than the world's first —
+and where there is none, the place is simply made, to be [put on a map the day
+you draw one](#maps). The hint under the box names the sigils, since one nobody
+can see is one nobody finds.
 
 **The line at the top of a scene says where it happens and who is there.**
 
     [#The Kitchen @@Wren Halloway @@Sal'ka]
+
+![The scene header line, and the records it is a view of](images/66-scene-header.png)
 
 Type it as the first line of a scene and Kathala records all of it at once: the
 setting, and everyone present. It is the one way to say a character is in the
@@ -1063,17 +1063,32 @@ in the panel beside it, or the Setting chip, or with `@@` while writing, and the
 line already says so — there is only one copy of the fact, and this is a view of
 it.
 
-Edit the line and the records follow. Remove a name and that character leaves
-the scene; delete the whole line and nothing changes, because clearing your
-screen is not the same as emptying your cast — it reappears where it was. A name
-nothing in your world answers is reported rather than acted on, and cannot
-create anybody: there is no picker inside the brackets to catch a typo, so it
-says so instead of quietly dropping somebody.
+The line is tinted, so you can see where it ends and your book begins.
+
+Edit the line and the records follow, a moment after you move off it. Remove a
+name and that character leaves the scene; delete the whole line and nothing
+changes, because clearing your screen is not the same as emptying your cast —
+it reappears where it was. **A bracketed line that names nobody and nowhere is
+prose**, so a note to yourself at the top of a draft stays a note.
+
+The picker works inside the brackets, which is the spell-check the line has:
+type `@@` and part of a name and it offers the people it could be, keeping the
+sigils when it fills one in. It will create somebody from in there too — inside
+a header there is nothing else naming a person could mean, so a single `@` is
+read the same as two.
+
+If you type a name nothing answers to — a letter out of place, or the comma
+most people put between names before they learn the line uses spaces — **the
+scene is left exactly as it was** and the line says so in amber. Nobody leaves
+the room over a typo, and what you typed stays on the line, so the repair is
+the one letter rather than the whole name.
 
 **Type `@@` to say somebody is *in the room*.** A single `@` records a mention
 — the name occurs in this scene. Two say the character is present, and they
-join the scene's cast: the map places them, the Writer's Brief lists them, and
-the Character States panel starts asking what state they are in. It is the one
+join the scene's cast: the map places them, and the Character States panel
+starts asking what state they are in. (The Writer's Brief lists whoever has a
+state *recorded* in the chapter, so somebody joins it once you have answered
+that panel for them — being in the cast is not enough.) It is the one
 thing you most often want to state mid-sentence, and it used to cost a trip to
 another panel.
 
@@ -1081,11 +1096,11 @@ Both sigils disappear, the same as one, so your manuscript never carries them.
 If the character was recorded as merely mentioned, saying they are present
 replaces that rather than sitting beside it — they cannot be both.
 
-Two deliberate limits. **`@@` offers people only**, because presence is about
-people; an item or a place "being present" is what the single `@` already
-means. And **`@@` never offers to create anybody**: asserting that somebody is
-in the room is a claim about a person who exists, and a new character is still
-one `@` away — and if you type `@@` for somebody who doesn't exist yet, it
+Two deliberate limits, both about `@@` **in the prose**. **`@@` offers people
+only**, because presence is about people; an item or a place "being present" is
+what the single `@` already means. And out here **`@@` never offers to create
+anybody**: asserting that somebody is in the room is a claim about a person who
+exists, and a new character is still one `@` away — and if you type `@@` for somebody who doesn't exist yet, it
 says so rather than going quiet, and points you at the single `@` that would
 make them. Kathala never reads your prose to decide any of this — fiction is
 full of *"she was not there"* and *"he imagined her at the gate"*, so it is the
@@ -1722,6 +1737,11 @@ So a place can now exist in the story before it exists anywhere on paper. Name
 one with `@` while writing and it is simply made; scenes happen there,
 characters are there, the Writer's Brief and the Continuity Checker know it.
 The pin is something a place **gains**, not something it is.
+
+**Making one when you have no map at all.** The map screen offers **Add a
+place**, which names one that is on no map — so a book set in a kitchen and an
+office can be recorded before a single picture exists. (The screen used to say
+the opposite, and sent people looking for a route that was in front of them.)
 
 **Putting one on a map, later or never.** Open a place and **On the map**
 chooses which map it belongs to — or *Not on a map yet*, which is where it

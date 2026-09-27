@@ -392,7 +392,7 @@ export default function ChapterDetailView() {
   // ordinary rather than a finding — so the roll-call of them is folded away by
   // default (CD-1) instead of being the panel's dominant content.
   const missingSnapshots = charactersNotInChapter(characters, sortedEvents, allSnapshots)
-  const anyState = hasAnyCharacterState(sortedEvents, allSnapshots)
+  const anyState = hasAnyCharacterState(sortedEvents, allSnapshots, characters)
 
   return (
     <div className="flex h-full flex-col">

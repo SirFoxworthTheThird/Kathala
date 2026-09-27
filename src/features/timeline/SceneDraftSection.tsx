@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { PenLine, History, Maximize2, Plus } from 'lucide-react'
 import { wordCount, detectMentions } from '@/lib/manuscript'
-import { formatSceneHeader, parseSceneHeader, splitSceneHeader } from '@/lib/sceneHeader'
+import { formatSceneHeader, parseSceneHeader, splitSceneDraft } from '@/lib/sceneHeader'
 import { splitParagraphs } from '@/lib/manuscriptParagraphs'
 import { useSceneText, setSceneText } from '@/db/hooks/useManuscript'
 import { useSceneRevisions } from '@/db/hooks/useSceneRevisions'
@@ -61,13 +61,30 @@ export function SceneDraftSection({
   useEffect(() => { latestDraft.current = draft }, [draft])
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   /*
+    The header the box is currently showing, and whether the caret is still
+    inside it. The autosave applies the line as well as the prose now, and these
+    two are what let it: a declaration is safe to act on once the writer has
+    moved off it.
+  */
+  const pendingHeader = useRef<string>('')
+  const caretInHeader = useRef(false)
+  /*
     Names in the header that nothing in the world answers.
 
     Silence here would be the same fault `@@` had until this morning: the
     header is typed blind, with no picker to correct a spelling, so a typo
     would simply drop a character out of the scene with nothing said.
   */
-  const [headerUnknown, setHeaderUnknown] = useState<string[]>([])
+  /*
+    Split into people and place because they are answered differently, and the
+    message used to claim otherwise: it said "the rest of the line was
+    recorded" while an unmatched name was quietly taking somebody out of the
+    scene. Nothing is recorded now when a name misses, so the sentence has to
+    say which half was left alone.
+  */
+  const [headerUnknown, setHeaderUnknown] = useState<{ names: string[]; place: string | null }>(
+    { names: [], place: null },
+  )
   /**
    * The header line *while the writer is editing it*, and null the rest of the
    * time — meaning "show the one drawn from the records".
@@ -164,6 +181,18 @@ export function SceneDraftSection({
     if (suggestion.type === 'create') {
       if (suggestion.kind === 'character') {
         const created = await createCharacter({ worldId, name: suggestion.name, description: '' })
+        /*
+          Created from inside the header, they are *present*, not mentioned —
+          the line has no weaker claim to make. The header would say so on the
+          next blur anyway; saying it here means the record is never briefly
+          wrong, and never wrong at all if the writer closes the tab first.
+        */
+        if (intent === 'present') {
+          await updateEvent(eventId, {
+            involvedCharacterIds: [...new Set([...event.involvedCharacterIds, created.id])],
+          })
+          return
+        }
         onAddMention(created.id)
         return
       }
@@ -266,9 +295,15 @@ export function SceneDraftSection({
    * A name nothing answers is reported and otherwise ignored — it cannot
    * create a character, for the same reason `@@` cannot.
    */
-  async function applyHeader(text: string) {
-    const { header } = splitSceneHeader(text)
-    if (!header) return
+  /** Whether the line was fully understood — false leaves it on screen as typed. */
+  async function applyHeader(header: string | null): Promise<boolean> {
+    /*
+      No header clears the warning as well as changing nothing. Returning
+      before this left the last accusation on screen describing an edit that
+      had since been deleted — and deleting the line is the gesture the guide
+      recommends for clearing your screen.
+    */
+    if (!header) { setHeaderUnknown({ names: [], place: null }); return true }
     const parsed = parseSceneHeader(header)
 
     const matches = (name: string, against: string, aliases?: string[]) =>
@@ -278,30 +313,47 @@ export function SceneDraftSection({
     const found = parsed.characters.map((n) => ({
       name: n, record: characters.find((c) => matches(n, c.name, c.aliases)),
     }))
-    const nextCast = found.flatMap((f) => (f.record ? [f.record.id] : []))
     const place = parsed.place
       ? markers.find((m) => matches(parsed.place!, m.name))
       : undefined
-    const unknown = [
-      ...found.filter((f) => !f.record).map((f) => f.name),
-      ...(parsed.place && !place ? [parsed.place] : []),
-    ]
-    setHeaderUnknown(unknown)
+    const unmatched = found.filter((f) => !f.record).map((f) => f.name)
+    const unknownPlace = parsed.place && !place ? parsed.place : null
+    setHeaderUnknown({ names: unmatched, place: unknownPlace })
+    const clean = unmatched.length === 0 && unknownPlace === null
 
     /*
       A place the header names but the world does not have keeps the setting
       it had: the writer meant to put the scene somewhere, and clearing it
       would answer a typo by throwing away the answer.
+
+      That sentence is true of people word for word, and people were the case
+      that dropped. `@@Juno Skeling` took Juno Skelling out of the scene, and
+      so did the comma a writer puts between names by habit — one mistyped
+      letter, and somebody was no longer in the room. So a header naming
+      anybody this world cannot answer leaves the cast alone and says so; the
+      names stay on the line, where the letter can be fixed in place.
     */
+    const nextCast = unmatched.length > 0
+      ? involvedIds
+      : found.flatMap((f) => (f.record ? [f.record.id] : []))
     const nextPlace = parsed.place ? (place?.id ?? event.locationMarkerId) : null
     const castUnchanged = nextCast.length === involvedIds.length
       && nextCast.every((id, i) => involvedIds[i] === id)
-    if (castUnchanged && nextPlace === event.locationMarkerId) return
+    if (castUnchanged && nextPlace === event.locationMarkerId) return clean
 
     await updateEvent(eventId, {
       involvedCharacterIds: nextCast,
+      /*
+        Presence replaces a mention rather than sitting beside it, which is
+        what `@@` in the prose does and what the guide promises of both. The
+        header used to leave a character in the cast *and* in the mentioned
+        list — two mutually exclusive claims, in one record, that nothing
+        reported.
+      */
+      mentionedCharacterIds: mentionedIds.filter((id) => !nextCast.includes(id)),
       locationMarkerId: nextPlace,
     })
+    return clean
   }
 
   async function saveScene() {
@@ -328,15 +380,34 @@ export function SceneDraftSection({
     the chapter. `setSceneText` coalesces revisions over two minutes, so a
     burst of autosaves is still one entry in History.
   */
-  function handleChange(next: string) {
-    const { header, body } = splitSceneHeader(next)
+  function handleChange(next: string, caret: number) {
+    const { header, body } = splitSceneDraft(next, shownHeader)
     // An empty string rather than null when the line has been deleted: null
     // means "render it from the records", which would put it straight back.
     setHeaderDraft(header ?? '')
     setDraft(body)
     latestDraft.current = body
+    pendingHeader.current = header ?? ''
+    const at = header ? next.indexOf(header) : -1
+    caretInHeader.current = at >= 0 && caret >= at && caret <= at + header!.length
     if (saveTimer.current) clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => { saveTimer.current = null; void saveScene() }, AUTOSAVE_MS)
+    saveTimer.current = setTimeout(() => {
+      saveTimer.current = null
+      void saveScene()
+      /*
+        The prose autosave used to be the only half that ran, and it printed
+        "Draft auto-saved" over a declaration it had not saved: blur was the
+        only thing that ever applied the line, so a writer who typed a header,
+        wrote the scene under it and reloaded kept every word of the prose and
+        lost the cast and the setting. It looked like a scene that never had a
+        header.
+
+        Not while the caret is still in the line, though — that is somebody
+        mid-word, and the point of applying on a beat rather than a keystroke
+        is to not read `@@Wr` as a claim about who is in the room.
+      */
+      if (!caretInHeader.current) void applyHeader(pendingHeader.current)
+    }, AUTOSAVE_MS)
   }
 
   useEffect(() => () => {
@@ -388,11 +459,22 @@ export function SceneDraftSection({
         onBlur={() => {
           // Apply, then hand the line back to the records so it re-renders
           // from what was actually stored rather than from what was typed.
-          void applyHeader(sceneValue).then(() => setHeaderDraft(null))
+          caretInHeader.current = false
+          /*
+            Handing the line back to the records is what makes it a view of
+            them — but only once they can answer for all of it. A name this
+            world does not have stays on screen as typed, because the repair is
+            "fix one letter", and re-rendering erased the letter along with the
+            name: the amber line named somebody who was no longer anywhere on
+            screen, and the writer had to work out who was missing and retype
+            them in full.
+          */
+          void applyHeader(shownHeader).then((clean) => { if (clean) setHeaderDraft(null) })
           void saveScene()
         }}
         candidates={candidates}
         canCreateLocation={canCreateLocation}
+        headerRange={shownHeader ? { start: 0, end: shownHeader.length } : null}
         onPick={(s, intent) => { void handlePick(s, intent) }}
         placeholder={`Write or paste this scene's prose… (@ names a character${canCreateLocation ? ', item or place' : ' or item'}; @@ says who is here)`}
         ariaLabel="Scene prose"
@@ -449,10 +531,34 @@ export function SceneDraftSection({
         until this morning. It does not offer to create them: asserting that
         somebody is in the room is a claim about a person who exists.
       */}
-      {headerUnknown.length > 0 && (
+      {/*
+        The placeholder is the only place in the app that names the sigils, and a
+        textarea shows one only while it is empty. A scene with any cast or any
+        place is never empty now — the header is in the box — and the first-run
+        guide puts your first character into your first scene, so the hint was
+        invisible from the first moment a writer opened the box.
+
+        So it is said here instead, under exactly the condition the placeholder
+        used to appear under: no prose yet. It goes when the prose arrives, which
+        is what the placeholder did.
+      */}
+      {sceneProse.trim() === '' && shownHeader !== '' && (
+        <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
+          @ names a character, item or place; @@ says who is here.
+        </p>
+      )}
+
+      {(headerUnknown.names.length > 0 || headerUnknown.place !== null) && (
         <p role="status" className="text-[11px] text-amber-400">
-          Nothing in this world is called {headerUnknown.map((n) => `“${n}”`).join(' or ')}
-          {' '}— the rest of the line was recorded.
+          Nothing in this world is called{' '}
+          {[...headerUnknown.names, ...(headerUnknown.place ? [headerUnknown.place] : [])]
+            .map((n) => `“${n}”`).join(' or ')}
+          {' '}— {headerUnknown.names.length > 0 && headerUnknown.place !== null
+            ? 'the scene was left as it was'
+            : headerUnknown.names.length > 0
+              ? 'the cast was left as it was'
+              : 'the setting was left as it was'}, so the spelling can be
+          fixed on the line.
         </p>
       )}
 
@@ -502,6 +608,7 @@ export function SceneDraftSection({
           worldId={event.worldId}
           eventId={event.id}
           title={event.title}
+          header={headerLine}
           initialText={sceneText?.text ?? ''}
           onExit={() => setFocusOpen(false)}
         />

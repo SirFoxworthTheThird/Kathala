@@ -66,12 +66,27 @@ export function charactersNotInChapter<T extends Named>(
 /**
  * Whether the panel has anything at all to say. False is the empty state
  * (EV-2), which used to be a blank column with no explanation in it.
+ *
+ * **Counting the ids is not asking the question.** A cast id outlives the
+ * character it names: `deleteCharacter` sweeps snapshots, movements,
+ * memberships, goals and relationships, and leaves the id sitting in every
+ * scene that had them — as a world import or a merge can too.
+ * `castWithoutState` resolves those ids and drops the ones that answer to
+ * nobody, so the panel's *contents* were right while the gate in front of it
+ * counted raw ids and said there was something to show. Delete the only
+ * character a chapter names and the panel went back to being the unexplained
+ * blank column this function exists to prevent.
+ *
+ * So it asks the same question the contents do, of the same list.
  */
-export function hasAnyCharacterState(
+export function hasAnyCharacterState<T extends Named>(
   events: readonly CastEvent[],
   snapshots: readonly StateRecord[],
+  characters: readonly T[],
 ): boolean {
+  const real = new Set(characters.map((c) => c.id))
   return events.some(
-    (e) => e.involvedCharacterIds.length > 0 || snapshots.some((s) => s.eventId === e.id),
+    (e) => e.involvedCharacterIds.some((id) => real.has(id))
+      || snapshots.some((s) => s.eventId === e.id && real.has(s.characterId)),
   )
 }

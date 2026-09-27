@@ -11,6 +11,17 @@ interface FocusModeProps {
   eventId: string
   /** Scene / event title shown in the slim header. */
   title: string
+  /**
+   * The scene's header line — `[#The Salt Court @@Teodora Vance]` — shown in the
+   * chrome, read-only.
+   *
+   * Focus mode is handed the prose by definition, so the surface this app calls
+   * its best writing surface said nothing at all about who was in the room or
+   * where the scene was. Read-only because editing it is the one direction that
+   * writes records, and the point of this screen is that nothing here does
+   * anything but take words. Empty string for a scene with no cast and no place.
+   */
+  header: string
   /** The scene's prose when focus mode opens. */
   initialText: string
   onExit: () => void
@@ -25,7 +36,7 @@ const AUTOSAVE_MS = 1000
  * and autosaves through setSceneText (so revisions and the writing log still fire).
  * Esc exits.
  */
-export function FocusMode({ worldId, eventId, title, initialText, onExit }: FocusModeProps) {
+export function FocusMode({ worldId, eventId, title, header, initialText, onExit }: FocusModeProps) {
   const [text, setText] = useState(initialText)
   const startWords = useMemo(() => wordCount(initialText), [initialText])
   const stats = focusStats(startWords, wordCount(text))
@@ -128,6 +139,22 @@ export function FocusMode({ worldId, eventId, title, initialText, onExit }: Focu
           <X className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
+      {/*
+        Set apart from the prose rather than sitting at the top of it, which is
+        the one thing the draft box cannot do: there, header and prose share a
+        textarea and therefore one text style, and nothing distinguishes the
+        line. Here it is plainly chrome.
+
+        The label is a prefix rather than an `aria-label`, which would replace
+        the line with a description of it and take the names off the screen for
+        anybody listening.
+      */}
+      {header && (
+        <p className="shrink-0 px-4 pb-2 text-xs text-[hsl(var(--muted-foreground))]">
+          <span className="sr-only">Where and who: </span>
+          {header}
+        </p>
+      )}
 
       {/* Writing surface */}
       <div ref={scrollerRef} className="relative flex-1 overflow-y-auto">
