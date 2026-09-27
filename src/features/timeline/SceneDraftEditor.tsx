@@ -253,8 +253,53 @@ export function SceneDraftEditor({
     }
   }
 
+  /*
+    **Which half of the box is the book.**
+
+    Header and prose share one `<textarea>`, and a textarea has one text style:
+    measured, the line rendered in the same serif at the same 14px in the same
+    colour as the sentence under it. Nothing distinguished it, and *that* is why
+    a margin note in brackets read as a declaration — because the line looks
+    like a first line, a first line looked like the line.
+
+    A class cannot fix it where it lives, so this is the thing that can: a mirror
+    laid under the textarea holding the same characters in the same metrics, with
+    the header's run tinted and everything else transparent. The tint therefore
+    wraps exactly as the text wraps, because it *is* the text, laid out twice.
+
+    Two properties of this box make it cheap. It auto-grows to its content and
+    carries `overflow-hidden`, so it never scrolls internally and there is no
+    scroll position to keep in step; and it is `bg-transparent`, so a background
+    behind it shows through. The mirror is `aria-hidden` and untouchable: the
+    real text is still the textarea's, one layer up.
+  */
+  const before = headerRange ? value.slice(0, headerRange.start) : value
+  const band = headerRange ? value.slice(headerRange.start, headerRange.end) : ''
+  const after = headerRange ? value.slice(headerRange.end) : ''
+
   return (
     <div className="relative">
+      {band && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words rounded-md border border-transparent px-3 py-2 text-sm leading-relaxed text-transparent"
+          style={{ fontFamily: 'var(--font-prose)' }}
+        >
+          {before}
+          {/*
+            `box-decoration-break: clone` so a header long enough to wrap is
+            tinted on every line it occupies rather than once across the whole
+            run — five names in one line is an ordinary header.
+          */}
+          <span
+            className="rounded bg-[hsl(var(--primary)/0.14)]"
+            style={{ boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' }}
+          >
+            {band}
+          </span>
+          {after}
+        </div>
+      )}
       <Textarea
         ref={taRef}
         value={value}
@@ -265,7 +310,7 @@ export function SceneDraftEditor({
         placeholder={placeholder}
         aria-label={ariaLabel}
         rows={rows}
-        className="resize-none overflow-hidden text-sm leading-relaxed"
+        className="relative resize-none overflow-hidden bg-transparent text-sm leading-relaxed"
         style={{ fontFamily: 'var(--font-prose)' }}
       />
       {/*

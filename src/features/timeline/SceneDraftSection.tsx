@@ -531,6 +531,23 @@ export function SceneDraftSection({
         until this morning. It does not offer to create them: asserting that
         somebody is in the room is a claim about a person who exists.
       */}
+      {/*
+        The placeholder is the only place in the app that names the sigils, and a
+        textarea shows one only while it is empty. A scene with any cast or any
+        place is never empty now — the header is in the box — and the first-run
+        guide puts your first character into your first scene, so the hint was
+        invisible from the first moment a writer opened the box.
+
+        So it is said here instead, under exactly the condition the placeholder
+        used to appear under: no prose yet. It goes when the prose arrives, which
+        is what the placeholder did.
+      */}
+      {sceneProse.trim() === '' && shownHeader !== '' && (
+        <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
+          @ names a character, item or place; @@ says who is here.
+        </p>
+      )}
+
       {(headerUnknown.names.length > 0 || headerUnknown.place !== null) && (
         <p role="status" className="text-[11px] text-amber-400">
           Nothing in this world is called{' '}

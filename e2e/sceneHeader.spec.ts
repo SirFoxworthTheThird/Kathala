@@ -301,6 +301,85 @@ test.describe('the scene header', () => {
     await expect.poll(async () => (await stored(page)).cast, { timeout: 20_000 }).toEqual(['wren', 'salka'])
   })
 
+  test('the line is tinted, and the tint sits where the line is', async ({ page }) => {
+    /*
+      H-7 was a measurement: header and prose share one textarea and therefore
+      one text style, so nothing distinguished the line and no class could. The
+      fix is a mirror laid under the box holding the same characters in the same
+      metrics, with the header's run tinted.
+
+      Measured rather than asserted from the class, because a tint that renders
+      somewhere other than on the line is worse than none: it would be pointing
+      at a sentence of somebody's book.
+    */
+    const worldId = await sceneWithCast(page)
+    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
+
+    const draft = page.getByRole('textbox', { name: 'Scene prose' })
+    await draft.fill("[#The Kitchen @@Wren Halloway @@Sal'ka]\n\nShe put the kettle on.")
+    await draft.blur()
+    await expect.poll(async () => (await stored(page)).cast, { timeout: 20_000 }).toEqual(['wren', 'salka'])
+
+    const band = page.locator('[aria-hidden="true"] span', { hasText: '#The Kitchen' }).first()
+    await expect(band).toBeAttached({ timeout: 20_000 })
+
+    const geometry = await page.evaluate(() => {
+      const ta = document.querySelector('textarea[aria-label="Scene prose"]') as HTMLTextAreaElement
+      const span = [...document.querySelectorAll('[aria-hidden="true"] span')]
+        .find((el) => el.textContent?.includes('#The Kitchen')) as HTMLElement
+      const t = ta.getBoundingClientRect()
+      const b = span.getBoundingClientRect()
+      const ts = getComputedStyle(ta)
+      const ss = getComputedStyle(span)
+      /*
+        Where the textarea's *first line of text* is, derived from the box rather
+        than written down: the content box starts below the border and padding,
+        and the line it holds is one line-height tall. An inline span's rect is
+        its em box, which sits inside that line box by the half-leading, so the
+        claim worth making is containment — the band is on the first line and
+        does not reach into the prose under it.
+      */
+      const lineTop = t.top + parseFloat(ts.borderTopWidth) + parseFloat(ts.paddingTop)
+      const lineBottom = lineTop + parseFloat(ts.lineHeight)
+      return {
+        tinted: ss.backgroundColor,
+        startsOnFirstLine: b.top >= lineTop - 1,
+        endsOnFirstLine: b.bottom <= lineBottom + 1,
+        sameFont: ss.fontFamily === ts.fontFamily && ss.fontSize === ts.fontSize,
+        insideTheBox: b.left >= t.left && b.right <= t.right,
+      }
+    })
+
+    // A real colour, not `rgba(0, 0, 0, 0)`.
+    expect(geometry.tinted).not.toBe('rgba(0, 0, 0, 0)')
+    expect(geometry.tinted).toMatch(/^rgba?\(/)
+    expect(geometry).toMatchObject({
+      startsOnFirstLine: true,
+      endsOnFirstLine: true,
+      sameFont: true,
+      insideTheBox: true,
+    })
+  })
+
+  test('and there is no tint on a scene with no line to tint', async ({ page }) => {
+    // The absence half. Vacuity cannot satisfy both.
+    const worldId = await sceneWithCast(page)
+    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
+
+    const draft = page.getByRole('textbox', { name: 'Scene prose' })
+    await expect(draft).toBeVisible({ timeout: 20_000 })
+    await draft.fill('She put the kettle on.')
+    await draft.blur()
+
+    // The mirror is only built when there is a band to draw in it.
+    await expect(page.locator('[aria-hidden="true"]', { hasText: 'She put the kettle on.' }))
+      .toHaveCount(0)
+  })
+
   test('Focus mode says where the scene is and who is in it', async ({ page }) => {
     /*
       H-8. Focus mode is handed the prose by definition, so the surface the app
