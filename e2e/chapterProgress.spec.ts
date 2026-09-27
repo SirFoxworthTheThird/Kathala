@@ -41,7 +41,7 @@ async function seedChapter(page: Page, worldName: string, statuses: string[]) {
 /** Write prose into the named scene from the chapter detail screen. */
 async function writeScene(page: Page, title: string, prose: string) {
   const main = page.getByRole('main')
-  await main.getByText(title, { exact: true }).click()
+  await main.getByRole('button', { name: title, exact: true }).click()
   const editor = main.getByPlaceholder(/Write or paste this scene/)
   await editor.fill(prose)
   await editor.blur()

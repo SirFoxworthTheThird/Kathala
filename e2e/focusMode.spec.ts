@@ -28,7 +28,7 @@ test.describe('Focus mode', () => {
 
     // Expand the card and seed some prose, then enter focus mode.
     const main = page.getByRole('main')
-    await main.getByText('The gate', { exact: true }).click()
+    await main.getByRole('button', { name: 'The gate', exact: true }).click()
     const editor = main.getByPlaceholder(/Write or paste this scene/)
     await editor.fill('Two words')
     await editor.blur()
