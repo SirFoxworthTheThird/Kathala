@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatSceneHeader, parseSceneHeader, splitSceneHeader, sceneBody } from '@/lib/sceneHeader'
+import { formatSceneHeader, parseSceneHeader, splitSceneDraft, splitSceneHeader, sceneBody } from '@/lib/sceneHeader'
 
 /**
  * `[#The Kitchen @@Wren @@Sal'ka]` — where the scene happens and who is in it,
@@ -56,7 +56,18 @@ describe('telling a header from prose that starts with a bracket', () => {
       enough — a stage direction, an aside, an editorial note to self — and
       swallowing the first line of somebody's scene would be unforgivable.
     */
-    expect(splitSceneHeader('[she thought]').header).toBe('[she thought]')
+    /*
+      This line used to assert the opposite — that `[she thought]` *is* a
+      header — inside a test named for leaving prose alone. It was the leak,
+      written down as intent: a bracket naming nobody and nowhere was read as
+      a declaration, which emptied the scene and pushed the real line into the
+      book.
+    */
+    expect(splitSceneHeader('[she thought]').header).toBeNull()
+    expect(splitSceneHeader('[check: low water, or after it?]').header).toBeNull()
+    // Shape is not enough; naming somebody is.
+    expect(splitSceneHeader('[@@Wren]').header).toBe('[@@Wren]')
+    expect(splitSceneHeader('[#Kitchen]').header).toBe('[#Kitchen]')
     expect(splitSceneHeader('[an unclosed thought\nand the next line').header).toBeNull()
     /*
       The one that matters, and the one my first version missed: a bracket
@@ -78,5 +89,76 @@ describe('telling a header from prose that starts with a bracket', () => {
     expect(sceneBody('[#Kitchen @@Wren]\n\nShe put the kettle on.')).toBe('She put the kettle on.')
     expect(sceneBody('[#Kitchen]\nShe put the kettle on.')).toBe('She put the kettle on.')
     expect(sceneBody('She put the kettle on.')).toBe('She put the kettle on.')
+  })
+})
+
+describe('the line the box was given', () => {
+  const rendered = '[#Dogtooth Stair @@Teodora Vance @@Juno Skelling]'
+
+  it('lifts the rendered line back out when a note is typed above it', () => {
+    /*
+      The whole H-1 loss, and the half `splitSceneHeader` cannot see on its
+      own. A margin note above the line pushes it to row two, where a cold read
+      has to call it prose — and it exported as prose, as a paragraph of
+      somebody's book.
+
+      Knowing what we rendered is what settles it: the note stays, as the prose
+      it is, and the line stays the line.
+    */
+    const typed = `[check: low water?]\n${rendered}\n\nThe stair went down in eleven steps.`
+    const { header, body } = splitSceneDraft(typed, rendered)
+    expect(header).toBe(rendered)
+    expect(body).toBe('[check: low water?]\n\nThe stair went down in eleven steps.')
+    expect(body).not.toContain('@@')
+  })
+
+  it('lifts it out when the note is typed on the same line, with no newline', () => {
+    const typed = `[check: low water?]${rendered}\n\nThe stair went down.`
+    const { header, body } = splitSceneDraft(typed, rendered)
+    expect(header).toBe(rendered)
+    expect(body).toBe('[check: low water?]\nThe stair went down.')
+  })
+
+  it('reads the line normally when it is still the first thing in the box', () => {
+    // The presence half: displacement is the exception, not the path.
+    const { header, body } = splitSceneDraft(`${rendered}\n\nThe stair went down.`, rendered)
+    expect(header).toBe(rendered)
+    expect(body).toBe('The stair went down.')
+  })
+
+  it('is splitSceneHeader when the records say nothing', () => {
+    /*
+      A scene with no cast and no place renders no line, so a bracket in the box
+      is the writer's own — which is exactly where a note-to-self goes, and
+      exactly where the old reading emptied a scene that had nothing to empty
+      and stored nothing of what was typed.
+    */
+    const { header, body } = splitSceneDraft('[check: who is in this room?]\n\nThe stair went down.', '')
+    expect(header).toBeNull()
+    expect(body).toBe('[check: who is in this room?]\n\nThe stair went down.')
+  })
+
+  it('keeps a bracketed note that is not the line, even when a line exists', () => {
+    // Not every bracket is the rendered one, and the others are prose.
+    const { header, body } = splitSceneDraft('[she thought]\n\nThe stair went down.', rendered)
+    expect(header).toBeNull()
+    expect(body).toBe('[she thought]\n\nThe stair went down.')
+  })
+})
+
+describe('a single @ inside the brackets', () => {
+  it('names a character, where it used to vanish into the place', () => {
+    /*
+      `[#Court @Sella]` read "Court" as the place — the name ran to the next
+      sigil, and `@` was not one — and dropped Sella entirely. That is a silent
+      no-op on the gesture the picker's own notice recommends.
+    */
+    expect(parseSceneHeader('[#The Salt Court @Sella]')).toEqual({
+      place: 'The Salt Court', characters: ['Sella'],
+    })
+    // And the pair: two sigils are still one token, not an empty name and a real one.
+    expect(parseSceneHeader('[#The Salt Court @@Sella]')).toEqual({
+      place: 'The Salt Court', characters: ['Sella'],
+    })
   })
 })

@@ -88,8 +88,13 @@ test.describe('a writer with no map image can still place a scene', () => {
 
     await page.goto(`/#/worlds/${worldId}/maps`, { waitUntil: 'load' })
     await settle(page)
-    // The empty state says why a map is worth having at all.
-    await expect(page.getByText(/pins on a map/i)).toBeVisible()
+    /*
+      The empty state says why a map is worth having — not, as it used to, that
+      a place cannot exist without one. That claim outlived the behaviour by two
+      commits and sent a writer looking for a route that was on this screen.
+    */
+    await expect(page.getByText(/pins on a map/i)).toBeHidden()
+    await expect(page.getByText(/A place does not need a map/i)).toBeVisible()
 
     await page.getByRole('button', { name: 'Start a blank map' }).click()
     await expect.poll(async () => page.evaluate(async () => {

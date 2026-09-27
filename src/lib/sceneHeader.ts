@@ -53,13 +53,35 @@ export function formatSceneHeader(header: SceneHeader): string {
  * Split a scene's displayed text into its header line and its prose.
  *
  * Only the **first non-empty line** can be a header, and only when it is a
- * complete `[…]`. Anything else is prose that happens to start with a bracket,
- * which is a thing prose does.
+ * complete `[…]` that names at least one person or place. Anything else is
+ * prose that happens to start with a bracket, which is a thing prose does —
+ * see `namesAnything`.
  */
 export function splitSceneHeader(text: string): { header: string | null; body: string } {
   const match = /^[ \t]*(\[[^\n\]]*\])[ \t]*(?:\r?\n)?/.exec(text)
   if (!match) return { header: null, body: text }
+  if (!namesAnything(match[1])) return { header: null, body: text }
   return { header: match[1], body: text.slice(match[0].length).replace(/^\r?\n/, '') }
+}
+
+/**
+ * Whether a bracketed line asserts anything — one person, or one place.
+ *
+ * The shape of a header is not enough to be one. A writer scribbling
+ * `[check: does the assize sit through low water?]` at the top of a draft has
+ * written a margin note in the only punctuation margin notes use, and reading
+ * it as a declaration answered it by emptying the scene: the note itself was
+ * consumed as a header and never stored, the cast and the setting were cleared
+ * because the note named nobody, and the real header — one line further down by
+ * then — was saved as a paragraph of the book and exported as one.
+ *
+ * So a bracket that names nobody and nowhere is prose, which is what it was.
+ * The test for it is the parse, not a second pattern, because anything the
+ * parser cannot find a name in is a line the header has nothing to say about.
+ */
+function namesAnything(header: string): boolean {
+  const { place, characters } = parseSceneHeader(header)
+  return place !== null || characters.length > 0
 }
 
 /**
@@ -74,14 +96,57 @@ export function parseSceneHeader(header: string): SceneHeader {
   const inner = /^\[(.*)\]$/.exec(header.trim())?.[1] ?? ''
   const place: string[] = []
   const characters: string[] = []
-  // `@@` before `#`, so a `#` inside a name is not read as a new token.
-  for (const [, sigil, raw] of inner.matchAll(/(@@|#)([^@#\]]*)/g)) {
+  /*
+    `@@` before `@`, so two sigils are one token and not an empty name followed
+    by a real one — and both before `#`, so a `#` inside a name is not read as
+    a new token.
+
+    A single `@` names a character here, though the line is always *written*
+    with two. Inside the brackets there is nothing else it could mean: a header
+    asserts presence by being a header, so the second sigil carries no
+    information there. It used to carry the whole line instead — `[#Court
+    @Sella]` read Sella as part of the place name and then dropped her, which
+    is a silent no-op on the one gesture the picker's own notice recommends.
+  */
+  for (const [, sigil, raw] of inner.matchAll(/(@@|@|#)([^@#\]]*)/g)) {
     const name = raw.trim()
     if (!name) continue
     if (sigil === '#') place.push(name)
     else if (!characters.includes(name)) characters.push(name)
   }
   return { place: place[0] ?? null, characters }
+}
+
+/**
+ * Split what is *in the box* into header and prose, knowing the line that was
+ * rendered into it.
+ *
+ * `splitSceneHeader` reads a string cold and can only look at the first line.
+ * That is not enough on its own, because a writer who types a margin note above
+ * the rendered line pushes it down to line two — and a header that is no longer
+ * line one is, to a cold read, a paragraph of the book. It exported as one.
+ *
+ * The box is not a cold read: we know exactly what we put in it. So when the
+ * first line is not a header, the rendered line is looked for and lifted back
+ * out, whatever the writer typed above it. Their note stays, as the prose it
+ * is; the line stays the line; and the two cannot be confused for each other,
+ * because one of them is a string we wrote ourselves.
+ *
+ * Pass `''` for `rendered` when the records say nothing — then this is
+ * `splitSceneHeader`, and a bracket in the box is prose.
+ */
+export function splitSceneDraft(
+  text: string,
+  rendered: string,
+): { header: string | null; body: string } {
+  const direct = splitSceneHeader(text)
+  if (direct.header || !rendered) return direct
+  const at = text.indexOf(rendered)
+  if (at === -1) return direct
+  const before = text.slice(0, at)
+  // One newline, so lifting the line out does not leave the gap it sat in.
+  const after = text.slice(at + rendered.length).replace(/^\n/, '')
+  return { header: rendered, body: `${before}${after}`.replace(/^\n+/, '') }
 }
 
 /** The prose alone — what is stored, counted, compiled and exported. */

@@ -84,18 +84,38 @@ describe('charactersNotInChapter', () => {
 
 describe('hasAnyCharacterState', () => {
   it('is false for scenes with no cast and no state — the empty state (EV-2)', () => {
-    expect(hasAnyCharacterState([ev('e1', []), ev('e2', [])], [])).toBe(false)
+    expect(hasAnyCharacterState([ev('e1', []), ev('e2', [])], [], chars)).toBe(false)
   })
 
   it('is true on a cast alone, before anything is recorded', () => {
-    expect(hasAnyCharacterState([ev('e1', ['frodo'])], [])).toBe(true)
+    expect(hasAnyCharacterState([ev('e1', ['frodo'])], [], chars)).toBe(true)
   })
 
   it('is true on state alone, for a snapshot taken outside any listed cast', () => {
-    expect(hasAnyCharacterState([ev('e1', [])], [snap('e1', 'frodo')])).toBe(true)
+    expect(hasAnyCharacterState([ev('e1', [])], [snap('e1', 'frodo')], chars)).toBe(true)
   })
 
   it('is false with no scenes at all — that is the "no events yet" state', () => {
-    expect(hasAnyCharacterState([], [snap('e1', 'frodo')])).toBe(false)
+    expect(hasAnyCharacterState([], [snap('e1', 'frodo')], chars)).toBe(false)
+  })
+
+  it('is false for a cast of ids that no longer name anybody', () => {
+    /*
+      A cast id outlives its character: `deleteCharacter` sweeps the snapshots,
+      movements, memberships, goals and relationships and leaves the id in every
+      scene that named them. `castWithoutState` drops such ids, so the panel
+      rendered nothing while this said there was something — which is the
+      unexplained blank column the empty state exists to replace.
+
+      Paired with the line below, because a rule that only ever says "false"
+      would satisfy the absence on its own.
+    */
+    expect(hasAnyCharacterState([ev('e1', ['ghost'])], [], chars)).toBe(false)
+    expect(hasAnyCharacterState([ev('e1', ['ghost', 'frodo'])], [], chars)).toBe(true)
+  })
+
+  it('is false for a snapshot about somebody who has been deleted', () => {
+    expect(hasAnyCharacterState([ev('e1', [])], [snap('e1', 'ghost')], chars)).toBe(false)
+    expect(hasAnyCharacterState([ev('e1', [])], [snap('e1', 'frodo')], chars)).toBe(true)
   })
 })

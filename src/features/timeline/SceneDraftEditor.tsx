@@ -10,7 +10,9 @@ import { caretPoint, placePanel } from '@/lib/caretPoint'
 
 interface SceneDraftEditorProps {
   value: string
-  onChange: (text: string) => void
+  /** The caret is reported with the text: whether it is still inside the header
+   *  line decides whether that line is safe to apply yet. */
+  onChange: (text: string, caret: number) => void
   onBlur: () => void
   /** Everything "@" can name: the cast, the props and the places. */
   candidates: MentionCandidate[]
@@ -27,6 +29,20 @@ interface SceneDraftEditorProps {
    * only reports what the writer pressed.
    */
   onPick: (suggestion: MentionSuggestion, intent: MentionIntent) => void
+  /**
+   * The span of `value` occupied by the scene header line, when one is shown.
+   *
+   * The picker fires inside the brackets — it runs on the whole value and has
+   * no idea the line is there — and that is worth keeping, because it is the
+   * only spell-check the line has. What it did there was strip the sigil it was
+   * triggered by, which is right in prose and ruinous in a header: the plain
+   * name glued itself to the name before it, the line then named one person
+   * nobody answered, and the cast emptied.
+   *
+   * So inside this span the sigil stays, and naming somebody is asserting they
+   * are present — there is nothing else naming them in a header could mean.
+   */
+  headerRange?: { start: number; end: number } | null
   placeholder?: string
   /** Accessible name. A placeholder is not one — it is the last-resort source
    *  in HTML-AAM and it disappears the moment the field has prose in it. */
@@ -53,7 +69,8 @@ const KIND_LABEL: Record<MentionKind, string> = {
 }
 
 export function SceneDraftEditor({
-  value, onChange, onBlur, candidates, canCreateLocation, onPick, placeholder, ariaLabel, rows = 5,
+  value, onChange, onBlur, candidates, canCreateLocation, onPick, headerRange = null,
+  placeholder, ariaLabel, rows = 5,
 }: SceneDraftEditorProps) {
   const taRef = useRef<HTMLTextAreaElement>(null)
   const [mention, setMention] = useState<MentionToken | null>(null)
@@ -93,12 +110,18 @@ export function SceneDraftEditor({
     it needs the same ref and the same effect — hence one flag rather than two
     conditions that could drift apart.
   */
+  /** Whether the token being typed sits inside the header line. */
+  const inHeader = !!mention && !!headerRange
+    && mention.start >= headerRange.start && mention.start < headerRange.end
+
   const matches = mention
     ? mentionSuggestions(mention.query, candidates, {
         canCreateLocation,
-        // Presence is about people, and it may not invent one — see
-        // `MentionPickerOptions`.
-        ...(mention.intent === 'present' ? { kinds: ['character'] as const, allowCreate: false } : {}),
+        // Presence is about people, and out in the prose it may not invent one
+        // — see `MentionPickerOptions`.
+        ...(mention.intent === 'present' || inHeader
+          ? { kinds: ['character'] as const, allowCreate: inHeader }
+          : {}),
       })
     : []
 
@@ -167,8 +190,9 @@ export function SceneDraftEditor({
 
   function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const text = e.target.value
-    onChange(text)
-    refresh(text, e.target.selectionStart ?? text.length)
+    const caret = e.target.selectionStart ?? text.length
+    onChange(text, caret)
+    refresh(text, caret)
   }
 
   function select(suggestion: MentionSuggestion) {
@@ -178,11 +202,13 @@ export function SceneDraftEditor({
     // as one they picked.
     // The words the writer was typing toward, which for an aliased record is
     // not the record's name — see `insertionFor`.
-    const insert = (suggestion.type === 'existing' ? suggestion.insert : suggestion.name) + ' '
+    const name = (suggestion.type === 'existing' ? suggestion.insert : suggestion.name)
+    // In the brackets the sigil is the syntax, not a trigger to be consumed.
+    const insert = inHeader ? `@@${name} ` : `${name} `
     const next = value.slice(0, mention.start) + insert + value.slice(mention.end)
     pendingCaret.current = mention.start + insert.length
-    onChange(next)
-    onPick(suggestion, mention.intent)
+    onChange(next, pendingCaret.current)
+    onPick(suggestion, inHeader ? 'present' : mention.intent)
     setMention(null)
   }
 
@@ -227,8 +253,53 @@ export function SceneDraftEditor({
     }
   }
 
+  /*
+    **Which half of the box is the book.**
+
+    Header and prose share one `<textarea>`, and a textarea has one text style:
+    measured, the line rendered in the same serif at the same 14px in the same
+    colour as the sentence under it. Nothing distinguished it, and *that* is why
+    a margin note in brackets read as a declaration — because the line looks
+    like a first line, a first line looked like the line.
+
+    A class cannot fix it where it lives, so this is the thing that can: a mirror
+    laid under the textarea holding the same characters in the same metrics, with
+    the header's run tinted and everything else transparent. The tint therefore
+    wraps exactly as the text wraps, because it *is* the text, laid out twice.
+
+    Two properties of this box make it cheap. It auto-grows to its content and
+    carries `overflow-hidden`, so it never scrolls internally and there is no
+    scroll position to keep in step; and it is `bg-transparent`, so a background
+    behind it shows through. The mirror is `aria-hidden` and untouchable: the
+    real text is still the textarea's, one layer up.
+  */
+  const before = headerRange ? value.slice(0, headerRange.start) : value
+  const band = headerRange ? value.slice(headerRange.start, headerRange.end) : ''
+  const after = headerRange ? value.slice(headerRange.end) : ''
+
   return (
     <div className="relative">
+      {band && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words rounded-md border border-transparent px-3 py-2 text-sm leading-relaxed text-transparent"
+          style={{ fontFamily: 'var(--font-prose)' }}
+        >
+          {before}
+          {/*
+            `box-decoration-break: clone` so a header long enough to wrap is
+            tinted on every line it occupies rather than once across the whole
+            run — five names in one line is an ordinary header.
+          */}
+          <span
+            className="rounded bg-[hsl(var(--primary)/0.14)]"
+            style={{ boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' }}
+          >
+            {band}
+          </span>
+          {after}
+        </div>
+      )}
       <Textarea
         ref={taRef}
         value={value}
@@ -239,7 +310,7 @@ export function SceneDraftEditor({
         placeholder={placeholder}
         aria-label={ariaLabel}
         rows={rows}
-        className="resize-none overflow-hidden text-sm leading-relaxed"
+        className="relative resize-none overflow-hidden bg-transparent text-sm leading-relaxed"
         style={{ fontFamily: 'var(--font-prose)' }}
       />
       {/*
@@ -268,6 +339,13 @@ export function SceneDraftEditor({
           role="status"
         >
           Nobody called “{mention!.query.trim()}” yet — type a single <b>@</b> to create them.
+          {/*
+            Reachable only *outside* the header, where a single `@` is indeed
+            the create gesture. Inside the brackets a create row is offered
+            directly, because following this advice there emptied the cast:
+            the picker wrote the plain name over the sigil and the line lost
+            somebody. See `headerRange`.
+          */}
         </div>
       )}
       {mention && matches.length > 0 && (
