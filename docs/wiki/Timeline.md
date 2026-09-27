@@ -104,6 +104,24 @@ The right side holds:
 - A **Relationship States** summary.
 - A freeform **Writer's Notes** field that auto-saves.
 
+### The binder
+
+The left side holds the **binder**: every chapter in this timeline, with the one you are in opened to show its scenes. Click a scene to go there — its card opens and comes to the top, and the time cursor moves to it, so the Character States follow the scene you are writing. Click a chapter to go to that chapter.
+
+| Key | In the binder |
+|---|---|
+| ↑ ↓ | Move between rows |
+| → ← | Open or close a chapter; ← from a scene steps up to its chapter |
+| Space | Go to that scene or chapter |
+| Enter | **A new scene on the line below** — the first in a chapter, or the next after a scene. Type the title in place and press Enter; Escape throws it away |
+| Delete | Remove the scene, with Undo — the notice names what went |
+
+**New scene** and **New chapter** under the list do the same with a mouse; a new chapter goes at the end. A title started and then clicked away from is kept. A new scene is only a title — say where it happens and who is in it with [the scene header](#the-scene-header).
+
+Chapters are not deleted from the binder, since a chapter takes every scene in it; that stays on its Timeline row. The **binder** button beside *Back* hides and shows it and remembers the choice. It appears on wide screens only, where there is room beside the writing.
+
+While reading, the binder lists only what you have reached, and going to a scene does not move your place in the book.
+
 ### Generate / Update Chapter with AI
 
 Hand your scene text to an AI assistant and have it fill in the events, character states, and a dramatic-**tension** rating for each event — the ratings feed the pacing curve.
