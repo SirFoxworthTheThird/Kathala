@@ -4,13 +4,15 @@ import { dismissFirstRunGuide } from './helpers/nav'
 import { settle } from './helpers/settle'
 
 /**
- * The Timeline is one screen.
+ * The Timeline is one page.
  *
- * It was two: a list of chapters and scenes, and a chapter's own page, which
- * had grown a second list of the same chapters down its side. Now the binder is
- * the frame, and the right-hand side is the whole book or one chapter. What only
- * a browser can say is that the frame really stays put while the right side
- * changes — and that a phone, with no room for a column, still has a way round.
+ * It was two screens — a list of chapters and scenes, and a chapter's own page
+ * with a second list of the same chapters down its side — then one frame around
+ * those two, and now one page: the book, open at a chapter or not. Opening a
+ * chapter opens its row in place and puts the chapter's panel beside the list,
+ * or under the row where there is no room beside it. What only a browser can
+ * say is that it really is one page — nothing remounts, the chapter before
+ * folds away — and that the panel lands where it is meant to at each width.
  */
 async function twoTimelines(page: Page): Promise<string> {
   await resetDB(page)
@@ -46,39 +48,80 @@ async function twoTimelines(page: Page): Promise<string> {
 
 const tree = (page: Page) => page.getByRole('tree', { name: 'Chapters and scenes' })
 const wholeBook = (page: Page) => page.getByRole('button', { name: 'Whole book' })
+const panel = (page: Page, n: number) => page.getByRole('region', { name: `Chapter ${n}` })
+/** A chapter's row in the list, by the id the page gives it to scroll to. */
+const row = (page: Page, id: string) => page.locator(`#chapter-row-${id}`)
+/** The row's own disclosure — named after the chapter, so it is the row's. */
+const rowToggle = (page: Page, id: string, n: number) =>
+  row(page, id).getByRole('button', { name: new RegExp(`^Ch\\. ${n} —`) })
 
-test.describe('the Timeline is one screen', () => {
+test.describe('the Timeline is one page', () => {
   test.describe.configure({ timeout: 240_000 })
 
-  test('the binder frames the whole book and a chapter alike, and goes between them', async ({ page }) => {
+  test('a chapter opens in the book, with its panel beside it, and closes again', async ({ page }) => {
     const worldId = await twoTimelines(page)
     await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
     await settle(page)
-
-    // The whole book, with the binder beside it saying so.
     await expect(tree(page)).toBeVisible({ timeout: 20_000 })
     await expect(wholeBook(page)).toHaveAttribute('aria-current', 'page')
-    await expect(page.getByRole('main').getByRole('button', { name: 'Add Chapter' }).first()).toBeVisible()
+    await expect(panel(page, 2)).toHaveCount(0)
 
-    // Into a chapter from the binder: the right side changes, the binder does not.
     await tree(page).getByRole('treeitem', { name: /^Ch\. 2/ }).click()
     await expect(page).toHaveURL(/\/timeline\/a2$/)
-    await expect(tree(page)).toBeVisible()
+    // The same list, still there — chapter 1's row is on the page — with
+    // chapter 2 open in it and its panel beside it.
+    await expect(row(page, 'a1')).toBeVisible()
+    await expect(row(page, 'a2')).toHaveAttribute('aria-current', 'page')
+    await expect(rowToggle(page, 'a2', 2)).toHaveAttribute('aria-expanded', 'true')
+    await expect(panel(page, 2).getByRole('textbox', { name: 'Chapter title' })).toHaveValue('The Stair')
     await expect(wholeBook(page)).not.toHaveAttribute('aria-current', 'page')
-    await expect(page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first()).toBeVisible()
 
-    // And back.
-    await wholeBook(page).click()
+    // The panel's ✕ closes it: no panel, and the row folds back.
+    await panel(page, 2).getByRole('button', { name: 'Close the chapter' }).click()
     await expect(page).toHaveURL(/\/timeline$/)
+    await expect(panel(page, 2)).toHaveCount(0)
+    await expect(rowToggle(page, 'a2', 2)).toHaveAttribute('aria-expanded', 'false')
     await expect(wholeBook(page)).toHaveAttribute('aria-current', 'page')
   })
 
-  test('the timeline you were in is still selected when you come back', async ({ page }) => {
+  test('opening another chapter folds the one before', async ({ page }) => {
+    const worldId = await twoTimelines(page)
+    await page.goto(`/#/worlds/${worldId}/timeline/a1`, { waitUntil: 'load' })
+    await settle(page)
+    await expect(rowToggle(page, 'a1', 1)).toHaveAttribute('aria-expanded', 'true', { timeout: 20_000 })
+
+    await tree(page).getByRole('treeitem', { name: /^Ch\. 2/ }).click()
+    await expect(rowToggle(page, 'a2', 2)).toHaveAttribute('aria-expanded', 'true')
+    await expect(rowToggle(page, 'a1', 1)).toHaveAttribute('aria-expanded', 'false')
+    await expect(panel(page, 1)).toHaveCount(0)
+    await expect(panel(page, 2)).toBeVisible()
+  })
+
+  test('it is one page: opening a chapter keeps the order you chose', async ({ page }) => {
     /*
-      The whole book's timeline tab lives in the frame, which outlives both
-      pages. Were it the whole-book page's own, visiting a chapter and coming
-      back would reset it to the first timeline.
+      While a chapter was a page of its own, going to one and back remounted the
+      whole book, and everything chosen on it — the order, a filter — went back
+      to its default. Chronological is the one to test with because it is not
+      by chapter, and the open chapter's panel still has to find a place in it.
     */
+    const worldId = await twoTimelines(page)
+    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await settle(page)
+    const chronological = page.getByRole('group', { name: 'Timeline order' }).getByRole('button', { name: /Chronological/ })
+    await chronological.click()
+    await expect(chronological).toHaveAttribute('aria-pressed', 'true')
+
+    await tree(page).getByRole('treeitem', { name: /^Ch\. 2/ }).click()
+    await expect(page).toHaveURL(/\/timeline\/a2$/)
+    await expect(panel(page, 2)).toBeVisible()
+    await expect(chronological).toHaveAttribute('aria-pressed', 'true')
+
+    await wholeBook(page).click()
+    await expect(panel(page, 2)).toHaveCount(0)
+    await expect(chronological).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  test('the timeline you were in is still selected when you come back', async ({ page }) => {
     const worldId = await twoTimelines(page)
     await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
     await settle(page)
@@ -98,45 +141,62 @@ test.describe('the Timeline is one screen', () => {
     await expect(page.getByRole('tab', { name: /The Harbour/ })).toHaveAttribute('aria-selected', 'true')
   })
 
-  test('arriving at another timeline’s chapter makes it the timeline you come back to', async ({ page }) => {
+  test('arriving at another timeline’s chapter makes it the timeline you are in', async ({ page }) => {
     const worldId = await twoTimelines(page)
     await page.goto(`/#/worlds/${worldId}/timeline/b1`, { waitUntil: 'load' })
     await settle(page)
     await expect(tree(page).getByRole('treeitem', { name: /The Pilot Boat/ })).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByRole('tab', { name: /The Harbour/ })).toHaveAttribute('aria-selected', 'true')
 
     await wholeBook(page).click()
     await expect(page.getByRole('tab', { name: /The Harbour/ })).toHaveAttribute('aria-selected', 'true')
     await expect(page.getByRole('tab', { name: /The Assize/ })).toHaveAttribute('aria-selected', 'false')
   })
+
+  test('opening a chapter far down a long book brings it to the top', async ({ page }) => {
+    const worldId = await twoTimelines(page)
+    // Thirty chapters, so the list scrolls.
+    await page.evaluate(async (id: string) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as
+        Record<string, { add: (v: unknown) => Promise<unknown> }>
+      const now = Date.now()
+      for (let n = 3; n <= 30; n++) {
+        await db.chapters.add({ id: `a${n}`, worldId: id, timelineId: 'tA', number: n, title: `Chapter ${n}`, synopsis: '', notes: '', wordGoal: null, createdAt: now, updatedAt: now })
+      }
+    }, worldId)
+    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await settle(page)
+    await expect(row(page, 'a30')).toHaveCount(1, { timeout: 20_000 })
+    await expect(row(page, 'a30')).not.toBeInViewport()
+    await expect(row(page, 'a1')).toBeInViewport()
+
+    await tree(page).getByRole('treeitem', { name: /^Ch\. 28/ }).click()
+    await expect(row(page, 'a28')).toBeInViewport()
+    await expect(row(page, 'a1')).not.toBeInViewport()
+  })
 })
 
-test.describe('the one screen on a phone', () => {
+test.describe('the one page on a phone', () => {
   test.describe.configure({ timeout: 240_000 })
   test.use({ viewport: { width: 390, height: 800 } })
 
-  test('a chapter opens the binder as a drawer, which goes and closes', async ({ page }) => {
+  test('the panel sits under the open chapter’s row, and there is no binder', async ({ page }) => {
     const worldId = await twoTimelines(page)
     await page.goto(`/#/worlds/${worldId}/timeline/a1`, { waitUntil: 'load' })
     await settle(page)
 
-    // No room for a column: the tree is not on the page until asked for.
-    await expect(page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first()).toBeVisible({ timeout: 20_000 })
+    await expect(panel(page, 1)).toBeVisible({ timeout: 20_000 })
+    // Under the row, and above the next chapter's.
+    const [r1, p1, r2] = await Promise.all([
+      row(page, 'a1').boundingBox(), panel(page, 1).boundingBox(), row(page, 'a2').boundingBox(),
+    ])
+    expect(p1!.y).toBeGreaterThan(r1!.y + r1!.height - 1)
+    expect(r2!.y).toBeGreaterThan(p1!.y + p1!.height - 1)
+    // One copy of it, not a second one hidden for the wide layout.
+    await expect(page.getByRole('region', { name: 'Chapter 1' })).toHaveCount(1)
+
+    // No column and no drawer: the list is the way round.
     await expect(tree(page)).toHaveCount(0)
-
-    await page.getByRole('button', { name: 'Binder' }).click()
-    const drawer = page.getByRole('dialog', { name: 'Chapters and scenes' })
-    await expect(drawer.getByRole('tree', { name: 'Chapters and scenes' })).toBeVisible()
-
-    await drawer.getByRole('treeitem', { name: /^Ch\. 2/ }).click()
-    await expect(page).toHaveURL(/\/timeline\/a2$/)
-    await expect(drawer).toHaveCount(0)
-  })
-
-  test('the whole book needs no drawer — it is the way round', async ({ page }) => {
-    const worldId = await twoTimelines(page)
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
-    await settle(page)
-    await expect(page.getByRole('main').getByRole('button', { name: 'Add Chapter' }).first()).toBeVisible({ timeout: 20_000 })
     await expect(page.getByRole('button', { name: 'Binder' })).toHaveCount(0)
   })
 })

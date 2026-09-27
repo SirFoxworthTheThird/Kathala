@@ -60,7 +60,8 @@ test('the timeline thread filter shows only scenes on the chosen subplot', async
 
   // Back on the timeline, filter to the thread → only the tagged scene remains.
   await gotoTimeline()
-  await page.getByRole('button', { name: 'The Romance' }).click()
+  // Exact: the scene's own thread chip has a "Remove thread The Romance" button.
+  await page.getByRole('button', { name: 'The Romance', exact: true }).click()
   await expect(main.getByRole('button', { name: 'Romance scene', exact: true })).toBeVisible()
   await expect(main.getByRole('button', { name: 'Heist scene', exact: true })).toHaveCount(0)
 

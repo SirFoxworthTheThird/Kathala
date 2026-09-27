@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ChevronDown, ChevronRight, Trash2, BookOpen, BookLock, Plus, ExternalLink, Scroll, Pencil, Check, X } from 'lucide-react'
 import type { Chapter, WorldCalendar } from '@/types'
@@ -63,7 +63,20 @@ export function ChapterRow({
   const navigate = useNavigate()
   const { activeEventId, setActiveEventId, selectedEventIds, selectEventRange, clearSelection } = useAppStore()
   const [expanded, setExpanded] = useState(open)
-  useEffect(() => { if (open) setExpanded(true) }, [open])
+  /*
+    The book is open at one chapter. Opening it opens its row; closing it —
+    which opening another one does — folds the row back, cards and all, the way
+    leaving a chapter's own screen used to put them away. Without the second
+    half the book kept every chapter ever opened open, and "the first Add Scene
+    on the page" stopped being the open chapter's. A row opened by hand, with
+    its chevron, is the writer's own and is left as it is.
+  */
+  const wasOpen = useRef(open)
+  useEffect(() => {
+    if (open) setExpanded(true)
+    else if (wasOpen.current) setExpanded(false)
+    wasOpen.current = open
+  }, [open])
   const [addEventOpen, setAddEventOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [renaming, setRenaming] = useState(false)
