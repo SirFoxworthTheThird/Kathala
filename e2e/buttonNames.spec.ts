@@ -93,7 +93,19 @@ test.describe('Button names', () => {
     // The rows are open — checked before sweeping, because a sweep of a screen
     // that never rendered them is exactly the hole this test exists to close.
     await expect(page.getByRole('button', { name: 'Move The snake speaks later' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Delete A letter for Harry' })).toBeVisible()
+
+    /*
+      Delete is behind a per-row menu, the same as the chapter row's above —
+      the bin used to sit at x=1378 with *open the chapter* at x=1354, both
+      20x20, and two writer runs filed the same stray click. So the name to
+      look for is the menu's, which has to say which row it acts on, and the
+      destructive item inside it.
+    */
+    const menu = page.getByRole('button', { name: 'More actions for A letter for Harry' })
+    await expect(menu).toBeVisible()
+    await menu.click()
+    await expect(page.getByRole('menuitem', { name: /delete scene/i })).toBeVisible()
+    await page.keyboard.press('Escape')
 
     const bad = await nameless(page)
     expect(bad, `controls announcing only "button":\n${bad.join('\n')}`).toEqual([])

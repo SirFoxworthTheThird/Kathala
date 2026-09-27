@@ -224,3 +224,31 @@ test.describe('the backup chip arrives where the backup is', () => {
     await expect(heading).not.toBeInViewport()
   })
 })
+
+/**
+ * The header is a budget, and the chip is the newest thing spending from it.
+ *
+ * At 320px — the narrowest width the app supports — the time cursor had been
+ * squeezed to **3px of the 30 "Ch.4" needs**, because the left group is the
+ * only part of the header that can give and the pill is the only part of that
+ * group with `min-w-0`. The chip already drops its words below `xl`, so what it
+ * was spending 30px on was a wordless amber icon.
+ */
+test.describe('the backup chip on a phone', () => {
+  test.describe.configure({ timeout: 240_000 })
+
+  test('stands down where the header cannot afford it, and is there where it can', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 780 })
+    const worldId = await worldWithAScene(page)
+    await page.goto(`/#/worlds/${worldId}`, { waitUntil: 'load' })
+    await settle(page)
+
+    const chip = page.locator('header button[aria-label^="Backup:"]')
+    await expect(chip).toBeHidden()
+
+    // The presence half, at a width with room for it. Same page, same world —
+    // so this cannot pass by the chip being absent for any other reason.
+    await page.setViewportSize({ width: 900, height: 780 })
+    await expect(chip).toBeVisible({ timeout: 20_000 })
+  })
+})

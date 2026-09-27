@@ -47,6 +47,7 @@ export function Menu({
   align = 'right',
   className,
   triggerClassName,
+  dense = false,
 }: {
   /** The trigger's accessible name — say what it is a menu *for*. */
   label: string
@@ -54,6 +55,18 @@ export function Menu({
   align?: 'left' | 'right'
   className?: string
   triggerClassName?: string
+  /**
+   * The trigger sits in a dense row of other controls, so it gets **no enlarged
+   * hit area**.
+   *
+   * `.pw-tap` centres a transparent 44x44 overlay on a control, and its own
+   * warning is that it belongs only on well-spaced standalone ones. The
+   * Timeline's scene row is the opposite: four 20px controls side by side, 40px
+   * from the row above and below. An overlay there overlaps its neighbours in
+   * both directions, and an overlap does not read as broken — the later element
+   * simply wins, so the tap opens *a* menu, just not this scene's.
+   */
+  dense?: boolean
 }) {
   const [open, setOpen] = React.useState(false)
   const rootRef = React.useRef<HTMLDivElement>(null)
@@ -118,7 +131,14 @@ export function Menu({
   const ctx = React.useMemo(() => ({ close }), [close])
 
   return (
-    <div ref={rootRef} className={cn('relative', className)}>
+    /*
+      `flex`, not the block it used to be. A block wrapper around an
+      inline-level trigger builds a line box, and the line box is taller than
+      the 20px button inside it by the leading — which made every scene row on
+      the Timeline 5px taller the day delete moved behind this menu, and moved
+      the rows out from under the tap targets sized against them.
+    */
+    <div ref={rootRef} className={cn('relative flex', className)}>
       <button
         ref={triggerRef}
         type="button"
@@ -133,7 +153,8 @@ export function Menu({
           setOpen(true)
         }}
         className={cn(
-          'pw-tap inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors',
+          !dense && 'pw-tap',
+          'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors',
           'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]',
           'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]',
           open && 'bg-[hsl(var(--muted))] text-[hsl(var(--foreground))]',

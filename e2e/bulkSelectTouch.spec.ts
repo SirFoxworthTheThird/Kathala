@@ -135,6 +135,47 @@ test.describe('The scene checkbox is tappable on a phone', () => {
     await expect(page.getByRole('checkbox', { name: `Select scene ${SCENES[1]}` })).not.toBeChecked()
   })
 
+  test('no control in the row claims a hit area bigger than the row', async ({ page }) => {
+    /*
+      The other half of the same rule, from the other side. `.pw-tap` centres a
+      44x44 overlay on a control, and its own warning is that it belongs only on
+      well-spaced standalone ones — the scene row is four 20px controls in a line
+      with 40px between rows.
+
+      It went on one anyway, the day delete moved behind a menu here, and nothing
+      caught it: an overlap does not read as broken, because the later element
+      simply wins and the tap opens *a* menu. The same commit also made the row
+      5px taller, which is the only reason the overlays did not actually meet.
+    */
+    await timelineWithScenes(page)
+    const { pitch } = await geometry(page)
+
+    const overlays = await page.evaluate(() => {
+      const input = document.querySelector('input[aria-label^="Select scene "]')
+      const row = input?.parentElement?.parentElement?.parentElement
+      if (!row) return []
+      return [...row.querySelectorAll('button')].map((b) => ({
+        name: b.getAttribute('aria-label') ?? '(unnamed)',
+        h: parseFloat(getComputedStyle(b, '::after').height) || 0,
+      }))
+    })
+
+    // The measurement can see overlays at all — otherwise every row below is
+    // satisfied by reading zero off everything.
+    const box = await page.evaluate(() => {
+      const wrap = document.querySelector('input[aria-label^="Select scene "]')?.parentElement
+      return parseFloat(getComputedStyle(wrap as Element, '::after').height) || 0
+    })
+    expect(box, 'the checkbox still has its bounded overlay').toBe(36)
+
+    expect(overlays.length, 'the row has controls to check').toBeGreaterThan(2)
+    const tooTall = overlays.filter((o) => o.h >= pitch)
+    expect(
+      tooTall,
+      `these reach into the rows either side of them:\n${tooTall.map((o) => `${o.name}: ${o.h}px in a ${pitch}px row`).join('\n')}`,
+    ).toEqual([])
+  })
+
   test('the near-miss selects the row it belongs to, not its neighbour', async ({ page }) => {
     await timelineWithScenes(page)
     const { centres } = await geometry(page)
