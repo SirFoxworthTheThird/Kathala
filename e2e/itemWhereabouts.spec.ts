@@ -75,8 +75,13 @@ async function viewFromScene(page: Page, worldId: string, sceneTitle: string, ev
     row and the scene row both carry one — so the loop spent its clicks opening
     and closing menus and never reached the chapter, and the failure landed on
     the scene lookup four lines down, which was not at fault.
+
+    Nor is every collapsed disclosure a chapter: the whole book's scenes are
+    cards now, and a closed card is `aria-expanded="false"` as well. Opening
+    those too meant the click on the scene below closed it again. So chapter
+    rows only, by their name.
   */
-  const collapsed = main.locator('button[aria-expanded="false"]:not([aria-haspopup="menu"])')
+  const collapsed = main.getByRole('button', { name: /^Ch\. \d+ —/, expanded: false })
   for (let i = await collapsed.count(); i > 0; i = await collapsed.count()) {
     await collapsed.first().click()
     if (await collapsed.count() === i) break

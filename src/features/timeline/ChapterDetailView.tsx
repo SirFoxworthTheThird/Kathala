@@ -488,6 +488,7 @@ export default function ChapterDetailView() {
                   inWorldDay={inWorldDays.get(e.id)}
                   calendar={world?.calendar ?? null}
                   revealNonce={reveal?.id === e.id ? reveal.nonce : undefined}
+                  chapterNumber={chapter.number}
                 />
               ))
             )}
