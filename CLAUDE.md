@@ -102,7 +102,7 @@ Uses Leaflet with `CRS.Simple` (pixel coordinates) for custom/fantasy image maps
 ### Features directory (`src/features/`)
 Each feature folder is self-contained. Notable features:
 - `characters/tabs/` — `CurrentStateTab`, `HistoryTab`, `RelationshipsTab`, `OverviewTab`
-- `timeline/` — `TimelineView`, `ChapterDetailView`, `ChapterRow`
+- `timeline/` — `TimelineScreen` (the binder frame), `TimelineView` (the book, open at a chapter or not), `ChapterRow`, `ChapterPanel`, `EventCard`
 - `relationships/` — `RelationshipGraphView` (ReactFlow)
 - `search/` — `SearchPalette`
 - `diff/` — `ChapterDiffModal` (compare chapters)
@@ -219,20 +219,23 @@ and not another is this, not a flake. Reach through `page.getByRole('main')`,
 through the dialog, through the row — or pass `exact: true` where the name
 really is the whole name.
 
-On the Timeline `main` is not narrow enough on its own — the whole book and a
-chapter alike, since the binder is the screen's frame. It sits inside `main` and
-repeats chapter titles, and the scene titles of every chapter opened in it, as
-`treeitem`s *ahead of* the list and the cards — so `main.getByText(title)` finds
-two, and a `.first()` quietly takes the binder's row. It also keeps what was
-opened while you move between the whole book and chapters, so a scene title
-visited earlier in a spec is still there on the whole book. Eleven specs broke on
-it across two changes. Reach a scene card or a list row through its button:
-`main.getByRole('button', { name, exact: true })`.
+On the Timeline `main` is not narrow enough on its own. The binder is the
+page's frame; it sits inside `main` and repeats chapter titles, and the scene
+titles of every chapter opened in it, as `treeitem`s *ahead of* the list and the
+cards — so `main.getByText(title)` finds two, and a `.first()` quietly takes the
+binder's row. It also keeps what was opened, so a scene title visited earlier in
+a spec is still there later. And an open chapter's title is in `main` twice more:
+on its row, and in its panel's title field. Eleven specs broke on the binder
+across two changes. Reach a scene card or a chapter row through its button:
+`main.getByRole('button', { name, exact: true })`, and the panel through
+`getByRole('region', { name: 'Chapter N' })`.
 
-On a narrow screen the binder column is not in the page at all — it is rendered
-only where it is shown, with `useMediaQuery`, rather than hidden with CSS. A
-hidden copy is invisible to a person and still the first match for a lookup,
-which then finds it hidden.
+There is no chapter screen: `/timeline/:chapterId` is the book open at that
+chapter (`TimelineView`), its row expanded and its `ChapterPanel` beside the list.
+Both the binder column and the panel's two positions — beside the list when wide,
+under the row when narrow — are rendered only where they are shown, with
+`useMediaQuery`, rather than hidden with CSS. A hidden copy is invisible to a
+person and still the first match for a lookup, which then finds it hidden.
 
 The same trap works in reverse, from the app side: **giving a control a name
 another screen already uses** makes every unscoped lookup ambiguous *across a

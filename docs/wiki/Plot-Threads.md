@@ -9,7 +9,7 @@ Define named threads, give each a colour, and tag the events that advance them.
 ## Setting threads up
 
 1. Define threads on the [Dashboard](Dashboard)'s Plot Threads panel, each with a colour.
-2. Tag a thread onto an event **from the event's card** in the chapter detail.
+2. Tag a thread onto an event **from the event's card** on the Timeline.
 3. Create threads inline while tagging with the **+ New thread** button.
 
 ---
