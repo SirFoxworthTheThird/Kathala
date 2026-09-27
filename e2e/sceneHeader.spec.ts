@@ -301,6 +301,67 @@ test.describe('the scene header', () => {
     await expect.poll(async () => (await stored(page)).cast, { timeout: 20_000 }).toEqual(['wren', 'salka'])
   })
 
+  test('Focus mode says where the scene is and who is in it', async ({ page }) => {
+    /*
+      H-8. Focus mode is handed the prose by definition, so the surface the app
+      calls its best writing surface — and promotes with the only outline button
+      in the row — said nothing about the room or the people in it.
+    */
+    const worldId = await sceneWithCast(page)
+    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
+
+    const draft = page.getByRole('textbox', { name: 'Scene prose' })
+    await draft.fill("[#The Kitchen @@Wren Halloway @@Sal'ka]\n\nShe put the kettle on.")
+    await draft.blur()
+    await expect.poll(async () => (await stored(page)).cast, { timeout: 20_000 }).toEqual(['wren', 'salka'])
+
+    await page.getByRole('button', { name: 'Focus' }).click()
+    /*
+      Scoped through the screen-reader prefix, which only the overlay has. A bare
+      `getByText` on the line matches the draft textarea too — it is still in the
+      DOM behind the portal, holding the same characters — and that is a second
+      match rather than a failure of the feature.
+    */
+    await expect(page.getByText(/Where and who: \[#The Kitchen @@Wren Halloway @@Sal'ka\]/))
+      .toBeVisible({ timeout: 20_000 })
+    const focusText = page.getByRole('textbox').last()
+    await expect(focusText).toHaveValue('She put the kettle on.')
+
+    // The round trip is the part that must not break: a sentence added here
+    // comes back as prose, with the line still rendered from the records.
+    await focusText.click()
+    await focusText.press('End')
+    await focusText.pressSequentially(' The water came back.', { delay: 5 })
+    await page.keyboard.press('Escape')
+
+    await expect.poll(stored.bind(null, page), { timeout: 20_000 }).toEqual({
+      cast: ['wren', 'salka'],
+      place: 'kitchen',
+      prose: 'She put the kettle on. The water came back.',
+      words: 9,
+    })
+  })
+
+  test('and shows no such line for a scene that has neither', async ({ page }) => {
+    // The absence half, so the presence above cannot pass on chrome that is
+    // always there.
+    const worldId = await sceneWithCast(page)
+    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
+
+    const draft = page.getByRole('textbox', { name: 'Scene prose' })
+    await expect(draft).toBeVisible({ timeout: 20_000 })
+    await draft.fill('She put the kettle on.')
+    await draft.blur()
+
+    await page.getByRole('button', { name: 'Focus' }).click()
+    await expect(page.getByText('Where and who:')).toBeHidden()
+    await expect(page.getByRole('textbox').last()).toHaveValue('She put the kettle on.')
+  })
+
   test('presence asserted by the line replaces a mention', async ({ page }) => {
     /*
       H-6. `@@` in the prose strips the mention, with a comment saying why; the

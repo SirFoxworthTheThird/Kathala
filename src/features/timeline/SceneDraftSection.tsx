@@ -591,6 +591,7 @@ export function SceneDraftSection({
           worldId={event.worldId}
           eventId={event.id}
           title={event.title}
+          header={headerLine}
           initialText={sceneText?.text ?? ''}
           onExit={() => setFocusOpen(false)}
         />
