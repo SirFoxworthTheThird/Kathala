@@ -219,6 +219,13 @@ and not another is this, not a flake. Reach through `page.getByRole('main')`,
 through the dialog, through the row — or pass `exact: true` where the name
 really is the whole name.
 
+On a chapter screen `main` is not narrow enough on its own. The binder sits
+inside it and repeats every chapter and scene title as a `treeitem`, *ahead of*
+the scene cards — so `main.getByText(title)` finds two, and a `.first()` quietly
+takes the binder's row rather than the card. Seven specs broke on it the day the
+binder landed. Reach a scene card through its title button:
+`main.getByRole('button', { name, exact: true })`.
+
 The same trap works in reverse, from the app side: **giving a control a name
 another screen already uses** makes every unscoped lookup ambiguous *across a
 navigation*, which shows up as an intermittent rather than a strict-mode error.
