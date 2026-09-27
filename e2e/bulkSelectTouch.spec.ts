@@ -5,15 +5,18 @@ import { dismissFirstRunGuide } from './helpers/nav'
 /**
  * HB-2c. The scene checkbox is the smallest target in the app.
  *
- * Measured on the shipped build at 390x667 with touch on: `EventRow`'s checkbox
- * is **12x12**, `ChapterRow`'s select-all is **14x14**, and consecutive scene
- * rows are **40px** apart. `.pw-tap` — the app's existing answer, a transparent
+ * Measured on the shipped build at 390x667 with touch on: the scene checkbox
+ * is **12x12**, `ChapterRow`'s select-all is **14x14**, and consecutive scenes
+ * were **40px** apart. `.pw-tap` — the app's existing answer, a transparent
  * 44x44 overlay — cannot be used as-is, because at a 40px pitch two of them
  * overlap by 4px and a tap in that band selects the wrong scene.
  *
- * `.pw-tap-row` is 24x36: the width of the gutter, and 4px inside the pitch. The
- * numbers are asserted here rather than in a comment, so the day the row's
- * density changes this goes red instead of quietly overlapping.
+ * `.pw-tap-row` is 24x36: the width of the gutter, and 4px inside that pitch.
+ * The whole book now shows the same scene card as a chapter, and bare cards sit
+ * **48px** apart — more room, not less, and a card carrying a row of chips is
+ * taller again, so 48 is the least. The numbers are asserted here rather than
+ * in a comment, so the day the density changes this goes red instead of
+ * quietly overlapping.
  *
  * Note what this spec is *not* about. HB-2b claimed these checkboxes were
  * invisible and unreachable on touch; they never were, because `index.css`
@@ -107,7 +110,7 @@ test.describe('The scene checkbox is tappable on a phone', () => {
     // The measurement this fix is sized from. If the row gets denser than the
     // overlay, the assertions below stop meaning what they say.
     expect(boxHeight, `the checkbox is ${boxHeight}px`).toBeLessThan(20)
-    expect(pitch, `rows are ${pitch}px apart`).toBe(40)
+    expect(pitch, `rows are ${pitch}px apart`).toBe(48)
 
     // The upper bound, stated as the property rather than the number: two
     // neighbouring overlays must not meet. Behaviour alone cannot guard this —
