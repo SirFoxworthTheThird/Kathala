@@ -862,12 +862,16 @@ inside it.
   in-world order (useful when you use flashbacks or in-world dates).
 - **Add Chapter**, **New Timeline** (for alternate/parallel timelines), and
   **Generate with AI** all live in the header.
-- Click a scene to open it out — its description, who is in it, where it is set.
-  **View from here** inside puts the time cursor on that exact moment, and the
-  same button on a chapter row puts it on the chapter's first. A click alone
-  does not move the cursor: reading down the timeline would otherwise keep
-  changing what every other screen is showing you.
-- Each chapter row also has an **open** button for its detail page.
+- **A scene is the same card here as on its chapter.** Closed, it shows its
+  title, status and tension, and who and where it holds. Click it to open it
+  out, and it is the whole scene — the draft to write in, the description, the
+  cast, the setting — the same card, edited in place, as on the chapter's own
+  page. **View from here** inside puts the time cursor on that exact moment,
+  and the same button on a chapter row puts it on the chapter's first. Opening
+  a card does not move the cursor: reading down the timeline would otherwise
+  keep changing what every other screen is showing you.
+- Each chapter row, and each scene card, also has an **open** button for the
+  chapter's own page.
 - **Add Chapter asks for a number**, and suggests the next free one. Type any
   number you like: a free one is simply used, and 0 makes a prologue. A number
   that is already taken puts the new chapter *there* — the chapter holding it
@@ -1081,7 +1085,9 @@ type, one undo step per burst. The synopsis is worth keeping current: it prints 
 searchable. While reading, it is shown rather than editable.
 
 An expanded scene card leads with the **scene draft** — the prose itself — and
-puts the one-line **Description** below it. An empty description is a control
+puts the one-line **Description** below it. It is the same card as on the
+whole book, and **View from here** at its foot puts the time cursor on it,
+since opening a card by its title leaves the cursor where it was. An empty description is a control
 rather than a note: click it and the card opens for editing with the field ready.
 
 **Type `@` while writing** to name a character, an item or a place. Pick one and
