@@ -65,7 +65,13 @@ The first line of a scene can say where it happens and who is there, all at once
 
 **It is never part of the book.** The line is rendered from the scene's own records rather than stored, so it costs no words, reaches no export, and appears in no search result. Change the cast in the panel, the Setting chip, or with `@@` while writing, and the line already says so — one copy of the fact, and this is a view of it.
 
-Editing the line edits the records: remove a name and that character leaves the scene. **Deleting the whole line changes nothing** — clearing your screen is not emptying your cast, and it reappears where it was. A name your world does not have is reported rather than acted on, and cannot create anybody.
+The line is tinted, so you can see where it ends and your book begins. It is shown in Focus mode too, in the chrome above the page.
+
+Editing the line edits the records, a moment after you move off it: remove a name and that character leaves the scene. **Deleting the whole line changes nothing** — clearing your screen is not emptying your cast, and it reappears where it was. **A bracketed line naming nobody and nowhere is prose**, so a note to yourself at the top of a draft stays a note.
+
+The picker works inside the brackets and keeps the sigils when it fills a name in, and it will create somebody from in there — in a header there is nothing else naming a person could mean, so a single `@` reads the same as two.
+
+A name your world cannot answer — a letter out of place, or the comma most people put between names before they learn the line uses spaces — **leaves the scene exactly as it was**, and says so in amber. Nobody leaves the room over a typo, and what you typed stays on the line, so the repair is one letter.
 
 ### Naming records while you write
 
@@ -78,9 +84,9 @@ Editing the line edits the records: remove a name and that character leaves the 
 
 The sigils never reach your manuscript: pick a row and the name goes into the prose — **the name you were typing, not the one on the record**. A character filed as *Wren Halloway* with the alias *Wren* gives you **Wren** when you type `@Wren`, because an alias is you saying what you call her. Type toward the full name and you get the full name.
 
-Typing `@@` for somebody who does not exist yet **says so** rather than going quiet, and points at the single `@` that would create them — that being the moment you most want `@@`, and the moment it cannot help. `@@` replaces a mention rather than joining it — a character cannot be both present and merely referenced.
+Typing `@@` **in the prose** for somebody who does not exist yet **says so** rather than going quiet, and points at the single `@` that would create them. (Inside the scene header it simply creates them, since there is no other reading.) Presence replaces a mention rather than joining it, by either route — a character cannot be both present and merely referenced.
 
-Two deliberate limits on `@@`. It **offers people only**, because presence is about people and an item or place "being present" is what a single `@` already means. And it **never offers to create anybody**: asserting that somebody is in the room is a claim about a person who exists, and a new character is still one `@` away.
+Two deliberate limits on `@@` in the prose. It **offers people only**, because presence is about people and an item or place "being present" is what a single `@` already means. And out there it **never offers to create anybody**: asserting that somebody is in the room is a claim about a person who exists, and a new character is still one `@` away.
 
 **Nothing reads your prose to decide any of this.** Fiction is full of *"she was not there"* and *"he imagined her at the gate"* — the keystroke is the assertion, never the sentence. The [Continuity Checker](Continuity-Checker) separately notices names in the prose that aren't accounted for, and offers to record them, which is an observation you answer rather than a decision it makes.
 
