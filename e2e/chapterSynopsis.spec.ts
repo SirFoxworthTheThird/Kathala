@@ -92,7 +92,8 @@ test.describe('a chapter synopsis can be written after the chapter exists', () =
     await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
     await settle(page)
 
-    await expect(page.getByText('The bell does not ring.')).toBeVisible({ timeout: 20_000 })
+    // In the open chapter's panel; the row above it carries the same line.
+    await expect(page.getByRole('region', { name: 'Chapter 1' }).getByText('The bell does not ring.')).toBeVisible({ timeout: 20_000 })
     await expect(page.getByRole('textbox', { name: 'Chapter synopsis' })).toHaveCount(0)
   })
 })

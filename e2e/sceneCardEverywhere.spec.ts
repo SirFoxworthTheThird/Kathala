@@ -85,7 +85,7 @@ test.describe('one scene card', () => {
     await expect(page).toHaveURL(/\/timeline\/c1$/)
   })
 
-  test('View from here moves the cursor from a card on the chapter page', async ({ page }) => {
+  test('View from here moves the cursor from a card in the open chapter', async ({ page }) => {
     const worldId = await book(page)
     await page.goto(`/#/worlds/${worldId}/timeline/c1`, { waitUntil: 'load' })
     await settle(page)
@@ -99,6 +99,8 @@ test.describe('one scene card', () => {
 
     await main.getByRole('button', { name: 'View from here' }).click()
     await expect.poll(() => cursor(page)).toBe('e2')
-    await expect(main.getByRole('button', { name: 'Viewing' })).toBeDisabled()
+    // The card's own button; the chapter's row says Viewing too, for the chapter.
+    await expect(main.getByTitle('The time cursor is on this scene')).toBeDisabled()
+    await expect(main.getByTitle('The time cursor is on this scene')).toHaveText('Viewing')
   })
 })

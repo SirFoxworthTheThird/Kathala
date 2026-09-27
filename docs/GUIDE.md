@@ -101,7 +101,7 @@ of linking it — an uploaded picture is stored locally and is never fetched.
 6. [Start a sequel](#start-a-sequel)
 7. [The world dashboard](#the-world-dashboard)
 8. [Timeline & scenes](#timeline--scenes)
-9. [Chapter detail](#chapter-detail)
+9. [Opening a chapter](#opening-a-chapter)
 10. [Corkboard](#corkboard)
 11. [Manuscript](#manuscript)
 12. [Characters](#characters)
@@ -485,8 +485,8 @@ layers, and no **…** menu on a chapter row or a scene card — so there is no
 **Rename chapter**, **Delete chapter**, **Move to chapter** or **Delete scene**
 to hit by accident in a book you are only reading. The Calendar stops inviting
 you to drag a scene onto a different day, and the map's character panel shows
-what is recorded rather than offering to change it. A chapter screen drops its
-**Writer's Notes** and **Relationship States** panels when there is nothing in
+what is recorded rather than offering to change it. A chapter's panel drops its
+**Writer's Notes** and **Relationship States** sections when there is nothing in
 them — notes that *have* been written are still shown, because they are worth
 reading — so a reader is not left opening two empty boxes addressed to somebody
 else. The map sidebar stops
@@ -578,9 +578,9 @@ does not expand — the scene list inside would name what happens in it — and 
 summary stays hidden, as it always has. The chapter's own title stays visible,
 because that is printed on your book's contents page.
 
-Opening it directly says so and offers the way back, rather than showing you the
-scenes, the character states and the summary of a chapter you are still ten
-evenings away from — and the same
+Opening it directly — from a link, say — puts a panel beside the book saying so,
+rather than showing you the scenes, the character states and the summary of a
+chapter you are still ten evenings away from — and the same
 holds for a character, an item or a lore page you have not met, however you
 arrive at it. A chapter you *have* reached opens fully, and the author's notes
 on it are shown as writing rather than as a box to type in.
@@ -840,13 +840,14 @@ your streak and history survive a backup or a move to another device.
 The Timeline is the spine of your story: chapters, each holding an ordered set
 of **scenes** (scenes/beats).
 
-**It is one screen.** Down the left is the **binder** — every chapter in the
-timeline, opened to show its scenes — and it stays there while the right-hand
-side changes. Opening the Timeline shows the **whole book** on the right: every
-chapter at once, with the orders, filters and actions described below. Click a
-chapter or a scene in the binder and the right side becomes that chapter, where
-you write; **Whole book** at the top of the binder brings the whole book back.
-The binder is described under [Chapter detail](#chapter-detail). A **pacing curve** across the top plots
+**It is one page.** Down the left is the **binder** — every chapter in the
+timeline, opened to show its scenes — and beside it is the **book**: every
+chapter at once, with the orders, filters and actions described below. There is
+no separate chapter screen. Opening a chapter — from the binder, or the open
+button on its row — opens it *in the book*: its row opens out and comes to the
+top, and the chapter's own panel appears beside the list, as described under
+[Opening a chapter](#opening-a-chapter). **Whole book** at the top of the binder,
+or the ✕ on the panel, closes it again. A **pacing curve** across the top plots
 dramatic tension chapter by chapter once you rate scenes, so you can see the
 shape of your story at a glance. Until you have rated something there is no
 curve to draw, so the panel is a single line telling you where the ratings live
@@ -862,16 +863,15 @@ inside it.
   in-world order (useful when you use flashbacks or in-world dates).
 - **Add Chapter**, **New Timeline** (for alternate/parallel timelines), and
   **Generate with AI** all live in the header.
-- **A scene is the same card here as on its chapter.** Closed, it shows its
-  title, status and tension, and who and where it holds. Click it to open it
-  out, and it is the whole scene — the draft to write in, the description, the
-  cast, the setting — the same card, edited in place, as on the chapter's own
-  page. **View from here** inside puts the time cursor on that exact moment,
-  and the same button on a chapter row puts it on the chapter's first. Opening
-  a card does not move the cursor: reading down the timeline would otherwise
-  keep changing what every other screen is showing you.
-- Each chapter row, and each scene card, also has an **open** button for the
-  chapter's own page.
+- **Every scene is a card.** Closed, it shows its title, status and tension,
+  and who and where it holds. Click it to open it out, and it is the whole
+  scene — the draft to write in, the description, the cast, the setting —
+  edited in place. **View from here** inside puts the time cursor on that exact
+  moment, and the same button on a chapter row puts it on the chapter's first.
+  Opening a card does not move the cursor: reading down the timeline would
+  otherwise keep changing what every other screen is showing you.
+- Each chapter row, and each scene card outside the open chapter, has an
+  **open** button that opens its chapter.
 - **Add Chapter asks for a number**, and suggests the next free one. Type any
   number you like: a free one is simply used, and 0 makes a prologue. A number
   that is already taken puts the new chapter *there* — the chapter holding it
@@ -1015,7 +1015,16 @@ any row to move the time cursor to that moment.
 
 ![All timelines combined view](images/47-all-timelines.png)
 
-### Chapter detail
+### Opening a chapter
+
+A chapter is opened in the book rather than on a page of its own. Its row opens
+out to show its scenes and comes to the top of the list, and **the chapter's
+panel** sits beside the list: the chapter's title and synopsis, its **Character
+States**, the **Relationship States** at its end, and your **Writer's Notes**.
+On a narrow screen, where there is no room beside the list, the panel sits just
+under the chapter's row instead. The ✕ on the panel closes the chapter, and so
+does **Whole book** in the binder. The address still names the chapter, so a
+link or a bookmark opens the book at it.
 
 Opening a chapter **puts you in it** — the time cursor moves to that chapter's
 first scene, so the Writer's Brief, the character states and everything else
@@ -1024,15 +1033,15 @@ already on a scene inside that chapter, it stays where you put it; and while
 [reading](#reading-alongside-a-book) nothing moves at all, since there the cursor
 is your own place in the book.
 
-**The binder lists the book beside the writing.** It is the Timeline screen's
-left edge — the same list whether the right side is the whole book or a chapter —
-holding every chapter in this timeline, with the one you are in opened to show
-its scenes. With more than one timeline it says which one it is listing: the one
-the chapter belongs to, or on the whole book, the one whose tab you picked, and
-that tab is still picked when you come back from a chapter. Click a scene to go there: its card opens and comes to the top,
-and the time cursor moves to it, so the Character States and the Writer's Brief
-follow the scene you are writing rather than wherever the cursor was left. Click a
-chapter to go to that chapter.
+**The binder lists the book beside the writing.** It is the Timeline's left
+edge, holding every chapter in this timeline, with the one you are in opened to
+show its scenes. With more than one timeline it says which one it is listing:
+the one whose tab you picked, which opening a chapter switches to that
+chapter's own. Click a scene to go there: its chapter opens, its card opens and
+comes to the top, and the time cursor moves to it, so the Character States and
+the Writer's Brief follow the scene you are writing rather than wherever the
+cursor was left. Click a chapter to open that chapter — or to scroll back to it,
+if it is the one already open.
 
 ![The binder beside a chapter](images/67-binder.png)
 
@@ -1060,22 +1069,20 @@ A chapter is not deleted from the binder: it takes every scene in it, which is
 too much to lose to a key. Its row on the Timeline still does that, with Undo
 behind it.
 
-The **binder** button — beside *Back* on a chapter, at the start of the header
-on the whole book — hides it and shows it again, and remembers which you chose.
+The **binder** button at the start of the header hides it and shows it again,
+and remembers which you chose.
 
-**On a phone** there is no room for a column. On the whole book you need none,
-since the list is itself the way round. On a chapter the same button opens the
-binder as a drawer instead; pick a scene or a chapter and it takes you there and
-closes.
+**On a phone** there is no room for a column, and no need of one: the book's own
+list is the way round, with the open chapter's panel under its row.
 
 While [reading](#reading-alongside-a-book), the binder lists only the chapters
 and scenes you have reached, and going to one does not move your place in the
 book.
 
-**The chapter's title and synopsis are both edited in place**, at the top of the
-screen — click either line and type. Renaming used to live only on the chapter's
-row back on the Timeline, which in a long book meant going back and finding the
-row; both are here now, and a blank title is refused rather than written.
+**The chapter's title and synopsis are both edited in place**, at the top of its
+panel — click either line and type. Renaming used to live only in the chapter
+row's ⋯ menu, which in a long book meant finding the row; both are here now, and
+a blank title is refused rather than written.
 
 The synopsis is the one-liner you set when the chapter was made, and it is no
 longer set-once: a chapter created by the first-run guide, which never asks for
@@ -1085,9 +1092,9 @@ type, one undo step per burst. The synopsis is worth keeping current: it prints 
 searchable. While reading, it is shown rather than editable.
 
 An expanded scene card leads with the **scene draft** — the prose itself — and
-puts the one-line **Description** below it. It is the same card as on the
-whole book, and **View from here** at its foot puts the time cursor on it,
-since opening a card by its title leaves the cursor where it was. An empty description is a control
+puts the one-line **Description** below it. **View from here** at its foot
+puts the time cursor on it, since opening a card by its title leaves the cursor
+where it was. An empty description is a control
 rather than a note: click it and the card opens for editing with the field ready.
 
 **Type `@` while writing** to name a character, an item or a place. Pick one and
@@ -1283,7 +1290,7 @@ scene. Putting a character in the wrong room used to mean leaving the chapter
 for their page and coming back; it is now the same click as recording them in
 the first place.
 
-![Chapter detail](images/05-chapter-detail.png)
+![An open chapter, with its panel beside the book](images/05-chapter-detail.png)
 
 **A scene card shows what it holds.** A scene can carry a dozen things —
 location, tags, characters, mentions, plot threads, motifs, items, POV, elapsed
@@ -1325,8 +1332,8 @@ is a card showing its title, synopsis, POV character, and **status**
   chevron at each edge moves you about a screenful through it. Each appears only
   when there is board in that direction, so the right-hand one going away means
   you have reached the last chapter.
-- **Click a card's title** to jump to that scene in the chapter detail with the
-  time cursor set to it.
+- **Click a card's title** to jump to that scene on the Timeline — its chapter
+  open, its card open — with the time cursor set to it.
 - The card for the scene the **time cursor** is on is outlined, so moving along
   the bar at the bottom walks the board with you.
 
@@ -2286,7 +2293,7 @@ type into it — but every cell is a way *to* the place you'd type. Clicking a c
 puts the time cursor on that scene and opens that character's **Current State**,
 so filling a gap the grid just showed you is one click instead of a trip through
 three screens. Cells with status notes still expand in place when you click them,
-as before. The same is true of the **Character States** panel in chapter detail:
+as before. The same is true of the **Character States** in an open chapter's panel:
 a cast member reading *"no state recorded — record it"* is a button that takes
 you there.
 

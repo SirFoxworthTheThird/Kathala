@@ -83,7 +83,7 @@ Suppressions are stored with the world and travel through [export/import](Export
 
 ## Flashbacks
 
-Events marked **Is flashback** are excluded from travel-distance and staleness checks. Set the flag on the event card in the chapter detail.
+Events marked **Is flashback** are excluded from travel-distance and staleness checks. Set the flag on the event's card on the Timeline.
 
 ---
 

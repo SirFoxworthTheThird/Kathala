@@ -72,7 +72,8 @@ test.describe('The scene menu can move a scene', () => {
     // could be true for a reason that has nothing to do with the menu.
     expect(await chapterOf(page)).toBe('ch1')
 
-    await page.getByRole('button', { name: /More actions for/ }).first().click()
+    // A scene's menu: the chapter rows on the same page have one each too.
+    await page.getByRole('button', { name: /More actions for “/ }).first().click()
     // The finding: one item, and it was Delete. Both are here now.
     await expect(page.getByRole('menuitem', { name: 'Move to chapter…' })).toBeVisible()
     await expect(page.getByRole('menuitem', { name: 'Delete scene' })).toBeVisible()

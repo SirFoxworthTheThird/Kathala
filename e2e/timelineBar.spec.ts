@@ -93,7 +93,9 @@ test('the merged view plays every timeline on the map, following each event', as
 
   // Advancing the cursor from the first timeline's scene ("A stolen glance")
   // into the second timeline's ("Ash writes home"); the bar stays visible.
-  await expect(page.getByText('Ash writes home', { exact: true })).toBeVisible({ timeout: 15000 })
+  // In the bar: a hash navigation returns before the map has replaced the
+  // Timeline, whose binder, cards and pacing table all carry the same title.
+  await expect(page.locator('[data-chapter-bar]').getByText('Ash writes home', { exact: true })).toBeVisible({ timeout: 15000 })
 })
 
 test('every control in the chapter bar is big enough to hit', async ({ page }) => {
