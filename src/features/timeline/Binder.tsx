@@ -92,6 +92,11 @@ export function Binder({
   /*
     A row asked to take focus may not exist yet — a scene just created arrives
     on the next live-query pass — so the request waits until it does.
+
+    Only then. A row that is already there is focused at once: a request left
+    for a render that has no reason to come waits for whichever render comes
+    next, and that was Enter's, where it took focus back from the new title
+    and the blur cancelled it.
   */
   const pendingFocus = useRef<string | null>(null)
   useEffect(() => {
@@ -105,7 +110,13 @@ export function Binder({
   })
   function focusRow(id: string) {
     setFocusedId(id)
-    pendingFocus.current = id
+    const el = rowEls.current.get(id)
+    if (el) {
+      el.focus()
+      pendingFocus.current = null
+    } else {
+      pendingFocus.current = id
+    }
   }
 
   const [adding, setAdding] = useState<Adding | null>(null)
