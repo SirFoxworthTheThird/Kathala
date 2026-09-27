@@ -23,8 +23,16 @@ interface AddLocationDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   worldId: string
-  mapLayerId: string
-  position: { x: number; y: number }
+  /**
+   * The map this place goes on, or **null** for a place that is not on one yet.
+   *
+   * A place used to be a pin and a pin needs a map, so a writer with no picture
+   * of their world could not name the kitchen their book happens in. An unmapped
+   * place is a place all the same, and can be put on a map the day one is drawn.
+   */
+  mapLayerId: string | null
+  /** Where on that map. Omitted for a place with no map to be anywhere on. */
+  position?: { x: number; y: number }
   subtitle?: string
   onCreated?: (marker: LocationMarker) => void
 }
@@ -47,8 +55,8 @@ export function AddLocationDialog({
       mapLayerId,
       name: name.trim(),
       description: description.trim(),
-      x: position.x,
-      y: position.y,
+      // x and y mean nothing until the place is on a map — see `LocationMarker`.
+      ...(position ? { x: position.x, y: position.y } : {}),
       iconType,
       // Only ever stored against the type it labels, so switching away from
       // Custom cannot leave a stale word behind on the record.
@@ -67,7 +75,7 @@ export function AddLocationDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add Location</DialogTitle>
+          <DialogTitle>{mapLayerId ? 'Add Location' : 'Add a place'}</DialogTitle>
           {subtitle && (
             <p className="text-sm text-[hsl(var(--muted-foreground))]">{subtitle}</p>
           )}

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import L from 'leaflet'
 import { useParams } from 'react-router-dom'
-import { Upload, Grid3x3, Map as MapIcon, X, Route, Sparkles, Type, Trash2, Crosshair, ImageUp, ImageOff, Layers } from 'lucide-react'
+import { Upload, Grid3x3, Map as MapIcon, X, Route, Sparkles, Type, Trash2, Crosshair, ImageUp, ImageOff, Layers, MapPin } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore, useActiveMapLayerId } from '@/store'
 import { useRootMapLayers, updateMapLayer, deleteMapLevel, createBlankMapLayer } from '@/db/hooks/useMapLayers'
@@ -1395,6 +1395,7 @@ export default function MapExplorerView() {
   const [uploadOpen, setUploadOpen] = useState(false)
   const [genLocOpen, setGenLocOpen] = useState(false)
   const [blankPending, setBlankPending] = useState(false)
+  const [placeOpen, setPlaceOpen] = useState(false)
 
   /*
     BUG-1: opening Maps with no layer chosen used to call `setActiveMapLayerId`
@@ -1447,21 +1448,30 @@ export default function MapExplorerView() {
         {/*
           Three doors, and the middle one is new.
 
-          A place in Kathala is a pin and a pin needs a map, which is
-          deliberate. But a writer who has no picture of their world had only two
-          ways in: upload an image, whose button stays disabled until you supply
-          one, or a button labelled AI. Nothing said that a setting needs a map,
-          so a mapless world just never offered `+ Setting` and never explained
-          itself. The blank map is the same grid the AI import has always drawn
-          for itself, offered plainly.
+          A place in Kathala used to be a pin, and a pin needs a map. But a
+          writer who has no picture of their world had only two ways in: upload
+          an image, whose button stays disabled until you supply one, or a button
+          labelled AI. The blank map is the same grid the AI import has always
+          drawn for itself, offered plainly.
+
+          **And a place no longer needs a map at all.** This screen went on
+          saying it did for two commits after that stopped being true, which
+          sent a writer off to find a route that was right here: the only way
+          left to name the kitchen their book happens in was to type it into the
+          prose, where the create rows are ordered character-first and the
+          documented Tab made a character out of a place name.
         */}
         <EmptyState
           icon={MapIcon}
           title="No maps yet"
-          description="Places in Kathala are pins on a map, so a scene can only be given a setting once the world has one. Upload a picture of your world, start a blank map and drop pins on it, or describe your locations to an AI assistant and have them laid out for you."
+          description="A place does not need a map — name one here and put it on a map the day you draw one. Or upload a picture of your world, start a blank map and drop pins on it, or describe your locations to an AI assistant and have them laid out for you."
           action={
             <div className="flex flex-wrap items-center justify-center gap-2">
-              <Button onClick={() => setUploadOpen(true)}>
+              <Button onClick={() => setPlaceOpen(true)}>
+                <MapPin className="h-4 w-4" />
+                Add a place
+              </Button>
+              <Button variant="outline" className="gap-1.5" onClick={() => setUploadOpen(true)}>
                 <Upload className="h-4 w-4" />
                 Add Map
               </Button>
@@ -1483,6 +1493,15 @@ export default function MapExplorerView() {
           onCreated={setActiveMapLayerId}
         />
         <GenerateLocationsDialog open={genLocOpen} onOpenChange={setGenLocOpen} worldId={worldId} />
+        {worldId && (
+          <AddLocationDialog
+            open={placeOpen}
+            onOpenChange={setPlaceOpen}
+            worldId={worldId}
+            mapLayerId={null}
+            subtitle="Somewhere your story happens. It does not need to be on a map — you can put it on one later."
+          />
+        )}
       </div>
     )
   }
