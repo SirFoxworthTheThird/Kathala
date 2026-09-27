@@ -46,17 +46,18 @@ test.describe('a scene row has no bin beside its everyday controls', () => {
     // Expand the chapter so the scene rows are on screen. The row's name is the
     // whole of "Ch. 1 — One"; matching the title alone matches nothing.
     await page.getByRole('button', { name: /Ch\. 1 — One/ }).click()
-    const openChapter = page.getByRole('button', { name: /Open the chapter holding Playback/ })
+    const openChapter = page.getByRole('button', { name: 'Open the chapter holding “Playback”' })
     await expect(openChapter).toBeVisible({ timeout: 20_000 })
 
-    // The absence: no bare bin anywhere in the row.
-    await expect(page.getByRole('button', { name: 'Delete Playback' })).toHaveCount(0)
+    // The absence: no bare bin anywhere in the row — matched loosely, since a
+    // name that only had to be spelled differently to pass would guard nothing.
+    await expect(page.getByRole('button', { name: /delete/i })).toHaveCount(0)
 
     /*
       And the presence, in the same test: delete still exists, one step in.
       Without this half, simply deleting the control would pass.
     */
-    await page.getByRole('button', { name: /More actions for Playback/ }).click()
+    await page.getByRole('button', { name: 'More actions for “Playback”' }).click()
     await page.getByRole('menuitem', { name: 'Delete scene' }).click()
     await page.getByRole('button', { name: 'Delete', exact: true }).click()
     await expect(page.getByRole('main').getByText('Playback', { exact: true })).toHaveCount(0)

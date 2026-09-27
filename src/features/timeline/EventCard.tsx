@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type KeyboardEvent } from 'react'
-import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye, History, Flame, Milestone, FolderInput } from 'lucide-react'
+import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye, History, Flame, Milestone, FolderInput, ExternalLink } from 'lucide-react'
 import { TENSION_LEVELS, tensionColor, tensionLabel } from '@/lib/tension'
 import { STORY_BEATS, beatById, beatActColor } from '@/lib/storyBeats'
 import { AtSign, Spline, Sparkle } from 'lucide-react'
@@ -23,6 +23,9 @@ import { PortraitImage } from '@/components/PortraitImage'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Menu, MenuItem } from '@/components/ui/menu'
 import { useGate } from '@/db/hooks/ReadingGateContext'
+import { useReadAhead } from '@/components/useReadAhead'
+import { useAppStore } from '@/store'
+import { cn } from '@/lib/utils'
 
 interface EventCardProps {
   event: WorldEvent
@@ -46,12 +49,34 @@ interface EventCardProps {
    * to the same scene twice still arrives.
    */
   revealNonce?: number
+  /** This scene's chapter number, for the read-ahead guard on *View from here*. */
+  chapterNumber?: number
+  /**
+   * The whole book's bulk selection: a checkbox beside the card, and
+   * shift-click selecting the run between it and the last one ticked. The
+   * chapter's scene ids, in order, are what a run is taken from.
+   */
+  selection?: { chapterEventIds: string[] }
+  /** Offered where the card is not already on its chapter's page. */
+  onOpenChapter?: () => void
 }
 
 export function EventCard({
   event, isFirst, isLast, onMoveUp, onMoveDown, moveUpHint, moveDownHint, inWorldDay, calendar, revealNonce,
+  chapterNumber, selection, onOpenChapter,
 }: EventCardProps) {
   const gate = useGate()
+  const activeEventId = useAppStore((st) => st.activeEventId)
+  const setActiveEventId = useAppStore((st) => st.setActiveEventId)
+  const selectedEventIds = useAppStore((st) => st.selectedEventIds)
+  const toggleEventSelected = useAppStore((st) => st.toggleEventSelected)
+  const selectEventRange = useAppStore((st) => st.selectEventRange)
+  const lastSelectedEventId = useAppStore((st) => st.lastSelectedEventId)
+  const setLastSelectedEventId = useAppStore((st) => st.setLastSelectedEventId)
+  const { guardJump, readAheadDialog } = useReadAhead()
+  const isHere = activeEventId === event.id
+  const selectable = selection !== undefined && !gate.active
+  const isSelected = selectable && selectedEventIds.has(event.id)
   /** Names the card's icon buttons, which are otherwise identical across scenes. */
   const eventName = event.title ? `“${event.title}”` : 'this untitled scene'
   const [expanded, setExpanded] = useState(false)
@@ -392,8 +417,28 @@ export function EventCard({
   // ── Summary line visibility ────────────────────────────────────────────────
   const hasSummary = involvedChars.length > 0 || currentLocation !== null || tags.length > 0
 
-  return (
-    <div ref={cardRef} className="scroll-mt-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+  function handleSelectClick(e: React.MouseEvent) {
+    e.stopPropagation()
+    const ids = selection?.chapterEventIds ?? []
+    if (e.shiftKey && lastSelectedEventId && lastSelectedEventId !== event.id) {
+      const fromIdx = ids.indexOf(lastSelectedEventId)
+      const toIdx = ids.indexOf(event.id)
+      if (fromIdx !== -1 && toIdx !== -1) {
+        const [lo, hi] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx]
+        selectEventRange(ids.slice(lo, hi + 1))
+        setLastSelectedEventId(event.id)
+        return
+      }
+    }
+    toggleEventSelected(event.id)
+    setLastSelectedEventId(event.id)
+  }
+
+  const card = (
+    <div ref={cardRef} className={cn(
+      'scroll-mt-3 rounded-lg border bg-[hsl(var(--card))] transition-colors',
+      isSelected ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent)/0.3)]' : 'border-[hsl(var(--border))]',
+    )}>
       {/* Header row */}
       <div className="flex items-center gap-1 px-3 py-2">
         {/*
@@ -516,6 +561,14 @@ export function EventCard({
               chapter. The reader run that found the same fault on the chapter
               rows never opened this screen; a grep for ungated menus did.
             */}
+            {onOpenChapter && (
+              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0"
+                aria-label={`Open the chapter holding ${eventName}`}
+                title="Open its chapter"
+                onClick={(e) => { e.stopPropagation(); onOpenChapter() }}>
+                <ExternalLink className="h-3.5 w-3.5" />
+              </Button>
+            )}
             {!gate.active && (
               <Menu label={`More actions for ${eventName}`} triggerClassName="h-6 w-6">
                 <MenuItem icon={FolderInput} label="Move to chapter…" onClick={() => setMoveOpen(true)} />
@@ -1092,12 +1145,69 @@ export function EventCard({
               <Button size="sm" variant="outline" onClick={cancelEdit}>Cancel</Button>
             </div>
           ) : (
-            <Button size="sm" variant="outline" className="gap-1.5 text-xs self-start" onClick={startEdit}>
-              Edit title &amp; description
-            </Button>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {/*
+                W-4: the explicit way to put the time cursor on a scene. Opening
+                the card does not move it, deliberately — browsing must not
+                drag a global cursor around — so this is the act, named, with
+                the read-ahead guard a reader's jump always carries. It was the
+                whole book's alone while the two screens had two kinds of scene.
+              */}
+              <Button
+                size="sm"
+                variant={isHere ? 'secondary' : 'outline'}
+                className="gap-1.5 text-xs"
+                disabled={isHere}
+                onClick={() => guardJump(chapterNumber, () => setActiveEventId(event.id))}
+                title={isHere
+                  ? 'The time cursor is on this scene'
+                  : gate.active
+                    ? `Mark ${eventName} as where you have read up to`
+                    : `Move the time cursor to ${eventName}`}
+              >
+                <Eye className="h-3 w-3" />
+                {isHere
+                  ? (gate.active ? 'Reading here' : 'Viewing')
+                  : (gate.active ? 'Read to here' : 'View from here')}
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={startEdit}>
+                Edit title &amp; description
+              </Button>
+            </div>
           )}
+          {readAheadDialog}
         </div>
       )}
+    </div>
+  )
+
+  if (!selection) return card
+  return (
+    <div className="group flex">
+      {/* The whole book's gutter: the selection box, and the line joining a chapter's scenes. */}
+      <div className="flex w-6 shrink-0 flex-col items-center">
+        {selectable && (
+          <div
+            className={cn(
+              'pw-tap-row mt-2.5 flex shrink-0 cursor-pointer items-center justify-center transition-opacity',
+              selectedEventIds.size > 0 ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+            )}
+            onClick={handleSelectClick}
+          >
+            {/* Named but not pointer-gated — see the note in `ChapterRow`.
+                `pw-tap-row` (HB-2c) gives it a 24x36 hit area on touch. */}
+            <input
+              type="checkbox"
+              aria-label={`Select scene ${event.title || 'Untitled'}`}
+              checked={isSelected}
+              onChange={() => {}} // controlled via onClick
+              className="h-3 w-3 cursor-pointer accent-[hsl(var(--ring))]"
+            />
+          </div>
+        )}
+        <div className="w-px flex-1 bg-[hsl(var(--border))]" />
+      </div>
+      <div className="min-w-0 flex-1">{card}</div>
     </div>
   )
 }

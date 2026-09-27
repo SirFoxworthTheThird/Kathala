@@ -22,8 +22,8 @@ A **pacing curve** across the top plots dramatic tension chapter by chapter once
 
 - **Narrative vs. Chronological** — toggle between reading order and in-world order (useful with flashbacks or in-world dates).
 - **Add Chapter**, **New Timeline**, and **Generate with AI** live in the header.
-- **Click an event** to open it out; **View from here** inside it moves the time cursor to that exact moment. A click alone leaves the cursor where it is, so reading down the list does not keep changing every other screen.
-- Each chapter row has an **open** button for its detail page.
+- **A scene is the same card here as on its chapter's page.** Closed, it shows its title, status, tension, cast and setting; open it and it is the whole scene — the draft, the description, the cast, the setting — edited in place. **View from here** inside it moves the time cursor to that exact moment. Opening a card leaves the cursor where it is, so reading down the list does not keep changing every other screen.
+- Each chapter row, and each scene card, has an **open** button for the chapter's own page.
 - **Select events** with their checkboxes; **Shift+click** selects a range. The bulk toolbar moves the selection to another chapter, adds a tag, or deletes it.
 - Once you have [plot threads](Plot-Threads), a **filter row of thread pills** appears above the chapters in Narrative view.
 

@@ -12,7 +12,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Menu, MenuItem } from '@/components/ui/menu'
 import { chapterProgress, describeProgress, describeStatus } from '@/lib/chapterProgress'
 import { eventStatusConfig } from '@/lib/eventStatus'
-import { EventRow } from './EventRow'
+import { EventCard } from './EventCard'
 import { AddEventDialog } from './AddEventDialog'
 import { EmptyState } from '@/components/EmptyState'
 import { useRevealAll } from '@/components/useRevealAll'
@@ -440,9 +440,9 @@ export function ChapterRow({
           {sortedEvents.length === 0 ? (
             <EmptyState icon={Scroll} title={threadFilter ? 'No scenes on this thread' : 'No scenes yet'} className="py-3" />
           ) : (
-            <div className="flex flex-col">
+            <div className="flex flex-col gap-1.5">
               {sortedEvents.map((e, i) => (
-                <EventRow
+                <EventCard
                   key={e.id}
                   event={e}
                   isFirst={i === 0 && !prevChapterId}
@@ -451,8 +451,9 @@ export function ChapterRow({
                   moveDownHint={i === sortedEvents.length - 1 && nextChapterId ? 'Move to the start of the next chapter' : undefined}
                   onMoveUp={() => moveEvent(e.id, 'up')}
                   onMoveDown={() => moveEvent(e.id, 'down')}
-                  chapterEventIds={chapterEventIds}
+                  selection={{ chapterEventIds }}
                   chapterNumber={chapter.number}
+                  onOpenChapter={() => navigate(`/worlds/${worldId}/timeline/${e.chapterId}`)}
                 />
               ))}
             </div>
@@ -461,7 +462,7 @@ export function ChapterRow({
             The chapter screen guards the identical button and this one did not,
             so a reader could open the full author dialog — title, cast, POV,
             draft status — and write a scene into *Dracula*. A blind reader run
-            did, and then could not remove it: `EventRow` *is* gated, so the row
+            did, and then could not remove it: the scene row *was* gated, so the row
             it had just created offered no delete. Turning reading mode off is
             the one thing the mode exists to make unnecessary.
           */}
