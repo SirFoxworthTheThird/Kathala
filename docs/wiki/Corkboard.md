@@ -22,7 +22,7 @@ The same statuses drive the Scene Status panel on the [Dashboard](Dashboard) and
 |---|---|
 | **Drag a card** within a column | Reorders scenes inside that chapter |
 | **Drag a card** to another column | Moves the scene to that chapter |
-| **Click a card's title** | Jumps to that scene in the chapter detail, with the time cursor set to it |
+| **Click a card's title** | Jumps to that scene on the Timeline — its chapter and card open — with the time cursor set to it |
 
 The timeline order updates to match. It is the same set of events as the [Timeline](Timeline), shown as a board — reorder here or there and both stay in sync.
 
