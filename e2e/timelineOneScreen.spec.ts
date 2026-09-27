@@ -176,6 +176,37 @@ test.describe('the Timeline is one page', () => {
   })
 })
 
+test.describe('the one page while reading', () => {
+  test.describe.configure({ timeout: 240_000 })
+
+  test('a chapter the reader has not reached opens to say so, and shows nothing of itself', async ({ page }) => {
+    const worldId = await twoTimelines(page)
+    // As the writer, arriving at chapter 1 puts the cursor there; reading mode
+    // then takes it as the reader's place.
+    await page.goto(`/#/worlds/${worldId}/timeline/a1`, { waitUntil: 'load' })
+    await settle(page)
+    await expect.poll(() => page.evaluate(() =>
+      JSON.parse(localStorage.getItem('kathala-ui') ?? '{}').state?.activeEventId ?? null,
+    ), { timeout: 15_000 }).toBe('e1')
+    await page.goto(`/#/worlds/${worldId}/settings`, { waitUntil: 'load' })
+    await page.getByRole('button', { name: 'Turn on reading mode' }).click()
+    await expect(page.getByRole('button', { name: 'Turn off reading mode' })).toBeVisible()
+
+    // Presence: a reached chapter's panel, in full, as reading rather than fields.
+    await page.goto(`/#/worlds/${worldId}/timeline/a1`, { waitUntil: 'load' })
+    await settle(page)
+    await expect(panel(page, 1).getByText('Character States')).toBeVisible({ timeout: 20_000 })
+    await expect(panel(page, 1).getByRole('textbox', { name: 'Chapter title' })).toHaveCount(0)
+
+    // Absence: one the reader has not got to says so, and nothing more.
+    await page.goto(`/#/worlds/${worldId}/timeline/a2`, { waitUntil: 'load' })
+    await settle(page)
+    await expect(panel(page, 2).getByText('You have not reached this chapter yet')).toBeVisible({ timeout: 20_000 })
+    await expect(panel(page, 2).getByText('Character States')).toHaveCount(0)
+    await expect(page.getByRole('main').getByText('What the stair kept')).toHaveCount(0)
+  })
+})
+
 test.describe('the one page on a phone', () => {
   test.describe.configure({ timeout: 240_000 })
   test.use({ viewport: { width: 390, height: 800 } })
