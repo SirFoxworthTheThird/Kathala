@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
-import { ChevronRight, Plus } from 'lucide-react'
+import { BookOpen, ChevronRight, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { binderKey, binderRows, focusAfterDelete, type BinderRow } from '@/lib/binder'
 import { chapterWithheld } from '@/lib/chapterReached'
@@ -12,8 +12,13 @@ import { cn } from '@/lib/utils'
 interface BinderProps {
   worldId: string
   timelineId: string
-  /** The chapter on screen — opened in the binder when you arrive at it. */
-  currentChapterId: string
+  /** Said above the list when the world has more than one timeline. */
+  timelineName?: string
+  /**
+   * The chapter on screen — opened in the binder when you arrive at it. Null on
+   * the whole book, where no chapter is.
+   */
+  currentChapterId: string | null
   /** This timeline's chapters. */
   chapters: readonly Chapter[]
   /** This timeline's scenes, already stopped at the reader's cursor by `useWorldEvents`. */
@@ -21,6 +26,7 @@ interface BinderProps {
   activeEventId: string | null
   onGoScene: (scene: WorldEvent) => void
   onGoChapter: (chapter: Chapter) => void
+  onGoBook: () => void
 }
 
 type Adding =
@@ -46,13 +52,17 @@ type Adding =
  * buttons under the tree.
  */
 export function Binder({
-  worldId, timelineId, currentChapterId, chapters, scenes, activeEventId, onGoScene, onGoChapter,
+  worldId, timelineId, timelineName, currentChapterId, chapters, scenes, activeEventId,
+  onGoScene, onGoChapter, onGoBook,
 }: BinderProps) {
   const gate = useGate()
   const editable = !gate.active
 
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set([currentChapterId]))
+  const [expanded, setExpanded] = useState<Set<string>>(
+    () => new Set(currentChapterId ? [currentChapterId] : []),
+  )
   useEffect(() => {
+    if (!currentChapterId) return
     setExpanded((prev) => (prev.has(currentChapterId) ? prev : new Set(prev).add(currentChapterId)))
   }, [currentChapterId])
 
@@ -199,6 +209,35 @@ export function Binder({
 
   return (
     <nav aria-label="Binder" className="flex h-full min-h-0 flex-col">
+      {/*
+        The other half of the screen. The whole book — every chapter at once,
+        its orders, filters and bulk actions — is the same screen with a
+        different right-hand side, so it sits above the list rather than being a
+        place you leave for. A link, outside the tree: the tree is chapters and
+        scenes, and this is neither.
+      */}
+      <div className="shrink-0 border-b border-[hsl(var(--border))] px-1 py-1">
+        <button
+          type="button"
+          onClick={onGoBook}
+          aria-current={currentChapterId === null ? 'page' : undefined}
+          className={cn(
+            'flex h-7 w-full items-center gap-1.5 rounded-sm px-2 text-left text-sm',
+            'hover:bg-[hsl(var(--accent))] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]',
+            currentChapterId === null
+              ? 'bg-[hsl(var(--accent))] font-medium text-[hsl(var(--foreground))]'
+              : 'text-[hsl(var(--muted-foreground))]',
+          )}
+        >
+          <BookOpen className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          Whole book
+        </button>
+        {timelineName && (
+          <p className="truncate px-2 pt-0.5 text-[10px] uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+            {timelineName}
+          </p>
+        )}
+      </div>
       {rows.length === 0 && adding === null ? (
         <p className="px-3 py-3 text-xs text-[hsl(var(--muted-foreground))]">No chapters yet.</p>
       ) : (

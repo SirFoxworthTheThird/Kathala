@@ -15,6 +15,7 @@ const ItemDetailView = lazy(() => import('@/features/items/ItemDetailView'))
 const RelationshipGraphView = lazy(() => import('@/features/relationships/RelationshipGraphView'))
 const TimelineView = lazy(() => import('@/features/timeline/TimelineView'))
 const ChapterDetailView = lazy(() => import('@/features/timeline/ChapterDetailView'))
+const TimelineScreen = lazy(() => import('@/features/timeline/TimelineScreen'))
 const CharacterArcView = lazy(() => import('@/features/arc/CharacterArcView'))
 const WorldSettingsView = lazy(() => import('@/features/worlds/WorldSettingsView'))
 const LoreView = lazy(() => import('@/features/lore/LoreView'))
@@ -98,8 +99,20 @@ export const router = createHashRouter([
       { path: 'items', element: <Wrap path="items"><ItemRosterView /></Wrap> },
       { path: 'items/:itemId', element: <Wrap><ItemDetailView /></Wrap> },
       { path: 'relationships', element: <Wrap path="relationships"><RelationshipGraphView /></Wrap> },
-      { path: 'timeline', element: <Wrap path="timeline"><TimelineView /></Wrap> },
-      { path: 'timeline/:chapterId', element: <Wrap><ChapterDetailView /></Wrap> },
+      /*
+        One screen. The binder is the frame, and the right-hand side is either
+        the whole book or one chapter — see `TimelineScreen`. They were two
+        screens that looked nothing alike, one of them with a second list of the
+        same chapters down its side.
+      */
+      {
+        path: 'timeline',
+        element: <Wrap path="timeline"><TimelineScreen /></Wrap>,
+        children: [
+          { index: true, element: <Wrap><TimelineView /></Wrap> },
+          { path: ':chapterId', element: <Wrap><ChapterDetailView /></Wrap> },
+        ],
+      },
       { path: 'corkboard', element: <Wrap path="corkboard"><CorkboardView /></Wrap> },
       { path: 'calendar', element: <Wrap path="calendar"><CalendarView /></Wrap> },
       { path: 'structure', element: <Wrap path="structure"><StructureView /></Wrap> },
