@@ -86,8 +86,6 @@ test.describe('a populated world does not shout at the console', () => {
     await page.goto(`/#/worlds/${id}/arc`)
     await expect(page.getByRole('grid')).toBeVisible({ timeout: 60_000 })
 
-    await page.goto(`/#/worlds/${id}/corkboard`)
-    await settle(page)
     await page.goto(`/#/worlds/${id}/manuscript`)
     await settle(page)
     await page.goto(`/#/worlds/${id}/items`)

@@ -4,9 +4,10 @@ import { EVENT_STATUSES, eventStatusConfig } from './eventStatus'
 /**
  * What a chapter contains, rolled up from its scenes (TL-4, CB-4).
  *
- * The timeline row and the corkboard column both need the same three numbers,
- * and both had only the chapter's own title and synopsis to show — prose the
- * author already wrote, rather than the state of the work.
+ * The chapter row needs these three numbers. It had only the chapter's own
+ * title and synopsis to show — prose the author already wrote, rather than the
+ * state of the work — and so had the Corkboard's column, until the Corkboard
+ * was removed.
  */
 export interface ChapterProgress {
   scenes: number
@@ -22,7 +23,7 @@ export interface ChapterProgress {
   mixed: boolean
 }
 
-/** The status a scene has when it carries none, matching the corkboard card. */
+/** The status a scene has when it carries none, matching the scene card. */
 export const DEFAULT_EVENT_STATUS = 'draft'
 
 /**
@@ -64,17 +65,6 @@ export function describeProgress(p: ChapterProgress): string {
   const scenes = `${p.scenes} ${p.scenes === 1 ? 'scene' : 'scenes'}`
   if (p.words === 0) return scenes
   return `${scenes} · ${p.words.toLocaleString()} ${p.words === 1 ? 'word' : 'words'}`
-}
-
-/**
- * How much board there is, for the corkboard's header (CB-2). Chapters rather
- * than scenes lead, because chapters are the columns — the thing that runs off
- * the right-hand edge.
- */
-export function describeBoard(chapters: number, scenes: number): string {
-  const c = `${chapters} ${chapters === 1 ? 'chapter' : 'chapters'}`
-  if (scenes === 0) return c
-  return `${c} · ${scenes} ${scenes === 1 ? 'scene' : 'scenes'}`
 }
 
 /**

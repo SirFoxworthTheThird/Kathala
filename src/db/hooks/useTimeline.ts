@@ -306,7 +306,7 @@ export async function createEvent(
  * Create a scene at `index` in a chapter — the binder's "a new scene on the line
  * below".
  *
- * Positioned the way the Corkboard moves a card: *between* its neighbours, so
+ * Positioned the way `moveEventOnBoard` moves a scene: *between* its neighbours, so
  * the ordinary insert writes exactly one row, the new one, and nothing that
  * already existed is touched. Only when the gap between the two neighbours has
  * been halved down to nothing does the chapter get renumbered — and then its
@@ -427,8 +427,9 @@ export async function bulkMoveEvents(ids: string[], targetChapterId: string): Pr
 }
 
 /**
- * Move an event to a position on the corkboard: into `toChapterId` at
- * `toIndex`. Handles the within-chapter reorder too.
+ * Move a scene to a position: into `toChapterId` at `toIndex` — the binder's
+ * drag and the scene steppers. Handles the within-chapter reorder too. (Named
+ * for the Corkboard, the board it was written for and has outlived.)
  *
  * The moved card takes a position *between* its new neighbours rather than the
  * column being renumbered, so an ordinary move writes one row. That is what

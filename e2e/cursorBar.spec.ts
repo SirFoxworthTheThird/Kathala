@@ -46,7 +46,7 @@ test.describe("The time cursor's control follows the cursor", () => {
 
     // Presence: every screen whose content answers to the cursor. Three of
     // these — arc, lore, calendar — read `activeEventId` and hid the control.
-    for (const path of ['manuscript', 'corkboard', 'structure', 'arc', 'calendar', 'lore', 'maps']) {
+    for (const path of ['manuscript', 'structure', 'arc', 'calendar', 'lore', 'maps']) {
       await page.goto(`/#/worlds/${worldId}/${path}`, { waitUntil: 'load' })
       await expect(bar(page), `bar missing on /${path}`).toBeVisible({ timeout: 20_000 })
     }
@@ -130,25 +130,19 @@ test.describe("The time cursor's control follows the cursor", () => {
     expect(many.segments[0].w).toBeGreaterThan(30)
   })
 
-  test('W-1: the corkboard and the structure board mark the scene the cursor is on', async ({ page }) => {
+  test('W-1: the structure board marks the scene the cursor is on', async ({ page }) => {
     const worldId = await worldFromSpec(page)
 
-    // A control that moved nothing would be worse than its absence, so both
-    // screens read the cursor now. Drive it from the bar itself.
-    await page.goto(`/#/worlds/${worldId}/corkboard`, { waitUntil: 'load' })
+    // A control that moved nothing would be worse than its absence, so the
+    // board reads the cursor. Drive it from the bar itself.
+    await page.goto(`/#/worlds/${worldId}/structure`, { waitUntil: 'load' })
     await expect(bar(page)).toBeVisible({ timeout: 20_000 })
 
     // Absence first: with the cursor on "all chapters" nothing is marked.
-    await expect(page.getByRole('main').locator('[aria-current="true"]')).toHaveCount(0)
+    await expect(page.getByRole('main').locator('li[aria-current="true"]')).toHaveCount(0)
 
+    // It marks the beat holding the cursor's scene.
     await bar(page).getByTitle('The wreck', { exact: true }).click()
-    const marked = page.getByRole('main').locator('[aria-current="true"]')
-    await expect(marked).toHaveCount(1, { timeout: 15_000 })
-    await expect(marked).toContainText('The wreck')
-
-    // The same cursor, the other board — and it marks the beat holding that
-    // scene rather than the same card twice.
-    await page.goto(`/#/worlds/${worldId}/structure`, { waitUntil: 'load' })
     const beat = page.getByRole('main').locator('li[aria-current="true"]')
     await expect(beat).toHaveCount(1, { timeout: 20_000 })
     await expect(beat).toContainText('The wreck')

@@ -102,7 +102,7 @@ Suppressions travel with the world in `.pwk`. If you imported an older export ma
 
 ### Screens and buttons are missing
 
-The world is in **[reading mode](Reading-Mode)**, which puts away everything that only makes sense to the writer — Manuscript, Structure, Corkboard, undo/redo, the Writer's Brief, the Continuity Checker, and every add/generate/delete control.
+The world is in **[reading mode](Reading-Mode)**, which puts away everything that only makes sense to the writer — Structure, undo/redo, the Writer's Brief, the Continuity Checker, and every add/generate/delete control.
 
 Turn it off in **Settings** and everything returns exactly as it was.
 

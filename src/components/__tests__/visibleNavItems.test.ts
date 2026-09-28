@@ -32,11 +32,9 @@ describe('visibleNavItems', () => {
 
   it('takes away the writing screens, and keeps the reading ones', () => {
     const shown = paths(true)
-    expect(shown).not.toContain('corkboard')
     expect(shown).not.toContain('structure')
     for (const p of ['manuscript', 'characters', 'maps', 'lore']) expect(shown).toContain(p)
     // The pairing: the writer has the ones the reader lost.
-    expect(paths(false)).toContain('corkboard')
     expect(paths(false)).toContain('structure')
   })
 

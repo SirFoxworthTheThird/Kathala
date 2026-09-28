@@ -140,7 +140,7 @@ scenes, with overlays for status, POV, goals, and factions.*
   Snapshots carry forward until something changes.
 - **Build multiple timelines.** Model parallel plots, flashbacks, frame stories,
   and eras with independent clocks and explicit relationships.
-- **Plan chapters and scenes.** Use the Manuscript, Corkboard, pacing curve,
+- **Plan chapters and scenes.** Use the Manuscript, its binder, the pacing curve,
   tension ratings, scene statuses, POV tracking, and Structure beat sheets.
 - **Write the manuscript.** Store prose per scene, read it continuously, preserve
   revision history, set writing goals, and export to common writing formats.

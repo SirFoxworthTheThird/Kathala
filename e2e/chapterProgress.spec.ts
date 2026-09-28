@@ -3,11 +3,11 @@ import { resetDB } from './helpers/reset'
 import { settleNav } from './helpers/nav'
 
 /**
- * TL-4, CB-3 and CB-4: a chapter row and a board column named the chapter and
- * repeated prose the author already wrote, without saying how much chapter was
- * in it. The roll-up maths is unit-tested in
- * `src/lib/__tests__/chapterProgress.test.ts`; this drives the two screens that
- * show it, against real scene prose.
+ * TL-4: a chapter row named the chapter and repeated prose the author already
+ * wrote, without saying how much chapter was in it. The roll-up maths is
+ * unit-tested in `src/lib/__tests__/chapterProgress.test.ts`; this drives the
+ * row that shows it, against real scene prose. (The Corkboard's columns, CB-3
+ * and CB-4, went with the Corkboard.)
  */
 
 /** A world with one timeline and one chapter, left on the chapter detail screen. */
@@ -71,7 +71,7 @@ async function writeScene(page: Page, title: string, prose: string) {
 }
 
 test.describe('Chapter roll-up', () => {
-  test('the row and the board column say how much chapter there is', async ({ page }) => {
+  test('the row says how much chapter there is', async ({ page }) => {
     test.setTimeout(120000)
     await seedChapter(page, 'Count World', ['Draft', 'Draft'])
 
@@ -83,14 +83,9 @@ test.describe('Chapter roll-up', () => {
     await page.getByRole('link', { name: /manuscript/i }).click()
     await settleNav(page)
     await expect(main.getByText('2 scenes', { exact: true })).toBeVisible({ timeout: 30000 })
-
-    await page.getByRole('link', { name: /corkboard/i }).click()
-    await settleNav(page)
-    await expect(page.getByRole('heading', { name: 'Corkboard' })).toBeVisible({ timeout: 30000 })
-    await expect(main.getByText('2 scenes', { exact: true })).toBeVisible()
-    // No card carries a length yet. This is the absence half; the presence half
-    // below uses the same locator, so it cannot be passing vacuously.
-    await expect(main.getByText(/^\d+ words?$/)).toHaveCount(0)
+    // No length yet. The absence half; the presence half below is the same
+    // row, so it cannot be passing vacuously.
+    await expect(main.getByText(/^2 scenes · \d+ words?$/)).toHaveCount(0)
 
     // ── Write one scene ─────────────────────────────────────────────────────
     await page.getByRole('link', { name: /manuscript/i }).click()
@@ -104,15 +99,6 @@ test.describe('Chapter roll-up', () => {
     // Retried: the row updates when the blur-triggered save reaches the store.
     await expect(main.getByText('2 scenes · 6 words', { exact: true }))
       .toBeVisible({ timeout: 30000 })
-
-    await page.getByRole('link', { name: /corkboard/i }).click()
-    await settleNav(page)
-    await expect(page.getByRole('heading', { name: 'Corkboard' })).toBeVisible({ timeout: 30000 })
-    // The column header totals the chapter...
-    await expect(main.getByText('2 scenes · 6 words', { exact: true })).toBeVisible()
-    // ...and exactly one of the two cards carries a length: the one with prose.
-    // `exact` keeps the header's own "· 6 words" out of the count.
-    await expect(main.getByText('6 words', { exact: true })).toHaveCount(1)
   })
 
   test('the status rolls up to the least-advanced scene', async ({ page }) => {
@@ -132,17 +118,15 @@ test.describe('Chapter roll-up', () => {
     // ...and it does not report the finished scene as the chapter's state.
     await expect(main.getByTitle(/Final$/)).toHaveCount(0)
 
-    // Bring the lagging scene up to Final and the chapter reads Final, with the
-    // sentence changing to match — the presence half of both absences above.
-    await page.getByRole('link', { name: /corkboard/i }).click()
-    await settleNav(page)
-    await expect(page.getByRole('heading', { name: 'Corkboard' })).toBeVisible({ timeout: 30000 })
-    // Cards sit in the order this test created them, so the second select is
-    // Closing's. Read the value back rather than trusting the click, since the
-    // assertion that matters is two screens away.
-    const closingStatus = main.getByLabel('Scene status').nth(1)
-    await closingStatus.selectOption('final')
-    await expect(closingStatus).toHaveValue('final')
+    // Bring the lagging scene up to Final on its own card and the chapter reads
+    // Final, with the sentence changing to match — the presence half of both
+    // absences above.
+    await page.getByTitle('Open chapter detail').first().click()
+    await main.getByRole('button', { name: 'Closing', exact: true }).click()
+    const final = main.getByRole('button', { name: 'Final', exact: true })
+    await final.click()
+    // Read it back rather than trusting the click: the assertion that matters is on the row.
+    await expect(final).toHaveAttribute('aria-pressed', 'true')
 
     await page.getByRole('link', { name: /manuscript/i }).click()
     await settleNav(page)

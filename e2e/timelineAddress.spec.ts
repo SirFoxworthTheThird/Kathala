@@ -68,6 +68,16 @@ test.describe('the Timeline’s addresses land in the Manuscript', () => {
     expect(hash(page)).toBe(`#/worlds/${worldId}/manuscript`)
   })
 
+  test('/corkboard, whose screen is gone, is the Manuscript too — and the navigation no longer offers it', async ({ page }) => {
+    const worldId = await book(page)
+    await page.goto(`/#/worlds/${worldId}/corkboard`, { waitUntil: 'load' })
+    await expect(page.getByRole('main').getByRole('button', { name: /Low Water/ }).first()).toBeVisible({ timeout: 30_000 })
+    expect(hash(page)).toBe(`#/worlds/${worldId}/manuscript`)
+    await expect(nav(page).getByRole('link', { name: 'Corkboard' })).toHaveCount(0)
+    // Paired: the navigation is there, and still offers its neighbour.
+    await expect(nav(page).getByRole('link', { name: 'Structure' })).toBeVisible()
+  })
+
   test('the navigation has the book once, and it is the Manuscript', async ({ page }) => {
     const worldId = await book(page)
     await page.goto(`/#/worlds/${worldId}/characters`, { waitUntil: 'load' })
