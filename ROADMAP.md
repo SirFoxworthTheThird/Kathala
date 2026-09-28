@@ -94,7 +94,11 @@ prose is the body of the page, and the Timeline's structure sits around it.**
   a view composed from those records and written back to them per scene.
 
 **Decided.** One screen for the Timeline and the Manuscript, and continuous
-writing with lines that make structure.
+writing with lines that make structure. **The editor is CodeMirror 6**, chosen by
+the spike in step 1: about 4 ms a keystroke anywhere in *Monte Cristo*, against
+a median of 70–145 ms for ProseMirror and a `<textarea>`. The numbers, and what the choice
+costs, are in
+[`docs/records/editor-spike-2026-09-28.md`](docs/records/editor-spike-2026-09-28.md).
 
 **Open, each with a recommendation:**
 
@@ -112,13 +116,6 @@ writing with lines that make structure.
    creates (a main timeline, a frame narrative), and this screen shows the
    book. I recommend **Manuscript**, with the in-world ordering as its
    *Chronological* view. `/timeline` and `/manuscript` both land on it.
-3. **The editor.** The draft box today is a `<textarea>`, which will not carry a
-   whole book. The measured case to design for is *The Count of Monte Cristo*,
-   459,375 words. I recommend CodeMirror 6: the stored text is plain text, which
-   is CodeMirror's model, whereas ProseMirror is built around rich documents.
-   It has not been tried here yet. Choose it with a spike on that book, not on
-   this paragraph.
-
 **The hard parts**, to be solved before or during the steps below:
 
 - **A scene is a record, not a line of text.** It has an id that snapshots,
@@ -141,13 +138,18 @@ writing with lines that make structure.
 
 **Steps**, each its own pull request:
 
-1. **The editor spike.** Load *Monte Cristo* into the chosen editor with each
-   heading carrying its record's id, and show that the id survives editing the
-   heading's title. Measure typing and scrolling. Nothing ships from the spike;
-   it decides the editor.
+1. **The editor spike.** *Done* — CodeMirror 6; the harness is in
+   [`spikes/editor/`](spikes/editor/README.md).
 2. **Draft density on the current Timeline screen.** Outline | Draft. In Draft
    the prose flows as one editor across scenes and chapters, and editing a
-   heading renames the scene or chapter. No new structure from text yet.
+   heading renames the scene or chapter. No new structure from text yet. It
+   carries what the spike found:
+   - The heading-id rules, as unit tests against real CodeMirror transactions,
+     undo included; the spike's first run got a grouped undo wrong.
+   - CodeMirror's own search on Ctrl+F, since the browser's find cannot see the
+     part of the book that is not on screen.
+   - A timing check on a real machine and on a phone, which the spike could not
+     do.
 3. **Bring the Manuscript's parts across.** Word goals, export, find and
    replace, and the reader's page — cursor following, *In this scene*, reading
    type. Then `/manuscript` lands on the merged screen.
