@@ -216,6 +216,25 @@ test.describe('the Page view', () => {
     await expect.poll(() => stored(page), { timeout: 10_000 }).toContain('The gate: Open. The water fell.')
   })
 
+  test('Ctrl+Z pressed while a split is still being written waits for it, then takes it back', async ({ page }) => {
+    const worldId = await book(page)
+    await openPage(page, worldId)
+    await line(page, 'The court sat.').click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('## The gate')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Control+z')
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toEqual([
+      'The assize rises: The court sat.\n\nThe water fell.',
+      'Teodora at the table: She counted.',
+      `The tide-table: ${`${FILLER}`.slice(0, 60)}`,
+    ])
+    // And stays taken back: nothing half-written comes after it.
+    await page.waitForTimeout(1500)
+    expect(await stored(page)).toHaveLength(3)
+  })
+
   test('Ctrl+Z takes back the typing since a split, and then the split', async ({ page }) => {
     const worldId = await book(page)
     await openPage(page, worldId)
