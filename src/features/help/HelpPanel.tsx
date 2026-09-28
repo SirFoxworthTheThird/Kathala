@@ -159,7 +159,8 @@ export function HelpPanel() {
           <Section title="Timeline & scenes">
             <P>A <B>chapter</B> is a named container (e.g. "Chapter 3"). Inside it you add <B>scenes</B> — individual moments like "The ambush" or "Arrival at the city".</P>
             <P>Scenes are the true time unit. Move through them with the timeline bar; the chapter segments group them visually. Switch between <B>Narrative</B> reading order and <B>Chronological</B> in-world order to expose flashbacks and flash-forwards.</P>
-            <P>You can <B>multi-select scenes</B> with checkboxes or Shift+click, then bulk-move, bulk-delete, or bulk-tag them. Drag chapter rows to reorder them.</P>
+            <P>You can <B>multi-select scenes</B> with checkboxes or Shift+click, then bulk-move, bulk-delete, or bulk-tag them. Drag chapters and scenes in the binder to reorder them.</P>
+            <P>Switch the Timeline from <B>Cards</B> to <B>Page</B> to write the whole book as one document: each chapter a <B>#</B> heading, each scene a <B>##</B> heading, its prose beneath. What you type is saved to the scene it sits under.</P>
             <P>Create additional timelines for frame narratives or alternate histories. Linked two-timeline worlds display two stacked tracks in the bottom cursor; click either track to make it active.</P>
             <P>The <B>Compare chapters</B> tool in the timeline bar shows what changed between two story points — useful for spotting continuity drift.</P>
           </Section>
@@ -334,6 +335,7 @@ export function HelpPanel() {
               <KbdRow keys={['Ctrl', 'Alt', '↑']} label="Previous scene, from inside a scene's draft" />
               <KbdRow keys={['Ctrl', 'Enter']} label="New scene after this one, from inside its draft" />
               <KbdRow keys={['Ctrl', 'Shift', 'Enter']} label="Split the scene at the caret, from inside its draft" />
+              <KbdRow keys={['Ctrl', 'F']} label="Search the whole book, on the Timeline's Page (⌘F on Mac)" />
               <KbdRow keys={['Alt', '↑ ↓']} label="Move a chapter or scene, in the binder" />
               <KbdRow keys={['Esc']} label="Close panel or dialog" />
               <KbdRow keys={['↑', '↓']} label="Navigate search results / continuity issues" />
