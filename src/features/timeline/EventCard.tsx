@@ -656,7 +656,7 @@ export function EventCard({
                 open={joinOpen}
                 onOpenChange={setJoinOpen}
                 title={`Join “${nextTitle || 'the next scene'}” onto ${eventName}?`}
-                description={`Its prose is added to the end of this scene, and it stops being a scene of its own. Who and what is in it joins this one. Where both scenes recorded a state for the same character, item or place, the later one — “${nextTitle || 'the next scene'}”'s — is kept. Undo puts it all back.`}
+                description={`Its prose is added to the end of this scene, and it stops being a scene of its own. Who and what is in it joins this one. Where both scenes recorded a state for the same character, item or place, the one recorded in “${nextTitle || 'the next scene'}” is kept, since it comes later. Undo puts it all back.`}
                 confirmLabel="Join"
                 destructive={false}
                 onConfirm={onJoinNext}

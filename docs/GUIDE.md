@@ -903,6 +903,18 @@ inside it.
   same act as dragging it on the [Corkboard](#corkboard), for when you are
   already looking at the scene. The chapter it is in is not offered, since that
   is not a move.
+- **Join with next scene…**, in the same menu, folds the next scene in the
+  chapter into this one: its prose goes on the end after a paragraph break, and
+  whoever and whatever was in it is in this one. It asks first. The character
+  states recorded at the next scene move here with it — where both scenes
+  recorded one for the same character, item or place, the later is kept, since
+  the joined scene ends where the next one ended — and anything that pointed at
+  it, a goal's end or a thread's resolution, points here. **One Undo parts them
+  again**, prose and states and all, and so does one Undo of a split. Each keeps
+  the scene's text from before in its History too. The last scene of a chapter
+  has nothing to join.
+
+  ![Joining a scene onto the one before it: the dialog names both scenes, and says the later state is kept](images/71-join-scene.png)
 - **Deleting is always one step in.** A chapter row, a scene card, a character's
   header and a lore card each carry a **⋯** menu, and delete lives inside it,
   set apart and in red. Nothing destructive sits in the row beside the everyday
@@ -1126,6 +1138,7 @@ prose:
 | **Ctrl+Alt+↓** (⌘⌥↓ on a Mac) | The next scene: this one is saved and folds away, the next one opens — in the next chapter, if this was the last scene of its chapter — and the caret is at the start of its prose, just under the line saying who is there |
 | **Ctrl+Alt+↑** (⌘⌥↑) | The previous scene, with the caret at the end of it, as if the two were one text |
 | **Ctrl+Enter** (⌘Enter) | **A new scene after this one.** Type its title on the line that appears where it will sit and press Enter, and you are in its empty draft; Escape takes you back to where you were |
+| **Ctrl+Shift+Enter** (⌘⇧Enter) | **Split the scene here.** Everything after the caret becomes a new scene straight after this one: give it a title, press Enter, and you are writing in it. It starts in the same room with the same people — the line at the top of its draft says so — and the same status, threads and tags |
 
 ![Ctrl+Enter in a scene's draft: the new scene's title, typed where it will sit](images/69-scene-keys.png)
 
@@ -1496,6 +1509,14 @@ set a [daily goal](#writing-progress) a thin bar at the bottom fills toward it.
 
 It autosaves as you write (so scene history and the writing log keep working);
 press **Esc** or click the ✕ to drop back to the scene.
+
+**The scene keys work here too**, so Focus mode is not one scene deep.
+**Ctrl+Alt+↓ / ↑** (⌘⌥ on a Mac) goes to the next or previous scene and stays
+in Focus mode. **Ctrl+Enter** makes a new scene after this one and
+**Ctrl+Shift+Enter** splits this one at the caret: the title is asked for at
+the top of the page, and the new scene opens in Focus mode. Escape from the
+title goes back to where you were, still in Focus mode. The keys are named in
+the header.
 
 ---
 
