@@ -109,19 +109,25 @@ export function Binder({
     }
   })
   /*
-    A moved row keeps focus. React reorders by moving DOM nodes, and a focused
-    node that is moved loses focus to the page — so a writer pressing Alt+↓
-    twice would move the row once and then be nowhere. The row to hold is kept
-    until focus goes somewhere else on purpose, and put back after any render
-    that dropped it on the floor.
+    A moved row keeps focus, so the next Alt+↓ moves it again. Moving a row
+    within the list keeps it — but a scene moved past the end of its chapter
+    lands in the next one, and if that chapter is closed the row is gone from
+    the list and focus with it: the writer would press Alt+↓ once more and
+    move nothing. So the chapter it lands in is opened, and focus put back on
+    the row once it is there. Held until focus goes somewhere else on purpose.
   */
   const holdFocus = useRef<string | null>(null)
   useLayoutEffect(() => {
     const id = holdFocus.current
     if (!id) return
     const el = rowEls.current.get(id)
+    if (!el) {
+      const scene = scenes.find((sc) => sc.id === id)
+      if (scene && !expanded.has(scene.chapterId)) openChapter(scene.chapterId)
+      return
+    }
     const active = document.activeElement
-    if (el && active !== el && (active === null || active === document.body)) el.focus()
+    if (active !== el && (active === null || active === document.body)) el.focus()
   })
 
   function focusRow(id: string) {

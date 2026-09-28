@@ -90,8 +90,15 @@ test.describe('moving in the binder', () => {
     await expect.poll(() => stored(page)).toContain('1 Low Water: Teodora at the table, The assize rises |')
     await expect(tree.getByRole('treeitem', { name: 'The assize rises' })).toBeFocused()
 
+    // Into chapter 2, which is closed in the binder: it opens, and the row still has the focus…
+    await expect(tree.getByRole('treeitem', { name: /^Ch\. 2/ })).toHaveAttribute('aria-expanded', 'false')
     await page.keyboard.press('Alt+ArrowDown')
     await expect.poll(() => stored(page)).toContain('2 The Stair: The assize rises, What the stair kept')
+    await expect(tree.getByRole('treeitem', { name: /^Ch\. 2/ })).toHaveAttribute('aria-expanded', 'true')
+    await expect(tree.getByRole('treeitem', { name: 'The assize rises' })).toBeFocused()
+    // …so the next press moves it on.
+    await page.keyboard.press('Alt+ArrowDown')
+    await expect.poll(() => stored(page)).toContain('2 The Stair: What the stair kept, The assize rises')
   })
 
   test('dragging a chapter puts it before the one it is dropped on', async ({ page }) => {
