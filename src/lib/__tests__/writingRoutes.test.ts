@@ -19,7 +19,7 @@ describe('writing-only routes', () => {
   it('has some, or this whole guard is asserting nothing', () => {
     const writingOnly = navItems.filter((n) => n.writingOnly)
     expect(writingOnly.length).toBeGreaterThan(0)
-    expect(writingOnly.map((n) => n.to)).toContain('corkboard')
+    expect(writingOnly.map((n) => n.to)).toContain('structure')
   })
 
   it('passes its path to Wrap for every world-scoped route', () => {

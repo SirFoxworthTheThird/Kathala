@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { chapterProgress, describeProgress, describeStatus, describeBoard } from '../chapterProgress'
+import { chapterProgress, describeProgress, describeStatus } from '../chapterProgress'
 import type { WorldEvent } from '@/types'
 
 function ev(id: string, status?: string): WorldEvent {
@@ -81,17 +81,6 @@ describe('describeProgress', () => {
     // that is full.
     expect(describeProgress({ scenes: 0, words: 0, status: null, mixed: false }))
       .toBe('No scenes')
-  })
-})
-
-describe('describeBoard', () => {
-  it('leads with the chapters, because chapters are the columns', () => {
-    expect(describeBoard(17, 74)).toBe('17 chapters · 74 scenes')
-    expect(describeBoard(1, 1)).toBe('1 chapter · 1 scene')
-  })
-
-  it('says nothing about scenes when there are none to count', () => {
-    expect(describeBoard(3, 0)).toBe('3 chapters')
   })
 })
 

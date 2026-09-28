@@ -20,7 +20,6 @@ const LoreView = lazy(() => import('@/features/lore/LoreView'))
 const LorePageEditor = lazy(() => import('@/features/lore/LorePageEditor'))
 const FactionsView = lazy(() => import('@/features/factions/FactionsView'))
 const KnowledgeView = lazy(() => import('@/features/knowledge/KnowledgeView'))
-const CorkboardView = lazy(() => import('@/features/corkboard/CorkboardView'))
 const CalendarView = lazy(() => import('@/features/calendar/CalendarView'))
 const StructureView = lazy(() => import('@/features/structure/StructureView'))
 
@@ -65,6 +64,15 @@ function TimelineAddress() {
   return <Navigate to={`/worlds/${worldId}/manuscript${rest ? `/${rest}` : ''}${search}`} replace />
 }
 
+/**
+ * The Corkboard is gone — the Manuscript's binder and cards do what it did —
+ * and a link or bookmark to it opens the Manuscript instead.
+ */
+function CorkboardAddress() {
+  const { worldId } = useParams<{ worldId: string }>()
+  return <Navigate to={`/worlds/${worldId}/manuscript`} replace />
+}
+
 function Wrap({ children, path }: { children: React.ReactNode; path?: string }) {
   const guarded = path !== undefined && WRITING_ONLY.has(path)
   return (
@@ -104,7 +112,7 @@ export const router = createHashRouter([
           { path: ':chapterId?', element: <Wrap><TimelineView /></Wrap> },
         ],
       },
-      { path: 'corkboard', element: <Wrap path="corkboard"><CorkboardView /></Wrap> },
+      { path: 'corkboard', element: <CorkboardAddress /> },
       { path: 'calendar', element: <Wrap path="calendar"><CalendarView /></Wrap> },
       { path: 'structure', element: <Wrap path="structure"><StructureView /></Wrap> },
       { path: 'arc', element: <Wrap path="arc"><CharacterArcView /></Wrap> },

@@ -29,7 +29,7 @@ test.describe.configure({ timeout: 180_000 })
 
 /** The index screens — every one reachable from the nav. */
 const INDEX_ROUTES = [
-  '', 'manuscript?view=cards', 'corkboard', 'calendar', 'characters', 'maps', 'items',
+  '', 'manuscript?view=cards', 'calendar', 'characters', 'maps', 'items',
   'relationships', 'arc', 'lore', 'factions', 'knowledge',
 ]
 

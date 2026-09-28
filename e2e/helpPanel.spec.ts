@@ -14,7 +14,7 @@ import { settle } from './helpers/settle'
 test.describe('Help panel', () => {
   test.describe.configure({ timeout: 180_000 })
 
-  const WRITER_ONLY = ['Corkboard & export', 'Map AI tools', 'Continuity checker', "Writer's Brief"]
+  const WRITER_ONLY = ['Find, replace & export', 'Map AI tools', 'Continuity checker', "Writer's Brief"]
   const ALWAYS = ['Getting started', 'Core concept: the time cursor', 'Maps']
 
   async function downloadBook(page: Page) {

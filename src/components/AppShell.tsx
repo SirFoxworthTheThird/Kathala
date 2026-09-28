@@ -42,8 +42,9 @@ export function AppShell() {
     Structure read nothing; Structure only *sets* it, by opening a scene.
 
     So the rule is: the bar shows where the cursor means something, and Corkboard
-    and Structure were made to mean something (each marks the scene the cursor is
-    on) rather than being given a control that moved nothing.
+    and Structure were made to mean something (each marked the scene the cursor
+    was on) rather than being given a control that moved nothing. The Corkboard
+    has since been removed; Structure still does.
 
     Still hidden, on the evidence: the dashboard and settings, neither of which
     has a moment in it, and the lore page editor, which is a full-height writing
