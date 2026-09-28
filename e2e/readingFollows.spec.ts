@@ -120,6 +120,31 @@ test('reading on carries the reader\u2019s place with it, and turning back does 
   expect(await cursor(page)).toBe(readTo)
 })
 
+test('a reader who rests in the book before stepping out comes back to that place', async ({ page }) => {
+  /*
+    The trip "Read → Characters → Read" once came back to the top of the book
+    on the Timeline, with the place saved as the very first scene. The spot is
+    tracked by an effect that re-runs as the book arrives — chapters, then
+    scenes, then prose — and each re-run saves on the way out, so the first
+    ones saved the top of a page that had not been put back yet. Resting here
+    first matters: leave at once and the old place is still in the store.
+  */
+  await downloadLibraryBook(page, 'Dracula')
+  await settle(page)
+  await openBook(page)
+
+  await scroller(page).evaluate((el) => { el.scrollTop = 12000 })
+  await page.waitForTimeout(2000)
+
+  await page.getByRole('navigation', { name: 'Main navigation' })
+    .getByRole('link', { name: 'Characters' }).click()
+  await settle(page)
+  await page.waitForTimeout(1500)
+  await openBook(page)
+  await expect.poll(() => scroller(page).evaluate((el) => el.scrollTop), { timeout: 15_000 })
+    .toBeGreaterThan(6000)
+})
+
 test('the book reopens where it was left, after leaving it and after a reload', async ({ page }) => {
   await downloadLibraryBook(page, 'Dracula')
   await settle(page)
