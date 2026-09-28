@@ -675,7 +675,14 @@ a few predictable rules:
 
 - **Chapters** — a Markdown `#`/`##` heading, or a line that starts with
   *Chapter*, *Prologue*, *Epilogue*, or *Part*, begins a new chapter. A `Chapter 7:
-  The Reckoning` heading keeps *The Reckoning* as the title.
+  The Reckoning` heading keeps *The Reckoning* as the title, and so does the
+  Markdown export's own `Ch. 7 — The Reckoning`.
+- **Scene titles** — where the chapters are `#` headings, a `##` heading starts a
+  scene with that title: the way the Manuscript's Page writes a book, and the way
+  Markdown export does with **Scene titles as ## headings**. So a book exported
+  and imported again comes back as the same chapters and scenes. A `##` that
+  reads as a chapter (*Chapter 3*, *Part Two*) is still a chapter; and in a file
+  with no `#` chapters, `##` headings are chapters, as many manuscripts have them.
 - **Book title** — if the file opens with a single `#` heading (your title) followed
   by a chapter, that heading becomes the world's name rather than a chapter.
 - **Scenes** — a line of only symbols — `* * *`, `***`, `---`, a lone `#` — splits a
@@ -689,7 +696,8 @@ straight into the new world.
 
 ![Import a manuscript](images/22-import-manuscript.png)
 
-Each parsed scene becomes a scene with its prose attached, so the imported draft
+Each parsed scene becomes a scene with its prose attached — named by its `##`
+title where it had one, *Scene 1*, *Scene 2* where it did not — so the imported draft
 flows straight onto the Manuscript's Page and Read, and reads back as one continuous document.
 (Import handles Markdown and plain text today; `.docx` is planned.)
 
@@ -1545,6 +1553,13 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
   file is named after **your world** — the book — so exporting *The Ninth Bell*
   gives you `the-ninth-bell.md`. If the world has more than one timeline, the
   timeline's name is added, so the exports don't overwrite each other.
+
+  **Scene titles as ## headings**, on by default and offered for Markdown only,
+  writes each scene under its own `## Title` instead of parting them with a
+  `* * *`, and leaves a scene with no prose as its heading alone. That is how a
+  Markdown export comes back through **Import Manuscript** as the same chapters
+  and scenes. Turn it off for a Markdown file meant for readers; Word, EPUB and
+  HTML never carry scene titles.
 
   **Scenes to include** decides how much of the draft goes out. *Every scene* is
   the default and behaves as it always has. *Revised and final* and *Final only*

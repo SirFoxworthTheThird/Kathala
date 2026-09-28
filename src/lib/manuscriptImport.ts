@@ -8,8 +8,15 @@
  *  - A **chapter boundary** is a Markdown `#`/`##` heading, or a line starting
  *    with `Chapter` / `Prologue` / `Epilogue` / `Part`. Deeper headings
  *    (`###`+) are left inside the prose.
- *  - A leading `#` heading immediately followed by another chapter boundary
- *    (no prose between) is treated as the **book title**, not a chapter.
+ *  - **`##` is a scene title under `#` chapters.** When the manuscript has
+ *    chapters at `#` — more than a book title — a `##` heading starts a scene
+ *    with that title, which is how Kathala's own Markdown export writes a book
+ *    and how its Page shows one, so a book exported and brought back keeps its
+ *    shape. A `##` that reads as a chapter ("Chapter 3", "Part Two") is still
+ *    one. Without `#` chapters, `##` is a chapter, as many manuscripts use it.
+ *  - A leading `#` heading immediately followed by another heading (no prose
+ *    between) is treated as the **book title**, not a chapter — unless it reads
+ *    as a chapter itself ("Chapter 1", or the export's "Ch. 1 — Title").
  *  - A **scene break** is a line of only symbols — `***`, `* * *`, `---`, a lone
  *    `#`, `⁂`, etc. Prose between breaks becomes one scene.
  *  - Prose before the first chapter boundary becomes an untitled leading chapter.
@@ -17,6 +24,8 @@
 
 export interface ParsedScene {
   text: string
+  /** The scene's own title, from a `##` heading; absent for a scene made by a break. */
+  title?: string
 }
 
 export interface ParsedChapter {
@@ -31,18 +40,23 @@ export interface ParsedManuscript {
   chapters: ParsedChapter[]
 }
 
-type LineKind = 'chapter' | 'sep' | 'text' | 'blank'
+type LineKind = 'chapter' | 'scene' | 'sep' | 'text' | 'blank'
 
 interface ClassifiedLine {
   kind: LineKind
   /** Original source line (for text) — preserves prose formatting. */
   line: string
-  /** Chapter title (for `chapter` lines). */
+  /** Chapter or scene title (for `chapter` and `scene` lines). */
   title?: string
+  /** The Markdown heading level, for a Markdown heading. */
+  level?: number
+  /** The heading's text as written, for a Markdown heading. */
+  heading?: string
 }
 
 const MD_HEADING = /^(#{1,6})\s+(.*\S)\s*$/
-const KEYWORD_HEADING = /^(?:chapter|prologue|epilogue|part)\b/i
+/** A heading that names a chapter: "Chapter 3", "Prologue", "Part Two", or the export's "Ch. 3 — Title". */
+const KEYWORD_HEADING = /^(?:(?:chapter|prologue|epilogue|part)\b|ch\.\s*\d)/i
 
 /** Strip a "Chapter N" / "Part N" prefix, returning the descriptive title (or ''
  *  when the heading is only a chapter number). Prologue/Epilogue and plain
@@ -52,6 +66,9 @@ function headingTitle(text: string): string {
   const withTitle = t.match(/^(?:chapter|part)\b\s*[^\s:.\-–—]*\s*[:.\-–—]+\s*(.+)$/i)
   if (withTitle) return withTitle[1].trim()
   if (/^(?:chapter|part)\b[\s\w'-]*$/i.test(t)) return '' // bare "Chapter 5" / "Part One"
+  // The Markdown export's own form, "Ch. 3 — Title".
+  const exported = t.match(/^ch\.\s*\d+\s*(?:[:.\-–—]+\s*(.*))?$/i)
+  if (exported) return (exported[1] ?? '').trim()
   return t
 }
 
@@ -69,7 +86,7 @@ function classify(line: string): ClassifiedLine {
   const md = trimmed.match(MD_HEADING)
   if (md) {
     const level = md[1].length
-    if (level <= 2) return { kind: 'chapter', line, title: headingTitle(md[2]) }
+    if (level <= 2) return { kind: 'chapter', line, title: headingTitle(md[2]), level, heading: md[2].trim() }
     return { kind: 'text', line } // deeper headings stay in the prose
   }
 
@@ -81,17 +98,26 @@ function classify(line: string): ClassifiedLine {
   return { kind: 'text', line }
 }
 
-/** Split a chapter body (already-classified lines) into scenes on separators. */
+/**
+ * Split a chapter body (already-classified lines) into scenes: on separators,
+ * and at each scene heading, which starts a scene with its title. A titled
+ * scene is kept even with no prose — it is a scene still to be written — and an
+ * untitled one only when it has some.
+ */
 function splitScenes(body: ClassifiedLine[]): ParsedScene[] {
   const scenes: ParsedScene[] = []
   let buf: string[] = []
+  let title: string | undefined
   const flush = () => {
     const text = buf.join('\n').replace(/^\s*\n/, '').replace(/\n\s*$/, '').trim()
-    if (text) scenes.push({ text })
+    if (title !== undefined) scenes.push({ text, title })
+    else if (text) scenes.push({ text })
     buf = []
+    title = undefined
   }
   for (const l of body) {
     if (l.kind === 'sep') flush()
+    else if (l.kind === 'scene') { flush(); title = l.title }
     else buf.push(l.line)
   }
   flush()
@@ -109,15 +135,28 @@ export function parseManuscript(raw: string): ParsedManuscript {
   const firstNonBlank = classified.findIndex((c) => c.kind !== 'blank')
   if (firstNonBlank !== -1) {
     const first = classified[firstNonBlank]
-    const md = lines[firstNonBlank].trim().match(MD_HEADING)
     // Only a top-level (#) heading that is NOT itself a "Chapter/Part …" keyword
-    // can be the book title, and only if a chapter boundary follows with no
-    // prose in between.
-    if (first.kind === 'chapter' && md && md[1].length === 1 && !KEYWORD_HEADING.test(md[2])) {
-      const nextNonBlank = classified.findIndex((c, i) => i > firstNonBlank && c.kind !== 'blank')
-      if (nextNonBlank !== -1 && classified[nextNonBlank].kind === 'chapter') {
-        title = md[2].trim()
+    // can be the book title, and only if a chapter follows with no prose in
+    // between. Where there are other `#` chapters, a `##` straight after it is
+    // a scene, so that `#` is the first chapter, not the book's title.
+    if (first.kind === 'chapter' && first.level === 1 && !KEYWORD_HEADING.test(first.heading ?? '')) {
+      const otherChapters = classified.some((c, i) => i > firstNonBlank && c.kind === 'chapter' && c.level === 1)
+      const next = classified.find((c, i) => i > firstNonBlank && c.kind !== 'blank')
+      const chapterNext = next?.kind === 'chapter'
+        && (next.level === 1 || !otherChapters || KEYWORD_HEADING.test(next.heading ?? ''))
+      if (chapterNext) {
+        title = first.heading ?? null
         start = firstNonBlank + 1
+      }
+    }
+  }
+
+  // ── `##` under `#` chapters is a scene ────────────────────────────────────
+  if (classified.some((c, i) => i >= start && c.kind === 'chapter' && c.level === 1)) {
+    for (let i = start; i < classified.length; i++) {
+      const c = classified[i]
+      if (c.kind === 'chapter' && c.level === 2 && !KEYWORD_HEADING.test(c.heading ?? '')) {
+        classified[i] = { kind: 'scene', line: c.line, title: c.heading }
       }
     }
   }

@@ -110,4 +110,41 @@ describe('parseManuscript', () => {
     const stats = manuscriptStats(m)
     expect(stats).toEqual({ chapters: 1, scenes: 2, words: 5 })
   })
+
+  it('reads ## as a titled scene under # chapters, keeping a titled scene with no prose', () => {
+    const src = ['# Low Water', '', '## The assize rises', '', 'The court sat.', '', '## Teodora at the table', '',
+      '# High Water', '', '## The tide-table', '', 'And the heron flew.', '', '* * *', '', 'Untitled after a break.'].join('\n')
+    const m = parseManuscript(src)
+    // The first # is a chapter: a scene follows it, not another chapter.
+    expect(m.title).toBeNull()
+    expect(m.chapters).toEqual([
+      { title: 'Low Water', scenes: [{ title: 'The assize rises', text: 'The court sat.' }, { title: 'Teodora at the table', text: '' }] },
+      { title: 'High Water', scenes: [{ title: 'The tide-table', text: 'And the heron flew.' }, { text: 'Untitled after a break.' }] },
+    ])
+  })
+
+  it('under # chapters, a ## that reads as a chapter is still one', () => {
+    const src = '# Part One\n\n## Chapter 1\n\nFirst.\n\n# Part Two\n\n## Chapter 2\n\nSecond.'
+    const m = parseManuscript(src)
+    // Four chapters — bare "Part One" and "Chapter 1" carry no title of their own — and no ## scenes.
+    expect(m.chapters).toHaveLength(4)
+    expect(m.chapters.flatMap((c) => c.scenes)).toEqual([{ text: 'First.' }, { text: 'Second.' }])
+    expect(m.chapters[1].scenes).toEqual([{ text: 'First.' }])
+  })
+
+  it('without # chapters, ## is a chapter as before — under a book title too', () => {
+    const src = '# The Book\n\n## The Beginning\n\nFirst.\n\n## The End\n\nLast.'
+    const m = parseManuscript(src)
+    expect(m.title).toBe('The Book')
+    expect(m.chapters).toEqual([
+      { title: 'The Beginning', scenes: [{ text: 'First.' }] },
+      { title: 'The End', scenes: [{ text: 'Last.' }] },
+    ])
+  })
+
+  it('reads the export’s "Ch. N — Title" as the title, and a bare "Ch. N" as none', () => {
+    const m = parseManuscript('# Ch. 3 — Low Water\n\nText.\n\n# Ch. 4\n\nMore.')
+    expect(m.title).toBeNull()
+    expect(m.chapters.map((c) => c.title)).toEqual(['Low Water', ''])
+  })
 })

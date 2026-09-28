@@ -2,6 +2,7 @@ import type { Chapter, WorldEvent, SceneText, EventStatus } from '@/types'
 import { atLeastStatus } from '@/lib/eventStatus'
 import { splitParagraphs as paragraphs } from '@/lib/manuscriptParagraphs'
 import { emphasisMarkup } from '@/lib/proseEmphasis'
+import { oneLine } from '@/lib/draftDocument'
 
 /**
  * Manuscript assembly: stitch per-scene prose (one SceneText per event) into a
@@ -121,6 +122,13 @@ export interface CompileOptions {
   minStatus?: EventStatus | null
   /** Marker printed between scenes within a chapter. Default "* * *". */
   sceneSeparator?: string
+  /**
+   * Markdown only: each scene under its own `## Title` rather than parted by
+   * the separator — how the Manuscript's Page writes the book, and what an
+   * import reads back as titled scenes, so a book exported and brought back
+   * keeps its shape. A scene with no prose is its heading alone. Default false.
+   */
+  sceneTitles?: boolean
   /** Document title (HTML <title> / leading heading). */
   title?: string
   /** Embedded image data URL used as the book cover in text-based exports. */
@@ -231,15 +239,17 @@ export function compileManuscript(
   // markdown / text
   const heading = (ch: ManuscriptChapter) =>
     format === 'markdown' ? `# Ch. ${ch.number} — ${ch.title || 'Untitled'}` : `Ch. ${ch.number} — ${ch.title || 'Untitled'}`
+  const sceneTitles = format === 'markdown' && (opts.sceneTitles ?? false)
+  const scene = (s: ManuscriptScene) => (sceneTitles
+    ? [`## ${oneLine(s.title).trim() || 'Untitled'}`, s.written ? s.text.trim() : ''].filter(Boolean).join('\n\n')
+    : (s.written ? s.text.trim() : '[No prose yet]'))
 
   const manuscriptBody = chapterBlocks
     .filter((b) => b.scenes.length > 0)
     .map(({ ch, scenes }) => {
       const parts: string[] = []
       if (chapterTitles) parts.push(heading(ch))
-      const sceneText = scenes
-        .map((s) => (s.written ? s.text.trim() : '[No prose yet]'))
-        .join(`\n\n${sep}\n\n`)
+      const sceneText = scenes.map(scene).join(sceneTitles ? '\n\n' : `\n\n${sep}\n\n`)
       parts.push(sceneText)
       return parts.join('\n\n')
     })
