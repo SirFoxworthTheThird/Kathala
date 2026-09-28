@@ -102,29 +102,30 @@ of linking it — an uploaded picture is stored locally and is never fetched.
 7. [The world dashboard](#the-world-dashboard)
 8. [Timeline & scenes](#timeline--scenes)
 9. [Writing on one page](#writing-on-one-page)
-10. [Opening a chapter](#opening-a-chapter)
-11. [Corkboard](#corkboard)
-12. [Manuscript](#manuscript)
-13. [Characters](#characters)
-14. [Cast Balance](#cast-balance)
-15. [Plot Threads](#plot-threads)
-16. [Motifs & Themes](#motifs--themes)
-17. [Structure board](#structure-board)
-18. [Maps](#maps)
-19. [Items](#items)
-20. [Relationships](#relationships)
-21. [Character Arc grid](#character-arc-grid)
-22. [Lore](#lore)
-23. [Factions](#factions)
-24. [Knowledge](#knowledge)
-25. [Search](#search)
-26. [Undo, redo & recent changes](#undo-redo--recent-changes)
-27. [Writer's Brief](#writers-brief)
-28. [Calendar & character ages](#calendar--character-ages)
-29. [Continuity Checker](#continuity-checker)
-30. [World settings & export](#world-settings--export)
-31. [Help](#help)
-32. [Keyboard, screen readers and touch](#keyboard-screen-readers-and-touch)
+10. [Reading the book on the Timeline](#reading-the-book-on-the-timeline)
+11. [Opening a chapter](#opening-a-chapter)
+12. [Corkboard](#corkboard)
+13. [Manuscript](#manuscript)
+14. [Characters](#characters)
+15. [Cast Balance](#cast-balance)
+16. [Plot Threads](#plot-threads)
+17. [Motifs & Themes](#motifs--themes)
+18. [Structure board](#structure-board)
+19. [Maps](#maps)
+20. [Items](#items)
+21. [Relationships](#relationships)
+22. [Character Arc grid](#character-arc-grid)
+23. [Lore](#lore)
+24. [Factions](#factions)
+25. [Knowledge](#knowledge)
+26. [Search](#search)
+27. [Undo, redo & recent changes](#undo-redo--recent-changes)
+28. [Writer's Brief](#writers-brief)
+29. [Calendar & character ages](#calendar--character-ages)
+30. [Continuity Checker](#continuity-checker)
+31. [World settings & export](#world-settings--export)
+32. [Help](#help)
+33. [Keyboard, screen readers and touch](#keyboard-screen-readers-and-touch)
 
 ---
 
@@ -862,9 +863,10 @@ inside it.
 
 - **Narrative vs. Chronological** — toggle between the reading order and the
   in-world order (useful when you use flashbacks or in-world dates).
-- **Cards vs. Page** — Cards is the book as a list of scene cards, as below.
-  **Page** is the same book as one document you write straight through; see
-  [Writing on one page](#writing-on-one-page).
+- **Cards, Page and Read** — Cards is the book as a list of scene cards, as
+  below. **Page** is the same book as one document you write straight through;
+  see [Writing on one page](#writing-on-one-page). **Read** is the book set for
+  reading; see [Reading the book on the Timeline](#reading-the-book-on-the-timeline).
 - **Add Chapter**, **New Timeline** (for alternate/parallel timelines), and
   **Generate with AI** all live in the header.
 - **Every scene is a card.** Closed, it shows its title, status and tension,
@@ -974,6 +976,25 @@ the page; retitle a chapter or scene by editing its heading.
   is not on *All timelines*, in Chronological order, or in reading mode.
 - Not on the page yet: the scene header line, `@` mentions, the scene keys
   (Ctrl+Alt+↓ and the rest) and Focus mode. Open the scene's card for those.
+
+### Reading the book on the Timeline
+
+**Read**, beside Cards and Page, sets the timeline's prose as a book — the
+[Manuscript](#manuscript) screen's reading view, here where the chapters and
+scenes are, with **In this scene** in the margin.
+
+![The Timeline's Read layout: the book set for reading, In this scene beside it, and the open chapter's panel with its word goal](images/73-timeline-read.png)
+
+- **Export**, **Find & replace** and the book's **word goal** sit in the header
+  on Page and on Read. They are the Manuscript's own: the goal is the same one,
+  whichever screen you set it on. Cards does not carry them.
+- **The open chapter's panel has the chapter's word goal**, with its progress —
+  the same per-chapter goal the Manuscript sets in its Draft view.
+- **The binder** brings a chapter or a scene to the top of the book.
+- **In reading mode, Read is the book you are reading.** As you read on, your
+  place moves with you, as it does on **Read** in the navigation. Cards is still
+  beside it; Page is not, and neither are the author's tools. A world with no
+  prose offers no Read at all.
 
 ### Multiple timelines and timeline relationships
 
@@ -1442,6 +1463,10 @@ document, in reading order, so you can read and export your book without leaving
 Kathala. Write a scene's prose on its scene, and it appears here automatically —
 the box on the scene grows to fit what you write, so a long scene isn't read
 through a five-line window.
+
+The same book is on the Timeline as well — see
+[Reading the book on the Timeline](#reading-the-book-on-the-timeline) — with
+Export, Find & replace and the word goals beside it.
 
 ![Manuscript view](images/24-manuscript.png)
 

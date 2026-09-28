@@ -218,17 +218,19 @@ test.describe('the Page view', () => {
     await expect.poll(() => stored(page), { timeout: 10_000 }).toContain('Teodora at the table: She counted. Thrice.')
   })
 
-  test('is the writer’s: a world in reading mode has Cards and no Page', async ({ page }) => {
+  test('is the writer’s: a world in reading mode has Cards and Read, and no Page', async ({ page }) => {
+    const group = page.getByRole('group', { name: 'Timeline layout' })
     const worldId = await book(page)
     await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
     await settle(page)
-    await expect(page.getByRole('group', { name: 'Timeline layout' })).toBeVisible({ timeout: 20_000 })
+    await expect(group.getByRole('button', { name: 'Page', exact: true })).toBeVisible({ timeout: 20_000 })
 
     const reading = await book(page, { readingMode: true })
     await page.goto(`/#/worlds/${reading}/timeline`, { waitUntil: 'load' })
     await settle(page)
-    await expect(page.getByRole('main').getByRole('button', { name: 'Low Water', exact: false }).first()).toBeVisible({ timeout: 20_000 })
-    await expect(page.getByRole('group', { name: 'Timeline layout' })).toHaveCount(0)
+    // The reader's layouts are there — so the missing Page is missing, not unloaded.
+    await expect(group.getByRole('button', { name: 'Read', exact: true })).toBeVisible({ timeout: 20_000 })
+    await expect(group.getByRole('button', { name: 'Page', exact: true })).toHaveCount(0)
   })
 
   test('works on a phone', async ({ page }) => {

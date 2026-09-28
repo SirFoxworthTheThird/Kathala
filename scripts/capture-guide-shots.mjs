@@ -497,6 +497,17 @@ const shots = [
     settle: 2500,
   },
   {
+    name: '73-timeline-read', book: ILIAD, reading: false,
+    go: async (page, id) => {
+      const chapter = await firstChapter(page, id)
+      await page.goto(`${BASE}/#/worlds/${id}/timeline/${chapter}`, { waitUntil: 'load' })
+      await page.getByRole('group', { name: 'Timeline layout' }).getByRole('button', { name: 'Read', exact: true })
+        .click({ timeout: 30_000 })
+    },
+    ready: (page) => page.getByRole('main').getByText('Sing, O goddess').first(),
+    settle: 2500,
+  },
+  {
     name: '71-join-scene', book: ILIAD, reading: false,
     // The Iliad's chapter 1 opens on "The Priest Is Rejected"; the scene after
     // it in the same chapter is what the dialog names.
