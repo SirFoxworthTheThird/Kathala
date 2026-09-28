@@ -1,4 +1,4 @@
-import { Annotation, EditorSelection, EditorState, StateEffect, StateField, type Extension, type Transaction, type StateCommand } from '@codemirror/state'
+import { EditorSelection, EditorState, StateEffect, StateField, type Extension, type Transaction, type StateCommand } from '@codemirror/state'
 import {
   composeDraft, readDraft, proseStart, lineEndAt, HEADING_PREFIX,
   type DraftChapter, type DraftHeading, type DraftSegment,
@@ -23,9 +23,6 @@ import {
   heading, which pushes the heading down and leaves the new line to the scene
   above.
 */
-
-/** A change made to match the store, not by the writer: never refused, never undone. */
-export const fromStore = Annotation.define<boolean>()
 
 export type Refusal = 'heading' | 'title-break' | 'chapter-text' | 'before-first'
 
@@ -53,7 +50,8 @@ function headingAt(headings: readonly DraftHeading[], pos: number): number {
 }
 
 function refusalOf(tr: Transaction): Refusal | null {
-  if (!tr.docChanged || tr.annotation(fromStore) || tr.isUserEvent('undo') || tr.isUserEvent('redo')) return null
+  // Undo and redo only ever step back to a state the rules allowed.
+  if (!tr.docChanged || tr.isUserEvent('undo') || tr.isUserEvent('redo')) return null
   const doc = tr.startState.doc
   const headings = tr.startState.field(headingsField)
   if (headings.length === 0) return 'before-first'

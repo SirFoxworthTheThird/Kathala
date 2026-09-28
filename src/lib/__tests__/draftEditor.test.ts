@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { EditorSelection, type EditorState, type TransactionSpec } from '@codemirror/state'
 import { history, undo, redo } from '@codemirror/commands'
-import { draftState, draftSegments, enterOnHeading, headingsField, refused, fromStore, type Refusal } from '@/lib/draftEditor'
+import { draftState, draftSegments, enterOnHeading, headingsField, refused, type Refusal } from '@/lib/draftEditor'
 import type { DraftChapter } from '@/lib/draftDocument'
 
 const book: DraftChapter[] = [
@@ -132,14 +132,13 @@ describe('what the Page view refuses, whole', () => {
     expect(edit(s0, { changes: { from: at(s0, '## The letter'), insert: '\n' } }).why).toBeNull()
   })
 
-  it('refuses the writer, not the store, and not undo', () => {
+  it('does not refuse undo, which only steps back to a state the rules allowed', () => {
     const s0 = fresh()
     const start = at(s0, '## The letter')
-    const remote = s0.update({ changes: { from: start - 1, to: start }, annotations: fromStore.of(true) })
-    expect(remote.effects.some((e) => e.is(refused))).toBe(false)
-    expect(remote.docChanged).toBe(true)
-    // An allowed edit, undone: the undo deletes the break before a heading, and must not be refused.
+    // An allowed edit, undone: the undo deletes the break before a heading,
+    // which the writer could not do by hand.
     const pushed = edit(s0, { changes: { from: start, insert: '\n' } }).state
+    expect(edit(pushed, { changes: { from: start, to: start + 1 } }).why).toBe('heading')
     expect(run(pushed, undo).doc.toString()).toBe(s0.doc.toString())
   })
 })
