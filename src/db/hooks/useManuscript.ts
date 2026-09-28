@@ -201,7 +201,7 @@ export async function createWorldFromManuscript(
         worldId: world.id,
         chapterId: chapter.id,
         timelineId: timeline.id,
-        title: `Scene ${i + 1}`,
+        title: pc.scenes[i].title || `Scene ${i + 1}`,
         description: '',
         locationMarkerId: null,
         involvedCharacterIds: [],

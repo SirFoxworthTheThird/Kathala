@@ -44,6 +44,12 @@ export function ExportManuscriptDialog({
 }) {
   const [format, setFormat] = useState<ExportFormat>('markdown')
   const [chapterTitles, setChapterTitles] = useState(true)
+  /*
+    Markdown's alone: it is the format that comes back into Kathala, and with
+    each scene under its `## Title` an import rebuilds the same chapters and
+    scenes. The formats made for readers — Word, EPUB, HTML — keep the break.
+  */
+  const [sceneTitles, setSceneTitles] = useState(true)
   const [onlyWritten, setOnlyWritten] = useState(true)
   /*
     Which scenes are finished enough to send.
@@ -62,7 +68,7 @@ export function ExportManuscriptDialog({
   const [downloading, setDownloading] = useState(false)
 
   const fmt = FORMATS.find((f) => f.id === format)!
-  const opts = { chapterTitles, onlyWritten, title, author, minStatus: minStatus === 'none' ? null : minStatus }
+  const opts = { chapterTitles, sceneTitles, onlyWritten, title, author, minStatus: minStatus === 'none' ? null : minStatus }
   const extent = exportExtent(manuscript, opts)
   async function loadCover() {
     if (!includeCover || !coverUrl || format === 'text') return undefined
@@ -158,6 +164,12 @@ export function ExportManuscriptDialog({
               <input type="checkbox" checked={chapterTitles} onChange={(e) => setChapterTitles(e.target.checked)} className="accent-[hsl(var(--ring))]" />
               Include chapter titles
             </label>
+            {format === 'markdown' && (
+              <label className="flex items-center gap-2 text-[hsl(var(--foreground))]">
+                <input type="checkbox" checked={sceneTitles} onChange={(e) => setSceneTitles(e.target.checked)} className="accent-[hsl(var(--ring))]" />
+                Scene titles as ## headings, so an import gets the same scenes back
+              </label>
+            )}
             <label className="flex items-center gap-2 text-[hsl(var(--foreground))]">
               <input type="checkbox" checked={onlyWritten} onChange={(e) => setOnlyWritten(e.target.checked)} className="accent-[hsl(var(--ring))]" />
               Only written scenes
