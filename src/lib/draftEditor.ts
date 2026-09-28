@@ -50,8 +50,9 @@ function headingAt(headings: readonly DraftHeading[], pos: number): number {
 }
 
 function refusalOf(tr: Transaction): Refusal | null {
-  // Undo and redo only ever step back to a state the rules allowed.
-  if (!tr.docChanged || tr.isUserEvent('undo') || tr.isUserEvent('redo')) return null
+  // Undo and redo never reach here: CodeMirror's history dispatches them with
+  // `filter: false`, and they only step back to states these rules allowed.
+  if (!tr.docChanged) return null
   const doc = tr.startState.doc
   const headings = tr.startState.field(headingsField)
   if (headings.length === 0) return 'before-first'

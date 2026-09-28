@@ -132,7 +132,7 @@ describe('what the Page view refuses, whole', () => {
     expect(edit(s0, { changes: { from: at(s0, '## The letter'), insert: '\n' } }).why).toBeNull()
   })
 
-  it('does not refuse undo, which only steps back to a state the rules allowed', () => {
+  it('does not get in the way of undo, which only steps back to a state the rules allowed', () => {
     const s0 = fresh()
     const start = at(s0, '## The letter')
     // An allowed edit, undone: the undo deletes the break before a heading,

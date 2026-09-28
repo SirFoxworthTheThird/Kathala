@@ -47,9 +47,19 @@ describe('planSync', () => {
     expect(planSync(stale, written, shown, none).take).toEqual(['s2'])
   })
 
-  it('treats a title that differs only by spaces, and prose that is only whitespace, as unchanged', () => {
-    const shown = edited(edited(base, 's2', { title: 'The letter ' }), 's1', { text: 'The ship came in.' })
-    expect(planSync(storedValues(book('   ')), edited(base, 's2', { text: '' }), shown, none).take).toEqual([])
+  it('does not read its own whitespace-only prose, deleted on save, as a change made elsewhere', () => {
+    // The writer left a scene holding only spaces; storing that deletes the
+    // record, which reads back as no prose at all.
+    const written = afterWrite(base, { id: 's2', kind: 'scene', text: '   ' })
+    expect(planSync(storedValues(book('')), written, written, none).take).toEqual([])
+    // A real change made elsewhere is still taken.
+    expect(planSync(storedValues(book('Real prose.')), written, written, none).take).toEqual(['s2'])
+  })
+
+  it('does not read a title that differs only by spaces at its ends as changed', () => {
+    const written = afterWrite(base, { id: 's2', kind: 'scene', title: 'The letter ' })
+    expect(planSync(storedValues(book()), written, written, none).take).toEqual([])
+    expect(planSync(storedValues(book('Wait and hope.', 'A letter')), written, written, none).take).toEqual(['s2'])
   })
 
   it('knows when the chapters or scenes, or their order, are not the ones shown', () => {
