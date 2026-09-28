@@ -389,6 +389,7 @@ export function ManuscriptBook({ worldId, timelineId, book, mode, readingMode, s
       <div className="relative flex min-h-0 flex-1">
       <div
         ref={scrollRef}
+        data-book-scroller
         className={cn('flex-1 overflow-auto', mode === 'reading' && hasProse && XRAY_GUTTER)}
       >
         {openingTheBook ? (
