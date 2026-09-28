@@ -6,7 +6,7 @@ import { createTimeline, createChapter, createEvent } from '@/db/hooks/useTimeli
 import { setSceneText } from '@/db/hooks/useManuscript'
 import { upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { undoLast, redoLast } from '@/db/hooks/useOperations'
-import { joinWithNext, splitScene } from '@/db/hooks/useSceneStructure'
+import { joinWithNext, splitScene, startChapter, joinChapterToPrevious } from '@/db/hooks/useSceneStructure'
 import { computeSortKey } from '@/lib/sortKey'
 import { compareByPosition } from '@/lib/fractionalOrder'
 
@@ -185,5 +185,95 @@ describe('joinWithNext', () => {
     await db.operations.where('worldId').equals(world.id).delete()
     expect(await joinWithNext(ids.b)).toBe(false)
     expect(await db.operations.where('worldId').equals(world.id).count()).toBe(0)
+  })
+})
+
+/** A book: chapter titles, each with its scenes' titles, prose given by scene title. */
+async function book(shape: Array<[string, string[]]>, prose: Record<string, string> = {}) {
+  const world = await createWorld({ name: 'W', description: '' })
+  const tl = await createTimeline({ worldId: world.id, name: 'Main', description: '', color: '#fff' })
+  const chapters: Record<string, string> = {}
+  const scenes: Record<string, string> = {}
+  let n = 0
+  for (const [title, sceneTitles] of shape) {
+    const ch = await createChapter({ worldId: world.id, timelineId: tl.id, number: ++n, title, synopsis: '' })
+    chapters[title] = ch.id
+    let i = 0
+    for (const t of sceneTitles) {
+      const e = await createEvent({
+        worldId: world.id, chapterId: ch.id, timelineId: tl.id, title: t, description: '',
+        locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: ++i,
+      })
+      scenes[t] = e.id
+      if (prose[t]) await setSceneText(world.id, e.id, prose[t])
+    }
+  }
+  return { world, tl, chapters, scenes }
+}
+
+/** The book as "Chapter: scene, scene" lines, in order. */
+async function outline(timelineId: string) {
+  const chapters = (await db.chapters.where('timelineId').equals(timelineId).toArray()).sort((a, b) => a.number - b.number)
+  const out: string[] = []
+  for (const c of chapters) out.push(`${c.title}: ${(await titles(c.id)).join(', ')}`)
+  return out
+}
+
+describe('startChapter', () => {
+  it('starts a chapter after this one holding the scenes after the given one, and one undo puts it back', async () => {
+    const { world, tl, chapters, scenes } = await book([['One', ['a', 'b', 'c']], ['Two', ['d']]])
+    const made = await startChapter({ chapterId: chapters.One, afterSceneId: scenes.a, title: 'Half', id: 'half' })
+    expect(made?.id).toBe('half')
+    expect(await outline(tl.id)).toEqual(['One: a', 'Half: b, c', 'Two: d'])
+    await undoLast(world.id)
+    expect(await outline(tl.id)).toEqual(['One: a, b, c', 'Two: d'])
+    await redoLast(world.id)
+    expect(await outline(tl.id)).toEqual(['One: a', 'Half: b, c', 'Two: d'])
+  })
+
+  it('from a chapter’s own heading, takes all of its scenes', async () => {
+    const { tl, chapters } = await book([['One', ['a', 'b']]])
+    await startChapter({ chapterId: chapters.One, afterSceneId: null, title: 'New' })
+    expect(await outline(tl.id)).toEqual(['One: ', 'New: a, b'])
+  })
+
+  it('cut in a scene’s prose, the rest goes on as the new chapter’s first scene, under the same title', async () => {
+    const { world, tl, chapters, scenes } = await book([['One', ['a', 'b']]], { a: 'Before.\n\nAfter.' })
+    await startChapter({ chapterId: chapters.One, afterSceneId: scenes.a, title: 'Two', split: { at: 'Before.'.length, id: 'cont' } })
+    expect(await outline(tl.id)).toEqual(['One: a', 'Two: a, b'])
+    expect(await prose(scenes.a)).toBe('Before.')
+    expect(await prose('cont')).toBe('After.')
+    await undoLast(world.id)
+    expect(await outline(tl.id)).toEqual(['One: a, b'])
+    expect(await prose(scenes.a)).toBe('Before.\n\nAfter.')
+  })
+
+  it('goes between two chapters whose numbers leave no whole number between them', async () => {
+    const { tl, chapters } = await book([['One', ['a']], ['Two', ['b']]])
+    await db.chapters.update(chapters.Two, { number: 1.5 })
+    await startChapter({ chapterId: chapters.One, afterSceneId: null, title: 'Between' })
+    expect(await outline(tl.id)).toEqual(['One: ', 'Between: a', 'Two: b'])
+  })
+})
+
+describe('joinChapterToPrevious', () => {
+  it('moves its scenes to the end of the chapter before, merges its fields, removes it — and one undo puts it all back', async () => {
+    const { world, tl, chapters } = await book([['One', ['a', 'b']], ['Two', ['c', 'd']], ['Three', ['e']]])
+    await db.chapters.update(chapters.One, { synopsis: 'First.', wordGoal: 1000 })
+    await db.chapters.update(chapters.Two, { synopsis: 'Second.', notes: 'Check dates.', wordGoal: 500 })
+    expect(await joinChapterToPrevious(chapters.Two)).toBe(true)
+    expect(await outline(tl.id)).toEqual(['One: a, b, c, d', 'Three: e'])
+    expect(await db.chapters.get(chapters.One)).toMatchObject({ synopsis: 'First.\n\nSecond.', notes: 'Check dates.', wordGoal: 1500 })
+    expect(await db.chapters.get(chapters.Two)).toBeUndefined()
+
+    await undoLast(world.id)
+    expect(await outline(tl.id)).toEqual(['One: a, b', 'Two: c, d', 'Three: e'])
+    expect(await db.chapters.get(chapters.One)).toMatchObject({ synopsis: 'First.', wordGoal: 1000 })
+  })
+
+  it('does nothing for the first chapter', async () => {
+    const { tl, chapters } = await book([['One', ['a']], ['Two', ['b']]])
+    expect(await joinChapterToPrevious(chapters.One)).toBe(false)
+    expect(await outline(tl.id)).toEqual(['One: a', 'Two: b'])
   })
 })

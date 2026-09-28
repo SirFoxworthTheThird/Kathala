@@ -2,13 +2,13 @@ import type { Table } from 'dexie'
 import { db } from '@/db/database'
 import { journalDelete, journalGroup, journalUpdate } from './useOperations'
 import { captureSceneRevision } from './useManuscript'
-import { createEventAt, deleteEvent } from './useTimeline'
+import { bulkMoveEvents, createChapterAt, createEventAt, deleteChapter, deleteEvent, updateChapter } from './useTimeline'
 import { compareByPosition } from '@/lib/fractionalOrder'
 import { recomputeSnapshotSortKeysForEvent } from '@/lib/sortKey'
-import { joinProse, mergeSceneFields, splitCarries, splitProse } from '@/lib/sceneStructure'
+import { joinProse, mergeChapterFields, mergeSceneFields, splitCarries, splitProse } from '@/lib/sceneStructure'
 import { wordCount } from '@/lib/manuscript'
 import { generateId } from '@/lib/id'
-import type { WorldEvent } from '@/types'
+import type { Chapter, WorldEvent } from '@/types'
 import type { OperationEntity } from '@/types/operation'
 
 /**
@@ -186,5 +186,71 @@ export async function joinWithNext(eventId: string, opts: { prose?: string } = {
 
   await recomputeSnapshotSortKeysForEvent(first.id)
   await replaceProse(first.worldId, first.id, joined)
+  return true
+}
+
+/** A timeline's chapters in book order. */
+async function chaptersInOrder(timelineId: string): Promise<Chapter[]> {
+  return (await db.chapters.where('timelineId').equals(timelineId).toArray())
+    .sort((a, b) => a.number - b.number || a.id.localeCompare(b.id))
+}
+
+/**
+ * Start a chapter inside `chapterId`: a new chapter, titled `title`, straight
+ * after it, holding every scene after `afterSceneId` — or every scene, when it
+ * is `null`. With `split`, the scene `afterSceneId` is cut at `split.at` first,
+ * and the rest of its prose goes on as the new chapter's first scene, under the
+ * same title; a chapter holds scenes, and that prose needs one.
+ *
+ * The new chapter takes the number after this one's, or the next chapter's
+ * where that is closer — numbers are positions, and `createChapterAt` moves
+ * the chapters after it up. One act, so one undo. Returns the new chapter.
+ */
+export async function startChapter(opts: {
+  chapterId: string
+  afterSceneId: string | null
+  title: string
+  id?: string
+  split?: { at: number; id?: string }
+}): Promise<Chapter | undefined> {
+  const chapter = await db.chapters.get(opts.chapterId)
+  if (!chapter) return undefined
+  const chapters = await chaptersInOrder(chapter.timelineId)
+  const next = chapters[chapters.findIndex((c) => c.id === chapter.id) + 1]
+  const number = next ? Math.min(chapter.number + 1, next.number) : chapter.number + 1
+  return journalGroup(async () => {
+    const made = await createChapterAt({
+      worldId: chapter.worldId, timelineId: chapter.timelineId, number, title: opts.title, synopsis: '',
+      ...(opts.id ? { id: opts.id } : {}),
+    })
+    const before = await inChapterOrder(chapter.id)
+    const from = opts.afterSceneId ? before.findIndex((e) => e.id === opts.afterSceneId) + 1 : 0
+    if (opts.split && opts.afterSceneId) {
+      await splitScene(opts.afterSceneId, opts.split.at, before[from - 1].title, { id: opts.split.id })
+    }
+    const moving = (await inChapterOrder(chapter.id)).slice(from).map((e) => e.id)
+    await bulkMoveEvents(moving, made.id)
+    return made
+  })
+}
+
+/**
+ * Join a chapter onto the one before it: its scenes to the end of that
+ * chapter, in order, its synopsis, notes and word goal into that chapter's (see
+ * `mergeChapterFields`), and the chapter itself removed. Nothing but scenes
+ * points at a chapter, and they have all moved. One act, so one undo. Returns
+ * whether there was a chapter before it to join.
+ */
+export async function joinChapterToPrevious(chapterId: string): Promise<boolean> {
+  const chapter = await db.chapters.get(chapterId)
+  if (!chapter) return false
+  const chapters = await chaptersInOrder(chapter.timelineId)
+  const previous = chapters[chapters.findIndex((c) => c.id === chapterId) - 1]
+  if (!previous) return false
+  await journalGroup(async () => {
+    await bulkMoveEvents((await inChapterOrder(chapterId)).map((e) => e.id), previous.id)
+    await updateChapter(previous.id, mergeChapterFields(previous, chapter))
+    await deleteChapter(chapterId)
+  }, { quiet: true })
   return true
 }
