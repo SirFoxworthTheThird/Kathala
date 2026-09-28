@@ -23,6 +23,7 @@ import { PortraitImage } from '@/components/PortraitImage'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Menu, MenuItem } from '@/components/ui/menu'
 import { useGate } from '@/db/hooks/ReadingGateContext'
+import type { SceneShortcut } from '@/lib/sceneStep'
 import { useReadAhead } from '@/components/useReadAhead'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
@@ -59,11 +60,24 @@ interface EventCardProps {
   selection?: { chapterEventIds: string[] }
   /** Offered where the card is not already on its chapter's page. */
   onOpenChapter?: () => void
+  /**
+   * Where the caret goes when the card opens for a reveal: the Timeline asks
+   * for it when the writer arrived by key, so they are straight back in prose.
+   */
+  revealCaret?: 'start' | 'end'
+  /**
+   * Go to the next or previous scene. Returns whether there was one; the card
+   * closes behind the writer only if so, so the last scene of the book stays
+   * open under the caret.
+   */
+  onStep?: (dir: 'next' | 'previous') => boolean
+  /** Start a new scene after this one. Absent where one cannot be made here. */
+  onNewAfter?: () => void
 }
 
 export function EventCard({
   event, isFirst, isLast, onMoveUp, onMoveDown, moveUpHint, moveDownHint, inWorldDay, calendar, revealNonce,
-  chapterNumber, selection, onOpenChapter,
+  chapterNumber, selection, onOpenChapter, revealCaret, onStep, onNewAfter,
 }: EventCardProps) {
   const gate = useGate()
   const activeEventId = useAppStore((st) => st.activeEventId)
@@ -81,12 +95,38 @@ export function EventCard({
   const eventName = event.title ? `“${event.title}”` : 'this untitled scene'
   const [expanded, setExpanded] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
+  const [draftFocus, setDraftFocus] = useState<{ nonce: number; at: 'start' | 'end' } | null>(null)
   useEffect(() => {
     if (!revealNonce) return
     setExpanded(true)
+    if (revealCaret) setDraftFocus({ nonce: revealNonce, at: revealCaret })
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     cardRef.current?.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' })
-  }, [revealNonce])
+  }, [revealNonce])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Spent once the card closes, so opening it again by hand does not pull the
+  // caret into the draft as if the writer had arrived by key. On a close, not
+  // on "is closed": a card that mounts with a reveal is closed for the one
+  // render before it opens, and clearing then would drop the request it came with.
+  const wasExpanded = useRef(expanded)
+  useEffect(() => {
+    if (wasExpanded.current && !expanded) setDraftFocus(null)
+    wasExpanded.current = expanded
+  }, [expanded])
+
+  const onShortcut = onStep || onNewAfter
+    ? (shortcut: SceneShortcut): boolean => {
+        if (shortcut === 'new') {
+          if (!onNewAfter) return false
+          onNewAfter()
+          return true
+        }
+        if (!onStep || !onStep(shortcut)) return false
+        // One open card is where the writer is; the one they left folds away.
+        setExpanded(false)
+        return true
+      }
+    : undefined
   const [editing, setEditing] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [title, setTitle] = useState(event.title)
@@ -645,6 +685,9 @@ export function EventCard({
             mentionedIds={mentionedIds}
             onAddMention={addMention}
             onWordsChange={setSceneWords}
+            onShortcut={onShortcut}
+            focusRequest={draftFocus}
+            canAddAfter={!!onNewAfter}
           />
 
           {/* Description */}
