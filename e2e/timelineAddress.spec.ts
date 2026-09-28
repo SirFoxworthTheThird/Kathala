@@ -82,9 +82,13 @@ test.describe('the Timeline’s addresses land in the Manuscript', () => {
     const worldId = await book(page)
     await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await settle(page)
-    // Cards first — so what follows is a remembered choice, not a default.
+    // Cards first — so what follows is a remembered choice, not a default. The
+    // pressed button, not only the editor's absence: the editor loads late, so
+    // its absence holds for a moment on Page too.
+    const layouts = page.getByRole('group', { name: 'Layout', exact: true })
+    await expect(layouts.getByRole('button', { name: 'Cards', exact: true })).toHaveAttribute('aria-pressed', 'true')
     await expect(pageEditor(page)).toHaveCount(0)
-    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
+    await layouts.getByRole('button', { name: 'Page', exact: true }).click()
     await expect(pageEditor(page)).toBeVisible()
 
     await nav(page).getByRole('link', { name: 'Characters', exact: true }).click()
