@@ -30,12 +30,26 @@ async function seedChapter(page: Page, worldName: string, statuses: string[]) {
   const titles = ['Opening', 'Closing']
   for (let i = 0; i < titles.length; i++) {
     await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
-    const dialog = page.getByRole('dialog')
     await page.getByPlaceholder('Scene title').fill(titles[i])
-    await dialog.getByRole('button', { name: statuses[i], exact: true }).click()
     await page.getByRole('button', { name: 'Add Scene' }).last().click()
     await expect(page.getByText(titles[i]).first()).toBeVisible()
   }
+  /*
+    The status each scene is at. Picked in the Add Scene dialog while there was
+    one; a scene is made from its title alone now, and the status is set on its
+    card. Written directly, because this spec is about what the roll-up shows,
+    not about the control that sets a scene's status.
+  */
+  await page.evaluate(async ({ titles, statuses }) => {
+    const db = (window as { __pwdb?: never }).__pwdb as unknown as {
+      events: { toArray: () => Promise<Array<{ id: string; title: string }>>; update: (id: string, c: object) => Promise<unknown> }
+    }
+    const all = await db.events.toArray()
+    for (let i = 0; i < titles.length; i++) {
+      const ev = all.find((e) => e.title === titles[i])
+      if (ev) await db.events.update(ev.id, { status: statuses[i].toLowerCase() })
+    }
+  }, { titles, statuses })
 }
 
 /** Write prose into the named scene from the chapter detail screen. */

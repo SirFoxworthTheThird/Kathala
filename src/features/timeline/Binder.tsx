@@ -1,10 +1,10 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent } from 'react'
 import { BookOpen, ChevronRight, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { binderKey, binderRows, focusAfterDelete, type BinderRow } from '@/lib/binder'
+import { binderKey, binderRows, binderDrop, dropPlace, focusAfterDelete, type BinderRow, type DropPlace } from '@/lib/binder'
 import { chapterWithheld } from '@/lib/chapterReached'
 import { useGate } from '@/db/hooks/ReadingGateContext'
-import { createChapterAt, createEventAt, deleteEvent } from '@/db/hooks/useTimeline'
+import { createChapterAt, createEventAt, deleteEvent, moveChapterTo, moveEventOnBoard, moveSceneStep } from '@/db/hooks/useTimeline'
 import { describeShift, nextChapterNumber, parseChapterNumber, planChapterInsert } from '@/lib/chapterNumbering'
 import type { Chapter, WorldEvent } from '@/types'
 import { cn } from '@/lib/utils'
@@ -108,6 +108,28 @@ export function Binder({
       pendingFocus.current = null
     }
   })
+  /*
+    A moved row keeps focus, so the next Alt+↓ moves it again. Moving a row
+    within the list keeps it — but a scene moved past the end of its chapter
+    lands in the next one, and if that chapter is closed the row is gone from
+    the list and focus with it: the writer would press Alt+↓ once more and
+    move nothing. So the chapter it lands in is opened, and focus put back on
+    the row once it is there. Held until focus goes somewhere else on purpose.
+  */
+  const holdFocus = useRef<string | null>(null)
+  useLayoutEffect(() => {
+    const id = holdFocus.current
+    if (!id) return
+    const el = rowEls.current.get(id)
+    if (!el) {
+      const scene = scenes.find((sc) => sc.id === id)
+      if (scene && !expanded.has(scene.chapterId)) openChapter(scene.chapterId)
+      return
+    }
+    const active = document.activeElement
+    if (active !== el && (active === null || active === document.body)) el.focus()
+  })
+
   function focusRow(id: string) {
     setFocusedId(id)
     const el = rowEls.current.get(id)
@@ -120,6 +142,56 @@ export function Binder({
   }
 
   const [adding, setAdding] = useState<Adding | null>(null)
+
+  /*
+    Dragging a chapter or a scene to another place — the mouse's way to do what
+    Alt+↑ ↓ does, and further in one go. The drop rule is `binderDrop`, tested
+    without a browser; here is only which row, and which half of it, the
+    pointer is over. A reader cannot drag.
+  */
+  const [dragging, setDragging] = useState<BinderRow | null>(null)
+  const [drop, setDrop] = useState<{ id: string; place: DropPlace } | null>(null)
+  function startDrag(e: DragEvent<HTMLDivElement>, row: BinderRow) {
+    if (!editable) return
+    e.dataTransfer.effectAllowed = 'move'
+    // Some browsers will not start a drag that carries no data.
+    e.dataTransfer.setData('text/plain', row.id)
+    setDragging(row)
+  }
+  function placeFor(e: DragEvent<HTMLDivElement>, row: BinderRow): DropPlace | null {
+    if (!dragging) return null
+    const box = e.currentTarget.getBoundingClientRect()
+    const place = dropPlace(dragging, row, e.clientY > box.top + box.height / 2)
+    return place && binderDrop(dragging, row, place) ? place : null
+  }
+  function overRow(e: DragEvent<HTMLDivElement>, row: BinderRow) {
+    const place = placeFor(e, row)
+    if (!place) { setDrop((d) => (d?.id === row.id ? null : d)); return }
+    // Allowing the drop is what `preventDefault` means here.
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDrop((d) => (d?.id === row.id && d.place === place ? d : { id: row.id, place }))
+  }
+  async function dropOn(e: DragEvent<HTMLDivElement>, row: BinderRow) {
+    e.preventDefault()
+    const place = placeFor(e, row)
+    const moved = dragging
+    endDrag()
+    if (!moved || !place) return
+    const action = binderDrop(moved, row, place)
+    if (!action) return
+    holdFocus.current = moved.id
+    setFocusedId(moved.id)
+    if (action.type === 'moveChapter') await moveChapterTo(action.chapterId, action.toIndex)
+    else {
+      if (action.chapterId !== moved.chapterId) openChapter(action.chapterId)
+      await moveEventOnBoard(action.sceneId, action.chapterId, action.index)
+    }
+  }
+  function endDrag() {
+    setDragging(null)
+    setDrop(null)
+  }
 
   function openChapter(chapterId: string) {
     setExpanded((prev) => (prev.has(chapterId) ? prev : new Set(prev).add(chapterId)))
@@ -154,8 +226,8 @@ export function Binder({
     // The title being typed owns its own keys, and a chord is somebody else's
     // shortcut — Ctrl+Z most of all, which the app's undo answers.
     if ((e.target as HTMLElement).tagName === 'INPUT') return
-    if (e.ctrlKey || e.metaKey || e.altKey) return
-    const action = binderKey(rows, rovingId, e.key, editable)
+    if (e.ctrlKey || e.metaKey) return
+    const action = binderKey(rows, rovingId, e.altKey ? `Alt+${e.key}` : e.key, editable)
     if (!action) return
     e.preventDefault()
     switch (action.type) {
@@ -174,6 +246,15 @@ export function Binder({
       case 'add':
         startAddingAt(rovingId)
         break
+      case 'moveChapter':
+      case 'moveScene': {
+        const id = action.type === 'moveChapter' ? action.chapterId : action.sceneId
+        holdFocus.current = id
+        setFocusedId(id)
+        if (action.type === 'moveChapter') await moveChapterTo(action.chapterId, action.toIndex)
+        else await moveSceneStep(action.sceneId, action.dir)
+        break
+      }
       case 'delete': {
         const next = focusAfterDelete(rows, action.sceneId)
         await deleteEvent(action.sceneId)
@@ -272,10 +353,24 @@ export function Binder({
                 aria-expanded={row.kind === 'chapter' ? row.expanded : undefined}
                 aria-current={row.kind === 'scene' && row.id === activeEventId ? 'true' : undefined}
                 tabIndex={row.id === rovingId ? 0 : -1}
-                onFocus={() => setFocusedId(row.id)}
+                onFocus={() => {
+                  setFocusedId(row.id)
+                  // Focus somewhere else, by the writer: the held row is let go.
+                  if (holdFocus.current && holdFocus.current !== row.id) holdFocus.current = null
+                }}
                 onClick={() => { focusRow(row.id); go(row) }}
+                draggable={editable}
+                onDragStart={(e) => startDrag(e, row)}
+                onDragOver={(e) => overRow(e, row)}
+                onDragLeave={() => setDrop((d) => (d?.id === row.id ? null : d))}
+                onDrop={(e) => { void dropOn(e, row) }}
+                onDragEnd={endDrag}
                 className={cn(
                   'flex h-7 cursor-pointer select-none items-center gap-1 rounded-sm pr-2 text-sm outline-none',
+                  drop?.id === row.id && drop.place === 'before' && 'shadow-[inset_0_2px_0_hsl(var(--ring))]',
+                  drop?.id === row.id && drop.place === 'after' && 'shadow-[inset_0_-2px_0_hsl(var(--ring))]',
+                  drop?.id === row.id && drop.place === 'into' && 'ring-1 ring-inset ring-[hsl(var(--ring))]',
+                  dragging?.id === row.id && 'opacity-50',
                   'hover:bg-[hsl(var(--accent))] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[hsl(var(--ring))]',
                   row.kind === 'chapter' ? 'pl-1 font-medium' : 'pl-7',
                   row.kind === 'chapter' && row.chapterId === currentChapterId && 'text-[hsl(var(--foreground))]',
@@ -352,7 +447,7 @@ export function Binder({
             </Button>
           </div>
           <p className="px-2 pt-1 text-[10px] leading-snug text-[hsl(var(--muted-foreground))]">
-            In the list: Enter adds a scene below, Delete removes one.
+            In the list: Enter adds a scene below, Delete removes one, Alt+↑ ↓ or dragging moves one.
           </p>
         </div>
       )}

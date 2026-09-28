@@ -117,6 +117,13 @@ export type BinderAction =
   /** A new scene at `index` of `chapterId` — the line below the row. */
   | { type: 'add'; chapterId: string; index: number }
   | { type: 'delete'; sceneId: string }
+  /**
+   * Move the row one place. A chapter goes to `toIndex` among the chapters; a
+   * scene takes one step, crossing into the next chapter at an edge — see
+   * `moveSceneStep`, which decides that from the book rather than the rows.
+   */
+  | { type: 'moveChapter'; chapterId: string; toIndex: number }
+  | { type: 'moveScene'; sceneId: string; dir: 'up' | 'down' }
 
 /**
  * What a key does on the focused row, or null for a key the tree leaves alone.
@@ -132,8 +139,14 @@ export type BinderAction =
  *   it. The app's undo catches the scene; a chapter is a bigger thing to lose
  *   to a stray key.
  *
+ * - **Alt+↑ / ↓ moves the row** — a chapter past its neighbour, a scene one
+ *   step, out of its chapter at either edge. Alt, because plain arrows move
+ *   the focus; it is the outliner's convention for moving the item itself.
+ *
  * `editable` is false for a reader, who can move about and go to a scene but
- * not add or remove one.
+ * not add, remove or move one.
+ *
+ * `key` is the event's key, prefixed `Alt+` when Alt was held.
  */
 export function binderKey(
   rows: readonly BinderRow[],
@@ -173,6 +186,15 @@ export function binderKey(
     case 'Delete':
     case 'Backspace':
       return editable && row.kind === 'scene' ? { type: 'delete', sceneId: row.id } : null
+    case 'Alt+ArrowUp':
+    case 'Alt+ArrowDown': {
+      if (!editable) return null
+      const dir = key === 'Alt+ArrowUp' ? 'up' : 'down'
+      if (row.kind === 'scene') return { type: 'moveScene', sceneId: row.id, dir }
+      // `position` is 1-based among the chapters showing, which for a writer is all of them.
+      const toIndex = row.position - 1 + (dir === 'up' ? -1 : 1)
+      return toIndex >= 0 && toIndex < row.setSize ? { type: 'moveChapter', chapterId: row.chapterId, toIndex } : null
+    }
     default:
       return null
   }
@@ -192,4 +214,57 @@ export function focusAfterDelete(rows: readonly BinderRow[], deletedId: string):
   const below = rows[i + 1]
   if (below?.kind === 'scene' && below.chapterId === rows[i].chapterId) return below.id
   return rows[i - 1]?.id ?? null
+}
+
+/** Where on a row a dragged row is being dropped. */
+export type DropPlace = 'before' | 'after' | 'into'
+
+export type BinderDrop =
+  | { type: 'moveChapter'; chapterId: string; toIndex: number }
+  /** `index` is among the chapter's scenes *without* the moved one — `moveEventOnBoard`'s. */
+  | { type: 'moveScene'; sceneId: string; chapterId: string; index: number }
+
+/**
+ * Which place a drop lands on, from where on the target row the pointer is.
+ *
+ * A chapter dropped on a chapter goes before or after it, by which half of the
+ * row the pointer is over. A scene dropped on a scene likewise. A scene dropped
+ * on a chapter row goes *into* it, at the end — that row is the chapter's
+ * handle, not a place between two scenes. A chapter cannot be dropped on a
+ * scene.
+ */
+export function dropPlace(dragged: BinderRow, target: BinderRow, lowerHalf: boolean): DropPlace | null {
+  if (dragged.kind === 'chapter') return target.kind === 'chapter' ? (lowerHalf ? 'after' : 'before') : null
+  if (target.kind === 'chapter') return 'into'
+  return lowerHalf ? 'after' : 'before'
+}
+
+/**
+ * What dropping `dragged` at `place` on `target` does, or null when it would
+ * leave everything where it is.
+ *
+ * The one piece of arithmetic worth writing down: dropping *after* a row below
+ * the dragged one, in the same list, is one place less than it looks, because
+ * the dragged row is no longer in the list it is dropped into.
+ */
+export function binderDrop(dragged: BinderRow, target: BinderRow, place: DropPlace): BinderDrop | null {
+  if (dragged.id === target.id) return null
+  if (dragged.kind === 'chapter') {
+    if (target.kind !== 'chapter' || place === 'into') return null
+    const from = dragged.position - 1
+    let to = target.position - 1 + (place === 'after' ? 1 : 0)
+    if (from < to) to -= 1
+    return to === from ? null : { type: 'moveChapter', chapterId: dragged.chapterId, toIndex: to }
+  }
+  if (target.kind === 'chapter') {
+    // Onto its own chapter's row: it is already in there.
+    if (target.chapterId === dragged.chapterId) return null
+    return { type: 'moveScene', sceneId: dragged.id, chapterId: target.chapterId, index: Number.MAX_SAFE_INTEGER }
+  }
+  let index = target.index + (place === 'after' ? 1 : 0)
+  if (target.chapterId === dragged.chapterId) {
+    if (dragged.index < index) index -= 1
+    if (index === dragged.index) return null
+  }
+  return { type: 'moveScene', sceneId: dragged.id, chapterId: target.chapterId, index }
 }

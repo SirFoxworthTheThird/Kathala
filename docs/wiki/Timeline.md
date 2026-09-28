@@ -31,7 +31,7 @@ A **pacing curve** across the top plots dramatic tension chapter by chapter once
 
 ## Chapters
 
-Create one with **Add Chapter**: a number, a title and an optional synopsis. The number is suggested — the next free one — and can be anything: 0 makes a prologue, and a number already taken puts the new chapter there and moves the chapters from it up by one, until a gap. The dialog says which before you add it, and one Undo takes it all back. Chapters already made cannot be dragged into a new order.
+Create one with **Add Chapter**: a number, a title and an optional synopsis. The number is suggested — the next free one — and can be anything: 0 makes a prologue, and a number already taken puts the new chapter there and moves the chapters from it up by one, until a gap. The dialog says which before you add it, and one Undo takes it all back. Chapters already made are moved in the [binder](#the-binder) — Alt+↑ ↓, or drag — and take the same numbers in their new order, so a gap or a prologue's 0 stays put.
 
 **A new chapter starts wherever the last one left off.** Nothing is copied into it: the state of every character, item and place is read back from the most recent scene before it, so a change you record earlier in the book reaches every chapter after it without anything to keep in step.
 
@@ -39,7 +39,7 @@ Create one with **Add Chapter**: a number, a title and an optional synopsis. The
 
 ## Events
 
-Expand a chapter's detail page and click **Add Event**. Expanding an event card gives you:
+Open a chapter and click **Add Scene** at the foot of its list: a line appears where the scene will sit, for its title only. Enter makes it and puts you in its draft; the line's own **Add Scene** button makes it and leaves it closed; Escape makes nothing. Everything else is set on the card. Expanding an event card gives you:
 
 | Field | Purpose |
 |---|---|
@@ -122,6 +122,9 @@ The **binder** is the left edge of the Timeline: every chapter in this timeline,
 | Space | Go to that scene or chapter |
 | Enter | **A new scene on the line below** — the first in a chapter, or the next after a scene. Type the title in place and press Enter; Escape throws it away |
 | Delete | Remove the scene, with Undo — the notice names what went |
+| Alt+↑ ↓ | Move the chapter or scene one place; a scene crosses into the next chapter at an edge. Press again to keep going |
+
+**Drag a row** to move it further: a chapter before or after another, a scene between two scenes, or a scene onto a chapter's row to put it at the end of that chapter. One Undo puts a move back.
 
 **New scene** and **New chapter** under the list do the same with a mouse; a new chapter's number is filled in with the next free one and can be changed, with the same rule as *Add Chapter*. A title started and then clicked away from is kept. A new scene is only a title — say where it happens and who is in it with [the scene header](#the-scene-header).
 

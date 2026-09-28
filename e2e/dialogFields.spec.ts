@@ -34,10 +34,16 @@ async function aWorld(page: Page) {
   return worldId
 }
 
-/** Fields in the open dialog that no label, `aria-label` or `title` names. */
-const unnamedFields = (page: Page) => page.evaluate(() => {
-  const dialog = document.querySelector('[role="dialog"]')
-  if (!dialog) return ['no dialog open']
+/**
+ * Fields in the open dialog that no label, `aria-label` or `title` names — or,
+ * given the label of a field, in the form holding that field, for the ones that
+ * are a line in the page rather than a dialog.
+ */
+const unnamedFields = (page: Page, anchorLabel?: string) => page.evaluate((anchor) => {
+  const dialog = anchor
+    ? document.querySelector(`[aria-label="${anchor}"]`)?.parentElement ?? null
+    : document.querySelector('[role="dialog"]')
+  if (!dialog) return [anchor ? `no field labelled ${anchor}` : 'no dialog open']
   return [...dialog.querySelectorAll('input, textarea')]
     .filter((el) => {
       const r = el.getBoundingClientRect()
@@ -48,7 +54,7 @@ const unnamedFields = (page: Page) => page.evaluate(() => {
       return !(id && dialog.querySelector(`label[for="${CSS.escape(id)}"]`))
     })
     .map((el) => `${el.tagName.toLowerCase()} placeholder=${el.getAttribute('placeholder') ?? '—'}`)
-})
+}, anchorLabel)
 
 test.describe('The first dialogs name their fields', () => {
   test.describe.configure({ timeout: 180_000 })
@@ -69,7 +75,7 @@ test.describe('The first dialogs name their fields', () => {
     expect(bad, `fields with no accessible name:\n${bad.join('\n')}`).toEqual([])
   })
 
-  test('Add Scene', async ({ page }) => {
+  test('Add Scene, which is a line now rather than a dialog', async ({ page }) => {
     const worldId = await aWorld(page)
     await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
     await settle(page)
@@ -81,18 +87,10 @@ test.describe('The first dialogs name their fields', () => {
     await page.waitForTimeout(800)
     await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
 
-    /*
-      Scoped to the dialog, which is what this test is about. Unscoped,
-      `getByLabel('Title')` also matched the chapter screen behind it once its
-      heading became an editable "Chapter title" — a substring match on a field
-      that was ambiguous-in-waiting rather than a regression in the dialog.
-    */
-    const dialog = page.getByRole('dialog')
-    await expect(dialog.getByLabel('Title')).toBeVisible()
-    await expect(dialog.getByLabel('Description')).toBeVisible()
-    await expect(dialog.getByLabel('Tags')).toBeVisible()
+    // Presence first: the line is open, its one field named.
+    await expect(page.getByRole('textbox', { name: 'Title for the new scene' })).toBeVisible()
 
-    const bad = await unnamedFields(page)
+    const bad = await unnamedFields(page, 'Title for the new scene')
     expect(bad, `fields with no accessible name:\n${bad.join('\n')}`).toEqual([])
   })
 
