@@ -83,9 +83,9 @@ async function replaceProse(worldId: string, eventId: string, text: string | nul
  * who is in it (`splitCarries`); its prose is everything after the cut. Nothing
  * recorded at the scene moves: its states stay on the first half, and the
  * second half reads them back as the last known. One undo takes it all back,
- * prose included. Returns the new scene.
+ * prose included. Returns the new scene. `id`, when given, is the new scene's.
  */
-export async function splitScene(eventId: string, at: number, title: string): Promise<WorldEvent | undefined> {
+export async function splitScene(eventId: string, at: number, title: string, opts: { id?: string } = {}): Promise<WorldEvent | undefined> {
   const scene = await db.events.get(eventId)
   if (!scene) return undefined
   const before = await proseOf(eventId)
@@ -93,7 +93,7 @@ export async function splitScene(eventId: string, at: number, title: string): Pr
   const index = (await inChapterOrder(scene.chapterId)).findIndex((e) => e.id === eventId) + 1
 
   const created = await journalGroup(async () => {
-    const made = await createEventAt(scene.chapterId, index, title, splitCarries(scene))
+    const made = await createEventAt(scene.chapterId, index, title, { ...splitCarries(scene), ...(opts.id ? { id: opts.id } : {}) })
     if (!made) return undefined
     // The prose, on an operation of the act, so undo and redo move it too.
     await journalUpdate('event', db.events, eventId, { updatedAt: Date.now() }, [], {
@@ -130,13 +130,17 @@ export async function nextInChapter(eventId: string): Promise<WorldEvent | undef
  *
  * One undo takes it all back: the scene returns with its prose, its records
  * and everything pointing at it. Returns whether there was a scene to join.
+ *
+ * `prose`, when given, is the joined scene's prose instead of the two stored
+ * ones put together: the Page view's, where the writer may have deleted words
+ * either side of the heading along with it.
  */
-export async function joinWithNext(eventId: string): Promise<boolean> {
+export async function joinWithNext(eventId: string, opts: { prose?: string } = {}): Promise<boolean> {
   const first = await db.events.get(eventId)
   const second = await nextInChapter(eventId)
   if (!first || !second) return false
   const firstProse = await proseOf(first.id)
-  const joined = joinProse(firstProse, await proseOf(second.id))
+  const joined = opts.prose ?? joinProse(firstProse, await proseOf(second.id))
 
   await journalGroup(async () => {
     for (const { entity, table, key } of PER_SCENE) {

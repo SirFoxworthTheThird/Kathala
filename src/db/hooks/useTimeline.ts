@@ -275,11 +275,12 @@ export async function createEvent(
     isFlashback?: boolean
     mentionedCharacterIds?: string[]
     threadIds?: string[]
+    /** Given when the caller already refers to the scene by id — the Page view's heading for a split. */
+    id?: string
   }
 ): Promise<WorldEvent> {
   const now = Date.now()
   const event: WorldEvent = {
-    id: generateId(),
     travelDays: null,
     inWorldTime: null,
     tension: null,
@@ -291,6 +292,7 @@ export async function createEvent(
     threadIds: [],
     motifIds: [],
     ...data,
+    id: data.id ?? generateId(),
     createdAt: now,
     updatedAt: now,
   }
@@ -317,7 +319,7 @@ export async function createEventAt(
   title: string,
   /** Anything else the new scene starts with — a split carries its cast and setting over. */
   fields: Partial<Pick<WorldEvent,
-    'locationMarkerId' | 'involvedCharacterIds' | 'involvedItemIds' | 'tags' | 'status'
+    'id' | 'locationMarkerId' | 'involvedCharacterIds' | 'involvedItemIds' | 'tags' | 'status'
     | 'povCharacterId' | 'isFlashback' | 'threadIds' | 'motifIds'>> = {},
 ): Promise<WorldEvent | undefined> {
   const chapter = await db.chapters.get(chapterId)
