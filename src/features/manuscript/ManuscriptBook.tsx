@@ -86,7 +86,7 @@ function measureScenes(root: HTMLElement): SceneExtent[] {
  * where they were, and says so when a scroll skips chapters. Shared by the
  * Manuscript screen and the Timeline's Read layout.
  */
-export function ManuscriptBook({ worldId, timelineId, book, mode, readingMode, scrollRef }: {
+export function ManuscriptBook({ worldId, timelineId, book, mode, readingMode, scrollRef, target = null }: {
   worldId: string
   timelineId: string | null
   book: ManuscriptBookData
@@ -94,6 +94,8 @@ export function ManuscriptBook({ worldId, timelineId, book, mode, readingMode, s
   readingMode: boolean
   /** Owned by the screen, which puts the reader's row (progress, contents) above the book. */
   scrollRef: RefObject<HTMLDivElement | null>
+  /** A chapter or scene to bring to the top — the Timeline's binder. The counter makes a repeat arrive. */
+  target?: { id: string; nonce: number } | null
 }) {
   const navigate = useNavigate()
   const { manuscript, proseByScene, eventById, chapterNumberById } = book
@@ -359,6 +361,23 @@ export function ManuscriptBook({ worldId, timelineId, book, mode, readingMode, s
   const openingTheBook = opening === 'opening'
 
   /*
+    Going to a chapter or a scene, once it is on the page. Instant, like the
+    restore above: a reader's place moves by what they read, and a smooth
+    scroll past the chapters in between would read them on the way.
+  */
+  const arrivedFor = useRef<number | null>(null)
+  useEffect(() => {
+    const root = scrollRef.current
+    if (!target || !root || arrivedFor.current === target.nonce) return
+    const at = root.querySelector<HTMLElement>(
+      `[data-scene-event-id="${CSS.escape(target.id)}"], [data-chapter-id="${CSS.escape(target.id)}"]`,
+    )
+    if (!at) return
+    arrivedFor.current = target.nonce
+    at.scrollIntoView({ block: 'start', behavior: 'auto' })
+  }, [target, manuscript, scrollRef])
+
+  /*
     The page, and floating over it, who is in it.
 
     `relative` because the panel is positioned against this box: a sibling of
@@ -419,6 +438,7 @@ export function ManuscriptBook({ worldId, timelineId, book, mode, readingMode, s
                   key={ch.id}
                   className="mb-12"
                   data-chapter-number={ch.number}
+                  data-chapter-id={ch.id}
                   data-chapter-words={ch.wordCount}
                 >
                   <div className="mb-4 border-b border-[hsl(var(--border))] pb-2">
