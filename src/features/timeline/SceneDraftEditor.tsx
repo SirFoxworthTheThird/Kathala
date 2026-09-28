@@ -17,7 +17,7 @@ interface SceneDraftEditorProps {
    * box, so Ctrl+Enter at the last scene of the book still does whatever the
    * box would have done with it.
    */
-  onShortcut?: (shortcut: SceneShortcut) => boolean
+  onShortcut?: (shortcut: SceneShortcut, caret: number) => boolean
   /**
    * Take focus, with the caret at the start of the prose or the end of it.
    * Applied once per `nonce`, and not before `ready` — the text arrives after
@@ -240,7 +240,7 @@ export function SceneDraftEditor({
 
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     const shortcut = onShortcut ? sceneShortcut(e) : null
-    if (shortcut && onShortcut!(shortcut)) {
+    if (shortcut && onShortcut!(shortcut, e.currentTarget.selectionStart ?? 0)) {
       e.preventDefault()
       setMention(null)
       /*

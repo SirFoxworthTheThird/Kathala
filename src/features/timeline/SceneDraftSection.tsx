@@ -8,7 +8,7 @@ import type { SceneShortcut } from '@/lib/sceneStep'
 import { useSceneRevisions } from '@/db/hooks/useSceneRevisions'
 import { SceneDraftEditor } from './SceneDraftEditor'
 import { SceneHistoryDialog } from './SceneHistoryDialog'
-import { FocusMode } from './FocusMode'
+import { FocusMode, type FocusKeys } from './FocusMode'
 import type { Character, WorldEvent } from '@/types'
 import { useItems, createItem } from '@/db/hooks/useItems'
 import { createCharacter } from '@/db/hooks/useCharacters'
@@ -30,17 +30,26 @@ interface SceneDraftSectionProps {
   onAddMention: (characterId: string) => void
   /** Reports the current word count so the card header chip can stay live. */
   onWordsChange?: (words: number) => void
-  /** The scene keys, answered by the Timeline — see `SceneDraftEditor`. */
-  onShortcut?: (shortcut: SceneShortcut) => boolean
+  /**
+   * The scene keys, answered by the Timeline — see `SceneDraftEditor`. `at` is
+   * the caret's place in the *prose*: the box also holds the header line above
+   * it, which is not part of the scene's text.
+   */
+  onShortcut?: (shortcut: SceneShortcut, at: number) => boolean
   /** Take focus on arrival, once the text is in. */
   focusRequest?: { nonce: number; at: 'start' | 'end' } | null
   /** Whether Ctrl+Enter makes a new scene here, for the hint to say so or not. */
   canAddAfter?: boolean
+  /** Changes when the scene should open straight into Focus mode — arrived at from it. */
+  openFocusNonce?: number | null
+  /** The scene keys in Focus mode — see `FocusMode`. */
+  focusKeys?: FocusKeys
 }
 
 const IS_MAC = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform)
 const MOD = IS_MAC ? '⌘' : 'Ctrl+'
 const ALT = IS_MAC ? '⌥' : 'Alt+'
+const SHIFT = IS_MAC ? '⇧' : 'Shift+'
 
 /** Idle gap before an edit is written. Matches Focus mode, which writes the same table. */
 const AUTOSAVE_MS = 1000
@@ -53,7 +62,7 @@ const AUTOSAVE_MS = 1000
  */
 export function SceneDraftSection({
   event, characters, involvedIds, mentionedIds, onAddMention, onWordsChange,
-  onShortcut, focusRequest = null, canAddAfter = false,
+  onShortcut, focusRequest = null, canAddAfter = false, openFocusNonce = null, focusKeys,
 }: SceneDraftSectionProps) {
   const { worldId, id: eventId } = event
   const sceneText = useSceneText(event.id)
@@ -422,6 +431,18 @@ export function SceneDraftSection({
     }, AUTOSAVE_MS)
   }
 
+  /*
+    Arrived at from Focus mode — the next scene, or one just made from there —
+    so it opens in Focus mode, once its text is in: Focus mode takes the prose
+    it starts with, and it would start an arriving scene empty.
+  */
+  const openedFocusFor = useRef<number | null>(null)
+  useEffect(() => {
+    if (!openFocusNonce || sceneText === undefined || openedFocusFor.current === openFocusNonce) return
+    openedFocusFor.current = openFocusNonce
+    setFocusOpen(true)
+  }, [openFocusNonce, sceneText])
+
   useEffect(() => () => {
     if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
     if (latestDraft.current !== null) void setSceneText(worldId, eventId, latestDraft.current)
@@ -491,7 +512,9 @@ export function SceneDraftSection({
         placeholder={`Write or paste this scene's prose… (@ names a character${canCreateLocation ? ', item or place' : ' or item'}; @@ says who is here)`}
         ariaLabel="Scene prose"
         rows={5}
-        onShortcut={onShortcut}
+        onShortcut={onShortcut
+          ? (s, caret) => onShortcut(s, shownHeader ? Math.max(0, caret - shownHeader.length - 2) : caret)
+          : undefined}
         focusRequest={focusRequest}
         ready={sceneText !== undefined}
       />
@@ -544,6 +567,7 @@ export function SceneDraftSection({
           <span className="hidden sm:inline">
             {' · '}<kbd className="font-sans">{MOD}{ALT}↓ ↑</kbd> next or previous scene
             {canAddAfter && <>{' · '}<kbd className="font-sans">{MOD}Enter</kbd> new scene after</>}
+            {canAddAfter && <>{' · '}<kbd className="font-sans">{MOD}{SHIFT}Enter</kbd> split here</>}
           </span>
         )}
       </p>
@@ -637,6 +661,7 @@ export function SceneDraftSection({
           header={headerLine}
           initialText={sceneText?.text ?? ''}
           onExit={() => setFocusOpen(false)}
+          keys={focusKeys}
         />
       )}
     </div>

@@ -7,7 +7,7 @@
  * and which scene is next — kept here so they can be tested without a browser.
  */
 
-export type SceneShortcut = 'next' | 'previous' | 'new'
+export type SceneShortcut = 'next' | 'previous' | 'new' | 'split'
 
 /** The modifier state a key event carries; a DOM or React event will do. */
 export interface ShortcutKey {
@@ -23,15 +23,18 @@ export interface ShortcutKey {
  *
  * - **Ctrl+Alt+↓ / ↑** (⌘⌥ on a Mac) — the next or previous scene.
  * - **Ctrl+Enter** (⌘Enter) — a new scene after this one.
+ * - **Ctrl+Shift+Enter** (⌘⇧Enter) — split this scene at the caret.
  *
  * Ctrl or ⌘ is taken on either platform, as the app's undo and search already
- * do. Shift is refused on all of them: Shift+Alt+arrow extends a selection by a
- * paragraph in a Mac text box, and a key that selected text on one machine and
- * left the scene on another would be a trap.
+ * do. Shift is refused with the arrows: Shift+Alt+arrow extends a selection by
+ * a paragraph in a Mac text box, and a key that selected text on one machine
+ * and left the scene on another would be a trap. With Enter it means nothing to
+ * a text box, so it is free for the split.
  */
 export function sceneShortcut(e: ShortcutKey): SceneShortcut | null {
   const mod = e.ctrlKey || e.metaKey
-  if (!mod || e.shiftKey) return null
+  if (!mod) return null
+  if (e.shiftKey) return !e.altKey && e.key === 'Enter' ? 'split' : null
   if (e.altKey && e.key === 'ArrowDown') return 'next'
   if (e.altKey && e.key === 'ArrowUp') return 'previous'
   if (!e.altKey && e.key === 'Enter') return 'new'

@@ -485,6 +485,20 @@ const shots = [
     ready: (page) => page.getByRole('menu').or(page.getByRole('menuitem').first()),
   },
   {
+    name: '71-join-scene', book: ILIAD, reading: false,
+    // The Iliad's chapter 1 opens on "The Priest Is Rejected"; the scene after
+    // it in the same chapter is what the dialog names.
+    go: async (page, id) => {
+      const chapter = await firstChapter(page, id)
+      await page.goto(`${BASE}/#/worlds/${id}/timeline/${chapter}`, { waitUntil: 'load' })
+      const main = page.getByRole('main')
+      await main.getByRole('button', { name: 'The Priest Is Rejected', exact: true }).waitFor({ state: 'visible', timeout: 30_000 })
+      await main.getByRole('button', { name: 'More actions for “The Priest Is Rejected”' }).click()
+      await page.getByRole('menuitem', { name: 'Join with next scene…' }).click()
+    },
+    ready: (page) => page.getByRole('dialog'),
+  },
+  {
     name: '65-scene-standing', book: ILIAD, reading: false,
     // The X-ray gutter renders only in Reading mode, and only with prose.
     go: async (page, id) => {

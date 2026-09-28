@@ -94,7 +94,9 @@ Two deliberate limits on `@@` in the prose. It **offers people only**, because p
 
 ### Moving between scenes by key
 
-In a scene's draft, **Ctrl+Alt+↓ / ↑** (⌘⌥ on a Mac) goes to the next or previous scene — saving this one and folding it away, crossing into the next chapter when this was its last scene — with the caret in the new scene's prose: at its start going on, at its end going back. **Ctrl+Enter** (⌘Enter) starts a new scene after this one: type its title where it will sit, press Enter, and you are writing in it; Escape goes back. The time cursor follows. While reading, the arrows go only through what you have reached, and Ctrl+Enter makes nothing.
+In a scene's draft, **Ctrl+Alt+↓ / ↑** (⌘⌥ on a Mac) goes to the next or previous scene — saving this one and folding it away, crossing into the next chapter when this was its last scene — with the caret in the new scene's prose: at its start going on, at its end going back. **Ctrl+Enter** (⌘Enter) starts a new scene after this one: type its title where it will sit, press Enter, and you are writing in it; Escape goes back. **Ctrl+Shift+Enter** (⌘⇧Enter) splits the scene at the caret: the rest becomes a new scene after it, in the same room with the same people. The time cursor follows. While reading, the arrows go only through what you have reached, and Ctrl+Enter and Ctrl+Shift+Enter make nothing.
+
+**Join with next scene…** in a scene's ⋯ menu folds the next scene in the chapter into this one — its prose on the end, its cast in this one, its recorded states moved here (the later kept where both recorded one) and anything pointing at it pointed here. It asks first. One Undo parts them again, as one Undo puts a split back.
 
 Scenes move earlier or later with the ↑ ↓ on their cards; dragging is the [Corkboard](Corkboard)'s.
 
