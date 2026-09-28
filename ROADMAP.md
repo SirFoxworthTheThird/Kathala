@@ -102,18 +102,19 @@ a median of 70–145 ms for ProseMirror and a `<textarea>`. The numbers, and wha
 costs, are in
 [`docs/records/editor-spike-2026-09-28.md`](docs/records/editor-spike-2026-09-28.md).
 
-**Open, each with a recommendation (the second since decided):**
+**Open, each with a recommendation — both since decided:**
 
-1. **The syntax.** The author suggested `#### Chapter` and `**** Scene`. I
-   recommend `# Chapter title` and `## Scene title`: `#` is already a chapter
+1. **The syntax.** *Decided as recommended, built in steps 2–6:* `# Chapter
+   title` and `## Scene title`. The author suggested `#### Chapter` and
+   `**** Scene`. The recommendation was `# Chapter title` and `## Scene title`: `#` is already a chapter
    to both import and export, and one syntax across the editor, import and
    export means a book written here, exported and imported again keeps its
    shape. `####` is a heading the importer deliberately leaves in the prose,
    and `***` is already a scene break there, so `**** Scene Name` would read as
    a break with text after it. The cost of `##`: import reads it as a chapter
-   today, and plenty of manuscripts use it that way, so step 6 has to decide
-   how an import tells the two apart (for instance, `##` is a scene only under
-   a `#`).
+   today, and plenty of manuscripts use it that way, so step 6 had to decide
+   how an import tells the two apart — `##` is a scene only where there are
+   `#` chapters; see step 6.
 2. **The name.** *Decided in step 4:* **Manuscript**, at `/manuscript`, with
    the in-world ordering as its *Chronological* view. Not *Timeline*: in
    Kathala a timeline is also a thing a writer creates (a main timeline, a
@@ -207,9 +208,15 @@ costs, are in
      notes after that one's, the two word goals added. Nothing but scenes
      points at a chapter, so nothing else moves. Still refused: the first
      chapter, the first scene of a chapter, two headings at once.
-6. **The round trip.** Markdown export writes scene titles as `##`, and import
-   reads `##` under a `#` as a titled scene, so a book written here and one
-   pasted in agree.
+6. **The round trip.** *Done* — Markdown export writes each scene under its
+   `## Title` (*Scene titles as ## headings*, on by default and offered for
+   Markdown only, since Word, EPUB and HTML go to readers), and import reads
+   `##` under `#` chapters as a titled scene, so a book written here and one
+   pasted in agree. How import tells the two uses of `##` apart, as the syntax
+   question asked: `##` is a scene only where there are `#` chapters, and one
+   that reads as a chapter (*Chapter 3*, *Part Two*) stays one. The one
+   ambiguity left is a single `#` heading followed by `##` headings, which
+   reads — as before — as a book title over `##` chapters.
 7. **Remove the Corkboard.** Decided by the author on 28 September 2026, while
    5a was being tested. The one screen for the book now does what the
    Corkboard was for: the binder reorders scenes and moves them between
