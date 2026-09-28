@@ -92,7 +92,11 @@ Two deliberate limits on `@@` in the prose. It **offers people only**, because p
 
 **Nothing reads your prose to decide any of this.** Fiction is full of *"she was not there"* and *"he imagined her at the gate"* — the keystroke is the assertion, never the sentence. The [Continuity Checker](Continuity-Checker) separately notices names in the prose that aren't accounted for, and offers to record them, which is an observation you answer rather than a decision it makes.
 
-Drag event cards to reorder them within a chapter.
+### Moving between scenes by key
+
+In a scene's draft, **Ctrl+Alt+↓ / ↑** (⌘⌥ on a Mac) goes to the next or previous scene — saving this one and folding it away, crossing into the next chapter when this was its last scene — with the caret in the new scene's prose: at its start going on, at its end going back. **Ctrl+Enter** (⌘Enter) starts a new scene after this one: type its title where it will sit, press Enter, and you are writing in it; Escape goes back. The time cursor follows. While reading, the arrows go only through what you have reached, and Ctrl+Enter makes nothing.
+
+Scenes move earlier or later with the ↑ ↓ on their cards; dragging is the [Corkboard](Corkboard)'s.
 
 ---
 
