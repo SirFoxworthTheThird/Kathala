@@ -21,6 +21,7 @@ A **pacing curve** across the top plots dramatic tension chapter by chapter once
 **The Timeline is one page.** The [binder](#the-binder) runs down the left, and beside it is the **book** — every chapter, with the orders, filters and actions below. There is no separate chapter screen: opening a chapter opens it in the book, with its panel beside the list (see [Opening a chapter](#opening-a-chapter)). **Whole book** at the top of the binder, or the ✕ on the panel, closes it.
 
 - **Narrative vs. Chronological** — toggle between reading order and in-world order (useful with flashbacks or in-world dates).
+- **Cards vs. Page** — Cards is the book as scene cards; **Page** is the same book as one document to write in. See [Writing on one page](#writing-on-one-page).
 - **Add Chapter**, **New Timeline**, and **Generate with AI** live in the header.
 - **Every scene is a card.** Closed, it shows its title, status, tension, cast and setting; open it and it is the whole scene — the draft, the description, the cast, the setting — edited in place. **View from here** inside it moves the time cursor to that exact moment. Opening a card leaves the cursor where it is, so reading down the list does not keep changing every other screen.
 - Each chapter row, and each scene card outside the open chapter, has an **open** button that opens its chapter.
@@ -99,6 +100,22 @@ In a scene's draft, **Ctrl+Alt+↓ / ↑** (⌘⌥ on a Mac) goes to the next or
 **Join with next scene…** in a scene's ⋯ menu folds the next scene in the chapter into this one — its prose on the end, its cast in this one, its recorded states moved here (the later kept where both recorded one) and anything pointing at it pointed here. It asks first. One Undo parts them again, as one Undo puts a split back.
 
 Scenes move earlier or later with the ↑ ↓ on their cards; dragging is the [Corkboard](Corkboard)'s.
+
+---
+
+## Writing on one page
+
+**Page**, beside Cards in the header, shows the whole timeline as one document: each chapter a `#` heading, each scene a `##` heading, and the scene's prose under it — the same prose and titles as the cards, not a copy. Write anywhere; what you type is saved to its scene a second after you stop, or when you click away. Edit a heading to retitle its chapter or scene.
+
+- The [binder](#the-binder) moves the page: a scene puts the caret at the start of its prose, a chapter brings its heading to the top.
+- **Enter** on a heading goes to the prose under it; on a chapter heading, to its first scene.
+- **Ctrl+F** (⌘F) searches the whole book. The page only draws what is on screen, so the browser's own find cannot see the rest.
+- **Ctrl+Z** on the page takes back typing; the top bar's Undo takes back a rename.
+- **Headings stay where they are.** Page does not join, split, add or remove chapters and scenes — deleting a heading, merging it into the line above, changing its `#` marks, or typing under a chapter heading is refused, and the line above the page says why. Use Cards or the binder for those.
+- A line of prose starting with `#` is still prose: which lines are headings comes from the chapters and scenes, not the marks.
+- A change made elsewhere — another tab, or the top bar's Undo — shows on the page, and anything typed there and not yet saved is kept.
+- Page is offered on one timeline in narrative order, and not on *All timelines*, in Chronological order, or in reading mode.
+- Not on the page yet: the scene header line, `@` mentions, the scene keys and Focus mode — open the scene's card for those.
 
 ---
 
