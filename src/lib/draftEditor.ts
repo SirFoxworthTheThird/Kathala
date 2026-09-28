@@ -1,4 +1,4 @@
-import { EditorSelection, EditorState, StateEffect, StateField, type Extension, type Transaction, type StateCommand } from '@codemirror/state'
+import { EditorSelection, EditorState, StateEffect, StateField, type Extension, type Transaction, type TransactionSpec, type StateCommand } from '@codemirror/state'
 import {
   composeDraft, readDraft, proseStart, lineEndAt, HEADING_PREFIX,
   type DraftChapter, type DraftHeading, type DraftSegment,
@@ -19,10 +19,16 @@ import {
     would make a scene called "T". `lineTyped` follows the line being typed on,
     and `typedHeading` says whether the line just left is one. Only a line the
     writer typed on counts: a line of prose that already started with `## `,
-    in a book imported that way, stays prose until it is edited.
+    in a book imported that way, stays prose until it is edited. `splitSpec`
+    then makes the line a heading, under the id the new scene will have.
   - **Deleting a scene heading's whole line** joins that scene to the one
     before it. The heading goes from the document at once, with a `joined`
-    effect naming both scenes, so the page can make the records agree.
+    effect naming both scenes, and `joinSpec` closes up the seam.
+
+  Either way the document already shows the book the records are about to
+  hold, so the page writes them and carries on: nothing is rebuilt, and nothing
+  typed meanwhile is lost. The blank lines around the heading are set to what
+  the records will hold, so the page and the store agree to the character.
 
   Everything else that would change the structure is refused whole, with a
   reason the page shows: part of a heading, a chapter heading, the first scene
@@ -48,12 +54,17 @@ export const refused = StateEffect.define<Refusal>()
 export interface Join { id: string; into: string; at: number }
 export const joined = StateEffect.define<Join>()
 
+/** A heading the document gains: a split's new scene. `pos` is in the document after the transaction. */
+export const addHeading = StateEffect.define<DraftHeading>()
+
 export const headingsField = StateField.define<DraftHeading[]>({
   create: () => [],
   update(headings, tr) {
-    if (!tr.docChanged) return headings
+    const added = tr.effects.filter((e) => e.is(addHeading)).map((e) => e.value as DraftHeading)
+    if (!tr.docChanged && added.length === 0) return headings
     const gone = new Set(tr.effects.filter((e) => e.is(joined)).map((e) => (e.value as Join).id))
-    return headings.filter((h) => !gone.has(h.id)).map((h) => ({ ...h, pos: tr.changes.mapPos(h.pos, 1) }))
+    const kept = headings.filter((h) => !gone.has(h.id)).map((h) => ({ ...h, pos: tr.changes.mapPos(h.pos, 1) }))
+    return added.length === 0 ? kept : [...kept, ...added].sort((a, b) => a.pos - b.pos)
   },
 })
 
@@ -174,7 +185,7 @@ function inSceneProse(state: EditorState, pos: number): boolean {
 }
 
 /** A scene heading, as typed: `## ` and a title. Three or more marks are prose. */
-const TYPED_SCENE = /^## (?!#)(.*\S.*)$/
+const TYPED_SCENE = /^## (.*\S.*)$/
 
 export interface TypedHeading {
   /** The scene the line was typed in. */
@@ -210,21 +221,13 @@ export function typedHeading(state: EditorState, pos: number): TypedHeading | nu
 }
 
 /**
- * The prose of a scene after a join: what the page shows under it now. Where
- * the deletion left the seam on blank lines — a heading's line deleted whole
- * leaves the blank lines that were either side of it — they close up to one
- * paragraph break, the seam `joinWithNext` makes. A deletion that ended
- * mid-line joined the words into one line, and that is kept as it is.
+ * The prose of scene `into` after a join, as the page shows it once `joinSpec`
+ * has closed up the seam — and so as the records should hold it.
  */
 export function joinedProse(state: EditorState, into: string, seam: number): string {
-  const headings = state.field(headingsField)
-  const i = headings.findIndex((h) => h.id === into)
-  const text = draftSegments(state)[i].text
-  const at = Math.max(0, Math.min(text.length, seam - proseFromOf(state, i)))
-  const before = text.slice(0, at)
-  const after = text.slice(at)
-  if (!before.endsWith('\n') && !after.startsWith('\n')) return text
-  return [before.replace(/\s+$/, ''), after.replace(/^\s+/, '')].filter(Boolean).join('\n\n')
+  const spec = joinSpec(state, into, seam)
+  const closed = spec ? state.update(spec).state : state
+  return draftSegments(closed)[closed.field(headingsField).findIndex((h) => h.id === into)].text
 }
 
 /** Where the prose of heading `i` starts in the document: `readDraft` drops up to two line breaks after its line. */
@@ -232,6 +235,62 @@ function proseFromOf(state: EditorState, i: number): number {
   const afterTitle = lineEndAt(state.doc, state.field(headingsField)[i].pos)
   const lead = state.doc.sliceString(afterTitle, afterTitle + 2)
   return afterTitle + (lead === '\n\n' ? 2 : lead.startsWith('\n') ? 1 : 0)
+}
+
+/** The run of whitespace around `pos` in `[from, to)`: where it starts and ends. */
+function whitespaceAround(state: EditorState, pos: number, from: number, to: number): [number, number] {
+  const before = state.doc.sliceString(from, pos)
+  const after = state.doc.sliceString(pos, to)
+  return [pos - (before.length - before.replace(/\s+$/, '').length), pos + (after.length - after.replace(/^\s+/, '').length)]
+}
+
+/**
+ * Make the typed heading on the line at `pos` a heading, for the scene `id`:
+ * one blank line either side of it — or none above, where it opens its scene's
+ * prose — which is how the records will read back once the split is written.
+ */
+export function splitSpec(state: EditorState, pos: number, id: string): TransactionSpec {
+  const headings = state.field(headingsField)
+  const i = headingAt(headings, pos)
+  const line = state.doc.lineAt(pos)
+  const afterTitle = lineEndAt(state.doc, headings[i].pos)
+  const end = headings[i + 1]?.pos ?? state.doc.length
+  const [lo] = whitespaceAround(state, line.from, afterTitle, line.from)
+  const [, hi] = whitespaceAround(state, line.to, line.to, end)
+  const tail = hi < end || headings[i + 1] ? '\n\n' : ''
+  const changes = state.changes([
+    { from: lo, to: line.from, insert: '\n\n' },
+    { from: line.to, to: hi, insert: tail },
+  ])
+  return {
+    changes,
+    effects: [addHeading.of({ id, kind: 'scene', pos: changes.mapPos(line.from, 1) }), settled.of(null)],
+    // The page's own change, not the writer's: `keepHeadings` judges what the writer types.
+    filter: false,
+  }
+}
+
+/**
+ * Close up the seam a join left at `seam` in scene `into`. Blank lines there
+ * become one paragraph break, the seam `joinWithNext` makes; at the start or
+ * end of the scene's prose, the one blank line that parts prose from a heading.
+ * A deletion that ended mid-line joined the words into one line, and that is
+ * left as it is. `null` when there is nothing to change.
+ */
+export function joinSpec(state: EditorState, into: string, seam: number): TransactionSpec | null {
+  const headings = state.field(headingsField)
+  const i = headings.findIndex((h) => h.id === into)
+  const afterTitle = lineEndAt(state.doc, headings[i].pos)
+  const next = headings[i + 1]
+  const end = next?.pos ?? state.doc.length
+  const [lo, hi] = whitespaceAround(state, Math.max(afterTitle, Math.min(seam, end)), afterTitle, end)
+  const gap = state.doc.sliceString(lo, hi)
+  const atEnd = hi === end
+  let insert: string
+  if (lo === afterTitle || atEnd) insert = atEnd && !next ? '' : '\n\n'
+  else if (gap.includes('\n')) insert = '\n\n'
+  else return null
+  return gap === insert ? null : { changes: { from: lo, to: hi, insert }, filter: false }
 }
 
 /**

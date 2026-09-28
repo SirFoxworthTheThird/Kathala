@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Compartment, EditorState, Prec, RangeSetBuilder } from '@codemirror/state'
+import { Compartment, Prec, RangeSetBuilder, type EditorState } from '@codemirror/state'
 import { EditorView, Decoration, ViewPlugin, keymap, type DecorationSet, type ViewUpdate } from '@codemirror/view'
-import { history, historyKeymap, defaultKeymap } from '@codemirror/commands'
+import { history, historyKeymap, defaultKeymap, undoDepth, redoDepth } from '@codemirror/commands'
 import { search, searchKeymap } from '@codemirror/search'
 import { db } from '@/db/database'
 import { setSceneText } from '@/db/hooks/useManuscript'
@@ -12,12 +12,13 @@ import { useRedoAction, useUndoAction } from '@/features/history'
 import { HEADING_PREFIX, proseStart, lineEndAt, draftBook, type DraftChapter } from '@/lib/draftDocument'
 import {
   draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse,
-  type Refusal, type Join, type TypedHeading,
+  splitSpec, joinSpec, type Refusal, type Join, type TypedHeading,
 } from '@/lib/draftEditor'
 import {
   storedValues, shownValues, planSync, bookToShow, pendingWrites, afterWrite, sameText, type Held,
 } from '@/lib/draftSync'
 import { splitProse } from '@/lib/sceneStructure'
+import { generateId } from '@/lib/id'
 
 /*
   The Timeline's Page view: the whole of one timeline as a single document —
@@ -31,12 +32,17 @@ import { splitProse } from '@/lib/sceneStructure'
   how it and the store stay in step is `src/lib/draftSync.ts`.
 
   A split or a join made on the page is the same act as on a scene card
-  (`splitScene`, `joinWithNext`), one step of undo. While it is written the page
-  is read-only, and it waits for the store to show the result before it
-  rebuilds — a rebuild from a store half-way through the act would show the new
-  scene without its prose. Ctrl+Z straight after one takes it back: the act is
-  the last thing the writer did, and the editor's own history is new with the
-  rebuild, so it has nothing earlier to offer.
+  (`splitScene`, `joinWithNext`), one step of undo. The page shows its result
+  at once — the typed line becomes the new scene's heading, under the id the
+  record is then written with — so the writer goes on typing while the records
+  are written, and nothing is rebuilt. Until the store shows the act, the page
+  does not read the store, which half-way through would say the new scene has
+  no prose.
+
+  The editor's own undo history starts again at each one, because stepping
+  back through it would undo the text of a heading whose record has been
+  written. So Ctrl+Z takes back typing since the split or join, and then the
+  split or join itself, from the journal.
 */
 
 /** Same as a scene's own draft box, so the two save on the same beat. */
@@ -110,13 +116,20 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
   const baseRef = useRef<Map<string, Held>>(new Map())
   const inFlight = useRef(new Set<string>())
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const readOnly = useRef(new Compartment())
-  /** A split or join being written: saving and syncing wait until `done` says the store shows it. */
-  const busy = useRef<{ done: (book: DraftChapter[]) => boolean; finish: () => void } | null>(null)
-  /** What Ctrl+Z and Ctrl+Shift+Z do on the page before anything else is typed: the journal's, after a split or join. */
+  const undoHistory = useRef(new Compartment())
+  /**
+   * A split or join being written. While `acting`, nothing is saved; until
+   * `done` says the store shows it, the store is not read.
+   */
+  const busy = useRef<{
+    acting: boolean
+    /** Whether the act was written, once it has been. */
+    acted: Promise<boolean>
+    done: (book: DraftChapter[]) => boolean
+    finish: () => void
+  } | null>(null)
+  /** Whether Ctrl+Z (or Ctrl+Shift+Z), once the editor has nothing to take back, goes to the journal for a split or join. */
   const structural = useRef<'undo' | 'redo' | null>(null)
-  /** After the next rebuild, the scene whose prose the caret goes to. */
-  const caretTo = useRef<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
   const undo = useUndoAction(worldId)
@@ -154,111 +167,141 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
   async function save() {
     if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
     const view = viewRef.current
-    if (!view || busy.current) return
+    if (!view || busy.current?.acting) return
     await write(shownValues(draftSegments(view.state)))
   }
   const saveRef = useRef(save)
   saveRef.current = save
 
+  /** Start the editor's own history again: see the note at the top. */
+  function forgetHistory(view: EditorView) {
+    view.dispatch({ effects: undoHistory.current.reconfigure([]) })
+    view.dispatch({ effects: undoHistory.current.reconfigure(history()) })
+  }
+
   /**
-   * Write a split or a join. `owed` is every heading as it should be saved
-   * first — the ones the act touches as they were just before it, so undo puts
-   * back what the writer had. `involved` are the headings whose text the page
-   * showed mid-act and the store now describes.
+   * Write a split or a join the page already shows. `owed` is every heading as
+   * it is to be saved first — the ones the act touches as they were just
+   * before it, so undo puts back what the writer had. `settle` is what the act
+   * leaves each of them holding (`null`: gone).
    */
   async function restructure(opts: {
     owed: Map<string, Held>
-    involved: string[]
-    act: () => Promise<string | null>
+    settle: Map<string, Held | null>
+    act: () => Promise<boolean>
     done: (book: DraftChapter[]) => boolean
   }) {
     const view = viewRef.current
     if (!view || busy.current) return
     if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
+    let settle: (acted: boolean) => void = () => {}
+    const mine = { acting: true, acted: new Promise<boolean>((resolve) => { settle = resolve }), done: opts.done, finish: () => {} }
+    busy.current = mine
+    // The act is the last thing the writer did from the moment they did it: a
+    // Ctrl+Z pressed while it is still being written waits for it, then takes it back.
+    structural.current = 'undo'
     let acted = false
-    let caret: string | null = null
-    const finish = () => {
-      if (!busy.current) return
-      busy.current = null
-      // Closed while the act was written — Cards chosen straight after typing a heading, say.
-      if (viewRef.current !== view) return
-      const shown = shownValues(draftSegments(view.state))
-      const base = new Map(baseRef.current)
-      for (const id of opts.involved) { const here = shown.get(id); if (here) base.set(id, here) }
-      baseRef.current = base
-      view.dispatch({ effects: readOnly.current.reconfigure([]) })
-      caretTo.current = caret
-      structural.current = acted ? 'undo' : null
-      syncRef.current()
-    }
-    busy.current = { done: () => false, finish }
-    queueMicrotask(() => view.dispatch({ effects: readOnly.current.reconfigure(EditorState.readOnly.of(true)) }))
     try {
       await write(opts.owed)
-      caret = await opts.act()
-      acted = true
+      acted = await opts.act()
     } catch (err) {
       console.error('Page view: a split or join failed', err)
     }
-    // The store answers on its own schedule: finish when it shows the act, or
-    // stop waiting and take what it has.
-    const book = bookRef.current
-    if (!acted || (book && opts.done(book))) { finish(); return }
-    busy.current = { done: opts.done, finish }
-    setTimeout(finish, 3000)
+    settle(acted)
+    const base = new Map(baseRef.current)
+    if (acted) {
+      for (const [id, held] of opts.settle) { if (held) base.set(id, held); else base.delete(id) }
+    } else {
+      // Not written: the page is showing something the store does not hold, and the store's is kept.
+      const shown = shownValues(draftSegments(view.state))
+      for (const id of opts.settle.keys()) { const here = shown.get(id); if (here) base.set(id, here); else base.delete(id) }
+    }
+    baseRef.current = base
+    mine.acting = false
+    if (!acted && structural.current === 'undo') structural.current = null
+    // Anything typed while the act was written is owed now.
+    void saveRef.current()
+    mine.finish = () => {
+      if (busy.current !== mine) return
+      busy.current = null
+      syncRef.current()
+    }
+    const current = bookRef.current
+    if (!acted || (current && opts.done(current))) { mine.finish(); return }
+    // The store answers on its own schedule; stop waiting in the end and take what it has.
+    setTimeout(mine.finish, 3000)
   }
 
-  function split(typed: TypedHeading, state: EditorState, caretAfter: boolean) {
-    const owed = shownValues(draftSegments(state))
+  function split(typed: TypedHeading, at: number, caretAfter: boolean) {
+    const view = viewRef.current
+    if (!view) return
+    const owed = shownValues(draftSegments(view.state))
     const was = owed.get(typed.sceneId)
     if (!was) return
     owed.set(typed.sceneId, { ...was, text: typed.prose })
     const { head, tail } = splitProse(typed.prose, typed.at)
-    let made: string | null = null
+    const id = generateId()
+    view.dispatch(splitSpec(view.state, at, id))
+    forgetHistory(view)
+    if (caretAfter) {
+      const headings = view.state.field(headingsField)
+      const i = headings.findIndex((h) => h.id === id)
+      const pos = proseStart(view.state.doc, headings, i) ?? lineEndAt(view.state.doc, headings[i].pos)
+      view.dispatch({ selection: { anchor: pos }, scrollIntoView: true, userEvent: 'select' })
+    }
     void restructure({
       owed,
-      involved: [typed.sceneId],
-      act: async () => {
-        made = (await splitScene(typed.sceneId, typed.at, typed.title))?.id ?? null
-        return caretAfter ? made : null
-      },
+      settle: new Map([
+        [typed.sceneId, { ...was, text: head }],
+        [id, { kind: 'scene', title: typed.title, text: tail }],
+      ]),
+      act: async () => !!(await splitScene(typed.sceneId, typed.at, typed.title, { id })),
       done: (book) => {
         const stored = storedValues(book)
         const first = stored.get(typed.sceneId)
-        const second = made ? stored.get(made) : undefined
+        const second = stored.get(id)
         return !!first && !!second && sameText(first.text, head) && sameText(second.text, tail)
       },
     })
   }
 
-  function join(j: Join, before: EditorState, after: EditorState, seam: number) {
-    const owed = shownValues(draftSegments(after))
+  function join(j: Join, before: EditorState, seam: number) {
+    const view = viewRef.current
+    if (!view) return
+    const prose = joinedProse(view.state, j.into, seam)
+    const spec = joinSpec(view.state, j.into, seam)
+    const owed = shownValues(draftSegments(view.state))
+    const into = owed.get(j.into)
+    if (!into) return
     const was = shownValues(draftSegments(before))
     for (const id of [j.into, j.id]) { const v = was.get(id); if (v) owed.set(id, v) }
-    const prose = joinedProse(after, j.into, seam)
+    if (spec) view.dispatch(spec)
+    forgetHistory(view)
     void restructure({
       owed,
-      involved: [j.into],
-      act: async () => { await joinWithNext(j.into, { prose }); return null },
+      settle: new Map<string, Held | null>([[j.into, { ...into, text: prose }], [j.id, null]]),
+      act: () => joinWithNext(j.into, { prose }),
       done: (book) => {
         const stored = storedValues(book)
-        const into = stored.get(j.into)
-        return !stored.has(j.id) && !!into && sameText(into.text, prose)
+        const kept = stored.get(j.into)
+        return !stored.has(j.id) && !!kept && sameText(kept.text, prose)
       },
     })
   }
 
   function extensions() {
     const typing = (tr: { isUserEvent: (e: string) => boolean }) => tr.isUserEvent('input') || tr.isUserEvent('delete')
-    const journal = (from: 'undo' | 'redo') => () => {
-      if (structural.current !== from) return false
+    const journal = (from: 'undo' | 'redo') => (view: EditorView) => {
+      const depth = from === 'undo' ? undoDepth(view.state) : redoDepth(view.state)
+      if (depth > 0 || structural.current !== from) return false
       structural.current = from === 'undo' ? 'redo' : 'undo'
-      void (from === 'undo' ? undoRef.current() : redoRef.current())
+      const take = () => (from === 'undo' ? undoRef.current() : redoRef.current())
+      const pending = busy.current
+      void (pending?.acting ? pending.acted.then((acted) => (acted ? take() : undefined)) : take())
       return true
     }
     return [
-      history(),
-      readOnly.current.of([]),
+      undoHistory.current.of(history()),
       Prec.highest(keymap.of([
         { key: 'Mod-z', run: journal('undo') },
         { key: 'Mod-Shift-z', run: journal('redo') },
@@ -275,33 +318,34 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
         const effects = u.transactions.flatMap((tr) => tr.effects)
         const why = effects.find((e) => e.is(refused))
         if (why) setNotice(REFUSALS[why.value as Refusal])
-        if (u.transactions.some((tr) => tr.docChanged && typing(tr))) structural.current = null
-        const j = effects.find((e) => e.is(joined))
-        if (j) {
-          const value = j.value as Join
-          setNotice(null)
-          join(value, u.startState, u.state, u.changes.mapPos(value.at, -1))
-          return
-        }
+        // Typing after a structural undo: there is no redo to go back to.
+        if (structural.current === 'redo' && u.transactions.some((tr) => tr.docChanged && typing(tr))) structural.current = null
         if (u.docChanged) {
           setNotice(null)
           if (saveTimer.current) clearTimeout(saveTimer.current)
           saveTimer.current = setTimeout(() => { void saveRef.current() }, AUTOSAVE_MS)
         }
+        // The page cannot be changed from inside its own update: what follows runs straight after it.
+        const j = effects.find((e) => e.is(joined))
+        if (j) {
+          const value = j.value as Join
+          const seam = u.changes.mapPos(value.at, -1)
+          const before = u.startState
+          queueMicrotask(() => join(value, before, seam))
+          return
+        }
         // A heading typed into a scene splits it once the caret leaves its line, or the page.
         const { line, left } = u.state.field(lineTyped)
         const blurred = u.focusChanged && !u.view.hasFocus
         const from = left ?? (blurred ? line : null)
-        if (from !== null && !busy.current) {
-          if (left !== null) queueMicrotask(() => viewRef.current?.dispatch({ effects: settled.of(null) }))
-          const typed = typedHeading(u.state, from)
-          if (typed) {
-            const head = u.state.selection.main.head
-            const place = placeOf(u.state)
-            split(typed, u.state, !blurred && head > u.state.doc.lineAt(from).to && place?.id === typed.sceneId)
-            return
-          }
+        const typed = from !== null && !busy.current ? typedHeading(u.state, from) : null
+        if (from !== null && typed) {
+          const place = placeOf(u.state)
+          const after = !blurred && u.state.selection.main.head > u.state.doc.lineAt(from).to && place?.id === typed.sceneId
+          queueMicrotask(() => split(typed, from, after))
+          return
         }
+        if (left !== null) queueMicrotask(() => viewRef.current?.dispatch({ effects: settled.of(null) }))
         if (blurred) void saveRef.current()
       }),
     ]
@@ -336,16 +380,6 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
     const place = placeOf(view.state)
     const scroll = view.scrollSnapshot()
     view.setState(draftState(bookToShow(current, plan.base, shown, new Set(plan.take)), extensionsRef.current()))
-    const to = caretTo.current
-    caretTo.current = null
-    const headings = view.state.field(headingsField)
-    const i = to ? headings.findIndex((h) => h.id === to) : -1
-    if (i >= 0) {
-      const at = proseStart(view.state.doc, headings, i) ?? lineEndAt(view.state.doc, headings[i].pos)
-      view.dispatch({ selection: { anchor: at }, scrollIntoView: true })
-      view.focus()
-      return
-    }
     const at = positionOf(view.state, place)
     if (at !== null) view.dispatch({ selection: { anchor: at }, effects: scroll })
   }
@@ -354,7 +388,7 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
 
   useEffect(() => {
     const pending = busy.current
-    if (pending) { if (book && pending.done(book)) pending.finish(); return }
+    if (pending) { if (!pending.acting && book && pending.done(book)) pending.finish(); return }
     syncRef.current()
   }, [book])
 

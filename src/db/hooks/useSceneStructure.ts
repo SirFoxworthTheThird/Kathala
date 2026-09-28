@@ -83,9 +83,9 @@ async function replaceProse(worldId: string, eventId: string, text: string | nul
  * who is in it (`splitCarries`); its prose is everything after the cut. Nothing
  * recorded at the scene moves: its states stay on the first half, and the
  * second half reads them back as the last known. One undo takes it all back,
- * prose included. Returns the new scene.
+ * prose included. Returns the new scene. `id`, when given, is the new scene's.
  */
-export async function splitScene(eventId: string, at: number, title: string): Promise<WorldEvent | undefined> {
+export async function splitScene(eventId: string, at: number, title: string, opts: { id?: string } = {}): Promise<WorldEvent | undefined> {
   const scene = await db.events.get(eventId)
   if (!scene) return undefined
   const before = await proseOf(eventId)
@@ -93,7 +93,7 @@ export async function splitScene(eventId: string, at: number, title: string): Pr
   const index = (await inChapterOrder(scene.chapterId)).findIndex((e) => e.id === eventId) + 1
 
   const created = await journalGroup(async () => {
-    const made = await createEventAt(scene.chapterId, index, title, splitCarries(scene))
+    const made = await createEventAt(scene.chapterId, index, title, { ...splitCarries(scene), ...(opts.id ? { id: opts.id } : {}) })
     if (!made) return undefined
     // The prose, on an operation of the act, so undo and redo move it too.
     await journalUpdate('event', db.events, eventId, { updatedAt: Date.now() }, [], {

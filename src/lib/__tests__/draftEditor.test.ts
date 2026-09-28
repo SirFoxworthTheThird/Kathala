@@ -3,9 +3,10 @@ import { EditorSelection, type EditorState, type TransactionSpec } from '@codemi
 import { history, undo, redo } from '@codemirror/commands'
 import {
   draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse,
-  type Refusal, type Join,
+  splitSpec, joinSpec, type Refusal, type Join,
 } from '@/lib/draftEditor'
 import type { DraftChapter } from '@/lib/draftDocument'
+import { splitProse } from '@/lib/sceneStructure'
 
 const book: DraftChapter[] = [
   { id: 'c1', title: 'Arrival', scenes: [
@@ -312,5 +313,68 @@ describe('a scene heading typed into a scene', () => {
     const typedOn = type(s0, at(s0, 'heading'), 'real ')
     const edited = moveTo(typedOn, at(typedOn, 'Second.'))
     expect(edited.field(lineTyped).left).toBe(at(s0, '## Not'))
+  })
+})
+
+describe('the page after a split or join shows what the records will hold', () => {
+  /** Type a heading line into `text` of a one-scene book at `where`, leave it, and split. */
+  function splitAt(text: string, where: string, line: string) {
+    const s0 = draftState([{ id: 'c', title: 'A', scenes: [{ id: 's', title: 'Night', text }, { id: 't', title: 'Next', text: 'Later.' }] }])
+    const pos = at(s0, where)
+    const typed = type(s0, pos, line)
+    const linePos = typed.doc.lineAt(pos).from
+    const cut = typedHeading(typed, linePos)!
+    const done = typed.update(splitSpec(typed, linePos, 'n')).state
+    return { cut, done }
+  }
+
+  it('the typed line is the new scene’s heading, and the two scenes read as the split writes them', () => {
+    for (const [text, where, line] of [
+      ['First.\n\nSecond.', 'Second.', '## Morning\n\n'],
+      ['First.\n\nSecond.', 'Second.', '## Morning\n\n\n'],
+      ['First.\nSecond.', 'Second.', '## Morning\n'],
+      ['First.\n\nSecond.', 'First.', '## Morning\n\n'],
+      ['First.', 'First.', '## Morning\n'],
+    ] as const) {
+      const { cut, done } = splitAt(text, where, line)
+      const { head, tail } = splitProse(cut.prose, cut.at)
+      expect(ids(done), `${text} / ${line}`).toEqual(['c', 's', 'n', 't'])
+      expect(texts(done), `${text} / ${line}`).toMatchObject({ s: head, n: tail, t: 'Later.' })
+      expect(titles(done).n).toBe('Morning')
+    }
+  })
+
+  it('at the end of a scene with nothing after, the new scene is empty and the next heading keeps its place', () => {
+    const s0 = draftState([{ id: 'c', title: 'A', scenes: [{ id: 's', title: 'Night', text: 'First.' }, { id: 't', title: 'Next', text: 'Later.' }] }])
+    const end = at(s0, 'First.') + 'First.'.length
+    const typed = type(s0, end, '\n## Dawn\n')
+    const linePos = typed.doc.lineAt(end + 1).from
+    const after = typed.update(splitSpec(typed, linePos, 'n')).state
+    expect(texts(after)).toMatchObject({ s: 'First.', n: '', t: 'Later.' })
+    expect(after.doc.toString()).toBe('# A\n\n## Night\n\nFirst.\n\n## Dawn\n\n## Next\n\nLater.')
+  })
+
+  it('a join closes up the blank lines at its seam, and the page reads as the join writes it', () => {
+    const s0 = fresh()
+    const from = at(s0, '## The letter')
+    for (const to of [from + '## The letter'.length, from + '## The letter'.length + 1]) {
+      const r = joinOf(s0, { changes: { from, to } })
+      const spec = joinSpec(r.state, 's1', from)
+      const closed = spec ? r.state.update(spec).state : r.state
+      expect(closed.doc.toString()).toContain('The ship came in.\n\nWait and hope.')
+      expect(texts(closed).s1).toBe(joinedProse(r.state, 's1', from))
+    }
+    // Paired: a seam mid-line is left alone.
+    const mid = joinOf(s0, { changes: { from: at(s0, 'came in'), to: at(s0, 'Wait') } })
+    expect(joinSpec(mid.state, 's1', at(s0, 'came in'))).toBeNull()
+  })
+
+  it('joining onto a scene with no prose leaves one blank line under its heading', () => {
+    const s0 = draftState([{ id: 'c', title: 'A', scenes: [{ id: 'a', title: 'One', text: '' }, { id: 'b', title: 'Two', text: 'Words.' }] }])
+    const from = at(s0, '## Two')
+    const r = joinOf(s0, { changes: { from, to: from + '## Two'.length } })
+    const closed = r.state.update(joinSpec(r.state, 'a', from)!).state
+    expect(closed.doc.toString()).toBe('# A\n\n## One\n\nWords.')
+    expect(joinedProse(r.state, 'a', from)).toBe('Words.')
   })
 })
