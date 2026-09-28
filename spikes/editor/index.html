@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Editor spike</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #111a1d; color: #e6e1d6; }
+    body { display: flex; flex-direction: column; }
+    #editor { flex: 1; min-height: 0; display: flex; }
+    #editor > * { flex: 1; min-height: 0; }
+    /* One measure for all three: a book column, not the full window. */
+    .cm-editor, .ProseMirror, textarea { font: 19px/1.7 Georgia, serif; }
+    .cm-editor { height: 100%; }
+    .cm-scroller { overflow: auto; }
+    .cm-content { max-width: 44rem; margin: 0 auto; }
+    .cm-line.h1 { font-size: 1.6em; }
+    .cm-line.h2 { font-size: 1.25em; }
+    .pm-wrap { overflow: auto; height: 100%; }
+    .ProseMirror { max-width: 44rem; margin: 0 auto; outline: none; white-space: pre-wrap; }
+    .ProseMirror p { margin: 0 0 1.7em; }
+    textarea { width: 100%; height: 100%; box-sizing: border-box; background: inherit; color: inherit;
+               border: 0; padding: 0 calc(50% - 22rem); resize: none; outline: none; }
+  </style>
+</head>
+<body>
+  <div id="editor"></div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

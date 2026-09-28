@@ -38,7 +38,7 @@ const docs = import.meta.glob('../../../{README.md,ROADMAP.md,docs/GUIDE.md,docs
 */
 const REPO = '../../../'
 const repoFiles = new Set([
-  ...Object.keys(import.meta.glob('../../../{docs,e2e,electron,src,public}/**/*', { eager: false })),
+  ...Object.keys(import.meta.glob('../../../{docs,e2e,electron,src,public,spikes}/**/*', { eager: false })),
   ...Object.keys(import.meta.glob('../../../*', { eager: false })),
 ].map((p) => (p.startsWith(REPO) ? p.slice(REPO.length) : p)))
 
