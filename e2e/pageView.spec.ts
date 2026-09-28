@@ -68,9 +68,9 @@ const stored = (page: Page) => page.evaluate(async () => {
 })
 
 async function openPage(page: Page, worldId: string, chapter = '') {
-  await page.goto(`/#/worlds/${worldId}/timeline${chapter ? `/${chapter}` : ''}`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript${chapter ? `/${chapter}` : ''}`, { waitUntil: 'load' })
   await settle(page)
-  await page.getByRole('group', { name: 'Timeline layout' }).getByRole('button', { name: 'Page', exact: true }).click()
+  await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
   const editor = page.getByRole('textbox', { name: 'The book, as one page' })
   await expect(editor).toBeVisible({ timeout: 20_000 })
   return editor
@@ -107,7 +107,7 @@ test.describe('the Page view', () => {
     await page.keyboard.type(', again')
     await expect.poll(() => stored(page), { timeout: 10_000 }).toContain('Teodora at the table, again: She counted.')
 
-    await page.getByRole('group', { name: 'Timeline layout' }).getByRole('button', { name: 'Cards', exact: true }).click()
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Cards', exact: true }).click()
     const main = page.getByRole('main')
     await expect(main.getByRole('button', { name: 'Teodora at the table, again', exact: true })).toBeVisible()
     await expect(main.getByRole('button', { name: 'Teodora at the table', exact: true })).toHaveCount(0)
@@ -214,19 +214,19 @@ test.describe('the Page view', () => {
     await line(page, 'She counted.').click()
     await page.keyboard.press('End')
     await page.keyboard.type(' Thrice.')
-    await page.getByRole('group', { name: 'Timeline layout' }).getByRole('button', { name: 'Cards', exact: true }).click()
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Cards', exact: true }).click()
     await expect.poll(() => stored(page), { timeout: 10_000 }).toContain('Teodora at the table: She counted. Thrice.')
   })
 
   test('is the writer’s: a world in reading mode has Cards and Read, and no Page', async ({ page }) => {
-    const group = page.getByRole('group', { name: 'Timeline layout' })
+    const group = page.getByRole('group', { name: 'Layout', exact: true })
     const worldId = await book(page)
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await settle(page)
     await expect(group.getByRole('button', { name: 'Page', exact: true })).toBeVisible({ timeout: 20_000 })
 
     const reading = await book(page, { readingMode: true })
-    await page.goto(`/#/worlds/${reading}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${reading}/manuscript`, { waitUntil: 'load' })
     await settle(page)
     // The reader's layouts are there — so the missing Page is missing, not unloaded.
     await expect(group.getByRole('button', { name: 'Read', exact: true })).toBeVisible({ timeout: 20_000 })

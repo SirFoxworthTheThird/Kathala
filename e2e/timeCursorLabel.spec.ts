@@ -54,7 +54,7 @@ async function worldAtAMoment(page: Page, chapterNumber: number) {
     })
   }, { id: worldId, number: chapterNumber })
 
-  await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
   await settle(page)
   // From "all chapters", stepping forward lands on the first moment.
   await page.getByRole('button', { name: 'Next moment' }).click()

@@ -123,7 +123,7 @@ export function HelpPanel() {
 
           <Section title="Reading a book" readerOnly>
             <P>This world is a companion to a book you are reading. It shows you only what the story has introduced by the point you have reached, so you can look something up without being told what happens next.</P>
-            <P><B>Your place</B> is the chapter and scene named in the top bar. Set it with <B>Read to here</B> on a chapter row in the Timeline — the notice on the dashboard links straight there — and nudge it a scene at a time with the <B>‹</B> and <B>›</B> arrows beside it. Looking at something does not move it: opening a scene, a search result or a character's history shows it to you and leaves your place alone.</P>
+            <P><B>Your place</B> is the chapter and scene named in the top bar. Set it with <B>Read to here</B> on a chapter row: open <B>Book</B> in the navigation and switch it to <B>Cards</B> — the notice on the dashboard links straight there — and nudge it a scene at a time with the <B>‹</B> and <B>›</B> arrows beside it. Looking at something does not move it: opening a scene, a search result or a character's history shows it to you and leaves your place alone.</P>
             <P>The <B>✕</B> beside your place drops back to the whole world — every character, place and subplot, including the ones you have not met. It asks first, because that is not usually what you want in the middle of a book. There is one in the chapter bar along the bottom too, and it does the same thing and asks the same question.</P>
             <P><B>What is hidden</B> is counted for you on the dashboard, so you can tell the difference between a world with nothing in it and a world holding things back. A chapter you have not reached does not open, and its summary stays closed, though its title stays visible because that is printed on your own contents page.</P>
             <P><B>Knowledge</B> is the screen worth knowing about: it answers who else knows a given secret, and by which chapter they learned it — a question the book itself cannot answer without a re-read.</P>
@@ -156,19 +156,18 @@ export function HelpPanel() {
             <Tip>A new chapter starts from the ending state of the preceding chapter on the same timeline, so you only need to record later changes.</Tip>
           </Section>
 
-          <Section title="Timeline & scenes">
+          <Section title="Manuscript: chapters & scenes">
             <P>A <B>chapter</B> is a named container (e.g. "Chapter 3"). Inside it you add <B>scenes</B> — individual moments like "The ambush" or "Arrival at the city".</P>
             <P>Scenes are the true time unit. Move through them with the timeline bar; the chapter segments group them visually. Switch between <B>Narrative</B> reading order and <B>Chronological</B> in-world order to expose flashbacks and flash-forwards.</P>
             <P>You can <B>multi-select scenes</B> with checkboxes or Shift+click, then bulk-move, bulk-delete, or bulk-tag them. Drag chapters and scenes in the binder to reorder them.</P>
-            <P>Switch the Timeline from <B>Cards</B> to <B>Page</B> to write the whole book as one document: each chapter a <B>#</B> heading, each scene a <B>##</B> heading, its prose beneath. What you type is saved to the scene it sits under. <B>Read</B> sets the same book for reading, with Export, Find &amp; replace and the word goals beside it.</P>
+            <P>Switch the Manuscript from <B>Cards</B> to <B>Page</B> to write the whole book as one document: each chapter a <B>#</B> heading, each scene a <B>##</B> heading, its prose beneath. What you type is saved to the scene it sits under. <B>Read</B> sets the same book for reading, with Export, Find &amp; replace and the word goals beside it.</P>
             <P>Create additional timelines for frame narratives or alternate histories. Linked two-timeline worlds display two stacked tracks in the bottom cursor; click either track to make it active.</P>
             <P>The <B>Compare chapters</B> tool in the timeline bar shows what changed between two story points — useful for spotting continuity drift.</P>
           </Section>
 
-          <Section title="Corkboard & manuscript" writerOnly>
+          <Section title="Corkboard & export" writerOnly>
             <P>The <B>Corkboard</B> displays scenes as index cards grouped by chapter. Drag cards to reorder or move scenes, change their Idea-to-Final status, and click a title to open that scene.</P>
-            <P>The <B>Manuscript</B> stitches scene prose together in reading order. Draft mode shows scene controls and word goals; Reading mode hides the scaffolding for a clean read-through.</P>
-            <P>Use <B>Find & Replace</B> across every scene, inspect and restore a scene's revision <B>History</B>, or export the manuscript as Markdown, HTML, plain text, Word, or EPUB.</P>
+            <P>On the Manuscript's Page and Read, use <B>Find & Replace</B> across every scene, or export the book as Markdown, HTML, plain text, Word, or EPUB. A scene's revision <B>History</B> is on its card.</P>
           </Section>
 
           <Section title="Characters">
@@ -236,8 +235,8 @@ export function HelpPanel() {
             <P>Speed can be set to Slow, Normal, or Fast. Playback always navigates to the Maps view.</P>
           </Section>
 
-          <Section title="Timeline & chapter AI" writerOnly>
-            <P>Use <B>Generate with AI</B> from the Timeline or open a chapter to generate or update it. Paste a passage of prose and the AI proposes scenes, character snapshots, relationship updates, and dramatic-tension ratings — with a review step before anything is saved.</P>
+          <Section title="Chapter AI" writerOnly>
+            <P>Use <B>Generate with AI</B> from the Manuscript or open a chapter to generate or update it. Paste a passage of prose and the AI proposes scenes, character snapshots, relationship updates, and dramatic-tension ratings — with a review step before anything is saved.</P>
             <P>The AI uses your world's existing characters, locations, and items as context, so it only references things that actually exist.</P>
             <Tip>The review step lets you accept, adjust, or discard each suggested snapshot individually before committing.</Tip>
           </Section>
@@ -335,7 +334,7 @@ export function HelpPanel() {
               <KbdRow keys={['Ctrl', 'Alt', '↑']} label="Previous scene, from inside a scene's draft" />
               <KbdRow keys={['Ctrl', 'Enter']} label="New scene after this one, from inside its draft" />
               <KbdRow keys={['Ctrl', 'Shift', 'Enter']} label="Split the scene at the caret, from inside its draft" />
-              <KbdRow keys={['Ctrl', 'F']} label="Search the whole book, on the Timeline's Page (⌘F on Mac)" />
+              <KbdRow keys={['Ctrl', 'F']} label="Search the whole book, on the Manuscript's Page (⌘F on Mac)" />
               <KbdRow keys={['Alt', '↑ ↓']} label="Move a chapter or scene, in the binder" />
               <KbdRow keys={['Esc']} label="Close panel or dialog" />
               <KbdRow keys={['↑', '↓']} label="Navigate search results / continuity issues" />

@@ -16,7 +16,7 @@ test.describe('Focus mode', () => {
     await expect(page).toHaveURL(/#\/worlds\//)
 
     // Timeline → chapter → event.
-    await page.getByRole('link', { name: /timeline/i }).click()
+    await page.getByRole('link', { name: /manuscript/i }).click()
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('One')

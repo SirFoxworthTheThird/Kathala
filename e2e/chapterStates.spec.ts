@@ -37,7 +37,7 @@ test.describe('Chapter detail — Character States', () => {
     await expect(page).toHaveURL(/#\/worlds\//)
 
     // Open the chapter's detail page.
-    await page.getByRole('link', { name: /timeline/i }).click()
+    await page.getByRole('link', { name: /manuscript/i }).click()
     await page.getByTitle('Open chapter detail').first().click()
     await expect(page.getByText('Character States')).toBeVisible()
 

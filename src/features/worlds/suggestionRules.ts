@@ -43,8 +43,8 @@ export interface SuggestionRule {
  */
 export const SUGGESTION_RULES: SuggestionRule[] = [
   { id: 'add-character',     title: 'Add your first character',               dismissible: false, condition: (d) => d.characterCount === 0,                                        navigateTo: 'characters',    navLabel: 'Go to Characters' },
-  { id: 'add-first-event',   title: 'Add your first scene',                   dismissible: false, condition: (d) => d.characterCount > 0 && d.eventCount === 0,                   navigateTo: 'timeline',      navLabel: 'Go to Timeline'   },
-  { id: 'place-character',   title: 'Place a character on the timeline',      dismissible: false, condition: (d) => d.eventCount > 0 && !d.hasCharacterAtAnyEvent,                 navigateTo: 'timeline',      navLabel: 'Go to Timeline'   },
+  { id: 'add-first-event',   title: 'Add your first scene',                   dismissible: false, condition: (d) => d.characterCount > 0 && d.eventCount === 0,                   navigateTo: 'manuscript',    navLabel: 'Go to Manuscript' },
+  { id: 'place-character',   title: 'Place a character on the timeline',      dismissible: false, condition: (d) => d.eventCount > 0 && !d.hasCharacterAtAnyEvent,                 navigateTo: 'manuscript',    navLabel: 'Go to Manuscript' },
   /*
     The one nudge that is not about making the world richer.
 

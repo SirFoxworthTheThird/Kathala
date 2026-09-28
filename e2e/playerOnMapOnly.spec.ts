@@ -52,7 +52,7 @@ for (const mode of ['reading', 'writing'] as const) {
     await expect(play(page), 'the map has the player').toBeVisible()
     await expect(speed(page), 'and the speed control').toBeVisible()
 
-    for (const screen of ['timeline', 'manuscript', 'characters']) {
+    for (const screen of ['manuscript', 'characters']) {
       await go(page, worldId, screen)
       await expect(page.locator('[data-chapter-bar]'), `the bar is on ${screen}`).toBeVisible()
       await expect(play(page), `no player on ${screen}`).toHaveCount(0)

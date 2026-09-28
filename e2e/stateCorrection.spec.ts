@@ -54,7 +54,7 @@ test.describe('a recorded state can be corrected where it is shown', () => {
       })
     }, worldId)
 
-    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
     await settle(page)
 
     const edit = page.getByRole('button', { name: /Change Isko Marn's state in this scene/ })
@@ -134,7 +134,7 @@ test.describe('a recorded state can be corrected where it is shown', () => {
       await db.worlds.update(id, { readingMode: true })
     }, worldId)
 
-    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
     await settle(page)
 
     await expect(page.getByRole('main').getByText('Isko Marn').first()).toBeVisible({ timeout: 20_000 })

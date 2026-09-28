@@ -88,7 +88,7 @@ test.describe('The frame-narrative bar reads the same on both tracks', () => {
 
     await page.reload({ waitUntil: 'load' })
     await settle(page)
-    await page.getByRole('link', { name: /timeline/i }).first().click()
+    await page.getByRole('link', { name: /manuscript/i }).first().click()
     await settle(page)
 
     const tracks = await page.evaluate(() => {

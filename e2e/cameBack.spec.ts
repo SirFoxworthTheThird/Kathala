@@ -76,7 +76,7 @@ async function worldWithADeath(page: Page) {
  * world's own last scene and overwrites whatever was planted.
  */
 async function currentStateAt(page: Page, worldId: string, sceneTitle: string) {
-  await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
   await settle(page)
   await page.getByTitle(sceneTitle, { exact: true }).first().click()
   await page.waitForTimeout(600)

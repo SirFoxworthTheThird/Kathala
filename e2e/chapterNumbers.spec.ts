@@ -46,7 +46,7 @@ test.describe('choosing a chapter number', () => {
 
   test('the dialog suggests the next free number and says what a taken one moves', async ({ page }) => {
     const worldId = await timelineOf124(page)
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await settle(page)
 
     await page.getByRole('main').getByRole('button', { name: 'Add Chapter' }).first().click()
@@ -78,7 +78,7 @@ test.describe('choosing a chapter number', () => {
 
   test('a free number moves nobody', async ({ page }) => {
     const worldId = await timelineOf124(page)
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await settle(page)
 
     await page.getByRole('main').getByRole('button', { name: 'Add Chapter' }).first().click()

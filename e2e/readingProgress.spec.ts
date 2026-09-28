@@ -19,7 +19,7 @@ const progress = (page: Page) => page.getByRole('progressbar', { name: 'Progress
 
 async function openBook(page: Page) {
   await page.getByRole('navigation', { name: 'Main navigation' })
-    .getByRole('link', { name: 'Read', exact: true }).click()
+    .getByRole('link', { name: 'Book', exact: true }).click()
   await settle(page)
 }
 
@@ -110,7 +110,7 @@ test('a writer drafting the same manuscript is not shown a reader’s progress',
     .getByRole('link', { name: 'Manuscript', exact: true }).click()
   await settle(page)
   // The author's own read-through — the same reading page a reader gets.
-  await page.getByRole('group', { name: 'Timeline layout' }).getByRole('button', { name: 'Read', exact: true }).click()
+  await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Read', exact: true }).click()
 
   // Same prose, same screen, no reader's progress.
   await expect(page.locator('[data-scene-event-id]').first(), 'the prose is still here').toBeVisible()

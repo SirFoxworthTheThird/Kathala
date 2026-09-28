@@ -21,7 +21,7 @@ Pick a template and each of its beats appears as a slot, in order and tinted by 
 ## Filling the board
 
 - **Assign a scene** to a beat from its *"+ Assign a scene…"* picker. The slot then shows that scene — click it to jump to the event in the timeline.
-- You can also set a scene's beat from its **card on the Timeline**.
+- You can also set a scene's beat from its **card in the Manuscript**.
 
 ---
 
@@ -43,5 +43,5 @@ Structure is a writing screen, so [reading mode](Reading-Mode) removes it and cl
 ## Related pages
 
 - [Corkboard](Corkboard) — restructure by dragging cards
-- [Timeline & Events](Timeline) — the pacing curve, a different read on shape
+- [Manuscript: chapters & events](Timeline) — the pacing curve, a different read on shape
 - [Plot Threads](Plot-Threads) — subplot cadence rather than act structure

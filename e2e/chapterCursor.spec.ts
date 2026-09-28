@@ -49,12 +49,12 @@ test.describe('The time cursor follows you', () => {
     }, { worldId })
 
     // Absence: a fresh world sits on "All chapters".
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await expect(cursor(page)).toContainText('All chapters', { timeout: 30_000 })
 
     // Presence: opening a chapter lands you on its first moment, so the
     // per-moment tools have something to answer about.
-    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
     await expect(cursor(page)).toContainText('Opening', { timeout: 15_000 })
     await expect(cursor(page)).not.toContainText('All chapters')
 
@@ -67,27 +67,27 @@ test.describe('The time cursor follows you', () => {
     await page.keyboard.press('Escape')
 
     // Opening a different chapter moves you to that one.
-    await page.goto(`/#/worlds/${worldId}/timeline/ch2`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch2`, { waitUntil: 'load' })
     await expect(cursor(page)).toContainText('Later opening', { timeout: 15_000 })
 
     // But a cursor already inside the chapter is left alone — a writer who set
     // it to a scene and then opened that scene's chapter has already said where
     // they want to be. Vacuity cannot satisfy this and the moves above at once.
-    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
     await expect(cursor(page)).toContainText('Opening', { timeout: 15_000 })
     // Move on by hand, the way a writer would, then leave and come back: the
     // cursor they set is still theirs. Navigating out to the chapter list and
     // back in remounts the view, so this is a real re-arrival rather than a
     // no-op — and a reload would not do, because the store rehydrates its
     // persisted cursor after the effect has already run and would mask this.
-    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
     await expect(cursor(page)).toContainText('Opening', { timeout: 15_000 })
     await page.getByRole('button', { name: 'Next moment' }).click()
     await expect(cursor(page)).toContainText('Second scene', { timeout: 15_000 })
 
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await expect(cursor(page)).toContainText('Second scene', { timeout: 15_000 })
-    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
     await expect(cursor(page)).toContainText('Second scene', { timeout: 15_000 })
     await expect(cursor(page)).not.toContainText('· Opening')
   })
@@ -143,7 +143,7 @@ test.describe('The time cursor follows you', () => {
     })
     expect(chapterId, 'the fixture should have chapters').not.toBeNull()
 
-    await page.goto(`/#/worlds/${worldId}/timeline/${chapterId}`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/${chapterId}`, { waitUntil: 'load' })
     await settle(page)
     expect(await cursor(page).innerText(), 'reading mode should not move the reader').toBe(before)
   })

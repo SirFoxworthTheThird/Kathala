@@ -102,7 +102,7 @@ async function mapWithCrowdedPin(page: Page) {
 
   await page.reload({ waitUntil: 'load' })
   await settle(page)
-  await page.getByRole('link', { name: /timeline/i }).first().click()
+  await page.getByRole('link', { name: /manuscript/i }).first().click()
   await settle(page)
   await page.getByTitle('Open chapter detail').first().click()
   await page.waitForTimeout(1000)

@@ -75,7 +75,7 @@ test.describe('The frame-narrative bar says what its parts are', () => {
 
     await page.reload({ waitUntil: 'load' })
     await settle(page)
-    await page.getByRole('link', { name: /timeline/i }).first().click()
+    await page.getByRole('link', { name: /manuscript/i }).first().click()
     await settle(page)
 
     const bar = page.locator('[data-chapter-bar]')
@@ -94,7 +94,7 @@ test.describe('The frame-narrative bar says what its parts are', () => {
     await expect(mapBar.getByTitle(/^Play The Tale —/)).toHaveCount(1)
     // And the label they shared is gone.
     await expect(mapBar.getByTitle('Play story on the map')).toHaveCount(0)
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await settle(page)
 
     // ── MT-7 ────────────────────────────────────────────────────────────────

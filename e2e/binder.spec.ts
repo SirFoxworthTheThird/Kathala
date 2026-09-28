@@ -53,7 +53,7 @@ async function book(page: Page): Promise<string> {
 }
 
 async function open(page: Page, worldId: string, chapter = 'c1') {
-  await page.goto(`/#/worlds/${worldId}/timeline/${chapter}`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript/${chapter}`, { waitUntil: 'load' })
   await settle(page)
   const tree = page.getByRole('tree', { name: 'Chapters and scenes' })
   await expect(tree).toBeVisible({ timeout: 20_000 })
@@ -120,7 +120,7 @@ test.describe('the binder', () => {
     await expect(tree.getByRole('treeitem', { name: 'Juno on the eleventh step' })).toBeFocused()
     await page.keyboard.press(' ')
 
-    await expect(page).toHaveURL(/\/timeline\/c2/)
+    await expect(page).toHaveURL(/\/manuscript\/c2/)
     await expect.poll(() => cursor(page), { timeout: 15_000 }).toBe('e5')
     await expect(prose(page)).toHaveCount(1, { timeout: 15_000 })
   })
@@ -202,7 +202,7 @@ test.describe('the binder', () => {
     const tree = await open(page, worldId)
 
     await tree.getByRole('treeitem', { name: /^Ch\. 2/ }).click()
-    await expect(page).toHaveURL(/\/timeline\/c2/)
+    await expect(page).toHaveURL(/\/manuscript\/c2/)
     await expect(tree.getByRole('treeitem', { name: /^Ch\. 2/ })).toBeFocused()
     await page.keyboard.press('Enter')
     await page.getByRole('textbox', { name: 'New scene title' }).fill('Before the stair')

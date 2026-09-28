@@ -57,7 +57,7 @@ async function threeChapterWorld(page: Page) {
     })))
   }, worldId)
 
-  await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
   await settle(page)
   return worldId
 }

@@ -102,7 +102,7 @@ a median of 70–145 ms for ProseMirror and a `<textarea>`. The numbers, and wha
 costs, are in
 [`docs/records/editor-spike-2026-09-28.md`](docs/records/editor-spike-2026-09-28.md).
 
-**Open, each with a recommendation:**
+**Open, each with a recommendation (the second since decided):**
 
 1. **The syntax.** The author suggested `#### Chapter` and `**** Scene`. I
    recommend `# Chapter title` and `## Scene title`: `#` is already a chapter
@@ -114,10 +114,12 @@ costs, are in
    today, and plenty of manuscripts use it that way, so step 6 has to decide
    how an import tells the two apart (for instance, `##` is a scene only under
    a `#`).
-2. **The name.** Not *Timeline*: in Kathala a timeline is also a thing a writer
-   creates (a main timeline, a frame narrative), and this screen shows the
-   book. I recommend **Manuscript**, with the in-world ordering as its
-   *Chronological* view. `/timeline` and `/manuscript` both land on it.
+2. **The name.** *Decided in step 4:* **Manuscript**, at `/manuscript`, with
+   the in-world ordering as its *Chronological* view. Not *Timeline*: in
+   Kathala a timeline is also a thing a writer creates (a main timeline, a
+   frame narrative), and this screen shows the book. `/timeline` still lands on
+   it. In reading mode the navigation calls it **Book**, since the reader is not
+   writing it.
 **The hard parts**, to be solved before or during the steps below:
 
 - **A scene is a record, not a line of text.** It has an id that snapshots,
@@ -169,10 +171,15 @@ costs, are in
      reader stepping out of the book has to come back to it; and a reading spot
      is only written once the page is where the spot says, which the move
      exposed.
-4. **The name and the routes.** Rename the screen, and move the links in the
-   sixteen source files that mention `/timeline`. The navigation still has both
-   *Timeline* and *Manuscript* (for a reader, *Read*), and they now open the same
-   screen; this step makes them one.
+4. **The name and the routes.** *Done* — one entry in the navigation,
+   **Manuscript** (**Book** for a reader), at `/manuscript`; the sixteen source
+   files' links moved there, and `/timeline`, with any chapter and query after
+   it, redirects. The layout a world was left on is remembered as before; until
+   one is chosen, a reader of a book with prose opens it on Read — which the
+   navigation's *Read* used to do — and everyone else on Cards. The dashboard's
+   *Set where you have read to* asks for Cards, where *Read to here* is. The
+   code keeps its `timeline` names (`features/timeline/`, `TimelineView`): the
+   rename is what a person sees.
 5. **Structure from text.** `##` in the middle of a scene splits it, deleting a
    heading joins it, and `#` starts a chapter — each undoable in one step. This
    lifts step 2's refusals, and brings in the spike's drop-and-restore rules

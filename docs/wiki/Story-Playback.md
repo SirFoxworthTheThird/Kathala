@@ -82,4 +82,4 @@ That's the no-waypoints case. Record waypoints on the character's **Current Stat
 
 ## Related pages
 
-- [Maps](Maps) · [Timeline & Events](Timeline) · [Characters](Characters)
+- [Maps](Maps) · [Manuscript: chapters & events](Timeline) · [Characters](Characters)

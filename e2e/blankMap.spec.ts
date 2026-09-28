@@ -57,7 +57,7 @@ async function worldWithAScene(page: Page): Promise<string> {
  * between "nowhere yet" and "on that one".
  */
 async function namePlaceInProse(page: Page, worldId: string, name: string): Promise<string | null | undefined> {
-  await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
   await settle(page)
   await page.getByRole('button', { name: /^Expand/ }).first().click()
   await settle(page)

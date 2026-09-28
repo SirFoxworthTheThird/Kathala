@@ -164,7 +164,7 @@ test.describe('Calendar view', () => {
       })))
     }, worldId)
 
-    await page.goto(`/#/worlds/${worldId}/timeline/ch`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch`, { waitUntil: 'load' })
     const main = page.getByRole('main')
     await expect(main.getByRole('button', { name: 'Thirty days on', exact: true })).toBeVisible({ timeout: 30000 })
     // Day 30 is the 31st day: the last day of January.
@@ -208,7 +208,7 @@ test.describe('Calendar view', () => {
     await expect(page.getByRole('heading', { name: 'Calendar' })).toBeVisible()
 
     // One timeline, one chapter, one event.
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('One')

@@ -70,7 +70,7 @@ test.describe('a populated world does not shout at the console', () => {
       started. An absence asserted over a blank page is the vacuity this suite
       keeps finding.
     */
-    await page.goto(`/#/worlds/${id}/timeline`)
+    await page.goto(`/#/worlds/${id}/manuscript`)
     await expect(main.getByText(/^Ch\. 1 —/).first()).toBeVisible({ timeout: 60_000 })
 
     await page.goto(`/#/worlds/${id}/characters`)

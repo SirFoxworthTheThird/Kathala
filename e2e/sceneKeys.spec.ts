@@ -52,7 +52,8 @@ async function book(page: Page): Promise<string> {
 
 /** Open a chapter, open one scene's card, and put the caret in its prose. */
 async function writeIn(page: Page, worldId: string, chapterId: string, title: string) {
-  await page.goto(`/#/worlds/${worldId}/timeline/${chapterId}`, { waitUntil: 'load' })
+  // On Cards: a reader of a book with prose would otherwise open it on Read.
+  await page.goto(`/#/worlds/${worldId}/manuscript/${chapterId}?view=cards`, { waitUntil: 'load' })
   await settle(page)
   const main = page.getByRole('main')
   await main.getByRole('button', { name: title, exact: true }).click()
@@ -128,14 +129,14 @@ test.describe('scene keys in the draft', () => {
     await writeIn(page, worldId, 'c1', 'Teodora at the table')
 
     await page.keyboard.press('Control+Alt+ArrowDown')
-    await expect(page).toHaveURL(/\/timeline\/c2$/)
+    await expect(page).toHaveURL(/\/manuscript\/c2$/)
     await expect.poll(() => focused(page)).toMatchObject({ label: 'Scene prose' })
     const there = (await focused(page))!
     expect(there.value.startsWith('[@@Teodora Vance]'), there.value).toBe(true)
     expect(there.value.slice(there.caret!)).toBe('Third.')
 
     await page.keyboard.press('Control+Alt+ArrowUp')
-    await expect(page).toHaveURL(/\/timeline\/c1$/)
+    await expect(page).toHaveURL(/\/manuscript\/c1$/)
     await expect.poll(() => focused(page)).toEqual({ label: 'Scene prose', value: 'Second.', caret: 'Second.'.length })
   })
 
@@ -146,13 +147,13 @@ test.describe('scene keys in the draft', () => {
     const before = (await focused(page))!
 
     await page.keyboard.press('Control+Alt+ArrowDown')
-    await expect(page).toHaveURL(/\/timeline\/c2$/)
+    await expect(page).toHaveURL(/\/manuscript\/c2$/)
     await expect(prose(page)).toHaveCount(1)
     expect(await focused(page)).toEqual(before)
 
     // Presence, from the same place: the other way does go.
     await page.keyboard.press('Control+Alt+ArrowUp')
-    await expect(page).toHaveURL(/\/timeline\/c1$/)
+    await expect(page).toHaveURL(/\/manuscript\/c1$/)
   })
 
   test('Ctrl+Enter titles a new scene after this one and puts you in it', async ({ page }) => {
@@ -208,7 +209,7 @@ test.describe('scene keys while reading', () => {
     await writeIn(page, worldId, 'c1', 'Teodora at the table')
     // Chapter 2 is not reached: nothing to go to.
     await page.keyboard.press('Control+Alt+ArrowDown')
-    await expect(page).toHaveURL(/\/timeline\/c1$/)
+    await expect(page).toHaveURL(/\/manuscript\/c1$/)
     await expect.poll(() => focused(page)).toMatchObject({ value: 'Second.' })
     // No new scene in a book being read.
     await page.keyboard.press('Control+Enter')

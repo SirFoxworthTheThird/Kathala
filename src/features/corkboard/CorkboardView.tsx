@@ -172,7 +172,7 @@ export default function CorkboardView() {
 
   function openEvent(ev: WorldEvent) {
     setActiveEventId(ev.id)
-    navigate(`/worlds/${worldId}/timeline/${ev.chapterId}`)
+    navigate(`/worlds/${worldId}/manuscript/${ev.chapterId}`)
   }
 
   // Drop the dragged card before `index` in `chapterId` (index = column length → append).
@@ -190,10 +190,10 @@ export default function CorkboardView() {
         <EmptyState
           icon={LayoutGrid}
           title="No chapters yet"
-          description="The corkboard shows a card for each scene, grouped by chapter. Add chapters and scenes on the Timeline to populate it."
+          description="The corkboard shows a card for each scene, grouped by chapter. Add chapters and scenes in the Manuscript to populate it."
           action={(
-            <Button size="sm" variant="outline" onClick={() => navigate(`/worlds/${worldId}/timeline`)}>
-              Go to Timeline
+            <Button size="sm" variant="outline" onClick={() => navigate(`/worlds/${worldId}/manuscript`)}>
+              Go to Manuscript
             </Button>
           )}
         />

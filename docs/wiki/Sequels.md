@@ -38,12 +38,12 @@ Book one's **chapters, events, and scene prose** are not copied. Book two is a f
 
 It is a **fully independent world**. Editing it never changes the original, and the original is never modified by the fork.
 
-If you want the two books to share a single continuity check, they need to be one world with two timelines instead — see [Timeline & Events](Timeline).
+If you want the two books to share a single continuity check, they need to be one world with two timelines instead — see [Manuscript: chapters & events](Timeline).
 
 ---
 
 ## Related pages
 
-- [Timeline & Events](Timeline) — multiple timelines within one world
+- [Manuscript: chapters & events](Timeline) — multiple timelines within one world
 - [Lore](Lore) — where the "Previously…" recap lands
 - [Export and Import](Export-and-Import)

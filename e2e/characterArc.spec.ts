@@ -24,7 +24,7 @@ test.describe('Character Arc view', () => {
     await expect(page.getByText('Sam')).toBeVisible()
 
     // Create a timeline with two chapters
-    await page.getByTitle('Timeline').click()
+    await page.getByTitle('Manuscript').click()
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await expect(page.getByText('Main Timeline')).toBeVisible()
 

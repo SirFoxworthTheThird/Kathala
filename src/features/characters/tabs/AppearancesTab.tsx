@@ -84,7 +84,7 @@ export function AppearancesTab({ character }: AppearancesTabProps) {
   function go(a: CharacterAppearance) {
     // Navigates either way; only a writer's cursor follows.
     showMoment(a.eventId)
-    navigate(`/worlds/${character.worldId}/timeline/${a.chapterId}`)
+    navigate(`/worlds/${character.worldId}/manuscript/${a.chapterId}`)
   }
 
   if (present.length === 0 && mentioned.length === 0) {
@@ -100,8 +100,8 @@ export function AppearancesTab({ character }: AppearancesTabProps) {
           : "Add this character to a scene's cast, or mention them in a scene draft with @."}
         action={(
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => navigate(`/worlds/${character.worldId}/timeline`)}>
-              <BookOpen className="h-4 w-4" aria-hidden="true" /> Open Timeline
+            <Button size="sm" variant="outline" onClick={() => navigate(`/worlds/${character.worldId}/manuscript`)}>
+              <BookOpen className="h-4 w-4" aria-hidden="true" /> Open Manuscript
             </Button>
             {snapshots.length > 0 && (
               <Button size="sm" variant="ghost" onClick={openHistory}>
@@ -143,11 +143,11 @@ export function AppearancesTab({ character }: AppearancesTabProps) {
             </p>
             {!gate.active && (
               <button
-                onClick={() => navigate(`/worlds/${character.worldId}/timeline`)}
+                onClick={() => navigate(`/worlds/${character.worldId}/manuscript`)}
                 className="pw-tap inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
               >
                 <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
-                Open Timeline
+                Open Manuscript
               </button>
             )}
           </div>

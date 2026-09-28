@@ -393,10 +393,10 @@ export default function CharacterArcView() {
         description="The Arc view shows character states across every chapter. Add characters and scenes first."
         action={
           <button
-            onClick={() => navigate('timeline')}
+            onClick={() => navigate('manuscript')}
             className="inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-sm font-medium hover:bg-[hsl(var(--accent))] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
           >
-            Go to Timeline
+            Go to Manuscript
           </button>
         }
         className="h-full"

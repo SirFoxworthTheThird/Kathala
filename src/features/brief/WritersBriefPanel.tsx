@@ -84,7 +84,7 @@ function ScenePicker({ events, chapters, timelines, onPick, onOpenTimeline }: {
         icon={Scroll}
         title="No scenes yet"
         description="The brief gathers everything true at one moment — who is in the room, what they carry, what they know. It needs a scene to stand in."
-        action={<Button size="sm" onClick={onOpenTimeline}>Open Timeline</Button>}
+        action={<Button size="sm" onClick={onOpenTimeline}>Open Manuscript</Button>}
       />
     )
   }
@@ -294,7 +294,7 @@ export function WritersBriefPanel() {
               chapters={worldChapters}
               timelines={worldTimelines}
               onPick={setActiveEventId}
-              onOpenTimeline={() => { navigate(`/worlds/${worldId}/timeline`); setBriefOpen(false) }}
+              onOpenTimeline={() => { navigate(`/worlds/${worldId}/manuscript`); setBriefOpen(false) }}
             />
           ) : !chapter ? (
             <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading…</p>

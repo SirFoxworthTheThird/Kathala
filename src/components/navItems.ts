@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, BookOpen, StickyNote, CalendarDays, FileText, Users, Map,
+  LayoutDashboard, BookOpen, StickyNote, CalendarDays, Users, Map,
   Package, Network, Spline, BookMarked, Shield, KeyRound, Settings, ListChecks,
 } from 'lucide-react'
 
@@ -17,16 +17,12 @@ export interface NavItem {
    */
   writingOnly?: boolean
   /**
-   * What a reader calls this screen, when reading mode gives it back.
+   * What a reader calls this screen.
    *
-   * Only the Manuscript has one. It was hidden outright on the grounds that a
-   * library world carries no prose, and that stopped being true: 31 of the 38
-   * shipped worlds now hold the complete text of a public-domain novel, and
-   * their catalogue entries call themselves reading-mode editions. Hiding the
-   * book from the reader it was assembled for is the wrong way round.
-   *
-   * The name changes with the reader. "Manuscript" is what an author calls
-   * their own draft; someone reading *Dracula* is not writing it.
+   * Only the Manuscript has one. "Manuscript" is what an author calls their own
+   * draft; someone reading *Dracula* is not writing it, and the screen is
+   * theirs too — the book to read, and its chapters and scenes to set their
+   * place in.
    */
   readingLabel?: string
 }
@@ -35,11 +31,10 @@ export interface NavItem {
  *  mobile drawer. `core` items are the everyday screens; `extended` are the rest. */
 export const navItems: NavItem[] = [
   { to: '',              label: 'Dashboard',  icon: LayoutDashboard, end: true,  tier: 'core' },
-  { to: 'timeline',      label: 'Timeline',   icon: BookOpen,        end: false, tier: 'core' },
+  { to: 'manuscript',    label: 'Manuscript', icon: BookOpen,        end: false, tier: 'core', readingLabel: 'Book' },
   { to: 'corkboard',     label: 'Corkboard',  icon: StickyNote,      end: false, tier: 'extended', writingOnly: true },
   { to: 'calendar',      label: 'Calendar',   icon: CalendarDays,    end: false, tier: 'extended' },
   { to: 'structure',     label: 'Structure',  icon: ListChecks,      end: false, tier: 'extended', writingOnly: true },
-  { to: 'manuscript',    label: 'Manuscript', icon: FileText,        end: false, tier: 'core', writingOnly: true, readingLabel: 'Read' },
   { to: 'characters',    label: 'Characters', icon: Users,           end: false, tier: 'core' },
   { to: 'maps',          label: 'Maps',       icon: Map,             end: false, tier: 'core' },
   { to: 'items',         label: 'Items',      icon: Package,         end: false, tier: 'extended' },
@@ -57,16 +52,10 @@ export const navItems: NavItem[] = [
  * Shared by the desktop rail and the mobile top bar because they had the filter
  * written out twice, and a screen that appears in one and not the other is the
  * kind of difference nobody notices until someone is on a phone.
- *
- * `hasProse` only matters for a screen with a `readingLabel`: the book is
- * offered when there is a book. Everything else in reading mode is decided by
- * `writingOnly` alone.
  */
-export function visibleNavItems(
-  { readingMode, hasProse }: { readingMode: boolean; hasProse: boolean },
-): NavItem[] {
+export function visibleNavItems({ readingMode }: { readingMode: boolean }): NavItem[] {
   if (!readingMode) return navItems
   return navItems
-    .filter((n) => !n.writingOnly || (n.readingLabel !== undefined && hasProse))
+    .filter((n) => !n.writingOnly)
     .map((n) => (n.readingLabel ? { ...n, label: n.readingLabel } : n))
 }

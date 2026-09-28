@@ -40,7 +40,7 @@ test.describe('Button names', () => {
     await page.getByLabel('Name').fill('Named')
     await page.getByRole('button', { name: 'Create World' }).last().click()
     await expect(page).toHaveURL(/#\/worlds\//)
-    await page.getByRole('link', { name: /timeline/i }).click()
+    await page.getByRole('link', { name: /manuscript/i }).click()
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('The Vanishing Glass')
@@ -86,7 +86,7 @@ test.describe('Button names', () => {
       })))
     }, worldId)
 
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await settle(page)
     await page.getByRole('main').getByRole('button', { name: /^Ch\. 1/ }).first().click()
 

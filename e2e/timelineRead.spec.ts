@@ -5,12 +5,11 @@ import { settle } from './helpers/settle'
 import { downloadLibraryBook } from './helpers/library'
 
 /**
- * The Timeline's Read layout, and the Manuscript's tools brought to the
- * Timeline: export, find & replace, and word goals.
+ * The Manuscript's Read layout, and the book's tools: export, find & replace,
+ * and word goals.
  *
- * The reading page is the Manuscript screen's own component, so what it does
- * while being read — restoring the reader's spot, the drift undo, the X-ray —
- * is covered where it always was, on that screen. Here is that the Timeline
+ * What the reading page does while being read — restoring the reader's spot,
+ * the drift undo, the X-ray — has specs of its own. Here is that the screen
  * offers it to the right people, wires it to the reader's place, and carries
  * the author's tools.
  */
@@ -53,12 +52,12 @@ async function book(page: Page, opts: { readingMode?: boolean; prose?: boolean }
   return worldId
 }
 
-const layout = (page: Page) => page.getByRole('group', { name: 'Timeline layout' })
+const layout = (page: Page) => page.getByRole('group', { name: 'Layout', exact: true })
 const choose = (page: Page, name: 'Cards' | 'Page' | 'Read') => layout(page).getByRole('button', { name, exact: true }).click()
 const header = (page: Page) => page.getByRole('main')
 
-async function openTimeline(page: Page, worldId: string, chapter = '') {
-  await page.goto(`/#/worlds/${worldId}/timeline${chapter ? `/${chapter}` : ''}`, { waitUntil: 'load' })
+async function openManuscript(page: Page, worldId: string, chapter = '') {
+  await page.goto(`/#/worlds/${worldId}/manuscript${chapter ? `/${chapter}` : ''}`, { waitUntil: 'load' })
   await settle(page)
   await expect(page.getByRole('main').getByRole('button', { name: /Low Water/ }).first()).toBeVisible({ timeout: 20_000 })
 }
@@ -68,12 +67,12 @@ const cursor = (page: Page) => page.evaluate(() => {
   return raw ? (JSON.parse(raw) as { state: { activeEventId: string | null } }).state.activeEventId : null
 })
 
-test.describe('the Timeline’s Read layout', () => {
+test.describe('the Manuscript’s Read layout', () => {
   test.describe.configure({ timeout: 180_000 })
 
   test('shows the book set for reading, with the author’s tools that Cards does not carry', async ({ page }) => {
     const worldId = await book(page)
-    await openTimeline(page, worldId)
+    await openManuscript(page, worldId)
     // Cards: the book's tools are not here.
     await expect(header(page).getByRole('button', { name: 'Export', exact: true })).toHaveCount(0)
     await expect(header(page).getByLabel('Word goal for the book')).toHaveCount(0)
@@ -90,9 +89,9 @@ test.describe('the Timeline’s Read layout', () => {
     await expect(header(page).getByRole('button', { name: 'Export', exact: true })).toBeVisible()
   })
 
-  test('exports from the Timeline', async ({ page }) => {
+  test('exports from the Manuscript', async ({ page }) => {
     const worldId = await book(page)
-    await openTimeline(page, worldId)
+    await openManuscript(page, worldId)
     await choose(page, 'Read')
     await header(page).getByRole('button', { name: 'Export', exact: true }).click()
     const dialog = page.getByRole('dialog', { name: 'Export manuscript' })
@@ -102,20 +101,20 @@ test.describe('the Timeline’s Read layout', () => {
 
   test('the book’s word goal is the Manuscript’s, and shows how far there is to go', async ({ page }) => {
     const worldId = await book(page)
-    await openTimeline(page, worldId)
+    await openManuscript(page, worldId)
     await choose(page, 'Read')
     const goal = header(page).getByLabel('Word goal for the book')
     await goal.fill('100')
     // 19 words of 100: seven, five and seven.
     await expect(header(page).getByText('19%')).toBeVisible()
-    // The same goal on the Manuscript screen: one goal, not two.
-    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    // Kept on the world: it is there after a reload.
+    await page.reload({ waitUntil: 'load' })
     await expect(page.getByLabel('Word goal for the book')).toHaveValue('100', { timeout: 20_000 })
   })
 
   test('the open chapter’s panel carries its word goal, and it is saved on the chapter', async ({ page }) => {
     const worldId = await book(page)
-    await openTimeline(page, worldId, 'c1')
+    await openManuscript(page, worldId, 'c1')
     const panel = page.getByRole('region', { name: 'Chapter 1' })
     const goal = panel.getByLabel('Word goal for this chapter')
     await goal.fill('500')
@@ -129,7 +128,7 @@ test.describe('the Timeline’s Read layout', () => {
   test('the binder takes the book to a scene', async ({ page }) => {
     const worldId = await book(page)
     await page.setViewportSize({ width: 1280, height: 420 })
-    await openTimeline(page, worldId, 'c2')
+    await openManuscript(page, worldId, 'c2')
     await choose(page, 'Read')
     const line = page.locator('[data-book-scroller]').getByText('And the heron flew east at dawn.')
     const top = async () => {
@@ -145,7 +144,7 @@ test.describe('the Timeline’s Read layout', () => {
     await downloadLibraryBook(page, 'Dracula')
     await settle(page)
     const worldId = page.url().split('/worlds/')[1].split('/')[0]
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await settle(page)
     await expect(layout(page).getByRole('button', { name: 'Read', exact: true })).toBeVisible({ timeout: 20_000 })
     await expect(layout(page).getByRole('button', { name: 'Page', exact: true })).toHaveCount(0)
@@ -164,11 +163,13 @@ test.describe('the Timeline’s Read layout', () => {
 
   test('a reader is not offered a book that has no prose', async ({ page }) => {
     const withProse = await book(page, { readingMode: true })
-    await openTimeline(page, withProse)
-    await expect(layout(page).getByRole('button', { name: 'Read', exact: true })).toBeVisible()
+    // Opened to be read, as a reader who has not chosen a layout is.
+    await page.goto(`/#/worlds/${withProse}/manuscript`, { waitUntil: 'load' })
+    await expect(layout(page).getByRole('button', { name: 'Read', exact: true })).toBeVisible({ timeout: 20_000 })
+    await expect(page.locator('[data-book-scroller]')).toBeVisible()
 
     const without = await book(page, { readingMode: true, prose: false })
-    await openTimeline(page, without)
+    await openManuscript(page, without)
     await expect(layout(page)).toHaveCount(0)
   })
 })

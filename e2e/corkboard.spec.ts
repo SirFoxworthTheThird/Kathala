@@ -22,7 +22,7 @@ test.describe('Corkboard', () => {
     await expect(page).toHaveURL(/#\/worlds\//)
 
     // Timeline → one chapter.
-    await page.getByRole('link', { name: /timeline/i }).click()
+    await page.getByRole('link', { name: /manuscript/i }).click()
     await settleNav(page)
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()

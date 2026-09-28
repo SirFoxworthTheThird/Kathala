@@ -110,7 +110,7 @@ export default function StructureView() {
 
   function openEvent(eventId: string, chapterId: string) {
     setActiveEventId(eventId)
-    navigate(`/worlds/${worldId}/timeline/${chapterId}`)
+    navigate(`/worlds/${worldId}/manuscript/${chapterId}`)
   }
 
   if (chapters.length === 0) {
@@ -119,8 +119,8 @@ export default function StructureView() {
         <EmptyState
           icon={ListChecks}
           title="No chapters yet"
-          description="The structure board maps your scenes onto a story template (Three-Act, Save the Cat, Hero's Journey). Add chapters and scenes on the Timeline, then tag their structural beats."
-          action={<Button size="sm" variant="outline" onClick={() => navigate(`/worlds/${worldId}/timeline`)}>Go to Timeline</Button>}
+          description="The structure board maps your scenes onto a story template (Three-Act, Save the Cat, Hero's Journey). Add chapters and scenes in the Manuscript, then tag their structural beats."
+          action={<Button size="sm" variant="outline" onClick={() => navigate(`/worlds/${worldId}/manuscript`)}>Go to Manuscript</Button>}
         />
       </div>
     )

@@ -22,7 +22,7 @@ test('the pacing curve names its scale and its chapters', async ({ page }) => {
   await page.getByRole('button', { name: 'Turn off reading mode' }).click().catch(() => {})
   await page.waitForTimeout(1200)
 
-  await page.goto(`/#/worlds/${id}/timeline`)
+  await page.goto(`/#/worlds/${id}/manuscript`)
   const chart = page.getByText('Pacing — dramatic tension').locator('../..')
   await expect(chart).toBeVisible({ timeout: 30_000 })
   const text = await chart.innerText()
@@ -61,7 +61,7 @@ test('the pacing curve carries its data as a table for anyone not reading the pi
   await page.getByRole('button', { name: 'Turn off reading mode' }).click().catch(() => {})
   await page.waitForTimeout(1200)
 
-  await page.goto(`/#/worlds/${id}/timeline`)
+  await page.goto(`/#/worlds/${id}/manuscript`)
   const table = page.getByRole('table', { name: 'Dramatic tension by scene, in the order shown' })
   await expect(table).toBeAttached({ timeout: 30_000 })
 
@@ -131,7 +131,7 @@ test('the pacing curve is not shown to a reader, and names the whole book to a w
   expect(roster, 'the gate should be active at chapter one').not.toContain('Quirrell')
 
   const table = page.getByRole('table', { name: 'Dramatic tension by scene, in the order shown' })
-  await page.goto(`/#/worlds/${id}/timeline`)
+  await page.goto(`/#/worlds/${id}/manuscript`)
   // The chapters are there, so the screen rendered and this is the curve's
   // absence rather than the page's.
   await expect(page.getByRole('main').getByText(/^Ch\. 1/).first()).toBeVisible({ timeout: 30_000 })
@@ -143,7 +143,7 @@ test('the pacing curve is not shown to a reader, and names the whole book to a w
   await page.goto(`/#/worlds/${id}/settings`)
   await page.getByRole('button', { name: 'Turn off reading mode' }).click()
   await settle(page)
-  await page.goto(`/#/worlds/${id}/timeline`)
+  await page.goto(`/#/worlds/${id}/manuscript`)
   await expect(table).toBeAttached({ timeout: 30_000 })
   await expect
     .poll(async () => (await table.innerText()).includes('Quirrell and Voldemort'), { timeout: 20_000 })

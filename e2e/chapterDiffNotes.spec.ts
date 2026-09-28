@@ -61,7 +61,7 @@ async function twoChaptersWithANoteChange(page: Page) {
     ])
   }, { id: worldId, before: BEFORE, after: AFTER })
 
-  await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
   await expect(page.locator('[data-chapter-bar]')).toBeVisible({ timeout: 30_000 })
   await page.getByTitle('Compare chapters').click()
   const panel = page.getByRole('dialog', { name: 'Chapter Diff' })

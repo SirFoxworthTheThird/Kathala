@@ -72,7 +72,7 @@ You do not create a snapshot at every event. When Kathala looks up state at an e
 
 Two timelines can be linked to describe how they connect — **Frame Narrative**, **Historical Echo**, **Embedded Fiction**, or **Alternate**. A frame narrative gets a two-track bottom bar (outer and inner) with optional **sync points** pairing an inner event to an outer one.
 
-See [Timeline & Events](Timeline) for setup.
+See [Manuscript: chapters & events](Timeline) for setup.
 
 ---
 

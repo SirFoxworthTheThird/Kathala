@@ -111,7 +111,7 @@ test.describe('the screens that name a gap are the way to fill it', () => {
 
   test('and in place from the cast row that names the gap', async ({ page }) => {
     const worldId = await worldWithAGap(page)
-    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
     await settle(page)
 
     const row = page.locator('[data-cast-without-state="corvin"]')
@@ -126,7 +126,7 @@ test.describe('the screens that name a gap are the way to fill it', () => {
       `e2e/recordStateInline.spec.ts` for the recording itself.
     */
     await expect(page.getByRole('button', { name: 'Record state' })).toBeVisible()
-    await expect(page).toHaveURL(/timeline\/ch1/)
+    await expect(page).toHaveURL(/manuscript\/ch1/)
 
     /*
       And the route this test was written for is still here, one click further
@@ -148,7 +148,7 @@ test.describe('the screens that name a gap are the way to fill it', () => {
       await db.worlds.update(id, { readingMode: true })
     }, worldId)
 
-    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
     await settle(page)
     await expect(page.getByText(/record it/)).toHaveCount(0)
   })

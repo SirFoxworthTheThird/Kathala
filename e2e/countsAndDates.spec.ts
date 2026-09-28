@@ -56,7 +56,7 @@ test.describe('Counts and dates say what they mean', () => {
     }, worldId)
     expect(seeded, 'the seeding seam should be present in an e2e build').toBe(1)
 
-    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript?view=read`, { waitUntil: 'load' })
     await settleNav(page)
     await page.getByRole('button', { name: 'Export' }).first().click()
 
@@ -87,7 +87,7 @@ test.describe('Counts and dates say what they mean', () => {
     }, worldId)
 
     const openChapter = async () => {
-      await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+      await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
       await settleNav(page)
       await page.getByTitle('Open chapter detail').first().click()
       await expect(page.getByText('Four days on').first()).toBeVisible({ timeout: 30_000 })

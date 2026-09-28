@@ -19,7 +19,7 @@ test('the board says how much board there is, and offers a way through it', asyn
   await page.getByRole('button', { name: 'Create World' }).last().click()
   await expect(page).toHaveURL(/#\/worlds\//)
 
-  await page.getByRole('link', { name: /timeline/i }).first().click()
+  await page.getByRole('link', { name: /manuscript/i }).first().click()
   await settleNav(page)
   await page.getByRole('button', { name: 'Create Timeline' }).click()
 

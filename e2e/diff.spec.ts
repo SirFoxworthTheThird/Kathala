@@ -15,7 +15,7 @@ test.describe('Chapter diff', () => {
     await expect(page).toHaveURL(/#\/worlds\//)
 
     // Timeline with two chapters.
-    await page.getByRole('link', { name: /timeline/i }).click()
+    await page.getByRole('link', { name: /manuscript/i }).click()
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('Alpha')
@@ -34,7 +34,7 @@ test.describe('Chapter diff', () => {
     await page.getByRole('button', { name: 'Add Scene' }).last().click()
 
     // Activate the event from the bar — this reveals the "Compare chapters" button.
-    await page.getByRole('link', { name: /timeline/i }).click()
+    await page.getByRole('link', { name: /manuscript/i }).click()
     await settleNav(page)
     await page.getByTitle('Scene One', { exact: true }).click()
 

@@ -96,10 +96,10 @@ test.describe("The Writer's Brief with no scene selected", () => {
 
     // Named *and* reachable — copy that names a screen without going there is
     // the LP-3 shape of the same mistake, and is what the old sentence did.
-    const toTimeline = panel.getByRole('button', { name: 'Open Timeline' })
+    const toTimeline = panel.getByRole('button', { name: 'Open Manuscript' })
     await expect(toTimeline).toBeVisible()
     await toTimeline.click()
-    await expect(page).toHaveURL(/\/timeline$/)
+    await expect(page).toHaveURL(/\/manuscript$/)
   })
 
   test('WB-2: the brief dims the page exactly as the shared dialog does', async ({ page }) => {

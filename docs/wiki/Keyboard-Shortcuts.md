@@ -34,7 +34,7 @@ The **Help** panel (the **?** icon, top-right) lists these in the app too, along
 
 ---
 
-## Timeline page
+## Manuscript
 
 | Interaction | Action |
 |---|---|
@@ -54,7 +54,7 @@ Chapters and scenes are dragged in the **binder** (below), not in the list; the 
 
 ### On the Page
 
-The Timeline's [Page](Timeline#writing-on-one-page) view — the book as one document.
+The Manuscript's [Page](Timeline#writing-on-one-page) — the book as one document.
 
 | Shortcut | Action |
 |---|---|

@@ -144,7 +144,7 @@ export function OnboardingWizard({ worldId, onExit }: OnboardingWizardProps) {
 
   function handleNavigateToTimeline() {
     onExit()
-    navigate('timeline')
+    navigate('manuscript')
   }
 
   return (

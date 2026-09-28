@@ -48,7 +48,7 @@ test.describe('Focus mode picks up where the writing stopped', () => {
 
   test('puts the caret at the end of the draft, not the top', async ({ page }) => {
     const worldId = await sceneWithProse(page)
-    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
     await settle(page)
 
     await page.getByRole('button', { name: /^Expand/ }).first().click()

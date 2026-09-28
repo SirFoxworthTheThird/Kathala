@@ -52,7 +52,7 @@ test.describe('a cast member without state keeps their name', () => {
     // The width the finding was measured at.
     await page.setViewportSize({ width: 1024, height: 900 })
     const worldId = await sceneWithUnrecordedCast(page)
-    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
     await settle(page)
 
     const row = page.locator('[data-cast-without-state="corvin"]')

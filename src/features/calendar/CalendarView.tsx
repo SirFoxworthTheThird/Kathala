@@ -58,7 +58,7 @@ export default function CalendarView() {
     const full = events.find((e) => e.id === ev.id)
     // Looking at a scene is not the same as having read up to it.
     showMoment(ev.id)
-    navigate(`/worlds/${worldId}/timeline${full ? `/${full.chapterId}` : ''}`)
+    navigate(`/worlds/${worldId}/manuscript${full ? `/${full.chapterId}` : ''}`)
   }
 
   async function dropOnDay(year: number, month: number, day: number) {

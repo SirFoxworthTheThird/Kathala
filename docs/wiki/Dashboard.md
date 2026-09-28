@@ -6,7 +6,7 @@ Opening a world lands you on its dashboard — a bird's-eye view of the whole pr
 
 ## Stat tiles
 
-Tiles summarise the timeline, cast, maps, relationships, items, snapshot coverage, and continuity status. **The tiles are links** — click **Timeline**, **Characters**, **Maps**, or any other to jump straight to that area.
+Tiles summarise the timeline, cast, maps, relationships, items, snapshot coverage, and continuity status. **The tiles are links** — click **Manuscript**, **Characters**, **Maps**, or any other to jump straight to that area.
 
 Worlds with linked timelines also show a **Timeline Links** summary.
 
@@ -22,7 +22,7 @@ Every screen in a world shares a **left navigation rail**. By default it is a sl
 
 - **Hover** it to slide out the full labels.
 - Click the **pin** at the bottom to keep it expanded.
-- The everyday screens (Dashboard, Timeline, Manuscript, Characters, Maps) sit above a **More** divider, with the rest below.
+- The everyday screens (Dashboard, Manuscript, Characters, Maps) sit above a **More** divider, with the rest below.
 
 On a phone the rail is replaced by a **☰ menu** in the top bar. The top bar itself keeps the world name, the [time cursor](Core-Concepts), search (**Ctrl/⌘+K**), and the Writer's Brief, Continuity, and Help tools.
 
@@ -30,7 +30,7 @@ On a phone the rail is replaced by a **☰ menu** in the top bar. The top bar it
 
 ## Writing Progress
 
-As you write scene prose — on a scene card, on the Timeline's Page, or in Focus mode — Kathala keeps a lightweight per-day log of the words you add or cut. The **Writing Progress** panel turns that into an at-a-glance readout:
+As you write scene prose — on a scene card, on the Manuscript's Page, or in Focus mode — Kathala keeps a lightweight per-day log of the words you add or cut. The **Writing Progress** panel turns that into an at-a-glance readout:
 
 | Readout | What it shows |
 |---|---|

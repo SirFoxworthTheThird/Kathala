@@ -53,7 +53,7 @@ test.describe('Continuity Checker', () => {
     await expect(page.getByText('Boromir')).toBeVisible()
 
     // Create a timeline with a chapter and an event
-    await page.getByRole('link', { name: /timeline/i }).first().click()
+    await page.getByRole('link', { name: /manuscript/i }).first().click()
     await settleNav()
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await expect(page.getByText('Main Timeline')).toBeVisible()
@@ -69,7 +69,7 @@ test.describe('Continuity Checker', () => {
     await expect(page.getByText('Death Scene').first()).toBeVisible()
 
     // Set event as active via timeline bar
-    await page.getByRole('link', { name: /timeline/i }).first().click()
+    await page.getByRole('link', { name: /manuscript/i }).first().click()
     await settleNav()
     await page.getByTitle('Death Scene', { exact: true }).click()
 

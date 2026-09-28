@@ -93,7 +93,7 @@ test.describe('Dialog accessibility', () => {
     const id = await worldWithCharacters(page)
 
     // A scene with two saved versions, so Scene history has a Restore to confirm.
-    await page.goto(`/#/worlds/${id}/timeline`)
+    await page.goto(`/#/worlds/${id}/manuscript`)
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('One')

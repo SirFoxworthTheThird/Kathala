@@ -17,7 +17,7 @@ test('a multi-child dropdown shows its selected value in the trigger', async ({ 
   await expect(page).toHaveURL(/#\/worlds\//)
 
   // Timeline → chapter → event, then expand the card.
-  await page.getByRole('link', { name: /timeline/i }).click()
+  await page.getByRole('link', { name: /manuscript/i }).click()
   await page.getByRole('button', { name: 'Create Timeline' }).click()
   await page.getByRole('button', { name: 'Add Chapter' }).first().click()
   await page.getByPlaceholder('Chapter title').fill('One')

@@ -12,7 +12,7 @@ test.describe('Timeline and chapters', () => {
     await page.getByRole('button', { name: 'Create World' }).last().click()
     await expect(page).toHaveURL(/#\/worlds\//)
 
-    await page.getByRole('link', { name: /timeline/i }).click()
+    await page.getByRole('link', { name: /manuscript/i }).click()
   })
 
   test('shows empty timeline state', async ({ page }) => {
@@ -62,7 +62,7 @@ test.describe('Timeline and chapters', () => {
 
     // Navigate to chapter detail via the ExternalLink icon button in the chapter row
     await page.getByTitle('Open chapter detail').click()
-    await expect(page).toHaveURL(/#\/worlds\/.+\/timeline\/.+/)
+    await expect(page).toHaveURL(/#\/worlds\/.+\/manuscript\/.+/)
     await expect(page.getByText('Chapter One').first()).toBeVisible()
   })
 
@@ -72,7 +72,7 @@ test.describe('Timeline and chapters', () => {
     await page.getByPlaceholder('Chapter title').fill('Act One')
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
     await page.getByTitle('Open chapter detail').click()
-    await expect(page).toHaveURL(/#\/worlds\/.+\/timeline\/.+/)
+    await expect(page).toHaveURL(/#\/worlds\/.+\/manuscript\/.+/)
 
     // A line in the list, for the title, rather than a dialog.
     await page.getByRole('button', { name: 'Add Scene' }).first().click()
@@ -138,7 +138,7 @@ test.describe('Timeline and chapters', () => {
     await expect(page.getByText('Second Event').first()).toBeVisible()
 
     // Navigate back to timeline — the bottom bar renders event markers with title= attributes
-    await page.getByRole('link', { name: /timeline/i }).click()
+    await page.getByRole('link', { name: /manuscript/i }).click()
     await settleNav(page)
 
     // Click the 'First Event' marker in the timeline bar

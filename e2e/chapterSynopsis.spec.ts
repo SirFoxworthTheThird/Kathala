@@ -48,7 +48,7 @@ test.describe('a chapter synopsis can be written after the chapter exists', () =
 
   test('the chapter the setup guide made can be given one', async ({ page }) => {
     const worldId = await chapterWithoutSynopsis(page)
-    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
     await settle(page)
 
     const field = page.getByRole('textbox', { name: 'Chapter synopsis' })
@@ -66,7 +66,7 @@ test.describe('a chapter synopsis can be written after the chapter exists', () =
 
   test('and can be corrected, not just filled once', async ({ page }) => {
     const worldId = await chapterWithoutSynopsis(page)
-    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
     await settle(page)
 
     const field = page.getByRole('textbox', { name: 'Chapter synopsis' })
@@ -89,7 +89,7 @@ test.describe('a chapter synopsis can be written after the chapter exists', () =
       await db.worlds.update(id, { readingMode: true })
     }, worldId)
 
-    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
     await settle(page)
 
     // In the open chapter's panel; the row above it carries the same line.
