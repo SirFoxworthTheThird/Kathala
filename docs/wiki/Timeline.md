@@ -39,7 +39,7 @@ Create one with **Add Chapter**: a number, a title and an optional synopsis. The
 
 ## Events
 
-Open a chapter and click **Add Scene** at the foot of its list: a line appears where the scene will sit, for its title only. Enter (or the line's own **Add Scene** button) makes it and puts you in its draft; Escape makes nothing. Everything else is set on the card. Expanding an event card gives you:
+Open a chapter and click **Add Scene** at the foot of its list: a line appears where the scene will sit, for its title only. Enter makes it and puts you in its draft; the line's own **Add Scene** button makes it and leaves it closed; Escape makes nothing. Everything else is set on the card. Expanding an event card gives you:
 
 | Field | Purpose |
 |---|---|

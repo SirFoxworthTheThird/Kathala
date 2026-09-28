@@ -1080,8 +1080,9 @@ line at the top of its draft, described below — the binder deliberately asks f
 nothing else, so making a scene costs a title and nothing more.
 
 **Add Scene** at the foot of an open chapter in the list works the same way: a
-line where the scene will sit, for its title and nothing else. Enter, or its own
-**Add Scene** button, makes it and puts you in its draft; Escape makes nothing.
+line where the scene will sit, for its title and nothing else. Enter makes it
+and puts you in its draft; the line's own **Add Scene** button makes it and
+leaves it closed at the end of the list; Escape makes nothing.
 Its status, its cast and the rest are set on the card, once there is a scene to
 set them on.
 
