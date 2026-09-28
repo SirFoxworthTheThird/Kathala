@@ -18,7 +18,8 @@ import { ENTITY_TABLE } from '@/lib/entityTables'
 import { recomputeSnapshotSortKeysForChapter, recomputeSnapshotSortKeysForEvent } from '@/lib/sortKey'
 import { SUBJECT_JOIN, SUBJECT_OWNER, needsSubjectLookup, recordName } from '@/lib/operationSubject'
 import type { PruneLimits } from '@/lib/operations'
-import type { Operation, OperationEntity, OperationType, Tombstone } from '@/types/operation'
+import type { Operation, OperationEntity, OperationType, ProseChange, Tombstone } from '@/types/operation'
+import { wordCount as countWords } from '@/lib/manuscript'
 
 /**
  * The Dexie side of the operation journal (#115).
@@ -123,6 +124,8 @@ export interface JournalledWrite<T> {
    * acts, and should stay two.
    */
   coalesce?: boolean
+  /** Prose this act moves between scenes, for undo and redo to put back. */
+  prose?: ProseChange[]
 }
 
 /**
@@ -254,6 +257,7 @@ export async function withJournal<T>(
       previous,
       groupId: groupId ?? undefined,
       now,
+      prose: write.prose,
     })
     await db.operations.add(op)
     if (write.type !== 'delete') return write.apply()
@@ -336,7 +340,7 @@ export async function journalUpdate<T extends JournalledRecord>(
   id: string,
   data: Record<string, unknown>,
   extraTables: Table[] = [],
-  options: { coalesce?: boolean } = {},
+  options: { coalesce?: boolean; prose?: ProseChange[] } = {},
 ): Promise<void> {
   const t = table as unknown as Table<T, string>
   const existing = await t.get(id)
@@ -344,6 +348,7 @@ export async function journalUpdate<T extends JournalledRecord>(
   const base = versionOf(existing)
   const patch = { ...data, version: base + 1 }
   await withJournal([t, ...extraTables], {
+    prose: options.prose,
     worldId: existing.worldId,
     entityType,
     entityId: id,
@@ -657,6 +662,19 @@ export async function redoLast(worldId: string): Promise<Operation[]> {
  * Shared by undo and redo because they are the same operation in opposite
  * directions; only the mark left behind differs.
  */
+/** Set a scene's prose to `text`, or remove it for null — the one table undo writes prose to. */
+async function restoreProse(worldId: string, eventId: string, text: string | null): Promise<void> {
+  const existing = await db.sceneTexts.where('eventId').equals(eventId).first()
+  if (text === null || !text.trim()) {
+    if (existing) await db.sceneTexts.delete(existing.id)
+    return
+  }
+  const wordCount = countWords(text)
+  const now = Date.now()
+  if (existing) await db.sceneTexts.update(existing.id, { text, wordCount, updatedAt: now })
+  else await db.sceneTexts.add({ id: generateId(), worldId, eventId, text, wordCount, createdAt: now, updatedAt: now })
+}
+
 async function reverseBatch(
   worldId: string,
   batch: Operation[],
@@ -665,6 +683,7 @@ async function reverseBatch(
   if (batch.length === 0) return []
 
   const tables = new Set<Table>([db.operations, db.tombstones])
+  if (batch.some((op) => op.prose?.length)) tables.add(db.sceneTexts as unknown as Table)
   for (const op of batch) {
     const t = tableFor(op.entityType)
     if (t) tables.add(t as unknown as Table)
@@ -745,6 +764,13 @@ async function reverseBatch(
           }
         }
       }
+
+      /*
+        The prose the act moved, put back as it was before it. Written straight
+        to the table rather than through `setSceneText`: this is the undo of a
+        write, not a new one, so it is no revision and no writing progress.
+      */
+      for (const change of op.prose ?? []) await restoreProse(worldId, change.eventId, change.before)
 
       await db.operations.add(inverse)
       await db.operations.update(

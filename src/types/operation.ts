@@ -52,6 +52,22 @@ export type OperationEntity =
   | 'relationshipSnapshot'
   | 'mapRegionSnapshot'
 
+/**
+ * A scene's prose before and after an act that changed it — null for none.
+ *
+ * Prose is not on the journal: it has its own History of revisions, and every
+ * pause in typing would otherwise be an undo step. But an act that restructures
+ * scenes — splitting one, joining two — moves prose between them, and undoing
+ * the structure without the prose would lose text: undo a split and the second
+ * half is left on a scene that no longer exists. So those acts carry the prose
+ * they changed, and undo and redo put it back.
+ */
+export interface ProseChange {
+  eventId: string
+  before: string | null
+  after: string | null
+}
+
 export interface Operation {
   /** Stable, client-generated. Replaying the same id twice is a no-op. */
   id: string
@@ -102,6 +118,11 @@ export interface Operation {
    * with the deletion that caused it.
    */
   cascade?: Record<string, unknown[]>
+  /**
+   * Prose this act moved between scenes, restored by undo and reapplied by
+   * redo. See `ProseChange`. Absent on nearly every operation.
+   */
+  prose?: ProseChange[]
   /**
    * Operations that form one user act. A chapter reorder writes two records;
    * undo has to take back both or the ordering is left half-applied, which is
