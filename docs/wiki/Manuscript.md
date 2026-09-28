@@ -4,6 +4,8 @@ The **Manuscript** view stitches every scene's prose into one continuous documen
 
 Write a scene's prose on its event and it appears here automatically.
 
+The same book is on the [Timeline](Timeline#reading-the-book) too: its **Read** layout is this screen's reading view, and Export, Find & replace and the word goals are there on Page and Read.
+
 ---
 
 ## Draft vs. Reading
