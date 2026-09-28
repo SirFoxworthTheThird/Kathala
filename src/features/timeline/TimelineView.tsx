@@ -278,7 +278,7 @@ export default function TimelineView() {
     it to the scene's card, which opens and comes to the top. A counter rather
     than the id alone, so going to the same scene twice still arrives.
   */
-  const [reveal, setReveal] = useState<{ id: string; nonce: number; caret?: 'start' | 'end' } | null>(null)
+  const [reveal, setReveal] = useState<{ id: string; nonce: number; caret?: 'start' | 'end'; focus?: boolean } | null>(null)
   const revealCount = useRef(0)
   /*
     And going to a chapter scrolls its row to the top, once per arrival, as
@@ -287,11 +287,11 @@ export default function TimelineView() {
   */
   const pendingScroll = useRef<string | null>(null)
   useEffect(() => {
-    const state = location.state as { reveal?: string; caret?: 'start' | 'end' } | null
+    const state = location.state as { reveal?: string; caret?: 'start' | 'end'; focus?: boolean } | null
     const want = state?.reveal
     if (want) {
       revealCount.current += 1
-      setReveal({ id: want, nonce: revealCount.current, caret: state?.caret })
+      setReveal({ id: want, nonce: revealCount.current, caret: state?.caret, focus: state?.focus })
       pendingScroll.current = null
     } else {
       // Spent, so a card that remounts later — its chapter folded and opened
@@ -319,10 +319,11 @@ export default function TimelineView() {
     cursor follows, as it does from the binder, so the Character States are the
     new scene's; never while reading.
   */
-  function goToScene(scene: WorldEvent, at: 'start' | 'end') {
+  function goToScene(scene: WorldEvent, at: 'start' | 'end', opts: { focus?: boolean } = {}) {
     if (!gate.active) activateEvent(scene.id, scene.locationMarkerId, setCursor)
     navigate(`/worlds/${worldId}/timeline/${scene.chapterId}`, {
-      state: { reveal: scene.id, caret: at },
+      // `focus`: arrived from Focus mode, so the scene opens in it too.
+      state: { reveal: scene.id, caret: at, focus: opts.focus },
       replace: scene.chapterId === chapterId,
     })
   }
@@ -331,13 +332,13 @@ export default function TimelineView() {
    * and gone to if there is one. `useWorldEvents` is gated, so a reader steps
    * only through what they have reached.
    */
-  function stepFrom(sceneId: string, dir: 'next' | 'previous'): boolean {
+  function stepFrom(sceneId: string, dir: 'next' | 'previous', opts: { focus?: boolean } = {}): boolean {
     const here = worldEvents.find((e) => e.id === sceneId)
     if (!here) return false
     const own = worldChapters.filter((c) => c.timelineId === here.timelineId)
     const target = adjacentScene(own, worldEvents, sceneId, dir)
     if (!target) return false
-    goToScene(target, dir === 'next' ? 'start' : 'end')
+    goToScene(target, dir === 'next' ? 'start' : 'end', opts)
     return true
   }
   const panel = openChapter && openChapter.worldId === worldId

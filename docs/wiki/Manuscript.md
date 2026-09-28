@@ -93,6 +93,8 @@ Above the scene draft, **Focus** opens a full-screen, distraction-free writing s
 
 It autosaves as you write, so scene history and the writing log keep working. Press **Esc** or click the ✕ to drop back to the event.
 
+The scene keys work in it too: **Ctrl+Alt+↓ / ↑** goes to the next or previous scene without leaving focus mode, and **Ctrl+Enter** / **Ctrl+Shift+Enter** make a new scene after this one or split this one at the caret, asking for the title at the top of the page.
+
 ---
 
 ## Not available while reading

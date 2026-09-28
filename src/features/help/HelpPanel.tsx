@@ -333,6 +333,7 @@ export function HelpPanel() {
               <KbdRow keys={['Ctrl', 'Alt', '↓']} label="Next scene, from inside a scene's draft (⌘⌥↓ on Mac)" />
               <KbdRow keys={['Ctrl', 'Alt', '↑']} label="Previous scene, from inside a scene's draft" />
               <KbdRow keys={['Ctrl', 'Enter']} label="New scene after this one, from inside its draft" />
+              <KbdRow keys={['Ctrl', 'Shift', 'Enter']} label="Split the scene at the caret, from inside its draft" />
               <KbdRow keys={['Alt', '↑ ↓']} label="Move a chapter or scene, in the binder" />
               <KbdRow keys={['Esc']} label="Close panel or dialog" />
               <KbdRow keys={['↑', '↓']} label="Navigate search results / continuity issues" />

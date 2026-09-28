@@ -50,6 +50,7 @@ Chapters and scenes are dragged in the **binder** (below), not in the list; the 
 | **Ctrl+Alt+↓** (⌘⌥↓) | The next scene — saves this one, opens that one, caret at the start of its prose |
 | **Ctrl+Alt+↑** (⌘⌥↑) | The previous scene, caret at its end |
 | **Ctrl+Enter** (⌘Enter) | A new scene after this one: type its title, Enter, and you are in its draft; Escape goes back |
+| **Ctrl+Shift+Enter** (⌘⇧Enter) | Split the scene at the caret: the rest becomes a new scene after it, with the same room and people |
 
 ### In the binder
 
@@ -129,6 +130,9 @@ Chapters and scenes are dragged in the **binder** (below), not in the list; the 
 | Key | Action |
 |---|---|
 | **Esc** | Leave focus mode and return to the event |
+| **Ctrl+Alt+↓ / ↑** (⌘⌥) | Next or previous scene, staying in focus mode |
+| **Ctrl+Enter** (⌘Enter) | A new scene after this one, titled at the top of the page |
+| **Ctrl+Shift+Enter** (⌘⇧Enter) | Split the scene at the caret, titled at the top of the page |
 
 ---
 

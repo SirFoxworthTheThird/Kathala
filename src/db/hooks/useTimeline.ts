@@ -315,6 +315,10 @@ export async function createEventAt(
   chapterId: string,
   index: number,
   title: string,
+  /** Anything else the new scene starts with — a split carries its cast and setting over. */
+  fields: Partial<Pick<WorldEvent,
+    'locationMarkerId' | 'involvedCharacterIds' | 'involvedItemIds' | 'tags' | 'status'
+    | 'povCharacterId' | 'isFlashback' | 'threadIds' | 'motifIds'>> = {},
 ): Promise<WorldEvent | undefined> {
   const chapter = await db.chapters.get(chapterId)
   if (!chapter) return undefined
@@ -344,6 +348,7 @@ export async function createEventAt(
       involvedCharacterIds: [],
       involvedItemIds: [],
       tags: [],
+      ...fields,
       sortOrder: position,
     })
     if (renumbered.length > 0) await recomputeSnapshotSortKeysForChapter(chapterId)

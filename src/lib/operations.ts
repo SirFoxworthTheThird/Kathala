@@ -1,6 +1,6 @@
 import { ENTITY_LABEL } from '@/lib/entityTables'
 import { recordName } from '@/lib/operationSubject'
-import type { Operation, OperationEntity, OperationType, Tombstone } from '@/types/operation'
+import type { Operation, OperationEntity, OperationType, ProseChange, Tombstone } from '@/types/operation'
 
 /**
  * Pure operation-journal logic. Everything here is a plain function over plain
@@ -23,6 +23,7 @@ export interface MakeOperationInput {
   groupId?: string
   undoOf?: string
   now?: number
+  prose?: ProseChange[]
 }
 
 /** Fields that describe the record's identity or journal bookkeeping rather
@@ -57,6 +58,7 @@ export function makeOperation(input: MakeOperationInput): Operation {
   }
   if (input.groupId) op.groupId = input.groupId
   if (input.undoOf) op.undoOf = input.undoOf
+  if (input.prose && input.prose.length > 0) op.prose = input.prose
   return op
 }
 
@@ -265,7 +267,15 @@ export function invertOperation(
     ...(next.as === 'redo' ? { redoOf: op.id } : { undoOf: op.id }),
     ...(next.groupId ? { groupId: next.groupId } : {}),
   }
-  const shell = { id: next.id, seq: next.seq, createdAt: next.now ?? Date.now() }
+  /*
+    The prose, turned round: the inverse puts back what the act replaced, and
+    inverting the inverse — which is what redo does — puts back what it wrote.
+  */
+  const prose = op.prose?.map((p) => ({ eventId: p.eventId, before: p.after, after: p.before }))
+  const shell = {
+    id: next.id, seq: next.seq, createdAt: next.now ?? Date.now(),
+    ...(prose && prose.length > 0 ? { prose } : {}),
+  }
 
   if (op.type === 'create') {
     return { ...base, ...shell, type: 'delete', payload: op.payload, changedFields: [] }
