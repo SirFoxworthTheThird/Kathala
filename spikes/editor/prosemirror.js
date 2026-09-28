@@ -29,8 +29,10 @@ const schema = new Schema({
       content: 'inline*',
       defining: true,
       attrs: { level: { default: 2 }, id: { default: null } },
-      // The id is deliberately not written to the DOM, so a copied heading
-      // pastes as a new one rather than as a second holder of the same id.
+      // The id is not written to the DOM, so a copied heading pastes without
+      // one. That is belt and braces: a mutant writing it out survived the
+      // copy-and-paste scenario, because `uniqueIds` below takes it off the
+      // copy anyway.
       toDOM: (n) => [`h${n.attrs.level}`, 0],
       parseDOM: [{ tag: 'h1', attrs: { level: 1 } }, { tag: 'h2', attrs: { level: 2 } }],
     },
