@@ -25,20 +25,142 @@ keeps this file about what is left without pretending the work never happened.
 - **Export by scene status** — #473. *Scenes to include* sends a partial draft
   without the scenes that are not ready, on all five formats, and the word and
   scene counts beside the button now describe the export rather than the book.
+- **One Timeline, written from the keyboard** — #487, #489, #491, #493, #495,
+  #497, #499. The binder beside the writing; the chapter page folded into the
+  book, so there is one page and one scene card; next, previous and new scene
+  without leaving the draft; chapters and scenes moved with Alt+↑ ↓ or by
+  dragging; split and join, each undone in one step with its prose. These are
+  what the plan below is built on.
 
 ---
 
 ## What is left
 
-**Nothing.** Every item this file was split to track has shipped, and the two
-that were never open are recorded below.
+### One screen for the book: write it as one document
 
-That is a statement about this list, not about the app. The section at the foot
-of this file makes the case that a list written from the code and the guide is
-the weakest kind of evidence there is — and the two writer runs since bore that
-out, finding thirteen things between them that no amount of reading the source
-would have surfaced. The next entries here should come from somebody using the
-app, not from somebody reading it.
+Raised by the author on 28 September 2026, after split and join shipped, and
+recorded here before any of it is built so the reasoning is not lost between
+sessions.
+
+**The idea.** A writer should be able to write the book as one continuous
+document and make its structure by typing — a line that starts a chapter, a
+line that starts a scene — rather than by reaching for buttons. Writers who
+draft in Scrivener, Ulysses or plain Markdown already work this way.
+
+**Why it means merging the Timeline and the Manuscript.** The Manuscript screen
+already stitches every scene into one document, in book order, but read-only.
+Making it editable while the Timeline's scene cards also edit prose would put
+the same text in two editors on two screens — the duplication #491 and #493
+removed from the Timeline itself. So there should be one screen.
+
+The merge goes the other way round from how the two screens look today: **the
+prose is the body of the page, and the Timeline's structure sits around it.**
+
+| Where | What |
+|---|---|
+| Left | The binder, as now — chapters and scenes, moving and dragging. |
+| Middle | The book as one document: chapter headings, scene headings, each scene's header line, and the prose. |
+| Right | What is true where the caret is: the chapter's panel (character states, relationship states, writer's notes) and the scene's status, POV, tension and cast. The chapter panel already sits beside the list when the screen is wide; this is the same place. |
+
+**What does not become one document**, and stays a view of the same screen:
+
+- **Outline.** Planning before any prose exists needs cards, not text, and seven
+  of the shipped books are structural notes with no prose at all. The screen
+  has two densities, **Outline** (today's scene cards, prose folded) and
+  **Draft** (the prose flowing) — the same data and the same binder.
+- **Chronological order.** The Timeline can order scenes by in-world time. A
+  new scene heading typed there has no sensible place to go, so that order
+  stays as cards.
+- **Reading mode.** The Manuscript screen is also what a reader reads the book
+  in: the cursor that follows the page, *In this scene*, reading type, and
+  nothing past the reader's place. All of it has to survive the merge, and
+  none of it is editable.
+
+**Where things stand today**, which is most of the foundation:
+
+- `src/lib/manuscriptImport.ts` reads `#` **and** `##` headings as chapters,
+  and lines of symbols (`***`) as untitled scene breaks. Markdown export
+  (`src/lib/manuscriptCompile.ts`) writes each chapter as `# Ch. N — Title` and
+  separates scenes with a separator line; scene titles are not written.
+- The scene header line (`[#Place @@Name]`) is already text that does what a
+  control would, applied when the writer leaves it rather than on every key.
+  It is built from the scene's fields and not stored in the prose.
+- Split (#499) is what typing a scene heading in the middle of a scene has to
+  do; join (#499) is what deleting one has to do; `createEventAt` and
+  `createChapter` are what a new heading at the end has to do. Split and join
+  are each one step of undo, prose included, because operations can carry a
+  prose change (`ProseChange`).
+- Prose is stored one `SceneText` per scene, and stays that way. The document is
+  a view composed from those records and written back to them per scene.
+
+**Decided.** One screen for the Timeline and the Manuscript, and continuous
+writing with lines that make structure.
+
+**Open, each with a recommendation:**
+
+1. **The syntax.** The author suggested `#### Chapter` and `**** Scene`. I
+   recommend `# Chapter title` and `## Scene title`: `#` is already a chapter
+   to both import and export, and one syntax across the editor, import and
+   export means a book written here, exported and imported again keeps its
+   shape. `####` is a heading the importer deliberately leaves in the prose,
+   and `***` is already a scene break there, so `**** Scene Name` would read as
+   a break with text after it. The cost of `##`: import reads it as a chapter
+   today, and plenty of manuscripts use it that way, so step 6 has to decide
+   how an import tells the two apart (for instance, `##` is a scene only under
+   a `#`).
+2. **The name.** Not *Timeline*: in Kathala a timeline is also a thing a writer
+   creates (a main timeline, a frame narrative), and this screen shows the
+   book. I recommend **Manuscript**, with the in-world ordering as its
+   *Chronological* view. `/timeline` and `/manuscript` both land on it.
+3. **The editor.** The draft box today is a `<textarea>`, which will not carry a
+   whole book. The measured case to design for is *The Count of Monte Cristo*,
+   459,375 words. I recommend CodeMirror 6: the stored text is plain text, which
+   is CodeMirror's model, whereas ProseMirror is built around rich documents.
+   It has not been tried here yet. Choose it with a spike on that book, not on
+   this paragraph.
+
+**The hard parts**, to be solved before or during the steps below:
+
+- **A scene is a record, not a line of text.** It has an id that snapshots,
+  goals, threads and History point at. Editing a heading must rename the scene,
+  never delete it and make a new one. The id belongs to the heading inside the
+  editor (attached to the line, so retyping the title keeps it), not to a
+  parse of the text, or a small edit can quietly drop a scene's recorded states.
+- **Moving by cut and paste.** Cutting a whole scene and pasting it elsewhere
+  reads to an editor as a delete and a create, and would lose the scene's
+  states. Moving stays with the binder at first, which already does it.
+- **When structure applies.** Not on every keystroke, or typing `## T` makes a
+  scene called "T". It applies on leaving the line, the way the scene header
+  does.
+- **Two undos.** Inside a text field `Ctrl+Z` belongs to the browser; outside
+  one it is the journal's. In one continuous editor a structural change (a new
+  scene) is a journal operation made from a text edit. What `Ctrl+Z` does
+  straight after typing a heading has to be decided and tested, not discovered.
+- **The test suite.** 152 of the 235 spec files mention `timeline`. Each step
+  below has to leave the suite green; none of them can be one change.
+
+**Steps**, each its own pull request:
+
+1. **The editor spike.** Load *Monte Cristo* into the chosen editor with each
+   heading carrying its record's id, and show that the id survives editing the
+   heading's title. Measure typing and scrolling. Nothing ships from the spike;
+   it decides the editor.
+2. **Draft density on the current Timeline screen.** Outline | Draft. In Draft
+   the prose flows as one editor across scenes and chapters, and editing a
+   heading renames the scene or chapter. No new structure from text yet.
+3. **Bring the Manuscript's parts across.** Word goals, export, find and
+   replace, and the reader's page — cursor following, *In this scene*, reading
+   type. Then `/manuscript` lands on the merged screen.
+4. **The name and the routes.** Rename the screen, and move the links in the
+   sixteen source files that mention `/timeline`.
+5. **Structure from text.** `##` in the middle of a scene splits it, deleting a
+   heading joins it, and `#` starts a chapter — each undoable in one step.
+6. **The round trip.** Markdown export writes scene titles as `##`, and import
+   reads `##` under a `#` as a titled scene, so a book written here and one
+   pasted in agree.
+
+Focus mode as the whole document rather than one scene is a candidate after
+step 5, not part of this plan.
 
 ---
 
