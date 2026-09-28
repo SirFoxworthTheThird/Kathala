@@ -130,13 +130,17 @@ export async function nextInChapter(eventId: string): Promise<WorldEvent | undef
  *
  * One undo takes it all back: the scene returns with its prose, its records
  * and everything pointing at it. Returns whether there was a scene to join.
+ *
+ * `prose`, when given, is the joined scene's prose instead of the two stored
+ * ones put together: the Page view's, where the writer may have deleted words
+ * either side of the heading along with it.
  */
-export async function joinWithNext(eventId: string): Promise<boolean> {
+export async function joinWithNext(eventId: string, opts: { prose?: string } = {}): Promise<boolean> {
   const first = await db.events.get(eventId)
   const second = await nextInChapter(eventId)
   if (!first || !second) return false
   const firstProse = await proseOf(first.id)
-  const joined = joinProse(firstProse, await proseOf(second.id))
+  const joined = opts.prose ?? joinProse(firstProse, await proseOf(second.id))
 
   await journalGroup(async () => {
     for (const { entity, table, key } of PER_SCENE) {

@@ -168,6 +168,18 @@ describe('joinWithNext', () => {
     expect(await notesAt(ids.a)).toEqual(['wren:late'])
   })
 
+  it('takes the joined prose it is given — the Page view’s — and one undo still puts back both scenes’ own', async () => {
+    const { world, ids } = await seed(['a', 'b'], { a: 'One two.', b: 'Three four.' })
+    // The writer selected from "two" to "Three" and deleted it with the heading.
+    await joinWithNext(ids.a, { prose: 'One four.' })
+    expect(await prose(ids.a)).toBe('One four.')
+    await undoLast(world.id)
+    expect(await prose(ids.a)).toBe('One two.')
+    expect(await prose(ids.b)).toBe('Three four.')
+    await redoLast(world.id)
+    expect(await prose(ids.a)).toBe('One four.')
+  })
+
   it('does nothing for the last scene in its chapter', async () => {
     const { world, ids } = await seed(['a', 'b'])
     await db.operations.where('worldId').equals(world.id).delete()
