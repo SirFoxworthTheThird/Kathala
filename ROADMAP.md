@@ -201,6 +201,24 @@ costs, are in
 6. **The round trip.** Markdown export writes scene titles as `##`, and import
    reads `##` under a `#` as a titled scene, so a book written here and one
    pasted in agree.
+7. **Remove the Corkboard.** Decided by the author on 28 September 2026, while
+   5a was being tested. The one screen for the book now does what the
+   Corkboard was for: the binder reorders scenes and moves them between
+   chapters, by drag and by keyboard; every scene card carries its status; the
+   chapter rows and cards carry lengths and totals; and a Corkboard card only
+   ever opened its scene in the Manuscript. What goes with it and nowhere else
+   is the grid — chapters as columns, many seen at once — which was weighed as
+   a fourth layout, *Board*, and not kept. The step takes out the screen, its
+   navigation entry and its route (`/corkboard` goes to the Manuscript, as
+   `/timeline` does), and its sections in Help, the guide and the wiki, with
+   the screenshot. Of the eleven specs that mention it, `corkboard` and
+   `boardExtent` are about it and go; the others visit it among other screens,
+   or move a scene there, and are pointed at the binder or dropped from their
+   lists. What it shares stays: `moveEventOnBoard` is how the binder moves a
+   scene, and the chapter totals in `chapterProgress` are the chapter rows'
+   too — only `describeBoard`, the Corkboard header's *17 chapters · 74 scenes*, goes with
+   it. Nothing is stored for the Corkboard alone — it read and wrote the
+   scenes' own order and status — so no data changes.
 
 Focus mode as the whole document rather than one scene is a candidate after
 step 5, not part of this plan.
