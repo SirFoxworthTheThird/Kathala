@@ -101,29 +101,30 @@ of linking it — an uploaded picture is stored locally and is never fetched.
 6. [Start a sequel](#start-a-sequel)
 7. [The world dashboard](#the-world-dashboard)
 8. [Timeline & scenes](#timeline--scenes)
-9. [Opening a chapter](#opening-a-chapter)
-10. [Corkboard](#corkboard)
-11. [Manuscript](#manuscript)
-12. [Characters](#characters)
-13. [Cast Balance](#cast-balance)
-14. [Plot Threads](#plot-threads)
-15. [Motifs & Themes](#motifs--themes)
-16. [Structure board](#structure-board)
-17. [Maps](#maps)
-18. [Items](#items)
-19. [Relationships](#relationships)
-20. [Character Arc grid](#character-arc-grid)
-21. [Lore](#lore)
-22. [Factions](#factions)
-23. [Knowledge](#knowledge)
-24. [Search](#search)
-25. [Undo, redo & recent changes](#undo-redo--recent-changes)
-26. [Writer's Brief](#writers-brief)
-27. [Calendar & character ages](#calendar--character-ages)
-28. [Continuity Checker](#continuity-checker)
-29. [World settings & export](#world-settings--export)
-30. [Help](#help)
-31. [Keyboard, screen readers and touch](#keyboard-screen-readers-and-touch)
+9. [Writing on one page](#writing-on-one-page)
+10. [Opening a chapter](#opening-a-chapter)
+11. [Corkboard](#corkboard)
+12. [Manuscript](#manuscript)
+13. [Characters](#characters)
+14. [Cast Balance](#cast-balance)
+15. [Plot Threads](#plot-threads)
+16. [Motifs & Themes](#motifs--themes)
+17. [Structure board](#structure-board)
+18. [Maps](#maps)
+19. [Items](#items)
+20. [Relationships](#relationships)
+21. [Character Arc grid](#character-arc-grid)
+22. [Lore](#lore)
+23. [Factions](#factions)
+24. [Knowledge](#knowledge)
+25. [Search](#search)
+26. [Undo, redo & recent changes](#undo-redo--recent-changes)
+27. [Writer's Brief](#writers-brief)
+28. [Calendar & character ages](#calendar--character-ages)
+29. [Continuity Checker](#continuity-checker)
+30. [World settings & export](#world-settings--export)
+31. [Help](#help)
+32. [Keyboard, screen readers and touch](#keyboard-screen-readers-and-touch)
 
 ---
 
@@ -861,6 +862,9 @@ inside it.
 
 - **Narrative vs. Chronological** — toggle between the reading order and the
   in-world order (useful when you use flashbacks or in-world dates).
+- **Cards vs. Page** — Cards is the book as a list of scene cards, as below.
+  **Page** is the same book as one document you write straight through; see
+  [Writing on one page](#writing-on-one-page).
 - **Add Chapter**, **New Timeline** (for alternate/parallel timelines), and
   **Generate with AI** all live in the header.
 - **Every scene is a card.** Closed, it shows its title, status and tension,
@@ -935,6 +939,41 @@ inside it.
   enough to need the room.
 
 ![A chapter row's menu](images/58-row-menu.png)
+
+### Writing on one page
+
+**Page**, beside Cards in the Timeline's header, shows the whole timeline as one
+document: each chapter a `#` heading, each scene a `##` heading, and the scene's
+prose under it. It is not a copy — it is the same prose the scene cards hold,
+and the same titles. Write anywhere in it. What you type is saved to the scene
+it sits under a second after you stop typing, or as soon as you click away from
+the page; retitle a chapter or scene by editing its heading.
+
+![The Timeline's Page view: the binder, the book as one document, and the open chapter's panel](images/72-page-view.png)
+
+- **The binder moves the page.** Pick a scene and the page goes to it, with the
+  caret at the start of its prose; pick a chapter and its heading comes to the
+  top, with its panel beside the page as on Cards.
+- **Enter on a heading** goes to the prose under it rather than breaking the
+  title in two. On a chapter heading it goes to the chapter's first scene.
+- **Ctrl+F** (⌘F on a Mac) searches the whole book. Use it rather than the
+  browser's own find: the page only draws the part of the book on screen, so
+  the browser cannot see the rest.
+- **Ctrl+Z** inside the page takes back your typing. The top bar's Undo takes
+  back a renamed chapter or scene, as it does everywhere else.
+- **Headings stay where they are.** Page does not join, split, add or remove
+  chapters and scenes: deleting a heading, merging it into the line above,
+  changing its `#` marks, or typing text under a chapter heading is refused, and
+  the line above the page says why. Do those on Cards or in the binder.
+- A line of your prose that happens to start with `#` is still prose; which
+  lines are headings is decided by your chapters and scenes, not by the marks.
+- **Changes made elsewhere arrive.** A scene renamed in another tab, or put
+  back by the top bar's Undo, shows on the page; anything you have typed on the
+  page and not yet saved is kept.
+- Page is offered when you are writing in one timeline, in narrative order. It
+  is not on *All timelines*, in Chronological order, or in reading mode.
+- Not on the page yet: the scene header line, `@` mentions, the scene keys
+  (Ctrl+Alt+↓ and the rest) and Focus mode. Open the scene's card for those.
 
 ### Multiple timelines and timeline relationships
 

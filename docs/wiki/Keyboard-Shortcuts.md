@@ -52,6 +52,16 @@ Chapters and scenes are dragged in the **binder** (below), not in the list; the 
 | **Ctrl+Enter** (⌘Enter) | A new scene after this one: type its title, Enter, and you are in its draft; Escape goes back |
 | **Ctrl+Shift+Enter** (⌘⇧Enter) | Split the scene at the caret: the rest becomes a new scene after it, with the same room and people |
 
+### On the Page
+
+The Timeline's [Page](Timeline#writing-on-one-page) view — the book as one document.
+
+| Shortcut | Action |
+|---|---|
+| **Ctrl+F** (⌘F) | Search the whole book — the browser's own find sees only what is on screen |
+| **Enter** on a heading | Go to the prose under it; on a chapter heading, to its first scene |
+| **Ctrl+Z** (⌘Z) | Take back typing on the page |
+
 ### In the binder
 
 | Key | Action |
