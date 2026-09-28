@@ -42,7 +42,7 @@ test.describe('Chapter Diff', () => {
 
   test('DF-1: the tool is offered when there are two chapters, cursor or no cursor', async ({ page }) => {
     const worldId = await worldFromSpec(page, SPEC)
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
 
     // Presence: with the cursor on "all chapters" — the state the finding
     // measured as showing the button 0 times — it is there.
@@ -52,14 +52,14 @@ test.describe('Chapter Diff', () => {
     // Absence, in the same suite: one chapter is nothing to compare, so the
     // button is not offered at all. Vacuity cannot satisfy both.
     const soloId = await worldFromSpec(page, LONE)
-    await page.goto(`/#/worlds/${soloId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${soloId}/manuscript`, { waitUntil: 'load' })
     await expect(page.locator('[data-chapter-bar]')).toBeVisible({ timeout: 30_000 })
     await expect(diffButton(page)).toHaveCount(0)
   })
 
   test('DF-2: both sides open already chosen', async ({ page }) => {
     const worldId = await worldFromSpec(page, SPEC)
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await expect(diffButton(page)).toBeVisible({ timeout: 30_000 })
     await diffButton(page).click()
 
@@ -87,7 +87,7 @@ test.describe('Chapter Diff', () => {
 
   test('DF-3: two chapters with no state recorded are told so, not told they match', async ({ page }) => {
     const worldId = await worldFromSpec(page, SPEC)
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await expect(diffButton(page)).toBeVisible({ timeout: 30_000 })
     await diffButton(page).click()
 

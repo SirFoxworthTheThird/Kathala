@@ -23,7 +23,7 @@ const cursor = (page: Page) => page.evaluate(() => {
 
 async function openBook(page: Page) {
   await page.getByRole('navigation', { name: 'Main navigation' })
-    .getByRole('link', { name: 'Read', exact: true }).click()
+    .getByRole('link', { name: 'Book', exact: true }).click()
   await settle(page)
 }
 

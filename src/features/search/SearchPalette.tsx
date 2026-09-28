@@ -176,7 +176,7 @@ export function SearchPalette() {
       // in it, so it neither matches nor shows until the reader gets there.
       const synopsis = chapterReached.has(ch.id) ? ch.synopsis : ''
       if (ch.number === byNumber || hit(ch.title) || hit(synopsis)) {
-        out.push({ id: ch.id, type: 'chapter', label: `Ch. ${ch.number} — ${ch.title}`, sublabel: snippet(synopsis), path: `/worlds/${worldId}/timeline/${ch.id}` })
+        out.push({ id: ch.id, type: 'chapter', label: `Ch. ${ch.number} — ${ch.title}`, sublabel: snippet(synopsis), path: `/worlds/${worldId}/manuscript/${ch.id}` })
       }
     }
     /*
@@ -202,7 +202,7 @@ export function SearchPalette() {
           label: ev.title,
           // Show the line that matched, not the opening of the scene.
           sublabel: inProse ? snippetAround(prose, q, undefined, wholeWord) : snippet(ev.description),
-          path: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+          path: `/worlds/${worldId}/manuscript/${ev.chapterId}`,
         })
       }
     }
@@ -228,7 +228,7 @@ export function SearchPalette() {
     }
     for (const tl of (timelines ?? [])) {
       if (hit(tl.name)) {
-        out.push({ id: tl.id, type: 'timeline', label: tl.name, sublabel: snippet(tl.description), path: `/worlds/${worldId}/timeline` })
+        out.push({ id: tl.id, type: 'timeline', label: tl.name, sublabel: snippet(tl.description), path: `/worlds/${worldId}/manuscript` })
       }
     }
     for (const r of (relationships ?? [])) {

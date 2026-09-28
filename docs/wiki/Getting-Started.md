@@ -26,7 +26,7 @@ The world opens immediately, and Kathala offers a **four-step setup guide**: cre
 
 A **timeline** is an ordered sequence of chapters. Every world needs at least one; most only ever need one.
 
-1. Go to **Timeline** in the left navigation rail.
+1. Go to **Manuscript** in the left navigation rail.
 2. Click **Create Timeline** (or **New Timeline** if one already exists).
 3. Give it a name — "Main Story" is fine.
 

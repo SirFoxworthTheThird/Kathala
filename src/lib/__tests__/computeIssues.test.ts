@@ -147,7 +147,7 @@ describe('computeContinuityIssues', () => {
     expect(threadIssues[0].id).toBe('thread-dangling-heist')
     expect(threadIssues[0].message).toContain('The Heist')
     // Navigates to the chapter where the thread was last advanced.
-    expect(threadIssues[0].navigatePath).toContain('/timeline/c1')
+    expect(threadIssues[0].navigatePath).toContain('/manuscript/c1')
     expect(threadIssues[0].eventId).toBe('e1')
   })
 

@@ -62,7 +62,7 @@ test('a category with more than one kind of fault says which is which', async ({
   await page.getByRole('button', { name: 'Add Character' }).last().click()
   await expect(page.getByText('Boromir').first()).toBeVisible()
 
-  await page.getByTitle('Timeline').click()
+  await page.getByTitle('Manuscript').click()
   await settleNav(page)
   await page.getByRole('button', { name: 'Create Timeline' }).click()
   await page.getByRole('button', { name: 'Add Chapter' }).first().click()

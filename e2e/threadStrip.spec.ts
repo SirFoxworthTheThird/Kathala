@@ -17,7 +17,7 @@ test('the thread filter stops growing, and folds the rest behind a count', async
   await page.getByRole('button', { name: 'Create World' }).last().click()
   await expect(page).toHaveURL(/#\/worlds\//)
 
-  await page.getByRole('link', { name: /timeline/i }).first().click()
+  await page.getByRole('link', { name: /manuscript/i }).first().click()
   await settleNav(page)
   await page.getByRole('button', { name: 'Create Timeline' }).click()
   await page.getByRole('button', { name: 'Add Chapter' }).first().click()
@@ -34,7 +34,7 @@ test('the thread filter stops growing, and folds the rest behind a count', async
     await expect(page.getByText(`Thread ${i}`).first()).toBeVisible()
   }
 
-  await page.getByRole('link', { name: /timeline/i }).first().click()
+  await page.getByRole('link', { name: /manuscript/i }).first().click()
   await settleNav(page)
   const strip = page.getByRole('group', { name: 'Filter by plot thread' })
 

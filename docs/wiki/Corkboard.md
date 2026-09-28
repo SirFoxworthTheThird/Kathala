@@ -22,9 +22,9 @@ The same statuses drive the Scene Status panel on the [Dashboard](Dashboard) and
 |---|---|
 | **Drag a card** within a column | Reorders scenes inside that chapter |
 | **Drag a card** to another column | Moves the scene to that chapter |
-| **Click a card's title** | Jumps to that scene on the Timeline — its chapter and card open — with the time cursor set to it |
+| **Click a card's title** | Jumps to that scene in the Manuscript — its chapter and card open — with the time cursor set to it |
 
-The timeline order updates to match. It is the same set of events as the [Timeline](Timeline), shown as a board — reorder here or there and both stay in sync.
+The timeline order updates to match. It is the same set of events as the [Manuscript](Timeline), shown as a board — reorder here or there and both stay in sync.
 
 ---
 
@@ -42,6 +42,6 @@ The Corkboard is a writing screen, so [reading mode](Reading-Mode) removes it �
 
 ## Related pages
 
-- [Timeline & Events](Timeline) — the same events as a list
+- [Manuscript: chapters & events](Timeline) — the same events as a list
 - [Structure Board](Structure-Board) — the same scenes against a beat sheet
 - [Manuscript](Manuscript) — the same scenes as continuous prose

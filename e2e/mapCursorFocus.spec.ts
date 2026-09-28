@@ -37,7 +37,7 @@ async function setupWorld(page: Page): Promise<string> {
   await page.getByRole('button', { name: 'Add locations' }).click()
   await waitForMapReady(page)
 
-  await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
   await page.getByRole('button', { name: 'Create Timeline' }).click()
   await page.getByRole('button', { name: 'Add Chapter' }).first().click()
   await page.getByPlaceholder('Chapter title').fill('The Crossing')

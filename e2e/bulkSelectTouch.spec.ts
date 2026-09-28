@@ -54,7 +54,7 @@ async function timelineWithScenes(page: Page) {
     })))
   }, { id: worldId, scenes: SCENES })
 
-  await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
   // Open the chapter, so its scene rows are rendered. Scoped to `main` because
   // the chapter bar along the bottom is titled with chapters too, and tapped
   // rather than clicked so no hover is left behind on the row.

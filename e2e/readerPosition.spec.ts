@@ -44,12 +44,12 @@ test.describe('A reader can say how far they have got', () => {
 
     // And it goes where the control lives.
     await setIt.click()
-    await expect(page).toHaveURL(/#\/worlds\/[^/]+\/timeline$/)
+    await expect(page).toHaveURL(/#\/worlds\/[^/]+\/manuscript$/)
   })
 
   test('and the control there is named for what a reader is doing', async ({ page }) => {
     const worldId = await readerOnTheDashboard(page)
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await settle(page)
 
     const readToHere = page.getByRole('button', { name: 'Read to here' })
@@ -93,7 +93,7 @@ test.describe('A reader can say how far they have got', () => {
       const w = (await db.worlds.toArray())[0]
       await db.worlds.update(w.id, { readingMode: false })
     })
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await settle(page)
 
     await expect(page.getByRole('button', { name: 'View from here' }).first()).toBeVisible({ timeout: 30_000 })

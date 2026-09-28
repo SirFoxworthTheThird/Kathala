@@ -42,7 +42,7 @@ test.describe('Overlays', () => {
 
   test('OP-2: the palette is not a trap, and Escape unwinds one layer at a time', async ({ page }) => {
     const worldId = await world(page)
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await settleNav(page)
     await page.waitForTimeout(800)
 

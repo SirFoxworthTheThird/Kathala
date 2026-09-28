@@ -60,7 +60,7 @@ test.describe('Deletes that used to fire on the click now ask first', () => {
 
   test('a saved scene version', async ({ page }) => {
     const worldId = await worldWithAScene(page)
-    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
     await settle(page)
 
     // The draft section — and its History button — live inside the expanded

@@ -18,7 +18,7 @@ const controls = (page: Page) => page.getByRole('group', { name: 'How the book i
 
 async function openBook(page: Page) {
   await page.getByRole('navigation', { name: 'Main navigation' })
-    .getByRole('link', { name: 'Read', exact: true }).click()
+    .getByRole('link', { name: 'Book', exact: true }).click()
   await settle(page)
 }
 
@@ -122,6 +122,7 @@ test('a writer drafting the same manuscript keeps the fixed setting', async ({ p
   await page.getByRole('navigation', { name: 'Main navigation' })
     .getByRole('link', { name: 'Manuscript', exact: true }).click()
   await settle(page)
+  await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
 
   const draft = page.getByRole('textbox', { name: 'The book, as one page' })
   await expect(draft, 'the same book, being written').toBeVisible()

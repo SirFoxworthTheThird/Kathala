@@ -164,7 +164,7 @@ test('the top bar does not overlap the chapter cursor on a phone', async ({ page
   await setupWorld(page)
 
   // A timeline, a chapter and an event, so the cursor shows a real label.
-  await page.getByRole('link', { name: /timeline/i }).first().click()
+  await page.getByRole('link', { name: /manuscript/i }).first().click()
   await settleNav(page)
   await page.getByRole('button', { name: 'Create Timeline' }).click()
   await page.getByRole('button', { name: 'Add Chapter' }).first().click()

@@ -65,7 +65,7 @@ test.describe('The scene menu can move a scene', () => {
 
   test('N13: the menu offers the move, and it happens', async ({ page }) => {
     const worldId = await worldWithTwoChapters(page)
-    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
     await settleNav(page)
 
     // It starts where it was seeded — without this the assertion after the move
@@ -94,7 +94,7 @@ test.describe('The scene menu can move a scene', () => {
 
   test('N11: the manuscript downloads under the book’s name, not the timeline’s', async ({ page }) => {
     const worldId = await worldWithTwoChapters(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript?view=read`, { waitUntil: 'load' })
     await settleNav(page)
 
     await page.getByRole('button', { name: /Export/ }).first().click()

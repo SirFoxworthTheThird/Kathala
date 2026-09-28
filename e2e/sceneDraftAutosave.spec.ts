@@ -58,7 +58,7 @@ test.describe('Scene prose survives without being blurred', () => {
 
   test('a pause writes it, and the line under the box says which state it is in', async ({ page }) => {
     const worldId = await chapterWithAScene(page)
-    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
     await settle(page)
 
     await page.getByRole('button', { name: /^Expand/ }).first().click()
@@ -103,7 +103,7 @@ test.describe('Scene prose survives without being blurred', () => {
    */
   test('and History does not fill up with one version per pause', async ({ page }) => {
     const worldId = await chapterWithAScene(page)
-    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
     await settle(page)
 
     await page.getByRole('button', { name: /^Expand/ }).first().click()

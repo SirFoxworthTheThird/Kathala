@@ -14,9 +14,9 @@
 
 **Writing**
 - [World Dashboard](Dashboard)
-- [Timeline & Events](Timeline)
+- [Manuscript: chapters & events](Timeline)
 - [Corkboard](Corkboard)
-- [Manuscript](Manuscript)
+- [The book: goals, reading, export](Manuscript)
 - [Structure Board](Structure-Board)
 
 **Story elements**

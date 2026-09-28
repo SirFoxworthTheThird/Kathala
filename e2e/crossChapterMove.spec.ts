@@ -54,7 +54,7 @@ test.describe('a scene can leave its chapter without a mouse', () => {
 
   test('the last scene moves into the next chapter, and back', async ({ page }) => {
     const worldId = await twoChaptersTwoScenes(page)
-    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
     await settle(page)
 
     const main = page.getByRole('main')
@@ -67,7 +67,7 @@ test.describe('a scene can leave its chapter without a mouse', () => {
     await expect.poll(() => chapterOf(page, 'ev2'), { timeout: 15_000 }).toBe('ch2')
 
     // And back the other way, from the chapter it landed in.
-    await page.goto(`/#/worlds/${worldId}/timeline/ch2`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch2`, { waitUntil: 'load' })
     await settle(page)
     const up = page.getByRole('main')
       .getByRole('button', { name: /Move to the end of the previous chapter: .The reed house./ })
@@ -79,13 +79,13 @@ test.describe('a scene can leave its chapter without a mouse', () => {
   test('but the ends of the book still have nowhere to go', async ({ page }) => {
     // The pair: the arrows are not simply always enabled now.
     const worldId = await twoChaptersTwoScenes(page)
-    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
     await settle(page)
 
     const main = page.getByRole('main')
     await expect(main.getByRole('button', { name: /^Move .Setting out. earlier$/ })).toBeDisabled()
 
-    await page.goto(`/#/worlds/${worldId}/timeline/ch2`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch2`, { waitUntil: 'load' })
     await settle(page)
     await expect(page.getByRole('main').getByRole('button', { name: /^Move .The seal breaks. later$/ })).toBeDisabled()
   })

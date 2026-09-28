@@ -30,7 +30,7 @@ const cursor = (page: Page) => page.evaluate(() => {
 })
 
 async function openTimeline(page: Page, worldId: string) {
-  await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
   await settle(page)
 }
 

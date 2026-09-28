@@ -124,7 +124,7 @@ test('the Maps tile counts the maps a reader can open, not the roots', async ({ 
   const worldId = await downloadLibraryBook(page, 'Dracula')
   await settle(page)
 
-  await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
   await settle(page)
   await page.goto(`/#/worlds/${worldId}/`, { waitUntil: 'load' })
   await expect(page.locator('aside[aria-label="Reading mode"]'),

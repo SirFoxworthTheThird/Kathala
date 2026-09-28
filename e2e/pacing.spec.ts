@@ -14,13 +14,13 @@ async function setupEvent(page: Page) {
   await page.getByRole('button', { name: 'Create World' }).last().click()
   await expect(page).toHaveURL(/#\/worlds\//)
 
-  await page.getByRole('link', { name: /timeline/i }).click()
+  await page.getByRole('link', { name: /manuscript/i }).click()
   await page.getByRole('button', { name: 'Create Timeline' }).click()
   await page.getByRole('button', { name: 'Add Chapter' }).first().click()
   await page.getByPlaceholder('Chapter title').fill('Act One')
   await page.getByRole('button', { name: 'Add Chapter' }).last().click()
   await page.getByTitle('Open chapter detail').click()
-  await expect(page).toHaveURL(/#\/worlds\/.+\/timeline\/.+/)
+  await expect(page).toHaveURL(/#\/worlds\/.+\/manuscript\/.+/)
 
   const main = page.getByRole('main')
   await main.getByRole('button', { name: 'Add Scene' }).first().click()
@@ -34,7 +34,7 @@ test.describe('Pacing curve', () => {
     await setupEvent(page)
 
     // The curve is present on the timeline but empty until a scene is rated.
-    await page.getByRole('link', { name: /timeline/i }).click()
+    await page.getByRole('link', { name: /manuscript/i }).click()
     await expect(page.getByText('Pacing — dramatic tension')).toBeVisible()
     await expect(page.getByText('rate scenes on their cards to draw the curve')).toBeVisible()
     /*
@@ -59,7 +59,7 @@ test.describe('Pacing curve', () => {
     await expect(page.getByRole('button', { name: 'Tension: Climactic' })).toContainText('5/5')
 
     // Back on the timeline the curve now has a rated point (the hint is gone).
-    await page.getByRole('link', { name: /timeline/i }).click()
+    await page.getByRole('link', { name: /manuscript/i }).click()
     await settleNav(page)
     await expect(page.getByText('rate scenes on their cards to draw the curve')).not.toBeVisible()
     await expect(page.getByRole('img', { name: 'Dramatic tension across the story' })).toBeVisible()

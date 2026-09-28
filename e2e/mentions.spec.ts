@@ -26,13 +26,13 @@ test.describe('@-mentions in the scene draft', () => {
   // card. Returns the scene-draft textarea (scoped to <main> so the card title
   // isn't confused with the timeline-bar marker of the same name).
   async function openSceneDraft(page: Page) {
-    await page.getByRole('link', { name: /timeline/i }).click()
+    await page.getByRole('link', { name: /manuscript/i }).click()
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('Act One')
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
     await page.getByTitle('Open chapter detail').click()
-    await expect(page).toHaveURL(/#\/worlds\/.+\/timeline\/.+/)
+    await expect(page).toHaveURL(/#\/worlds\/.+\/manuscript\/.+/)
 
     const main = page.getByRole('main')
     await main.getByRole('button', { name: 'Add Scene' }).first().click()

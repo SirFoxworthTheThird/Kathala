@@ -20,7 +20,7 @@ test('the timeline thread filter shows only scenes on the chosen subplot', async
   // intercept clicks on left-aligned controls.
   const settleNav = async () => { await page.mouse.move(700, 400); await page.waitForTimeout(200) }
   const gotoTimeline = async () => {
-    await page.getByRole('link', { name: /timeline/i }).first().click()
+    await page.getByRole('link', { name: /manuscript/i }).first().click()
     await settleNav()
   }
 

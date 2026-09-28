@@ -17,7 +17,7 @@ async function setupDanglingThread(page: Page) {
   await expect(page).toHaveURL(/#\/worlds\//)
 
   const main = page.getByRole('main')
-  const gotoTimeline = async () => { await page.getByRole('link', { name: /timeline/i }).first().click(); await settleNav(page) }
+  const gotoTimeline = async () => { await page.getByRole('link', { name: /manuscript/i }).first().click(); await settleNav(page) }
   const addChapter = async (title: string) => {
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill(title)

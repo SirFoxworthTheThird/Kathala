@@ -24,7 +24,7 @@ test.describe('Overlay dismissal', () => {
     await expect(page).toHaveURL(/#\/worlds\//)
     const id = page.url().match(/#\/worlds\/([^/]+)/)![1]
 
-    await page.goto(`/#/worlds/${id}/timeline`)
+    await page.goto(`/#/worlds/${id}/manuscript`)
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     for (const t of ['The Gate', 'The Road']) {
       await page.getByRole('button', { name: 'Add Chapter' }).first().click()
@@ -37,7 +37,7 @@ test.describe('Overlay dismissal', () => {
     await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
     await page.getByPlaceholder('Scene title').fill('Scene One')
     await page.getByRole('button', { name: 'Add Scene' }).last().click()
-    await page.goto(`/#/worlds/${id}/timeline`)
+    await page.goto(`/#/worlds/${id}/manuscript`)
     await page.getByTitle('Scene One', { exact: true }).click()
     return id
   }

@@ -169,22 +169,22 @@ const shots = [
   },
   {
     name: '04-timeline', book: ILIAD, reading: false,
-    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' }),
-    // The Timeline has no heading of its own — it is chapters all the way down.
+    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' }),
+    // The Manuscript has no heading of its own — it is chapters all the way down.
     ready: (page) => page.getByRole('main').getByText('The Quarrel').first(),
   },
   {
     name: '05-chapter-detail', book: ILIAD, reading: false,
     go: async (page, id) => {
       const chapter = await firstChapter(page, id)
-      await page.goto(`${BASE}/#/worlds/${id}/timeline/${chapter}`, { waitUntil: 'load' })
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript/${chapter}`, { waitUntil: 'load' })
     },
     ready: (page) => page.getByRole('heading', { name: /^Ch\. 1/ }),
   },
   {
     name: '24-manuscript', book: ILIAD, reading: false,
-    // The Manuscript is the Timeline's Read layout now; ?view= asks for it on arrival.
-    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/timeline?view=read`, { waitUntil: 'load' }),
+    // The book on Read; ?view= asks for it on arrival.
+    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/manuscript?view=read`, { waitUntil: 'load' }),
     ready: (page) => page.getByRole('heading', { name: /^Ch\. 1 —/ }),
   },
   {
@@ -266,7 +266,7 @@ const shots = [
   {
     name: '36-find-replace', book: ILIAD, reading: false,
     go: async (page, id) => {
-      await page.goto(`${BASE}/#/worlds/${id}/timeline?view=read`, { waitUntil: 'load' })
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript?view=read`, { waitUntil: 'load' })
       await page.getByRole('heading', { name: /^Ch\. 1 —/ }).waitFor({ state: 'visible', timeout: 30_000 })
       await page.getByRole('button', { name: 'Find & replace' }).click()
     },
@@ -275,7 +275,7 @@ const shots = [
   {
     name: '62-bar-rolled-up', book: ILIAD, reading: false,
     go: async (page, id) => {
-      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' })
       await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
       await page.getByRole('button', { name: 'Hide the chapter bar' }).click()
     },
@@ -284,7 +284,7 @@ const shots = [
   {
     name: '48-thread-filter', book: ILIAD, reading: false,
     go: async (page, id) => {
-      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' })
       await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
       await page.getByRole('button', { name: 'All threads' }).click()
     },
@@ -302,7 +302,7 @@ const shots = [
   {
     name: '16-search', book: ILIAD, reading: false,
     go: async (page, id) => {
-      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' })
       await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
       await page.getByRole('button', { name: 'Search (Ctrl+K)' }).click()
       await page.keyboard.type('Achilles')
@@ -313,7 +313,7 @@ const shots = [
   {
     name: '19-help', book: ILIAD, reading: false,
     go: async (page, id) => {
-      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' })
       await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
       await page.locator('button[aria-label="Help"]').click()
     },
@@ -322,7 +322,7 @@ const shots = [
   {
     name: '53-recent-changes', book: ILIAD, reading: false,
     go: async (page, id) => {
-      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' })
       await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
       await page.getByRole('button', { name: 'Recent changes' }).click()
     },
@@ -331,7 +331,7 @@ const shots = [
   {
     name: '17-writers-brief', book: ILIAD, reading: false,
     go: async (page, id) => {
-      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' })
       await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
       await page.getByRole('button', { name: "Writer's Brief" }).click()
     },
@@ -340,7 +340,7 @@ const shots = [
   {
     name: '18-continuity', book: ILIAD, reading: false,
     go: async (page, id) => {
-      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' })
       await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
       await page.getByRole('button', { name: 'Continuity Checker' }).click()
     },
@@ -401,7 +401,7 @@ const shots = [
   {
     name: '37-navigation', book: ILIAD, reading: false,
     go: async (page, id) => {
-      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' })
       await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
       await page.getByRole('button', { name: 'Pin navigation open' }).click()
     },
@@ -415,7 +415,7 @@ const shots = [
   {
     name: '49-timeline-bar-scope', book: ILIAD, reading: false,
     go: async (page, id) => {
-      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' })
       await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
       await page.getByRole('button', { name: 'View all chapters' }).click()
     },
@@ -479,7 +479,7 @@ const shots = [
   {
     name: '58-row-menu', book: ILIAD, reading: false,
     go: async (page, id) => {
-      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' })
       await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
       await page.getByRole('button', { name: 'More actions for chapter 1', exact: true }).click()
     },
@@ -490,8 +490,8 @@ const shots = [
     // Opened at chapter 1, so the binder lists its scenes beside the page.
     go: async (page, id) => {
       const chapter = await firstChapter(page, id)
-      await page.goto(`${BASE}/#/worlds/${id}/timeline/${chapter}`, { waitUntil: 'load' })
-      await page.getByRole('group', { name: 'Timeline layout' }).getByRole('button', { name: 'Page', exact: true })
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript/${chapter}`, { waitUntil: 'load' })
+      await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true })
         .click({ timeout: 30_000 })
     },
     ready: (page) => page.getByRole('textbox', { name: 'The book, as one page' }),
@@ -501,8 +501,8 @@ const shots = [
     name: '73-timeline-read', book: ILIAD, reading: false,
     go: async (page, id) => {
       const chapter = await firstChapter(page, id)
-      await page.goto(`${BASE}/#/worlds/${id}/timeline/${chapter}`, { waitUntil: 'load' })
-      await page.getByRole('group', { name: 'Timeline layout' }).getByRole('button', { name: 'Read', exact: true })
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript/${chapter}`, { waitUntil: 'load' })
+      await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Read', exact: true })
         .click({ timeout: 30_000 })
     },
     ready: (page) => page.getByRole('main').getByText('Sing, O goddess').first(),
@@ -514,7 +514,7 @@ const shots = [
     // it in the same chapter is what the dialog names.
     go: async (page, id) => {
       const chapter = await firstChapter(page, id)
-      await page.goto(`${BASE}/#/worlds/${id}/timeline/${chapter}`, { waitUntil: 'load' })
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript/${chapter}`, { waitUntil: 'load' })
       const main = page.getByRole('main')
       await main.getByRole('button', { name: 'The Priest Is Rejected', exact: true }).waitFor({ state: 'visible', timeout: 30_000 })
       await main.getByRole('button', { name: 'More actions for “The Priest Is Rejected”' }).click()
@@ -526,7 +526,7 @@ const shots = [
     name: '65-scene-standing', book: ILIAD, reading: false,
     // The X-ray gutter renders only in Reading mode, and only with prose.
     go: async (page, id) => {
-      await page.goto(`${BASE}/#/worlds/${id}/timeline?view=read`, { waitUntil: 'load' })
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript?view=read`, { waitUntil: 'load' })
       await page.getByRole('heading', { name: /^Ch\. 1 —/ }).waitFor({ state: 'visible', timeout: 30_000 })
     },
     ready: (page) => page.getByRole('heading', { name: /^Ch\. 1 —/ }),
@@ -539,7 +539,7 @@ const shots = [
     // wins over `title`.
     go: async (page, id) => {
       const chapter = await firstChapter(page, id)
-      await page.goto(`${BASE}/#/worlds/${id}/timeline/${chapter}`, { waitUntil: 'load' })
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript/${chapter}`, { waitUntil: 'load' })
       await openScene(page, 'The Priest Is Rejected', 'Focus')
       await page.getByRole('button', { name: 'Focus', exact: true }).first().click()
     },
@@ -571,7 +571,7 @@ const shots = [
     }, id),
     go: async (page, id) => {
       const chapter = await firstChapter(page, id)
-      await page.goto(`${BASE}/#/worlds/${id}/timeline/${chapter}`, { waitUntil: 'load' })
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript/${chapter}`, { waitUntil: 'load' })
       await openScene(page, 'The Priest Is Rejected', /^History/)
       await page.getByRole('button', { name: /^History/ }).first().click()
     },
@@ -590,7 +590,7 @@ const shots = [
       hundred chapters it is the slowest screen in the app to settle.
     */
     go: async (page, id) => {
-      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' })
       const scope = page.locator('select[aria-label="Timeline bar scope"]')
       await scope.waitFor({ state: 'visible', timeout: 90_000 })
       await scope.selectOption({ label: 'All · Chapter order' })
@@ -607,7 +607,7 @@ const shots = [
       waiting for `role="dialog"` timed out on a panel that had opened.
     */
     go: async (page, id) => {
-      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' })
       await page.getByRole('button', { name: 'Link Timelines' }).waitFor({ state: 'visible', timeout: 90_000 })
       await page.getByRole('button', { name: 'Link Timelines' }).click()
     },
@@ -767,7 +767,7 @@ const shots = [
       Clearing the cursor is what produces it.
     */
     go: async (page, id) => {
-      await page.goto(`${BASE}/#/worlds/${id}/timeline`, { waitUntil: 'load' })
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' })
       await page.getByRole('main').getByText('The Quarrel').first().waitFor({ state: 'visible', timeout: 30_000 })
       const clear = page.getByRole('button', { name: /Clear the selected moment/i }).first()
       if (await clear.isVisible().catch(() => false)) await clear.click()

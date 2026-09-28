@@ -152,7 +152,7 @@ test('clicking a character keeps its panel, film strip and zoom all usable', asy
 
   // A chapter *and* event: the film strip is built from events, so a chapter
   // alone leaves it empty.
-  await page.getByRole('link', { name: /timeline/i }).first().click()
+  await page.getByRole('link', { name: /manuscript/i }).first().click()
   await settleNav(page)
   await page.getByRole('button', { name: 'Create Timeline' }).click()
   await page.getByRole('button', { name: 'Add Chapter' }).first().click()
@@ -163,7 +163,7 @@ test('clicking a character keeps its panel, film strip and zoom all usable', asy
   await page.getByPlaceholder('Scene title').fill('The Departure')
   await page.getByRole('button', { name: 'Add Scene' }).last().click()
 
-  await page.getByRole('link', { name: /timeline/i }).first().click()
+  await page.getByRole('link', { name: /manuscript/i }).first().click()
   await settleNav(page)
   await page.getByTitle('The Departure', { exact: true }).click()
 

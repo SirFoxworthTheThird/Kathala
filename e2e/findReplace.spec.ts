@@ -33,7 +33,7 @@ test.describe('Manuscript find & replace', () => {
     await expect(page.getByText('Mira').first()).toBeVisible()
 
     // Manuscript → Find & replace.
-    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript?view=read`, { waitUntil: 'load' })
     await page.getByRole('button', { name: 'Find & replace' }).click()
     await expect(page.getByRole('heading', { name: /Find & replace/ })).toBeVisible({ timeout: 30000 })
 

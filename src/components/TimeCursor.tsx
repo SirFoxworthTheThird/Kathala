@@ -97,7 +97,7 @@ export function TimeCursor({ worldId }: { worldId: string }) {
       </button>
 
       <button
-        onClick={isPlayingStory ? undefined : () => navigate(`/worlds/${worldId}/timeline`)}
+        onClick={isPlayingStory ? undefined : () => navigate(`/worlds/${worldId}/manuscript`)}
         disabled={isPlayingStory}
         title={
           isPlayingStory

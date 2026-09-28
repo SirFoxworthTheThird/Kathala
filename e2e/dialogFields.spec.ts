@@ -61,7 +61,7 @@ test.describe('The first dialogs name their fields', () => {
 
   test('Add Chapter', async ({ page }) => {
     const worldId = await aWorld(page)
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await settle(page)
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
@@ -77,7 +77,7 @@ test.describe('The first dialogs name their fields', () => {
 
   test('Add Scene, which is a line now rather than a dialog', async ({ page }) => {
     const worldId = await aWorld(page)
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await settle(page)
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()

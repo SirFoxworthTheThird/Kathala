@@ -56,7 +56,7 @@ async function openTheChapter(page: Page, spec: string) {
   await page.getByLabel('Story spec JSON').fill(spec)
   await page.getByRole('button', { name: 'Import world', exact: true }).click()
   await expect(page).toHaveURL(/#\/worlds\//)
-  await page.getByRole('link', { name: /timeline/i }).click()
+  await page.getByRole('link', { name: /manuscript/i }).click()
   await page.getByTitle('Open chapter detail').first().click()
   await expect(page.getByText('Character States')).toBeVisible({ timeout: 30_000 })
 }

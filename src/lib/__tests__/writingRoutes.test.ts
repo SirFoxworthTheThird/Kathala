@@ -48,7 +48,7 @@ describe('writing-only routes', () => {
   it('leaves reader-facing routes open', () => {
     // The pairing: if everything were guarded the tests above would pass and
     // the app would be unusable while reading.
-    for (const open of ['timeline', 'characters', 'maps', 'lore']) {
+    for (const open of ['manuscript', 'characters', 'maps', 'lore']) {
       expect(navItems.find((n) => n.to === open)?.writingOnly ?? false).toBe(false)
     }
   })

@@ -58,7 +58,7 @@ const storedTitle = (page: Page) => page.evaluate(async () => {
 })
 
 async function openChapterAndEdit(page: Page, worldId: string) {
-  await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
   await settle(page)
   await page.getByRole('button', { name: /^Expand/ }).first().click()
   await settle(page)

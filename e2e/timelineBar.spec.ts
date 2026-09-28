@@ -19,7 +19,7 @@ async function setupTwoTimelines(page: Page) {
   await expect(page).toHaveURL(/#\/worlds\//)
 
   const main = page.getByRole('main')
-  const gotoTimeline = async () => { await page.getByRole('link', { name: /timeline/i }).first().click(); await settleNav(page) }
+  const gotoTimeline = async () => { await page.getByRole('link', { name: /manuscript/i }).first().click(); await settleNav(page) }
   const addEvent = async (title: string) => {
     await main.getByRole('button', { name: 'Add Scene' }).first().click()
     await page.getByPlaceholder('Scene title').fill(title)
@@ -115,7 +115,7 @@ test('every control in the chapter bar is big enough to hit', async ({ page }) =
   await resetDB(page)
   const worldId = await downloadLibraryBook(page, 'Dracula')
   await settle(page)
-  await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
   await settle(page)
 
   const names = [

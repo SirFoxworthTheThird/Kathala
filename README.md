@@ -97,9 +97,9 @@ manuscript to an AI provider itself.
 *See writing progress, story statistics, cast balance, plot threads, motifs,
 continuity warnings, and timeline relationships at a glance.*
 
-### Timeline and scene cursor
+### Manuscript and scene cursor
 
-![Timeline with chapters and scenes](docs/images/04-timeline.png)
+![The Manuscript: chapters and scenes](docs/images/04-timeline.png)
 
 *Organize chapters and scenes across one or more timelines. Selecting a scene
 moves the global time cursor to that exact story moment.*
@@ -140,7 +140,7 @@ scenes, with overlays for status, POV, goals, and factions.*
   Snapshots carry forward until something changes.
 - **Build multiple timelines.** Model parallel plots, flashbacks, frame stories,
   and eras with independent clocks and explicit relationships.
-- **Plan chapters and scenes.** Use the Timeline, Corkboard, pacing curve,
+- **Plan chapters and scenes.** Use the Manuscript, Corkboard, pacing curve,
   tension ratings, scene statuses, POV tracking, and Structure beat sheets.
 - **Write the manuscript.** Store prose per scene, read it continuously, preserve
   revision history, set writing goals, and export to common writing formats.

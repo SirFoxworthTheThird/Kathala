@@ -59,4 +59,4 @@ Confirm a snapshot recorded the new location at that event. Updating only the mo
 
 ## Related pages
 
-- [Core Concepts](Core-Concepts) · [Timeline & Events](Timeline) · [Continuity Checker](Continuity-Checker)
+- [Core Concepts](Core-Concepts) · [Manuscript: chapters & events](Timeline) · [Continuity Checker](Continuity-Checker)

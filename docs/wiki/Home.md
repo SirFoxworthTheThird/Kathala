@@ -37,9 +37,9 @@ You don't have to start from an empty world.
 | Page | Description |
 |---|---|
 | [World Dashboard](Dashboard) | The bird's-eye view, writing progress, deadlines, and projections |
-| [Timeline & Events](Timeline) | Chapters, events, multiple timelines, and timeline relationships |
+| [Manuscript: chapters & events](Timeline) | Chapters, events, multiple timelines, and timeline relationships |
 | [Corkboard](Corkboard) | Index-card view of the whole story; drag scenes to restructure |
-| [Manuscript](Manuscript) | The book on the Timeline's Page and Read: write, read and export it; find & replace, scene history, focus mode |
+| [The book](Manuscript) | The book on the Manuscript's Page and Read: write, read and export it; find & replace, scene history, focus mode |
 | [Structure Board](Structure-Board) | Check the story against Three-Act, Save the Cat, or Hero's Journey |
 
 ---

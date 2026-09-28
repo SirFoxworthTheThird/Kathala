@@ -97,7 +97,7 @@ test.describe('A blocked action says what it is waiting for', () => {
     // header actions go dead on the merged view, with nothing on the button to
     // connect them to the tab that put you there.
     await newWorld(page, 'Two Timelines')
-    await page.getByRole('link', { name: /timeline/i }).first().click()
+    await page.getByRole('link', { name: /manuscript/i }).first().click()
     await settle(page)
 
     const seeded = await page.evaluate(async () => {

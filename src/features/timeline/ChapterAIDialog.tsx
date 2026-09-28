@@ -650,7 +650,7 @@ export function ChapterAIDialog({
       const data = validateResponse(pasteValue.trim(), worldId, timelineId, characterIds, itemIds, markerIds, relationshipIds)
       const chapterId = await importChapter(data, isUpdate)
       handleClose(false)
-      navigate(`/worlds/${worldId}/timeline/${chapterId}`)
+      navigate(`/worlds/${worldId}/manuscript/${chapterId}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Import failed.')
     } finally {

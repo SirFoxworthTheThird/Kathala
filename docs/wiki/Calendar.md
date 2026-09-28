@@ -67,5 +67,5 @@ The calendar and every birth date travel through [export/import](Export-and-Impo
 
 - [World Settings](World-Settings) — where the calendar is defined
 - [Writer's Brief](Writers-Brief) — where dates and ages surface
-- [Timeline & Events](Timeline) — travel days and chronological ordering
+- [Manuscript: chapters & events](Timeline) — travel days and chronological ordering
 - [Continuity Checker](Continuity-Checker) — travel-time checks that use the same clock
