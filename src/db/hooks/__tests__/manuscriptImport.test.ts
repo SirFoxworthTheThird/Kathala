@@ -78,4 +78,13 @@ describe('createWorldFromManuscript', () => {
     const events = await db.events.where('chapterId').equals(chapters[0].id).sortBy('sortOrder')
     expect(events).toHaveLength(2)
   })
+
+  it('names each scene from its ## title, and gives a scene with no prose none', async () => {
+    const parsed = parseManuscript('# One\n\n## The quay\n\nThe ship came in.\n\n## Still to write\n\n# Two\n\nUntitled prose.')
+    const worldId = await createWorldFromManuscript(parsed, 'W')
+    const events = (await db.events.where('worldId').equals(worldId).toArray()).sort((a, b) => a.sortOrder - b.sortOrder)
+    expect(events.map((e) => e.title).sort()).toEqual(['Scene 1', 'Still to write', 'The quay'])
+    const quiet = events.find((e) => e.title === 'Still to write')!
+    expect(await db.sceneTexts.where('eventId').equals(quiet.id).count()).toBe(0)
+  })
 })

@@ -23,7 +23,8 @@ Kathala uses a few predictable rules.
 | Rule | What counts |
 |---|---|
 | **Chapters** | A Markdown `#` / `##` heading, or a line starting with *Chapter*, *Prologue*, *Epilogue*, or *Part* |
-| **Chapter titles** | `Chapter 7: The Reckoning` keeps *The Reckoning* as the title |
+| **Chapter titles** | `Chapter 7: The Reckoning` — or the Markdown export's `Ch. 7 — The Reckoning` — keeps *The Reckoning* as the title |
+| **Scene titles** | Where chapters are `#` headings, a `##` heading starts a scene with that title — how the Page writes a book and how Markdown export writes one with *Scene titles as ## headings*, so an export imports back as the same chapters and scenes. A `##` reading as a chapter (*Chapter 3*) stays a chapter; with no `#` chapters, `##` headings are chapters |
 | **Book title** | A single `#` heading at the very top, followed by a chapter, becomes the world's name rather than a chapter |
 | **Scenes** | A line of only symbols — `* * *`, `***`, `---`, a lone `#` — splits a chapter into scenes |
 | **Opening prose** | Text before the first heading becomes an untitled opening chapter |

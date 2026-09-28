@@ -33,6 +33,8 @@ A progress bar tracks words against each.
 
 Both are generated **right in the browser**, so nothing leaves your device.
 
+**Scene titles as ## headings** (Markdown only, on by default) writes each scene under its own `## Title` rather than a `* * *` break, so the file [imports](Import-Manuscript) back as the same chapters and scenes. Turn it off for a Markdown file meant for readers.
+
 ### Sending out a partial draft
 
 **Scenes to include** decides how much of the book goes out:

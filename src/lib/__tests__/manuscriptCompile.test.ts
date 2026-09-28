@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { buildManuscript, compileManuscript, scenesForExport } from '@/lib/manuscriptCompile'
+import { parseManuscript } from '@/lib/manuscriptImport'
 import type { Chapter, WorldEvent, SceneText } from '@/types'
 
 function chapter(id: string, number: number, title: string, synopsis = ''): Chapter {
@@ -236,5 +237,52 @@ describe('compiling with a status threshold', () => {
     expect(everything).toContain('Polished prose.')
     expect(everything).toContain('Rough prose.')
     expect(everything).toContain('All rough')
+  })
+})
+
+describe('scene titles in the Markdown export', () => {
+  const m = buildManuscript({ chapters, events, sceneTextByEvent: texts })
+
+  it('puts each scene under its own ## title, with no break between', () => {
+    const md = compileManuscript(m, 'markdown', { sceneTitles: true, onlyWritten: false })
+    expect(md).toBe([
+      '# Ch. 1 — A Beginning', '## First scene', 'The sun rose over the hills.', '## Second scene', 'She packed her bags.',
+    ].join('\n\n') + '\n\n\n' + [
+      '# Ch. 2 — The Road', '## On the road', 'The road was long.', '## Empty scene',
+    ].join('\n\n'))
+    // A scene with no prose is its heading alone, not a placeholder that would come back as prose.
+    expect(md).not.toContain('[No prose yet]')
+    // Paired: without the option, the break and the placeholder, as before.
+    const plain = compileManuscript(m, 'markdown', { onlyWritten: false })
+    expect(plain).toContain('* * *')
+    expect(plain).toContain('[No prose yet]')
+    expect(plain).not.toContain('## First scene')
+  })
+
+  it('is Markdown’s only: plain text and HTML keep the break', () => {
+    expect(compileManuscript(m, 'text', { sceneTitles: true })).not.toContain('First scene')
+    expect(compileManuscript(m, 'html', { sceneTitles: true })).not.toContain('First scene')
+  })
+
+  it('comes back from an import as the same chapters and scenes', () => {
+    const back = parseManuscript(compileManuscript(m, 'markdown', { sceneTitles: true, onlyWritten: false }))
+    expect(back.title).toBeNull()
+    expect(back.chapters).toEqual([
+      { title: 'A Beginning', scenes: [
+        { title: 'First scene', text: 'The sun rose over the hills.' },
+        { title: 'Second scene', text: 'She packed her bags.' },
+      ] },
+      { title: 'The Road', scenes: [
+        { title: 'On the road', text: 'The road was long.' },
+        { title: 'Empty scene', text: '' },
+      ] },
+    ])
+  })
+
+  it('a one-chapter book comes back as one chapter, not as a book title', () => {
+    const one = buildManuscript({ chapters: [chapter('c1', 1, 'Alone')], events: [event('e1', 'c1', 0, 'Only')], sceneTextByEvent: texts })
+    const back = parseManuscript(compileManuscript(one, 'markdown', { sceneTitles: true }))
+    expect(back.title).toBeNull()
+    expect(back.chapters).toEqual([{ title: 'Alone', scenes: [{ title: 'Only', text: 'The sun rose over the hills.' }] }])
   })
 })
