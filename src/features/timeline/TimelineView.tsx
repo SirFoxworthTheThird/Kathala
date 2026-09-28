@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useEffect, lazy, Suspense } from 'react'
 import { BlockingReason } from '@/components/BlockingReason'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter, LayoutList, FileText, BookOpenText, Replace, Download } from 'lucide-react'
 import { useTimelines, useChapters, useChapter, useEvents, useTimelineEvents, useWorldChapters, useWorldEvents, createTimeline, updateTimeline, deleteTimeline } from '@/db/hooks/useTimeline'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
@@ -230,6 +230,18 @@ export default function TimelineView() {
     writer's alone; Read is also the reader's, the book they are reading.
   */
   const [layout, setLayout] = useState<'cards' | 'page' | 'read'>('cards')
+  /*
+    `?view=page|read|cards` asks for a layout on arrival — what /manuscript
+    lands on. Taken once and then dropped from the address, so the layout is
+    the writer's own from there and a later navigation does not reapply it.
+  */
+  const [params, setParams] = useSearchParams()
+  const askedView = params.get('view')
+  useEffect(() => {
+    if (askedView !== 'page' && askedView !== 'read' && askedView !== 'cards') return
+    setLayout(askedView)
+    setParams((p) => { p.delete('view'); return p }, { replace: true })
+  }, [askedView, setParams])
   const worldHasProse = useHasProse(worldId ?? null)
   const readingMode = useReadingMode(worldId ?? null)
   const threads = usePlotThreads(worldId ?? null)
@@ -625,7 +637,13 @@ export default function TimelineView() {
               )}
               {/* The book's own tools, where the book is on screen as a book. */}
               {(showPage || showRead) && !gate.active && (
-                <BookGoal worldId={worldId!} words={book.manuscript.totalWords} />
+                <>
+                  {/* The Manuscript's own summary line, which came with it. */}
+                  <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                    {book.manuscript.writtenScenes.toLocaleString()} of {book.manuscript.totalScenes.toLocaleString()} scenes written · {plural(book.manuscript.totalWords, 'word')}
+                  </span>
+                  <BookGoal worldId={worldId!} words={book.manuscript.totalWords} />
+                </>
               )}
             </>
           )}
