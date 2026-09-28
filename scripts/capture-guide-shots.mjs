@@ -183,7 +183,8 @@ const shots = [
   },
   {
     name: '24-manuscript', book: ILIAD, reading: false,
-    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' }),
+    // The Manuscript is the Timeline's Read layout now; ?view= asks for it on arrival.
+    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/timeline?view=read`, { waitUntil: 'load' }),
     ready: (page) => page.getByRole('heading', { name: /^Ch\. 1 —/ }),
   },
   {
@@ -265,7 +266,7 @@ const shots = [
   {
     name: '36-find-replace', book: ILIAD, reading: false,
     go: async (page, id) => {
-      await page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' })
+      await page.goto(`${BASE}/#/worlds/${id}/timeline?view=read`, { waitUntil: 'load' })
       await page.getByRole('heading', { name: /^Ch\. 1 —/ }).waitFor({ state: 'visible', timeout: 30_000 })
       await page.getByRole('button', { name: 'Find & replace' }).click()
     },
@@ -525,9 +526,8 @@ const shots = [
     name: '65-scene-standing', book: ILIAD, reading: false,
     // The X-ray gutter renders only in Reading mode, and only with prose.
     go: async (page, id) => {
-      await page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' })
+      await page.goto(`${BASE}/#/worlds/${id}/timeline?view=read`, { waitUntil: 'load' })
       await page.getByRole('heading', { name: /^Ch\. 1 —/ }).waitFor({ state: 'visible', timeout: 30_000 })
-      await page.getByRole('button', { name: 'Reading' }).click()
     },
     ready: (page) => page.getByRole('heading', { name: /^Ch\. 1 —/ }),
     settle: 2500,

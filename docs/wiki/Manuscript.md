@@ -1,28 +1,22 @@
 # Manuscript
 
-The **Manuscript** view stitches every scene's prose into one continuous document, in reading order, so you can read and export your book without leaving Kathala.
-
-Write a scene's prose on its event and it appears here automatically.
-
-The same book is on the [Timeline](Timeline#reading-the-book) too: its **Read** layout is this screen's reading view, and Export, Find & replace and the word goals are there on Page and Read.
+**The manuscript is the Timeline's.** Every scene's prose, stitched into one book in reading order, is the Timeline's **Page** layout when you are writing it and its **Read** layout when you are reading it — see [Writing on one page](Timeline#writing-on-one-page) and [Reading the book](Timeline#reading-the-book). The **Manuscript** link in the navigation opens the Timeline on Page; in [reading mode](Reading-Mode) it is **Read**, and opens it on Read. An old link or bookmark to the Manuscript lands in the same place.
 
 ---
 
-## Draft vs. Reading
+## Page and Read
 
-| Mode | Shows |
+| Layout | Shows |
 |---|---|
-| **Draft** | Per-scene and per-chapter word counts, scene labels, and links back to each event |
-| **Reading** | The scaffolding hidden, for a clean read-through of only the written scenes |
-
-Empty scenes are flagged with a *"write this scene"* link, so the manuscript doubles as a checklist of what is left to draft.
+| **Page** | Every scene's title with its prose under it — a scene still to write is a heading with nothing beneath it yet, so the page doubles as the list of what is left, and you write it there |
+| **Read** | The scaffolding hidden, for a clean read-through of the written scenes |
 
 ---
 
 ## Word goals
 
-- Set a **target for the whole manuscript** in the header (it also drives the burndown on the [Dashboard](Dashboard)).
-- Set a **per-chapter goal** in Draft mode. Per-chapter goals are saved with the chapter.
+- Set a **target for the whole book** in the header on Page and Read (it also drives the burndown on the [Dashboard](Dashboard)). Beside it the header says how many scenes are written and how many words there are.
+- Set a **per-chapter goal** in the open chapter's panel. Per-chapter goals are saved with the chapter.
 
 A progress bar tracks words against each.
 
@@ -30,7 +24,7 @@ A progress bar tracks words against each.
 
 ## Export
 
-Download or copy the manuscript as **Markdown**, **HTML**, or **plain text** — or compile a finished book file:
+**Export**, in the header on Page and Read, downloads or copies the manuscript as **Markdown**, **HTML**, or **plain text** — or compile a finished book file:
 
 | Format | What you get |
 |---|---|
