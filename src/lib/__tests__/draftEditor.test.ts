@@ -7,6 +7,7 @@ import {
 } from '@/lib/draftEditor'
 import type { DraftChapter } from '@/lib/draftDocument'
 import { splitProse } from '@/lib/sceneStructure'
+import { proseStart } from '@/lib/draftDocument'
 
 const book: DraftChapter[] = [
   { id: 'c1', title: 'Arrival', scenes: [
@@ -377,4 +378,15 @@ describe('the page after a split or join shows what the records will hold', () =
     expect(closed.doc.toString()).toBe('# A\n\n## One\n\nWords.')
     expect(joinedProse(r.state, 'a', from)).toBe('Words.')
   })
+})
+
+it('a split at the very end of the book leaves a line to write the new scene on', () => {
+  const s0 = draftState([{ id: 'c', title: 'A', scenes: [{ id: 's', title: 'Night', text: 'First.' }] }])
+  const end = s0.doc.length
+  const typed = type(s0, end, '\n## Dawn')
+  const linePos = typed.doc.lineAt(end + 1).from
+  const after = typed.update(splitSpec(typed, linePos, 'n')).state
+  expect(after.doc.toString()).toBe('# A\n\n## Night\n\nFirst.\n\n## Dawn\n\n')
+  expect(texts(after)).toMatchObject({ s: 'First.', n: '' })
+  expect(proseStart(after.doc, after.field(headingsField), 2)).toBe(after.doc.length)
 })

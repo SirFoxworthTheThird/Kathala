@@ -245,9 +245,9 @@ function whitespaceAround(state: EditorState, pos: number, from: number, to: num
 }
 
 /**
- * Make the typed heading on the line at `pos` a heading, for the scene `id`:
- * one blank line either side of it — or none above, where it opens its scene's
- * prose — which is how the records will read back once the split is written.
+ * Make the typed heading on the line at `pos` a heading, for the scene `id`,
+ * with one blank line either side of it: how the page composes a scene
+ * heading, so the two scenes read back as the split writes them.
  */
 export function splitSpec(state: EditorState, pos: number, id: string): TransactionSpec {
   const headings = state.field(headingsField)
@@ -257,10 +257,10 @@ export function splitSpec(state: EditorState, pos: number, id: string): Transact
   const end = headings[i + 1]?.pos ?? state.doc.length
   const [lo] = whitespaceAround(state, line.from, afterTitle, line.from)
   const [, hi] = whitespaceAround(state, line.to, line.to, end)
-  const tail = hi < end || headings[i + 1] ? '\n\n' : ''
   const changes = state.changes([
     { from: lo, to: line.from, insert: '\n\n' },
-    { from: line.to, to: hi, insert: tail },
+    // A blank line under it even at the end of the book, to write the new scene on.
+    { from: line.to, to: hi, insert: '\n\n' },
   ])
   return {
     changes,
