@@ -76,9 +76,13 @@ export function FocusMode({ worldId, eventId, title, header, initialText, onExit
     saveTimer.current = window.setTimeout(() => { setSceneText(worldId, eventId, next) }, AUTOSAVE_MS)
   }
   /*
-    Set once the prose has been written for good before a restructuring: a
-    split reads the scene's prose from the store, and a flush on the way out
-    afterwards would write the whole pre-split text back over its first half.
+    Set once the prose has been written for good before a restructuring. A
+    split reads the scene's prose from the store and then writes the first half
+    back; the flush on the way out writes the whole text. Today the flush starts
+    first and the split's write lands after it — a mutant dropping this guard
+    passed — so this is not fixing an overwrite seen, it is taking away the one
+    ordering it would depend on: nothing is written on the way out that a split
+    might have to land after.
   */
   const flushed = useRef(false)
   useEffect(() => () => {
