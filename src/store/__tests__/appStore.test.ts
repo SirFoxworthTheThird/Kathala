@@ -531,3 +531,25 @@ describe('seedReadingPosition — what a newly arrived world may overrule', () =
     expect(useAppStore.getState().eventByWorld.w1).toBe('ev-40')
   })
 })
+
+describe('the Timeline layout, per world', () => {
+  it('is remembered for each world on its own', () => {
+    useAppStore.setState({ layoutByWorld: {} })
+    useAppStore.getState().setTimelineLayout('dracula', 'read')
+    useAppStore.getState().setTimelineLayout('my-novel', 'page')
+    expect(useAppStore.getState().layoutByWorld).toEqual({ dracula: 'read', 'my-novel': 'page' })
+    useAppStore.getState().setTimelineLayout('dracula', 'cards')
+    expect(useAppStore.getState().layoutByWorld.dracula).toBe('cards')
+    expect(useAppStore.getState().layoutByWorld['my-novel']).toBe('page')
+  })
+
+  it('is persisted, and a stored value this build does not know is dropped rather than trusted', async () => {
+    const { coerceLayouts } = await import('@/store')
+    expect(coerceLayouts({ a: 'read', b: 'draft', c: 42, d: 'page' })).toEqual({ a: 'read', d: 'page' })
+    expect(coerceLayouts(undefined)).toEqual({})
+    expect(coerceLayouts('read')).toEqual({})
+    useAppStore.getState().setTimelineLayout('dracula', 'read')
+    const stored = JSON.parse(localStorage.getItem('kathala-ui') ?? '{}')
+    expect(stored.state.layoutByWorld.dracula).toBe('read')
+  })
+})

@@ -73,15 +73,16 @@ test.describe('A world with no prose', () => {
 
   test('X-8: Manuscript says what to do, and its tools are disabled not broken', async ({ page }) => {
     const worldId = await world(page)
+    // The Manuscript lands its author on the Timeline's Page; the book, to read,
+    // is Read beside it — and that is where an empty one explains itself.
     await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await settleNav(page)
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 30_000 })
+    await page.getByRole('group', { name: 'Timeline layout' }).getByRole('button', { name: 'Read', exact: true }).click()
 
-    // The one screen the finding is right about is blank — and it explains
-    // itself rather than looking like a failure.
-    //
-    // `exact`, because a *written* manuscript carries a per-scene button reading
-    // "No prose yet — write this scene" for every scene still empty. A loose
-    // match here passes in both states and asserts nothing.
+    // The one view the finding is right about is blank — and it explains
+    // itself rather than looking like a failure. `exact`, so the words are the
+    // empty state's own and not a match inside other text.
     const emptyState = page.getByText('No prose yet', { exact: true })
     await expect(emptyState).toBeVisible({ timeout: 30_000 })
 
@@ -109,11 +110,9 @@ test.describe('A world with no prose', () => {
     }, worldId)
 
     await expect(emptyState).toHaveCount(0, { timeout: 15_000 })
-    // …while the per-scene prompt appears for the scenes still unwritten, which
-    // is what makes the assertion above about the empty state rather than about
-    // the words "No prose yet" being anywhere on the page.
-    await expect(page.getByRole('button', { name: /No prose yet — write this scene/ }).first())
-      .toBeVisible()
+    // …because the book is there instead, which is what makes the assertion
+    // above about the empty state rather than about a page that went blank.
+    await expect(page.locator('[data-book-scroller]').getByText('Rain.', { exact: true })).toBeVisible()
     for (const name of ['Find & Replace', 'Export']) {
       await expect(page.getByRole('button', { name }).first()).toBeEnabled()
     }

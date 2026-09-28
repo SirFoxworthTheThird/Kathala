@@ -28,19 +28,23 @@ test.describe('The writing screens', () => {
 
   test('MS-2/MS-3: no unlabelled number, and no em-dash standing in for a value', async ({ page }) => {
     const worldId = await worldFromSpec(page)
+    // The Manuscript is the Timeline's Page now, and its numbers came with it,
+    // into the header row the layouts sit in.
     await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
-    await expect(page.getByRole('heading', { name: 'Manuscript' })).toBeVisible({ timeout: 30_000 })
+    const layouts = page.getByRole('group', { name: 'Timeline layout' })
+    await expect(layouts).toBeVisible({ timeout: 30_000 })
+    const header = layouts.locator('xpath=ancestor::div[contains(@class,"border-b")][1]')
 
-    // MS-2, absence: nothing in the header is a bare number with no unit. The
-    // count pill reads as "N <title>", which works for "Characters 45" and not
-    // for "Manuscript 0".
-    const bareNumbers = await page.getByRole('main').locator('h1 ~ *, h1 + *').evaluateAll((els) =>
-      els.map((e) => (e.textContent ?? '').trim()).filter((t) => /^[\d,]+$/.test(t)),
+    // MS-2, absence: nothing in the header is a bare number with no unit, the
+    // way "Manuscript 0" once was.
+    const bareNumbers = await header.locator('*').evaluateAll((els) =>
+      els.filter((e) => e.children.length === 0)
+        .map((e) => (e.textContent ?? '').trim()).filter((t) => /^[\d,]+$/.test(t)),
     )
-    expect(bareNumbers, `unlabelled numbers beside the title: ${bareNumbers.join(', ')}`).toEqual([])
+    expect(bareNumbers, `unlabelled numbers in the header: ${bareNumbers.join(', ')}`).toEqual([])
 
-    // MS-2, presence: the numbers are still on screen, with their units.
-    await expect(page.getByText(/0 of 1 scenes written · 0 words/)).toBeVisible()
+    // MS-2, presence: the numbers are on screen, in that header, with their units.
+    await expect(header.getByText(/0 of 1 scenes written · 0 words/)).toBeVisible()
 
     // MS-3: the goal field says it has no value rather than showing a dash,
     // which in a field reads as one that failed to load.
@@ -56,15 +60,18 @@ test.describe('The writing screens', () => {
   test('MS-4: the writing instruction only reaches someone who can act on it', async ({ page }) => {
     const worldId = await worldFromSpec(page)
 
-    // Presence: a writer gets the instruction, and the job is theirs to do.
+    // Presence: a writer gets the instruction, and the job is theirs to do. It
+    // is the empty book's, on Read; the Manuscript lands a writer on Page.
     await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await page.getByRole('group', { name: 'Timeline layout' }).getByRole('button', { name: 'Read', exact: true })
+      .click({ timeout: 30_000 })
     await expect(page.getByText('No prose yet')).toBeVisible({ timeout: 30_000 })
     await expect(page.getByText(/Write prose on your scenes/)).toBeVisible()
 
     // Absence: MS-4 asks for a second version of that sentence for a reader on
     // a Library world. That reader never gets here — Manuscript is writingOnly,
-    // so a reading-mode world is redirected to its dashboard rather than served
-    // the screen. This is the evidence for withdrawing the finding, and it
+    // and a reading-mode world with no prose is redirected to its dashboard
+    // rather than served the book. This is the evidence for withdrawing the finding, and it
     // fails the moment the guard stops holding.
     await page.goto(`/#/worlds/${worldId}/settings`, { waitUntil: 'load' })
     await page.getByRole('button', { name: 'Turn on reading mode' }).click()

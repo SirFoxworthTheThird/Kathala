@@ -12,7 +12,7 @@ import { downloadLibraryBook } from './helpers/library'
  * pieces of state changing independently and cannot be made without both.
  */
 
-const scroller = (page: Page) => page.locator('div.flex-1.overflow-auto').first()
+const scroller = (page: Page) => page.locator('[data-book-scroller]')
 const contents = (page: Page) => page.getByRole('button', { name: 'Contents' })
 const chapterList = (page: Page) => page.getByRole('group', { name: 'Chapters you have read' })
 

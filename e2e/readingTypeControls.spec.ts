@@ -100,7 +100,7 @@ test('a writer drafting the same manuscript keeps the fixed setting', async ({ p
     an empty world would have no paragraphs to measure and would pass however
     the condition were written.
 
-    The draft screen is where an author judges line lengths and scene sizes, and
+    The Timeline's Page is where an author writes and judges line lengths, and
     a reader's preference silently resetting that is the author's tool changing
     under them.
   */
@@ -123,7 +123,9 @@ test('a writer drafting the same manuscript keeps the fixed setting', async ({ p
     .getByRole('link', { name: 'Manuscript', exact: true }).click()
   await settle(page)
 
-  await expect(page.locator('[data-scene-event-id]').first(), 'the same prose').toBeVisible()
+  const draft = page.getByRole('textbox', { name: 'The book, as one page' })
+  await expect(draft, 'the same book, being written').toBeVisible()
   await expect(controls(page), 'no reader controls while drafting').toHaveCount(0)
-  expect((await setIn(page)).fontSize, 'and the draft is set as it always was').toBe('15px')
+  expect(await draft.evaluate((el) => getComputedStyle(el).fontSize), 'and the page is set as it always is')
+    .toBe('18px')
 })
