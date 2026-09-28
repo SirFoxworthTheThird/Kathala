@@ -170,10 +170,11 @@ export function ChapterRow({
   const canAddAfter = !gate.active && !threadFilter && !!onGoToScene
   const [addingAtEnd, setAddingAtEnd] = useState(false)
   /*
-    A new scene at the end of the chapter. Made from the button or Enter, it
-    opens and you are in its draft — which is what the scene was made for.
-    Made by clicking somewhere else with a title typed, it is kept and left:
-    that click was going somewhere.
+    A new scene at the end of the chapter. Made with Enter, it opens and you are
+    in its draft: the writer's hands are on the keys, and the line says so.
+    Made with the line's button, or by clicking away with a title typed, it is
+    made and left closed at the end of the list — a pointer has somewhere it
+    means to go next, and opening the scene under it would be a guess.
   */
   async function commitAtEnd(title: string, byKey: boolean) {
     setAddingAtEnd(false)
@@ -613,7 +614,7 @@ function NewSceneAfter({ onCommit, onCancel, withButton = false }: {
       />
       {withButton && (
         <div className="flex items-center gap-1.5">
-          <Button size="sm" className="h-7 gap-1 text-xs" onClick={() => finish(true, true)}>
+          <Button size="sm" className="h-7 gap-1 text-xs" onClick={() => finish(true, false)}>
             <Plus className="h-3.5 w-3.5" /> Add Scene
           </Button>
           <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => finish(false, true)}>

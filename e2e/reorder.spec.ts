@@ -198,4 +198,24 @@ test.describe('adding a scene from the list', () => {
     await page.keyboard.press('Enter')
     await expect.poll(() => stored(page)).toContain('Teodora at the table, The tide-table |')
   })
+
+  test('the Add Scene button makes the scene and leaves it closed; Enter opens it', async ({ page }) => {
+    const worldId = await book(page)
+    await open(page, worldId)
+    const prose = main(page).getByRole('textbox', { name: 'Scene prose' })
+
+    await main(page).getByRole('button', { name: 'Add Scene', exact: true }).click()
+    await title(page).fill('The tide-table')
+    await main(page).getByRole('button', { name: 'Add Scene', exact: true }).click()
+    await expect.poll(() => stored(page)).toContain('Teodora at the table, The tide-table |')
+    // Made, and not opened: no draft on the page.
+    await expect(main(page).getByRole('button', { name: 'The tide-table', exact: true })).toBeVisible()
+    await expect(prose).toHaveCount(0)
+
+    // Presence, from the same line: Enter does open the one it makes.
+    await main(page).getByRole('button', { name: 'Add Scene', exact: true }).click()
+    await title(page).fill('The ledger')
+    await page.keyboard.press('Enter')
+    await expect(prose).toHaveCount(1)
+  })
 })
