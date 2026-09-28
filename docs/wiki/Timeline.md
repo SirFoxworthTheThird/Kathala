@@ -112,7 +112,7 @@ Scenes move earlier or later with the ↑ ↓ on their cards; dragging is the [C
 - **Ctrl+F** (⌘F) searches the whole book. The page only draws what is on screen, so the browser's own find cannot see the rest.
 - **Split a scene by typing `## ` and a title on a line of its own.** When you leave the line, the prose below it becomes a new scene with that title — the same act as **Split** on a card. Nothing happens while you are still typing the line.
 - **Join a scene to the one before it by deleting its heading's whole line** — the same act as **Join with next scene** on a card.
-- **Ctrl+Z straight after a split or join takes it back** (Ctrl+Shift+Z puts it back); otherwise Ctrl+Z takes back typing since the last one. The top bar's Undo takes back renames, splits and joins.
+- **Ctrl+Z takes back typing since the last split or join, and then the split or join itself** (Ctrl+Shift+Z puts it back). You can type on in the new scene straight away. The top bar's Undo takes back renames, splits and joins.
 - Part of a heading — its `#` marks, a line break in its title, text under a chapter heading — is refused, and so are joining a chapter's first scene and deleting a chapter heading; the line above the page says why. Chapters are made and removed on Cards or in the binder.
 - A line of prose that already started with `## ` stays prose until you edit it.
 - A change made elsewhere — another tab, or the top bar's Undo — shows on the page, and anything typed there and not yet saved is kept.

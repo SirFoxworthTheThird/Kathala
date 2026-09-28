@@ -187,12 +187,15 @@ costs, are in
    - **5a** *Done* — scenes. A line typed as `## Title` in a scene's prose
      splits the scene there once the caret leaves the line; deleting a scene
      heading's whole line joins it to the scene before. Both are the cards'
-     own acts (`splitScene`, `joinWithNext`), one step of undo, and Ctrl+Z
-     straight after one takes it back — the answer to *two undos*. The heading
-     ids needed no drop-and-restore rules here: a split or join is written to
-     the records and the page rebuilt from them, so the editor never holds a
-     heading whose record is gone. Still refused: part of a heading, the first
-     scene of a chapter, a chapter heading, two headings at once.
+     own acts (`splitScene`, `joinWithNext`), one step of undo. The page shows
+     the result at once — the typed line becomes the new scene's heading under
+     the id its record is then written with — so typing straight on is never
+     lost. The answer to *two undos*: the editor's history starts again at each
+     split or join, so Ctrl+Z takes back typing and then the act, from the
+     journal. That is also why no drop-and-restore rules were needed: the
+     editor's undo never steps back across a heading whose record has changed.
+     Still refused: part of a heading, the first scene of a chapter, a chapter
+     heading, two headings at once.
    - **5b** — chapters: `#` typed on its own line starts a chapter, and
      deleting a chapter heading joins it to the one before.
 6. **The round trip.** Markdown export writes scene titles as `##`, and import

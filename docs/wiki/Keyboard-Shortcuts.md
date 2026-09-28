@@ -62,8 +62,8 @@ The Manuscript's [Page](Timeline#writing-on-one-page) — the book as one docume
 | **Enter** on a heading | Go to the prose under it; on a chapter heading, to its first scene |
 | `## Title` on its own line, then leave the line | Split the scene there; the prose below becomes a new scene called *Title* |
 | Delete a scene heading's whole line | Join the scene to the one before it |
-| **Ctrl+Z** (⌘Z) | Straight after a split or join, take it back; otherwise take back typing on the page |
-| **Ctrl+Shift+Z** (⌘⇧Z) | Straight after that undo, put the split or join back |
+| **Ctrl+Z** (⌘Z) | Take back typing since the last split or join, then the split or join itself |
+| **Ctrl+Shift+Z** (⌘⇧Z) | Put back what Ctrl+Z took back |
 
 ### In the binder
 

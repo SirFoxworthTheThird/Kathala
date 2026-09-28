@@ -978,10 +978,11 @@ the page; retitle a chapter or scene by editing its heading.
   it.** Select the line and delete it, or select from one scene's prose into
   the next: the two become one, with everything recorded at the second moved
   to the first, as **Join with next scene** does on a card.
-- **Ctrl+Z straight after a split or a join takes it back**, whole, and
-  Ctrl+Shift+Z puts it back. Otherwise Ctrl+Z inside the page takes back your
-  typing since the last split or join. The top bar's Undo takes back a renamed
-  chapter or scene, a split and a join, as it does everywhere else.
+- **Ctrl+Z inside the page takes back your typing since the last split or
+  join, and then the split or join itself**, whole; Ctrl+Shift+Z puts it back.
+  The page shows a split or join the moment you make it, so you can go straight
+  on typing in the new scene. The top bar's Undo takes back a renamed chapter or
+  scene, a split and a join, as it does everywhere else.
 - **Part of a heading is refused**, with the reason above the page: its `#`
   marks, a line break in its title, or text under a chapter heading. So is
   joining the first scene of a chapter, which has no scene before it, and
