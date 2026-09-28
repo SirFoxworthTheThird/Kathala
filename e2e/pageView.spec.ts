@@ -435,6 +435,12 @@ test.describe('the Page view', () => {
     // Prose has no place under a chapter heading, and the page says what does.
     await page.keyboard.type('H')
     await expect(page.getByRole('status')).toContainText('only a heading can go')
+    // A mark that never became a heading is taken away when it is left, with the same reason.
+    await page.keyboard.type('#')
+    await expect(page.locator('.cm-line').filter({ hasText: /^#$/ })).toHaveCount(1)
+    await page.keyboard.press('Enter')
+    await expect(page.locator('.cm-line').filter({ hasText: /^#$/ })).toHaveCount(0)
+    await expect(page.getByRole('status')).toContainText('only a heading can go')
     await page.keyboard.type('## After')
     await page.keyboard.press('Enter')
     await expect.poll(() => outline(page), { timeout: 10_000 }).toEqual([...BOOK, 'Coda: After'])
