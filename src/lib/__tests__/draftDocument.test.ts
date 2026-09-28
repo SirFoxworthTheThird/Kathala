@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { composeDraft, readDraft, proseStart, lineEndAt, HEADING_PREFIX, type DraftChapter } from '@/lib/draftDocument'
+import { composeDraft, readDraft, proseStart, lineEndAt, draftBook, HEADING_PREFIX, type DraftChapter } from '@/lib/draftDocument'
+import type { Chapter, SceneText, WorldEvent } from '@/types'
 
 const book: DraftChapter[] = [
   { id: 'c1', title: 'The Arrival', scenes: [
@@ -117,5 +118,32 @@ describe('proseStart', () => {
     expect(proseStart(last.text, last.headings, 1)).toBeNull()
     const typed = last.text + '\n\n'
     expect(proseStart(typed, last.headings, 1)).toBe(typed.length)
+  })
+})
+
+describe('draftBook', () => {
+  const chapters = [
+    { id: 'c2', number: 2, title: 'Two' }, { id: 'c1', number: 1, title: 'One' },
+  ] as Chapter[]
+  const events = [
+    { id: 'b', chapterId: 'c1', title: 'Second', sortOrder: 2 },
+    { id: 'a', chapterId: 'c1', title: 'First', sortOrder: 1 },
+    { id: 'z', chapterId: 'c2', title: 'Only', sortOrder: 1 },
+  ] as WorldEvent[]
+  const texts = [{ eventId: 'a', text: 'Prose of the first.' }] as SceneText[]
+
+  it('orders chapters by number and scenes by position, with each scene’s prose', () => {
+    expect(draftBook(chapters, events, texts)).toEqual([
+      { id: 'c1', title: 'One', scenes: [{ id: 'a', title: 'First', text: 'Prose of the first.' }, { id: 'b', title: 'Second', text: '' }] },
+      { id: 'c2', title: 'Two', scenes: [{ id: 'z', title: 'Only', text: '' }] },
+    ])
+  })
+
+  it('is nothing at all until every query has answered — never a book with its prose missing', () => {
+    expect(draftBook(chapters, events, undefined)).toBeNull()
+    expect(draftBook(chapters, undefined, texts)).toBeNull()
+    expect(draftBook(undefined, events, texts)).toBeNull()
+    // An answer of "no prose yet" is an answer.
+    expect(draftBook(chapters, events, [])![0].scenes[0].text).toBe('')
   })
 })

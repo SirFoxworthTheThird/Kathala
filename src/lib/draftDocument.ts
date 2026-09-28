@@ -20,6 +20,9 @@
  * decided by the records, and the editor carries the positions.
  */
 
+import { compareByPosition } from '@/lib/fractionalOrder'
+import type { Chapter, SceneText, WorldEvent } from '@/types'
+
 export type HeadingKind = 'chapter' | 'scene'
 
 export const HEADING_PREFIX: Record<HeadingKind, string> = { chapter: '# ', scene: '## ' }
@@ -132,4 +135,33 @@ export function proseStart(input: DraftSource | string, headings: readonly Draft
   if (two === '\n\n') return lineEnd + 2
   if (two.startsWith('\n')) return lineEnd + 1
   return null
+}
+
+/**
+ * One timeline's records as the book to compose — or `null` until all three
+ * have answered. A book composed before its prose arrived would show every
+ * scene empty, and the first keystroke in one would save over the prose it
+ * really has; so a query still loading is `undefined`, and nothing is built.
+ */
+export function draftBook(
+  chapters: Chapter[] | undefined,
+  events: WorldEvent[] | undefined,
+  texts: SceneText[] | undefined,
+): DraftChapter[] | null {
+  if (!chapters || !events || !texts) return null
+  const prose = new Map(texts.map((t) => [t.eventId, t.text]))
+  const byChapter = new Map<string, WorldEvent[]>()
+  for (const e of events) {
+    const list = byChapter.get(e.chapterId) ?? []
+    list.push(e)
+    byChapter.set(e.chapterId, list)
+  }
+  return [...chapters]
+    .sort((a, b) => a.number - b.number)
+    .map((c) => ({
+      id: c.id,
+      title: c.title,
+      scenes: [...(byChapter.get(c.id) ?? [])].sort(compareByPosition)
+        .map((e) => ({ id: e.id, title: e.title, text: prose.get(e.id) ?? '' })),
+    }))
 }

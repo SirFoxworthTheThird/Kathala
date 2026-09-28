@@ -7,13 +7,11 @@ import { search, searchKeymap } from '@codemirror/search'
 import { db } from '@/db/database'
 import { setSceneText } from '@/db/hooks/useManuscript'
 import { updateChapter, updateEvent } from '@/db/hooks/useTimeline'
-import { compareByPosition } from '@/lib/fractionalOrder'
-import { HEADING_PREFIX, proseStart, lineEndAt, type DraftChapter } from '@/lib/draftDocument'
+import { HEADING_PREFIX, proseStart, lineEndAt, draftBook } from '@/lib/draftDocument'
 import { draftState, draftSegments, enterOnHeading, headingsField, refused, type Refusal } from '@/lib/draftEditor'
 import {
   storedValues, shownValues, planSync, bookToShow, pendingWrites, afterWrite, type Held,
 } from '@/lib/draftSync'
-import type { Chapter, SceneText, WorldEvent } from '@/types'
 
 /*
   The Timeline's Page view: the whole of one timeline as a single document —
@@ -35,24 +33,6 @@ const REFUSALS: Record<Refusal, string> = {
   'title-break': 'A title is one line. Enter at the end of a title goes to its prose.',
   'chapter-text': 'Prose belongs to a scene. Write it under a scene heading.',
   'before-first': 'The book starts at its first chapter heading.',
-}
-
-function buildBook(chapters: Chapter[], events: WorldEvent[], texts: SceneText[]): DraftChapter[] {
-  const prose = new Map(texts.map((t) => [t.eventId, t.text]))
-  const byChapter = new Map<string, WorldEvent[]>()
-  for (const e of events) {
-    const list = byChapter.get(e.chapterId) ?? []
-    list.push(e)
-    byChapter.set(e.chapterId, list)
-  }
-  return [...chapters]
-    .sort((a, b) => a.number - b.number)
-    .map((c) => ({
-      id: c.id,
-      title: c.title,
-      scenes: [...(byChapter.get(c.id) ?? [])].sort(compareByPosition)
-        .map((e) => ({ id: e.id, title: e.title, text: prose.get(e.id) ?? '' })),
-    }))
 }
 
 /** Heading lines, sized; their `#` marks drawn quieter than the title. Visible part only. */
@@ -96,19 +76,14 @@ export interface PageTarget { id: string; nonce: number; focus?: boolean }
 
 export default function DraftBook({ worldId, timelineId, target }: { worldId: string; timelineId: string; target: PageTarget | null }) {
   /*
-    Its own queries rather than the Timeline's: those default to an empty list
-    while they load, and a book composed before its prose had arrived would
-    show every scene empty — and save the first keystroke in one over the
-    prose it really has. These are `undefined` until they answer, and the
-    editor waits for all three.
+    Its own queries rather than the Timeline's, which default to an empty list
+    while they load: these are `undefined` until they answer, and `draftBook`
+    waits for all three.
   */
   const chapters = useLiveQuery(() => db.chapters.where('timelineId').equals(timelineId).toArray(), [timelineId])
   const events = useLiveQuery(() => db.events.where('timelineId').equals(timelineId).toArray(), [timelineId])
   const texts = useLiveQuery(() => db.sceneTexts.where('worldId').equals(worldId).toArray(), [worldId])
-  const book = useMemo(
-    () => (chapters && events && texts ? buildBook(chapters, events, texts) : null),
-    [chapters, events, texts],
-  )
+  const book = useMemo(() => draftBook(chapters, events, texts), [chapters, events, texts])
 
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)

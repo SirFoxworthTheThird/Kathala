@@ -58,21 +58,18 @@ function refusalOf(tr: Transaction): Refusal | null {
   let why: Refusal | null = null
   tr.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
     if (why) return
-    if (fromA < headings[0].pos) { why = 'before-first'; return }
-
     // Deleting: nothing may touch a heading's line break before it, its `#`
-    // marks, its line break after it, or anything between a chapter heading
-    // and the next heading — there is no prose there to delete.
+    // marks, or its line break after it. Under a chapter heading that is all
+    // there is — the break after it and the break before the scene heading
+    // that follows — since nothing may be typed there.
     if (toA > fromA) {
       for (let i = Math.max(0, headingAt(headings, fromA)); i < headings.length && headings[i].pos - 1 < toA; i++) {
         const h = headings[i]
         const lineEnd = lineEndAt(doc, h.pos)
-        const next = headings[i + 1]?.pos ?? doc.length
         const guarded: Array<[number, number]> = [
           [Math.max(0, h.pos - 1), h.pos + HEADING_PREFIX[h.kind].length],
           [lineEnd, Math.min(doc.length, lineEnd + 1)],
         ]
-        if (h.kind === 'chapter') guarded.push([lineEnd, next])
         if (guarded.some(([from, to]) => to > from && fromA < to && toA > from)) { why = 'heading'; return }
       }
     }
