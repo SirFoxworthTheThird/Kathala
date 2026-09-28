@@ -141,7 +141,19 @@ export function ManuscriptBook({ worldId, timelineId, book, readingMode, scrollR
     "stay" for the scene the cursor is already on.
   */
   const restoredRef = useRef(false)
-  useEffect(() => { restoredRef.current = false }, [worldId])
+  /*
+    Whether the page is where the reader's place says, yet — and so whether
+    where it is now is worth remembering. Until then a spot read off it is the
+    top of the book, not the reader's, and writing that would put them back at
+    the start next time. It happened on the Timeline's Read: the tracking
+    effect below re-runs as the book arrives — chapters, then scenes, then
+    prose — and each re-run's cleanup writes. The first ones ran while the page
+    was still at the top, and saved scene one over the reader's place in
+    chapter four. (A probe counted one mount of the book on the way back, so it
+    was not a remount.)
+  */
+  const settledRef = useRef(false)
+  useEffect(() => { restoredRef.current = false; settledRef.current = false }, [worldId])
   useEffect(() => {
     if (!readingMode || restoredRef.current) return
     // Not until the prose itself is in the DOM. The chapters arrive before the
@@ -166,12 +178,14 @@ export function ManuscriptBook({ worldId, timelineId, book, readingMode, scrollR
       const to = scrollFor(saved, measureScenes(root))
       if (to !== null) {
         restoredRef.current = true
-        requestAnimationFrame(() => { root.scrollTop = to })
+        requestAnimationFrame(() => { root.scrollTop = to; settledRef.current = true })
         return
       }
     }
 
-    if (!activeEventId) return
+    // No place to go back to — every chapter shown, and no spot — so the top of
+    // the book is where the reader is.
+    if (!activeEventId) { settledRef.current = true; return }
     const target = root.querySelector<HTMLElement>(`[data-scene-event-id="${CSS.escape(activeEventId)}"]`)
     if (!target) return
     restoredRef.current = true
@@ -179,6 +193,7 @@ export function ManuscriptBook({ worldId, timelineId, book, readingMode, scrollR
     // already was, not a movement the reader made.
     requestAnimationFrame(() => {
       target.scrollIntoView({ block: 'start', behavior: 'auto' })
+      settledRef.current = true
     })
   }, [readingMode, activeEventId, manuscript, worldId, scrollRef])
 
@@ -249,7 +264,7 @@ export function ManuscriptBook({ worldId, timelineId, book, readingMode, scrollR
     */
     const write = () => {
       const spot = spotRef.current
-      if (!spot) return
+      if (!spot || !settledRef.current) return
       const stamped: ReadingSpot = { ...spot, cursorAt: useAppStore.getState().activeEventId }
       try { localStorage.setItem(spotKey(worldId), JSON.stringify(stamped)) } catch { /* private window */ }
     }
