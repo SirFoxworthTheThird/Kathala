@@ -41,7 +41,7 @@ The **Help** panel (the **?** icon, top-right) lists these in the app too, along
 | **Shift+click** an event checkbox | Select a range |
 | **↑ / ↓** on a scene card | Move the scene earlier or later — out of its chapter at either edge |
 
-Chapter rows and scene cards cannot be dragged on the Timeline; dragging scenes is the [Corkboard](Corkboard)'s.
+Chapters and scenes are dragged in the **binder** (below), not in the list; the [Corkboard](Corkboard) drags scenes between chapter columns.
 
 ### In a scene's draft
 
@@ -60,6 +60,8 @@ Chapter rows and scene cards cannot be dragged on the Timeline; dragging scenes 
 | Space | Go to that scene or chapter |
 | Enter | A new scene on the line below |
 | Delete | Remove the scene (Undo brings it back) |
+| **Alt+↑ / ↓** | Move the chapter or scene one place |
+| Drag a row | Move a chapter before or after another, a scene between scenes or onto a chapter |
 
 ---
 
