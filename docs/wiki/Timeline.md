@@ -21,7 +21,7 @@ A **pacing curve** across the top plots dramatic tension chapter by chapter once
 **The Timeline is one page.** The [binder](#the-binder) runs down the left, and beside it is the **book** — every chapter, with the orders, filters and actions below. There is no separate chapter screen: opening a chapter opens it in the book, with its panel beside the list (see [Opening a chapter](#opening-a-chapter)). **Whole book** at the top of the binder, or the ✕ on the panel, closes it.
 
 - **Narrative vs. Chronological** — toggle between reading order and in-world order (useful with flashbacks or in-world dates).
-- **Cards vs. Page** — Cards is the book as scene cards; **Page** is the same book as one document to write in. See [Writing on one page](#writing-on-one-page).
+- **Cards, Page and Read** — Cards is the book as scene cards; **Page** is the same book as one document to write in (see [Writing on one page](#writing-on-one-page)); **Read** is the book set for reading (see [Reading the book](#reading-the-book)).
 - **Add Chapter**, **New Timeline**, and **Generate with AI** live in the header.
 - **Every scene is a card.** Closed, it shows its title, status, tension, cast and setting; open it and it is the whole scene — the draft, the description, the cast, the setting — edited in place. **View from here** inside it moves the time cursor to that exact moment. Opening a card leaves the cursor where it is, so reading down the list does not keep changing every other screen.
 - Each chapter row, and each scene card outside the open chapter, has an **open** button that opens its chapter.
@@ -116,6 +116,17 @@ Scenes move earlier or later with the ↑ ↓ on their cards; dragging is the [C
 - A change made elsewhere — another tab, or the top bar's Undo — shows on the page, and anything typed there and not yet saved is kept.
 - Page is offered on one timeline in narrative order, and not on *All timelines*, in Chronological order, or in reading mode.
 - Not on the page yet: the scene header line, `@` mentions, the scene keys and Focus mode — open the scene's card for those.
+
+---
+
+## Reading the book
+
+**Read**, beside Cards and Page, sets the timeline's prose as a book — the [Manuscript](Manuscript)'s reading view, with **In this scene** in the margin.
+
+- **Export**, **Find & replace** and the book's **word goal** are in the header on Page and Read — the Manuscript's own, and the same goal whichever screen sets it. Cards does not carry them.
+- The open chapter's panel has the chapter's **word goal** and its progress.
+- The [binder](#the-binder) brings a chapter or scene to the top of the book.
+- **In reading mode, Read is the book you are reading**: your place moves with you as you read on. Cards stays beside it; Page and the author's tools do not. A world with no prose offers no Read.
 
 ---
 

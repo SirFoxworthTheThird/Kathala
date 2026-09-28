@@ -1,10 +1,13 @@
 import { useState, useRef, useMemo, useEffect, lazy, Suspense } from 'react'
 import { BlockingReason } from '@/components/BlockingReason'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter, LayoutList, FileText } from 'lucide-react'
+import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter, LayoutList, FileText, BookOpenText, Replace, Download } from 'lucide-react'
 import { useTimelines, useChapters, useChapter, useEvents, useTimelineEvents, useWorldChapters, useWorldEvents, createTimeline, updateTimeline, deleteTimeline } from '@/db/hooks/useTimeline'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
-import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
+import { useWorldSceneTexts, useHasProse } from '@/db/hooks/useManuscript'
+import { useReadingMode } from '@/db/hooks/useReading'
+import { useBlobUrl } from '@/db/hooks/useBlobs'
+import { useManuscriptBook, ManuscriptBook, ReaderRow, BookGoal, ExportManuscriptDialog, FindReplaceDialog } from '@/features/manuscript'
 import { buildCombinedSequence, type CombinedOrder, type CombinedRow } from '@/lib/combinedTimeline'
 import { chaptersWithThread } from '@/lib/plotThreads'
 import { threadStrip } from '@/lib/threadStrip'
@@ -222,11 +225,13 @@ export default function TimelineView() {
   const [viewMode, setViewMode] = useState<'narrative' | 'chronological'>('narrative')
   /*
     Cards is the book as a list of scene cards; Page is the same book as one
-    document to write in. The writer's instrument only — a reader has the Read
-    screen — and only where the book has one order: a single timeline, in
-    reading order.
+    document to write in; Read is the same book set for reading. Only where the
+    book has one order — a single timeline, in reading order. Page is the
+    writer's alone; Read is also the reader's, the book they are reading.
   */
-  const [layout, setLayout] = useState<'cards' | 'page'>('cards')
+  const [layout, setLayout] = useState<'cards' | 'page' | 'read'>('cards')
+  const worldHasProse = useHasProse(worldId ?? null)
+  const readingMode = useReadingMode(worldId ?? null)
   const threads = usePlotThreads(worldId ?? null)
   const [threadFilter, setThreadFilter] = useState<string | null>(null)
   const [threadsExpanded, setThreadsExpanded] = useState(false)
@@ -329,8 +334,30 @@ export default function TimelineView() {
   })
 
   const closeChapter = () => navigate(`/worlds/${worldId}/timeline`)
-  const pageOffered = !gate.active && !isAll && viewMode === 'narrative' && chapters.length > 0
-  const showPage = layout === 'page' && pageOffered && !!currentTimelineId
+  const oneOrder = !isAll && viewMode === 'narrative' && chapters.length > 0 && !!currentTimelineId
+  const pageOffered = oneOrder && !gate.active
+  /*
+    A reader is offered the book only when there is a book: the router keeps
+    them off the Manuscript screen for a world with no prose, and the empty
+    page's advice — write some — is not theirs to take. Waits for the answer
+    rather than guessing it (see useHasProse).
+  */
+  const readOffered = oneOrder && (!gate.active || worldHasProse === true)
+  const showPage = layout === 'page' && pageOffered
+  const showRead = layout === 'read' && readOffered
+  /*
+    The book compiled for reading, for Read and for the author's tools on Page:
+    export takes the compiled manuscript. Nothing is compiled on Cards — on a
+    long book the compile is the one step that costs anything.
+  */
+  const book = useManuscriptBook(
+    showPage || showRead ? worldId ?? null : null,
+    showPage || showRead ? currentTimelineId : null,
+  )
+  const readScrollRef = useRef<HTMLDivElement>(null)
+  const [exportOpen, setExportOpen] = useState(false)
+  const [findOpen, setFindOpen] = useState(false)
+  const coverUrl = useBlobUrl(world?.coverImageId ?? null)
 
   /*
     Going to a scene from inside another, by key: the same arrival as the
@@ -361,8 +388,9 @@ export default function TimelineView() {
     goToScene(target, dir === 'next' ? 'start' : 'end', opts)
     return true
   }
+  const openWords = openEvents.reduce((n, e) => n + (wordsByEvent.get(e.id) ?? 0), 0)
   const panel = openChapter && openChapter.worldId === worldId
-    ? <ChapterPanel key={openChapter.id} chapter={openChapter} onClose={closeChapter} />
+    ? <ChapterPanel key={openChapter.id} chapter={openChapter} onClose={closeChapter} words={openWords} />
     : null
   /** Under the row, where there is no room beside the list. */
   const panelInline = panel && !wide
@@ -562,7 +590,7 @@ export default function TimelineView() {
                   <Clock className="h-3.5 w-3.5" /> Chronological
                 </button>
               </div>
-              {pageOffered && (
+              {readOffered && (
                 <div className="flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-xs" role="group" aria-label="Timeline layout">
                   <button
                     onClick={() => setLayout('cards')}
@@ -573,21 +601,46 @@ export default function TimelineView() {
                   >
                     <LayoutList className="h-3.5 w-3.5" /> Cards
                   </button>
+                  {pageOffered && (
+                    <button
+                      onClick={() => setLayout('page')}
+                      aria-pressed={layout === 'page'}
+                      className={cn('flex items-center gap-1 border-l border-[hsl(var(--border))] px-2 py-1 transition-colors',
+                        layout === 'page' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
+                      title="The whole book as one page to write in"
+                    >
+                      <FileText className="h-3.5 w-3.5" /> Page
+                    </button>
+                  )}
                   <button
-                    onClick={() => setLayout('page')}
-                    aria-pressed={layout === 'page'}
+                    onClick={() => setLayout('read')}
+                    aria-pressed={layout === 'read'}
                     className={cn('flex items-center gap-1 border-l border-[hsl(var(--border))] px-2 py-1 transition-colors',
-                      layout === 'page' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
-                    title="The whole book as one page to write in"
+                      layout === 'read' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
+                    title="The book set for reading"
                   >
-                    <FileText className="h-3.5 w-3.5" /> Page
+                    <BookOpenText className="h-3.5 w-3.5" /> Read
                   </button>
                 </div>
+              )}
+              {/* The book's own tools, where the book is on screen as a book. */}
+              {(showPage || showRead) && !gate.active && (
+                <BookGoal worldId={worldId!} words={book.manuscript.totalWords} />
               )}
             </>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {(showPage || showRead) && !gate.active && (
+            <>
+              <Button size="sm" variant="outline" onClick={() => setFindOpen(true)} disabled={book.manuscript.writtenScenes === 0}>
+                <Replace className="h-4 w-4" /> Find &amp; replace
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setExportOpen(true)} disabled={book.manuscript.writtenScenes === 0}>
+                <Download className="h-4 w-4" /> Export
+              </Button>
+            </>
+          )}
           {!gate.active && timelines.length >= 2 && (
             <Button size="sm" variant="outline" onClick={() => setRelPanelOpen(true)}>
               <Link2 className="h-4 w-4" /> Link Timelines
@@ -624,7 +677,25 @@ export default function TimelineView() {
 
       <div className="flex min-h-0 flex-1">
       <div id="timeline-panel" role="tabpanel" className="flex min-w-0 flex-1 flex-col">
-      {showPage ? (
+      {showRead ? (
+        <>
+          {panelInline && <div className="px-4 pt-3">{panelInline}</div>}
+          {readingMode && book.manuscript.writtenScenes > 0 && (
+            <div className="border-b border-[hsl(var(--border))] px-4 py-2">
+              <ReaderRow book={book} scrollRef={readScrollRef} />
+            </div>
+          )}
+          <ManuscriptBook
+            worldId={worldId!}
+            timelineId={currentTimelineId}
+            book={book}
+            mode="reading"
+            readingMode={readingMode}
+            scrollRef={readScrollRef}
+            target={pageTarget}
+          />
+        </>
+      ) : showPage ? (
         <>
           {/* No row to put the open chapter's panel under: it leads the page. */}
           {panelInline && <div className="px-4 pt-3">{panelInline}</div>}
@@ -784,7 +855,7 @@ export default function TimelineView() {
         )}
       </div>
       )}
-      {!showPage && !gate.active && currentTimelineId && !isAll && viewMode === 'narrative' && <BulkActionToolbar timelineId={currentTimelineId} />}
+      {!showPage && !showRead && !gate.active && currentTimelineId && !isAll && viewMode === 'narrative' && <BulkActionToolbar timelineId={currentTimelineId} />}
       </div>
       {/* Rendered only where it is shown, like the binder: a hidden copy would
           still be the first match for everything that looks it up. */}
@@ -824,6 +895,18 @@ export default function TimelineView() {
           timelines={timelines}
         />
       )}
+      {(showPage || showRead) && (
+        <ExportManuscriptDialog
+          open={exportOpen}
+          onOpenChange={setExportOpen}
+          manuscript={book.manuscript}
+          title={world?.name ?? 'Manuscript'}
+          timelineName={currentTimeline?.name}
+          timelineCount={timelines.length}
+          coverUrl={coverUrl}
+        />
+      )}
+      {worldId && (showPage || showRead) && <FindReplaceDialog open={findOpen} onOpenChange={setFindOpen} worldId={worldId} />}
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(v) => { if (!v) setDeleteTarget(null) }}

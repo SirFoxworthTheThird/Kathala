@@ -155,9 +155,15 @@ costs, are in
    And the page does not yet have the scene header line, `@` mentions, the
    scene keys or Focus mode; those stay on the scene cards until they are
    brought across.
-3. **Bring the Manuscript's parts across.** Word goals, export, find and
-   replace, and the reader's page — cursor following, *In this scene*, reading
-   type. Then `/manuscript` lands on the merged screen.
+3. **Bring the Manuscript's parts across**, in two pull requests so the suite
+   stays green between them.
+   - **3a** *Done* — the Timeline gains a **Read** layout, which is the
+     Manuscript's own reading page (moved into shared pieces, not rewritten, so
+     every reading spec still covers it): in reading mode it is the reader's
+     book and follows their place. Export, Find & replace and the book's word
+     goal are on Page and Read; the chapter's goal is in its panel.
+   - **3b** — `/manuscript` lands on the merged screen, the Manuscript screen is
+     retired, and the specs that go through it move over.
 4. **The name and the routes.** Rename the screen, and move the links in the
    sixteen source files that mention `/timeline`.
 5. **Structure from text.** `##` in the middle of a scene splits it, deleting a

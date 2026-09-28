@@ -149,8 +149,13 @@ test.describe('Every visible control has an accessible name', () => {
 
     // Presence: the section this was filed against is actually on screen.
     await expect(page.getByText('Elapsed Time', { exact: true })).toBeVisible()
+    // The scene editor's two, not counting the open chapter's panel beside it,
+    // which carries the chapter's word goal — one, and named.
+    const panel = page.getByRole('region', { name: 'Chapter 1' })
+    await expect(panel.locator('input[type="number"]')).toHaveCount(1)
+    await expect(panel.getByRole('spinbutton', { name: 'Word goal for this chapter' })).toBeVisible()
     const spinners = page.locator('input[type="number"]')
-    await expect(spinners).toHaveCount(2)
+    await expect(spinners).toHaveCount(3)
 
     const readOnly = await unnamedControls(page)
     expect(readOnly.total, 'the expanded editor should render controls').toBeGreaterThanOrEqual(15)

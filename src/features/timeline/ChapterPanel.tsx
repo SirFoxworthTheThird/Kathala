@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from 'react'
+import { ChapterGoal } from '@/features/manuscript'
 import { useNavigate } from 'react-router-dom'
 import { Users, Network, StickyNote, ChevronDown, ChevronRight, Scroll, BookLock, X } from 'lucide-react'
 import { useEvents, updateChapter } from '@/db/hooks/useTimeline'
@@ -177,10 +178,12 @@ function EventSnapshotSection({
  * Keyed on the chapter by its parent, so the fields below start from the
  * chapter they are showing rather than the one before.
  */
-export function ChapterPanel({ chapter, onClose }: {
+export function ChapterPanel({ chapter, onClose, words }: {
   chapter: Chapter
   /** Back to the whole book, with no chapter open. */
   onClose: () => void
+  /** The chapter's prose so far, for its word goal. */
+  words: number
 }) {
   const worldId = chapter.worldId
   const chapterId = chapter.id
@@ -335,6 +338,8 @@ export function ChapterPanel({ chapter, onClose }: {
               onChange={(e) => handleSynopsisChange(e.target.value)}
             />
           )}
+          {/* The author's target for the chapter — the Manuscript's, here where the chapter is. */}
+          {!gate.active && <ChapterGoal chapterId={chapterId} words={words} goal={chapter.wordGoal ?? null} />}
         </div>
         {close}
       </div>

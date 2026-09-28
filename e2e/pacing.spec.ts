@@ -54,8 +54,9 @@ test.describe('Pacing curve', () => {
     // is offered as a chip instead, so open it first.
     await page.getByRole('main').getByRole('button', { name: '+ Dramatic Tension' }).click()
     await page.getByRole('button', { name: '5', exact: true }).click()
-    // Header badge reflects the rating.
-    await expect(page.getByText('5/5')).toBeVisible()
+    // Header badge reflects the rating. Scoped to it: the curve's own tooltip
+    // for the rated point says "(5/5)" too, once the curve has redrawn.
+    await expect(page.getByRole('button', { name: 'Tension: Climactic' })).toContainText('5/5')
 
     // Back on the timeline the curve now has a rated point (the hint is gone).
     await page.getByRole('link', { name: /timeline/i }).click()
