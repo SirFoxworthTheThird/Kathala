@@ -10,6 +10,13 @@ describe('sceneShortcut', () => {
     expect(sceneShortcut(key('ArrowUp', { metaKey: true, altKey: true }))).toBe('previous')
   })
 
+  it('reads Ctrl or ⌘ with Shift and Enter as a split, and nothing else with Shift', () => {
+    expect(sceneShortcut(key('Enter', { ctrlKey: true, shiftKey: true }))).toBe('split')
+    expect(sceneShortcut(key('Enter', { metaKey: true, shiftKey: true }))).toBe('split')
+    expect(sceneShortcut(key('Enter', { shiftKey: true }))).toBeNull()                        // a line break
+    expect(sceneShortcut(key('Enter', { ctrlKey: true, shiftKey: true, altKey: true }))).toBeNull()
+  })
+
   it('reads Ctrl or ⌘ with Enter as a new scene', () => {
     expect(sceneShortcut(key('Enter', { ctrlKey: true }))).toBe('new')
     expect(sceneShortcut(key('Enter', { metaKey: true }))).toBe('new')
@@ -20,7 +27,6 @@ describe('sceneShortcut', () => {
     expect(sceneShortcut(key('ArrowDown', { altKey: true }))).toBeNull()            // a Mac paragraph jump
     expect(sceneShortcut(key('ArrowDown', { ctrlKey: true }))).toBeNull()           // a Windows paragraph jump
     expect(sceneShortcut(key('ArrowDown', { ctrlKey: true, altKey: true, shiftKey: true }))).toBeNull()
-    expect(sceneShortcut(key('Enter', { ctrlKey: true, shiftKey: true }))).toBeNull()
     expect(sceneShortcut(key('Enter', { ctrlKey: true, altKey: true }))).toBeNull()
   })
 })

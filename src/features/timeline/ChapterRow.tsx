@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ChevronDown, ChevronRight, Trash2, BookOpen, BookLock, Plus, ExternalLink, Scroll, Pencil, Check, X } from 'lucide-react'
 import type { Chapter, WorldCalendar, WorldEvent } from '@/types'
 import { deleteChapter, useEvents, updateChapter, moveSceneStep, createEventAt } from '@/db/hooks/useTimeline'
+import { joinWithNext, splitScene } from '@/db/hooks/useSceneStructure'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
@@ -43,14 +44,14 @@ interface ChapterRowProps {
    */
   open?: boolean
   /** The binder's latest "go to this scene", for the card to open and come to. */
-  reveal?: { id: string; nonce: number; caret?: 'start' | 'end' } | null
+  reveal?: { id: string; nonce: number; caret?: 'start' | 'end'; focus?: boolean } | null
   /** Derived in-world day per scene, and the calendar that makes it a date. */
   inWorldDays?: Map<string, number>
   calendar?: WorldCalendar | null
   /** The next or previous scene in reading order, from a card's draft; see `TimelineView`. */
-  onStepFrom?: (sceneId: string, dir: 'next' | 'previous') => boolean
-  /** Go to a scene, opening its draft with the caret at its start or end. */
-  onGoToScene?: (scene: WorldEvent, at: 'start' | 'end') => void
+  onStepFrom?: (sceneId: string, dir: 'next' | 'previous', opts?: { focus?: boolean }) => boolean
+  /** Go to a scene, opening its draft with the caret at its start or end — in Focus mode with `focus`. */
+  onGoToScene?: (scene: WorldEvent, at: 'start' | 'end', opts?: { focus?: boolean }) => void
 }
 
 const NO_WORDS: Map<string, number> = new Map()
@@ -166,7 +167,8 @@ export function ChapterRow({
     Not while reading, and not under a thread filter: a scene made there would
     carry no thread, so it would be made and then not be on the screen.
   */
-  const [addingAfter, setAddingAfter] = useState<{ afterId: string; returnTo: HTMLElement | null } | null>(null)
+  /** A new scene after `afterId` — or, with `splitAt`, the second half of that scene from there on. */
+  const [addingAfter, setAddingAfter] = useState<{ afterId: string; returnTo: HTMLElement | null; splitAt?: number } | null>(null)
   const canAddAfter = !gate.active && !threadFilter && !!onGoToScene
   const [addingAtEnd, setAddingAtEnd] = useState(false)
   /*
@@ -182,8 +184,32 @@ export function ChapterRow({
     if (created && byKey) onGoToScene?.(created, 'start')
   }
 
+  /*
+    From Focus mode, which covers the list: the title is asked for there, so
+    the scene is made here straight away and the writer lands in it, still in
+    Focus mode.
+  */
+  async function makeFromFocus(afterId: string, kind: 'new' | 'split', title: string, at: number) {
+    const created = kind === 'split'
+      ? await splitScene(afterId, at, title)
+      : await createEventAt(chapter.id, allSorted.findIndex((e) => e.id === afterId) + 1, title)
+    if (created) onGoToScene?.(created, 'start', { focus: true })
+  }
+
   async function commitNewAfter(afterId: string, title: string, byKey: boolean) {
+    const splitAt = addingAfter?.splitAt
     setAddingAfter(null)
+    if (splitAt !== undefined) {
+      /*
+        Ctrl+Shift+Enter: the prose after the caret becomes this new scene,
+        with the room and the cast of the one it came from — see
+        `splitScene`. Whichever way the title was finished, the writer is put
+        in the new half: they split it to go on writing there.
+      */
+      const created = await splitScene(afterId, splitAt, title)
+      if (created) onGoToScene?.(created, 'start')
+      return
+    }
     const index = allSorted.findIndex((e) => e.id === afterId) + 1
     const created = await createEventAt(chapter.id, index, title)
     // A title finished by clicking away was finished because the writer went
@@ -502,15 +528,31 @@ export function ChapterRow({
                     onOpenChapter={open ? undefined : () => navigate(`/worlds/${worldId}/timeline/${e.chapterId}`)}
                     revealNonce={reveal?.id === e.id ? reveal.nonce : undefined}
                     revealCaret={reveal?.id === e.id ? reveal.caret : undefined}
+                    revealFocus={reveal?.id === e.id ? reveal.focus : undefined}
                     inWorldDay={inWorldDays?.get(e.id)}
                     calendar={calendar}
-                    onStep={onStepFrom ? (dir) => onStepFrom(e.id, dir) : undefined}
+                    onStep={onStepFrom ? (dir, opts) => onStepFrom(e.id, dir, opts) : undefined}
+                    onMakeFromFocus={canAddAfter
+                      ? (kind, title, at) => { void makeFromFocus(e.id, kind, title, at) }
+                      : undefined}
                     onNewAfter={canAddAfter
                       ? () => setAddingAfter({ afterId: e.id, returnTo: document.activeElement as HTMLElement | null })
                       : undefined}
+                    onSplit={canAddAfter
+                      ? (at) => setAddingAfter({ afterId: e.id, returnTo: document.activeElement as HTMLElement | null, splitAt: at })
+                      : undefined}
+                    // The next scene in the *chapter*: under a thread filter the
+                    // one below on screen may not be it, so there is no join there.
+                    onJoinNext={canAddAfter && i < sortedEvents.length - 1
+                      ? () => { void joinWithNext(e.id) }
+                      : undefined}
+                    nextTitle={sortedEvents[i + 1]?.title}
                   />
                   {addingAfter?.afterId === e.id && (
                     <NewSceneAfter
+                      hint={addingAfter.splitAt !== undefined
+                        ? 'The prose after the caret becomes this scene · Enter to split · Escape to go back'
+                        : undefined}
                       onCommit={(title, byKey) => { void commitNewAfter(e.id, title, byKey) }}
                       onCancel={(byKey) => {
                         const back = addingAfter.returnTo
@@ -570,9 +612,11 @@ export function ChapterRow({
  * with a title typed keeps it rather than losing it — the same rules as the
  * binder's new-scene line.
  */
-function NewSceneAfter({ onCommit, onCancel, withButton = false }: {
+function NewSceneAfter({ onCommit, onCancel, withButton = false, hint }: {
   onCommit: (title: string, byKey: boolean) => void
   onCancel: (byKey: boolean) => void
+  /** What the line says under the title, where Enter does something other than make a scene. */
+  hint?: string
   /** A visible Add Scene and Cancel, where the line was opened with the mouse. */
   withButton?: boolean
 }) {
@@ -622,7 +666,7 @@ function NewSceneAfter({ onCommit, onCancel, withButton = false }: {
           </Button>
         </div>
       )}
-      <p className="text-[10px] text-[hsl(var(--muted-foreground))]">Enter to make it and start writing · Escape to go back</p>
+      <p className="text-[10px] text-[hsl(var(--muted-foreground))]">{hint ?? 'Enter to make it and start writing · Escape to go back'}</p>
     </div>
   )
 }

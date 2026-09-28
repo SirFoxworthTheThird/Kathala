@@ -5,6 +5,12 @@ import { setSceneText } from '@/db/hooks/useManuscript'
 import { wordCount } from '@/lib/manuscript'
 import { focusStats, sessionGoalPercent } from '@/lib/focusSession'
 import { plural } from '@/lib/plural'
+import { sceneShortcut } from '@/lib/sceneStep'
+
+const IS_MAC = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform)
+const MOD = IS_MAC ? '⌘' : 'Ctrl+'
+const ALT = IS_MAC ? '⌥' : 'Alt+'
+const SHIFT = IS_MAC ? '⇧' : 'Shift+'
 
 interface FocusModeProps {
   worldId: string
@@ -25,6 +31,20 @@ interface FocusModeProps {
   /** The scene's prose when focus mode opens. */
   initialText: string
   onExit: () => void
+  /** The scene keys, where the scene has somewhere to go — see `FocusKeys`. */
+  keys?: FocusKeys
+}
+
+/**
+ * The scene keys in Focus mode, so the best writing surface in the app is not
+ * one scene deep. Stepping and making both land in the other scene *in Focus
+ * mode*; the Timeline behind does the going.
+ */
+export interface FocusKeys {
+  /** The next or previous scene. Returns whether there was one. */
+  step: (dir: 'next' | 'previous') => boolean
+  /** A new scene after this one, or this one split at `at`, titled `title`. Absent where scenes cannot be made. */
+  make?: (kind: 'new' | 'split', title: string, at: number) => void
 }
 
 const AUTOSAVE_MS = 1000
@@ -36,7 +56,7 @@ const AUTOSAVE_MS = 1000
  * and autosaves through setSceneText (so revisions and the writing log still fire).
  * Esc exits.
  */
-export function FocusMode({ worldId, eventId, title, header, initialText, onExit }: FocusModeProps) {
+export function FocusMode({ worldId, eventId, title, header, initialText, onExit, keys }: FocusModeProps) {
   const [text, setText] = useState(initialText)
   const startWords = useMemo(() => wordCount(initialText), [initialText])
   const stats = focusStats(startWords, wordCount(text))
@@ -55,10 +75,53 @@ export function FocusMode({ worldId, eventId, title, header, initialText, onExit
     if (saveTimer.current) window.clearTimeout(saveTimer.current)
     saveTimer.current = window.setTimeout(() => { setSceneText(worldId, eventId, next) }, AUTOSAVE_MS)
   }
+  /*
+    Set once the prose has been written for good before a restructuring: a
+    split reads the scene's prose from the store, and a flush on the way out
+    afterwards would write the whole pre-split text back over its first half.
+  */
+  const flushed = useRef(false)
   useEffect(() => () => {
     if (saveTimer.current) window.clearTimeout(saveTimer.current)
-    setSceneText(worldId, eventId, latest.current) // flush on exit
+    if (!flushed.current) setSceneText(worldId, eventId, latest.current) // flush on exit
   }, [worldId, eventId])
+  async function flushNow() {
+    if (saveTimer.current) { window.clearTimeout(saveTimer.current); saveTimer.current = null }
+    flushed.current = true
+    await setSceneText(worldId, eventId, latest.current)
+  }
+
+  /** A new scene or a split, waiting for its title in the header. */
+  const [prompt, setPrompt] = useState<{ kind: 'new' | 'split'; at: number } | null>(null)
+  const [promptTitle, setPromptTitle] = useState('')
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    const shortcut = keys ? sceneShortcut(e) : null
+    if (!shortcut || !keys) return
+    if (shortcut === 'next' || shortcut === 'previous') {
+      if (keys.step(shortcut)) e.preventDefault()
+      return
+    }
+    if (!keys.make) return
+    e.preventDefault()
+    setPromptTitle('')
+    setPrompt({ kind: shortcut, at: e.currentTarget.selectionStart ?? 0 })
+  }
+  async function commitPrompt() {
+    const p = prompt
+    const t = promptTitle.trim()
+    if (!p || !t || !keys?.make) return
+    setPrompt(null)
+    await flushNow()
+    keys.make(p.kind, t, p.at)
+    // The scene made opens in Focus mode itself; this one steps aside.
+    onExit()
+  }
+  function cancelPrompt() {
+    const at = prompt?.at ?? 0
+    setPrompt(null)
+    const ta = taRef.current
+    if (ta) { ta.focus(); ta.setSelectionRange(at, at) }
+  }
 
   // Esc exits; lock body scroll while open.
   useEffect(() => {
@@ -129,6 +192,11 @@ export function FocusMode({ worldId, eventId, title, header, initialText, onExit
             </span>
           )}
         </span>
+        {keys && (
+          <span className="hidden md:inline">
+            {MOD}{ALT}↓ ↑ scenes{keys.make && <> · {MOD}Enter new · {MOD}{SHIFT}Enter split</>}
+          </span>
+        )}
         <span className="hidden sm:inline">Esc to exit</span>
         <button
           onClick={onExit}
@@ -159,9 +227,34 @@ export function FocusMode({ worldId, eventId, title, header, initialText, onExit
       {/* Writing surface */}
       <div ref={scrollerRef} className="relative flex-1 overflow-y-auto">
         <div className="mx-auto max-w-2xl px-6" style={{ paddingTop: '42vh', paddingBottom: '42vh' }}>
+          {prompt && (
+            <div className="mb-6 flex flex-col gap-1">
+              <input
+                autoFocus
+                aria-label="Title for the new scene"
+                placeholder={prompt.kind === 'split' ? 'Title for the scene from here on' : 'Title for the new scene'}
+                value={promptTitle}
+                onChange={(e) => setPromptTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); void commitPrompt() }
+                  else if (e.key === 'Escape') {
+                    // Only the prompt: the window's Escape would leave Focus mode.
+                    e.preventDefault(); e.stopPropagation(); cancelPrompt()
+                  }
+                }}
+                className="w-full border-b border-[hsl(var(--ring))] bg-transparent py-1 text-base text-[hsl(var(--foreground))] outline-none"
+              />
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                {prompt.kind === 'split'
+                  ? 'The prose after the caret becomes this scene · Enter to split · Escape to go back'
+                  : 'Enter to make it and write in it · Escape to go back'}
+              </p>
+            </div>
+          )}
           <textarea
             ref={taRef}
             value={text}
+            onKeyDown={handleKeyDown}
             onChange={handleChange}
             onClick={centreCaret}
             onKeyUp={centreCaret}

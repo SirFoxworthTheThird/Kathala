@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type KeyboardEvent } from 'react'
-import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye, History, Flame, Milestone, FolderInput, ExternalLink } from 'lucide-react'
+import { Trash2, ChevronDown, ChevronUp, Check, X, UserMinus, PackageMinus, MapPin, Tag, ArrowUp, ArrowDown, Package, Eye, History, Flame, Milestone, FolderInput, ExternalLink, Merge } from 'lucide-react'
 import { TENSION_LEVELS, tensionColor, tensionLabel } from '@/lib/tension'
 import { STORY_BEATS, beatById, beatActColor } from '@/lib/storyBeats'
 import { AtSign, Spline, Sparkle } from 'lucide-react'
@@ -70,14 +70,25 @@ interface EventCardProps {
    * closes behind the writer only if so, so the last scene of the book stays
    * open under the caret.
    */
-  onStep?: (dir: 'next' | 'previous') => boolean
+  onStep?: (dir: 'next' | 'previous', opts?: { focus?: boolean }) => boolean
+  /** Arrived from Focus mode: open the draft in Focus mode too. */
+  revealFocus?: boolean
+  /** From Focus mode: make a new scene after this one, or split it, titled there. */
+  onMakeFromFocus?: (kind: 'new' | 'split', title: string, at: number) => void
   /** Start a new scene after this one. Absent where one cannot be made here. */
   onNewAfter?: () => void
+  /** Split this scene at `at`, an offset into its prose. Absent where it cannot be split here. */
+  onSplit?: (at: number) => void
+  /** Join the next scene in the chapter onto this one. Absent at a chapter's last scene. */
+  onJoinNext?: () => void
+  /** The next scene's title, for the join's confirmation to name it. */
+  nextTitle?: string
 }
 
 export function EventCard({
   event, isFirst, isLast, onMoveUp, onMoveDown, moveUpHint, moveDownHint, inWorldDay, calendar, revealNonce,
-  chapterNumber, selection, onOpenChapter, revealCaret, onStep, onNewAfter,
+  chapterNumber, selection, onOpenChapter, revealCaret, onStep, onNewAfter, onSplit, onJoinNext, nextTitle,
+  revealFocus, onMakeFromFocus,
 }: EventCardProps) {
   const gate = useGate()
   const activeEventId = useAppStore((st) => st.activeEventId)
@@ -96,10 +107,12 @@ export function EventCard({
   const [expanded, setExpanded] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
   const [draftFocus, setDraftFocus] = useState<{ nonce: number; at: 'start' | 'end' } | null>(null)
+  const [focusModeNonce, setFocusModeNonce] = useState<number | null>(null)
   useEffect(() => {
     if (!revealNonce) return
     setExpanded(true)
     if (revealCaret) setDraftFocus({ nonce: revealNonce, at: revealCaret })
+    if (revealFocus) setFocusModeNonce(revealNonce)
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     cardRef.current?.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' })
   }, [revealNonce])  // eslint-disable-line react-hooks/exhaustive-deps
@@ -114,11 +127,16 @@ export function EventCard({
     wasExpanded.current = expanded
   }, [expanded])
 
-  const onShortcut = onStep || onNewAfter
-    ? (shortcut: SceneShortcut): boolean => {
+  const onShortcut = onStep || onNewAfter || onSplit
+    ? (shortcut: SceneShortcut, at: number): boolean => {
         if (shortcut === 'new') {
           if (!onNewAfter) return false
           onNewAfter()
+          return true
+        }
+        if (shortcut === 'split') {
+          if (!onSplit) return false
+          onSplit(at)
           return true
         }
         if (!onStep || !onStep(shortcut)) return false
@@ -129,6 +147,7 @@ export function EventCard({
     : undefined
   const [editing, setEditing] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [joinOpen, setJoinOpen] = useState(false)
   const [title, setTitle] = useState(event.title)
   const [description, setDescription] = useState(event.description)
   /*
@@ -612,6 +631,9 @@ export function EventCard({
             {!gate.active && (
               <Menu label={`More actions for ${eventName}`} triggerClassName="h-6 w-6">
                 <MenuItem icon={FolderInput} label="Move to chapter…" onClick={() => setMoveOpen(true)} />
+                {onJoinNext && (
+                  <MenuItem icon={Merge} label="Join with next scene…" onClick={() => setJoinOpen(true)} />
+                )}
                 <MenuItem icon={Trash2} label="Delete scene" danger onClick={() => setConfirmOpen(true)} />
               </Menu>
             )}
@@ -629,6 +651,17 @@ export function EventCard({
               title={`Delete "${event.title || 'this scene'}"?`}
               onConfirm={() => deleteEvent(event.id)}
             />
+            {onJoinNext && (
+              <ConfirmDialog
+                open={joinOpen}
+                onOpenChange={setJoinOpen}
+                title={`Join “${nextTitle || 'the next scene'}” onto ${eventName}?`}
+                description={`Its prose is added to the end of this scene, and it stops being a scene of its own. Who and what is in it joins this one. Where both scenes recorded a state for the same character, item or place, the later one — “${nextTitle || 'the next scene'}”'s — is kept. Undo puts it all back.`}
+                confirmLabel="Join"
+                destructive={false}
+                onConfirm={onJoinNext}
+              />
+            )}
           </>
         )}
       </div>
@@ -688,6 +721,15 @@ export function EventCard({
             onShortcut={onShortcut}
             focusRequest={draftFocus}
             canAddAfter={!!onNewAfter}
+            openFocusNonce={focusModeNonce}
+            focusKeys={onStep ? {
+              step: (dir) => {
+                if (!onStep(dir, { focus: true })) return false
+                setExpanded(false)
+                return true
+              },
+              make: onMakeFromFocus,
+            } : undefined}
           />
 
           {/* Description */}
