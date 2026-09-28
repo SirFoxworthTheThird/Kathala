@@ -41,7 +41,7 @@ The **Help** panel (the **?** icon, top-right) lists these in the app too, along
 | **Shift+click** an event checkbox | Select a range |
 | **↑ / ↓** on a scene card | Move the scene earlier or later — out of its chapter at either edge |
 
-Chapters and scenes are dragged in the **binder** (below), not in the list; the [Corkboard](Corkboard) drags scenes between chapter columns.
+Chapters and scenes are dragged in the **binder** (below), not in the list.
 
 ### In a scene's draft
 
@@ -78,16 +78,6 @@ The Manuscript's [Page](Timeline#writing-on-one-page) — the book as one docume
 | Delete | Remove the scene (Undo brings it back) |
 | **Alt+↑ / ↓** | Move the chapter or scene one place |
 | Drag a row | Move a chapter before or after another, a scene between scenes or onto a chapter |
-
----
-
-## Corkboard
-
-| Interaction | Action |
-|---|---|
-| Drag a card within a column | Reorder scenes in that chapter |
-| Drag a card to another column | Move the scene to that chapter |
-| Click a card's title | Open the scene with the cursor set to it |
 
 ---
 

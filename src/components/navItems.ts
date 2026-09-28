@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, BookOpen, StickyNote, CalendarDays, Users, Map,
+  LayoutDashboard, BookOpen, CalendarDays, Users, Map,
   Package, Network, Spline, BookMarked, Shield, KeyRound, Settings, ListChecks,
 } from 'lucide-react'
 
@@ -32,7 +32,6 @@ export interface NavItem {
 export const navItems: NavItem[] = [
   { to: '',              label: 'Dashboard',  icon: LayoutDashboard, end: true,  tier: 'core' },
   { to: 'manuscript',    label: 'Manuscript', icon: BookOpen,        end: false, tier: 'core', readingLabel: 'Book' },
-  { to: 'corkboard',     label: 'Corkboard',  icon: StickyNote,      end: false, tier: 'extended', writingOnly: true },
   { to: 'calendar',      label: 'Calendar',   icon: CalendarDays,    end: false, tier: 'extended' },
   { to: 'structure',     label: 'Structure',  icon: ListChecks,      end: false, tier: 'extended', writingOnly: true },
   { to: 'characters',    label: 'Characters', icon: Users,           end: false, tier: 'core' },

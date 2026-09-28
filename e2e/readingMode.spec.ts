@@ -426,7 +426,7 @@ test('help answers the question a reader actually has', async ({ page }) => {
   expect(reading.some((t) => t.includes('Reading a book')), `sections: ${reading.join(' | ')}`).toBe(true)
   // And the ones describing screens a reader does not have are gone.
   expect(reading.some((t) => t.includes('Database health'))).toBe(false)
-  expect(reading.some((t) => t.includes('Corkboard'))).toBe(false)
+  expect(reading.some((t) => t.includes('Find, replace & export'))).toBe(false)
 
   // The mirror: a writer gets those and not the reading section.
   await page.keyboard.press('Escape')
@@ -472,12 +472,6 @@ test('the app does not address a reader as the author', async ({ page }) => {
   await settle(page)
   await page.getByTitle('Search (Ctrl+K)').click()
   await expect(page.getByPlaceholder('Search your world and the prose you wrote…')).toBeVisible()
-})
-
-test('the corkboard is a plotting board, not a reading screen', async ({ page }) => {
-  await downloadFirstLibraryWorld(page)
-  const nav = page.getByRole('navigation', { name: 'Main navigation' })
-  await expect(nav.getByRole('link', { name: 'Corkboard' })).toHaveCount(0)
 })
 
 test('relationship counts do not betray the size of the cast', async ({ page }) => {
@@ -889,15 +883,15 @@ test('the map cannot be redrawn by dragging what is on it', async ({ page }) => 
 
 
 test('the writing screens are closed by URL, not just hidden from the nav', async ({ page }) => {
-  // Hiding a link is not closing a door. Both were reachable by typing the
-  // address, and the corkboard then let a reader drag scene cards between
-  // chapters — a write, on a world that gets replaced the next time they
-  // download it.
+  // Hiding a link is not closing a door. The writing screens were reachable by
+  // typing the address, and the Corkboard (since removed) then let a reader
+  // drag scene cards between chapters — a write, on a world that gets replaced
+  // the next time they download it.
   test.setTimeout(180_000)
   await downloadFirstLibraryWorld(page)
   const world = await worldPath(page)
 
-  for (const screen of ['corkboard', 'structure']) {
+  for (const screen of ['structure']) {
     await page.goto(`/#${world}/${screen}`)
     await settle(page)
     // Bounced back to the dashboard rather than served the writing screen.
@@ -915,7 +909,7 @@ test('the writing screens are closed by URL, not just hidden from the nav', asyn
   await page.getByRole('button', { name: 'Turn off reading mode' }).click()
   await settle(page)
 
-  for (const screen of ['corkboard', 'structure']) {
+  for (const screen of ['structure']) {
     await page.goto(`/#${world}/${screen}`)
     await settle(page)
     expect(new URL(page.url()).hash, screen).toBe(`#${world}/${screen}`)

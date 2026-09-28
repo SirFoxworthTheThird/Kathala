@@ -7,8 +7,8 @@ import { useGate } from '@/db/hooks/ReadingGateContext'
 
 /**
  * `writerOnly` sections describe screens and tools that reading mode removes —
- * the manuscript, the corkboard, the AI generators, the continuity checker.
- * Offering a reader instructions for a Corkboard their nav does not have is
+ * the Structure board, the AI generators, the continuity checker. Offering a
+ * reader instructions for a Structure board their nav does not have is
  * worse than offering nothing: it reads as a missing feature rather than an
  * absent one.
  */
@@ -165,8 +165,7 @@ export function HelpPanel() {
             <P>The <B>Compare chapters</B> tool in the timeline bar shows what changed between two story points — useful for spotting continuity drift.</P>
           </Section>
 
-          <Section title="Corkboard & export" writerOnly>
-            <P>The <B>Corkboard</B> displays scenes as index cards grouped by chapter. Drag cards to reorder or move scenes, change their Idea-to-Final status, and click a title to open that scene.</P>
+          <Section title="Find, replace & export" writerOnly>
             <P>On the Manuscript's Page and Read, use <B>Find & Replace</B> across every scene, or export the book as Markdown, HTML, plain text, Word, or EPUB. A scene's revision <B>History</B> is on its card.</P>
           </Section>
 

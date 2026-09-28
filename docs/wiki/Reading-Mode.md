@@ -88,7 +88,7 @@ Reading mode also clears out everything that only makes sense to the person writ
 
 ### Screens
 
-The writing screens — **Structure** and the **Corkboard** — step aside, and their addresses close with them: typing one in takes you back to the dashboard.
+The **Structure** board, a writing screen, steps aside, and its address closes with it: typing it in takes you back to the dashboard.
 
 The **Manuscript** stays, renamed **Book**: its chapters and scenes are where you set your place, and on a book that carries its own text it is the book itself — see *Reading the book* below.
 

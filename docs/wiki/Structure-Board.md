@@ -42,6 +42,5 @@ Structure is a writing screen, so [reading mode](Reading-Mode) removes it and cl
 
 ## Related pages
 
-- [Corkboard](Corkboard) — restructure by dragging cards
 - [Manuscript: chapters & events](Timeline) — the pacing curve, a different read on shape
 - [Plot Threads](Plot-Threads) — subplot cadence rather than act structure
