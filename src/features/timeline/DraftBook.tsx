@@ -164,11 +164,17 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
     }))
   }
 
+  /** What a save asked for while a split or join was being written, for when it has been. */
+  const owedAfterAct = useRef<Map<string, Held> | null>(null)
+
   async function save() {
     if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
     const view = viewRef.current
-    if (!view || busy.current?.acting) return
-    await write(shownValues(draftSegments(view.state)))
+    if (!view) return
+    // Read now: this may be the page closing, and the editor is gone once it has.
+    const shown = shownValues(draftSegments(view.state))
+    if (busy.current?.acting) { owedAfterAct.current = shown; return }
+    await write(shown)
   }
   const saveRef = useRef(save)
   saveRef.current = save
@@ -219,16 +225,23 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
     baseRef.current = base
     mine.acting = false
     if (!acted && structural.current === 'undo') structural.current = null
-    // Anything typed while the act was written is owed now.
-    void saveRef.current()
+    // Anything typed while the act was written is owed now — from the page, or
+    // from the save that asked while the page was closing.
+    const later = owedAfterAct.current
+    owedAfterAct.current = null
+    const open = viewRef.current
+    if (open) void saveRef.current()
+    else if (later) void write(later)
     mine.finish = () => {
       if (busy.current !== mine) return
       busy.current = null
       syncRef.current()
     }
+    // The store has shown the act by the time it returns in every split and join
+    // the page spec makes (14 of 14, measured); this waits in case it has not,
+    // and stops waiting in the end.
     const current = bookRef.current
     if (!acted || (current && opts.done(current))) { mine.finish(); return }
-    // The store answers on its own schedule; stop waiting in the end and take what it has.
     setTimeout(mine.finish, 3000)
   }
 

@@ -202,6 +202,20 @@ test.describe('the Page view', () => {
     ])
   })
 
+  test('typing on after a split and leaving for Cards at once still saves the typing', async ({ page }) => {
+    const worldId = await book(page)
+    await openPage(page, worldId)
+    await line(page, 'The court sat.').click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('## The gate')
+    // Enter, a word, and away — all while the split is being written.
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('Open. ')
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Cards', exact: true }).click()
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toContain('The gate: Open. The water fell.')
+  })
+
   test('Ctrl+Z takes back the typing since a split, and then the split', async ({ page }) => {
     const worldId = await book(page)
     await openPage(page, worldId)
