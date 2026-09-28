@@ -485,6 +485,18 @@ const shots = [
     ready: (page) => page.getByRole('menu').or(page.getByRole('menuitem').first()),
   },
   {
+    name: '72-page-view', book: ILIAD, reading: false,
+    // Opened at chapter 1, so the binder lists its scenes beside the page.
+    go: async (page, id) => {
+      const chapter = await firstChapter(page, id)
+      await page.goto(`${BASE}/#/worlds/${id}/timeline/${chapter}`, { waitUntil: 'load' })
+      await page.getByRole('group', { name: 'Timeline layout' }).getByRole('button', { name: 'Page', exact: true })
+        .click({ timeout: 30_000 })
+    },
+    ready: (page) => page.getByRole('textbox', { name: 'The book, as one page' }),
+    settle: 2500,
+  },
+  {
     name: '71-join-scene', book: ILIAD, reading: false,
     // The Iliad's chapter 1 opens on "The Priest Is Rejected"; the scene after
     // it in the same chapter is what the dialog names.

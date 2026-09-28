@@ -66,8 +66,10 @@ prose is the body of the page, and the Timeline's structure sits around it.**
 
 - **Outline.** Planning before any prose exists needs cards, not text, and seven
   of the shipped books are structural notes with no prose at all. The screen
-  has two densities, **Outline** (today's scene cards, prose folded) and
-  **Draft** (the prose flowing) — the same data and the same binder.
+  has two layouts, **Cards** (the scene cards) and **Page** (the prose flowing)
+  — the same data and the same binder. They were to be *Outline* and *Draft*,
+  but an open scene card already has status buttons with exactly those names,
+  on the same screen.
 - **Chronological order.** The Timeline can order scenes by in-world time. A
   new scene heading typed there has no sensible place to go, so that order
   stays as cards.
@@ -140,23 +142,28 @@ costs, are in
 
 1. **The editor spike.** *Done* — CodeMirror 6; the harness is in
    [`spikes/editor/`](spikes/editor/README.md).
-2. **Draft density on the current Timeline screen.** Outline | Draft. In Draft
-   the prose flows as one editor across scenes and chapters, and editing a
-   heading renames the scene or chapter. No new structure from text yet. It
-   carries what the spike found:
-   - The heading-id rules, as unit tests against real CodeMirror transactions,
-     undo included; the spike's first run got a grouped undo wrong.
-   - CodeMirror's own search on Ctrl+F, since the browser's find cannot see the
-     part of the book that is not on screen.
-   - A timing check on a real machine and on a phone, which the spike could not
-     do.
+2. **The Page view on the current Timeline screen.** *Done* — Cards | Page;
+   the prose of a whole timeline in one editor, saved per scene, headings
+   renaming their records, Ctrl+F searching the whole book. Headings are fixed
+   in this step: an edit that would join, split, add or remove a chapter or
+   scene is refused with a reason. Of the spike's heading-id rules only one is
+   reachable once headings are fixed — a line break typed at a heading's start
+   pushes it down — and it is tested against real CodeMirror transactions with
+   undo; the drop-and-restore rules wait for step 5, which is the first step
+   that can reach them. **Still owed:** a timing check on a real machine and on
+   a phone. The phone test proves the page works at 390 px, not how fast it is.
+   And the page does not yet have the scene header line, `@` mentions, the
+   scene keys or Focus mode; those stay on the scene cards until they are
+   brought across.
 3. **Bring the Manuscript's parts across.** Word goals, export, find and
    replace, and the reader's page — cursor following, *In this scene*, reading
    type. Then `/manuscript` lands on the merged screen.
 4. **The name and the routes.** Rename the screen, and move the links in the
    sixteen source files that mention `/timeline`.
 5. **Structure from text.** `##` in the middle of a scene splits it, deleting a
-   heading joins it, and `#` starts a chapter — each undoable in one step.
+   heading joins it, and `#` starts a chapter — each undoable in one step. This
+   lifts step 2's refusals, and brings in the spike's drop-and-restore rules
+   for heading ids with them.
 6. **The round trip.** Markdown export writes scene titles as `##`, and import
    reads `##` under a `#` as a titled scene, so a book written here and one
    pasted in agree.

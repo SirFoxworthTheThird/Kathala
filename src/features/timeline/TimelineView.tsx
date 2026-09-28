@@ -1,7 +1,7 @@
-import { useState, useRef, useMemo, useEffect } from 'react'
+import { useState, useRef, useMemo, useEffect, lazy, Suspense } from 'react'
 import { BlockingReason } from '@/components/BlockingReason'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter } from 'lucide-react'
+import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter, LayoutList, FileText } from 'lucide-react'
 import { useTimelines, useChapters, useChapter, useEvents, useTimelineEvents, useWorldChapters, useWorldEvents, createTimeline, updateTimeline, deleteTimeline } from '@/db/hooks/useTimeline'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
@@ -33,6 +33,13 @@ import { TimelineRelationshipPanel } from './TimelineRelationshipPanel'
 import type { WorldEvent, Chapter, Timeline } from '@/types'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { plural } from '@/lib/plural'
+import type { PageTarget } from './DraftBook'
+
+/*
+  Loaded when a writer first chooses Page, so the Cards view — every reader,
+  and every writer who never opens it — does not pay for the editor.
+*/
+const DraftBook = lazy(() => import('./DraftBook'))
 
 // ── Chronological (in-world) order ──────────────────────────────────────────
 // Events flattened across chapters and ordered by their effective in-world day,
@@ -213,6 +220,13 @@ export default function TimelineView() {
     [sceneTexts],
   )
   const [viewMode, setViewMode] = useState<'narrative' | 'chronological'>('narrative')
+  /*
+    Cards is the book as a list of scene cards; Page is the same book as one
+    document to write in. The writer's instrument only — a reader has the Read
+    screen — and only where the book has one order: a single timeline, in
+    reading order.
+  */
+  const [layout, setLayout] = useState<'cards' | 'page'>('cards')
   const threads = usePlotThreads(worldId ?? null)
   const [threadFilter, setThreadFilter] = useState<string | null>(null)
   const [threadsExpanded, setThreadsExpanded] = useState(false)
@@ -286,17 +300,21 @@ export default function TimelineView() {
     being revealed: the card scrolls itself, and the row would undo it.
   */
   const pendingScroll = useRef<string | null>(null)
+  /** The same arrivals, for the Page view: a scene to write in, or a chapter to scroll to. */
+  const [pageTarget, setPageTarget] = useState<PageTarget | null>(null)
   useEffect(() => {
     const state = location.state as { reveal?: string; caret?: 'start' | 'end'; focus?: boolean } | null
     const want = state?.reveal
+    revealCount.current += 1
     if (want) {
-      revealCount.current += 1
       setReveal({ id: want, nonce: revealCount.current, caret: state?.caret, focus: state?.focus })
+      setPageTarget({ id: want, nonce: revealCount.current, focus: true })
       pendingScroll.current = null
     } else {
       // Spent, so a card that remounts later — its chapter folded and opened
       // again — does not take it for a fresh request and jump.
       setReveal(null)
+      setPageTarget(chapterId ? { id: chapterId, nonce: revealCount.current } : null)
       pendingScroll.current = chapterId ?? null
     }
   }, [location.key])  // eslint-disable-line react-hooks/exhaustive-deps
@@ -311,6 +329,8 @@ export default function TimelineView() {
   })
 
   const closeChapter = () => navigate(`/worlds/${worldId}/timeline`)
+  const pageOffered = !gate.active && !isAll && viewMode === 'narrative' && chapters.length > 0
+  const showPage = layout === 'page' && pageOffered && !!currentTimelineId
 
   /*
     Going to a scene from inside another, by key: the same arrival as the
@@ -542,6 +562,28 @@ export default function TimelineView() {
                   <Clock className="h-3.5 w-3.5" /> Chronological
                 </button>
               </div>
+              {pageOffered && (
+                <div className="flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-xs" role="group" aria-label="Timeline layout">
+                  <button
+                    onClick={() => setLayout('cards')}
+                    aria-pressed={layout === 'cards'}
+                    className={cn('flex items-center gap-1 px-2 py-1 transition-colors',
+                      layout === 'cards' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
+                    title="Each scene on its own card"
+                  >
+                    <LayoutList className="h-3.5 w-3.5" /> Cards
+                  </button>
+                  <button
+                    onClick={() => setLayout('page')}
+                    aria-pressed={layout === 'page'}
+                    className={cn('flex items-center gap-1 border-l border-[hsl(var(--border))] px-2 py-1 transition-colors',
+                      layout === 'page' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
+                    title="The whole book as one page to write in"
+                  >
+                    <FileText className="h-3.5 w-3.5" /> Page
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -582,6 +624,15 @@ export default function TimelineView() {
 
       <div className="flex min-h-0 flex-1">
       <div id="timeline-panel" role="tabpanel" className="flex min-w-0 flex-1 flex-col">
+      {showPage ? (
+        <>
+          {/* No row to put the open chapter's panel under: it leads the page. */}
+          {panelInline && <div className="px-4 pt-3">{panelInline}</div>}
+          <Suspense fallback={<p className="p-4 text-sm text-[hsl(var(--muted-foreground))]">Opening the page…</p>}>
+            <DraftBook worldId={worldId!} timelineId={currentTimelineId!} target={pageTarget} />
+          </Suspense>
+        </>
+      ) : (
       <div className="flex-1 overflow-auto p-4">
         {/* Chronological and merged orders are not by chapter, so there is no
             row to put the panel under; it leads the list instead. */}
@@ -732,7 +783,8 @@ export default function TimelineView() {
           </div>
         )}
       </div>
-      {!gate.active && currentTimelineId && !isAll && viewMode === 'narrative' && <BulkActionToolbar timelineId={currentTimelineId} />}
+      )}
+      {!showPage && !gate.active && currentTimelineId && !isAll && viewMode === 'narrative' && <BulkActionToolbar timelineId={currentTimelineId} />}
       </div>
       {/* Rendered only where it is shown, like the binder: a hidden copy would
           still be the first match for everything that looks it up. */}
