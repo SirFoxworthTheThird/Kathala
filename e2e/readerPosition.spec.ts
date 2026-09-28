@@ -101,4 +101,34 @@ test.describe('A reader can say how far they have got', () => {
     // And the notice is gone with the mode.
     await expect(page.getByRole('complementary', { name: 'Reading mode' })).toHaveCount(0)
   })
+
+  test('on a book with its text, the notice still reaches the chapter rows', async ({ page }) => {
+    /*
+      A reader's book opens on Read until they choose otherwise, and Read has no
+      chapter rows. So the notice asks for Cards, where *Read to here* is — and
+      the navigation, paired with it, opens the same book to be read.
+    */
+    await resetDB(page)
+    await downloadLibraryBook(page, 'Dracula')
+    await settle(page)
+    const worldId = new URL(page.url()).hash.split('/')[2]
+    await page.goto(`/#/worlds/${worldId}`, { waitUntil: 'load' })
+    await settle(page)
+
+    // The dashboard calls the book what a reader calls it.
+    const main = page.getByRole('main')
+    await expect(main.getByRole('button').filter({ hasText: 'Book' }).first()).toBeVisible()
+    await expect(main.getByRole('button').filter({ hasText: 'Manuscript' })).toHaveCount(0)
+
+    await page.getByRole('navigation', { name: 'Main navigation' })
+      .getByRole('link', { name: 'Book', exact: true }).click()
+    await expect(page.locator('[data-book-scroller]')).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByRole('button', { name: 'Read to here' })).toHaveCount(0)
+
+    await page.goto(`/#/worlds/${worldId}`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('complementary', { name: 'Reading mode' })
+      .getByRole('link', { name: 'Set where you have read to' }).click()
+    await expect(page.getByRole('button', { name: 'Read to here' }).first()).toBeVisible({ timeout: 30_000 })
+  })
 })

@@ -4,7 +4,7 @@ import { settle } from './helpers/settle'
 import { downloadLibraryBook } from './helpers/library'
 
 /**
- * The Timeline's chapter rows ask before revealing, like everything else does.
+ * The Manuscript's chapter rows ask before revealing, like everything else does.
  *
  * A blind reader run reading *The Count of Monte Cristo* found two ways to be
  * shown the whole book from this screen, neither of which asked:
@@ -17,8 +17,8 @@ import { downloadLibraryBook } from './helpers/library'
  *   chapter 3 to chapter 38, while the identical action on the chapter bar
  *   thirty rows below asked first.
  *
- * This is the screen the dashboard's *Set where you have read to* points at, so
- * it is where a reader is most likely to be clicking.
+ * This is the screen the dashboard's *Set where you have read to* points at, on
+ * Cards, so it is where a reader is most likely to be clicking.
  */
 
 const rowButton = (page: Page, name: RegExp | string) =>
@@ -29,8 +29,8 @@ const cursor = (page: Page) => page.evaluate(() => {
   return raw ? (JSON.parse(raw) as { state: { activeEventId: string | null } }).state.activeEventId : null
 })
 
-async function openTimeline(page: Page, worldId: string) {
-  await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+async function openCards(page: Page, worldId: string) {
+  await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
   await settle(page)
 }
 
@@ -39,7 +39,7 @@ test.beforeEach(async ({ page }) => { await resetDB(page) })
 test('pressing your own bookmark asks before showing the whole book', async ({ page }) => {
   const worldId = await downloadLibraryBook(page, 'Alice’s Adventures in Wonderland')
   await settle(page)
-  await openTimeline(page, worldId)
+  await openCards(page, worldId)
 
   const before = await cursor(page)
   expect(before, 'a downloaded book opens somewhere').not.toBeNull()
@@ -63,7 +63,7 @@ test('pressing your own bookmark asks before showing the whole book', async ({ p
 test('reading far ahead from a chapter row asks first', async ({ page }) => {
   const worldId = await downloadLibraryBook(page, 'Alice’s Adventures in Wonderland')
   await settle(page)
-  await openTimeline(page, worldId)
+  await openCards(page, worldId)
 
   const before = await cursor(page)
   // Chapter 9 from chapter 1 — well past the next chapter, which is the line
@@ -86,7 +86,7 @@ test('the next chapter is ordinary reading and is never interrupted', async ({ p
   */
   const worldId = await downloadLibraryBook(page, 'Alice’s Adventures in Wonderland')
   await settle(page)
-  await openTimeline(page, worldId)
+  await openCards(page, worldId)
 
   const before = await cursor(page)
   await rowButton(page, /^Read to here$/).first().click()
@@ -111,7 +111,7 @@ test('a writer moving the same cursor is asked nothing at all', async ({ page })
     } }).__pwdb
     await db!.worlds.update(id, { readingMode: false })
   }, worldId)
-  await openTimeline(page, worldId)
+  await openCards(page, worldId)
 
   await rowButton(page, /^View from here$/).nth(8).click()
   await expect(page.getByText(/Read ahead to chapter/)).toHaveCount(0)

@@ -249,11 +249,12 @@ export default function TimelineView() {
   const worldHasProse = useHasProse(worldId ?? null)
   const readingMode = useReadingMode(worldId ?? null)
   /*
-    Until a layout is chosen: a reader with a book to read is given it to read,
-    as the navigation's *Read* did while the book was its own screen; the author
-    starts on the cards, which is where a book with no prose yet is planned.
+    Until a layout is chosen: a reader is given the book to read, as the
+    navigation's *Read* did while the book was its own screen; the author starts
+    on the cards, which is where a book with no prose yet is planned. A reader's
+    book with no prose has no Read to give (`readOffered`), and shows Cards.
   */
-  const layout: TimelineLayout = chosenLayout ?? (readingMode && worldHasProse === true ? 'read' : 'cards')
+  const layout: TimelineLayout = chosenLayout ?? (readingMode ? 'read' : 'cards')
   const threads = usePlotThreads(worldId ?? null)
   const [threadFilter, setThreadFilter] = useState<string | null>(null)
   const [threadsExpanded, setThreadsExpanded] = useState(false)

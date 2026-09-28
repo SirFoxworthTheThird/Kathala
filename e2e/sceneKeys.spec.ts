@@ -52,7 +52,8 @@ async function book(page: Page): Promise<string> {
 
 /** Open a chapter, open one scene's card, and put the caret in its prose. */
 async function writeIn(page: Page, worldId: string, chapterId: string, title: string) {
-  await page.goto(`/#/worlds/${worldId}/manuscript/${chapterId}`, { waitUntil: 'load' })
+  // On Cards: a reader of a book with prose would otherwise open it on Read.
+  await page.goto(`/#/worlds/${worldId}/manuscript/${chapterId}?view=cards`, { waitUntil: 'load' })
   await settle(page)
   const main = page.getByRole('main')
   await main.getByRole('button', { name: title, exact: true }).click()
