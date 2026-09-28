@@ -967,14 +967,28 @@ the page; retitle a chapter or scene by editing its heading.
 - **Ctrl+F** (⌘F on a Mac) searches the whole book. Use it rather than the
   browser's own find: the page only draws the part of the book on screen, so
   the browser cannot see the rest.
-- **Ctrl+Z** inside the page takes back your typing. The top bar's Undo takes
-  back a renamed chapter or scene, as it does everywhere else.
-- **Headings stay where they are.** Page does not join, split, add or remove
-  chapters and scenes: deleting a heading, merging it into the line above,
-  changing its `#` marks, or typing text under a chapter heading is refused, and
-  the line above the page says why. Do those on Cards or in the binder.
-- A line of your prose that happens to start with `#` is still prose; which
-  lines are headings is decided by your chapters and scenes, not by the marks.
+- **Type `## ` and a title on a line of its own to split a scene there.** When
+  you leave the line — Enter, a click elsewhere — the scene becomes two: the
+  prose above the line stays with it, and the prose below goes to a new scene
+  with that title, in the same place and with the same people, exactly as
+  **Split** does on a card. Pressing Enter at the end of the title puts you at
+  the start of the new scene's prose. While you are still on the line nothing
+  happens, so `## T` does not make a scene called "T" on the way to "The gate".
+- **Delete a scene heading's whole line to join that scene to the one before
+  it.** Select the line and delete it, or select from one scene's prose into
+  the next: the two become one, with everything recorded at the second moved
+  to the first, as **Join with next scene** does on a card.
+- **Ctrl+Z straight after a split or a join takes it back**, whole, and
+  Ctrl+Shift+Z puts it back. Otherwise Ctrl+Z inside the page takes back your
+  typing since the last split or join. The top bar's Undo takes back a renamed
+  chapter or scene, a split and a join, as it does everywhere else.
+- **Part of a heading is refused**, with the reason above the page: its `#`
+  marks, a line break in its title, or text under a chapter heading. So is
+  joining the first scene of a chapter, which has no scene before it, and
+  deleting a chapter heading — chapters are made and removed on Cards or in
+  the binder for now.
+- A line of prose that already started with `## ` — in a book you imported,
+  say — stays prose until you edit it.
 - **Changes made elsewhere arrive.** A scene renamed in another tab, or put
   back by the top bar's Undo, shows on the page; anything you have typed on the
   page and not yet saved is kept.
