@@ -47,10 +47,15 @@ export async function captureSceneRevision(
 import { createTimeline, createChapter, createEvent } from '@/db/hooks/useTimeline'
 import type { ParsedManuscript } from '@/lib/manuscriptImport'
 
-/** The scene prose for a single event (or undefined while loading / none yet). */
+/**
+ * The scene prose for a single event: undefined while it loads, null once it
+ * has loaded and there is none. The two used to be one `undefined`, which left
+ * nothing able to wait for the text to arrive — a caret placed "at the end" on
+ * arrival landed at 0 in the empty box shown while it loaded.
+ */
 export function useSceneText(eventId: string | null) {
   return useLiveQuery(
-    () => (eventId ? db.sceneTexts.where('eventId').equals(eventId).first() : undefined),
+    async () => (eventId ? (await db.sceneTexts.where('eventId').equals(eventId).first()) ?? null : null),
     [eventId]
   )
 }

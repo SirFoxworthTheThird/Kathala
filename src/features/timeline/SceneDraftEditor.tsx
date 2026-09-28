@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { Users, Package, MapPin, Plus } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -7,9 +7,24 @@ import {
   type MentionIntent,
 } from '@/lib/mentionPicker'
 import { caretPoint, placePanel } from '@/lib/caretPoint'
+import { arrivalCaret, sceneShortcut, type SceneShortcut } from '@/lib/sceneStep'
 
 interface SceneDraftEditorProps {
   value: string
+  /**
+   * The scene keys — next, previous, new scene after — which the Timeline
+   * answers. Returns whether it did: a key nothing acted on is left to the text
+   * box, so Ctrl+Enter at the last scene of the book still does whatever the
+   * box would have done with it.
+   */
+  onShortcut?: (shortcut: SceneShortcut) => boolean
+  /**
+   * Take focus, with the caret at the start of the prose or the end of it.
+   * Applied once per `nonce`, and not before `ready` — the text arrives after
+   * the box, and a caret put at the end of an empty box is at 0.
+   */
+  focusRequest?: { nonce: number; at: 'start' | 'end' } | null
+  ready?: boolean
   /** The caret is reported with the text: whether it is still inside the header
    *  line decides whether that line is safe to apply yet. */
   onChange: (text: string, caret: number) => void
@@ -70,9 +85,20 @@ const KIND_LABEL: Record<MentionKind, string> = {
 
 export function SceneDraftEditor({
   value, onChange, onBlur, candidates, canCreateLocation, onPick, headerRange = null,
-  placeholder, ariaLabel, rows = 5,
+  placeholder, ariaLabel, rows = 5, onShortcut, focusRequest = null, ready = true,
 }: SceneDraftEditorProps) {
   const taRef = useRef<HTMLTextAreaElement>(null)
+
+  const focusedFor = useRef<number | null>(null)
+  useEffect(() => {
+    const ta = taRef.current
+    if (!focusRequest || !ready || !ta || focusedFor.current === focusRequest.nonce) return
+    focusedFor.current = focusRequest.nonce
+    const caret = arrivalCaret(ta.value, headerRange?.end ?? null, focusRequest.at)
+    // The card scrolls itself to the top; focusing must not drag it elsewhere.
+    ta.focus({ preventScroll: true })
+    ta.setSelectionRange(caret, caret)
+  })
   const [mention, setMention] = useState<MentionToken | null>(null)
   const [highlight, setHighlight] = useState(0)
   const pendingCaret = useRef<number | null>(null)
@@ -213,6 +239,21 @@ export function SceneDraftEditor({
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    const shortcut = onShortcut ? sceneShortcut(e) : null
+    if (shortcut && onShortcut!(shortcut)) {
+      e.preventDefault()
+      setMention(null)
+      /*
+        Leaving the scene saves it: blur is where the bracket line is applied
+        and the prose written, and the card is about to close under the text
+        box — an unmount flushes the prose but not the line. Still in time,
+        because the close is a state update and waits for this handler to end.
+        Only when the key went somewhere: at either end of the book the writer
+        stays where they were, caret and all.
+      */
+      if (shortcut !== 'new') e.currentTarget.blur()
+      return
+    }
     if (!mention || matches.length === 0) return
     if (e.key === 'ArrowDown') {
       e.preventDefault(); setHighlight((h) => (h + 1) % matches.length)
