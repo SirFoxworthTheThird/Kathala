@@ -111,10 +111,12 @@ Scenes move earlier or later with the ↑ ↓ on their cards; dragging is the [C
 - **Enter** on a heading goes to the prose under it; on a chapter heading, to its first scene.
 - **Ctrl+F** (⌘F) searches the whole book. The page only draws what is on screen, so the browser's own find cannot see the rest.
 - **Split a scene by typing `## ` and a title on a line of its own.** When you leave the line, the prose below it becomes a new scene with that title — the same act as **Split** on a card. Nothing happens while you are still typing the line.
-- **Join a scene to the one before it by deleting its heading's whole line** — the same act as **Join with next scene** on a card.
-- **Ctrl+Z takes back typing since the last split or join, and then the split or join itself** (Ctrl+Shift+Z puts it back). You can type on in the new scene straight away. The top bar's Undo takes back renames, splits and joins.
-- Part of a heading — its `#` marks, a line break in its title, text under a chapter heading — is refused, and so are joining a chapter's first scene and deleting a chapter heading; the line above the page says why. Chapters are made and removed on Cards or in the binder.
-- A line of prose that already started with `## ` stays prose until you edit it.
+- **Start a chapter by typing `# ` and a title on a line of its own.** When you leave the line, a chapter begins there, after the one it was typed in, taking the scenes after it; typed inside a scene, the rest of that scene goes on as the new chapter's first scene, under the same title.
+- **Under a chapter heading, `## ` and a title gives it a scene** — how a new chapter gets its first. Only headings can be typed there; Enter on the title of a chapter with no scenes makes the line.
+- **Join by deleting a heading's whole line**: a scene to the scene before (the same act as **Join with next scene** on a card), a chapter to the chapter before — its scenes to the end of that one, its synopsis, notes and word goal added to that one's.
+- **Ctrl+Z takes back typing since the last chapter or scene made or joined, and then that itself** (Ctrl+Shift+Z puts it back). You can type on straight away. The top bar's Undo takes these back too.
+- Part of a heading — its `#` marks, a line break in its title — is refused, and so are joining the first chapter or a chapter's first scene, and two headings at once; the line above the page says why.
+- A line of prose that already started with `#` stays prose until you edit it.
 - A change made elsewhere — another tab, or the top bar's Undo — shows on the page, and anything typed there and not yet saved is kept.
 - Page is offered on one timeline in narrative order, and not on *All timelines*, in Chronological order, or in reading mode.
 - Not on the page yet: the scene header line, `@` mentions, the scene keys and Focus mode — open the scene's card for those.

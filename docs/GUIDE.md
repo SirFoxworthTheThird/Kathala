@@ -974,21 +974,32 @@ the page; retitle a chapter or scene by editing its heading.
   **Split** does on a card. Pressing Enter at the end of the title puts you at
   the start of the new scene's prose. While you are still on the line nothing
   happens, so `## T` does not make a scene called "T" on the way to "The gate".
-- **Delete a scene heading's whole line to join that scene to the one before
-  it.** Select the line and delete it, or select from one scene's prose into
-  the next: the two become one, with everything recorded at the second moved
-  to the first, as **Join with next scene** does on a card.
-- **Ctrl+Z inside the page takes back your typing since the last split or
-  join, and then the split or join itself**, whole; Ctrl+Shift+Z puts it back.
-  The page shows a split or join the moment you make it, so you can go straight
-  on typing in the new scene. The top bar's Undo takes back a renamed chapter or
-  scene, a split and a join, as it does everywhere else.
+- **Type `# ` and a title on a line of its own to start a chapter there.** When
+  you leave the line, a new chapter begins at it, straight after the chapter it
+  was typed in, and the scenes after it move into it. Typed in the middle of a
+  scene, the rest of that scene's prose goes on as the new chapter's first
+  scene, under the same title, since prose belongs to a scene.
+- **Under a chapter heading, type `## ` and a title to give it a scene.** That
+  is how a new chapter gets its first one — Enter on the title of a chapter with
+  no scenes makes the line to type it on. Nothing but a heading can go there,
+  since there is no scene to keep it: anything else is refused, and a `#` left
+  on its own is taken away.
+- **Delete a heading's whole line to join it to what is before it.** A scene
+  joins the scene before, with everything recorded at it moved over, as **Join
+  with next scene** does on a card; select the line and delete it, or select
+  from one scene's prose into the next. A chapter joins the chapter before: its
+  scenes go to the end of that chapter, and its synopsis, notes and word goal
+  are added to that chapter's.
+- **Ctrl+Z inside the page takes back your typing since the last chapter or
+  scene you made or joined, and then that itself**, whole; Ctrl+Shift+Z puts it
+  back. The page shows the change the moment you make it, so you can go
+  straight on typing. The top bar's Undo takes these back too, as it does
+  everywhere else.
 - **Part of a heading is refused**, with the reason above the page: its `#`
-  marks, a line break in its title, or text under a chapter heading. So is
-  joining the first scene of a chapter, which has no scene before it, and
-  deleting a chapter heading — chapters are made and removed on Cards or in
-  the binder for now.
-- A line of prose that already started with `## ` — in a book you imported,
+  marks or a line break in its title. So is joining the first chapter, or the
+  first scene of a chapter, which have nothing before them, and deleting two
+  headings at once.
+- A line of prose that already started with `#` — in a book you imported,
   say — stays prose until you edit it.
 - **Changes made elsewhere arrive.** A scene renamed in another tab, or put
   back by the top bar's Undo, shows on the page; anything you have typed on the

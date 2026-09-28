@@ -61,8 +61,10 @@ The Manuscript's [Page](Timeline#writing-on-one-page) — the book as one docume
 | **Ctrl+F** (⌘F) | Search the whole book — the browser's own find sees only what is on screen |
 | **Enter** on a heading | Go to the prose under it; on a chapter heading, to its first scene |
 | `## Title` on its own line, then leave the line | Split the scene there; the prose below becomes a new scene called *Title* |
-| Delete a scene heading's whole line | Join the scene to the one before it |
-| **Ctrl+Z** (⌘Z) | Take back typing since the last split or join, then the split or join itself |
+| `# Title` on its own line, then leave the line | Start a chapter there; the scenes after it move into it |
+| `## Title` under a chapter heading | Give the chapter a scene — its first, in a new chapter |
+| Delete a heading's whole line | Join the scene, or chapter, to the one before it |
+| **Ctrl+Z** (⌘Z) | Take back typing since the last chapter or scene made or joined, then that itself |
 | **Ctrl+Shift+Z** (⌘⇧Z) | Put back what Ctrl+Z took back |
 
 ### In the binder
