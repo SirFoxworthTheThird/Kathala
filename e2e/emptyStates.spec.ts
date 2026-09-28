@@ -67,7 +67,7 @@ test.describe('An empty section offers the act, routes to it, or says nothing', 
 
   test('rule 3: the cast section stays quiet beside its picker, and speaks when there is none', async ({ page }) => {
     await worldFromSpec(page, SPEC)
-    await page.getByRole('link', { name: /timeline/i }).first().click()
+    await page.getByRole('link', { name: /manuscript/i }).first().click()
     await page.getByTitle('Open chapter detail').first().click()
     await page.waitForTimeout(1500)
 
@@ -93,7 +93,7 @@ test.describe('An empty section offers the act, routes to it, or says nothing', 
     // no characters at all cannot render a cast picker, so "say nothing" would
     // leave exactly the blank panel X-4 is partly about.
     await worldFromSpec(page, NO_CAST)
-    await page.getByRole('link', { name: /timeline/i }).first().click()
+    await page.getByRole('link', { name: /manuscript/i }).first().click()
     await page.getByTitle('Open chapter detail').first().click()
     await page.waitForTimeout(1500)
 
@@ -116,10 +116,10 @@ test.describe('An empty section offers the act, routes to it, or says nothing', 
 
     // Presence: the control that goes where the act happens. A character joins
     // a scene from the scene, not from here.
-    const toTimeline = page.getByRole('button', { name: 'Open Timeline' })
+    const toTimeline = page.getByRole('button', { name: 'Open Manuscript' })
     await expect(toTimeline).toBeVisible()
     await toTimeline.click()
-    await expect(page).toHaveURL(/\/timeline$/)
+    await expect(page).toHaveURL(/\/manuscript$/)
 
     // The opposite condition: Kestrel *is* in a scene, so she gets the list and
     // none of the empty state at all.
@@ -128,6 +128,6 @@ test.describe('An empty section offers the act, routes to it, or says nothing', 
     await page.getByRole('tab', { name: /Appearances/i }).click()
     await expect(page.getByText('The wreck').first()).toBeVisible({ timeout: 30_000 })
     await expect(page.getByText('No appearances yet')).toHaveCount(0)
-    await expect(page.getByRole('button', { name: 'Open Timeline' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Open Manuscript' })).toHaveCount(0)
   })
 })

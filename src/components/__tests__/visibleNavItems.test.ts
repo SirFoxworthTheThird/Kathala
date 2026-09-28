@@ -1,51 +1,47 @@
 import { describe, it, expect } from 'vitest'
 import { navItems, visibleNavItems } from '../navItems'
 
-const labels = (args: { readingMode: boolean; hasProse: boolean }) =>
-  visibleNavItems(args).map((n) => n.label)
-const paths = (args: { readingMode: boolean; hasProse: boolean }) =>
-  visibleNavItems(args).map((n) => n.to)
+const paths = (readingMode: boolean) => visibleNavItems({ readingMode }).map((n) => n.to)
 
 /**
- * Reading mode takes the writing screens away and gives the book back.
+ * Reading mode takes the writing screens away, and gives the book its reader's
+ * name.
  *
- * The pairing matters in both directions: a reader with a book must get the
- * Read screen, and a reader of one of the seven structural-only worlds must
- * not — those have no text, and their catalogue entries say so. A test that
- * only checked the presence would pass on a nav that always showed it.
+ * The book is one screen now — the Manuscript, which was the Timeline and the
+ * Manuscript — so a reader has it whether or not the world holds prose: its
+ * chapters and scenes are where they set their place, and a structural-only
+ * world is nothing but chapters and scenes.
  */
 describe('visibleNavItems', () => {
   it('changes nothing for a writer', () => {
-    expect(visibleNavItems({ readingMode: false, hasProse: true })).toEqual(navItems)
-    expect(visibleNavItems({ readingMode: false, hasProse: false })).toEqual(navItems)
+    expect(visibleNavItems({ readingMode: false })).toEqual(navItems)
+  })
+
+  it('has the book once, as the Manuscript', () => {
+    const books = navItems.filter((n) => n.to === 'manuscript')
+    expect(books).toHaveLength(1)
+    expect(books[0].label).toBe('Manuscript')
+    expect(navItems.map((n) => n.to)).not.toContain('timeline')
   })
 
   it('gives a reader the book, under a reader’s name for it', () => {
-    const shown = visibleNavItems({ readingMode: true, hasProse: true })
-    expect(shown.map((n) => n.to)).toContain('manuscript')
-    expect(shown.find((n) => n.to === 'manuscript')?.label).toBe('Read')
-    expect(labels({ readingMode: true, hasProse: true })).not.toContain('Manuscript')
+    const shown = visibleNavItems({ readingMode: true })
+    expect(shown.find((n) => n.to === 'manuscript')?.label).toBe('Book')
+    expect(shown.map((n) => n.label)).not.toContain('Manuscript')
   })
 
-  it('offers no book when the world has no prose', () => {
-    expect(paths({ readingMode: true, hasProse: false })).not.toContain('manuscript')
-  })
-
-  it('still takes away the writing screens that have no reader’s version', () => {
-    for (const hasProse of [true, false]) {
-      const shown = paths({ readingMode: true, hasProse })
-      expect(shown).not.toContain('corkboard')
-      expect(shown).not.toContain('structure')
-    }
-  })
-
-  it('keeps the reading screens either way', () => {
-    const shown = paths({ readingMode: true, hasProse: false })
-    for (const p of ['timeline', 'characters', 'maps', 'lore']) expect(shown).toContain(p)
+  it('takes away the writing screens, and keeps the reading ones', () => {
+    const shown = paths(true)
+    expect(shown).not.toContain('corkboard')
+    expect(shown).not.toContain('structure')
+    for (const p of ['manuscript', 'characters', 'maps', 'lore']) expect(shown).toContain(p)
+    // The pairing: the writer has the ones the reader lost.
+    expect(paths(false)).toContain('corkboard')
+    expect(paths(false)).toContain('structure')
   })
 
   it('does not mutate the shared list while renaming', () => {
-    visibleNavItems({ readingMode: true, hasProse: true })
+    visibleNavItems({ readingMode: true })
     expect(navItems.find((n) => n.to === 'manuscript')?.label).toBe('Manuscript')
   })
 })

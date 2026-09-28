@@ -38,7 +38,7 @@ async function worldWithAScene(page: Page) {
   await page.getByRole('button', { name: 'Create World' }).last().click()
   await expect(page).toHaveURL(/#\/worlds\//)
 
-  await page.getByRole('link', { name: /timeline/i }).first().click()
+  await page.getByRole('link', { name: /manuscript/i }).first().click()
   await settleNav(page)
   await page.getByRole('button', { name: 'Create Timeline' }).click()
   await page.getByRole('button', { name: 'Add Chapter' }).first().click()
@@ -94,7 +94,7 @@ test.describe('Recent changes says what changed', () => {
     await page.waitForTimeout(1500)
 
     // A second chapter, edited the same way. Back to the timeline first.
-    await page.getByRole('link', { name: /timeline/i }).first().click()
+    await page.getByRole('link', { name: /manuscript/i }).first().click()
     await settleNav(page)
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('The Second Chapter')

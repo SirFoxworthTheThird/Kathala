@@ -46,7 +46,7 @@ test.describe("The time cursor's control follows the cursor", () => {
 
     // Presence: every screen whose content answers to the cursor. Three of
     // these — arc, lore, calendar — read `activeEventId` and hid the control.
-    for (const path of ['timeline', 'corkboard', 'structure', 'arc', 'calendar', 'lore', 'maps']) {
+    for (const path of ['manuscript', 'corkboard', 'structure', 'arc', 'calendar', 'lore', 'maps']) {
       await page.goto(`/#/worlds/${worldId}/${path}`, { waitUntil: 'load' })
       await expect(bar(page), `bar missing on /${path}`).toBeVisible({ timeout: 20_000 })
     }
@@ -63,7 +63,7 @@ test.describe("The time cursor's control follows the cursor", () => {
   test('EV-7: one chapter fills the track instead of leaving a stub in it', async ({ page }) => {
     const worldId = await worldFromSpec(page)
     await page.setViewportSize({ width: 1440, height: 900 })
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await expect(bar(page)).toBeVisible({ timeout: 20_000 })
     await page.waitForTimeout(600)
 

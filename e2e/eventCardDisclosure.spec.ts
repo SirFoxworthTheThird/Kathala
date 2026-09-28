@@ -45,7 +45,7 @@ test.describe('Scene card disclosure', () => {
       ])
     }, { worldId })
 
-    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
     await expect(page.getByRole('button', { name: 'Expand “A bare scene”' })).toBeVisible({ timeout: 30_000 })
   }
 

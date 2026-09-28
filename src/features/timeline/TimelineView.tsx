@@ -230,13 +230,14 @@ export default function TimelineView() {
     writer's alone; Read is also the reader's, the book they are reading.
   */
   // Remembered per world, so leaving the book and coming back lands on it again.
-  const layout = useAppStore((st) => (worldId ? st.layoutByWorld[worldId] : undefined)) ?? 'cards'
+  const chosenLayout = useAppStore((st) => (worldId ? st.layoutByWorld[worldId] : undefined))
   const setTimelineLayout = useAppStore((st) => st.setTimelineLayout)
   const setLayout = (next: TimelineLayout) => { if (worldId) setTimelineLayout(worldId, next) }
   /*
-    `?view=page|read|cards` asks for a layout on arrival — what /manuscript
-    lands on. Taken once and then dropped from the address, so the layout is
-    the writer's own from there and a later navigation does not reapply it.
+    `?view=page|read|cards` asks for a layout on arrival: the dashboard's *Set
+    where you have read to* asks for Cards, where the chapter rows are. Taken
+    once and then dropped from the address, so the layout is the person's own
+    from there and a later navigation does not reapply it.
   */
   const [params, setParams] = useSearchParams()
   const askedView = params.get('view')
@@ -247,6 +248,13 @@ export default function TimelineView() {
   }, [askedView, setParams, worldId, setTimelineLayout])
   const worldHasProse = useHasProse(worldId ?? null)
   const readingMode = useReadingMode(worldId ?? null)
+  /*
+    Until a layout is chosen: a reader is given the book to read, as the
+    navigation's *Read* did while the book was its own screen; the author starts
+    on the cards, which is where a book with no prose yet is planned. A reader's
+    book with no prose has no Read to give (`readOffered`), and shows Cards.
+  */
+  const layout: TimelineLayout = chosenLayout ?? (readingMode ? 'read' : 'cards')
   const threads = usePlotThreads(worldId ?? null)
   const [threadFilter, setThreadFilter] = useState<string | null>(null)
   const [threadsExpanded, setThreadsExpanded] = useState(false)
@@ -270,10 +278,10 @@ export default function TimelineView() {
     ── The open chapter ────────────────────────────────────────────────────────
 
     The chapter screen was a page of its own; it is this page now, open at a
-    chapter. `/timeline/:chapterId` opens that chapter's row in the list,
+    chapter. `/manuscript/:chapterId` opens that chapter's row in the list,
     scrolls it to the top, and puts the chapter's own panel — title, synopsis,
     Character States, notes — beside the list, or under the row where there is
-    no room beside it. `/timeline` is the same page with no chapter open.
+    no room beside it. `/manuscript` is the same page with no chapter open.
   */
   const openChapter = useChapter(chapterId ?? null)
   const openEvents = useEvents(chapterId ?? null)
@@ -348,7 +356,7 @@ export default function TimelineView() {
     row.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' })
   })
 
-  const closeChapter = () => navigate(`/worlds/${worldId}/timeline`)
+  const closeChapter = () => navigate(`/worlds/${worldId}/manuscript`)
   const oneOrder = !isAll && viewMode === 'narrative' && chapters.length > 0 && !!currentTimelineId
   const pageOffered = oneOrder && !gate.active
   /*
@@ -383,7 +391,7 @@ export default function TimelineView() {
   */
   function goToScene(scene: WorldEvent, at: 'start' | 'end', opts: { focus?: boolean } = {}) {
     if (!gate.active) activateEvent(scene.id, scene.locationMarkerId, setCursor)
-    navigate(`/worlds/${worldId}/timeline/${scene.chapterId}`, {
+    navigate(`/worlds/${worldId}/manuscript/${scene.chapterId}`, {
       // `focus`: arrived from Focus mode, so the scene opens in it too.
       state: { reveal: scene.id, caret: at, focus: opts.focus },
       replace: scene.chapterId === chapterId,
@@ -606,7 +614,7 @@ export default function TimelineView() {
                 </button>
               </div>
               {readOffered && (
-                <div className="flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-xs" role="group" aria-label="Timeline layout">
+                <div className="flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-xs" role="group" aria-label="Layout">
                   <button
                     onClick={() => setLayout('cards')}
                     aria-pressed={layout === 'cards'}

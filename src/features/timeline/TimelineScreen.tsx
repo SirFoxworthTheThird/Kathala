@@ -82,7 +82,7 @@ export default function TimelineScreen() {
   */
   function goScene(scene: WorldEvent) {
     if (!gate.active) activateEvent(scene.id, scene.locationMarkerId, setActiveEventId)
-    navigate(`/worlds/${worldId}/timeline/${scene.chapterId}`, {
+    navigate(`/worlds/${worldId}/manuscript/${scene.chapterId}`, {
       state: { reveal: scene.id },
       replace: scene.chapterId === chapterId,
     })
@@ -90,10 +90,10 @@ export default function TimelineScreen() {
   function goChapter(target: Chapter) {
     // Even to the chapter already open: the page scrolls to it on arrival, and
     // the writer who clicks it has usually scrolled away.
-    navigate(`/worlds/${worldId}/timeline/${target.id}`, { replace: target.id === chapterId })
+    navigate(`/worlds/${worldId}/manuscript/${target.id}`, { replace: target.id === chapterId })
   }
   function goBook() {
-    if (chapterId) navigate(`/worlds/${worldId}/timeline`)
+    if (chapterId) navigate(`/worlds/${worldId}/manuscript`)
   }
 
   const context: TimelineScreenContext = useMemo(

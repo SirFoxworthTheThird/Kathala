@@ -16,7 +16,7 @@ test.describe('Structure board', () => {
     const worldId = page.url().split('/worlds/')[1].split('/')[0]
 
     // Timeline → chapter → an event.
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('One')

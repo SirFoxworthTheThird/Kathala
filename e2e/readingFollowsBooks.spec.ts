@@ -51,7 +51,7 @@ for (const title of ['Dracula', 'Alice’s Adventures in Wonderland', 'The Turn 
     await downloadLibraryBook(page, title)
     await settle(page)
     await page.getByRole('navigation', { name: 'Main navigation' })
-      .getByRole('link', { name: 'Read', exact: true }).click()
+      .getByRole('link', { name: 'Book', exact: true }).click()
     await settle(page)
 
     const opened = await cursorChapter(page)

@@ -100,7 +100,7 @@ async function mapWithCast(page: Page) {
 const castBody = (page: Page) => page.locator('[data-sidebar-section-body="Characters"]')
 
 async function setCursor(page: Page) {
-  await page.getByRole('link', { name: /timeline/i }).first().click()
+  await page.getByRole('link', { name: /manuscript/i }).first().click()
   await settle(page)
   await page.getByTitle('Open chapter detail').first().click()
   await page.waitForTimeout(1000)

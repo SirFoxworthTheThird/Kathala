@@ -54,7 +54,7 @@ async function openScene(page: Page, prose: string | null): Promise<void> {
     await db.mapLayers.add({ id: 'map1', worldId: id, name: 'The Salt Road', parentMapId: null, imageBlobId: null, width: 1000, height: 1000, createdAt: now, updatedAt: now })
   }, [worldId, prose] as const)
 
-  await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
   await settle(page)
   await page.getByRole('button', { name: /^Expand/ }).first().click()
   await settle(page)

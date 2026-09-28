@@ -19,7 +19,7 @@ async function seedChapter(page: Page, worldName: string, statuses: string[]) {
   await page.getByRole('button', { name: 'Create World' }).last().click()
   await expect(page).toHaveURL(/#\/worlds\//)
 
-  await page.getByRole('link', { name: /timeline/i }).click()
+  await page.getByRole('link', { name: /manuscript/i }).click()
   await settleNav(page)
   await page.getByRole('button', { name: 'Create Timeline' }).click()
   await page.getByRole('button', { name: 'Add Chapter' }).first().click()
@@ -80,7 +80,7 @@ test.describe('Chapter roll-up', () => {
     // ── Before any prose ────────────────────────────────────────────────────
     // The chapter has scenes but no words, so it says so — "0 words" on a
     // freshly outlined chapter would be noise.
-    await page.getByRole('link', { name: /timeline/i }).click()
+    await page.getByRole('link', { name: /manuscript/i }).click()
     await settleNav(page)
     await expect(main.getByText('2 scenes', { exact: true })).toBeVisible({ timeout: 30000 })
 
@@ -93,13 +93,13 @@ test.describe('Chapter roll-up', () => {
     await expect(main.getByText(/^\d+ words?$/)).toHaveCount(0)
 
     // ── Write one scene ─────────────────────────────────────────────────────
-    await page.getByRole('link', { name: /timeline/i }).click()
+    await page.getByRole('link', { name: /manuscript/i }).click()
     await settleNav(page)
     await page.getByTitle('Open chapter detail').first().click()
     await writeScene(page, 'Opening', 'One two three four five six.')
 
     // ── After ───────────────────────────────────────────────────────────────
-    await page.getByRole('link', { name: /timeline/i }).click()
+    await page.getByRole('link', { name: /manuscript/i }).click()
     await settleNav(page)
     // Retried: the row updates when the blur-triggered save reaches the store.
     await expect(main.getByText('2 scenes · 6 words', { exact: true }))
@@ -121,7 +121,7 @@ test.describe('Chapter roll-up', () => {
     await seedChapter(page, 'Status World', ['Final', 'Idea'])
 
     const main = page.getByRole('main')
-    await page.getByRole('link', { name: /timeline/i }).click()
+    await page.getByRole('link', { name: /manuscript/i }).click()
     await settleNav(page)
 
     const pill = main.getByTitle('Least advanced of 2 scenes: Idea')
@@ -144,7 +144,7 @@ test.describe('Chapter roll-up', () => {
     await closingStatus.selectOption('final')
     await expect(closingStatus).toHaveValue('final')
 
-    await page.getByRole('link', { name: /timeline/i }).click()
+    await page.getByRole('link', { name: /manuscript/i }).click()
     await settleNav(page)
     const whole = main.getByTitle('Every scene is Final')
     await expect(whole).toBeVisible({ timeout: 30000 })

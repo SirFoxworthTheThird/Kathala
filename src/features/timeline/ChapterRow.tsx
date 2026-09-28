@@ -113,7 +113,7 @@ export function ChapterRow({
     listed every scene in it by title: authored titles, not printed ones.
     Measured on *Philosopher's Stone* at chapter 4, expanding chapter 17 lists
     "Quirrell and Voldemort". The spoiler sweep could not see it because it
-    visits `/timeline` with every row collapsed, which is the same blind spot
+    visits `/manuscript` with every row collapsed, which is the same blind spot
     `buttonNames` had under **WRUN-6**.
 
     `threadFilter` cannot force it open either: a filtered view is still a view.
@@ -446,7 +446,7 @@ export function ChapterRow({
           variant="ghost"
           size="icon"
           className="h-7 w-7 shrink-0"
-          onClick={() => navigate(`/worlds/${worldId}/timeline/${chapter.id}`)}
+          onClick={() => navigate(`/worlds/${worldId}/manuscript/${chapter.id}`)}
           /*
             Named per row, and named at all: this was an icon whose only name
             was its `title`, repeated identically down 117 rows — so nothing on
@@ -525,7 +525,7 @@ export function ChapterRow({
                     chapterNumber={chapter.number}
                     // Not in the chapter the page is already open at, where it would
                     // go nowhere and cost a phone's scene title the room.
-                    onOpenChapter={open ? undefined : () => navigate(`/worlds/${worldId}/timeline/${e.chapterId}`)}
+                    onOpenChapter={open ? undefined : () => navigate(`/worlds/${worldId}/manuscript/${e.chapterId}`)}
                     revealNonce={reveal?.id === e.id ? reveal.nonce : undefined}
                     revealCaret={reveal?.id === e.id ? reveal.caret : undefined}
                     revealFocus={reveal?.id === e.id ? reveal.focus : undefined}

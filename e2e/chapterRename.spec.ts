@@ -23,7 +23,7 @@ async function timelineWithAChapter(page: Page) {
   await expect(page).toHaveURL(/#\/worlds\//)
   const worldId = page.url().split('/worlds/')[1].split('/')[0]
 
-  await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
   await settleNav(page)
   await page.getByRole('button', { name: 'Create Timeline' }).click()
   await page.getByRole('button', { name: 'Add Chapter' }).first().click()
@@ -68,7 +68,7 @@ test.describe('Renaming a chapter', () => {
   test('is also offered on the chapter\'s own screen, in place', async ({ page }) => {
     const worldId = await timelineWithAChapter(page)
     await page.getByRole('button', { name: 'Open chapter detail — Ch. 1' }).click()
-    await expect(page).toHaveURL(/#\/worlds\/.*\/timeline\//)
+    await expect(page).toHaveURL(/#\/worlds\/.*\/manuscript\//)
 
     const field = page.getByRole('main').getByLabel('Chapter title')
     await expect(field).toBeVisible({ timeout: 20_000 })
@@ -83,7 +83,7 @@ test.describe('Renaming a chapter', () => {
     expect(await storedTitle(page)).toBe('The Weir')
 
     // The timeline row shows the new name, so the two screens agree.
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await settleNav(page)
     await expect(page.getByRole('main').getByText('Ch. 1 — The Weir')).toBeVisible({ timeout: 20_000 })
   })

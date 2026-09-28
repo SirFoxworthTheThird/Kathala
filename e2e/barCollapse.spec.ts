@@ -85,7 +85,7 @@ test.describe('The chapter bar rolls up', () => {
     // Persisted: someone who put 100px of chrome away on the map did not mean
     // "until the next navigation". This is the assertion the partialize
     // whitelist has to earn.
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await expect(strip(page)).toBeVisible({ timeout: 30_000 })
     await page.reload()
     await expect(strip(page)).toBeVisible({ timeout: 30_000 })

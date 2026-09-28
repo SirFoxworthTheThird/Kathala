@@ -100,7 +100,7 @@ export function AttachScenesDialog({
 
         {sceneCount === 0 ? (
           <p className="py-6 text-center text-sm text-[hsl(var(--muted-foreground))]">
-            There are no scenes yet. Add one on the Timeline and this {noun} can be attached to it.
+            There are no scenes yet. Add one in the Manuscript and this {noun} can be attached to it.
           </p>
         ) : (
           <>

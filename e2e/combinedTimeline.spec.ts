@@ -15,7 +15,7 @@ test('All timelines tab shows events from every timeline in one sequence', async
   await page.getByRole('button', { name: 'Create World' }).last().click()
   await expect(page).toHaveURL(/#\/worlds\//)
 
-  const gotoTimeline = () => page.getByRole('link', { name: /timeline/i }).first().click()
+  const gotoTimeline = () => page.getByRole('link', { name: /manuscript/i }).first().click()
   const addEvent = async (title: string) => {
     await page.getByTitle('Open chapter detail').first().click()
     await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()

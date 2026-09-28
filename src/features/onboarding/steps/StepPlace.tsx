@@ -100,7 +100,7 @@ export function StepPlace({ worldId, characterId, createdEventId, onComplete, on
 
       {noEvents ? (
         <p className="text-sm text-[hsl(var(--muted-foreground))]">
-          No moments yet — you can place your character later in the Timeline.
+          No moments yet — you can place your character later in the Manuscript.
         </p>
       ) : (
         <div className="flex flex-col gap-1.5">

@@ -29,7 +29,7 @@ test.describe.configure({ timeout: 180_000 })
 
 /** The index screens — every one reachable from the nav. */
 const INDEX_ROUTES = [
-  '', 'timeline', 'corkboard', 'calendar', 'characters', 'maps', 'items',
+  '', 'manuscript?view=cards', 'corkboard', 'calendar', 'characters', 'maps', 'items',
   'relationships', 'arc', 'lore', 'factions', 'knowledge',
 ]
 
@@ -121,7 +121,7 @@ test('no unmet name appears anywhere in reading mode', async ({ page }) => {
       visited a state its target never rendered in. Expanding chapter 17 of
       *Philosopher's Stone* from chapter 4 listed "Quirrell and Voldemort".
     */
-    if (route === 'timeline') {
+    if (route === 'manuscript?view=cards') {
       const disclosures = page.getByRole('button', { name: /^Ch\. \d+/ })
       const n = await disclosures.count()
       expect(n, 'the timeline should list this book\'s chapters').toBeGreaterThan(5)
@@ -256,7 +256,7 @@ test('no writing-mode overlay is reachable while reading', async ({ page }) => {
   await page.getByRole('button', { name: 'Next moment' }).click()
   await settle(page)
   const worldId = new URL(page.url()).hash.split('/')[2]
-  await page.goto(`/#/worlds/${worldId}/timeline`)
+  await page.goto(`/#/worlds/${worldId}/manuscript`)
   await settle(page)
   /*
     The anchor that keeps the absences below from being vacuous: if the bar were

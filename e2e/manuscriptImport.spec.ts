@@ -42,8 +42,9 @@ test.describe('Import Manuscript', () => {
     await page.getByRole('button', { name: /^Import/ }).last().click()
     await expect(page).toHaveURL(/#\/worlds\//)
 
-    // The manuscript view shows the imported prose stitched back together.
+    // The Manuscript's Read shows the imported prose stitched back together.
     await page.getByRole('link', { name: /manuscript/i }).click()
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Read', exact: true }).click()
     await expect(page.getByText('It was a dark and stormy night.')).toBeVisible()
     await expect(page.getByText('Then the sun rose.')).toBeVisible()
     await expect(page.getByText('They set out at dawn.')).toBeVisible()

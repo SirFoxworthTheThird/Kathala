@@ -22,7 +22,7 @@ const scroller = (page: Page) => page.locator('[data-book-scroller]')
 
 async function openBook(page: Page) {
   await page.getByRole('navigation', { name: 'Main navigation' })
-    .getByRole('link', { name: 'Read', exact: true }).click()
+    .getByRole('link', { name: 'Book', exact: true }).click()
 }
 
 test.beforeEach(async ({ page }) => { await resetDB(page) })

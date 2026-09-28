@@ -29,7 +29,7 @@ const sceneMenu = (page: Page) =>
     .filter({ hasNotText: 'chapter' })
 
 async function openTimeline(page: Page, worldId: string) {
-  await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
   await settle(page)
 }
 
@@ -61,7 +61,7 @@ test('a chapter screen offers a reader no way to move or delete a scene', async 
     return all.sort((a, b) => a.number - b.number)[0]?.id ?? null
   })
   expect(chapterId, 'the book has a chapter to open').not.toBeNull()
-  await page.goto(`/#/worlds/${worldId}/timeline/${chapterId}`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript/${chapterId}`, { waitUntil: 'load' })
   await settle(page)
 
   await expect(page.getByRole('main').getByText(/Down the Rabbit-Hole/i).first(),
@@ -116,7 +116,7 @@ test('a chapter offers a reader no empty section addressed to somebody else', as
   })
 
   const openChapter = async () => {
-    await page.goto(`/#/worlds/${worldId}/timeline/${chapterId}`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/${chapterId}`, { waitUntil: 'load' })
     await settle(page)
   }
 

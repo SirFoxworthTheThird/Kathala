@@ -64,7 +64,7 @@ async function briefFor(page: Page, opts: { withSetting: boolean }) {
     })
   }, { id: worldId, withSetting: opts.withSetting })
 
-  await page.goto(`/#/worlds/${worldId}/timeline/ch1`)
+  await page.goto(`/#/worlds/${worldId}/manuscript/ch1`)
   await settle(page)
   await page.getByTitle("Writer's Brief").click()
 

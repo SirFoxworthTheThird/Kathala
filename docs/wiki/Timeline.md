@@ -1,6 +1,6 @@
-# Timeline & Events
+# Manuscript: chapters & events
 
-The Timeline is the spine of your story: a list of chapters, each holding an ordered set of **events** (scenes or beats).
+The Manuscript is the spine of your story: a list of chapters, each holding an ordered set of **events** (scenes or beats), and the book they make. It is **Manuscript** in the navigation (**Book** in [reading mode](Reading-Mode)). It was called the Timeline until the Timeline and the Manuscript became one screen, and an old `/timeline` link opens the same place.
 
 A **pacing curve** across the top plots dramatic tension chapter by chapter once you rate scenes, so you can see the shape of your story at a glance.
 
@@ -16,9 +16,9 @@ A **pacing curve** across the top plots dramatic tension chapter by chapter once
 
 ---
 
-## The timeline page
+## The page
 
-**The Timeline is one page.** The [binder](#the-binder) runs down the left, and beside it is the **book** — every chapter, with the orders, filters and actions below. There is no separate chapter screen: opening a chapter opens it in the book, with its panel beside the list (see [Opening a chapter](#opening-a-chapter)). **Whole book** at the top of the binder, or the ✕ on the panel, closes it.
+**The Manuscript is one page.** The [binder](#the-binder) runs down the left, and beside it is the **book** — every chapter, with the orders, filters and actions below. There is no separate chapter screen: opening a chapter opens it in the book, with its panel beside the list (see [Opening a chapter](#opening-a-chapter)). **Whole book** at the top of the binder, or the ✕ on the panel, closes it.
 
 - **Narrative vs. Chronological** — toggle between reading order and in-world order (useful with flashbacks or in-world dates).
 - **Cards, Page and Read** — Cards is the book as scene cards; **Page** is the same book as one document to write in (see [Writing on one page](#writing-on-one-page)); **Read** is the book set for reading (see [Reading the book](#reading-the-book)).
@@ -121,12 +121,13 @@ Scenes move earlier or later with the ↑ ↓ on their cards; dragging is the [C
 
 ## Reading the book
 
-**Read**, beside Cards and Page, sets the timeline's prose as a book — the [Manuscript](Manuscript) — with **In this scene** in the margin.
+**Read**, beside Cards and Page, sets the timeline's prose as a book — see [The book](Manuscript) — with **In this scene** in the margin.
 
-- **Export**, **Find & replace** and the book's **word goal** are in the header on Page and Read — the Manuscript's own, and the same goal whichever screen sets it. Cards does not carry them.
+- **Export**, **Find & replace** and the book's **word goal** are in the header on Page and Read — the same goal whichever of the two sets it. Cards does not carry them.
 - The open chapter's panel has the chapter's **word goal** and its progress.
 - The [binder](#the-binder) brings a chapter or scene to the top of the book.
 - **In reading mode, Read is the book you are reading**: your place moves with you as you read on. Cards stays beside it; Page and the author's tools do not. A world with no prose offers no Read.
+- **The layout is remembered** for each world, so stepping out and coming back lands you in the book again. Until you choose one it opens on Cards — or, for a reader of a book with text, on Read.
 
 ---
 
@@ -143,7 +144,7 @@ The address names the open chapter, so a link or bookmark opens the book at it. 
 
 ### The binder
 
-The **binder** is the left edge of the Timeline: every chapter in this timeline, with the one you are in opened to show its scenes. Click a scene to go there — its chapter opens, its card opens and comes to the top, and the time cursor moves to it, so the Character States follow the scene you are writing. Click a chapter to open it, or to scroll back to it if it is already open.
+The **binder** is the left edge of the Manuscript: every chapter in this timeline, with the one you are in opened to show its scenes. Click a scene to go there — its chapter opens, its card opens and comes to the top, and the time cursor moves to it, so the Character States follow the scene you are writing. Click a chapter to open it, or to scroll back to it if it is already open.
 
 | Key | In the binder |
 |---|---|
@@ -194,7 +195,7 @@ Moving the cursor to a scene that names a location **pans the map** to it. It do
 
 ## Multiple timelines
 
-Creating another timeline adds a tab at the top of the Timeline page. Characters, items, maps, lore, and factions are shared across every timeline; snapshots are per event.
+Creating another timeline adds a tab at the top of the Manuscript. Characters, items, maps, lore, and factions are shared across every timeline; snapshots are per event.
 
 **When to use one:** parallel storylines, a flashback storyline set years earlier, an alternate-history branch, or a frame narrative.
 

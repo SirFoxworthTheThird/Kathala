@@ -244,7 +244,7 @@ test.describe('Map management', () => {
     await expect(page.getByRole('heading', { name: 'Add Location' })).not.toBeVisible()
 
     // A chapter + event are needed so an active event cursor exists to place into.
-    await page.getByRole('link', { name: /timeline/i }).click()
+    await page.getByRole('link', { name: /manuscript/i }).click()
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('Chapter One')
@@ -257,7 +257,7 @@ test.describe('Map management', () => {
     await expect(page.getByText('The Departure').first()).toBeVisible()
 
     // Select the event in the timeline bar to set the active cursor.
-    await page.getByRole('link', { name: /timeline/i }).click()
+    await page.getByRole('link', { name: /manuscript/i }).click()
     await settleNav(page)
     await page.getByTitle('The Departure', { exact: true }).click()
 

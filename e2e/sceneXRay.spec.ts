@@ -152,7 +152,7 @@ test('the eye opens that character\'s page, and the name alone does not', async 
   */
   await panel(page).getByText(name, { exact: true }).click()
   await expect(page, 'reading the name does not leave the book')
-    .toHaveURL(/#\/worlds\/[^/]+\/timeline$/)
+    .toHaveURL(/#\/worlds\/[^/]+\/manuscript$/)
 
   await eye.click()
   await expect(page).toHaveURL(/#\/worlds\/[^/]+\/characters\/[^/]+$/)
@@ -207,7 +207,7 @@ test('and coming back puts the reader where they were, not where they had read t
     their page.
   */
   await page.getByRole('navigation', { name: 'Main navigation' })
-    .getByRole('link', { name: 'Read', exact: true }).click()
+    .getByRole('link', { name: 'Book', exact: true }).click()
   await expect(page.locator('[data-scene-event-id]').first()).toBeVisible({ timeout: 60_000 })
 
   /*
@@ -254,8 +254,8 @@ test('a writer drafting the same book is not given the panel', async ({ page }) 
     } }).__pwdb
     await db!.worlds.update(id, { readingMode: false })
   }, worldId)
-  // The Manuscript, for its author, is the Timeline's Page: the book being written.
-  await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+  // Page, for its author: the book being written.
+  await page.goto(`/#/worlds/${worldId}/manuscript?view=page`, { waitUntil: 'load' })
   await settle(page)
   await expect(page.getByRole('textbox', { name: 'The book, as one page' }), 'drafting, on the same book')
     .toBeVisible({ timeout: 60_000 })

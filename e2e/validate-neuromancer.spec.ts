@@ -46,7 +46,7 @@ test.describe('Neuromancer Visual Validation', () => {
     console.log('All key characters visible')
 
     // Timeline
-    await page.getByRole('link', { name: /timeline/i }).first().click()
+    await page.getByRole('link', { name: /manuscript/i }).first().click()
     await settle(page)
     await shot(page, testInfo, '03-timeline.png')
 

@@ -73,12 +73,12 @@ test.describe('A world with no prose', () => {
 
   test('X-8: Manuscript says what to do, and its tools are disabled not broken', async ({ page }) => {
     const worldId = await world(page)
-    // The Manuscript lands its author on the Timeline's Page; the book, to read,
-    // is Read beside it — and that is where an empty one explains itself.
-    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    // The author's Page, and the book to read is Read beside it — which is
+    // where an empty one explains itself.
+    await page.goto(`/#/worlds/${worldId}/manuscript?view=page`, { waitUntil: 'load' })
     await settleNav(page)
     await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 30_000 })
-    await page.getByRole('group', { name: 'Timeline layout' }).getByRole('button', { name: 'Read', exact: true }).click()
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Read', exact: true }).click()
 
     // The one view the finding is right about is blank — and it explains
     // itself rather than looking like a failure. `exact`, so the words are the

@@ -44,7 +44,7 @@ test.describe('exporting only the scenes that are ready', () => {
       await db.sceneTexts.add({ id: 'st2', worldId: id, eventId: 'e2', text: 'Unready prose here.', wordCount: 3, createdAt: now, updatedAt: now })
     }, worldId)
 
-    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript?view=read`, { waitUntil: 'load' })
     await settle(page)
 
     await page.getByRole('button', { name: 'Export', exact: true }).click()

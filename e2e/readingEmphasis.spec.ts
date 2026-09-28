@@ -89,7 +89,7 @@ test('the writer reading the same book sees it rendered too, and writes the mark
     } }).__pwdb
     await db!.worlds.update(id, { readingMode: false })
   }, worldId)
-  await page.goto(`/#/worlds/${worldId}/timeline?view=read`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript?view=read`, { waitUntil: 'load' })
   await settle(page)
   await expect(prose(page).first()).toBeVisible({ timeout: 60_000 })
 
@@ -97,6 +97,6 @@ test('the writer reading the same book sees it rendered too, and writes the mark
     page.getByRole('main').locator('em', { hasText: /^very$/ }).first(),
   ).toBeVisible()
 
-  await page.getByRole('group', { name: 'Timeline layout' }).getByRole('button', { name: 'Page', exact: true }).click()
+  await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
   await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toContainText('so _very_ remarkable')
 })

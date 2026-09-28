@@ -43,7 +43,7 @@ async function book(page: Page): Promise<string> {
 
 /** The whole book, with chapter 1 opened in the list. */
 async function wholeBook(page: Page, worldId: string) {
-  await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
   await settle(page)
   const main = page.getByRole('main')
   await main.getByRole('button', { name: /^Ch\. 1 — Low Water/ }).click()
@@ -65,7 +65,7 @@ test.describe('one scene card', () => {
     await expect(editor).toHaveCount(0)
     await main.getByRole('button', { name: 'Teodora at the table', exact: true }).click()
     await expect(editor).toHaveCount(1)
-    await expect(page).toHaveURL(/\/timeline$/)
+    await expect(page).toHaveURL(/\/manuscript$/)
 
     const prose = 'She had the table in front of her, and it had never been paid.'
     await editor.fill(prose)
@@ -82,12 +82,12 @@ test.describe('one scene card', () => {
     const worldId = await book(page)
     const main = await wholeBook(page, worldId)
     await main.getByRole('button', { name: 'Open the chapter holding “Teodora at the table”' }).click()
-    await expect(page).toHaveURL(/\/timeline\/c1$/)
+    await expect(page).toHaveURL(/\/manuscript\/c1$/)
   })
 
   test('View from here moves the cursor from a card in the open chapter', async ({ page }) => {
     const worldId = await book(page)
-    await page.goto(`/#/worlds/${worldId}/timeline/c1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/c1`, { waitUntil: 'load' })
     await settle(page)
     const main = page.getByRole('main')
 

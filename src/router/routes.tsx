@@ -1,8 +1,7 @@
 import { lazy, Suspense } from 'react'
-import { createHashRouter, Navigate, useParams } from 'react-router-dom'
+import { createHashRouter, Navigate, useLocation, useParams } from 'react-router-dom'
 import { AppShell } from '@/components/AppShell'
 import { useWorld } from '@/db/hooks/useWorlds'
-import { useHasProse } from '@/db/hooks/useManuscript'
 import { navItems } from '@/components/navItems'
 
 const WorldSelectorView = lazy(() => import('@/features/worlds/WorldSelectorView'))
@@ -37,62 +36,40 @@ function Loading() {
  * The routes reading mode takes away, taken from the same list the nav filters
  * on rather than repeated here. Marking a nav item `writingOnly` now hides the
  * link *and* closes the route, so the two cannot drift apart — which they had:
- * the links were hidden while /corkboard, /structure and /manuscript stayed
+ * the links were hidden while /corkboard and /structure stayed
  * reachable by typing the URL, and the corkboard let a reader drag scene cards
  * between chapters.
  */
 const WRITING_ONLY = new Set(navItems.filter((n) => n.writingOnly).map((n) => n.to))
 
-/**
- * Writing-only routes a reader is given back when the world holds prose, keyed
- * by path. Only the Manuscript: reading a published book is the reason most of
- * these worlds exist, and the screen that shows it was closed on the assumption
- * that a library world has none. See `readingLabel` in `navItems`.
- */
-const READABLE_WITH_PROSE = new Set(
-  navItems.filter((n) => n.writingOnly && n.readingLabel !== undefined).map((n) => n.to),
-)
-
 /** Send a reader back to the dashboard rather than into a writing screen. */
-function WritersOnly({ children, path }: { children: React.ReactNode; path: string }) {
+function WritersOnly({ children }: { children: React.ReactNode }) {
   const { worldId } = useParams<{ worldId: string }>()
   const world = useWorld(worldId ?? null)
-  const hasProse = useHasProse(worldId ?? null)
-  const readable = READABLE_WITH_PROSE.has(path)
   // Undefined while Dexie is still opening. Deciding now would either flash the
-  // screen at a reader or bounce a writer out of their own draft, so wait. The
-  // prose count is waited on for the same reason and only when it can change
-  // the answer: guessing "no prose" would throw a reader off the book they are
-  // in the middle of, and the bounce is a navigation, not a repaint.
+  // screen at a reader or bounce a writer out of their own draft, so wait.
   if (world === undefined) return <Loading />
   if (!world.readingMode) return <>{children}</>
-  if (!readable) return <Navigate to={`/worlds/${worldId}`} replace />
-  if (hasProse === undefined) return <Loading />
-  if (!hasProse) return <Navigate to={`/worlds/${worldId}`} replace />
-  return <>{children}</>
+  return <Navigate to={`/worlds/${worldId}`} replace />
 }
 
 /**
- * The Manuscript is the Timeline now: its reading page is the Timeline's Read
- * layout and its writing is Page. A link, a bookmark or the navigation that
- * still says /manuscript lands on the one a person there came for — the book
- * to read for a reader, the book to write in for its author.
- *
- * `WritersOnly` has already waited for the world and turned away a reader from
- * a book with no prose, so all that is left to decide is which layout.
+ * The Manuscript was the Timeline, at /timeline, until the two screens became
+ * one. Links, bookmarks and a browser's history still say /timeline, with a
+ * chapter after it and a query on the end; each lands on the same place in the
+ * Manuscript.
  */
-function ManuscriptLanding() {
-  const { worldId } = useParams<{ worldId: string }>()
-  const world = useWorld(worldId ?? null)
-  if (world === undefined) return <Loading />
-  return <Navigate to={`/worlds/${worldId}/timeline?view=${world?.readingMode ? 'read' : 'page'}`} replace />
+function TimelineAddress() {
+  const { worldId, '*': rest } = useParams<{ worldId: string; '*': string }>()
+  const { search } = useLocation()
+  return <Navigate to={`/worlds/${worldId}/manuscript${rest ? `/${rest}` : ''}${search}`} replace />
 }
 
 function Wrap({ children, path }: { children: React.ReactNode; path?: string }) {
   const guarded = path !== undefined && WRITING_ONLY.has(path)
   return (
     <Suspense fallback={<Loading />}>
-      {guarded && path !== undefined ? <WritersOnly path={path}>{children}</WritersOnly> : children}
+      {guarded && path !== undefined ? <WritersOnly>{children}</WritersOnly> : children}
     </Suspense>
   )
 }
@@ -121,8 +98,8 @@ export const router = createHashRouter([
         not remounted when a chapter is opened or closed.
       */
       {
-        path: 'timeline',
-        element: <Wrap path="timeline"><TimelineScreen /></Wrap>,
+        path: 'manuscript',
+        element: <Wrap path="manuscript"><TimelineScreen /></Wrap>,
         children: [
           { path: ':chapterId?', element: <Wrap><TimelineView /></Wrap> },
         ],
@@ -136,7 +113,7 @@ export const router = createHashRouter([
       { path: 'lore/:pageId', element: <Wrap><LorePageEditor /></Wrap> },
       { path: 'factions', element: <Wrap path="factions"><FactionsView /></Wrap> },
       { path: 'knowledge', element: <Wrap path="knowledge"><KnowledgeView /></Wrap> },
-      { path: 'manuscript', element: <Wrap path="manuscript"><ManuscriptLanding /></Wrap> },
+      { path: 'timeline/*', element: <TimelineAddress /> },
     ],
   },
 ])

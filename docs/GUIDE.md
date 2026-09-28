@@ -100,12 +100,12 @@ of linking it — an uploaded picture is stored locally and is never fetched.
 5. [Generate a world from AI](#generate-a-world-from-ai)
 6. [Start a sequel](#start-a-sequel)
 7. [The world dashboard](#the-world-dashboard)
-8. [Timeline & scenes](#timeline--scenes)
+8. [Manuscript: chapters & scenes](#manuscript-chapters--scenes)
 9. [Writing on one page](#writing-on-one-page)
-10. [Reading the book on the Timeline](#reading-the-book-on-the-timeline)
+10. [Reading the book](#reading-the-book)
 11. [Opening a chapter](#opening-a-chapter)
 12. [Corkboard](#corkboard)
-13. [Manuscript](#manuscript)
+13. [The book: goals, reading and export](#the-book-goals-reading-and-export)
 14. [Characters](#characters)
 15. [Cast Balance](#cast-balance)
 16. [Plot Threads](#plot-threads)
@@ -155,7 +155,7 @@ that still reads at that size. The full label is in the pill's tooltip, and on
 the timeline it opens. The **X** that jumps back to *All chapters* appears from
 390px up; below that, step back with the arrow or use the timeline.
 
-The bar is there wherever the cursor means something — the Timeline, the
+The bar is there wherever the cursor means something — the Manuscript, the
 Corkboard, the Structure board, the Arc grid, the Calendar, the Lore roster and
 the Maps. It's left off the world dashboard and Settings, which
 have no single moment in them, and off the lore page editor, which is a
@@ -251,7 +251,7 @@ anything you have actually written in leads.
 
 When you create a blank world, Kathala opens a four-step setup guide. It helps
 you create the first timeline and scene, add a main character, place that
-character at the opening moment, and then continue to the Timeline. Each optional
+character at the opening moment, and then continue to the Manuscript. Each optional
 step has **Skip** so you can leave the guide and build the world in any order.
 
 **The guide keeps its place.** Close the tab or reload the page part-way through
@@ -269,7 +269,7 @@ Step 1 asks for two names — the **timeline**, meaning the stretch of time your
 story runs over, and the **first scene**, the moment it opens on — and says what
 it will build from them: the timeline, a *Chapter 1* inside it, and that scene
 inside the chapter. All three can be renamed later — the scene from its own
-card, the chapter from **Rename chapter** in its ⋯ menu on the Timeline, and the
+card, the chapter from **Rename chapter** in its ⋯ menu in the Manuscript, and the
 timeline from its tab (which appears once a world has more than one). Kathala then moves the
 [time cursor](#core-concept-the-time-cursor) to that scene, so when the guide
 hands the app back, everything that answers "what is true right now?" already has
@@ -412,11 +412,12 @@ chapters into leaves you forty chapters in.
 Most of the Library's books carry their own text — 39 of the 46 on the shelf
 today are complete public-domain novels, and each one's catalogue entry names
 the Project Gutenberg edition it came from. Those are the ones filed under
-**Books you can read**. On those, reading mode adds **Read** to the navigation,
-which opens the Timeline on its [Read](#reading-the-book-on-the-timeline)
-layout: the book, chapter by chapter, with none of the writing furniture. No
-Page, no word counts, no "scenes written" tally — just the prose, with **Cards**
-beside it for the book as a list of its scenes.
+**Books you can read**. In reading mode the navigation's **Manuscript** is
+called **Book**, and on those it opens on [Read](#reading-the-book): the book,
+chapter by chapter, with none of the writing furniture. No Page, no word
+counts, no "scenes written" tally — just the prose, with **Cards** beside it for
+the book as a list of its scenes. Once you pick one, it opens on the one you
+picked. On a book with no text, **Book** is its chapters and scenes.
 
 A long book takes a moment to open — *The Count of Monte Cristo* is 459,375
 words — and while it does you get the shape of a page and **Opening the book…**,
@@ -504,7 +505,7 @@ to type into no longer suggests typing **@** into one. And on the shelf, a
 book's card still gives its length but not the size of its cast, because a count
 of everyone in the book gives away as much as a list of them. The chapter bar keeps its
 scene steppers. Its **story player** is on the Map and only there (see
-[Maps](#maps)) — so it is not sitting on the Read screen offering to walk you
+[Maps](#maps)) — so it is not sitting on the book offering to walk you
 through the ending on a timer — and if you do play the story on the map, pressing
 **stop** leaves your place where it carried you rather than clearing it.
 
@@ -515,8 +516,8 @@ scrollbar, or a long fling, carries you two or more chapters in one step. It is
 a notice rather than the question the chapter rows ask, because there is no
 moment to ask you in the middle of reading.
 
-**Telling it how far you have got** is two taps: open the Timeline and press
-**Read to here** on the chapter you have reached. The reading notice on the
+**Telling it how far you have got** is two taps: open **Book** on **Cards** and
+press **Read to here** on the chapter you have reached. The reading notice on the
 dashboard links straight to it. The previous/next steppers in the top bar work
 too, but they move a scene at a time, so they are for nudging along rather than
 for jumping.
@@ -533,7 +534,7 @@ it to you without quietly relocating your bookmark. Where a control's only job
 was moving the cursor, it becomes a label rather than a button, so nothing on
 screen looks pressable and does nothing.
 
-**The workbench steps aside too.** The Timeline's pacing curve and its
+**The workbench steps aside too.** The Manuscript's pacing curve and its
 plot-thread filter are the author's instruments — the curve plots ratings you
 cannot see or set, and a thread's name is the author's shorthand for an arc,
 which on a subplot you are seven chapters into is a summary of where it goes. So
@@ -689,7 +690,7 @@ straight into the new world.
 ![Import a manuscript](images/22-import-manuscript.png)
 
 Each parsed scene becomes a scene with its prose attached, so the imported draft
-flows straight onto the Timeline's Page and Read, and reads back as one continuous document.
+flows straight onto the Manuscript's Page and Read, and reads back as one continuous document.
 (Import handles Markdown and plain text today; `.docx` is planned.)
 
 ---
@@ -774,7 +775,7 @@ which is where you fill the gaps in.
 
 ![World dashboard](images/03-dashboard.png)
 
-The tiles are links — click **Timeline**, **Characters**, **Maps**, or any other
+The tiles are links — click **Manuscript**, **Characters**, **Maps**, or any other
 tile to jump straight to that area.
 
 ### Getting around
@@ -782,7 +783,7 @@ tile to jump straight to that area.
 Every screen in a world shares a **left navigation rail**. By default it's a slim
 strip of icons to keep your workspace wide; **hover** it to slide out the full
 labels, or click the **pin** at the bottom to keep it expanded. The everyday
-screens (Dashboard, Timeline, Manuscript, Characters, Maps) sit above a **More**
+screens (Dashboard, Manuscript, Characters, Maps) sit above a **More**
 divider, with the rest below.
 
 ![Navigation rail](images/37-navigation.png)
@@ -795,7 +796,7 @@ search (**Ctrl/⌘ K**), and the Writer's Brief, Continuity, and Help tools.
 nothing in it yet, it says what belongs there and offers the way to put it there
 — the control itself if the thing can be made from where you are, or a button to
 the screen that makes it if it cannot. A character with no scenes, for instance,
-offers **Open Timeline**, because a character joins a scene from the scene. The
+offers **Open Manuscript**, because a character joins a scene from the scene. The
 exception is when the control is already sitting right beside the empty list: a
 *+ Add character…* picker under an empty cast says both that it is empty and what
 to do, so nothing repeats it.
@@ -839,10 +840,13 @@ your streak and history survive a backup or a move to another device.
 
 ---
 
-## Timeline & scenes
+## Manuscript: chapters & scenes
 
-The Timeline is the spine of your story: chapters, each holding an ordered set
-of **scenes** (scenes/beats).
+The Manuscript is the spine of your story: chapters, each holding an ordered
+set of **scenes** (scenes/beats), and the book they make. It is **Manuscript**
+in the navigation, and **Book** in reading mode. It was called the Timeline
+until the Timeline and the Manuscript became one screen; a link or bookmark
+that still says `/timeline` opens the same place here.
 
 **It is one page.** Down the left is the **binder** — every chapter in the
 timeline, opened to show its scenes — and beside it is the **book**: every
@@ -861,14 +865,14 @@ an early draft gets a small chart rather than a small chart in a very large
 frame; on a long book the panel takes the full width and the curve scrolls
 inside it.
 
-![Timeline view](images/04-timeline.png)
+![The Manuscript on Cards](images/04-timeline.png)
 
 - **Narrative vs. Chronological** — toggle between the reading order and the
   in-world order (useful when you use flashbacks or in-world dates).
 - **Cards, Page and Read** — Cards is the book as a list of scene cards, as
   below. **Page** is the same book as one document you write straight through;
   see [Writing on one page](#writing-on-one-page). **Read** is the book set for
-  reading; see [Reading the book on the Timeline](#reading-the-book-on-the-timeline).
+  reading; see [Reading the book](#reading-the-book).
 - **Add Chapter**, **New Timeline** (for alternate/parallel timelines), and
   **Generate with AI** all live in the header.
 - **Every scene is a card.** Closed, it shows its title, status and tension,
@@ -946,14 +950,14 @@ inside it.
 
 ### Writing on one page
 
-**Page**, beside Cards in the Timeline's header, shows the whole timeline as one
+**Page**, beside Cards in the Manuscript's header, shows the whole timeline as one
 document: each chapter a `#` heading, each scene a `##` heading, and the scene's
 prose under it. It is not a copy — it is the same prose the scene cards hold,
 and the same titles. Write anywhere in it. What you type is saved to the scene
 it sits under a second after you stop typing, or as soon as you click away from
 the page; retitle a chapter or scene by editing its heading.
 
-![The Timeline's Page view: the binder, the book as one document, and the open chapter's panel](images/72-page-view.png)
+![The Manuscript's Page: the binder, the book as one document, and the open chapter's panel](images/72-page-view.png)
 
 - **The binder moves the page.** Pick a scene and the page goes to it, with the
   caret at the start of its prose; pick a chapter and its heading comes to the
@@ -979,13 +983,13 @@ the page; retitle a chapter or scene by editing its heading.
 - Not on the page yet: the scene header line, `@` mentions, the scene keys
   (Ctrl+Alt+↓ and the rest) and Focus mode. Open the scene's card for those.
 
-### Reading the book on the Timeline
+### Reading the book
 
-**Read**, beside Cards and Page, sets the timeline's prose as a book — the
-[Manuscript](#manuscript) screen's reading view, here where the chapters and
-scenes are, with **In this scene** in the margin.
+**Read**, beside Cards and Page, sets the timeline's prose as a book, with
+**In this scene** in the margin — more on it under
+[The book](#the-book-goals-reading-and-export).
 
-![The Timeline's Read layout: the book set for reading, In this scene beside it, and the open chapter's panel with its word goal](images/73-timeline-read.png)
+![The Manuscript's Read: the book set for reading, In this scene beside it, and the open chapter's panel with its word goal](images/73-timeline-read.png)
 
 - **Export**, **Find & replace** and the book's **word goal** sit in the header
   on Page and on Read — one goal for the book, whichever of the two you set it
@@ -994,13 +998,15 @@ scenes are, with **In this scene** in the margin.
   saved with the chapter.
 - **The binder** brings a chapter or a scene to the top of the book.
 - **In reading mode, Read is the book you are reading.** As you read on, your
-  place moves with you, as it does on **Read** in the navigation. Cards is still
-  beside it; Page is not, and neither are the author's tools. A world with no
-  prose offers no Read at all.
+  place moves with you. Cards is still beside it; Page is not, and neither are
+  the author's tools. A world with no prose offers no Read at all.
+- **The Manuscript remembers the layout** each world was left on, so stepping
+  out to look someone up and coming back lands you in the book again. Until you
+  choose one it opens on Cards — or, for a reader of a book with text, on Read.
 
 ### Multiple timelines and timeline relationships
 
-Creating another timeline adds a tab at the top of the Timeline page. Beside
+Creating another timeline adds a tab at the top of the Manuscript. Beside
 each timeline's name is what it holds — *2 chapters*, or *2 chapters · Ch.
 12–13* where its chapters do not begin at one, which is common in an imported
 world or a book kept in two halves. Without the span, a timeline labelled *10
@@ -1108,7 +1114,7 @@ already on a scene inside that chapter, it stays where you put it; and while
 [reading](#reading-alongside-a-book) nothing moves at all, since there the cursor
 is your own place in the book.
 
-**The binder lists the book beside the writing.** It is the Timeline's left
+**The binder lists the book beside the writing.** It is the Manuscript's left
 edge, holding every chapter in this timeline, with the one you are in opened to
 show its scenes. With more than one timeline it says which one it is listing:
 the one whose tab you picked, which opening a chapter switches to that
@@ -1161,7 +1167,7 @@ Its status, its cast and the rest are set on the card, once there is a scene to
 set them on.
 
 A chapter is not deleted from the binder: it takes every scene in it, which is
-too much to lose to a key. Its row on the Timeline still does that, with Undo
+too much to lose to a key. Its row on Cards still does that, with Undo
 behind it.
 
 The **binder** button at the start of the header hides it and shows it again,
@@ -1182,7 +1188,7 @@ a blank title is refused rather than written.
 The synopsis is the one-liner you set when the chapter was made, and it is no
 longer set-once: a chapter created by the first-run guide, which never asks for
 one, can be given a synopsis here like any other. Both fields auto-save as you
-type, one undo step per burst. The synopsis is worth keeping current: it prints in the [Manuscript](#manuscript) in draft mode, in the
+type, one undo step per burst. The synopsis is worth keeping current: it prints in the
 [Writer's Brief](#writers-brief), on the chapter row in the timeline, and it is
 searchable. While reading, it is shown rather than editable.
 
@@ -1322,7 +1328,7 @@ keeps you in the same paragraph, which is what lets you paste prose from a text
 file or a PDF, hard-wrapped at whatever column it came in at, without it
 becoming one paragraph per line. The line under the box counts them as you type,
 so you can see which you have: press Enter once and it still says *1 paragraph*,
-press it twice and it says *2*. The [Manuscript](#manuscript) and every export
+press it twice and it says *2*. The [book](#the-book-goals-reading-and-export) and every export
 read your prose the same way.
 
 The draft **auto-saves as you write**: a second's pause writes it, and it is
@@ -1422,7 +1428,7 @@ asked for.
 **Generate / Update Chapter with AI.** From a chapter you can hand your scene
 text to an AI assistant (via a copy-paste prompt, like the world generator) and
 have it fill in the scenes, character states, and a dramatic-**tension** rating
-for each scene — the ratings feed the pacing curve on the Timeline. *Generate*
+for each scene — the ratings feed the pacing curve in the Manuscript. *Generate*
 drafts a new chapter; *Update* re-derives an existing one from its prose.
 
 ---
@@ -1448,28 +1454,24 @@ is a card showing its title, synopsis, POV character, and **status**
   chevron at each edge moves you about a screenful through it. Each appears only
   when there is board in that direction, so the right-hand one going away means
   you have reached the last chapter.
-- **Click a card's title** to jump to that scene on the Timeline — its chapter
+- **Click a card's title** to jump to that scene in the Manuscript — its chapter
   open, its card open — with the time cursor set to it.
 - The card for the scene the **time cursor** is on is outlined, so moving along
   the bar at the bottom walks the board with you.
 
-It's the same scenes as the Timeline, shown as a board — reorder here or there
+It's the same scenes as the Manuscript, shown as a board — reorder here or there
 and both stay in sync.
 
 ---
 
-## Manuscript
+## The book: goals, reading and export
 
-**The manuscript is the Timeline's.** Every scene's prose, stitched into one
-book in reading order, is the Timeline's **Page** layout when you are writing it
-and its **Read** layout when you are reading it — see
-[Writing on one page](#writing-on-one-page) and
-[Reading the book on the Timeline](#reading-the-book-on-the-timeline). The
-**Manuscript** link in the navigation opens the Timeline on Page; in reading
-mode the same link is **Read**, and opens it on Read. An old link or bookmark
-to the Manuscript lands in the same place.
+Every scene's prose, stitched into one book in reading order, is the
+Manuscript's **Page** layout when you are writing it and its **Read** layout
+when you are reading it — see [Writing on one page](#writing-on-one-page) and
+[Reading the book](#reading-the-book). This is what both carry.
 
-![The book on the Timeline's Read layout](images/24-manuscript.png)
+![The book on the Manuscript's Read](images/24-manuscript.png)
 
 - **Page and Read** — Page shows every scene's title with its prose under it, so
   a scene still to be written is a heading with nothing beneath it yet: the page
@@ -1532,7 +1534,7 @@ to the Manuscript lands in the same place.
 
 ### Find & replace
 
-The **Find & replace** button (in the Timeline's header, on Page and Read) searches across *every
+The **Find & replace** button (in the Manuscript's header, on Page and Read) searches across *every
 scene's prose* at once — for renaming a term or fixing a recurring tic without
 opening each scene. Type a phrase to see every scene that contains it, with a
 match count and a highlighted preview.
@@ -1805,7 +1807,7 @@ every motif row.
 
 ### Filtering the timeline to one thread
 
-Once you have threads, the **Timeline** page (in Narrative view) shows a filter
+Once you have threads, the **Manuscript** (on Cards, in Narrative view) shows a filter
 row of thread pills above the chapters. Click a thread to focus the timeline on
 that subplot: only chapters that advance it are listed, each expanded to show
 just the scenes tagged with it, so you can read a subplot end-to-end without the
@@ -1914,8 +1916,8 @@ between the three acts**, with each act's width its share of the book:
 
 Switching templates keeps your tags — a scene tagged with a Three-Act beat simply
 won't fill a Save-the-Cat slot until you assign it there, so you can commit to one
-framework at a time. (You can also set a scene's beat from its card on the
-Timeline.)
+framework at a time. (You can also set a scene's beat from its card in the
+Manuscript.)
 
 ---
 
@@ -2172,7 +2174,7 @@ story advances scene by scene, character pins glide between locations along thei
 routes, so you can watch your cast move through the world. The player — play,
 stop and the speed control — appears **on the Map screen only**. The bar itself
 is on every screen, but playing the story is a thing the map does, and a
-transport control on the Timeline or the Read screen was driving a stage you
+transport control in the Manuscript was driving a stage you
 could not see.
 
 If you are reading rather than writing, **stop** ends playback and leaves your
@@ -2592,7 +2594,7 @@ invented. It behaves exactly like the switch of the same name in
 [Find & replace](#find--replace), and the preview and the highlight follow it,
 so a result always shows you the match it was found by. Kathala remembers the
 setting. To change what you find rather
-than just go to it, use **Find & replace** in the Timeline's header on Page or
+than just go to it, use **Find & replace** in the Manuscript's header on Page or
 Read, which works across every scene at once.
 
 While reading, search stays inside the book you have read: a scene you have not
@@ -2702,7 +2704,7 @@ If the cursor is on **All chapters**, the brief has no moment to describe — so
 instead of waiting for one it lists every scene in the world, grouped by chapter
 in reading order. Click one and the brief fills in around it; the bottom bar's
 cursor moves with it, because they are the same cursor. In a world with no
-scenes at all there is nothing to list, and the panel offers **Open Timeline**
+scenes at all there is nothing to list, and the panel offers **Open Manuscript**
 instead.
 
 ![The brief's scene picker](images/57-brief-scene-picker.png)

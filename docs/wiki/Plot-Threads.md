@@ -9,7 +9,7 @@ Define named threads, give each a colour, and tag the events that advance them.
 ## Setting threads up
 
 1. Define threads on the [Dashboard](Dashboard)'s Plot Threads panel, each with a colour.
-2. Tag a thread onto an event **from the event's card** on the Timeline.
+2. Tag a thread onto an event **from the event's card** in the Manuscript.
 3. Create threads inline while tagging with the **+ New thread** button.
 
 ---
@@ -27,7 +27,7 @@ The dashboard widget draws a **cadence strip per thread** across your chapters a
 
 ## Filtering the timeline to one thread
 
-Once you have threads, the [Timeline](Timeline) page (in Narrative view) shows a **filter row of thread pills** above the chapters.
+Once you have threads, the [Manuscript](Timeline) (on Cards, in Narrative view) shows a **filter row of thread pills** above the chapters.
 
 Click a thread to focus the timeline on that subplot: only chapters that advance it are listed, each expanded to show **just the scenes tagged with it**, so you can read a subplot end-to-end without the surrounding story.
 
@@ -66,4 +66,4 @@ Thread names give away where a subplot ends up, so [reading mode](Reading-Mode) 
 ## Related pages
 
 - [Motifs & Themes](Motifs) — the same machinery, for symbolism
-- [Character Arc Grid](Character-Arc) · [Continuity Checker](Continuity-Checker) · [Timeline & Events](Timeline)
+- [Character Arc Grid](Character-Arc) · [Continuity Checker](Continuity-Checker) · [Manuscript: chapters & events](Timeline)

@@ -53,7 +53,7 @@ async function twoTimelineWorld(page: Page) {
   await expect(page).toHaveURL(/#\/worlds\//)
   const worldId = page.url().match(/#\/worlds\/([^/]+)/)![1]
 
-  const gotoTimeline = () => page.getByRole('link', { name: /timeline/i }).first().click()
+  const gotoTimeline = () => page.getByRole('link', { name: /manuscript/i }).first().click()
   const addChapter = async (title: string) => {
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill(title)

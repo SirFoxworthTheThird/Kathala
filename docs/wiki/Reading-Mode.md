@@ -29,7 +29,7 @@ Summary figures that would give the game away — the alive/dead split on the da
 
 ## Reading the book
 
-Most Library books carry their own text — **34 of the 41** are complete public-domain novels. On those, reading mode turns **Manuscript** into **Read**, which opens the [Timeline](Timeline#reading-the-book) on its Read layout: the book, chapter by chapter, with none of the writing furniture. No draft/reading switch, no word counts, no *scenes written* tally — just the prose.
+Most Library books carry their own text — **34 of the 41** are complete public-domain novels. On those, reading mode calls the **Manuscript** **Book**, and it opens on its [Read](Timeline#reading-the-book) layout: the book, chapter by chapter, with none of the writing furniture. No Page, no word counts, no *scenes written* tally — just the prose, with **Cards** beside it. Choose Cards and Book opens on Cards from then on, until you choose Read again.
 
 A long book takes a moment to open — *The Count of Monte Cristo* is 459,375 words — and while it does you get the shape of a page and **Opening the book…**, rather than a screen that looks finished and empty.
 
@@ -49,7 +49,7 @@ Chapters you have not reached are deliberately not in that list. The whole book'
 
 On the right of that same row: **−** and **+** step the text through five sizes, **Sans** swaps the world's own face for a plain one, and **Snug / Relaxed / Airy** set the line spacing. On a phone the last becomes a single button naming the current spacing, which cycles as you press it.
 
-It is your preference rather than the book's — every book opens the way you left it — and it starts at exactly what the screen always used, so nothing changes until you ask. The Timeline's Page keeps its own fixed setting, since that is where the book is written.
+It is your preference rather than the book's — every book opens the way you left it — and it starts at exactly what the screen always used, so nothing changes until you ask. The Manuscript's Page keeps its own fixed setting, since that is where the book is written.
 
 ### Your place moves as you read
 
@@ -90,7 +90,7 @@ Reading mode also clears out everything that only makes sense to the person writ
 
 The writing screens — **Structure** and the **Corkboard** — step aside, and their addresses close with them: typing one in takes you back to the dashboard.
 
-**Manuscript** is the exception. On a book that carries its own text it stays, renamed **Read**, and becomes the book itself — see *Reading the book* below. On the seven Library worlds with no prose it closes like the others, because there would be nothing on it.
+The **Manuscript** stays, renamed **Book**: its chapters and scenes are where you set your place, and on a book that carries its own text it is the book itself — see *Reading the book* below.
 
 ### Top bar
 

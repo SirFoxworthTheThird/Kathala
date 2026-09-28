@@ -39,21 +39,31 @@ test('the reader is offered the book, under a reader’s name for it', async ({ 
   await settle(page)
 
   const nav = page.getByRole('navigation', { name: 'Main navigation' })
-  await expect(nav.getByRole('link', { name: 'Read', exact: true })).toBeVisible()
+  await expect(nav.getByRole('link', { name: 'Book', exact: true })).toBeVisible()
   // "Manuscript" is what an author calls their draft; there is no author here.
   await expect(nav.getByRole('link', { name: 'Manuscript', exact: true })).toHaveCount(0)
 })
 
-test('a world with no prose offers no book at all', async ({ page }) => {
-  // The paired absence. Harry Potter is structural notes only — its own
-  // catalogue entry says "no text from the book is included" — so a Read link
-  // there would open a screen with nothing on it.
+test('a world with no prose opens its book on the cards, and one with prose opens it to read', async ({ page }) => {
+  /*
+    Harry Potter is structural notes only — its own catalogue entry says "no
+    text from the book is included" — so its book is its chapters and scenes,
+    and there is nothing to set for reading. Dracula, paired with it, opens to
+    be read: a reader who has not chosen a layout is given the book.
+  */
   await downloadLibraryBook(page, "Harry Potter and the Philosopher's Stone")
   await settle(page)
-
   const nav = page.getByRole('navigation', { name: 'Main navigation' })
-  await expect(nav.getByRole('link', { name: 'Characters' })).toBeVisible()
-  await expect(nav.getByRole('link', { name: 'Read', exact: true })).toHaveCount(0)
+  await nav.getByRole('link', { name: 'Book', exact: true }).click()
+  await settle(page)
+  await expect(page.getByRole('main').getByRole('button', { name: /^Ch\. 1\b/ }).first()).toBeVisible({ timeout: 20_000 })
+  await expect(page.locator('[data-book-scroller]')).toHaveCount(0)
+  await expect(page.getByRole('group', { name: 'Layout', exact: true })).toHaveCount(0)
+
+  await downloadLibraryBook(page, 'Dracula')
+  await settle(page)
+  await nav.getByRole('link', { name: 'Book', exact: true }).click()
+  await expect(page.locator('[data-book-scroller]').getByText(/Jonathan Harker/i).first()).toBeVisible({ timeout: 20_000 })
 })
 
 test('the book reads as a book, not as a draft', async ({ page }) => {
@@ -61,7 +71,7 @@ test('the book reads as a book, not as a draft', async ({ page }) => {
   await settle(page)
 
   await page.getByRole('navigation', { name: 'Main navigation' })
-    .getByRole('link', { name: 'Read', exact: true }).click()
+    .getByRole('link', { name: 'Book', exact: true }).click()
   await settle(page)
 
   const main = page.getByRole('main')
@@ -92,7 +102,7 @@ const scroller = (page: import('@playwright/test').Page) =>
 
 async function openBook(page: import('@playwright/test').Page) {
   await page.getByRole('navigation', { name: 'Main navigation' })
-    .getByRole('link', { name: 'Read', exact: true }).click()
+    .getByRole('link', { name: 'Book', exact: true }).click()
   await settle(page)
 }
 

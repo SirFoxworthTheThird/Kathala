@@ -155,7 +155,7 @@ test.describe('Opening images full size', () => {
 
     // Placing someone writes a snapshot against the cursor, so there has to be
     // an event for the cursor to be on.
-    await page.getByRole('link', { name: /timeline/i }).first().click()
+    await page.getByRole('link', { name: /manuscript/i }).first().click()
     await settleNav(page)
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
@@ -165,7 +165,7 @@ test.describe('Opening images full size', () => {
     await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
     await page.getByPlaceholder('Scene title').fill('The Departure')
     await page.getByRole('button', { name: 'Add Scene' }).last().click()
-    await page.getByRole('link', { name: /timeline/i }).first().click()
+    await page.getByRole('link', { name: /manuscript/i }).first().click()
     await settleNav(page)
     await page.getByTitle('The Departure', { exact: true }).click()
 

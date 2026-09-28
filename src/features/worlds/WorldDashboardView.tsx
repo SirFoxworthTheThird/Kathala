@@ -273,10 +273,10 @@ export default function WorldDashboardView() {
   }
   const tiles: Tile[] = [
     {
-      label: 'Timeline',
+      label: gate.active ? 'Book' : 'Manuscript',
       icon: BookOpen,
       count: totalChapters,
-      onClick: () => navigate('timeline'),
+      onClick: () => navigate('manuscript'),
       pills: [
         /*
           W23-11: this read **"1 events"** on every dashboard — VOCAB-1 renamed
@@ -514,8 +514,9 @@ export default function WorldDashboardView() {
           */}
           {worldId && (
             <div className="flex flex-wrap items-center gap-2">
+              {/* Cards, where each chapter row has *Read to here*: a reader's book otherwise opens to be read. */}
               <Link
-                to={`/worlds/${worldId}/timeline`}
+                to={`/worlds/${worldId}/manuscript?view=cards`}
                 className="rounded-md border border-[hsl(var(--ring)/0.4)] bg-[hsl(var(--accent))] px-2.5 py-1 text-xs text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--accent)/0.7)]"
               >
                 Set where you have read to
@@ -620,7 +621,7 @@ export default function WorldDashboardView() {
                   key={ev.id}
                   onClick={() => {
                     setActiveEventId(ev.id)
-                    navigate('timeline')
+                    navigate('manuscript')
                   }}
                   className="flex items-center gap-3 rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-2 text-left transition-colors hover:border-[hsl(var(--ring))] hover:bg-[hsl(var(--accent))]"
                 >

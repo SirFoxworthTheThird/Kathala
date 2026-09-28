@@ -24,7 +24,7 @@ test('a timeline that starts late says where it starts', async ({ page }) => {
   await page.getByRole('button', { name: 'Create World' }).last().click()
   await expect(page).toHaveURL(/#\/worlds\//)
 
-  await page.getByRole('link', { name: /timeline/i }).first().click()
+  await page.getByRole('link', { name: /manuscript/i }).first().click()
   await settleNav(page)
   await page.getByRole('button', { name: 'Create Timeline' }).click()
 

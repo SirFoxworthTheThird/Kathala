@@ -69,7 +69,7 @@ test.describe('Reading mode toggle', () => {
 
     // Paired with a tile that does have a number, so "no dash anywhere" cannot
     // pass by the tiles simply failing to render.
-    const timeline = page.getByRole('button').filter({ hasText: 'Timeline' }).first()
+    const timeline = page.getByRole('button').filter({ hasText: 'Manuscript' }).first()
     await expect(timeline).toContainText(/\d/)
   })
 
@@ -89,7 +89,7 @@ test.describe('Reading mode toggle', () => {
 
     // Gone, and the dashboard is underneath.
     await expect(page.getByRole('button', { name: /skip and explore/i })).toHaveCount(0)
-    await expect(page.getByRole('main').getByRole('button').filter({ hasText: 'Timeline' }).first()).toBeVisible()
+    await expect(page.getByRole('main').getByRole('button').filter({ hasText: 'Manuscript' }).first()).toBeVisible()
   })
 
   test('the wizard leaves you alone once the world has a timeline', async ({ page }) => {
@@ -106,7 +106,7 @@ test.describe('Reading mode toggle', () => {
     // It does greet a world with nothing in it — the other half of the pair.
     await expect(page.getByRole('button', { name: /skip and explore/i })).toBeVisible()
 
-    await page.getByRole('link', { name: /timeline/i }).click()
+    await page.getByRole('link', { name: /manuscript/i }).click()
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('One')
@@ -116,6 +116,6 @@ test.describe('Reading mode toggle', () => {
     // Back on the dashboard: tiles, not step 1 of 4.
     await page.goto(`/#/worlds/${id}`)
     await expect(page.getByRole('button', { name: /skip and explore/i })).toHaveCount(0)
-    await expect(page.getByRole('main').getByRole('button').filter({ hasText: 'Timeline' }).first()).toBeVisible()
+    await expect(page.getByRole('main').getByRole('button').filter({ hasText: 'Manuscript' }).first()).toBeVisible()
   })
 })

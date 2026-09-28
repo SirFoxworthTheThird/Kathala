@@ -79,7 +79,7 @@ test.describe('Recording state from the scene', () => {
 
   test('the gap row takes the answer instead of sending you away', async ({ page }) => {
     const worldId = await chapterWithACastGap(page)
-    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
     await settleNav(page)
 
     // The seed landed: state at the earlier scene, none at the later one. Two
@@ -121,13 +121,13 @@ test.describe('Recording state from the scene', () => {
 
     // And the panel now shows him as recorded rather than as a gap, without
     // ever having left the chapter.
-    await expect(page).toHaveURL(/timeline\/ch1/)
+    await expect(page).toHaveURL(/manuscript\/ch1/)
     await expect(page.getByRole('button', { name: /Corvin Adze no state recorded/ })).toHaveCount(0)
   })
 
   test('and the full editor is still one click away', async ({ page }) => {
     const worldId = await chapterWithACastGap(page)
-    await page.goto(`/#/worlds/${worldId}/timeline/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
     await settleNav(page)
 
     await page.getByRole('button', { name: /Corvin Adze no state recorded/ }).click()

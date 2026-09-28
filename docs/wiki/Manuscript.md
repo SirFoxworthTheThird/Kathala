@@ -1,6 +1,6 @@
-# Manuscript
+# The book
 
-**The manuscript is the Timeline's.** Every scene's prose, stitched into one book in reading order, is the Timeline's **Page** layout when you are writing it and its **Read** layout when you are reading it — see [Writing on one page](Timeline#writing-on-one-page) and [Reading the book](Timeline#reading-the-book). The **Manuscript** link in the navigation opens the Timeline on Page; in [reading mode](Reading-Mode) it is **Read**, and opens it on Read. An old link or bookmark to the Manuscript lands in the same place.
+**The Manuscript** is one screen: the book's [chapters and scenes](Timeline), and the book itself. Every scene's prose, stitched into one book in reading order, is its **Page** layout when you are writing it and its **Read** layout when you are reading it — see [Writing on one page](Timeline#writing-on-one-page) and [Reading the book](Timeline#reading-the-book). This page is what those two carry. In [reading mode](Reading-Mode) the screen is **Book** in the navigation.
 
 ---
 
@@ -95,7 +95,7 @@ The scene keys work in it too: **Ctrl+Alt+↓ / ↑** goes to the next or previo
 
 ## Not available while reading
 
-Manuscript is a writing screen, but [reading mode](Reading-Mode) does not remove it. On a world that carries scene prose it stays, renamed **Read**, and becomes the book itself — the prose alone, with the word counts, status chips and draft controls put away. On a world with no prose it closes like the other writing screens, because there would be nothing on it.
+[Reading mode](Reading-Mode) keeps the Manuscript, renamed **Book**. On a world that carries scene prose, Read is the book itself — the prose alone, with the word counts, status chips and draft controls put away — and it is where Book opens until the reader picks another layout. Page is not offered. On a world with no prose there is no Read either, and Book is the chapters and scenes.
 
 ---
 

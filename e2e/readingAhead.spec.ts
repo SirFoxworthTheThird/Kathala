@@ -28,7 +28,7 @@ test.describe('Reading ahead in the chapter bar', () => {
   async function openBar(page: Page) {
     await resetDB(page)
     const worldId = await downloadLibraryBook(page, DEFAULT_BOOK)
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await expect(bar(page)).toBeVisible({ timeout: 60_000 })
     await settle(page)
     return worldId
@@ -56,7 +56,7 @@ test.describe('Reading ahead in the chapter bar', () => {
     await page.goto(`/#/worlds/${worldId}/settings`, { waitUntil: 'load' })
     await page.getByRole('button', { name: 'Turn off reading mode' }).click()
     await settle(page)
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await expect(bar(page)).toBeVisible({ timeout: 60_000 })
     await expect(bar(page)).toContainText('Diagon Alley')
   })

@@ -28,10 +28,9 @@ test.describe('The writing screens', () => {
 
   test('MS-2/MS-3: no unlabelled number, and no em-dash standing in for a value', async ({ page }) => {
     const worldId = await worldFromSpec(page)
-    // The Manuscript is the Timeline's Page now, and its numbers came with it,
-    // into the header row the layouts sit in.
-    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
-    const layouts = page.getByRole('group', { name: 'Timeline layout' })
+    // The Manuscript's numbers are on Page, in the header row the layouts sit in.
+    await page.goto(`/#/worlds/${worldId}/manuscript?view=page`, { waitUntil: 'load' })
+    const layouts = page.getByRole('group', { name: 'Layout', exact: true })
     await expect(layouts).toBeVisible({ timeout: 30_000 })
     const header = layouts.locator('xpath=ancestor::div[contains(@class,"border-b")][1]')
 
@@ -61,29 +60,30 @@ test.describe('The writing screens', () => {
     const worldId = await worldFromSpec(page)
 
     // Presence: a writer gets the instruction, and the job is theirs to do. It
-    // is the empty book's, on Read; the Manuscript lands a writer on Page.
+    // is the empty book's, on Read.
     await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
-    await page.getByRole('group', { name: 'Timeline layout' }).getByRole('button', { name: 'Read', exact: true })
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Read', exact: true })
       .click({ timeout: 30_000 })
     await expect(page.getByText('No prose yet')).toBeVisible({ timeout: 30_000 })
     await expect(page.getByText(/Write prose on your scenes/)).toBeVisible()
 
     // Absence: MS-4 asks for a second version of that sentence for a reader on
-    // a Library world. That reader never gets here — Manuscript is writingOnly,
-    // and a reading-mode world with no prose is redirected to its dashboard
-    // rather than served the book. This is the evidence for withdrawing the finding, and it
-    // fails the moment the guard stops holding.
+    // a Library world. That reader never sees the empty book: a reader is only
+    // offered Read when there is prose, so asking for it outright still gives
+    // them the chapters and scenes. This is the evidence for withdrawing the
+    // finding, and it fails the moment that stops holding.
     await page.goto(`/#/worlds/${worldId}/settings`, { waitUntil: 'load' })
     await page.getByRole('button', { name: 'Turn on reading mode' }).click()
     await settle(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
-    await expect(page).toHaveURL(new RegExp(`/worlds/${worldId}$`), { timeout: 20_000 })
+    await page.goto(`/#/worlds/${worldId}/manuscript?view=read`, { waitUntil: 'load' })
+    await expect(page.getByRole('main').getByRole('button', { name: /^Ch\. 1\b/ }).first()).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByRole('group', { name: 'Layout', exact: true })).toHaveCount(0)
     await expect(page.getByText(/Write prose on your scenes/)).toHaveCount(0)
   })
 
   test('WR-1: the scene box is as tall as the scene', async ({ page }) => {
     const worldId = await worldFromSpec(page)
-    await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
     await page.getByRole('button', { name: 'Open chapter detail' }).first().click()
     await page.getByRole('button', { name: /^Expand/ }).first().click()
 

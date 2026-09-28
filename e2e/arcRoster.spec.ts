@@ -35,7 +35,7 @@ test('the grid leads with who is in the book, and can put the blanks away', asyn
     await expect(page.getByText(name).first()).toBeVisible()
   }
 
-  await page.getByTitle('Timeline').click()
+  await page.getByTitle('Manuscript').click()
   await settleNav(page)
   await page.getByRole('button', { name: 'Create Timeline' }).click()
   for (const title of ['The Shire', 'Rivendell']) {
@@ -50,7 +50,7 @@ test('the grid leads with who is in the book, and can put the blanks away', asyn
     await page.getByPlaceholder('Scene title').fill(title)
     await page.getByRole('button', { name: 'Add Scene' }).last().click()
     await expect(page.getByText(title).first()).toBeVisible()
-    await page.getByRole('link', { name: /timeline/i }).first().click()
+    await page.getByRole('link', { name: /manuscript/i }).first().click()
     await settleNav(page)
   }
 

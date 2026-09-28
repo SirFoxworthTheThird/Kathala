@@ -341,7 +341,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           category: 'character',
           message: `${char.name} is in "${ev.title || 'untitled'}" but recorded at "${at?.name ?? 'somewhere else'}"`,
           detail: `Ch. ${ch?.number ?? '?'} — the scene's setting is "${sceneMarker.name}", and nothing records where they are in it. Move them there, record the journey, or record where they really are.`,
-          navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+          navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`,
           eventId: ev.id,
           /*
             No fix offered for someone already dead at this point. The warning
@@ -386,7 +386,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
             category: 'character',
             message: `${char.name} is in "${ev.title || 'untitled'}" before they were born`,
             detail: `Ch. ${ch?.number ?? '?'} — ${formatInWorldDate(calendar, day)} is earlier than their birth date. Check the date, the birth date, or mark the scene a flashback.`,
-            navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+            navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`,
             eventId: ev.id,
           })
         }
@@ -445,7 +445,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           category: 'character',
           message: `${char.name} is alive again in Ch. ${ch?.number ?? '?'} after dying in Ch. ${deathCh?.number ?? '?'}`,
           detail: `Death recorded in Ch. ${deathCh?.number ?? '?'} — ${deathCh?.title ?? ''}. Tick "They came back in this scene" if they were revived, or correct one of the two records.`,
-          navigatePath: `/worlds/${worldId}/timeline/${ev?.chapterId ?? sn.eventId}`,
+          navigatePath: `/worlds/${worldId}/manuscript/${ev?.chapterId ?? sn.eventId}`,
           eventId: sn.eventId,
         })
         // The return is the news. After it, being alive is simply being alive.
@@ -490,7 +490,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           category: 'character',
           message: `Dead character ${char?.name ?? '?'} in "${ev.title || 'untitled'}"`,
           detail: `${char?.name ?? '?'} is dead at this point${isPov ? ' and is the POV' : ''} — Ch. ${ch?.number ?? '?'}. Mark as Flashback if intentional.`,
-          navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+          navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`,
           eventId: ev.id,
         })
       }
@@ -529,7 +529,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         detail: firstSnapOrder === undefined
           ? `First appears in "${ev.title || 'untitled'}" (Ch. ${ch?.number ?? '?'}) but has no snapshots at all`
           : `First appears in "${ev.title || 'untitled'}" (Ch. ${ch?.number ?? '?'}) but first snapshot is later in the timeline`,
-        navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+        navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`,
         eventId: ev.id,
         /*
           The warning knew the character and the scene all along and still made
@@ -576,7 +576,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
               category: 'character',
               message: `${char.name}'s state may be stale (${streakCount}+ scenes without update)`,
               detail: `Involved from Ch. ${startCh?.number ?? '?'} to Ch. ${endCh?.number ?? '?'} with no snapshot update`,
-              navigatePath: `/worlds/${worldId}/timeline/${streakStart.chapterId}`,
+              navigatePath: `/worlds/${worldId}/manuscript/${streakStart.chapterId}`,
               eventId: streakStart.id,
             })
           }
@@ -620,7 +620,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         category: 'character',
         message: `${char?.name ?? '?'} is at a destroyed location in Ch. ${ch?.number ?? '?'}`,
         detail: `"${marker?.name ?? snap.currentLocationMarkerId}" was destroyed at or before this scene`,
-        navigatePath: `/worlds/${worldId}/timeline/${ev?.chapterId ?? snap.eventId}`,
+        navigatePath: `/worlds/${worldId}/manuscript/${ev?.chapterId ?? snap.eventId}`,
         eventId: snap.eventId,
       })
     }
@@ -651,7 +651,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           category: 'character',
           message: `${char?.name ?? '?'} is inside a ${status} region in Ch. ${ch?.number ?? '?'}`,
           detail: `"${marker.name}" is inside "${region.name}" which is ${status} at this scene`,
-          navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+          navigatePath: ev ? `/worlds/${worldId}/manuscript/${ev.chapterId}` : undefined,
           eventId: snap.eventId,
         })
       }
@@ -742,7 +742,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
             category: 'item',
             message: `"${name}" is held by ${holders.length} people at once in ${scene}`,
             detail: `Ch. ${ch.number} — ${holders.map((h) => charById.get(h.characterId)?.name ?? 'unknown').join(', ')} each carry it. Take it out of all but one inventory, or mark the item as a kind of thing rather than one object.`,
-            navigatePath: `/worlds/${worldId}/timeline/${ch.id}`,
+            navigatePath: `/worlds/${worldId}/manuscript/${ch.id}`,
             eventId: evId,
           })
           continue
@@ -767,7 +767,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           category: 'item',
           message: `"${name}" is in two places at once in ${scene}`,
           detail: `Ch. ${ch.number} — placed at ${markerById.get(marker)?.name ?? 'a location'}, but ${charById.get(holder.characterId)?.name ?? 'its holder'} is carrying it at ${markerById.get(holder.currentLocationMarkerId)?.name ?? 'another location'}. Move the placement, or take it out of the inventory.`,
-          navigatePath: `/worlds/${worldId}/timeline/${ch.id}`,
+          navigatePath: `/worlds/${worldId}/manuscript/${ch.id}`,
           eventId: evId,
         })
       }
@@ -802,7 +802,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
             category: 'item',
             message: `"${item?.name ?? itemId}" used before acquired in Ch. ${ch.number}`,
             detail: `Appears in scene "${ev.title}" but isn't in any inventory until later`,
-            navigatePath: `/worlds/${worldId}/timeline/${ch.id}`,
+            navigatePath: `/worlds/${worldId}/manuscript/${ch.id}`,
             eventId: ev.id,
           })
         }
@@ -844,7 +844,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           category: 'item',
           message: `"${item?.name ?? itemId}" used after being destroyed`,
           detail: `Referenced in "${ev.title || 'untitled'}" (Ch. ${ch?.number ?? '?'}) — condition is "destroyed". Update the item snapshot to restore it if intentional.`,
-          navigatePath: `/worlds/${worldId}/timeline/${ch?.id ?? ev.chapterId}`,
+          navigatePath: `/worlds/${worldId}/manuscript/${ch?.id ?? ev.chapterId}`,
           eventId: ev.id,
         })
       }
@@ -866,7 +866,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           category: 'item',
           message: `Destroyed item "${item?.name ?? itemId}" in ${char?.name ?? '?'}'s inventory`,
           detail: `Held in Ch. ${ch?.number ?? '?'} — condition is "destroyed". Update the item snapshot to restore it if intentional.`,
-          navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+          navigatePath: ev ? `/worlds/${worldId}/manuscript/${ev.chapterId}` : undefined,
           eventId: snap.eventId,
         })
       }
@@ -908,7 +908,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           category: 'item',
           message: `"${item.name}" is "${entry.condition}" again after being destroyed`,
           detail: `Destroyed in Ch. ${goneCh?.number ?? '?'}, ${entry.condition} again in Ch. ${backCh?.number ?? '?'}. Set the condition to "repaired" if it was mended, or correct one of the two.`,
-          navigatePath: backEv ? `/worlds/${worldId}/timeline/${backEv.chapterId}` : undefined,
+          navigatePath: backEv ? `/worlds/${worldId}/manuscript/${backEv.chapterId}` : undefined,
           eventId: backEv?.id,
         })
         break // one return is the finding; breaking it again is a history.
@@ -935,7 +935,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         category: 'item',
         message: `"${item?.name ?? h.itemId}" changes hands between characters in different places`,
         detail: `${from?.name ?? '?'} last held it at "${fromMarker?.name ?? h.fromMarkerId}", but ${to?.name ?? '?'} has it at "${toMarker?.name ?? h.toMarkerId}" in Ch. ${ch?.number ?? '?'} — they never share a location. Add a scene where they meet, route it through a location, or suppress if intentional.`,
-        navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+        navigatePath: ev ? `/worlds/${worldId}/manuscript/${ev.chapterId}` : undefined,
         eventId: h.handoffEventId,
       })
     }
@@ -984,7 +984,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
             category: 'relationship',
             message: `${a?.name ?? '?'} and ${b?.name ?? '?'} have a state after their relationship ended`,
             detail: `Ended in Ch. ${endCh?.number ?? '?'} ("${endEv?.title || 'untitled'}"), active again in Ch. ${laterCh?.number ?? '?'}. Record the mend, or clear the later state.`,
-            navigatePath: laterEv ? `/worlds/${worldId}/timeline/${laterEv.chapterId}` : undefined,
+            navigatePath: laterEv ? `/worlds/${worldId}/manuscript/${laterEv.chapterId}` : undefined,
             eventId: entry.rs.eventId,
           })
         }
@@ -1008,7 +1008,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           category: 'relationship',
           message: `Relationship snapshot exists before it started`,
           detail: `${charA?.name ?? '?'} ↔ ${charB?.name ?? '?'} — snapshot in Ch. ${rsCh?.number ?? '?'} but relationship starts in Ch. ${startChapNum}`,
-          navigatePath: `/worlds/${worldId}/timeline/${rsEv?.chapterId ?? rs.eventId}`,
+          navigatePath: `/worlds/${worldId}/manuscript/${rsEv?.chapterId ?? rs.eventId}`,
           eventId: rs.eventId,
         })
       }
@@ -1055,7 +1055,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           category: 'relationship',
           message: `Relationship snapshot references deceased ${deadChar?.name ?? '?'}`,
           detail: `${charA?.name ?? '?'} ↔ ${charB?.name ?? '?'} in Ch. ${rsCh?.number ?? '?'}`,
-          navigatePath: `/worlds/${worldId}/timeline/${rsEv?.chapterId ?? rs.eventId}`,
+          navigatePath: `/worlds/${worldId}/manuscript/${rsEv?.chapterId ?? rs.eventId}`,
           eventId: rs.eventId,
         })
       }
@@ -1120,7 +1120,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
             category: 'character',
             message: `${char.name} travels through a ${status} region`,
             detail: `"${region.name}" is ${status} when ${char.name} moves from ${fromMarker.name} → ${toMarker.name}${currEvent ? ` (Ch. ${chapById.get(currEvent.chapterId)?.number ?? '?'})` : ''}`,
-            navigatePath: currEvent ? `/worlds/${worldId}/timeline/${currEvent.chapterId}` : undefined,
+            navigatePath: currEvent ? `/worlds/${worldId}/manuscript/${currEvent.chapterId}` : undefined,
             eventId: curr.eventId,
           })
         }
@@ -1174,7 +1174,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
             category: 'character',
             message: `${char.name} can't reach ${toMarker.name} in time`,
             detail: `${fromMarker.name} → ${toMarker.name} is ~${dist} ${layer.scaleUnit} · ${travelMode.name} at ${assessment.effectiveSpeed.toFixed(1)} ${layer.scaleUnit}/day${routeNote} — needs ${assessment.daysNeeded.toFixed(1)} days but only ${daysAvailable} in-world day${daysAvailable === 1 ? '' : 's'} available (Ch. ${currCh?.number ?? '?'})`,
-            navigatePath: `/worlds/${worldId}/timeline/${currEvent.chapterId}`,
+            navigatePath: `/worlds/${worldId}/manuscript/${currEvent.chapterId}`,
             eventId: curr.eventId,
             fix: { kind: 'travelDays', label: `Allow ${assessment.shortfallDays} more day${assessment.shortfallDays === 1 ? '' : 's'}`, eventId: curr.eventId, setTravelDays: newTravelDays },
           })
@@ -1215,7 +1215,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
             category: 'item',
             message: `"${item.name}" appears outside its declared timelines`,
             detail: `${char?.name ?? '?'} holds it in Ch. ${ch.number} — not in origin or encounter timeline`,
-            navigatePath: `/worlds/${worldId}/timeline/${ch.id}`,
+            navigatePath: `/worlds/${worldId}/manuscript/${ch.id}`,
             eventId: snap.eventId,
           })
         }
@@ -1266,7 +1266,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         category: 'faction',
         message: `${char.name} joins "${factionById.get(m.factionId)?.name ?? '?'}" before they appear`,
         detail: `Membership starts at "${startEv?.title || 'a scene'}" (Ch. ${startCh?.number ?? '?'}), but ${char.name} is not in the story until Ch. ${firstCh?.number ?? '?'}. Move the start, or bring them on earlier.`,
-        navigatePath: startEv ? `/worlds/${worldId}/timeline/${startEv.chapterId}` : undefined,
+        navigatePath: startEv ? `/worlds/${worldId}/manuscript/${startEv.chapterId}` : undefined,
         eventId: m.startEventId,
       })
     }
@@ -1312,7 +1312,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
             category: 'faction',
             message: `${char.name} leaves "${faction?.name ?? '?'}" with no replacement faction`,
             detail: `Membership ends at "${endEvent?.title ?? '?'}" (Ch. ${endCh?.number ?? '?'}) — no other faction active from this point. Say they leave for good, or give them the allegiance that follows.`,
-            navigatePath: endEvent ? `/worlds/${worldId}/timeline/${endEvent.chapterId}` : undefined,
+            navigatePath: endEvent ? `/worlds/${worldId}/manuscript/${endEvent.chapterId}` : undefined,
             eventId: m.endEventId,
             fix: {
               kind: 'leavesForGood',
@@ -1369,7 +1369,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           category: 'faction',
           message: `${char?.name ?? '?'} is at hostile territory in Ch. ${ch?.number ?? '?'}`,
           detail: `"${marker.name}" is controlled by "${locFaction?.name ?? '?'}" — hostile to "${charFaction?.name ?? '?'}"`,
-          navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+          navigatePath: ev ? `/worlds/${worldId}/manuscript/${ev.chapterId}` : undefined,
           eventId: snap.eventId,
         })
       }
@@ -1404,7 +1404,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         category: 'pov',
         message: `The POV of "${ev.title || 'untitled'}" names no character`,
         detail: `Ch. ${ch?.number ?? '?'} — the character it pointed at is gone. Clear the POV, or set it to someone who exists.`,
-        navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+        navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`,
         eventId: ev.id,
         fix: { kind: 'clearPov', label: 'Clear the POV', eventId: ev.id },
       })
@@ -1436,7 +1436,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           category: 'pov',
           message: `POV "${char?.name ?? '?'}" is not in the cast of "${ev.title || 'untitled'}"`,
           detail: `Ch. ${ch?.number ?? '?'} — right for a narrator reporting a scene from outside it. If the POV is a leftover, clear it; if they are in the room, add them to the cast.`,
-          navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+          navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`,
           eventId: ev.id,
         })
       }
@@ -1456,7 +1456,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         category: 'pov',
         message: `POV "${char?.name ?? '?'}" is dead at "${ev.title || 'untitled'}"`,
         detail: `Ch. ${ch?.number ?? '?'} — mark the scene as a flashback if intentional`,
-        navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+        navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`,
         eventId: ev.id,
       })
     }
@@ -1503,7 +1503,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         category: 'character',
         message: `${who} knows "${a.fact.title}" before it happens`,
         detail: `"${a.fact.title}" isn't true until Ch. ${originCh?.number ?? '?'}, but ${whoMidSentence} knows it in Ch. ${knownCh?.number ?? '?'}.`,
-        navigatePath: `/worlds/${worldId}/timeline/${eventById.get(a.knownAtEventId)?.chapterId ?? ''}`,
+        navigatePath: `/worlds/${worldId}/manuscript/${eventById.get(a.knownAtEventId)?.chapterId ?? ''}`,
         eventId: a.knownAtEventId,
       })
     }
@@ -1520,7 +1520,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         category: 'character',
         message: `${char?.name ?? '?'} learns "${d.fact.title}" after dying`,
         detail: `A reveal places this knowledge with ${char?.name ?? '?'} in Ch. ${ch?.number ?? '?'}, but they're already dead by then. Move the reveal earlier, or mark the scene a flashback if intentional.`,
-        navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+        navigatePath: ev ? `/worlds/${worldId}/manuscript/${ev.chapterId}` : undefined,
         eventId: d.revealEventId,
       })
     }
@@ -1561,7 +1561,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         category: 'character',
         message: `${char.name} learns "${fact.title}" while recorded somewhere else`,
         detail: `The reveal is at "${ev.title || 'a scene'}" in ${markerById.get(ev.locationMarkerId)?.name ?? 'one place'} (Ch. ${ch?.number ?? '?'}), but ${char.name} is at ${markerById.get(at)?.name ?? 'another'}. Move the reveal to where they are, or to the scene where word reaches them.`,
-        navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+        navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`,
         eventId: rev.eventId,
       })
     }
@@ -1583,7 +1583,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           ? `${p.characters[0].characterName} is named in the prose but not in the cast of "${ev?.title || 'untitled'}"`
           : `${p.characters.length} names in the prose of "${ev?.title || 'untitled'}" are not in its cast`,
         detail: `Ch. ${ch?.number ?? '?'} — ${shown}. Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.`,
-        navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+        navigatePath: ev ? `/worlds/${worldId}/manuscript/${ev.chapterId}` : undefined,
         eventId: p.eventId,
         /*
           W19-7: the warning already knew the character and the scene, and still
@@ -1628,7 +1628,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           category: 'prose',
           message: `"${ev.title || 'untitled'}" is marked ${ev.status} and has no draft`,
           detail: `Ch. ${ch?.number ?? '?'} — the status says the writing is done and there is no text in the scene. Write it, or set the status back.`,
-          navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+          navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`,
           eventId: ev.id,
         })
       }
@@ -1646,7 +1646,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         category: 'prose',
         message: `Possible early reveal: "${leak.fact.title}"`,
         detail: `The reader is set to learn this in Ch. ${revealCh?.number ?? '?'}, but "${leakEv?.title || 'untitled'}" (Ch. ${leakCh?.number ?? '?'}) already references it (matched "${leak.matchedTerm}").`,
-        navigatePath: leakEv ? `/worlds/${worldId}/timeline/${leakEv.chapterId}` : undefined,
+        navigatePath: leakEv ? `/worlds/${worldId}/manuscript/${leakEv.chapterId}` : undefined,
         eventId: leak.leakEventId,
       })
     }
@@ -1690,7 +1690,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           category: 'world',
           message: `"${marker.name}" is "${entry.status}" again after being destroyed`,
           detail: `Destroyed in Ch. ${goneCh?.number ?? '?'}, ${entry.status} again in Ch. ${backCh?.number ?? '?'}. Record the rebuilding, or correct one of the two.`,
-          navigatePath: backEv ? `/worlds/${worldId}/timeline/${backEv.chapterId}` : undefined,
+          navigatePath: backEv ? `/worlds/${worldId}/manuscript/${backEv.chapterId}` : undefined,
           eventId: backEv?.id,
         })
         break // one return is the finding; a second razing is a history.
@@ -1733,7 +1733,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
             category: 'world',
             message: `"${ev.title || 'untitled'}" happens before the scene in front of it`,
             detail: `Ch. ${ch?.number ?? '?'} is set on day ${day}, and Ch. ${prevCh?.number ?? '?'} ("${prev.ev.title || 'untitled'}") on day ${prev.day}. Mark it a flashback, or correct the in-world time.`,
-            navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+            navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`,
             eventId: ev.id,
           })
         }
@@ -1787,7 +1787,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
               detail: ch
                 ? `Both memberships are open across Ch. ${ch.number}. End one, or say so if they are playing both sides.`
                 : 'Both memberships are open at the same time. End one, or say so if they are playing both sides.',
-              navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+              navigatePath: ev ? `/worlds/${worldId}/manuscript/${ev.chapterId}` : undefined,
               eventId: ev?.id,
             })
           }
@@ -1860,7 +1860,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           category: 'world',
           message: `Ch. ${ch.number} "${ch.title || 'untitled'}" has no scenes`,
           detail: 'Nothing in it reaches the manuscript, the pacing curve or the time cursor. Add a scene, or delete the chapter.',
-          navigatePath: `/worlds/${worldId}/timeline/${ch.id}`,
+          navigatePath: `/worlds/${worldId}/manuscript/${ch.id}`,
         })
       }
     }
@@ -1889,7 +1889,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           category: 'item',
           message: `"${item?.name ?? itemId}" is carried by ${char?.name ?? '?'}, who is dead`,
           detail: `Ch. ${ch?.number ?? '?'} — move it to whoever takes it, or to the place it was left.`,
-          navigatePath: ev ? `/worlds/${worldId}/timeline/${ev.chapterId}` : undefined,
+          navigatePath: ev ? `/worlds/${worldId}/manuscript/${ev.chapterId}` : undefined,
           eventId: snap.eventId,
         })
       }
@@ -1928,7 +1928,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
             category: 'pov',
             message: `"${ev.title || 'untitled'}" has no point of view`,
             detail: `Ch. ${ch?.number ?? '?'} — ${withPov.length} of this book's ${scenes.length} scenes name one. Set it, or leave it if the scene is deliberately unanchored.`,
-            navigatePath: `/worlds/${worldId}/timeline/${ev.chapterId}`,
+            navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`,
             eventId: ev.id,
           })
         }
@@ -1961,7 +1961,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         category: 'thread',
         message: ti.message,
         detail: ti.detail,
-        navigatePath: targetChapter ? `/worlds/${worldId}/timeline/${targetChapter.id}` : undefined,
+        navigatePath: targetChapter ? `/worlds/${worldId}/manuscript/${targetChapter.id}` : undefined,
         eventId: firstEvent?.id,
         fix: lastEvent
           ? {
