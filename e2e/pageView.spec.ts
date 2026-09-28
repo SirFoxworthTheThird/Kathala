@@ -113,18 +113,18 @@ test.describe('the Page view', () => {
     await expect(main.getByRole('button', { name: 'Teodora at the table', exact: true })).toHaveCount(0)
   })
 
-  test('refuses to join a scene by Backspace, and says why; Backspace in prose still works', async ({ page }) => {
+  test('refuses part of a heading, and says how to join; Backspace in prose still works', async ({ page }) => {
     const worldId = await book(page)
     const editor = await openPage(page, worldId)
-    const status = page.getByRole('status').filter({ hasText: 'Use Cards for that' })
+    const status = page.getByRole('status').filter({ hasText: 'delete its entire line' })
     await expect(status).toHaveCount(0)
 
     await line(page, '## Teodora at the table').click()
     await page.keyboard.press('Home')
-    // Once for the blank line above the heading, which is the writer's to delete; once more would join.
+    // Once for the blank line above the heading, which is the writer's to delete; once more is the heading's own.
     await page.keyboard.press('Backspace')
     await page.keyboard.press('Backspace')
-    await expect(page.getByRole('status')).toContainText('not joined, split or removed from the page yet')
+    await expect(status).toHaveCount(1)
     await expect(editor).toContainText('## Teodora at the table')
 
     await line(page, 'She counted.').click()
@@ -133,7 +133,208 @@ test.describe('the Page view', () => {
     await expect.poll(() => stored(page), { timeout: 10_000 }).toContain('Teodora at the table: She counted')
     expect(await stored(page)).toHaveLength(3)
     // The message goes once the writer is writing again.
-    await expect(page.getByRole('status')).not.toContainText('not joined')
+    await expect(status).toHaveCount(0)
+  })
+
+  test('a scene heading typed into a scene splits it once the caret leaves the line, and typing goes on in the new scene', async ({ page }) => {
+    const worldId = await book(page)
+    const editor = await openPage(page, worldId)
+    await line(page, 'The court sat.').click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('## The gate')
+    // Still on the line: it is being typed, not made. The autosave has saved it as prose.
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toContain('The assize rises: The court sat.\n## The gate\n\nThe water fell.')
+    expect(await stored(page)).toHaveLength(3)
+
+    await page.keyboard.press('Enter')
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toEqual([
+      'The assize rises: The court sat.',
+      'The gate: The water fell.',
+      'Teodora at the table: She counted.',
+      `The tide-table: ${`${FILLER}`.slice(0, 60)}`,
+    ])
+    await expect(line(page, '## The gate')).toHaveClass(/cm-draft-scene/)
+    await page.keyboard.type('Open. ')
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toContain('The gate: Open. The water fell.')
+    await expect(editor).toContainText('## The gate')
+  })
+
+  test('Ctrl+Z straight after a split takes it back, and Ctrl+Shift+Z puts it back', async ({ page }) => {
+    const worldId = await book(page)
+    await openPage(page, worldId)
+    await line(page, 'The court sat.').click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('## The gate')
+    await page.keyboard.press('Enter')
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toHaveLength(4)
+    await expect(line(page, '## The gate')).toHaveClass(/cm-draft-scene/)
+
+    await page.keyboard.press('Control+z')
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toEqual([
+      'The assize rises: The court sat.\n\nThe water fell.',
+      'Teodora at the table: She counted.',
+      `The tide-table: ${`${FILLER}`.slice(0, 60)}`,
+    ])
+    await expect(page.locator('.cm-line', { hasText: '## The gate' })).toHaveCount(0)
+
+    await page.keyboard.press('Control+Shift+z')
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toHaveLength(4)
+    await expect(line(page, '## The gate')).toHaveClass(/cm-draft-scene/)
+  })
+
+  test('typing straight on after a split, with no pause, is all kept in the new scene', async ({ page }) => {
+    const worldId = await book(page)
+    await openPage(page, worldId)
+    await line(page, 'The court sat.').click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('## The gate')
+    // Enter and the first words in one burst, while the split is still being written.
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('Open. ')
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toEqual([
+      'The assize rises: The court sat.',
+      'The gate: Open. The water fell.',
+      'Teodora at the table: She counted.',
+      `The tide-table: ${`${FILLER}`.slice(0, 60)}`,
+    ])
+  })
+
+  test('typing on after a split and leaving for Cards at once still saves the typing', async ({ page }) => {
+    const worldId = await book(page)
+    await openPage(page, worldId)
+    await line(page, 'The court sat.').click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('## The gate')
+    // Enter, a word, and away — all while the split is being written.
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('Open. ')
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Cards', exact: true }).click()
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toContain('The gate: Open. The water fell.')
+  })
+
+  test('Ctrl+Z pressed while a split is still being written waits for it, then takes it back', async ({ page }) => {
+    const worldId = await book(page)
+    await openPage(page, worldId)
+    await line(page, 'The court sat.').click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('## The gate')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Control+z')
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toEqual([
+      'The assize rises: The court sat.\n\nThe water fell.',
+      'Teodora at the table: She counted.',
+      `The tide-table: ${`${FILLER}`.slice(0, 60)}`,
+    ])
+    // And stays taken back: nothing half-written comes after it.
+    await page.waitForTimeout(1500)
+    expect(await stored(page)).toHaveLength(3)
+  })
+
+  test('Ctrl+Z takes back the typing since a split, and then the split', async ({ page }) => {
+    const worldId = await book(page)
+    await openPage(page, worldId)
+    await line(page, 'The court sat.').click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('## The gate')
+    await page.keyboard.press('Enter')
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toHaveLength(4)
+    await page.keyboard.type('Open. ')
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toContain('The gate: Open. The water fell.')
+
+    // The typing first, word by word as the editor groups it, until there is none left.
+    for (let i = 0; i < 5 && (await stored(page)).includes('The gate: Open. The water fell.'); i++) {
+      await page.keyboard.press('Control+z')
+      await page.waitForTimeout(1500)
+    }
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toContain('The gate: The water fell.')
+    expect(await stored(page)).toHaveLength(4)
+    // Then the split.
+    await page.keyboard.press('Control+z')
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toEqual([
+      'The assize rises: The court sat.\n\nThe water fell.',
+      'Teodora at the table: She counted.',
+      `The tide-table: ${`${FILLER}`.slice(0, 60)}`,
+    ])
+  })
+
+  test('a heading typed and left by clicking away splits too', async ({ page }) => {
+    const worldId = await book(page)
+    await openPage(page, worldId)
+    await line(page, 'She counted.').click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('## After dark')
+    // Out of the page altogether: the book's word goal, in the header.
+    await page.getByLabel('Word goal for the book').click()
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toContain('After dark: ')
+    expect(await stored(page)).toHaveLength(4)
+  })
+
+  test('deleting a scene heading’s whole line joins it to the scene before, and Ctrl+Z parts them again', async ({ page }) => {
+    const worldId = await book(page)
+    const editor = await openPage(page, worldId)
+    await line(page, '## Teodora at the table').click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Shift+Home')
+    await page.keyboard.press('Backspace')
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toEqual([
+      'The assize rises: The court sat.\n\nThe water fell.\n\nShe counted.',
+      `The tide-table: ${`${FILLER}`.slice(0, 60)}`,
+    ])
+    await expect(editor).not.toContainText('Teodora at the table')
+    await expect(page.getByRole('status')).toHaveText('')
+
+    await page.keyboard.press('Control+z')
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toEqual([
+      'The assize rises: The court sat.\n\nThe water fell.',
+      'Teodora at the table: She counted.',
+      `The tide-table: ${`${FILLER}`.slice(0, 60)}`,
+    ])
+    await expect(line(page, '## Teodora at the table')).toHaveClass(/cm-draft-scene/)
+  })
+
+  test('words typed just before a join are kept, in the scene they were typed in, when the join is undone', async ({ page }) => {
+    const worldId = await book(page)
+    await openPage(page, worldId)
+    await line(page, 'She counted.').click()
+    await page.keyboard.press('End')
+    await page.keyboard.type(' Twice.')
+    // Straight on, inside the autosave's second: the typing is not saved yet.
+    await line(page, '## Teodora at the table').click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Shift+Home')
+    await page.keyboard.press('Backspace')
+    // The whole join, not just the scene gone: it removes the scene before it writes the prose.
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toEqual([
+      'The assize rises: The court sat.\n\nThe water fell.\n\nShe counted. Twice.',
+      `The tide-table: ${`${FILLER}`.slice(0, 60)}`,
+    ])
+
+    await page.keyboard.press('Control+z')
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toEqual([
+      'The assize rises: The court sat.\n\nThe water fell.',
+      'Teodora at the table: She counted. Twice.',
+      `The tide-table: ${`${FILLER}`.slice(0, 60)}`,
+    ])
+  })
+
+  test('the first scene of a chapter has nothing before it to join, and the page says so', async ({ page }) => {
+    const worldId = await book(page)
+    const editor = await openPage(page, worldId)
+    await line(page, '## The assize rises').click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Shift+Home')
+    await page.keyboard.press('Backspace')
+    await expect(page.getByRole('status')).toContainText('first scene of its chapter')
+    await expect(editor).toContainText('## The assize rises')
+    expect(await stored(page)).toHaveLength(3)
   })
 
   test('Enter on a heading goes to its prose rather than breaking the title', async ({ page }) => {

@@ -110,9 +110,11 @@ Scenes move earlier or later with the ↑ ↓ on their cards; dragging is the [C
 - The [binder](#the-binder) moves the page: a scene puts the caret at the start of its prose, a chapter brings its heading to the top.
 - **Enter** on a heading goes to the prose under it; on a chapter heading, to its first scene.
 - **Ctrl+F** (⌘F) searches the whole book. The page only draws what is on screen, so the browser's own find cannot see the rest.
-- **Ctrl+Z** on the page takes back typing; the top bar's Undo takes back a rename.
-- **Headings stay where they are.** Page does not join, split, add or remove chapters and scenes — deleting a heading, merging it into the line above, changing its `#` marks, or typing under a chapter heading is refused, and the line above the page says why. Use Cards or the binder for those.
-- A line of prose starting with `#` is still prose: which lines are headings comes from the chapters and scenes, not the marks.
+- **Split a scene by typing `## ` and a title on a line of its own.** When you leave the line, the prose below it becomes a new scene with that title — the same act as **Split** on a card. Nothing happens while you are still typing the line.
+- **Join a scene to the one before it by deleting its heading's whole line** — the same act as **Join with next scene** on a card.
+- **Ctrl+Z takes back typing since the last split or join, and then the split or join itself** (Ctrl+Shift+Z puts it back). You can type on in the new scene straight away. The top bar's Undo takes back renames, splits and joins.
+- Part of a heading — its `#` marks, a line break in its title, text under a chapter heading — is refused, and so are joining a chapter's first scene and deleting a chapter heading; the line above the page says why. Chapters are made and removed on Cards or in the binder.
+- A line of prose that already started with `## ` stays prose until you edit it.
 - A change made elsewhere — another tab, or the top bar's Undo — shows on the page, and anything typed there and not yet saved is kept.
 - Page is offered on one timeline in narrative order, and not on *All timelines*, in Chronological order, or in reading mode.
 - Not on the page yet: the scene header line, `@` mentions, the scene keys and Focus mode — open the scene's card for those.

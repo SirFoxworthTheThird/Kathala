@@ -183,10 +183,42 @@ costs, are in
 5. **Structure from text.** `##` in the middle of a scene splits it, deleting a
    heading joins it, and `#` starts a chapter — each undoable in one step. This
    lifts step 2's refusals, and brings in the spike's drop-and-restore rules
-   for heading ids with them.
+   for heading ids with them. In two pull requests:
+   - **5a** *Done* — scenes. A line typed as `## Title` in a scene's prose
+     splits the scene there once the caret leaves the line; deleting a scene
+     heading's whole line joins it to the scene before. Both are the cards'
+     own acts (`splitScene`, `joinWithNext`), one step of undo. The page shows
+     the result at once — the typed line becomes the new scene's heading under
+     the id its record is then written with — so typing straight on is never
+     lost. The answer to *two undos*: the editor's history starts again at each
+     split or join, so Ctrl+Z takes back typing and then the act, from the
+     journal. That is also why no drop-and-restore rules were needed: the
+     editor's undo never steps back across a heading whose record has changed.
+     Still refused: part of a heading, the first scene of a chapter, a chapter
+     heading, two headings at once.
+   - **5b** — chapters: `#` typed on its own line starts a chapter, and
+     deleting a chapter heading joins it to the one before.
 6. **The round trip.** Markdown export writes scene titles as `##`, and import
    reads `##` under a `#` as a titled scene, so a book written here and one
    pasted in agree.
+7. **Remove the Corkboard.** Decided by the author on 28 September 2026, while
+   5a was being tested. The one screen for the book now does what the
+   Corkboard was for: the binder reorders scenes and moves them between
+   chapters, by drag and by keyboard; every scene card carries its status; the
+   chapter rows and cards carry lengths and totals; and a Corkboard card only
+   ever opened its scene in the Manuscript. What goes with it and nowhere else
+   is the grid — chapters as columns, many seen at once — which was weighed as
+   a fourth layout, *Board*, and not kept. The step takes out the screen, its
+   navigation entry and its route (`/corkboard` goes to the Manuscript, as
+   `/timeline` does), and its sections in Help, the guide and the wiki, with
+   the screenshot. Of the eleven specs that mention it, `corkboard` and
+   `boardExtent` are about it and go; the others visit it among other screens,
+   or move a scene there, and are pointed at the binder or dropped from their
+   lists. What it shares stays: `moveEventOnBoard` is how the binder moves a
+   scene, and the chapter totals in `chapterProgress` are the chapter rows'
+   too — only `describeBoard`, the Corkboard header's *17 chapters · 74 scenes*, goes with
+   it. Nothing is stored for the Corkboard alone — it read and wrote the
+   scenes' own order and status — so no data changes.
 
 Focus mode as the whole document rather than one scene is a candidate after
 step 5, not part of this plan.
