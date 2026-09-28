@@ -7,8 +7,8 @@ import { emphasisSpans, type ProseSpan } from '@/lib/proseEmphasis'
 
 /**
  * One timeline's book, compiled for reading: the manuscript, its prose already
- * split into paragraphs, and the lookups the reading page needs. Shared by the
- * Manuscript screen and the Timeline's Read layout, so both show the same book.
+ * split into paragraphs, and the lookups the reading page needs — for the
+ * Timeline's Read layout, and for export on Page and Read.
  */
 export function useManuscriptBook(worldId: string | null, timelineId: string | null) {
   const chapters = useChapters(timelineId)

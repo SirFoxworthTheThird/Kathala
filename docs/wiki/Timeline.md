@@ -58,7 +58,7 @@ Open a chapter and click **Add Scene** at the foot of its list: a line appears w
 | **Is flashback** | Excludes it from travel and staleness continuity checks |
 | **Tags** | Freeform labels |
 
-Scene prose is written on the event too, and flows into the [Manuscript](Manuscript).
+Scene prose is written on the event too, or straight through on [Page](#writing-on-one-page), and reads as a book on [Read](#reading-the-book).
 
 ### The scene header
 
@@ -121,7 +121,7 @@ Scenes move earlier or later with the ↑ ↓ on their cards; dragging is the [C
 
 ## Reading the book
 
-**Read**, beside Cards and Page, sets the timeline's prose as a book — the [Manuscript](Manuscript)'s reading view, with **In this scene** in the margin.
+**Read**, beside Cards and Page, sets the timeline's prose as a book — the [Manuscript](Manuscript) — with **In this scene** in the margin.
 
 - **Export**, **Find & replace** and the book's **word goal** are in the header on Page and Read — the Manuscript's own, and the same goal whichever screen sets it. Cards does not carry them.
 - The open chapter's panel has the chapter's **word goal** and its progress.

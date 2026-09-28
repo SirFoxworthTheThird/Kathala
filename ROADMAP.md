@@ -162,10 +162,17 @@ costs, are in
      every reading spec still covers it): in reading mode it is the reader's
      book and follows their place. Export, Find & replace and the book's word
      goal are on Page and Read; the chapter's goal is in its panel.
-   - **3b** — `/manuscript` lands on the merged screen, the Manuscript screen is
-     retired, and the specs that go through it move over.
+   - **3b** *Done* — `/manuscript`, and the navigation's Manuscript (Read, for
+     a reader), land on the Timeline: Page for the author, Read for a reader.
+     The Manuscript screen is gone, and with it the reading page's Draft view,
+     which Page replaces. The Timeline remembers each world's layout, because a
+     reader stepping out of the book has to come back to it; and a reading spot
+     is only written once the page is where the spot says, which the move
+     exposed.
 4. **The name and the routes.** Rename the screen, and move the links in the
-   sixteen source files that mention `/timeline`.
+   sixteen source files that mention `/timeline`. The navigation still has both
+   *Timeline* and *Manuscript* (for a reader, *Read*), and they now open the same
+   screen; this step makes them one.
 5. **Structure from text.** `##` in the middle of a scene splits it, deleting a
    heading joins it, and `#` starts a chapter — each undoable in one step. This
    lifts step 2's refusals, and brings in the spike's drop-and-restore rules

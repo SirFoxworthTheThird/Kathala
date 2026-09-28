@@ -2,6 +2,19 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { DEFAULT_READING_TYPE, coerceReadingType, type ReadingType } from '@/lib/readingType'
 
+
+export type TimelineLayout = 'cards' | 'page' | 'read'
+const LAYOUTS: readonly TimelineLayout[] = ['cards', 'page', 'read']
+
+/** Stored layouts, with anything a build no longer knows dropped rather than trusted. */
+export function coerceLayouts(stored: unknown): Record<string, TimelineLayout> {
+  if (!stored || typeof stored !== 'object') return {}
+  return Object.fromEntries(
+    Object.entries(stored as Record<string, unknown>)
+      .filter((e): e is [string, TimelineLayout] => LAYOUTS.includes(e[1] as TimelineLayout)),
+  )
+}
+
 interface WorldSlice {
   activeWorldId: string | null
   setActiveWorldId: (id: string | null) => void
@@ -109,6 +122,14 @@ interface UISlice {
   setNavPinned: (pinned: boolean) => void
   /** Whether the chapter screen's binder — the chapters-and-scenes tree — is showing. */
   binderOpen: boolean
+  /**
+   * Cards, Page or Read, per world — the Timeline remembers which a world was
+   * last left on. It is where a reader's book is: leaving it to look someone
+   * up and coming back, or reloading, has to land on the book again, as the
+   * Manuscript screen always did by being a route of its own.
+   */
+  layoutByWorld: Record<string, TimelineLayout>
+  setTimelineLayout: (worldId: string, layout: TimelineLayout) => void
   setBinderOpen: (open: boolean) => void
   selectedLocationMarkerId: string | null
   setSelectedLocationMarkerId: (id: string | null) => void
@@ -314,6 +335,8 @@ export const useAppStore = create<AppStore>()(
       setNavPinned: (pinned) => set({ navPinned: pinned }),
       binderOpen: true,
       setBinderOpen: (open) => set({ binderOpen: open }),
+      layoutByWorld: {},
+      setTimelineLayout: (worldId, layout) => set((state) => ({ layoutByWorld: { ...state.layoutByWorld, [worldId]: layout } })),
       selectedLocationMarkerId: null,
       setSelectedLocationMarkerId: (id) => set({ selectedLocationMarkerId: id }),
       selectedCharacterId: null,
@@ -358,7 +381,7 @@ export const useAppStore = create<AppStore>()(
         const p = (persisted ?? {}) as Partial<typeof current>
         // Anything else is taken as stored; the type preference is repaired,
         // because it is the one persisted value that reaches CSS directly.
-        return { ...current, ...p, readingType: coerceReadingType(p.readingType) }
+        return { ...current, ...p, readingType: coerceReadingType(p.readingType), layoutByWorld: coerceLayouts(p.layoutByWorld) }
       },
       partialize: (state) => ({
         activeWorldId: state.activeWorldId,
@@ -368,6 +391,7 @@ export const useAppStore = create<AppStore>()(
         sidebarOpen: state.sidebarOpen,
         navPinned: state.navPinned,
         binderOpen: state.binderOpen,
+        layoutByWorld: state.layoutByWorld,
         barScope: state.barScope,
         barCollapsed: state.barCollapsed,
         searchWholeWord: state.searchWholeWord,

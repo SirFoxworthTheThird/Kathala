@@ -21,7 +21,6 @@ const LoreView = lazy(() => import('@/features/lore/LoreView'))
 const LorePageEditor = lazy(() => import('@/features/lore/LorePageEditor'))
 const FactionsView = lazy(() => import('@/features/factions/FactionsView'))
 const KnowledgeView = lazy(() => import('@/features/knowledge/KnowledgeView'))
-const ManuscriptView = lazy(() => import('@/features/manuscript/ManuscriptView'))
 const CorkboardView = lazy(() => import('@/features/corkboard/CorkboardView'))
 const CalendarView = lazy(() => import('@/features/calendar/CalendarView'))
 const StructureView = lazy(() => import('@/features/structure/StructureView'))
@@ -73,6 +72,22 @@ function WritersOnly({ children, path }: { children: React.ReactNode; path: stri
   return <>{children}</>
 }
 
+/**
+ * The Manuscript is the Timeline now: its reading page is the Timeline's Read
+ * layout and its writing is Page. A link, a bookmark or the navigation that
+ * still says /manuscript lands on the one a person there came for — the book
+ * to read for a reader, the book to write in for its author.
+ *
+ * `WritersOnly` has already waited for the world and turned away a reader from
+ * a book with no prose, so all that is left to decide is which layout.
+ */
+function ManuscriptLanding() {
+  const { worldId } = useParams<{ worldId: string }>()
+  const world = useWorld(worldId ?? null)
+  if (world === undefined) return <Loading />
+  return <Navigate to={`/worlds/${worldId}/timeline?view=${world?.readingMode ? 'read' : 'page'}`} replace />
+}
+
 function Wrap({ children, path }: { children: React.ReactNode; path?: string }) {
   const guarded = path !== undefined && WRITING_ONLY.has(path)
   return (
@@ -121,7 +136,7 @@ export const router = createHashRouter([
       { path: 'lore/:pageId', element: <Wrap><LorePageEditor /></Wrap> },
       { path: 'factions', element: <Wrap path="factions"><FactionsView /></Wrap> },
       { path: 'knowledge', element: <Wrap path="knowledge"><KnowledgeView /></Wrap> },
-      { path: 'manuscript', element: <Wrap path="manuscript"><ManuscriptView /></Wrap> },
+      { path: 'manuscript', element: <Wrap path="manuscript"><ManuscriptLanding /></Wrap> },
     ],
   },
 ])

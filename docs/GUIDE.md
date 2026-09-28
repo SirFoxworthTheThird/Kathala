@@ -156,8 +156,8 @@ the timeline it opens. The **X** that jumps back to *All chapters* appears from
 390px up; below that, step back with the arrow or use the timeline.
 
 The bar is there wherever the cursor means something — the Timeline, the
-Corkboard, the Structure board, the Arc grid, the Calendar, the Lore roster, the
-Maps and the Manuscript. It's left off the world dashboard and Settings, which
+Corkboard, the Structure board, the Arc grid, the Calendar, the Lore roster and
+the Maps. It's left off the world dashboard and Settings, which
 have no single moment in them, and off the lore page editor, which is a
 full-height writing surface.
 
@@ -412,9 +412,11 @@ chapters into leaves you forty chapters in.
 Most of the Library's books carry their own text — 39 of the 46 on the shelf
 today are complete public-domain novels, and each one's catalogue entry names
 the Project Gutenberg edition it came from. Those are the ones filed under
-**Books you can read**. On those, reading mode adds a **Read** screen: the book,
-chapter by chapter, with none of the writing furniture. No draft/reading switch,
-no word counts, no "scenes written" tally — just the prose.
+**Books you can read**. On those, reading mode adds **Read** to the navigation,
+which opens the Timeline on its [Read](#reading-the-book-on-the-timeline)
+layout: the book, chapter by chapter, with none of the writing furniture. No
+Page, no word counts, no "scenes written" tally — just the prose, with **Cards**
+beside it for the book as a list of its scenes.
 
 A long book takes a moment to open — *The Count of Monte Cristo* is 459,375
 words — and while it does you get the shape of a page and **Opening the book…**,
@@ -687,7 +689,7 @@ straight into the new world.
 ![Import a manuscript](images/22-import-manuscript.png)
 
 Each parsed scene becomes a scene with its prose attached, so the imported draft
-flows straight into the Manuscript view and reads back as one continuous document.
+flows straight onto the Timeline's Page and Read, and reads back as one continuous document.
 (Import handles Markdown and plain text today; `.docx` is planned.)
 
 ---
@@ -807,7 +809,7 @@ standing text you have to read twice.
 
 ### Writing progress
 
-As you write scene prose (in the Manuscript view), Kathala keeps a lightweight
+As you write scene prose — on a scene card, on Page, or in Focus mode — Kathala keeps a lightweight
 per-day log of the words you add or cut. The **Writing Progress** panel on the
 dashboard turns that into an at-a-glance readout:
 
@@ -986,10 +988,10 @@ scenes are, with **In this scene** in the margin.
 ![The Timeline's Read layout: the book set for reading, In this scene beside it, and the open chapter's panel with its word goal](images/73-timeline-read.png)
 
 - **Export**, **Find & replace** and the book's **word goal** sit in the header
-  on Page and on Read. They are the Manuscript's own: the goal is the same one,
-  whichever screen you set it on. Cards does not carry them.
-- **The open chapter's panel has the chapter's word goal**, with its progress —
-  the same per-chapter goal the Manuscript sets in its Draft view.
+  on Page and on Read — one goal for the book, whichever of the two you set it
+  on. Cards does not carry them.
+- **The open chapter's panel has the chapter's word goal**, with its progress,
+  saved with the chapter.
 - **The binder** brings a chapter or a scene to the top of the book.
 - **In reading mode, Read is the book you are reading.** As you read on, your
   place moves with you, as it does on **Read** in the navigation. Cards is still
@@ -1458,26 +1460,27 @@ and both stay in sync.
 
 ## Manuscript
 
-The **Manuscript** view stitches every scene's prose into one continuous
-document, in reading order, so you can read and export your book without leaving
-Kathala. Write a scene's prose on its scene, and it appears here automatically —
-the box on the scene grows to fit what you write, so a long scene isn't read
-through a five-line window.
+**The manuscript is the Timeline's.** Every scene's prose, stitched into one
+book in reading order, is the Timeline's **Page** layout when you are writing it
+and its **Read** layout when you are reading it — see
+[Writing on one page](#writing-on-one-page) and
+[Reading the book on the Timeline](#reading-the-book-on-the-timeline). The
+**Manuscript** link in the navigation opens the Timeline on Page; in reading
+mode the same link is **Read**, and opens it on Read. An old link or bookmark
+to the Manuscript lands in the same place.
 
-The same book is on the Timeline as well — see
-[Reading the book on the Timeline](#reading-the-book-on-the-timeline) — with
-Export, Find & replace and the word goals beside it.
+![The book on the Timeline's Read layout](images/24-manuscript.png)
 
-![Manuscript view](images/24-manuscript.png)
-
-- **Draft vs. Reading** — Draft shows per-scene and per-chapter word counts, scene
-  labels, and links back to each scene; Reading hides the scaffolding for a clean
-  read-through of only the written scenes.
-- **Word goals** — set a target for the whole manuscript (in the header) and a
-  per-chapter goal (in Draft mode); a progress bar tracks words against each. A
-  goal you haven't set reads **none**, and the bar only appears once there is a
-  target to measure against.
-  Per-chapter goals are saved with the chapter.
+- **Page and Read** — Page shows every scene's title with its prose under it, so
+  a scene still to be written is a heading with nothing beneath it yet: the page
+  doubles as the list of what is left, and you can write it there. Read hides
+  that scaffolding for a clean read-through of the written scenes.
+- **Word goals** — set a target for the whole book in the header on Page and
+  Read, and one for a chapter in its panel; a progress bar tracks words against
+  each. A goal you haven't set reads **none**, and the bar only appears once
+  there is a target to measure against. Chapter goals are saved with the
+  chapter. Beside the book's goal, the header says how many scenes are written
+  and how many words there are.
 - **In this scene** — while reading, a panel beside the page shows who is in the
   scene you are looking at, where it happens and what is in it, with their
   pictures. The card names the scene it is describing — *Ch. 3 · Dinah Empties
@@ -1501,11 +1504,12 @@ Export, Find & replace and the word goals beside it.
 - **Italics** — prose written with underscores around it, `_like this_`, is
   shown as *italics* rather than as underscores. That is how Project Gutenberg
   marks emphasis, so every book in the Library uses it, and so can you: type the
-  underscores while drafting a scene and the Manuscript, the HTML export, the
+  underscores while drafting a scene and Read, the HTML export, the
   Word file and the EPUB all set the words in italics. Markdown and plain-text
   exports keep the underscores, because that is already how those formats say
   it. An underscore inside a word — `snake_case`, `H_2O` — is left alone.
-- **Export** — download or copy the manuscript as Markdown, HTML, or plain text,
+- **Export**, in the header on Page and Read — download or copy the manuscript as
+  Markdown, HTML, or plain text,
   or **compile a finished book file**: **Word (.docx)** or **EPUB**. The book
   formats build a title page (with an optional author), start each chapter on its
   own heading, and separate scenes — EPUB also gets a linked table of contents.
@@ -1525,12 +1529,10 @@ Export, Find & replace and the word goals beside it.
   book: narrow the selection and they fall with it, so the figure you read is
   the one you are about to download.
 
-Empty scenes are flagged with a "write this scene" link, so the manuscript
-doubles as a checklist of what's left to draft.
 
 ### Find & replace
 
-The **Find & replace** button (in the Manuscript header) searches across *every
+The **Find & replace** button (in the Timeline's header, on Page and Read) searches across *every
 scene's prose* at once — for renaming a term or fixing a recurring tic without
 opening each scene. Type a phrase to see every scene that contains it, with a
 match count and a highlighted preview.
@@ -2590,8 +2592,8 @@ invented. It behaves exactly like the switch of the same name in
 [Find & replace](#find--replace), and the preview and the highlight follow it,
 so a result always shows you the match it was found by. Kathala remembers the
 setting. To change what you find rather
-than just go to it, use **Find & replace** on the Manuscript screen, which
-works across every scene at once.
+than just go to it, use **Find & replace** in the Timeline's header on Page or
+Read, which works across every scene at once.
 
 While reading, search stays inside the book you have read: a scene you have not
 reached is not searched, and knowledge facts — which are the whole of who knows

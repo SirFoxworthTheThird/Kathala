@@ -914,7 +914,9 @@ test('the writing screens are closed by URL, not just hidden from the nav', asyn
   for (const screen of ['corkboard', 'structure', 'manuscript']) {
     await page.goto(`/#${world}/${screen}`)
     await settle(page)
-    expect(new URL(page.url()).hash, screen).toBe(`#${world}/${screen}`)
+    // The Manuscript is the Timeline's now, and its address lands there.
+    const lands = screen === 'manuscript' ? 'timeline' : screen
+    expect(new URL(page.url()).hash, screen).toBe(`#${world}/${lands}`)
   }
 })
 

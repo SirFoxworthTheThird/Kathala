@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useEffect, lazy, Suspense } from 'react'
 import { BlockingReason } from '@/components/BlockingReason'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter, LayoutList, FileText, BookOpenText, Replace, Download } from 'lucide-react'
 import { useTimelines, useChapters, useChapter, useEvents, useTimelineEvents, useWorldChapters, useWorldEvents, createTimeline, updateTimeline, deleteTimeline } from '@/db/hooks/useTimeline'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
@@ -13,7 +13,7 @@ import { chaptersWithThread } from '@/lib/plotThreads'
 import { threadStrip } from '@/lib/threadStrip'
 import { describeChapterSpan } from '@/lib/chapterSpan'
 import { useWorld } from '@/db/hooks/useWorlds'
-import { useAppStore } from '@/store'
+import { useAppStore, type TimelineLayout } from '@/store'
 import { computeInWorldDays } from '@/lib/inWorldTime'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -229,7 +229,22 @@ export default function TimelineView() {
     book has one order — a single timeline, in reading order. Page is the
     writer's alone; Read is also the reader's, the book they are reading.
   */
-  const [layout, setLayout] = useState<'cards' | 'page' | 'read'>('cards')
+  // Remembered per world, so leaving the book and coming back lands on it again.
+  const layout = useAppStore((st) => (worldId ? st.layoutByWorld[worldId] : undefined)) ?? 'cards'
+  const setTimelineLayout = useAppStore((st) => st.setTimelineLayout)
+  const setLayout = (next: TimelineLayout) => { if (worldId) setTimelineLayout(worldId, next) }
+  /*
+    `?view=page|read|cards` asks for a layout on arrival — what /manuscript
+    lands on. Taken once and then dropped from the address, so the layout is
+    the writer's own from there and a later navigation does not reapply it.
+  */
+  const [params, setParams] = useSearchParams()
+  const askedView = params.get('view')
+  useEffect(() => {
+    if (askedView !== 'page' && askedView !== 'read' && askedView !== 'cards') return
+    if (worldId) setTimelineLayout(worldId, askedView)
+    setParams((p) => { p.delete('view'); return p }, { replace: true })
+  }, [askedView, setParams, worldId, setTimelineLayout])
   const worldHasProse = useHasProse(worldId ?? null)
   const readingMode = useReadingMode(worldId ?? null)
   const threads = usePlotThreads(worldId ?? null)
@@ -338,7 +353,7 @@ export default function TimelineView() {
   const pageOffered = oneOrder && !gate.active
   /*
     A reader is offered the book only when there is a book: the router keeps
-    them off the Manuscript screen for a world with no prose, and the empty
+    them off /manuscript for a world with no prose, and the empty
     page's advice — write some — is not theirs to take. Waits for the answer
     rather than guessing it (see useHasProse).
   */
@@ -625,7 +640,13 @@ export default function TimelineView() {
               )}
               {/* The book's own tools, where the book is on screen as a book. */}
               {(showPage || showRead) && !gate.active && (
-                <BookGoal worldId={worldId!} words={book.manuscript.totalWords} />
+                <>
+                  {/* The Manuscript's own summary line, which came with it. */}
+                  <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                    {book.manuscript.writtenScenes.toLocaleString()} of {book.manuscript.totalScenes.toLocaleString()} scenes written · {plural(book.manuscript.totalWords, 'word')}
+                  </span>
+                  <BookGoal worldId={worldId!} words={book.manuscript.totalWords} />
+                </>
               )}
             </>
           )}
@@ -689,7 +710,6 @@ export default function TimelineView() {
             worldId={worldId!}
             timelineId={currentTimelineId}
             book={book}
-            mode="reading"
             readingMode={readingMode}
             scrollRef={readScrollRef}
             target={pageTarget}
