@@ -105,6 +105,17 @@ test.describe('Timeline and chapters', () => {
     await page.getByPlaceholder('Scene title').fill('The Departure')
     await page.getByRole('button', { name: 'Add Scene' }).last().click()
     await expect(row.getByText('No scenes yet')).toHaveCount(0)
+    /*
+      And only that one. "No scenes yet" above is read before any write could
+      land, so it cannot see a blank scene made a moment later; this can. The
+      empty attempt was made first, so by the time the real scene is on the
+      page, anything it wrote is in the store.
+    */
+    await expect(page.getByRole('main').getByRole('button', { name: 'The Departure', exact: true })).toBeVisible()
+    expect(await page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as { events: { count: () => Promise<number> } }
+      return db.events.count()
+    })).toBe(1)
   })
 
   test('sets active event cursor via timeline bar', async ({ page }) => {
