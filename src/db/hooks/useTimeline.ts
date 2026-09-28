@@ -10,8 +10,8 @@ import {
   recomputeSnapshotSortKeysForEvent,
   recomputeSnapshotSortKeysForChapter,
 } from '@/lib/sortKey'
-import { moveTo } from '@/lib/fractionalOrder'
-import { planChapterInsert } from '@/lib/chapterNumbering'
+import { compareByPosition, moveTo } from '@/lib/fractionalOrder'
+import { planChapterInsert, planChapterMove } from '@/lib/chapterNumbering'
 
 // ─── Timelines ─────────────────────────────────────────────────────────────
 
@@ -139,6 +139,28 @@ export async function createChapterAt(
     }
     return createChapter(data)
   })
+}
+
+/**
+ * Move a chapter to another place in its timeline — `toIndex` in the new order,
+ * 0-based.
+ *
+ * A chapter's number is its position, so moving it is renumbering: the
+ * chapters take the timeline's existing numbers in their new order (see
+ * `planChapterMove`), and every chapter whose number changes has its snapshots'
+ * stored positions recomputed by `updateChapter`. One act, so one undo.
+ * Returns whether anything moved.
+ */
+export async function moveChapterTo(chapterId: string, toIndex: number): Promise<boolean> {
+  const chapter = await db.chapters.get(chapterId)
+  if (!chapter) return false
+  const siblings = await db.chapters.where('timelineId').equals(chapter.timelineId).toArray()
+  const shifts = planChapterMove(siblings, chapterId, toIndex)
+  if (shifts.length === 0) return false
+  await journalGroup(async () => {
+    for (const { id, to } of shifts) await updateChapter(id, { number: to })
+  })
+  return true
 }
 
 export async function updateChapter(
@@ -407,6 +429,40 @@ export async function bulkMoveEvents(ids: string[], targetChapterId: string): Pr
  * The source column needs nothing at all — removing a card from between two
  * positions leaves the rest still in order.
  */
+/**
+ * One step earlier or later: past its neighbour within the chapter, or — from
+ * the first or last place — to the end of the chapter before or the start of
+ * the chapter after, in the same timeline. Returns whether it moved; the first
+ * scene of the book has nowhere earlier to go.
+ *
+ * The one mover behind the ↑ ↓ on a scene card and Alt+↑ ↓ in the binder, so
+ * the two cannot disagree about what a step is.
+ */
+export async function moveSceneStep(eventId: string, dir: 'up' | 'down'): Promise<boolean> {
+  const moved = await db.events.get(eventId)
+  if (!moved) return false
+  const siblings = (await db.events.where('chapterId').equals(moved.chapterId).toArray()).sort(compareByPosition)
+  const idx = siblings.findIndex((e) => e.id === eventId)
+  const atEdge = dir === 'up' ? idx === 0 : idx === siblings.length - 1
+  if (atEdge) {
+    const chapters = (await db.chapters.where('timelineId').equals(moved.timelineId).toArray())
+      .sort((a, b) => a.number - b.number || a.id.localeCompare(b.id))
+    const at = chapters.findIndex((c) => c.id === moved.chapterId)
+    const neighbour = chapters[dir === 'up' ? at - 1 : at + 1]
+    if (!neighbour) return false
+    // `moveTo` clamps, so past the end simply means "last".
+    await moveEventOnBoard(eventId, neighbour.id, dir === 'up' ? Number.MAX_SAFE_INTEGER : 0)
+    return true
+  }
+  /*
+    Within the chapter, by the board's own mover rather than by swapping the two
+    sortOrders: a swap of two equal values — older data can hold ties — writes
+    twice and changes nothing, while `moveTo` places it and renumbers the run.
+  */
+  await moveEventOnBoard(eventId, moved.chapterId, dir === 'up' ? idx - 1 : idx + 1)
+  return true
+}
+
 export async function moveEventOnBoard(
   eventId: string,
   toChapterId: string,
@@ -432,7 +488,7 @@ export async function moveEventOnBoard(
     // elsewhere), then insert the moved card at the requested index.
     const targetEvents = (await db.events.where('chapterId').equals(toChapterId).toArray())
       .filter((e) => e.id !== eventId)
-      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .sort(compareByPosition)
     const writes = moveTo([...targetEvents, { id: eventId, sortOrder: moved.sortOrder }], eventId, toIndex)
 
     // The moved card changes chapter/timeline (a no-op update when it doesn't).

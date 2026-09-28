@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { binderKey, binderRows, focusAfterDelete, type BinderChapter, type BinderScene } from '@/lib/binder'
+import { binderDrop, binderKey, binderRows, dropPlace, focusAfterDelete, type BinderChapter, type BinderRow, type BinderScene } from '@/lib/binder'
 
 const chapters: BinderChapter[] = [
   { id: 'c2', number: 2, title: 'The Hut' },
@@ -101,6 +101,22 @@ describe('binderKey', () => {
     expect(binderKey(open, 's1', 'a')).toBeNull()
     expect(binderKey([], null, 'ArrowDown')).toBeNull()
   })
+
+  it('moves the focused row with Alt and an arrow', () => {
+    expect(binderKey(open, 's1', 'Alt+ArrowDown')).toEqual({ type: 'moveScene', sceneId: 's1', dir: 'down' })
+    expect(binderKey(open, 's2', 'Alt+ArrowUp')).toEqual({ type: 'moveScene', sceneId: 's2', dir: 'up' })
+    // A chapter goes to the next place among the chapters…
+    expect(binderKey(open, 'c1', 'Alt+ArrowDown')).toEqual({ type: 'moveChapter', chapterId: 'c1', toIndex: 1 })
+    expect(binderKey(open, 'c2', 'Alt+ArrowUp')).toEqual({ type: 'moveChapter', chapterId: 'c2', toIndex: 0 })
+    // …and nowhere past either end.
+    expect(binderKey(open, 'c1', 'Alt+ArrowUp')).toBeNull()
+    expect(binderKey(open, 'c2', 'Alt+ArrowDown')).toBeNull()
+  })
+
+  it('moves nothing for a reader', () => {
+    expect(binderKey(open, 's1', 'Alt+ArrowDown', false)).toBeNull()
+    expect(binderKey(open, 'c1', 'Alt+ArrowDown', false)).toBeNull()
+  })
 })
 
 describe('focusAfterDelete', () => {
@@ -119,5 +135,54 @@ describe('focusAfterDelete', () => {
   it('does not cross into the next chapter', () => {
     // s2 is followed by c2's row — a different chapter, so not taken.
     expect(focusAfterDelete(open, 's2')).not.toBe('c2')
+  })
+})
+
+describe('dropping a row', () => {
+  const three: BinderChapter[] = [
+    { id: 'c1', number: 1, title: 'One' },
+    { id: 'c2', number: 2, title: 'Two' },
+    { id: 'c3', number: 3, title: 'Three' },
+  ]
+  const many: BinderScene[] = [
+    { id: 'a', chapterId: 'c1', title: 'a', sortOrder: 1 },
+    { id: 'b', chapterId: 'c1', title: 'b', sortOrder: 2 },
+    { id: 'c', chapterId: 'c1', title: 'c', sortOrder: 3 },
+    { id: 'd', chapterId: 'c2', title: 'd', sortOrder: 1 },
+  ]
+  const rows = binderRows(three, many, { expanded: new Set(['c1', 'c2']) })
+  const row = (id: string) => rows.find((r) => r.id === id) as BinderRow
+
+  it('names the place by the row and the half the pointer is over', () => {
+    expect(dropPlace(row('c1'), row('c2'), false)).toBe('before')
+    expect(dropPlace(row('c1'), row('c2'), true)).toBe('after')
+    expect(dropPlace(row('c1'), row('a'), true)).toBeNull()      // a chapter onto a scene
+    expect(dropPlace(row('a'), row('c2'), false)).toBe('into')   // a scene onto a chapter
+    expect(dropPlace(row('a'), row('d'), true)).toBe('after')
+  })
+
+  it('moves a chapter before or after another, counting the gap it leaves', () => {
+    expect(binderDrop(row('c3'), row('c1'), 'before')).toEqual({ type: 'moveChapter', chapterId: 'c3', toIndex: 0 })
+    expect(binderDrop(row('c1'), row('c3'), 'after')).toEqual({ type: 'moveChapter', chapterId: 'c1', toIndex: 2 })
+    expect(binderDrop(row('c1'), row('c3'), 'before')).toEqual({ type: 'moveChapter', chapterId: 'c1', toIndex: 1 })
+    // Onto its own edges: nowhere to go.
+    expect(binderDrop(row('c1'), row('c2'), 'before')).toBeNull()
+    expect(binderDrop(row('c2'), row('c1'), 'after')).toBeNull()
+  })
+
+  it('moves a scene within its chapter, counting the gap it leaves', () => {
+    expect(binderDrop(row('a'), row('c'), 'after')).toEqual({ type: 'moveScene', sceneId: 'a', chapterId: 'c1', index: 2 })
+    expect(binderDrop(row('a'), row('c'), 'before')).toEqual({ type: 'moveScene', sceneId: 'a', chapterId: 'c1', index: 1 })
+    expect(binderDrop(row('c'), row('a'), 'before')).toEqual({ type: 'moveScene', sceneId: 'c', chapterId: 'c1', index: 0 })
+    expect(binderDrop(row('a'), row('b'), 'before')).toBeNull()
+    expect(binderDrop(row('b'), row('a'), 'after')).toBeNull()
+  })
+
+  it('moves a scene into another chapter, beside a scene or onto the chapter', () => {
+    expect(binderDrop(row('a'), row('d'), 'before')).toEqual({ type: 'moveScene', sceneId: 'a', chapterId: 'c2', index: 0 })
+    expect(binderDrop(row('a'), row('d'), 'after')).toEqual({ type: 'moveScene', sceneId: 'a', chapterId: 'c2', index: 1 })
+    expect(binderDrop(row('a'), row('c3'), 'into')).toMatchObject({ type: 'moveScene', sceneId: 'a', chapterId: 'c3' })
+    // Onto its own chapter's row it is already in there.
+    expect(binderDrop(row('a'), row('c1'), 'into')).toBeNull()
   })
 })

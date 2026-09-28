@@ -2,8 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ChevronDown, ChevronRight, Trash2, BookOpen, BookLock, Plus, ExternalLink, Scroll, Pencil, Check, X } from 'lucide-react'
 import type { Chapter, WorldCalendar, WorldEvent } from '@/types'
-import { deleteChapter, useEvents, updateEvent, updateChapter, moveEventOnBoard, createEventAt } from '@/db/hooks/useTimeline'
-import { journalGroup } from '@/db/hooks/useOperations'
+import { deleteChapter, useEvents, updateChapter, moveSceneStep, createEventAt } from '@/db/hooks/useTimeline'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
@@ -14,7 +13,6 @@ import { Menu, MenuItem } from '@/components/ui/menu'
 import { chapterProgress, describeProgress, describeStatus } from '@/lib/chapterProgress'
 import { eventStatusConfig } from '@/lib/eventStatus'
 import { EventCard } from './EventCard'
-import { AddEventDialog } from './AddEventDialog'
 import { EmptyState } from '@/components/EmptyState'
 import { useRevealAll } from '@/components/useRevealAll'
 import { useReadAhead } from '@/components/useReadAhead'
@@ -82,7 +80,6 @@ export function ChapterRow({
     else if (wasOpen.current) setExpanded(false)
     wasOpen.current = open
   }, [open])
-  const [addEventOpen, setAddEventOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [renaming, setRenaming] = useState(false)
   const [draftTitle, setDraftTitle] = useState('')
@@ -144,40 +141,16 @@ export function ChapterRow({
     }
   }
 
+  /*
+    F12: at the edge of a chapter the arrow used to be permanently disabled, and
+    the only way across a boundary was dragging a card on the Corkboard. A scene
+    at the top of a chapter now moves to the end of the one before, and one at
+    the bottom to the start of the one after — `moveSceneStep`, the same mover
+    as the binder's Alt+↑ ↓, so the two cannot disagree about what a step is.
+    It reorders against the true chapter order, not a thread-filtered view.
+  */
   async function moveEvent(eventId: string, direction: 'up' | 'down') {
-    // Reorder against the true chapter order, not the thread-filtered view.
-    const idx = allSorted.findIndex((e) => e.id === eventId)
-
-    /*
-      F12: at the edge of a chapter the arrow was permanently disabled, and the
-      only way across a boundary was dragging a card on the Corkboard — which
-      has no keyboard equivalent, and which nothing on the Timeline mentions.
-      A scene at the top of a chapter now moves to the end of the one before,
-      and one at the bottom to the start of the one after.
-
-      `moveEventOnBoard` is the Corkboard's own mover, so the two routes cannot
-      disagree: it re-points the chapter and timeline, renumbers the column, and
-      recomputes the snapshot sortKeys on both sides. The index is clamped by
-      `moveTo`, so a number past the end simply means "last".
-    */
-    if (direction === 'up' && idx === 0) {
-      if (prevChapterId) await moveEventOnBoard(eventId, prevChapterId, Number.MAX_SAFE_INTEGER)
-      return
-    }
-    if (direction === 'down' && idx === allSorted.length - 1) {
-      if (nextChapterId) await moveEventOnBoard(eventId, nextChapterId, 0)
-      return
-    }
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1
-    const a = allSorted[idx]
-    const b = allSorted[swapIdx]
-    // Two records, one act: undo has to swap them back together. The chapter
-    // screen grouped these and this row did not, so the same arrow took one
-    // undo there and two here — the row is the only one now.
-    await journalGroup(() => Promise.all([
-      updateEvent(a.id, { sortOrder: b.sortOrder }),
-      updateEvent(b.id, { sortOrder: a.sortOrder }),
-    ]))
+    await moveSceneStep(eventId, direction)
   }
 
   async function handleDelete() {
@@ -195,6 +168,19 @@ export function ChapterRow({
   */
   const [addingAfter, setAddingAfter] = useState<{ afterId: string; returnTo: HTMLElement | null } | null>(null)
   const canAddAfter = !gate.active && !threadFilter && !!onGoToScene
+  const [addingAtEnd, setAddingAtEnd] = useState(false)
+  /*
+    A new scene at the end of the chapter. Made from the button or Enter, it
+    opens and you are in its draft — which is what the scene was made for.
+    Made by clicking somewhere else with a title typed, it is kept and left:
+    that click was going somewhere.
+  */
+  async function commitAtEnd(title: string, byKey: boolean) {
+    setAddingAtEnd(false)
+    const created = await createEventAt(chapter.id, allSorted.length, title)
+    if (created && byKey) onGoToScene?.(created, 'start')
+  }
+
   async function commitNewAfter(afterId: string, title: string, byKey: boolean) {
     setAddingAfter(null)
     const index = allSorted.findIndex((e) => e.id === afterId) + 1
@@ -544,27 +530,34 @@ export function ChapterRow({
             it had just created offered no delete. Turning reading mode off is
             the one thing the mode exists to make unnecessary.
           */}
-          {!gate.active && (
+          {/*
+            A title, where the scene will sit, and nothing else. This was a
+            dialog asking for the title, description, cast, place, point of
+            view, tags and status of a scene not yet written — the only way in
+            the app to make one that asked for more than a title. Everything
+            else is set on the card, or by the line at the top of the draft,
+            once there is a scene to set it on.
+          */}
+          {!gate.active && (addingAtEnd ? (
+            <div className="mt-1">
+              <NewSceneAfter
+                withButton
+                onCommit={(title, byKey) => { void commitAtEnd(title, byKey) }}
+                onCancel={() => setAddingAtEnd(false)}
+              />
+            </div>
+          ) : (
             <Button
               size="sm"
               variant="outline"
               className="gap-1.5 text-xs self-start mt-1"
-              onClick={() => setAddEventOpen(true)}
+              onClick={() => setAddingAtEnd(true)}
             >
               <Plus className="h-3.5 w-3.5" /> Add Scene
             </Button>
-          )}
+          ))}
         </div>
       )}
-
-      <AddEventDialog
-        open={addEventOpen}
-        onOpenChange={setAddEventOpen}
-        worldId={chapter.worldId}
-        chapterId={chapter.id}
-        timelineId={chapter.timelineId}
-        nextSortOrder={events.length}
-      />
     </div>
   )
 }
@@ -576,9 +569,11 @@ export function ChapterRow({
  * with a title typed keeps it rather than losing it — the same rules as the
  * binder's new-scene line.
  */
-function NewSceneAfter({ onCommit, onCancel }: {
+function NewSceneAfter({ onCommit, onCancel, withButton = false }: {
   onCommit: (title: string, byKey: boolean) => void
   onCancel: (byKey: boolean) => void
+  /** A visible Add Scene and Cancel, where the line was opened with the mouse. */
+  withButton?: boolean
 }) {
   const [value, setValue] = useState('')
   // Enter commits and the field unmounts, which blurs it: without this the blur
@@ -591,20 +586,41 @@ function NewSceneAfter({ onCommit, onCancel }: {
     else onCancel(byKey)
   }
   return (
-    <div className="flex flex-col gap-1 rounded-lg border border-dashed border-[hsl(var(--ring))] bg-[hsl(var(--card))] px-3 py-2">
+    <div
+      className="flex flex-col gap-1 rounded-lg border border-dashed border-[hsl(var(--ring))] bg-[hsl(var(--card))] px-3 py-2"
+      /*
+        Leaving the line keeps a typed title; moving *within* it does not count
+        as leaving. Watched on the whole line rather than the field, so Tab from
+        the title to its own Add Scene button does not commit before the button
+        can be pressed.
+      */
+      onBlur={(e) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+        finish(true, false)
+      }}
+    >
       <input
         autoFocus
         aria-label="Title for the new scene"
-        placeholder="The new scene's title"
+        placeholder="Scene title"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter') { e.preventDefault(); finish(true, true) }
           else if (e.key === 'Escape') { e.preventDefault(); finish(false, true) }
         }}
-        onBlur={() => finish(true, false)}
         className="h-7 w-full bg-transparent text-sm font-medium outline-none placeholder:font-normal placeholder:text-[hsl(var(--muted-foreground))]"
       />
+      {withButton && (
+        <div className="flex items-center gap-1.5">
+          <Button size="sm" className="h-7 gap-1 text-xs" onClick={() => finish(true, true)}>
+            <Plus className="h-3.5 w-3.5" /> Add Scene
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => finish(false, true)}>
+            Cancel
+          </Button>
+        </div>
+      )}
       <p className="text-[10px] text-[hsl(var(--muted-foreground))]">Enter to make it and start writing · Escape to go back</p>
     </div>
   )

@@ -74,3 +74,34 @@ export function describeShift(shifts: readonly ChapterShift[]): string {
     ? `Chapter ${lo} becomes ${lo + 1}`
     : `Chapters ${lo}–${hi} become ${lo + 1}–${hi + 1}`
 }
+
+/**
+ * Who moves, and to what, when a chapter is moved to another place in its
+ * timeline.
+ *
+ * The numbers stay where they are and the chapters move through them: the
+ * chapters in their new order take the old numbers in order. So chapters
+ * 1, 2, 4, 5 with 5 moved to the front become 5→1, 1→2, 2→4, 4→5 — a gap in the
+ * numbering stays where it was, a prologue's 0 stays the first number, and
+ * only the chapters between the old place and the new one change at all.
+ *
+ * `toIndex` is the chapter's place in the new order, 0-based, and is clamped.
+ */
+export function planChapterMove(
+  chapters: readonly NumberedChapter[],
+  id: string,
+  toIndex: number,
+): ChapterShift[] {
+  const order = [...chapters].sort((a, b) => a.number - b.number || a.id.localeCompare(b.id))
+  const from = order.findIndex((c) => c.id === id)
+  if (from === -1) return []
+  const numbers = order.map((c) => c.number)
+  const moved = order.splice(from, 1)[0]
+  const to = Math.max(0, Math.min(order.length, toIndex))
+  order.splice(to, 0, moved)
+  const shifts: ChapterShift[] = []
+  order.forEach((c, i) => {
+    if (c.number !== numbers[i]) shifts.push({ id: c.id, from: c.number, to: numbers[i] })
+  })
+  return shifts
+}

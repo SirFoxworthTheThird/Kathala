@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  describeShift, nextChapterNumber, parseChapterNumber, planChapterInsert, type NumberedChapter,
+  describeShift, nextChapterNumber, parseChapterNumber, planChapterInsert, planChapterMove, type NumberedChapter,
 } from '@/lib/chapterNumbering'
 
 const ch = (...numbers: number[]): NumberedChapter[] => numbers.map((n, i) => ({ id: `c${i}`, number: n }))
@@ -71,5 +71,46 @@ describe('describeShift', () => {
     expect(describeShift([])).toBe('')
     expect(describeShift([{ id: 'x', from: 3, to: 4 }])).toBe('Chapter 3 becomes 4')
     expect(describeShift(planChapterInsert(ch(1, 2, 3, 4, 5, 6, 7), 3))).toBe('Chapters 3–7 become 4–8')
+  })
+})
+
+describe('planChapterMove', () => {
+  const ch = (id: string, number: number) => ({ id, number })
+  const book = [ch('a', 1), ch('b', 2), ch('d', 4), ch('e', 5)]
+  const apply = (shifts: ReturnType<typeof planChapterMove>) =>
+    book.map((c) => ({ id: c.id, number: shifts.find((s) => s.id === c.id)?.to ?? c.number }))
+      .sort((x, y) => x.number - y.number).map((c) => `${c.id}${c.number}`).join(' ')
+
+  it('moves a chapter to the front, the others taking the numbers in order', () => {
+    expect(apply(planChapterMove(book, 'e', 0))).toBe('e1 a2 b4 d5')
+  })
+
+  it('moves one to the end', () => {
+    expect(apply(planChapterMove(book, 'a', 3))).toBe('b1 d2 e4 a5')
+  })
+
+  it('touches only the chapters between the old place and the new', () => {
+    const shifts = planChapterMove(book, 'b', 2)
+    expect(shifts.map((s) => s.id).sort()).toEqual(['b', 'd'])
+    expect(apply(shifts)).toBe('a1 d2 b4 e5')
+  })
+
+  it('keeps a gap and a prologue where they were', () => {
+    const withPrologue = [ch('p', 0), ch('x', 1), ch('y', 3)]
+    const shifts = planChapterMove(withPrologue, 'y', 0)
+    const numbers = withPrologue
+      .map((c) => ({ id: c.id, n: shifts.find((s) => s.id === c.id)?.to ?? c.number }))
+      .sort((m, n) => m.n - n.n)
+    expect(numbers).toEqual([{ id: 'y', n: 0 }, { id: 'p', n: 1 }, { id: 'x', n: 3 }])
+  })
+
+  it('does nothing for a move to where it already is, or for a chapter it does not know', () => {
+    expect(planChapterMove(book, 'b', 1)).toEqual([])
+    expect(planChapterMove(book, 'zz', 0)).toEqual([])
+  })
+
+  it('clamps a place past either end', () => {
+    expect(apply(planChapterMove(book, 'b', 99))).toBe('a1 d2 e4 b5')
+    expect(apply(planChapterMove(book, 'b', -3))).toBe('b1 a2 d4 e5')
   })
 })
