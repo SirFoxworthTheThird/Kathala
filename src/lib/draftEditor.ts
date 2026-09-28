@@ -1,7 +1,7 @@
 import { EditorSelection, EditorState, StateEffect, StateField, type Extension, type Transaction, type TransactionSpec, type StateCommand } from '@codemirror/state'
 import {
-  composeDraft, readDraft, proseStart, lineEndAt, HEADING_PREFIX,
-  type DraftChapter, type DraftHeading, type DraftSegment,
+  composeDraft, readDraft, proseStart, lineEndAt, oneLine, HEADING_PREFIX,
+  type DraftChapter, type DraftHeading, type DraftSegment, type HeadingKind,
 } from '@/lib/draftDocument'
 
 /*
@@ -12,49 +12,56 @@ import {
   goals and History point at — so the document carries each heading's id and
   position beside the text, never in it.
 
-  Two edits change the book's scenes, and each is one act on the records:
+  Structure is made by typing, and each change is one act on the records:
 
-  - **A line typed as `## Title`** inside a scene's prose splits the scene
-    there, once the caret leaves the line — not on every keystroke, or `## T`
-    would make a scene called "T". `lineTyped` follows the line being typed on,
-    and `typedHeading` says whether the line just left is one. Only a line the
-    writer typed on counts: a line of prose that already started with `## `,
-    in a book imported that way, stays prose until it is edited. `splitSpec`
-    then makes the line a heading, under the id the new scene will have.
-  - **Deleting a scene heading's whole line** joins that scene to the one
-    before it. The heading goes from the document at once, with a `joined`
-    effect naming both scenes, and `joinSpec` closes up the seam.
+  - **A line typed as a heading** — `## Title` or `# Title` on a line of its
+    own — becomes one once the caret leaves the line: not on every keystroke,
+    or `## T` would make a scene called "T". `lineTyped` follows the line being
+    typed on and `typedHeading` says what the line just left makes:
+    - `## Title` in a scene's prose splits the scene there;
+    - `# Title` anywhere starts a chapter there, taking the scenes after it;
+    - `## Title` under a chapter heading is that chapter's new first scene.
+    Only a line the writer typed on counts: a line of prose that already
+    started with `#`, in a book imported that way, stays prose until it is
+    edited. `lineToHeading` then makes the line a heading, under the id its
+    record is about to be written with.
+  - **Deleting a heading's whole line** joins it to what is before it: a scene
+    to the scene before, a chapter to the chapter before. The heading goes from
+    the document at once, with a `joined` effect naming both, and `joinSpec`
+    closes up the seam.
 
   Either way the document already shows the book the records are about to
   hold, so the page writes them and carries on: nothing is rebuilt, and nothing
-  typed meanwhile is lost. The blank lines around the heading are set to what
-  the records will hold, so the page and the store agree to the character.
+  typed meanwhile is lost. The blank lines around a heading are set to what the
+  records will hold, so the page and the store agree to the character.
 
-  Everything else that would change the structure is refused whole, with a
-  reason the page shows: part of a heading, a chapter heading, the first scene
-  of a chapter (there is no scene before it to join), two headings at once, a
-  line break in a title, and text where no scene could keep it.
+  Under a chapter heading, above its first scene, there is no scene to keep
+  prose, so only headings and blank lines can be typed there. Everything else
+  that would change the structure is refused whole, with a reason the page
+  shows: part of a heading, the first chapter or the first scene of a chapter
+  (nothing before either to join), two headings at once, and a line break in a
+  title.
 
   Apart from those, the only thing that moves a heading is text typed before
   it, and one rule covers that: a heading's start maps *after* anything
-  inserted exactly there. The one insertion allowed there is a line break typed
-  at the start of a scene heading, which pushes the heading down and leaves
-  the new line to the scene above.
+  inserted exactly there — a line break typed at the start of a heading, which
+  pushes it down and leaves the new line to what is above.
 */
 
-export type Refusal = 'heading' | 'chapter-heading' | 'first-scene' | 'two-headings' | 'title-break' | 'chapter-text' | 'before-first'
+export type Refusal = 'heading' | 'first-chapter' | 'first-scene' | 'two-headings' | 'title-break' | 'chapter-text' | 'before-first'
 
 /** Carried by the empty transaction that replaces a refused one. */
 export const refused = StateEffect.define<Refusal>()
 
 /**
- * A scene heading deleted whole: `id` is joined onto `into`, the scene before
- * it. `at` is where the deletion started, in the document before it.
+ * A heading deleted whole: `id` is joined onto `into` — for a scene the scene
+ * before it, for a chapter the chapter before it. `at` is where the deletion
+ * started, in the document before it.
  */
-export interface Join { id: string; into: string; at: number }
+export interface Join { id: string; kind: HeadingKind; into: string; at: number }
 export const joined = StateEffect.define<Join>()
 
-/** A heading the document gains: a split's new scene. `pos` is in the document after the transaction. */
+/** A heading the document gains. `pos` is in the document after the transaction. */
 export const addHeading = StateEffect.define<DraftHeading>()
 
 export const headingsField = StateField.define<DraftHeading[]>({
@@ -80,6 +87,16 @@ function headingAt(headings: readonly DraftHeading[], pos: number): number {
   return found
 }
 
+/** The chapter heading heading `i` is in: itself, or the nearest before it. */
+function chapterOf(headings: readonly DraftHeading[], i: number): number {
+  let k = i
+  while (k >= 0 && headings[k].kind !== 'chapter') k--
+  return k
+}
+
+/** A line that may stand under a chapter heading: blank, or on its way to being a heading. */
+const HEADING_OR_BLANK = /^(#.*)?$/
+
 function judge(tr: Transaction): { why: Refusal | null; join: Join | null } {
   // Undo and redo never reach here: CodeMirror's history dispatches them with
   // `filter: false`, and they only step back to states these rules allowed.
@@ -89,21 +106,22 @@ function judge(tr: Transaction): { why: Refusal | null; join: Join | null } {
   if (headings.length === 0) return { why: 'before-first', join: null }
   let why: Refusal | null = null
   let join: Join | null = null
+  /** Chapters whose space above their first scene this edit types into. */
+  const underChapter = new Set<number>()
   tr.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
     if (why) return
     // Deleting: a heading goes whole or not at all. Nothing may touch part of
-    // one — its line break before, its `#` marks, its line break after. Under a
-    // chapter heading that is all there is — the break after it and the break
-    // before the scene heading that follows — since nothing may be typed there.
+    // one — its line break before, its `#` marks, its line break after.
     if (toA > fromA) {
       for (let i = Math.max(0, headingAt(headings, fromA)); i < headings.length && headings[i].pos - 1 < toA; i++) {
         const h = headings[i]
         const lineEnd = lineEndAt(doc, h.pos)
         if (fromA <= h.pos && toA >= lineEnd) {
-          if (h.kind === 'chapter') { why = 'chapter-heading'; return }
-          if (i === 0 || headings[i - 1].kind === 'chapter') { why = 'first-scene'; return }
+          const into = h.kind === 'chapter' ? chapterOf(headings, i - 1) : i - 1
+          if (into < 0) { why = h.kind === 'chapter' ? 'first-chapter' : 'first-scene'; return }
+          if (h.kind === 'scene' && headings[into].kind === 'chapter') { why = 'first-scene'; return }
           if (join) { why = 'two-headings'; return }
-          join = { id: h.id, into: headings[i - 1].id, at: fromA }
+          join = { id: h.id, kind: h.kind, into: headings[into].id, at: fromA }
           continue
         }
         const guarded: Array<[number, number]> = [
@@ -119,25 +137,31 @@ function judge(tr: Transaction): { why: Refusal | null; join: Join | null } {
     const text = inserted.toString()
     const i = headingAt(headings, fromA)
     const h = headings[i]
-    // Replacing a heading deleted whole: what is typed lands in the scene before.
+    // Replacing a heading deleted whole: what is typed lands in what was before it.
     if (join && h.id === (join as Join).id) return
     const titleFrom = h.pos + HEADING_PREFIX[h.kind].length
     const lineEnd = lineEndAt(doc, h.pos)
     if (fromA === h.pos) {
-      // Above a heading: only a line break typed at the start of a scene
-      // heading, and only where the line it makes belongs to a scene.
+      // Above a heading: a line break typed at its start, the new line going to what is above.
       if (i === 0) why = 'before-first'
-      else if (!(h.kind === 'scene' && text.endsWith('\n') && headings[i - 1].kind === 'scene')) why = 'heading'
+      else if (!text.endsWith('\n')) why = 'heading'
+      else if (headings[i - 1].kind === 'chapter') underChapter.add(i - 1)
     } else if (fromA < titleFrom) {
       why = 'heading'
     } else if (fromA < lineEnd) {
       if (text.includes('\n')) why = 'title-break'
-    } else if (fromA === lineEnd) {
-      if (text.includes('\n') && h.kind === 'chapter') why = 'chapter-text'
-    } else if (h.kind === 'chapter') {
-      why = 'chapter-text'
+    } else if (h.kind === 'chapter' && (fromA > lineEnd || text.includes('\n'))) {
+      underChapter.add(i)
     }
   })
+  if (!why && underChapter.size > 0) {
+    const after = tr.newDoc
+    for (const i of underChapter) {
+      const from = lineEndAt(after, tr.changes.mapPos(headings[i].pos, 1))
+      const to = headings[i + 1] ? tr.changes.mapPos(headings[i + 1].pos, 1) : after.length
+      if (after.sliceString(from, to).split('\n').some((line) => !HEADING_OR_BLANK.test(line))) { why = 'chapter-text'; break }
+    }
+  }
   return why ? { why, join: null } : { why: null, join }
 }
 
@@ -149,8 +173,8 @@ export const keepHeadings: Extension = EditorState.transactionFilter.of((tr) => 
 })
 
 /**
- * The line the writer is typing on, if it is in a scene's prose, and the one
- * they have just left. Positions are line starts, mapped through later edits.
+ * The line the writer is typing on, if it is below a heading's line, and the
+ * one they have just left. Positions are line starts, mapped through later edits.
  */
 interface Typing { line: number | null; left: number | null }
 
@@ -170,54 +194,71 @@ export const lineTyped = StateField.define<Typing>({
     const caretLine = doc.lineAt(tr.state.selection.main.head).from
     if (line !== null && caretLine !== line) { left = line; line = null }
     if (tr.docChanged && (tr.isUserEvent('input') || tr.isUserEvent('delete'))) {
-      line = inSceneProse(tr.state, caretLine) ? caretLine : null
+      line = underHeading(tr.state, caretLine) >= 0 ? caretLine : null
     }
     return line === value.line && left === value.left ? value : { line, left }
   },
 })
 
-/** Whether the line starting at `pos` is prose of a scene: below its heading's line, above the next heading. */
-function inSceneProse(state: EditorState, pos: number): boolean {
+/** The heading whose space the line starting at `pos` is in — below the heading's own line — or -1. */
+function underHeading(state: EditorState, pos: number): number {
   const headings = state.field(headingsField)
   const i = headingAt(headings, pos)
-  if (i < 0 || headings[i].kind !== 'scene') return false
-  return pos > lineEndAt(state.doc, headings[i].pos)
+  return i >= 0 && pos > lineEndAt(state.doc, headings[i].pos) ? i : -1
 }
 
-/** A scene heading, as typed: `## ` and a title. Three or more marks are prose. */
+/** A scene heading, as typed: `## ` and a title. */
 const TYPED_SCENE = /^## (.*\S.*)$/
+/** A chapter heading, as typed: `# ` and a title. */
+const TYPED_CHAPTER = /^# (.*\S.*)$/
 
-export interface TypedHeading {
-  /** The scene the line was typed in. */
+/** A scene's prose either side of a line typed into it: the rest of it, and where the line was. */
+export interface Cut {
   sceneId: string
-  title: string
-  /** The scene's prose with the heading line taken out, and where the new scene starts in it. */
+  /** The scene's title, for a new scene that goes on with its prose. */
+  sceneTitle: string
+  /** The prose with the line taken out, and where the line was in it. */
   prose: string
   at: number
+  /** Whether there is prose after the line. */
+  tail: boolean
 }
 
-/**
- * The line starting at `pos`, if it is a scene heading typed into a scene's
- * prose: the scene to split, the new scene's title, and the cut.
- */
-export function typedHeading(state: EditorState, pos: number): TypedHeading | null {
-  if (!inSceneProse(state, pos)) return null
-  const doc = state.doc
-  const line = doc.lineAt(pos)
-  const match = TYPED_SCENE.exec(line.text)
-  if (!match) return null
+/** What a heading typed and left makes. */
+export type Typed =
+  /** `## Title` in a scene's prose: split the scene there. */
+  | { kind: 'split'; cut: Cut; title: string }
+  /** `# Title`: a chapter after `chapterId`, from `cut`'s scene on — or all its scenes, under its heading. */
+  | { kind: 'chapter'; chapterId: string; cut: Cut | null; title: string }
+  /** `## Title` under a chapter heading: the chapter's new first scene. */
+  | { kind: 'first-scene'; chapterId: string; title: string }
+  /** Anything else left under a chapter heading, which has nowhere to go. */
+  | { kind: 'stray' }
+
+/** The line starting at `pos`, if it is a heading typed below one — or, under a chapter, anything typed there. */
+export function typedHeading(state: EditorState, pos: number): Typed | null {
+  const i = underHeading(state, pos)
+  if (i < 0) return null
+  const line = state.doc.lineAt(pos)
   const headings = state.field(headingsField)
-  const i = headingAt(headings, pos)
+  const scene = TYPED_SCENE.exec(line.text)
+  const chapter = TYPED_CHAPTER.exec(line.text)
+  if (headings[i].kind === 'chapter') {
+    if (scene) return { kind: 'first-scene', chapterId: headings[i].id, title: scene[1].trim() }
+    if (chapter) return { kind: 'chapter', chapterId: headings[i].id, cut: null, title: chapter[1].trim() }
+    return line.text === '' ? null : { kind: 'stray' }
+  }
+  if (!scene && !chapter) return null
   const segment = draftSegments(state)[i]
   const from = line.from - proseFromOf(state, i)
   const head = segment.text.slice(0, from).replace(/\s+$/, '')
   const tail = segment.text.slice(from + line.length).replace(/^\s+/, '')
-  return {
-    sceneId: segment.id,
-    title: match[1].trim(),
-    prose: [head, tail].filter(Boolean).join('\n\n'),
-    at: head.length,
+  const cut: Cut = {
+    sceneId: segment.id, sceneTitle: segment.title,
+    prose: [head, tail].filter(Boolean).join('\n\n'), at: head.length, tail: tail !== '',
   }
+  if (scene) return { kind: 'split', cut, title: scene[1].trim() }
+  return { kind: 'chapter', chapterId: headings[chapterOf(headings, i)].id, cut, title: chapter![1].trim() }
 }
 
 /**
@@ -225,7 +266,7 @@ export function typedHeading(state: EditorState, pos: number): TypedHeading | nu
  * has closed up the seam — and so as the records should hold it.
  */
 export function joinedProse(state: EditorState, into: string, seam: number): string {
-  const spec = joinSpec(state, into, seam)
+  const spec = joinSpec(state, seam)
   const closed = spec ? state.update(spec).state : state
   return draftSegments(closed)[closed.field(headingsField).findIndex((h) => h.id === into)].text
 }
@@ -245,11 +286,17 @@ function whitespaceAround(state: EditorState, pos: number, from: number, to: num
 }
 
 /**
- * Make the typed heading on the line at `pos` a heading, for the scene `id`,
- * with one blank line either side of it: how the page composes a scene
- * heading, so the two scenes read back as the split writes them.
+ * Make the typed line at `pos` the heading `heading`, with one blank line
+ * either side of it — how the page composes a heading, so what is either side
+ * reads back as the act writes it. `continued`, for a chapter started inside a
+ * scene's prose, is the scene heading put under it for the rest of that prose.
  */
-export function splitSpec(state: EditorState, pos: number, id: string): TransactionSpec {
+export function lineToHeading(
+  state: EditorState,
+  pos: number,
+  heading: { id: string; kind: HeadingKind },
+  continued?: { id: string; title: string },
+): TransactionSpec {
   const headings = state.field(headingsField)
   const i = headingAt(headings, pos)
   const line = state.doc.lineAt(pos)
@@ -257,29 +304,38 @@ export function splitSpec(state: EditorState, pos: number, id: string): Transact
   const end = headings[i + 1]?.pos ?? state.doc.length
   const [lo] = whitespaceAround(state, line.from, afterTitle, line.from)
   const [, hi] = whitespaceAround(state, line.to, line.to, end)
+  const under = continued ? `\n\n${HEADING_PREFIX.scene}${oneLine(continued.title)}\n\n` : '\n\n'
   const changes = state.changes([
     { from: lo, to: line.from, insert: '\n\n' },
-    // A blank line under it even at the end of the book, to write the new scene on.
-    { from: line.to, to: hi, insert: '\n\n' },
+    // A blank line under it even at the end of the book, to write on.
+    { from: line.to, to: hi, insert: under },
   ])
+  const effects = [addHeading.of({ ...heading, pos: changes.mapPos(line.from, 1) })]
+  if (continued) effects.push(addHeading.of({ id: continued.id, kind: 'scene', pos: changes.mapPos(line.to, -1) + 2 }))
   return {
     changes,
-    effects: [addHeading.of({ id, kind: 'scene', pos: changes.mapPos(line.from, 1) }), settled.of(null)],
+    effects: [...effects, settled.of(null)],
     // The page's own change, not the writer's: `keepHeadings` judges what the writer types.
     filter: false,
   }
 }
 
+/** Take away a line left under a chapter heading that is not a heading, with the line break before it. */
+export function clearLine(state: EditorState, pos: number): TransactionSpec {
+  const line = state.doc.lineAt(pos)
+  return { changes: { from: Math.max(0, line.from - 1), to: line.to }, effects: settled.of(null), filter: false }
+}
+
 /**
- * Close up the seam a join left at `seam` in scene `into`. Blank lines there
- * become one paragraph break, the seam `joinWithNext` makes; at the start or
- * end of the scene's prose, the one blank line that parts prose from a heading.
- * A deletion that ended mid-line joined the words into one line, and that is
+ * Close up the seam a join left at `seam`. Blank lines there become one
+ * paragraph break, the seam `joinWithNext` makes; at the start or end of what
+ * is under a heading, the one blank line that parts it from a heading. A
+ * deletion that ended mid-line joined the words into one line, and that is
  * left as it is. `null` when there is nothing to change.
  */
-export function joinSpec(state: EditorState, into: string, seam: number): TransactionSpec | null {
+export function joinSpec(state: EditorState, seam: number): TransactionSpec | null {
   const headings = state.field(headingsField)
-  const i = headings.findIndex((h) => h.id === into)
+  const i = headingAt(headings, seam)
   const afterTitle = lineEndAt(state.doc, headings[i].pos)
   const next = headings[i + 1]
   const end = next?.pos ?? state.doc.length
@@ -297,8 +353,9 @@ export function joinSpec(state: EditorState, into: string, seam: number): Transa
  * Enter on a heading goes to the prose under it rather than breaking the title
  * in two — the way out of a title a writer reaches for. On a scene with no
  * prose at the end of the book, it makes the line to write on. On a chapter,
- * it goes to the chapter's first scene. At the very start of a heading's line
- * it is left to the default, which pushes the heading down.
+ * it goes to the chapter's first scene, or, in a chapter with none yet, makes
+ * the line to type one's heading on. At the very start of a heading's line it
+ * is left to the default, which pushes the heading down.
  */
 export const enterOnHeading: StateCommand = ({ state, dispatch }) => {
   const sel = state.selection.main
@@ -310,7 +367,10 @@ export const enterOnHeading: StateCommand = ({ state, dispatch }) => {
   const lineEnd = lineEndAt(state.doc, h.pos)
   if (sel.head === h.pos || sel.head > lineEnd) return false
   const target = h.kind === 'scene' ? i : (headings[i + 1]?.kind === 'scene' ? i + 1 : -1)
-  if (target < 0) return true
+  if (target < 0) {
+    dispatch(state.update({ changes: { from: lineEnd, insert: '\n\n' }, selection: EditorSelection.cursor(lineEnd + 2), scrollIntoView: true, userEvent: 'input' }))
+    return true
+  }
   const at = proseStart(state.doc, headings, target)
   if (at !== null) {
     dispatch(state.update({ selection: EditorSelection.cursor(at), scrollIntoView: true, userEvent: 'select' }))

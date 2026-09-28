@@ -196,8 +196,17 @@ costs, are in
      editor's undo never steps back across a heading whose record has changed.
      Still refused: part of a heading, the first scene of a chapter, a chapter
      heading, two headings at once.
-   - **5b** — chapters: `#` typed on its own line starts a chapter, and
-     deleting a chapter heading joins it to the one before.
+   - **5b** *Done* — chapters. `# Title` typed on its own line starts a
+     chapter straight after the one it is in, taking the scenes after it;
+     typed inside a scene, the rest of that scene goes on as the new chapter's
+     first scene, under the same title, because prose belongs to a scene.
+     Under a chapter heading only headings may be typed, and `## Title` there
+     is the chapter's first scene — without that, a new chapter would be a
+     dead end on the page. Deleting a chapter heading's whole line joins it to
+     the chapter before: its scenes to the end of that one, its synopsis and
+     notes after that one's, the two word goals added. Nothing but scenes
+     points at a chapter, so nothing else moves. Still refused: the first
+     chapter, the first scene of a chapter, two headings at once.
 6. **The round trip.** Markdown export writes scene titles as `##`, and import
    reads `##` under a `#` as a titled scene, so a book written here and one
    pasted in agree.

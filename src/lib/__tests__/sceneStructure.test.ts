@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { joinProse, mergeSceneFields, splitCarries, splitProse } from '../sceneStructure'
-import type { WorldEvent } from '@/types'
+import { joinProse, mergeChapterFields, mergeSceneFields, splitCarries, splitProse } from '../sceneStructure'
+import type { Chapter, WorldEvent } from '@/types'
 
 const scene = (over: Partial<WorldEvent>): WorldEvent => ({
   id: 'x', worldId: 'w', chapterId: 'c', timelineId: 't', title: 'T', description: '', sortOrder: 1,
@@ -67,5 +67,24 @@ describe('mergeSceneFields', () => {
     expect(mergeSceneFields(scene({ travelDays: 2 }), scene({ travelDays: 3 })).travelDays).toBe(5)
     expect(mergeSceneFields(scene({ travelDays: 2 }), scene({})).travelDays).toBe(2)
     expect(mergeSceneFields(scene({}), scene({})).travelDays).toBeNull()
+  })
+})
+
+describe('mergeChapterFields', () => {
+  const chapter = (over: Partial<Chapter>): Chapter => ({
+    id: 'c', worldId: 'w', timelineId: 't', number: 1, title: 'T', synopsis: '', notes: '', wordGoal: null,
+    createdAt: 0, updatedAt: 0, ...over,
+  })
+
+  it('keeps both synopses and both notes, the first chapter’s first, and nothing for an empty one', () => {
+    const m = mergeChapterFields(chapter({ synopsis: 'Arrive.', notes: '' }), chapter({ synopsis: ' Leave. ', notes: 'Dates?' }))
+    expect(m.synopsis).toBe('Arrive.\n\nLeave.')
+    expect(m.notes).toBe('Dates?')
+  })
+
+  it('adds the word goals, keeps one that only one chapter had, and has none when neither did', () => {
+    expect(mergeChapterFields(chapter({ wordGoal: 1000 }), chapter({ wordGoal: 500 })).wordGoal).toBe(1500)
+    expect(mergeChapterFields(chapter({ wordGoal: null }), chapter({ wordGoal: 500 })).wordGoal).toBe(500)
+    expect(mergeChapterFields(chapter({}), chapter({})).wordGoal).toBeNull()
   })
 })

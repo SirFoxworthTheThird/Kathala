@@ -99,14 +99,17 @@ export function useChapter(id: string | null) {
 
 /** Creates a chapter (folder only — no snapshot inheritance; that lives in createEvent). */
 export async function createChapter(
-  data: Pick<Chapter, 'worldId' | 'timelineId' | 'number' | 'title' | 'synopsis'>
+  data: Pick<Chapter, 'worldId' | 'timelineId' | 'number' | 'title' | 'synopsis'> & {
+    /** Given when the caller already refers to the chapter by id — the Page view's heading for a new chapter. */
+    id?: string
+  }
 ): Promise<Chapter> {
   const now = Date.now()
   const chapter: Chapter = {
-    id: generateId(),
     notes: '',
     wordGoal: null,
     ...data,
+    id: data.id ?? generateId(),
     createdAt: now,
     updatedAt: now,
   }
@@ -129,7 +132,7 @@ export async function createChapter(
  * rekeys whatever it touches.
  */
 export async function createChapterAt(
-  data: Pick<Chapter, 'worldId' | 'timelineId' | 'number' | 'title' | 'synopsis'>,
+  data: Pick<Chapter, 'worldId' | 'timelineId' | 'number' | 'title' | 'synopsis'> & { id?: string },
 ): Promise<Chapter> {
   return journalGroup(async () => {
     const siblings = await db.chapters.where('timelineId').equals(data.timelineId).toArray()

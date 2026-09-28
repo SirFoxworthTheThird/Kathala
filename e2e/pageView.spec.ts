@@ -67,6 +67,21 @@ const stored = (page: Page) => page.evaluate(async () => {
     .map((e) => `${e.title}: ${(texts.get(e.id) ?? '').slice(0, 60)}`)
 })
 
+/** "Chapter: scene, scene" for each chapter, in book order. */
+const outline = (page: Page) => page.evaluate(async () => {
+  type Ch = { id: string; title: string; number: number }
+  type Ev = { id: string; chapterId: string; title: string; sortOrder: number }
+  const db = (window as { __pwdb?: never }).__pwdb as unknown as {
+    chapters: { toArray: () => Promise<Ch[]> }
+    events: { toArray: () => Promise<Ev[]> }
+  }
+  const events = await db.events.toArray()
+  return (await db.chapters.toArray())
+    .sort((a, b) => a.number - b.number)
+    .map((c) => `${c.title}: ${events.filter((e) => e.chapterId === c.id).sort((a, b) => a.sortOrder - b.sortOrder).map((e) => e.title).join(', ')}`)
+})
+const BOOK = ['Low Water: The assize rises, Teodora at the table', 'High Water: The tide-table']
+
 async function openPage(page: Page, worldId: string, chapter = '') {
   await page.goto(`/#/worlds/${worldId}/manuscript${chapter ? `/${chapter}` : ''}`, { waitUntil: 'load' })
   await settle(page)
@@ -335,6 +350,102 @@ test.describe('the Page view', () => {
     await expect(page.getByRole('status')).toContainText('first scene of its chapter')
     await expect(editor).toContainText('## The assize rises')
     expect(await stored(page)).toHaveLength(3)
+  })
+
+  test('# and a title typed between scenes starts a chapter holding the scenes after it, and Ctrl+Z takes it back', async ({ page }) => {
+    const worldId = await book(page)
+    const editor = await openPage(page, worldId)
+    await line(page, 'The water fell.').click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('# Slack Water')
+    await page.keyboard.press('Enter')
+    await expect.poll(() => outline(page), { timeout: 10_000 }).toEqual([
+      'Low Water: The assize rises', 'Slack Water: Teodora at the table', 'High Water: The tide-table',
+    ])
+    await expect(line(page, '# Slack Water')).toHaveClass(/cm-draft-chapter/)
+    await expect(editor).toContainText('## Teodora at the table')
+
+    await page.keyboard.press('Control+z')
+    await expect.poll(() => outline(page), { timeout: 10_000 }).toEqual(BOOK)
+    await expect(page.locator('.cm-line', { hasText: '# Slack Water' })).toHaveCount(0)
+  })
+
+  test('# and a title typed inside a scene: the rest of the scene goes on in the new chapter, under the same title', async ({ page }) => {
+    const worldId = await book(page)
+    await openPage(page, worldId)
+    await line(page, 'The court sat.').click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('# Slack Water')
+    await page.keyboard.press('Enter')
+    await expect.poll(() => outline(page), { timeout: 10_000 }).toEqual([
+      'Low Water: The assize rises', 'Slack Water: The assize rises, Teodora at the table', 'High Water: The tide-table',
+    ])
+    // Straight on, in the scene that goes on.
+    await page.keyboard.type('Still, ')
+    // Sorted: scenes in two chapters share position numbers, so their order is not the book's.
+    await expect.poll(async () => (await stored(page)).sort(), { timeout: 10_000 }).toEqual([
+      'The assize rises: The court sat.',
+      'The assize rises: Still, The water fell.',
+      'Teodora at the table: She counted.',
+      `The tide-table: ${`${FILLER}`.slice(0, 60)}`,
+    ].sort())
+  })
+
+  test('deleting a chapter heading’s whole line joins it to the chapter before, and Ctrl+Z parts them again', async ({ page }) => {
+    const worldId = await book(page)
+    const editor = await openPage(page, worldId)
+    await line(page, '# High Water').click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Shift+Home')
+    await page.keyboard.press('Backspace')
+    await expect.poll(() => outline(page), { timeout: 10_000 }).toEqual([
+      'Low Water: The assize rises, Teodora at the table, The tide-table',
+    ])
+    await expect(editor).not.toContainText('# High Water')
+
+    await page.keyboard.press('Control+z')
+    await expect.poll(() => outline(page), { timeout: 10_000 }).toEqual(BOOK)
+    await expect(line(page, '# High Water')).toHaveClass(/cm-draft-chapter/)
+  })
+
+  test('the first chapter has nothing before it to join, and the page says so', async ({ page }) => {
+    const worldId = await book(page)
+    const editor = await openPage(page, worldId)
+    await line(page, '# Low Water').click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Shift+Home')
+    await page.keyboard.press('Backspace')
+    await expect(page.getByRole('status')).toContainText('first chapter')
+    await expect(editor).toContainText('# Low Water')
+    expect(await outline(page)).toEqual(BOOK)
+  })
+
+  test('a chapter started at the end of the book, and its first scene typed under it', async ({ page }) => {
+    const worldId = await book(page)
+    await openPage(page, worldId)
+    // The end of the book is far off screen, and the page draws only what is on it.
+    await line(page, 'The court sat.').click()
+    await page.keyboard.press('Control+End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('# Coda')
+    await page.keyboard.press('Enter')
+    await expect.poll(() => outline(page), { timeout: 10_000 }).toEqual([...BOOK, 'Coda: '])
+    // Prose has no place under a chapter heading, and the page says what does.
+    await page.keyboard.type('H')
+    await expect(page.getByRole('status')).toContainText('only a heading can go')
+    // A mark that never became a heading is taken away when it is left, with the same reason.
+    await page.keyboard.type('#')
+    await expect(page.locator('.cm-line').filter({ hasText: /^#$/ })).toHaveCount(1)
+    await page.keyboard.press('Enter')
+    await expect(page.locator('.cm-line').filter({ hasText: /^#$/ })).toHaveCount(0)
+    await expect(page.getByRole('status')).toContainText('only a heading can go')
+    await page.keyboard.type('## After')
+    await page.keyboard.press('Enter')
+    await expect.poll(() => outline(page), { timeout: 10_000 }).toEqual([...BOOK, 'Coda: After'])
+    await page.keyboard.type('Quiet.')
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toContain('After: Quiet.')
   })
 
   test('Enter on a heading goes to its prose rather than breaking the title', async ({ page }) => {
