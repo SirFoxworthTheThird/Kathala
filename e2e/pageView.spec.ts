@@ -172,6 +172,20 @@ test.describe('the Page view', () => {
       .toContain(`The tide-table: ${`Copied: ${FILLER}`.slice(0, 60)}`)
   })
 
+  test('opening a chapter in the binder brings its heading to the top of the page', async ({ page }) => {
+    const worldId = await book(page)
+    await openPage(page, worldId)
+    // Against the scroller, which stays put — the text box itself scrolls with the heading.
+    const top = async () => {
+      const [h, e] = await Promise.all([line(page, '# High Water').boundingBox(), page.locator('.cm-scroller').boundingBox()])
+      return h!.y - e!.y
+    }
+    // Where it starts: under chapter 1's two scenes, well down the page.
+    expect(await top()).toBeGreaterThan(200)
+    await page.getByRole('tree', { name: 'Chapters and scenes' }).getByRole('treeitem', { name: /Ch\. 2 · High Water/ }).click()
+    await expect.poll(top, { timeout: 10_000 }).toBeLessThan(80)
+  })
+
   test('a change made elsewhere shows on the page, without losing what is being typed here', async ({ page }) => {
     const worldId = await book(page)
     const editor = await openPage(page, worldId)
