@@ -877,7 +877,8 @@ inside it.
   that is already taken puts the new chapter *there* — the chapter holding it
   moves up one, and so does each after it until a gap. The dialog says which
   ("Chapters 3–7 become 4–8") before you add anything, and one Undo takes all of
-  it back. Chapters already made cannot be dragged into a new order.
+  it back. A chapter already made is moved in the [binder](#opening-a-chapter):
+  Alt+↑ ↓, or drag it.
 
   ![Add Chapter says what a taken number moves](images/68-add-chapter-number.png)
 - **The ↑ ↓ arrows on a scene move it, including out of its chapter.** At the
@@ -1054,6 +1055,19 @@ It is built for the keyboard, since that is where your hands are while you write
 | Space | Go to that scene or chapter |
 | Enter | **A new scene on the line below** — the first in a chapter, or the next one after a scene. Type its title where it will sit and press Enter; Escape throws it away |
 | Delete | Remove the scene. Undo brings it back, and the notice names what went |
+| Alt+↑ ↓ | **Move the chapter or scene** one place. A chapter passes its neighbour; a scene takes one step, and at the edge of its chapter crosses into the next one — which opens to show it. Press again to keep going |
+
+**Drag a row to move it further in one go.** A chapter dropped on the top or
+bottom half of another goes before or after it; a scene dropped between two
+scenes goes there, and a scene dropped on a chapter's row goes to the end of
+that chapter. A line shows where it will land before you let go.
+
+![Chapter 3 dragged above chapter 1 in the binder; the list's Add Scene line, open](images/70-binder-move.png)
+
+A chapter's number is its place, so moving a chapter renumbers the ones it
+passes: they take the same numbers in their new order, so a gap in the
+numbering, or a prologue's 0, stays where it was. The character states
+recorded in them move with them, and one Undo puts the whole move back.
 
 **New scene** and **New chapter** under the list do the same with a mouse. A new
 chapter's number is filled in with the next free one and can be changed, with the
@@ -1064,6 +1078,13 @@ away from is kept rather than lost, and the click is left to do what you meant.
 A new scene is only its title. Say where it happens and who is in it with the
 line at the top of its draft, described below — the binder deliberately asks for
 nothing else, so making a scene costs a title and nothing more.
+
+**Add Scene** at the foot of an open chapter in the list works the same way: a
+line where the scene will sit, for its title and nothing else. Enter makes it
+and puts you in its draft; the line's own **Add Scene** button makes it and
+leaves it closed at the end of the list; Escape makes nothing.
+Its status, its cast and the rest are set on the card, once there is a scene to
+set them on.
 
 A chapter is not deleted from the binder: it takes every scene in it, which is
 too much to lose to a key. Its row on the Timeline still does that, with Undo

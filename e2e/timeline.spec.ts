@@ -74,13 +74,15 @@ test.describe('Timeline and chapters', () => {
     await page.getByTitle('Open chapter detail').click()
     await expect(page).toHaveURL(/#\/worlds\/.+\/timeline\/.+/)
 
+    // A line in the list, for the title, rather than a dialog.
     await page.getByRole('button', { name: 'Add Scene' }).first().click()
-    await expect(page.getByRole('heading', { name: 'Add Scene' })).toBeVisible()
+    const title = page.getByRole('textbox', { name: 'Title for the new scene' })
+    await expect(title).toBeFocused()
 
-    await page.getByPlaceholder('Scene title').fill('The Departure')
+    await title.fill('The Departure')
     await page.getByRole('button', { name: 'Add Scene' }).last().click()
 
-    await expect(page.getByRole('heading', { name: 'Add Scene' })).not.toBeVisible()
+    await expect(title).toHaveCount(0)
     await expect(page.getByRole('main').getByRole('button', { name: 'The Departure', exact: true })).toBeVisible()
   })
 
@@ -91,9 +93,29 @@ test.describe('Timeline and chapters', () => {
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
     await page.getByTitle('Open chapter detail').click()
 
+    // An empty title makes nothing — the line closes and the chapter is as it was…
     await page.getByRole('button', { name: 'Add Scene' }).first().click()
-    await expect(page.getByRole('heading', { name: 'Add Scene' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Add Scene' }).last()).toBeDisabled()
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
+    await expect(page.getByRole('textbox', { name: 'Title for the new scene' })).toHaveCount(0)
+    // In the chapter's row; its panel says the same thing about Character States.
+    const row = page.locator('[id^="chapter-row-"]')
+    await expect(row.getByText('No scenes yet')).toBeVisible()
+    // …and one with a title does make one.
+    await page.getByRole('button', { name: 'Add Scene' }).first().click()
+    await page.getByPlaceholder('Scene title').fill('The Departure')
+    await page.getByRole('button', { name: 'Add Scene' }).last().click()
+    await expect(row.getByText('No scenes yet')).toHaveCount(0)
+    /*
+      And only that one. "No scenes yet" above is read before any write could
+      land, so it cannot see a blank scene made a moment later; this can. The
+      empty attempt was made first, so by the time the real scene is on the
+      page, anything it wrote is in the store.
+    */
+    await expect(page.getByRole('main').getByRole('button', { name: 'The Departure', exact: true })).toBeVisible()
+    expect(await page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as { events: { count: () => Promise<number> } }
+      return db.events.count()
+    })).toBe(1)
   })
 
   test('sets active event cursor via timeline bar', async ({ page }) => {

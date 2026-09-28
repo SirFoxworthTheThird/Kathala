@@ -28,6 +28,19 @@ async function openBook(page: Page) {
 }
 
 async function readTo(page: Page, fraction: number) {
+  /*
+    The book lays itself out after the page settles, chapter by chapter, and a
+    scroll set while it is still growing lands short: under a full run's load
+    this once scrolled a whole book to 85px and failed "the reader is well into
+    the book". So wait until the height has stopped changing first.
+  */
+  let last = -1
+  await expect.poll(async () => {
+    const height = await scroller(page).evaluate((el) => el.scrollHeight)
+    const steady = height === last
+    last = height
+    return steady
+  }, { intervals: [300] }).toBe(true)
   await scroller(page).evaluate((el, f) => {
     el.scrollTop = (el.scrollHeight - el.clientHeight) * f
   }, fraction)
