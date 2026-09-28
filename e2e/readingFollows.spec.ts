@@ -88,7 +88,7 @@ test('the book reads as a book, not as a draft', async ({ page }) => {
  * the half a test about what is *revealed* never notices.
  */
 const scroller = (page: import('@playwright/test').Page) =>
-  page.locator('div.flex-1.overflow-auto').first()
+  page.locator('[data-book-scroller]')
 
 async function openBook(page: import('@playwright/test').Page) {
   await page.getByRole('navigation', { name: 'Main navigation' })

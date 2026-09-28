@@ -21,7 +21,7 @@ import { downloadLibraryBook } from './helpers/library'
  * So this drives the wheel, the way a reader does.
  */
 
-const scroller = (page: Page) => page.locator('div.flex-1.overflow-auto').first()
+const scroller = (page: Page) => page.locator('[data-book-scroller]')
 
 async function cursorChapter(page: Page): Promise<number | null> {
   const id = await page.evaluate(() => {

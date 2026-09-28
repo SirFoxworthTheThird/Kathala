@@ -14,7 +14,7 @@ import { downloadLibraryBook } from './helpers/library'
  * one all the way through the book.
  */
 
-const scroller = (page: Page) => page.locator('div.flex-1.overflow-auto').first()
+const scroller = (page: Page) => page.locator('[data-book-scroller]')
 const progress = (page: Page) => page.getByRole('progressbar', { name: 'Progress through the book' })
 
 async function openBook(page: Page) {
@@ -109,6 +109,8 @@ test('a writer drafting the same manuscript is not shown a reader’s progress',
   await page.getByRole('navigation', { name: 'Main navigation' })
     .getByRole('link', { name: 'Manuscript', exact: true }).click()
   await settle(page)
+  // The author's own read-through — the same reading page a reader gets.
+  await page.getByRole('group', { name: 'Timeline layout' }).getByRole('button', { name: 'Read', exact: true }).click()
 
   // Same prose, same screen, no reader's progress.
   await expect(page.locator('[data-scene-event-id]').first(), 'the prose is still here').toBeVisible()

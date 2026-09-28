@@ -38,7 +38,7 @@ test('a scroll that skips chapters is announced, and can be undone', async ({ pa
   await settle(page)
   await openBook(page, worldId)
 
-  const scroller = page.locator('div.flex-1.overflow-auto').first()
+  const scroller = page.locator('[data-book-scroller]')
   await expect.poll(() => chapterNow(page), { timeout: 30_000 }).toBe(1)
   const started = await chapterNow(page)
 
@@ -74,7 +74,7 @@ test('reading on is never interrupted by it', async ({ page }) => {
   await settle(page)
   await openBook(page, worldId)
 
-  const scroller = page.locator('div.flex-1.overflow-auto').first()
+  const scroller = page.locator('[data-book-scroller]')
   const scenes = page.locator('[data-scene-event-id]')
   const count = Math.min(await scenes.count(), 12)
   expect(count, 'there are scenes to read through').toBeGreaterThan(4)

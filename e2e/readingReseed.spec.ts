@@ -27,7 +27,7 @@ import { downloadLibraryBook } from './helpers/library'
  * claim on a copy that has just landed.
  */
 
-const scroller = (page: Page) => page.locator('div.flex-1.overflow-auto').first()
+const scroller = (page: Page) => page.locator('[data-book-scroller]')
 
 /** The bar's own "Ch.N · Title" readout — not the prose's "Ch. N — Title". */
 const barReadout = (page: Page) => page.getByText(/Ch\.\d+ · /).first()

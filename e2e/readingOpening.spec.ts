@@ -18,7 +18,7 @@ import { downloadLibraryBook } from './helpers/library'
  * most reason to wait for.
  */
 
-const scroller = (page: Page) => page.locator('div.flex-1.overflow-auto').first()
+const scroller = (page: Page) => page.locator('[data-book-scroller]')
 
 async function openBook(page: Page) {
   await page.getByRole('navigation', { name: 'Main navigation' })

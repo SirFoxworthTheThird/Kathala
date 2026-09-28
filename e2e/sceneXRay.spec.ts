@@ -152,7 +152,7 @@ test('the eye opens that character\'s page, and the name alone does not', async 
   */
   await panel(page).getByText(name, { exact: true }).click()
   await expect(page, 'reading the name does not leave the book')
-    .toHaveURL(/#\/worlds\/[^/]+\/manuscript$/)
+    .toHaveURL(/#\/worlds\/[^/]+\/timeline$/)
 
   await eye.click()
   await expect(page).toHaveURL(/#\/worlds\/[^/]+\/characters\/[^/]+$/)
@@ -170,7 +170,7 @@ test('and coming back puts the reader where they were, not where they had read t
   await settle(page)
   await openBook(page, worldId)
 
-  const scroller = page.locator('div.flex-1.overflow-auto').first()
+  const scroller = page.locator('[data-book-scroller]')
 
   /*
     Deep inside one long scene, not at an arbitrary pixel.
@@ -241,10 +241,10 @@ test('the panel can be put away, and stays away', async ({ page }) => {
 
 test('a writer drafting the same book is not given the panel', async ({ page }) => {
   /*
-    The other half. This is a reading aid — the draft view already shows each
-    scene's title and links back to it, and the author knows who is in the scene
-    because they put them there. Without this, gating the panel on nothing at
-    all would satisfy every test above.
+    The other half. This is a reading aid — drafting is the Timeline's Page,
+    which shows each scene's title over its prose, and the author knows who is
+    in the scene because they put them there. Without this, gating the panel on
+    nothing at all would satisfy every test above.
   */
   const worldId = await downloadLibraryBook(page, 'Alice’s Adventures in Wonderland')
   await settle(page)
@@ -254,8 +254,11 @@ test('a writer drafting the same book is not given the panel', async ({ page }) 
     } }).__pwdb
     await db!.worlds.update(id, { readingMode: false })
   }, worldId)
-  await openBook(page, worldId)
-
+  // The Manuscript, for its author, is the Timeline's Page: the book being written.
+  await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+  await settle(page)
+  await expect(page.getByRole('textbox', { name: 'The book, as one page' }), 'drafting, on the same book')
+    .toBeVisible({ timeout: 60_000 })
   await expect(panel(page)).toHaveCount(0)
 })
 

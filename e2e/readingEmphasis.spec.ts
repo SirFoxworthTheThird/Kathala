@@ -72,12 +72,14 @@ test('a reader sees emphasis rendered, and no underscores around it', async ({ p
     .toEqual([])
 })
 
-test('the writer drafting the same book sees it rendered too', async ({ page }) => {
+test('the writer reading the same book sees it rendered too, and writes the markup', async ({ page }) => {
   /*
-    The Manuscript screen is read-only in both modes — the prose is edited on the
-    scene, not here — so there is no reason for an author to be shown the
-    markup while a reader is not. Pairing the modes also stops a fix that only
-    reached the reading branch from passing.
+    The author's Read is read-only, so there is no reason for an author to be
+    shown the markup there while a reader is not. Pairing the modes also stops a
+    fix that only reached the reading branch from passing.
+
+    Page is the other side of it: that is where the underscores are typed, so
+    that is where they are shown.
   */
   const worldId = await downloadLibraryBook(page, 'Alice’s Adventures in Wonderland')
   await settle(page)
@@ -87,9 +89,14 @@ test('the writer drafting the same book sees it rendered too', async ({ page }) 
     } }).__pwdb
     await db!.worlds.update(id, { readingMode: false })
   }, worldId)
-  await openBook(page, worldId)
+  await page.goto(`/#/worlds/${worldId}/timeline?view=read`, { waitUntil: 'load' })
+  await settle(page)
+  await expect(prose(page).first()).toBeVisible({ timeout: 60_000 })
 
   await expect(
     page.getByRole('main').locator('em', { hasText: /^very$/ }).first(),
   ).toBeVisible()
+
+  await page.getByRole('group', { name: 'Timeline layout' }).getByRole('button', { name: 'Page', exact: true }).click()
+  await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toContainText('so _very_ remarkable')
 })

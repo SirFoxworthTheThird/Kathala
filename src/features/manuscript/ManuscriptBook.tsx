@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { FileText, Target } from 'lucide-react'
 import { EmptyState } from '@/components/EmptyState'
 import { updateChapter } from '@/db/hooks/useTimeline'
@@ -18,8 +17,6 @@ import { openingState } from '@/lib/manuscriptOpening'
 import { asksBeforeJumping } from '@/lib/readingAhead'
 import { spotFor, scrollFor, readSpot, spotStillApplies, type SceneExtent, type ReadingSpot, type SpotAt } from '@/lib/readingSpot'
 import type { ManuscriptBookData } from './useManuscriptBook'
-
-const nf = new Intl.NumberFormat()
 
 /** Editable per-chapter word goal with a progress bar; persists on blur/Enter. */
 export function ChapterGoal({ chapterId, words, goal }: { chapterId: string; words: number; goal: number | null }) {
@@ -80,24 +77,23 @@ function measureScenes(root: HTMLElement): SceneExtent[] {
 }
 
 /**
- * The book on the page: every chapter and its scenes' prose, as the author
- * checks it (`draft`) or as it is read (`reading`). In a world in reading mode
- * it is also the reader's place in the book — it follows their eye, remembers
- * where they were, and says so when a scroll skips chapters. Shared by the
- * Manuscript screen and the Timeline's Read layout.
+ * The book set for reading — the Timeline's Read layout: every written scene's
+ * prose, chapter by chapter, in the reader's type. An author also sees each
+ * chapter's words and scenes. In a world in reading mode it is the reader's
+ * place in the book too — it follows their eye, remembers where they were, and
+ * says so when a scroll skips chapters. Writing the book is Page's
+ * (`DraftBook`); this is never edited in place.
  */
-export function ManuscriptBook({ worldId, timelineId, book, mode, readingMode, scrollRef, target = null }: {
+export function ManuscriptBook({ worldId, timelineId, book, readingMode, scrollRef, target = null }: {
   worldId: string
   timelineId: string | null
   book: ManuscriptBookData
-  mode: 'draft' | 'reading'
   readingMode: boolean
   /** Owned by the screen, which puts the reader's row (progress, contents) above the book. */
   scrollRef: RefObject<HTMLDivElement | null>
   /** A chapter or scene to bring to the top — the Timeline's binder. The counter makes a repeat arrive. */
   target?: { id: string; nonce: number } | null
 }) {
-  const navigate = useNavigate()
   const { manuscript, proseByScene, eventById, chapterNumberById } = book
   const activeEventId = useActiveEventId()
 
@@ -390,7 +386,7 @@ export function ManuscriptBook({ worldId, timelineId, book, mode, readingMode, s
       <div
         ref={scrollRef}
         data-book-scroller
-        className={cn('flex-1 overflow-auto', mode === 'reading' && hasProse && XRAY_GUTTER)}
+        className={cn('flex-1 overflow-auto', hasProse && XRAY_GUTTER)}
       >
         {openingTheBook ? (
           /*
@@ -432,8 +428,8 @@ export function ManuscriptBook({ worldId, timelineId, book, mode, readingMode, s
         ) : (
           <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
             {manuscript.chapters.map((ch) => {
-              const scenes = mode === 'reading' ? ch.scenes.filter((s) => s.written) : ch.scenes
-              if (mode === 'reading' && scenes.length === 0) return null
+              const scenes = ch.scenes.filter((s) => s.written)
+              if (scenes.length === 0) return null
               return (
                 <section
                   key={ch.id}
@@ -451,12 +447,6 @@ export function ManuscriptBook({ worldId, timelineId, book, mode, readingMode, s
                         {plural(ch.wordCount, 'word')} · {ch.writtenScenes}/{ch.scenes.length} scenes
                       </p>
                     )}
-                    {mode === 'draft' && ch.synopsis && (
-                      <p className="mt-1 text-xs italic text-[hsl(var(--muted-foreground))]">{ch.synopsis}</p>
-                    )}
-                    {mode === 'draft' && (
-                      <ChapterGoal chapterId={ch.id} words={ch.wordCount} goal={ch.wordGoal} />
-                    )}
                   </div>
 
                   {scenes.map((s, i) => (
@@ -464,48 +454,14 @@ export function ManuscriptBook({ worldId, timelineId, book, mode, readingMode, s
                       {i > 0 && (
                         <div className="my-6 text-center text-sm text-[hsl(var(--muted-foreground))]" aria-hidden="true">* * *</div>
                       )}
-                      {mode === 'draft' && (
-                        <div className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
-                          <button
-                            onClick={() => navigate(`/worlds/${worldId}/timeline/${ch.id}`)}
-                            className="hover:text-[hsl(var(--foreground))] transition-colors"
-                            title="Open in timeline"
-                          >
-                            {s.title}
-                          </button>
-                          <span>·</span>
-                          <span className="tabular-nums">{nf.format(s.wordCount)} words</span>
-                        </div>
-                      )}
-                      {s.written ? (
-                        <div
-                          className={cn(
-                            'text-[hsl(var(--foreground))]',
-                            // The draft keeps its fixed setting: the reader's
-                            // preference is about reading, and an author
-                            // checking line lengths wants them to stay put.
-                            mode === 'reading' ? undefined : 'text-[15px] leading-relaxed',
-                          )}
-                          style={mode === 'reading'
-                            ? typeStyle(readingType)
-                            : { fontFamily: 'var(--font-prose)' }}
-                        >
-                          {(proseByScene.get(s.eventId) ?? []).map((spans, j) => (
-                            <p key={j} className="mb-4 [text-indent:1.5rem] first:[text-indent:0]">
-                              {spans.map((sp, k) => (sp.em ? <em key={k}>{sp.text}</em> : sp.text))}
-                            </p>
-                          ))}
-                        </div>
-                      ) : (
-                        mode === 'draft' && (
-                          <button
-                            onClick={() => navigate(`/worlds/${worldId}/timeline/${ch.id}`)}
-                            className="mb-4 block w-full rounded-md border border-dashed border-[hsl(var(--border))] px-4 py-3 text-left text-sm text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--ring)/0.4)] hover:text-[hsl(var(--foreground))] transition-colors"
-                          >
-                            No prose yet — write this scene
-                          </button>
-                        )
-                      )}
+                      {/* The reader's type — the writing surface, Page, keeps its own. */}
+                      <div className="text-[hsl(var(--foreground))]" style={typeStyle(readingType)}>
+                        {(proseByScene.get(s.eventId) ?? []).map((spans, j) => (
+                          <p key={j} className="mb-4 [text-indent:1.5rem] first:[text-indent:0]">
+                            {spans.map((sp, k) => (sp.em ? <em key={k}>{sp.text}</em> : sp.text))}
+                          </p>
+                        ))}
+                      </div>
                     </div>
                   ))}
                 </section>
@@ -514,7 +470,7 @@ export function ManuscriptBook({ worldId, timelineId, book, mode, readingMode, s
           </div>
         )}
       </div>
-      {mode === 'reading' && hasProse && (
+      {hasProse && (
         <SceneXRay
           worldId={worldId!}
           timelineId={timelineId}
