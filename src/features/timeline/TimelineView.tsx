@@ -19,6 +19,8 @@ import { ChapterRow } from './ChapterRow'
 import { ChapterPanel } from './ChapterPanel'
 import { cursorForChapter } from '@/lib/chapterCursor'
 import { useMediaQuery, WIDE } from '@/lib/useMediaQuery'
+import { adjacentScene } from '@/lib/sceneStep'
+import { activateEvent } from '@/components/timeline/TimelineControls'
 import { BulkActionToolbar } from './BulkActionToolbar'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { AddChapterDialog } from './AddChapterDialog'
@@ -276,7 +278,7 @@ export default function TimelineView() {
     it to the scene's card, which opens and comes to the top. A counter rather
     than the id alone, so going to the same scene twice still arrives.
   */
-  const [reveal, setReveal] = useState<{ id: string; nonce: number } | null>(null)
+  const [reveal, setReveal] = useState<{ id: string; nonce: number; caret?: 'start' | 'end' } | null>(null)
   const revealCount = useRef(0)
   /*
     And going to a chapter scrolls its row to the top, once per arrival, as
@@ -285,10 +287,11 @@ export default function TimelineView() {
   */
   const pendingScroll = useRef<string | null>(null)
   useEffect(() => {
-    const want = (location.state as { reveal?: string } | null)?.reveal
+    const state = location.state as { reveal?: string; caret?: 'start' | 'end' } | null
+    const want = state?.reveal
     if (want) {
       revealCount.current += 1
-      setReveal({ id: want, nonce: revealCount.current })
+      setReveal({ id: want, nonce: revealCount.current, caret: state?.caret })
       pendingScroll.current = null
     } else {
       // Spent, so a card that remounts later — its chapter folded and opened
@@ -308,6 +311,35 @@ export default function TimelineView() {
   })
 
   const closeChapter = () => navigate(`/worlds/${worldId}/timeline`)
+
+  /*
+    Going to a scene from inside another, by key: the same arrival as the
+    binder's — the scene's chapter opens and its card with it — and the caret
+    goes into the prose, so the writer never leaves the keyboard. The time
+    cursor follows, as it does from the binder, so the Character States are the
+    new scene's; never while reading.
+  */
+  function goToScene(scene: WorldEvent, at: 'start' | 'end') {
+    if (!gate.active) activateEvent(scene.id, scene.locationMarkerId, setCursor)
+    navigate(`/worlds/${worldId}/timeline/${scene.chapterId}`, {
+      state: { reveal: scene.id, caret: at },
+      replace: scene.chapterId === chapterId,
+    })
+  }
+  /**
+   * The scene before or after one, in reading order within its own timeline,
+   * and gone to if there is one. `useWorldEvents` is gated, so a reader steps
+   * only through what they have reached.
+   */
+  function stepFrom(sceneId: string, dir: 'next' | 'previous'): boolean {
+    const here = worldEvents.find((e) => e.id === sceneId)
+    if (!here) return false
+    const own = worldChapters.filter((c) => c.timelineId === here.timelineId)
+    const target = adjacentScene(own, worldEvents, sceneId, dir)
+    if (!target) return false
+    goToScene(target, dir === 'next' ? 'start' : 'end')
+    return true
+  }
   const panel = openChapter && openChapter.worldId === worldId
     ? <ChapterPanel key={openChapter.id} chapter={openChapter} onClose={closeChapter} />
     : null
@@ -678,6 +710,8 @@ export default function TimelineView() {
                           reveal={isOpen ? reveal : null}
                           inWorldDays={inWorldDays}
                           calendar={world?.calendar ?? null}
+                          onStepFrom={stepFrom}
+                          onGoToScene={goToScene}
                         />
                         {isOpen && panelInline}
                       </div>

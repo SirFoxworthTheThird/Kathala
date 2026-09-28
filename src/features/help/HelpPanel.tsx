@@ -330,6 +330,9 @@ export function HelpPanel() {
             <div className="space-y-2">
               <KbdRow keys={['Ctrl', 'K']} label="Open search" />
               <KbdRow keys={['Shift', 'Click']} label="Range-select scenes in timeline" />
+              <KbdRow keys={['Ctrl', 'Alt', '↓']} label="Next scene, from inside a scene's draft (⌘⌥↓ on Mac)" />
+              <KbdRow keys={['Ctrl', 'Alt', '↑']} label="Previous scene, from inside a scene's draft" />
+              <KbdRow keys={['Ctrl', 'Enter']} label="New scene after this one, from inside its draft" />
               <KbdRow keys={['Esc']} label="Close panel or dialog" />
               <KbdRow keys={['↑', '↓']} label="Navigate search results / continuity issues" />
               <KbdRow keys={['Enter']} label="Confirm selection in search / continuity" />

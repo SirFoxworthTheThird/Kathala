@@ -39,8 +39,27 @@ The **Help** panel (the **?** icon, top-right) lists these in the app too, along
 | Interaction | Action |
 |---|---|
 | **Shift+click** an event checkbox | Select a range |
-| Drag a chapter row | Reorder the narrative |
-| Drag an event card | Reorder within its chapter |
+| **↑ / ↓** on a scene card | Move the scene earlier or later — out of its chapter at either edge |
+
+Chapter rows and scene cards cannot be dragged on the Timeline; dragging scenes is the [Corkboard](Corkboard)'s.
+
+### In a scene's draft
+
+| Shortcut | Action |
+|---|---|
+| **Ctrl+Alt+↓** (⌘⌥↓) | The next scene — saves this one, opens that one, caret at the start of its prose |
+| **Ctrl+Alt+↑** (⌘⌥↑) | The previous scene, caret at its end |
+| **Ctrl+Enter** (⌘Enter) | A new scene after this one: type its title, Enter, and you are in its draft; Escape goes back |
+
+### In the binder
+
+| Key | Action |
+|---|---|
+| ↑ ↓ | Move between rows |
+| → ← | Open or close a chapter |
+| Space | Go to that scene or chapter |
+| Enter | A new scene on the line below |
+| Delete | Remove the scene (Undo brings it back) |
 
 ---
 

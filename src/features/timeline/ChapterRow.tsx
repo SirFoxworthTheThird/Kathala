@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ChevronDown, ChevronRight, Trash2, BookOpen, BookLock, Plus, ExternalLink, Scroll, Pencil, Check, X } from 'lucide-react'
-import type { Chapter, WorldCalendar } from '@/types'
-import { deleteChapter, useEvents, updateEvent, updateChapter, moveEventOnBoard } from '@/db/hooks/useTimeline'
+import type { Chapter, WorldCalendar, WorldEvent } from '@/types'
+import { deleteChapter, useEvents, updateEvent, updateChapter, moveEventOnBoard, createEventAt } from '@/db/hooks/useTimeline'
 import { journalGroup } from '@/db/hooks/useOperations'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { useAppStore } from '@/store'
@@ -45,10 +45,14 @@ interface ChapterRowProps {
    */
   open?: boolean
   /** The binder's latest "go to this scene", for the card to open and come to. */
-  reveal?: { id: string; nonce: number } | null
+  reveal?: { id: string; nonce: number; caret?: 'start' | 'end' } | null
   /** Derived in-world day per scene, and the calendar that makes it a date. */
   inWorldDays?: Map<string, number>
   calendar?: WorldCalendar | null
+  /** The next or previous scene in reading order, from a card's draft; see `TimelineView`. */
+  onStepFrom?: (sceneId: string, dir: 'next' | 'previous') => boolean
+  /** Go to a scene, opening its draft with the caret at its start or end. */
+  onGoToScene?: (scene: WorldEvent, at: 'start' | 'end') => void
 }
 
 const NO_WORDS: Map<string, number> = new Map()
@@ -56,6 +60,7 @@ const NO_WORDS: Map<string, number> = new Map()
 export function ChapterRow({
   chapter, threadFilter = null, wordsByEvent = NO_WORDS,
   prevChapterId = null, nextChapterId = null, open = false, reveal = null, inWorldDays, calendar = null,
+  onStepFrom, onGoToScene,
 }: ChapterRowProps) {
   const { worldId } = useParams<{ worldId: string }>()
   const { requestClear, revealAllDialog } = useRevealAll(worldId ?? null)
@@ -177,6 +182,26 @@ export function ChapterRow({
 
   async function handleDelete() {
     await deleteChapter(chapter.id)
+  }
+
+  /*
+    Ctrl+Enter in a scene's draft: a new scene straight after it, titled on the
+    line where it will sit — the binder's Enter, from where the writer actually
+    is. Enter makes it and puts them in its draft; Escape hands them back to
+    the scene they came from, caret where they left it.
+
+    Not while reading, and not under a thread filter: a scene made there would
+    carry no thread, so it would be made and then not be on the screen.
+  */
+  const [addingAfter, setAddingAfter] = useState<{ afterId: string; returnTo: HTMLElement | null } | null>(null)
+  const canAddAfter = !gate.active && !threadFilter && !!onGoToScene
+  async function commitNewAfter(afterId: string, title: string, byKey: boolean) {
+    setAddingAfter(null)
+    const index = allSorted.findIndex((e) => e.id === afterId) + 1
+    const created = await createEventAt(chapter.id, index, title)
+    // A title finished by clicking away was finished because the writer went
+    // somewhere else; pulling them into the new scene would undo the click.
+    if (created && byKey) onGoToScene?.(created, 'start')
   }
 
   return (
@@ -474,24 +499,40 @@ export function ChapterRow({
           ) : (
             <div className="flex flex-col gap-1.5">
               {sortedEvents.map((e, i) => (
-                <EventCard
-                  key={e.id}
-                  event={e}
-                  isFirst={i === 0 && !prevChapterId}
-                  isLast={i === sortedEvents.length - 1 && !nextChapterId}
-                  moveUpHint={i === 0 && prevChapterId ? 'Move to the end of the previous chapter' : undefined}
-                  moveDownHint={i === sortedEvents.length - 1 && nextChapterId ? 'Move to the start of the next chapter' : undefined}
-                  onMoveUp={() => moveEvent(e.id, 'up')}
-                  onMoveDown={() => moveEvent(e.id, 'down')}
-                  selection={{ chapterEventIds }}
-                  chapterNumber={chapter.number}
-                  // Not in the chapter the page is already open at, where it would
-                  // go nowhere and cost a phone's scene title the room.
-                  onOpenChapter={open ? undefined : () => navigate(`/worlds/${worldId}/timeline/${e.chapterId}`)}
-                  revealNonce={reveal?.id === e.id ? reveal.nonce : undefined}
-                  inWorldDay={inWorldDays?.get(e.id)}
-                  calendar={calendar}
-                />
+                <Fragment key={e.id}>
+                  <EventCard
+                    event={e}
+                    isFirst={i === 0 && !prevChapterId}
+                    isLast={i === sortedEvents.length - 1 && !nextChapterId}
+                    moveUpHint={i === 0 && prevChapterId ? 'Move to the end of the previous chapter' : undefined}
+                    moveDownHint={i === sortedEvents.length - 1 && nextChapterId ? 'Move to the start of the next chapter' : undefined}
+                    onMoveUp={() => moveEvent(e.id, 'up')}
+                    onMoveDown={() => moveEvent(e.id, 'down')}
+                    selection={{ chapterEventIds }}
+                    chapterNumber={chapter.number}
+                    // Not in the chapter the page is already open at, where it would
+                    // go nowhere and cost a phone's scene title the room.
+                    onOpenChapter={open ? undefined : () => navigate(`/worlds/${worldId}/timeline/${e.chapterId}`)}
+                    revealNonce={reveal?.id === e.id ? reveal.nonce : undefined}
+                    revealCaret={reveal?.id === e.id ? reveal.caret : undefined}
+                    inWorldDay={inWorldDays?.get(e.id)}
+                    calendar={calendar}
+                    onStep={onStepFrom ? (dir) => onStepFrom(e.id, dir) : undefined}
+                    onNewAfter={canAddAfter
+                      ? () => setAddingAfter({ afterId: e.id, returnTo: document.activeElement as HTMLElement | null })
+                      : undefined}
+                  />
+                  {addingAfter?.afterId === e.id && (
+                    <NewSceneAfter
+                      onCommit={(title, byKey) => { void commitNewAfter(e.id, title, byKey) }}
+                      onCancel={(byKey) => {
+                        const back = addingAfter.returnTo
+                        setAddingAfter(null)
+                        if (byKey) back?.focus()
+                      }}
+                    />
+                  )}
+                </Fragment>
               ))}
             </div>
           )}
@@ -524,6 +565,47 @@ export function ChapterRow({
         timelineId={chapter.timelineId}
         nextSortOrder={events.length}
       />
+    </div>
+  )
+}
+
+/**
+ * The title of a scene about to be made after another, typed where it will sit.
+ *
+ * Enter makes it; Escape, or leaving it empty, makes nothing. Clicking away
+ * with a title typed keeps it rather than losing it — the same rules as the
+ * binder's new-scene line.
+ */
+function NewSceneAfter({ onCommit, onCancel }: {
+  onCommit: (title: string, byKey: boolean) => void
+  onCancel: (byKey: boolean) => void
+}) {
+  const [value, setValue] = useState('')
+  // Enter commits and the field unmounts, which blurs it: without this the blur
+  // would commit a second time.
+  const done = useRef(false)
+  function finish(commit: boolean, byKey: boolean) {
+    if (done.current) return
+    done.current = true
+    if (commit && value.trim()) onCommit(value.trim(), byKey)
+    else onCancel(byKey)
+  }
+  return (
+    <div className="flex flex-col gap-1 rounded-lg border border-dashed border-[hsl(var(--ring))] bg-[hsl(var(--card))] px-3 py-2">
+      <input
+        autoFocus
+        aria-label="Title for the new scene"
+        placeholder="The new scene's title"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') { e.preventDefault(); finish(true, true) }
+          else if (e.key === 'Escape') { e.preventDefault(); finish(false, true) }
+        }}
+        onBlur={() => finish(true, false)}
+        className="h-7 w-full bg-transparent text-sm font-medium outline-none placeholder:font-normal placeholder:text-[hsl(var(--muted-foreground))]"
+      />
+      <p className="text-[10px] text-[hsl(var(--muted-foreground))]">Enter to make it and start writing · Escape to go back</p>
     </div>
   )
 }

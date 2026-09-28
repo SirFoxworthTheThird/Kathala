@@ -4,6 +4,7 @@ import { wordCount, detectMentions } from '@/lib/manuscript'
 import { formatSceneHeader, parseSceneHeader, splitSceneDraft } from '@/lib/sceneHeader'
 import { splitParagraphs } from '@/lib/manuscriptParagraphs'
 import { useSceneText, setSceneText } from '@/db/hooks/useManuscript'
+import type { SceneShortcut } from '@/lib/sceneStep'
 import { useSceneRevisions } from '@/db/hooks/useSceneRevisions'
 import { SceneDraftEditor } from './SceneDraftEditor'
 import { SceneHistoryDialog } from './SceneHistoryDialog'
@@ -29,7 +30,17 @@ interface SceneDraftSectionProps {
   onAddMention: (characterId: string) => void
   /** Reports the current word count so the card header chip can stay live. */
   onWordsChange?: (words: number) => void
+  /** The scene keys, answered by the Timeline — see `SceneDraftEditor`. */
+  onShortcut?: (shortcut: SceneShortcut) => boolean
+  /** Take focus on arrival, once the text is in. */
+  focusRequest?: { nonce: number; at: 'start' | 'end' } | null
+  /** Whether Ctrl+Enter makes a new scene here, for the hint to say so or not. */
+  canAddAfter?: boolean
 }
+
+const IS_MAC = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform)
+const MOD = IS_MAC ? '⌘' : 'Ctrl+'
+const ALT = IS_MAC ? '⌥' : 'Alt+'
 
 /** Idle gap before an edit is written. Matches Focus mode, which writes the same table. */
 const AUTOSAVE_MS = 1000
@@ -42,6 +53,7 @@ const AUTOSAVE_MS = 1000
  */
 export function SceneDraftSection({
   event, characters, involvedIds, mentionedIds, onAddMention, onWordsChange,
+  onShortcut, focusRequest = null, canAddAfter = false,
 }: SceneDraftSectionProps) {
   const { worldId, id: eventId } = event
   const sceneText = useSceneText(event.id)
@@ -479,6 +491,9 @@ export function SceneDraftSection({
         placeholder={`Write or paste this scene's prose… (@ names a character${canCreateLocation ? ', item or place' : ' or item'}; @@ says who is here)`}
         ariaLabel="Scene prose"
         rows={5}
+        onShortcut={onShortcut}
+        focusRequest={focusRequest}
+        ready={sceneText !== undefined}
       />
       {/*
         Says which of the two states the prose is actually in, rather than
@@ -519,6 +534,17 @@ export function SceneDraftSection({
         */}
         {sceneWords > 0 && (
           <> · {paragraphCount} {paragraphCount === 1 ? 'paragraph' : 'paragraphs'}</>
+        )}
+        {/*
+          Keys nobody can see are keys nobody uses, and these are the ones that
+          keep a writer in the prose. Beside the save state rather than in a
+          tooltip, and only where they work.
+        */}
+        {onShortcut && (
+          <span className="hidden sm:inline">
+            {' · '}<kbd className="font-sans">{MOD}{ALT}↓ ↑</kbd> next or previous scene
+            {canAddAfter && <>{' · '}<kbd className="font-sans">{MOD}Enter</kbd> new scene after</>}
+          </span>
         )}
       </p>
 

@@ -1097,6 +1097,26 @@ puts the time cursor on it, since opening a card by its title leaves the cursor
 where it was. An empty description is a control
 rather than a note: click it and the card opens for editing with the field ready.
 
+**You can go from scene to scene without leaving the draft.** In a scene's
+prose:
+
+| Key | |
+|---|---|
+| **Ctrl+Alt+↓** (⌘⌥↓ on a Mac) | The next scene: this one is saved and folds away, the next one opens — in the next chapter, if this was the last scene of its chapter — and the caret is at the start of its prose, just under the line saying who is there |
+| **Ctrl+Alt+↑** (⌘⌥↑) | The previous scene, with the caret at the end of it, as if the two were one text |
+| **Ctrl+Enter** (⌘Enter) | **A new scene after this one.** Type its title on the line that appears where it will sit and press Enter, and you are in its empty draft; Escape takes you back to where you were |
+
+![Ctrl+Enter in a scene's draft: the new scene's title, typed where it will sit](images/69-scene-keys.png)
+
+The time cursor follows you, as it does from the binder, so the Character
+States are the scene you are in. At the first or last scene of the book the
+arrows do nothing, and your caret stays put. The keys are named under every
+draft, so you need not remember them. While
+[reading](#reading-alongside-a-book), the arrows go only through what you have
+reached and leave your place in the book alone, and Ctrl+Enter makes nothing.
+Under a plot-thread filter Ctrl+Enter makes nothing either, since the new scene
+would carry no thread and so would not be shown.
+
 **Type `@` while writing** to name a character, an item or a place. Pick one and
 the name goes into the prose — no `@tokens` in your manuscript — and it is
 recorded against the scene: a character joins the scene's *mentions*, an item
