@@ -174,7 +174,16 @@ let groupDeletions: DeletionNotice[] = []
  * or none — and so a bulk delete offers one undo rather than one per record.
  * Nesting reuses the outer group.
  */
-export async function journalGroup<T>(fn: () => Promise<T>): Promise<T> {
+export async function journalGroup<T>(
+  fn: () => Promise<T>,
+  /**
+   * `quiet`: no "Deleted …" notice for what the act removed. For an act that
+   * removes a record as a *part* of something else — joining two scenes removes
+   * the second, and has already said so in its confirmation — where the notice
+   * would describe it as a loss.
+   */
+  options: { quiet?: boolean } = {},
+): Promise<T> {
   if (currentGroupId) return fn()
   currentGroupId = generateId()
   groupDeletions = []
@@ -184,7 +193,7 @@ export async function journalGroup<T>(fn: () => Promise<T>): Promise<T> {
     const deletions = groupDeletions
     currentGroupId = null
     groupDeletions = []
-    if (deletions.length > 0) {
+    if (deletions.length > 0 && !options.quiet) {
       announceDeletion({ ...deletions[0], count: deletions.length })
     }
   }

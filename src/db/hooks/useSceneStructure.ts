@@ -139,10 +139,6 @@ export async function joinWithNext(eventId: string): Promise<boolean> {
   const joined = joinProse(firstProse, await proseOf(second.id))
 
   await journalGroup(async () => {
-    await journalUpdate('event', db.events, first.id, { ...mergeSceneFields(first, second), updatedAt: Date.now() }, [], {
-      prose: [{ eventId: first.id, before: firstProse, after: joined || null }],
-    })
-
     for (const { entity, table, key } of PER_SCENE) {
       const t = table()
       const here = await t.where('eventId').equals(first.id).toArray()
@@ -174,7 +170,15 @@ export async function joinWithNext(eventId: string): Promise<boolean> {
 
     // Nothing is left pointing at it but its own prose and history, which go with it.
     await deleteEvent(second.id)
-  })
+
+    /*
+      The joined scene's fields and prose last, so the act undo names is the
+      edit to the scene that remains rather than the removal of the other.
+    */
+    await journalUpdate('event', db.events, first.id, { ...mergeSceneFields(first, second), updatedAt: Date.now() }, [], {
+      prose: [{ eventId: first.id, before: firstProse, after: joined || null }],
+    })
+  }, { quiet: true })
 
   await recomputeSnapshotSortKeysForEvent(first.id)
   await replaceProse(first.worldId, first.id, joined)
