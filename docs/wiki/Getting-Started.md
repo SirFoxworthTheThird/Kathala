@@ -101,6 +101,6 @@ No map image? **Generate locations with AI** builds a whole tree of places as pi
 |---|---|
 | Understand the time cursor properly | [Core Concepts](Core-Concepts) |
 | Write scene prose and read it back as a book | [Manuscript](Manuscript) |
-| See the shape of the story | [Corkboard](Corkboard) · [Structure Board](Structure-Board) |
+| See the shape of the story | [Structure Board](Structure-Board) · the [Manuscript](Timeline)'s binder and pacing curve |
 | Track who knows what | [Knowledge](Knowledge) |
 | Back your work up | [Export and Import](Export-and-Import) |

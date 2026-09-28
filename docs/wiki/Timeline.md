@@ -99,7 +99,7 @@ In a scene's draft, **Ctrl+Alt+↓ / ↑** (⌘⌥ on a Mac) goes to the next or
 
 **Join with next scene…** in a scene's ⋯ menu folds the next scene in the chapter into this one — its prose on the end, its cast in this one, its recorded states moved here (the later kept where both recorded one) and anything pointing at it pointed here. It asks first. One Undo parts them again, as one Undo puts a split back.
 
-Scenes move earlier or later with the ↑ ↓ on their cards; dragging is the [Corkboard](Corkboard)'s.
+Scenes move earlier or later with the ↑ ↓ on their cards, or by dragging them in the [binder](#the-binder).
 
 ---
 
@@ -272,5 +272,5 @@ Deleting a chapter removes its events and all snapshots recorded at them. [Undo]
 ## Related pages
 
 - [Core Concepts](Core-Concepts) — the cursor and inheritance
-- [Corkboard](Corkboard) · [Structure Board](Structure-Board) · [Manuscript](Manuscript)
+- [Structure Board](Structure-Board) · [The book](Manuscript)
 - [Chapter Diff](Chapter-Diff) · [Story Playback](Story-Playback) · [Calendar & Ages](Calendar)

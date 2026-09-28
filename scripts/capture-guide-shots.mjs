@@ -188,11 +188,6 @@ const shots = [
     ready: (page) => page.getByRole('heading', { name: /^Ch\. 1 —/ }),
   },
   {
-    name: '32-corkboard', book: ILIAD, reading: false,
-    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/corkboard`, { waitUntil: 'load' }),
-    ready: (page) => page.getByRole('heading', { name: 'Corkboard' }),
-  },
-  {
     name: '45-structure', book: ILIAD, reading: false,
     go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/structure`, { waitUntil: 'load' }),
     ready: (page) => page.getByRole('heading', { name: 'Structure' }),

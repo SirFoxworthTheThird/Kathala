@@ -105,4 +105,3 @@ The scene keys work in it too: **Ctrl+Alt+↓ / ↑** goes to the next or previo
 
 - [Import a Manuscript](Import-Manuscript) — the reverse trip, bringing a draft in
 - [Dashboard](Dashboard) — writing progress, streaks, deadline projection
-- [Corkboard](Corkboard) — the same scenes as cards

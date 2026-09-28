@@ -217,7 +217,7 @@ costs, are in
    that reads as a chapter (*Chapter 3*, *Part Two*) stays one. The one
    ambiguity left is a single `#` heading followed by `##` headings, which
    reads — as before — as a book title over `##` chapters.
-7. **Remove the Corkboard.** Decided by the author on 28 September 2026, while
+7. **Remove the Corkboard.** *Done.* Decided by the author on 28 September 2026, while
    5a was being tested. The one screen for the book now does what the
    Corkboard was for: the binder reorders scenes and moves them between
    chapters, by drag and by keyboard; every scene card carries its status; the
@@ -234,7 +234,12 @@ costs, are in
    scene, and the chapter totals in `chapterProgress` are the chapter rows'
    too — only `describeBoard`, the Corkboard header's *17 chapters · 74 scenes*, goes with
    it. Nothing is stored for the Corkboard alone — it read and wrote the
-   scenes' own order and status — so no data changes.
+   scenes' own order and status — so no data changes. As built: the two specs
+   about it went, and of the others, `chapterProgress` now changes a scene's
+   status on its own card, `cursorBar` checks the Structure board alone, and the
+   rest only stopped visiting it. Two tests went with the screen rather than
+   being moved, because the thing each pinned — the Corkboard's status pill, and
+   its absence from a reader's navigation — no longer exists anywhere to pin.
 
 Focus mode as the whole document rather than one scene is a candidate after
 step 5, not part of this plan.

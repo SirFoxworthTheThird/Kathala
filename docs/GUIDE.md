@@ -104,28 +104,27 @@ of linking it — an uploaded picture is stored locally and is never fetched.
 9. [Writing on one page](#writing-on-one-page)
 10. [Reading the book](#reading-the-book)
 11. [Opening a chapter](#opening-a-chapter)
-12. [Corkboard](#corkboard)
-13. [The book: goals, reading and export](#the-book-goals-reading-and-export)
-14. [Characters](#characters)
-15. [Cast Balance](#cast-balance)
-16. [Plot Threads](#plot-threads)
-17. [Motifs & Themes](#motifs--themes)
-18. [Structure board](#structure-board)
-19. [Maps](#maps)
-20. [Items](#items)
-21. [Relationships](#relationships)
-22. [Character Arc grid](#character-arc-grid)
-23. [Lore](#lore)
-24. [Factions](#factions)
-25. [Knowledge](#knowledge)
-26. [Search](#search)
-27. [Undo, redo & recent changes](#undo-redo--recent-changes)
-28. [Writer's Brief](#writers-brief)
-29. [Calendar & character ages](#calendar--character-ages)
-30. [Continuity Checker](#continuity-checker)
-31. [World settings & export](#world-settings--export)
-32. [Help](#help)
-33. [Keyboard, screen readers and touch](#keyboard-screen-readers-and-touch)
+12. [The book: goals, reading and export](#the-book-goals-reading-and-export)
+13. [Characters](#characters)
+14. [Cast Balance](#cast-balance)
+15. [Plot Threads](#plot-threads)
+16. [Motifs & Themes](#motifs--themes)
+17. [Structure board](#structure-board)
+18. [Maps](#maps)
+19. [Items](#items)
+20. [Relationships](#relationships)
+21. [Character Arc grid](#character-arc-grid)
+22. [Lore](#lore)
+23. [Factions](#factions)
+24. [Knowledge](#knowledge)
+25. [Search](#search)
+26. [Undo, redo & recent changes](#undo-redo--recent-changes)
+27. [Writer's Brief](#writers-brief)
+28. [Calendar & character ages](#calendar--character-ages)
+29. [Continuity Checker](#continuity-checker)
+30. [World settings & export](#world-settings--export)
+31. [Help](#help)
+32. [Keyboard, screen readers and touch](#keyboard-screen-readers-and-touch)
 
 ---
 
@@ -156,8 +155,7 @@ the timeline it opens. The **X** that jumps back to *All chapters* appears from
 390px up; below that, step back with the arrow or use the timeline.
 
 The bar is there wherever the cursor means something — the Manuscript, the
-Corkboard, the Structure board, the Arc grid, the Calendar, the Lore roster and
-the Maps. It's left off the world dashboard and Settings, which
+Structure board, the Arc grid, the Calendar, the Lore roster and the Maps. It's left off the world dashboard and Settings, which
 have no single moment in them, and off the lore page editor, which is a
 full-height writing surface.
 
@@ -476,8 +474,8 @@ Reading mode also clears out everything that only makes sense to the person
 writing the book, so what is left reads as a companion rather than a workspace
 you have wandered into.
 
-The writing screens — Structure and the Corkboard — step aside, and their
-addresses close with them: typing one in takes you back to the dashboard rather
+The Structure board, a writing screen, steps aside, and its address closes
+with it: typing one in takes you back to the dashboard rather
 than into a screen the book is not yours to edit from. The Manuscript steps
 aside too, but on a book that carries its own text it comes back as **Read**
 (see below). Undo, redo, Recent
@@ -905,9 +903,8 @@ inside it.
   top of a chapter, ↑ moves the scene to the end of the one before; at the
   bottom, ↓ moves it to the start of the one after, and the button says so
   before you press it. Only the very first and very last scenes in the book have
-  nowhere to go. This does the same thing as dragging a card on the
-  [Corkboard](#corkboard), so either route is fine — the arrows just don't need
-  a mouse.
+  nowhere to go. This does the same thing as dragging the scene in the binder,
+  so either route is fine — the arrows just don't need a mouse.
 - **View from here** on a chapter row moves the time cursor to that chapter's
   first moment; it reads **Viewing** while the cursor is inside the chapter, and
   pressing it again goes back to *All chapters*.
@@ -920,8 +917,8 @@ inside it.
   two it means — *Every scene is Final*, or *Least advanced of 5 scenes: Idea*.
 - **A scene's ⋯ menu also moves it.** *Move to chapter…* sends the scene to
   another chapter of the same timeline, picking from a filterable list — the
-  same act as dragging it on the [Corkboard](#corkboard), for when you are
-  already looking at the scene. The chapter it is in is not offered, since that
+  same act as dragging it in the binder, for when you are already looking at
+  the scene. The chapter it is in is not offered, since that
   is not a move.
 - **Join with next scene…**, in the same menu, folds the next scene in the
   chapter into this one: its prose goes on the end after a paragraph break, and
@@ -1464,37 +1461,6 @@ text to an AI assistant (via a copy-paste prompt, like the world generator) and
 have it fill in the scenes, character states, and a dramatic-**tension** rating
 for each scene — the ratings feed the pacing curve in the Manuscript. *Generate*
 drafts a new chapter; *Update* re-derives an existing one from its prose.
-
----
-
-## Corkboard
-
-The **Corkboard** is an index-card view of your whole story — the classic way to
-see structure at a glance and shuffle it. Each chapter is a column; each scene
-is a card showing its title, synopsis, POV character, and **status**
-(Idea → Outline → Draft → Revised → Final).
-
-![Corkboard](images/32-corkboard.png)
-
-- **Drag a card** to reorder scenes within a chapter, or drop it into another
-  chapter's column to move it there — the timeline order updates to match.
-- **Change a scene's status** right on the card with the status pill.
-- **Each card carries its length** once there is prose in it, so long and short
-  scenes are comparable down a column at a glance. A scene that is still only an
-  outline shows nothing rather than *0 words*.
-- **Each column header totals its chapter** — *4 scenes · 3,100 words* — which
-  is the one thing a column cannot show you once its cards scroll.
-- **The header says how big the board is** — *17 chapters · 74 scenes* — and a
-  chevron at each edge moves you about a screenful through it. Each appears only
-  when there is board in that direction, so the right-hand one going away means
-  you have reached the last chapter.
-- **Click a card's title** to jump to that scene in the Manuscript — its chapter
-  open, its card open — with the time cursor set to it.
-- The card for the scene the **time cursor** is on is outlined, so moving along
-  the bar at the bottom walks the board with you.
-
-It's the same scenes as the Manuscript, shown as a board — reorder here or there
-and both stay in sync.
 
 ---
 

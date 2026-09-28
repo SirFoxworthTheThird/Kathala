@@ -35,7 +35,7 @@ Paragraph breaks inside a scene are preserved.
 
 ## What you get
 
-Each parsed scene becomes an **event with its prose attached**. The imported draft therefore flows straight into the [Manuscript](Manuscript) view and reads back as one continuous document, and every scene is immediately available to the [Corkboard](Corkboard), [Structure Board](Structure-Board), and word-count tracking.
+Each parsed scene becomes an **event with its prose attached**. The imported draft therefore flows straight into the [Manuscript](Manuscript) view and reads back as one continuous document, and every scene is immediately available to the [Structure Board](Structure-Board), and word-count tracking.
 
 From there, [Generate / Update Chapter with AI](AI-Generation) can read your prose back and fill in the events' character states and tension ratings.
 
