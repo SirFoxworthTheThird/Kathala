@@ -57,16 +57,21 @@ export interface SyncPlan {
   base: Map<string, Held>
 }
 
+/** Whether the two hold the same chapters and scenes, in the same order. */
+export function sameShape(stored: Map<string, Held>, shown: Map<string, Held>): boolean {
+  const storedIds = [...stored.keys()]
+  const shownIds = [...shown.keys()]
+  return storedIds.length === shownIds.length
+    && storedIds.every((id, i) => id === shownIds[i] && stored.get(id)!.kind === shown.get(id)!.kind)
+}
+
 export function planSync(
   stored: Map<string, Held>,
   base: Map<string, Held>,
   shown: Map<string, Held>,
   inFlight: ReadonlySet<string>,
 ): SyncPlan {
-  const storedIds = [...stored.keys()]
-  const shownIds = [...shown.keys()]
-  const restructure = storedIds.length !== shownIds.length
-    || storedIds.some((id, i) => id !== shownIds[i] || stored.get(id)!.kind !== shown.get(id)!.kind)
+  const restructure = !sameShape(stored, shown)
   const take: string[] = []
   const next = new Map(base)
   for (const [id, now] of stored) {

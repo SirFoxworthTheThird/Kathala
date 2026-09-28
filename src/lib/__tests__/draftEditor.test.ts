@@ -3,7 +3,7 @@ import { EditorSelection, type EditorState, type TransactionSpec } from '@codemi
 import { history, undo, redo } from '@codemirror/commands'
 import {
   draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse,
-  splitSpec, joinSpec, type Refusal, type Join,
+  lineToHeading, joinSpec, clearLine, type Refusal, type Join,
 } from '@/lib/draftEditor'
 import type { DraftChapter } from '@/lib/draftDocument'
 import { splitProse } from '@/lib/sceneStructure'
@@ -128,13 +128,15 @@ describe('what the Page view refuses, whole', () => {
     expect(edit(s0, { changes: { from: end, insert: ' Home' } }).why).toBeNull()
   })
 
-  it('anything above the first chapter, and a line break above a scene that follows its chapter', () => {
+  it('anything above the first chapter, and text above a heading that is not a line break', () => {
     const s0 = fresh()
     expect(edit(s0, { changes: { from: 0, insert: 'x' } }).why).toBe('before-first')
     expect(edit(s0, { changes: { from: 0, insert: '\n' } }).why).toBe('before-first')
-    // "## The quay" follows "# Arrival": a line pushed above it would land under the chapter.
-    expect(edit(s0, { changes: { from: at(s0, '## The quay'), insert: '\n' } }).why).toBe('heading')
+    expect(edit(s0, { changes: { from: at(s0, '## The letter'), insert: 'x' } }).why).toBe('heading')
     expect(edit(s0, { changes: { from: at(s0, '## The letter'), insert: '\n' } }).why).toBeNull()
+    // "## The quay" follows "# Arrival": the line pushed above it is a blank line under the chapter, which may be.
+    expect(edit(s0, { changes: { from: at(s0, '## The quay'), insert: '\n' } }).why).toBeNull()
+    expect(edit(s0, { changes: { from: at(s0, '## The quay'), insert: 'Once\n' } }).why).toBe('chapter-text')
   })
 
   it('does not get in the way of undo, which only steps back to a state the rules allowed', () => {
@@ -201,7 +203,7 @@ describe('joining a scene to the one before it, from the page', () => {
     const from = at(s0, '## The letter')
     const r = joinOf(s0, { changes: { from, to: from + '## The letter'.length } })
     expect(r.why).toBeNull()
-    expect(r.join).toEqual({ id: 's2', into: 's1', at: from })
+    expect(r.join).toEqual({ id: 's2', kind: 'scene', into: 's1', at: from })
     expect(ids(r.state)).toEqual(['c1', 's1', 'c2', 's3'])
     // The seam of blank lines closes up to one paragraph break.
     expect(joinedProse(r.state, 's1', from)).toBe('The ship came in.\n\nWait and hope.')
@@ -222,7 +224,7 @@ describe('joining a scene to the one before it, from the page', () => {
     const from = at(s0, 'came in')
     const to = at(s0, 'Wait')
     const r = joinOf(s0, { changes: { from, to } })
-    expect(r.join).toEqual({ id: 's2', into: 's1', at: from })
+    expect(r.join).toEqual({ id: 's2', kind: 'scene', into: 's1', at: from })
     expect(joinedProse(r.state, 's1', from)).toBe('The ship Wait and hope.')
     // Typed over, the typing lands where the selection was.
     const typed = joinOf(s0, { changes: { from, to, insert: 'sailed. ' } })
@@ -230,12 +232,14 @@ describe('joining a scene to the one before it, from the page', () => {
     expect(joinedProse(typed.state, 's1', from + 'sailed. '.length)).toBe('The ship sailed. Wait and hope.')
   })
 
-  it('refuses the first scene of a chapter, a chapter heading, and two headings at once', () => {
+  it('refuses the first scene of a chapter, the first chapter, and two headings at once', () => {
     const s0 = fresh()
     const quay = at(s0, '## The quay')
     expect(joinOf(s0, { changes: { from: quay, to: quay + '## The quay'.length } }).why).toBe('first-scene')
+    expect(joinOf(s0, { changes: { from: 0, to: '# Arrival'.length } }).why).toBe('first-chapter')
+    // Paired: a later chapter heading, deleted whole, joins its chapter to the one before.
     const ch = at(s0, '# Return')
-    expect(joinOf(s0, { changes: { from: ch, to: ch + '# Return'.length } }).why).toBe('chapter-heading')
+    expect(joinOf(s0, { changes: { from: ch, to: ch + '# Return'.length } }).join).toEqual({ id: 'c2', kind: 'chapter', into: 'c1', at: ch })
     const twoBook: DraftChapter[] = [{ id: 'c1', title: 'A', scenes: [
       { id: 'a', title: 'One', text: 'x' }, { id: 'b', title: 'Two', text: 'y' }, { id: 'c', title: 'Three', text: 'z' },
     ] }]
@@ -269,7 +273,8 @@ describe('a scene heading typed into a scene', () => {
     const entered = type(typed, typed.selection.main.head, '\n')
     expect(entered.field(lineTyped).left).toBe(line)
     expect(typedHeading(entered, line)).toEqual({
-      sceneId: 's1', title: 'The harbour', prose: 'The ship came in.', at: 'The ship came in.'.length,
+      kind: 'split', title: 'The harbour',
+      cut: { sceneId: 's1', sceneTitle: 'The quay', prose: 'The ship came in.', at: 'The ship came in.'.length, tail: false },
     })
     // And once looked at, it is settled.
     expect(entered.update({ effects: settled.of(null) }).state.field(lineTyped).left).toBeNull()
@@ -280,16 +285,22 @@ describe('a scene heading typed into a scene', () => {
     const s0 = draftState(book2)
     const pos = at(s0, 'Second.')
     const typed = type(s0, pos, '## Morning\n\n', pos)
-    expect(typedHeading(typed, pos)).toEqual({ sceneId: 's', title: 'Morning', prose: 'First.\n\nSecond.', at: 'First.'.length })
+    expect(typedHeading(typed, pos)).toEqual({
+      kind: 'split', title: 'Morning',
+      cut: { sceneId: 's', sceneTitle: 'Night', prose: 'First.\n\nSecond.', at: 'First.'.length, tail: true },
+    })
   })
 
-  it('is only a heading with two marks, a space and a title', () => {
+  it('in a scene’s prose, is a scene with two marks, a chapter with one — each with a space and a title — and otherwise prose', () => {
     const s0 = fresh()
     const end = at(s0, 'came in.') + 'came in.'.length
-    for (const [line, isHeading] of [['## Dawn', true], ['##Dawn', false], ['### Dawn', false], ['## ', false], ['# Dawn', false]] as const) {
+    for (const [line, kind] of [
+      ['## Dawn', 'split'], ['# Dawn', 'chapter'],
+      ['##Dawn', null], ['### Dawn', null], ['## ', null], ['#Dawn', null], ['# ', null], ['Dawn', null],
+    ] as const) {
       const typed = type(s0, end, '\n' + line)
       const pos = typed.doc.lineAt(typed.selection.main.head).from
-      expect(typedHeading(typed, pos) !== null, line).toBe(isHeading)
+      expect(typedHeading(typed, pos)?.kind ?? null, line).toBe(kind)
     }
   })
 
@@ -301,7 +312,8 @@ describe('a scene heading typed into a scene', () => {
     // Prose of a scene: yes.
     const end = at(s0, 'Wait and hope.') + 'Wait and hope.'.length
     const typed = type(s0, end, '\n## Evening')
-    expect(typedHeading(typed, typed.doc.lineAt(typed.selection.main.head).from)?.sceneId).toBe('s2')
+    const made = typedHeading(typed, typed.doc.lineAt(typed.selection.main.head).from)
+    expect(made?.kind === 'split' && made.cut.sceneId).toBe('s2')
   })
 
   it('a line of prose that already read `## ` is prose until the writer types on it', () => {
@@ -324,9 +336,10 @@ describe('the page after a split or join shows what the records will hold', () =
     const pos = at(s0, where)
     const typed = type(s0, pos, line)
     const linePos = typed.doc.lineAt(pos).from
-    const cut = typedHeading(typed, linePos)!
-    const done = typed.update(splitSpec(typed, linePos, 'n')).state
-    return { cut, done }
+    const made = typedHeading(typed, linePos)
+    if (made?.kind !== 'split') throw new Error('not a split')
+    const done = typed.update(lineToHeading(typed, linePos, { id: 'n', kind: 'scene' })).state
+    return { cut: made.cut, done }
   }
 
   it('the typed line is the new scene’s heading, and the two scenes read as the split writes them', () => {
@@ -350,7 +363,7 @@ describe('the page after a split or join shows what the records will hold', () =
     const end = at(s0, 'First.') + 'First.'.length
     const typed = type(s0, end, '\n## Dawn\n')
     const linePos = typed.doc.lineAt(end + 1).from
-    const after = typed.update(splitSpec(typed, linePos, 'n')).state
+    const after = typed.update(lineToHeading(typed, linePos, { id: 'n', kind: 'scene' })).state
     expect(texts(after)).toMatchObject({ s: 'First.', n: '', t: 'Later.' })
     expect(after.doc.toString()).toBe('# A\n\n## Night\n\nFirst.\n\n## Dawn\n\n## Next\n\nLater.')
   })
@@ -360,21 +373,21 @@ describe('the page after a split or join shows what the records will hold', () =
     const from = at(s0, '## The letter')
     for (const to of [from + '## The letter'.length, from + '## The letter'.length + 1]) {
       const r = joinOf(s0, { changes: { from, to } })
-      const spec = joinSpec(r.state, 's1', from)
+      const spec = joinSpec(r.state, from)
       const closed = spec ? r.state.update(spec).state : r.state
       expect(closed.doc.toString()).toContain('The ship came in.\n\nWait and hope.')
       expect(texts(closed).s1).toBe(joinedProse(r.state, 's1', from))
     }
     // Paired: a seam mid-line is left alone.
     const mid = joinOf(s0, { changes: { from: at(s0, 'came in'), to: at(s0, 'Wait') } })
-    expect(joinSpec(mid.state, 's1', at(s0, 'came in'))).toBeNull()
+    expect(joinSpec(mid.state, at(s0, 'came in'))).toBeNull()
   })
 
   it('joining onto a scene with no prose leaves one blank line under its heading', () => {
     const s0 = draftState([{ id: 'c', title: 'A', scenes: [{ id: 'a', title: 'One', text: '' }, { id: 'b', title: 'Two', text: 'Words.' }] }])
     const from = at(s0, '## Two')
     const r = joinOf(s0, { changes: { from, to: from + '## Two'.length } })
-    const closed = r.state.update(joinSpec(r.state, 'a', from)!).state
+    const closed = r.state.update(joinSpec(r.state, from)!).state
     expect(closed.doc.toString()).toBe('# A\n\n## One\n\nWords.')
     expect(joinedProse(r.state, 'a', from)).toBe('Words.')
   })
@@ -385,8 +398,91 @@ it('a split at the very end of the book leaves a line to write the new scene on'
   const end = s0.doc.length
   const typed = type(s0, end, '\n## Dawn')
   const linePos = typed.doc.lineAt(end + 1).from
-  const after = typed.update(splitSpec(typed, linePos, 'n')).state
+  const after = typed.update(lineToHeading(typed, linePos, { id: 'n', kind: 'scene' })).state
   expect(after.doc.toString()).toBe('# A\n\n## Night\n\nFirst.\n\n## Dawn\n\n')
   expect(texts(after)).toMatchObject({ s: 'First.', n: '' })
   expect(proseStart(after.doc, after.field(headingsField), 2)).toBe(after.doc.length)
+})
+
+describe('chapters on the page', () => {
+  const twoChapters = (): EditorState => draftState([
+    { id: 'c1', title: 'Arrival', scenes: [{ id: 's1', title: 'Night', text: 'First.\n\nSecond.' }, { id: 's2', title: 'Day', text: 'Later.' }] },
+    { id: 'c2', title: 'Return', scenes: [{ id: 's3', title: 'Last', text: 'The end.' }] },
+  ])
+  const emptyChapter = (): EditorState => draftState([
+    { id: 'c1', title: 'Arrival', scenes: [{ id: 's1', title: 'Night', text: 'First.' }] },
+    { id: 'c2', title: 'Blank', scenes: [] },
+  ])
+
+  it('under a chapter heading, only headings and blank lines may be typed', () => {
+    const s0 = emptyChapter()
+    const end = s0.doc.length
+    expect(edit(s0, { changes: { from: end, insert: '\n\n## Dawn' } }).why).toBeNull()
+    expect(edit(s0, { changes: { from: end, insert: '\n\n# Part two' } }).why).toBeNull()
+    expect(edit(s0, { changes: { from: end, insert: '\n\n#' } }).why).toBeNull()
+    expect(edit(s0, { changes: { from: end, insert: '\n\n' } }).why).toBeNull()
+    expect(edit(s0, { changes: { from: end, insert: '\n\nDawn' } }).why).toBe('chapter-text')
+  })
+
+  it('what a line left under a chapter heading makes', () => {
+    const s0 = emptyChapter()
+    const end = s0.doc.length
+    const left = (line: string) => {
+      const typed = type(s0, end, '\n\n' + line)
+      return typedHeading(typed, typed.doc.lineAt(typed.doc.length).from)
+    }
+    expect(left('## Dawn')).toEqual({ kind: 'first-scene', chapterId: 'c2', title: 'Dawn' })
+    expect(left('# Part two')).toEqual({ kind: 'chapter', chapterId: 'c2', cut: null, title: 'Part two' })
+    expect(left('##')).toEqual({ kind: 'stray' })
+    expect(left('')).toBeNull()
+  })
+
+  it('# and a title in a scene’s prose starts a chapter in that scene’s chapter, cutting the scene there', () => {
+    const s0 = twoChapters()
+    const pos = at(s0, 'Second.')
+    const typed = type(s0, pos, '# Part two\n\n', pos)
+    expect(typedHeading(typed, pos)).toEqual({
+      kind: 'chapter', chapterId: 'c1', title: 'Part two',
+      cut: { sceneId: 's1', sceneTitle: 'Night', prose: 'First.\n\nSecond.', at: 'First.'.length, tail: true },
+    })
+  })
+
+  it('the new chapter’s heading, and the rest of the scene going on under its title, read as the records will', () => {
+    const s0 = twoChapters()
+    const pos = at(s0, 'Second.')
+    const typed = type(s0, pos, '# Part two\n', pos)
+    const after = typed.update(lineToHeading(typed, pos, { id: 'x', kind: 'chapter' }, { id: 'r', title: 'Night' })).state
+    expect(ids(after)).toEqual(['c1', 's1', 'x', 'r', 's2', 'c2', 's3'])
+    expect(titles(after)).toMatchObject({ x: 'Part two', r: 'Night' })
+    expect(texts(after)).toMatchObject({ s1: 'First.', x: null, r: 'Second.', s2: 'Later.' })
+    expect(after.doc.toString()).toContain('First.\n\n# Part two\n\n## Night\n\nSecond.\n\n## Day')
+  })
+
+  it('a line under a chapter that is not a heading is taken away, with its line break', () => {
+    const s0 = emptyChapter()
+    const typed = type(s0, s0.doc.length, '\n\n##')
+    const line = typed.doc.lineAt(typed.doc.length).from
+    const cleared = typed.update(clearLine(typed, line)).state
+    expect(cleared.doc.toString()).toBe(s0.doc.toString() + '\n')
+    expect(texts(cleared)).toEqual(texts(s0))
+  })
+
+  it('Enter on the title of a chapter with no scenes makes the line to type one on', () => {
+    const s0 = emptyChapter()
+    const end = s0.doc.length
+    const moved = s0.update({ selection: EditorSelection.cursor(end) }).state
+    const next = run(moved, enterOnHeading)
+    expect(next.doc.toString()).toBe(s0.doc.toString() + '\n\n')
+    expect(next.selection.main.head).toBe(next.doc.length)
+  })
+
+  it('deleting a chapter heading closes up the seam, and every scene keeps its prose', () => {
+    const s0 = twoChapters()
+    const from = at(s0, '# Return')
+    const r = joinOf(s0, { changes: { from, to: from + '# Return'.length } })
+    expect(ids(r.state)).toEqual(['c1', 's1', 's2', 's3'])
+    const closed = r.state.update(joinSpec(r.state, from)!).state
+    expect(closed.doc.toString()).toContain('Later.\n\n## Last')
+    expect(texts(closed)).toMatchObject({ s1: 'First.\n\nSecond.', s2: 'Later.', s3: 'The end.' })
+  })
 })

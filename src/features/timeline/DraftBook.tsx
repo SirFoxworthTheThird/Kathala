@@ -1,21 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Compartment, Prec, RangeSetBuilder, type EditorState } from '@codemirror/state'
+import { Compartment, Prec, RangeSetBuilder, type EditorState, type TransactionSpec } from '@codemirror/state'
 import { EditorView, Decoration, ViewPlugin, keymap, type DecorationSet, type ViewUpdate } from '@codemirror/view'
 import { history, historyKeymap, defaultKeymap, undoDepth, redoDepth } from '@codemirror/commands'
 import { search, searchKeymap } from '@codemirror/search'
 import { db } from '@/db/database'
 import { setSceneText } from '@/db/hooks/useManuscript'
-import { updateChapter, updateEvent } from '@/db/hooks/useTimeline'
-import { joinWithNext, splitScene } from '@/db/hooks/useSceneStructure'
+import { createEventAt, updateChapter, updateEvent } from '@/db/hooks/useTimeline'
+import { joinChapterToPrevious, joinWithNext, splitScene, startChapter } from '@/db/hooks/useSceneStructure'
 import { useRedoAction, useUndoAction } from '@/features/history'
 import { HEADING_PREFIX, proseStart, lineEndAt, draftBook, type DraftChapter } from '@/lib/draftDocument'
 import {
   draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse,
-  splitSpec, joinSpec, type Refusal, type Join, type TypedHeading,
+  lineToHeading, clearLine, joinSpec, type Refusal, type Join, type Typed,
 } from '@/lib/draftEditor'
 import {
-  storedValues, shownValues, planSync, bookToShow, pendingWrites, afterWrite, sameText, type Held,
+  storedValues, shownValues, planSync, bookToShow, pendingWrites, afterWrite, sameText, sameShape, type Held,
 } from '@/lib/draftSync'
 import { splitProse } from '@/lib/sceneStructure'
 import { generateId } from '@/lib/id'
@@ -49,12 +49,12 @@ import { generateId } from '@/lib/id'
 const AUTOSAVE_MS = 1000
 
 const REFUSALS: Record<Refusal, string> = {
-  'heading': 'A heading goes whole: to join a scene to the one before it, delete its entire line.',
-  'chapter-heading': 'Chapters are not joined or removed from the page yet — use Cards for that.',
+  'heading': 'A heading goes whole: to join it to what is before it, delete its entire line.',
+  'first-chapter': 'This is the first chapter, so there is no chapter before it to join.',
   'first-scene': 'This is the first scene of its chapter, so there is no scene before it to join.',
-  'two-headings': 'Join one scene at a time.',
+  'two-headings': 'Join one at a time.',
   'title-break': 'A title is one line. Enter at the end of a title goes to its prose.',
-  'chapter-text': 'Prose belongs to a scene. Write it under a scene heading.',
+  'chapter-text': 'Under a chapter heading only a heading can go: ## and a title starts its first scene, # and a title a new chapter.',
   'before-first': 'The book starts at its first chapter heading.',
 }
 
@@ -195,13 +195,21 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
     owed: Map<string, Held>
     settle: Map<string, Held | null>
     act: () => Promise<boolean>
-    done: (book: DraftChapter[]) => boolean
   }) {
     const view = viewRef.current
     if (!view || busy.current) return
     if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
+    // The store shows the act once it holds what the act leaves, in the shape the page has.
+    const done = (book: DraftChapter[]) => {
+      const stored = storedValues(book)
+      for (const [id, held] of opts.settle) {
+        const now = stored.get(id)
+        if (held ? !now || !sameText(now.text, held.text) : now) return false
+      }
+      return sameShape(stored, shownValues(draftSegments(view.state)))
+    }
     let settle: (acted: boolean) => void = () => {}
-    const mine = { acting: true, acted: new Promise<boolean>((resolve) => { settle = resolve }), done: opts.done, finish: () => {} }
+    const mine = { acting: true, acted: new Promise<boolean>((resolve) => { settle = resolve }), done, finish: () => {} }
     busy.current = mine
     // The act is the last thing the writer did from the moment they did it: a
     // Ctrl+Z pressed while it is still being written waits for it, then takes it back.
@@ -238,68 +246,96 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
       syncRef.current()
     }
     // The store has shown the act by the time it returns in every split and join
-    // the page spec makes (14 of 14, measured); this waits in case it has not,
-    // and stops waiting in the end.
+    // the page spec made when this was written (14 of 14, measured); this waits
+    // in case it has not, and stops waiting in the end.
     const current = bookRef.current
-    if (!acted || (current && opts.done(current))) { mine.finish(); return }
+    if (!acted || (current && done(current))) { mine.finish(); return }
     setTimeout(mine.finish, 3000)
   }
 
-  function split(typed: TypedHeading, at: number, caretAfter: boolean) {
+  /** Put the caret where the writer goes on under heading `id`. */
+  function caretUnder(view: EditorView, id: string) {
+    const headings = view.state.field(headingsField)
+    const i = headings.findIndex((h) => h.id === id)
+    if (i < 0) return
+    const pos = proseStart(view.state.doc, headings, i) ?? lineEndAt(view.state.doc, headings[i].pos)
+    view.dispatch({ selection: { anchor: pos }, scrollIntoView: true, userEvent: 'select' })
+  }
+
+  /** Make what a typed heading asks for: see `typedHeading`. */
+  function make(typed: Typed, at: number, caretAfter: boolean) {
     const view = viewRef.current
     if (!view) return
-    const owed = shownValues(draftSegments(view.state))
-    const was = owed.get(typed.sceneId)
-    if (!was) return
-    owed.set(typed.sceneId, { ...was, text: typed.prose })
-    const { head, tail } = splitProse(typed.prose, typed.at)
-    const id = generateId()
-    view.dispatch(splitSpec(view.state, at, id))
-    forgetHistory(view)
-    if (caretAfter) {
-      const headings = view.state.field(headingsField)
-      const i = headings.findIndex((h) => h.id === id)
-      const pos = proseStart(view.state.doc, headings, i) ?? lineEndAt(view.state.doc, headings[i].pos)
-      view.dispatch({ selection: { anchor: pos }, scrollIntoView: true, userEvent: 'select' })
+    if (typed.kind === 'stray') {
+      view.dispatch(clearLine(view.state, at))
+      setNotice(REFUSALS['chapter-text'])
+      return
     }
-    void restructure({
-      owed,
-      settle: new Map([
-        [typed.sceneId, { ...was, text: head }],
-        [id, { kind: 'scene', title: typed.title, text: tail }],
-      ]),
-      act: async () => !!(await splitScene(typed.sceneId, typed.at, typed.title, { id })),
-      done: (book) => {
-        const stored = storedValues(book)
-        const first = stored.get(typed.sceneId)
-        const second = stored.get(id)
-        return !!first && !!second && sameText(first.text, head) && sameText(second.text, tail)
-      },
-    })
+    const owed = shownValues(draftSegments(view.state))
+    const settle = new Map<string, Held | null>()
+    let spec: TransactionSpec
+    let act: () => Promise<boolean>
+    let goTo: string
+    if (typed.kind === 'first-scene') {
+      const id = generateId()
+      spec = lineToHeading(view.state, at, { id, kind: 'scene' })
+      settle.set(id, { kind: 'scene', title: typed.title, text: '' })
+      act = async () => !!(await createEventAt(typed.chapterId, 0, typed.title, { id }))
+      goTo = id
+    } else {
+      // The scene the line was typed in is saved without it first, so undo puts back the prose it had.
+      const cut = typed.cut
+      const { head, tail } = cut ? splitProse(cut.prose, cut.at) : { head: '', tail: '' }
+      const was = cut ? owed.get(cut.sceneId) : undefined
+      if (cut && was) {
+        owed.set(cut.sceneId, { ...was, text: cut.prose })
+        settle.set(cut.sceneId, { ...was, text: head })
+      }
+      const id = generateId()
+      if (typed.kind === 'split') {
+        spec = lineToHeading(view.state, at, { id, kind: 'scene' })
+        settle.set(id, { kind: 'scene', title: typed.title, text: tail })
+        act = async () => !!(await splitScene(typed.cut.sceneId, typed.cut.at, typed.title, { id }))
+        goTo = id
+      } else {
+        const rest = cut?.tail ? { id: generateId(), title: cut.sceneTitle } : undefined
+        spec = lineToHeading(view.state, at, { id, kind: 'chapter' }, rest)
+        settle.set(id, { kind: 'chapter', title: typed.title, text: '' })
+        if (rest) settle.set(rest.id, { kind: 'scene', title: rest.title, text: tail })
+        act = async () => !!(await startChapter({
+          chapterId: typed.chapterId, afterSceneId: cut?.sceneId ?? null, title: typed.title, id,
+          split: rest && cut ? { at: cut.at, id: rest.id } : undefined,
+        }))
+        goTo = rest?.id ?? id
+      }
+    }
+    view.dispatch(spec)
+    forgetHistory(view)
+    if (caretAfter) caretUnder(view, goTo)
+    void restructure({ owed, settle, act })
   }
 
   function join(j: Join, before: EditorState, seam: number) {
     const view = viewRef.current
     if (!view) return
-    const prose = joinedProse(view.state, j.into, seam)
-    const spec = joinSpec(view.state, j.into, seam)
+    const spec = joinSpec(view.state, seam)
     const owed = shownValues(draftSegments(view.state))
     const into = owed.get(j.into)
     if (!into) return
     const was = shownValues(draftSegments(before))
     for (const id of [j.into, j.id]) { const v = was.get(id); if (v) owed.set(id, v) }
+    const settle = new Map<string, Held | null>([[j.id, null]])
+    let act: () => Promise<boolean>
+    if (j.kind === 'scene') {
+      const prose = joinedProse(view.state, j.into, seam)
+      settle.set(j.into, { ...into, text: prose })
+      act = () => joinWithNext(j.into, { prose })
+    } else {
+      act = () => joinChapterToPrevious(j.id)
+    }
     if (spec) view.dispatch(spec)
     forgetHistory(view)
-    void restructure({
-      owed,
-      settle: new Map<string, Held | null>([[j.into, { ...into, text: prose }], [j.id, null]]),
-      act: () => joinWithNext(j.into, { prose }),
-      done: (book) => {
-        const stored = storedValues(book)
-        const kept = stored.get(j.into)
-        return !stored.has(j.id) && !!kept && sameText(kept.text, prose)
-      },
-    })
+    void restructure({ owed, settle, act })
   }
 
   function extensions() {
@@ -347,15 +383,16 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
           queueMicrotask(() => join(value, before, seam))
           return
         }
-        // A heading typed into a scene splits it once the caret leaves its line, or the page.
+        // A heading typed below one is made once the caret leaves its line, or the page.
         const { line, left } = u.state.field(lineTyped)
         const blurred = u.focusChanged && !u.view.hasFocus
         const from = left ?? (blurred ? line : null)
         const typed = from !== null && !busy.current ? typedHeading(u.state, from) : null
         if (from !== null && typed) {
-          const place = placeOf(u.state)
-          const after = !blurred && u.state.selection.main.head > u.state.doc.lineAt(from).to && place?.id === typed.sceneId
-          queueMicrotask(() => split(typed, from, after))
+          // Left by going on below it, under the same heading: the writer goes on under the new one.
+          const head = u.state.selection.main.head
+          const after = !blurred && head > u.state.doc.lineAt(from).to && placeAt(u.state, head)?.id === placeAt(u.state, from)?.id
+          queueMicrotask(() => make(typed, from, after))
           return
         }
         if (left !== null) queueMicrotask(() => viewRef.current?.dispatch({ effects: settled.of(null) }))
@@ -434,10 +471,12 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
 
 /** Where the caret is, as a heading and an offset from it — positions do not survive a rebuild. */
 function placeOf(state: EditorState): { id: string; offset: number } | null {
-  const headings = state.field(headingsField)
-  const head = state.selection.main.head
+  return placeAt(state, state.selection.main.head)
+}
+
+function placeAt(state: EditorState, pos: number): { id: string; offset: number } | null {
   let found: { id: string; offset: number } | null = null
-  for (const h of headings) if (h.pos <= head) found = { id: h.id, offset: head - h.pos }
+  for (const h of state.field(headingsField)) if (h.pos <= pos) found = { id: h.id, offset: pos - h.pos }
   return found
 }
 

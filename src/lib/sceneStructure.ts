@@ -3,7 +3,7 @@
  * the writes. The writes are `splitScene` and `joinWithNext` in
  * `src/db/hooks/useSceneStructure.ts`.
  */
-import type { EventStatus, WorldEvent } from '@/types'
+import type { Chapter, EventStatus, WorldEvent } from '@/types'
 import { EVENT_STATUSES } from '@/lib/eventStatus'
 
 /**
@@ -73,5 +73,21 @@ export function mergeSceneFields(first: WorldEvent, second: WorldEvent): Partial
     tension: tensions.length > 0 ? Math.max(...tensions) : null,
     travelDays: days.length > 0 ? days.reduce((a, b) => a + b, 0) : null,
     description: [first.description, second.description].map((d) => d.trim()).filter(Boolean).join(' '),
+  }
+}
+
+/**
+ * The fields of the chapter that remains when `second` is joined onto `first`:
+ * the first's title, both synopses and both sets of notes (the first's, then
+ * the second's), and the two word goals added together — the joined chapter
+ * has both chapters' words to write. A goal only one of them had is kept.
+ */
+export function mergeChapterFields(first: Chapter, second: Chapter): Pick<Chapter, 'synopsis' | 'notes' | 'wordGoal'> {
+  const both = (a: string, b: string) => [a, b].map((t) => t.trim()).filter(Boolean).join('\n\n')
+  const goals = [first.wordGoal, second.wordGoal].filter((g): g is number => g !== null && g !== undefined)
+  return {
+    synopsis: both(first.synopsis, second.synopsis),
+    notes: both(first.notes ?? '', second.notes ?? ''),
+    wordGoal: goals.length > 0 ? goals.reduce((a, b) => a + b, 0) : null,
   }
 }
