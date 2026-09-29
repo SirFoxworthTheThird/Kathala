@@ -108,7 +108,7 @@ Scenes move earlier or later with the ↑ ↓ on their cards, or by dragging the
 **Page**, beside Cards in the header, shows the whole timeline as one document: each chapter a `#` heading, each scene a `##` heading, and the scene's prose under it — the same prose and titles as the cards, not a copy. Write anywhere; what you type is saved to its scene a second after you stop, or when you click away. Edit a heading to retitle its chapter or scene.
 
 - The [binder](#the-binder) moves the page: a scene puts the caret at the start of its prose, a chapter brings its heading to the top.
-- And the page moves the chapter: write, click or step into another chapter and it becomes the open one, its panel beside the page and the time cursor on the scene you are in. The caret stays where you put it.
+- And the page moves the chapter and the time cursor: write, click or step into another chapter and it becomes the open one, its panel beside the page; go into another scene and the time cursor goes there. The caret stays where you put it, and a cursor moved elsewhere from the top bar stays there until you go into another scene.
 - **Enter** on a heading goes to the prose under it; on a chapter heading, to its first scene.
 - **Ctrl+F** (⌘F) searches the whole book. The page only draws what is on screen, so the browser's own find cannot see the rest.
 - **Split a scene by typing `## ` and a title on a line of its own.** When you leave the line, the prose below it becomes a new scene with that title — the same act as **Split** on a card. Nothing happens while you are still typing the line.
