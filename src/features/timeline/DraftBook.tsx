@@ -23,7 +23,7 @@ import { MentionMenu } from './MentionMenu'
 import { HEADING_PREFIX, lineEndAt, draftBook, sceneRegion, type DraftChapter } from '@/lib/draftDocument'
 import {
   draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse,
-  lineToHeading, clearLine, joinSpec, stepScene, openSceneLine, abandonedLine, focusScene, sceneBeside, mentionAt,
+  lineToHeading, clearLine, joinSpec, stepScene, openSceneLine, abandonedLine, focusScene, sceneBeside, mentionAt, placeInBook,
   proseStart, headerLineOf, firstLineOf, headerScenes, showHeader, hideHeader, headerSyncSpec, joinedHeaderSpec,
   type Refusal, type Join, type Typed,
 } from '@/lib/draftEditor'
@@ -123,7 +123,22 @@ const theme = EditorView.theme({
 
 export interface PageTarget { id: string; nonce: number; focus?: boolean }
 
-export default function DraftBook({ worldId, timelineId, target }: { worldId: string; timelineId: string; target: PageTarget | null }) {
+/** Where the writer is in the book: the chapter the caret is in, and the scene, if it is in one. */
+export interface PagePlace { chapterId: string; sceneId: string | null }
+
+export default function DraftBook({ worldId, timelineId, target, open = null, onPlace }: {
+  worldId: string
+  timelineId: string
+  target: PageTarget | null
+  /** The chapter open around the page, if one is. */
+  open?: string | null
+  /** The writer's caret is in a chapter other than `open`: the page around it follows. */
+  onPlace?: (place: PagePlace) => void
+}) {
+  const onPlaceRef = useRef(onPlace)
+  onPlaceRef.current = onPlace
+  const openRef = useRef(open)
+  openRef.current = open
   /*
     Its own queries rather than the Timeline's, which default to an empty list
     while they load: these are `undefined` until they answer, and `draftBook`
@@ -625,6 +640,15 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
         if (u.selectionSet || u.docChanged) {
           noteCaret(u.state)
           showMention(mentionAt(u.state, candidatesRef.current))
+          /*
+            The writer's own moves only — typing, a click, the arrows, the scene
+            keys. The caret starts at the top of the book and is put where the
+            binder sends it; neither is the writer going somewhere.
+          */
+          const own = u.transactions.some((tr) => tr.isUserEvent('select') || tr.isUserEvent('input') || tr.isUserEvent('delete'))
+          const place = own ? placeInBook(u.state, u.state.selection.main.head) : null
+          // Against the chapter open now, not the last one reported: "Whole book" closes it, and going back in opens it again.
+          if (place && place.chapterId !== openRef.current) onPlaceRef.current?.(place)
         }
         if (u.focusChanged && !u.view.hasFocus) showMention(null)
         const effects = u.transactions.flatMap((tr) => tr.effects)

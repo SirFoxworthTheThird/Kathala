@@ -3,7 +3,7 @@ import { EditorSelection, type EditorState, type StateCommand, type TransactionS
 import { history, undo, redo } from '@codemirror/commands'
 import {
   draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse,
-  lineToHeading, joinSpec, clearLine, stepScene, openSceneLine, abandonedLine, focusScene, openedLine, sceneBeside, mentionAt, headerSyncSpec, joinedHeaderSpec, headerScenes, proseStart as proseStartAt, type Refusal, type Join,
+  lineToHeading, joinSpec, clearLine, stepScene, openSceneLine, abandonedLine, focusScene, openedLine, sceneBeside, mentionAt, placeInBook, headerSyncSpec, joinedHeaderSpec, headerScenes, proseStart as proseStartAt, type Refusal, type Join,
 } from '@/lib/draftEditor'
 import type { DraftChapter } from '@/lib/draftDocument'
 import { splitProse } from '@/lib/sceneStructure'
@@ -770,5 +770,16 @@ describe('the header line on the page', () => {
     const joined = tr.state.update(spec).state
     expect(joined.field(headerScenes).has('s2')).toBe(false)
     expect(draftSegments(joined).find((x) => x.id === 's1')!.text.replace(/\n+/g, ' ')).toBe('The ship came in. Wait and hope.')
+  })
+})
+
+describe('where the caret is in the book', () => {
+  it('names the chapter, and the scene when it is in one', () => {
+    const s0 = fresh()
+    expect(placeInBook(s0, at(s0, 'Wait'))).toEqual({ chapterId: 'c1', sceneId: 's2' })
+    expect(placeInBook(s0, at(s0, 'The letter'))).toEqual({ chapterId: 'c1', sceneId: 's2' })
+    expect(placeInBook(s0, at(s0, 'The end.'))).toEqual({ chapterId: 'c2', sceneId: 's3' })
+    // On a chapter's own heading: that chapter, and no scene.
+    expect(placeInBook(s0, at(s0, 'Return'))).toEqual({ chapterId: 'c2', sceneId: null })
   })
 })
