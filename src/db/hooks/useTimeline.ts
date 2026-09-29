@@ -361,8 +361,13 @@ export async function createEventAt(
   })
 }
 
-export async function updateEvent(id: string, data: Partial<Omit<WorldEvent, 'id' | 'createdAt'>>) {
-  await journalUpdate('event', db.events, id, { ...data, updatedAt: Date.now() })
+export async function updateEvent(
+  id: string,
+  data: Partial<Omit<WorldEvent, 'id' | 'createdAt'>>,
+  // A debounced editor — the description typed in the panel beside the Page — folds a burst into one undo step.
+  options: { coalesce?: boolean } = {},
+) {
+  await journalUpdate('event', db.events, id, { ...data, updatedAt: Date.now() }, [], options)
   // If sortOrder changed, recompute sortKeys on all snapshots for this event
   if (data.sortOrder !== undefined) {
     await recomputeSnapshotSortKeysForEvent(id)

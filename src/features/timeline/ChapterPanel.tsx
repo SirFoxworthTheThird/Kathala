@@ -12,6 +12,8 @@ import { chapterWithheld } from '@/lib/chapterReached'
 import { Button } from '@/components/ui/button'
 import { RecordStateInline } from './RecordStateInline'
 import { SnapshotCard } from './SnapshotCard'
+import { SceneDetails } from './SceneDetails'
+import { bringIntoPanelView } from './panelScroll'
 import { EmptyState } from '@/components/EmptyState'
 import type { Chapter, Character, WorldEvent } from '@/types'
 import { useAppStore } from '@/store'
@@ -35,6 +37,7 @@ function EventSnapshotSection({
   characters,
   worldId,
   current,
+  follow,
   onRecordState,
 }: {
   event: WorldEvent
@@ -43,6 +46,8 @@ function EventSnapshotSection({
   worldId: string
   /** The scene the time cursor is at — the one being written, on the Page. */
   current: boolean
+  /** Bring this section into view on becoming current — unless the panel's This scene block is what follows the scene. */
+  follow: boolean
   /** Absent while reading: this is a readout then, not a way in. */
   onRecordState?: (characterId: string, eventId: string) => void
 }) {
@@ -60,15 +65,8 @@ function EventSnapshotSection({
   useEffect(() => {
     if (!current) return
     setOpen(true)
-    const el = sectionRef.current
-    const box = el?.closest<HTMLElement>('[data-follows-scene]')
-    if (!el || !box) return
-    const r = el.getBoundingClientRect()
-    const b = box.getBoundingClientRect()
-    if (r.top >= b.top && r.top < b.bottom - 40) return
-    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    box.scrollTo({ top: Math.max(0, box.scrollTop + r.top - b.top - 8), behavior: reduce ? 'auto' : 'smooth' })
-  }, [current])
+    if (follow) bringIntoPanelView(sectionRef.current)
+  }, [current])  // eslint-disable-line react-hooks/exhaustive-deps
   /**
    * Which character's quick form is open, if any — one at a time, and the same
    * state for both halves of the panel: a gap row recording a state, and a
@@ -219,12 +217,17 @@ function EventSnapshotSection({
  * Keyed on the chapter by its parent, so the fields below start from the
  * chapter they are showing rather than the one before.
  */
-export function ChapterPanel({ chapter, onClose, words, closeAs }: {
+export function ChapterPanel({ chapter, onClose, words, closeAs, sceneDetails = false }: {
   chapter: Chapter
   /** Back to the whole book, with no chapter open — or whatever `closeAs` says. */
   onClose: () => void
   /** What the close button does, where it is not closing the chapter: in a sheet over the page, it closes the sheet. */
   closeAs?: { label: string; title: string }
+  /**
+   * Lead with the details of the scene being written — on the Page, where the
+   * scene's card is not on screen to hold them. See `SceneDetails`.
+   */
+  sceneDetails?: boolean
   /** The chapter's prose so far, for its word goal. */
   words: number
 }) {
@@ -347,6 +350,7 @@ export function ChapterPanel({ chapter, onClose, words, closeAs }: {
   // The rest of the world's characters are not in this chapter, which is
   // ordinary rather than a finding — so the roll-call of them is folded away by
   // default (CD-1) instead of being the panel's dominant content.
+  const currentScene = sortedEvents.find((e) => e.id === activeEventId)
   const missingSnapshots = charactersNotInChapter(characters, sortedEvents, allSnapshots)
   const anyState = hasAnyCharacterState(sortedEvents, allSnapshots, characters)
 
@@ -388,6 +392,8 @@ export function ChapterPanel({ chapter, onClose, words, closeAs }: {
         {close}
       </div>
 
+      {sceneDetails && currentScene && <SceneDetails key={currentScene.id} event={currentScene} />}
+
       {/* Character snapshots — per-event breakdown */}
       <div className="flex flex-col border-b border-[hsl(var(--border))]">
         <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] px-4 py-2">
@@ -418,6 +424,7 @@ export function ChapterPanel({ chapter, onClose, words, closeAs }: {
               characters={characters}
               worldId={worldId}
               current={ev.id === activeEventId}
+              follow={!(sceneDetails && currentScene)}
               onRecordState={gate.active ? undefined : (characterId, eventId) => {
                 // The cursor first, so the panel opens on the scene the gap
                 // is in rather than wherever the writer happened to be.
