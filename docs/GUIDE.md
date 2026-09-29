@@ -1029,8 +1029,13 @@ the page; retitle a chapter or scene by editing its heading.
   page and not yet saved is kept.
 - Page is offered when you are writing in one timeline, in narrative order. It
   is not on *All timelines*, in Chronological order, or in reading mode.
-- Not on the page yet: the scene header line and `@` mentions. Open the
-  scene's card for those.
+- **`@` works on the page** as it does in a scene card's draft: type `@` and a
+  name to pick a character, an item or a place, or `@@` to say a character is
+  in the room. The name goes into the prose, and the record goes against the
+  scene you typed it in. [Opening a chapter](#opening-a-chapter) says what each
+  records. The keys are the card's too: Enter completes a name that exists,
+  and only Tab or a click makes a new one.
+- Not on the page yet: the scene header line. Open the scene's card for that.
 
 ### Reading the book
 

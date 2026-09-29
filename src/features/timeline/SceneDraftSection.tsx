@@ -10,9 +10,9 @@ import { SceneDraftEditor } from './SceneDraftEditor'
 import { SceneHistoryDialog } from './SceneHistoryDialog'
 import { FocusMode, type FocusKeys } from './FocusMode'
 import type { Character, WorldEvent } from '@/types'
-import { useItems, createItem } from '@/db/hooks/useItems'
-import { createCharacter } from '@/db/hooks/useCharacters'
-import { useAllLocationMarkers, createLocationMarker } from '@/db/hooks/useLocationMarkers'
+import { useItems } from '@/db/hooks/useItems'
+import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
+import { recordMention } from '@/db/hooks/useMentions'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { updateEvent } from '@/db/hooks/useTimeline'
 import type { MentionCandidate, MentionSuggestion, MentionIntent } from '@/lib/mentionPicker'
@@ -137,15 +137,6 @@ export function SceneDraftSection({
     ...markers.map((m) => ({ id: m.id, kind: 'location' as const, name: m.name })),
   ], [characters, items, markers])
 
-  /**
-   * Record what was named against this scene, creating the record first when
-   * the row was an offer to create one.
-   *
-   * A **place** is set only when the scene has none: `locationMarkerId` is a
-   * single field, so writing to it over an existing value would silently move
-   * the scene somewhere else on the strength of a word in the prose. Naming a
-   * second place in a scene is ordinary; relocating the scene is not.
-   */
   /*
     A location is a pin, so it only exists on a map: places may be added to
     maps and sub-maps that are already there, and nowhere else. That rule was
@@ -166,94 +157,9 @@ export function SceneDraftSection({
   */
   const canCreateLocation = true
 
-  /**
-   * Record what the writer just asserted by typing.
-   *
-   * Two sigils, two claims. `@Marn` says the name occurs here; `@@Marn` says
-   * he is in the room. Nothing reads the sentence to work that out — the
-   * keystroke is the assertion, which is what keeps this safe in prose full of
-   * negation, hearsay and flashback.
-   */
+  /** Record what was named: see `recordMention`. The card's own mention knows the cast it is editing. */
   async function handlePick(suggestion: MentionSuggestion, intent: MentionIntent) {
-    if (intent === 'present' && suggestion.type === 'existing' && suggestion.kind === 'character') {
-      /*
-        Present, so no longer merely mentioned. The two lists are separate and
-        a character in both is the record contradicting itself — and *mentioned*
-        is the weaker claim, so the stronger one replaces it rather than sitting
-        beside it.
-
-        One `updateEvent`, so one journal operation — a mistyped `@@` is a
-        single undo rather than two.
-
-        **From the toolbar, though, not from Ctrl+Z.** `AppShell` hands the
-        shortcut back to the browser inside an `INPUT` or `TEXTAREA`, on the
-        reasoning that native undo is the one a writer means while typing — and
-        native undo does nothing to a journalled record, so in the prose box
-        the keystroke is inert. This comment claimed the keystroke until a
-        writer measured it.
-      */
-      await updateEvent(eventId, {
-        involvedCharacterIds: [...new Set([...event.involvedCharacterIds, suggestion.id])],
-        mentionedCharacterIds: (event.mentionedCharacterIds ?? []).filter((id) => id !== suggestion.id),
-      })
-      return
-    }
-
-    if (suggestion.type === 'create') {
-      if (suggestion.kind === 'character') {
-        const created = await createCharacter({ worldId, name: suggestion.name, description: '' })
-        /*
-          Created from inside the header, they are *present*, not mentioned —
-          the line has no weaker claim to make. The header would say so on the
-          next blur anyway; saying it here means the record is never briefly
-          wrong, and never wrong at all if the writer closes the tab first.
-        */
-        if (intent === 'present') {
-          await updateEvent(eventId, {
-            involvedCharacterIds: [...new Set([...event.involvedCharacterIds, created.id])],
-          })
-          return
-        }
-        onAddMention(created.id)
-        return
-      }
-      if (suggestion.kind === 'item') {
-        const created = await createItem({
-          worldId, name: suggestion.name, description: '', iconType: 'misc', tags: [],
-        })
-        await updateEvent(eventId, { involvedItemIds: [...new Set([...event.involvedItemIds, created.id])] })
-        return
-      }
-      /*
-        A place goes on a map when there is one to put it on, at the centre —
-        somewhere findable, to be dragged where it belongs. It prefers the
-        scene's own map over the world's first, so a room named while writing a
-        scene set indoors lands on the floor plan rather than the continent.
-
-        **And when there is no map, it is simply made without one.** A place
-        used to be a pin, so this row was withheld entirely from a mapless
-        world and a book set in a kitchen and an office could record neither.
-        An unmapped place is a place all the same: scenes can happen there,
-        characters can be there, and it can be put on a map the day one is
-        drawn.
-      */
-      const home = markers.find((m) => m.id === event.locationMarkerId)
-      const layer = mapLayers.find((l) => l.id === home?.mapLayerId) ?? mapLayers[0]
-      const created = await createLocationMarker({
-        worldId, name: suggestion.name, description: '', iconType: 'landmark',
-        mapLayerId: layer?.id ?? null,
-        ...(layer ? { x: Math.round(layer.imageWidth / 2), y: Math.round(layer.imageHeight / 2) } : {}),
-      })
-      if (!event.locationMarkerId) await updateEvent(eventId, { locationMarkerId: created.id })
-      return
-    }
-
-    if (suggestion.kind === 'character') { onAddMention(suggestion.id); return }
-    if (suggestion.kind === 'item') {
-      await updateEvent(eventId, { involvedItemIds: [...new Set([...event.involvedItemIds, suggestion.id])] })
-      return
-    }
-    if (!event.locationMarkerId) await updateEvent(eventId, { locationMarkerId: suggestion.id })
+    await recordMention(eventId, suggestion, intent, { markers, mapLayers, mention: onAddMention })
   }
 
   /*

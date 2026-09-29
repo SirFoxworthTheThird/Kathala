@@ -3,7 +3,7 @@ import { EditorSelection, type EditorState, type StateCommand, type TransactionS
 import { history, undo, redo } from '@codemirror/commands'
 import {
   draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse,
-  lineToHeading, joinSpec, clearLine, stepScene, openSceneLine, abandonedLine, focusScene, openedLine, sceneBeside, type Refusal, type Join,
+  lineToHeading, joinSpec, clearLine, stepScene, openSceneLine, abandonedLine, focusScene, openedLine, sceneBeside, mentionAt, type Refusal, type Join,
 } from '@/lib/draftEditor'
 import type { DraftChapter } from '@/lib/draftDocument'
 import { splitProse } from '@/lib/sceneStructure'
@@ -613,5 +613,29 @@ describe('the scene keys on the page', () => {
   it('and not from a chapter that has no scenes', () => {
     const bare = draftState([{ id: 'c1', title: 'Empty', scenes: [] }])
     expect(focusScene(bare, 0)).toBeNull()
+  })
+})
+
+describe('"@" on the page', () => {
+  const cast = [{ id: 'm', kind: 'character' as const, name: 'Mercédès' }]
+  /** The book with `typed` put in at `where`, the caret after it. */
+  const typing = (where: string, typed: string) => {
+    const s0 = fresh()
+    const pos = at(s0, where)
+    return s0.update({ changes: { from: pos, insert: typed }, selection: EditorSelection.cursor(pos + typed.length) }).state
+  }
+
+  it('finds the name being typed in a scene’s prose, in the document, and the scene it is in', () => {
+    const s = typing('and hope', 'to @@Mer')
+    const m = mentionAt(s, cast)
+    expect(m).toMatchObject({ query: 'Mer', intent: 'present', sceneId: 's2' })
+    expect(s.doc.sliceString(m!.start, m!.end)).toBe('@@Mer')
+  })
+
+  it('but not on a heading’s line, nor with text selected', () => {
+    expect(mentionAt(typing('letter', '@Mer'), cast)).toBeNull()
+    const s = typing('and hope', '@Mer')
+    expect(mentionAt(s, cast)).not.toBeNull()
+    expect(mentionAt(s.update({ selection: EditorSelection.range(at(s, '@Mer'), at(s, '@Mer') + 4) }).state, cast)).toBeNull()
   })
 })

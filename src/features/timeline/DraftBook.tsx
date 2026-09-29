@@ -12,13 +12,18 @@ import { joinChapterToPrevious, joinWithNext, splitScene, startChapter } from '@
 import { useRedoAction, useUndoAction } from '@/features/history'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
+import { useItems } from '@/db/hooks/useItems'
+import { useMapLayers } from '@/db/hooks/useMapLayers'
+import { recordMention } from '@/db/hooks/useMentions'
+import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
 import { formatSceneHeader } from '@/lib/sceneHeader'
 import { Button } from '@/components/ui/button'
 import { FocusMode } from './FocusMode'
+import { MentionMenu } from './MentionMenu'
 import { HEADING_PREFIX, proseStart, lineEndAt, draftBook, type DraftChapter } from '@/lib/draftDocument'
 import {
   draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse,
-  lineToHeading, clearLine, joinSpec, stepScene, openSceneLine, abandonedLine, focusScene, sceneBeside, type Refusal, type Join, type Typed,
+  lineToHeading, clearLine, joinSpec, stepScene, openSceneLine, abandonedLine, focusScene, sceneBeside, mentionAt, type Refusal, type Join, type Typed,
 } from '@/lib/draftEditor'
 import {
   storedValues, shownValues, planSync, bookToShow, pendingWrites, afterWrite, sameText, sameShape, type Held,
@@ -162,6 +167,28 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
   const caretSceneRef = useRef<string | null>(null)
   const [focus, setFocus] = useState<{ id: string; text: string } | null>(null)
 
+  /*
+    "@" names a character, an item or a place, as in a scene card's draft: the
+    same rows, the same keys, the same records written (`recordMention`). The
+    name is put in the prose and the record against the scene it is typed in.
+  */
+  const items = useItems(worldId)
+  const mapLayers = useMapLayers(worldId)
+  const candidates = useMemo<MentionCandidate[]>(() => [
+    ...characters.map((c) => ({ id: c.id, kind: 'character' as const, name: c.name, aliases: c.aliases })),
+    ...items.map((i) => ({ id: i.id, kind: 'item' as const, name: i.name })),
+    ...markers.map((m) => ({ id: m.id, kind: 'location' as const, name: m.name })),
+  ], [characters, items, markers])
+  // Read from the editor's keys and updates, which are made once.
+  const candidatesRef = useRef(candidates)
+  candidatesRef.current = candidates
+  const placesRef = useRef({ markers, mapLayers })
+  placesRef.current = { markers, mapLayers }
+  type PageMention = NonNullable<ReturnType<typeof mentionAt>>
+  const [mention, setMention] = useState<PageMention | null>(null)
+  const mentionRef = useRef<PageMention | null>(null)
+  const [highlight, setHighlight] = useState(0)
+  const highlightRef = useRef(0)
   /** Every write started and not yet landed, as one promise. */
   const landing = useRef<Promise<unknown>>(Promise.resolve())
 
@@ -366,6 +393,48 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
     void restructure({ owed, settle, act })
   }
 
+  function showMention(next: PageMention | null) {
+    const was = mentionRef.current
+    const same = was === next || (!!was && !!next && was.start === next.start && was.end === next.end
+      && was.query === next.query && was.intent === next.intent && was.sceneId === next.sceneId)
+    if (same) return
+    mentionRef.current = next
+    setMention(next)
+    moveHighlight(0)
+  }
+  function moveHighlight(index: number) { highlightRef.current = index; setHighlight(index) }
+
+  /** The rows for `m`: presence is about people, and `@@` may not invent one — see `MentionPickerOptions`. */
+  function mentionRows(m: PageMention): MentionSuggestion[] {
+    return mentionSuggestions(m.query, candidatesRef.current, {
+      canCreateLocation: true,
+      ...(m.intent === 'present' ? { kinds: ['character'] as const, allowCreate: false } : {}),
+    })
+  }
+
+  /** The plain name into the prose, and the record against the scene. */
+  function chooseMention(suggestion: MentionSuggestion) {
+    const view = viewRef.current
+    const m = mentionRef.current
+    if (!view || !m) return
+    const insert = `${suggestion.type === 'existing' ? suggestion.insert : suggestion.name} `
+    view.dispatch({ changes: { from: m.start, to: m.end, insert }, selection: { anchor: m.start + insert.length }, userEvent: 'input.complete' })
+    showMention(null)
+    void recordMention(m.sceneId, suggestion, m.intent, placesRef.current)
+  }
+
+  /** A key while the picker is open: see `mentionKey`. False leaves it to the page. */
+  function mentionKeyRun(key: string): boolean {
+    const m = mentionRef.current
+    if (!m) return false
+    const action = mentionKey(key, mentionRows(m), highlightRef.current)
+    if (!action) return false
+    if (action.kind === 'highlight') moveHighlight(action.index)
+    else if (action.kind === 'select') chooseMention(action.suggestion)
+    else { showMention(null); return !action.passThrough }
+    return true
+  }
+
   /** Which scene the Focus button would open. */
   function noteCaret(state: EditorState) {
     const id = focusScene(state, state.selection.main.head)
@@ -425,6 +494,7 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
     return [
       undoHistory.current.of(history()),
       Prec.highest(keymap.of([
+        ...['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].map((key) => ({ key, run: () => mentionKeyRun(key) })),
         { key: 'Mod-z', run: journal('undo') },
         { key: 'Mod-Shift-z', run: journal('redo') },
         { key: 'Mod-y', run: journal('redo') },
@@ -444,7 +514,11 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
       headingStyles,
       theme,
       EditorView.updateListener.of((u) => {
-        if (u.selectionSet || u.docChanged) noteCaret(u.state)
+        if (u.selectionSet || u.docChanged) {
+          noteCaret(u.state)
+          showMention(mentionAt(u.state, candidatesRef.current))
+        }
+        if (u.focusChanged && !u.view.hasFocus) showMention(null)
         const effects = u.transactions.flatMap((tr) => tr.effects)
         const why = effects.find((e) => e.is(refused))
         if (why) setNotice(REFUSALS[why.value as Refusal])
@@ -562,7 +636,8 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
         </p>
         {/* The keys a scene card shows under its draft, for the same reason: keys nobody can see are keys nobody uses. */}
         <span className="hidden text-[10px] text-[hsl(var(--muted-foreground))] lg:inline">
-          <kbd className="font-sans">{MOD}{ALT}↓ ↑</kbd> next or previous scene
+          @ names someone · @@ says who is here
+          {' · '}<kbd className="font-sans">{MOD}{ALT}↓ ↑</kbd> next or previous scene
           {' · '}<kbd className="font-sans">{MOD}Enter</kbd> new scene after
           {' · '}<kbd className="font-sans">{MOD}{SHIFT}Enter</kbd> split here
         </span>
@@ -578,6 +653,23 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
         </Button>
       </div>
       <div ref={hostRef} className="min-h-0 flex-1" />
+      {mention && (() => {
+        const rows = mentionRows(mention)
+        return (
+          <MentionMenu
+            matches={rows}
+            highlight={highlight}
+            onHighlight={moveHighlight}
+            onSelect={chooseMention}
+            nobody={rows.length === 0 && mention.query.trim() !== '' ? mention.query.trim() : null}
+            caret={() => {
+              const at = viewRef.current?.coordsAtPos(mention.end)
+              return at ? { top: at.top, left: at.left, lineHeight: at.bottom - at.top } : null
+            }}
+            placeKey={`${mention.start}:${mention.end}`}
+          />
+        )
+      })()}
       {focus && (
         <FocusMode
           key={focus.id}
