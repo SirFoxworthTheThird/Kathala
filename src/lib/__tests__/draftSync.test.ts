@@ -80,6 +80,13 @@ describe('bookToShow', () => {
     const out = bookToShow(book('Changed elsewhere.'), base, shown, new Set(['s2']))
     expect(out[0].scenes.map((s) => s.text)).toEqual(['Unsaved.', 'Changed elsewhere.'])
   })
+
+  it('shows every scene’s header line as the records draw it, the scene the writer changed too', () => {
+    const headed: DraftChapter[] = [{ ...book()[0], scenes: book()[0].scenes.map((s) => ({ ...s, header: `[@@${s.id}]` })) }]
+    const shown = edited(base, 's1', { text: 'Unsaved.' })
+    const out = bookToShow(headed, base, shown, none)
+    expect(out[0].scenes.map((s) => [s.header, s.text])).toEqual([['[@@s1]', 'Unsaved.'], ['[@@s2]', 'Wait and hope.']])
+  })
 })
 
 describe('pendingWrites', () => {

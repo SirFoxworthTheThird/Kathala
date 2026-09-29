@@ -1035,7 +1035,18 @@ the page; retitle a chapter or scene by editing its heading.
   scene you typed it in. [Opening a chapter](#opening-a-chapter) says what each
   records. The keys are the card's too: Enter completes a name that exists,
   and only Tab or a click makes a new one.
-- Not on the page yet: the scene header line. Open the scene's card for that.
+- **The line saying where and who is there too.** Under each scene's title the
+  page shows its header line — `[#The Kitchen @@Wren @@Sal'ka]` — tinted, as a
+  card's draft does, and drawn from the scene's records, so a change made in the
+  cast panel or the setting shows up on it. It is not part of the prose, and is
+  never saved, counted or exported as prose. Edit it and leave the line, and
+  the scene takes what it says; type one as a scene's first line to give it
+  one; delete it to clear your screen, and the scene is left as it was and the
+  line comes back. A name this world has not got leaves the cast alone and is
+  named above the page, with the line kept as you typed it so the spelling can
+  be fixed there. `@` in it offers characters, and keeps the `@@`. Nothing can
+  be typed above it: it stays the first line under the title. Joining a scene
+  takes its line with its heading, rather than leaving it in the prose.
 
 ### Reading the book
 

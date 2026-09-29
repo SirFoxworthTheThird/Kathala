@@ -18,32 +18,53 @@
  * Headings are found by position, never by reading `#` off a line: a line of
  * prose that happens to start with `## ` is prose. Which lines are headings is
  * decided by the records, and the editor carries the positions.
+ *
+ * A scene may also show its **header line** — `[#The Kitchen @@Wren]`, drawn
+ * from its records (`sceneHeader.ts`) — as the first line under its title:
+ *
+ *     ## Scene title
+ *
+ *     [#The Kitchen @@Wren]
+ *
+ *     The scene's prose.
+ *
+ * It is never prose. Which scenes show one is the editor's to say (`headers`),
+ * like the headings, so a scene whose stored prose happens to start with a
+ * bracketed line keeps that line as prose.
  */
 
 import { compareByPosition } from '@/lib/fractionalOrder'
+import { splitSceneHeader } from '@/lib/sceneHeader'
 import type { Chapter, SceneText, WorldEvent } from '@/types'
 
 export type HeadingKind = 'chapter' | 'scene'
 
 export const HEADING_PREFIX: Record<HeadingKind, string> = { chapter: '# ', scene: '## ' }
 
-export interface DraftScene { id: string; title: string; text: string }
+export interface DraftScene {
+  id: string
+  title: string
+  text: string
+  /** The header line drawn from the scene's records; absent or empty for none. */
+  header?: string
+}
 export interface DraftChapter { id: string; title: string; scenes: DraftScene[] }
 
 /** A heading in the document: the record it stands for, and where its line starts. */
 export interface DraftHeading { id: string; kind: HeadingKind; pos: number }
 
-/** What a heading reads as now: its title, and — for a scene — its prose. */
-export interface DraftSegment { id: string; kind: HeadingKind; title: string; text: string }
+/** What a heading reads as now: its title, and — for a scene — its prose and header line. */
+export interface DraftSegment { id: string; kind: HeadingKind; title: string; text: string; header: string | null }
 
 /** A title is one line. A stored one with a line break in it is shown on one. */
 export function oneLine(title: string): string {
   return title.replace(/\r?\n/g, ' ')
 }
 
-export function composeDraft(chapters: DraftChapter[]): { text: string; headings: DraftHeading[] } {
+export function composeDraft(chapters: DraftChapter[]): { text: string; headings: DraftHeading[]; headers: string[] } {
   const parts: string[] = []
   const headings: DraftHeading[] = []
+  const headers: string[] = []
   let length = 0
   const push = (part: string) => {
     if (parts.length > 0) length += 2
@@ -56,10 +77,11 @@ export function composeDraft(chapters: DraftChapter[]): { text: string; headings
     for (const scene of chapter.scenes) {
       headings.push({ id: scene.id, kind: 'scene', pos: length + 2 })
       push(HEADING_PREFIX.scene + oneLine(scene.title))
+      if (scene.header) { headers.push(scene.id); push(scene.header) }
       if (scene.text) push(scene.text)
     }
   }
-  return { text: parts.join('\n\n'), headings }
+  return { text: parts.join('\n\n'), headings, headers }
 }
 
 /** The document, as `readDraft` needs it: a string, or CodeMirror's `Text`. */
@@ -99,19 +121,81 @@ function trimBreaks(s: string, end: 'start' | 'end'): string {
   return out
 }
 
-export function readDraft(input: DraftSource | string, headings: readonly DraftHeading[]): DraftSegment[] {
+/** A scene's part of the document under its title: its header line, if it shows one, and its prose. */
+export interface SceneRegion {
+  /** The header line, when the scene shows one and it still reads as one. */
+  header: string | null
+  /** Where the header line starts, or null with no header. */
+  headerFrom: number | null
+  /** Where the prose starts. */
+  bodyFrom: number
+  /** The prose. */
+  text: string
+}
+
+/**
+ * Scene `index`'s header line and prose. `headers` is the scenes that show a
+ * header line; for them the first line under the title — past any blank lines
+ * — is the header if it still reads as one (`splitSceneHeader`), and prose if
+ * it no longer does, as a scene card's draft box treats it.
+ */
+export function sceneRegion(
+  input: DraftSource | string,
+  headings: readonly DraftHeading[],
+  index: number,
+  headers?: ReadonlySet<string>,
+): SceneRegion {
+  const doc = source(input)
+  const h = headings[index]
+  const lineEnd = lineEndAt(doc, h.pos)
+  const next = headings[index + 1]
+  const region = doc.sliceString(lineEnd, next ? next.pos : doc.length)
+  const trimmed = trimBreaks(region, 'start')
+  const textFrom = lineEnd + region.length - trimmed.length
+  const text = next ? trimBreaks(trimmed, 'end') : trimmed
+  if (headers?.has(h.id)) {
+    const lead = text.length - text.replace(/^\n+/, '').length
+    const split = splitSceneHeader(text.slice(lead))
+    if (split.header) {
+      return { header: split.header, headerFrom: textFrom + lead, bodyFrom: textFrom + text.length - split.body.length, text: split.body }
+    }
+    // Blank lines where the header line was — deleted, say — are not prose either.
+    return { header: null, headerFrom: null, bodyFrom: textFrom + lead, text: text.slice(lead) }
+  }
+  return { header: null, headerFrom: null, bodyFrom: textFrom, text }
+}
+
+/**
+ * Scene `index`'s header line alone — where it starts and what it says — read
+ * no further than it, for the checks that run on every keystroke or save and
+ * must not read the whole scene to do it. Agrees with `sceneRegion`.
+ */
+export function sceneHeaderLine(
+  input: DraftSource | string,
+  headings: readonly DraftHeading[],
+  index: number,
+  headers?: ReadonlySet<string>,
+): { header: string; from: number } | null {
+  const h = headings[index]
+  if (h.kind !== 'scene' || !headers?.has(h.id)) return null
+  const doc = source(input)
+  const lineEnd = lineEndAt(doc, h.pos)
+  const end = headings[index + 1]?.pos ?? doc.length
+  const head = doc.sliceString(lineEnd, Math.min(end, lineEnd + 1024))
+  const lead = head.length - head.replace(/^\n+/, '').length
+  if (lineEnd + lead >= end) return null
+  const { header } = splitSceneHeader(head.slice(lead).split('\n')[0])
+  return header ? { header, from: lineEnd + lead } : null
+}
+
+export function readDraft(input: DraftSource | string, headings: readonly DraftHeading[], headers?: ReadonlySet<string>): DraftSegment[] {
   const doc = source(input)
   return headings.map((h, i) => {
     const titleFrom = h.pos + HEADING_PREFIX[h.kind].length
-    const lineEnd = lineEndAt(doc, h.pos)
-    const next = headings[i + 1]
-    let text = ''
-    if (h.kind === 'scene') {
-      const region = doc.sliceString(lineEnd, next ? next.pos : doc.length)
-      text = trimBreaks(region, 'start')
-      if (next) text = trimBreaks(text, 'end')
-    }
-    return { id: h.id, kind: h.kind, title: doc.sliceString(titleFrom, lineEnd), text }
+    const title = doc.sliceString(titleFrom, lineEndAt(doc, h.pos))
+    if (h.kind !== 'scene') return { id: h.id, kind: h.kind, title, text: '', header: null }
+    const { text, header } = sceneRegion(doc, headings, i, headers)
+    return { id: h.id, kind: h.kind, title, text, header }
   })
 }
 
@@ -121,9 +205,16 @@ export function readDraft(input: DraftSource | string, headings: readonly DraftH
  * has only that blank line, and the caret goes on it; `null` when there is no
  * line to go on at all — a scene with no prose at the very end of the book.
  */
-export function proseStart(input: DraftSource | string, headings: readonly DraftHeading[], index: number): number | null {
+export function proseStart(
+  input: DraftSource | string,
+  headings: readonly DraftHeading[],
+  index: number,
+  headers?: ReadonlySet<string>,
+): number | null {
   const doc = source(input)
-  const lineEnd = lineEndAt(doc, headings[index].pos)
+  // Under the header line, where a scene shows one: the prose is below it.
+  const { headerFrom } = headings[index].kind === 'scene' ? sceneRegion(doc, headings, index, headers) : { headerFrom: null }
+  const lineEnd = lineEndAt(doc, headerFrom ?? headings[index].pos)
   const next = headings[index + 1]
   const two = doc.sliceString(lineEnd, lineEnd + 2)
   if (next) {
@@ -147,6 +238,8 @@ export function draftBook(
   chapters: Chapter[] | undefined,
   events: WorldEvent[] | undefined,
   texts: SceneText[] | undefined,
+  /** Each scene's header line, drawn from its records. */
+  headerOf: (event: WorldEvent) => string = () => '',
 ): DraftChapter[] | null {
   if (!chapters || !events || !texts) return null
   const prose = new Map(texts.map((t) => [t.eventId, t.text]))
@@ -162,6 +255,9 @@ export function draftBook(
       id: c.id,
       title: c.title,
       scenes: [...(byChapter.get(c.id) ?? [])].sort(compareByPosition)
-        .map((e) => ({ id: e.id, title: e.title, text: prose.get(e.id) ?? '' })),
+        .map((e) => {
+          const header = headerOf(e)
+          return { id: e.id, title: e.title, text: prose.get(e.id) ?? '', ...(header ? { header } : {}) }
+        }),
     }))
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Maximize2 } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Compartment, Prec, RangeSetBuilder, type EditorState, type TransactionSpec } from '@codemirror/state'
+import { Compartment, Prec, RangeSetBuilder, type ChangeDesc, type EditorState, type TransactionSpec } from '@codemirror/state'
 import { EditorView, Decoration, ViewPlugin, keymap, type DecorationSet, type ViewUpdate } from '@codemirror/view'
 import { history, historyKeymap, defaultKeymap, undoDepth, redoDepth } from '@codemirror/commands'
 import { search, searchKeymap } from '@codemirror/search'
@@ -16,14 +16,16 @@ import { useItems } from '@/db/hooks/useItems'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { recordMention } from '@/db/hooks/useMentions'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
-import { formatSceneHeader } from '@/lib/sceneHeader'
+import { formatSceneHeader, planHeader, planIsClean } from '@/lib/sceneHeader'
 import { Button } from '@/components/ui/button'
 import { FocusMode } from './FocusMode'
 import { MentionMenu } from './MentionMenu'
-import { HEADING_PREFIX, proseStart, lineEndAt, draftBook, type DraftChapter } from '@/lib/draftDocument'
+import { HEADING_PREFIX, lineEndAt, draftBook, sceneRegion, type DraftChapter } from '@/lib/draftDocument'
 import {
   draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse,
-  lineToHeading, clearLine, joinSpec, stepScene, openSceneLine, abandonedLine, focusScene, sceneBeside, mentionAt, type Refusal, type Join, type Typed,
+  lineToHeading, clearLine, joinSpec, stepScene, openSceneLine, abandonedLine, focusScene, sceneBeside, mentionAt,
+  proseStart, headerLineOf, firstLineOf, headerScenes, showHeader, hideHeader, headerSyncSpec, joinedHeaderSpec,
+  type Refusal, type Join, type Typed,
 } from '@/lib/draftEditor'
 import {
   storedValues, shownValues, planSync, bookToShow, pendingWrites, afterWrite, sameText, sameShape, type Held,
@@ -72,22 +74,29 @@ const REFUSALS: Record<Refusal, string> = {
   'title-break': 'A title is one line. Enter at the end of a title goes to its prose.',
   'chapter-text': 'Under a chapter heading only a heading can go: ## and a title starts its first scene, # and a title a new chapter.',
   'before-first': 'The book starts at its first chapter heading.',
+  'above-header': 'The line under a scene’s title says where it is and who is there, and stays first: write the scene below it.',
 }
 
 /** Heading lines, sized; their `#` marks drawn quieter than the title. Visible part only. */
 const headingStyles = ViewPlugin.fromClass(class {
   decorations: DecorationSet
   constructor(view: EditorView) { this.decorations = this.build(view) }
-  update(u: ViewUpdate) { if (u.docChanged || u.viewportChanged) this.decorations = this.build(u.view) }
+  update(u: ViewUpdate) {
+    const headers = u.transactions.some((tr) => tr.effects.some((e) => e.is(showHeader) || e.is(hideHeader)))
+    if (u.docChanged || u.viewportChanged || headers) this.decorations = this.build(u.view)
+  }
   build(view: EditorView) {
     const b = new RangeSetBuilder<Decoration>()
     const headings = view.state.field(headingsField)
     for (const { from, to } of view.visibleRanges) {
-      for (const h of headings) {
-        if (h.pos < from || h.pos > to) continue
+      headings.forEach((h, i) => {
+        if (h.pos < from || h.pos > to) return
         b.add(h.pos, h.pos, Decoration.line({ class: h.kind === 'chapter' ? 'cm-draft-chapter' : 'cm-draft-scene' }))
         b.add(h.pos, h.pos + HEADING_PREFIX[h.kind].length, Decoration.mark({ class: 'cm-draft-marks' }))
-      }
+        // The header line, tinted as in a card's draft: which part is the book is not a guess.
+        const header = headerLineOf(view.state, i)
+        if (header) b.add(header.from, header.from, Decoration.line({ class: 'cm-draft-header' }))
+      })
     }
     return b.finish()
   }
@@ -101,6 +110,7 @@ const theme = EditorView.theme({
   '.cm-draft-chapter': { fontSize: '1.45em', fontWeight: '600', paddingTop: '1.2em' },
   '.cm-draft-scene': { fontSize: '1.15em', fontWeight: '600', paddingTop: '0.6em' },
   '.cm-draft-marks': { color: 'hsl(var(--muted-foreground))', fontWeight: '400' },
+  '.cm-draft-header': { backgroundColor: 'hsl(var(--primary) / 0.14)', borderRadius: '4px', fontFamily: 'var(--font-body)', fontSize: '0.85em' },
   '.cm-panels': { backgroundColor: 'hsl(var(--card))', color: 'hsl(var(--foreground))' },
   '.cm-panels.cm-panels-top': { borderBottom: '1px solid hsl(var(--border))' },
   '.cm-panel.cm-search': { fontFamily: 'var(--font-body)', fontSize: '0.875rem' },
@@ -122,7 +132,25 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
   const chapters = useLiveQuery(() => db.chapters.where('timelineId').equals(timelineId).toArray(), [timelineId])
   const events = useLiveQuery(() => db.events.where('timelineId').equals(timelineId).toArray(), [timelineId])
   const texts = useLiveQuery(() => db.sceneTexts.where('worldId').equals(worldId).toArray(), [worldId])
-  const book = useMemo(() => draftBook(chapters, events, texts), [chapters, events, texts])
+  const characters = useCharacters(worldId)
+  const markers = useAllLocationMarkers(worldId)
+  /*
+    Each scene's header line, drawn from its records as a scene card draws it:
+    never stored, so a change made anywhere — the cast panel, the setting, `@@`
+    — reaches the page, and the page's line is only ever a view of the records.
+  */
+  const rendered = useMemo(() => new Map((events ?? []).map((e) => [e.id, formatSceneHeader({
+    place: markers.find((m) => m.id === e.locationMarkerId)?.name ?? null,
+    characters: e.involvedCharacterIds
+      .map((id) => characters.find((c) => c.id === id)?.name)
+      .filter((n): n is string => !!n),
+  })])), [events, characters, markers])
+  const renderedRef = useRef(rendered)
+  renderedRef.current = rendered
+  const book = useMemo(
+    () => draftBook(chapters, events, texts, (e) => rendered.get(e.id) ?? ''),
+    [chapters, events, texts, rendered],
+  )
 
   const bookRef = useRef(book)
   bookRef.current = book
@@ -161,8 +189,6 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
     the page takes what it wrote from the store like any other change made
     elsewhere.
   */
-  const characters = useCharacters(worldId)
-  const markers = useAllLocationMarkers(worldId)
   const [caretScene, setCaretScene] = useState<string | null>(null)
   const caretSceneRef = useRef<string | null>(null)
   const [focus, setFocus] = useState<{ id: string; text: string } | null>(null)
@@ -184,11 +210,23 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
   candidatesRef.current = candidates
   const placesRef = useRef({ markers, mapLayers })
   placesRef.current = { markers, mapLayers }
+  const castRef = useRef(characters)
+  castRef.current = characters
+  /** Scenes whose header line names somebody this world has not got: kept as typed, so the spelling can be fixed. */
+  const keptHeaders = useRef(new Set<string>())
+  /**
+   * Scenes whose header line has just been applied, with each one's line as the
+   * records drew it then: until the records change, the page's line is newer
+   * than theirs, and bringing it into step would take back what was typed.
+   */
+  const settling = useRef(new Map<string, { was: string; at: number }>())
+  const [headerWarning, setHeaderWarning] = useState<string | null>(null)
   type PageMention = NonNullable<ReturnType<typeof mentionAt>>
   const [mention, setMention] = useState<PageMention | null>(null)
   const mentionRef = useRef<PageMention | null>(null)
   const [highlight, setHighlight] = useState(0)
   const highlightRef = useRef(0)
+
   /** Every write started and not yet landed, as one promise. */
   const landing = useRef<Promise<unknown>>(Promise.resolve())
 
@@ -313,7 +351,7 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
     const headings = view.state.field(headingsField)
     const i = headings.findIndex((h) => h.id === id)
     if (i < 0) return
-    const pos = proseStart(view.state.doc, headings, i) ?? lineEndAt(view.state.doc, headings[i].pos)
+    const pos = proseStart(view.state, i) ?? lineEndAt(view.state.doc, headings[i].pos)
     view.dispatch({ selection: { anchor: pos }, scrollIntoView: true, userEvent: 'select' })
   }
 
@@ -370,9 +408,16 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
     void restructure({ owed, settle, act })
   }
 
-  function join(j: Join, before: EditorState, seam: number) {
+  function join(j: Join, before: EditorState, seam: number, changes: ChangeDesc) {
     const view = viewRef.current
     if (!view) return
+    // The joined scene's header line first: left where it was, it would be read as the prose it joined.
+    const header = j.kind === 'scene' ? joinedHeaderSpec(before, changes, j.id) : null
+    if (header) {
+      const tr = view.state.update(header)
+      view.dispatch(tr)
+      seam = tr.changes.mapPos(seam, -1)
+    }
     const spec = joinSpec(view.state, seam)
     const owed = shownValues(draftSegments(view.state))
     const into = owed.get(j.into)
@@ -393,10 +438,67 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
     void restructure({ owed, settle, act })
   }
 
+  /**
+   * Bring the header lines into step with the records — except the one the
+   * caret is on, which the writer may be typing, and any kept as typed.
+   */
+  function syncHeaders() {
+    const view = viewRef.current
+    if (!view || busy.current) return
+    const skip = new Set(keptHeaders.current)
+    for (const [id, { was, at }] of settling.current) {
+      if ((renderedRef.current.get(id) ?? '') === was && Date.now() - at < 3000) skip.add(id)
+      else settling.current.delete(id)
+    }
+    const here = firstLineOf(view.state, view.state.doc.lineAt(view.state.selection.main.head).from)
+    if (here) skip.add(here.id)
+    const spec = headerSyncSpec(view.state, renderedRef.current, skip)
+    if (spec) view.dispatch(spec)
+  }
+
+  /**
+   * Scene `id`'s first line has been left: make the records say what its
+   * header line says, as a scene card does when its box is left. A line that
+   * does not read as a header changes nothing — deleting it clears the screen,
+   * not the cast — and the records' own line comes back. One that names
+   * somebody this world has not got is kept as typed, and said.
+   */
+  async function applyHeader(id: string) {
+    const view = viewRef.current
+    if (!view || busy.current) return
+    const headings = view.state.field(headingsField)
+    const i = headings.findIndex((h) => h.id === id)
+    if (i < 0) return
+    const { header } = sceneRegion(view.state.doc, headings, i, new Set([id]))
+    if (!header) { forgetKept(id); syncHeaders(); return }
+    if (!view.state.field(headerScenes).has(id)) view.dispatch({ effects: showHeader.of(id) })
+    // Before anything is awaited: the page catches up with the records straight after this starts.
+    settling.current.set(id, { was: renderedRef.current.get(id) ?? '', at: Date.now() })
+    const event = await db.events.get(id)
+    if (!event) { settling.current.delete(id); return }
+    const plan = planHeader(header, { characters: castRef.current, places: placesRef.current.markers }, {
+      involved: event.involvedCharacterIds, mentioned: event.mentionedCharacterIds ?? [], place: event.locationMarkerId,
+    })
+    if (planIsClean(plan)) forgetKept(id)
+    else {
+      keptHeaders.current.add(id)
+      const names = [...plan.unknown.names, ...(plan.unknown.place ? [plan.unknown.place] : [])].map((n) => `“${n}”`).join(' or ')
+      const left = plan.unknown.names.length > 0 && plan.unknown.place !== null ? 'the scene was left as it was'
+        : plan.unknown.names.length > 0 ? 'the cast was left as it was' : 'the setting was left as it was'
+      setHeaderWarning(`Nothing in this world is called ${names} — ${left}, so the spelling can be fixed on the line.`)
+    }
+    // A change reaches the line through the records; with none, the line is put as the records draw it.
+    if (plan.update) await updateEvent(id, plan.update)
+    else { settling.current.delete(id); syncHeaders() }
+  }
+  function forgetKept(id: string) {
+    if (keptHeaders.current.delete(id) && keptHeaders.current.size === 0) setHeaderWarning(null)
+  }
+
   function showMention(next: PageMention | null) {
     const was = mentionRef.current
     const same = was === next || (!!was && !!next && was.start === next.start && was.end === next.end
-      && was.query === next.query && was.intent === next.intent && was.sceneId === next.sceneId)
+      && was.query === next.query && was.intent === next.intent && was.sceneId === next.sceneId && was.inHeader === next.inHeader)
     if (same) return
     mentionRef.current = next
     setMention(next)
@@ -404,11 +506,15 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
   }
   function moveHighlight(index: number) { highlightRef.current = index; setHighlight(index) }
 
-  /** The rows for `m`: presence is about people, and `@@` may not invent one — see `MentionPickerOptions`. */
+  /**
+   * The rows for `m`: presence is about people, and out in the prose `@@` may
+   * not invent one — see `MentionPickerOptions`. In the header line naming
+   * somebody is saying they are present, and a new one may be made there.
+   */
   function mentionRows(m: PageMention): MentionSuggestion[] {
     return mentionSuggestions(m.query, candidatesRef.current, {
       canCreateLocation: true,
-      ...(m.intent === 'present' ? { kinds: ['character'] as const, allowCreate: false } : {}),
+      ...(m.intent === 'present' || m.inHeader ? { kinds: ['character'] as const, allowCreate: m.inHeader } : {}),
     })
   }
 
@@ -417,10 +523,12 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
     const view = viewRef.current
     const m = mentionRef.current
     if (!view || !m) return
-    const insert = `${suggestion.type === 'existing' ? suggestion.insert : suggestion.name} `
+    const name = suggestion.type === 'existing' ? suggestion.insert : suggestion.name
+    // In the header line the sigil is its syntax, not a trigger to be consumed.
+    const insert = m.inHeader ? `@@${name} ` : `${name} `
     view.dispatch({ changes: { from: m.start, to: m.end, insert }, selection: { anchor: m.start + insert.length }, userEvent: 'input.complete' })
     showMention(null)
-    void recordMention(m.sceneId, suggestion, m.intent, placesRef.current)
+    void recordMention(m.sceneId, suggestion, m.inHeader ? 'present' : m.intent, placesRef.current)
   }
 
   /** A key while the picker is open: see `mentionKey`. False leaves it to the page. */
@@ -535,7 +643,8 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
           const value = j.value as Join
           const seam = u.changes.mapPos(value.at, -1)
           const before = u.startState
-          queueMicrotask(() => join(value, before, seam))
+          const changes = u.changes
+          queueMicrotask(() => join(value, before, seam, changes))
           return
         }
         // A heading typed below one is made once the caret leaves its line, or the page.
@@ -560,7 +669,14 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
           })
           return
         }
-        if (left !== null) queueMicrotask(() => viewRef.current?.dispatch({ effects: settled.of(null) }))
+        // A scene's first line, left: its header line, applied — or one just typed there, made one.
+        const first = from !== null ? firstLineOf(u.state, from) : null
+        if (first) queueMicrotask(() => { void applyHeader(first.id) })
+        if (left !== null) queueMicrotask(() => {
+          viewRef.current?.dispatch({ effects: settled.of(null) })
+          // The page catches up with the records once the writer is off a line: a header line deleted comes back.
+          syncHeaders()
+        })
         if (blurred) void saveRef.current()
       }),
     ]
@@ -592,12 +708,14 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
     const shown = shownValues(draftSegments(view.state))
     const plan = planSync(storedValues(current), baseRef.current, shown, inFlight.current)
     baseRef.current = plan.base
-    if (!plan.restructure && plan.take.length === 0) return
-    const place = placeOf(view.state)
-    const scroll = view.scrollSnapshot()
-    view.setState(draftState(bookToShow(current, plan.base, shown, new Set(plan.take)), extensionsRef.current()))
-    const at = positionOf(view.state, place)
-    if (at !== null) view.dispatch({ selection: { anchor: at }, effects: scroll })
+    if (plan.restructure || plan.take.length > 0) {
+      const place = placeOf(view.state)
+      const scroll = view.scrollSnapshot()
+      view.setState(draftState(bookToShow(current, plan.base, shown, new Set(plan.take)), extensionsRef.current()))
+      const at = positionOf(view.state, place)
+      if (at !== null) view.dispatch({ selection: { anchor: at }, effects: scroll })
+    }
+    syncHeaders()
   }
   const syncRef = useRef(sync)
   syncRef.current = sync
@@ -616,7 +734,7 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
     const i = headings.findIndex((h) => h.id === target.id)
     if (i < 0) return
     const at = headings[i].kind === 'scene'
-      ? (proseStart(view.state.doc, headings, i) ?? lineEndAt(view.state.doc, headings[i].pos))
+      ? (proseStart(view.state, i) ?? lineEndAt(view.state.doc, headings[i].pos))
       : headings[i].pos
     view.dispatch({
       selection: { anchor: at },
@@ -632,7 +750,7 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center gap-3 px-4 py-1">
         <p role="status" className="min-h-[1.5rem] flex-1 text-xs text-[hsl(var(--muted-foreground))]">
-          {notice ?? (book && book.length === 0 ? 'No chapters yet — add one to write in.' : '')}
+          {notice ?? headerWarning ?? (book && book.length === 0 ? 'No chapters yet — add one to write in.' : '')}
         </p>
         {/* The keys a scene card shows under its draft, for the same reason: keys nobody can see are keys nobody uses. */}
         <span className="hidden text-[10px] text-[hsl(var(--muted-foreground))] lg:inline">

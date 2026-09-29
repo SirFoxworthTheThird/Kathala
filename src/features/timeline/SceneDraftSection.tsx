@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { PenLine, History, Maximize2, Plus } from 'lucide-react'
 import { wordCount, detectMentions } from '@/lib/manuscript'
-import { formatSceneHeader, parseSceneHeader, splitSceneDraft } from '@/lib/sceneHeader'
+import { formatSceneHeader, planHeader, planIsClean, splitSceneDraft } from '@/lib/sceneHeader'
 import { splitParagraphs } from '@/lib/manuscriptParagraphs'
 import { useSceneText, setSceneText } from '@/db/hooks/useManuscript'
 import type { SceneShortcut } from '@/lib/sceneStep'
@@ -231,56 +231,13 @@ export function SceneDraftSection({
       recommends for clearing your screen.
     */
     if (!header) { setHeaderUnknown({ names: [], place: null }); return true }
-    const parsed = parseSceneHeader(header)
-
-    const matches = (name: string, against: string, aliases?: string[]) =>
-      against.toLowerCase() === name.toLowerCase()
-      || !!aliases?.some((a) => a.toLowerCase() === name.toLowerCase())
-
-    const found = parsed.characters.map((n) => ({
-      name: n, record: characters.find((c) => matches(n, c.name, c.aliases)),
-    }))
-    const place = parsed.place
-      ? markers.find((m) => matches(parsed.place!, m.name))
-      : undefined
-    const unmatched = found.filter((f) => !f.record).map((f) => f.name)
-    const unknownPlace = parsed.place && !place ? parsed.place : null
-    setHeaderUnknown({ names: unmatched, place: unknownPlace })
-    const clean = unmatched.length === 0 && unknownPlace === null
-
-    /*
-      A place the header names but the world does not have keeps the setting
-      it had: the writer meant to put the scene somewhere, and clearing it
-      would answer a typo by throwing away the answer.
-
-      That sentence is true of people word for word, and people were the case
-      that dropped. `@@Juno Skeling` took Juno Skelling out of the scene, and
-      so did the comma a writer puts between names by habit — one mistyped
-      letter, and somebody was no longer in the room. So a header naming
-      anybody this world cannot answer leaves the cast alone and says so; the
-      names stay on the line, where the letter can be fixed in place.
-    */
-    const nextCast = unmatched.length > 0
-      ? involvedIds
-      : found.flatMap((f) => (f.record ? [f.record.id] : []))
-    const nextPlace = parsed.place ? (place?.id ?? event.locationMarkerId) : null
-    const castUnchanged = nextCast.length === involvedIds.length
-      && nextCast.every((id, i) => involvedIds[i] === id)
-    if (castUnchanged && nextPlace === event.locationMarkerId) return clean
-
-    await updateEvent(eventId, {
-      involvedCharacterIds: nextCast,
-      /*
-        Presence replaces a mention rather than sitting beside it, which is
-        what `@@` in the prose does and what the guide promises of both. The
-        header used to leave a character in the cast *and* in the mentioned
-        list — two mutually exclusive claims, in one record, that nothing
-        reported.
-      */
-      mentionedCharacterIds: mentionedIds.filter((id) => !nextCast.includes(id)),
-      locationMarkerId: nextPlace,
+    // The rules themselves are `planHeader`'s, shared with the Manuscript's Page.
+    const plan = planHeader(header, { characters, places: markers }, {
+      involved: involvedIds, mentioned: mentionedIds, place: event.locationMarkerId,
     })
-    return clean
+    setHeaderUnknown(plan.unknown)
+    if (plan.update) await updateEvent(eventId, plan.update)
+    return planIsClean(plan)
   }
 
   async function saveScene() {

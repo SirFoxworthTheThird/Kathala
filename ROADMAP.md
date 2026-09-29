@@ -50,10 +50,6 @@ keeps this file about what is left without pretending the work never happened.
 
 ### Owed by the one screen for the book
 
-- **The scene tools on the Page.** The scene keys, Focus mode and `@`
-  mentions are there. The scene header line (`[#Place @@Name]`) is still only
-  on the scene cards, so a writer drafting on the Page has to switch to Cards
-  for it.
 - **Timing on real hardware.** The spike measured the editor in a container,
   and the phone test proves the Page works at 390 px, not how fast it is. It
   needs a run on a real machine and a real phone.
