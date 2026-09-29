@@ -962,7 +962,7 @@ and the same titles. Write anywhere in it. What you type is saved to the scene
 it sits under a second after you stop typing, or as soon as you click away from
 the page; retitle a chapter or scene by editing its heading.
 
-![The Manuscript's Page: the binder, the book as one document, and the open chapter's panel](images/72-page-view.png)
+![The Manuscript's Page: the binder, the book as one document, and the open chapter's panel led by the scene being written](images/72-page-view.png)
 
 - **The binder moves the page.** Pick a scene and the page goes to it, with the
   caret at the start of its prose; pick a chapter and its heading comes to the
