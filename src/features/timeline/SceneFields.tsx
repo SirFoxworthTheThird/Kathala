@@ -1,5 +1,5 @@
 import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
-import { X, UserMinus, PackageMinus, MapPin, Tag, Package, Eye, History, Flame, Milestone, AtSign, Spline, Sparkle } from 'lucide-react'
+import { X, Plus, UserMinus, PackageMinus, MapPin, Tag, Package, Eye, History, Flame, Milestone, AtSign, Spline, Sparkle } from 'lucide-react'
 import { TENSION_LEVELS, tensionColor, tensionLabel } from '@/lib/tension'
 import { STORY_BEATS, beatById, beatActColor } from '@/lib/storyBeats'
 import { EVENT_STATUSES, eventStatusConfig } from '@/lib/eventStatus'
@@ -534,6 +534,37 @@ export function StatusField({ value, onChange }: { value: EventStatus; onChange:
           </button>
         ))}
       </div>
+    </div>
+  )
+}
+
+/**
+ * Characters named in the scene's prose but on it neither as present nor as
+ * mentioned: one click records them as mentioned.
+ *
+ * Mentioned, not present — see the note where the scene draft uses this. Being
+ * in the room is a deliberate act, and the cast picker is beside it for that.
+ */
+export function NamedInTextField({ names, onAdd }: {
+  names: Array<{ characterId: string; name: string; count: number }>
+  onAdd: (characterId: string) => void
+}) {
+  if (names.length === 0) return null
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
+        Named in the text — click to record as mentioned:
+      </span>
+      {names.map((m) => (
+        <button
+          key={m.characterId}
+          onClick={() => onAdd(m.characterId)}
+          className="flex items-center gap-1 rounded-full border border-dashed border-[hsl(var(--border))] px-2 py-0.5 text-[10px] text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--ring))] hover:text-[hsl(var(--foreground))] transition-colors"
+          title={`${m.name} appears ${m.count}× in this draft — record as mentioned. If they are in the room, add them to the cast instead.`}
+        >
+          <Plus className="h-2.5 w-2.5" /> {m.name}
+        </button>
+      ))}
     </div>
   )
 }

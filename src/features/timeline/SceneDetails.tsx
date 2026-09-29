@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, FolderInput, History, Trash2 } from 'lucide-react'
 import type { WorldEvent } from '@/types'
-import { updateEvent } from '@/db/hooks/useTimeline'
+import { deleteEvent, updateEvent } from '@/db/hooks/useTimeline'
+import { useSceneText } from '@/db/hooks/useManuscript'
+import { useSceneRevisions } from '@/db/hooks/useSceneRevisions'
+import { detectMentions } from '@/lib/manuscript'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
@@ -9,10 +12,14 @@ import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { useMotifs } from '@/db/hooks/useMotifs'
 import { nextTension, parseInWorldDay, parseTravelDays } from '@/lib/sceneFields'
 import { Textarea } from '@/components/ui/textarea'
+import { Menu, MenuItem } from '@/components/ui/menu'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import {
   SettingField, TagsField, CastField, MentionsField, ThreadsField, MotifsField, ItemsField,
-  PovField, TimeField, FlashbackField, BeatField, TensionField, StatusField,
+  PovField, TimeField, FlashbackField, BeatField, TensionField, StatusField, NamedInTextField,
 } from './SceneFields'
+import { SceneHistoryDialog } from './SceneHistoryDialog'
+import { MoveSceneDialog } from './MoveSceneDialog'
 import { bringIntoPanelView } from './panelScroll'
 
 /** Idle gap before the description is written — the chapter panel's synopsis and notes wait as long. */
@@ -26,6 +33,10 @@ const SAVE_DELAY = 600
  * and what is carried through it; and, folded away, its beat, time, flashback,
  * tags, threads and motifs. Before this, a writer drafting on the Page left for
  * Cards to mark a scene final or take somebody out of it.
+ *
+ * And what the card offers around them: the scene's earlier drafts, the
+ * names its prose uses that it has not recorded, and — behind a menu, as on
+ * the card — moving it to another chapter or deleting it.
  *
  * Every change is written as it is made, one step of undo each — there is no
  * Save here, as there is none for the prose beside it. The description, typed
@@ -44,6 +55,11 @@ export function SceneDetails({ event }: { event: WorldEvent }) {
   const threads = usePlotThreads(worldId)
   const motifs = useMotifs(worldId)
   const [more, setMore] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [moveOpen, setMoveOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const sceneText = useSceneText(event.id)
+  const revisions = useSceneRevisions(event.id)
   const sectionRef = useRef<HTMLElement>(null)
 
   // Arriving at a scene brings its details into view, if the writer had scrolled the panel away from them.
@@ -88,6 +104,18 @@ export function SceneDetails({ event }: { event: WorldEvent }) {
   const motifIds = event.motifIds ?? []
   const present = characters.filter((c) => involvedIds.includes(c.id))
   const others = characters.filter((c) => !involvedIds.includes(c.id))
+  /*
+    Read from the saved prose, so a name typed on the page is offered here a
+    moment later, once the page has written it — the draft beside a card reads
+    what is in its box, which is the same text sooner.
+  */
+  const namedInText = detectMentions(sceneText?.text ?? '', characters)
+    .filter((m) => !involvedIds.includes(m.characterId) && !mentionedIds.includes(m.characterId))
+  const addMention = (id: string) => {
+    // Somebody in the scene is not merely mentioned in it — the card's rule, for the same reason.
+    if (!involvedIds.includes(id) && !mentionedIds.includes(id)) set({ mentionedCharacterIds: [...mentionedIds, id] })
+  }
+  const sceneName = event.title || 'this scene'
 
   return (
     <section
@@ -95,9 +123,25 @@ export function SceneDetails({ event }: { event: WorldEvent }) {
       aria-label="This scene"
       className="flex flex-col gap-3 border-b border-[hsl(var(--border))] p-3"
     >
-      <div className="flex flex-col">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">This scene</span>
-        <h3 className="truncate text-sm font-semibold">{event.title || 'Untitled scene'}</h3>
+      <div className="flex items-start gap-1">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="text-[10px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">This scene</span>
+          <h3 className="truncate text-sm font-semibold">{event.title || 'Untitled scene'}</h3>
+        </div>
+        {revisions.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setHistoryOpen(true)}
+            className="flex shrink-0 items-center gap-1 rounded px-1.5 py-1 text-[11px] text-[hsl(var(--muted-foreground))] transition-colors hover:text-[hsl(var(--foreground))]"
+            title="Earlier drafts of this scene"
+          >
+            <History className="h-3 w-3" aria-hidden="true" /> History ({revisions.length})
+          </button>
+        )}
+        <Menu label={`More actions for “${sceneName}”`} triggerClassName="h-7 w-7">
+          <MenuItem icon={FolderInput} label="Move to chapter…" onClick={() => setMoveOpen(true)} />
+          <MenuItem icon={Trash2} label="Delete scene" danger onClick={() => setDeleteOpen(true)} />
+        </Menu>
       </div>
 
       <StatusField value={event.status ?? 'draft'} onChange={(status) => set({ status })} />
@@ -131,10 +175,10 @@ export function SceneDetails({ event }: { event: WorldEvent }) {
       <MentionsField
         mentioned={characters.filter((c) => mentionedIds.includes(c.id))}
         available={characters.filter((c) => !mentionedIds.includes(c.id) && !involvedIds.includes(c.id))}
-        // Somebody in the scene is not merely mentioned in it — the card's rule, for the same reason.
-        onAdd={(id) => { if (!involvedIds.includes(id) && !mentionedIds.includes(id)) set({ mentionedCharacterIds: [...mentionedIds, id] }) }}
+        onAdd={addMention}
         onRemove={(id) => set({ mentionedCharacterIds: mentionedIds.filter((x) => x !== id) })}
       />
+      <NamedInTextField names={namedInText} onAdd={addMention} />
       {items.length > 0 && (
         <ItemsField
           involved={items.filter((it) => itemIds.includes(it.id))}
@@ -182,6 +226,22 @@ export function SceneDetails({ event }: { event: WorldEvent }) {
           )}
         </div>
       )}
+
+      <SceneHistoryDialog open={historyOpen} onOpenChange={setHistoryOpen} eventId={event.id} currentText={sceneText?.text ?? ''} />
+      <MoveSceneDialog
+        open={moveOpen}
+        onOpenChange={setMoveOpen}
+        eventId={event.id}
+        timelineId={event.timelineId}
+        currentChapterId={event.chapterId}
+        sceneName={sceneName}
+      />
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title={`Delete "${sceneName}"?`}
+        onConfirm={() => deleteEvent(event.id)}
+      />
     </section>
   )
 }
