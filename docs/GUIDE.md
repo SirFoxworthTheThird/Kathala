@@ -971,7 +971,10 @@ the page; retitle a chapter or scene by editing its heading.
   (Ctrl+Alt+↓) into another chapter and it becomes the open one: its panel is
   beside the page (on a phone, a tap away in the header) and the address names it. Go into another scene, in the same
   chapter or another, and the time cursor goes there — the top bar and the
-  binder show the scene you are in. The caret stays where you put it. It moves
+  binder show the scene you are in, and so does the chapter's panel: that
+  scene's Character States are marked **now**, opened, and scrolled into view
+  if they were out of sight. A scene nobody is in yet is still listed while you
+  are in it, saying so. The caret stays where you put it. It moves
   on your way *into* a scene, so a cursor you move elsewhere from the top bar
   stays there while you go on writing in the same scene. Opened at the whole
   book, the page opens no chapter until you go into one.

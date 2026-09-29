@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { ChapterGoal } from '@/features/manuscript'
 import { useNavigate } from 'react-router-dom'
 import { Users, Network, StickyNote, ChevronDown, ChevronRight, Scroll, BookLock, X } from 'lucide-react'
@@ -34,16 +34,41 @@ function EventSnapshotSection({
   snapshots,
   characters,
   worldId,
+  current,
   onRecordState,
 }: {
   event: WorldEvent
   snapshots: ReturnType<typeof useChapterEventSnapshots>
   characters: Character[]
   worldId: string
+  /** The scene the time cursor is at — the one being written, on the Page. */
+  current: boolean
   /** Absent while reading: this is a readout then, not a way in. */
   onRecordState?: (characterId: string, eventId: string) => void
 }) {
   const [open, setOpen] = useState(true)
+  const sectionRef = useRef<HTMLDivElement>(null)
+  /*
+    The panel follows the scene, not only the chapter. It is built per chapter,
+    so moving the caret from one scene to the next on the Page moved the time
+    cursor and changed nothing here: the writer's scene was wherever it
+    happened to be in the list, possibly scrolled out of sight. So the scene
+    you are in is marked, opened if it was folded, and brought into view — in
+    the panel's own column, and only when it is out of view, so arriving at a
+    chapter does not scroll its title away.
+  */
+  useEffect(() => {
+    if (!current) return
+    setOpen(true)
+    const el = sectionRef.current
+    const box = el?.closest<HTMLElement>('[data-follows-scene]')
+    if (!el || !box) return
+    const r = el.getBoundingClientRect()
+    const b = box.getBoundingClientRect()
+    if (r.top >= b.top && r.top < b.bottom - 40) return
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    box.scrollTo({ top: Math.max(0, box.scrollTop + r.top - b.top - 8), behavior: reduce ? 'auto' : 'smooth' })
+  }, [current])
   /**
    * Which character's quick form is open, if any — one at a time, and the same
    * state for both halves of the panel: a gap row recording a state, and a
@@ -54,10 +79,16 @@ function EventSnapshotSection({
   const uncast = castWithoutState(event, snapshots, characters)
 
   const total = eventSnapshots.length + uncast.length
-  if (total === 0) return null
+  // A scene nobody is in is left out — unless it is the one being written, which should not vanish from under the writer.
+  if (total === 0 && !current) return null
 
   return (
-    <div className="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
+    <div
+      ref={sectionRef}
+      aria-current={current ? 'true' : undefined}
+      data-scene-section={event.id}
+      className={cn('rounded-lg border overflow-hidden', current ? 'border-[hsl(var(--ring))]' : 'border-[hsl(var(--border))]')}
+    >
       <button
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
@@ -68,10 +99,20 @@ function EventSnapshotSection({
           : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))]" />
         }
         <span className="truncate flex-1">{event.title}</span>
+        {current && (
+          <span className="shrink-0 rounded-full bg-[hsl(var(--accent))] px-1.5 py-px text-[10px] font-medium text-[hsl(var(--foreground))]">
+            now
+          </span>
+        )}
         <span className="shrink-0 text-[hsl(var(--muted-foreground))]">{total}</span>
       </button>
       {open && (
         <div className="flex flex-col gap-2 border-t border-[hsl(var(--border))] p-2">
+          {total === 0 && (
+            <p className="px-1 py-1 text-xs text-[hsl(var(--muted-foreground))]">
+              No one in this scene yet{onRecordState ? ' — @@ a name while writing, or add to its cast.' : '.'}
+            </p>
+          )}
           {eventSnapshots.map((s) => {
             /*
               The same form the row below uses to *record* a state, reused to
@@ -195,6 +236,7 @@ export function ChapterPanel({ chapter, onClose, words, closeAs }: {
   const relationships = useRelationships(worldId)
   const gate = useGate()
   const setActiveEventId = useAppStore((st) => st.setActiveEventId)
+  const activeEventId = useAppStore((st) => st.activeEventId)
 
   const [notes, setNotes] = useState(chapter.notes ?? '')
   const [synopsis, setSynopsis] = useState(chapter.synopsis ?? '')
@@ -375,6 +417,7 @@ export function ChapterPanel({ chapter, onClose, words, closeAs }: {
               snapshots={allSnapshots}
               characters={characters}
               worldId={worldId}
+              current={ev.id === activeEventId}
               onRecordState={gate.active ? undefined : (characterId, eventId) => {
                 // The cursor first, so the panel opens on the scene the gap
                 // is in rather than wherever the writer happened to be.

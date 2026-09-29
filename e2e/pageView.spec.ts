@@ -536,6 +536,44 @@ test.describe('the Page view', () => {
     await expect(bar).toContainText('The assize rises')
   })
 
+  test('the chapter beside the page follows the caret from scene to scene, not only chapter to chapter', async ({ page }) => {
+    const worldId = await book(page)
+    // A crowd in the first scene, so the second one's Character States start below the panel's fold.
+    await page.evaluate(async (id) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as
+        Record<string, { add: (v: unknown) => Promise<unknown>; update: (k: string, v: unknown) => Promise<unknown> }>
+      const now = Date.now()
+      const crowd: string[] = []
+      for (let i = 1; i <= 16; i++) {
+        const cid = `ch${i}`
+        crowd.push(cid)
+        await db.characters.add({ id: cid, worldId: id, name: `Juror ${i}`, aliases: [], description: '', portraitImageId: null, tags: [], isAlive: true, color: null, createdAt: now, updatedAt: now })
+      }
+      await db.events.update('e1', { involvedCharacterIds: crowd })
+      await db.events.update('e2', { involvedCharacterIds: ['ch1'] })
+    }, worldId)
+    await openPage(page, worldId, 'c1')
+    const panel = page.getByRole('complementary', { name: 'The open chapter' })
+    const section = (id: string) => panel.locator(`[data-scene-section="${id}"]`)
+    await expect(panel.getByRole('region', { name: 'Chapter 1' })).toBeVisible({ timeout: 20_000 })
+
+    await line(page, 'The court sat.').click()
+    await expect(section('e1')).toHaveAttribute('aria-current', 'true')
+    await expect(section('e2')).not.toHaveAttribute('aria-current', 'true')
+    await expect(section('e2')).not.toBeInViewport()
+
+    // Into the next scene, in the same chapter: the panel marks it and brings it into view.
+    await line(page, 'She counted.').click()
+    await expect(section('e2')).toHaveAttribute('aria-current', 'true')
+    await expect(section('e1')).not.toHaveAttribute('aria-current', 'true')
+    await expect(section('e2')).toBeInViewport()
+
+    // A scene nobody is in yet still has its place in the panel while it is the one being written.
+    await page.keyboard.press('Control+Alt+ArrowDown')
+    await expect(section('e3')).toHaveAttribute('aria-current', 'true')
+    await expect(section('e3')).toContainText('No one in this scene yet')
+  })
+
   test('opened at the whole book, the page opens no chapter until the writer goes into one', async ({ page }) => {
     const worldId = await book(page)
     await openPage(page, worldId)
