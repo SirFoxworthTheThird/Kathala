@@ -79,10 +79,20 @@ test.describe('Pacing curve', () => {
     await page.getByRole('main').getByRole('button', { name: 'The Departure', exact: true }).click()
     await page.getByRole('main').getByRole('button', { name: '+ Dramatic Tension' }).click()
     await page.getByRole('button', { name: '3', exact: true }).click()
-    await expect(page.getByText('3/5')).toBeVisible()
+    /*
+      The card's own badge, not any "3/5" on the page: the pacing curve above
+      redraws with the rated point, and its tooltip — "The Departure — Charged
+      (3/5)" — matched a page-wide lookup too, whenever it had redrawn first.
+    */
+    const badge = page.getByRole('main').getByRole('button', { name: 'Tension: Charged' })
+    const curve = page.getByRole('img', { name: 'Dramatic tension across the story' })
+    await expect(badge).toContainText('3/5')
+    await expect(curve).toBeVisible()
 
-    // Clicking the same level again clears it back to unrated.
+    // Clicking the same level again clears it back to unrated: the badge goes,
+    // and with the book's only rating gone, so does the curve it drew.
     await page.getByRole('button', { name: '3', exact: true }).click()
-    await expect(page.getByText('3/5')).toHaveCount(0)
+    await expect(badge).toHaveCount(0)
+    await expect(curve).toHaveCount(0)
   })
 })

@@ -35,14 +35,20 @@ test('a character page does not list relationships with people the reader has no
   await settle(page)
   await page.goto(`/#/worlds/${worldId}/characters`, { waitUntil: 'load' })
   await settle(page)
-  await page.getByRole('main').getByRole('link').first().click()
+  const main = page.getByRole('main')
+  const first = main.getByRole('link').first()
+  const name = (await first.innerText()).split('\n')[0].trim()
+  await first.click()
+  // Her page, before anything is read from it: `main` is empty until it renders.
+  const heading = main.getByRole('heading', { name, exact: true })
+  await expect(heading).toBeVisible({ timeout: 20_000 })
   await settle(page)
 
   const tab = page.getByRole('tab', { name: /Relationships/ })
   if (await tab.count()) await tab.click()
   await settle(page)
 
-  const shown = await page.getByRole('main').innerText()
+  const shown = await main.innerText()
   expect(shown, 'nobody is listed as a bond with a redacted stranger').not.toContain('Unknown')
 
   /*
@@ -53,11 +59,15 @@ test('a character page does not list relationships with people the reader has no
   const readerText = shown
   await stopReading(page, worldId)
   await page.reload({ waitUntil: 'load' })
-  await settle(page)
-  if (await tab.count()) await tab.click()
-  await settle(page)
-  const writerText = await page.getByRole('main').innerText()
-  expect(writerText.length, 'a writer sees more of them than a reader does')
+  await expect(heading).toBeVisible({ timeout: 20_000 })
+  /*
+    Clicked, not "if it is there": a writer has her bonds, so the tab is — and
+    asking straight after the reload could find it not yet drawn, and compare
+    the Overview with the reader's list.
+  */
+  await tab.click()
+  await expect(tab).toHaveAttribute('aria-selected', 'true')
+  await expect.poll(async () => (await main.innerText()).length, { message: 'a writer sees more of them than a reader does' })
     .toBeGreaterThan(readerText.length)
 })
 

@@ -76,6 +76,33 @@ test.describe('choosing a chapter number', () => {
       .toEqual(['1:Low Water', '2:The Clerk', '3:The Stair', '4:The Verdict'])
   })
 
+  test('the suggestion keeps up with chapters that arrive while the dialog is open, until the writer types one', async ({ page }) => {
+    const worldId = await timelineOf124(page)
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('main').getByRole('button', { name: 'Add Chapter' }).first().click()
+    const dialog = page.getByRole('dialog')
+    const number = dialog.getByLabel('Number')
+    await expect(number).toHaveValue('5')
+
+    // A chapter lands after the dialog opened — as one does when the page is
+    // still loading, or straight after the last chapter was added.
+    const land = (id: string, n: number, title: string) => page.evaluate(async ([cid, num, t, wid]) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as { chapters: { add: (v: unknown) => Promise<unknown> } }
+      const now = Date.now()
+      await db.chapters.add({ id: cid, worldId: wid, timelineId: 'tl', number: num, title: t, synopsis: '', notes: '', wordGoal: null, createdAt: now, updatedAt: now })
+    }, [id, n, title, worldId] as const)
+    await land('c5', 5, 'The Appeal')
+    await expect(number).toHaveValue('6')
+    await expect(dialog.locator('#chapter-number-note')).toHaveText('The next free number.')
+
+    // Once the writer has typed a number it is theirs, and a chapter landing does not change it.
+    await number.fill('3')
+    await land('c6', 6, 'The Sentence')
+    await page.waitForTimeout(500)
+    await expect(number).toHaveValue('3')
+  })
+
   test('a free number moves nobody', async ({ page }) => {
     const worldId = await timelineOf124(page)
     await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
