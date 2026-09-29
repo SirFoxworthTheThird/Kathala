@@ -993,14 +993,15 @@ export default function TimelineView() {
       {/* Rendered only where it is shown, like the binder: a hidden copy would
           still be the first match for everything that looks it up. */}
       {panel && wide && (
-        <aside aria-label="The open chapter" className="w-80 shrink-0 overflow-auto border-l border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+        <aside aria-label="The open chapter" data-follows-scene className="w-80 shrink-0 overflow-auto border-l border-[hsl(var(--border))] bg-[hsl(var(--card))]">
           {panel}
         </aside>
       )}
       </div>
 
       {sheetable && chapterHere && (
-        <Sheet open={sheetFor === chapterHere.id} onClose={closeSheet} label="The open chapter" side="bottom" className="overflow-y-auto">
+        <Sheet open={sheetFor === chapterHere.id} onClose={closeSheet} label="The open chapter" side="bottom">
+          <div data-follows-scene className="min-h-0 flex-1 overflow-y-auto">
           <ChapterPanel
             key={chapterHere.id}
             chapter={chapterHere}
@@ -1008,6 +1009,7 @@ export default function TimelineView() {
             words={openWords}
             closeAs={{ label: 'Close', title: showPage ? 'Back to the page' : 'Back to the book' }}
           />
+          </div>
         </Sheet>
       )}
       {worldId && currentTimelineId && !isAll && (
