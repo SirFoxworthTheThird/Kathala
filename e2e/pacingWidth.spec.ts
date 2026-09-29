@@ -69,13 +69,18 @@ const measure = (page: Page) => page.evaluate(() => {
   }
 })
 
+/** Measured once the chart is drawn: straight after the page opens there is no chart yet, and nothing to measure. */
+async function measured(page: Page) {
+  await expect.poll(() => measure(page), { message: 'the pacing chart should be on screen', timeout: 30_000 }).not.toBeNull()
+  return (await measure(page))!
+}
+
 test.describe('The pacing panel fits what it is drawing', () => {
   test.describe.configure({ timeout: 240_000 })
 
   test('a short draft gets a short panel, not the whole column', async ({ page }) => {
     await draft(page, 3, 2)
-    const m = (await measure(page))!
-    expect(m, 'the pacing chart should be on screen').not.toBeNull()
+    const m = await measured(page)
 
     // The panel is the chart plus its tension gutter and padding — not the
     // column. Measured at 352px against a 1196px column for these six scenes.
@@ -87,7 +92,7 @@ test.describe('The pacing panel fits what it is drawing', () => {
 
   test('a long book still gets the full column, and scrolls inside it', async ({ page }) => {
     await draft(page, 20, 4)
-    const m = (await measure(page))!
+    const m = await measured(page)
 
     // 80 scenes draw far more chart than the column can hold…
     expect(m.chart, `chart ${m.chart}px`).toBeGreaterThan(m.column)

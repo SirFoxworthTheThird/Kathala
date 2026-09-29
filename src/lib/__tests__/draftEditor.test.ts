@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { EditorSelection, type EditorState, type TransactionSpec } from '@codemirror/state'
+import { EditorSelection, type EditorState, type StateCommand, type TransactionSpec } from '@codemirror/state'
 import { history, undo, redo } from '@codemirror/commands'
 import {
   draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse,
-  lineToHeading, joinSpec, clearLine, type Refusal, type Join,
+  lineToHeading, joinSpec, clearLine, stepScene, openSceneLine, abandonedLine, focusScene, openedLine, sceneBeside, type Refusal, type Join,
 } from '@/lib/draftEditor'
 import type { DraftChapter } from '@/lib/draftDocument'
 import { splitProse } from '@/lib/sceneStructure'
@@ -484,5 +484,134 @@ describe('chapters on the page', () => {
     const closed = r.state.update(joinSpec(r.state, from)!).state
     expect(closed.doc.toString()).toContain('Later.\n\n## Last')
     expect(texts(closed)).toMatchObject({ s1: 'First.\n\nSecond.', s2: 'Later.', s3: 'The end.' })
+  })
+})
+
+describe('the scene keys on the page', () => {
+  const caretAt = (state: EditorState, pos: number) => state.update({ selection: EditorSelection.cursor(pos) }).state
+  const press = (state: EditorState, command: StateCommand) => {
+    let next: EditorState | null = null
+    const handled = command({ state, dispatch: (tr) => { next = tr.state } })
+    return { handled, state: next ?? state }
+  }
+
+  it('Ctrl+Alt+↓ and ↑ go to the next and previous scene’s prose, across a chapter, and stop at the ends', () => {
+    const s0 = caretAt(fresh(), at(fresh(), 'Wait') + 2)
+    const down = press(s0, stepScene('next'))
+    expect(down.handled).toBe(true)
+    expect(down.state.selection.main.head).toBe(at(s0, 'The end.'))
+    expect(press(down.state, stepScene('next')).handled).toBe(false)
+    const up = press(s0, stepScene('previous'))
+    expect(up.state.selection.main.head).toBe(at(s0, 'The ship'))
+    expect(press(up.state, stepScene('previous')).handled).toBe(false)
+  })
+
+  it('from a chapter heading, ↓ goes to its first scene', () => {
+    const s0 = caretAt(fresh(), at(fresh(), 'Return'))
+    expect(press(s0, stepScene('next')).state.selection.main.head).toBe(at(s0, 'The end.'))
+  })
+
+  it('Ctrl+Enter opens a heading line after the scene, and the heading typed there is a new scene after it', () => {
+    const s0 = caretAt(fresh(), at(fresh(), 'ship'))
+    const opened = press(s0, openSceneLine('new'))
+    expect(opened.handled).toBe(true)
+    const doc = opened.state.doc.toString()
+    expect(doc).toContain('The ship came in.\n\n## \n\n## The letter')
+    // The caret is after the marks, to type the title.
+    expect(doc.slice(0, opened.state.selection.main.head)).toMatch(/The ship came in\.\n\n## $/)
+    const typed = edit(opened.state, { changes: { from: opened.state.selection.main.head, insert: 'The customs house' } }).state
+    const line = typed.doc.lineAt(typed.selection.main.head).from
+    const made = typedHeading(typed, line)
+    expect(made).toMatchObject({ kind: 'split', title: 'The customs house', cut: { sceneId: 's1', prose: 'The ship came in.', tail: false } })
+  })
+
+  it('in a chapter’s heading, Ctrl+Enter opens the line for its first scene', () => {
+    const s0 = caretAt(fresh(), at(fresh(), 'Return'))
+    const opened = press(s0, openSceneLine('new'))
+    const typed = edit(opened.state, { changes: { from: opened.state.selection.main.head, insert: 'Before' } }).state
+    expect(typedHeading(typed, typed.doc.lineAt(typed.selection.main.head).from)).toEqual({ kind: 'first-scene', chapterId: 'c2', title: 'Before' })
+  })
+
+  it('Ctrl+Shift+Enter opens the line at the caret, and the prose after it goes with the new scene', () => {
+    const s0 = caretAt(fresh(), at(fresh(), 'and hope'))
+    const opened = press(s0, openSceneLine('split'))
+    expect(opened.handled).toBe(true)
+    const typed = edit(opened.state, { changes: { from: opened.state.selection.main.head, insert: 'Hope' } }).state
+    const made = typedHeading(typed, typed.doc.lineAt(typed.selection.main.head).from)
+    expect(made).toMatchObject({ kind: 'split', title: 'Hope', cut: { sceneId: 's2', tail: true } })
+    if (made?.kind !== 'split') throw new Error('not a split')
+    expect(splitProse(made.cut.prose, made.cut.at)).toEqual({ head: 'Wait', tail: 'and hope.' })
+  })
+
+  it('Ctrl+Shift+Enter does nothing on a heading or under a chapter heading', () => {
+    expect(press(caretAt(fresh(), at(fresh(), 'The letter') + 2), openSceneLine('split')).handled).toBe(false)
+    expect(press(caretAt(fresh(), at(fresh(), 'Return')), openSceneLine('split')).handled).toBe(false)
+  })
+
+  it('a line a key opened and the writer left untitled goes, and the scene is as it was', () => {
+    for (const kind of ['new', 'split'] as const) {
+      const s0 = caretAt(fresh(), at(fresh(), 'and hope'))
+      const opened = press(s0, openSceneLine(kind)).state
+      const spec = abandonedLine(opened, opened.doc.lineAt(opened.selection.main.head).from)
+      expect(spec, kind).not.toBeNull()
+      const back = opened.update(spec!).state
+      expect(back.doc.toString(), kind).toBe(s0.doc.toString())
+    }
+  })
+
+  it('but a title typed on it, or a line the writer typed themselves, is not taken away', () => {
+    const s0 = caretAt(fresh(), at(fresh(), 'ship'))
+    const opened = press(s0, openSceneLine('new')).state
+    const typed = edit(opened, { changes: { from: opened.selection.main.head, insert: 'X' } }).state
+    expect(abandonedLine(typed, typed.doc.lineAt(typed.selection.main.head).from)).toBeNull()
+    // Typed by hand: `## ` with no title, never opened by a key.
+    const end = at(s0, 'came in.') + 'came in.'.length
+    const own = edit(s0, { changes: { from: end, insert: '\n\n## ' } }).state
+    expect(abandonedLine(own, own.doc.lineAt(end + 2).from)).toBeNull()
+  })
+
+  it('nor is anything typed inside what the key put in', () => {
+    const s0 = caretAt(fresh(), at(fresh(), 'and hope'))
+    const opened = press(s0, openSceneLine('split')).state
+    const lineFrom = opened.doc.lineAt(opened.selection.main.head).from
+    // On the blank line the split left under the heading line, still untitled above it.
+    const below = opened.doc.lineAt(opened.selection.main.head).to + 1
+    const typed = edit(opened, { changes: { from: below, insert: 'Later.' } }).state
+    expect(typed.doc.lineAt(lineFrom).text).toBe('## ')
+    expect(abandonedLine(typed, lineFrom)).toBeNull()
+  })
+
+  it('the line outlives the page settling the line the key left, and is forgotten once it is a heading', () => {
+    const s0 = caretAt(fresh(), at(fresh(), 'ship'))
+    const opened = press(s0, openSceneLine('new')).state
+    const lineFrom = opened.doc.lineAt(opened.selection.main.head).from
+    // The keystroke left the line the caret was on, and the page settles that one.
+    const afterSettle = opened.update({ effects: settled.of(null) }).state
+    expect(abandonedLine(afterSettle, lineFrom)).not.toBeNull()
+    const typed = edit(afterSettle, { changes: { from: afterSettle.selection.main.head, insert: 'X' } }).state
+    const made = typed.update(lineToHeading(typed, lineFrom, { id: 'n1', kind: 'scene' })).state
+    expect(made.field(openedLine)).toBeNull()
+  })
+
+  it('Focus mode steps to the scene beside its own, across a chapter, and not past either end', () => {
+    const s0 = fresh()
+    expect(sceneBeside(s0, 's2', 'next')).toBe('s3')
+    expect(sceneBeside(s0, 's2', 'previous')).toBe('s1')
+    expect(sceneBeside(s0, 's3', 'next')).toBeNull()
+    expect(sceneBeside(s0, 's1', 'previous')).toBeNull()
+    expect(sceneBeside(s0, 'gone', 'next')).toBeNull()
+  })
+
+  it('Focus mode opens on the scene the caret is in, or from a chapter heading on its first scene', () => {
+    const s0 = fresh()
+    expect(focusScene(s0, at(s0, 'Wait'))).toBe('s2')
+    expect(focusScene(s0, at(s0, 'The letter'))).toBe('s2')
+    expect(focusScene(s0, at(s0, 'Return'))).toBe('s3')
+    expect(focusScene(s0, 0)).toBe('s1')
+  })
+
+  it('and not from a chapter that has no scenes', () => {
+    const bare = draftState([{ id: 'c1', title: 'Empty', scenes: [] }])
+    expect(focusScene(bare, 0)).toBeNull()
   })
 })

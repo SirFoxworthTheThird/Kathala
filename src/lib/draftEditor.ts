@@ -381,10 +381,125 @@ export const enterOnHeading: StateCommand = ({ state, dispatch }) => {
   return true
 }
 
+/*
+  ── The scene keys ─────────────────────────────────────────────────────────
+
+  The same keys as a scene card's draft (`sceneShortcut`), answered in the
+  page's own terms. Stepping moves the caret. Making a scene opens the line to
+  type its heading on, `## `, and the writer names it there — the page already
+  makes a scene from a heading typed and left, so the keys only save typing
+  the marks. A line a key opened and the writer left without a title was never
+  theirs, and goes.
+*/
+
+/** The line a scene key opened: its text as the key put it in, and where. */
+interface Opened { from: number; to: number; text: string }
+
+const openLine = StateEffect.define<Opened>()
+
+export const openedLine = StateField.define<Opened | null>({
+  create: () => null,
+  update(value, tr) {
+    const set = tr.effects.find((e) => e.is(openLine))
+    if (set) return set.value as Opened
+    // Made a heading. Not on `settled`: the key's own keystroke leaves the line before, and that settles.
+    if (!value || tr.effects.some((e) => e.is(addHeading))) return null
+    if (!tr.docChanged) return value
+    const from = tr.changes.mapPos(value.from, 1)
+    const to = tr.changes.mapPos(value.to, -1)
+    return to > from ? { ...value, from, to } : null
+  },
+})
+
+/** The scene Focus mode opens from `pos`: the one it is in, or, in a chapter's heading or space, that chapter's first. */
+export function focusScene(state: EditorState, pos: number): string | null {
+  const headings = state.field(headingsField)
+  const i = headingAt(headings, pos)
+  if (i < 0) return null
+  const k = headings[i].kind === 'scene' ? i : i + 1
+  return headings[k]?.kind === 'scene' ? headings[k].id : null
+}
+
+/** The scene heading after or before heading `i`, across chapters, or -1 at either end of the book. */
+function sceneFrom(headings: readonly DraftHeading[], i: number, dir: 'next' | 'previous'): number {
+  let k = i
+  do k += dir === 'next' ? 1 : -1
+  while (k >= 0 && k < headings.length && headings[k].kind !== 'scene')
+  return k >= 0 && k < headings.length ? k : -1
+}
+
+/** The scene after or before scene `id` on the page, or null. */
+export function sceneBeside(state: EditorState, id: string, dir: 'next' | 'previous'): string | null {
+  const headings = state.field(headingsField)
+  const i = headings.findIndex((h) => h.id === id)
+  const k = i < 0 ? -1 : sceneFrom(headings, i, dir)
+  return k < 0 ? null : headings[k].id
+}
+
+/** Ctrl+Alt+↓ / ↑: the caret to the next or previous scene's prose, across chapters. */
+export function stepScene(dir: 'next' | 'previous'): StateCommand {
+  return ({ state, dispatch }) => {
+    const headings = state.field(headingsField)
+    const k = sceneFrom(headings, headingAt(headings, state.selection.main.head), dir)
+    if (k < 0) return false
+    const at = proseStart(state.doc, headings, k) ?? lineEndAt(state.doc, headings[k].pos)
+    dispatch(state.update({ selection: EditorSelection.cursor(at), scrollIntoView: true, userEvent: 'select' }))
+    return true
+  }
+}
+
+/**
+ * Ctrl+Enter: a line for a new scene's heading after the scene the caret is in
+ * — or, in a chapter's space, for its first scene. Ctrl+Shift+Enter: the same
+ * line at the caret, so the prose after it goes to the new scene.
+ */
+export function openSceneLine(kind: 'new' | 'split'): StateCommand {
+  return ({ state, dispatch }) => {
+    const sel = state.selection.main
+    const headings = state.field(headingsField)
+    const i = headingAt(headings, sel.head)
+    if (i < 0) return false
+    const lineEnd = lineEndAt(state.doc, headings[i].pos)
+    let at: number
+    let text: string
+    if (kind === 'split') {
+      // In a scene's prose only, and not on its heading's line.
+      if (headings[i].kind !== 'scene' || sel.head <= lineEnd) return false
+      at = sel.head
+      text = `\n\n${HEADING_PREFIX.scene}\n\n`
+    } else {
+      const end = headings[i].kind === 'chapter' ? lineEnd : (headings[i + 1] ? headings[i + 1].pos - 1 : state.doc.length)
+      const body = state.doc.sliceString(lineEnd, end)
+      at = lineEnd + body.replace(/\s+$/, '').length
+      text = `\n\n${HEADING_PREFIX.scene}`
+    }
+    const caret = at + 2 + HEADING_PREFIX.scene.length
+    dispatch(state.update({
+      changes: { from: at, insert: text },
+      selection: EditorSelection.cursor(caret),
+      effects: openLine.of({ from: at, to: at + text.length, text }),
+      scrollIntoView: true,
+      userEvent: 'input',
+    }))
+    return true
+  }
+}
+
+/** Take away the line a key opened, if it was left as the key made it. */
+export function abandonedLine(state: EditorState, pos: number): TransactionSpec | null {
+  const o = state.field(openedLine, false)
+  if (!o) return null
+  const line = state.doc.lineAt(o.from + 2)
+  // A title typed on the line goes after what the key put in, so the line is what says it is still untitled.
+  if (state.doc.lineAt(pos).from !== line.from || line.text.trim() !== HEADING_PREFIX.scene.trim()) return null
+  if (state.doc.sliceString(o.from, o.to) !== o.text) return null
+  return { changes: { from: o.from, to: o.to }, effects: settled.of(null), filter: false }
+}
+
 /** The book, as a starting state: the text, the headings, and the rules. */
 export function draftState(chapters: DraftChapter[], extensions: Extension[] = []): EditorState {
   const { text, headings } = composeDraft(chapters)
-  return EditorState.create({ doc: text, extensions: [headingsField.init(() => headings), keepHeadings, lineTyped, ...extensions] })
+  return EditorState.create({ doc: text, extensions: [headingsField.init(() => headings), keepHeadings, lineTyped, openedLine, ...extensions] })
 }
 
 /** Every heading's title and every scene's prose, as the document has them now. */
