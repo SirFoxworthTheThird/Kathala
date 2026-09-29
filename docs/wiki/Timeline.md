@@ -121,7 +121,8 @@ Scenes move earlier or later with the ↑ ↓ on their cards, or by dragging the
 - Page is offered on one timeline in narrative order, and not on *All timelines*, in Chronological order, or in reading mode.
 - The scene keys work on the page: **Ctrl+Alt+↓ / ↑** goes to the next or previous scene, **Ctrl+Enter** opens the line for a new scene after this one with the `## ` typed for you, and **Ctrl+Shift+Enter** opens it at the caret, to split. A line they open and you leave untitled goes again.
 - **Focus**, above the page, opens [Focus mode](Manuscript#focus-mode) on the scene the caret is in; what you write there is on the page when you come back.
-- Not on the page yet: the scene header line and `@` mentions — open the scene's card for those.
+- **`@` and `@@` work on the page** as in a scene card's draft: pick a character, item or place and the name goes into the prose, recorded against the scene you typed it in. Enter completes a name that exists; only Tab or a click makes a new one.
+- Not on the page yet: the scene header line — open the scene's card for that.
 
 ---
 

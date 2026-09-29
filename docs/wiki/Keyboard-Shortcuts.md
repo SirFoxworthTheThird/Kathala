@@ -72,6 +72,8 @@ The Manuscript's [Page](Timeline#writing-on-one-page) — the book as one docume
 
 A line opened by those keys and left without a title goes again.
 
+`@` and `@@` open the same picker as in a scene's draft, with the same keys: ↑ ↓ to move, **Enter** to complete a name that exists, **Tab** (or a click) to make a new one, **Escape** to close it.
+
 ### In the binder
 
 | Key | Action |

@@ -3,6 +3,7 @@ import {
   composeDraft, readDraft, proseStart, lineEndAt, oneLine, HEADING_PREFIX,
   type DraftChapter, type DraftHeading, type DraftSegment, type HeadingKind,
 } from '@/lib/draftDocument'
+import { findMentionToken, type MentionCandidate, type MentionToken } from '@/lib/mentionPicker'
 
 /*
   The Page view's editor state, without the view: which lines are headings,
@@ -494,6 +495,22 @@ export function abandonedLine(state: EditorState, pos: number): TransactionSpec 
   if (state.doc.lineAt(pos).from !== line.from || line.text.trim() !== HEADING_PREFIX.scene.trim()) return null
   if (state.doc.sliceString(o.from, o.to) !== o.text) return null
   return { changes: { from: o.from, to: o.to }, effects: settled.of(null), filter: false }
+}
+
+/**
+ * An "@" name being typed at the caret in a scene's prose, in document
+ * positions, and the scene it names someone in — or null: on a heading's line,
+ * under a chapter heading, with a selection, or with no token (`findMentionToken`).
+ */
+export function mentionAt(state: EditorState, candidates: readonly MentionCandidate[]): (MentionToken & { sceneId: string }) | null {
+  const sel = state.selection.main
+  if (!sel.empty) return null
+  const headings = state.field(headingsField)
+  const i = headingAt(headings, sel.head)
+  if (i < 0 || headings[i].kind !== 'scene' || sel.head <= lineEndAt(state.doc, headings[i].pos)) return null
+  const line = state.doc.lineAt(sel.head)
+  const token = findMentionToken(line.text, sel.head - line.from, candidates)
+  return token && { ...token, start: token.start + line.from, end: token.end + line.from, sceneId: headings[i].id }
 }
 
 /** The book, as a starting state: the text, the headings, and the rules. */
