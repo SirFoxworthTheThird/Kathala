@@ -10,6 +10,7 @@ import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { useMotifs } from '@/db/hooks/useMotifs'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { nextTension, parseInWorldDay, parseTravelDays } from '@/lib/sceneFields'
 import { Textarea } from '@/components/ui/textarea'
 import { Menu, MenuItem } from '@/components/ui/menu'
@@ -54,6 +55,7 @@ export function SceneDetails({ event }: { event: WorldEvent }) {
   const markers = useAllLocationMarkers(worldId)
   const threads = usePlotThreads(worldId)
   const motifs = useMotifs(worldId)
+  const gate = useGate()
   const [more, setMore] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [moveOpen, setMoveOpen] = useState(false)
@@ -116,6 +118,14 @@ export function SceneDetails({ event }: { event: WorldEvent }) {
     if (!involvedIds.includes(id) && !mentionedIds.includes(id)) set({ mentionedCharacterIds: [...mentionedIds, id] })
   }
   const sceneName = event.title || 'this scene'
+
+  /*
+    The author's, entirely: every field here writes, and the menu moves and
+    deletes. The panel leaves this out while reading already (\`TimelineView\`);
+    it refuses here as well, so no other place that renders it can hand a
+    reader the menu — the shape \`readingGateGuards\` exists to catch.
+  */
+  if (gate.active) return null
 
   return (
     <section
