@@ -132,13 +132,15 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   target: PageTarget | null
   /** The chapter open around the page, if one is. */
   open?: string | null
-  /** The writer's caret is in a chapter other than `open`: the page around it follows. */
+  /** The writer's caret has gone into a chapter other than `open`, or into another scene: the page around it follows. */
   onPlace?: (place: PagePlace) => void
 }) {
   const onPlaceRef = useRef(onPlace)
   onPlaceRef.current = onPlace
   const openRef = useRef(open)
   openRef.current = open
+  /** The scene the caret last went into, so going into another is reported once. */
+  const enteredScene = useRef<string | null>(null)
   /*
     Its own queries rather than the Timeline's, which default to an empty list
     while they load: these are `undefined` until they answer, and `draftBook`
@@ -647,8 +649,18 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           */
           const own = u.transactions.some((tr) => tr.isUserEvent('select') || tr.isUserEvent('input') || tr.isUserEvent('delete'))
           const place = own ? placeInBook(u.state, u.state.selection.main.head) : null
-          // Against the chapter open now, not the last one reported: "Whole book" closes it, and going back in opens it again.
-          if (place && place.chapterId !== openRef.current) onPlaceRef.current?.(place)
+          /*
+            Another chapter — against the chapter open now, not the last one
+            reported: "Whole book" closes it, and going back in opens it again.
+            Or another scene: reported once, on the way in, so a time cursor the
+            writer has since moved elsewhere is not pulled back by every
+            keystroke in the scene they are still in.
+          */
+          const newScene = !!place?.sceneId && place.sceneId !== enteredScene.current
+          if (place && (place.chapterId !== openRef.current || newScene)) {
+            if (place.sceneId) enteredScene.current = place.sceneId
+            onPlaceRef.current?.(place)
+          }
         }
         if (u.focusChanged && !u.view.hasFocus) showMention(null)
         const effects = u.transactions.flatMap((tr) => tr.effects)
