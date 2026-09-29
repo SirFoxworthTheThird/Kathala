@@ -486,6 +486,61 @@ test.describe('the Page view', () => {
       .toContain(`The tide-table: ${`Copied: ${FILLER}`.slice(0, 60)}`)
   })
 
+  test('the chapter open beside the page follows the caret into another chapter, and the caret stays where it is', async ({ page }) => {
+    const worldId = await book(page)
+    await openPage(page, worldId, 'c1')
+    const one = page.getByRole('region', { name: 'Chapter 1' })
+    const two = page.getByRole('region', { name: 'Chapter 2' })
+    await expect(one).toBeVisible({ timeout: 20_000 })
+    await line(page, 'She counted.').click()
+    // Down into the next chapter by the scene key, as a writer going on would.
+    await page.keyboard.press('Control+Alt+ArrowDown')
+    await expect(two).toBeVisible()
+    await expect(one).toHaveCount(0)
+    await expect(page).toHaveURL(/\/manuscript\/c2/)
+    // The time cursor is the scene the caret went into, not the chapter's first by default.
+    await expect(page.getByRole('banner')).toContainText('The tide-table')
+    // And the caret was not moved by the chapter opening: typing lands where it went.
+    await page.keyboard.type('Copied: ')
+    await expect.poll(() => stored(page), { timeout: 10_000 })
+      .toContain(`The tide-table: ${`Copied: ${FILLER}`.slice(0, 60)}`)
+    // Back up by the key, into the first chapter's second scene: its panel comes back, and the cursor is that scene.
+    await page.keyboard.press('Control+Alt+ArrowUp')
+    await expect(one).toBeVisible()
+    await expect(two).toHaveCount(0)
+    await expect(page.getByRole('banner')).toContainText('Teodora at the table')
+  })
+
+  test('opened at the whole book, the page opens no chapter until the writer goes into one', async ({ page }) => {
+    const worldId = await book(page)
+    await openPage(page, worldId)
+    const one = page.getByRole('region', { name: 'Chapter 1' })
+    await page.waitForTimeout(800)
+    await expect(one).toHaveCount(0)
+    // Nor when the page is rebuilt under the caret by a change made elsewhere: that is not the writer going anywhere.
+    await page.evaluate(async (id) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as { events: { add: (v: unknown) => Promise<unknown> } }
+      const now = Date.now()
+      await db.events.add({
+        id: 'e4', worldId: id, chapterId: 'c1', timelineId: 'tl', title: 'A scene from elsewhere', description: '', sortOrder: 9,
+        tags: [], locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], involvedItemIds: [],
+        threadIds: [], motifIds: [], travelDays: null, inWorldTime: null, structureBeat: null, status: 'draft',
+        povCharacterId: null, tension: null, isFlashback: false, createdAt: now, updatedAt: now,
+      })
+    }, worldId)
+    // The page has it: it was rebuilt.
+    await expect(page.locator('.cm-line', { hasText: '## A scene from elsewhere' })).toHaveCount(1)
+    await page.waitForTimeout(500)
+    await expect(one).toHaveCount(0)
+    await line(page, 'She counted.').click()
+    await expect(one).toBeVisible()
+    // Closed from the binder, it opens again when the writer goes back into it.
+    await page.getByRole('button', { name: 'Whole book' }).click()
+    await expect(one).toHaveCount(0)
+    await line(page, 'The court sat.').click()
+    await expect(one).toBeVisible()
+  })
+
   test('opening a chapter in the binder brings its heading to the top of the page', async ({ page }) => {
     const worldId = await book(page)
     await openPage(page, worldId)

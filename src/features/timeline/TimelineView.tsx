@@ -36,7 +36,7 @@ import { TimelineRelationshipPanel } from './TimelineRelationshipPanel'
 import type { WorldEvent, Chapter, Timeline } from '@/types'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { plural } from '@/lib/plural'
-import type { PageTarget } from './DraftBook'
+import type { PagePlace, PageTarget } from './DraftBook'
 
 /*
   Loaded when a writer first chooses Page, so the Cards view — every reader,
@@ -331,9 +331,11 @@ export default function TimelineView() {
   /** The same arrivals, for the Page view: a scene to write in, or a chapter to scroll to. */
   const [pageTarget, setPageTarget] = useState<PageTarget | null>(null)
   useEffect(() => {
-    const state = location.state as { reveal?: string; caret?: 'start' | 'end'; focus?: boolean } | null
+    const state = location.state as { reveal?: string; caret?: 'start' | 'end'; focus?: boolean; fromPage?: boolean } | null
     const want = state?.reveal
     revealCount.current += 1
+    // The page's own caret moved the chapter (`followPage`): the writer is already there, and nothing is to be gone to.
+    if (state?.fromPage) { setReveal(null); pendingScroll.current = null; return }
     if (want) {
       setReveal({ id: want, nonce: revealCount.current, caret: state?.caret, focus: state?.focus })
       setPageTarget({ id: want, nonce: revealCount.current, focus: true })
@@ -410,6 +412,20 @@ export default function TimelineView() {
     if (!target) return false
     goToScene(target, dir === 'next' ? 'start' : 'end', opts)
     return true
+  }
+  /*
+    The Page's caret gone into another chapter — by typing, a click, the arrows
+    or the scene keys: the chapter open around the page follows it, its panel
+    beside the page with it, as going there from the binder would. In place,
+    not onto the history: moving through a book is not a trail of pages to go
+    back through. And the time cursor to the scene the writer is in, as the
+    binder puts it there, rather than to the chapter's first.
+  */
+  function followPage(place: PagePlace) {
+    if (place.chapterId === chapterId) return
+    const scene = place.sceneId ? worldEvents.find((e) => e.id === place.sceneId) : undefined
+    if (!gate.active && scene) activateEvent(scene.id, scene.locationMarkerId, setCursor)
+    navigate(`/worlds/${worldId}/manuscript/${place.chapterId}`, { replace: true, state: { fromPage: true } })
   }
   const openWords = openEvents.reduce((n, e) => n + (wordsByEvent.get(e.id) ?? 0), 0)
   const panel = openChapter && openChapter.worldId === worldId
@@ -728,7 +744,7 @@ export default function TimelineView() {
           {/* No row to put the open chapter's panel under: it leads the page. */}
           {panelInline && <div className="px-4 pt-3">{panelInline}</div>}
           <Suspense fallback={<p className="p-4 text-sm text-[hsl(var(--muted-foreground))]">Opening the page…</p>}>
-            <DraftBook worldId={worldId!} timelineId={currentTimelineId!} target={pageTarget} />
+            <DraftBook worldId={worldId!} timelineId={currentTimelineId!} target={pageTarget} open={chapterId ?? null} onPlace={followPage} />
           </Suspense>
         </>
       ) : (
