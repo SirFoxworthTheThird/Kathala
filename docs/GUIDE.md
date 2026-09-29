@@ -967,6 +967,11 @@ the page; retitle a chapter or scene by editing its heading.
 - **The binder moves the page.** Pick a scene and the page goes to it, with the
   caret at the start of its prose; pick a chapter and its heading comes to the
   top, with its panel beside the page as on Cards.
+- **And the page moves the chapter.** Write, click or step (Ctrl+Alt+↓) into
+  another chapter and it becomes the open one: its panel is beside the page,
+  the address names it, and the time cursor is on the scene you are in. The
+  caret stays where you put it. Opened at the whole book, the page opens no
+  chapter until you go into one.
 - **Enter on a heading** goes to the prose under it rather than breaking the
   title in two. On a chapter heading it goes to the chapter's first scene.
 - **Ctrl+F** (⌘F on a Mac) searches the whole book. Use it rather than the
