@@ -66,6 +66,13 @@ The Manuscript's [Page](Timeline#writing-on-one-page) — the book as one docume
 | Delete a heading's whole line | Join the scene, or chapter, to the one before it |
 | **Ctrl+Z** (⌘Z) | Take back typing since the last chapter or scene made or joined, then that itself |
 | **Ctrl+Shift+Z** (⌘⇧Z) | Put back what Ctrl+Z took back |
+| **Ctrl+Alt+↓ / ↑** (⌘⌥) | The next or previous scene's prose, across chapters |
+| **Ctrl+Enter** (⌘Enter) | Open the line for a new scene after this one, `## ` typed: type the title, Enter |
+| **Ctrl+Shift+Enter** (⌘⇧Enter) | The same line at the caret, so the prose after it goes to the new scene |
+
+A line opened by those keys and left without a title goes again.
+
+`@` and `@@` open the same picker as in a scene's draft, with the same keys: ↑ ↓ to move, **Enter** to complete a name that exists, **Tab** (or a click) to make a new one, **Escape** to close it.
 
 ### In the binder
 

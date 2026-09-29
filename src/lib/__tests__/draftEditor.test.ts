@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { EditorSelection, type EditorState, type TransactionSpec } from '@codemirror/state'
+import { EditorSelection, type EditorState, type StateCommand, type TransactionSpec } from '@codemirror/state'
 import { history, undo, redo } from '@codemirror/commands'
 import {
   draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse,
-  lineToHeading, joinSpec, clearLine, type Refusal, type Join,
+  lineToHeading, joinSpec, clearLine, stepScene, openSceneLine, abandonedLine, focusScene, openedLine, sceneBeside, mentionAt, headerSyncSpec, joinedHeaderSpec, headerScenes, proseStart as proseStartAt, type Refusal, type Join,
 } from '@/lib/draftEditor'
 import type { DraftChapter } from '@/lib/draftDocument'
 import { splitProse } from '@/lib/sceneStructure'
@@ -484,5 +484,291 @@ describe('chapters on the page', () => {
     const closed = r.state.update(joinSpec(r.state, from)!).state
     expect(closed.doc.toString()).toContain('Later.\n\n## Last')
     expect(texts(closed)).toMatchObject({ s1: 'First.\n\nSecond.', s2: 'Later.', s3: 'The end.' })
+  })
+})
+
+describe('the scene keys on the page', () => {
+  const caretAt = (state: EditorState, pos: number) => state.update({ selection: EditorSelection.cursor(pos) }).state
+  const press = (state: EditorState, command: StateCommand) => {
+    let next: EditorState | null = null
+    const handled = command({ state, dispatch: (tr) => { next = tr.state } })
+    return { handled, state: next ?? state }
+  }
+
+  it('Ctrl+Alt+↓ and ↑ go to the next and previous scene’s prose, across a chapter, and stop at the ends', () => {
+    const s0 = caretAt(fresh(), at(fresh(), 'Wait') + 2)
+    const down = press(s0, stepScene('next'))
+    expect(down.handled).toBe(true)
+    expect(down.state.selection.main.head).toBe(at(s0, 'The end.'))
+    expect(press(down.state, stepScene('next')).handled).toBe(false)
+    const up = press(s0, stepScene('previous'))
+    expect(up.state.selection.main.head).toBe(at(s0, 'The ship'))
+    expect(press(up.state, stepScene('previous')).handled).toBe(false)
+  })
+
+  it('from a chapter heading, ↓ goes to its first scene', () => {
+    const s0 = caretAt(fresh(), at(fresh(), 'Return'))
+    expect(press(s0, stepScene('next')).state.selection.main.head).toBe(at(s0, 'The end.'))
+  })
+
+  it('Ctrl+Enter opens a heading line after the scene, and the heading typed there is a new scene after it', () => {
+    const s0 = caretAt(fresh(), at(fresh(), 'ship'))
+    const opened = press(s0, openSceneLine('new'))
+    expect(opened.handled).toBe(true)
+    const doc = opened.state.doc.toString()
+    expect(doc).toContain('The ship came in.\n\n## \n\n## The letter')
+    // The caret is after the marks, to type the title.
+    expect(doc.slice(0, opened.state.selection.main.head)).toMatch(/The ship came in\.\n\n## $/)
+    const typed = edit(opened.state, { changes: { from: opened.state.selection.main.head, insert: 'The customs house' } }).state
+    const line = typed.doc.lineAt(typed.selection.main.head).from
+    const made = typedHeading(typed, line)
+    expect(made).toMatchObject({ kind: 'split', title: 'The customs house', cut: { sceneId: 's1', prose: 'The ship came in.', tail: false } })
+  })
+
+  it('in a chapter’s heading, Ctrl+Enter opens the line for its first scene', () => {
+    const s0 = caretAt(fresh(), at(fresh(), 'Return'))
+    const opened = press(s0, openSceneLine('new'))
+    const typed = edit(opened.state, { changes: { from: opened.state.selection.main.head, insert: 'Before' } }).state
+    expect(typedHeading(typed, typed.doc.lineAt(typed.selection.main.head).from)).toEqual({ kind: 'first-scene', chapterId: 'c2', title: 'Before' })
+  })
+
+  it('Ctrl+Shift+Enter opens the line at the caret, and the prose after it goes with the new scene', () => {
+    const s0 = caretAt(fresh(), at(fresh(), 'and hope'))
+    const opened = press(s0, openSceneLine('split'))
+    expect(opened.handled).toBe(true)
+    const typed = edit(opened.state, { changes: { from: opened.state.selection.main.head, insert: 'Hope' } }).state
+    const made = typedHeading(typed, typed.doc.lineAt(typed.selection.main.head).from)
+    expect(made).toMatchObject({ kind: 'split', title: 'Hope', cut: { sceneId: 's2', tail: true } })
+    if (made?.kind !== 'split') throw new Error('not a split')
+    expect(splitProse(made.cut.prose, made.cut.at)).toEqual({ head: 'Wait', tail: 'and hope.' })
+  })
+
+  it('Ctrl+Shift+Enter does nothing on a heading or under a chapter heading', () => {
+    expect(press(caretAt(fresh(), at(fresh(), 'The letter') + 2), openSceneLine('split')).handled).toBe(false)
+    expect(press(caretAt(fresh(), at(fresh(), 'Return')), openSceneLine('split')).handled).toBe(false)
+  })
+
+  it('a line a key opened and the writer left untitled goes, and the scene is as it was', () => {
+    for (const kind of ['new', 'split'] as const) {
+      const s0 = caretAt(fresh(), at(fresh(), 'and hope'))
+      const opened = press(s0, openSceneLine(kind)).state
+      const spec = abandonedLine(opened, opened.doc.lineAt(opened.selection.main.head).from)
+      expect(spec, kind).not.toBeNull()
+      const back = opened.update(spec!).state
+      expect(back.doc.toString(), kind).toBe(s0.doc.toString())
+    }
+  })
+
+  it('but a title typed on it, or a line the writer typed themselves, is not taken away', () => {
+    const s0 = caretAt(fresh(), at(fresh(), 'ship'))
+    const opened = press(s0, openSceneLine('new')).state
+    const typed = edit(opened, { changes: { from: opened.selection.main.head, insert: 'X' } }).state
+    expect(abandonedLine(typed, typed.doc.lineAt(typed.selection.main.head).from)).toBeNull()
+    // Typed by hand: `## ` with no title, never opened by a key.
+    const end = at(s0, 'came in.') + 'came in.'.length
+    const own = edit(s0, { changes: { from: end, insert: '\n\n## ' } }).state
+    expect(abandonedLine(own, own.doc.lineAt(end + 2).from)).toBeNull()
+  })
+
+  it('nor is anything typed inside what the key put in', () => {
+    const s0 = caretAt(fresh(), at(fresh(), 'and hope'))
+    const opened = press(s0, openSceneLine('split')).state
+    const lineFrom = opened.doc.lineAt(opened.selection.main.head).from
+    // On the blank line the split left under the heading line, still untitled above it.
+    const below = opened.doc.lineAt(opened.selection.main.head).to + 1
+    const typed = edit(opened, { changes: { from: below, insert: 'Later.' } }).state
+    expect(typed.doc.lineAt(lineFrom).text).toBe('## ')
+    expect(abandonedLine(typed, lineFrom)).toBeNull()
+  })
+
+  it('the line outlives the page settling the line the key left, and is forgotten once it is a heading', () => {
+    const s0 = caretAt(fresh(), at(fresh(), 'ship'))
+    const opened = press(s0, openSceneLine('new')).state
+    const lineFrom = opened.doc.lineAt(opened.selection.main.head).from
+    // The keystroke left the line the caret was on, and the page settles that one.
+    const afterSettle = opened.update({ effects: settled.of(null) }).state
+    expect(abandonedLine(afterSettle, lineFrom)).not.toBeNull()
+    const typed = edit(afterSettle, { changes: { from: afterSettle.selection.main.head, insert: 'X' } }).state
+    const made = typed.update(lineToHeading(typed, lineFrom, { id: 'n1', kind: 'scene' })).state
+    expect(made.field(openedLine)).toBeNull()
+  })
+
+  it('Focus mode steps to the scene beside its own, across a chapter, and not past either end', () => {
+    const s0 = fresh()
+    expect(sceneBeside(s0, 's2', 'next')).toBe('s3')
+    expect(sceneBeside(s0, 's2', 'previous')).toBe('s1')
+    expect(sceneBeside(s0, 's3', 'next')).toBeNull()
+    expect(sceneBeside(s0, 's1', 'previous')).toBeNull()
+    expect(sceneBeside(s0, 'gone', 'next')).toBeNull()
+  })
+
+  it('Focus mode opens on the scene the caret is in, or from a chapter heading on its first scene', () => {
+    const s0 = fresh()
+    expect(focusScene(s0, at(s0, 'Wait'))).toBe('s2')
+    expect(focusScene(s0, at(s0, 'The letter'))).toBe('s2')
+    expect(focusScene(s0, at(s0, 'Return'))).toBe('s3')
+    expect(focusScene(s0, 0)).toBe('s1')
+  })
+
+  it('and not from a chapter that has no scenes', () => {
+    const bare = draftState([{ id: 'c1', title: 'Empty', scenes: [] }])
+    expect(focusScene(bare, 0)).toBeNull()
+  })
+})
+
+describe('"@" on the page', () => {
+  const cast = [{ id: 'm', kind: 'character' as const, name: 'Mercédès' }]
+  /** The book with `typed` put in at `where`, the caret after it. */
+  const typing = (where: string, typed: string) => {
+    const s0 = fresh()
+    const pos = at(s0, where)
+    return s0.update({ changes: { from: pos, insert: typed }, selection: EditorSelection.cursor(pos + typed.length) }).state
+  }
+
+  it('finds the name being typed in a scene’s prose, in the document, and the scene it is in', () => {
+    const s = typing('and hope', 'to @@Mer')
+    const m = mentionAt(s, cast)
+    expect(m).toMatchObject({ query: 'Mer', intent: 'present', sceneId: 's2' })
+    expect(s.doc.sliceString(m!.start, m!.end)).toBe('@@Mer')
+  })
+
+  it('but not on a heading’s line, nor with text selected', () => {
+    expect(mentionAt(typing('letter', '@Mer'), cast)).toBeNull()
+    const s = typing('and hope', '@Mer')
+    expect(mentionAt(s, cast)).not.toBeNull()
+    expect(mentionAt(s.update({ selection: EditorSelection.range(at(s, '@Mer'), at(s, '@Mer') + 4) }).state, cast)).toBeNull()
+  })
+})
+
+describe('the header line on the page', () => {
+  const headed: DraftChapter[] = [
+    { id: 'c1', title: 'Arrival', scenes: [
+      { id: 's1', title: 'The quay', text: 'The ship came in.', header: '[#The Quay @@Edmond]' },
+      { id: 's2', title: 'The letter', text: 'Wait and hope.', header: '[@@Mercédès]' },
+      { id: 's3', title: 'Bare', text: 'Nothing said.' },
+    ] },
+  ]
+  const page = () => draftState(headed, [history()])
+  const segs = (state: EditorState) => Object.fromEntries(draftSegments(state).filter((x) => x.kind === 'scene').map((x) => [x.id, [x.header, x.text]]))
+
+  it('is shown under each title the records give one, and is never the prose', () => {
+    const s0 = page()
+    expect([...s0.field(headerScenes)]).toEqual(['s1', 's2'])
+    expect(segs(s0)).toEqual({
+      s1: ['[#The Quay @@Edmond]', 'The ship came in.'],
+      s2: ['[@@Mercédès]', 'Wait and hope.'],
+      s3: [null, 'Nothing said.'],
+    })
+  })
+
+  it('stays the first line: a line typed above it is refused, a blank line is not, and typing in it is the writer’s', () => {
+    const s0 = page()
+    const top = at(s0, '[#The Quay')
+    expect(edit(s0, { changes: { from: top, insert: 'A note\n' } }).why).toBe('above-header')
+    expect(edit(s0, { changes: { from: top - 1, insert: 'x' } }).why).toBe('above-header')
+    const pushed = edit(s0, { changes: { from: top, insert: '\n' } })
+    expect(pushed.why).toBeNull()
+    expect(segs(pushed.state).s1).toEqual(['[#The Quay @@Edmond]', 'The ship came in.'])
+    const inIt = edit(s0, { changes: { from: at(s0, 'Edmond'), insert: 'Old ' } })
+    expect(inIt.why).toBeNull()
+    expect(segs(inIt.state).s1).toEqual(['[#The Quay @@Old Edmond]', 'The ship came in.'])
+  })
+
+  it('a header typed as a scene’s first line is read as one while it is typed, so it is not saved as prose', () => {
+    const s0 = page()
+    const first = at(s0, 'Nothing said.')
+    const typed = s0.update({ changes: { from: first, insert: '[#The Quay]\n\n' }, selection: EditorSelection.cursor(first + 5), userEvent: 'input' }).state
+    expect(segs(typed).s3).toEqual(['[#The Quay]', 'Nothing said.'])
+  })
+
+  it('the caret goes under it: to a scene’s prose, and Ctrl+Shift+Enter does not split inside it', () => {
+    const s0 = page()
+    expect(proseStartAt(s0, 1)).toBe(at(s0, 'The ship'))
+    const split = (where: string) =>
+      openSceneLine('split')({ state: s0.update({ selection: EditorSelection.cursor(at(s0, where)) }).state, dispatch: () => {} })
+    expect(split('Edmond')).toBe(false)
+    expect(split('came in')).toBe(true)
+  })
+
+  it('"@" in it names somebody present; in the prose it does not', () => {
+    const s0 = page()
+    const typing = (where: string, typed: string) => {
+      const pos = at(s0, where)
+      return s0.update({ changes: { from: pos, insert: typed }, selection: EditorSelection.cursor(pos + typed.length) }).state
+    }
+    const cast = [{ id: 'e', kind: 'character' as const, name: 'Edmond' }]
+    expect(mentionAt(typing(']', ' @@Ed'), cast)?.inHeader).toBe(true)
+    expect(mentionAt(typing('came in.', ' @Ed'), cast)?.inHeader).toBe(false)
+  })
+
+  it('a split in a scene with a header cuts its prose, not the line', () => {
+    const s0 = page()
+    const pos = at(s0, 'came in.')
+    const typed = s0.update({ changes: { from: pos, insert: '\n## Customs\n' }, userEvent: 'input' }).state
+    const made = typedHeading(typed, typed.doc.lineAt(pos + 1).from)
+    expect(made).toMatchObject({ kind: 'split', title: 'Customs', cut: { sceneId: 's1', prose: 'The ship\n\ncame in.', tail: true } })
+  })
+
+  describe('kept in step with the records', () => {
+    const rendered = (over: Record<string, string>) => new Map(Object.entries({ s1: '[#The Quay @@Edmond]', s2: '[@@Mercédès]', s3: '', ...over }))
+    const synced = (state: EditorState, over: Record<string, string>, skip: string[] = []) => {
+      const spec = headerSyncSpec(state, rendered(over), new Set(skip))
+      return spec ? state.update(spec).state : state
+    }
+
+    it('nothing to do when the lines agree', () => {
+      expect(headerSyncSpec(page(), rendered({}), new Set())).toBeNull()
+    })
+
+    it('a line rewritten, put in and taken out, the prose untouched each time', () => {
+      const s = synced(page(), { s1: '[#The Yard @@Edmond]', s2: '', s3: '[@@Albert]' })
+      expect(segs(s)).toEqual({
+        s1: ['[#The Yard @@Edmond]', 'The ship came in.'],
+        s2: [null, 'Wait and hope.'],
+        s3: ['[@@Albert]', 'Nothing said.'],
+      })
+      expect(s.doc.toString()).toBe('# Arrival\n\n## The quay\n\n[#The Yard @@Edmond]\n\nThe ship came in.\n\n## The letter\n\nWait and hope.\n\n## Bare\n\n[@@Albert]\n\nNothing said.')
+    })
+
+    it('and on scenes with no prose, between two headings and at the end of the book', () => {
+      const empty: DraftChapter[] = [{ id: 'c1', title: 'A', scenes: [{ id: 'x', title: 'X', text: '' }, { id: 'y', title: 'Y', text: '' }] }]
+      const s0 = draftState(empty)
+      const put = s0.update(headerSyncSpec(s0, new Map([['x', '[@@P]'], ['y', '[@@Q]']]), new Set())!).state
+      expect(put.doc.toString()).toBe('# A\n\n## X\n\n[@@P]\n\n## Y\n\n[@@Q]')
+      const back = put.update(headerSyncSpec(put, new Map([['x', ''], ['y', '']]), new Set())!).state
+      expect(back.doc.toString()).toBe('# A\n\n## X\n\n## Y')
+    })
+
+    it('leaves alone a scene it is told to, and is not something undo takes back', () => {
+      const s = synced(page(), { s1: '[#The Yard]' }, ['s1'])
+      expect(segs(s).s1).toEqual(['[#The Quay @@Edmond]', 'The ship came in.'])
+      const moved = synced(page(), { s1: '[#The Yard]' })
+      expect(run(moved, undo).doc.toString()).toBe(moved.doc.toString())
+    })
+
+    it('the blank line a deleted header leaves is not prose', () => {
+      const s0 = page()
+      const line = s0.doc.lineAt(at(s0, '[#The Quay'))
+      const emptied = s0.update({ changes: { from: line.from, to: line.to }, userEvent: 'delete' }).state
+      expect(segs(emptied).s1).toEqual([null, 'The ship came in.'])
+    })
+
+    it('puts back a line the writer deleted, once they are off it', () => {
+      const s0 = page()
+      const line = s0.doc.lineAt(at(s0, '[#The Quay'))
+      const gone = s0.update({ changes: { from: line.from, to: line.to + 2 }, userEvent: 'delete' }).state
+      expect(segs(gone).s1).toEqual([null, 'The ship came in.'])
+      expect(segs(synced(gone, {})).s1).toEqual(['[#The Quay @@Edmond]', 'The ship came in.'])
+    })
+  })
+
+  it('a joined scene’s header line goes with its heading, and does not become prose', () => {
+    const s0 = page()
+    const h = at(s0, '## The letter')
+    const tr = s0.update({ changes: { from: h - 1, to: s0.doc.lineAt(h).to }, userEvent: 'delete' })
+    const spec = joinedHeaderSpec(s0, tr.changes, 's2')!
+    const joined = tr.state.update(spec).state
+    expect(joined.field(headerScenes).has('s2')).toBe(false)
+    expect(draftSegments(joined).find((x) => x.id === 's1')!.text.replace(/\n+/g, ' ')).toBe('The ship came in. Wait and hope.')
   })
 })

@@ -149,6 +149,88 @@ export function splitSceneDraft(
   return { header: rendered, body: `${before}${after}`.replace(/^\n+/, '') }
 }
 
+/** What a header line changes, and what in it the world could not answer. */
+export interface HeaderPlan {
+  /** Names nothing answers, and a place nothing answers — said, and otherwise left alone. */
+  unknown: { names: string[]; place: string | null }
+  /** The scene's new cast, mentions and setting, or null when the line changes nothing. */
+  update: { involvedCharacterIds: string[]; mentionedCharacterIds: string[]; locationMarkerId: string | null } | null
+}
+
+/**
+ * Read a header line against the world and say what the scene becomes. The
+ * rules of a scene card's draft and the Manuscript's Page, in one place.
+ *
+ * `involved` is the cast the line is read against: a card being edited passes
+ * the cast it is editing, which is not always the stored one.
+ *
+ * No header is no change — deleting the line is how somebody clears their
+ * screen, not how they empty their cast.
+ */
+export function planHeader(
+  header: string | null,
+  world: {
+    characters: ReadonlyArray<{ id: string; name: string; aliases?: string[] }>
+    places: ReadonlyArray<{ id: string; name: string }>
+  },
+  scene: { involved: string[]; mentioned: string[]; place: string | null },
+): HeaderPlan {
+  if (!header) return { unknown: { names: [], place: null }, update: null }
+  const parsed = parseSceneHeader(header)
+
+  const matches = (name: string, against: string, aliases?: string[]) =>
+    against.toLowerCase() === name.toLowerCase()
+    || !!aliases?.some((a) => a.toLowerCase() === name.toLowerCase())
+
+  const found = parsed.characters.map((n) => ({
+    name: n, record: world.characters.find((c) => matches(n, c.name, c.aliases)),
+  }))
+  const place = parsed.place
+    ? world.places.find((m) => matches(parsed.place!, m.name))
+    : undefined
+  const unmatched = found.filter((f) => !f.record).map((f) => f.name)
+  const unknownPlace = parsed.place && !place ? parsed.place : null
+
+  /*
+    A place the header names but the world does not have keeps the setting
+    it had: the writer meant to put the scene somewhere, and clearing it
+    would answer a typo by throwing away the answer.
+
+    That sentence is true of people word for word, and people were the case
+    that dropped. `@@Juno Skeling` took Juno Skelling out of the scene, and
+    so did the comma a writer puts between names by habit — one mistyped
+    letter, and somebody was no longer in the room. So a header naming
+    anybody this world cannot answer leaves the cast alone and says so; the
+    names stay on the line, where the letter can be fixed in place.
+  */
+  const nextCast = unmatched.length > 0
+    ? scene.involved
+    : found.flatMap((f) => (f.record ? [f.record.id] : []))
+  const nextPlace = parsed.place ? (place?.id ?? scene.place) : null
+  const castUnchanged = nextCast.length === scene.involved.length
+    && nextCast.every((id, i) => scene.involved[i] === id)
+  const unknown = { names: unmatched, place: unknownPlace }
+  if (castUnchanged && nextPlace === scene.place) return { unknown, update: null }
+  return {
+    unknown,
+    update: {
+      involvedCharacterIds: nextCast,
+      /*
+        Presence replaces a mention rather than sitting beside it, which is
+        what `@@` in the prose does and what the guide promises of both. The
+        header used to leave a character in the cast *and* in the mentioned
+        list — two mutually exclusive claims, in one record, that nothing
+        reported.
+      */
+      mentionedCharacterIds: scene.mentioned.filter((id) => !nextCast.includes(id)),
+      locationMarkerId: nextPlace,
+    },
+  }
+}
+
+/** Whether a plan left everything on the line answered. */
+export const planIsClean = (plan: HeaderPlan) => plan.unknown.names.length === 0 && plan.unknown.place === null
+
 /** The prose alone — what is stored, counted, compiled and exported. */
 export function sceneBody(text: string): string {
   return splitSceneHeader(text).body

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatSceneHeader, parseSceneHeader, splitSceneDraft, splitSceneHeader, sceneBody } from '@/lib/sceneHeader'
+import { formatSceneHeader, parseSceneHeader, splitSceneDraft, splitSceneHeader, sceneBody, planHeader, planIsClean } from '@/lib/sceneHeader'
 
 /**
  * `[#The Kitchen @@Wren @@Sal'ka]` — where the scene happens and who is in it,
@@ -160,5 +160,41 @@ describe('a single @ inside the brackets', () => {
     expect(parseSceneHeader('[#The Salt Court @@Sella]')).toEqual({
       place: 'The Salt Court', characters: ['Sella'],
     })
+  })
+})
+
+describe('what a header line does to the scene', () => {
+  const world = {
+    characters: [
+      { id: 'wren', name: 'Wren Halloway', aliases: ['Wren'] },
+      { id: 'sal', name: "Sal'ka" },
+    ],
+    places: [{ id: 'kitchen', name: 'The Kitchen' }, { id: 'yard', name: 'The Yard' }],
+  }
+  const scene = { involved: ['sal'], mentioned: ['wren'], place: 'yard' }
+
+  it('sets the cast and the setting it names, by name or alias, and takes the named off the mentioned list', () => {
+    const plan = planHeader('[#the kitchen @@Wren]', world, scene)
+    expect(plan.update).toEqual({ involvedCharacterIds: ['wren'], mentionedCharacterIds: [], locationMarkerId: 'kitchen' })
+    expect(planIsClean(plan)).toBe(true)
+  })
+
+  it('changes nothing when it says what the scene already holds', () => {
+    expect(planHeader("[#The Yard @@Sal'ka]", world, scene).update).toBeNull()
+  })
+
+  it('no header is no change: deleting the line clears the screen, not the cast', () => {
+    expect(planHeader(null, world, scene)).toEqual({ unknown: { names: [], place: null }, update: null })
+  })
+
+  it('a name nothing answers leaves the cast alone and is named; a place nothing answers keeps the setting', () => {
+    const plan = planHeader('[#The Kichen @@Wren @@Juno]', world, scene)
+    expect(plan.unknown).toEqual({ names: ['Juno'], place: 'The Kichen' })
+    expect(plan.update).toBeNull()
+    expect(planIsClean(plan)).toBe(false)
+  })
+
+  it('a header with no place clears the setting', () => {
+    expect(planHeader("[@@Sal'ka]", world, scene).update).toEqual({ involvedCharacterIds: ['sal'], mentionedCharacterIds: ['wren'], locationMarkerId: null })
   })
 })

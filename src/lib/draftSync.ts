@@ -100,7 +100,8 @@ export function bookToShow(book: DraftChapter[], base: Map<string, Held>, shown:
   return book.map((c) => ({
     id: c.id,
     title: pick(c.id, { title: c.title, text: '' }).title,
-    scenes: c.scenes.map((s) => ({ id: s.id, ...pick(s.id, s) })),
+    // The header line is the records' whatever the page holds: it is never the writer's to keep.
+    scenes: c.scenes.map((s) => ({ id: s.id, ...(s.header ? { header: s.header } : {}), ...pick(s.id, { title: s.title, text: s.text }) })),
   }))
 }
 

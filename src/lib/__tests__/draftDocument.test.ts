@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { composeDraft, readDraft, proseStart, lineEndAt, draftBook, HEADING_PREFIX, type DraftChapter } from '@/lib/draftDocument'
+import { composeDraft, readDraft, proseStart, lineEndAt, draftBook, sceneRegion, sceneHeaderLine, HEADING_PREFIX, type DraftChapter } from '@/lib/draftDocument'
 import type { Chapter, SceneText, WorldEvent } from '@/types'
 
 const book: DraftChapter[] = [
@@ -145,5 +145,81 @@ describe('draftBook', () => {
     expect(draftBook(undefined, events, texts)).toBeNull()
     // An answer of "no prose yet" is an answer.
     expect(draftBook(chapters, events, [])![0].scenes[0].text).toBe('')
+  })
+})
+
+describe('the header line', () => {
+  const withHeaders: DraftChapter[] = [
+    { id: 'c1', title: 'Arrival', scenes: [
+      { id: 's1', title: 'The quay', text: 'The ship came in.', header: '[#The Quay @@Edmond]' },
+      { id: 's2', title: 'The letter', text: '[#Not a header, a note in the prose]\n\nWait.' },
+      { id: 's3', title: 'Empty', text: '', header: '[@@Mercédès]' },
+    ] },
+  ]
+
+  it('is composed as the first line under a scene’s title, and read back out of its prose', () => {
+    const { text, headings, headers } = composeDraft(withHeaders)
+    expect(text).toBe('# Arrival\n\n## The quay\n\n[#The Quay @@Edmond]\n\nThe ship came in.\n\n## The letter\n\n[#Not a header, a note in the prose]\n\nWait.\n\n## Empty\n\n[@@Mercédès]')
+    expect(headers).toEqual(['s1', 's3'])
+    const read = readDraft(text, headings, new Set(headers))
+    expect(read.map((s) => [s.id, s.header, s.text])).toEqual([
+      ['c1', null, ''],
+      ['s1', '[#The Quay @@Edmond]', 'The ship came in.'],
+      // Prose that starts with a bracket, in a scene that shows no header line, is prose.
+      ['s2', null, '[#Not a header, a note in the prose]\n\nWait.'],
+      ['s3', '[@@Mercédès]', ''],
+    ])
+  })
+
+  it('without the scenes that show one, the same text is all prose', () => {
+    const { text, headings } = composeDraft(withHeaders)
+    expect(readDraft(text, headings)[1].text).toBe('[#The Quay @@Edmond]\n\nThe ship came in.')
+  })
+
+  it('a line that no longer reads as a header is prose again, as in a card', () => {
+    const { text, headings, headers } = composeDraft(withHeaders)
+    const broken = text.replace('[#The Quay @@Edmond]', '[]')
+    const shift = broken.length - text.length
+    const moved = headings.map((h, i) => (i > 1 ? { ...h, pos: h.pos + shift } : h))
+    const region = sceneRegion(broken, moved, 1, new Set(headers))
+    expect([region.header, region.text]).toEqual([null, '[]\n\nThe ship came in.'])
+  })
+
+  it('blank lines typed above it are not prose, and the prose starts under it', () => {
+    const { text, headings, headers } = composeDraft(withHeaders)
+    const pushed = text.replace('## The quay\n\n', '## The quay\n\n\n\n')
+    const at = readDraft(pushed, headings.map((h, i) => (i > 1 ? { ...h, pos: h.pos + 2 } : h)), new Set(headers))
+    expect([at[1].header, at[1].text]).toEqual(['[#The Quay @@Edmond]', 'The ship came in.'])
+    const region = sceneRegion(pushed, headings, 1, new Set(headers))
+    expect(pushed.slice(region.headerFrom!, region.headerFrom! + 5)).toBe('[#The')
+    expect(pushed.slice(region.bodyFrom, region.bodyFrom + 8)).toBe('The ship')
+  })
+
+  it('reading the line alone agrees with reading the whole scene', () => {
+    const { text, headings, headers } = composeDraft(withHeaders)
+    const set = new Set(headers)
+    for (let i = 0; i < headings.length; i++) {
+      const line = sceneHeaderLine(text, headings, i, set)
+      const region = headings[i].kind === 'scene' ? sceneRegion(text, headings, i, set) : null
+      expect(line && [line.header, line.from], headings[i].id).toEqual(region?.header ? [region.header, region.headerFrom] : null)
+    }
+  })
+
+  it('the caret goes under it, to the prose', () => {
+    const { text, headings, headers } = composeDraft(withHeaders)
+    const set = new Set(headers)
+    expect(text.slice(proseStart(text, headings, 1, set)!).startsWith('The ship came in.')).toBe(true)
+    // A scene with a header and no prose, at the end of the book: nothing under it to go to.
+    expect(proseStart(text, headings, 3, set)).toBeNull()
+  })
+
+  it('draftBook draws each scene’s header from its records, and leaves it off where there is none', () => {
+    const events = [
+      { id: 'e1', chapterId: 'c1', title: 'A', sortOrder: 1, involvedCharacterIds: ['x'] },
+      { id: 'e2', chapterId: 'c1', title: 'B', sortOrder: 2, involvedCharacterIds: [] },
+    ] as unknown as WorldEvent[]
+    const chapters = [{ id: 'c1', number: 1, title: 'One' }] as unknown as Chapter[]
+    const out = draftBook(chapters, events, [], (e) => (e.involvedCharacterIds.length ? '[@@X]' : ''))
+    expect(out![0].scenes).toEqual([{ id: 'e1', title: 'A', text: '', header: '[@@X]' }, { id: 'e2', title: 'B', text: '' }])
   })
 })

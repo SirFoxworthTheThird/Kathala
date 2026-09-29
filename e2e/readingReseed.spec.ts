@@ -96,8 +96,20 @@ test('a reader who chose all chapters on the book they are holding keeps it', as
   const [title, worldId] = BOOKS[0]
   await downloadLibraryBook(page, title)
   await settle(page)
-
-  await revealAllFor(page, worldId)
+  /*
+    Chosen the way a reader chooses it, not written into storage: the app is
+    running, and it saves its whole state over anything written there — the
+    arrival's own seed, landing a moment after the download, did exactly that.
+  */
+  const confirm = page.getByRole('button', { name: 'Show everything' })
+  await page.getByRole('button', { name: 'View all chapters' }).first().click()
+  await expect(confirm).toBeVisible({ timeout: 15_000 })
+  await confirm.click()
+  await expect.poll(() => page.evaluate((id) => {
+    const raw = localStorage.getItem('kathala-ui')
+    const state = raw ? (JSON.parse(raw) as { state: { eventByWorld?: Record<string, string | null> } }).state : null
+    return state?.eventByWorld ? id in state.eventByWorld && state.eventByWorld[id] === null : false
+  }, worldId), { timeout: 10_000 }).toBe(true)
   await page.reload({ waitUntil: 'load' })
   await settle(page)
   await openBook(page)

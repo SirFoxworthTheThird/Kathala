@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { findMentionToken, mentionSuggestions, type MentionCandidate } from '@/lib/mentionPicker'
+import { findMentionToken, mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
 
 const CAST: MentionCandidate[] = [
   { id: 'c1', kind: 'character', name: 'Marren Vale', aliases: ['the courier'] },
@@ -312,5 +312,33 @@ describe('a single @ always has something to offer', () => {
 
   it('and the record itself for a name that is already taken', () => {
     expect(mentionSuggestions('Isko Marn', cast, { canCreateLocation: false }).length).toBeGreaterThan(0)
+  })
+})
+
+describe('the picker’s keys', () => {
+  const marn: MentionSuggestion = { type: 'existing', kind: 'character', id: 'm', name: 'Marn', insert: 'Marn' }
+  const knife: MentionSuggestion = { type: 'existing', kind: 'item', id: 'k', name: 'Marn’s knife', insert: 'Marn’s knife' }
+  const create: MentionSuggestion = { type: 'create', kind: 'character', name: 'Marnie' }
+  const rows = [marn, knife, create]
+
+  it('↑ and ↓ move through the rows and wrap at either end', () => {
+    expect(mentionKey('ArrowDown', rows, 0)).toEqual({ kind: 'highlight', index: 1 })
+    expect(mentionKey('ArrowDown', rows, 2)).toEqual({ kind: 'highlight', index: 0 })
+    expect(mentionKey('ArrowUp', rows, 0)).toEqual({ kind: 'highlight', index: 2 })
+  })
+
+  it('Enter completes a record that exists', () => {
+    expect(mentionKey('Enter', rows, 1)).toEqual({ kind: 'select', suggestion: knife })
+  })
+
+  it('but on a create row it closes the picker and is a paragraph break, and Tab is what creates', () => {
+    expect(mentionKey('Enter', rows, 2)).toEqual({ kind: 'close', passThrough: true })
+    expect(mentionKey('Tab', rows, 2)).toEqual({ kind: 'select', suggestion: create })
+  })
+
+  it('Escape closes it and goes no further; other keys, and any key with no rows, are the editor’s', () => {
+    expect(mentionKey('Escape', rows, 0)).toEqual({ kind: 'close', passThrough: false })
+    expect(mentionKey('a', rows, 0)).toBeNull()
+    expect(mentionKey('Enter', [], 0)).toBeNull()
   })
 })

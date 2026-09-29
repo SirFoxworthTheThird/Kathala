@@ -83,7 +83,7 @@ Restoring is **non-destructive**: the current draft is saved as a new version fi
 
 ## Focus mode
 
-Above the scene draft, **Focus** opens a full-screen, distraction-free writing surface for that scene — no chrome, just your prose in a centred column.
+Above the scene draft, **Focus** opens a full-screen, distraction-free writing surface for that scene — no chrome, just your prose in a centred column. On the Page, the **Focus** button above the page opens it for the scene the caret is in.
 
 - The caret stays vertically centred as you type (typewriter scrolling).
 - A live **word count** and **words this session** sit in the slim header.

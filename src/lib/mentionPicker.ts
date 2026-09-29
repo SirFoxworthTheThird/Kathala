@@ -254,3 +254,49 @@ export function mentionSuggestions(
   const room = Math.max(1, limit - creates.length)
   return [...existing.slice(0, room), ...creates]
 }
+
+/** What a key does while the picker has rows, in whichever editor hosts it. */
+export type MentionKeyAction =
+  | { kind: 'highlight'; index: number }
+  | { kind: 'select'; suggestion: MentionSuggestion }
+  /** `passThrough`: the key goes on to the editor as if there were no picker. */
+  | { kind: 'close'; passThrough: boolean }
+
+/**
+ * The picker's keys: ↑ ↓ move, Enter and Tab choose, Escape closes. `null` for
+ * any other key, and for every key when there is no row to act on.
+ *
+ * W23-4: **Enter may complete a name, it may not invent a record.**
+ *
+ * It used to take the highlighted row whatever that row was, and
+ * `mentionSuggestions` always appends create rows for any name not already
+ * taken — so the rows are effectively never empty while a token is open, and
+ * Enter was never a paragraph break. Typing *"…knew every stone of @Wenmere"*
+ * and pressing Enter to start the next paragraph created a **character called
+ * Wenmere**, silently: no confirmation, no toast, just a new chip under
+ * MENTIONED, a row in Cast Balance reading *never appears*, and an entry in the
+ * picker for the rest of the book.
+ *
+ * The two halves of that keystroke are not alike. Completing a record that
+ * already exists only inserts text the writer was already typing. Creating one
+ * changes the world, and a key that means *paragraph* in every other prose
+ * editor is not consent to it. So a create needs an unambiguous gesture —
+ * **Tab**, or a click on the row.
+ *
+ * Enter on a create row closes the picker and lets the newline through,
+ * leaving the `@Wenmere` the writer typed as ordinary text. That is worse prose
+ * than a mention and better than a phantom cast member: it is visible, and
+ * they can see to remove it.
+ */
+export function mentionKey(key: string, matches: readonly MentionSuggestion[], highlight: number): MentionKeyAction | null {
+  if (matches.length === 0) return null
+  if (key === 'ArrowDown') return { kind: 'highlight', index: (highlight + 1) % matches.length }
+  if (key === 'ArrowUp') return { kind: 'highlight', index: (highlight - 1 + matches.length) % matches.length }
+  if (key === 'Enter' || key === 'Tab') {
+    const chosen = matches[highlight]
+    if (key === 'Tab' || chosen.type === 'existing') return { kind: 'select', suggestion: chosen }
+    return { kind: 'close', passThrough: true }
+  }
+  if (key === 'Escape') return { kind: 'close', passThrough: false }
+  return null
+}
