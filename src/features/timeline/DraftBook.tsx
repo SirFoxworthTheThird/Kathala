@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Maximize2 } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Compartment, Prec, RangeSetBuilder, type EditorState, type TransactionSpec } from '@codemirror/state'
 import { EditorView, Decoration, ViewPlugin, keymap, type DecorationSet, type ViewUpdate } from '@codemirror/view'
@@ -9,10 +10,15 @@ import { setSceneText } from '@/db/hooks/useManuscript'
 import { createEventAt, updateChapter, updateEvent } from '@/db/hooks/useTimeline'
 import { joinChapterToPrevious, joinWithNext, splitScene, startChapter } from '@/db/hooks/useSceneStructure'
 import { useRedoAction, useUndoAction } from '@/features/history'
+import { useCharacters } from '@/db/hooks/useCharacters'
+import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
+import { formatSceneHeader } from '@/lib/sceneHeader'
+import { Button } from '@/components/ui/button'
+import { FocusMode } from './FocusMode'
 import { HEADING_PREFIX, proseStart, lineEndAt, draftBook, type DraftChapter } from '@/lib/draftDocument'
 import {
   draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse,
-  lineToHeading, clearLine, joinSpec, type Refusal, type Join, type Typed,
+  lineToHeading, clearLine, joinSpec, stepScene, openSceneLine, abandonedLine, focusScene, sceneBeside, type Refusal, type Join, type Typed,
 } from '@/lib/draftEditor'
 import {
   storedValues, shownValues, planSync, bookToShow, pendingWrites, afterWrite, sameText, sameShape, type Held,
@@ -47,6 +53,11 @@ import { generateId } from '@/lib/id'
 
 /** Same as a scene's own draft box, so the two save on the same beat. */
 const AUTOSAVE_MS = 1000
+
+const IS_MAC = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform)
+const MOD = IS_MAC ? '⌘' : 'Ctrl+'
+const ALT = IS_MAC ? '⌥' : 'Alt+'
+const SHIFT = IS_MAC ? '⇧' : 'Shift+'
 
 const REFUSALS: Record<Refusal, string> = {
   'heading': 'A heading goes whole: to join it to what is before it, delete its entire line.',
@@ -138,6 +149,18 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
   undoRef.current = undo
   const redoRef = useRef(redo)
   redoRef.current = redo
+
+  /*
+    Focus mode, as a scene card opens it: on the scene the caret is in, or a
+    chapter's first from its heading. It writes the scene's prose itself, and
+    the page takes what it wrote from the store like any other change made
+    elsewhere.
+  */
+  const characters = useCharacters(worldId)
+  const markers = useAllLocationMarkers(worldId)
+  const [caretScene, setCaretScene] = useState<string | null>(null)
+  const caretSceneRef = useRef<string | null>(null)
+  const [focus, setFocus] = useState<{ id: string; text: string } | null>(null)
 
   /** Write every heading whose `shown` value differs from what the page knows the records to say. */
   async function write(shown: Map<string, Held>) {
@@ -338,6 +361,45 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
     void restructure({ owed, settle, act })
   }
 
+  /** Which scene the Focus button would open. */
+  function noteCaret(state: EditorState) {
+    const id = focusScene(state, state.selection.main.head)
+    if (id !== caretSceneRef.current) { caretSceneRef.current = id; setCaretScene(id) }
+  }
+
+  /**
+   * Focus mode on scene `id`, once what the page owes is written: Focus mode
+   * starts from the stored prose and writes the whole of it back, so it must
+   * start from the page's.
+   */
+  async function openFocus(id: string) {
+    const pending = busy.current
+    if (pending?.acting) await pending.acted
+    await saveRef.current()
+    const text = (await db.sceneTexts.where('eventId').equals(id).first())?.text ?? ''
+    setFocus({ id, text })
+  }
+
+  /** A new scene after `id`, or `id` split at `at`, from Focus mode — which goes on in the scene made. */
+  async function makeFromFocus(id: string, kind: 'new' | 'split', title: string, at: number) {
+    const scene = events?.find((e) => e.id === id)
+    if (!scene) return
+    const siblings = (events ?? []).filter((e) => e.chapterId === scene.chapterId).sort((a, b) => a.sortOrder - b.sortOrder)
+    const created = kind === 'split'
+      ? await splitScene(id, at, title)
+      : await createEventAt(scene.chapterId, siblings.findIndex((e) => e.id === id) + 1, title)
+    if (created) await openFocus(created.id)
+  }
+
+  /** Out of Focus mode: the page, with the caret in the scene the writer was last in. */
+  function closeFocus(id: string) {
+    setFocus(null)
+    const view = viewRef.current
+    if (!view) return
+    caretUnder(view, id)
+    view.focus()
+  }
+
   function extensions() {
     const typing = (tr: { isUserEvent: (e: string) => boolean }) => tr.isUserEvent('input') || tr.isUserEvent('delete')
     const journal = (from: 'undo' | 'redo') => (view: EditorView) => {
@@ -356,7 +418,14 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
         { key: 'Mod-Shift-z', run: journal('redo') },
         { key: 'Mod-y', run: journal('redo') },
       ])),
-      Prec.high(keymap.of([{ key: 'Enter', run: enterOnHeading }])),
+      Prec.high(keymap.of([
+        { key: 'Enter', run: enterOnHeading },
+        // The scene keys, as in a scene card's draft: see `sceneShortcut`.
+        { key: 'Mod-Alt-ArrowDown', run: stepScene('next') },
+        { key: 'Mod-Alt-ArrowUp', run: stepScene('previous') },
+        { key: 'Mod-Enter', run: openSceneLine('new') },
+        { key: 'Mod-Shift-Enter', run: openSceneLine('split') },
+      ])),
       keymap.of([...searchKeymap, ...historyKeymap, ...defaultKeymap]),
       search({ top: true }),
       EditorView.lineWrapping,
@@ -364,6 +433,7 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
       headingStyles,
       theme,
       EditorView.updateListener.of((u) => {
+        if (u.selectionSet || u.docChanged) noteCaret(u.state)
         const effects = u.transactions.flatMap((tr) => tr.effects)
         const why = effects.find((e) => e.is(refused))
         if (why) setNotice(REFUSALS[why.value as Refusal])
@@ -395,6 +465,16 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
           queueMicrotask(() => make(typed, from, after))
           return
         }
+        // A line a scene key opened and the writer left untitled goes, before anything is saved.
+        if (from !== null && abandonedLine(u.state, from)) {
+          queueMicrotask(() => {
+            const view = viewRef.current
+            const spec = view && abandonedLine(view.state, from)
+            if (spec) view.dispatch(spec)
+            if (blurred) void saveRef.current()
+          })
+          return
+        }
         if (left !== null) queueMicrotask(() => viewRef.current?.dispatch({ effects: settled.of(null) }))
         if (blurred) void saveRef.current()
       }),
@@ -408,6 +488,7 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
     if (!book || viewRef.current || !hostRef.current) return
     baseRef.current = storedValues(book)
     viewRef.current = new EditorView({ parent: hostRef.current, state: draftState(book, extensionsRef.current()) })
+    noteCaret(viewRef.current.state)
     setReady(true)
   }, [book])
 
@@ -459,12 +540,59 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
     if (target.focus) view.focus()
   }, [target, ready])
 
+  const titleOf = (id: string | null) => (id ? events?.find((e) => e.id === id)?.title ?? '' : '')
+  const focusEvent = focus ? events?.find((e) => e.id === focus.id) : undefined
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <p role="status" className="min-h-[1.5rem] px-4 py-1 text-xs text-[hsl(var(--muted-foreground))]">
-        {notice ?? (book && book.length === 0 ? 'No chapters yet — add one to write in.' : '')}
-      </p>
+      <div className="flex items-center gap-3 px-4 py-1">
+        <p role="status" className="min-h-[1.5rem] flex-1 text-xs text-[hsl(var(--muted-foreground))]">
+          {notice ?? (book && book.length === 0 ? 'No chapters yet — add one to write in.' : '')}
+        </p>
+        {/* The keys a scene card shows under its draft, for the same reason: keys nobody can see are keys nobody uses. */}
+        <span className="hidden text-[10px] text-[hsl(var(--muted-foreground))] lg:inline">
+          <kbd className="font-sans">{MOD}{ALT}↓ ↑</kbd> next or previous scene
+          {' · '}<kbd className="font-sans">{MOD}Enter</kbd> new scene after
+          {' · '}<kbd className="font-sans">{MOD}{SHIFT}Enter</kbd> split here
+        </span>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-6 gap-1 px-2 text-[11px]"
+          disabled={!caretScene}
+          onClick={() => { if (caretScene) void openFocus(caretScene) }}
+          title={caretScene ? `Write “${titleOf(caretScene)}” distraction-free` : 'Put the caret in a scene to write it distraction-free'}
+        >
+          <Maximize2 className="h-3 w-3" aria-hidden="true" /> Focus
+        </Button>
+      </div>
       <div ref={hostRef} className="min-h-0 flex-1" />
+      {focus && (
+        <FocusMode
+          key={focus.id}
+          worldId={worldId}
+          eventId={focus.id}
+          title={focusEvent?.title ?? ''}
+          header={focusEvent ? formatSceneHeader({
+            place: markers.find((m) => m.id === focusEvent.locationMarkerId)?.name ?? null,
+            characters: focusEvent.involvedCharacterIds
+              .map((id) => characters.find((c) => c.id === id)?.name)
+              .filter((n): n is string => !!n),
+          }) : ''}
+          initialText={focus.text}
+          onExit={() => closeFocus(focus.id)}
+          keys={{
+            step: (dir) => {
+              const view = viewRef.current
+              const next = view ? sceneBeside(view.state, focus.id, dir) : null
+              if (!next) return false
+              void openFocus(next)
+              return true
+            },
+            make: (kind, title, at) => { void makeFromFocus(focus.id, kind, title, at) },
+          }}
+        />
+      )}
     </div>
   )
 }
