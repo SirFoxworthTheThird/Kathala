@@ -139,9 +139,19 @@ Scenes move earlier or later with the ↑ ↓ on their cards, or by dragging the
 
 ---
 
+## On a phone
+
+- **The header is one row**: the binder, **Cards / Page / Read**, the open chapter, **Focus** on Page, and **⋯ Book tools**, which opens the rest under it — the timeline's name, the order, the word count and goal, Find & replace, Export, New Timeline, Generate with AI and Add Chapter.
+- **On Page and Read the open chapter's panel is a sheet**, opened from its button in the header (*Ch. 3*) and put away with its ✕, which leaves the chapter open. It is never put above the book, where the first tap into the prose would push that prose off the screen. On Cards it sits under the chapter's row.
+- **The binder slides in** from the button at the start of the row, and goes again once you pick a chapter or scene.
+- **Buttons are a finger wide** on a touch screen — 44 pixels or more in the header, and Focus.
+- **A scene card gives its title a line of its own**, with the badges under it.
+
+---
+
 ## Opening a chapter
 
-A chapter opens in the book: its row opens out to show its scene cards and comes to the top of the list, and the time cursor moves to its first scene (unless it is already inside the chapter, and never while reading). Beside the list — or under the chapter's row on a narrow screen — is **the chapter's panel**:
+A chapter opens in the book: its row opens out to show its scene cards and comes to the top of the list, and the time cursor moves to its first scene (unless it is already inside the chapter, and never while reading). Beside the list — or under the chapter's row on a narrow screen, and on a phone's Page and Read a sheet opened from the header — is **the chapter's panel**:
 
 - The chapter's **title** and **synopsis**, edited in place.
 - A live **Character States** section — each scene's cast and the state each is in.
@@ -169,7 +179,7 @@ The **binder** is the left edge of the Manuscript: every chapter in this timelin
 
 Chapters are not deleted from the binder, since a chapter takes every scene in it; that stays on its row in the book. With more than one timeline the binder says which it is listing — the one whose tab is picked, which opening a chapter switches to that chapter's own.
 
-The **binder** button hides and shows it and remembers the choice. On a phone there is no room for a column, and no need of one: the book's own list is the way round, with the open chapter's panel under its row.
+The **binder** button hides and shows it and remembers the choice. On a phone there is no room for a column, so the button slides the binder in over the book instead; choosing a chapter or scene puts it away again. See [On a phone](#on-a-phone).
 
 While reading, the binder lists only what you have reached, and going to a scene does not move your place in the book.
 

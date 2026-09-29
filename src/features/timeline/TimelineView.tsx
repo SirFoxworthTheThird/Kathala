@@ -1,7 +1,7 @@
-import { useState, useRef, useMemo, useEffect, lazy, Suspense } from 'react'
+import { useState, useRef, useMemo, useEffect, useCallback, lazy, Suspense } from 'react'
 import { BlockingReason } from '@/components/BlockingReason'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter, LayoutList, FileText, BookOpenText, Replace, Download } from 'lucide-react'
+import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter, LayoutList, FileText, BookOpenText, Replace, Download, MoreHorizontal } from 'lucide-react'
 import { useTimelines, useChapters, useChapter, useEvents, useTimelineEvents, useWorldChapters, useWorldEvents, createTimeline, updateTimeline, deleteTimeline } from '@/db/hooks/useTimeline'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { useWorldSceneTexts, useHasProse } from '@/db/hooks/useManuscript'
@@ -17,6 +17,7 @@ import { useAppStore, type TimelineLayout } from '@/store'
 import { computeInWorldDays } from '@/lib/inWorldTime'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Sheet } from '@/components/ui/sheet'
 import { EmptyState } from '@/components/EmptyState'
 import { ChapterRow } from './ChapterRow'
 import { ChapterPanel } from './ChapterPanel'
@@ -431,14 +432,26 @@ export default function TimelineView() {
     }
   }
   const openWords = openEvents.reduce((n, e) => n + (wordsByEvent.get(e.id) ?? 0), 0)
-  const panel = openChapter && openChapter.worldId === worldId
-    ? <ChapterPanel key={openChapter.id} chapter={openChapter} onClose={closeChapter} words={openWords} />
+  const chapterHere = openChapter && openChapter.worldId === worldId ? openChapter : null
+  const panel = chapterHere
+    ? <ChapterPanel key={chapterHere.id} chapter={chapterHere} onClose={closeChapter} words={openWords} />
     : null
   /** Under the row, where there is no room beside the list. */
   const panelInline = panel && !wide
     ? <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">{panel}</div>
     : null
 
+  /** The phone's header: *Book tools* folded open or not. */
+  const [toolsOpen, setToolsOpen] = useState(false)
+  /*
+    The chapter whose sheet is open, on a phone. A chapter rather than a flag,
+    so a sheet left open by one chapter is not found open by the next — the
+    caret moves the chapter under a closed sheet all the time.
+  */
+  const [sheetFor, setSheetFor] = useState<string | null>(null)
+  const closeSheet = useCallback(() => setSheetFor(null), [])
+  /** On a phone, where the Page puts its Focus button: in the header's row. */
+  const [focusSlot, setFocusSlot] = useState<HTMLElement | null>(null)
   const [addChapterOpen, setAddChapterOpen] = useState(false)
   const [aiChapterOpen, setAiChapterOpen] = useState(false)
   const [relPanelOpen, setRelPanelOpen] = useState(false)
@@ -496,6 +509,182 @@ export default function TimelineView() {
       />
     )
   }
+
+  /*
+    ── The header, in pieces ───────────────────────────────────────────────────
+    Laid out in one wrapping row where there is room, and on a phone as one row
+    of what gets you to the book with the rest folded under *Book tools*.
+  */
+  const touch = 'pointer-coarse:min-h-11'
+  const titleBlock = (
+    <>
+      <Layers className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+      {isAll ? (
+        <>
+          <span className="text-sm font-medium">All timelines</span>
+          <span className="text-xs text-[hsl(var(--muted-foreground))]">
+            ({plural(timelines.length, 'timeline')} · {plural(worldChapters.length, 'chapter')})
+          </span>
+          {/* Shared with the bottom bar's scope selector (persisted). */}
+          <div className="ml-2 flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-xs" role="group" aria-label="Combined order">
+            <button
+              onClick={() => setBarScope('all-chapter')}
+              aria-pressed={combinedOrder === 'chapter'}
+              className={cn('flex items-center gap-1 px-2 py-1 transition-colors', touch,
+                combinedOrder === 'chapter' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
+              title="Reading order — chapter numbers across all timelines"
+            >
+              <AlignLeft className="h-3.5 w-3.5" /> Chapter order
+            </button>
+            <button
+              onClick={() => setBarScope('all-chrono')}
+              aria-pressed={combinedOrder === 'chrono'}
+              className={cn('flex items-center gap-1 border-l border-[hsl(var(--border))] px-2 py-1 transition-colors', touch,
+                combinedOrder === 'chrono' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
+              title="In-world order — scenes by when they actually happen"
+            >
+              <Clock className="h-3.5 w-3.5" /> Chronological
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <span className="text-sm font-medium">
+            {timelines.find((t) => t.id === currentTimelineId)?.name ?? 'Timeline'}
+          </span>
+          {/* MT-4: a timeline can hold any chapter numbering — the shipped
+              examples carry the book's own — so "10 chapters" could sit
+              above a first row of Ch. 12 and read as missing data. */}
+          <span className="text-xs text-[hsl(var(--muted-foreground))]">
+            ({describeChapterSpan(chapters.map((c) => c.number))})
+          </span>
+          <div className="ml-2 flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-xs" role="group" aria-label="Timeline order">
+            <button
+              onClick={() => setViewMode('narrative')}
+              aria-pressed={viewMode === 'narrative'}
+              className={cn('flex items-center gap-1 px-2 py-1 transition-colors', touch,
+                viewMode === 'narrative' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
+              title="Reading order — chapters as written"
+            >
+              <AlignLeft className="h-3.5 w-3.5" /> Narrative
+            </button>
+            <button
+              onClick={() => setViewMode('chronological')}
+              aria-pressed={viewMode === 'chronological'}
+              className={cn('flex items-center gap-1 border-l border-[hsl(var(--border))] px-2 py-1 transition-colors', touch,
+                viewMode === 'chronological' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
+              title="In-world order — scenes by when they actually happen"
+            >
+              <Clock className="h-3.5 w-3.5" /> Chronological
+            </button>
+          </div>
+        </>
+      )}
+    </>
+  )
+  // The icons go on a phone, where the row has the binder, the chapter and the tools beside it.
+  const layoutGroup = !isAll && readOffered ? (
+    <div className="flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-xs" role="group" aria-label="Layout">
+      <button
+        onClick={() => setLayout('cards')}
+        aria-pressed={layout === 'cards'}
+        className={cn('flex items-center gap-1 px-2 py-1 transition-colors', touch,
+          layout === 'cards' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
+        title="Each scene on its own card"
+      >
+        <LayoutList className="h-3.5 w-3.5 max-lg:hidden" aria-hidden="true" /> Cards
+      </button>
+      {pageOffered && (
+        <button
+          onClick={() => setLayout('page')}
+          aria-pressed={layout === 'page'}
+          className={cn('flex items-center gap-1 border-l border-[hsl(var(--border))] px-2 py-1 transition-colors', touch,
+            layout === 'page' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
+          title="The whole book as one page to write in"
+        >
+          <FileText className="h-3.5 w-3.5 max-lg:hidden" aria-hidden="true" /> Page
+        </button>
+      )}
+      <button
+        onClick={() => setLayout('read')}
+        aria-pressed={layout === 'read'}
+        className={cn('flex items-center gap-1 border-l border-[hsl(var(--border))] px-2 py-1 transition-colors', touch,
+          layout === 'read' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
+        title="The book set for reading"
+      >
+        <BookOpenText className="h-3.5 w-3.5 max-lg:hidden" aria-hidden="true" /> Read
+      </button>
+    </div>
+  ) : null
+  /* The book's own tools, where the book is on screen as a book. */
+  const bookSummary = !isAll && (showPage || showRead) && !gate.active && (
+    <>
+      {/* The Manuscript's own summary line, which came with it. */}
+      <span className="text-xs text-[hsl(var(--muted-foreground))]">
+        {book.manuscript.writtenScenes.toLocaleString()} of {book.manuscript.totalScenes.toLocaleString()} scenes written · {plural(book.manuscript.totalWords, 'word')}
+      </span>
+      <BookGoal worldId={worldId!} words={book.manuscript.totalWords} />
+    </>
+  )
+  const bookTools = (
+    <>
+      {(showPage || showRead) && !gate.active && (
+        <>
+          <Button size="sm" variant="outline" className={touch} onClick={() => setFindOpen(true)} disabled={book.manuscript.writtenScenes === 0}>
+            <Replace className="h-4 w-4" /> Find &amp; replace
+          </Button>
+          <Button size="sm" variant="outline" className={touch} onClick={() => setExportOpen(true)} disabled={book.manuscript.writtenScenes === 0}>
+            <Download className="h-4 w-4" /> Export
+          </Button>
+        </>
+      )}
+      {!gate.active && timelines.length >= 2 && (
+        <Button size="sm" variant="outline" className={touch} onClick={() => setRelPanelOpen(true)}>
+          <Link2 className="h-4 w-4" /> Link Timelines
+        </Button>
+      )}
+      {!gate.active && (
+        <>
+          <Button size="sm" variant="outline" className={touch} onClick={handleCreateTimeline}>
+            <Layers className="h-4 w-4" /> New Timeline
+          </Button>
+          {/* X-9, and the least guessable instance of it: a chapter belongs
+              to one timeline, so both of these go dead on the merged view.
+              The message names the tab that put you there — `isAll` is this
+              view's own tab state, not the bottom bar's scope. */}
+          {/* No "make a timeline first" branch: `timelines.length === 0`
+              returns the empty state above, so this header only ever renders
+              where there are tabs to pick from. */}
+          <BlockingReason
+            checks={[{
+              met: !!currentTimelineId && !isAll,
+              need: 'one timeline — pick a tab above, since a chapter belongs to a single timeline',
+            }]}
+          />
+          <Button size="sm" variant="outline" className={touch} onClick={() => setAiChapterOpen(true)} disabled={!currentTimelineId || isAll}>
+            <Sparkles className="h-4 w-4" /> Generate with AI
+          </Button>
+          <Button size="sm" className={touch} onClick={() => setAddChapterOpen(true)} disabled={!currentTimelineId || isAll}>
+            <Plus className="h-4 w-4" /> Add Chapter
+          </Button>
+        </>
+      )}
+    </>
+  )
+  /** On a phone, the open chapter's panel is a sheet over the Page or Read, opened from here. */
+  const sheetable = !wide && (showPage || showRead) && !!chapterHere
+  const chapterButton = sheetable && chapterHere ? (
+    <Button
+      variant="outline"
+      size="sm"
+      className="h-9 shrink-0 gap-1 px-2 pointer-coarse:h-11"
+      aria-haspopup="dialog"
+      title={`Ch. ${chapterHere.number} — ${chapterHere.title}: its synopsis, Character States and notes`}
+      onClick={() => setSheetFor(chapterHere.id)}
+    >
+      <BookOpen className="h-4 w-4 max-[389px]:hidden" aria-hidden="true" /> Ch. {chapterHere.number}
+    </Button>
+  ) : null
 
   return (
     <div className="flex h-full flex-col">
@@ -569,165 +758,57 @@ export default function TimelineView() {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <BinderToggle />
-          <Layers className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-          {isAll ? (
-            <>
-              <span className="text-sm font-medium">All timelines</span>
-              <span className="text-xs text-[hsl(var(--muted-foreground))]">
-                ({plural(timelines.length, 'timeline')} · {plural(worldChapters.length, 'chapter')})
-              </span>
-              {/* Shared with the bottom bar's scope selector (persisted). */}
-              <div className="ml-2 flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-xs" role="group" aria-label="Combined order">
-                <button
-                  onClick={() => setBarScope('all-chapter')}
-                  aria-pressed={combinedOrder === 'chapter'}
-                  className={cn('flex items-center gap-1 px-2 py-1 transition-colors',
-                    combinedOrder === 'chapter' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
-                  title="Reading order — chapter numbers across all timelines"
-                >
-                  <AlignLeft className="h-3.5 w-3.5" /> Chapter order
-                </button>
-                <button
-                  onClick={() => setBarScope('all-chrono')}
-                  aria-pressed={combinedOrder === 'chrono'}
-                  className={cn('flex items-center gap-1 border-l border-[hsl(var(--border))] px-2 py-1 transition-colors',
-                    combinedOrder === 'chrono' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
-                  title="In-world order — scenes by when they actually happen"
-                >
-                  <Clock className="h-3.5 w-3.5" /> Chronological
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <span className="text-sm font-medium">
-                {timelines.find((t) => t.id === currentTimelineId)?.name ?? 'Timeline'}
-              </span>
-              {/* MT-4: a timeline can hold any chapter numbering — the shipped
-                  examples carry the book's own — so "10 chapters" could sit
-                  above a first row of Ch. 12 and read as missing data. */}
-              <span className="text-xs text-[hsl(var(--muted-foreground))]">
-                ({describeChapterSpan(chapters.map((c) => c.number))})
-              </span>
-              <div className="ml-2 flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-xs" role="group" aria-label="Timeline order">
-                <button
-                  onClick={() => setViewMode('narrative')}
-                  aria-pressed={viewMode === 'narrative'}
-                  className={cn('flex items-center gap-1 px-2 py-1 transition-colors',
-                    viewMode === 'narrative' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
-                  title="Reading order — chapters as written"
-                >
-                  <AlignLeft className="h-3.5 w-3.5" /> Narrative
-                </button>
-                <button
-                  onClick={() => setViewMode('chronological')}
-                  aria-pressed={viewMode === 'chronological'}
-                  className={cn('flex items-center gap-1 border-l border-[hsl(var(--border))] px-2 py-1 transition-colors',
-                    viewMode === 'chronological' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
-                  title="In-world order — scenes by when they actually happen"
-                >
-                  <Clock className="h-3.5 w-3.5" /> Chronological
-                </button>
-              </div>
-              {readOffered && (
-                <div className="flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-xs" role="group" aria-label="Layout">
-                  <button
-                    onClick={() => setLayout('cards')}
-                    aria-pressed={layout === 'cards'}
-                    className={cn('flex items-center gap-1 px-2 py-1 transition-colors',
-                      layout === 'cards' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
-                    title="Each scene on its own card"
-                  >
-                    <LayoutList className="h-3.5 w-3.5" /> Cards
-                  </button>
-                  {pageOffered && (
-                    <button
-                      onClick={() => setLayout('page')}
-                      aria-pressed={layout === 'page'}
-                      className={cn('flex items-center gap-1 border-l border-[hsl(var(--border))] px-2 py-1 transition-colors',
-                        layout === 'page' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
-                      title="The whole book as one page to write in"
-                    >
-                      <FileText className="h-3.5 w-3.5" /> Page
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setLayout('read')}
-                    aria-pressed={layout === 'read'}
-                    className={cn('flex items-center gap-1 border-l border-[hsl(var(--border))] px-2 py-1 transition-colors',
-                      layout === 'read' ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]')}
-                    title="The book set for reading"
-                  >
-                    <BookOpenText className="h-3.5 w-3.5" /> Read
-                  </button>
-                </div>
-              )}
-              {/* The book's own tools, where the book is on screen as a book. */}
-              {(showPage || showRead) && !gate.active && (
-                <>
-                  {/* The Manuscript's own summary line, which came with it. */}
-                  <span className="text-xs text-[hsl(var(--muted-foreground))]">
-                    {book.manuscript.writtenScenes.toLocaleString()} of {book.manuscript.totalScenes.toLocaleString()} scenes written · {plural(book.manuscript.totalWords, 'word')}
-                  </span>
-                  <BookGoal worldId={worldId!} words={book.manuscript.totalWords} />
-                </>
-              )}
-            </>
-          )}
+      {wide ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <BinderToggle />
+            {titleBlock}
+            {layoutGroup}
+            {bookSummary}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">{bookTools}</div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {(showPage || showRead) && !gate.active && (
-            <>
-              <Button size="sm" variant="outline" onClick={() => setFindOpen(true)} disabled={book.manuscript.writtenScenes === 0}>
-                <Replace className="h-4 w-4" /> Find &amp; replace
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => setExportOpen(true)} disabled={book.manuscript.writtenScenes === 0}>
-                <Download className="h-4 w-4" /> Export
-              </Button>
-            </>
-          )}
-          {!gate.active && timelines.length >= 2 && (
-            <Button size="sm" variant="outline" onClick={() => setRelPanelOpen(true)}>
-              <Link2 className="h-4 w-4" /> Link Timelines
+      ) : (
+        /*
+          A phone: one row, the rest a tap away. Stacked as on a wide screen, the
+          title, the two orders, the layouts, the count, the goal and six buttons
+          started the Page's writing at y=329 of 664 — and with the keyboard up
+          left 115px to write in. The layouts stay out, being how you get to
+          the book at all; the rest is the book's tools, under one button.
+        */
+        <div className="border-b border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+          <div className="flex flex-wrap items-center gap-1 px-2 py-1">
+            <BinderToggle />
+            {layoutGroup}
+            {chapterButton}
+            {showPage && <span ref={setFocusSlot} className="contents" />}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="ml-auto h-9 w-9 shrink-0 pointer-coarse:h-11 pointer-coarse:w-11"
+              aria-label="Book tools"
+              aria-expanded={toolsOpen}
+              aria-controls="timeline-tools"
+              title={toolsOpen ? 'Hide the book’s tools' : 'The book’s order, word count, goal, export and more'}
+              onClick={() => setToolsOpen((v) => !v)}
+            >
+              <MoreHorizontal className="h-4 w-4" />
             </Button>
-          )}
-          {!gate.active && (
-            <>
-              <Button size="sm" variant="outline" onClick={handleCreateTimeline}>
-                <Layers className="h-4 w-4" /> New Timeline
-              </Button>
-              {/* X-9, and the least guessable instance of it: a chapter belongs
-                  to one timeline, so both of these go dead on the merged view.
-                  The message names the tab that put you there — `isAll` is this
-                  view's own tab state, not the bottom bar's scope. */}
-              {/* No "make a timeline first" branch: `timelines.length === 0`
-                  returns the empty state above, so this header only ever renders
-                  where there are tabs to pick from. */}
-              <BlockingReason
-                checks={[{
-                  met: !!currentTimelineId && !isAll,
-                  need: 'one timeline — pick a tab above, since a chapter belongs to a single timeline',
-                }]}
-              />
-              <Button size="sm" variant="outline" onClick={() => setAiChapterOpen(true)} disabled={!currentTimelineId || isAll}>
-                <Sparkles className="h-4 w-4" /> Generate with AI
-              </Button>
-              <Button size="sm" onClick={() => setAddChapterOpen(true)} disabled={!currentTimelineId || isAll}>
-                <Plus className="h-4 w-4" /> Add Chapter
-              </Button>
-            </>
+          </div>
+          {toolsOpen && (
+            <div id="timeline-tools" className="flex flex-col gap-2 border-t border-[hsl(var(--border))] px-4 py-2">
+              <div className="flex flex-wrap items-center gap-2">{titleBlock}</div>
+              {bookSummary && <div className="flex flex-wrap items-center gap-2">{bookSummary}</div>}
+              <div className="flex flex-wrap items-center gap-2">{bookTools}</div>
+            </div>
           )}
         </div>
-      </div>
+      )}
 
       <div className="flex min-h-0 flex-1">
       <div id="timeline-panel" role="tabpanel" className="flex min-w-0 flex-1 flex-col">
       {showRead ? (
         <>
-          {panelInline && <div className="px-4 pt-3">{panelInline}</div>}
           {readingMode && book.manuscript.writtenScenes > 0 && (
             <div className="border-b border-[hsl(var(--border))] px-4 py-2">
               <ReaderRow book={book} scrollRef={readScrollRef} />
@@ -744,10 +825,15 @@ export default function TimelineView() {
         </>
       ) : showPage ? (
         <>
-          {/* No row to put the open chapter's panel under: it leads the page. */}
-          {panelInline && <div className="px-4 pt-3">{panelInline}</div>}
+          {/*
+            No row to put the open chapter's panel under, and it cannot lead the
+            page: the caret opens chapters as it moves (\`followPage\`), and on a
+            phone the first tap into the prose put the panel above it, pushing
+            the line tapped three thousand pixels down. So there the panel is a
+            sheet, opened from the header (\`chapterButton\`).
+          */}
           <Suspense fallback={<p className="p-4 text-sm text-[hsl(var(--muted-foreground))]">Opening the page…</p>}>
-            <DraftBook worldId={worldId!} timelineId={currentTimelineId!} target={pageTarget} open={chapterId ?? null} onPlace={followPage} />
+            <DraftBook worldId={worldId!} timelineId={currentTimelineId!} target={pageTarget} open={chapterId ?? null} onPlace={followPage} focusSlot={wide ? null : focusSlot} />
           </Suspense>
         </>
       ) : (
@@ -913,6 +999,17 @@ export default function TimelineView() {
       )}
       </div>
 
+      {sheetable && chapterHere && (
+        <Sheet open={sheetFor === chapterHere.id} onClose={closeSheet} label="The open chapter" side="bottom" className="overflow-y-auto">
+          <ChapterPanel
+            key={chapterHere.id}
+            chapter={chapterHere}
+            onClose={closeSheet}
+            words={openWords}
+            closeAs={{ label: 'Close', title: showPage ? 'Back to the page' : 'Back to the book' }}
+          />
+        </Sheet>
+      )}
       {worldId && currentTimelineId && !isAll && (
         <AddChapterDialog
           open={addChapterOpen}

@@ -18,11 +18,17 @@ export interface TimelineScreenContext {
    */
   timelineTab: string | null
   setTimelineTab: (id: string | null) => void
+  /**
+   * Slide the binder in over the page, where there is no room for its column —
+   * or null where there is no binder to slide in.
+   */
+  showBinderSheet: (() => void) | null
 }
 
 const STANDALONE: TimelineScreenContext = {
   timelineTab: null,
   setTimelineTab: () => {},
+  showBinderSheet: null,
 }
 
 /**

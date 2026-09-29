@@ -1363,6 +1363,11 @@
 }
 .pw-anim-fade-in { animation: pw-fade-in 0.15s ease-out; }
 .pw-anim-slide-in-left { animation: pw-slide-in-left 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes pw-slide-in-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.pw-anim-slide-in-up { animation: pw-slide-in-up 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
 
 /* ── Desktop nav rail: width reserved for the collapsed/pinned left rail. The
    rail itself is hidden below `lg`, so the reserved width is 0 on mobile (the
