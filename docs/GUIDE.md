@@ -971,10 +971,10 @@ the page; retitle a chapter or scene by editing its heading.
   (Ctrl+Alt+↓) into another chapter and it becomes the open one: its panel is
   beside the page (on a phone, a tap away in the header) and the address names it. Go into another scene, in the same
   chapter or another, and the time cursor goes there — the top bar and the
-  binder show the scene you are in, and so does the chapter's panel: that
-  scene's Character States are marked **now**, opened, and scrolled into view
-  if they were out of sight. A scene nobody is in yet is still listed while you
-  are in it, saying so. The caret stays where you put it. It moves
+  binder show the scene you are in, and so does the chapter's panel: it leads
+  with that scene's details (below), and its Character States are marked
+  **now** and opened. A scene nobody is in yet is still listed while you are
+  in it, saying so. The caret stays where you put it. It moves
   on your way *into* a scene, so a cursor you move elsewhere from the top bar
   stays there while you go on writing in the same scene. Opened at the whole
   book, the page opens no chapter until you go into one.
@@ -1030,6 +1030,24 @@ the page; retitle a chapter or scene by editing its heading.
     prose after it goes to the new scene: a split.
 
   Leave the line without typing a title and it goes again, with nothing saved.
+- **The scene you are in leads the chapter's panel**, under **This scene**,
+  so there is no going to Cards to mark a scene final or take somebody out of
+  it:
+  - its **status**, **dramatic tension** and **point of view**;
+  - its **description**, the line that says what happens;
+  - its **setting**, the **characters** in it, those only **mentioned**, and
+    the **items** — each with a ✕ to take it off the scene and a list to add
+    one. The page's `@` and `@@` could only ever add;
+  - and under **More about this scene**: its story beat, elapsed time or
+    exact day, flashback, tags, plot threads and motifs.
+
+  Each change is saved as you make it and is one step of Undo; a burst of
+  typing in the description is one step. Setting and cast are what the header
+  line is drawn from, so taking somebody out here takes them off that line,
+  and a line edited on the page shows here. It follows the caret into each
+  scene, and comes back into view if you had scrolled the panel away. It is
+  the Page's: on Cards each scene's card holds the same fields, and it is not
+  offered while reading.
 - **Focus**, above the page, opens [Focus mode](#focus-mode) on the scene the
   caret is in, or on a chapter's first scene from its heading. It starts from
   what you have typed, even in the second before the page saves it. What you

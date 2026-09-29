@@ -49,6 +49,12 @@ keeps this file about what is left without pretending the work never happened.
   the first line under each scene's title — drawn from the records, applied on
   leaving it, and never prose. A writer drafting on the Page no longer switches
   to Cards for any of them.
+- **The scene being written, beside the Page.** The chapter panel follows the
+  caret into each scene and leads with that scene's details — status,
+  tension, point of view, description, setting, cast, mentions and items, with
+  its beat, time, flashback, tags, threads and motifs folded under them — so a
+  writer on the Page no longer goes to Cards to mark a scene final or take
+  somebody out of it. The fields are the card's own, shared rather than copied.
 - **The Manuscript on a phone.** The header is one row with the rest under
   *Book tools*, the open chapter's panel and the binder are sheets over the
   book rather than blocks above it, the header's buttons are 44 px on a touch
