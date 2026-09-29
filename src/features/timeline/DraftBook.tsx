@@ -162,6 +162,9 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
   const caretSceneRef = useRef<string | null>(null)
   const [focus, setFocus] = useState<{ id: string; text: string } | null>(null)
 
+  /** Every write started and not yet landed, as one promise. */
+  const landing = useRef<Promise<unknown>>(Promise.resolve())
+
   /** Write every heading whose `shown` value differs from what the page knows the records to say. */
   async function write(shown: Map<string, Held>) {
     const writes = pendingWrites(baseRef.current, shown)
@@ -169,7 +172,7 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
     // each lands: see `planSync` for what reading the store in between would do.
     const before = new Map(baseRef.current)
     for (const w of writes) { inFlight.current.add(w.id); baseRef.current = afterWrite(baseRef.current, w) }
-    await Promise.all(writes.map(async (w) => {
+    const landed = Promise.all(writes.map(async (w) => {
       try {
         if (w.kind === 'chapter') await updateChapter(w.id, { title: w.title ?? '' })
         else {
@@ -185,6 +188,8 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
         inFlight.current.delete(w.id)
       }
     }))
+    landing.current = Promise.all([landing.current, landed])
+    await landed
   }
 
   /** What a save asked for while a split or join was being written, for when it has been. */
@@ -376,6 +381,12 @@ export default function DraftBook({ worldId, timelineId, target }: { worldId: st
     const pending = busy.current
     if (pending?.acting) await pending.acted
     await saveRef.current()
+    /*
+      And every write already on its way. A save counts words as written when
+      it starts, so one begun a moment ago — the autosave — leaves this save
+      nothing to do, and the store without them until it lands.
+    */
+    await landing.current
     const text = (await db.sceneTexts.where('eventId').equals(id).first())?.text ?? ''
     setFocus({ id, text })
   }

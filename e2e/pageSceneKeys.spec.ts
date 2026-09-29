@@ -187,6 +187,25 @@ test.describe('the scene keys and Focus mode on the Page', () => {
     await expect.poll(() => stored(page), { timeout: 10_000 }).toContain('Teodora at the table: ZShe counted. Twice. Thrice.')
   })
 
+  test('Focus waits for a save already on its way, so it opens with the words that save is writing', async ({ page }) => {
+    const worldId = await book(page)
+    await openPage(page, worldId)
+    // Every prose write held up for a second and a half, as a slow disk would.
+    await page.evaluate(() => {
+      const table = (window as { __pwdb?: never }).__pwdb as unknown as {
+        sceneTexts: { update: (...args: unknown[]) => Promise<unknown> }
+      }
+      const update = table.sceneTexts.update.bind(table.sceneTexts)
+      table.sceneTexts.update = async (...args: unknown[]) => { await new Promise((r) => setTimeout(r, 1500)); return update(...args) }
+    })
+    await caretAfter(page, 'She counted.')
+    await page.keyboard.type(' Twice.')
+    // Long enough for the page's own save to start, not for it to land.
+    await page.waitForTimeout(1300)
+    await page.getByRole('button', { name: 'Focus', exact: true }).click()
+    await expect(page.getByPlaceholder('Write…')).toHaveValue('She counted. Twice.')
+  })
+
   test('in Focus mode the scene keys go on through the page’s scenes, and make new ones', async ({ page }) => {
     const worldId = await book(page)
     const editor = await openPage(page, worldId)
