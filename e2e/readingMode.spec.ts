@@ -357,8 +357,9 @@ test('a character page does not offer tabs with nothing behind them', async ({ p
   await settleNav(page)
   await page.getByRole('main').getByRole('link').first().click()
   await settle(page)
-  const writing = await page.getByRole('tab').allTextContents()
-  expect(writing.length).toBeGreaterThan(reading.length)
+  // Waited for, as the reader's were: read straight after the page opens, there are none yet.
+  await expect.poll(async () => (await page.getByRole('tab').allTextContents()).length, { timeout: 20_000 })
+    .toBeGreaterThan(reading.length)
 })
 
 /*
