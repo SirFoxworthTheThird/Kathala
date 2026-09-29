@@ -479,6 +479,8 @@ test.describe('the Page view', () => {
     await expect(tree).toBeVisible({ timeout: 20_000 })
     await tree.getByRole('treeitem', { name: 'The tide-table' }).click()
     await expect(line(page, '## The tide-table')).toBeInViewport()
+    // Opened at chapter 2, the scene is on screen before the click: what says the page took it is the caret.
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeFocused()
     await page.keyboard.type('Copied: ')
     await expect.poll(() => stored(page), { timeout: 10_000 })
       .toContain(`The tide-table: ${`Copied: ${FILLER}`.slice(0, 60)}`)
