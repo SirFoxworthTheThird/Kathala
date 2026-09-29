@@ -122,7 +122,7 @@ Scenes move earlier or later with the ↑ ↓ on their cards, or by dragging the
 - The scene keys work on the page: **Ctrl+Alt+↓ / ↑** goes to the next or previous scene, **Ctrl+Enter** opens the line for a new scene after this one with the `## ` typed for you, and **Ctrl+Shift+Enter** opens it at the caret, to split. A line they open and you leave untitled goes again.
 - **Focus**, above the page, opens [Focus mode](Manuscript#focus-mode) on the scene the caret is in; what you write there is on the page when you come back.
 - **`@` and `@@` work on the page** as in a scene card's draft: pick a character, item or place and the name goes into the prose, recorded against the scene you typed it in. Enter completes a name that exists; only Tab or a click makes a new one.
-- Not on the page yet: the scene header line — open the scene's card for that.
+- **The header line** (`[#The Kitchen @@Wren]`) is the first line under each scene's title, tinted, drawn from the scene's records and never saved as prose. Edit it and leave the line and the scene takes what it says; type one as a scene's first line to give it one; delete it and the scene is left as it was and the line comes back. A name the world has not got leaves the cast alone and is named above the page. Nothing can be typed above it, and joining a scene takes its line with its heading.
 
 ---
 

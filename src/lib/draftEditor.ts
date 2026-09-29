@@ -1,8 +1,9 @@
-import { EditorSelection, EditorState, StateEffect, StateField, type Extension, type Transaction, type TransactionSpec, type StateCommand } from '@codemirror/state'
+import { EditorSelection, EditorState, StateEffect, StateField, Transaction, type ChangeDesc, type Extension, type TransactionSpec, type StateCommand } from '@codemirror/state'
 import {
-  composeDraft, readDraft, proseStart, lineEndAt, oneLine, HEADING_PREFIX,
-  type DraftChapter, type DraftHeading, type DraftSegment, type HeadingKind,
+  composeDraft, readDraft, proseStart as proseStartIn, sceneRegion, sceneHeaderLine, lineEndAt, oneLine, HEADING_PREFIX,
+  type DraftChapter, type DraftHeading, type DraftSegment, type HeadingKind, type SceneRegion,
 } from '@/lib/draftDocument'
+import { splitSceneHeader } from '@/lib/sceneHeader'
 import { findMentionToken, type MentionCandidate, type MentionToken } from '@/lib/mentionPicker'
 
 /*
@@ -49,7 +50,7 @@ import { findMentionToken, type MentionCandidate, type MentionToken } from '@/li
   pushes it down and leaves the new line to what is above.
 */
 
-export type Refusal = 'heading' | 'first-chapter' | 'first-scene' | 'two-headings' | 'title-break' | 'chapter-text' | 'before-first'
+export type Refusal = 'heading' | 'first-chapter' | 'first-scene' | 'two-headings' | 'title-break' | 'chapter-text' | 'before-first' | 'above-header'
 
 /** Carried by the empty transaction that replaces a refused one. */
 export const refused = StateEffect.define<Refusal>()
@@ -75,6 +76,46 @@ export const headingsField = StateField.define<DraftHeading[]>({
     return added.length === 0 ? kept : [...kept, ...added].sort((a, b) => a.pos - b.pos)
   },
 })
+
+/*
+  ── The header line ────────────────────────────────────────────────────────
+
+  A scene may show `[#Place @@Name]` as the first line under its title, drawn
+  from its records and never part of its prose (`draftDocument`). Which scenes
+  show one is carried here, beside the headings, rather than read off the text:
+  a scene whose stored prose happens to begin with a bracketed line keeps it as
+  prose. The page shows one where the records say something, and one the
+  writer types as a scene's first line becomes one when they leave it.
+*/
+export const showHeader = StateEffect.define<string>()
+export const hideHeader = StateEffect.define<string>()
+
+export const headerScenes = StateField.define<ReadonlySet<string>>({
+  create: () => new Set(),
+  update(set, tr) {
+    let next: Set<string> | null = null
+    for (const e of tr.effects) {
+      if (e.is(showHeader) && !(next ?? set).has(e.value)) (next ??= new Set(set)).add(e.value)
+      if (e.is(hideHeader) && (next ?? set).has(e.value)) (next ??= new Set(set)).delete(e.value)
+    }
+    return next ?? set
+  },
+})
+
+/** Scene `i`'s header line and prose, as the page reads them now. */
+export function regionOf(state: EditorState, i: number): SceneRegion {
+  return sceneRegion(state.doc, state.field(headingsField), i, headersNow(state))
+}
+
+/** Scene `i`'s header line, where it shows one that still reads as one: read no further than the line. */
+export function headerLineOf(state: EditorState, i: number): { header: string; from: number } | null {
+  return sceneHeaderLine(state.doc, state.field(headingsField), i, headersNow(state))
+}
+
+/** Where heading `index`'s prose starts, for the caret: under its header line, where it shows one. */
+export function proseStart(state: EditorState, index: number): number | null {
+  return proseStartIn(state.doc, state.field(headingsField), index, headersNow(state))
+}
 
 /** The last heading at or before `pos`, or -1 before the first. */
 function headingAt(headings: readonly DraftHeading[], pos: number): number {
@@ -142,6 +183,17 @@ function judge(tr: Transaction): { why: Refusal | null; join: Join | null } {
     if (join && h.id === (join as Join).id) return
     const titleFrom = h.pos + HEADING_PREFIX[h.kind].length
     const lineEnd = lineEndAt(doc, h.pos)
+    /*
+      Nothing but blank lines above a scene's header line. A line typed there
+      would push the header off the first line, where it stops being one and
+      becomes prose — which is how a card's draft once exported a header as a
+      paragraph of the book.
+    */
+    if (h.kind === 'scene' && fromA > lineEnd && tr.startState.field(headerScenes, false)?.has(h.id)) {
+      const headerFrom = sceneHeaderLine(doc, headings, i, tr.startState.field(headerScenes))?.from ?? null
+      const above = headerFrom === null ? '' : fromA < headerFrom ? text : fromA === headerFrom ? text.slice(0, text.lastIndexOf('\n') + 1) : ''
+      if (/\S/.test(above)) { why = 'above-header'; return }
+    }
     if (fromA === h.pos) {
       // Above a heading: a line break typed at its start, the new line going to what is above.
       if (i === 0) why = 'before-first'
@@ -272,11 +324,9 @@ export function joinedProse(state: EditorState, into: string, seam: number): str
   return draftSegments(closed)[closed.field(headingsField).findIndex((h) => h.id === into)].text
 }
 
-/** Where the prose of heading `i` starts in the document: `readDraft` drops up to two line breaks after its line. */
+/** Where the prose of scene `i` starts in the document, as `readDraft` reads it: under the header line, where there is one. */
 function proseFromOf(state: EditorState, i: number): number {
-  const afterTitle = lineEndAt(state.doc, state.field(headingsField)[i].pos)
-  const lead = state.doc.sliceString(afterTitle, afterTitle + 2)
-  return afterTitle + (lead === '\n\n' ? 2 : lead.startsWith('\n') ? 1 : 0)
+  return sceneRegion(state.doc, state.field(headingsField), i, headersNow(state)).bodyFrom
 }
 
 /** The run of whitespace around `pos` in `[from, to)`: where it starts and ends. */
@@ -372,7 +422,7 @@ export const enterOnHeading: StateCommand = ({ state, dispatch }) => {
     dispatch(state.update({ changes: { from: lineEnd, insert: '\n\n' }, selection: EditorSelection.cursor(lineEnd + 2), scrollIntoView: true, userEvent: 'input' }))
     return true
   }
-  const at = proseStart(state.doc, headings, target)
+  const at = proseStart(state, target)
   if (at !== null) {
     dispatch(state.update({ selection: EditorSelection.cursor(at), scrollIntoView: true, userEvent: 'select' }))
   } else {
@@ -443,7 +493,7 @@ export function stepScene(dir: 'next' | 'previous'): StateCommand {
     const headings = state.field(headingsField)
     const k = sceneFrom(headings, headingAt(headings, state.selection.main.head), dir)
     if (k < 0) return false
-    const at = proseStart(state.doc, headings, k) ?? lineEndAt(state.doc, headings[k].pos)
+    const at = proseStart(state, k) ?? lineEndAt(state.doc, headings[k].pos)
     dispatch(state.update({ selection: EditorSelection.cursor(at), scrollIntoView: true, userEvent: 'select' }))
     return true
   }
@@ -464,8 +514,8 @@ export function openSceneLine(kind: 'new' | 'split'): StateCommand {
     let at: number
     let text: string
     if (kind === 'split') {
-      // In a scene's prose only, and not on its heading's line.
-      if (headings[i].kind !== 'scene' || sel.head <= lineEnd) return false
+      // In a scene's prose only: not on its heading's line, nor in its header line.
+      if (headings[i].kind !== 'scene' || sel.head <= lineEnd || sel.head < regionOf(state, i).bodyFrom) return false
       at = sel.head
       text = `\n\n${HEADING_PREFIX.scene}\n\n`
     } else {
@@ -502,7 +552,10 @@ export function abandonedLine(state: EditorState, pos: number): TransactionSpec 
  * positions, and the scene it names someone in — or null: on a heading's line,
  * under a chapter heading, with a selection, or with no token (`findMentionToken`).
  */
-export function mentionAt(state: EditorState, candidates: readonly MentionCandidate[]): (MentionToken & { sceneId: string }) | null {
+export function mentionAt(
+  state: EditorState,
+  candidates: readonly MentionCandidate[],
+): (MentionToken & { sceneId: string; inHeader: boolean }) | null {
   const sel = state.selection.main
   if (!sel.empty) return null
   const headings = state.field(headingsField)
@@ -510,16 +563,124 @@ export function mentionAt(state: EditorState, candidates: readonly MentionCandid
   if (i < 0 || headings[i].kind !== 'scene' || sel.head <= lineEndAt(state.doc, headings[i].pos)) return null
   const line = state.doc.lineAt(sel.head)
   const token = findMentionToken(line.text, sel.head - line.from, candidates)
-  return token && { ...token, start: token.start + line.from, end: token.end + line.from, sceneId: headings[i].id }
+  if (!token) return null
+  // In the header line a name is somebody present, and the sigil is its syntax: see the card's `headerRange`.
+  const { headerFrom } = regionOf(state, i)
+  const inHeader = headerFrom !== null && state.doc.lineAt(headerFrom).from === line.from
+  return { ...token, start: token.start + line.from, end: token.end + line.from, sceneId: headings[i].id, inHeader }
+}
+
+/**
+ * Bring every scene's header line into step with its records: `rendered` is
+ * each scene's line drawn from them, empty where they say nothing. A line is
+ * put in where the records say something and the page shows nothing, taken out
+ * where they now say nothing, and rewritten where it says something else.
+ * `skip` is the scenes left as they are — the one the writer is on, and any
+ * whose line names somebody this world has not got, kept as typed.
+ *
+ * Not the writer's edit, and nothing to undo: it is the page catching up with
+ * the records. `null` when every line already agrees.
+ */
+export function headerSyncSpec(state: EditorState, rendered: ReadonlyMap<string, string>, skip: ReadonlySet<string>): TransactionSpec | null {
+  const headings = state.field(headingsField)
+  const shown = state.field(headerScenes)
+  const changes: Array<{ from: number; to?: number; insert?: string }> = []
+  const effects: StateEffect<string>[] = []
+  headings.forEach((h, i) => {
+    if (h.kind !== 'scene' || skip.has(h.id)) return
+    const want = rendered.get(h.id) ?? ''
+    // Most scenes agree, and are known to by reading one line of each.
+    const current = sceneHeaderLine(state.doc, headings, i, shown)
+    if (current && want === current.header) return
+    if (!current && !want) {
+      if (shown.has(h.id)) effects.push(hideHeader.of(h.id))
+      return
+    }
+    if (current && want) {
+      const line = state.doc.lineAt(current.from)
+      changes.push({ from: line.from, to: line.to, insert: want })
+      return
+    }
+    const region = regionOf(state, i)
+    const lineEnd = lineEndAt(state.doc, h.pos)
+    const end = headings[i + 1]?.pos ?? state.doc.length
+    if (current) {
+      // Nothing to say any more: the line goes, with the blank line it stood on.
+      const from = region.text === '' ? Math.max(lineEnd, region.headerFrom! - 2) : region.headerFrom!
+      changes.push({ from, to: region.text === '' ? state.doc.lineAt(region.headerFrom!).to : region.bodyFrom })
+      effects.push(hideHeader.of(h.id))
+      return
+    }
+    // A line to put in, first under the title: above the prose, or on its own.
+    const bodyFrom = region.bodyFrom
+    if (bodyFrom < end && region.text !== '') changes.push({ from: lineEnd, to: bodyFrom, insert: `\n\n${want}\n\n` })
+    else if (headings[i + 1]) changes.push({ from: lineEnd, insert: `\n\n${want}` })
+    else changes.push({ from: lineEnd, to: state.doc.length, insert: `\n\n${want}` })
+    if (!shown.has(h.id)) effects.push(showHeader.of(h.id))
+  })
+  if (changes.length === 0 && effects.length === 0) return null
+  return { changes, effects, filter: false, annotations: Transaction.addToHistory.of(false) }
+}
+
+/**
+ * The header line of scene `id`, joined into the scene before it, taken out:
+ * after a join it would be the middle of the prose it joined. `before` is the
+ * page as it was before the join, and `changes` the join itself.
+ */
+export function joinedHeaderSpec(before: EditorState, changes: ChangeDesc, id: string): TransactionSpec | null {
+  if (!before.field(headerScenes).has(id)) return null
+  const i = before.field(headingsField).findIndex((h) => h.id === id)
+  if (i < 0) return null
+  const { headerFrom } = regionOf(before, i)
+  if (headerFrom === null) return { effects: hideHeader.of(id) }
+  const line = before.doc.lineAt(headerFrom)
+  const from = changes.mapPos(line.from, 1)
+  const to = changes.mapPos(line.to, -1)
+  return { changes: to > from ? { from, to } : [], effects: hideHeader.of(id), filter: false }
 }
 
 /** The book, as a starting state: the text, the headings, and the rules. */
 export function draftState(chapters: DraftChapter[], extensions: Extension[] = []): EditorState {
-  const { text, headings } = composeDraft(chapters)
-  return EditorState.create({ doc: text, extensions: [headingsField.init(() => headings), keepHeadings, lineTyped, openedLine, ...extensions] })
+  const { text, headings, headers } = composeDraft(chapters)
+  return EditorState.create({
+    doc: text,
+    extensions: [headingsField.init(() => headings), headerScenes.init(() => new Set(headers)), keepHeadings, lineTyped, openedLine, ...extensions],
+  })
 }
 
-/** Every heading's title and every scene's prose, as the document has them now. */
+/**
+ * Every heading's title and every scene's prose, as the document has them now.
+ * A header line being typed as a scene's first line is read as one already,
+ * so the save a second later does not write it into the prose.
+ */
 export function draftSegments(state: EditorState): DraftSegment[] {
-  return readDraft(state.doc, state.field(headingsField))
+  return readDraft(state.doc, state.field(headingsField), headersNow(state))
+}
+
+/** The scenes whose first line reads as a header now: those that show one, and one being typed. */
+function headersNow(state: EditorState): ReadonlySet<string> {
+  const shown = state.field(headerScenes, false) ?? new Set<string>()
+  const typing = typedHeaderScene(state)
+  return typing && !shown.has(typing) ? new Set([...shown, typing]) : shown
+}
+
+/** The scene whose first line under its title is the line starting at `pos`, and its index — or null. */
+export function firstLineOf(state: EditorState, pos: number): { id: string; index: number } | null {
+  const headings = state.field(headingsField)
+  const i = headingAt(headings, pos)
+  if (i < 0 || headings[i].kind !== 'scene') return null
+  const lineEnd = lineEndAt(state.doc, headings[i].pos)
+  const end = headings[i + 1]?.pos ?? state.doc.length
+  const lead = state.doc.sliceString(lineEnd, Math.min(end, lineEnd + 256))
+  const first = lineEnd + (lead.length - lead.replace(/^\n+/, '').length)
+  if (first >= end || state.doc.lineAt(pos).from !== first) return null
+  return { id: headings[i].id, index: i }
+}
+
+/** A scene whose first line is being typed and reads as a header line. */
+function typedHeaderScene(state: EditorState): string | null {
+  const { line } = state.field(lineTyped, false) ?? { line: null }
+  if (line === null) return null
+  const scene = firstLineOf(state, line)
+  return scene && splitSceneHeader(state.doc.lineAt(line).text).header ? scene.id : null
 }

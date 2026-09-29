@@ -43,6 +43,12 @@ keeps this file about what is left without pretending the work never happened.
   a book survives the round trip. The Corkboard went, since the binder and the
   scene cards now do what it did. The reasoning for each step is in its pull
   request, and the plan as it was written is in #501.
+- **The scene tools on the Page** — #523, #524, #525. The Page has what a scene
+  card's draft has: the scene keys and Focus mode, `@` and `@@` sharing the
+  card's picker and what it records, and the header line `[#Place @@Name]` as
+  the first line under each scene's title — drawn from the records, applied on
+  leaving it, and never prose. A writer drafting on the Page no longer switches
+  to Cards for any of them.
 
 ---
 
@@ -50,10 +56,6 @@ keeps this file about what is left without pretending the work never happened.
 
 ### Owed by the one screen for the book
 
-- **The scene tools on the Page.** The scene keys, Focus mode and `@`
-  mentions are there. The scene header line (`[#Place @@Name]`) is still only
-  on the scene cards, so a writer drafting on the Page has to switch to Cards
-  for it.
 - **Timing on real hardware.** The spike measured the editor in a container,
   and the phone test proves the Page works at 390 px, not how fast it is. It
   needs a run on a real machine and a real phone.
