@@ -31,8 +31,17 @@ export function AddChapterDialog({
     still in use — and there was no way to put a chapter anywhere but the end.
   */
   const suggested = nextChapterNumber(chapters)
-  const [numberText, setNumberText] = useState(String(suggested))
-  useEffect(() => { if (open) setNumberText(String(suggested)) }, [open])  // eslint-disable-line react-hooks/exhaustive-deps
+  /*
+    What the writer typed, or `null` while they have typed nothing — and until
+    they do, the field follows the suggestion. It was set once, when the dialog
+    opened, from whatever chapters had arrived by then: opened as the page was
+    still loading, or straight after adding a chapter, it offered a number the
+    book was already using, said it was "the next free number", and on Add
+    moved every chapter from there up by one.
+  */
+  const [typed, setTyped] = useState<string | null>(null)
+  useEffect(() => { if (open) setTyped(null) }, [open])
+  const numberText = typed ?? String(suggested)
   const number = parseChapterNumber(numberText)
   const moves = number === null ? '' : describeShift(planChapterInsert(chapters, number))
 
@@ -71,7 +80,7 @@ export function AddChapterDialog({
               inputMode="numeric"
               className="w-24"
               value={numberText}
-              onChange={(e) => setNumberText(e.target.value)}
+              onChange={(e) => setTyped(e.target.value)}
               aria-describedby="chapter-number-note"
               aria-invalid={number === null}
             />
