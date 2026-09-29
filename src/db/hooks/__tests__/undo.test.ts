@@ -227,6 +227,25 @@ describe('coalescing a debounced editor', () => {
     expect((await db.chapters.get(chapter.id))?.notes).toBe('First thought')
   })
 
+  it('folds a burst of scene description edits into one undo step', async () => {
+    const world = await seed()
+    const timeline = await createTimeline({ worldId: world.id, name: 'Main', description: '', color: '#888' })
+    const chapter = await createChapter({ worldId: world.id, timelineId: timeline.id, number: 1, title: 'One', synopsis: '' })
+    const scene = await createEvent({
+      worldId: world.id, chapterId: chapter.id, timelineId: timeline.id, title: 'The gate', description: 'Before',
+      locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0,
+    })
+
+    const before = (await listOperations(world.id)).length
+    for (const description of ['Af', 'After the', 'After the storm']) {
+      await updateEvent(scene.id, { description }, { coalesce: true })
+    }
+    expect((await listOperations(world.id)).length - before).toBe(1)
+
+    await undoLast(world.id)
+    expect((await db.events.get(scene.id))?.description).toBe('Before')
+  })
+
   it('does not fold discrete edits that never asked for it', async () => {
     const world = await seed()
     const char = await createCharacter({ worldId: world.id, name: 'One', description: '' })

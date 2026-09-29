@@ -560,18 +560,36 @@ test.describe('the Page view', () => {
     await line(page, 'The court sat.').click()
     await expect(section('e1')).toHaveAttribute('aria-current', 'true')
     await expect(section('e2')).not.toHaveAttribute('aria-current', 'true')
-    await expect(section('e2')).not.toBeInViewport()
+    const scene = panel.getByRole('region', { name: 'This scene' })
+    await expect(scene.getByRole('heading')).toHaveText('The assize rises')
 
-    // Into the next scene, in the same chapter: the panel marks it and brings it into view.
+    // Into the next scene, in the same chapter: the panel marks it, and its details lead the panel.
+    // Scrolled away first, so bringing them back is something the panel had to do.
+    await panel.evaluate((el) => { el.scrollTop = el.scrollHeight })
+    await expect(scene).not.toBeInViewport()
     await line(page, 'She counted.').click()
     await expect(section('e2')).toHaveAttribute('aria-current', 'true')
     await expect(section('e1')).not.toHaveAttribute('aria-current', 'true')
-    await expect(section('e2')).toBeInViewport()
+    await expect(scene.getByRole('heading')).toHaveText('Teodora at the table')
+    await expect(scene).toBeInViewport()
 
     // A scene nobody is in yet still has its place in the panel while it is the one being written.
     await page.keyboard.press('Control+Alt+ArrowDown')
     await expect(section('e3')).toHaveAttribute('aria-current', 'true')
     await expect(section('e3')).toContainText('No one in this scene yet')
+
+    // On Cards there are no details leading the panel — the scene's card holds them — so there the
+    // Character States are what follow: moved to a scene below the fold, they come into view.
+    await page.goto(`/#/worlds/${worldId}/manuscript/c1?view=cards`, { waitUntil: 'load' })
+    await expect(section('e1')).toHaveAttribute('aria-current', 'true', { timeout: 20_000 })
+    await expect(scene).toHaveCount(0)
+    await expect(section('e2')).not.toBeInViewport()
+    const main = page.getByRole('main')
+    const title = main.getByRole('button', { name: 'Teodora at the table', exact: true })
+    await title.click()
+    await title.locator('xpath=ancestor::div[contains(@class,"rounded-lg")][1]').getByRole('button', { name: 'View from here' }).click()
+    await expect(section('e2')).toHaveAttribute('aria-current', 'true')
+    await expect(section('e2')).toBeInViewport()
   })
 
   test('opened at the whole book, the page opens no chapter until the writer goes into one', async ({ page }) => {

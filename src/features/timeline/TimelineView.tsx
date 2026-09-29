@@ -433,8 +433,14 @@ export default function TimelineView() {
   }
   const openWords = openEvents.reduce((n, e) => n + (wordsByEvent.get(e.id) ?? 0), 0)
   const chapterHere = openChapter && openChapter.worldId === worldId ? openChapter : null
+  /*
+    The scene being written leads the panel on the Page, where its card is not
+    on screen to hold its status, cast and the rest. Not on Cards, where it is,
+    nor on Read; and never in reading mode, where these are the author's.
+  */
+  const sceneDetails = showPage && !gate.active
   const panel = chapterHere
-    ? <ChapterPanel key={chapterHere.id} chapter={chapterHere} onClose={closeChapter} words={openWords} />
+    ? <ChapterPanel key={chapterHere.id} chapter={chapterHere} onClose={closeChapter} words={openWords} sceneDetails={sceneDetails} />
     : null
   /** Under the row, where there is no room beside the list. */
   const panelInline = panel && !wide
@@ -1007,6 +1013,7 @@ export default function TimelineView() {
             chapter={chapterHere}
             onClose={closeSheet}
             words={openWords}
+            sceneDetails={sceneDetails}
             closeAs={{ label: 'Close', title: showPage ? 'Back to the page' : 'Back to the book' }}
           />
           </div>
