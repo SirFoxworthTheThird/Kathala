@@ -52,11 +52,15 @@ interface DialogProps {
   children: React.ReactNode
 }
 
-function Dialog({ open, onOpenChange, children }: DialogProps) {
+/**
+ * One modal layer: pushed onto `openDialogs` while open, closed by Escape only
+ * when it is the innermost, and handing focus back to whatever had it when it
+ * opened. `Dialog` is one; the slide-in `Sheet` is another, so a dialog opened
+ * from inside a sheet backs out one layer at a time as dialogs do.
+ */
+export function useModalLayer(open: boolean, onClose: () => void) {
   const idRef = React.useRef<symbol | null>(null)
   if (idRef.current === null) idRef.current = Symbol('dialog')
-  const titleId = React.useId()
-  const [hasTitle, setHasTitle] = React.useState(false)
 
   // Whatever had focus when this dialog opened, so it can be handed back.
   //
@@ -79,7 +83,7 @@ function Dialog({ open, onOpenChange, children }: DialogProps) {
     const handler = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
       if (openDialogs[openDialogs.length - 1] !== id) return
-      onOpenChange(false)
+      onClose()
     }
     document.addEventListener('keydown', handler)
     return () => {
@@ -94,7 +98,14 @@ function Dialog({ open, onOpenChange, children }: DialogProps) {
       const target = restoreRef.current
       if (dropped && target?.isConnected) target.focus()
     }
-  }, [open, onOpenChange])
+  }, [open, onClose])
+}
+
+function Dialog({ open, onOpenChange, children }: DialogProps) {
+  const titleId = React.useId()
+  const [hasTitle, setHasTitle] = React.useState(false)
+  const close = React.useCallback(() => onOpenChange(false), [onOpenChange])
+  useModalLayer(open, close)
 
   const ctx = React.useMemo<DialogContextValue>(() => ({
     onClose: () => onOpenChange(false),

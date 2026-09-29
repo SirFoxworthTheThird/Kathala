@@ -495,11 +495,17 @@ export function EventCard({
 
   const card = (
     <div ref={cardRef} className={cn(
-      'scroll-mt-3 rounded-lg border bg-[hsl(var(--card))] transition-colors',
+      '@container scroll-mt-3 rounded-lg border bg-[hsl(var(--card))] transition-colors',
       isSelected ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent)/0.3)]' : 'border-[hsl(var(--border))]',
     )}>
-      {/* Header row */}
-      <div className="flex items-center gap-1 px-3 py-2">
+      {/*
+        Header row. Wraps where the card is narrow — a phone, or a list with the
+        binder and the chapter's panel both beside it — with the title given
+        the first line to itself. On one line the badges and the icons, none of
+        which shrink, took the whole width: the title went to nothing and the
+        row ran out past the card's edge.
+      */}
+      <div className="flex flex-wrap items-center gap-1 px-3 py-2">
         {/*
           The disclosure and the title field are alternatives, not one nested in
           the other. While editing, the button wrapped the `Input` — inert,
@@ -538,12 +544,12 @@ export function EventCard({
               }
             }}
             aria-label="Scene title"
-            className="h-7 flex-1 min-w-0 text-sm"
+            className="h-7 flex-1 min-w-0 text-sm @max-md:basis-full"
             autoFocus
           />
         ) : (
           <button
-            className="flex-1 min-w-0 text-left"
+            className="flex-1 min-w-0 text-left @max-md:basis-full"
             // An untitled scene renders an empty span, which leaves this button
             // with no accessible name at all — the one card on the page a screen
             // reader could say nothing about.

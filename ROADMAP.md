@@ -49,6 +49,12 @@ keeps this file about what is left without pretending the work never happened.
   the first line under each scene's title — drawn from the records, applied on
   leaving it, and never prose. A writer drafting on the Page no longer switches
   to Cards for any of them.
+- **The Manuscript on a phone.** The header is one row with the rest under
+  *Book tools*, the open chapter's panel and the binder are sheets over the
+  book rather than blocks above it, the header's buttons are 44 px on a touch
+  screen, and a scene card keeps its title. At 390×664 the Page's prose starts
+  at y=103 where it started at 329, and a tap into it no longer sends it
+  three thousand pixels down the screen.
 
 ---
 

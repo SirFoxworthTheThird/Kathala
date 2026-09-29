@@ -211,7 +211,7 @@ test.describe('the one page on a phone', () => {
   test.describe.configure({ timeout: 240_000 })
   test.use({ viewport: { width: 390, height: 800 } })
 
-  test('the panel sits under the open chapter’s row, and there is no binder', async ({ page }) => {
+  test('the panel sits under the open chapter’s row, and the binder is a sheet', async ({ page }) => {
     const worldId = await twoTimelines(page)
     await page.goto(`/#/worlds/${worldId}/manuscript/a1`, { waitUntil: 'load' })
     await settle(page)
@@ -228,8 +228,13 @@ test.describe('the one page on a phone', () => {
     // pass with one there — which is exactly the copy a text lookup trips on.
     await expect(page.locator('section[aria-label="Chapter 1"]')).toHaveCount(1)
 
-    // No column and no drawer: the list is the way round.
+    // No column: the binder slides in over the page when asked for, and is
+    // gone again once somewhere is chosen.
     await expect(tree(page)).toHaveCount(0)
-    await expect(page.getByRole('button', { name: 'Binder' })).toHaveCount(0)
+    await page.getByRole('main').getByRole('button', { name: 'Binder', exact: true }).click()
+    await expect(page.getByRole('dialog', { name: 'Binder' }).getByRole('tree', { name: 'Chapters and scenes' })).toBeVisible()
+    await page.getByRole('dialog', { name: 'Binder' }).getByRole('treeitem', { name: /The Stair/ }).click()
+    await expect(page.getByRole('dialog', { name: 'Binder' })).toHaveCount(0)
+    await expect(panel(page, 2)).toBeVisible()
   })
 })

@@ -1,7 +1,8 @@
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { Outlet, useNavigate, useParams } from 'react-router-dom'
-import { PanelLeft } from 'lucide-react'
+import { PanelLeft, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Sheet } from '@/components/ui/sheet'
 import { useAppStore } from '@/store'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { useChapter, useChapters, useTimelines, useWorldEvents } from '@/db/hooks/useTimeline'
@@ -9,7 +10,7 @@ import { activateEvent } from '@/components/timeline/TimelineControls'
 import type { Chapter, WorldEvent } from '@/types'
 import { Binder } from './Binder'
 import { useMediaQuery, WIDE } from '@/lib/useMediaQuery'
-import { ALL_TIMELINES, type TimelineScreenContext } from './timelineScreenContext'
+import { ALL_TIMELINES, useTimelineScreen, type TimelineScreenContext } from './timelineScreenContext'
 
 /**
  * The Timeline, as one screen.
@@ -22,8 +23,10 @@ import { ALL_TIMELINES, type TimelineScreenContext } from './timelineScreenConte
  * chapter or not, it is the same list, and a chapter is where it is open rather
  * than somewhere else to go. See `TimelineView`.
  *
- * On a narrow screen there is no room for a column, and no need of one: the
- * list the page is made of is its own way round.
+ * On a narrow screen there is no room for a column, so the binder slides in
+ * over the page when asked for (`BinderToggle`). Cards is a list and is its own
+ * way round, but the Page and Read are one long document, and on a phone they
+ * had no way to a chapter but scrolling a book's length.
  */
 export default function TimelineScreen() {
   const { worldId, chapterId } = useParams<{ worldId: string; chapterId?: string }>()
@@ -42,6 +45,8 @@ export default function TimelineScreen() {
     found by everything else.
   */
   const wide = useMediaQuery(WIDE)
+  const [binderSheet, setBinderSheet] = useState(false)
+  const closeBinderSheet = useCallback(() => setBinderSheet(false), [])
 
   /*
     Visiting a chapter makes its timeline the whole book's tab, so coming back
@@ -81,6 +86,8 @@ export default function TimelineScreen() {
     which card to open from the navigation's state.
   */
   function goScene(scene: WorldEvent) {
+    // Somewhere chosen is somewhere to be looking at, not at the list over it.
+    setBinderSheet(false)
     if (!gate.active) activateEvent(scene.id, scene.locationMarkerId, setActiveEventId)
     navigate(`/worlds/${worldId}/manuscript/${scene.chapterId}`, {
       state: { reveal: scene.id },
@@ -88,16 +95,18 @@ export default function TimelineScreen() {
     })
   }
   function goChapter(target: Chapter) {
+    setBinderSheet(false)
     // Even to the chapter already open: the page scrolls to it on arrival, and
     // the writer who clicks it has usually scrolled away.
     navigate(`/worlds/${worldId}/manuscript/${target.id}`, { replace: target.id === chapterId })
   }
   function goBook() {
+    setBinderSheet(false)
     if (chapterId) navigate(`/worlds/${worldId}/manuscript`)
   }
 
   const context: TimelineScreenContext = useMemo(
-    () => ({ timelineTab, setTimelineTab }),
+    () => ({ timelineTab, setTimelineTab, showBinderSheet: () => setBinderSheet(true) }),
     [timelineTab],
   )
 
@@ -132,19 +141,47 @@ export default function TimelineScreen() {
           <Outlet context={context} />
         </Suspense>
       </div>
+      {binder && !wide && (
+        <Sheet open={binderSheet} onClose={closeBinderSheet} label="Binder" side="left" id="timeline-binder">
+          <div className="flex shrink-0 items-center border-b border-[hsl(var(--border))] py-1 pl-4 pr-1">
+            <span className="flex-1 text-sm font-medium text-[hsl(var(--muted-foreground))]">Chapters and scenes</span>
+            <Button variant="ghost" size="icon" className="h-11 w-11" aria-label="Close the binder" onClick={closeBinderSheet}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col">{binder}</div>
+        </Sheet>
+      )}
     </div>
   )
 }
 
 /**
- * The binder's own button, at the head of the page: it shows and hides the
- * column, and remembers. Only on a wide screen, where there is a column.
+ * The binder's own button, at the head of the page. On a wide screen it shows
+ * and hides the column, and remembers; on a narrow one it slides the binder in
+ * over the page.
  */
 export function BinderToggle() {
   const binderOpen = useAppStore((st) => st.binderOpen)
   const setBinderOpen = useAppStore((st) => st.setBinderOpen)
   const wide = useMediaQuery(WIDE)
-  if (!wide) return null
+  const { showBinderSheet } = useTimelineScreen()
+  if (!wide) {
+    if (!showBinderSheet) return null
+    return (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-9 w-9 shrink-0 pointer-coarse:h-11 pointer-coarse:w-11"
+        aria-label="Binder"
+        aria-haspopup="dialog"
+        title="The chapters and scenes"
+        onClick={showBinderSheet}
+      >
+        <PanelLeft className="h-4 w-4" />
+      </Button>
+    )
+  }
   return (
     <Button
       variant="ghost"
