@@ -511,6 +511,31 @@ test.describe('the Page view', () => {
     await expect(page.getByRole('banner')).toContainText('Teodora at the table')
   })
 
+  test('within a chapter, the time cursor follows the caret from scene to scene, once on the way in', async ({ page }) => {
+    const worldId = await book(page)
+    await openPage(page, worldId, 'c1')
+    const bar = page.getByRole('banner')
+    await line(page, 'She counted.').click()
+    await expect(bar).toContainText('Teodora at the table')
+    // A click into the scene before, in the same chapter: the cursor goes with it.
+    await line(page, 'The court sat.').click()
+    await expect(bar).toContainText('The assize rises')
+    await expect(bar).not.toContainText('Teodora at the table')
+    // Moved on deliberately from the top bar, it is not pulled back by typing on in the scene the caret is still in…
+    await page.getByRole('button', { name: 'Next moment' }).click()
+    await expect(bar).toContainText('Teodora at the table')
+    await line(page, 'The court sat.').click()
+    await page.keyboard.press('End')
+    await page.keyboard.type(' Again.')
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toContain('The assize rises: The court sat. Again.\n\nThe water fell.')
+    await expect(bar).toContainText('Teodora at the table')
+    // …and going into another scene takes it there.
+    await line(page, 'She counted.').click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Control+Alt+ArrowUp')
+    await expect(bar).toContainText('The assize rises')
+  })
+
   test('opened at the whole book, the page opens no chapter until the writer goes into one', async ({ page }) => {
     const worldId = await book(page)
     await openPage(page, worldId)

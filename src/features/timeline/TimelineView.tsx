@@ -414,18 +414,21 @@ export default function TimelineView() {
     return true
   }
   /*
-    The Page's caret gone into another chapter — by typing, a click, the arrows
-    or the scene keys: the chapter open around the page follows it, its panel
-    beside the page with it, as going there from the binder would. In place,
-    not onto the history: moving through a book is not a trail of pages to go
-    back through. And the time cursor to the scene the writer is in, as the
-    binder puts it there, rather than to the chapter's first.
+    The Page's caret gone into another chapter or scene — by typing, a click,
+    the arrows or the scene keys. Into another chapter: the chapter open around
+    the page follows it, its panel beside the page, as going there from the
+    binder would — in place, not onto the history, since moving through a book
+    is not a trail of pages to go back through. Into another scene: the time
+    cursor goes there, as the binder puts it there, so the top bar, the
+    binder's row and everything that answers for a moment are the scene the
+    writer is in.
   */
   function followPage(place: PagePlace) {
-    if (place.chapterId === chapterId) return
     const scene = place.sceneId ? worldEvents.find((e) => e.id === place.sceneId) : undefined
-    if (!gate.active && scene) activateEvent(scene.id, scene.locationMarkerId, setCursor)
-    navigate(`/worlds/${worldId}/manuscript/${place.chapterId}`, { replace: true, state: { fromPage: true } })
+    if (!gate.active && scene && scene.id !== activeEventId) activateEvent(scene.id, scene.locationMarkerId, setCursor)
+    if (place.chapterId !== chapterId) {
+      navigate(`/worlds/${worldId}/manuscript/${place.chapterId}`, { replace: true, state: { fromPage: true } })
+    }
   }
   const openWords = openEvents.reduce((n, e) => n + (wordsByEvent.get(e.id) ?? 0), 0)
   const panel = openChapter && openChapter.worldId === worldId
