@@ -462,6 +462,16 @@ export const openedLine = StateField.define<Opened | null>({
   },
 })
 
+/** Where `pos` is in the book: the chapter it is in, and the scene, if it is in one — or null before the first chapter. */
+export function placeInBook(state: EditorState, pos: number): { chapterId: string; sceneId: string | null } | null {
+  const headings = state.field(headingsField)
+  const i = headingAt(headings, pos)
+  if (i < 0) return null
+  const c = chapterOf(headings, i)
+  if (c < 0) return null
+  return { chapterId: headings[c].id, sceneId: headings[i].kind === 'scene' ? headings[i].id : null }
+}
+
 /** The scene Focus mode opens from `pos`: the one it is in, or, in a chapter's heading or space, that chapter's first. */
 export function focusScene(state: EditorState, pos: number): string | null {
   const headings = state.field(headingsField)
