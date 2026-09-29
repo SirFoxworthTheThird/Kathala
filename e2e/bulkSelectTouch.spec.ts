@@ -110,7 +110,9 @@ test.describe('The scene checkbox is tappable on a phone', () => {
     // The measurement this fix is sized from. If the row gets denser than the
     // overlay, the assertions below stop meaning what they say.
     expect(boxHeight, `the checkbox is ${boxHeight}px`).toBeLessThan(20)
-    expect(pitch, `rows are ${pitch}px apart`).toBe(48)
+    // 72 since a scene card's header wraps on a phone — the title on a line of
+    // its own, the badges under it — where it was 48 and the title went to nothing.
+    expect(pitch, `rows are ${pitch}px apart`).toBe(72)
 
     // The upper bound, stated as the property rather than the number: two
     // neighbouring overlays must not meet. Behaviour alone cannot guard this —

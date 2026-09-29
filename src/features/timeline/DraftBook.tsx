@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Maximize2 } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Compartment, Prec, RangeSetBuilder, type ChangeDesc, type EditorState, type TransactionSpec } from '@codemirror/state'
@@ -18,6 +19,7 @@ import { recordMention } from '@/db/hooks/useMentions'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
 import { formatSceneHeader, planHeader, planIsClean } from '@/lib/sceneHeader'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { FocusMode } from './FocusMode'
 import { MentionMenu } from './MentionMenu'
 import { HEADING_PREFIX, lineEndAt, draftBook, sceneRegion, type DraftChapter } from '@/lib/draftDocument'
@@ -126,7 +128,7 @@ export interface PageTarget { id: string; nonce: number; focus?: boolean }
 /** Where the writer is in the book: the chapter the caret is in, and the scene, if it is in one. */
 export interface PagePlace { chapterId: string; sceneId: string | null }
 
-export default function DraftBook({ worldId, timelineId, target, open = null, onPlace }: {
+export default function DraftBook({ worldId, timelineId, target, open = null, onPlace, focusSlot = null }: {
   worldId: string
   timelineId: string
   target: PageTarget | null
@@ -134,6 +136,11 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   open?: string | null
   /** The writer's caret has gone into a chapter other than `open`, or into another scene: the page around it follows. */
   onPlace?: (place: PagePlace) => void
+  /**
+   * Where the Focus button goes, if not in the page's own row: on a phone, the
+   * header's, so the page does not spend a row of its height on one button.
+   */
+  focusSlot?: HTMLElement | null
 }) {
   const onPlaceRef = useRef(onPlace)
   onPlaceRef.current = onPlace
@@ -782,10 +789,38 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const titleOf = (id: string | null) => (id ? events?.find((e) => e.id === id)?.title ?? '' : '')
   const focusEvent = focus ? events?.find((e) => e.id === focus.id) : undefined
 
+  const focusTitle = caretScene ? `Write “${titleOf(caretScene)}” distraction-free` : 'Put the caret in a scene to write it distraction-free'
+  const focusButton = focusSlot ? (
+    <Button
+      size="icon"
+      variant="outline"
+      className="h-9 w-9 shrink-0 pointer-coarse:h-11 pointer-coarse:w-11"
+      aria-label="Focus"
+      disabled={!caretScene}
+      onClick={() => { if (caretScene) void openFocus(caretScene) }}
+      title={focusTitle}
+    >
+      <Maximize2 className="h-4 w-4" aria-hidden="true" />
+    </Button>
+  ) : (
+    <Button
+      size="sm"
+      variant="outline"
+      className="h-6 gap-1 px-2 text-[11px] pointer-coarse:h-11 pointer-coarse:px-3"
+      disabled={!caretScene}
+      onClick={() => { if (caretScene) void openFocus(caretScene) }}
+      title={focusTitle}
+    >
+      <Maximize2 className="h-3 w-3" aria-hidden="true" /> Focus
+    </Button>
+  )
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center gap-3 px-4 py-1">
-        <p role="status" className="min-h-[1.5rem] flex-1 text-xs text-[hsl(var(--muted-foreground))]">
+      {focusSlot && createPortal(focusButton, focusSlot)}
+      <div className={cn('flex items-center gap-3 px-4', focusSlot ? '' : 'py-1')}>
+        {/* With the button elsewhere, the row is only as tall as what it has to say. */}
+        <p role="status" className={cn('flex-1 text-xs text-[hsl(var(--muted-foreground))]', !focusSlot && 'min-h-[1.5rem]', focusSlot && 'py-1 empty:py-0')}>
           {notice ?? headerWarning ?? (book && book.length === 0 ? 'No chapters yet — add one to write in.' : '')}
         </p>
         {/* The keys a scene card shows under its draft, for the same reason: keys nobody can see are keys nobody uses. */}
@@ -795,16 +830,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           {' · '}<kbd className="font-sans">{MOD}Enter</kbd> new scene after
           {' · '}<kbd className="font-sans">{MOD}{SHIFT}Enter</kbd> split here
         </span>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-6 gap-1 px-2 text-[11px]"
-          disabled={!caretScene}
-          onClick={() => { if (caretScene) void openFocus(caretScene) }}
-          title={caretScene ? `Write “${titleOf(caretScene)}” distraction-free` : 'Put the caret in a scene to write it distraction-free'}
-        >
-          <Maximize2 className="h-3 w-3" aria-hidden="true" /> Focus
-        </Button>
+        {!focusSlot && focusButton}
       </div>
       <div ref={hostRef} className="min-h-0 flex-1" />
       {mention && (() => {

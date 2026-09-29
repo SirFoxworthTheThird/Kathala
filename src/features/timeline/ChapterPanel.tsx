@@ -178,10 +178,12 @@ function EventSnapshotSection({
  * Keyed on the chapter by its parent, so the fields below start from the
  * chapter they are showing rather than the one before.
  */
-export function ChapterPanel({ chapter, onClose, words }: {
+export function ChapterPanel({ chapter, onClose, words, closeAs }: {
   chapter: Chapter
-  /** Back to the whole book, with no chapter open. */
+  /** Back to the whole book, with no chapter open — or whatever `closeAs` says. */
   onClose: () => void
+  /** What the close button does, where it is not closing the chapter: in a sheet over the page, it closes the sheet. */
+  closeAs?: { label: string; title: string }
   /** The chapter's prose so far, for its word goal. */
   words: number
 }) {
@@ -261,8 +263,8 @@ export function ChapterPanel({ chapter, onClose, words }: {
   }
 
   const close = (
-    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Close the chapter"
-      title="Back to the whole book" onClick={onClose}>
+    <Button variant="ghost" size="icon" className="pw-tap h-7 w-7 shrink-0" aria-label={closeAs?.label ?? 'Close the chapter'}
+      title={closeAs?.title ?? 'Back to the whole book'} onClick={onClose}>
       <X className="h-4 w-4" />
     </Button>
   )

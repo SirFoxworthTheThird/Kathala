@@ -969,7 +969,7 @@ the page; retitle a chapter or scene by editing its heading.
   top, with its panel beside the page as on Cards.
 - **And the page moves the chapter and the time cursor.** Write, click or step
   (Ctrl+Alt+↓) into another chapter and it becomes the open one: its panel is
-  beside the page and the address names it. Go into another scene, in the same
+  beside the page (on a phone, a tap away in the header) and the address names it. Go into another scene, in the same
   chapter or another, and the time cursor goes there — the top bar and the
   binder show the scene you are in. The caret stays where you put it. It moves
   on your way *into* a scene, so a cursor you move elsewhere from the top bar
@@ -1077,6 +1077,28 @@ the page; retitle a chapter or scene by editing its heading.
   out to look someone up and coming back lands you in the book again. Until you
   choose one it opens on Cards — or, for a reader of a book with text, on Read.
 
+#### On a phone
+
+![The Manuscript's Page on a phone: one row of controls, then the book](images/74-manuscript-phone.png)
+
+- **The header is one row**: the binder, **Cards / Page / Read**, the open
+  chapter, **Focus** on Page, and **⋯ Book tools**. Book tools opens the rest
+  under the row — the timeline's name, Narrative / Chronological, the word
+  count and goal, Find & replace, Export, New Timeline, Generate with AI and
+  Add Chapter — and closes it again.
+- **The open chapter's panel is a sheet.** On Page and Read it is not put
+  above the book, where it would push the prose you tapped off the screen:
+  the chapter's button — *Ch. 3*, say — slides it up over the page, and its ✕
+  puts it away again, leaving the chapter open. On Cards it sits under the
+  chapter's row, as before.
+- **The binder slides in from the left.** Its button is at the start of the
+  row; pick a chapter or a scene and it goes, with the page at what you picked.
+- **Buttons are a finger wide** on a touch screen: those in the header, and
+  Focus, are at least 44 pixels each way.
+- **Scene cards give the title a line of its own**, with the status, tension
+  and other badges on the line under it, so a narrow card never loses its
+  title to them.
+
 ### Multiple timelines and timeline relationships
 
 Creating another timeline adds a tab at the top of the Manuscript. Beside
@@ -1176,7 +1198,8 @@ out to show its scenes and comes to the top of the list, and **the chapter's
 panel** sits beside the list: the chapter's title and synopsis, its **Character
 States**, the **Relationship States** at its end, and your **Writer's Notes**.
 On a narrow screen, where there is no room beside the list, the panel sits just
-under the chapter's row instead. The ✕ on the panel closes the chapter, and so
+under the chapter's row instead — and on Page and Read, which have no rows, it
+is a sheet you slide up from the header ([On a phone](#on-a-phone)). The ✕ on the panel closes the chapter, and so
 does **Whole book** in the binder. The address still names the chapter, so a
 link or a bookmark opens the book at it.
 
@@ -1246,8 +1269,9 @@ behind it.
 The **binder** button at the start of the header hides it and shows it again,
 and remembers which you chose.
 
-**On a phone** there is no room for a column, and no need of one: the book's own
-list is the way round, with the open chapter's panel under its row.
+**On a phone** there is no room for a column, so the same button slides the
+binder in over the book, and choosing a chapter or scene puts it away again —
+see [On a phone](#on-a-phone).
 
 While [reading](#reading-alongside-a-book), the binder lists only the chapters
 and scenes you have reached, and going to one does not move your place in the
