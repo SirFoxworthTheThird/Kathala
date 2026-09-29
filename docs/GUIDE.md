@@ -1006,13 +1006,31 @@ the page; retitle a chapter or scene by editing its heading.
   headings at once.
 - A line of prose that already started with `#` — in a book you imported,
   say — stays prose until you edit it.
+- **The scene keys work on the page**, as in a scene card's draft, and are named
+  above it:
+  - **Ctrl+Alt+↓ / ↑** (⌘⌥ on a Mac) goes to the next or previous scene's
+    prose, into the next chapter where this one ends. At either end of the
+    book the caret stays put.
+  - **Ctrl+Enter** (⌘Enter) opens the line for a new scene after the one you
+    are in, with the `## ` typed for you. Type its title and press Enter, and
+    you are writing in it. On a chapter heading, the line is for the chapter's
+    first scene.
+  - **Ctrl+Shift+Enter** (⌘⇧Enter) opens the same line at the caret, so the
+    prose after it goes to the new scene: a split.
+
+  Leave the line without typing a title and it goes again, with nothing saved.
+- **Focus**, above the page, opens [Focus mode](#focus-mode) on the scene the
+  caret is in, or on a chapter's first scene from its heading. It starts from
+  what you have typed, even in the second before the page saves it. What you
+  write there is on the page when you come back, with the caret in the last
+  scene you were in.
 - **Changes made elsewhere arrive.** A scene renamed in another tab, or put
   back by the top bar's Undo, shows on the page; anything you have typed on the
   page and not yet saved is kept.
 - Page is offered when you are writing in one timeline, in narrative order. It
   is not on *All timelines*, in Chronological order, or in reading mode.
-- Not on the page yet: the scene header line, `@` mentions, the scene keys
-  (Ctrl+Alt+↓ and the rest) and Focus mode. Open the scene's card for those.
+- Not on the page yet: the scene header line and `@` mentions. Open the
+  scene's card for those.
 
 ### Reading the book
 
@@ -1575,7 +1593,8 @@ world through export/import.
 ### Focus mode
 
 Beside the scene draft's heading, the **Focus** button opens a full-screen,
-distraction-free writing surface for that scene — no chrome, just your prose in a centered column. The
+distraction-free writing surface for that scene (on the Manuscript's Page, the
+button above the page opens it for the scene the caret is in) — no chrome, just your prose in a centered column. The
 caret stays vertically centered as you type (typewriter scrolling), a live
 **word count** and **words this session** sit in the slim header, and if you've
 set a [daily goal](#writing-progress) a thin bar at the bottom fills toward it.
@@ -1583,7 +1602,7 @@ set a [daily goal](#writing-progress) a thin bar at the bottom fills toward it.
 ![Focus mode](images/46-focus-mode.png)
 
 It autosaves as you write (so scene history and the writing log keep working);
-press **Esc** or click the ✕ to drop back to the scene.
+press **Esc** or click the ✕ to drop back to the scene, or to the page.
 
 **The scene keys work here too**, so Focus mode is not one scene deep.
 **Ctrl+Alt+↓ / ↑** (⌘⌥ on a Mac) goes to the next or previous scene and stays
